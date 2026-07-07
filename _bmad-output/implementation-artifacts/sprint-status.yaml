@@ -1,0 +1,122 @@
+# generated: 2026-07-07
+# last_updated: 2026-07-07
+# project: Missa
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Epics 11-13 (Enterprise, Import/Migration, Props) are Growth-tier stubs in epics.md with no
+#   stories written yet per the PRD's own beachhead-then-expand phasing — they appear here as
+#   epic-only entries with no story keys until real stories are written.
+
+generated: 2026-07-07
+last_updated: 2026-07-07
+project: Missa
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: backlog
+  1-1-add-ci-build-and-test-on-every-pr: backlog
+  1-2-scaffold-apps-web-nextjs-16-tailwind-shadcn-ui: backlog
+  1-3-scaffold-workspace-engine-submission-work-domain-model: backlog
+  1-4-wire-postgres-as-default-runtime-store-for-radar: backlog
+  1-5-scheduled-radar-ticking-via-vercel-cron: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-sign-up-log-in-pages-in-apps-web: backlog
+  2-2-public-profile-passport-page: backlog
+  2-3-privacy-settings: backlog
+  2-4-export-tracker-library-data: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-build-the-explained-score-component: backlog
+  3-2-opportunities-discover-feed: backlog
+  3-3-radarprofile-saved-search-creation-edit-ui: backlog
+  3-4-inbox-digest-ui: backlog
+  3-5-status-pipeline-board-component-tracker-views: backlog
+  3-6-following-management-ui: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-csv-tracker-import: backlog
+  4-2-email-forwarding-parser-forwarding-address-mode: backlog
+  4-3-gmail-sync-oauth-and-autopilot-modes: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-works-files-saved-answers-library-crud: backlog
+  5-2-opportunity-checklist: backlog
+  5-3-custom-lists: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-entity-team-and-program-creation: backlog
+  6-2-open-call-creation-optionally-linked-to-claimed-radar-listing: backlog
+  6-3-submission-path-form-builder-v1: backlog
+  6-4-public-organization-page: backlog
+  6-5-submitter-file-upload-against-a-submission-path: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-admin-inbox-of-incoming-submissions: backlog
+  7-2-reviewer-assignment: backlog
+  7-3-basic-rubric-and-review-recording: backlog
+  epic-7-retrospective: optional
+
+  epic-8: backlog
+  8-1-per-work-decision-recording: backlog
+  8-2-decision-email-templates-and-bulk-send: backlog
+  8-3-delivery-task-tracking: backlog
+  epic-8-retrospective: optional
+
+  epic-9: backlog
+  9-1-basic-reporting-dashboard: backlog
+  9-2-organization-data-export: backlog
+  epic-9-retrospective: optional
+
+  epic-10: backlog
+  10-1-stripe-connect-onboarding-for-organizations: backlog
+  10-2-fee-collection-on-submission: backlog
+  10-3-tiered-subscription-billing-for-organizations: backlog
+  epic-10-retrospective: optional
+
+  epic-11: backlog
+  epic-11-retrospective: optional
+
+  epic-12: backlog
+  epic-12-retrospective: optional
+
+  epic-13: backlog
+  epic-13-retrospective: optional
