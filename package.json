@@ -2,10 +2,11 @@
   "name": "usemissa",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && npm run build --workspace=@missa/workspace-engine",
+    "build": "npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && npm run build --workspace=@missa/workspace-engine && npm run build --workspace=@missa/web",
     "test": "npm test --workspace=@missa/radar-engine && npm test --workspace=@missa/radar-adapters && npm test --workspace=@missa/workspace-engine"
   }
 }
