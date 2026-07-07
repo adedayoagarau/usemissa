@@ -10,7 +10,8 @@
     "test": "npm run build && node --test dist/test/*.test.js"
   },
   "dependencies": {
-    "@missa/radar-engine": "^0.1.0"
+    "@missa/radar-engine": "^0.1.0",
+    "drizzle-orm": "^0.45.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
