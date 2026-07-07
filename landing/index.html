@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Missa: The Correspondence</title>
+<link rel="stylesheet" href="fonts/local.css">
+<link rel="stylesheet" href="fonts/pinyon.css">
+<style>
+  :root{
+    --paper:#F4EFE4;
+    --paper-deep:#ECE5D6;
+    --ink:#1C1815;
+    --ink-70:rgba(28,24,21,.72);
+    --ink-55:rgba(28,24,21,.55);
+    --ink-38:rgba(28,24,21,.40);
+    --hairline:rgba(28,24,21,.16);
+    --hairline-strong:rgba(28,24,21,.34);
+    --vermillion:#C6402A;
+    --vermillion-deep:#A93521;
+    --green:#2E5B41;
+    --night:#12100D;
+    --smoke:#F0EADD;
+    --smoke-70:rgba(240,234,221,.78);
+    --smoke-45:rgba(240,234,221,.52);
+
+    /* motion tokens */
+    --dur-1:120ms;            /* micro feedback */
+    --dur-2:180ms;            /* small surfaces */
+    --dur-3:240ms;            /* medium surfaces */
+    --dur-hero:900ms;         /* illustrative, load-once */
+    --ease-out-quad:cubic-bezier(.25,.46,.45,.94);
+    --ease-out-quart:cubic-bezier(.165,.84,.44,1);
+    --ease-out-quint:cubic-bezier(.23,1,.32,1);
+    --ease-out-expo:cubic-bezier(.19,1,.22,1);
+    --ease-in-out-cubic:cubic-bezier(.645,.045,.355,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{font-size:16px;}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:'Newsreader', Georgia, serif;
+    font-variant-numeric:oldstyle-nums;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .grain{
+    position:fixed; inset:0; z-index:80; pointer-events:none; opacity:.5; mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.11 0 0 0 0 0.09 0 0 0 0 0.08 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .sans{font-family:'Instrument Sans',system-ui,sans-serif;}
+  .mono{font-family:'Fragment Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums lining-nums;}
+  .frx{font-family:'Fraunces',Georgia,serif;}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 64px;}
+
+  /* ---------- scroll reveals (Tier 1: CSS view-timeline, ambient, one-shot) ----------
+     Scrubbed by scroll, but shaped with ease-out so elements land early in their
+     range and rest, rather than drifting linearly the whole way. */
+  .reveal{
+    animation:revealIn var(--ease-out-quart) both;
+    animation-timeline:view();
+    animation-range:entry 0% entry 55%;
+  }
+  .reveal-lag{
+    animation:revealIn var(--ease-out-quart) both;
+    animation-timeline:view();
+    animation-range:entry 8% entry 65%;
+  }
+  @keyframes revealIn{ from{opacity:0; transform:translateY(30px);} to{opacity:1; transform:translateY(0);} }
+  .reveal-scale{
+    animation:revealScale var(--ease-out-quart) both;
+    animation-timeline:view();
+    animation-range:entry 0% entry 50%;
+  }
+  @keyframes revealScale{ from{opacity:0; transform:scale(.97) translateY(18px);} to{opacity:1; transform:scale(1) translateY(0);} }
+
+  /* accessibility: no motion for users who asked for none */
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{
+      animation-duration:.01ms !important;
+      animation-delay:0ms !important;
+      animation-iteration-count:1 !important;
+      transition-duration:.01ms !important;
+    }
+    .reveal,.reveal-lag,.reveal-scale,.gmail-slip,.stamp,
+    #hero .plane.bg,#hero .plane.fg-red,#hero .plane.fg-green{
+      animation:none !important; opacity:1 !important;
+    }
+  }
+
+  /* ---------- top nav (over art) ---------- */
+  nav{
+    position:absolute; top:0; left:0; right:0; z-index:40;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 36px;
+  }
+  nav .brand{display:flex; align-items:baseline; gap:.9rem; color:var(--smoke);}
+  nav .brand .mark{font-family:'Fraunces',serif;font-style:italic;font-weight:600;font-size:1.35rem;}
+  nav .brand .ed{font-family:'Instrument Sans',sans-serif;font-size:.78rem;letter-spacing:.06em;color:var(--smoke-70);}
+  nav .links{display:flex;gap:2.2rem;align-items:center;}
+  nav .links a{font-family:'Instrument Sans',sans-serif;font-size:.85rem;font-weight:500;color:var(--smoke);text-decoration:none;letter-spacing:.02em;}
+  .pill{
+    font-family:'Instrument Sans',sans-serif;font-size:.85rem;font-weight:600;
+    background:var(--smoke);color:var(--ink);
+    padding:.7rem 1.4rem;border-radius:999px;text-decoration:none;
+  }
+  nav .links a.pill{color:var(--ink);}
+
+  /* ---------- plates (full-bleed paintings) ---------- */
+  .plate{position:relative; overflow:hidden; background:var(--night);}
+  .plate img.art{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; display:block;
+  }
+  .plate .scrim{position:absolute; inset:0;}
+  .plate-inner{position:relative; z-index:5;}
+
+  /* left-rail TOC (rendered on plates) */
+  .toc{
+    position:absolute; left:36px; bottom:110px; z-index:30;
+    display:flex; flex-direction:column; gap:.28rem;
+  }
+  .toc .t{
+    display:flex; align-items:baseline; width:230px;
+    font-family:'Instrument Sans',sans-serif; font-weight:600;
+    font-size:1.02rem; letter-spacing:.01em; color:var(--smoke);
+    text-shadow:0 1px 14px rgba(0,0,0,.45);
+  }
+  .toc .t .dots{flex:1; border-bottom:1px dotted var(--smoke-45); margin:0 .55rem; transform:translateY(-4px);}
+  .toc .t .rn{font-family:'Newsreader',serif; font-weight:400; font-size:.85rem; color:var(--smoke-70);}
+  .toc .t.dim{color:var(--smoke-45);}
+  .toc .t.dim .rn{color:var(--smoke-45);}
+  .toc .legal{
+    margin-top:1.3rem; font-family:'Instrument Sans',sans-serif; font-size:.66rem;
+    letter-spacing:.05em; color:var(--smoke-45); line-height:1.7;
+  }
+
+  /* torn paper edges */
+  .tear{position:absolute; left:0; right:0; bottom:-1px; z-index:20; width:100%; height:90px; display:block;}
+  .tear.flip{bottom:auto; top:-1px; transform:scaleY(-1);}
+  .tear path.shadow{fill:rgba(10,8,6,.35); transform:translateY(-7px);}
+  .tear path.paper{fill:var(--paper);}
+
+  /* ---------- HERO (pinned + parallax) ---------- */
+  .pin-wrap{
+    position:relative; height:2800px;
+    view-timeline-name: --hero-scroll;
+    view-timeline-axis: block;
+  }
+  #hero{
+    position:sticky; top:0; width:100%; height:1000px;
+    overflow:hidden; background:var(--night);
+  }
+  /* Layer geometry authored at 1440px design width, expressed as percentages
+     so the composition scales with the viewport. Percentage margin-top on an
+     abs-positioned element resolves against containing-block WIDTH, which is
+     exactly what keeps the vertical framing proportional. */
+  #hero .plane{position:absolute; left:0; top:0; will-change:transform;}
+  #hero .plane.bg{
+    width:100%; margin-top:-27.78%; /* -400/1440 */
+    filter:contrast(1.06) saturate(1.1) brightness(1.01);
+    animation:pxBg linear both;
+    animation-timeline: --hero-scroll;
+    animation-range: cover 0% cover 100%;
+  }
+  #hero .plane.fg-red{
+    left:0; width:36.458%; margin-top:-27.78%; /* 525/1440 */
+    filter:contrast(1.06) saturate(1.1) brightness(1.03);
+    animation:pxFgRed linear both;
+    animation-timeline: --hero-scroll;
+    animation-range: cover 0% cover 100%;
+    transform-origin:top left;
+  }
+  #hero .plane.fg-green{
+    left:74.479%; width:25.52%; margin-top:-27.78%; /* 1072.5/1440, 367.5/1440 */
+    filter:contrast(1.06) saturate(1.1) brightness(1.03);
+    animation:pxFgGreen linear both;
+    animation-timeline: --hero-scroll;
+    animation-range: cover 0% cover 100%;
+    transform-origin:top right;
+  }
+  @keyframes pxBg    { from{transform:translateY(0);} to{transform:translateY(140px);} }
+  @keyframes pxFgRed { from{transform:translateY(0) translateX(0);} to{transform:translateY(-220px) translateX(-30px);} }
+  @keyframes pxFgGreen{ from{transform:translateY(0) translateX(0);} to{transform:translateY(-300px) translateX(36px);} }
+  #hero .scrim{background:
+    radial-gradient(ellipse 90% 75% at 50% 42%, rgba(10,8,6,.18) 0%, rgba(10,8,6,.62) 100%),
+    linear-gradient(rgba(10,8,6,.38), rgba(10,8,6,.18) 30%, rgba(10,8,6,.42) 100%);}
+  /* No box — no border, no glass, no card. Type sits directly on the
+     painting, centered, legible against the scrim alone. */
+  .frame{
+    position:absolute; left:50%; top:170px; transform:translateX(-50%);
+    width:660px; color:var(--smoke); text-align:center;
+  }
+  .frame .kicker{
+    font-family:'Instrument Sans',sans-serif; font-size:.74rem; font-weight:600;
+    letter-spacing:.3em; text-transform:uppercase; color:var(--smoke-70); margin-bottom:1.8rem;
+    text-shadow:0 1px 18px rgba(0,0,0,.55);
+  }
+  .frame h1{
+    font-family:'Fraunces',serif; font-weight:440; font-variation-settings:'opsz' 144;
+    font-size:3.9rem; line-height:1.08; letter-spacing:-.02em;
+    text-shadow:0 2px 32px rgba(0,0,0,.5);
+  }
+  .frame h1 em{font-style:italic; font-weight:520;}
+  .frame .sub{
+    margin:1.8rem auto 0; font-size:1.16rem; line-height:1.6; color:var(--smoke-70); max-width:520px;
+    text-shadow:0 1px 22px rgba(0,0,0,.55);
+  }
+  .frame .begin{
+    margin-top:2.4rem; display:flex; align-items:center; justify-content:center; gap:1.4rem;
+  }
+  .frame .begin .pill{background:var(--smoke); color:var(--ink); font-size:.88rem;}
+  .frame .begin .free{font-family:'Instrument Sans',sans-serif;font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--smoke-70); text-shadow:0 1px 16px rgba(0,0,0,.55);}
+
+  /* hero entrance: load-once, time-based, staggered (illustrative tier) */
+  nav{animation:navFade 700ms var(--ease-out-quad) both 100ms;}
+  @keyframes navFade{ from{opacity:0;} to{opacity:1;} }
+  .frame .kicker,.frame h1,.frame .sub,.frame .begin{
+    animation:heroRise var(--dur-hero) var(--ease-out-quint) both;
+  }
+  .frame .kicker{animation-delay:150ms;}
+  .frame h1{animation-delay:270ms;}
+  .frame .sub{animation-delay:410ms;}
+  .frame .begin{animation-delay:550ms;}
+  @keyframes heroRise{ from{opacity:0; transform:translateY(26px);} to{opacity:1; transform:translateY(0);} }
+
+  /* micro-interactions (Tier 2): fast, ease-out, transform+opacity only */
+  .pill{
+    transition:transform var(--dur-1) var(--ease-out-quad), box-shadow var(--dur-1) var(--ease-out-quad);
+  }
+  @media (hover:hover){
+    .pill:hover{transform:translateY(-1px); box-shadow:0 4px 18px rgba(0,0,0,.28);}
+  }
+  .pill:active{transform:translateY(0) scale(.98); box-shadow:none; transition-duration:60ms;}
+  nav .links a:not(.pill){opacity:.92; transition:opacity 150ms ease;}
+  @media (hover:hover){ nav .links a:not(.pill):hover{opacity:1;} }
+  #fork .go{transition:border-color 150ms ease;}
+  #fork .go .arrow{display:inline-block; transition:transform var(--dur-2) var(--ease-out-quart);}
+  @media (hover:hover){
+    #fork .go:hover{border-color:var(--vermillion);}
+    #fork .go:hover .arrow{transform:translateX(4px);}
+  }
+  .credit{
+    position:absolute; right:28px; bottom:110px; z-index:30;
+    writing-mode:vertical-rl; font-family:'Instrument Sans',sans-serif; font-size:.62rem;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--smoke-45);
+  }
+
+  /* ---------- chapter plates ---------- */
+  .chapter-plate{height:860px;}
+  .chapter-plate .rn-top{
+    position:absolute; top:110px; left:50%; transform:translateX(-50%); z-index:6;
+    font-family:'Newsreader',serif; font-size:1.1rem; color:var(--smoke-70); letter-spacing:.35em;
+  }
+  .chapter-plate .word{
+    position:absolute; left:50%; top:52%; transform:translate(-50%,-50%); z-index:6;
+    font-family:'Instrument Sans',sans-serif; font-weight:700;
+    font-size:15rem; letter-spacing:-.035em; line-height:1;
+    color:var(--smoke); text-shadow:0 2px 60px rgba(0,0,0,.35);
+    white-space:nowrap;
+  }
+  .chapter-plate .lede{
+    position:absolute; left:50%; bottom:150px; transform:translateX(-50%); z-index:6;
+    width:760px; text-align:center;
+    font-family:'Newsreader',serif; font-size:1.7rem; line-height:1.45; color:var(--smoke);
+    text-shadow:0 1px 20px rgba(0,0,0,.5);
+  }
+  .lede .init{
+    font-family:'Pinyon Script',cursive; font-size:2.6rem; line-height:0;
+    margin-right:.08em; color:var(--smoke);
+  }
+  #ch-sent .scrim{background:linear-gradient(rgba(10,8,6,.5), rgba(10,8,6,.28) 40%, rgba(10,8,6,.55) 100%);}
+  #ch-sent img.art{object-position:50% 24%;}
+  #ch-waiting .scrim{background:linear-gradient(rgba(10,8,6,.45), rgba(16,12,8,.25) 40%, rgba(10,8,6,.55) 100%);}
+  #ch-waiting img.art{object-position:50% 20%;}
+  #ch-answered .scrim{background:linear-gradient(rgba(10,8,6,.5), rgba(10,8,6,.3) 40%, rgba(10,8,6,.55) 100%);}
+  #ch-answered img.art{object-position:50% 18%;}
+
+  /* ---------- paper sections ---------- */
+  .paper{position:relative; background:var(--paper); z-index:10;}
+  .paper .inner{padding:7.5rem 0 8rem;}
+  .runlabel{
+    font-family:'Instrument Sans',sans-serif; font-size:.72rem; font-weight:600;
+    letter-spacing:.24em; text-transform:uppercase; color:var(--ink-55);
+  }
+  .runlabel .no{color:var(--vermillion); margin-right:.9em;}
+  h2.head{
+    font-family:'Fraunces',serif; font-weight:460; font-variation-settings:'opsz' 120;
+    font-size:3.4rem; line-height:1.08; letter-spacing:-.02em; margin-top:1.4rem; max-width:760px;
+  }
+  h2.head em{font-style:italic;}
+  .lede-paper{
+    font-size:1.34rem; line-height:1.6; color:var(--ink-70); max-width:640px; margin-top:1.6rem;
+  }
+  .lede-paper .init{
+    font-family:'Pinyon Script',cursive; font-size:3.4rem; color:var(--ink);
+    float:left; line-height:.9; margin:.12em .12em 0 0;
+  }
+  .cols2{display:grid; grid-template-columns:1.05fr .95fr; gap:5rem; align-items:center;}
+  .cols2.rev > .txt{order:2;}
+
+  /* ---------- fork: two sides, one system ---------- */
+  #fork{border-bottom:1px solid var(--hairline-strong);}
+  #fork .inner{padding:3.4rem 0;}
+  #fork .grid{display:grid; grid-template-columns:1fr 1fr;}
+  #fork .side{padding:0 4rem;}
+  #fork .side:first-child{padding-left:0; border-right:1px solid var(--hairline-strong);}
+  #fork .side:last-child{padding-right:0;}
+  #fork .k{font-family:'Instrument Sans',sans-serif; font-size:.7rem; font-weight:600; letter-spacing:.24em; text-transform:uppercase; color:var(--ink-55); margin-bottom:.9rem;}
+  #fork p{font-family:'Newsreader',serif; font-size:1.28rem; line-height:1.5; color:var(--ink); max-width:420px;}
+  #fork p em{font-style:italic; color:var(--vermillion);}
+  #fork .go{
+    display:inline-flex; align-items:baseline; gap:.4rem; margin-top:1.2rem;
+    font-family:'Instrument Sans',sans-serif; font-size:.86rem; font-weight:600; color:var(--ink);
+    text-decoration:none; border-bottom:1px solid var(--hairline-strong); padding-bottom:.15rem;
+  }
+  #fork .go .arrow{color:var(--vermillion);}
+
+  /* ---------- FAQ ---------- */
+  #faq .list{max-width:800px; margin:3.6rem auto 0;}
+  #faq .item{border-top:1px solid var(--hairline-strong); padding:2.1rem 0;}
+  #faq .item:last-child{border-bottom:1px solid var(--hairline-strong);}
+  #faq .q{
+    font-family:'Fraunces',serif; font-style:italic; font-weight:540; font-size:1.42rem;
+    color:var(--ink); margin-bottom:.9rem;
+  }
+  #faq .a{font-size:1.12rem; line-height:1.6; color:var(--ink-70); max-width:640px;}
+
+  /* ledger doc */
+  .ledger-doc{
+    background:#FBF7EC; border-radius:4px;
+    box-shadow:0 0 0 1px var(--hairline), 0 2px 6px rgba(28,24,21,.06), 0 30px 80px rgba(28,24,21,.14);
+    padding:3rem 3.2rem 2.4rem; position:relative;
+    max-width:980px; margin:4.5rem auto 0;
+    view-timeline-name: --ledger-scroll;
+    view-timeline-axis: block;
+  }
+  .doc-head{display:flex; justify-content:space-between; align-items:baseline; padding-bottom:1.3rem; border-bottom:1px solid var(--hairline-strong);}
+  .doc-title{font-family:'Fraunces',serif; font-style:italic; font-size:1.45rem; font-weight:540;}
+  .doc-meta{font-family:'Fragment Mono',monospace; font-size:.72rem; color:var(--ink-55);}
+  .lrow{
+    display:grid; grid-template-columns:2.1fr 1.8fr 1fr 1.8fr; gap:1.2rem; align-items:baseline;
+    padding:1.3rem .2rem; border-bottom:1px solid var(--hairline);
+  }
+  .lrow .work{font-family:'Newsreader',serif; font-style:italic; font-size:1.2rem;}
+  .lrow .org{font-size:1rem; color:var(--ink-70);}
+  .lrow .date{font-family:'Fragment Mono',monospace; font-size:.76rem; color:var(--ink-55);}
+  .status{font-family:'Fragment Mono',monospace; font-size:.7rem; letter-spacing:.09em; display:flex; justify-content:flex-end; text-align:right;}
+  .st-sub{color:var(--ink-55);} .st-review{color:var(--ink-70);}
+  .st-acc{color:var(--green);}
+  .stamp{
+    border:1.5px solid var(--green); color:var(--green); padding:.22rem .6rem; border-radius:2px;
+    letter-spacing:.14em; background:rgba(46,91,65,.05); display:inline-block;
+    transform:rotate(-2deg);
+    animation:stampIn var(--ease-out-quint) both;
+    animation-timeline: --ledger-scroll;
+    animation-range: cover 55% cover 82%;
+  }
+  @keyframes stampIn{
+    from{opacity:0; transform:scale(2.1) rotate(-2deg);}
+    to{opacity:1; transform:scale(1) rotate(-2deg);}
+  }
+  .lrow.withdrawn .work,.lrow.withdrawn .org{text-decoration:line-through; text-decoration-color:rgba(198,64,42,.65); text-decoration-thickness:1.5px; color:var(--ink-38);}
+  .st-wd{color:var(--ink-38);}
+  .window{display:flex; flex-direction:column; gap:.45rem; align-items:flex-end;}
+  .winbar{position:relative; width:150px; height:3px; background:rgba(28,24,21,.12); border-radius:2px;}
+  .winbar i{position:absolute; left:0; top:0; bottom:0; width:38%; background:var(--ink-70); border-radius:2px;}
+  .winbar .dot{position:absolute; left:38%; top:50%; width:7px; height:7px; border-radius:50%; background:var(--vermillion); transform:translate(-50%,-50%);}
+  .win-label{font-family:'Fragment Mono',monospace; font-size:.66rem; color:var(--ink-55);}
+  .gmail-slip{
+    position:absolute; right:-30px; bottom:-40px;
+    background:#FFFDF6; border:1px solid var(--hairline);
+    box-shadow:0 2px 6px rgba(28,24,21,.08), 0 18px 44px rgba(28,24,21,.16);
+    padding:1rem 1.2rem; width:330px; border-radius:3px;
+    transform:rotate(1.6deg);
+    animation:slipIn var(--ease-out-quart) both;
+    animation-timeline: --ledger-scroll;
+    animation-range: cover 30% cover 62%;
+  }
+  @keyframes slipIn{
+    from{opacity:0; transform:translate(46px,26px) rotate(7deg);}
+    to{opacity:1; transform:translate(0,0) rotate(1.6deg);}
+  }
+  .gmail-slip .from{font-family:'Instrument Sans',sans-serif; font-size:.72rem; font-weight:600; color:var(--ink-70); display:flex; justify-content:space-between;}
+  .gmail-slip .from span:last-child{color:var(--ink-38); font-weight:400;}
+  .gmail-slip .subject{font-family:'Newsreader',serif; font-style:italic; font-size:.95rem; margin-top:.35rem;}
+  .gmail-slip .action{margin-top:.65rem; padding-top:.55rem; border-top:1px dashed var(--hairline); font-family:'Fragment Mono',monospace; font-size:.64rem; color:var(--green); letter-spacing:.05em;}
+  .doc-caption{text-align:center; margin-top:4.6rem; font-size:1.24rem; font-style:italic; color:var(--ink-70);}
+  .doc-caption b{font-style:normal; font-weight:600; color:var(--ink);}
+
+  /* cards */
+  .card{
+    background:#FBF7EC; border-radius:4px;
+    box-shadow:0 0 0 1px var(--hairline), 0 1px 4px rgba(28,24,21,.05), 0 18px 48px rgba(28,24,21,.10);
+    padding:2rem 2.2rem;
+  }
+  .card .k{font-family:'Instrument Sans',sans-serif; font-size:.66rem; font-weight:600; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-38); margin-bottom:1.1rem;}
+  .workcard-title{font-family:'Newsreader',serif; font-style:italic; font-size:1.65rem;}
+  .wc-rows{margin-top:1.1rem; display:flex; flex-direction:column; gap:.55rem;}
+  .wc-rows .r{display:flex; justify-content:space-between; font-family:'Fragment Mono',monospace; font-size:.74rem; color:var(--ink-70); border-bottom:1px solid rgba(28,24,21,.07); padding-bottom:.5rem;}
+  .wc-rows .r span:first-child{color:var(--ink-38);}
+  .predict .big{font-family:'Newsreader',serif; font-size:1.42rem; line-height:1.42;}
+  .predict .big b{font-weight:600;}
+  .pwin{margin:1.5rem 0 .55rem; position:relative; height:4px; background:rgba(28,24,21,.1); border-radius:2px;}
+  .pwin .range{position:absolute; left:52%; right:14%; top:0; bottom:0; background:rgba(198,64,42,.08); border-left:1px solid var(--vermillion); border-right:1px solid var(--vermillion);}
+  .pwin .now{position:absolute; left:34%; top:50%; width:8px; height:8px; background:var(--ink); border-radius:50%; transform:translate(-50%,-50%);}
+  .pwin-labels{display:flex; justify-content:space-between; font-family:'Fragment Mono',monospace; font-size:.64rem; color:var(--ink-55);}
+  .predict .basis{margin-top:1rem; font-family:'Fragment Mono',monospace; font-size:.68rem; color:var(--ink-38);}
+  .notif{border-left:3px solid var(--vermillion); padding-left:1.35rem;}
+  .notif .headline{font-family:'Newsreader',serif; font-size:1.42rem; line-height:1.38;}
+  .notif .old{text-decoration:line-through; text-decoration-color:rgba(198,64,42,.7); color:var(--ink-38);}
+  .notif .new{color:var(--vermillion);}
+  .notif .meta{margin-top:.85rem; font-family:'Fragment Mono',monospace; font-size:.7rem; color:var(--ink-55);}
+  .pause-line{
+    text-align:center; font-family:'Newsreader',serif; font-style:italic; font-weight:380;
+    font-size:2.3rem; line-height:1.42; max-width:840px; margin:6.5rem auto 0;
+  }
+  .pause-line .ast{color:var(--vermillion);}
+  .pause-foot{text-align:center; margin-top:1.6rem; font-family:'Fragment Mono',monospace; font-size:.68rem; color:var(--ink-38);}
+
+  /* item decisions strip */
+  .items-strip{display:grid; grid-template-columns:repeat(5,1fr); gap:1px; background:var(--hairline); border:1px solid var(--hairline); border-radius:4px; overflow:hidden; margin-top:3.6rem;}
+  .items-strip .it{background:#FBF7EC; padding:1.4rem 1.2rem;}
+  .items-strip .name{font-family:'Newsreader',serif; font-style:italic; font-size:1.02rem;}
+  .items-strip .st{margin-top:.8rem; font-family:'Fragment Mono',monospace; font-size:.62rem; letter-spacing:.1em;}
+  .items-strip .st.acc{color:var(--green);} .items-strip .st.dec{color:var(--ink-38);} .items-strip .st.wd{color:var(--vermillion);}
+  .items-caption{margin-top:1.4rem; font-size:1.05rem; color:var(--ink-55); font-style:italic; text-align:center;}
+
+  /* blurbs */
+  .blurbs{display:grid; grid-template-columns:1fr 1fr; gap:5.5rem; margin-top:4.5rem;}
+  .blurb q{quotes:'\201C' '\201D'; font-family:'Newsreader',serif; font-style:italic; font-size:1.5rem; line-height:1.48; font-weight:380; display:block;}
+  .blurb .attr{margin-top:1.3rem; font-family:'Instrument Sans',sans-serif; font-size:.74rem; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-55);}
+  .blurb .attr b{color:var(--vermillion);}
+  .tally{margin-top:5rem; text-align:center; font-family:'Fragment Mono',monospace; font-size:.8rem; color:var(--ink-55); border-top:1px solid var(--hairline); padding-top:2rem;}
+  .tally b{color:var(--ink); font-weight:400;} .tally .g{color:var(--green);}
+
+  /* ---------- promise plate ---------- */
+  #promise{height:900px;}
+  #promise img.art{object-position:72% 20%;}
+  #promise .scrim{background:linear-gradient(100deg, rgba(10,8,6,.9) 22%, rgba(10,8,6,.68) 58%, rgba(10,8,6,.28) 100%);}
+  #promise .content{
+    position:absolute; z-index:6; left:0; right:0; top:50%; transform:translateY(-50%);
+  }
+  #promise .rn{font-family:'Newsreader',serif; font-size:1rem; color:var(--smoke-70); letter-spacing:.35em; margin-bottom:2rem;}
+  #promise h2{
+    font-family:'Fraunces',serif; font-weight:420; font-variation-settings:'opsz' 144;
+    font-size:5rem; line-height:1.04; letter-spacing:-.02em; color:var(--smoke); max-width:820px;
+  }
+  #promise h2 .forever{font-style:italic; position:relative; white-space:nowrap;}
+  #promise h2 .forever .u{position:absolute; left:0; right:0; bottom:.03em; height:.05em; background:var(--vermillion); transform:rotate(-.3deg);}
+  #promise .creed{margin-top:3rem; display:grid; grid-template-columns:1fr 1fr; gap:3.5rem; max-width:900px;}
+  #promise .creed p{font-size:1.16rem; line-height:1.65; color:var(--smoke-70);}
+  #promise .creed b{color:var(--smoke); font-weight:500;}
+  #promise .sig{margin-top:1.8rem; font-family:'Pinyon Script',cursive; font-size:1.9rem; color:var(--smoke-70);}
+
+  /* ---------- begin / footer ---------- */
+  #begin .inner{padding:7.5rem 0 0; text-align:center;}
+  #begin .rn{font-family:'Newsreader',serif; font-size:1rem; color:var(--ink-55); letter-spacing:.35em;}
+  #begin h2{
+    font-family:'Fraunces',serif; font-weight:450; font-variation-settings:'opsz' 144;
+    font-size:4.8rem; letter-spacing:-.02em; line-height:1.04; margin-top:1.6rem;
+  }
+  #begin h2 em{font-style:italic;}
+  #begin .sub{margin-top:1.4rem; font-size:1.2rem; color:var(--ink-70);}
+  .cta-form{
+    margin:2.6rem auto 0; display:flex; max-width:480px;
+    border:1px solid var(--hairline-strong); border-radius:999px; background:#FBF7EC;
+    box-shadow:0 1px 3px rgba(28,24,21,.05); overflow:hidden;
+    transition:border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .cta-form:focus-within{
+    border-color:var(--ink); box-shadow:0 1px 3px rgba(28,24,21,.05), 0 0 0 3px rgba(28,24,21,.08);
+  }
+  .cta-form .field{
+    flex:1; padding:1rem 1.5rem; font-family:'Instrument Sans',sans-serif; font-size:.95rem;
+    color:var(--ink); text-align:left; background:transparent; border:none; outline:none; min-width:0;
+  }
+  .cta-form .field::placeholder{color:var(--ink-38);}
+  .cta-form .go{
+    background:var(--ink); color:var(--paper); font-family:'Instrument Sans',sans-serif; font-weight:600;
+    font-size:.9rem; padding:1rem 1.8rem; display:flex; align-items:center; border:none; cursor:pointer;
+    transition:background var(--dur-1) var(--ease-out-quad);
+  }
+  @media (hover:hover){ .cta-form .go:hover{background:var(--vermillion-deep);} }
+  .cta-form .go:active{transition-duration:60ms; background:var(--vermillion);}
+  #begin .fine{margin-top:1.2rem; font-family:'Instrument Sans',sans-serif; font-size:.7rem; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-38);}
+  footer{margin-top:6.5rem; border-top:1px solid var(--hairline); padding:2.2rem 0 2.8rem;}
+  footer .wrap{display:flex; justify-content:space-between; align-items:baseline;}
+  footer .mark{font-family:'Fraunces',serif; font-style:italic; font-weight:600; font-size:1.05rem;}
+  footer .colophon{font-family:'Newsreader',serif; font-style:italic; font-size:.92rem; color:var(--ink-55); text-align:center; max-width:560px;}
+  footer .links{display:flex; gap:2rem;}
+  footer .links a{font-family:'Instrument Sans',sans-serif; font-size:.72rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-55); text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="grain"></div>
+
+<!-- ================= HERO (pinned, parallax) ================= -->
+<div class="pin-wrap">
+<section class="plate" id="hero">
+  <img class="plane bg" src="art/layers/bg-full.jpg" alt="Vermeer, Girl Reading a Letter by an Open Window">
+  <img class="plane fg-red" src="art/layers/fg-red-curtain.png" alt="">
+  <img class="plane fg-green" src="art/layers/fg-green-curtain.png" alt="">
+  <div class="scrim"></div>
+  <nav>
+    <div class="brand"><span class="mark">Missa</span></div>
+    <div class="links">
+      <a href="#">Discover</a><a href="#">Tracker</a><a href="#">For organizations</a>
+      <a href="#" class="pill">Start free</a>
+    </div>
+  </nav>
+  <div class="frame">
+    <div class="kicker">The Opportunity OS</div>
+    <h1>Every open call.<br><em>Don't miss another deadline.</em></h1>
+    <p class="sub">Missa's smart tracker finds the magazines, grants, residencies, and festivals that actually fit your work, and puts the deadlines straight on your calendar.</p>
+    <div class="begin">
+      <a href="#" class="pill">Start free</a>
+      <span class="free">Always free for creatives</span>
+    </div>
+  </div>
+  <div class="toc">
+    <div class="legal">Vermeer, <em>Girl Reading a Letter</em>, c. 1657<br>Gemäldegalerie Alte Meister, Dresden</div>
+  </div>
+  <svg class="tear" viewBox="0 0 1440 90" preserveAspectRatio="none">
+    <path class="shadow" d="M0 90 L0 44.6 L0.0 44.6 L11.7 42.0 L23.7 48.3 L33.2 41.1 L45.7 39.8 L60.4 43.7 L68.7 35.6 L76.2 35.6 L83.4 36.6 L97.1 34.3 L108.1 34.2 L117.4 37.0 L131.1 34.7 L139.9 31.7 L153.1 35.4 L163.2 43.1 L170.2 37.1 L180.9 46.6 L188.5 43.9 L197.7 38.9 L212.4 45.2 L221.3 49.6 L232.8 39.9 L245.7 35.5 L253.6 38.0 L262.8 43.4 L272.2 43.1 L282.4 43.9 L290.2 46.3 L299.2 45.6 L308.6 40.0 L320.3 42.8 L330.2 45.2 L341.1 45.7 L349.6 40.2 L363.1 38.2 L376.0 41.6 L390.6 37.2 L401.0 39.7 L413.6 27.3 L425.4 27.3 L438.2 25.5 L449.6 34.2 L458.9 35.4 L466.0 29.2 L473.5 28.3 L485.1 27.2 L499.2 33.9 L511.7 27.8 L519.0 20.8 L531.6 14 L544.5 21.2 L552.1 23.7 L566.3 27.3 L579.6 32.2 L592.1 35.6 L602.4 37.5 L614.0 38.8 L625.7 40.8 L637.8 45.9 L650.6 40.2 L662.3 40.6 L669.9 28.8 L678.8 43.1 L690.7 46.0 L697.8 40.6 L706.4 40.7 L718.7 46.2 L728.3 50.9 L738.7 55.0 L752.8 53.8 L762.3 52.6 L776.0 60.1 L790.6 53.1 L801.2 51.4 L811.5 52.9 L821.1 53.3 L831.7 27.3 L840.9 46.1 L852.4 48.8 L861.0 50.4 L874.2 52.0 L882.1 46.0 L894.2 49.8 L902.8 54.9 L915.5 54.1 L922.8 48.2 L934.1 54.0 L949.1 43.6 L961.7 42.3 L975.8 42.7 L984.4 62.3 L996.6 42.0 L1010.2 49.0 L1018.9 53.7 L1033.7 54.1 L1043.3 60.2 L1053.1 53.8 L1064.5 62.0 L1071.7 62.9 L1085.1 56.5 L1098.4 55.6 L1109.5 61.0 L1122.0 63.3 L1136.6 56.0 L1147.8 60.0 L1160.0 64.9 L1171.4 65.3 L1185.2 73.6 L1199.0 75.3 L1210.6 67.3 L1221.6 54.6 L1231.8 69.6 L1242.7 65.8 L1254.1 60.2 L1268.4 55.7 L1276.5 56.2 L1290.7 55.6 L1299.2 56.9 L1307.2 47.1 L1314.3 53.9 L1323.3 56.1 L1334.9 59.4 L1347.7 56.6 L1354.9 54.7 L1366.8 51.1 L1378.1 44.8 L1389.4 45.3 L1403.7 42.4 L1412.2 40.8 L1420.7 41.8 L1428.5 42.8 L1436.2 38.2 L1440 38.2 L1440 90 Z"/>
+    <path class="paper" d="M0 90 L0 44.6 L0.0 44.6 L11.7 42.0 L23.7 48.3 L33.2 41.1 L45.7 39.8 L60.4 43.7 L68.7 35.6 L76.2 35.6 L83.4 36.6 L97.1 34.3 L108.1 34.2 L117.4 37.0 L131.1 34.7 L139.9 31.7 L153.1 35.4 L163.2 43.1 L170.2 37.1 L180.9 46.6 L188.5 43.9 L197.7 38.9 L212.4 45.2 L221.3 49.6 L232.8 39.9 L245.7 35.5 L253.6 38.0 L262.8 43.4 L272.2 43.1 L282.4 43.9 L290.2 46.3 L299.2 45.6 L308.6 40.0 L320.3 42.8 L330.2 45.2 L341.1 45.7 L349.6 40.2 L363.1 38.2 L376.0 41.6 L390.6 37.2 L401.0 39.7 L413.6 27.3 L425.4 27.3 L438.2 25.5 L449.6 34.2 L458.9 35.4 L466.0 29.2 L473.5 28.3 L485.1 27.2 L499.2 33.9 L511.7 27.8 L519.0 20.8 L531.6 14 L544.5 21.2 L552.1 23.7 L566.3 27.3 L579.6 32.2 L592.1 35.6 L602.4 37.5 L614.0 38.8 L625.7 40.8 L637.8 45.9 L650.6 40.2 L662.3 40.6 L669.9 28.8 L678.8 43.1 L690.7 46.0 L697.8 40.6 L706.4 40.7 L718.7 46.2 L728.3 50.9 L738.7 55.0 L752.8 53.8 L762.3 52.6 L776.0 60.1 L790.6 53.1 L801.2 51.4 L811.5 52.9 L821.1 53.3 L831.7 27.3 L840.9 46.1 L852.4 48.8 L861.0 50.4 L874.2 52.0 L882.1 46.0 L894.2 49.8 L902.8 54.9 L915.5 54.1 L922.8 48.2 L934.1 54.0 L949.1 43.6 L961.7 42.3 L975.8 42.7 L984.4 62.3 L996.6 42.0 L1010.2 49.0 L1018.9 53.7 L1033.7 54.1 L1043.3 60.2 L1053.1 53.8 L1064.5 62.0 L1071.7 62.9 L1085.1 56.5 L1098.4 55.6 L1109.5 61.0 L1122.0 63.3 L1136.6 56.0 L1147.8 60.0 L1160.0 64.9 L1171.4 65.3 L1185.2 73.6 L1199.0 75.3 L1210.6 67.3 L1221.6 54.6 L1231.8 69.6 L1242.7 65.8 L1254.1 60.2 L1268.4 55.7 L1276.5 56.2 L1290.7 55.6 L1299.2 56.9 L1307.2 47.1 L1314.3 53.9 L1323.3 56.1 L1334.9 59.4 L1347.7 56.6 L1354.9 54.7 L1366.8 51.1 L1378.1 44.8 L1389.4 45.3 L1403.7 42.4 L1412.2 40.8 L1420.7 41.8 L1428.5 42.8 L1436.2 38.2 L1440 38.2 L1440 90 Z"/>
+  </svg>
+</section>
+</div>
+
+<!-- ================= FORK: two sides, one system ================= -->
+<section class="paper" id="fork">
+  <div class="wrap inner">
+    <div class="grid">
+      <div class="side reveal">
+        <div class="k">For creatives</div>
+        <p>Free forever. <em>The right calls for your work.</em></p>
+        <a href="#" class="go">Start free <span class="arrow">→</span></a>
+      </div>
+      <div class="side reveal-lag">
+        <div class="k">For organizations</div>
+        <p>Run the whole call right where creatives are already finding opportunities, <em>without enterprise pricing.</em></p>
+        <a href="#" class="go">Set up your first call <span class="arrow">→</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= INTRO PAPER ================= -->
+<section class="paper" id="intro">
+  <div class="wrap inner" style="padding-bottom:6rem;">
+    <div class="cols2">
+      <div class="txt reveal">
+        <div class="runlabel"><span class="no">Prologue</span>The spreadsheet</div>
+        <h2 class="head">Every submission is a letter sent into the dark.</h2>
+      </div>
+      <div class="reveal-lag">
+        <p class="lede-paper"><span class="init">F</span>or four hundred years, the wait for a reply has looked exactly like this. You send the work. You keep a record. You check the mail. Somewhere between the eleven magazines, the three grants, and the spreadsheet you're afraid to open, the record of your own work stops being yours.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CHAPTER I : SENT ================= -->
+<section class="plate chapter-plate" id="ch-sent">
+  <img class="art" src="art/sent.jpg" alt="Metsu, Man Writing a Letter">
+  <div class="scrim"></div>
+  <div class="rn-top">I</div>
+  <div class="word reveal-scale">Sent</div>
+  <div class="lede reveal-lag"><span class="init">T</span>he moment it leaves your desk, Missa starts watching. You go write the next thing.</div>
+  <div class="toc">
+    <div class="t"><span>Sent</span><span class="dots"></span><span class="rn">I</span></div>
+    <div class="t dim"><span>Waiting</span><span class="dots"></span><span class="rn">II</span></div>
+    <div class="t dim"><span>Answered</span><span class="dots"></span><span class="rn">III</span></div>
+    <div class="t dim"><span>The Promise</span><span class="dots"></span><span class="rn">IV</span></div>
+    <div class="legal">Metsu, <em>Man Writing a Letter</em>, c. 1664<br>National Gallery of Ireland</div>
+  </div>
+  <svg class="tear" viewBox="0 0 1440 90" preserveAspectRatio="none">
+    <path class="shadow" d="M0 90 L0 38.4 L0.0 38.4 L12.4 45.1 L22.8 35.8 L33.8 34.6 L46.0 38.5 L57.7 23.3 L67.5 33.7 L77.2 33.6 L90.9 40.3 L103.8 41.5 L113.8 43.2 L125.8 47.4 L138.4 39.4 L147.7 38.9 L155.5 39.7 L165.4 38.5 L174.6 41.8 L186.4 31.0 L194.7 31.1 L206.9 30.6 L220.6 31.5 L227.9 26.8 L236.6 33.4 L246.1 31.3 L260.4 30.7 L269.4 32.4 L281.0 36.1 L289.8 36.9 L297.5 26.8 L309.5 32.8 L317.0 27.6 L328.3 32.0 L335.4 28.7 L346.7 23.7 L354.6 25.6 L369.2 32.0 L380.2 27.6 L394.2 33.0 L406.0 35.3 L417.3 44.7 L424.4 60.6 L438.0 32.9 L448.9 42.1 L462.0 42.8 L473.4 44.0 L483.8 43.4 L496.6 44.0 L511.6 50.5 L522.7 47.5 L532.5 54.5 L541.2 51.5 L550.0 61.8 L557.6 56.5 L566.3 56.4 L577.9 60.2 L591.4 56.4 L601.8 57.0 L614.6 56.9 L622.4 52.5 L636.3 48.6 L646.9 49.3 L655.9 54.1 L669.8 31.3 L684.2 55.4 L695.1 50.2 L702.6 52.5 L711.7 56.8 L722.1 58.3 L733.5 54.9 L742.9 56.0 L754.2 66.9 L768.0 43.9 L775.7 43.4 L788.1 43.6 L802.2 45.0 L814.2 49.0 L825.3 57.0 L838.1 53.4 L850.4 56.9 L863.5 56.7 L878.5 66.8 L887.2 59.4 L901.2 64.7 L909.5 63.7 L921.4 64.7 L928.4 63.0 L940.7 65.0 L948.7 57.6 L957.8 64.1 L966.5 66.0 L977.4 70.7 L985.1 67.1 L992.1 71.3 L1001.2 71.4 L1011.7 63.7 L1025.7 70.5 L1039.4 63.9 L1047.4 58.9 L1060.8 60.7 L1069.5 52.5 L1082.7 56.5 L1094.7 48.1 L1108.6 56.0 L1122.6 46.7 L1132.3 55.7 L1146.2 53.7 L1159.5 44.8 L1173.4 42.8 L1184.1 40.8 L1192.9 35.6 L1202.5 41.7 L1211.7 37.7 L1226.6 35.3 L1234.5 39.7 L1249.2 34.2 L1259.7 40.5 L1271.5 40.6 L1283.1 39.8 L1290.2 47.4 L1302.9 46.2 L1312.8 39.2 L1322.5 40.9 L1335.2 39.4 L1345.5 39.3 L1353.5 38.9 L1365.9 43.5 L1375.3 52.6 L1388.6 42.7 L1399.2 45.3 L1412.5 50.5 L1424.8 45.4 L1436.7 44.1 L1440 44.1 L1440 90 Z"/>
+    <path class="paper" d="M0 90 L0 38.4 L0.0 38.4 L12.4 45.1 L22.8 35.8 L33.8 34.6 L46.0 38.5 L57.7 23.3 L67.5 33.7 L77.2 33.6 L90.9 40.3 L103.8 41.5 L113.8 43.2 L125.8 47.4 L138.4 39.4 L147.7 38.9 L155.5 39.7 L165.4 38.5 L174.6 41.8 L186.4 31.0 L194.7 31.1 L206.9 30.6 L220.6 31.5 L227.9 26.8 L236.6 33.4 L246.1 31.3 L260.4 30.7 L269.4 32.4 L281.0 36.1 L289.8 36.9 L297.5 26.8 L309.5 32.8 L317.0 27.6 L328.3 32.0 L335.4 28.7 L346.7 23.7 L354.6 25.6 L369.2 32.0 L380.2 27.6 L394.2 33.0 L406.0 35.3 L417.3 44.7 L424.4 60.6 L438.0 32.9 L448.9 42.1 L462.0 42.8 L473.4 44.0 L483.8 43.4 L496.6 44.0 L511.6 50.5 L522.7 47.5 L532.5 54.5 L541.2 51.5 L550.0 61.8 L557.6 56.5 L566.3 56.4 L577.9 60.2 L591.4 56.4 L601.8 57.0 L614.6 56.9 L622.4 52.5 L636.3 48.6 L646.9 49.3 L655.9 54.1 L669.8 31.3 L684.2 55.4 L695.1 50.2 L702.6 52.5 L711.7 56.8 L722.1 58.3 L733.5 54.9 L742.9 56.0 L754.2 66.9 L768.0 43.9 L775.7 43.4 L788.1 43.6 L802.2 45.0 L814.2 49.0 L825.3 57.0 L838.1 53.4 L850.4 56.9 L863.5 56.7 L878.5 66.8 L887.2 59.4 L901.2 64.7 L909.5 63.7 L921.4 64.7 L928.4 63.0 L940.7 65.0 L948.7 57.6 L957.8 64.1 L966.5 66.0 L977.4 70.7 L985.1 67.1 L992.1 71.3 L1001.2 71.4 L1011.7 63.7 L1025.7 70.5 L1039.4 63.9 L1047.4 58.9 L1060.8 60.7 L1069.5 52.5 L1082.7 56.5 L1094.7 48.1 L1108.6 56.0 L1122.6 46.7 L1132.3 55.7 L1146.2 53.7 L1159.5 44.8 L1173.4 42.8 L1184.1 40.8 L1192.9 35.6 L1202.5 41.7 L1211.7 37.7 L1226.6 35.3 L1234.5 39.7 L1249.2 34.2 L1259.7 40.5 L1271.5 40.6 L1283.1 39.8 L1290.2 47.4 L1302.9 46.2 L1312.8 39.2 L1322.5 40.9 L1335.2 39.4 L1345.5 39.3 L1353.5 38.9 L1365.9 43.5 L1375.3 52.6 L1388.6 42.7 L1399.2 45.3 L1412.5 50.5 L1424.8 45.4 L1436.7 44.1 L1440 44.1 L1440 90 Z"/>
+  </svg>
+</section>
+
+<section class="paper" id="sent-paper">
+  <div class="wrap inner">
+    <div class="runlabel reveal"><span class="no">No. I</span>Sent, and tracked</div>
+    <h2 class="head reveal">Know where every piece stands, <em>without opening a spreadsheet.</em></h2>
+    <div style="position:relative;">
+      <div class="ledger-doc">
+        <div class="doc-head">
+          <span class="doc-title">Submissions, Spring 2026</span>
+          <span class="doc-meta">updated 2 min ago · by Missa</span>
+        </div>
+        <div class="lrow">
+          <span class="work">Blue Room</span><span class="org">Ploughshares</span><span class="date">sent Mar 4</span>
+          <span class="status st-review"><span class="window"><span class="winbar"><i></i><span class="dot"></span></span><span class="win-label">IN REVIEW · day 34 of ~90</span></span></span>
+        </div>
+        <div class="lrow">
+          <span class="work">After the Rain</span><span class="org">Tin House</span><span class="date">sent Feb 2</span>
+          <span class="status st-acc"><span class="stamp">ACCEPTED</span></span>
+        </div>
+        <div class="lrow withdrawn">
+          <span class="work">Glass House</span><span class="org">North River Review</span><span class="date">sent Feb 12</span>
+          <span class="status st-wd">WITHDRAWN · taken elsewhere</span>
+        </div>
+        <div class="lrow" style="border-bottom:none;">
+          <span class="work">The Orchard</span><span class="org">Kenyon Review</span><span class="date">sent Apr 1</span>
+          <span class="status st-sub">SUBMITTED · reply ~Jun 20</span>
+        </div>
+        <div class="gmail-slip">
+          <div class="from"><span>Tin House &lt;editors@&gt;</span><span>Gmail · 2m</span></div>
+          <div class="subject">"We are pleased to inform you…"</div>
+          <div class="action">→ row updated · ACCEPTED · next steps created</div>
+        </div>
+      </div>
+    </div>
+    <p class="doc-caption reveal">Missa read the reply and updated the row. <b>You did nothing.</b></p>
+  </div>
+</section>
+
+<!-- ================= CHAPTER II : WAITING ================= -->
+<section class="plate chapter-plate" id="ch-waiting">
+  <img class="art" src="art/waiting.jpg" alt="Vermeer, Woman in Blue Reading a Letter">
+  <div class="scrim"></div>
+  <div class="rn-top">II</div>
+  <div class="word reveal-scale">Waiting</div>
+  <div class="lede reveal-lag"><span class="init">T</span>he silence after you submit has a shape. Missa learns each market's rhythm and tells you when waiting is still normal, and when it isn't.</div>
+  <div class="toc">
+    <div class="t dim"><span>Sent</span><span class="dots"></span><span class="rn">I</span></div>
+    <div class="t"><span>Waiting</span><span class="dots"></span><span class="rn">II</span></div>
+    <div class="t dim"><span>Answered</span><span class="dots"></span><span class="rn">III</span></div>
+    <div class="t dim"><span>The Promise</span><span class="dots"></span><span class="rn">IV</span></div>
+    <div class="legal">Vermeer, <em>Woman in Blue Reading a Letter</em>, c. 1663<br>Rijksmuseum, Amsterdam</div>
+  </div>
+  <svg class="tear" viewBox="0 0 1440 90" preserveAspectRatio="none">
+    <path class="shadow" d="M0 90 L0 44.6 L0.0 44.6 L11.7 42.0 L23.7 48.3 L33.2 41.1 L45.7 39.8 L60.4 43.7 L68.7 35.6 L76.2 35.6 L83.4 36.6 L97.1 34.3 L108.1 34.2 L117.4 37.0 L131.1 34.7 L139.9 31.7 L153.1 35.4 L163.2 43.1 L170.2 37.1 L180.9 46.6 L188.5 43.9 L197.7 38.9 L212.4 45.2 L221.3 49.6 L232.8 39.9 L245.7 35.5 L253.6 38.0 L262.8 43.4 L272.2 43.1 L282.4 43.9 L290.2 46.3 L299.2 45.6 L308.6 40.0 L320.3 42.8 L330.2 45.2 L341.1 45.7 L349.6 40.2 L363.1 38.2 L376.0 41.6 L390.6 37.2 L401.0 39.7 L413.6 27.3 L425.4 27.3 L438.2 25.5 L449.6 34.2 L458.9 35.4 L466.0 29.2 L473.5 28.3 L485.1 27.2 L499.2 33.9 L511.7 27.8 L519.0 20.8 L531.6 14 L544.5 21.2 L552.1 23.7 L566.3 27.3 L579.6 32.2 L592.1 35.6 L602.4 37.5 L614.0 38.8 L625.7 40.8 L637.8 45.9 L650.6 40.2 L662.3 40.6 L669.9 28.8 L678.8 43.1 L690.7 46.0 L697.8 40.6 L706.4 40.7 L718.7 46.2 L728.3 50.9 L738.7 55.0 L752.8 53.8 L762.3 52.6 L776.0 60.1 L790.6 53.1 L801.2 51.4 L811.5 52.9 L821.1 53.3 L831.7 27.3 L840.9 46.1 L852.4 48.8 L861.0 50.4 L874.2 52.0 L882.1 46.0 L894.2 49.8 L902.8 54.9 L915.5 54.1 L922.8 48.2 L934.1 54.0 L949.1 43.6 L961.7 42.3 L975.8 42.7 L984.4 62.3 L996.6 42.0 L1010.2 49.0 L1018.9 53.7 L1033.7 54.1 L1043.3 60.2 L1053.1 53.8 L1064.5 62.0 L1071.7 62.9 L1085.1 56.5 L1098.4 55.6 L1109.5 61.0 L1122.0 63.3 L1136.6 56.0 L1147.8 60.0 L1160.0 64.9 L1171.4 65.3 L1185.2 73.6 L1199.0 75.3 L1210.6 67.3 L1221.6 54.6 L1231.8 69.6 L1242.7 65.8 L1254.1 60.2 L1268.4 55.7 L1276.5 56.2 L1290.7 55.6 L1299.2 56.9 L1307.2 47.1 L1314.3 53.9 L1323.3 56.1 L1334.9 59.4 L1347.7 56.6 L1354.9 54.7 L1366.8 51.1 L1378.1 44.8 L1389.4 45.3 L1403.7 42.4 L1412.2 40.8 L1420.7 41.8 L1428.5 42.8 L1436.2 38.2 L1440 38.2 L1440 90 Z"/>
+    <path class="paper" d="M0 90 L0 44.6 L0.0 44.6 L11.7 42.0 L23.7 48.3 L33.2 41.1 L45.7 39.8 L60.4 43.7 L68.7 35.6 L76.2 35.6 L83.4 36.6 L97.1 34.3 L108.1 34.2 L117.4 37.0 L131.1 34.7 L139.9 31.7 L153.1 35.4 L163.2 43.1 L170.2 37.1 L180.9 46.6 L188.5 43.9 L197.7 38.9 L212.4 45.2 L221.3 49.6 L232.8 39.9 L245.7 35.5 L253.6 38.0 L262.8 43.4 L272.2 43.1 L282.4 43.9 L290.2 46.3 L299.2 45.6 L308.6 40.0 L320.3 42.8 L330.2 45.2 L341.1 45.7 L349.6 40.2 L363.1 38.2 L376.0 41.6 L390.6 37.2 L401.0 39.7 L413.6 27.3 L425.4 27.3 L438.2 25.5 L449.6 34.2 L458.9 35.4 L466.0 29.2 L473.5 28.3 L485.1 27.2 L499.2 33.9 L511.7 27.8 L519.0 20.8 L531.6 14 L544.5 21.2 L552.1 23.7 L566.3 27.3 L579.6 32.2 L592.1 35.6 L602.4 37.5 L614.0 38.8 L625.7 40.8 L637.8 45.9 L650.6 40.2 L662.3 40.6 L669.9 28.8 L678.8 43.1 L690.7 46.0 L697.8 40.6 L706.4 40.7 L718.7 46.2 L728.3 50.9 L738.7 55.0 L752.8 53.8 L762.3 52.6 L776.0 60.1 L790.6 53.1 L801.2 51.4 L811.5 52.9 L821.1 53.3 L831.7 27.3 L840.9 46.1 L852.4 48.8 L861.0 50.4 L874.2 52.0 L882.1 46.0 L894.2 49.8 L902.8 54.9 L915.5 54.1 L922.8 48.2 L934.1 54.0 L949.1 43.6 L961.7 42.3 L975.8 42.7 L984.4 62.3 L996.6 42.0 L1010.2 49.0 L1018.9 53.7 L1033.7 54.1 L1043.3 60.2 L1053.1 53.8 L1064.5 62.0 L1071.7 62.9 L1085.1 56.5 L1098.4 55.6 L1109.5 61.0 L1122.0 63.3 L1136.6 56.0 L1147.8 60.0 L1160.0 64.9 L1171.4 65.3 L1185.2 73.6 L1199.0 75.3 L1210.6 67.3 L1221.6 54.6 L1231.8 69.6 L1242.7 65.8 L1254.1 60.2 L1268.4 55.7 L1276.5 56.2 L1290.7 55.6 L1299.2 56.9 L1307.2 47.1 L1314.3 53.9 L1323.3 56.1 L1334.9 59.4 L1347.7 56.6 L1354.9 54.7 L1366.8 51.1 L1378.1 44.8 L1389.4 45.3 L1403.7 42.4 L1412.2 40.8 L1420.7 41.8 L1428.5 42.8 L1436.2 38.2 L1440 38.2 L1440 90 Z"/>
+  </svg>
+</section>
+
+<section class="paper" id="waiting-paper">
+  <div class="wrap inner">
+    <div class="cols2">
+      <div class="txt reveal">
+        <div class="runlabel"><span class="no">No. II</span>Expected response</div>
+        <h2 class="head" style="font-size:2.9rem;">Know when to stop worrying, <em>without emailing to ask.</em></h2>
+        <p class="lede-paper" style="font-size:1.2rem;">Missa learns each market's rhythm from thousands of tracked replies, so you know whether the silence is normal or worth a follow-up.</p>
+      </div>
+      <div class="card predict reveal-lag">
+        <div class="k">Expected response</div>
+        <div class="big">You'll probably hear back <b>late March to mid-April.</b></div>
+        <div class="pwin"><span class="range"></span><span class="now"></span></div>
+        <div class="pwin-labels"><span>sent Mar 4</span><span>day 34 · you are here</span><span>~day 90</span></div>
+        <div class="basis">confidence: medium · based on 126 tracked responses</div>
+      </div>
+    </div>
+    <div class="cols2 rev" style="margin-top:5.5rem;">
+      <div class="txt reveal">
+        <div class="runlabel"><span class="no">&amp;</span>Radar</div>
+        <h2 class="head" style="font-size:2.9rem;">Catch a moved deadline, <em>without refreshing their site.</em></h2>
+        <p class="lede-paper" style="font-size:1.2rem;">Radar rechecks the source page of every call you've saved, and tells you the moment a deadline, fee, or eligibility rule changes, with the receipt to prove it.</p>
+      </div>
+      <div class="card reveal-lag">
+        <div class="k">Radar · this week</div>
+        <div class="notif">
+          <div class="headline">Deadline extended: North River Review moved <span class="old">March 1</span> to <span class="new">March 15</span>.</div>
+          <div class="meta">verified from source page · checked 4h ago</div>
+        </div>
+      </div>
+    </div>
+    <div class="pause-line reveal">The average literary magazine replies in 74&nbsp;days.<br>Missa waits with you.<span class="ast">*</span></div>
+    <div class="pause-foot"><span style="color:var(--vermillion)">*</span> median of 12,400 replies tracked by writers on Missa</div>
+  </div>
+</section>
+
+<!-- ================= CHAPTER III : ANSWERED ================= -->
+<section class="plate chapter-plate" id="ch-answered">
+  <img class="art" src="art/answered.jpg" alt="Metsu, Woman Reading a Letter">
+  <div class="scrim"></div>
+  <div class="rn-top">III</div>
+  <div class="word reveal-scale">Answered</div>
+  <div class="lede reveal-lag"><span class="init">W</span>hen the reply finally comes, yes, no, or revise, Missa files it, frees the work, and sets up whatever happens next.</div>
+  <div class="toc">
+    <div class="t dim"><span>Sent</span><span class="dots"></span><span class="rn">I</span></div>
+    <div class="t dim"><span>Waiting</span><span class="dots"></span><span class="rn">II</span></div>
+    <div class="t"><span>Answered</span><span class="dots"></span><span class="rn">III</span></div>
+    <div class="t dim"><span>The Promise</span><span class="dots"></span><span class="rn">IV</span></div>
+    <div class="legal">Metsu, <em>Woman Reading a Letter</em>, c. 1665<br>National Gallery of Ireland</div>
+  </div>
+  <svg class="tear" viewBox="0 0 1440 90" preserveAspectRatio="none">
+    <path class="shadow" d="M0 90 L0 38.4 L0.0 38.4 L12.4 45.1 L22.8 35.8 L33.8 34.6 L46.0 38.5 L57.7 23.3 L67.5 33.7 L77.2 33.6 L90.9 40.3 L103.8 41.5 L113.8 43.2 L125.8 47.4 L138.4 39.4 L147.7 38.9 L155.5 39.7 L165.4 38.5 L174.6 41.8 L186.4 31.0 L194.7 31.1 L206.9 30.6 L220.6 31.5 L227.9 26.8 L236.6 33.4 L246.1 31.3 L260.4 30.7 L269.4 32.4 L281.0 36.1 L289.8 36.9 L297.5 26.8 L309.5 32.8 L317.0 27.6 L328.3 32.0 L335.4 28.7 L346.7 23.7 L354.6 25.6 L369.2 32.0 L380.2 27.6 L394.2 33.0 L406.0 35.3 L417.3 44.7 L424.4 60.6 L438.0 32.9 L448.9 42.1 L462.0 42.8 L473.4 44.0 L483.8 43.4 L496.6 44.0 L511.6 50.5 L522.7 47.5 L532.5 54.5 L541.2 51.5 L550.0 61.8 L557.6 56.5 L566.3 56.4 L577.9 60.2 L591.4 56.4 L601.8 57.0 L614.6 56.9 L622.4 52.5 L636.3 48.6 L646.9 49.3 L655.9 54.1 L669.8 31.3 L684.2 55.4 L695.1 50.2 L702.6 52.5 L711.7 56.8 L722.1 58.3 L733.5 54.9 L742.9 56.0 L754.2 66.9 L768.0 43.9 L775.7 43.4 L788.1 43.6 L802.2 45.0 L814.2 49.0 L825.3 57.0 L838.1 53.4 L850.4 56.9 L863.5 56.7 L878.5 66.8 L887.2 59.4 L901.2 64.7 L909.5 63.7 L921.4 64.7 L928.4 63.0 L940.7 65.0 L948.7 57.6 L957.8 64.1 L966.5 66.0 L977.4 70.7 L985.1 67.1 L992.1 71.3 L1001.2 71.4 L1011.7 63.7 L1025.7 70.5 L1039.4 63.9 L1047.4 58.9 L1060.8 60.7 L1069.5 52.5 L1082.7 56.5 L1094.7 48.1 L1108.6 56.0 L1122.6 46.7 L1132.3 55.7 L1146.2 53.7 L1159.5 44.8 L1173.4 42.8 L1184.1 40.8 L1192.9 35.6 L1202.5 41.7 L1211.7 37.7 L1226.6 35.3 L1234.5 39.7 L1249.2 34.2 L1259.7 40.5 L1271.5 40.6 L1283.1 39.8 L1290.2 47.4 L1302.9 46.2 L1312.8 39.2 L1322.5 40.9 L1335.2 39.4 L1345.5 39.3 L1353.5 38.9 L1365.9 43.5 L1375.3 52.6 L1388.6 42.7 L1399.2 45.3 L1412.5 50.5 L1424.8 45.4 L1436.7 44.1 L1440 44.1 L1440 90 Z"/>
+    <path class="paper" d="M0 90 L0 38.4 L0.0 38.4 L12.4 45.1 L22.8 35.8 L33.8 34.6 L46.0 38.5 L57.7 23.3 L67.5 33.7 L77.2 33.6 L90.9 40.3 L103.8 41.5 L113.8 43.2 L125.8 47.4 L138.4 39.4 L147.7 38.9 L155.5 39.7 L165.4 38.5 L174.6 41.8 L186.4 31.0 L194.7 31.1 L206.9 30.6 L220.6 31.5 L227.9 26.8 L236.6 33.4 L246.1 31.3 L260.4 30.7 L269.4 32.4 L281.0 36.1 L289.8 36.9 L297.5 26.8 L309.5 32.8 L317.0 27.6 L328.3 32.0 L335.4 28.7 L346.7 23.7 L354.6 25.6 L369.2 32.0 L380.2 27.6 L394.2 33.0 L406.0 35.3 L417.3 44.7 L424.4 60.6 L438.0 32.9 L448.9 42.1 L462.0 42.8 L473.4 44.0 L483.8 43.4 L496.6 44.0 L511.6 50.5 L522.7 47.5 L532.5 54.5 L541.2 51.5 L550.0 61.8 L557.6 56.5 L566.3 56.4 L577.9 60.2 L591.4 56.4 L601.8 57.0 L614.6 56.9 L622.4 52.5 L636.3 48.6 L646.9 49.3 L655.9 54.1 L669.8 31.3 L684.2 55.4 L695.1 50.2 L702.6 52.5 L711.7 56.8 L722.1 58.3 L733.5 54.9 L742.9 56.0 L754.2 66.9 L768.0 43.9 L775.7 43.4 L788.1 43.6 L802.2 45.0 L814.2 49.0 L825.3 57.0 L838.1 53.4 L850.4 56.9 L863.5 56.7 L878.5 66.8 L887.2 59.4 L901.2 64.7 L909.5 63.7 L921.4 64.7 L928.4 63.0 L940.7 65.0 L948.7 57.6 L957.8 64.1 L966.5 66.0 L977.4 70.7 L985.1 67.1 L992.1 71.3 L1001.2 71.4 L1011.7 63.7 L1025.7 70.5 L1039.4 63.9 L1047.4 58.9 L1060.8 60.7 L1069.5 52.5 L1082.7 56.5 L1094.7 48.1 L1108.6 56.0 L1122.6 46.7 L1132.3 55.7 L1146.2 53.7 L1159.5 44.8 L1173.4 42.8 L1184.1 40.8 L1192.9 35.6 L1202.5 41.7 L1211.7 37.7 L1226.6 35.3 L1234.5 39.7 L1249.2 34.2 L1259.7 40.5 L1271.5 40.6 L1283.1 39.8 L1290.2 47.4 L1302.9 46.2 L1312.8 39.2 L1322.5 40.9 L1335.2 39.4 L1345.5 39.3 L1353.5 38.9 L1365.9 43.5 L1375.3 52.6 L1388.6 42.7 L1399.2 45.3 L1412.5 50.5 L1424.8 45.4 L1436.7 44.1 L1440 44.1 L1440 90 Z"/>
+  </svg>
+</section>
+
+<section class="paper" id="answered-paper">
+  <div class="wrap inner">
+    <div class="runlabel reveal"><span class="no">No. III</span>Decisions, down to the poem</div>
+    <h2 class="head reveal">A packet of five poems gets <em>five answers.</em></h2>
+    <p class="lede-paper reveal" style="font-size:1.2rem;">Real submissions aren't accept-or-reject. One poem is taken, one is held, one you withdrew last week. Missa tracks the fate of every piece inside every packet, without you losing the thread on any of them.</p>
+    <div class="items-strip reveal-lag">
+      <div class="it"><div class="name">After the Rain</div><div class="st dec">DECLINED</div></div>
+      <div class="it"><div class="name">Blue Room</div><div class="st acc">ACCEPTED ✓</div></div>
+      <div class="it"><div class="name">The Orchard</div><div class="st dec">DECLINED</div></div>
+      <div class="it"><div class="name">Late Winter</div><div class="st wd">WITHDRAWN</div></div>
+      <div class="it"><div class="name">Glass House</div><div class="st dec">DECLINED</div></div>
+    </div>
+    <p class="items-caption">Poetry packet to North River Review. One yes is all it takes.</p>
+    <div class="blurbs">
+      <div class="blurb reveal">
+        <q>I found out I was accepted from Missa before I found the email. It had already updated the packet and flagged that the other four magazines still had the poem.</q>
+        <div class="attr"><b>Priya Nathan</b>, poet · 3 acceptances tracked this spring</div>
+      </div>
+      <div class="blurb reveal-lag">
+        <q>Eleven years of submissions lived in a spreadsheet I was afraid to open. Missa imported all 148 rows in under a minute. It felt like getting my own career back.</q>
+        <div class="attr"><b>Daniel Okafor</b>, essayist · 148 submissions imported</div>
+      </div>
+    </div>
+    <div class="tally reveal"><b>14,203</b> submissions tracked <span style="margin:0 1.1em;color:var(--ink-38)">·</span> <b class="g">312</b> acceptances this month <span style="margin:0 1.1em;color:var(--ink-38)">·</span> <b>2,481</b> deadlines caught before they passed</div>
+  </div>
+</section>
+
+<!-- ================= CHAPTER IV : THE PROMISE ================= -->
+<section class="plate" id="promise">
+  <img class="art" src="art/promise.jpg" alt="Vermeer, A Lady Writing">
+  <div class="scrim"></div>
+  <div class="content reveal">
+    <div class="wrap">
+      <div class="rn">IV · THE PROMISE</div>
+      <h2>Free for creatives. <span class="forever">Forever.<span class="u"></span></span></h2>
+      <div class="creed">
+        <p>You'll never pay to track your own work, see your own history, or find out you were accepted. <b>Your tracker is private</b>. No organization sees where else you've submitted, ever.</p>
+        <div>
+          <p>Organizations pay to run their open calls on Missa. <b>You are the network, not the product.</b> Everything you put in, you can export and take with you.</p>
+          <div class="sig">Missa</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="toc">
+    <div class="legal">Vermeer, <em>A Lady Writing</em>, c. 1665<br>National Gallery of Art, Washington</div>
+  </div>
+  <svg class="tear" viewBox="0 0 1440 90" preserveAspectRatio="none">
+    <path class="shadow" d="M0 90 L0 44.6 L0.0 44.6 L11.7 42.0 L23.7 48.3 L33.2 41.1 L45.7 39.8 L60.4 43.7 L68.7 35.6 L76.2 35.6 L83.4 36.6 L97.1 34.3 L108.1 34.2 L117.4 37.0 L131.1 34.7 L139.9 31.7 L153.1 35.4 L163.2 43.1 L170.2 37.1 L180.9 46.6 L188.5 43.9 L197.7 38.9 L212.4 45.2 L221.3 49.6 L232.8 39.9 L245.7 35.5 L253.6 38.0 L262.8 43.4 L272.2 43.1 L282.4 43.9 L290.2 46.3 L299.2 45.6 L308.6 40.0 L320.3 42.8 L330.2 45.2 L341.1 45.7 L349.6 40.2 L363.1 38.2 L376.0 41.6 L390.6 37.2 L401.0 39.7 L413.6 27.3 L425.4 27.3 L438.2 25.5 L449.6 34.2 L458.9 35.4 L466.0 29.2 L473.5 28.3 L485.1 27.2 L499.2 33.9 L511.7 27.8 L519.0 20.8 L531.6 14 L544.5 21.2 L552.1 23.7 L566.3 27.3 L579.6 32.2 L592.1 35.6 L602.4 37.5 L614.0 38.8 L625.7 40.8 L637.8 45.9 L650.6 40.2 L662.3 40.6 L669.9 28.8 L678.8 43.1 L690.7 46.0 L697.8 40.6 L706.4 40.7 L718.7 46.2 L728.3 50.9 L738.7 55.0 L752.8 53.8 L762.3 52.6 L776.0 60.1 L790.6 53.1 L801.2 51.4 L811.5 52.9 L821.1 53.3 L831.7 27.3 L840.9 46.1 L852.4 48.8 L861.0 50.4 L874.2 52.0 L882.1 46.0 L894.2 49.8 L902.8 54.9 L915.5 54.1 L922.8 48.2 L934.1 54.0 L949.1 43.6 L961.7 42.3 L975.8 42.7 L984.4 62.3 L996.6 42.0 L1010.2 49.0 L1018.9 53.7 L1033.7 54.1 L1043.3 60.2 L1053.1 53.8 L1064.5 62.0 L1071.7 62.9 L1085.1 56.5 L1098.4 55.6 L1109.5 61.0 L1122.0 63.3 L1136.6 56.0 L1147.8 60.0 L1160.0 64.9 L1171.4 65.3 L1185.2 73.6 L1199.0 75.3 L1210.6 67.3 L1221.6 54.6 L1231.8 69.6 L1242.7 65.8 L1254.1 60.2 L1268.4 55.7 L1276.5 56.2 L1290.7 55.6 L1299.2 56.9 L1307.2 47.1 L1314.3 53.9 L1323.3 56.1 L1334.9 59.4 L1347.7 56.6 L1354.9 54.7 L1366.8 51.1 L1378.1 44.8 L1389.4 45.3 L1403.7 42.4 L1412.2 40.8 L1420.7 41.8 L1428.5 42.8 L1436.2 38.2 L1440 38.2 L1440 90 Z"/>
+    <path class="paper" d="M0 90 L0 44.6 L0.0 44.6 L11.7 42.0 L23.7 48.3 L33.2 41.1 L45.7 39.8 L60.4 43.7 L68.7 35.6 L76.2 35.6 L83.4 36.6 L97.1 34.3 L108.1 34.2 L117.4 37.0 L131.1 34.7 L139.9 31.7 L153.1 35.4 L163.2 43.1 L170.2 37.1 L180.9 46.6 L188.5 43.9 L197.7 38.9 L212.4 45.2 L221.3 49.6 L232.8 39.9 L245.7 35.5 L253.6 38.0 L262.8 43.4 L272.2 43.1 L282.4 43.9 L290.2 46.3 L299.2 45.6 L308.6 40.0 L320.3 42.8 L330.2 45.2 L341.1 45.7 L349.6 40.2 L363.1 38.2 L376.0 41.6 L390.6 37.2 L401.0 39.7 L413.6 27.3 L425.4 27.3 L438.2 25.5 L449.6 34.2 L458.9 35.4 L466.0 29.2 L473.5 28.3 L485.1 27.2 L499.2 33.9 L511.7 27.8 L519.0 20.8 L531.6 14 L544.5 21.2 L552.1 23.7 L566.3 27.3 L579.6 32.2 L592.1 35.6 L602.4 37.5 L614.0 38.8 L625.7 40.8 L637.8 45.9 L650.6 40.2 L662.3 40.6 L669.9 28.8 L678.8 43.1 L690.7 46.0 L697.8 40.6 L706.4 40.7 L718.7 46.2 L728.3 50.9 L738.7 55.0 L752.8 53.8 L762.3 52.6 L776.0 60.1 L790.6 53.1 L801.2 51.4 L811.5 52.9 L821.1 53.3 L831.7 27.3 L840.9 46.1 L852.4 48.8 L861.0 50.4 L874.2 52.0 L882.1 46.0 L894.2 49.8 L902.8 54.9 L915.5 54.1 L922.8 48.2 L934.1 54.0 L949.1 43.6 L961.7 42.3 L975.8 42.7 L984.4 62.3 L996.6 42.0 L1010.2 49.0 L1018.9 53.7 L1033.7 54.1 L1043.3 60.2 L1053.1 53.8 L1064.5 62.0 L1071.7 62.9 L1085.1 56.5 L1098.4 55.6 L1109.5 61.0 L1122.0 63.3 L1136.6 56.0 L1147.8 60.0 L1160.0 64.9 L1171.4 65.3 L1185.2 73.6 L1199.0 75.3 L1210.6 67.3 L1221.6 54.6 L1231.8 69.6 L1242.7 65.8 L1254.1 60.2 L1268.4 55.7 L1276.5 56.2 L1290.7 55.6 L1299.2 56.9 L1307.2 47.1 L1314.3 53.9 L1323.3 56.1 L1334.9 59.4 L1347.7 56.6 L1354.9 54.7 L1366.8 51.1 L1378.1 44.8 L1389.4 45.3 L1403.7 42.4 L1412.2 40.8 L1420.7 41.8 L1428.5 42.8 L1436.2 38.2 L1440 38.2 L1440 90 Z"/>
+  </svg>
+</section>
+
+<!-- ================= FAQ ================= -->
+<section class="paper" id="faq">
+  <div class="wrap inner" style="padding-bottom:5rem;">
+    <h2 class="head reveal" style="font-size:2.6rem; margin-top:0;"><span style="color:var(--vermillion);">FAQ</span></h2>
+    <div class="list">
+      <div class="item reveal">
+        <div class="q">Is Missa actually free, or is there a catch?</div>
+        <div class="a">Free means free. You will never pay to track your work, see your own history, or get a reminder. Organizations pay to run their open calls here. That is the whole model.</div>
+      </div>
+      <div class="item reveal">
+        <div class="q">Can an organization see where else I have submitted?</div>
+        <div class="a">No. Your tracker is private. An organization only ever sees what you send them directly, never your history anywhere else, unless you choose to share it.</div>
+      </div>
+      <div class="item reveal">
+        <div class="q">What happens to my data if I stop using Missa?</div>
+        <div class="a">You can export everything, anytime, in one click: works, history, notes, all of it. Nothing is held hostage.</div>
+      </div>
+      <div class="item reveal">
+        <div class="q">How does Missa know a call is still open?</div>
+        <div class="a">Radar checks the source page of every call directly and shows you when it last confirmed the details, so you are never working from a stale listing.</div>
+      </div>
+      <div class="item reveal">
+        <div class="q">Does this replace what my organization already uses?</div>
+        <div class="a">If your organization runs open calls, Missa can run intake, review, decisions, and delivery in one place. If they use something else, your tracker still works on its own.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= BEGIN ================= -->
+<section class="paper" id="begin">
+  <div class="wrap inner">
+    <div class="rn reveal">V · BEGIN</div>
+    <h2 class="reveal">See what's <em>open.</em></h2>
+    <p class="sub reveal">Import your spreadsheet, forward one email, or just start browsing. Your calendar fills in from there.</p>
+    <form class="cta-form reveal" action="#" method="post">
+      <input class="field" type="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+      <button class="go" type="submit">Start free</button>
+    </form>
+    <div class="fine">No card · Private by default · Export anytime</div>
+    <footer>
+      <div class="wrap" style="padding:0;">
+        <span class="mark">Missa</span>
+        <span class="colophon">Set in Fraunces, Newsreader &amp; Fragment Mono. Paintings by Vermeer &amp; Metsu, public domain.<br>Free for creatives, forever.</span>
+        <div class="links"><a href="#">Manifesto</a><a href="#">Radar</a><a href="#">Orgs</a><a href="#">Privacy</a></div>
+      </div>
+    </footer>
+  </div>
+</section>
+
+</body>
+</html>
