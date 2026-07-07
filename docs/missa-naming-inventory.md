@@ -1,5 +1,9 @@
 # Missa — Complete Naming Inventory
 
+> **Historical record.** This inventory documents the names as they stood *before* the rename.
+> The final names are in [`missa-naming-decisions.md`](./missa-naming-decisions.md), and
+> `missa-strategy.md` + the landing page have been updated to use them.
+
 Every named part of the Missa web app, pulled from `docs/missa-strategy.md` and `landing/index.html`.
 Use this as the worksheet for competitive naming research: for each part, note what competitors
 call it, then decide keep / rename.
