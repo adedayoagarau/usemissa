@@ -11,7 +11,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test \"dist/test/*.test.js\"",
-    "demo": "npm run build && node dist/src/cli.js demo"
+    "demo": "npm run build && node dist/src/cli.js demo",
+    "registry:generate": "node scripts/generate-registry.mjs && npm run build && node dist/src/registry/export-json.js"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
