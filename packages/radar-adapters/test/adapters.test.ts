@@ -128,6 +128,15 @@ test('postgresStore: save then load round-trips a RadarStore', async () => {
   store.organizations.set('org_1', { id: 'org_1', name: 'Test Org', domains: ['test.org'], verified: true });
   store.users.set('user_1', { id: 'user_1', displayName: 'Ada', genres: ['poetry'], attributes: {} });
   store.emittedAlertKeys.add('closing-soon:user_1:opp_1');
+  store.accounts.set('acct_1', {
+    id: 'acct_1', email: 'ada@example.com', passwordHash: 'salt:hash', userId: 'user_1', isAdmin: false,
+    createdAt: '2026-07-07T00:00:00.000Z',
+  });
+  store.memberships.push({ accountId: 'acct_1', organizationId: 'org_1', role: 'admin', grantedAt: '2026-07-07T00:00:00.000Z' });
+  store.auditLog.push({
+    id: 'audit_1', at: '2026-07-07T00:00:00.000Z', accountId: 'acct_1',
+    action: 'claim.approve', targetType: 'claim', targetId: 'claim_1',
+  });
 
   await saveStoreToPostgres(store, pool);
   const loaded = await loadStoreFromPostgres(pool);
@@ -135,4 +144,7 @@ test('postgresStore: save then load round-trips a RadarStore', async () => {
   assert.deepEqual(loaded.organizations.get('org_1'), store.organizations.get('org_1'));
   assert.deepEqual(loaded.users.get('user_1'), store.users.get('user_1'));
   assert.ok(loaded.emittedAlertKeys.has('closing-soon:user_1:opp_1'));
+  assert.deepEqual(loaded.accounts.get('acct_1'), store.accounts.get('acct_1'));
+  assert.deepEqual(loaded.memberships, store.memberships);
+  assert.deepEqual(loaded.auditLog, store.auditLog);
 });

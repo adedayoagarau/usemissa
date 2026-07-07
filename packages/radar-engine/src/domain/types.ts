@@ -323,6 +323,46 @@ export interface UserProfile {
   genres: string[];
 }
 
+/**
+ * A login identity. Deliberately minimal — one email/password per person,
+ * linked to at most one UserProfile (their tracker) and zero or more
+ * OrgMemberships (which organizations they can act for). This is the "Now"
+ * layer from the auth recommendation; WorkOS/SSO/SCIM is a separate,
+ * later concern that sits in front of this, not a replacement for it.
+ */
+export interface Account {
+  id: string;
+  email: string;
+  /** "<salt-hex>:<hash-hex>" — see auth/crypto.ts. */
+  passwordHash: string;
+  /** The individual tracker this account owns, if any. */
+  userId?: string;
+  /** Platform admin — can see the verification queue and claim reviews. */
+  isAdmin: boolean;
+  createdAt: IsoDateTime;
+}
+
+export type OrgRole = 'member' | 'admin';
+
+/** Which accounts can act for which organization, and with what role. */
+export interface OrgMembership {
+  accountId: string;
+  organizationId: string;
+  role: OrgRole;
+  grantedAt: IsoDateTime;
+}
+
+/** Append-only record of a mutating action, for the admin audit trail. */
+export interface AuditEntry {
+  id: string;
+  at: IsoDateTime;
+  accountId?: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  detail?: string;
+}
+
 export interface OrganizationFollow {
   userId: string;
   organizationId: string;

@@ -99,3 +99,29 @@ create table if not exists radar_alerts (
 create table if not exists radar_emitted_alert_keys (
   key text primary key
 );
+
+-- Auth: accounts are login identities (email + salted password hash, inside
+-- the jsonb payload like everything else — never a separate plaintext
+-- column). Memberships are the scoped-permission edges between an account
+-- and an organization. The audit log is append-only.
+create table if not exists radar_accounts (
+  id text primary key,
+  email text not null,
+  data jsonb not null
+);
+create unique index if not exists radar_accounts_email_idx on radar_accounts (email);
+
+create table if not exists radar_memberships (
+  account_id text not null,
+  organization_id text not null,
+  data jsonb not null,
+  primary key (account_id, organization_id)
+);
+create index if not exists radar_memberships_org_idx on radar_memberships (organization_id);
+
+create table if not exists radar_audit_log (
+  id text primary key,
+  at timestamptz not null,
+  data jsonb not null
+);
+create index if not exists radar_audit_log_at_idx on radar_audit_log (at);

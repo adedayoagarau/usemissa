@@ -85,35 +85,65 @@ test('deadline reminder ladder fires at 7/3/1 days and stops after submission', 
   assert.equal(reminders().length, 2);
 });
 
-test('HTTP API drives the full user loop end to end', async () => {
+function sessionCookie(res: Response): string {
+  const raw = res.headers.get('set-cookie');
+  assert.ok(raw, 'expected a Set-Cookie header');
+  return raw.split(';')[0];
+}
+
+test('HTTP API drives the full user loop end to end (behind real auth)', async () => {
   const clock = new ManualClock(new Date('2026-07-07T09:00:00Z'));
   const world = buildServerDemoWorld(clock);
-  const server = new RadarServer({ engine: world.engine, port: 0 });
+  const server = new RadarServer({ engine: world.engine, port: 0, sessionSecret: 'test-secret' });
   const port = await server.start();
   const base = `http://127.0.0.1:${port}`;
+  let cookie = '';
   const get = async (p: string) => {
-    const r = await fetch(base + p);
+    const r = await fetch(base + p, { headers: { cookie } });
     assert.ok(r.ok, `${p} → ${r.status}`);
     return r.json();
   };
   const post = async (p: string, body: unknown) => {
-    const r = await fetch(base + p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await fetch(base + p, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(body) });
     if (!r.ok) assert.fail(`${p} → ${r.status} ${await r.text().catch(() => '')}`);
     return r.json();
   };
 
   try {
-    // The UI shell is served.
+    // The UI shell is served, unauthenticated.
     const html = await (await fetch(base + '/')).text();
     assert.match(html, /Missa/);
+
+    // Anonymous access to a protected route is rejected.
+    const anon = await fetch(base + `/api/users/${world.userIds.ada}/tracker`);
+    assert.equal(anon.status, 401);
+
+    // 0. Log in as the seeded Ada account.
+    const loginRes = await fetch(base + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: world.credentials.ada.email, password: world.credentials.ada.password }),
+    });
+    assert.ok(loginRes.ok, `login → ${loginRes.status}`);
+    cookie = sessionCookie(loginRes);
+    const me = await loginRes.json();
+    const ada = { id: me.user.id };
+
+    // A different account cannot act as Ada.
+    const impostorSignup = await fetch(base + '/api/auth/signup', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'impostor@example.com', password: 'not-adas-password', displayName: 'Impostor' }),
+    });
+    const impostorCookie = sessionCookie(impostorSignup);
+    const impostorAttempt = await fetch(base + `/api/users/${ada.id}/tracker`, { headers: { cookie: impostorCookie } });
+    assert.equal(impostorAttempt.status, 403);
 
     // 1. Radar tick discovers the world.
     const report = await post('/api/tick', {});
     assert.ok(report.opportunitiesCreated.length >= 4);
 
-    // 2. User exists and discovers opportunities, fit-scored and deadline-sorted.
-    const users = await get('/api/users');
-    const ada = users.find((u: { displayName: string }) => u.displayName === 'Ada')!;
+    // 2. User discovers opportunities, fit-scored and deadline-sorted.
     const discover = await get(`/api/users/${ada.id}/discover`);
     assert.ok(discover.length >= 4);
     const magazine = discover.find((o: { title: string }) => o.title.startsWith('North River'))!;
@@ -134,18 +164,31 @@ test('HTTP API drives the full user loop end to end', async () => {
     assert.ok(inbox.newForYou.length >= 1);
     assert.ok(inbox.newForYou[0].reason.includes('No-fee poetry & fiction'));
 
-    // 5. A new user can join and start their own loop.
-    const chi = await post('/api/users', { displayName: 'Chi', genres: ['fiction'], attributes: {} });
-    await post(`/api/users/${chi.id}/profiles`, { name: 'Fiction anywhere', criteria: { genres: ['fiction'] } });
-    const tick2 = await post('/api/tick', {});
-    void tick2;
-    const chiInbox = await get(`/api/users/${chi.id}/inbox`);
+    // 5. A new user can sign up and start their own loop.
+    const chiSignupRes = await fetch(base + '/api/auth/signup', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'chi@example.com', password: 'fiction-everywhere', displayName: 'Chi', genres: ['fiction'] }),
+    });
+    assert.ok(chiSignupRes.ok, `signup → ${chiSignupRes.status}`);
+    const chiCookie = sessionCookie(chiSignupRes);
+    const chiMe = await chiSignupRes.json();
+    const chi = { id: chiMe.user.id };
+    await fetch(base + `/api/users/${chi.id}/profiles`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: chiCookie },
+      body: JSON.stringify({ name: 'Fiction anywhere', criteria: { genres: ['fiction'] } }),
+    });
+    await post('/api/tick', {});
+    const chiInboxRes = await fetch(base + `/api/users/${chi.id}/inbox`, { headers: { cookie: chiCookie } });
+    assert.ok(chiInboxRes.ok);
+    const chiInbox = await chiInboxRes.json();
     assert.ok(chiInbox.newForYou.length >= 1, 'new user gets matches on next tick');
 
     // 6. Bad input is rejected cleanly.
     const bad = await fetch(base + `/api/users/${ada.id}/status`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ opportunityId: magazine.id, status: 'vibing' }),
     });
     assert.equal(bad.status, 400);

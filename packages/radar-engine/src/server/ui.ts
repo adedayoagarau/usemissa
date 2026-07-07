@@ -17,7 +17,8 @@ export const UI_HTML = `<!doctype html>
   header h1 span { color: var(--accent); }
   nav button { background:none; border:none; font:inherit; padding:.4rem .8rem; cursor:pointer; border-radius:6px; }
   nav button.active { background: var(--accent); color:#fff; }
-  select, button.action { font:inherit; padding:.25rem .5rem; border-radius:6px; border:1px solid #8886; cursor:pointer; background:none; }
+  select, button.action, input.field { font:inherit; padding:.25rem .5rem; border-radius:6px; border:1px solid #8886; cursor:pointer; background:none; }
+  input.field { cursor:text; }
   main { max-width: 860px; margin: 0 auto; padding: 1rem 1.2rem 4rem; }
   .card { border:1px solid #8884; border-radius:10px; padding: .9rem 1rem; margin: .8rem 0; }
   .card h3 { margin:0 0 .2rem; font-size:1rem; }
@@ -37,33 +38,62 @@ export const UI_HTML = `<!doctype html>
   .stats { display:flex; gap:1.5rem; flex-wrap:wrap; margin:.8rem 0; }
   .stats div b { display:block; font-size:1.3rem; }
   footer.tickbar { position:fixed; bottom:0; left:0; right:0; padding:.5rem 1.2rem; border-top:1px solid #8884; background: Canvas; display:flex; gap:1rem; align-items:center; font-size:.85rem; }
+  .error { color: var(--bad); font-size:.85rem; }
+  #authGate { max-width:380px; margin:3rem auto; }
+  #authGate .switch { text-align:center; margin-top:.8rem; font-size:.85rem; color:var(--muted); }
+  #authGate .switch a { color: var(--accent); cursor:pointer; }
+  #authGate form { display:flex; flex-direction:column; gap:.6rem; }
+  #authGate input.field { width:100%; padding:.5rem .6rem; }
+  #authGate button.action { padding:.5rem; }
 </style>
 </head>
 <body>
-<header>
+<header id="appHeader" style="display:none">
   <h1><span>Missa</span> Radar</h1>
   <nav>
     <button data-tab="discover" class="active">Discover</button>
     <button data-tab="inbox">Inbox</button>
     <button data-tab="tracker">Tracker</button>
-    <button data-tab="workspace">Workspace</button>
-    <button data-tab="admin">Admin</button>
+    <button data-tab="workspace" id="workspaceTabBtn">Workspace</button>
+    <button data-tab="admin" id="adminTabBtn">Admin</button>
   </nav>
   <span style="flex:1"></span>
-  <label id="userPicker">User: <select id="user"></select></label>
   <label id="orgPicker">Org: <select id="org"></select></label>
+  <span class="meta" id="whoami"></span>
+  <button class="action" id="logout">Log out</button>
 </header>
 <main id="main">Loading…</main>
-<footer class="tickbar">
+<div id="authGate" style="display:none">
+  <h2 style="text-align:center"><span style="color:var(--accent)">Missa</span> Radar</h2>
+  <form id="loginForm">
+    <input class="field" name="email" type="email" placeholder="Email" autocomplete="username" required>
+    <input class="field" name="password" type="password" placeholder="Password" autocomplete="current-password" required>
+    <button class="action" type="submit">Log in</button>
+    <div class="error" id="loginError"></div>
+  </form>
+  <form id="signupForm" style="display:none">
+    <input class="field" name="displayName" type="text" placeholder="Name" autocomplete="name" required>
+    <input class="field" name="email" type="email" placeholder="Email" autocomplete="username" required>
+    <input class="field" name="password" type="password" placeholder="Password (min 8 characters)" autocomplete="new-password" minlength="8" required>
+    <button class="action" type="submit">Sign up</button>
+    <div class="error" id="signupError"></div>
+  </form>
+  <div class="switch"><a id="toSignup">Sign up</a> · <a id="toLogin" style="display:none">Log in instead</a></div>
+</div>
+<footer class="tickbar" id="tickbar" style="display:none">
   <button class="action" id="tick">Run Radar tick</button>
   <span id="tickinfo" class="meta"></span>
 </footer>
 <script>
 const STATUSES = ["interested","saved","preparing","draft-started","ready-to-submit","submitted","received","in-review","longlisted","shortlisted","finalist","accepted","declined","waitlisted","revision-requested","withdrawn","partially-withdrawn","delivered","archived"];
-let tab = 'discover', userId = null, orgId = null;
+let tab = 'discover', me = null, orgId = null;
 
 async function api(path, opts) {
-  const res = await fetch(path, opts ? { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(opts) } : undefined);
+  const res = await fetch(path, {
+    credentials: 'same-origin',
+    ...(opts ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(opts) } : {}),
+  });
+  if (res.status === 401) { showGate(); throw new Error('Please log in.'); }
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -79,7 +109,7 @@ function fitHtml(fit) {
 }
 
 async function renderDiscover(el) {
-  const opps = await api('/api/users/' + userId + '/discover');
+  const opps = await api('/api/users/' + me.user.id + '/discover');
   el.innerHTML = '<h2>Open opportunities</h2>' + opps.map(o => \`
     <div class="card">
       <div class="row">
@@ -95,13 +125,13 @@ async function renderDiscover(el) {
       </div>
     </div>\`).join('');
   el.querySelectorAll('[data-track]').forEach(b => b.onclick = async () => {
-    await api('/api/users/' + userId + '/track', { opportunityId: b.dataset.track });
+    await api('/api/users/' + me.user.id + '/track', { opportunityId: b.dataset.track });
     render();
   });
 }
 
 async function renderInbox(el) {
-  const d = await api('/api/users/' + userId + '/inbox');
+  const d = await api('/api/users/' + me.user.id + '/inbox');
   const section = (name, alerts) => alerts.length ? '<div class="stage"><h2>' + name + '</h2>' +
     alerts.map(a => '<div class="card"><b>' + esc(a.title) + '</b><div>' + esc(a.body) + '</div><div class="alert-reason">why: ' + esc(a.reason) + '</div></div>').join('') + '</div>' : '';
   el.innerHTML = '<div class="summary">' + esc(d.summary) + '</div>'
@@ -114,7 +144,7 @@ async function renderInbox(el) {
 }
 
 async function renderTracker(el) {
-  const t = await api('/api/users/' + userId + '/tracker');
+  const t = await api('/api/users/' + me.user.id + '/tracker');
   const s = t.stats;
   const item = (i) => \`
     <div class="card">
@@ -145,13 +175,35 @@ async function renderTracker(el) {
     \${stage('Planning', 'planning')}\${stage('Submitted', 'submitted')}\${stage('In progress', 'in-progress')}\${stage('Outcomes', 'outcome')}\${stage('Archived', 'archived')}\`
     || '<p>Nothing tracked yet — find something in Discover.</p>';
   el.querySelectorAll('select[data-opp]').forEach(sel => sel.onchange = async () => {
-    await api('/api/users/' + userId + '/status', { opportunityId: sel.dataset.opp, status: sel.value });
+    await api('/api/users/' + me.user.id + '/status', { opportunityId: sel.dataset.opp, status: sel.value });
     render();
   });
 }
 
+async function renderNoMembership(el) {
+  const orgs = await api('/api/organizations');
+  const opps = await api('/api/opportunities');
+  el.innerHTML = '<h2>Missa Workspace</h2><p class="meta">You are not a member of any organization yet. Request a claim on a listing your organization owns — a domain match approves instantly, otherwise an admin reviews it.</p>'
+    + '<form id="claimForm" class="card">'
+    + '<label>Organization <select name="organizationId">' + orgs.map(o => '<option value="' + o.id + '">' + esc(o.name) + '</option>').join('') + '</select></label><br><br>'
+    + '<label>Opportunity <select name="opportunityId">' + opps.map(o => '<option value="' + o.id + '">' + esc(o.title) + '</option>').join('') + '</select></label><br><br>'
+    + '<button class="action" type="submit">Request claim</button>'
+    + '<div class="error" id="claimError"></div>'
+    + '</form>';
+  document.getElementById('claimForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    try {
+      const claim = await api('/api/orgs/' + fd.get('organizationId') + '/claims', { opportunityId: fd.get('opportunityId') });
+      await refreshMe();
+      if (claim.status === 'approved') { orgId = claim.organizationId; render(); }
+      else { el.insertAdjacentHTML('beforeend', '<p class="meta">Claim requested — pending admin review.</p>'); }
+    } catch (err) { document.getElementById('claimError').textContent = err.message; }
+  };
+}
+
 async function renderWorkspace(el) {
-  if (!orgId) { el.innerHTML = '<p>No organizations yet.</p>'; return; }
+  if (!orgId) return renderNoMembership(el);
   const [org, listings, claims, analytics] = await Promise.all([
     api('/api/orgs/' + orgId),
     api('/api/orgs/' + orgId + '/opportunities'),
@@ -177,12 +229,12 @@ async function renderWorkspace(el) {
           <div><button class="action" data-edit="\${o.id}" data-deadline="\${esc(o.deadline ?? '')}">Edit deadline</button></div>
         </div>
       </div>\`).join('') : '<p class="meta">Nothing claimed yet.</p>') + '</div>'
-    + '<div class="stage"><h2>Claim requests</h2>' + (claims.length ? claims.map(c => '<div class="card"><b>' + esc(c.opportunityId) + '</b><div class="meta">' + esc(c.status) + ' · ' + esc(c.verificationMethod) + '</div></div>').join('') : '<p class="meta">No claim requests.</p>') + '</div>';
+    + '<div class="stage"><h2>Claim requests</h2>' + (claims.length ? claims.map(c => '<div class="card"><b>' + esc(c.requestedBy) + '</b><div class="meta">' + esc(c.status) + ' · ' + esc(c.verificationMethod) + '</div></div>').join('') : '<p class="meta">No claim requests.</p>') + '</div>';
   el.querySelectorAll('[data-edit]').forEach(b => b.onclick = async () => {
     const deadline = prompt('New deadline (YYYY-MM-DD):', b.dataset.deadline);
     if (!deadline) return;
     await fetch('/api/orgs/' + orgId + '/opportunities/' + b.dataset.edit, {
-      method: 'PATCH', headers: { 'content-type': 'application/json' },
+      method: 'PATCH', credentials: 'same-origin', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ deadline: { kind: 'exact', date: deadline } }),
     });
     render();
@@ -205,7 +257,7 @@ async function renderAdmin(el) {
       <div class="card">
         <div class="row">
           <div><b>\${esc(c.organizationName ?? c.organizationId)}</b> wants "\${esc(c.opportunityTitle ?? c.opportunityId)}"
-            <div class="meta">\${esc(c.verificationMethod)}</div></div>
+            <div class="meta">requested by \${esc(c.requestedBy)} · \${esc(c.verificationMethod)}</div></div>
           <div><button class="action" data-approve="\${c.id}">Approve</button> <button class="action" data-reject="\${c.id}">Reject</button></div>
         </div>
       </div>\`).join('') : '<p class="meta">Nothing pending.</p>') + '</div>'
@@ -217,10 +269,10 @@ async function renderAdmin(el) {
             <div><button class="action" data-resolve="\${t.id}">Resolve</button> <button class="action" data-dismiss="\${t.id}">Dismiss</button></div>
           </div>
         </div>\`).join('') + '</div>' : '').join('');
-  el.querySelectorAll('[data-approve]').forEach(b => b.onclick = async () => { await api('/api/admin/claims/approve', { claimId: b.dataset.approve, decidedBy: 'admin' }); render(); });
-  el.querySelectorAll('[data-reject]').forEach(b => b.onclick = async () => { await api('/api/admin/claims/reject', { claimId: b.dataset.reject, decidedBy: 'admin' }); render(); });
-  el.querySelectorAll('[data-resolve]').forEach(b => b.onclick = async () => { await api('/api/admin/verification-tasks/' + b.dataset.resolve + '/resolve', { resolvedBy: 'admin' }); render(); });
-  el.querySelectorAll('[data-dismiss]').forEach(b => b.onclick = async () => { await api('/api/admin/verification-tasks/' + b.dataset.dismiss + '/resolve', { resolvedBy: 'admin', dismiss: true }); render(); });
+  el.querySelectorAll('[data-approve]').forEach(b => b.onclick = async () => { await api('/api/admin/claims/approve', { claimId: b.dataset.approve }); render(); });
+  el.querySelectorAll('[data-reject]').forEach(b => b.onclick = async () => { await api('/api/admin/claims/reject', { claimId: b.dataset.reject }); render(); });
+  el.querySelectorAll('[data-resolve]').forEach(b => b.onclick = async () => { await api('/api/admin/verification-tasks/' + b.dataset.resolve + '/resolve', {}); render(); });
+  el.querySelectorAll('[data-dismiss]').forEach(b => b.onclick = async () => { await api('/api/admin/verification-tasks/' + b.dataset.dismiss + '/resolve', { dismiss: true }); render(); });
 }
 
 async function render() {
@@ -231,15 +283,14 @@ async function render() {
     else if (tab === 'tracker') await renderTracker(el);
     else if (tab === 'workspace') await renderWorkspace(el);
     else await renderAdmin(el);
-  } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
+  } catch (e) { el.innerHTML = '<p class="error">' + esc(e.message) + '</p>'; }
 }
 
 function setTab(name) {
   tab = name;
   location.hash = name;
   document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.tab === name));
-  document.getElementById('userPicker').style.display = ['discover', 'inbox', 'tracker'].includes(name) ? '' : 'none';
-  document.getElementById('orgPicker').style.display = name === 'workspace' ? '' : 'none';
+  document.getElementById('orgPicker').style.display = name === 'workspace' && me.memberships.length ? '' : 'none';
   render();
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => setTab(b.dataset.tab));
@@ -249,21 +300,81 @@ document.getElementById('tick').onclick = async () => {
     'checked ' + r.sourcesChecked + ' sources, ' + r.changes.length + ' changes, ' + r.alerts.length + ' alerts';
   render();
 };
-(async () => {
-  const users = await api('/api/users');
-  const sel = document.getElementById('user');
-  sel.innerHTML = users.map(u => '<option value="' + u.id + '">' + esc(u.displayName) + '</option>').join('');
-  userId = users[0]?.id;
-  sel.onchange = () => { userId = sel.value; render(); };
+document.getElementById('logout').onclick = async () => {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+  location.reload();
+};
 
-  const orgs = await api('/api/organizations');
+function showGate() {
+  document.getElementById('appHeader').style.display = 'none';
+  document.getElementById('tickbar').style.display = 'none';
+  document.getElementById('main').innerHTML = '';
+  document.getElementById('authGate').style.display = '';
+}
+function showApp() {
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('appHeader').style.display = '';
+  document.getElementById('tickbar').style.display = '';
+}
+
+document.getElementById('toSignup').onclick = () => {
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('signupForm').style.display = '';
+  document.getElementById('toSignup').style.display = 'none';
+  document.getElementById('toLogin').style.display = '';
+};
+document.getElementById('toLogin').onclick = () => {
+  document.getElementById('signupForm').style.display = 'none';
+  document.getElementById('loginForm').style.display = '';
+  document.getElementById('toLogin').style.display = 'none';
+  document.getElementById('toSignup').style.display = '';
+};
+document.getElementById('loginForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  try {
+    const res = await fetch('/api/auth/login', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: fd.get('email'), password: fd.get('password') }) });
+    if (!res.ok) throw new Error((await res.json()).error ?? 'Login failed');
+    me = await res.json();
+    await boot();
+  } catch (err) { document.getElementById('loginError').textContent = err.message; }
+};
+document.getElementById('signupForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  try {
+    const res = await fetch('/api/auth/signup', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: fd.get('email'), password: fd.get('password'), displayName: fd.get('displayName') }) });
+    if (!res.ok) throw new Error((await res.json()).error ?? 'Sign up failed');
+    me = await res.json();
+    await boot();
+  } catch (err) { document.getElementById('signupError').textContent = err.message; }
+};
+
+async function refreshMe() {
+  const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+  if (!res.ok) { showGate(); return; }
+  me = await res.json();
+}
+
+async function boot() {
+  showApp();
+  document.getElementById('whoami').textContent = me.account.email + (me.account.isAdmin ? ' (admin)' : '');
+  document.getElementById('workspaceTabBtn').style.display = me.memberships.length ? '' : '';
+  document.getElementById('adminTabBtn').style.display = me.account.isAdmin ? '' : 'none';
+
   const orgSel = document.getElementById('org');
-  orgSel.innerHTML = orgs.map(o => '<option value="' + o.id + '">' + esc(o.name) + '</option>').join('');
-  orgId = orgs[0]?.id;
+  orgSel.innerHTML = me.memberships.map(m => '<option value="' + m.organizationId + '">' + esc(m.organizationName ?? m.organizationId) + '</option>').join('');
+  orgId = me.memberships[0]?.organizationId ?? null;
   orgSel.onchange = () => { orgId = orgSel.value; render(); };
 
   const initial = location.hash.replace('#', '');
   setTab(['discover', 'inbox', 'tracker', 'workspace', 'admin'].includes(initial) ? initial : 'discover');
+}
+
+(async () => {
+  const res = await fetch('/api/auth/me', { credentials: 'same-origin' });
+  if (res.ok) { me = await res.json(); await boot(); }
+  else showGate();
 })();
 </script>
 </body>
