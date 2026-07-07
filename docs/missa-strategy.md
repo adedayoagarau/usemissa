@@ -1,5 +1,13 @@
 # Missa — Product Strategy & Idea Dump
 
+> **Terminology note (July 2026):** product naming in this document was globally updated to match
+> [`missa-naming-decisions.md`](./missa-naming-decisions.md) — e.g. Submission Package → Submission,
+> Submission Item → Work, Rules Engine → Automations, the eight verb modules → noun navigation
+> (Opportunities, Submissions, Reviews, Decisions, Messages, Delivery, Insights).
+> Internal/schema terms (**Entity**, **Submission Path**, **Enterprise Account**) are intentionally
+> retained here as engineering vocabulary; their UI labels are **Team**, *(hidden)*, and
+> **Organization** respectively. Names quoted from competitors are unchanged.
+
 Below is a strong feature map for your product as an **end-to-end submission platform** — not just applications, not just magazines, not just grants.
 Think of the product as:
 **Discovery → Submission → Intake → Review → Decision → Communication → Delivery → Archive/Analytics**
@@ -46,7 +54,7 @@ This is the submitter’s home base.
 ### **Key idea**
 A submitter should not feel like they are filling out isolated forms across the internet. They should feel like they have a **submission wallet**.
 -----
-## **3. Submission Builder**
+## **3. Form Builder**
 This is what organizations use to create calls.
 ### **Features**
 |  |  |
@@ -73,15 +81,15 @@ This is the internal command center.
 |  |  |
 | :- | :- |
 | **Feature** | **Description** |
-| **Submission inbox** | All incoming submissions in one searchable table. |
-| **Smart statuses** | Draft, Submitted, Incomplete, Eligible, Ineligible, In Review, Shortlisted, Accepted, Declined, Withdrawn, Delivered. |
+| **Inbox** | All incoming submissions in one searchable table. |
+| **Statuses** | Draft, Submitted, Incomplete, Eligible, Ineligible, In Review, Shortlisted, Accepted, Declined, Withdrawn, Delivered. |
 | **Tags and labels** | Admin-defined tags: “strong,” “needs eligibility check,” “VIP,” “late,” “international,” “issue 12 candidate.” |
-| **Auto-bucketing** | Automatically route submissions by category, location, answers, eligibility, file type, or reviewer workload. |
+| **Routing rules** | Automatically route submissions by category, location, answers, eligibility, file type, or reviewer workload. |
 | **Duplicate detection** | Detect repeat submitters, duplicate files, duplicate proposals, or accidental resubmissions. |
 | **Completeness checks** | Flag missing documents or invalid files. |
 | **Admin notes** | Private internal notes on each submission. |
 | **Submitter history** | See all prior submissions from a person or organization. |
-| **Organization CRM-lite** | Track relationships with submitters, partners, nominators, recommenders, institutions, or grantees. |
+| **People (CRM-lite)** | Track relationships with submitters, partners, nominators, recommenders, institutions, or grantees. |
 | **Audit trail** | See who changed what and when. |
 | **Permissions** | Admin, program manager, editor, reviewer, finance, publisher, guest reviewer. |
 | **Custom views** | Saved filters for teams: “Unassigned poetry,” “Needs finance review,” “Accepted but not delivered.” |
@@ -323,7 +331,7 @@ These make the product feel meaningfully better:
 -----
 # **The Best Product Architecture**
 I would structure the product into these modules:
-## **1. Discover**
+## **1. Opportunities**
 For finding opportunities.
 Features:
   - Public directory
@@ -333,7 +341,7 @@ Features:
   - Saved opportunities
   - Deadline reminders
   - Recommendation engine
-## **2. Submit**
+## **2. Submissions — submitter experience**
 For submitters.
 Features:
   - Profile
@@ -343,7 +351,7 @@ Features:
   - Fees
   - Eligibility checker
   - Submission dashboard
-## **3. Manage**
+## **3. Submissions — admin inbox**
 For admins.
 Features:
   - Inbox
@@ -353,7 +361,7 @@ Features:
   - Admin notes
   - Audit logs
   - Program dashboards
-## **4. Review**
+## **4. Reviews**
 For reviewers.
 Features:
   - Reviewer portal
@@ -363,7 +371,7 @@ Features:
   - Panel review
   - Multi-stage workflows
   - Reviewer reminders
-## **5. Decide**
+## **5. Decisions**
 For final selection.
 Features:
   - Shortlist
@@ -373,7 +381,7 @@ Features:
   - Reason codes
   - Offer acceptance
   - Contracts
-## **6. Message**
+## **6. Messages**
 For email and communication.
 Features:
   - Email templates
@@ -384,7 +392,7 @@ Features:
   - Reply capture
   - Deliverability
   - Message history
-## **7. Deliver**
+## **7. Delivery**
 For post-acceptance work.
 Features:
   - Final file collection
@@ -394,7 +402,7 @@ Features:
   - Award/grant fulfillment
   - Certificates/laurels
   - Reporting schedules
-## **8. Analyze**
+## **8. Insights**
 For reporting and compliance.
 Features:
   - Submission funnel
@@ -484,7 +492,7 @@ You want seats to be assigned at the **enterprise level**, but usable at the **e
 | **Finance Seat** | Handles fees, payouts, refunds, award amounts | Finance team |
 | **Legal/Compliance Seat** | Reviews agreements, consent, records | Legal, compliance, grants admin |
 | **Viewer/Read-only Seat** | Can view dashboards and exports | Executives, board members |
-| **External Collaborator** | Limited guest access | Guest judge, partner reviewer |
+| **Guest** | Limited guest access | Guest judge, partner reviewer |
 
 For enterprise pricing, I would separate users into:
 |  |  |
@@ -564,7 +572,7 @@ New York Arts Foundation
 Same platform. Different workflow.
 -----
 # **Core Enterprise Features**
-## **1. Enterprise Admin Console**
+## **1. Admin**
 The top-level console should include:
   - All entities
   - Seat allocation
@@ -782,7 +790,7 @@ Entity Settings
 ## **Program Manager View**
 My Programs
 Open Calls
-Submission Inbox
+Inbox
 Review Assignments
 Decisions
 Delivery Tasks
@@ -871,7 +879,7 @@ But for the actual product, I would still market it simply as:
   
 \_
 Yes. The product needs a **taxonomy and workflow architecture**, not just “forms.” For enterprise-grade submission management, you need to support:
-**Entities → Programs → Open Calls → Types → Genres/Categories/Tracks → Submission Items → Review Workflows → Decisions → Delivery**
+**Entities → Programs → Open Calls → Types → Genres/Categories/Tracks → Works → Review Workflows → Decisions → Delivery**
 The key is to design the product so “genre,” “type,” “category,” and “track” are **configurable dimensions**, not hardcoded fields.
 -----
 # **1. Core Concept: Open Calls Are Containers**
@@ -946,7 +954,7 @@ Enterprise Account
             └── Open Call
                 └── Submission Path
                     └── Submission
-                        └── Submission Item
+                        └── Work
                             └── File / Asset
 ## **Example: Magazine**
 Enterprise: Missa Customer
@@ -1018,11 +1026,11 @@ Submission Paths:
    - Reviewers: Nonfiction panel
 This lets one open call support many normal and edge cases without creating separate messy calls.
 -----
-# **5. Submission Package vs. Submission Item**
+# **5. Submission vs. Work**
 This is very important.
 A submission is often not just one file.
 You need two levels:
-## **A. Submission Package**
+## **A. Submission**
 The full thing the submitter sends.
 Example:
 “Ade’s submission to Spring 2027 Issue”
@@ -1037,10 +1045,10 @@ Contains:
   - Messages
   - Review status
   - Decision
-## **B. Submission Item**
+## **B. Work**
 Each individual work inside the submission.
 Example:
-Submission Package: Ade’s Poetry Submission
+Submission: Ade’s Poetry Submission
 ├── Item 1: Poem A
 ├── Item 2: Poem B
 ├── Item 3: Poem C
@@ -1061,7 +1069,7 @@ This is critical for magazines, portfolios, art submissions, film bundles, abstr
 ## **Literary Magazine**
 Type: Magazine Submission
 Genres: Poetry, Fiction, Nonfiction, Translation, Hybrid
-Submission Items: One or more works
+Works: One or more works
 Review: Blind reader review → editor review → final decision
 Delivery: Publication agreement, final file, bio, headshot
 Important features:
@@ -1078,7 +1086,7 @@ Important features:
 ## **Grant**
 Type: Grant
 Categories: Individual, nonprofit, school, municipality
-Submission Items: Usually one proposal package
+Works: Usually one proposal package
 Review: Eligibility → panel review → finance/legal → board approval
 Delivery: Agreement, payment, reporting schedule
 Important features:
@@ -1095,7 +1103,7 @@ Important features:
 ## **Award or Contest**
 Type: Award
 Categories: Student, professional, emerging, lifetime achievement
-Submission Items: Entry, nomination, portfolio, work sample
+Works: Entry, nomination, portfolio, work sample
 Review: Judges → shortlist → final panel
 Delivery: Winner announcement, certificate, prize, press materials
 Important features:
@@ -1111,7 +1119,7 @@ Important features:
 Type: Festival Submission
 Genres: Narrative, documentary, experimental, animation
 Categories: Feature, short, student, international
-Submission Items: Film screener, trailer, poster, stills
+Works: Film screener, trailer, poster, stills
 Review: Programming team → shortlist → final programming
 Delivery: laurels, screening copy, filmmaker agreement
 Important features:
@@ -1128,7 +1136,7 @@ Important features:
 Type: Abstract Submission
 Categories: Paper, poster, panel, workshop
 Disciplines: Medicine, education, policy, technology
-Submission Items: Abstract, authors, attachments
+Works: Abstract, authors, attachments
 Review: Peer review → committee decision → scheduling
 Delivery: speaker bio, slides, session details
 Important features:
@@ -1142,7 +1150,7 @@ Important features:
 ## **Residency/Fellowship**
 Type: Residency/Fellowship
 Genres/Disciplines: Writing, visual arts, music, research
-Submission Items: Application, portfolio, references
+Works: Application, portfolio, references
 Review: Eligibility → panel review → interview → final
 Delivery: acceptance packet, travel info, contract, stipend
 Important features:
@@ -1165,8 +1173,8 @@ Solution:
 Example:
 A poet submits five poems.
 Solution:
-  - Use **Submission Package** and **Submission Items**
-  - Allow item-level metadata, review, and decisions.
+  - Use **Submission** and **Works**
+  - Allow per-work metadata, review, and decisions.
 -----
 ## **3. Multiple Genres in One Submission**
 Example:
@@ -1174,7 +1182,7 @@ A hybrid artist submits text, images, and audio.
 Solution:
   - Allow multiple taxonomy tags per item.
   - Allow admins to permit or block mixed-genre submissions.
-Submission Item:
+Work:
 \- Title: “Field Notes”
 \- Genres: Hybrid, Essay, Visual Art
 \- Media: PDF, Images, Audio
@@ -1452,7 +1460,7 @@ AuditLog
 | **SubmissionPath** | Genre/category/track-specific route inside the open call |
 | **TaxonomyDimension** | Configurable classification type: genre, medium, category, etc. |
 | **TaxonomyValue** | A value inside a dimension: poetry, fiction, student, regional |
-| **Submission** | The complete submission package |
+| **Submission** | The complete submission |
 | **SubmissionItem** | Individual work/item inside the submission |
 | **FormVersion** | Frozen version of the form used at submission time |
 | **ReviewRound** | Stage of review |
@@ -1612,7 +1620,7 @@ Review: Panel
 Decision level: Submission-level
 Delivery: Grant agreement + reporting schedule
 -----
-# **14. Submission Item Object**
+# **14. Work Object**
 A **SubmissionItem** could include:
 id
 submission\_id
@@ -1662,7 +1670,7 @@ Declined
 Waitlisted
 Deferred
 Archived
-## **Item Status**
+## **Work Status**
 Submitted
 Withdrawn
 Under Review
@@ -1711,7 +1719,7 @@ Support:
   - Entity sender email
   - Entity templates
   - Entity-specific terms
-## **Shared Submitter Profile, Isolated Data**
+## **Shared Passport, Isolated Data**
 A submitter may apply to multiple entities under the same enterprise.
 Need:
   - Universal submitter account
@@ -1730,8 +1738,8 @@ Need:
   - Cross-entity assignments
   - Reviewer availability
 -----
-# **17. Build Rules Engine Early**
-A serious product needs a rules engine.
+# **17. Build Automations Early**
+A serious product needs a automations.
 Rules should control:
   - Eligibility
   - Form visibility
@@ -1779,7 +1787,7 @@ So instead of building separate products for:
 You build one platform with configurable primitives:
 Open Call
 Submission Path
-Submission Item
+Work
 Taxonomy
 Form
 Rule
@@ -1799,7 +1807,7 @@ For the first serious build, I would include these from day one:
 6.  **Path-specific forms**
 7.  **Path-specific file rules**
 8.  **Path-specific fees**
-9.  **Submission-level and item-level decisions**
+9.  **Submission-level and per-work decisions**
 10. **Blind review setting per path**
 11. **Reviewer assignment by path**
 12. **Delivery tasks after acceptance**
@@ -1847,9 +1855,9 @@ The tracker should support three kinds of opportunities:
 This is important because the tracker should be useful **before Missa has supply-side dominance**.
 Even if an organization does not use Missa, the user can still track that opportunity.
 -----
-# **2. The Main Object: Opportunity Card**
+# **2. The Main Object: Opportunity**
 Every opportunity in the tracker should become a structured card.
-## **Opportunity Card**
+## **Opportunity**
 Opportunity
 ├── Title
 ├── Organization
@@ -1906,8 +1914,8 @@ This is about the user’s relationship to that opportunity.
 Interested
 Saved
 Preparing
-Draft Started
-Ready to Submit
+Drafting
+Ready
 Submitted
 Received
 In Review
@@ -1939,7 +1947,7 @@ Users should be able to view their tracker in multiple ways.
 A Kanban-style board:
 Interested → Preparing → Submitted → In Review → Accepted / Declined / Archived
 Best for users managing many opportunities.
-## **B. Deadline View**
+## **B. Calendar View**
 A calendar or timeline:
 This Week
 Next 7 Days
@@ -1948,7 +1956,7 @@ Opening Soon
 Rolling
 No Deadline
 Best for deadline pressure.
-## **C. Work-Based View**
+## **C. Works View**
 Especially important for writers and artists.
 Work: “Blue Room”
 ├── Submitted to Magazine A
@@ -1956,7 +1964,7 @@ Work: “Blue Room”
 ├── Declined by Journal C
 └── Accepted by Journal D
 This helps users know where each piece is currently out.
-## **D. Opportunity Type View**
+## **D. Types View**
 Magazines
 Grants
 Awards
@@ -1967,7 +1975,7 @@ Conferences
 RFPs
 Scholarships
 Pitches
-## **E. Organization View**
+## **E. Organizations View**
 Organization: The Common
 ├── Submitted 3 times
 ├── Declined 2 times
@@ -2127,7 +2135,7 @@ The key is that **Missa Tracker uses shared primitives**, then adds vertical-spe
 -----
 # **7. Opportunity Intake: How Users Add Things**
 Users should be able to add opportunities in five ways.
-## **1. Save from Missa Discover**
+## **1. Save from Missa Opportunities**
 User sees an opportunity and clicks:
 Save
 Track
@@ -2329,7 +2337,7 @@ Consider showing:
   - Whether simultaneous submissions are accepted
   - Whether payment is made on time, for publishing or awards
 -----
-# **13. Trust Layer**
+# **13. Verification**
 Every opportunity should have trust/freshness indicators.
 ## **Trust indicators**
 Official source verified
@@ -2372,7 +2380,7 @@ Saved opportunity
 → Attach confirmation email/file
 Missa can still help even if the final submission happens elsewhere.
 -----
-# **15. Opportunity Preparation Checklist**
+# **15. Preparation Checklist**
 Every saved opportunity should have a checklist.
 Example for a magazine:
 To submit:
@@ -2405,9 +2413,9 @@ To submit:
 □ Entry fee
 This turns a vague opportunity into an actionable plan.
 -----
-# **16. Draft Workspace**
+# **16. Drafts**
 For each opportunity, user should have a preparation workspace.
-## **Draft workspace includes:**
+## **Drafts includes:**
   - Selected works/files
   - Saved answers
   - Notes
@@ -2512,7 +2520,7 @@ Missa found:
 \- 18 currently pending
 This is a huge activation moment.
 -----
-# **20. Personal Analytics Dashboard**
+# **20. Insights**
 The analytics should be useful, not vanity.
 ## **Dashboard sections**
 ### **A. Current pipeline**
@@ -2605,7 +2613,7 @@ Mobile jobs:
 The full admin/workspace product can be desktop-first.  
 The user tracker should be mobile-excellent.
 -----
-# **24. Notification Digest**
+# **24. Digest**
 A weekly digest is essential.
 Example:
 Your Missa Week
@@ -2715,10 +2723,10 @@ Matching criteria:
   - No-fee only
 Users should receive alerts for saved searches.
 -----
-# **28. “Opportunity Inbox”**
+# **28. “Home feed”**
 This is a powerful concept.
 Instead of making users search every day, Missa gives them a personalized inbox.
-Opportunity Inbox
+Home feed
 New for you
 Opening soon
 Closing soon
@@ -2730,7 +2738,7 @@ Needs your review
 Each card can be dismissed, saved, tracked, or marked irrelevant.
 This trains Missa’s recommendations.
 -----
-# **29. Organization Follow System**
+# **29. Following**
 Users should follow organizations.
 Example:
 Follow The Kenyon Review
@@ -2912,7 +2920,7 @@ No more spreadsheet upkeep.
 No more searching your inbox for “thank you for submitting.”
 No more forgetting where a piece is out.
 -----
-# **3. Gmail Tracking: What It Should Detect**
+# **3. Email Sync: What It Should Detect**
 When a user authorizes Gmail access, Missa should look for **submission-related events**, not “read the user’s life.”
 ## **Detected Email Events**
 |  |  |
@@ -2926,7 +2934,7 @@ When a user authorizes Gmail access, Missa should look for **submission-related 
 | “You have been shortlisted” | Mark as **Shortlisted** |
 | “Please revise and resubmit” | Mark as **Revision Requested** |
 | “Deadline extended” | Update opportunity deadline |
-| “Applications are now open” | Add opportunity to user’s Opportunity Inbox |
+| “Applications are now open” | Add opportunity to user’s Home feed |
 | “Your payment was received” | Attach fee/payment record |
 | “Please sign” / “agreement attached” | Create delivery task |
 | “Final materials due” | Create acceptance checklist task |
@@ -2986,7 +2994,7 @@ I would launch with **forwarding + review-before-import**, then add deeper Gmail
 # **6. Auto-Tracking Missa-Hosted Submissions**
 For submissions made inside Missa, tracking should be automatic.
 ## **Inside-Missa Status Timeline**
-Draft Started
+Drafting
 Submitted
 Received
 In Review
@@ -3006,7 +3014,7 @@ North River Review — Poetry
 ○ Decision pending
 This gives users emotional relief.
 -----
-# **7. Expected Response Window**
+# **7. Expected Response**
 This is a killer feature.
 Missa should tell users:
 **“You’ll probably hear back around…”**
@@ -3290,7 +3298,7 @@ For rejection emails, avoid putting “Rejected” in the subject line. Let the 
 5\. Missa shows detected submissions
 6\. User confirms or ignores each
 7\. Missa creates tracker records
-8\. Missa suggests expected response windows
+8\. Missa suggests expected responses
 9\. User receives first dashboard
 ## **After Scan**
 We found 18 possible submissions.
@@ -3519,7 +3527,7 @@ The user should feel:
 **Your personal command center for grants, awards, fellowships, submissions, applications, and open calls.**
 -----
 # **The actual product**
-## **1. Opportunity Inbox**
+## **1. Home feed**
 This is the home feed.
 Missa proactively surfaces opportunities:
 New for you
@@ -3540,7 +3548,7 @@ User actions:
 The inbox should feel like:
 “Here are the opportunities you should care about, already organized.”
 -----
-## **2. Auto Calendar**
+## **2. Calendar**
 Every saved or tracked opportunity should create calendar intelligence.
 Features:
   - Add deadline to Missa calendar
@@ -3548,7 +3556,7 @@ Features:
   - Add opening date
   - Add closing date
   - Add internal prep reminders
-  - Add expected response window
+  - Add expected response
   - Add delivery deadlines after acceptance
   - Add recommender/reference deadlines
   - Add follow-up reminders
@@ -3559,7 +3567,7 @@ Prep reminder: March 8
 Expected response: late May–June
 This is one of the most emotionally useful features.
 -----
-## **3. Email Reminder Engine**
+## **3. Reminders**
 Not just generic reminders. Contextual reminders.
 Examples:
 This opportunity closes in 7 days.
@@ -3570,7 +3578,7 @@ This fellowship opens next week based on last year’s cycle.
 You were accepted. Final materials are due Friday.
 The reminder engine should be the nervous system of the product.
 -----
-## **4. Gmail Auto-Tracking**
+## **4. Email Sync**
 This is the “tracker that updates itself” feature.
 When the user connects Gmail, Missa can detect:
 |  |  |
@@ -3582,7 +3590,7 @@ When the user connects Gmail, Missa can detect:
 | “Congratulations” | Suggest accepted/finalist |
 | “We regret to inform you” | Suggest declined |
 | “Deadline extended” | Update deadline |
-| “Applications now open” | Add to Opportunity Inbox |
+| “Applications now open” | Add to Home feed |
 | “Please sign agreement” | Create delivery task |
 | “Final materials due” | Create checklist/reminder |
 
@@ -3609,8 +3617,8 @@ The tracker should work whether the opportunity is inside or outside Missa.
 Interested
 Saved
 Preparing
-Draft Started
-Ready to Submit
+Drafting
+Ready
 Submitted
 Received
 In Review
@@ -3659,7 +3667,7 @@ Materials: narrative, budget, work samples, fiscal sponsor letter
 Status: submitted to 2 grants
 This turns Missa into the user’s opportunity memory.
 -----
-# **7. Expected Response Windows**
+# **7. Expected Response**
 This is a killer feature.
 Instead of just tracking status, Missa tells users:
 You may hear back around late March to mid-April.
@@ -3928,7 +3936,7 @@ Duosuma is Duotrope’s submission manager for publishers and literary agents, c
 | **Company** | **Market** | **Strength** | **Missa Lesson** |
 | **FilmFreeway** | Film festivals, screenplays, creative contests | Massive discovery + one-click submission marketplace | Discovery + reusable project profile is powerful. |
 | **CaFÉ / CallForEntry** | Visual arts, public art, call-for-entry | Strong arts-specific call directory and jurying | Art submissions need portfolio/media object handling. |
-| **ArtCall.org** | Exhibitions, art calls, jurying | Jury process, categories, anonymous judging, public voting | Visual submissions require item-level media, juror views, and gallery outputs. |
+| **ArtCall.org** | Exhibitions, art calls, jurying | Jury process, categories, anonymous judging, public voting | Visual submissions require per-work media, juror views, and gallery outputs. |
 | **Oxford Abstracts** | Academic conferences | Abstract submission, review, decisions, ticketing, abstract books | Abstract workflows need authors, sessions, schedules, certificates, and proceedings. |
 
 FilmFreeway lets submitters browse festivals and contests, create a project once, submit to festivals, and get selection notifications. ([FilmFreeway](https://filmfreeway.com/pages/how-it-works?utm_source=chatgpt.com)) CaFÉ is a call-for-entry and online jurying platform specifically for artists and public art. ([CaFÉ™](https://www.callforentry.org/?utm_source=chatgpt.com)) ArtCall supports online jurying, anonymous jury processes, customizable email notifications, limiting jurors by category, public voting, and jury status workflows. ([artcall.org](https://artcall.org/?utm_source=chatgpt.com)) Oxford Abstracts covers abstract submission, review, decisions, ticketing, custom emails, custom forms, reports, abstract books, certificates, and multi-stage submissions. ([oxfordabstracts.com](https://oxfordabstracts.com/product/abstract-management-software/?utm_source=chatgpt.com))
@@ -3945,7 +3953,7 @@ These are not direct vertical competitors, but they will appear in every buying 
 | **Tally** | “We need cheap/free forms.” | Unlimited forms/submissions, payments, signatures, uploads, conditional logic. |
 
 Jotform Workflows supports forms, approvals, task assignment, payments, integrations, reminders, notifications, parallel processes, and white-labeled enterprise workflows. ([Jotform](https://www.jotform.com/products/workflows/?utm_source=chatgpt.com)) Typeform positions around AI-powered forms, conversational logic, high completion rates, automated workflows, webhooks, and integrations. ([Typeform](https://www.typeform.com/?utm_source=chatgpt.com)) Airtable has form-building for external and internal audiences, while Tally offers unlimited forms/submissions under fair use, payments, signatures, uploads, conditional logic, duplicate prevention, password protection, and custom thank-you pages. ([Airtable Support](https://support.airtable.com/docs/building-and-sharing-forms-in-airtable?utm_source=chatgpt.com))
-**Implication:** your product must make clear why a serious open call cannot be run well on generic forms: review assignment, blind review, genres, item-level decisions, communication history, delivery tasks, audit trails, and submitter experience.
+**Implication:** your product must make clear why a serious open call cannot be run well on generic forms: review assignment, blind review, genres, per-work decisions, communication history, delivery tasks, audit trails, and submitter experience.
 -----
 # **2. The Strategic Opening**
 ## **What the market has today**
@@ -3966,7 +3974,7 @@ The gap is a unified product that combines:
 2.  **Public discovery**
 3.  **Reusable submitter identity/profile**
 4.  **Flexible open-call taxonomy**
-5.  **Submission package + item-level architecture**
+5.  **Submission package + per-work architecture**
 6.  **Review workflows**
 7.  **Decision workflows**
 8.  **Email/message engine**
@@ -4073,8 +4081,8 @@ Examples:
 Build around:
 Open Call
 → Submission Path
-→ Submission Package
-→ Submission Item
+→ Submission
+→ Work
 → Review Round
 → Decision
 → Delivery Workflow
@@ -4187,7 +4195,7 @@ This is where you win.
 | **Enterprise → entity → program → call hierarchy** | Makes Missa enterprise-native from day one. |
 | **Seats by entity and role** | Supports complex customers without account sprawl. |
 | **Submission Paths** | Handles genres, types, categories, tracks, and eligibility cleanly. |
-| **Submission Package + Submission Item** | Solves poetry packets, portfolios, film assets, abstracts, nominations, bundled works. |
+| **Submission + Work** | Solves poetry packets, portfolios, film assets, abstracts, nominations, bundled works. |
 | **Item-level decisions** | Accept one poem, reject another, shortlist one portfolio piece, etc. |
 | **Discovery marketplace** | Helps submitters find calls, not just submit after discovery elsewhere. |
 | **Submitter wallet/profile** | Reduces repeated form labor. |
@@ -4233,9 +4241,9 @@ Taxonomy Dimension
 Taxonomy Value
 Form
 Form Version
-Submission Package
-Submission Item
-Submitter Profile
+Submission
+Work
+Passport
 Organization Profile
 File Asset
 Review Round
@@ -4259,8 +4267,8 @@ The key objects are:
 | **Object** | **Why It Matters** |
 | **Entity** | Enterprise customers need departments, brands, subsidiaries, imprints, chapters. |
 | **Submission Path** | Handles genre/type/category/track-specific logic. |
-| **Submission Package** | The overall submission record. |
-| **Submission Item** | The individual work/item inside the submission. |
+| **Submission** | The overall submission record. |
+| **Work** | The individual work/item inside the submission. |
 | **Taxonomy Dimension** | Lets each entity define genre, medium, discipline, category, track, region, applicant type. |
 | **Decision** | Must attach to package, item, path, round, or delivery level. |
 | **Delivery Task** | Turns acceptance into completed outcome. |
@@ -4436,7 +4444,7 @@ Discovery
 1.  **Multi-entity enterprise architecture**
 2.  **Open-call discovery**
 3.  **Submission paths for types/genres/categories/tracks**
-4.  **Submission package + item-level decisions**
+4.  **Submission package + per-work decisions**
 5.  **Reviewer workflow and conflict management**
 6.  **Email/message workflow engine**
 7.  **Post-acceptance delivery workflows**
@@ -4521,7 +4529,7 @@ Do not make users build every workflow manually. Give them strong defaults.
 |  |  |
 | :- | :- |
 | **Template** | **Should Generate** |
-| **Literary Magazine** | Genres, reading periods, blind review, cover letter, bio, item-level decisions, acceptance/rejection emails, publication checklist |
+| **Literary Magazine** | Genres, reading periods, blind review, cover letter, bio, per-work decisions, acceptance/rejection emails, publication checklist |
 | **Writing Contest** | Entry fee, categories, blind judging, shortlist, finalist/winner emails, prize fulfillment |
 | **Grant Program** | Eligibility form, budget fields, document uploads, panel review, award decision, agreement, reporting tasks |
 | **Award Program** | Categories, nominations, judges, scores, finalist/winner workflows, certificates |
@@ -4602,7 +4610,7 @@ What are you running?
 Research question:
 Do users understand which template to pick?
 -----
-## **Prototype 2: Guided Setup Wizard**
+## **Prototype 2: Getting Started**
 Example for a magazine:
 What genres do you accept?
 \[Poetry\] \[Fiction\] \[Nonfiction\] \[Art\] \[Translation\] \[Hybrid\]
@@ -4619,7 +4627,7 @@ Who reviews submissions?
 Research question:
 Can users configure a real workflow through plain-language questions?
 -----
-## **Prototype 3: Auto-Generated Call Preview**
+## **Prototype 3: Generate From Guidelines**
 After setup, show:
 Missa created:
 1 open call
@@ -4650,7 +4658,7 @@ Does this match how enterprise buyers think about rollout?
 -----
 # **6. Onboarding Features To Validate**
 You should validate demand for these before overbuilding.
-## **A. Setup Wizard**
+## **A. Getting Started**
 The wizard should ask business questions, not database questions.
 Bad:
 “Create taxonomy dimension.”
@@ -4661,7 +4669,7 @@ Bad:
 Good:
 “Who needs to review submissions before a decision is made?”
 -----
-## **B. Template Marketplace**
+## **B. Template Gallery**
 Customers should be able to start from templates like:
   - Literary magazine
   - Poetry contest
@@ -4701,7 +4709,7 @@ Example:
 Upload your existing call guidelines. Missa generates your public page, form, genres, eligibility rules, review workflow, and emails.
 This is a powerful onboarding wedge.
 -----
-## **D. “Test as Submitter”**
+## **D. “Preview”**
 Every admin should be able to preview the process as a submitter.
 Features:
   - Submit test application
@@ -4931,7 +4939,7 @@ This is important because Submittable already has a public Discover marketplace 
 Your wedge is to go further:
 **Missa discovers and refreshes opportunities proactively, not only when an organization manually publishes them inside Missa.**
 -----
-# **2. One-Button Data Portability**
+# **2. Data Portability**
 ## **Product Principle**
 The migration experience should feel like:
 Connect your current tool.
@@ -4979,7 +4987,7 @@ Prioritize sources by likelihood of switching and technical accessibility.
 
 OpenWater, for example, publicly emphasizes integrations and export capabilities, including PDF, Excel, CSV, Word, JSON, and bulk downloads for submissions, so export/upload migration should be part of your research even where API access is not ideal. ([openwater.com](https://openwater.com/?utm_source=chatgpt.com))
 -----
-# **4. The “One-Button Import” Product Spec**
+# **4. The “Import” Product Spec**
 ## **Import Flow**
 1\. Choose source
    Submittable, Google Forms, Airtable, Typeform, Jotform, CSV, Email, Other
@@ -5008,7 +5016,7 @@ OpenWater, for example, publicly emphasizes integrations and export capabilities
 | Call title/description | Open Call |
 | Genres/categories | Submission Paths / Taxonomy |
 | Responses | Submissions |
-| Multi-work submissions | Submission Items |
+| Multi-work submissions | Works |
 | Uploaded files | File Assets |
 | Reviewers | Users + Reviewer Roles |
 | Scores/comments | Review Assignments / Review Scores |
@@ -5019,7 +5027,7 @@ OpenWater, for example, publicly emphasizes integrations and export capabilities
 | Attachments | File Archive |
 | Historical exports | Archive Mode |
 
-## **Migration Integrity Report**
+## **Import Report**
 After import, Missa should show:
 Imported:
 ✓ 1 entity
@@ -5202,7 +5210,7 @@ Test:
   - Delivery checklist
   - Launch checklist
 -----
-## **Workstream B: One-Button Migration**
+## **Workstream B: Migration**
 Research question:
 Can a customer bring their existing process into Missa without rebuilding forms, submissions, files, statuses, emails, and reviewers manually?
 Test:
@@ -5318,7 +5326,7 @@ Choose source
 → Import as draft
 → Run test submission
 → Publish
-## **Prototype 3: Claim Discovered Opportunity**
+## **Prototype 3: Claim Your Listing**
 Missa found your open call
 → Claim organization
 → Verify ownership
@@ -5656,7 +5664,7 @@ Missa should say:
 That becomes part of the brand.
 -----
 # **2. What Else? The Full Submitter Product**
-## **A. Universal Submitter Profile**
+## **A. Passport**
 This is the core user primitive.
 A submitter should have one reusable identity across all opportunities.
 ### **Profile sections**
@@ -5735,7 +5743,7 @@ Delivered
 Archived
 The key is that users can track **external opportunities too**, not only Missa-hosted submissions.
 -----
-## **D. One-Click Import of Submission History**
+## **D. Import of Submission History**
 This is huge.
 Let submitters import their existing history from:
   - Chill Subs CSV/export, if available
@@ -5793,7 +5801,7 @@ Warning: “The River Essay” is already under consideration at 3 magazines.
 This opportunity does not allow simultaneous submissions.
 That is real user value.
 -----
-## **G. Fit Score and Eligibility Guardrails**
+## **G. Fit Score and Eligibility Check**
 Missa should not just list opportunities. It should help users avoid wasting time.
 ### **Fit Score**
 Strong fit
@@ -5826,7 +5834,7 @@ Watch out:
 ⚠ Max 3 poems; your packet has 5
 This is a serious upgrade over a static directory.
 -----
-## **H. Trust and Legitimacy Layer**
+## **H. Verification**
 This matters if Missa is proactively collecting opportunities.
 Every opportunity should show:
 Verified by source page
@@ -5866,7 +5874,7 @@ Wed — Artist Grant opens
 Fri — Fellowship application due
 Sun — 3 saved calls close
 -----
-## **J. Submitter Analytics**
+## **J. Insights**
 Give users their own data.
 ### **Dashboard**
 |  |  |
@@ -5887,7 +5895,7 @@ Give users their own data.
 This should be free.
 The paid competitor logic is “pay to see better stats.” Missa’s logic should be “stats are free because the network gets better when everyone tracks.”
 -----
-## **K. Opportunity Lists and Playlists**
+## **K. Lists**
 Users should be able to create and share lists.
 Examples:
   - No-fee poetry magazines
@@ -5981,7 +5989,7 @@ Chill Subs is strongest around literary discovery and tracking. Missa should go 
 | **One-click submission where hosted** | Reduce form fatigue. |
 | **External tracker** | Track non-Missa submissions too. |
 | **Fit and eligibility scoring** | Prevent wasted effort. |
-| **Partial withdrawal and item-level tracking** | Essential for literary and portfolio workflows. |
+| **Partial withdrawal and per-work tracking** | Essential for literary and portfolio workflows. |
 | **Trust/freshness layer** | Show what is verified, changed, stale, or claimed. |
 | **Post-acceptance delivery** | Contracts, files, bios, tax forms, reporting, publication assets. |
 
@@ -6788,7 +6796,7 @@ Missa
 ├── Import
 │   └── One-button migration from Submittable, spreadsheets, forms, email, URLs
 │
-└── Trust Layer
+└── Verification
     └── Verification, moderation, privacy, abuse controls, data boundaries
 -----
 # **4. User Product: Missa Passport**
@@ -6834,8 +6842,8 @@ Unknown
 Interested
 Saved
 Preparing
-Draft Started
-Ready to Submit
+Drafting
+Ready
 Submitted
 Received
 In Review
@@ -6860,7 +6868,7 @@ Archived
   - Spreadsheet/list view
   - Mobile quick-update view
 -----
-# **6. Gmail Tracking**
+# **6. Email Sync**
 ## **Promise**
 **Connect Gmail and Missa will help track submissions you make outside Missa.**
 ## **Gmail detects**
@@ -6875,7 +6883,7 @@ Archived
 | Rejection | Suggest declined |
 | Revision request | Create revision task |
 | Deadline extended | Update saved deadline |
-| Opportunity opened | Add to Opportunity Inbox |
+| Opportunity opened | Add to Home feed |
 | Agreement/payment/final materials | Create delivery tasks |
 
 ## **Privacy modes**
@@ -6893,7 +6901,7 @@ Missa found a possible decision email.
 Suggested status: Declined
 \[Confirm\] \[Edit\] \[Ignore\]
 -----
-# **7. Expected Response Window**
+# **7. Expected Response**
 Missa should tell users when they may hear back.
 ## **Inputs**
   - Organization-stated timeline
@@ -7081,7 +7089,7 @@ Workspace includes:
   - Form builder
   - Submission paths
   - File uploads
-  - Submission inbox
+  - Inbox
   - Review workflows
   - Reviewer portal
   - Rubrics/scoring
@@ -7100,7 +7108,7 @@ Enterprise Account
             └── Open Call
                 └── Submission Path
                     └── Submission
-                        └── Submission Item
+                        └── Work
 -----
 # **13. Submission Paths**
 Submission Path is the object that handles genres, types, categories, tracks, and rules.
@@ -7129,8 +7137,8 @@ A grant may have individual, nonprofit, school, and municipal tracks.
 A festival may have shorts, features, student films, documentaries, and experimental work.
 Do not hardcode genre. Configure it.
 -----
-# **14. Submission Package + Submission Item**
-## **Submission Package**
+# **14. Submission + Work**
+## **Submission**
 The full submission.
 Example:
 Ade’s Poetry Submission to Spring Issue
@@ -7143,7 +7151,7 @@ Contains:
   - Status
   - Review
   - Decision
-## **Submission Item**
+## **Work**
 An individual work inside the submission.
 Example:
 Poem 1: Blue Room
@@ -7170,7 +7178,7 @@ Enterprise Account
 │   ├── Templates
 │   ├── Email Domains
 │   └── Reports
-└── Enterprise Admin Console
+└── Admin
 ## **Enterprise must support**
   - Multi-entity accounts
   - Seats by entity
@@ -7197,7 +7205,7 @@ Enterprise Account
 | Finance | Fees, refunds, payouts |
 | Legal/Compliance | Agreements, records |
 | Viewer | Read-only reporting |
-| External Collaborator | Guest access |
+| Guest | Guest access |
 
 -----
 # **16. Identity and Context Switching**
@@ -7855,11 +7863,11 @@ Why this works:
   - More predictable than pure per-submission pricing.
   - Affordable enough for small magazines.
 -----
-### **3. Creative Pro**
+### **3. Pro**
 |  |  |  |
 | :- | :- | :- |
 | **Plan** | **Price** | **Best for** |
-| **Creative Pro** | **$39/month annually** or **$49 month-to-month** | Serious magazines, presses, writing contests, art calls. |
+| **Pro** | **$39/month annually** or **$49 month-to-month** | Serious magazines, presses, writing contests, art calls. |
 
 Annual: **$468/year**.
 Includes:
@@ -8032,7 +8040,7 @@ Include reasonable storage by plan:
 | :- | :- |
 | **Plan** | **Included storage** |
 | Indie | 10 GB |
-| Creative Pro | 50 GB |
+| Pro | 50 GB |
 | Program | 100 GB |
 | Program Pro | 500 GB |
 | Enterprise | Custom |
@@ -8085,11 +8093,11 @@ For launch, I would use a **founding customer offer** without creating unsustain
 | First year Indie | **$99/year** |
 | Renewal guarantee | **No more than $180/year for 3 years** |
 
-## **Founding Creative Pro Offer**
+## **Founding Pro Offer**
 |  |  |
 | :- | :- |
 | **Offer** | **Price** |
-| First year Creative Pro | **$299/year** |
+| First year Pro | **$299/year** |
 | Renewal guarantee | **No more than $468/year for 3 years** |
 
 ## **Founding Program Offer**
@@ -8144,7 +8152,7 @@ Missa should launch with this pricing ladder:
 | **Passport** | Free forever |
 | **Claimed Organization Profile** | Free |
 | **Indie** | $15/month annually |
-| **Creative Pro** | $39/month annually |
+| **Pro** | $39/month annually |
 | **Program** | $99/month annually |
 | **Program Pro** | $199/month annually |
 | **Enterprise Starter** | From $4,800/year |
@@ -8164,7 +8172,7 @@ The pricing moat is:
 # **Yes — but only with cost discipline**
 Your proposed pricing can be profitable, but **not all plans are equally profitable**.
 The honest answer:
-**Indie is an acquisition plan. Creative Pro and Program are your healthy self-serve profit plans. Program Pro and Enterprise fund support, compliance, and product depth. Free users are sustainable only if Gmail/Radar/AI are tightly metered behind smart automation.**
+**Indie is an acquisition plan. Pro and Program are your healthy self-serve profit plans. Program Pro and Enterprise fund support, compliance, and product depth. Free users are sustainable only if Gmail/Radar/AI are tightly metered behind smart automation.**
 If you give low-tier customers unlimited support, unlimited storage, unlimited AI, Gmail scanning, custom domains, migration help, and SSO, you will lose money.
 -----
 # **1. Key cost assumptions**
@@ -8192,7 +8200,7 @@ This is a practical estimate, not accounting precision.
 | :- | :- | :- | :- | :- |
 | **Plan** | **Revenue / month** | **Estimated direct COGS / month** | **Contribution / month** | **Read** |
 | **Indie** | $15 | $2–$6 | $9–$13 | Profitable only if self-serve. Human support destroys margin. |
-| **Creative Pro** | $39 | $7–$15 | $24–$32 | Healthy if support is limited. |
+| **Pro** | $39 | $7–$15 | $24–$32 | Healthy if support is limited. |
 | **Program** | $99 | $20–$40 | $59–$79 | Strong plan. Good margin. |
 | **Program Pro** | $199 | $55–$110 | $89–$144 | Profitable, but large customers may need support. |
 | **Enterprise Starter** | \~$400 | $120–$250 | $150–$280 | Profitable only if SSO/SCIM/migration are controlled. |
@@ -8264,7 +8272,7 @@ Assume customer mix:
 | :- | :- |
 | **Plan** | **Mix** |
 | Indie | 60% |
-| Creative Pro | 25% |
+| Pro | 25% |
 | Program | 10% |
 | Program Pro | 5% |
 
@@ -8286,7 +8294,7 @@ Assume customer mix:
 | :- | :- |
 | **Plan** | **Mix** |
 | Indie | 20% |
-| Creative Pro | 40% |
+| Pro | 40% |
 | Program | 25% |
 | Program Pro | 10% |
 | Enterprise Starter | 5% |
@@ -8365,7 +8373,7 @@ Example:
 | Large award | 10,000 | $25 | $250,000 | $3,750 |
 | Fellowship/grant fee | 5,000 | $20 | $100,000 | $1,500 |
 
-That means a **$39/month Creative Pro customer** could actually be worth much more if they run paid contests.
+That means a **$39/month Pro customer** could actually be worth much more if they run paid contests.
 Keep it transparent. Do not hide fees from submitters.
 -----
 # **7. Free users: sustainable or not?**
@@ -8398,7 +8406,7 @@ I would adjust the previous pricing like this:
 | :- | :- | :- |
 | **Plan** | **Previous** | **Recommended** |
 | **Indie** | $15/mo annual | Keep, but annual-first and self-serve only |
-| **Creative Pro** | $39/mo annual | Keep, but consider $49/mo after launch |
+| **Pro** | $39/mo annual | Keep, but consider $49/mo after launch |
 | **Program** | $99/mo annual | Keep |
 | **Program Pro** | $199/mo annual | Consider $249/mo if support/storage is heavy |
 | **Enterprise Starter** | $4,800/year | Keep only if limited; otherwise start at $7,500 |
@@ -8431,7 +8439,7 @@ $15/month Indie customers
 You make money if the business becomes:
 Free users drive demand
 → Indie acquires small orgs
-→ Creative Pro monetizes serious magazines
+→ Pro monetizes serious magazines
 → Program/Program Pro monetizes awards, grants, contests
 → Enterprise funds security/governance
 → Paid submission fees add transaction margin
