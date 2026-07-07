@@ -3,6 +3,8 @@ import type {
   ChangeKind,
   FitScore,
   MatchCriteria,
+  MyStatus,
+  TrackedOpportunity,
   Opportunity,
   OpportunityChange,
   OpportunityCandidate,
@@ -41,6 +43,7 @@ import {
 } from './alerts/alerts.js';
 import { applyOrganizationOverride, approveClaim, rejectClaim, requestClaim } from './claims/claims.js';
 import { openTask, resolveConflicts, resolveTask, sweepForVerification, verificationQueue } from './verification/verification.js';
+import { deadlineReminders, setMyStatus, track, trackerView, type TrackerView } from './tracker/tracker.js';
 import { isoDateOf } from './extraction/dates.js';
 
 export interface TickReport {
@@ -153,10 +156,18 @@ export class RadarEngine {
     }
   }
 
-  trackOpportunity(userId: string, opportunityId: string, notify = true): void {
-    if (!this.store.tracked.some((t) => t.userId === userId && t.opportunityId === opportunityId)) {
-      this.store.tracked.push({ userId, opportunityId, trackedAt: this.clock.now().toISOString(), notify });
-    }
+  trackOpportunity(userId: string, opportunityId: string, notify = true): TrackedOpportunity {
+    return track(this.ctx, userId, opportunityId, notify);
+  }
+
+  /** Move an opportunity through the user's pipeline (Saved → Submitted → Accepted…). */
+  setMyStatus(userId: string, opportunityId: string, status: MyStatus, opts?: { note?: string; source?: 'user' | 'radar' }) {
+    return setMyStatus(this.ctx, userId, opportunityId, status, opts ?? {});
+  }
+
+  /** Pipeline + deadline views and personal stats for the tracker UI. */
+  getTracker(userId: string): TrackerView {
+    return trackerView(this.ctx, userId);
   }
 
   /** Seed known past open/close cycles so prediction works from day one. */
@@ -258,6 +269,7 @@ export class RadarEngine {
       ...alertTimeSensitive(this.ctx),
       ...alertFollowedOrgNewCalls(this.ctx, newOpportunities),
       ...alertClaimInvites(this.ctx),
+      ...deadlineReminders(this.ctx),
     );
 
     report.verificationTasksOpened.push(...sweepForVerification(this.ctx));

@@ -18,3 +18,15 @@ export { matchesCriteria, matchProfiles, type MatchResult } from './matching/mat
 export { fitScore, formatFee } from './matching/fit.js';
 export { buildInboxDigest, matchOrganizationByDomain, type InboxDigest } from './alerts/alerts.js';
 export { verificationQueue } from './verification/verification.js';
+export {
+  isMyStatus,
+  deadlineReminders,
+  REMINDER_DAYS,
+  type TrackerView,
+  type TrackerItem,
+  type UserTrackerStats,
+  type PipelineStage,
+} from './tracker/tracker.js';
+export { RadarServer, type RadarServerOptions } from './server/server.js';
+export { buildServerDemoWorld } from './fixtures/serverDemo.js';
+export { buildDemoWorld, ManualClock } from './fixtures/seed.js';

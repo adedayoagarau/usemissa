@@ -329,11 +329,68 @@ export interface OrganizationFollow {
   followedAt: IsoDateTime;
 }
 
+/**
+ * "My Status" — the user's relationship to an opportunity, distinct from the
+ * opportunity's own lifecycle status. Vocabulary exactly as the strategy doc's
+ * tracker section lists it.
+ */
+export type MyStatus =
+  | 'interested'
+  | 'saved'
+  | 'preparing'
+  | 'draft-started'
+  | 'ready-to-submit'
+  | 'submitted'
+  | 'received'
+  | 'in-review'
+  | 'longlisted'
+  | 'shortlisted'
+  | 'finalist'
+  | 'accepted'
+  | 'declined'
+  | 'waitlisted'
+  | 'revision-requested'
+  | 'withdrawn'
+  | 'partially-withdrawn'
+  | 'delivered'
+  | 'archived';
+
+/** My Statuses before the work has been sent — these get deadline reminders. */
+export const PRE_SUBMISSION_STATUSES: readonly MyStatus[] = [
+  'interested',
+  'saved',
+  'preparing',
+  'draft-started',
+  'ready-to-submit',
+];
+
+/** Terminal outcomes for personal stats. */
+export const OUTCOME_STATUSES: readonly MyStatus[] = [
+  'accepted',
+  'declined',
+  'withdrawn',
+  'partially-withdrawn',
+  'delivered',
+];
+
+/** Status Event Model (strategy § 26): every My Status transition is recorded. */
+export interface StatusEvent {
+  at: IsoDateTime;
+  from?: MyStatus;
+  to: MyStatus;
+  /** 'user' = manual update; 'radar' = detected automatically. */
+  source: 'user' | 'radar';
+  note?: string;
+}
+
 export interface TrackedOpportunity {
   userId: string;
   opportunityId: string;
   trackedAt: IsoDateTime;
   notify: boolean;
+  myStatus: MyStatus;
+  events: StatusEvent[];
+  submittedAt?: IsoDateTime;
 }
 
 export type FitLevel = 'strong' | 'possible' | 'weak' | 'not-eligible' | 'unknown';
@@ -360,6 +417,7 @@ export type AlertKind =
   | 'call-closed'
   | 'page-gone'
   | 'expected-reopen'
+  | 'deadline-reminder'
   | 'followed-org-new-call'
   // organization
   | 'claim-invite'
