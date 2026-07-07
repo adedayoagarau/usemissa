@@ -53,8 +53,8 @@ development_status:
   1-5-scheduled-radar-ticking-via-vercel-cron: done
   epic-1-retrospective: optional
 
-  epic-2: backlog
-  2-1-sign-up-log-in-pages-in-apps-web: backlog
+  epic-2: in-progress
+  2-1-sign-up-log-in-pages-in-apps-web: done
   2-2-public-profile-passport-page: backlog
   2-3-privacy-settings: backlog
   2-4-export-tracker-library-data: backlog
