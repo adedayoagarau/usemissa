@@ -10,9 +10,27 @@ from [`docs/missa-strategy.md`](../../docs/missa-strategy.md).
 
 ```bash
 npm install
-npm test          # 25 tests, node:test
+npm test          # 30 tests, node:test
 npm run demo -w @missa/radar-engine
+
+# The user opportunity loop, live — web UI + JSON API on http://localhost:4173
+node packages/radar-engine/dist/src/cli.js serve --demo
 ```
+
+## The user loop, end to end
+
+`serve` exposes the whole submitter journey (`src/server/`, zero dependencies):
+
+**Discover** (fit-scored, deadline-sorted) → **Track** → **My Status pipeline**
+(the strategy's full vocabulary: interested → saved → preparing → … → submitted →
+in-review → accepted/declined, every transition a recorded `StatusEvent`) →
+**Inbox** (matches, closing/opening soon, changes, deadline-reminder ladder at
+7/3/1 days for anything not yet submitted) → **personal stats** (pipeline counts,
+acceptance rate).
+
+API: `GET /api/users/:id/{discover,inbox,tracker,alerts}`, `POST /api/users/:id/{track,status,profiles,follow}`,
+`GET /api/opportunities[/:id]`, `POST /api/tick`, `GET /api/stats`. Without `--demo` it loads/saves
+a JSON store (`--data`) and polls real sources with the HTTP fetcher on a `--tick-minutes` interval.
 
 The demo simulates a month of Radar against fixture pages: discovery of 5 seed sources, dedup of
 a directory listing with a **conflicting deadline** (→ Needs Verification + admin queue), a

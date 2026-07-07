@@ -123,13 +123,57 @@ async function demo(): Promise<void> {
   console.log(JSON.stringify(engine.stats(), null, 2));
 }
 
+async function serve(args: string[]): Promise<void> {
+  const { RadarServer } = await import('./server/server.js');
+  const { buildServerDemoWorld } = await import('./fixtures/serverDemo.js');
+  const { loadStore } = await import('./store/store.js');
+  const { RadarEngine } = await import('./engine.js');
+  const { HttpFetcher } = await import('./ingestion/fetcher.js');
+
+  const opt = (name: string): string | undefined => {
+    const i = args.indexOf(`--${name}`);
+    return i >= 0 ? args[i + 1] : undefined;
+  };
+  const port = Number(opt('port') ?? 4173);
+  const dataPath = opt('data') ?? '.radar-data/store.json';
+  const tickMinutes = Number(opt('tick-minutes') ?? 15);
+  const useDemo = args.includes('--demo');
+
+  let engine;
+  if (useDemo) {
+    const world = buildServerDemoWorld();
+    engine = world.engine;
+    await engine.tick();
+    console.log(`Seeded demo world: ${engine.store.opportunities.size} opportunities, ${engine.store.users.size} users.`);
+  } else {
+    engine = new RadarEngine({ store: loadStore(dataPath), fetcher: new HttpFetcher() });
+  }
+
+  const server = new RadarServer({
+    engine,
+    port,
+    persistPath: useDemo ? undefined : dataPath,
+    tickIntervalMs: tickMinutes > 0 ? tickMinutes * 60_000 : undefined,
+  });
+  const boundPort = await server.start();
+  console.log(`Missa Radar serving the user loop at http://localhost:${boundPort}`);
+  console.log(`  UI:      http://localhost:${boundPort}/`);
+  console.log(`  API:     /api/opportunities · /api/users/:id/{discover,inbox,tracker} · POST /api/tick`);
+  console.log(`  Ticking every ${tickMinutes} minutes. Ctrl-C to stop.`);
+}
+
 const command = process.argv[2] ?? 'demo';
 if (command === 'demo') {
   demo().catch((err) => {
     console.error(err);
     process.exit(1);
   });
+} else if (command === 'serve') {
+  serve(process.argv.slice(3)).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 } else {
-  console.error(`Unknown command: ${command}. Try: missa-radar demo`);
+  console.error(`Unknown command: ${command}. Try: missa-radar demo | missa-radar serve [--demo] [--port 4173]`);
   process.exit(1);
 }
