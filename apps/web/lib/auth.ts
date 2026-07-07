@@ -1,4 +1,4 @@
-import { verifySessionToken, createSessionToken, membershipsFor, type Account } from '@missa/radar-engine';
+import { verifySessionToken, createSessionToken, membershipsFor, isOrgMember, type Account } from '@missa/radar-engine';
 import { getEngine } from './engine';
 
 export const SESSION_COOKIE = 'missa_session';
@@ -66,6 +66,23 @@ export async function requireSelf(
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session) return { ok: false, status: 401, error: 'Not authenticated' };
   if (session.account.userId !== userId) return { ok: false, status: 403, error: 'You can only act as your own account' };
+  return { ok: true, session };
+}
+
+/** Mirrors RadarServer's requireOrgMember: resolves the session and verifies
+ * the account is a member of the given organization. Returns the
+ * SessionAccount on success, or an explicit 401/403 reason -- never throws. */
+export async function requireOrgMember(
+  request: Request,
+  organizationId: string
+): Promise<{ ok: true; session: SessionAccount } | { ok: false; status: 401 | 403; error: string }> {
+  const session = await getSessionAccount(request.headers.get('cookie'));
+  if (!session) return { ok: false, status: 401, error: 'Not authenticated' };
+
+  const engine = await getEngine();
+  if (!isOrgMember(engine.store, session.account.id, organizationId)) {
+    return { ok: false, status: 403, error: 'You are not a member of this organization' };
+  }
   return { ok: true, session };
 }
 
