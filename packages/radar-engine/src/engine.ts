@@ -238,7 +238,7 @@ export class RadarEngine {
       };
       this.store.snapshots.set(snapshot.id, snapshot);
 
-      const candidate = this.extractor.extract(source, snapshot);
+      const candidate = await this.extractor.extract(source, snapshot);
       if (hasFatalIssues(candidate) || !looksLikeOpportunity(candidate)) continue;
 
       const match = findCanonical(candidate, this.store.opportunities.values());

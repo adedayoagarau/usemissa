@@ -1,0 +1,23 @@
+{
+  "name": "@missa/radar-adapters",
+  "version": "0.1.0",
+  "description": "Production adapters for @missa/radar-engine's ports: Playwright fetcher, LLM-assisted extractor, Postgres store persistence. Kept in a separate package so the core engine stays zero-dependency.",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && cp src/postgresSchema.sql dist/src/postgresSchema.sql",
+    "test": "npm run build && node --test \"dist/test/*.test.js\""
+  },
+  "dependencies": {
+    "@missa/radar-engine": "^0.1.0",
+    "@anthropic-ai/sdk": "^0.32.0",
+    "pg": "^8.13.0",
+    "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.0",
+    "typescript": "^5.7.0"
+  }
+}
