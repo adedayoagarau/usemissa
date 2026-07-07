@@ -1,0 +1,19 @@
+{
+  "name": "@missa/workspace-engine",
+  "version": "0.1.0",
+  "description": "Missa Workspace — submission management: open calls, forms, review, decisions, delivery.",
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test \"dist/test/*.test.js\""
+  },
+  "dependencies": {
+    "@missa/radar-engine": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
