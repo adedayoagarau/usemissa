@@ -162,6 +162,84 @@ async function serve(args: string[]): Promise<void> {
   console.log(`  Ticking every ${tickMinutes} minutes. Ctrl-C to stop.`);
 }
 
+async function registry(args: string[]): Promise<void> {
+  const { assembleRegistry, registryStats, filterSources, getVerticalsByGroup } = await import('./registry/assemble.js');
+  const sub = args[0] ?? 'stats';
+
+  const opt = (name: string): string | undefined => {
+    const i = args.indexOf(`--${name}`);
+    return i >= 0 ? args[i + 1] : undefined;
+  };
+
+  const group = opt('group');
+  const vertical = opt('vertical');
+  const maxTier = opt('max-tier');
+
+  const opts = {
+    groups: group ? [group as import('./registry/types.js').VerticalGroup] : undefined,
+    verticalIds: vertical ? vertical.split(',') : undefined,
+    maxTier: maxTier !== undefined ? (Number(maxTier) as 0 | 1 | 2 | 3) : undefined,
+  };
+
+  const reg = assembleRegistry();
+
+  if (sub === 'stats') {
+    const stats = registryStats(reg);
+    console.log(`\nMissa Radar Source Registry v${reg.version}`);
+    console.log(`Generated: ${reg.generatedAt}`);
+    console.log(`Total sources: ${stats.totalSources} (${stats.activeSources} active)`);
+    console.log(`Verticals: ${reg.verticals.length}`);
+    console.log(`\nBy tier (0=org page, 1=platform, 2=directory, 3=feed):`);
+    for (const [tier, n] of Object.entries(stats.byTier)) {
+      console.log(`  Tier ${tier}: ${n}`);
+    }
+    console.log(`\nBy vertical group:`);
+    for (const [g, n] of Object.entries(stats.byGroup).sort((a, b) => b[1] - a[1])) {
+      console.log(`  ${g}: ${n}`);
+    }
+    console.log(`\nTop verticals:`);
+    for (const [v, n] of Object.entries(stats.byVertical).sort((a, b) => b[1] - a[1]).slice(0, 12)) {
+      const label = reg.verticals.find((x) => x.id === v)?.label ?? v;
+      console.log(`  ${label}: ${n}`);
+    }
+    return;
+  }
+
+  if (sub === 'list') {
+    const entries = filterSources(reg, opts);
+    const limit = Number(opt('limit') ?? 50);
+    for (const e of entries.slice(0, limit)) {
+      console.log(`[T${e.tier}] ${e.name}`);
+      console.log(`      ${e.url}`);
+      console.log(`      vertical=${e.verticalId} kind=${e.kind}`);
+    }
+    if (entries.length > limit) console.log(`\n… and ${entries.length - limit} more (use --limit)`);
+    return;
+  }
+
+  if (sub === 'verticals') {
+    const groups = group ? getVerticalsByGroup(group as import('./registry/types.js').VerticalGroup) : reg.verticals;
+    for (const v of groups) {
+      const count = reg.sources.filter((s) => s.verticalId === v.id).length;
+      console.log(`${v.id} (${count}) — ${v.label}`);
+      console.log(`  ${v.description}`);
+    }
+    return;
+  }
+
+  if (sub === 'export') {
+    const { writeFileSync } = await import('node:fs');
+    const path = opt('out') ?? 'sources-export.json';
+    const filtered = filterSources(reg, opts);
+    writeFileSync(path, JSON.stringify({ ...reg, sources: filtered }, null, 2));
+    console.log(`Exported ${filtered.length} sources → ${path}`);
+    return;
+  }
+
+  console.error(`Unknown registry subcommand: ${sub}. Try: stats | list | verticals | export`);
+  process.exit(1);
+}
+
 const command = process.argv[2] ?? 'demo';
 if (command === 'demo') {
   demo().catch((err) => {
@@ -173,7 +251,12 @@ if (command === 'demo') {
     console.error(err);
     process.exit(1);
   });
+} else if (command === 'registry') {
+  registry(process.argv.slice(3)).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 } else {
-  console.error(`Unknown command: ${command}. Try: missa-radar demo | missa-radar serve [--demo] [--port 4173]`);
+  console.error(`Unknown command: ${command}. Try: missa-radar demo | serve | registry`);
   process.exit(1);
 }

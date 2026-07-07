@@ -10,8 +10,12 @@ from [`docs/missa-strategy.md`](../../docs/missa-strategy.md).
 
 ```bash
 npm install
-npm test          # 30 tests, node:test
+npm test          # 34 tests, node:test
 npm run demo -w @missa/radar-engine
+
+# Browse the 1,042-source opportunity registry
+node packages/radar-engine/dist/src/cli.js registry stats
+node packages/radar-engine/dist/src/cli.js registry list --group literary --limit 10
 
 # The user opportunity loop, live — web UI + JSON API on http://localhost:4173
 node packages/radar-engine/dist/src/cli.js serve --demo
@@ -59,6 +63,30 @@ engine.createRadarProfile(ada.id, 'No-fee poetry', { genres: ['poetry'], noFeeOn
 await engine.tick();                    // run on a schedule (cron/Temporal)
 engine.getInboxDigest(ada.id);          // "Missa Radar found N updates for you: …"
 engine.fitFor(ada.id, opportunityId);   // ✓ reasons / ⚠ watch-outs / ✕ disqualifiers
+```
+
+## Source registry (1,042 seeds)
+
+Curated starting points across **49 verticals** — literary fiction, poetry, CNF, visual residencies,
+film festivals, screenwriting, US state arts councils, international grants, platforms (Res Artis,
+Submittable, CaFÉ, Duotrope…). See [`src/registry/README.md`](src/registry/README.md).
+
+```ts
+import { assembleRegistry, loadSourcesIntoEngine, registryStats } from '@missa/radar-engine';
+
+const reg = assembleRegistry();           // 1,042 unique URLs
+registryStats(reg);                     // by tier, group, vertical
+
+loadSourcesIntoEngine(
+  (s) => engine.addSource(s),
+  { groups: ['literary'], maxTier: 0 }, // tier-0 org pages only
+);
+```
+
+```bash
+node dist/src/cli.js registry stats
+node dist/src/cli.js registry list --vertical poetry --limit 20
+npm run registry:generate   # regenerate sources-bulk.json
 ```
 
 ## Design rules (from the strategy doc)

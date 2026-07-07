@@ -30,3 +30,25 @@ export {
 export { RadarServer, type RadarServerOptions } from './server/server.js';
 export { buildServerDemoWorld } from './fixtures/serverDemo.js';
 export { buildDemoWorld, ManualClock } from './fixtures/seed.js';
+export {
+  REGISTRY_VERTICALS,
+  assembleRegistry,
+  getRegistry,
+  getVertical,
+  getVerticalsByGroup,
+  filterSources,
+  registryStats,
+  loadSourcesIntoEngine,
+  toRadarSources,
+  discoverySeeds,
+  canonicalSources,
+} from './registry/index.js';
+export type {
+  SourceTier,
+  VerticalGroup,
+  RegistryVertical,
+  SourceRegistryEntry,
+  SourceRegistry,
+  RegistryStats,
+  LoadRegistryOptions,
+} from './registry/types.js';
