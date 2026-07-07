@@ -7,7 +7,7 @@ export const UI_HTML = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Missa Radar</title>
+<title>Missa</title>
 <style>
   :root { color-scheme: light dark; --accent:#6c5ce7; --ok:#2e9e5b; --warn:#c97a10; --bad:#c0392b; --muted:#888; }
   * { box-sizing: border-box; }
@@ -49,9 +49,9 @@ export const UI_HTML = `<!doctype html>
 </head>
 <body>
 <header id="appHeader" style="display:none">
-  <h1><span>Missa</span> Radar</h1>
+  <h1><span>Missa</span></h1>
   <nav>
-    <button data-tab="discover" class="active">Discover</button>
+    <button data-tab="discover" class="active">Opportunities</button>
     <button data-tab="inbox">Inbox</button>
     <button data-tab="tracker">Tracker</button>
     <button data-tab="workspace" id="workspaceTabBtn">Workspace</button>
@@ -64,7 +64,7 @@ export const UI_HTML = `<!doctype html>
 </header>
 <main id="main">Loading…</main>
 <div id="authGate" style="display:none">
-  <h2 style="text-align:center"><span style="color:var(--accent)">Missa</span> Radar</h2>
+  <h2 style="text-align:center"><span style="color:var(--accent)">Missa</span></h2>
   <form id="loginForm">
     <input class="field" name="email" type="email" placeholder="Email" autocomplete="username" required>
     <input class="field" name="password" type="password" placeholder="Password" autocomplete="current-password" required>
@@ -81,11 +81,20 @@ export const UI_HTML = `<!doctype html>
   <div class="switch"><a id="toSignup">Sign up</a> · <a id="toLogin" style="display:none">Log in instead</a></div>
 </div>
 <footer class="tickbar" id="tickbar" style="display:none">
-  <button class="action" id="tick">Run Radar tick</button>
+  <button class="action" id="tick">Check for updates</button>
   <span id="tickinfo" class="meta"></span>
 </footer>
 <script>
 const STATUSES = ["interested","saved","preparing","draft-started","ready-to-submit","submitted","received","in-review","longlisted","shortlisted","finalist","accepted","declined","waitlisted","revision-requested","withdrawn","partially-withdrawn","delivered","archived"];
+const STATUS_LABELS = {
+  "interested": "Interested", "saved": "Saved", "preparing": "Preparing",
+  "draft-started": "Drafting", "ready-to-submit": "Ready", "submitted": "Submitted",
+  "received": "Received", "in-review": "In Review", "longlisted": "Longlisted",
+  "shortlisted": "Shortlisted", "finalist": "Finalist", "accepted": "Accepted",
+  "declined": "Declined", "waitlisted": "Waitlisted", "revision-requested": "Revision Requested",
+  "withdrawn": "Withdrawn", "partially-withdrawn": "Partially Withdrawn",
+  "delivered": "Delivered", "archived": "Archived",
+};
 let tab = 'discover', me = null, orgId = null;
 
 async function api(path, opts) {
@@ -160,7 +169,7 @@ async function renderTracker(el) {
         </div>
         <div>
           <label class="meta">my status<br>
-            <select data-opp="\${i.opportunityId}">\${STATUSES.map(st => '<option' + (st === i.myStatus ? ' selected' : '') + '>' + st + '</option>').join('')}</select>
+            <select data-opp="\${i.opportunityId}">\${STATUSES.map(st => '<option value="' + st + '"' + (st === i.myStatus ? ' selected' : '') + '>' + STATUS_LABELS[st] + '</option>').join('')}</select>
           </label>
         </div>
       </div>
@@ -177,7 +186,7 @@ async function renderTracker(el) {
     \${t.deadlines.length ? '<div class="stage"><h2>Next deadlines</h2><div class="meta">' + t.deadlines.map(i => esc(i.title) + ' — ' + i.daysToDeadline + 'd').join(' · ') + '</div></div>' : ''}
     <div class="stage"><button class="action" id="calFeedBtn">Copy calendar feed link</button> <span class="meta" id="calFeedInfo"></span></div>
     \${stage('Planning', 'planning')}\${stage('Submitted', 'submitted')}\${stage('In progress', 'in-progress')}\${stage('Outcomes', 'outcome')}\${stage('Archived', 'archived')}\`
-    || '<p>Nothing tracked yet — find something in Discover.</p>';
+    || '<p>Nothing tracked yet — find something in Opportunities.</p>';
   el.querySelectorAll('select[data-opp]').forEach(sel => sel.onchange = async () => {
     await api('/api/users/' + me.user.id + '/status', { opportunityId: sel.dataset.opp, status: sel.value });
     render();
