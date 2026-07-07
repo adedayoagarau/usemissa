@@ -10,7 +10,7 @@ export function AppNav({ email }: { email: string }) {
   const router = useRouter();
   return (
     <header className="flex items-center gap-6 border-b border-border px-6 py-3">
-      <span className="text-lg font-semibold text-foreground">Missa</span>
+      <span className="font-heading text-xl font-semibold text-foreground">Missa</span>
       <nav className="flex gap-4 text-sm">
         <Link href="/opportunities" className="text-foreground hover:text-primary">
           Opportunities

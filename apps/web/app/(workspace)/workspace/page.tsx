@@ -15,7 +15,7 @@ export default async function WorkspacePage() {
   if (session.memberships.length === 0) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
-        <h1 className="text-2xl font-semibold text-foreground">Missa Workspace</h1>
+        <h1 className="font-heading text-3xl font-medium text-foreground">Missa Workspace</h1>
         <p className="mt-2 text-muted-foreground">
           You are not a member of any organization yet. Request a claim on a listing your organization owns from
           the Opportunities tab — a domain match approves instantly, otherwise an admin reviews it.
@@ -41,9 +41,9 @@ export default async function WorkspacePage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
-      <h1 className="text-2xl font-semibold text-foreground">
+      <h1 className="font-heading text-3xl font-medium text-foreground">
         {org?.name ?? organizationId}
-        {org?.verified && <span className="ml-2 text-xs text-muted-foreground">verified</span>}
+        {org?.verified && <span className="ml-2 align-middle text-xs font-sans font-normal text-muted-foreground">verified</span>}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Public page: <Link href={`/org/${organizationId}`}>/org/{organizationId}</Link>
@@ -55,15 +55,15 @@ export default async function WorkspacePage() {
 
       <div className="mt-6 space-y-6">
         {entities.map((entity) => (
-          <div key={entity.id} className="rounded-lg border border-border bg-card p-4">
-            <h2 className="font-medium text-foreground">{entity.name}</h2>
+          <div key={entity.id} className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h2 className="font-heading text-xl font-medium text-foreground">{entity.name}</h2>
             <div className="mt-2">
               <CreateProgramForm organizationId={organizationId} entityId={entity.id} />
             </div>
             <div className="mt-4 space-y-3">
               {entity.programs.map((program) => (
-                <div key={program.id} className="rounded-md border border-border p-3">
-                  <h3 className="text-sm font-medium text-foreground">{program.name}</h3>
+                <div key={program.id} className="rounded-md border border-border bg-background p-3">
+                  <h3 className="font-heading text-base font-medium text-foreground">{program.name}</h3>
                   <div className="mt-2">
                     <CreateOpenCallForm organizationId={organizationId} programId={program.id} />
                   </div>

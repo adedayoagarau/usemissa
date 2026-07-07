@@ -67,7 +67,12 @@ export function buildIcsFeed(ctx: TrackerContext, userId: string): string {
     'VERSION:2.0',
     'PRODID:-//Missa Radar//Opportunity Deadlines//EN',
     'CALSCALE:GREGORIAN',
-    `X-WR-CALNAME:${escapeText('Missa Radar Deadlines')}`,
+    // X-WR-CALNAME is the calendar's display name in Google/Apple/Outlook
+    // Calendar's UI -- user-facing, unlike PRODID (an internal client
+    // identifier calendar apps don't surface). "Radar" stays out per
+    // docs/missa-naming-decisions.md, same fix already applied to
+    // server/ui.ts's title/h1.
+    `X-WR-CALNAME:${escapeText('Missa Deadlines')}`,
     `X-WR-CALDESC:${escapeText(`Generated ${today}`)}`,
     ...events,
     'END:VCALENDAR',

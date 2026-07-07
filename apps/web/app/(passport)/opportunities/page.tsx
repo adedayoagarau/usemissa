@@ -5,6 +5,7 @@ import { getEngine } from '@/lib/engine';
 import { opportunityView } from '@/lib/opportunityView';
 import { FitScoreBadge, TrustBadge } from '@/components/explained-score';
 import { TrackButton } from '@/components/track-button';
+import { SavedSearches } from '@/components/saved-searches';
 
 export default async function OpportunitiesPage() {
   const cookieStore = await cookies();
@@ -17,20 +18,23 @@ export default async function OpportunitiesPage() {
     .filter((o) => !o.duplicateOfId && !['archived', 'closed', 'duplicate'].includes(o.status))
     .map((o) => opportunityView(engine, o, userId))
     .sort((x, y) => (x.deadline ?? '9999').localeCompare(y.deadline ?? '9999'));
+  const profiles = [...engine.store.radarProfiles.values()].filter((p) => p.userId === userId);
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-foreground">Open opportunities</h1>
-      <div className="mt-4 space-y-3">
+      <h1 className="font-heading text-3xl font-medium text-foreground">Open opportunities</h1>
+      <SavedSearches userId={userId} profiles={profiles} />
+      <div className="mt-6 space-y-3">
         {list.map((o) => (
-          <div key={o.id} className="rounded-lg border border-border bg-card p-4">
+          <div key={o.id} className="rounded-lg border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/30">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="font-medium text-foreground">{o.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {o.organizationName ?? 'Unknown organization'} · {o.type} · deadline: {o.deadline ?? o.deadlineKind}
+                <h3 className="font-heading text-lg font-medium text-foreground">{o.title}</h3>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {o.organizationName ?? 'Unknown organization'} · {o.type} · deadline:{' '}
+                  <span className="font-mono">{o.deadline ?? o.deadlineKind}</span>
                 </p>
-                <div className="mt-1">
+                <div className="mt-2">
                   <TrustBadge trust={o.trust} />
                 </div>
                 {o.fit && (

@@ -5,3 +5,4 @@ dist/
 .vercel
 .next/
 apps/web/next-env.d.ts
+.env*.local

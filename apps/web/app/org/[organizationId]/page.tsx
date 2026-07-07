@@ -27,11 +27,11 @@ export default async function PublicOrgPage({ params }: { params: Promise<{ orga
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="text-3xl font-semibold text-foreground">{org.name}</h1>
-      <div className="mt-6 space-y-3">
+      <h1 className="font-heading text-4xl font-medium text-foreground">{org.name}</h1>
+      <div className="mt-8 space-y-3">
         {openCalls.map((call) => (
-          <div key={call.id} className="rounded-lg border border-border bg-card p-4">
-            <h2 className="font-medium text-foreground">{call.title}</h2>
+          <div key={call.id} className="rounded-lg border border-border bg-card p-5 shadow-sm">
+            <h2 className="font-heading text-lg font-medium text-foreground">{call.title}</h2>
           </div>
         ))}
         {openCalls.length === 0 && <p className="text-muted-foreground">No open calls right now.</p>}

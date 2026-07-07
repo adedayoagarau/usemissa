@@ -43,10 +43,10 @@ export function AuthForm() {
   };
 
   return (
-    <Card className="mx-auto mt-16 max-w-sm">
+    <Card className="mx-auto mt-16 max-w-sm border-border/80 shadow-sm">
       <CardHeader>
         <CardTitle className="text-center">
-          <span className="text-[var(--brand-accent)]">Missa</span>
+          <span className="font-heading text-3xl font-medium text-[var(--brand-accent)]">Missa</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
