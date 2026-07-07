@@ -21,14 +21,21 @@ export { verificationQueue } from './verification/verification.js';
 export {
   isMyStatus,
   deadlineReminders,
+  overdueResponseAlerts,
+  withdrawalSuggestionAlerts,
   REMINDER_DAYS,
   type TrackerView,
   type TrackerItem,
   type UserTrackerStats,
   type PipelineStage,
 } from './tracker/tracker.js';
+export { computeResponseStats, expectedResponseWindowDays, DEFAULT_RESPONSE_WINDOW_DAYS, type ResponseStats } from './tracker/responseStats.js';
 export { RadarServer, type RadarServerOptions } from './server/server.js';
 export { AuthError, membershipsFor, isOrgMember } from './auth/accounts.js';
-export { hashPassword, verifyPassword, createSessionToken, verifySessionToken, type SessionPayload } from './auth/crypto.js';
+export {
+  hashPassword, verifyPassword, createSessionToken, verifySessionToken, type SessionPayload,
+  createFeedToken, verifyFeedToken, type FeedTokenPayload,
+} from './auth/crypto.js';
+export { buildIcsFeed } from './tracker/calendarFeed.js';
 export { buildServerDemoWorld, type ServerDemoWorld, type DemoCredential } from './fixtures/serverDemo.js';
 export { buildDemoWorld, ManualClock } from './fixtures/seed.js';
