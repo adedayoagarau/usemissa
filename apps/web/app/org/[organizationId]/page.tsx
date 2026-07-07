@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { getEngine } from '@/lib/engine';
 import { getWorkspaceEngine } from '@/lib/workspaceEngine';
 
@@ -30,9 +31,14 @@ export default async function PublicOrgPage({ params }: { params: Promise<{ orga
       <h1 className="font-heading text-4xl font-medium text-foreground">{org.name}</h1>
       <div className="mt-8 space-y-3">
         {openCalls.map((call) => (
-          <div key={call.id} className="rounded-lg border border-border bg-card p-5 shadow-sm">
+          <Link
+            key={call.id}
+            href={`/org/${organizationId}/${call.id}`}
+            className="block rounded-lg border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/30"
+          >
             <h2 className="font-heading text-lg font-medium text-foreground">{call.title}</h2>
-          </div>
+            <span className="text-sm text-primary">View & submit →</span>
+          </Link>
         ))}
         {openCalls.length === 0 && <p className="text-muted-foreground">No open calls right now.</p>}
       </div>

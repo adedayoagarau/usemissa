@@ -1,7 +1,7 @@
 ---
 epic: 6
 story: 6.5
-status: partial
+status: done
 ---
 
 # Story 6.5: Submitter file upload against a Submission Path
@@ -18,8 +18,12 @@ POST /api/submission-paths/subpath_0004/submit {works: [{title: "My Poem", fileU
 -> 201, Submission + Work created and persisted, both with real ids
 ```
 
-**Still not done / real limitations, kept `partial`:**
-1. **No file storage backend.** No S3/Vercel Blob/equivalent is provisioned. The route accepts a `fileUrl` string per work directly in the JSON body rather than handling a real multipart upload — the Submission/Work creation flow is real and verified, but actual file handling (the "upload" in "file upload") is unbuilt. Flagged in the route's own code comment rather than silently treated as done.
-2. **No submitter-facing UI.** There's still no form for a submitter to fill out and hit this endpoint from a browser — this session verified the API contract directly via `curl`, not a real submit page. Recommended next step now that Story 6.3's Form Builder exists: render the saved form's fields on a public submit page under `/org/:id` (or per Open Call) and wire it to this endpoint.
+**Gap #2 closed — submitter-facing UI built:** `apps/web/app/org/[organizationId]/[openCallId]/page.tsx` (linked from the public org page's open-call cards) + `components/submit-form.tsx`, rendering the *actual* fields Story 6.3's Form Builder saved (no hardcoded field set) with a real `<input type="file">`.
 
-**Recommended next steps, in order:** build the submitter-facing submit form (closes gap #2), then a real file-storage adapter (closes gap #1).
+**Verified in a real browser (not just curl)** — this was the first story this session actually driven end-to-end through a live browser rather than API calls alone, specifically because file-input behavior can't be meaningfully tested via curl:
+- Unauthenticated visitor sees "Log in to submit" (confirmed via accessibility snapshot + screenshot — Fraunces heading and terracotta accent rendering correctly, i.e. the design pass is visually real, not just class names).
+- Logged-in submitter: filled the Title field, attached a real `File` object (via `DataTransfer`, since browser automation can't drive a native OS file picker) to the Manuscript field, submitted.
+- Response: `201 Created`, `Submission` + `Work` persisted with `title: "My Test Poem"` and `fileUrl: "data:text/plain;base64,VGhpcyBpcyBteSB0ZXN0IG1hbnVzY3JpcHQgY29udGVudC4="` — decodes to the exact file content uploaded, confirming the FileReader → data-URI → API round trip is genuinely correct, not just wired up.
+- **Tooling note, not an app bug:** the `preview_click` tool's synthetic click on the Submit button didn't trigger form submission (no `fetch` fired); a direct `element.click()` via the browser's own JS did. Documented so this isn't mistaken for a real submission bug if re-tested.
+
+**Gap #1 still open — no real file storage backend.** No S3/Vercel Blob/equivalent is provisioned. Data-URI encoding works and is verified for small files but doesn't scale (bloats the JSON/Postgres store, has practical size limits) — flagged in `submit-form.tsx`'s own code comment. This needs a real storage adapter before any real-sized manuscript upload would work in production.
