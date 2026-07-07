@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
-import { StatusPipelineBoard } from '@/components/status-pipeline-board';
+import { TrackerViewSwitcher } from '@/components/tracker-view-switcher';
 import { CalendarFeedButton } from '@/components/calendar-feed-button';
 
 export default async function TrackerPage() {
@@ -14,6 +14,7 @@ export default async function TrackerPage() {
   const engine = await getEngine();
   const view = engine.getTracker(userId);
   const { stats } = view;
+  const allItems = Object.values(view.pipeline).flat();
 
   return (
     <div>
@@ -49,7 +50,9 @@ export default async function TrackerPage() {
       {stats.tracked === 0 ? (
         <p className="mt-6 text-muted-foreground">Nothing tracked yet — find something in Opportunities.</p>
       ) : (
-        <StatusPipelineBoard userId={userId} pipeline={view.pipeline} />
+        <div className="mt-6">
+          <TrackerViewSwitcher userId={userId} pipeline={view.pipeline} allItems={allItems} />
+        </div>
       )}
     </div>
   );

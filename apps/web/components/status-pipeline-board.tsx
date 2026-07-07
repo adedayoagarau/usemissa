@@ -1,5 +1,4 @@
-import { FitScoreBadge } from '@/components/explained-score';
-import { StatusSelect } from '@/components/status-select';
+import { TrackerItemRow } from '@/components/tracker-item-row';
 import type { TrackerItem, PipelineStage } from '@missa/radar-engine';
 
 const STAGE_LABEL: Record<PipelineStage, string> = {
@@ -38,30 +37,7 @@ export function StatusPipelineBoard({
             </h2>
             <div className="mt-2 space-y-2">
               {items.map((item) => (
-                <div
-                  key={item.opportunityId}
-                  className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4 shadow-sm"
-                >
-                  <div>
-                    <h3 className="font-heading text-base font-medium text-foreground">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {item.organizationName ?? ''} · opportunity: {item.opportunityStatus}
-                      {item.deadline ? (
-                        <>
-                          {' '}
-                          · deadline <span className="font-mono">{item.deadline}</span> ({item.daysToDeadline}d)
-                        </>
-                      ) : (
-                        ''
-                      )}
-                      {item.daysOverdue ? ` · ${item.daysOverdue}d past their usual response time` : ''}
-                    </p>
-                    <div className="mt-1">
-                      <FitScoreBadge fit={item.fit} />
-                    </div>
-                  </div>
-                  <StatusSelect userId={userId} opportunityId={item.opportunityId} value={item.myStatus} />
-                </div>
+                <TrackerItemRow key={item.opportunityId} userId={userId} item={item} />
               ))}
             </div>
           </div>

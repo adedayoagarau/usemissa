@@ -56,6 +56,10 @@ test('tracker view: pipeline stages, deadline ordering, personal stats', async (
   assert.equal(view.stats.awaitingResponse, 1);
   assert.equal(view.stats.declined, 1);
   assert.equal(view.stats.acceptanceRate, 0);
+  // TrackerItem.type (added for apps/web's Tracker "Type" view) should carry
+  // the opportunity's real type through, not be dropped.
+  assert.equal(view.pipeline.planning[0].type, magazine.fields.type);
+  assert.equal(view.pipeline.submitted[0].type, grant.fields.type);
 });
 
 test('deadline reminder ladder fires at 7/3/1 days and stops after submission', async () => {

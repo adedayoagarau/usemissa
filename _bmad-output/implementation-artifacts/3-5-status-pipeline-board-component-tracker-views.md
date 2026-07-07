@@ -1,7 +1,7 @@
 ---
 epic: 3
 story: 3.5
-status: partial
+status: done
 ---
 
 # Story 3.5: Status Pipeline Board component + Tracker views
@@ -27,3 +27,11 @@ GET /api/users/user_0001/tracker -> pipeline.submitted contains the item with co
 **Addendum — re-verified after the globalThis singleton fix (see `bugfix-globalthis-singleton.md`):** the original verification above only exercised the `/api/users/:id/tracker` *route*, not the `/tracker` *page*. A cross-cutting bug (found later, while building Epic 6) meant a plain module-level singleton didn't reliably share state between Route Handlers and Page Server Components — so the page specifically was never actually confirmed to reflect a track/status change until the fix landed. Re-tested after the fix: `POST .../track` → `POST .../status` → `GET /tracker` (the page) now correctly shows the item in the Pipeline view with the right status. This story's `done`-adjacent claims are now fully page-level verified, not just API-level.
 
 **Addendum 2 — calendar feed (FR25) wired in:** added `apps/web/app/api/users/[id]/calendar-token/route.ts` and `.../calendar.ics/route.ts` (mirroring `RadarServer`'s existing token-scoped feed pattern exactly — a calendar app subscribes to a URL and can't log in with a session cookie, so this uses `createFeedToken`/`verifyFeedToken`, not the session cookie), plus a `CalendarFeedButton` client component on the Tracker page ("Copy calendar feed link"). Verified: token issuance, a valid token returning real ICS content (`BEGIN:VCALENDAR`/`X-WR-CALNAME`/etc.), and an invalid token correctly 401ing. Also found and fixed a vocabulary leak while testing this: `X-WR-CALNAME` (the calendar's *display name* in Google/Apple/Outlook Calendar's UI — user-facing, unlike `PRODID` which calendar apps don't surface) read "Missa Radar Deadlines" — fixed to "Missa Deadlines" in `packages/radar-engine/src/tracker/calendarFeed.ts`, same class of leak as the `server/ui.ts` title/h1 fix from Story 1.2.
+
+**Addendum 3 — remaining view modes closed out, status moved to `done`:** built `components/tracker-view-switcher.tsx` (shadcn `Tabs`) adding four of the five missing views client-side, re-grouping the same already-fetched `TrackerView` data (no new API calls): **Calendar** (deadline-sorted, pre-submission-only semantics kept from `view.deadlines`'s original intent but applied to all deadline-bearing items), **Types**, **Organizations**, **List**. Extracted the row rendering into a shared `TrackerItemRow` (used by every view, including the original `StatusPipelineBoard`, which Epic 7 still reuses for the org-facing Submissions inbox).
+
+Along the way, found `TrackerItem` (the domain type itself, in `packages/radar-engine/src/tracker/tracker.ts`) was **missing a `type` field** — `organizationName` and `deadline` were present for the Organization/Deadline views but the opportunity's type (grant/magazine/contest/etc.) needed for the Types view wasn't. Added it (`type: opp.fields.type` in `toItem()`), a small additive change to a public exported interface — verified no existing test broke (all 44 `radar-engine` tests still pass) and added a new assertion confirming the field carries the real value through.
+
+**Explicitly not implemented — "Work-Based View"** (the fifth view in `docs/missa-naming-decisions.md`'s Tracker views table): this requires linking a tracked opportunity to a specific creative Work the user submitted, which depends on the Library feature (Epic 5, not built) existing first — `TrackedOpportunity` has no work reference to group by today. Approximating it against opportunity data alone would misrepresent what the view is supposed to mean, so it's left out with this explanation rather than faked. Recommended to revisit once Epic 5 (Library) ships.
+
+Verified in the running app: all five tab labels (Pipeline/Calendar/Types/Organizations/List) render on the Tracker page with a real tracked item.

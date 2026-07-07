@@ -3,6 +3,7 @@ import type {
   FitScore,
   MyStatus,
   Opportunity,
+  OpportunityType,
   TrackedOpportunity,
   UserProfile,
 } from '../domain/types.js';
@@ -77,6 +78,10 @@ export interface TrackerItem {
   opportunityId: string;
   title: string;
   organizationName?: string;
+  /** Added for apps/web's Tracker "Type" view (Story 3.5) -- organizationName
+   * and deadline were already here for the Organization/Deadline views, type
+   * was missing. */
+  type: OpportunityType;
   opportunityStatus: string;
   myStatus: MyStatus;
   deadline?: string;
@@ -137,6 +142,7 @@ function toItem(ctx: TrackerContext, user: UserProfile, tracked: TrackedOpportun
     opportunityId: opp.id,
     title: opp.fields.title,
     organizationName: opp.fields.organizationName,
+    type: opp.fields.type,
     opportunityStatus: displayStatus(opp),
     myStatus: tracked.myStatus,
     deadline: deadline.date,
