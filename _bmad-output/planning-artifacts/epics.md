@@ -100,20 +100,20 @@ So that all subsequent Passport/Workspace UI stories have a real place to live.
 **And** shadcn/ui is installed and themed with the color/type tokens from the UX spec's Design System Foundation section
 **And** the app deploys successfully to a new Vercel target (subdomain or preview URL — final production domain wiring is a later, user-owned step per the architecture doc's open question).
 
-### Story 1.3: Scaffold `packages/workspace-engine` with the Submission/Work domain model
+### Story 1.3: Scaffold `packages/workspace-engine` with the Submission/Work domain *types* (no DB migration yet)
 
 As a developer,
-I want the Entity/Program/OpenCall/SubmissionPath/Submission/Work domain types and Drizzle schema defined before any Workspace feature is built on top of them,
-So that the item-level (Work) decision model the PRD flags as a hard-to-reverse risk is decided correctly from the start.
+I want the Entity/Program/OpenCall/SubmissionPath/Submission/Work TypeScript domain types decided and written down before any Workspace feature is built on top of them,
+So that the item-level (Work) decision model the PRD flags as a hard-to-reverse risk is decided correctly from the start — **without** front-loading every database table before any story actually needs it.
 
 **Acceptance Criteria:**
 
 **Given** a new `packages/workspace-engine` package
 **When** `src/domain/types.ts` is written
-**Then** it defines `Entity` (Team), `Program`, `OpenCall` (with optional `radarOpportunityId`), `SubmissionPath`, `Submission`, `Work` (one-to-many under Submission), `ReviewRound`, `ReviewAssignment`, `Decision` (attached to a `Work`, not only a `Submission`), and `DeliveryTask`
-**And** `src/db/schema.ts` defines the corresponding Drizzle Postgres schema using `snake_case` table/column names matching the existing `postgresSchema.sql` convention
-**And** a test file exists asserting the schema can be pushed to a test Postgres instance and round-trips a minimal Entity → Program → OpenCall → Submission → Work chain
-**And** the package has zero imports from itself back into `radar-engine` in the reverse direction (only `radar-engine` → nothing; `workspace-engine` → `radar-engine` types allowed).
+**Then** it defines the full domain as TypeScript interfaces only (no database migration in this story): `Entity` (Team), `Program`, `OpenCall` (with optional `radarOpportunityId`), `SubmissionPath`, `Submission`, `Work` (one-to-many under Submission), `ReviewRound`, `ReviewAssignment`, `Decision` (attached to a `Work`, not only a `Submission`), and `DeliveryTask`
+**And** the package has zero imports from itself back into `radar-engine` in the reverse direction (only `radar-engine` → nothing; `workspace-engine` → `radar-engine` types allowed)
+**And** a short ADR-style comment block in `types.ts` records *why* Decision/DeliveryTask attach to Work and not Submission, so this doesn't need re-litigating in Epic 8
+**And** each subsequent epic's first story creates only the Drizzle table(s) it actually needs (Story 6.1 → `entities`/`programs`; 6.2 → `open_calls`; 6.3 → `submission_paths`; 6.5 → `submissions`/`works`; 7.2 → `review_rounds`/`review_assignments`; 8.1 → `decisions`; 8.3 → `delivery_tasks`) — this story does **not** create `src/db/schema.ts` itself.
 
 ### Story 1.4: Wire Postgres as the default runtime store for Radar
 
@@ -390,7 +390,8 @@ So that I have somewhere to hang Open Calls (FR40).
 **Given** a logged-in user with an `OrgMembership`
 **When** they create a Team (labeled "Team" in UI, `entity` in schema per the naming doc) and a Program under it
 **Then** both are persisted via `workspace-engine` and scoped to their Organization
-**And** the naming used in the UI never says "Entity" — only "Team" (with per-institution relabeling reserved for Epic 11).
+**And** the naming used in the UI never says "Entity" — only "Team" (with per-institution relabeling reserved for Epic 11)
+**And** this story adds the `entities` and `programs` tables to `workspace-engine/src/db/schema.ts` (the first Drizzle tables in the package — no schema file existed before this story).
 
 ### Story 6.2: Open Call creation, optionally linked to a claimed Radar listing
 
@@ -403,7 +404,8 @@ So that Workspace works even for organizations Radar hasn't discovered yet (FR40
 **Given** a Program from Story 6.1
 **When** an admin creates an Open Call
 **Then** they can optionally link it to one of their already-claimed Radar Opportunities (setting `radarOpportunityId`), or create it standalone with no Radar linkage
-**And** a standalone Open Call does not appear in Radar's public Discover feed (it's Workspace-only until/unless independently discovered and claimed — this story does not add new Radar-side discovery logic).
+**And** a standalone Open Call does not appear in Radar's public Discover feed (it's Workspace-only until/unless independently discovered and claimed — this story does not add new Radar-side discovery logic)
+**And** this story adds the `open_calls` table to `workspace-engine/src/db/schema.ts`.
 
 ### Story 6.3: Submission Path / Form Builder v1
 
@@ -416,7 +418,8 @@ So that submitters see the right fields without me writing custom code (FR41).
 **Given** an Open Call from Story 6.2
 **When** an admin uses the Form Builder to add/remove/reorder fields from a predefined set (text, file upload, category/genre select, fee toggle) and defines one or more categories
 **Then** a `SubmissionPath` is created and persisted
-**And** the UI never shows the term "Submission Path" — submitters and admins see "form" and "categories" per the naming decision doc.
+**And** the UI never shows the term "Submission Path" — submitters and admins see "form" and "categories" per the naming decision doc
+**And** this story adds the `submission_paths` table to `workspace-engine/src/db/schema.ts`.
 
 ### Story 6.4: Public organization page
 
@@ -442,7 +445,8 @@ So that I can actually submit through Missa rather than just discovering the cal
 **Given** a published Submission Path from Story 6.3
 **When** a submitter fills the form and uploads required files
 **Then** a `Submission` (with one or more `Work` records, per the item-level decision model) is created and appears in the organization's admin inbox (built in Epic 7)
-**And** the submitter sees a confirmation and the new Submission in their own Tracker.
+**And** the submitter sees a confirmation and the new Submission in their own Tracker
+**And** this story adds the `submissions` and `works` tables to `workspace-engine/src/db/schema.ts`.
 
 ---
 
@@ -474,7 +478,8 @@ So that review work is distributed rather than falling to one person (FR45).
 **Given** the admin inbox from Story 7.1 and at least one other org member
 **When** an admin creates a `ReviewRound` and assigns a `ReviewAssignment` to a member
 **Then** the assigned reviewer sees only their assigned Submissions in a dedicated Reviewer view
-**And** an admin can reassign or add additional reviewers to the same round.
+**And** an admin can reassign or add additional reviewers to the same round
+**And** this story adds the `review_rounds` and `review_assignments` tables to `workspace-engine/src/db/schema.ts`.
 
 ### Story 7.3: Basic rubric and review recording
 
@@ -506,7 +511,8 @@ So that a multi-piece packet can have some Works accepted and others declined (F
 **Given** a Submission with multiple Works and completed reviews from Epic 7
 **When** an admin records a Decision (Accepted/Declined/Waitlisted) on each Work individually
 **Then** each Decision is persisted against its specific Work, and the Submission's own status reflects a summary (e.g. "Partially accepted") derived from its Works' decisions, not hand-set
-**And** every Decision is written to the extended audit log (who decided what, when).
+**And** every Decision is written to the extended audit log (who decided what, when)
+**And** this story adds the `decisions` table to `workspace-engine/src/db/schema.ts`.
 
 ### Story 8.2: Decision email templates and bulk send
 
@@ -532,7 +538,8 @@ So that acceptance doesn't mean the process is actually finished (FR48).
 **Given** an accepted Work from Story 8.1
 **When** the system creates a `DeliveryTask` for it
 **Then** the admin sees it in a Delivery view, relabeled per vertical where configured (Awards/Publication/Selections, per the naming decision doc)
-**And** marking a Delivery task complete updates its status and is visible to the affected submitter in their own Tracker.
+**And** marking a Delivery task complete updates its status and is visible to the affected submitter in their own Tracker
+**And** this story adds the `delivery_tasks` table to `workspace-engine/src/db/schema.ts`.
 
 ---
 
