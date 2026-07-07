@@ -2,6 +2,7 @@ import type { ClaimRequest, Opportunity, OpportunityFields } from '../domain/typ
 import type { Clock, IdGenerator } from '../ports.js';
 import type { RadarStore } from '../store/store.js';
 import { matchOrganizationByDomain } from '../alerts/alerts.js';
+import { grantOrgMembership } from '../auth/accounts.js';
 
 export interface ClaimContext {
   store: RadarStore;
@@ -18,6 +19,7 @@ export function requestClaim(
   ctx: ClaimContext,
   opportunityId: string,
   organizationId: string,
+  /** The requesting Account's id when known — approval grants that account org membership. A free-text label (e.g. from a script/demo) is also accepted; it just won't unlock membership. */
   requestedBy: string,
 ): ClaimRequest {
   const opp = ctx.store.opportunities.get(opportunityId);
@@ -71,6 +73,12 @@ export function approveClaim(ctx: ClaimContext, claimId: string, decidedBy: stri
   opp.fields.organizationId = claim.organizationId;
   const org = ctx.store.organizations.get(claim.organizationId);
   if (org) opp.fields.organizationName = org.name;
+
+  // If the claim came from a real logged-in account, approval is how they
+  // first become a member of the organization's Workspace.
+  if (ctx.store.accounts.has(claim.requestedBy)) {
+    grantOrgMembership(ctx, claim.requestedBy, claim.organizationId, 'admin');
+  }
 
   // Resolve any open review task for this claim.
   for (const task of ctx.store.verificationTasks.values()) {

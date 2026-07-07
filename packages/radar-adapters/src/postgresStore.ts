@@ -109,6 +109,24 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
       await client.query('insert into radar_emitted_alert_keys (key) values ($1)', [key]);
     }
 
+    await client.query('delete from radar_accounts');
+    for (const a of store.accounts.values()) {
+      await client.query('insert into radar_accounts (id, email, data) values ($1, $2, $3)', [a.id, a.email, a]);
+    }
+
+    await client.query('delete from radar_memberships');
+    for (const m of store.memberships) {
+      await client.query(
+        'insert into radar_memberships (account_id, organization_id, data) values ($1, $2, $3)',
+        [m.accountId, m.organizationId, m],
+      );
+    }
+
+    await client.query('delete from radar_audit_log');
+    for (const entry of store.auditLog) {
+      await client.query('insert into radar_audit_log (id, at, data) values ($1, $2, $3)', [entry.id, entry.at, entry]);
+    }
+
     await client.query('commit');
   } catch (err) {
     await client.query('rollback');
@@ -121,23 +139,28 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
 export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
   const store = createStore();
 
-  const [sources, snapshots, opportunities, versions, changes, organizations, claims, verificationTasks, profiles, users, follows, tracked, alerts, alertKeys] =
-    await Promise.all([
-      pool.query('select data from radar_sources'),
-      pool.query('select data from radar_snapshots'),
-      pool.query('select data from radar_opportunities'),
-      pool.query('select data from radar_opportunity_versions'),
-      pool.query('select data from radar_opportunity_changes'),
-      pool.query('select data from radar_organizations'),
-      pool.query('select data from radar_claims'),
-      pool.query('select data from radar_verification_tasks'),
-      pool.query('select data from radar_profiles'),
-      pool.query('select data from radar_users'),
-      pool.query('select data from radar_follows'),
-      pool.query('select data from radar_tracked'),
-      pool.query('select data from radar_alerts'),
-      pool.query('select key from radar_emitted_alert_keys'),
-    ]);
+  const [
+    sources, snapshots, opportunities, versions, changes, organizations, claims, verificationTasks,
+    profiles, users, follows, tracked, alerts, alertKeys, accounts, memberships, auditLog,
+  ] = await Promise.all([
+    pool.query('select data from radar_sources'),
+    pool.query('select data from radar_snapshots'),
+    pool.query('select data from radar_opportunities'),
+    pool.query('select data from radar_opportunity_versions'),
+    pool.query('select data from radar_opportunity_changes'),
+    pool.query('select data from radar_organizations'),
+    pool.query('select data from radar_claims'),
+    pool.query('select data from radar_verification_tasks'),
+    pool.query('select data from radar_profiles'),
+    pool.query('select data from radar_users'),
+    pool.query('select data from radar_follows'),
+    pool.query('select data from radar_tracked'),
+    pool.query('select data from radar_alerts'),
+    pool.query('select key from radar_emitted_alert_keys'),
+    pool.query('select data from radar_accounts'),
+    pool.query('select data from radar_memberships'),
+    pool.query('select data from radar_audit_log order by at asc'),
+  ]);
 
   for (const row of sources.rows) store.sources.set(row.data.id, row.data);
   for (const row of snapshots.rows) store.snapshots.set(row.data.id, row.data);
@@ -153,6 +176,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
   store.tracked = tracked.rows.map((r) => r.data);
   for (const row of alerts.rows) store.alerts.set(row.data.id, row.data);
   store.emittedAlertKeys = new Set(alertKeys.rows.map((r) => r.key));
+  for (const row of accounts.rows) store.accounts.set(row.data.id, row.data);
+  store.memberships = memberships.rows.map((r) => r.data);
+  store.auditLog = auditLog.rows.map((r) => r.data);
 
   return store;
 }

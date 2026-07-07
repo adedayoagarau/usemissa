@@ -1,5 +1,7 @@
 import type {
+  Account,
   Alert,
+  AuditEntry,
   ChangeKind,
   FitScore,
   MatchCriteria,
@@ -11,16 +13,21 @@ import type {
   OpportunityCycle,
   OpportunityFields,
   Organization,
+  OrgMembership,
+  OrgRole,
   PageSnapshot,
   RadarProfile,
   Source,
   SourceKind,
+  UserAttributes,
   UserProfile,
   VerificationTask,
 } from './domain/types.js';
 import type { Clock, Extractor, Fetcher, IdGenerator } from './ports.js';
 import { sequentialIds, systemClock } from './ports.js';
 import { createStore, type RadarStore, changesFor } from './store/store.js';
+import { grantOrgMembership, isOrgMember, logIn, membershipsFor, signUp } from './auth/accounts.js';
+import { recordAudit } from './auth/audit.js';
 import { dueSources } from './ingestion/scheduler.js';
 import { contentHash } from './ingestion/snapshot.js';
 import { DeterministicExtractor } from './extraction/extractor.js';
@@ -178,6 +185,43 @@ export class RadarEngine {
 
   archiveOpportunity(opportunityId: string): void {
     this.mustGet(opportunityId).status = 'archived';
+  }
+
+  // ── Auth API ──────────────────────────────────────────────────────
+  // The scoped permission model, minimal version: Account -> optional
+  // UserProfile (their tracker) + OrgMemberships (which orgs they can act
+  // for). Enterprise SSO/SCIM (WorkOS) sits in front of this later; it
+  // does not replace it — see docs/missa-strategy.md §8.
+
+  signUp(email: string, password: string, displayName: string, genres: string[] = [], attributes: UserAttributes = {}) {
+    return signUp(this.ctx, email, password, displayName, genres, attributes);
+  }
+
+  logIn(email: string, password: string): Account {
+    return logIn(this.ctx, email, password);
+  }
+
+  grantOrgMembership(accountId: string, organizationId: string, role: OrgRole): OrgMembership {
+    return grantOrgMembership(this.ctx, accountId, organizationId, role);
+  }
+
+  membershipsFor(accountId: string): OrgMembership[] {
+    return membershipsFor(this.store, accountId);
+  }
+
+  isOrgMember(accountId: string, organizationId: string): boolean {
+    return isOrgMember(this.store, accountId, organizationId);
+  }
+
+  recordAudit(accountId: string | undefined, action: string, targetType: string, targetId: string, detail?: string): AuditEntry {
+    return recordAudit(this.ctx, accountId, action, targetType, targetId, detail);
+  }
+
+  /** Seeding/ops only — there is no self-serve path to platform admin. */
+  promoteToAdmin(accountId: string): void {
+    const account = this.store.accounts.get(accountId);
+    if (!account) throw new Error(`Unknown account: ${accountId}`);
+    account.isAdmin = true;
   }
 
   // ── The tick: full pipeline ──────────────────────────────────────

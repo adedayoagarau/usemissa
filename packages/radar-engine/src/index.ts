@@ -28,5 +28,7 @@ export {
   type PipelineStage,
 } from './tracker/tracker.js';
 export { RadarServer, type RadarServerOptions } from './server/server.js';
-export { buildServerDemoWorld } from './fixtures/serverDemo.js';
+export { AuthError, membershipsFor, isOrgMember } from './auth/accounts.js';
+export { hashPassword, verifyPassword, createSessionToken, verifySessionToken, type SessionPayload } from './auth/crypto.js';
+export { buildServerDemoWorld, type ServerDemoWorld, type DemoCredential } from './fixtures/serverDemo.js';
 export { buildDemoWorld, ManualClock } from './fixtures/seed.js';

@@ -1,13 +1,16 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type {
+  Account,
   Alert,
+  AuditEntry,
   ClaimRequest,
   Opportunity,
   OpportunityChange,
   OpportunityVersion,
   Organization,
   OrganizationFollow,
+  OrgMembership,
   PageSnapshot,
   RadarProfile,
   Source,
@@ -37,6 +40,9 @@ export interface RadarStore {
   alerts: Map<string, Alert>;
   /** Alert dedup keys already emitted (e.g. "closing-soon:user_1:opp_1"). */
   emittedAlertKeys: Set<string>;
+  accounts: Map<string, Account>;
+  memberships: OrgMembership[];
+  auditLog: AuditEntry[];
 }
 
 export function createStore(): RadarStore {
@@ -55,6 +61,9 @@ export function createStore(): RadarStore {
     tracked: [],
     alerts: new Map(),
     emittedAlertKeys: new Set(),
+    accounts: new Map(),
+    memberships: [],
+    auditLog: [],
   };
 }
 
@@ -73,6 +82,9 @@ interface SerializedStore {
   tracked: TrackedOpportunity[];
   alerts: Alert[];
   emittedAlertKeys: string[];
+  accounts: Account[];
+  memberships: OrgMembership[];
+  auditLog: AuditEntry[];
 }
 
 export function saveStore(store: RadarStore, filePath: string): void {
@@ -91,6 +103,9 @@ export function saveStore(store: RadarStore, filePath: string): void {
     tracked: store.tracked,
     alerts: [...store.alerts.values()],
     emittedAlertKeys: [...store.emittedAlertKeys],
+    accounts: [...store.accounts.values()],
+    memberships: store.memberships,
+    auditLog: store.auditLog,
   };
   mkdirSync(dirname(filePath), { recursive: true });
   writeFileSync(filePath, JSON.stringify(data, null, 2));
@@ -114,6 +129,9 @@ export function loadStore(filePath: string): RadarStore {
   store.tracked = data.tracked;
   for (const a of data.alerts) store.alerts.set(a.id, a);
   store.emittedAlertKeys = new Set(data.emittedAlertKeys);
+  for (const a of data.accounts ?? []) store.accounts.set(a.id, a);
+  store.memberships = data.memberships ?? [];
+  store.auditLog = data.auditLog ?? [];
   return store;
 }
 

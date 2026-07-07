@@ -13,10 +13,25 @@ function prose(iso: string): string {
   return `${MONTHS[m - 1]} ${d}, ${y}`;
 }
 
+export interface DemoCredential {
+  email: string;
+  password: string;
+  accountId: string;
+}
+
 export interface ServerDemoWorld {
   engine: RadarEngine;
   fetcher: FixtureFetcher;
   userIds: { ada: string; ben: string };
+  organizationIds: { northRiver: string; hilltop: string };
+  /** Seeded login credentials, for the CLI to print and tests to log in with. */
+  credentials: {
+    ada: DemoCredential;
+    ben: DemoCredential;
+    /** Represents North River Review — its domain-matched claim auto-approves. */
+    northRiverRep: DemoCredential;
+    admin: DemoCredential;
+  };
 }
 
 /**
@@ -95,20 +110,36 @@ Contact: residency@stonebrook.example`,
   );
   engine.addSource({ name: 'Stonebrook Arts Center', url: 'https://stonebrook.example/residency', kind: 'organization-website' });
 
-  const ada = engine.addUser({
-    displayName: 'Ada',
-    genres: ['poetry', 'fiction'],
-    attributes: { 'career-stage': 'emerging' },
+  const adaPassword = 'poetry-and-fiction';
+  const { account: adaAccount, user: ada } = engine.signUp('ada@example.com', adaPassword, 'Ada', ['poetry', 'fiction'], {
+    'career-stage': 'emerging',
   });
   engine.createRadarProfile(ada.id, 'No-fee poetry & fiction', { genres: ['poetry', 'fiction'], noFeeOnly: true });
   engine.followOrganization(ada.id, northRiver.id);
 
-  const ben = engine.addUser({
-    displayName: 'Ben',
-    genres: ['documentary'],
-    attributes: { 'premiere-status': 'regional-premiere' },
+  const benPassword = 'documentary-films';
+  const { account: benAccount, user: ben } = engine.signUp('ben@example.com', benPassword, 'Ben', ['documentary'], {
+    'premiere-status': 'regional-premiere',
   });
   engine.createRadarProfile(ben.id, 'Film festivals under $50', { types: ['festival'], maxFeeCents: 5000 });
 
-  return { engine, fetcher, userIds: { ada: ada.id, ben: ben.id } };
+  const repPassword = 'north-river-editor';
+  const { account: repAccount } = engine.signUp('editor@northriverreview.org', repPassword, 'North River Editor');
+
+  const adminPassword = 'radar-admin-seed';
+  const { account: adminAccount } = engine.signUp('admin@missa.dev', adminPassword, 'Missa Admin');
+  engine.promoteToAdmin(adminAccount.id);
+
+  return {
+    engine,
+    fetcher,
+    userIds: { ada: ada.id, ben: ben.id },
+    organizationIds: { northRiver: northRiver.id, hilltop: hilltop.id },
+    credentials: {
+      ada: { email: 'ada@example.com', password: adaPassword, accountId: adaAccount.id },
+      ben: { email: 'ben@example.com', password: benPassword, accountId: benAccount.id },
+      northRiverRep: { email: 'editor@northriverreview.org', password: repPassword, accountId: repAccount.id },
+      admin: { email: 'admin@missa.dev', password: adminPassword, accountId: adminAccount.id },
+    },
+  };
 }

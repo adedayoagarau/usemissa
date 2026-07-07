@@ -146,17 +146,24 @@ async function serve(args: string[]): Promise<void> {
     await engine.tick();
 
     // Give the Workspace and Admin tabs something to show: one auto-approved
-    // claim (domain match) and one pending manual-review claim from an
-    // unrelated organization.
-    const northRiver = [...engine.store.organizations.values()].find((o) => o.name === 'North River Review');
+    // claim (domain match — grants the North River rep account membership),
+    // and one pending manual-review claim from an unrelated organization.
     const magazine = [...engine.store.opportunities.values()].find((o) => o.fields.title.startsWith('North River'));
-    if (northRiver && magazine) engine.requestClaim(magazine.id, northRiver.id, 'editor@northriverreview.org');
+    if (magazine) engine.requestClaim(magazine.id, world.organizationIds.northRiver, world.credentials.northRiverRep.accountId);
 
     const outsideOrg = engine.addOrganization({ name: 'Regional Arts Alliance', domains: ['regionalartsalliance.example'], verified: false });
+    const outsidePassword = 'regional-arts-partner';
+    const { account: outsideAccount } = engine.signUp('partnerships@regionalartsalliance.example', outsidePassword, 'Regional Arts Partner');
     const festival = [...engine.store.opportunities.values()].find((o) => o.fields.title.startsWith('Lantern'));
-    if (festival) engine.requestClaim(festival.id, outsideOrg.id, 'partnerships@regionalartsalliance.example');
+    if (festival) engine.requestClaim(festival.id, outsideOrg.id, outsideAccount.id);
 
     console.log(`Seeded demo world: ${engine.store.opportunities.size} opportunities, ${engine.store.users.size} users.`);
+    console.log('Demo logins (email / password):');
+    console.log(`  ${world.credentials.ada.email} / ${world.credentials.ada.password}  (tracker: Ada)`);
+    console.log(`  ${world.credentials.ben.email} / ${world.credentials.ben.password}  (tracker: Ben)`);
+    console.log(`  ${world.credentials.northRiverRep.email} / ${world.credentials.northRiverRep.password}  (Workspace: North River Review)`);
+    console.log(`  partnerships@regionalartsalliance.example / ${outsidePassword}  (Workspace: pending claim, not yet a member)`);
+    console.log(`  ${world.credentials.admin.email} / ${world.credentials.admin.password}  (Admin console)`);
   } else {
     engine = new RadarEngine({ store: loadStore(dataPath), fetcher: new HttpFetcher() });
   }
@@ -166,6 +173,7 @@ async function serve(args: string[]): Promise<void> {
     port,
     persistPath: useDemo ? undefined : dataPath,
     tickIntervalMs: tickMinutes > 0 ? tickMinutes * 60_000 : undefined,
+    sessionSecret: opt('session-secret') ?? process.env.MISSA_SESSION_SECRET,
   });
   const boundPort = await server.start();
   console.log(`Missa Radar serving the user loop at http://localhost:${boundPort}`);

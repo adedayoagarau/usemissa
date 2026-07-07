@@ -1,20 +1,42 @@
+import { randomBytes } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { MatchCriteria, Opportunity } from '../domain/types.js';
+import type { Account, MatchCriteria, Opportunity } from '../domain/types.js';
 import type { RadarEngine } from '../engine.js';
-import { saveStore } from '../store/store.js';
+import { saveStore, type RadarStore } from '../store/store.js';
 import { fitScore } from '../matching/fit.js';
 import { buildInboxDigest } from '../alerts/alerts.js';
 import { isMyStatus } from '../tracker/tracker.js';
+import { AuthError } from '../auth/accounts.js';
+import { createSessionToken, verifySessionToken } from '../auth/crypto.js';
 import { UI_HTML } from './ui.js';
+
+const SESSION_COOKIE = 'missa_session';
+const SESSION_TTL_MS = 30 * 24 * 3_600_000;
 
 export interface RadarServerOptions {
   engine: RadarEngine;
   port?: number;
   /** When set, the store is saved here after every mutation and tick. */
   persistPath?: string;
+  /**
+   * Called (fire-and-forget) after every mutation and tick, in addition to
+   * persistPath — this is how a production adapter (e.g. Postgres) hooks in
+   * without RadarServer knowing anything about it. Concurrent calls are not
+   * queued or locked; each does a full read-whole/write-whole save, same as
+   * persistPath, so this is a "Now" mechanism, not a guarantee under heavy
+   * concurrent write load.
+   */
+  onPersist?: (store: RadarStore) => void | Promise<void>;
   /** When set, the engine ticks automatically on this interval. */
   tickIntervalMs?: number;
+  /**
+   * Secret used to sign session cookies. If omitted, a random one is
+   * generated at startup — fine for a demo, but every existing session is
+   * invalidated on restart. Set this (e.g. from a MISSA_SESSION_SECRET env
+   * var) for anything longer-lived than a demo.
+   */
+  sessionSecret?: string;
 }
 
 interface JsonError extends Error {
@@ -39,25 +61,52 @@ async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> 
   }
 }
 
+function parseCookies(header: string | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!header) return out;
+  for (const part of header.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx < 0) continue;
+    const key = part.slice(0, idx).trim();
+    if (key) out[key] = decodeURIComponent(part.slice(idx + 1).trim());
+  }
+  return out;
+}
+
 /**
  * The user-loop HTTP surface: discover → track → my-status pipeline → inbox,
  * plus tick/stats. Built on node:http (zero dependencies); a production
  * gateway (NestJS per the strategy stack) can replace this without touching
  * the engine.
+ *
+ * Auth: a signed session cookie identifies the calling Account. Every
+ * /api/users/:id/* route requires the session's own linked user; every
+ * /api/orgs/:id/* mutating/read route (other than requesting a claim, which
+ * is how membership is first established) requires org membership; every
+ * /api/admin/* route requires the account's isAdmin flag.
  */
 export class RadarServer {
   private readonly engine: RadarEngine;
   private readonly persistPath?: string;
+  private readonly onPersist?: (store: RadarStore) => void | Promise<void>;
   private server?: Server;
   private tickTimer?: ReturnType<typeof setInterval>;
   private readonly tickIntervalMs?: number;
   private readonly port: number;
+  private readonly sessionSecret: string;
 
   constructor(opts: RadarServerOptions) {
     this.engine = opts.engine;
     this.persistPath = opts.persistPath;
+    this.onPersist = opts.onPersist;
     this.tickIntervalMs = opts.tickIntervalMs;
     this.port = opts.port ?? 4173;
+    if (opts.sessionSecret) {
+      this.sessionSecret = opts.sessionSecret;
+    } else {
+      this.sessionSecret = randomBytes(32).toString('hex');
+      console.warn('[missa-radar] No session secret provided — using a random one for this process. Sessions will not survive a restart.');
+    }
   }
 
   async start(): Promise<number> {
@@ -92,6 +141,41 @@ export class RadarServer {
 
   private persist(): void {
     if (this.persistPath) saveStore(this.engine.store, this.persistPath);
+    if (this.onPersist) void this.onPersist(this.engine.store);
+  }
+
+  // ── Auth helpers ────────────────────────────────────────────────
+
+  private setSessionCookie(res: ServerResponse, token: string): void {
+    res.setHeader(
+      'set-cookie',
+      `${SESSION_COOKIE}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(SESSION_TTL_MS / 1000)}`,
+    );
+  }
+
+  private clearSessionCookie(res: ServerResponse): void {
+    res.setHeader('set-cookie', `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`);
+  }
+
+  /** Throws 401 if there's no valid session cookie. */
+  private requireAccount(req: IncomingMessage): Account {
+    const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
+    const payload = token ? verifySessionToken(token, this.sessionSecret, new Date()) : undefined;
+    const account = payload ? this.engine.store.accounts.get(payload.accountId) : undefined;
+    if (!account) throw httpError(401, 'Not authenticated');
+    return account;
+  }
+
+  private requireSelf(account: Account, userId: string): void {
+    if (account.userId !== userId) throw httpError(403, 'You can only act as your own account');
+  }
+
+  private requireOrgMember(account: Account, organizationId: string): void {
+    if (!this.engine.isOrgMember(account.id, organizationId)) throw httpError(403, 'You are not a member of this organization');
+  }
+
+  private requireAdmin(account: Account): void {
+    if (!account.isAdmin) throw httpError(403, 'Admin access required');
   }
 
   private opportunityView(opp: Opportunity, userId?: string) {
@@ -123,6 +207,19 @@ export class RadarServer {
     };
   }
 
+  private meView(account: Account) {
+    const user = account.userId ? this.engine.store.users.get(account.userId) : undefined;
+    return {
+      account: { id: account.id, email: account.email, isAdmin: account.isAdmin },
+      user: user ? { id: user.id, displayName: user.displayName, genres: user.genres } : undefined,
+      memberships: this.engine.membershipsFor(account.id).map((m) => ({
+        organizationId: m.organizationId,
+        organizationName: this.engine.store.organizations.get(m.organizationId)?.name,
+        role: m.role,
+      })),
+    };
+  }
+
   private async route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const parts = url.pathname.split('/').filter(Boolean);
@@ -144,6 +241,54 @@ export class RadarServer {
     const [, a, b, c, d] = parts;
     const store = this.engine.store;
 
+    // ── Auth ──
+    if (a === 'auth' && !b) throw httpError(404, 'Not found');
+    if (a === 'auth' && b === 'signup' && method === 'POST') {
+      const body = await readJson(req);
+      if (typeof body.email !== 'string' || typeof body.password !== 'string' || typeof body.displayName !== 'string') {
+        throw httpError(400, 'email, password, and displayName are required');
+      }
+      let result;
+      try {
+        result = this.engine.signUp(
+          body.email,
+          body.password,
+          body.displayName,
+          Array.isArray(body.genres) ? (body.genres as string[]) : [],
+          (body.attributes as Record<string, string>) ?? {},
+        );
+      } catch (err) {
+        if (err instanceof AuthError) throw httpError(400, err.message);
+        throw err;
+      }
+      const token = createSessionToken(result.account.id, this.sessionSecret, new Date());
+      this.setSessionCookie(res, token);
+      this.persist();
+      return json(this.meView(result.account), 201);
+    }
+    if (a === 'auth' && b === 'login' && method === 'POST') {
+      const body = await readJson(req);
+      if (typeof body.email !== 'string' || typeof body.password !== 'string') throw httpError(400, 'email and password are required');
+      let account: Account;
+      try {
+        account = this.engine.logIn(body.email, body.password);
+      } catch (err) {
+        if (err instanceof AuthError) throw httpError(401, err.message);
+        throw err;
+      }
+      const token = createSessionToken(account.id, this.sessionSecret, new Date());
+      this.setSessionCookie(res, token);
+      return json(this.meView(account));
+    }
+    if (a === 'auth' && b === 'logout' && method === 'POST') {
+      this.clearSessionCookie(res);
+      return json({ ok: true });
+    }
+    if (a === 'auth' && b === 'me' && method === 'GET') {
+      const account = this.requireAccount(req);
+      return json(this.meView(account));
+    }
+
     // ── Opportunities ──
     if (method === 'GET' && a === 'opportunities' && !b) {
       const list = [...store.opportunities.values()]
@@ -157,27 +302,12 @@ export class RadarServer {
       return json({ ...this.opportunityView(opp), changes: this.engine.changeHistory(b) });
     }
 
-    // ── Users ──
-    if (a === 'users' && !b) {
-      if (method === 'GET') {
-        return json([...store.users.values()].map((u) => ({ id: u.id, displayName: u.displayName, genres: u.genres })));
-      }
-      if (method === 'POST') {
-        const body = await readJson(req);
-        if (typeof body.displayName !== 'string' || !body.displayName) throw httpError(400, 'displayName required');
-        const user = this.engine.addUser({
-          displayName: body.displayName,
-          genres: Array.isArray(body.genres) ? (body.genres as string[]) : [],
-          attributes: (body.attributes as Record<string, string>) ?? {},
-        });
-        this.persist();
-        return json(user, 201);
-      }
-    }
-
+    // ── Users (each :id route requires the session's own account) ──
     if (a === 'users' && b) {
       const user = store.users.get(b);
       if (!user) throw httpError(404, `Unknown user: ${b}`);
+      const account = this.requireAccount(req);
+      this.requireSelf(account, b);
 
       if (method === 'GET' && c === 'discover') {
         const list = [...store.opportunities.values()]
@@ -216,6 +346,7 @@ export class RadarServer {
         const tracked = this.engine.setMyStatus(b, body.opportunityId, body.status, {
           note: typeof body.note === 'string' ? body.note : undefined,
         });
+        this.engine.recordAudit(account.id, 'status.change', 'opportunity', body.opportunityId, body.status);
         this.persist();
         return json(tracked);
       }
@@ -253,6 +384,23 @@ export class RadarServer {
 
       if (method === 'GET' && !c) return json(org);
 
+      // Requesting a claim is how membership is first established, so it
+      // only requires being logged in, not already being a member.
+      if (method === 'POST' && c === 'claims') {
+        const account = this.requireAccount(req);
+        const body = await readJson(req);
+        if (typeof body.opportunityId !== 'string') throw httpError(400, 'opportunityId required');
+        if (!store.opportunities.has(body.opportunityId)) throw httpError(404, 'Unknown opportunity');
+        const claim = this.engine.requestClaim(body.opportunityId, b, account.id);
+        this.engine.recordAudit(account.id, 'claim.request', 'opportunity', body.opportunityId, b);
+        this.persist();
+        return json(claim, 201);
+      }
+
+      // Everything else about a Workspace is member-only.
+      const account = this.requireAccount(req);
+      this.requireOrgMember(account, b);
+
       if (method === 'GET' && c === 'opportunities') {
         const list = [...store.opportunities.values()]
           .filter((o) => o.claimedByOrganizationId === b)
@@ -261,21 +409,17 @@ export class RadarServer {
       }
 
       if (method === 'GET' && c === 'claims') {
-        return json([...store.claims.values()].filter((cl) => cl.organizationId === b));
-      }
-      if (method === 'POST' && c === 'claims') {
-        const body = await readJson(req);
-        if (typeof body.opportunityId !== 'string') throw httpError(400, 'opportunityId required');
-        if (typeof body.requestedBy !== 'string' || !body.requestedBy) throw httpError(400, 'requestedBy required');
-        if (!store.opportunities.has(body.opportunityId)) throw httpError(404, 'Unknown opportunity');
-        const claim = this.engine.requestClaim(body.opportunityId, b, body.requestedBy);
-        this.persist();
-        return json(claim, 201);
+        return json(
+          [...store.claims.values()]
+            .filter((cl) => cl.organizationId === b)
+            .map((cl) => ({ ...cl, requestedBy: store.accounts.get(cl.requestedBy)?.email ?? cl.requestedBy })),
+        );
       }
 
       if (method === 'PATCH' && c === 'opportunities' && d) {
         const body = await readJson(req);
         const opp = this.engine.updateClaimedListing(d, b, body as Partial<import('../domain/types.js').OpportunityFields>);
+        this.engine.recordAudit(account.id, 'listing.override', 'opportunity', d, JSON.stringify(body));
         this.persist();
         return json(this.opportunityView(opp));
       }
@@ -296,16 +440,20 @@ export class RadarServer {
       }
     }
 
-    // ── Admin console ──
+    // ── Admin console (every route requires account.isAdmin) ──
     if (a === 'admin') {
+      const account = this.requireAccount(req);
+      this.requireAdmin(account);
+
       if (method === 'GET' && b === 'stats') return json(this.engine.stats());
 
       if (method === 'GET' && b === 'verification-queue') return json(this.engine.verificationQueue());
 
       if (method === 'POST' && b === 'verification-tasks' && c && d === 'resolve') {
         const body = await readJson(req);
-        if (typeof body.resolvedBy !== 'string' || !body.resolvedBy) throw httpError(400, 'resolvedBy required');
-        const task = this.engine.resolveVerificationTask(c, body.resolvedBy, body.dismiss === true);
+        const dismiss = body.dismiss === true;
+        const task = this.engine.resolveVerificationTask(c, account.email, dismiss);
+        this.engine.recordAudit(account.id, dismiss ? 'verification.dismiss' : 'verification.resolve', 'verification-task', c);
         this.persist();
         return json(task);
       }
@@ -315,6 +463,7 @@ export class RadarServer {
         const claims = [...store.claims.values()].filter((cl) => !pendingOnly || cl.status === 'pending');
         const withContext = claims.map((cl) => ({
           ...cl,
+          requestedBy: store.accounts.get(cl.requestedBy)?.email ?? cl.requestedBy,
           opportunityTitle: store.opportunities.get(cl.opportunityId)?.fields.title,
           organizationName: store.organizations.get(cl.organizationId)?.name,
         }));
@@ -323,24 +472,30 @@ export class RadarServer {
       if (method === 'POST' && b === 'claims' && c === 'approve') {
         const body = await readJson(req);
         if (typeof body.claimId !== 'string') throw httpError(400, 'claimId required');
-        if (typeof body.decidedBy !== 'string' || !body.decidedBy) throw httpError(400, 'decidedBy required');
-        const claim = this.engine.approveClaim(body.claimId, body.decidedBy);
+        const claim = this.engine.approveClaim(body.claimId, account.email);
+        this.engine.recordAudit(account.id, 'claim.approve', 'claim', body.claimId);
         this.persist();
         return json(claim);
       }
       if (method === 'POST' && b === 'claims' && c === 'reject') {
         const body = await readJson(req);
         if (typeof body.claimId !== 'string') throw httpError(400, 'claimId required');
-        if (typeof body.decidedBy !== 'string' || !body.decidedBy) throw httpError(400, 'decidedBy required');
-        const claim = this.engine.rejectClaim(body.claimId, body.decidedBy, typeof body.note === 'string' ? body.note : undefined);
+        const claim = this.engine.rejectClaim(body.claimId, account.email, typeof body.note === 'string' ? body.note : undefined);
+        this.engine.recordAudit(account.id, 'claim.reject', 'claim', body.claimId, claim.note);
         this.persist();
         return json(claim);
       }
 
       if (method === 'POST' && b === 'opportunities' && c && d === 'resolve-conflicts') {
         const opp = this.engine.resolveConflicts(c);
+        this.engine.recordAudit(account.id, 'conflicts.resolve', 'opportunity', c);
         this.persist();
         return json(this.opportunityView(opp));
+      }
+
+      if (method === 'GET' && b === 'audit-log') {
+        const limit = Number(url.searchParams.get('limit') ?? 200);
+        return json([...store.auditLog].reverse().slice(0, limit));
       }
     }
 
