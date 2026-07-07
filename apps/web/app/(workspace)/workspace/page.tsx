@@ -5,6 +5,7 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { getWorkspaceEngine } from '@/lib/workspaceEngine';
 import { CreateTeamForm, CreateProgramForm, CreateOpenCallForm, PublishButton } from '@/components/workspace-forms';
+import { FormBuilder } from '@/components/form-builder';
 
 export default async function WorkspacePage() {
   const cookieStore = await cookies();
@@ -29,7 +30,13 @@ export default async function WorkspacePage() {
   const workspaceEngine = getWorkspaceEngine();
   const entities = workspaceEngine.entitiesForOrganization(organizationId).map((e) => ({
     ...e,
-    programs: workspaceEngine.programsForEntity(e.id).map((p) => ({ ...p, openCalls: workspaceEngine.openCallsForProgram(p.id) })),
+    programs: workspaceEngine.programsForEntity(e.id).map((p) => ({
+      ...p,
+      openCalls: workspaceEngine.openCallsForProgram(p.id).map((call) => ({
+        ...call,
+        submissionPaths: workspaceEngine.submissionPathsForOpenCall(call.id),
+      })),
+    })),
   }));
 
   return (
@@ -60,13 +67,23 @@ export default async function WorkspacePage() {
                   <div className="mt-2">
                     <CreateOpenCallForm organizationId={organizationId} programId={program.id} />
                   </div>
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 space-y-3">
                     {program.openCalls.map((call) => (
-                      <div key={call.id} className="flex items-center justify-between text-sm">
-                        <span>
-                          {call.title} — <span className="text-muted-foreground">{call.status}</span>
-                        </span>
-                        {call.status === 'draft' && <PublishButton organizationId={organizationId} openCallId={call.id} />}
+                      <div key={call.id}>
+                        <div className="flex items-center justify-between text-sm">
+                          <span>
+                            {call.title} — <span className="text-muted-foreground">{call.status}</span>
+                          </span>
+                          {call.status === 'draft' && <PublishButton organizationId={organizationId} openCallId={call.id} />}
+                        </div>
+                        {call.submissionPaths.length === 0 ? (
+                          <FormBuilder organizationId={organizationId} openCallId={call.id} />
+                        ) : (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Form saved · {call.submissionPaths[0].categories.join(', ') || 'no categories'} ·{' '}
+                            {call.submissionPaths[0].fields.length} field(s)
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>

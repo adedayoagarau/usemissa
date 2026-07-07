@@ -84,9 +84,9 @@ development_status:
   epic-6: in-progress
   6-1-entity-team-and-program-creation: done
   6-2-open-call-creation-optionally-linked-to-claimed-radar-listing: done
-  6-3-submission-path-form-builder-v1: in-progress # partial: no Form Builder UI yet, see story file
+  6-3-submission-path-form-builder-v1: done
   6-4-public-organization-page: done
-  6-5-submitter-file-upload-against-a-submission-path: in-progress # partial: no file storage, no UI, see story file
+  6-5-submitter-file-upload-against-a-submission-path: in-progress # partial: API verified end-to-end, but no file storage backend and no submitter-facing UI yet, see story file
   epic-6-retrospective: optional
 
   epic-7: backlog
