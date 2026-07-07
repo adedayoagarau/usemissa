@@ -19,27 +19,17 @@
  *   ANTHROPIC_API_KEY   optional — when set, extraction uses Claude instead
  *                       of the deterministic extractor
  */
-import { Pool } from 'pg';
-import { RadarEngine, RadarServer, HttpFetcher, systemClock } from '@missa/radar-engine';
-import { ensurePostgresSchema, loadStoreFromPostgres, saveStoreToPostgres } from './postgresStore.js';
-import { PlaywrightFetcher } from './playwrightFetcher.js';
-import { LlmExtractor } from './llmExtractor.js';
+import { RadarServer } from '@missa/radar-engine';
+import { saveStoreToPostgres } from './postgresStore.js';
+import { createProductionEngine } from './productionEngine.js';
 
 async function main(): Promise<void> {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
+  if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL is required. Example: DATABASE_URL=postgres://user:pass@host:5432/db node dist/src/serve.js');
     process.exit(1);
   }
 
-  const pool = new Pool({ connectionString: databaseUrl });
-  await ensurePostgresSchema(pool);
-  const store = await loadStoreFromPostgres(pool);
-
-  const fetcher = process.env.MISSA_USE_PLAYWRIGHT === '1' ? new PlaywrightFetcher() : new HttpFetcher();
-  const extractor = process.env.ANTHROPIC_API_KEY ? new LlmExtractor(systemClock) : undefined;
-
-  const engine = new RadarEngine({ store, fetcher, extractor });
+  const { engine, pool } = await createProductionEngine();
   const port = Number(process.env.PORT ?? 4173);
   const tickMinutes = Number(process.env.TICK_MINUTES ?? 15);
 
@@ -52,8 +42,10 @@ async function main(): Promise<void> {
   });
 
   const boundPort = await server.start();
+  const fetcherName = process.env.MISSA_USE_PLAYWRIGHT === '1' ? 'PlaywrightFetcher' : 'HttpFetcher';
+  const extractorName = process.env.ANTHROPIC_API_KEY ? 'LlmExtractor' : 'DeterministicExtractor';
   console.log(`Missa Radar (production wiring) serving at http://localhost:${boundPort}`);
-  console.log(`  fetcher: ${fetcher.constructor.name}, extractor: ${extractor ? 'LlmExtractor' : 'DeterministicExtractor'}, store: Postgres`);
+  console.log(`  fetcher: ${fetcherName}, extractor: ${extractorName}, store: Postgres`);
 
   const shutdown = async () => {
     await server.stop();
