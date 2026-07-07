@@ -59,7 +59,7 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Test against Postgres-backed store
-        run: npm test --workspace=@missa/radar-engine
+      - name: Test against a real Postgres connection (radar-adapters)
+        run: npm test --workspace=@missa/radar-adapters
         env:
           DATABASE_URL: postgres://missa:missa@localhost:5432/missa_test
