@@ -50,7 +50,9 @@ import {
 } from './alerts/alerts.js';
 import { applyOrganizationOverride, approveClaim, rejectClaim, requestClaim } from './claims/claims.js';
 import { openTask, resolveConflicts, resolveTask, sweepForVerification, verificationQueue } from './verification/verification.js';
-import { deadlineReminders, setMyStatus, track, trackerView, type TrackerView } from './tracker/tracker.js';
+import { deadlineReminders, overdueResponseAlerts, setMyStatus, track, trackerView, withdrawalSuggestionAlerts, type TrackerView } from './tracker/tracker.js';
+import { computeResponseStats, type ResponseStats } from './tracker/responseStats.js';
+import { buildIcsFeed } from './tracker/calendarFeed.js';
 import { isoDateOf } from './extraction/dates.js';
 
 export interface TickReport {
@@ -314,6 +316,8 @@ export class RadarEngine {
       ...alertFollowedOrgNewCalls(this.ctx, newOpportunities),
       ...alertClaimInvites(this.ctx),
       ...deadlineReminders(this.ctx),
+      ...overdueResponseAlerts(this.ctx),
+      ...withdrawalSuggestionAlerts(this.ctx),
     );
 
     report.verificationTasksOpened.push(...sweepForVerification(this.ctx));
@@ -570,6 +574,16 @@ export class RadarEngine {
     const user = this.store.users.get(userId);
     if (!user) throw new Error(`Unknown user: ${userId}`);
     return fitScore(user, this.mustGet(opportunityId), this.clock.now());
+  }
+
+  /** This organization's observed response-time distribution, if there's enough history to trust it. */
+  responseStats(organizationId: string): ResponseStats | undefined {
+    return computeResponseStats(this.store, organizationId);
+  }
+
+  /** A subscribable .ics feed of this user's tracked deadlines and expected-response dates. */
+  calendarFeed(userId: string): string {
+    return buildIcsFeed(this.ctx, userId);
   }
 
   changeHistory(opportunityId: string): OpportunityChange[] {

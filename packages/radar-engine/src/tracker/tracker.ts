@@ -9,9 +9,10 @@ import type {
 import { PRE_SUBMISSION_STATUSES } from '../domain/types.js';
 import type { Clock, IdGenerator } from '../ports.js';
 import type { RadarStore } from '../store/store.js';
-import { daysBetween, isoDateOf } from '../extraction/dates.js';
+import { addDays, daysBetween, isoDateOf } from '../extraction/dates.js';
 import { fitScore } from '../matching/fit.js';
 import { displayStatus } from '../status/statusEngine.js';
+import { expectedResponseWindowDays } from './responseStats.js';
 
 export interface TrackerContext {
   store: RadarStore;
@@ -84,6 +85,9 @@ export interface TrackerItem {
   fit: FitScore;
   trust: number;
   events: TrackedOpportunity['events'];
+  /** Only set once submitted: this organization's typical response-by date and whether it's passed. */
+  expectedResponseBy?: string;
+  daysOverdue?: number;
 }
 
 export type PipelineStage = 'planning' | 'submitted' | 'in-progress' | 'outcome' | 'archived';
@@ -121,6 +125,14 @@ export interface UserTrackerStats {
 function toItem(ctx: TrackerContext, user: UserProfile, tracked: TrackedOpportunity, opp: Opportunity): TrackerItem {
   const today = isoDateOf(ctx.clock.now());
   const deadline = opp.fields.deadline;
+  let expectedResponseBy: string | undefined;
+  let daysOverdue: number | undefined;
+  if (tracked.myStatus === 'submitted' && tracked.submittedAt) {
+    const windowDays = expectedResponseWindowDays(ctx.store, opp.fields.organizationId);
+    expectedResponseBy = addDays(isoDateOf(new Date(tracked.submittedAt)), windowDays);
+    const overdue = daysBetween(expectedResponseBy, today);
+    if (overdue > 0) daysOverdue = overdue;
+  }
   return {
     opportunityId: opp.id,
     title: opp.fields.title,
@@ -133,6 +145,8 @@ function toItem(ctx: TrackerContext, user: UserProfile, tracked: TrackedOpportun
     fit: fitScore(user, opp, ctx.clock.now()),
     trust: opp.scores.trust,
     events: tracked.events,
+    expectedResponseBy,
+    daysOverdue,
   };
 }
 
@@ -203,6 +217,92 @@ export function deadlineReminders(ctx: TrackerContext): Alert[] {
           : `${days} day${days === 1 ? '' : 's'} left: ${opp.fields.title} closes ${deadline}`,
       body: `Your status is still "${t.myStatus}".`,
       reason: 'you track this opportunity and have not submitted yet',
+      createdAt: ctx.clock.now().toISOString(),
+      read: false,
+    };
+    ctx.store.alerts.set(alert.id, alert);
+    out.push(alert);
+  }
+  return out;
+}
+
+/**
+ * When one tracked opportunity is accepted, suggest withdrawing the user's
+ * other still-active submissions — the "acceptance orchestration" pattern:
+ * simultaneous submitters usually withdraw everywhere else once one venue
+ * says yes. This is scoped to "other active tracked opportunities" rather
+ * than "the same piece," since Missa doesn't yet model discrete
+ * pieces/manuscripts as their own trackable entity — a real modeling gap for
+ * writers who submit different pieces to different venues at once, but a
+ * meaningful nudge either way. Never auto-withdraws anything; withdrawal is
+ * a real, external action a human should confirm.
+ */
+export function withdrawalSuggestionAlerts(ctx: TrackerContext): Alert[] {
+  const out: Alert[] = [];
+  for (const t of ctx.store.tracked) {
+    if (t.myStatus !== 'accepted') continue;
+    const opp = ctx.store.opportunities.get(t.opportunityId);
+    if (!opp) continue;
+
+    const key = `withdraw-suggest:${t.userId}:${t.opportunityId}`;
+    if (ctx.store.emittedAlertKeys.has(key)) continue;
+    ctx.store.emittedAlertKeys.add(key); // mark now so a later tick never re-suggests, even if `others` is empty today
+
+    const others = ctx.store.tracked.filter(
+      (o) => o.userId === t.userId && o.opportunityId !== t.opportunityId && ['submitted', 'in-progress'].includes(STAGE_OF[o.myStatus]),
+    );
+    if (others.length === 0) continue;
+
+    const names = others
+      .map((o) => ctx.store.opportunities.get(o.opportunityId)?.fields.title)
+      .filter((title): title is string => !!title);
+    const alert: Alert = {
+      id: ctx.ids.next('alert'),
+      audience: 'user',
+      userId: t.userId,
+      kind: 'withdrawal-suggested',
+      opportunityId: t.opportunityId,
+      title: `Accepted at ${opp.fields.organizationName ?? opp.fields.title} — withdraw elsewhere?`,
+      body: `You have ${others.length} other active submission${others.length === 1 ? '' : 's'}${names.length ? ` (${names.join(', ')})` : ''}. If it's the same piece, most venues expect you to withdraw once one accepts.`,
+      reason: `${opp.fields.title} just accepted your submission`,
+      createdAt: ctx.clock.now().toISOString(),
+      read: false,
+    };
+    ctx.store.alerts.set(alert.id, alert);
+    out.push(alert);
+  }
+  return out;
+}
+
+/**
+ * "It's been 90 days, want to follow up or mark it withdrawn?" — the
+ * proactive counterpart to the tracker's manual "Never responded" status.
+ * Fires once per (user, opportunity, submittedAt) the first time the
+ * organization's typical response window has passed with no update.
+ */
+export function overdueResponseAlerts(ctx: TrackerContext): Alert[] {
+  const out: Alert[] = [];
+  const today = isoDateOf(ctx.clock.now());
+  for (const t of ctx.store.tracked) {
+    if (t.myStatus !== 'submitted' || !t.submittedAt) continue;
+    const opp = ctx.store.opportunities.get(t.opportunityId);
+    if (!opp) continue;
+    const windowDays = expectedResponseWindowDays(ctx.store, opp.fields.organizationId);
+    const responseBy = addDays(isoDateOf(new Date(t.submittedAt)), windowDays);
+    if (daysBetween(responseBy, today) <= 0) continue;
+
+    const key = `overdue:${t.userId}:${opp.id}:${t.submittedAt}`;
+    if (ctx.store.emittedAlertKeys.has(key)) continue;
+    ctx.store.emittedAlertKeys.add(key);
+    const alert: Alert = {
+      id: ctx.ids.next('alert'),
+      audience: 'user',
+      userId: t.userId,
+      kind: 'response-overdue',
+      opportunityId: opp.id,
+      title: `No word yet from ${opp.fields.organizationName ?? opp.fields.title}`,
+      body: `It's past their typical response window (~${windowDays}d) since you submitted on ${isoDateOf(new Date(t.submittedAt))}. Consider following up, or marking it withdrawn.`,
+      reason: `you submitted this and ${windowDays} days is longer than ${opp.fields.organizationName ?? 'this organization'} usually takes to respond`,
       createdAt: ctx.clock.now().toISOString(),
       read: false,
     };

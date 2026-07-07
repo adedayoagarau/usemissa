@@ -140,7 +140,9 @@ async function renderInbox(el) {
     + section('Opening soon / expected back', d.openingSoon)
     + section('Recently updated', d.recentlyUpdated)
     + section('From organizations you follow', d.fromFollowedOrgs)
-    + section('Deadline reminders', d.reminders ?? []);
+    + section('Deadline reminders', d.reminders ?? [])
+    + section('No word back yet', d.overdue ?? [])
+    + section('Got an acceptance — consider withdrawing elsewhere', d.withdrawalSuggestions ?? []);
 }
 
 async function renderTracker(el) {
@@ -152,7 +154,8 @@ async function renderTracker(el) {
         <div>
           <h3>\${esc(i.title)}</h3>
           <div class="meta">\${esc(i.organizationName ?? '')} · opportunity: \${esc(i.opportunityStatus)}
-            \${i.deadline ? ' · deadline ' + esc(i.deadline) + ' (' + i.daysToDeadline + 'd)' : ''}</div>
+            \${i.deadline ? ' · deadline ' + esc(i.deadline) + ' (' + i.daysToDeadline + 'd)' : ''}
+            \${i.daysOverdue ? ' · <span class="error">' + i.daysOverdue + 'd past their usual response time</span>' : ''}</div>
           <div>\${fitHtml(i.fit)}</div>
         </div>
         <div>
@@ -172,12 +175,20 @@ async function renderTracker(el) {
       <div><b>\${s.acceptanceRate != null ? Math.round(s.acceptanceRate * 100) + '%' : '—'}</b>acceptance</div>
     </div>
     \${t.deadlines.length ? '<div class="stage"><h2>Next deadlines</h2><div class="meta">' + t.deadlines.map(i => esc(i.title) + ' — ' + i.daysToDeadline + 'd').join(' · ') + '</div></div>' : ''}
+    <div class="stage"><button class="action" id="calFeedBtn">Copy calendar feed link</button> <span class="meta" id="calFeedInfo"></span></div>
     \${stage('Planning', 'planning')}\${stage('Submitted', 'submitted')}\${stage('In progress', 'in-progress')}\${stage('Outcomes', 'outcome')}\${stage('Archived', 'archived')}\`
     || '<p>Nothing tracked yet — find something in Discover.</p>';
   el.querySelectorAll('select[data-opp]').forEach(sel => sel.onchange = async () => {
     await api('/api/users/' + me.user.id + '/status', { opportunityId: sel.dataset.opp, status: sel.value });
     render();
   });
+  const calBtn = document.getElementById('calFeedBtn');
+  if (calBtn) calBtn.onclick = async () => {
+    const { token } = await api('/api/users/' + me.user.id + '/calendar-token');
+    const feedUrl = location.origin + '/api/users/' + me.user.id + '/calendar.ics?token=' + encodeURIComponent(token);
+    try { await navigator.clipboard.writeText(feedUrl); document.getElementById('calFeedInfo').textContent = 'Copied — subscribe to it from Google/Apple/Outlook Calendar.'; }
+    catch { document.getElementById('calFeedInfo').textContent = feedUrl; }
+  };
 }
 
 async function renderNoMembership(el) {

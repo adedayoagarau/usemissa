@@ -458,6 +458,8 @@ export type AlertKind =
   | 'page-gone'
   | 'expected-reopen'
   | 'deadline-reminder'
+  | 'response-overdue'
+  | 'withdrawal-suggested'
   | 'followed-org-new-call'
   // organization
   | 'claim-invite'

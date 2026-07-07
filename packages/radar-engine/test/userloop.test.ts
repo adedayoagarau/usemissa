@@ -85,6 +85,114 @@ test('deadline reminder ladder fires at 7/3/1 days and stops after submission', 
   assert.equal(reminders().length, 2);
 });
 
+test('overdue-response nudge fires once the org\'s typical response window has passed with no update', async () => {
+  const { engine, clock, ids, magazine } = await trackedWorld();
+  const orgId = engine.store.opportunities.get(magazine.id)!.fields.organizationId!;
+
+  const overdueAlerts = () =>
+    [...engine.store.alerts.values()].filter((a) => a.kind === 'response-overdue' && a.userId === ids.userAda);
+
+  // No history for this org yet, so it falls back to the 90-day default window.
+  assert.equal(engine.responseStats(orgId), undefined);
+
+  engine.trackOpportunity(ids.userAda, magazine.id);
+  engine.setMyStatus(ids.userAda, magazine.id, 'submitted');
+
+  clock.advanceDays(89);
+  await engine.tick();
+  assert.equal(overdueAlerts().length, 0, 'still inside the default window');
+
+  clock.advanceDays(2); // day 91
+  await engine.tick();
+  assert.equal(overdueAlerts().length, 1);
+  assert.match(overdueAlerts()[0].title, /No word yet/);
+
+  // Doesn't re-fire on every subsequent tick.
+  clock.advanceDays(5);
+  await engine.tick();
+  assert.equal(overdueAlerts().length, 1);
+
+  // Moving past "submitted" (a real response) means no nudge fires for a second, later submission.
+  engine.setMyStatus(ids.userAda, magazine.id, 'declined');
+  const grant = [...engine.store.opportunities.values()].find((o) => o.fields.title.startsWith('Hilltop'))!;
+  engine.trackOpportunity(ids.userAda, grant.id);
+  engine.setMyStatus(ids.userAda, grant.id, 'submitted');
+  clock.advanceDays(10); // still well inside any window
+  await engine.tick();
+  assert.equal(
+    [...engine.store.alerts.values()].filter((a) => a.kind === 'response-overdue' && a.opportunityId === grant.id).length,
+    0,
+  );
+});
+
+test("an organization's own response history refines the window used for overdue nudges", async () => {
+  const { engine, clock, ids, magazine } = await trackedWorld();
+  const orgId = engine.store.opportunities.get(magazine.id)!.fields.organizationId!;
+
+  // Three quick, consistent historical responses (10 days each) for this org.
+  for (const displayName of ['Hist1', 'Hist2', 'Hist3']) {
+    const u = engine.addUser({ displayName, genres: [], attributes: {} });
+    engine.trackOpportunity(u.id, magazine.id);
+    engine.setMyStatus(u.id, magazine.id, 'submitted');
+    engine.setMyStatus(u.id, magazine.id, 'declined');
+  }
+  // Backdate those events so the computed response time is a real, non-zero number.
+  for (const t of engine.store.tracked) {
+    if (t.opportunityId !== magazine.id) continue;
+    const submitEvent = t.events.find((e) => e.to === 'submitted');
+    const declineEvent = t.events.find((e) => e.to === 'declined');
+    if (submitEvent) submitEvent.at = '2026-01-01T00:00:00.000Z';
+    if (declineEvent) declineEvent.at = '2026-01-11T00:00:00.000Z'; // 10 days later
+    if (t.submittedAt) t.submittedAt = '2026-01-01T00:00:00.000Z';
+  }
+
+  const stats = engine.responseStats(orgId);
+  assert.ok(stats);
+  assert.equal(stats!.medianDays, 10);
+  assert.equal(stats!.p90Days, 10);
+
+  // Ada submits; the org-specific 10-day window (not the 90-day default) should govern the nudge.
+  engine.trackOpportunity(ids.userAda, magazine.id);
+  engine.setMyStatus(ids.userAda, magazine.id, 'submitted');
+  clock.advanceDays(11);
+  await engine.tick();
+  const overdue = [...engine.store.alerts.values()].filter((a) => a.kind === 'response-overdue' && a.userId === ids.userAda);
+  assert.equal(overdue.length, 1);
+  assert.match(overdue[0].body, /~10d/);
+});
+
+test('acceptance suggests withdrawing other active submissions, once, and never auto-withdraws anything', async () => {
+  const { engine, ids, magazine } = await trackedWorld();
+  const grant = [...engine.store.opportunities.values()].find((o) => o.fields.title.startsWith('Hilltop'))!;
+  const festival = [...engine.store.opportunities.values()].find((o) => o.fields.title.startsWith('Lantern'))!;
+
+  engine.trackOpportunity(ids.userAda, magazine.id);
+  engine.setMyStatus(ids.userAda, magazine.id, 'submitted');
+  engine.trackOpportunity(ids.userAda, grant.id);
+  engine.setMyStatus(ids.userAda, grant.id, 'submitted');
+  // Festival is Ben's, not Ada's — must never appear in Ada's suggestion.
+  engine.trackOpportunity(ids.userBen, festival.id);
+  engine.setMyStatus(ids.userBen, festival.id, 'submitted');
+
+  const suggestions = () =>
+    [...engine.store.alerts.values()].filter((a) => a.kind === 'withdrawal-suggested' && a.userId === ids.userAda);
+
+  await engine.tick();
+  assert.equal(suggestions().length, 0, 'nothing accepted yet');
+
+  engine.setMyStatus(ids.userAda, magazine.id, 'accepted');
+  await engine.tick();
+  assert.equal(suggestions().length, 1);
+  assert.match(suggestions()[0].title, /Accepted at/);
+  assert.match(suggestions()[0].body, new RegExp(engine.store.opportunities.get(grant.id)!.fields.title));
+  assert.ok(!suggestions()[0].body.includes(engine.store.opportunities.get(festival.id)!.fields.title));
+
+  // Doesn't repeat on later ticks, and the grant's status was never touched (no auto-withdrawal).
+  await engine.tick();
+  assert.equal(suggestions().length, 1);
+  assert.equal(engine.getTracker(ids.userAda).pipeline.submitted.some((i) => i.opportunityId === grant.id), true);
+});
+
 function sessionCookie(res: Response): string {
   const raw = res.headers.get('set-cookie');
   assert.ok(raw, 'expected a Set-Cookie header');

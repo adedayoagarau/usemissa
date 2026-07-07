@@ -8,7 +8,7 @@ import { fitScore } from '../matching/fit.js';
 import { buildInboxDigest } from '../alerts/alerts.js';
 import { isMyStatus } from '../tracker/tracker.js';
 import { AuthError } from '../auth/accounts.js';
-import { createSessionToken, verifySessionToken } from '../auth/crypto.js';
+import { createFeedToken, createSessionToken, verifyFeedToken, verifySessionToken } from '../auth/crypto.js';
 import { UI_HTML } from './ui.js';
 
 const SESSION_COOKIE = 'missa_session';
@@ -306,8 +306,24 @@ export class RadarServer {
     if (a === 'users' && b) {
       const user = store.users.get(b);
       if (!user) throw httpError(404, `Unknown user: ${b}`);
+
+      // Calendar apps subscribe to this URL and can't log in — it carries its
+      // own long-lived signed token instead of the session cookie.
+      if (method === 'GET' && c === 'calendar.ics') {
+        const token = url.searchParams.get('token') ?? '';
+        const payload = verifyFeedToken(token, this.sessionSecret);
+        if (!payload || payload.userId !== b) throw httpError(401, 'Invalid or missing calendar feed token');
+        res.writeHead(200, { 'content-type': 'text/calendar; charset=utf-8' });
+        res.end(this.engine.calendarFeed(b));
+        return;
+      }
+
       const account = this.requireAccount(req);
       this.requireSelf(account, b);
+
+      if (method === 'GET' && c === 'calendar-token') {
+        return json({ token: createFeedToken(b, this.sessionSecret) });
+      }
 
       if (method === 'GET' && c === 'discover') {
         const list = [...store.opportunities.values()]
@@ -319,7 +335,9 @@ export class RadarServer {
       if (method === 'GET' && c === 'inbox') {
         const digest = buildInboxDigest(store, b);
         const reminders = [...store.alerts.values()].filter((al) => al.userId === b && al.kind === 'deadline-reminder');
-        return json({ ...digest, reminders });
+        const overdue = [...store.alerts.values()].filter((al) => al.userId === b && al.kind === 'response-overdue');
+        const withdrawalSuggestions = [...store.alerts.values()].filter((al) => al.userId === b && al.kind === 'withdrawal-suggested');
+        return json({ ...digest, reminders, overdue, withdrawalSuggestions });
       }
       if (method === 'GET' && c === 'tracker') return json(this.engine.getTracker(b));
       if (method === 'GET' && c === 'alerts') {
