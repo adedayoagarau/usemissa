@@ -6,6 +6,8 @@ import { opportunityView } from '@/lib/opportunityView';
 import { FitScoreBadge, TrustBadge } from '@/components/explained-score';
 import { TrackButton } from '@/components/track-button';
 import { SavedSearches } from '@/components/saved-searches';
+import { FollowButton } from '@/components/follow-button';
+import { FollowingList } from '@/components/following-list';
 
 export default async function OpportunitiesPage() {
   const cookieStore = await cookies();
@@ -19,11 +21,20 @@ export default async function OpportunitiesPage() {
     .map((o) => opportunityView(engine, o, userId))
     .sort((x, y) => (x.deadline ?? '9999').localeCompare(y.deadline ?? '9999'));
   const profiles = [...engine.store.radarProfiles.values()].filter((p) => p.userId === userId);
+  const followedIds = new Set(engine.store.follows.filter((f) => f.userId === userId).map((f) => f.organizationId));
+  const following = engine.store.follows
+    .filter((f) => f.userId === userId)
+    .map((f) => ({
+      organizationId: f.organizationId,
+      organizationName: engine.store.organizations.get(f.organizationId)?.name ?? f.organizationId,
+      followedAt: f.followedAt,
+    }));
 
   return (
     <div>
       <h1 className="font-heading text-3xl font-medium text-foreground">Open opportunities</h1>
       <SavedSearches userId={userId} profiles={profiles} />
+      <FollowingList userId={userId} following={following} />
       <div className="mt-6 space-y-3">
         {list.map((o) => (
           <div key={o.id} className="rounded-lg border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/30">
@@ -33,6 +44,12 @@ export default async function OpportunitiesPage() {
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   {o.organizationName ?? 'Unknown organization'} · {o.type} · deadline:{' '}
                   <span className="font-mono">{o.deadline ?? o.deadlineKind}</span>
+                  {o.organizationId && !followedIds.has(o.organizationId) && (
+                    <>
+                      {' '}
+                      · <FollowButton userId={userId} organizationId={o.organizationId} />
+                    </>
+                  )}
                 </p>
                 <div className="mt-2">
                   <TrustBadge trust={o.trust} />

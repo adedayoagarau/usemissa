@@ -60,13 +60,13 @@ development_status:
   2-4-export-tracker-library-data: backlog
   epic-2-retrospective: optional
 
-  epic-3: in-progress
+  epic-3: done
   3-1-build-the-explained-score-component: done
   3-2-opportunities-discover-feed: done
   3-3-radarprofile-saved-search-creation-edit-ui: done
   3-4-inbox-digest-ui: done
   3-5-status-pipeline-board-component-tracker-views: done
-  3-6-following-management-ui: backlog
+  3-6-following-management-ui: done
   epic-3-retrospective: optional
 
   epic-4: backlog

@@ -13,6 +13,7 @@ export function opportunityView(engine: RadarEngine, opp: Opportunity, userId?: 
   return {
     id: opp.id,
     title: opp.fields.title,
+    organizationId: opp.fields.organizationId,
     organizationName: opp.fields.organizationName,
     type: opp.fields.type,
     genres: opp.fields.genres,
