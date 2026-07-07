@@ -109,12 +109,25 @@ export class RadarServer {
     }
   }
 
+  /**
+   * Handles one request/response pair without owning an http.Server —
+   * what a serverless host (e.g. a Vercel Function) calls directly instead
+   * of using start()/listen(). Same routing and auth as the long-running
+   * server; the caller owns the process lifecycle.
+   */
+  async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    try {
+      await this.route(req, res);
+    } catch (err) {
+      const e = err as JsonError;
+      res.writeHead(e.statusCode ?? 500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  }
+
   async start(): Promise<number> {
     this.server = createServer((req, res) => {
-      this.route(req, res).catch((err: JsonError) => {
-        res.writeHead(err.statusCode ?? 500, { 'content-type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
-      });
+      void this.handle(req, res);
     });
     await new Promise<void>((resolve) => this.server!.listen(this.port, resolve));
     if (this.tickIntervalMs) {

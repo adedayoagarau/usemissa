@@ -1,0 +1,19 @@
+{
+  "name": "@missa/radar-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Vercel deployment of Missa Radar: one serverless Function fronting RadarServer, Postgres-backed, ticked by Vercel Cron instead of an in-process interval.",
+  "scripts": {
+    "build": "cd ../.. && npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters"
+  },
+  "dependencies": {
+    "@missa/radar-engine": "^0.1.0",
+    "@missa/radar-adapters": "^0.1.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@vercel/node": "^3.2.0"
+  }
+}
