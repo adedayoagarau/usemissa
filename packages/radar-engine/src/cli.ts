@@ -144,6 +144,18 @@ async function serve(args: string[]): Promise<void> {
     const world = buildServerDemoWorld();
     engine = world.engine;
     await engine.tick();
+
+    // Give the Workspace and Admin tabs something to show: one auto-approved
+    // claim (domain match) and one pending manual-review claim from an
+    // unrelated organization.
+    const northRiver = [...engine.store.organizations.values()].find((o) => o.name === 'North River Review');
+    const magazine = [...engine.store.opportunities.values()].find((o) => o.fields.title.startsWith('North River'));
+    if (northRiver && magazine) engine.requestClaim(magazine.id, northRiver.id, 'editor@northriverreview.org');
+
+    const outsideOrg = engine.addOrganization({ name: 'Regional Arts Alliance', domains: ['regionalartsalliance.example'], verified: false });
+    const festival = [...engine.store.opportunities.values()].find((o) => o.fields.title.startsWith('Lantern'));
+    if (festival) engine.requestClaim(festival.id, outsideOrg.id, 'partnerships@regionalartsalliance.example');
+
     console.log(`Seeded demo world: ${engine.store.opportunities.size} opportunities, ${engine.store.users.size} users.`);
   } else {
     engine = new RadarEngine({ store: loadStore(dataPath), fetcher: new HttpFetcher() });

@@ -22,12 +22,13 @@ export interface Fetcher {
 }
 
 /**
- * Extractor port. The built-in extractor is fully deterministic. An
- * LLM-assisted extractor may replace it, but its output always passes through
- * the same deterministic validators ("do not make Radar purely AI").
+ * Extractor port. The built-in extractor is fully deterministic and
+ * synchronous. An LLM-assisted extractor may replace it — hence the
+ * `Promise` allowance — but its output always passes through the same
+ * deterministic validators ("do not make Radar purely AI").
  */
 export interface Extractor {
-  extract(source: Source, snapshot: PageSnapshot): OpportunityCandidate;
+  extract(source: Source, snapshot: PageSnapshot): OpportunityCandidate | Promise<OpportunityCandidate>;
 }
 
 export interface IdGenerator {

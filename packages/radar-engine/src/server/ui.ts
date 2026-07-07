@@ -46,9 +46,12 @@ export const UI_HTML = `<!doctype html>
     <button data-tab="discover" class="active">Discover</button>
     <button data-tab="inbox">Inbox</button>
     <button data-tab="tracker">Tracker</button>
+    <button data-tab="workspace">Workspace</button>
+    <button data-tab="admin">Admin</button>
   </nav>
   <span style="flex:1"></span>
-  <label>User: <select id="user"></select></label>
+  <label id="userPicker">User: <select id="user"></select></label>
+  <label id="orgPicker">Org: <select id="org"></select></label>
 </header>
 <main id="main">Loading…</main>
 <footer class="tickbar">
@@ -57,7 +60,7 @@ export const UI_HTML = `<!doctype html>
 </footer>
 <script>
 const STATUSES = ["interested","saved","preparing","draft-started","ready-to-submit","submitted","received","in-review","longlisted","shortlisted","finalist","accepted","declined","waitlisted","revision-requested","withdrawn","partially-withdrawn","delivered","archived"];
-let tab = 'discover', userId = null;
+let tab = 'discover', userId = null, orgId = null;
 
 async function api(path, opts) {
   const res = await fetch(path, opts ? { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(opts) } : undefined);
@@ -147,12 +150,87 @@ async function renderTracker(el) {
   });
 }
 
+async function renderWorkspace(el) {
+  if (!orgId) { el.innerHTML = '<p>No organizations yet.</p>'; return; }
+  const [org, listings, claims, analytics] = await Promise.all([
+    api('/api/orgs/' + orgId),
+    api('/api/orgs/' + orgId + '/opportunities'),
+    api('/api/orgs/' + orgId + '/claims'),
+    api('/api/orgs/' + orgId + '/analytics'),
+  ]);
+  el.innerHTML = '<h2>' + esc(org.name) + (org.verified ? ' <span class="badge status">verified</span>' : '') + '</h2>'
+    + '<div class="stats">'
+    + '<div><b>' + analytics.claimedListings + '</b>claimed listings</div>'
+    + '<div><b>' + analytics.openListings + '</b>open</div>'
+    + '<div><b>' + analytics.followers + '</b>followers</div>'
+    + '<div><b>' + (analytics.avgTrust ?? '—') + '</b>avg trust</div>'
+    + '<div><b>' + analytics.openVerificationTasks + '</b>pending review</div>'
+    + '</div>'
+    + '<div class="stage"><h2>Claimed listings</h2>' + (listings.length ? listings.map(o => \`
+      <div class="card">
+        <div class="row">
+          <div>
+            <h3>\${esc(o.title)}</h3>
+            <div class="meta">\${esc(o.type)} · deadline: \${esc(o.deadline ?? o.deadlineKind)} · trust \${o.trust}/100</div>
+            <span class="badge status">\${esc(o.status)}</span>
+          </div>
+          <div><button class="action" data-edit="\${o.id}" data-deadline="\${esc(o.deadline ?? '')}">Edit deadline</button></div>
+        </div>
+      </div>\`).join('') : '<p class="meta">Nothing claimed yet.</p>') + '</div>'
+    + '<div class="stage"><h2>Claim requests</h2>' + (claims.length ? claims.map(c => '<div class="card"><b>' + esc(c.opportunityId) + '</b><div class="meta">' + esc(c.status) + ' · ' + esc(c.verificationMethod) + '</div></div>').join('') : '<p class="meta">No claim requests.</p>') + '</div>';
+  el.querySelectorAll('[data-edit]').forEach(b => b.onclick = async () => {
+    const deadline = prompt('New deadline (YYYY-MM-DD):', b.dataset.deadline);
+    if (!deadline) return;
+    await fetch('/api/orgs/' + orgId + '/opportunities/' + b.dataset.edit, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ deadline: { kind: 'exact', date: deadline } }),
+    });
+    render();
+  });
+}
+
+async function renderAdmin(el) {
+  const [queue, claims, stats] = await Promise.all([
+    api('/api/admin/verification-queue'),
+    api('/api/admin/claims'),
+    api('/api/admin/stats'),
+  ]);
+  el.innerHTML = '<h2>Radar health</h2><div class="stats">'
+    + '<div><b>' + stats.opportunitiesDiscovered + '</b>discovered</div>'
+    + '<div><b>' + stats.opportunitiesOpen + '</b>open</div>'
+    + '<div><b>' + stats.openVerificationTasks + '</b>open tasks</div>'
+    + '<div><b>' + Math.round(stats.duplicateRate * 100) + '%</b>duplicate rate</div>'
+    + '</div>'
+    + '<div class="stage"><h2>Pending claim reviews</h2>' + (claims.length ? claims.map(c => \`
+      <div class="card">
+        <div class="row">
+          <div><b>\${esc(c.organizationName ?? c.organizationId)}</b> wants "\${esc(c.opportunityTitle ?? c.opportunityId)}"
+            <div class="meta">\${esc(c.verificationMethod)}</div></div>
+          <div><button class="action" data-approve="\${c.id}">Approve</button> <button class="action" data-reject="\${c.id}">Reject</button></div>
+        </div>
+      </div>\`).join('') : '<p class="meta">Nothing pending.</p>') + '</div>'
+    + Object.entries(queue).map(([reason, tasks]) => tasks.length ? '<div class="stage"><h2>' + esc(reason) + ' (' + tasks.length + ')</h2>'
+      + tasks.map(t => \`
+        <div class="card">
+          <div class="row">
+            <div>\${esc(t.details)}</div>
+            <div><button class="action" data-resolve="\${t.id}">Resolve</button> <button class="action" data-dismiss="\${t.id}">Dismiss</button></div>
+          </div>
+        </div>\`).join('') + '</div>' : '').join('');
+  el.querySelectorAll('[data-approve]').forEach(b => b.onclick = async () => { await api('/api/admin/claims/approve', { claimId: b.dataset.approve, decidedBy: 'admin' }); render(); });
+  el.querySelectorAll('[data-reject]').forEach(b => b.onclick = async () => { await api('/api/admin/claims/reject', { claimId: b.dataset.reject, decidedBy: 'admin' }); render(); });
+  el.querySelectorAll('[data-resolve]').forEach(b => b.onclick = async () => { await api('/api/admin/verification-tasks/' + b.dataset.resolve + '/resolve', { resolvedBy: 'admin' }); render(); });
+  el.querySelectorAll('[data-dismiss]').forEach(b => b.onclick = async () => { await api('/api/admin/verification-tasks/' + b.dataset.dismiss + '/resolve', { resolvedBy: 'admin', dismiss: true }); render(); });
+}
+
 async function render() {
   const el = document.getElementById('main');
   try {
     if (tab === 'discover') await renderDiscover(el);
     else if (tab === 'inbox') await renderInbox(el);
-    else await renderTracker(el);
+    else if (tab === 'tracker') await renderTracker(el);
+    else if (tab === 'workspace') await renderWorkspace(el);
+    else await renderAdmin(el);
   } catch (e) { el.innerHTML = '<p>' + esc(e.message) + '</p>'; }
 }
 
@@ -160,6 +238,8 @@ function setTab(name) {
   tab = name;
   location.hash = name;
   document.querySelectorAll('nav button').forEach(x => x.classList.toggle('active', x.dataset.tab === name));
+  document.getElementById('userPicker').style.display = ['discover', 'inbox', 'tracker'].includes(name) ? '' : 'none';
+  document.getElementById('orgPicker').style.display = name === 'workspace' ? '' : 'none';
   render();
 }
 document.querySelectorAll('nav button').forEach(b => b.onclick = () => setTab(b.dataset.tab));
@@ -175,8 +255,15 @@ document.getElementById('tick').onclick = async () => {
   sel.innerHTML = users.map(u => '<option value="' + u.id + '">' + esc(u.displayName) + '</option>').join('');
   userId = users[0]?.id;
   sel.onchange = () => { userId = sel.value; render(); };
+
+  const orgs = await api('/api/organizations');
+  const orgSel = document.getElementById('org');
+  orgSel.innerHTML = orgs.map(o => '<option value="' + o.id + '">' + esc(o.name) + '</option>').join('');
+  orgId = orgs[0]?.id;
+  orgSel.onchange = () => { orgId = orgSel.value; render(); };
+
   const initial = location.hash.replace('#', '');
-  setTab(['discover', 'inbox', 'tracker'].includes(initial) ? initial : 'discover');
+  setTab(['discover', 'inbox', 'tracker', 'workspace', 'admin'].includes(initial) ? initial : 'discover');
 })();
 </script>
 </body>

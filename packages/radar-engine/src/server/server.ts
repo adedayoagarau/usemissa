@@ -246,6 +246,104 @@ export class RadarServer {
     }
     if (method === 'GET' && a === 'stats') return json(this.engine.stats());
 
+    // ── Missa Workspace (organization-facing) ──
+    if (a === 'orgs' && b) {
+      const org = store.organizations.get(b);
+      if (!org) throw httpError(404, `Unknown organization: ${b}`);
+
+      if (method === 'GET' && !c) return json(org);
+
+      if (method === 'GET' && c === 'opportunities') {
+        const list = [...store.opportunities.values()]
+          .filter((o) => o.claimedByOrganizationId === b)
+          .map((o) => ({ ...this.opportunityView(o), overrides: o.organizationOverrides ?? {} }));
+        return json(list);
+      }
+
+      if (method === 'GET' && c === 'claims') {
+        return json([...store.claims.values()].filter((cl) => cl.organizationId === b));
+      }
+      if (method === 'POST' && c === 'claims') {
+        const body = await readJson(req);
+        if (typeof body.opportunityId !== 'string') throw httpError(400, 'opportunityId required');
+        if (typeof body.requestedBy !== 'string' || !body.requestedBy) throw httpError(400, 'requestedBy required');
+        if (!store.opportunities.has(body.opportunityId)) throw httpError(404, 'Unknown opportunity');
+        const claim = this.engine.requestClaim(body.opportunityId, b, body.requestedBy);
+        this.persist();
+        return json(claim, 201);
+      }
+
+      if (method === 'PATCH' && c === 'opportunities' && d) {
+        const body = await readJson(req);
+        const opp = this.engine.updateClaimedListing(d, b, body as Partial<import('../domain/types.js').OpportunityFields>);
+        this.persist();
+        return json(this.opportunityView(opp));
+      }
+
+      if (method === 'GET' && c === 'analytics') {
+        const claimed = [...store.opportunities.values()].filter((o) => o.claimedByOrganizationId === b);
+        const followers = store.follows.filter((f) => f.organizationId === b).length;
+        const openTasks = [...store.verificationTasks.values()].filter(
+          (t) => t.status === 'open' && t.opportunityId && claimed.some((o) => o.id === t.opportunityId),
+        ).length;
+        return json({
+          claimedListings: claimed.length,
+          openListings: claimed.filter((o) => ['open', 'closing-soon', 'opening-soon', 'deadline-extended'].includes(o.status)).length,
+          followers,
+          openVerificationTasks: openTasks,
+          avgTrust: claimed.length === 0 ? null : Math.round(claimed.reduce((n, o) => n + o.scores.trust, 0) / claimed.length),
+        });
+      }
+    }
+
+    // ── Admin console ──
+    if (a === 'admin') {
+      if (method === 'GET' && b === 'stats') return json(this.engine.stats());
+
+      if (method === 'GET' && b === 'verification-queue') return json(this.engine.verificationQueue());
+
+      if (method === 'POST' && b === 'verification-tasks' && c && d === 'resolve') {
+        const body = await readJson(req);
+        if (typeof body.resolvedBy !== 'string' || !body.resolvedBy) throw httpError(400, 'resolvedBy required');
+        const task = this.engine.resolveVerificationTask(c, body.resolvedBy, body.dismiss === true);
+        this.persist();
+        return json(task);
+      }
+
+      if (method === 'GET' && b === 'claims') {
+        const pendingOnly = url.searchParams.get('status') !== 'all';
+        const claims = [...store.claims.values()].filter((cl) => !pendingOnly || cl.status === 'pending');
+        const withContext = claims.map((cl) => ({
+          ...cl,
+          opportunityTitle: store.opportunities.get(cl.opportunityId)?.fields.title,
+          organizationName: store.organizations.get(cl.organizationId)?.name,
+        }));
+        return json(withContext);
+      }
+      if (method === 'POST' && b === 'claims' && c === 'approve') {
+        const body = await readJson(req);
+        if (typeof body.claimId !== 'string') throw httpError(400, 'claimId required');
+        if (typeof body.decidedBy !== 'string' || !body.decidedBy) throw httpError(400, 'decidedBy required');
+        const claim = this.engine.approveClaim(body.claimId, body.decidedBy);
+        this.persist();
+        return json(claim);
+      }
+      if (method === 'POST' && b === 'claims' && c === 'reject') {
+        const body = await readJson(req);
+        if (typeof body.claimId !== 'string') throw httpError(400, 'claimId required');
+        if (typeof body.decidedBy !== 'string' || !body.decidedBy) throw httpError(400, 'decidedBy required');
+        const claim = this.engine.rejectClaim(body.claimId, body.decidedBy, typeof body.note === 'string' ? body.note : undefined);
+        this.persist();
+        return json(claim);
+      }
+
+      if (method === 'POST' && b === 'opportunities' && c && d === 'resolve-conflicts') {
+        const opp = this.engine.resolveConflicts(c);
+        this.persist();
+        return json(this.opportunityView(opp));
+      }
+    }
+
     throw httpError(404, 'Not found');
   }
 }
