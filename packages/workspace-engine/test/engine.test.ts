@@ -103,3 +103,67 @@ test('createSubmission rejects zero works', () => {
 
   assert.throws(() => engine.createSubmission(path.id, 'acct1', []));
 });
+
+test('Story 7.1: submissionsForOrganization walks Org -> Entity -> Program -> OpenCall -> Submission (drafts included)', () => {
+  const engine = new WorkspaceEngine();
+  const entity = engine.createEntity('org1', 'Acme Magazine');
+  const program = engine.createProgram(entity.id, 'Fiction Program');
+  const draftCall = engine.createOpenCall(program.id, 'Draft Call');
+  const path = engine.createSubmissionPath(draftCall.id, ['fiction'], [{ type: 'file-upload', label: 'Manuscript', required: true }]);
+  engine.createSubmission(path.id, 'acct1', [{ title: 'Story A' }]);
+
+  const otherEntity = engine.createEntity('org2', 'Other Org');
+  const otherProgram = engine.createProgram(otherEntity.id, 'Other Program');
+  const otherCall = engine.createOpenCall(otherProgram.id, 'Other Call');
+  const otherPath = engine.createSubmissionPath(otherCall.id, [], []);
+  engine.createSubmission(otherPath.id, 'acct2', [{ title: 'Story B' }]);
+
+  const submissions = engine.submissionsForOrganization('org1');
+  assert.equal(submissions.length, 1);
+  assert.equal(submissions[0].openCallId, draftCall.id);
+  assert.equal(submissions[0].openCallTitle, 'Draft Call');
+});
+
+test('Story 7.2: creates a ReviewRound and assigns a reviewer; reviewer sees only their own assignments', () => {
+  const engine = new WorkspaceEngine();
+  const entity = engine.createEntity('org1', 'Acme');
+  const program = engine.createProgram(entity.id, 'Program');
+  const openCall = engine.createOpenCall(program.id, 'Call');
+  const path = engine.createSubmissionPath(openCall.id, [], [{ type: 'file-upload', label: 'Manuscript', required: true }]);
+  const submissionA = engine.createSubmission(path.id, 'submitterA', [{ title: 'A' }]);
+  const submissionB = engine.createSubmission(path.id, 'submitterB', [{ title: 'B' }]);
+
+  const round = engine.createReviewRound(openCall.id, 'Round 1');
+  engine.assignReviewer(round.id, submissionA.id, 'reviewer1');
+  engine.assignReviewer(round.id, submissionB.id, 'reviewer2');
+
+  const reviewer1Assignments = engine.reviewAssignmentsForReviewer('reviewer1');
+  assert.equal(reviewer1Assignments.length, 1);
+  assert.equal(reviewer1Assignments[0].submissionId, submissionA.id);
+
+  // Admin can add an additional reviewer to the same round/submission.
+  engine.assignReviewer(round.id, submissionA.id, 'reviewer3');
+  assert.equal(engine.reviewAssignmentsForSubmission(submissionA.id).length, 2);
+});
+
+test('assignReviewer rejects an unknown review round or submission', () => {
+  const engine = new WorkspaceEngine();
+  assert.throws(() => engine.assignReviewer('nope', 'nope', 'reviewer1'));
+});
+
+test('Story 7.3: reviewer records a recommendation, marking the assignment complete', () => {
+  const engine = new WorkspaceEngine();
+  const entity = engine.createEntity('org1', 'Acme');
+  const program = engine.createProgram(entity.id, 'Program');
+  const openCall = engine.createOpenCall(program.id, 'Call');
+  const path = engine.createSubmissionPath(openCall.id, [], [{ type: 'file-upload', label: 'Manuscript', required: true }]);
+  const submission = engine.createSubmission(path.id, 'submitterA', [{ title: 'A' }]);
+  const round = engine.createReviewRound(openCall.id, 'Round 1');
+  const assignment = engine.assignReviewer(round.id, submission.id, 'reviewer1');
+
+  assert.equal(assignment.completedAt, undefined);
+  const recommendation = engine.recordReview(assignment.id, 8, 'Strong voice, recommend accept.');
+  assert.equal(recommendation.score, 8);
+  assert.ok(engine.reviewAssignmentsForSubmission(submission.id)[0].completedAt);
+  assert.deepEqual(engine.recommendationForAssignment(assignment.id), recommendation);
+});

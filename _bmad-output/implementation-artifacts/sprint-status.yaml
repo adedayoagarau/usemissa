@@ -89,10 +89,10 @@ development_status:
   6-5-submitter-file-upload-against-a-submission-path: done
   epic-6-retrospective: optional
 
-  epic-7: backlog
-  7-1-admin-inbox-of-incoming-submissions: backlog
-  7-2-reviewer-assignment: backlog
-  7-3-basic-rubric-and-review-recording: backlog
+  epic-7: done
+  7-1-admin-inbox-of-incoming-submissions: done
+  7-2-reviewer-assignment: done
+  7-3-basic-rubric-and-review-recording: done
   epic-7-retrospective: optional
 
   epic-8: backlog

@@ -24,6 +24,12 @@ export function AppNav({ email }: { email: string }) {
         <Link href="/workspace" className="text-foreground hover:text-primary">
           Workspace
         </Link>
+        <Link href="/submissions" className="text-foreground hover:text-primary">
+          Submissions
+        </Link>
+        <Link href="/reviewer" className="text-foreground hover:text-primary">
+          Your reviews
+        </Link>
       </nav>
       <span className="ml-auto text-sm text-muted-foreground">{email}</span>
       <Button

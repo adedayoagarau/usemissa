@@ -1,4 +1,14 @@
-import type { Entity, Program, OpenCall, SubmissionPath, Submission, Work } from '../domain/types.js';
+import type {
+  Entity,
+  Program,
+  OpenCall,
+  SubmissionPath,
+  Submission,
+  Work,
+  ReviewRound,
+  ReviewAssignment,
+  ReviewRecommendation,
+} from '../domain/types.js';
 
 /**
  * In-memory store for the Workspace domain -- mirrors radar-engine's
@@ -19,6 +29,10 @@ export interface WorkspaceStore {
   submissionPaths: Map<string, SubmissionPath>;
   submissions: Map<string, Submission>;
   works: Map<string, Work>;
+  reviewRounds: Map<string, ReviewRound>;
+  reviewAssignments: Map<string, ReviewAssignment>;
+  /** Keyed by reviewAssignmentId -- one recommendation per assignment. */
+  reviewRecommendations: Map<string, ReviewRecommendation>;
 }
 
 export function createStore(): WorkspaceStore {
@@ -29,6 +43,9 @@ export function createStore(): WorkspaceStore {
     submissionPaths: new Map(),
     submissions: new Map(),
     works: new Map(),
+    reviewRounds: new Map(),
+    reviewAssignments: new Map(),
+    reviewRecommendations: new Map(),
   };
 }
 

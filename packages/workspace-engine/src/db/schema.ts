@@ -8,8 +8,12 @@
  *   Story 6.1 -> entities, programs
  *   Story 6.2 -> open_calls
  *   Story 6.3 -> submission_paths
- * Later stories (6.5, 7.2, 8.1, 8.3) add submissions/works/review_rounds/
- * review_assignments/decisions/delivery_tasks here when they're built.
+ *   Story 6.5 -> submissions, works (added retroactively -- this table
+ *     was missed when 6.5's in-memory store was built; caught while
+ *     adding Story 7.2's tables)
+ *   Story 7.2 -> review_rounds, review_assignments
+ * Later stories (7.3, 8.1, 8.3) add review_recommendations/decisions/
+ * delivery_tasks here when they're built.
  *
  * snake_case table/column names throughout, matching
  * packages/radar-adapters/src/postgresSchema.sql's existing convention.
@@ -48,4 +52,37 @@ export const submissionPaths = pgTable('submission_paths', {
   fields: jsonb('fields').notNull().$type<Array<{ id: string; type: string; label: string; required: boolean; order: number }>>(),
   feeCents: integer('fee_cents'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+});
+
+export const submissions = pgTable('submissions', {
+  id: text('id').primaryKey(),
+  submissionPathId: text('submission_path_id').notNull().references(() => submissionPaths.id),
+  submitterAccountId: text('submitter_account_id').notNull(),
+  status: text('status').notNull(), // 'submitted' | 'in-review' | 'decided' | 'withdrawn'
+  submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull(),
+});
+
+export const works = pgTable('works', {
+  id: text('id').primaryKey(),
+  submissionId: text('submission_id').notNull().references(() => submissions.id),
+  title: text('title').notNull(),
+  // Data-URI values only for now (no file storage adapter yet -- see Story
+  // 6.5's dev notes); text, not jsonb, since it's a single opaque string.
+  fileUrl: text('file_url'),
+  order: integer('order').notNull(),
+});
+
+export const reviewRounds = pgTable('review_rounds', {
+  id: text('id').primaryKey(),
+  openCallId: text('open_call_id').notNull().references(() => openCalls.id),
+  name: text('name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+});
+
+export const reviewAssignments = pgTable('review_assignments', {
+  id: text('id').primaryKey(),
+  reviewRoundId: text('review_round_id').notNull().references(() => reviewRounds.id),
+  submissionId: text('submission_id').notNull().references(() => submissions.id),
+  reviewerAccountId: text('reviewer_account_id').notNull(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
 });

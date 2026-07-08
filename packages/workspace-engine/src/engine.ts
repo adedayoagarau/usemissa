@@ -1,4 +1,15 @@
-import type { Entity, Program, OpenCall, SubmissionPath, SubmissionField, Submission, Work } from './domain/types.js';
+import type {
+  Entity,
+  Program,
+  OpenCall,
+  SubmissionPath,
+  SubmissionField,
+  Submission,
+  Work,
+  ReviewRound,
+  ReviewAssignment,
+  ReviewRecommendation,
+} from './domain/types.js';
 import { createStore, nextIdFor, type WorkspaceStore } from './store/store.js';
 
 export interface WorkspaceEngineOptions {
@@ -122,5 +133,72 @@ export class WorkspaceEngine {
   submissionsForOpenCall(openCallId: string): Submission[] {
     const pathIds = new Set(this.submissionPathsForOpenCall(openCallId).map((p) => p.id));
     return [...this.store.submissions.values()].filter((s) => pathIds.has(s.submissionPathId));
+  }
+
+  /** Walks Organization -> Entity -> Program -> OpenCall -> Submission for
+   * Story 7.1's admin inbox -- "every Submission this org has ever received,"
+   * not just one Open Call's worth. */
+  submissionsForOrganization(organizationId: string): Array<Submission & { openCallId: string; openCallTitle: string }> {
+    const openCalls = new Map(this.publishedAndDraftOpenCallsForOrganization(organizationId).map((o) => [o.id, o]));
+    const result: Array<Submission & { openCallId: string; openCallTitle: string }> = [];
+    for (const openCall of openCalls.values()) {
+      for (const submission of this.submissionsForOpenCall(openCall.id)) {
+        result.push({ ...submission, openCallId: openCall.id, openCallTitle: openCall.title });
+      }
+    }
+    return result;
+  }
+
+  /** Same Org -> Entity -> Program traversal as publishedOpenCallsForOrganization,
+   * but including drafts -- an admin managing their own org needs to see
+   * everything, not just what's public. */
+  private publishedAndDraftOpenCallsForOrganization(organizationId: string): OpenCall[] {
+    const entityIds = new Set(this.entitiesForOrganization(organizationId).map((e) => e.id));
+    const programIds = new Set([...this.store.programs.values()].filter((p) => entityIds.has(p.entityId)).map((p) => p.id));
+    return [...this.store.openCalls.values()].filter((o) => programIds.has(o.programId));
+  }
+
+  createReviewRound(openCallId: string, name: string): ReviewRound {
+    if (!this.store.openCalls.has(openCallId)) throw new Error(`Unknown open call: ${openCallId}`);
+    const round: ReviewRound = { id: nextIdFor('round'), openCallId, name, createdAt: this.now() };
+    this.store.reviewRounds.set(round.id, round);
+    return round;
+  }
+
+  reviewRoundsForOpenCall(openCallId: string): ReviewRound[] {
+    return [...this.store.reviewRounds.values()].filter((r) => r.openCallId === openCallId);
+  }
+
+  assignReviewer(reviewRoundId: string, submissionId: string, reviewerAccountId: string): ReviewAssignment {
+    if (!this.store.reviewRounds.has(reviewRoundId)) throw new Error(`Unknown review round: ${reviewRoundId}`);
+    if (!this.store.submissions.has(submissionId)) throw new Error(`Unknown submission: ${submissionId}`);
+    const assignment: ReviewAssignment = { id: nextIdFor('assignment'), reviewRoundId, submissionId, reviewerAccountId };
+    this.store.reviewAssignments.set(assignment.id, assignment);
+    return assignment;
+  }
+
+  /** A reviewer's own dashboard: only their assigned Submissions, per Story 7.2's AC. */
+  reviewAssignmentsForReviewer(reviewerAccountId: string): ReviewAssignment[] {
+    return [...this.store.reviewAssignments.values()].filter((a) => a.reviewerAccountId === reviewerAccountId);
+  }
+
+  reviewAssignmentsForSubmission(submissionId: string): ReviewAssignment[] {
+    return [...this.store.reviewAssignments.values()].filter((a) => a.submissionId === submissionId);
+  }
+
+  /** Story 7.3: a reviewer records their recommendation against the fixed
+   * MVP rubric (score + notes, not a rubric builder). Marks the assignment
+   * complete -- one recommendation per assignment, recording again replaces it. */
+  recordReview(reviewAssignmentId: string, score?: number, notes?: string): ReviewRecommendation {
+    const assignment = this.store.reviewAssignments.get(reviewAssignmentId);
+    if (!assignment) throw new Error(`Unknown review assignment: ${reviewAssignmentId}`);
+    const recommendation: ReviewRecommendation = { reviewAssignmentId, score, notes, recordedAt: this.now() };
+    this.store.reviewRecommendations.set(reviewAssignmentId, recommendation);
+    assignment.completedAt = this.now();
+    return recommendation;
+  }
+
+  recommendationForAssignment(reviewAssignmentId: string): ReviewRecommendation | undefined {
+    return this.store.reviewRecommendations.get(reviewAssignmentId);
   }
 }
