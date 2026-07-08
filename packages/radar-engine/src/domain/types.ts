@@ -23,6 +23,8 @@ export type OpportunityType =
   | 'rfp'
   | 'contest'
   | 'pitch'
+  | 'exhibition'
+  | 'commission'
   | 'other';
 
 /** Statuses exactly as enumerated in the strategy doc. "Claimed by Organization"

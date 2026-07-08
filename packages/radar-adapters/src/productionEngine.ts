@@ -6,30 +6,57 @@
  * production RadarEngine look like", not two.
  */
 import { Pool } from 'pg';
-import { RadarEngine, HttpFetcher, systemClock, loadSourcesIntoEngine } from '@missa/radar-engine';
+import { RadarEngine, HttpFetcher, systemClock, assembleRegistry, filterSources } from '@missa/radar-engine';
 import { ensurePostgresSchema, loadStoreFromPostgres, saveStoreToPostgres } from './postgresStore.js';
 import { LlmExtractor } from './llmExtractor.js';
+
+function normalizeUrl(url: string): string {
+  return url.replace(/\/$/, '').toLowerCase();
+}
 
 /**
  * Seeds the engine's sources from the built opportunity-source registry
  * (packages/radar-engine/src/registry/ -- 49 verticals, ~1,024 tier-0
- * sources) when the store has none yet. Tier 0 only: the canonical org
- * guideline/submit pages, not tier-1 directories or tier-2 outbound-link
- * crawling (both out of scope for this pass).
+ * sources). Tier 0 only: the canonical org guideline/submit pages, not
+ * tier-1 directories or tier-2 outbound-link crawling (both out of scope
+ * for this pass).
  *
- * Idempotent: once the store has any sources at all (e.g. a Postgres that
- * was already seeded on a previous cold start), this is a no-op and returns
- * null -- re-running it on every serverless cold start never duplicates
- * sources.
+ * Dedup-aware rather than a blunt "store is empty" gate: it compares
+ * registry entries against the store's existing source URLs and adds only
+ * the ones that are missing, by URL. This makes it self-healing against
+ * *any* partial-seed state (a bundling bug that only seeded some sources,
+ * a previous run that failed partway through, etc.) -- re-running it always
+ * converges the store toward "every registry tier-0 source present exactly
+ * once" without ever creating duplicates. When the store already has every
+ * registry source, this is a no-op and returns null.
  *
  * Extracted as a standalone function (rather than inlined in
  * createProductionEngine) so it's unit-testable against a plain in-memory
  * RadarEngine, without a real Postgres connection.
  */
 export function seedRegistryIfEmpty(engine: RadarEngine): { loaded: number } | null {
-  if (engine.store.sources.size > 0) return null;
-  const { loaded } = loadSourcesIntoEngine(engine.addSource.bind(engine), { maxTier: 0 });
-  console.log(`[seedRegistryIfEmpty] seeded ${loaded} tier-0 sources from the opportunity-source registry`);
+  const existingUrls = new Set(
+    [...engine.store.sources.values()].map((s) => normalizeUrl(s.url)),
+  );
+  const registry = assembleRegistry();
+  const entries = filterSources(registry, { maxTier: 0 });
+
+  let loaded = 0;
+  for (const entry of entries) {
+    const key = normalizeUrl(entry.url);
+    if (existingUrls.has(key)) continue;
+    engine.addSource({
+      name: entry.name,
+      url: entry.url,
+      kind: entry.kind,
+      checkIntervalHours: entry.checkIntervalHours,
+    });
+    existingUrls.add(key);
+    loaded++;
+  }
+
+  if (loaded === 0) return null;
+  console.log(`[seedRegistryIfEmpty] seeded ${loaded} new tier-0 sources from the opportunity-source registry`);
   return { loaded };
 }
 
