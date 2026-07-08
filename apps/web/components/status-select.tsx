@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { STATUSES, STATUS_LABELS } from '@/lib/statusLabels';
 import type { MyStatus } from '@missa/radar-engine';
@@ -21,6 +22,7 @@ export function StatusSelect({ userId, opportunityId, value }: { userId: string;
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ opportunityId, status: next }),
           });
+          toast.success('Status updated');
           router.refresh();
         });
       }}

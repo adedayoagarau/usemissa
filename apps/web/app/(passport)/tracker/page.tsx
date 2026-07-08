@@ -1,9 +1,13 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { TrackerViewSwitcher } from '@/components/tracker-view-switcher';
 import { CalendarFeedButton } from '@/components/calendar-feed-button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Empty, EmptyTitle, EmptyDescription, EmptyContent } from '@/components/ui/empty';
 
 export default async function TrackerPage() {
   const cookieStore = await cookies();
@@ -22,33 +26,41 @@ export default async function TrackerPage() {
         <h1 className="font-heading text-3xl font-medium text-foreground">Tracker</h1>
         <CalendarFeedButton userId={userId} />
       </div>
-      <div className="mt-6 flex flex-wrap gap-6 rounded-lg border border-border bg-card p-4 text-sm shadow-sm">
-        <div>
-          <b className="block font-mono text-2xl text-foreground">{stats.tracked}</b>tracked
-        </div>
-        <div>
-          <b className="block font-mono text-2xl text-foreground">{stats.planning}</b>planning
-        </div>
-        <div>
-          <b className="block font-mono text-2xl text-foreground">{stats.awaitingResponse}</b>awaiting response
-        </div>
-        <div>
-          <b className="block font-mono text-2xl text-foreground">{stats.accepted}</b>accepted
-        </div>
-        <div>
-          <b className="block font-mono text-2xl text-foreground">
-            {stats.acceptanceRate != null ? `${Math.round(stats.acceptanceRate * 100)}%` : '—'}
-          </b>
-          acceptance
-        </div>
-      </div>
+      <Card className="mt-6">
+        <CardContent className="flex flex-wrap gap-6 text-sm">
+          <div>
+            <b className="block font-mono text-2xl text-foreground">{stats.tracked}</b>tracked
+          </div>
+          <div>
+            <b className="block font-mono text-2xl text-foreground">{stats.planning}</b>planning
+          </div>
+          <div>
+            <b className="block font-mono text-2xl text-foreground">{stats.awaitingResponse}</b>awaiting response
+          </div>
+          <div>
+            <b className="block font-mono text-2xl text-foreground">{stats.accepted}</b>accepted
+          </div>
+          <div>
+            <b className="block font-mono text-2xl text-foreground">
+              {stats.acceptanceRate != null ? `${Math.round(stats.acceptanceRate * 100)}%` : '—'}
+            </b>
+            acceptance
+          </div>
+        </CardContent>
+      </Card>
       {view.deadlines.length > 0 && (
         <div className="mt-4 text-sm text-muted-foreground">
           Next deadlines: {view.deadlines.map((d) => `${d.title} — ${d.daysToDeadline}d`).join(' · ')}
         </div>
       )}
       {stats.tracked === 0 ? (
-        <p className="mt-6 text-muted-foreground">Nothing tracked yet — find something in Opportunities.</p>
+        <Empty className="mt-6">
+          <EmptyTitle>Nothing tracked yet</EmptyTitle>
+          <EmptyDescription>Find something in Opportunities.</EmptyDescription>
+          <EmptyContent>
+            <Button render={<Link href="/opportunities" />}>Browse opportunities</Button>
+          </EmptyContent>
+        </Empty>
       ) : (
         <div className="mt-6">
           <TrackerViewSwitcher userId={userId} pipeline={view.pipeline} allItems={allItems} />

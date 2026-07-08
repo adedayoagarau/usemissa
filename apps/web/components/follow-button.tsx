@@ -2,8 +2,17 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
-export function FollowButton({ userId, organizationId }: { userId: string; organizationId: string }) {
+export function FollowButton({
+  userId,
+  organizationId,
+  organizationName,
+}: {
+  userId: string;
+  organizationId: string;
+  organizationName?: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [followed, setFollowed] = useState(false);
@@ -24,7 +33,10 @@ export function FollowButton({ userId, organizationId }: { userId: string; organ
           });
           if (res.ok) {
             setFollowed(true);
+            toast.success(`Following ${organizationName ?? 'this organization'}`);
             router.refresh();
+          } else {
+            toast.error('Failed to follow');
           }
         })
       }

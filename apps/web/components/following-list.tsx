@@ -2,7 +2,9 @@
 
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface Followed {
   organizationId: string;
@@ -18,28 +20,31 @@ export function FollowingList({ userId, following }: { userId: string; following
   if (following.length === 0) return null;
 
   return (
-    <div className="mt-6 rounded-lg border border-dashed border-border p-4">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Following</h2>
-      <div className="mt-2 space-y-2">
-        {following.map((f) => (
-          <div key={f.organizationId} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm">
-            <span>{f.organizationName}</span>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isPending}
-              onClick={() =>
-                startTransition(async () => {
-                  await fetch(`/api/users/${userId}/following/${f.organizationId}`, { method: 'DELETE' });
-                  router.refresh();
-                })
-              }
-            >
-              Unfollow
-            </Button>
-          </div>
-        ))}
-      </div>
-    </div>
+    <Card className="mt-6">
+      <CardContent>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Following</h2>
+        <div className="mt-2 space-y-2">
+          {following.map((f) => (
+            <div key={f.organizationId} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm">
+              <span>{f.organizationName}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isPending}
+                onClick={() =>
+                  startTransition(async () => {
+                    await fetch(`/api/users/${userId}/following/${f.organizationId}`, { method: 'DELETE' });
+                    toast.success('Unfollowed');
+                    router.refresh();
+                  })
+                }
+              >
+                Unfollow
+              </Button>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

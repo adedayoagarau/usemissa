@@ -2,8 +2,20 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Field, FieldLabel } from '@/components/ui/field';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import type { RadarProfile } from '@missa/radar-engine';
 
 /**
@@ -13,15 +25,14 @@ import type { RadarProfile } from '@missa/radar-engine';
  */
 export function SavedSearches({ userId, profiles }: { userId: string; profiles: RadarProfile[] }) {
   const router = useRouter();
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [genres, setGenres] = useState('');
   const [noFeeOnly, setNoFeeOnly] = useState(false);
   const [deadlineWithinDays, setDeadlineWithinDays] = useState('');
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
 
   const createProfile = () => {
-    setError(null);
     startTransition(async () => {
       const res = await fetch(`/api/users/${userId}/profiles`, {
         method: 'POST',
@@ -37,13 +48,15 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? 'Failed to save');
+        toast.error(data.error ?? 'Failed to save');
         return;
       }
       setName('');
       setGenres('');
       setNoFeeOnly(false);
       setDeadlineWithinDays('');
+      setOpen(false);
+      toast.success('Saved search created');
       router.refresh();
     });
   };
@@ -51,47 +64,85 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
   const deleteProfile = (profileId: string) => {
     startTransition(async () => {
       await fetch(`/api/users/${userId}/profiles/${profileId}`, { method: 'DELETE' });
+      toast.success('Saved search deleted');
       router.refresh();
     });
   };
 
   return (
-    <div className="mt-6 rounded-lg border border-dashed border-border p-4">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Saved searches</h2>
-      <div className="mt-2 space-y-2">
-        {profiles.map((p) => (
-          <div key={p.id} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm">
-            <span>
-              {p.name}
-              {p.criteria.genres?.length ? <span className="text-muted-foreground"> · {p.criteria.genres.join(', ')}</span> : null}
-              {p.criteria.noFeeOnly ? <span className="text-muted-foreground"> · no fee</span> : null}
-              {p.criteria.deadlineWithinDays ? <span className="text-muted-foreground"> · within {p.criteria.deadlineWithinDays}d</span> : null}
-            </span>
-            <Button size="sm" variant="outline" disabled={isPending} onClick={() => deleteProfile(p.id)}>
-              Delete
-            </Button>
-          </div>
-        ))}
-      </div>
-      <div className="mt-3 flex flex-wrap items-end gap-2">
-        <Input placeholder="Name (e.g. Poetry, no fee)" value={name} onChange={(e) => setName(e.target.value)} className="w-48" />
-        <Input placeholder="Genres (comma-separated)" value={genres} onChange={(e) => setGenres(e.target.value)} className="w-48" />
-        <Input
-          placeholder="Deadline within (days)"
-          type="number"
-          value={deadlineWithinDays}
-          onChange={(e) => setDeadlineWithinDays(e.target.value)}
-          className="w-40"
-        />
-        <label className="flex items-center gap-1 text-xs text-muted-foreground">
-          <input type="checkbox" checked={noFeeOnly} onChange={(e) => setNoFeeOnly(e.target.checked)} />
-          no fee only
-        </label>
-        <Button size="sm" disabled={isPending} onClick={createProfile}>
-          Save search
-        </Button>
-        {error && <span className="text-xs text-destructive">{error}</span>}
-      </div>
-    </div>
+    <Card className="mt-6">
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Saved searches</h2>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger render={<Button size="sm" />}>New saved search</DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>New saved search</DialogTitle>
+              </DialogHeader>
+              <div className="flex flex-col gap-4">
+                <Field>
+                  <FieldLabel htmlFor="saved-search-name">Name</FieldLabel>
+                  <Input
+                    id="saved-search-name"
+                    placeholder="e.g. Poetry, no fee"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="saved-search-genres">Genres</FieldLabel>
+                  <Input
+                    id="saved-search-genres"
+                    placeholder="Comma-separated"
+                    value={genres}
+                    onChange={(e) => setGenres(e.target.value)}
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="saved-search-deadline">Deadline within (days)</FieldLabel>
+                  <Input
+                    id="saved-search-deadline"
+                    type="number"
+                    value={deadlineWithinDays}
+                    onChange={(e) => setDeadlineWithinDays(e.target.value)}
+                  />
+                </Field>
+                <Field orientation="horizontal">
+                  <Checkbox
+                    id="saved-search-no-fee"
+                    checked={noFeeOnly}
+                    onCheckedChange={(checked) => setNoFeeOnly(checked === true)}
+                  />
+                  <FieldLabel htmlFor="saved-search-no-fee" className="font-normal">
+                    No fee only
+                  </FieldLabel>
+                </Field>
+              </div>
+              <DialogFooter>
+                <Button disabled={isPending} onClick={createProfile}>
+                  Save search
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <div className="mt-2 space-y-2">
+          {profiles.map((p) => (
+            <div key={p.id} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm">
+              <span>
+                {p.name}
+                {p.criteria.genres?.length ? <span className="text-muted-foreground"> · {p.criteria.genres.join(', ')}</span> : null}
+                {p.criteria.noFeeOnly ? <span className="text-muted-foreground"> · no fee</span> : null}
+                {p.criteria.deadlineWithinDays ? <span className="text-muted-foreground"> · within {p.criteria.deadlineWithinDays}d</span> : null}
+              </span>
+              <Button size="sm" variant="outline" disabled={isPending} onClick={() => deleteProfile(p.id)}>
+                Delete
+              </Button>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
