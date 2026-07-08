@@ -15,6 +15,7 @@ export { freshnessScore, confidenceScore, computeTrustSignals, trustScore, STALE
 export { deriveStatus, displayStatus, confidenceTier, CLOSING_SOON_DAYS, OPENING_SOON_DAYS, NEEDS_VERIFICATION_CONFIDENCE, type ConfidenceTier } from './status/statusEngine.js';
 export { predictNextOpening, recordCycle } from './prediction/prediction.js';
 export { matchesCriteria, matchProfiles, type MatchResult } from './matching/matching.js';
+export { searchOpportunities, type SearchFilters, type SearchResult } from './matching/search.js';
 export { fitScore, formatFee } from './matching/fit.js';
 export { buildInboxDigest, matchOrganizationByDomain, type InboxDigest } from './alerts/alerts.js';
 export { verificationQueue } from './verification/verification.js';

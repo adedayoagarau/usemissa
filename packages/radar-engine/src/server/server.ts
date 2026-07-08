@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { Account, MatchCriteria, Opportunity } from '../domain/types.js';
+import type { Account, MatchCriteria, Opportunity, OpportunityType } from '../domain/types.js';
 import type { RadarEngine } from '../engine.js';
 import { saveStore, type RadarStore } from '../store/store.js';
 import { fitScore } from '../matching/fit.js';
@@ -291,6 +291,21 @@ export class RadarServer {
 
     // ── Opportunities ──
     if (method === 'GET' && a === 'opportunities' && !b) {
+      const q = url.searchParams.get('q');
+      if (q !== null) {
+        const types = url.searchParams.getAll('type');
+        const genres = url.searchParams.getAll('genre');
+        const verifiedOnly = url.searchParams.get('verifiedOnly') === 'true';
+        const results = this.engine
+          .searchOpportunities(q, {
+            types: types.length ? (types as OpportunityType[]) : undefined,
+            genres: genres.length ? genres : undefined,
+            verifiedOnly: verifiedOnly || undefined,
+          })
+          .filter((r) => !r.opportunity.duplicateOfId)
+          .map((r) => ({ ...this.opportunityView(r.opportunity), score: r.score, matchedFields: r.matchedFields }));
+        return json(results);
+      }
       const list = [...store.opportunities.values()]
         .filter((o) => !o.duplicateOfId)
         .map((o) => this.opportunityView(o));

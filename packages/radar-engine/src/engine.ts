@@ -38,6 +38,7 @@ import { computeTrustSignals, confidenceScore, freshnessScore, trustScore } from
 import { deriveStatus, displayStatus } from './status/statusEngine.js';
 import { predictNextOpening, recordCycle } from './prediction/prediction.js';
 import { matchProfiles } from './matching/matching.js';
+import { searchOpportunities, type SearchFilters, type SearchResult } from './matching/search.js';
 import { fitScore, formatFee } from './matching/fit.js';
 import {
   alertChanges,
@@ -248,6 +249,15 @@ export class RadarEngine {
     const resolveOrg = (name: string) =>
       [...this.store.organizations.values()].find((o) => o.name.toLowerCase() === name.toLowerCase())?.id;
     return importSources(existingUrls, (input) => this.addSource(input), rows, resolveOrg);
+  }
+
+  /**
+   * Relevance-ranked search over the opportunity registry (title, org name,
+   * genres, eligibility text). In-memory/tokenized rather than a Postgres
+   * tsvector index -- see matching/search.ts for why that's deferred.
+   */
+  searchOpportunities(query: string, filters?: SearchFilters): SearchResult[] {
+    return searchOpportunities(this.store.opportunities.values(), query, filters);
   }
 
   // ── The tick: full pipeline ──────────────────────────────────────
