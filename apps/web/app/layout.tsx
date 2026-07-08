@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
 import { cn } from '@/lib/utils';
+import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/sonner';
 
 /**
  * Brand typography per _bmad-output/planning-artifacts/ux-design-specification.md
@@ -40,8 +42,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={cn(fraunces.variable, instrumentSans.variable, fragmentMono.variable, 'font-sans')}>
-      <body>{children}</body>
+    <html
+      lang="en"
+      className={cn(fraunces.variable, instrumentSans.variable, fragmentMono.variable, 'font-sans')}
+      suppressHydrationWarning
+    >
+      <body>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+          {children}
+          <Toaster />
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
