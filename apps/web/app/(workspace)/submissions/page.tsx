@@ -36,7 +36,7 @@ export default async function SubmissionsPage() {
 
   const organizationId = session.memberships[0].organizationId;
   const radarEngine = await getEngine();
-  const workspaceEngine = getWorkspaceEngine();
+  const workspaceEngine = await getWorkspaceEngine();
 
   const submissions = workspaceEngine.submissionsForOrganization(organizationId);
   const members = radarEngine.store.memberships

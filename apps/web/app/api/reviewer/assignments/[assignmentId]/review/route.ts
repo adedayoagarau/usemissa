@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getWorkspaceEngine, persistWorkspace } from '@/lib/workspaceEngine';
 
 /** Story 7.3: fixed small rubric (score + notes), not a rubric builder --
  * out of MVP scope per the AC. */
@@ -9,7 +9,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ ass
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const engine = getWorkspaceEngine();
+  const engine = await getWorkspaceEngine();
   const assignment = engine.store.reviewAssignments.get(assignmentId);
   if (!assignment) return NextResponse.json({ error: 'Unknown review assignment' }, { status: 404 });
   if (assignment.reviewerAccountId !== session.account.id) {
@@ -21,5 +21,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ ass
   const notes = typeof body.notes === 'string' ? body.notes : undefined;
 
   const recommendation = engine.recordReview(assignmentId, score, notes);
+  await persistWorkspace();
   return NextResponse.json(recommendation);
 }

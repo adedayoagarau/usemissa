@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireOrgMember } from '@/lib/auth';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getWorkspaceEngine, persistWorkspace } from '@/lib/workspaceEngine';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; entityId: string }> }) {
   const { id, entityId } = await params;
@@ -12,13 +12,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'name is required' }, { status: 400 });
   }
 
-  const engine = getWorkspaceEngine();
+  const engine = await getWorkspaceEngine();
   if (!engine.entitiesForOrganization(id).some((e) => e.id === entityId)) {
     return NextResponse.json({ error: 'Unknown team for this organization' }, { status: 404 });
   }
 
   try {
     const program = engine.createProgram(entityId, body.name.trim());
+    await persistWorkspace();
     return NextResponse.json(program, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'failed' }, { status: 400 });

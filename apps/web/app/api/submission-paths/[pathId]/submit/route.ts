@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getWorkspaceEngine, persistWorkspace } from '@/lib/workspaceEngine';
 
 /**
  * Story 6.5: submitter file upload against a Submission Path.
@@ -21,9 +21,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     return NextResponse.json({ error: 'At least one work is required' }, { status: 400 });
   }
 
-  const engine = getWorkspaceEngine();
+  const engine = await getWorkspaceEngine();
   try {
     const submission = engine.createSubmission(pathId, session.account.id, body.works);
+    await persistWorkspace();
     return NextResponse.json({ submission, works: engine.worksForSubmission(submission.id) }, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'failed' }, { status: 404 });

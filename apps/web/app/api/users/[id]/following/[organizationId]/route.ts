@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireSelf } from '@/lib/auth';
-import { getEngine } from '@/lib/engine';
+import { getEngine, persistRadar } from '@/lib/engine';
 
 /**
  * Story 3.6: unfollow. @missa/radar-engine has followOrganization() but no
@@ -18,6 +18,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const before = engine.store.follows.length;
   engine.store.follows = engine.store.follows.filter((f) => !(f.userId === id && f.organizationId === organizationId));
   const removed = before !== engine.store.follows.length;
+  if (removed) await persistRadar();
 
   return NextResponse.json({ ok: true, removed });
 }

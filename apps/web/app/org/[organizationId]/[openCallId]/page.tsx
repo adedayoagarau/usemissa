@@ -18,7 +18,7 @@ export default async function OpenCallDetailPage({
   const org = radarEngine.store.organizations.get(organizationId);
   if (!org) notFound();
 
-  const workspaceEngine = getWorkspaceEngine();
+  const workspaceEngine = await getWorkspaceEngine();
   const openCall = workspaceEngine.store.openCalls.get(openCallId);
   if (!openCall || openCall.status !== 'published') notFound();
 

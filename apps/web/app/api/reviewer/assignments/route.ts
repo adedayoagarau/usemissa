@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-  const engine = getWorkspaceEngine();
+  const engine = await getWorkspaceEngine();
   const assignments = engine.reviewAssignmentsForReviewer(session.account.id).map((a) => ({
     ...a,
     submission: engine.store.submissions.get(a.submissionId),

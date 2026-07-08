@@ -9,6 +9,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const auth = await requireOrgMember(request, id);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const engine = getWorkspaceEngine();
+  const engine = await getWorkspaceEngine();
   return NextResponse.json(engine.submissionsForOrganization(id));
 }

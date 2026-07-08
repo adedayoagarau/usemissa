@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, integration/consolidate-branches]
+    branches: [main]
   push:
-    branches: [main, integration/consolidate-branches]
+    branches: [main]
 
 jobs:
   build-and-test:
@@ -61,5 +61,10 @@ jobs:
 
       - name: Test against a real Postgres connection (radar-adapters)
         run: npm test --workspace=@missa/radar-adapters
+        env:
+          DATABASE_URL: postgres://missa:missa@localhost:5432/missa_test
+
+      - name: Test against a real Postgres connection (workspace-engine)
+        run: npm test --workspace=@missa/workspace-engine
         env:
           DATABASE_URL: postgres://missa:missa@localhost:5432/missa_test

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { AuthError } from '@missa/radar-engine';
-import { getEngine } from '@/lib/engine';
+import { getEngine, persistRadar } from '@/lib/engine';
 import { issueSessionToken, SESSION_COOKIE } from '@/lib/auth';
 
 export async function POST(request: Request) {
@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     const message = err instanceof AuthError ? err.message : 'Sign up failed';
     return NextResponse.json({ error: message }, { status: 400 });
   }
+  await persistRadar();
 
   const token = issueSessionToken(account.id);
   const response = NextResponse.json({ account: { id: account.id, email: account.email } }, { status: 201 });

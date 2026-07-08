@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { requireOrgMember } from '@/lib/auth';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getWorkspaceEngine, persistWorkspace } from '@/lib/workspaceEngine';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const auth = await requireOrgMember(request, id);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const engine = getWorkspaceEngine();
+  const engine = await getWorkspaceEngine();
   const entities = engine.entitiesForOrganization(id).map((e) => ({
     ...e,
     programs: engine.programsForEntity(e.id),
@@ -25,7 +25,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'name is required' }, { status: 400 });
   }
 
-  const engine = getWorkspaceEngine();
+  const engine = await getWorkspaceEngine();
   const entity = engine.createEntity(id, body.name.trim(), body.label);
+  await persistWorkspace();
   return NextResponse.json(entity, { status: 201 });
 }
