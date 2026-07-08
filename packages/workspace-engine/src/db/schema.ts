@@ -1,10 +1,9 @@
 /**
- * Drizzle schema for the Workspace domain -- the production Postgres adapter
- * this package will eventually ship (mirroring radar-adapters/src/
- * postgresStore.ts's pattern for the Radar domain). Not wired to a live
- * Postgres client in this session (none was available to develop/test
- * against) -- this is schema definition only, built incrementally, one
- * table per story, per the implementation-readiness fix to Story 1.3:
+ * Drizzle schema for the Workspace domain -- kept as the typed reference for
+ * db/postgresStore.ts's hand-written SQL (see that file's schema.sql
+ * sibling), mirroring radar-adapters/src/postgresStore.ts's pattern for the
+ * Radar domain. Built incrementally, one table per story, per the
+ * implementation-readiness fix to Story 1.3:
  *   Story 6.1 -> entities, programs
  *   Story 6.2 -> open_calls
  *   Story 6.3 -> submission_paths
@@ -12,8 +11,8 @@
  *     was missed when 6.5's in-memory store was built; caught while
  *     adding Story 7.2's tables)
  *   Story 7.2 -> review_rounds, review_assignments
- * Later stories (7.3, 8.1, 8.3) add review_recommendations/decisions/
- * delivery_tasks here when they're built.
+ *   Story 7.3 -> review_recommendations
+ * Later stories (8.1, 8.3) add decisions/delivery_tasks here when built.
  *
  * snake_case table/column names throughout, matching
  * packages/radar-adapters/src/postgresSchema.sql's existing convention.
@@ -85,4 +84,11 @@ export const reviewAssignments = pgTable('review_assignments', {
   submissionId: text('submission_id').notNull().references(() => submissions.id),
   reviewerAccountId: text('reviewer_account_id').notNull(),
   completedAt: timestamp('completed_at', { withTimezone: true }),
+});
+
+export const reviewRecommendations = pgTable('review_recommendations', {
+  reviewAssignmentId: text('review_assignment_id').primaryKey().references(() => reviewAssignments.id),
+  score: integer('score'),
+  notes: text('notes'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
 });

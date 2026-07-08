@@ -23,7 +23,7 @@ export default async function PublicOrgPage({ params }: { params: Promise<{ orga
   const org = radarEngine.store.organizations.get(organizationId);
   if (!org) notFound();
 
-  const workspaceEngine = getWorkspaceEngine();
+  const workspaceEngine = await getWorkspaceEngine();
   const openCalls = workspaceEngine.publishedOpenCallsForOrganization(organizationId);
 
   return (

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireSelf } from '@/lib/auth';
-import { getEngine } from '@/lib/engine';
+import { getEngine, persistRadar } from '@/lib/engine';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,5 +18,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const tracked = engine.trackOpportunity(id, body.opportunityId);
+  await persistRadar();
   return NextResponse.json(tracked, { status: 201 });
 }

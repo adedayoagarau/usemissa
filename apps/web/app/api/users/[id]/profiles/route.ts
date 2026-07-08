@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { MatchCriteria } from '@missa/radar-engine';
 import { requireSelf } from '@/lib/auth';
-import { getEngine } from '@/lib/engine';
+import { getEngine, persistRadar } from '@/lib/engine';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,5 +24,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const engine = await getEngine();
   const profile = engine.createRadarProfile(id, body.name.trim(), (body.criteria as MatchCriteria) ?? {});
+  await persistRadar();
   return NextResponse.json(profile, { status: 201 });
 }

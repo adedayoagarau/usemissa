@@ -27,7 +27,7 @@ export default async function WorkspacePage() {
   const organizationId = session.memberships[0].organizationId;
   const radarEngine = await getEngine();
   const org = radarEngine.store.organizations.get(organizationId);
-  const workspaceEngine = getWorkspaceEngine();
+  const workspaceEngine = await getWorkspaceEngine();
   const entities = workspaceEngine.entitiesForOrganization(organizationId).map((e) => ({
     ...e,
     programs: workspaceEngine.programsForEntity(e.id).map((p) => ({

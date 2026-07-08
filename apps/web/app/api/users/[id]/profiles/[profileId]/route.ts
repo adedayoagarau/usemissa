@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { MatchCriteria } from '@missa/radar-engine';
 import { requireSelf } from '@/lib/auth';
-import { getEngine } from '@/lib/engine';
+import { getEngine, persistRadar } from '@/lib/engine';
 
 /**
  * PATCH/DELETE aren't in @missa/radar-engine's own API yet (the pre-existing
@@ -25,6 +25,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (typeof body.name === 'string' && body.name.trim()) profile.name = body.name.trim();
   if (body.criteria && typeof body.criteria === 'object') profile.criteria = body.criteria as MatchCriteria;
 
+  await persistRadar();
   return NextResponse.json(profile);
 }
 
@@ -38,5 +39,6 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (!profile || profile.userId !== id) return NextResponse.json({ error: 'Unknown saved search' }, { status: 404 });
 
   engine.store.radarProfiles.delete(profileId);
+  await persistRadar();
   return NextResponse.json({ ok: true });
 }

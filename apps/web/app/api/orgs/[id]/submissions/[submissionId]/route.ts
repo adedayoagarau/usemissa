@@ -8,7 +8,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const auth = await requireOrgMember(request, id);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const engine = getWorkspaceEngine();
+  const engine = await getWorkspaceEngine();
   const submission = engine.submissionsForOrganization(id).find((s) => s.id === submissionId);
   if (!submission) return NextResponse.json({ error: 'Unknown submission for this organization' }, { status: 404 });
 

@@ -1,16 +1,20 @@
 import { RadarEngine, buildServerDemoWorld } from '@missa/radar-engine';
+import { createProductionEngine, type ProductionEngine } from '@missa/radar-adapters';
 
 /**
  * Shared RadarEngine for apps/web's route handlers, in-process (per the
  * architecture doc: Route Handlers call radar-engine directly, no internal
- * HTTP hop). This is DEMO-SEEDED (buildServerDemoWorld, the same fixture
- * cli.ts's `missa-radar serve --demo` uses) and in-memory -- it is not
- * production wiring. Production persistence (Postgres, via the same
- * pattern @missa/radar-adapters/src/serve.ts already establishes) is a
- * follow-up once Story 2.1's real sign-up flow needs accounts to survive
- * a restart; today's placeholder demo accounts (see credentials below)
- * exist purely so Epic 3's UI stories have real data and real logins to
- * develop and smoke-test against.
+ * HTTP hop).
+ *
+ * Two backings, chosen by DATABASE_URL's presence:
+ *  - Set (production/preview, once Neon is connected): a real Postgres-backed
+ *    engine via @missa/radar-adapters' createProductionEngine -- the same
+ *    construction the Cron route (api/cron/tick) already uses, but kept warm
+ *    across requests here instead of connect-tick-persist-close per call.
+ *  - Unset (local dev without a DB): the DEMO-SEEDED, in-memory world
+ *    (buildServerDemoWorld) -- intentionally ephemeral, exists so the UI has
+ *    real data and real logins to develop against without needing Postgres
+ *    running locally.
  */
 type DemoWorld = ReturnType<typeof buildServerDemoWorld>;
 
@@ -28,6 +32,8 @@ type DemoWorld = ReturnType<typeof buildServerDemoWorld>;
 declare global {
   // eslint-disable-next-line no-var
   var __missaDemoWorldPromise: Promise<DemoWorld> | undefined;
+  // eslint-disable-next-line no-var
+  var __missaProductionEnginePromise: Promise<ProductionEngine> | undefined;
 }
 
 async function buildAndTick(): Promise<DemoWorld> {
@@ -49,11 +55,43 @@ async function buildAndTick(): Promise<DemoWorld> {
   return world;
 }
 
-export function getDemoWorld(): Promise<DemoWorld> {
+function getDemoWorld(): Promise<DemoWorld> {
   if (!globalThis.__missaDemoWorldPromise) globalThis.__missaDemoWorldPromise = buildAndTick();
   return globalThis.__missaDemoWorldPromise;
 }
 
+/** Kept warm for the lifetime of the process (globalThis, same reasoning as
+ * getDemoWorld) -- unlike the Cron route, request-serving routes shouldn't
+ * open and close a Pool on every call. */
+function getProductionEngine(): Promise<ProductionEngine> {
+  if (!globalThis.__missaProductionEnginePromise) {
+    globalThis.__missaProductionEnginePromise = createProductionEngine();
+  }
+  return globalThis.__missaProductionEnginePromise;
+}
+
 export async function getEngine(): Promise<RadarEngine> {
+  if (process.env.DATABASE_URL) return (await getProductionEngine()).engine;
   return (await getDemoWorld()).engine;
+}
+
+/**
+ * Route handlers must call this after any mutating engine call (signUp,
+ * trackOpportunity, followOrganization, grantOrgMembership, direct store
+ * writes, etc.) so the change survives a cold start or is visible to another
+ * warm instance. No-op in demo mode (no DATABASE_URL) since that store is
+ * intentionally in-memory only.
+ *
+ * KNOWN LIMITATION: persist() is a whole-store delete+reinsert (see
+ * radar-adapters/src/postgresStore.ts) and multiple warm serverless
+ * instances each hold their own in-memory copy loaded at cold start -- two
+ * instances persisting concurrently can race and the later write wins,
+ * clobbering the other's change. Acceptable for current traffic levels; a
+ * real fix (per-entity upserts, or moving off whole-store snapshotting) is
+ * follow-up work, not blocking this wiring.
+ */
+export async function persistRadar(): Promise<void> {
+  if (!process.env.DATABASE_URL) return;
+  const { persist } = await getProductionEngine();
+  await persist();
 }

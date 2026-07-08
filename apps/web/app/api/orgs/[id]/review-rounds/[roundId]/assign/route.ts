@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireOrgMember } from '@/lib/auth';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getWorkspaceEngine, persistWorkspace } from '@/lib/workspaceEngine';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; roundId: string }> }) {
   const { id, roundId } = await params;
@@ -12,9 +12,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'submissionId and reviewerAccountId are required' }, { status: 400 });
   }
 
-  const engine = getWorkspaceEngine();
+  const engine = await getWorkspaceEngine();
   try {
     const assignment = engine.assignReviewer(roundId, body.submissionId, body.reviewerAccountId);
+    await persistWorkspace();
     return NextResponse.json(assignment, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'failed' }, { status: 404 });

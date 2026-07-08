@@ -14,7 +14,7 @@ export default async function ReviewerPage() {
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
   if (!session) redirect('/login');
 
-  const workspaceEngine = getWorkspaceEngine();
+  const workspaceEngine = await getWorkspaceEngine();
   const assignments = workspaceEngine.reviewAssignmentsForReviewer(session.account.id).map((a) => ({
     ...a,
     works: workspaceEngine.worksForSubmission(a.submissionId),

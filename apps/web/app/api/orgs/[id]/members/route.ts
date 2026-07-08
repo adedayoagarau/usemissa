@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireOrgMember } from '@/lib/auth';
-import { getEngine } from '@/lib/engine';
+import { getEngine, persistRadar } from '@/lib/engine';
 
 /** Story 7.2's AC needs "at least one other org member" to assign as a
  * reviewer -- radar-engine has membershipsFor(accountId) but no reverse
@@ -45,5 +45,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const role = body.role === 'admin' ? 'admin' : 'member';
   const membership = engine.grantOrgMembership(account.id, id, role);
+  await persistRadar();
   return NextResponse.json(membership, { status: 201 });
 }
