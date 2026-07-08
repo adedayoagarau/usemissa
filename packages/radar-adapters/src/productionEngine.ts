@@ -8,7 +8,6 @@
 import { Pool } from 'pg';
 import { RadarEngine, HttpFetcher, systemClock } from '@missa/radar-engine';
 import { ensurePostgresSchema, loadStoreFromPostgres, saveStoreToPostgres } from './postgresStore.js';
-import { PlaywrightFetcher } from './playwrightFetcher.js';
 import { LlmExtractor } from './llmExtractor.js';
 
 export interface ProductionEngine {
@@ -33,7 +32,17 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   await ensurePostgresSchema(pool);
   const store = await loadStoreFromPostgres(pool);
 
-  const fetcher = process.env.MISSA_USE_PLAYWRIGHT === '1' ? new PlaywrightFetcher() : new HttpFetcher();
+  // Dynamic import, not a top-level static one: `playwright`'s own module-load
+  // code reaches for browser-registry files (browsers.json) that don't exist
+  // in a Vercel serverless bundle, and a *static* import runs that code the
+  // moment this module loads -- regardless of whether MISSA_USE_PLAYWRIGHT is
+  // set -- which crashed every route that calls createProductionEngine, not
+  // just the opt-in Playwright path. A dynamic import only pays that cost
+  // when the flag is actually on.
+  const fetcher =
+    process.env.MISSA_USE_PLAYWRIGHT === '1'
+      ? new (await import('./playwrightFetcher.js')).PlaywrightFetcher()
+      : new HttpFetcher();
   const extractor = process.env.ANTHROPIC_API_KEY ? new LlmExtractor(systemClock) : undefined;
 
   const engine = new RadarEngine({ store, fetcher, extractor });
