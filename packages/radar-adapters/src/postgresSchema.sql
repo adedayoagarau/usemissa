@@ -125,3 +125,12 @@ create table if not exists radar_audit_log (
   data jsonb not null
 );
 create index if not exists radar_audit_log_at_idx on radar_audit_log (at);
+
+-- A writer's discrete piece/manuscript, so simultaneous-submission tracking
+-- can tell "the same piece at five venues" from "five different pieces."
+create table if not exists radar_pieces (
+  id text primary key,
+  user_id text not null,
+  data jsonb not null
+);
+create index if not exists radar_pieces_user_idx on radar_pieces (user_id);

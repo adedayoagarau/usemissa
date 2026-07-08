@@ -70,6 +70,25 @@ export function deriveStatus(opp: Opportunity, ctx: StatusContext): OpportunityS
   return 'discovered';
 }
 
+export type ConfidenceTier = 'verified' | 'inferred' | 'uncertain';
+
+/**
+ * How much to trust this opportunity's own data when deciding how hard an
+ * alert should push — the "verified / inferred / community-reported" idea:
+ * a same-day "closes today!" push is only earned by data we actually trust.
+ * A claimed listing is always verified (the organization confirmed it
+ * themselves); otherwise it follows the same confidence/date-kind signals
+ * the engine already computes, so this needs no new extraction work.
+ */
+export function confidenceTier(opp: Opportunity): ConfidenceTier {
+  if (opp.claimedByOrganizationId) return 'verified';
+  if (opp.fields.deadline.kind === 'conflicting' || opp.scores.confidence < NEEDS_VERIFICATION_CONFIDENCE) {
+    return 'uncertain';
+  }
+  if (opp.fields.deadline.kind === 'exact' && opp.scores.confidence >= 70) return 'verified';
+  return 'inferred';
+}
+
 /** UI label; "Claimed by Organization" is surfaced alongside the lifecycle status. */
 export function displayStatus(opp: Opportunity): string {
   const labels: Record<OpportunityStatus, string> = {

@@ -127,6 +127,11 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
       await client.query('insert into radar_audit_log (id, at, data) values ($1, $2, $3)', [entry.id, entry.at, entry]);
     }
 
+    await client.query('delete from radar_pieces');
+    for (const p of store.pieces.values()) {
+      await client.query('insert into radar_pieces (id, user_id, data) values ($1, $2, $3)', [p.id, p.userId, p]);
+    }
+
     await client.query('commit');
   } catch (err) {
     await client.query('rollback');
@@ -141,7 +146,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
 
   const [
     sources, snapshots, opportunities, versions, changes, organizations, claims, verificationTasks,
-    profiles, users, follows, tracked, alerts, alertKeys, accounts, memberships, auditLog,
+    profiles, users, follows, tracked, alerts, alertKeys, accounts, memberships, auditLog, pieces,
   ] = await Promise.all([
     pool.query('select data from radar_sources'),
     pool.query('select data from radar_snapshots'),
@@ -160,6 +165,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
     pool.query('select data from radar_accounts'),
     pool.query('select data from radar_memberships'),
     pool.query('select data from radar_audit_log order by at asc'),
+    pool.query('select data from radar_pieces'),
   ]);
 
   for (const row of sources.rows) store.sources.set(row.data.id, row.data);
@@ -179,6 +185,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
   for (const row of accounts.rows) store.accounts.set(row.data.id, row.data);
   store.memberships = memberships.rows.map((r) => r.data);
   store.auditLog = auditLog.rows.map((r) => r.data);
+  for (const row of pieces.rows) store.pieces.set(row.data.id, row.data);
 
   return store;
 }

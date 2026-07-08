@@ -12,7 +12,7 @@ export { extractFee } from './extraction/fees.js';
 export { OPENING_SIGNALS, CLOSING_SIGNALS, CLOSED_SIGNALS, SUSPICIOUS_SIGNALS, findSignals } from './extraction/signals.js';
 export { findCanonical, titleSimilarity, normalizeName, type DedupMatch } from './dedup/dedup.js';
 export { freshnessScore, confidenceScore, computeTrustSignals, trustScore, STALE_FRESHNESS_THRESHOLD } from './scoring/scores.js';
-export { deriveStatus, displayStatus, CLOSING_SOON_DAYS, OPENING_SOON_DAYS, NEEDS_VERIFICATION_CONFIDENCE } from './status/statusEngine.js';
+export { deriveStatus, displayStatus, confidenceTier, CLOSING_SOON_DAYS, OPENING_SOON_DAYS, NEEDS_VERIFICATION_CONFIDENCE, type ConfidenceTier } from './status/statusEngine.js';
 export { predictNextOpening, recordCycle } from './prediction/prediction.js';
 export { matchesCriteria, matchProfiles, type MatchResult } from './matching/matching.js';
 export { fitScore, formatFee } from './matching/fit.js';
@@ -23,6 +23,8 @@ export {
   deadlineReminders,
   overdueResponseAlerts,
   withdrawalSuggestionAlerts,
+  addPiece,
+  piecesFor,
   REMINDER_DAYS,
   type TrackerView,
   type TrackerItem,

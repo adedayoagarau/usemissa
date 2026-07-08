@@ -16,6 +16,7 @@ import type {
   OrgMembership,
   OrgRole,
   PageSnapshot,
+  Piece,
   RadarProfile,
   Source,
   SourceKind,
@@ -50,7 +51,7 @@ import {
 } from './alerts/alerts.js';
 import { applyOrganizationOverride, approveClaim, rejectClaim, requestClaim } from './claims/claims.js';
 import { openTask, resolveConflicts, resolveTask, sweepForVerification, verificationQueue } from './verification/verification.js';
-import { deadlineReminders, overdueResponseAlerts, setMyStatus, track, trackerView, withdrawalSuggestionAlerts, type TrackerView } from './tracker/tracker.js';
+import { addPiece, deadlineReminders, overdueResponseAlerts, piecesFor, setMyStatus, track, trackerView, withdrawalSuggestionAlerts, type TrackerView } from './tracker/tracker.js';
 import { computeResponseStats, type ResponseStats } from './tracker/responseStats.js';
 import { buildIcsFeed } from './tracker/calendarFeed.js';
 import { isoDateOf } from './extraction/dates.js';
@@ -165,8 +166,17 @@ export class RadarEngine {
     }
   }
 
-  trackOpportunity(userId: string, opportunityId: string, notify = true): TrackedOpportunity {
-    return track(this.ctx, userId, opportunityId, notify);
+  trackOpportunity(userId: string, opportunityId: string, notify = true, pieceId?: string): TrackedOpportunity {
+    return track(this.ctx, userId, opportunityId, notify, pieceId);
+  }
+
+  /** Register a piece/manuscript so future tracking can say which piece a submission is. */
+  addPiece(userId: string, title: string, genre?: string, wordCount?: number): Piece {
+    return addPiece(this.ctx, userId, title, genre, wordCount);
+  }
+
+  piecesFor(userId: string): Piece[] {
+    return piecesFor(this.store, userId);
   }
 
   /** Move an opportunity through the user's pipeline (Saved → Submitted → Accepted…). */
