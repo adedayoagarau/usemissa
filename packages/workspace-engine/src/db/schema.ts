@@ -1,8 +1,8 @@
 /**
  * Drizzle schema for the Workspace domain -- kept as the typed reference for
- * db/postgresStore.ts's hand-written SQL (see that file's schema.sql
- * sibling), mirroring radar-adapters/src/postgresStore.ts's pattern for the
- * Radar domain. Built incrementally, one table per story, per the
+ * db/postgresSchema.ts's hand-written SQL string, mirroring
+ * radar-adapters/src/postgresStore.ts's pattern for the Radar domain. Built
+ * incrementally, one table per story, per the
  * implementation-readiness fix to Story 1.3:
  *   Story 6.1 -> entities, programs
  *   Story 6.2 -> open_calls
@@ -15,7 +15,7 @@
  * Later stories (8.1, 8.3) add decisions/delivery_tasks here when built.
  *
  * snake_case table/column names throughout, matching
- * packages/radar-adapters/src/postgresSchema.sql's existing convention.
+ * packages/radar-adapters/src/postgresSchema.ts's existing convention.
  */
 import { pgTable, text, timestamp, integer, jsonb } from 'drizzle-orm/pg-core';
 
