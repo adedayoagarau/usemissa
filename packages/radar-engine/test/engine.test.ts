@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildDemoWorld, MAGAZINE_PAGE_V2_EXTENDED, MAGAZINE_PAGE_V3_CLOSED } from '../src/fixtures/seed.js';
 import { saveStore, loadStore } from '../src/store/store.js';
+import { RadarEngine, ManualClock, createStore, FixtureFetcher, dueSources } from '../src/index.js';
 
 async function discoveredWorld() {
   const world = buildDemoWorld();
@@ -42,6 +43,25 @@ test('tick 1: discovers, dedups, scores, and flags', async () => {
   // Snapshots + versions retained as evidence.
   assert.ok(engine.store.snapshots.size >= 5);
   assert.ok(engine.store.versions.size >= 4);
+});
+
+test('tick({ maxSources }): caps due sources processed per call; the rest remain due', async () => {
+  const clock = new ManualClock(new Date('2026-07-07T00:00:00Z'));
+  const engine = new RadarEngine({ store: createStore(), fetcher: new FixtureFetcher(), clock });
+
+  for (let i = 0; i < 5; i++) {
+    engine.addSource({ name: `Source ${i}`, url: `https://example.com/call-${i}`, kind: 'organization-website' });
+  }
+  assert.equal(dueSources(engine.store.sources.values(), clock.now()).length, 5, 'all 5 sources start due');
+
+  const report = await engine.tick({ maxSources: 3 });
+
+  assert.equal(report.sourcesChecked, 3, 'only 3 of 5 due sources should be checked this tick');
+  const touched = [...engine.store.sources.values()].filter((s) => s.lastCheckedAt !== undefined);
+  assert.equal(touched.length, 3, 'exactly 3 sources should have been touched (lastCheckedAt set)');
+
+  const stillDue = dueSources(engine.store.sources.values(), clock.now());
+  assert.equal(stillDue.length, 2, 'the remaining 2 untouched sources should still be due for the next tick');
 });
 
 test('fit score explains itself and hard eligibility disqualifies', async () => {

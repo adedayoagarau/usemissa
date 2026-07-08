@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Pool, QueryResult } from 'pg';
 import Anthropic from '@anthropic-ai/sdk';
-import { ManualClock, createStore, type Source } from '@missa/radar-engine';
+import { ManualClock, createStore, RadarEngine, FixtureFetcher, type Source } from '@missa/radar-engine';
 import { parseDisallowForUserAgent } from '../src/playwrightFetcher.js';
 import { LlmExtractor } from '../src/llmExtractor.js';
 import { loadStoreFromPostgres, saveStoreToPostgres } from '../src/postgresStore.js';
+import { seedRegistryIfEmpty } from '../src/productionEngine.js';
 
 test('robots.txt parser: picks the specific user-agent group over the wildcard', () => {
   const robots = `
@@ -121,6 +122,28 @@ async function fakeQuery(tables: Map<string, unknown[]>, sql: string, params?: u
   }
   return { rows, rowCount: rows.length } as QueryResult;
 }
+
+test('seedRegistryIfEmpty: seeds ~1,024 tier-0 sources into an empty store', () => {
+  const engine = new RadarEngine({ store: createStore(), fetcher: new FixtureFetcher() });
+  assert.equal(engine.store.sources.size, 0);
+
+  const result = seedRegistryIfEmpty(engine);
+
+  assert.ok(result, 'expected a result when the store was empty');
+  assert.ok(result!.loaded >= 900, `expected >= 900 tier-0 sources loaded, got ${result!.loaded}`);
+  assert.equal(engine.store.sources.size, result!.loaded);
+});
+
+test('seedRegistryIfEmpty: is a no-op (idempotent) once the store already has sources', () => {
+  const engine = new RadarEngine({ store: createStore(), fetcher: new FixtureFetcher() });
+  engine.addSource({ name: 'Existing Source', url: 'https://example.com/calls', kind: 'organization-website' });
+  assert.equal(engine.store.sources.size, 1);
+
+  const result = seedRegistryIfEmpty(engine);
+
+  assert.equal(result, null, 'expected null when the store already has sources');
+  assert.equal(engine.store.sources.size, 1, 'store should be unchanged');
+});
 
 test('postgresStore: save then load round-trips a RadarStore', async () => {
   const { pool } = fakePool();

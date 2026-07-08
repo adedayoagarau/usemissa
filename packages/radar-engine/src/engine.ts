@@ -228,7 +228,17 @@ export class RadarEngine {
 
   // ── The tick: full pipeline ──────────────────────────────────────
 
-  async tick(): Promise<TickReport> {
+  /**
+   * @param opts.maxSources Cap on how many due sources this call processes.
+   *   Sources beyond the cap are left untouched (lastCheckedAt unchanged) and
+   *   remain due for the next tick -- this lets a short-lived caller (e.g. a
+   *   serverless Cron route with a wall-clock time budget) work through a
+   *   large source list a batch at a time instead of timing out. Omitted or
+   *   undefined means unlimited (all due sources processed in one call),
+   *   which is the default and keeps every existing caller (demo world,
+   *   serve.ts's long-running server, existing tests) unchanged.
+   */
+  async tick(opts?: { maxSources?: number }): Promise<TickReport> {
     const now = this.clock.now();
     const report: TickReport = {
       at: now.toISOString(),
@@ -246,7 +256,10 @@ export class RadarEngine {
 
     const newOpportunities: Opportunity[] = [];
 
-    for (const source of dueSources(this.store.sources.values(), now)) {
+    const due = dueSources(this.store.sources.values(), now);
+    const sourcesToProcess = opts?.maxSources !== undefined ? due.slice(0, opts.maxSources) : due;
+
+    for (const source of sourcesToProcess) {
       report.sourcesChecked++;
       const result = await this.fetcher.fetch(source);
       source.lastCheckedAt = now.toISOString();

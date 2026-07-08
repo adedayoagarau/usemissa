@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 
   const { engine, persist, close } = await createProductionEngine();
   try {
-    const report = await engine.tick();
+    const report = await engine.tick({ maxSources: 50 });
     await persist();
     return NextResponse.json({
       sourcesChecked: report.sourcesChecked,
