@@ -12,22 +12,7 @@ import { REGISTRY_VERTICALS } from './verticals.js';
 import { LITERARY_FICTION_SOURCES } from './bundles/literary-fiction.js';
 import { POETRY_SOURCES } from './bundles/poetry.js';
 import { CNF_SOURCES } from './bundles/creative-nonfiction.js';
-import { readFileSync, existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-function resolveBulkJsonPath(): string {
-  const candidates = [
-    join(__dirname, 'sources-bulk.json'),
-    join(__dirname, '../../../src/registry/sources-bulk.json'),
-  ];
-  for (const p of candidates) {
-    if (existsSync(p)) return p;
-  }
-  return candidates[0];
-}
+import { BULK_SOURCES } from './sources-bulk.js';
 
 function normalizeUrl(url: string): string {
   return url.replace(/\/$/, '').toLowerCase();
@@ -45,14 +30,7 @@ function toRadarSource(entry: SourceRegistryEntry): Source {
   };
 }
 
-function loadBulkJson(): SourceRegistryEntry[] {
-  const path = resolveBulkJsonPath();
-  if (!existsSync(path)) return [];
-  const data = JSON.parse(readFileSync(path, 'utf8')) as SourceRegistry;
-  return data.sources ?? [];
-}
-
-/** Assemble the full registry from TS bundles + generated bulk JSON. */
+/** Assemble the full registry from TS bundles + generated bulk sources. */
 export function assembleRegistry(): SourceRegistry {
   const byUrl = new Map<string, SourceRegistryEntry>();
 
@@ -65,7 +43,7 @@ export function assembleRegistry(): SourceRegistry {
     ...LITERARY_FICTION_SOURCES,
     ...POETRY_SOURCES,
     ...CNF_SOURCES,
-    ...loadBulkJson(),
+    ...BULK_SOURCES,
   ]) {
     add(entry);
   }
