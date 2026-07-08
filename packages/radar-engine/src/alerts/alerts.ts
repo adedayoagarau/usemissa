@@ -8,6 +8,7 @@ import type {
 import type { Clock, IdGenerator } from '../ports.js';
 import type { RadarStore } from '../store/store.js';
 import { daysBetween, isoDateOf } from '../extraction/dates.js';
+import { confidenceTier } from '../status/statusEngine.js';
 import type { MatchResult } from '../matching/matching.js';
 
 export interface AlertContext {
@@ -133,14 +134,17 @@ export function alertTimeSensitive(ctx: AlertContext): Alert[] {
 
     if (opp.status === 'closing-soon' && opp.fields.deadline.date) {
       const days = daysBetween(today, opp.fields.deadline.date);
+      const unconfirmed = confidenceTier(opp) === 'uncertain';
+      // Confidence gate: don't push a hard same-day alert on data we don't trust yet.
+      if (unconfirmed && days <= 0) continue;
       for (const [userId, reason] of users) {
         const alert = emit(ctx, `closing:${opp.id}:${opp.fields.deadline.date}:${userId}`, {
           audience: 'user',
           userId,
           kind: 'closing-soon',
           opportunityId: opp.id,
-          title: `Closing soon: ${opp.fields.title} closes in ${days} day${days === 1 ? '' : 's'}`,
-          body: `Deadline: ${opp.fields.deadline.date}.`,
+          title: `Closing soon${unconfirmed ? ' (unconfirmed)' : ''}: ${opp.fields.title} ${unconfirmed ? 'may close' : 'closes'} in ${days} day${days === 1 ? '' : 's'}`,
+          body: unconfirmed ? `Deadline: ${opp.fields.deadline.date} (low-confidence — verify on their site).` : `Deadline: ${opp.fields.deadline.date}.`,
           reason,
         });
         if (alert) out.push(alert);

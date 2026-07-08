@@ -197,6 +197,33 @@ test('acceptance suggests withdrawing other active submissions, once, and never 
   assert.equal(engine.getTracker(ids.userAda).pipeline.submitted.some((i) => i.opportunityId === grant.id), true);
 });
 
+test('withdrawal suggestion is precise to the same piece when a piece is set, not every active submission', async () => {
+  const { engine, ids, magazine } = await trackedWorld();
+  const grant = [...engine.store.opportunities.values()].find((o) => o.fields.title.startsWith('Hilltop'))!;
+  const festival = [...engine.store.opportunities.values()].find((o) => o.fields.title.startsWith('Lantern'))!;
+
+  const poems = engine.addPiece(ids.userAda, 'Five Poems', 'poetry');
+  const essay = engine.addPiece(ids.userAda, 'An Essay About Rivers', 'nonfiction');
+
+  // The poems go to both the magazine and the grant; a different piece (the essay) goes to the festival.
+  engine.trackOpportunity(ids.userAda, magazine.id, true, poems.id);
+  engine.setMyStatus(ids.userAda, magazine.id, 'submitted');
+  engine.trackOpportunity(ids.userAda, grant.id, true, poems.id);
+  engine.setMyStatus(ids.userAda, grant.id, 'submitted');
+  engine.trackOpportunity(ids.userAda, festival.id, true, essay.id);
+  engine.setMyStatus(ids.userAda, festival.id, 'submitted');
+
+  engine.setMyStatus(ids.userAda, magazine.id, 'accepted');
+  await engine.tick();
+
+  const suggestions = [...engine.store.alerts.values()].filter((a) => a.kind === 'withdrawal-suggested' && a.userId === ids.userAda);
+  assert.equal(suggestions.length, 1);
+  assert.match(suggestions[0].body, /Five Poems/);
+  assert.match(suggestions[0].body, new RegExp(engine.store.opportunities.get(grant.id)!.fields.title));
+  // The essay (a different piece, at the festival) must not be mentioned.
+  assert.ok(!suggestions[0].body.includes(engine.store.opportunities.get(festival.id)!.fields.title));
+});
+
 function sessionCookie(res: Response): string {
   const raw = res.headers.get('set-cookie');
   assert.ok(raw, 'expected a Set-Cookie header');

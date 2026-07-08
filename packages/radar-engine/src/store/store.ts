@@ -12,6 +12,7 @@ import type {
   OrganizationFollow,
   OrgMembership,
   PageSnapshot,
+  Piece,
   RadarProfile,
   Source,
   TrackedOpportunity,
@@ -43,6 +44,7 @@ export interface RadarStore {
   accounts: Map<string, Account>;
   memberships: OrgMembership[];
   auditLog: AuditEntry[];
+  pieces: Map<string, Piece>;
 }
 
 export function createStore(): RadarStore {
@@ -64,6 +66,7 @@ export function createStore(): RadarStore {
     accounts: new Map(),
     memberships: [],
     auditLog: [],
+    pieces: new Map(),
   };
 }
 
@@ -85,6 +88,7 @@ interface SerializedStore {
   accounts: Account[];
   memberships: OrgMembership[];
   auditLog: AuditEntry[];
+  pieces: Piece[];
 }
 
 export function saveStore(store: RadarStore, filePath: string): void {
@@ -106,6 +110,7 @@ export function saveStore(store: RadarStore, filePath: string): void {
     accounts: [...store.accounts.values()],
     memberships: store.memberships,
     auditLog: store.auditLog,
+    pieces: [...store.pieces.values()],
   };
   mkdirSync(dirname(filePath), { recursive: true });
   writeFileSync(filePath, JSON.stringify(data, null, 2));
@@ -132,6 +137,7 @@ export function loadStore(filePath: string): RadarStore {
   for (const a of data.accounts ?? []) store.accounts.set(a.id, a);
   store.memberships = data.memberships ?? [];
   store.auditLog = data.auditLog ?? [];
+  for (const p of data.pieces ?? []) store.pieces.set(p.id, p);
   return store;
 }
 

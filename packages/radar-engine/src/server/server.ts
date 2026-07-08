@@ -352,9 +352,25 @@ export class RadarServer {
         const body = await readJson(req);
         if (typeof body.opportunityId !== 'string') throw httpError(400, 'opportunityId required');
         if (!store.opportunities.has(body.opportunityId)) throw httpError(404, 'Unknown opportunity');
-        const tracked = this.engine.trackOpportunity(b, body.opportunityId);
+        const pieceId = typeof body.pieceId === 'string' ? body.pieceId : undefined;
+        const tracked = this.engine.trackOpportunity(b, body.opportunityId, true, pieceId);
         this.persist();
         return json(tracked, 201);
+      }
+      if (method === 'GET' && c === 'pieces') {
+        return json(this.engine.piecesFor(b));
+      }
+      if (method === 'POST' && c === 'pieces') {
+        const body = await readJson(req);
+        if (typeof body.title !== 'string' || !body.title) throw httpError(400, 'title required');
+        const piece = this.engine.addPiece(
+          b,
+          body.title,
+          typeof body.genre === 'string' ? body.genre : undefined,
+          typeof body.wordCount === 'number' ? body.wordCount : undefined,
+        );
+        this.persist();
+        return json(piece, 201);
       }
       if (method === 'POST' && c === 'status') {
         const body = await readJson(req);

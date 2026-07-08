@@ -423,6 +423,21 @@ export interface StatusEvent {
   note?: string;
 }
 
+/**
+ * A writer's discrete piece/manuscript — lets the tracker distinguish
+ * "submitted the same piece to five venues" from "submitted five different
+ * pieces." Optional: tracking still works with no piece attached, it just
+ * falls back to coarser (opportunity-level) simultaneous-submission logic.
+ */
+export interface Piece {
+  id: string;
+  userId: string;
+  title: string;
+  genre?: string;
+  wordCount?: number;
+  createdAt: IsoDateTime;
+}
+
 export interface TrackedOpportunity {
   userId: string;
   opportunityId: string;
@@ -431,6 +446,8 @@ export interface TrackedOpportunity {
   myStatus: MyStatus;
   events: StatusEvent[];
   submittedAt?: IsoDateTime;
+  /** Which Piece this submission is, if the user said. */
+  pieceId?: string;
 }
 
 export type FitLevel = 'strong' | 'possible' | 'weak' | 'not-eligible' | 'unknown';

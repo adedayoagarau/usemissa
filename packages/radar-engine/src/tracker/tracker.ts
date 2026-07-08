@@ -4,6 +4,7 @@ import type {
   MyStatus,
   Opportunity,
   OpportunityType,
+  Piece,
   TrackedOpportunity,
   UserProfile,
 } from '../domain/types.js';
@@ -12,7 +13,7 @@ import type { Clock, IdGenerator } from '../ports.js';
 import type { RadarStore } from '../store/store.js';
 import { addDays, daysBetween, isoDateOf } from '../extraction/dates.js';
 import { fitScore } from '../matching/fit.js';
-import { displayStatus } from '../status/statusEngine.js';
+import { confidenceTier, displayStatus } from '../status/statusEngine.js';
 import { expectedResponseWindowDays } from './responseStats.js';
 
 export interface TrackerContext {
@@ -36,10 +37,14 @@ function findTracked(store: RadarStore, userId: string, opportunityId: string): 
   return store.tracked.find((t) => t.userId === userId && t.opportunityId === opportunityId);
 }
 
-export function track(ctx: TrackerContext, userId: string, opportunityId: string, notify = true): TrackedOpportunity {
+export function track(ctx: TrackerContext, userId: string, opportunityId: string, notify = true, pieceId?: string): TrackedOpportunity {
   const existing = findTracked(ctx.store, userId, opportunityId);
   if (existing) return existing;
   if (!ctx.store.opportunities.has(opportunityId)) throw new Error(`Unknown opportunity: ${opportunityId}`);
+  if (pieceId) {
+    const piece = ctx.store.pieces.get(pieceId);
+    if (!piece || piece.userId !== userId) throw new Error(`Unknown piece: ${pieceId}`);
+  }
   const now = ctx.clock.now().toISOString();
   const tracked: TrackedOpportunity = {
     userId,
@@ -48,9 +53,20 @@ export function track(ctx: TrackerContext, userId: string, opportunityId: string
     notify,
     myStatus: 'saved',
     events: [{ at: now, to: 'saved', source: 'user' }],
+    pieceId,
   };
   ctx.store.tracked.push(tracked);
   return tracked;
+}
+
+export function addPiece(ctx: TrackerContext, userId: string, title: string, genre?: string, wordCount?: number): Piece {
+  const piece: Piece = { id: ctx.ids.next('piece'), userId, title, genre, wordCount, createdAt: ctx.clock.now().toISOString() };
+  ctx.store.pieces.set(piece.id, piece);
+  return piece;
+}
+
+export function piecesFor(store: RadarStore, userId: string): Piece[] {
+  return [...store.pieces.values()].filter((p) => p.userId === userId);
 }
 
 /**
@@ -208,9 +224,15 @@ export function deadlineReminders(ctx: TrackerContext): Alert[] {
     // Smallest rung that covers today, so each rung of the ladder fires once.
     const rung = [...REMINDER_DAYS].sort((a, b) => a - b).find((d) => days <= d);
     if (rung === undefined) continue;
+
+    // Confidence gate: never fire the same-day hard alert on data we don't trust yet.
+    const tier = confidenceTier(opp);
+    if (tier === 'uncertain' && days === 0) continue;
+
     const key = `remind:${t.userId}:${opp.id}:${deadline}:${rung}`;
     if (ctx.store.emittedAlertKeys.has(key)) continue;
     ctx.store.emittedAlertKeys.add(key);
+    const unconfirmed = tier === 'uncertain';
     const alert: Alert = {
       id: ctx.ids.next('alert'),
       audience: 'user',
@@ -220,8 +242,10 @@ export function deadlineReminders(ctx: TrackerContext): Alert[] {
       title:
         days === 0
           ? `Today is the deadline for ${opp.fields.title}`
-          : `${days} day${days === 1 ? '' : 's'} left: ${opp.fields.title} closes ${deadline}`,
-      body: `Your status is still "${t.myStatus}".`,
+          : `${days} day${days === 1 ? '' : 's'} left${unconfirmed ? ' (unconfirmed)' : ''}: ${opp.fields.title} ${unconfirmed ? 'may close' : 'closes'} ${deadline}`,
+      body: unconfirmed
+        ? `Your status is still "${t.myStatus}". This deadline is low-confidence — worth double-checking on their site.`
+        : `Your status is still "${t.myStatus}".`,
       reason: 'you track this opportunity and have not submitted yet',
       createdAt: ctx.clock.now().toISOString(),
       read: false,
@@ -254,14 +278,19 @@ export function withdrawalSuggestionAlerts(ctx: TrackerContext): Alert[] {
     if (ctx.store.emittedAlertKeys.has(key)) continue;
     ctx.store.emittedAlertKeys.add(key); // mark now so a later tick never re-suggests, even if `others` is empty today
 
-    const others = ctx.store.tracked.filter(
+    const active = ctx.store.tracked.filter(
       (o) => o.userId === t.userId && o.opportunityId !== t.opportunityId && ['submitted', 'in-progress'].includes(STAGE_OF[o.myStatus]),
     );
+    // If we know which piece was accepted, only suggest withdrawing that
+    // same piece elsewhere — precise, not a blanket "withdraw everything."
+    // Falls back to "all other active submissions" when no piece is set.
+    const others = t.pieceId ? active.filter((o) => o.pieceId === t.pieceId) : active;
     if (others.length === 0) continue;
 
     const names = others
       .map((o) => ctx.store.opportunities.get(o.opportunityId)?.fields.title)
       .filter((title): title is string => !!title);
+    const piece = t.pieceId ? ctx.store.pieces.get(t.pieceId) : undefined;
     const alert: Alert = {
       id: ctx.ids.next('alert'),
       audience: 'user',
@@ -269,7 +298,9 @@ export function withdrawalSuggestionAlerts(ctx: TrackerContext): Alert[] {
       kind: 'withdrawal-suggested',
       opportunityId: t.opportunityId,
       title: `Accepted at ${opp.fields.organizationName ?? opp.fields.title} — withdraw elsewhere?`,
-      body: `You have ${others.length} other active submission${others.length === 1 ? '' : 's'}${names.length ? ` (${names.join(', ')})` : ''}. If it's the same piece, most venues expect you to withdraw once one accepts.`,
+      body: piece
+        ? `"${piece.title}" is also active at ${others.length} other place${others.length === 1 ? '' : 's'} (${names.join(', ')}). Most venues expect you to withdraw the same piece once one accepts.`
+        : `You have ${others.length} other active submission${others.length === 1 ? '' : 's'}${names.length ? ` (${names.join(', ')})` : ''}. If any is the same piece, most venues expect you to withdraw it once one accepts.`,
       reason: `${opp.fields.title} just accepted your submission`,
       createdAt: ctx.clock.now().toISOString(),
       read: false,

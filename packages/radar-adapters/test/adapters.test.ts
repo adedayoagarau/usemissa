@@ -137,6 +137,7 @@ test('postgresStore: save then load round-trips a RadarStore', async () => {
     id: 'audit_1', at: '2026-07-07T00:00:00.000Z', accountId: 'acct_1',
     action: 'claim.approve', targetType: 'claim', targetId: 'claim_1',
   });
+  store.pieces.set('piece_1', { id: 'piece_1', userId: 'user_1', title: 'Five Poems', genre: 'poetry', createdAt: '2026-07-07T00:00:00.000Z' });
 
   await saveStoreToPostgres(store, pool);
   const loaded = await loadStoreFromPostgres(pool);
@@ -147,4 +148,5 @@ test('postgresStore: save then load round-trips a RadarStore', async () => {
   assert.deepEqual(loaded.accounts.get('acct_1'), store.accounts.get('acct_1'));
   assert.deepEqual(loaded.memberships, store.memberships);
   assert.deepEqual(loaded.auditLog, store.auditLog);
+  assert.deepEqual(loaded.pieces.get('piece_1'), store.pieces.get('piece_1'));
 });
