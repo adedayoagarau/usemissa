@@ -8,6 +8,8 @@ import { TrackButton } from '@/components/track-button';
 import { SavedSearches } from '@/components/saved-searches';
 import { FollowButton } from '@/components/follow-button';
 import { FollowingList } from '@/components/following-list';
+import { Card, CardContent } from '@/components/ui/card';
+import { Empty, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 
 export default async function OpportunitiesPage() {
   const cookieStore = await cookies();
@@ -37,8 +39,8 @@ export default async function OpportunitiesPage() {
       <FollowingList userId={userId} following={following} />
       <div className="mt-6 space-y-3">
         {list.map((o) => (
-          <div key={o.id} className="rounded-lg border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/30">
-            <div className="flex items-start justify-between gap-4">
+          <Card key={o.id} className="transition-colors hover:border-primary/30">
+            <CardContent className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="font-heading text-lg font-medium text-foreground">{o.title}</h3>
                 <p className="mt-0.5 text-sm text-muted-foreground">
@@ -47,7 +49,12 @@ export default async function OpportunitiesPage() {
                   {o.organizationId && !followedIds.has(o.organizationId) && (
                     <>
                       {' '}
-                      · <FollowButton userId={userId} organizationId={o.organizationId} />
+                      ·{' '}
+                      <FollowButton
+                        userId={userId}
+                        organizationId={o.organizationId}
+                        organizationName={o.organizationName}
+                      />
                     </>
                   )}
                 </p>
@@ -62,10 +69,15 @@ export default async function OpportunitiesPage() {
               </div>
               {!o.tracked && <TrackButton userId={userId} opportunityId={o.id} />}
               {o.tracked && <span className="text-xs text-muted-foreground">Tracked</span>}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         ))}
-        {list.length === 0 && <p className="text-muted-foreground">Nothing open right now — check back soon.</p>}
+        {list.length === 0 && (
+          <Empty>
+            <EmptyTitle>Nothing open right now</EmptyTitle>
+            <EmptyDescription>Check back soon.</EmptyDescription>
+          </Empty>
+        )}
       </div>
     </div>
   );

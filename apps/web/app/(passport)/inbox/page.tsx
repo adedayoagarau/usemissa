@@ -3,6 +3,8 @@ import { cookies } from 'next/headers';
 import { buildInboxDigest, type Alert } from '@missa/radar-engine';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
+import { Card, CardContent } from '@/components/ui/card';
+import { Empty, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
 
 function Section({ title, alerts }: { title: string; alerts: Alert[] }) {
   if (!alerts.length) return null;
@@ -11,11 +13,13 @@ function Section({ title, alerts }: { title: string; alerts: Alert[] }) {
       <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
       <div className="mt-2 space-y-2">
         {alerts.map((a) => (
-          <div key={a.id} className="rounded-lg border border-border bg-card p-4 shadow-sm">
-            <p className="font-medium text-foreground">{a.title}</p>
-            <p className="text-sm text-muted-foreground">{a.body}</p>
-            <p className="mt-1.5 text-xs text-[var(--accent-deep)]">why: {a.reason}</p>
-          </div>
+          <Card key={a.id}>
+            <CardContent>
+              <p className="font-medium text-foreground">{a.title}</p>
+              <p className="text-sm text-muted-foreground">{a.body}</p>
+              <p className="mt-1.5 text-xs text-[var(--accent-deep)]">why: {a.reason}</p>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>
@@ -34,11 +38,26 @@ export default async function InboxPage() {
   const reminders = alerts.filter((a) => a.kind === 'deadline-reminder');
   const overdue = alerts.filter((a) => a.kind === 'response-overdue');
   const withdrawalSuggestions = alerts.filter((a) => a.kind === 'withdrawal-suggested');
+  const isEmpty =
+    digest.newForYou.length === 0 &&
+    digest.closingSoon.length === 0 &&
+    digest.openingSoon.length === 0 &&
+    digest.recentlyUpdated.length === 0 &&
+    digest.fromFollowedOrgs.length === 0 &&
+    reminders.length === 0 &&
+    overdue.length === 0 &&
+    withdrawalSuggestions.length === 0;
 
   return (
     <div>
       <h1 className="font-heading text-3xl font-medium text-foreground">Inbox</h1>
       <p className="mt-2 whitespace-pre-line text-muted-foreground">{digest.summary}</p>
+      {isEmpty && (
+        <Empty className="mt-6">
+          <EmptyTitle>Nothing new right now</EmptyTitle>
+          <EmptyDescription>Check back later for updates on your opportunities.</EmptyDescription>
+        </Empty>
+      )}
       <Section title="New for you" alerts={digest.newForYou} />
       <Section title="Closing soon" alerts={digest.closingSoon} />
       <Section title="Opening soon / expected back" alerts={digest.openingSoon} />
