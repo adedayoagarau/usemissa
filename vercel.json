@@ -1,5 +1,9 @@
 {
   "redirects": [
     { "source": "/", "destination": "/landing/" }
+  ],
+  "rewrites": [
+    { "source": "/app", "destination": "/prototype/index.html" },
+    { "source": "/prototype", "destination": "/prototype/index.html" }
   ]
 }

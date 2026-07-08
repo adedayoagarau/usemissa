@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Missa — Product prototype</title>
+  <link rel="stylesheet" href="../landing/fonts/local.css">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div class="proto-banner">
+    High-fidelity prototype · static mock data ·
+    <a href="../landing/">Marketing site</a>
+  </div>
+
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <a href="#" class="logo">Missa</a>
+        <div class="tagline">Opportunity intelligence</div>
+      </div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-screen="opportunities">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          Opportunities
+        </button>
+        <button class="nav-item" data-screen="alerts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+          Alerts
+          <span class="nav-badge">14</span>
+        </button>
+        <button class="nav-item" data-screen="tracker">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+          Tracker
+        </button>
+        <button class="nav-item" data-screen="submissions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+          Submissions
+        </button>
+        <button class="nav-item" data-screen="saved">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+          Saved
+        </button>
+        <div class="nav-section">Insights</div>
+        <button class="nav-item" disabled style="opacity:0.45;cursor:not-allowed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>
+          Results
+        </button>
+        <div class="nav-section">Admin</div>
+        <button class="nav-item" data-screen="registry">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Source registry
+        </button>
+        <button class="nav-item" data-screen="verify">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Verification
+          <span class="nav-badge">37</span>
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="avatar">AC</div>
+          <div>
+            <div class="name">Ada Chen</div>
+            <div class="role">Poet · Fiction</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="page-title" class="display">Opportunities</h1>
+          <div id="page-subtitle" style="font-size:0.8rem;color:var(--ink-3)"></div>
+        </div>
+        <div id="search-wrap" class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="search" placeholder="Search opportunities, orgs, disciplines…">
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-sm">Suggest URL</button>
+          <button class="btn btn-primary btn-sm">+ New profile</button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- ── OPPORTUNITIES ─────────────────────────────────────────── -->
+        <section class="screen active" data-screen="opportunities">
+          <div class="stats-row">
+            <div class="card stat-card">
+              <div class="label">Matching now</div>
+              <div class="value">847</div>
+              <div class="sub">Across 49 verticals</div>
+            </div>
+            <div class="card stat-card">
+              <div class="label">Closing this week</div>
+              <div class="value" style="color:var(--accent)">23</div>
+              <div class="sub">3 deadline extensions</div>
+            </div>
+            <div class="card stat-card">
+              <div class="label">Strong matches</div>
+              <div class="value" style="color:var(--green)">14</div>
+              <div class="sub">For your active profile</div>
+            </div>
+            <div class="card stat-card">
+              <div class="label">New since yesterday</div>
+              <div class="value">31</div>
+              <div class="sub">From 1,042 sources</div>
+            </div>
+          </div>
+
+          <div class="filters">
+            <div class="chip-row">
+              <button class="chip active" data-filter>All</button>
+              <button class="chip" data-filter>Literary</button>
+              <button class="chip" data-filter>Residencies</button>
+              <button class="chip" data-filter>Grants</button>
+              <button class="chip" data-filter>Film</button>
+              <button class="chip" data-filter>Visual arts</button>
+              <button class="chip" data-filter>No fee</button>
+              <button class="chip" data-filter>Closing soon</button>
+            </div>
+            <select class="sort-select">
+              <option>Sort: Best match</option>
+              <option>Deadline (soonest)</option>
+              <option>Recently updated</option>
+              <option>Trust (highest)</option>
+            </select>
+          </div>
+
+          <div class="split-view">
+            <div class="opp-list" id="opp-list"></div>
+            <div id="detail-mount"></div>
+          </div>
+        </section>
+
+        <!-- ── ALERTS ────────────────────────────────────────────────── -->
+        <section class="screen" data-screen="alerts">
+          <div class="inbox-summary display">
+            Missa found <strong>14 new opportunities</strong> matching your profile.
+            <strong>3 close this week.</strong>
+            2 were updated since you saved them.
+            1 had its deadline extended.
+          </div>
+
+          <div class="alert-section">
+            <h2>New for you</h2>
+            <div class="card alert-card">
+              <div class="alert-icon new">✦</div>
+              <div class="alert-body">
+                <h3>AGNI — Spring submissions now open</h3>
+                <p>Accepts poetry, fiction, and CNF. No fee. Deadline Apr 30.</p>
+                <div class="alert-reason">why: matches your Poetry + No-fee profile</div>
+              </div>
+              <span class="badge badge-fit-strong">Strong match</span>
+            </div>
+            <div class="card alert-card">
+              <div class="alert-icon new">✦</div>
+              <div class="alert-body">
+                <h3>MacDowell Fellowship — 2027 cycle</h3>
+                <p>Writing residency. Fully funded. Applications open Feb 10.</p>
+                <div class="alert-reason">why: writing residency in your saved search</div>
+              </div>
+              <span class="badge badge-fit-possible">Possible match</span>
+            </div>
+          </div>
+
+          <div class="alert-section">
+            <h2>Closing soon</h2>
+            <div class="card alert-card">
+              <div class="alert-icon deadline">⏱</div>
+              <div class="alert-body">
+                <h3>NEA Creative Writing Fellowships — 4 days left</h3>
+                <p>Poetry and prose. No application fee.</p>
+                <div class="alert-reason">why: tracked opportunity · deadline Mar 12</div>
+              </div>
+            </div>
+            <div class="card alert-card">
+              <div class="alert-icon deadline">⏱</div>
+              <div class="alert-body">
+                <h3>The Kenyon Review — 8 days left</h3>
+                <p>Deadline extended to Mar 15. You saved this 2 weeks ago.</p>
+                <div class="alert-reason">why: deadline moved · you're tracking this</div>
+              </div>
+              <span class="badge badge-status-extended">Extended</span>
+            </div>
+          </div>
+
+          <div class="alert-section">
+            <h2>Recently updated</h2>
+            <div class="card alert-card">
+              <div class="alert-icon change">↻</div>
+              <div class="alert-body">
+                <h3>Hilltop Foundation Arts Grant — conflicting deadlines</h3>
+                <p>Directory says Apr 25; org site says Apr 10. Needs verification.</p>
+                <div class="alert-reason">why: you follow Hilltop Foundation</div>
+              </div>
+              <span class="badge badge-status-verify">Verify</span>
+            </div>
+          </div>
+
+          <div class="alert-section">
+            <h2>From organizations you follow</h2>
+            <div class="card alert-card">
+              <div class="alert-icon follow">◎</div>
+              <div class="alert-body">
+                <h3>North River Review opened Spring reading period</h3>
+                <p>Now accepting poetry, fiction, CNF. No fee.</p>
+                <div class="alert-reason">why: you follow North River Review</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── TRACKER ───────────────────────────────────────────────── -->
+        <section class="screen" data-screen="tracker">
+          <div class="stats-row" style="grid-template-columns:repeat(5,1fr)">
+            <div class="card stat-card"><div class="label">Interested</div><div class="value">8</div></div>
+            <div class="card stat-card"><div class="label">Preparing</div><div class="value">5</div></div>
+            <div class="card stat-card"><div class="label">Submitted</div><div class="value">6</div></div>
+            <div class="card stat-card"><div class="label">In review</div><div class="value">3</div></div>
+            <div class="card stat-card"><div class="label">Accepted</div><div class="value" style="color:var(--green)">1</div></div>
+          </div>
+
+          <div class="pipeline">
+            <div class="pipeline-col">
+              <h3>Saved <span>4</span></h3>
+              <div class="pipeline-card"><h4>Kenyon Review</h4><div class="deadline urgent">Due Mar 15</div></div>
+              <div class="pipeline-card"><h4>Ploughshares</h4><div class="deadline">Due Apr 1</div></div>
+              <div class="pipeline-card"><h4>NEA Fellowship</h4><div class="deadline urgent">Due Mar 12</div></div>
+            </div>
+            <div class="pipeline-col">
+              <h3>Preparing <span>3</span></h3>
+              <div class="pipeline-card"><h4>ISCP Residency</h4><div class="deadline">Due Oct 1</div></div>
+              <div class="pipeline-card"><h4>Poetry Society Awards</h4><div class="deadline">Due May 30</div></div>
+            </div>
+            <div class="pipeline-col">
+              <h3>Submitted <span>5</span></h3>
+              <div class="pipeline-card"><h4>AGNI</h4><div class="deadline">Submitted Feb 28</div></div>
+              <div class="pipeline-card"><h4>Rattle</h4><div class="deadline">Submitted Mar 1</div></div>
+              <div class="pipeline-card"><h4>Colorado Review</h4><div class="deadline">Submitted Feb 15</div></div>
+            </div>
+            <div class="pipeline-col">
+              <h3>In review <span>2</span></h3>
+              <div class="pipeline-card"><h4>The Sun Magazine</h4><div class="deadline">Avg response 45 days</div></div>
+              <div class="pipeline-card"><h4>Missouri Review</h4><div class="deadline">Avg response 62 days</div></div>
+            </div>
+            <div class="pipeline-col">
+              <h3>Accepted <span>1</span></h3>
+              <div class="pipeline-card" style="border-color:var(--green)"><h4>SmokeLong Quarterly</h4><div class="deadline" style="color:var(--green)">Accepted Jan 2026</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── SUBMISSIONS ───────────────────────────────────────────── -->
+        <section class="screen" data-screen="submissions">
+          <div class="filters" style="margin-bottom:var(--s4)">
+            <div class="chip-row">
+              <button class="chip active">All</button>
+              <button class="chip">In review</button>
+              <button class="chip">Accepted</button>
+              <button class="chip">Pending</button>
+              <button class="chip">Declined</button>
+            </div>
+            <button class="btn btn-sm">Export</button>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>Opportunity</th>
+                  <th>Packet</th>
+                  <th>Submitted</th>
+                  <th>Status</th>
+                  <th>Reply window</th>
+                  <th>Fee</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>The Sun Magazine</strong><br><span style="color:var(--ink-3);font-size:0.75rem">3 poems · "Winter sequence"</span></td>
+                  <td class="mono" style="font-size:0.75rem">sun-2026-03</td>
+                  <td class="mono" style="font-size:0.75rem">Feb 14</td>
+                  <td><span class="status-pill review">In review</span></td>
+                  <td><div class="progress-bar"><span style="width:60%"></span></div></td>
+                  <td>$0</td>
+                </tr>
+                <tr>
+                  <td><strong>AGNI</strong><br><span style="color:var(--ink-3);font-size:0.75rem">5 poems</span></td>
+                  <td class="mono" style="font-size:0.75rem">agni-2026-02</td>
+                  <td class="mono" style="font-size:0.75rem">Feb 28</td>
+                  <td><span class="status-pill pending">Pending</span></td>
+                  <td><div class="progress-bar"><span style="width:15%"></span></div></td>
+                  <td>$3</td>
+                </tr>
+                <tr>
+                  <td><strong>SmokeLong Quarterly</strong><br><span style="color:var(--ink-3);font-size:0.75rem">Flash · "Platform"</span></td>
+                  <td class="mono" style="font-size:0.75rem">smoke-2025-11</td>
+                  <td class="mono" style="font-size:0.75rem">Nov 3</td>
+                  <td><span class="status-pill accepted">Accepted</span></td>
+                  <td>—</td>
+                  <td>$0</td>
+                </tr>
+                <tr>
+                  <td><strong>Rattle Poetry Prize</strong><br><span style="color:var(--ink-3);font-size:0.75rem">1 poem</span></td>
+                  <td class="mono" style="font-size:0.75rem">rattle-2026-01</td>
+                  <td class="mono" style="font-size:0.75rem">Jan 20</td>
+                  <td><span class="status-pill declined">Declined</span></td>
+                  <td>—</td>
+                  <td>$30</td>
+                </tr>
+                <tr>
+                  <td><strong>NEA Fellowship</strong><br><span style="color:var(--ink-3);font-size:0.75rem">Poetry manuscript</span></td>
+                  <td class="mono" style="font-size:0.75rem">nea-2026-prep</td>
+                  <td class="mono" style="color:var(--ink-3);font-size:0.75rem">—</td>
+                  <td><span class="status-pill pending">Preparing</span></td>
+                  <td><div class="progress-bar"><span style="width:80%;background:var(--amber)"></span></div></td>
+                  <td>$0</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card" style="margin-top:var(--s5);padding:var(--s4) var(--s5);display:flex;align-items:center;gap:var(--s3);border-color:var(--blue)">
+            <span style="color:var(--blue)">↻</span>
+            <span style="font-size:0.85rem"><strong>Deadline updated</strong> — Kenyon Review extended to Mar 15.
+            <span class="verified" style="color:var(--green);font-weight:500">✓ Verified</span> · Checked 4 hours ago</span>
+          </div>
+        </section>
+
+        <!-- ── SAVED ───────────────────────────────────────────────── -->
+        <section class="screen" data-screen="saved">
+          <div class="profile-grid">
+            <div class="card profile-card">
+              <h3>Poetry · No fee · US</h3>
+              <p>Literary magazines accepting poetry. No reading fees. US-based or open internationally.</p>
+              <div class="chip-row" style="margin-bottom:var(--s4)">
+                <span class="chip">Poetry</span>
+                <span class="chip">No fee</span>
+                <span class="chip">Magazine</span>
+              </div>
+              <div class="matches">312 matches · 8 closing soon</div>
+            </div>
+            <div class="card profile-card">
+              <h3>Writing residencies · Funded</h3>
+              <p>Residencies for writers with funding or stipend. 2+ weeks preferred.</p>
+              <div class="chip-row" style="margin-bottom:var(--s4)">
+                <span class="chip">Residency</span>
+                <span class="chip">Fellowship</span>
+                <span class="chip">Funded</span>
+              </div>
+              <div class="matches">47 matches · 3 new this week</div>
+            </div>
+            <div class="card profile-card">
+              <h3>Grants · Emerging artist</h3>
+              <p>US national and state grants for individual artists. Poetry and interdisciplinary.</p>
+              <div class="chip-row" style="margin-bottom:var(--s4)">
+                <span class="chip">Grant</span>
+                <span class="chip">US</span>
+              </div>
+              <div class="matches">89 matches</div>
+            </div>
+            <div class="card profile-card" style="border-style:dashed;display:grid;place-items:center;min-height:180px;cursor:pointer">
+              <span style="color:var(--ink-3);font-size:0.9rem">+ Create saved search</span>
+            </div>
+          </div>
+
+          <h2 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-3);margin:var(--s8) 0 var(--s4)">Followed organizations</h2>
+          <div class="chip-row">
+            <span class="chip active">North River Review</span>
+            <span class="chip active">Hilltop Foundation</span>
+            <span class="chip active">Kenyon Review</span>
+            <span class="chip active">NEA</span>
+            <span class="chip active">Res Artis</span>
+            <span class="chip active">Poetry Magazine</span>
+            <span class="chip active">Sundance Institute</span>
+            <span class="chip active">+ Follow org</span>
+          </div>
+        </section>
+
+        <!-- ── SOURCE REGISTRY ─────────────────────────────────────── -->
+        <section class="screen" data-screen="registry">
+          <div class="registry-stats">
+            <div class="card registry-stat"><div class="num">1,042</div><div class="lbl">Sources</div></div>
+            <div class="card registry-stat"><div class="num">49</div><div class="lbl">Verticals</div></div>
+            <div class="card registry-stat"><div class="num">1,024</div><div class="lbl">Tier 0 org</div></div>
+            <div class="card registry-stat"><div class="num">18</div><div class="lbl">Platforms</div></div>
+            <div class="card registry-stat"><div class="num">326</div><div class="lbl">Literary</div></div>
+            <div class="card registry-stat"><div class="num">214</div><div class="lbl">Grants</div></div>
+          </div>
+
+          <div class="card card-pad" style="margin-bottom:var(--s6)">
+            <div style="font-size:0.85rem;margin-bottom:var(--s3)">Source tier distribution</div>
+            <div class="tier-bar">
+              <span class="tier-0" title="Org pages"></span>
+              <span class="tier-1" title="Platforms"></span>
+              <span class="tier-2" title="Directories"></span>
+              <span class="tier-3" title="Feeds"></span>
+            </div>
+            <div style="display:flex;gap:var(--s6);font-size:0.75rem;color:var(--ink-3)">
+              <span>■ Tier 0 — org pages (canonical)</span>
+              <span style="color:var(--blue)">■ Tier 1 — platforms</span>
+              <span style="color:var(--amber)">■ Tier 2 — directories</span>
+              <span>■ Tier 3 — feeds</span>
+            </div>
+          </div>
+
+          <div class="filters">
+            <div class="chip-row">
+              <button class="chip active">All groups</button>
+              <button class="chip">Literary</button>
+              <button class="chip">Visual arts</button>
+              <button class="chip">Film</button>
+              <button class="chip">Grants</button>
+              <button class="chip">Platforms only</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th>Vertical</th>
+                  <th>Tier</th>
+                  <th>Kind</th>
+                  <th>Cadence</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>The Kenyon Review</strong><br><span style="color:var(--ink-3);font-size:0.72rem">kenyonreview.org/submit</span></td>
+                  <td>Literary fiction</td>
+                  <td><span class="badge badge-status-open">0</span></td>
+                  <td>Org website</td>
+                  <td class="mono">7d</td>
+                  <td style="color:var(--green)">Active</td>
+                </tr>
+                <tr>
+                  <td><strong>Res Artis Open Calls</strong><br><span style="color:var(--ink-3);font-size:0.72rem">resartis.org/open-calls · follows outbound</span></td>
+                  <td>Visual residency</td>
+                  <td><span class="badge badge-status-closing">2</span></td>
+                  <td>Directory</td>
+                  <td class="mono">2d</td>
+                  <td style="color:var(--green)">Active</td>
+                </tr>
+                <tr>
+                  <td><strong>Submittable Discover</strong><br><span style="color:var(--ink-3);font-size:0.72rem">submittable.com/discover</span></td>
+                  <td>Platform</td>
+                  <td><span class="badge badge-status-extended">1</span></td>
+                  <td>Partner feed</td>
+                  <td class="mono">3d</td>
+                  <td style="color:var(--green)">Active</td>
+                </tr>
+                <tr>
+                  <td><strong>California Arts Council</strong><br><span style="color:var(--ink-3);font-size:0.72rem">arts.ca.gov/grants</span></td>
+                  <td>US state grants</td>
+                  <td><span class="badge badge-status-open">0</span></td>
+                  <td>Org website</td>
+                  <td class="mono">7d</td>
+                  <td style="color:var(--green)">Active</td>
+                </tr>
+                <tr>
+                  <td><strong>Duotrope</strong><br><span style="color:var(--ink-3);font-size:0.72rem">duotrope.com · discovery seed only</span></td>
+                  <td>Platform</td>
+                  <td><span class="badge badge-status-closing">2</span></td>
+                  <td>Directory</td>
+                  <td class="mono">2d</td>
+                  <td style="color:var(--green)">Active</td>
+                </tr>
+                <tr>
+                  <td><strong>Sundance Film Festival</strong><br><span style="color:var(--ink-3);font-size:0.72rem">festival.sundance.org</span></td>
+                  <td>Film festival</td>
+                  <td><span class="badge badge-status-open">0</span></td>
+                  <td>Org website</td>
+                  <td class="mono">7d</td>
+                  <td style="color:var(--green)">Active</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ── VERIFICATION QUEUE ──────────────────────────────────── -->
+        <section class="screen" data-screen="verify">
+          <div class="stats-row" style="grid-template-columns:repeat(4,1fr)">
+            <div class="card stat-card"><div class="label">Needs verification</div><div class="value">142</div></div>
+            <div class="card stat-card"><div class="label">Likely duplicate</div><div class="value">37</div></div>
+            <div class="card stat-card"><div class="label">Deadline changed</div><div class="value">81</div></div>
+            <div class="card stat-card"><div class="label">Low confidence</div><div class="value">64</div></div>
+          </div>
+
+          <div class="verify-queue">
+            <div class="card verify-item">
+              <span class="reason deadline">Deadline</span>
+              <div class="info">
+                <h4>Hilltop Foundation Arts Grant</h4>
+                <p>Directory: Apr 25 · Org site: Apr 10 · Confidence dropped to 42</p>
+              </div>
+              <button class="btn btn-sm">Review</button>
+              <button class="btn btn-sm btn-primary">Resolve</button>
+            </div>
+            <div class="card verify-item">
+              <span class="reason duplicate">Duplicate</span>
+              <div class="info">
+                <h4>ISCP Residency ↔ Res Artis listing</h4>
+                <p>Same opportunity, 2 sources. Merge as canonical + alternate?</p>
+              </div>
+              <button class="btn btn-sm">Review</button>
+              <button class="btn btn-sm btn-primary">Merge</button>
+            </div>
+            <div class="card verify-item">
+              <span class="reason low">Low confidence</span>
+              <div class="info">
+                <h4>Fully funded residencies 2026 — Vaasa</h4>
+                <p>Jury not extracted · Deadline inferred from prose · Tier-2 seed</p>
+              </div>
+              <button class="btn btn-sm">Review</button>
+              <button class="btn btn-sm btn-primary">Verify</button>
+            </div>
+            <div class="card verify-item">
+              <span class="reason deadline">Deadline</span>
+              <div class="info">
+                <h4>Golden Quill Contest</h4>
+                <p>Suspicious language detected: "wire transfer required for prize"</p>
+              </div>
+              <button class="btn btn-sm">Review</button>
+              <button class="btn btn-sm" style="color:var(--red)">Flag scam</button>
+            </div>
+            <div class="card verify-item">
+              <span class="reason duplicate">Claim</span>
+              <div class="info">
+                <h4>North River Review — claim request</h4>
+                <p>editor@northriverreview.org · domain match · auto-approvable</p>
+              </div>
+              <button class="btn btn-sm btn-primary">Approve claim</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
