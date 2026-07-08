@@ -162,6 +162,13 @@ export class RadarEngine {
     return profile;
   }
 
+  /** Returns false if the profile doesn't exist or belongs to a different user. */
+  deleteRadarProfile(userId: string, profileId: string): boolean {
+    const profile = this.store.radarProfiles.get(profileId);
+    if (!profile || profile.userId !== userId) return false;
+    return this.store.radarProfiles.delete(profileId);
+  }
+
   followOrganization(userId: string, organizationId: string): void {
     if (!this.store.follows.some((f) => f.userId === userId && f.organizationId === organizationId)) {
       this.store.follows.push({ userId, organizationId, followedAt: this.clock.now().toISOString() });

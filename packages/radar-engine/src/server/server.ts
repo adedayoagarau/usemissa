@@ -406,6 +406,12 @@ export class RadarServer {
         this.persist();
         return json(profile, 201);
       }
+      if (method === 'DELETE' && c === 'profiles' && d) {
+        const deleted = this.engine.deleteRadarProfile(b, d);
+        if (!deleted) throw httpError(404, `Unknown saved search: ${d}`);
+        this.persist();
+        return json({ ok: true });
+      }
       if (method === 'POST' && c === 'follow') {
         const body = await readJson(req);
         if (typeof body.organizationId !== 'string' || !store.organizations.has(body.organizationId)) {
