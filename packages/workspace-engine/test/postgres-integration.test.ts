@@ -21,6 +21,11 @@ test('ensurePostgresSchema + save/load round-trip against a real Postgres connec
       id: 'entity_1',
       organizationId: 'org_1',
       name: 'Real PG Test Team',
+      // Explicit undefined, not omitted -- matches the shape
+      // WorkspaceEngine.createEntity's own object literal actually produces
+      // when no label is passed, which is what loadStoreFromPostgres's
+      // column-by-column reconstruction is compared against here.
+      label: undefined,
       createdAt: new Date().toISOString(),
     });
     store.programs.set('program_1', {
