@@ -9,4 +9,4 @@
  */
 export { LlmExtractor, type LlmExtractorOptions } from './llmExtractor.js';
 export { ensurePostgresSchema, saveStoreToPostgres, loadStoreFromPostgres } from './postgresStore.js';
-export { createProductionEngine, type ProductionEngine } from './productionEngine.js';
+export { createProductionEngine, seedRegistryIfEmpty, type ProductionEngine } from './productionEngine.js';

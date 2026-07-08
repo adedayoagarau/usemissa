@@ -6,9 +6,32 @@
  * production RadarEngine look like", not two.
  */
 import { Pool } from 'pg';
-import { RadarEngine, HttpFetcher, systemClock } from '@missa/radar-engine';
+import { RadarEngine, HttpFetcher, systemClock, loadSourcesIntoEngine } from '@missa/radar-engine';
 import { ensurePostgresSchema, loadStoreFromPostgres, saveStoreToPostgres } from './postgresStore.js';
 import { LlmExtractor } from './llmExtractor.js';
+
+/**
+ * Seeds the engine's sources from the built opportunity-source registry
+ * (packages/radar-engine/src/registry/ -- 49 verticals, ~1,024 tier-0
+ * sources) when the store has none yet. Tier 0 only: the canonical org
+ * guideline/submit pages, not tier-1 directories or tier-2 outbound-link
+ * crawling (both out of scope for this pass).
+ *
+ * Idempotent: once the store has any sources at all (e.g. a Postgres that
+ * was already seeded on a previous cold start), this is a no-op and returns
+ * null -- re-running it on every serverless cold start never duplicates
+ * sources.
+ *
+ * Extracted as a standalone function (rather than inlined in
+ * createProductionEngine) so it's unit-testable against a plain in-memory
+ * RadarEngine, without a real Postgres connection.
+ */
+export function seedRegistryIfEmpty(engine: RadarEngine): { loaded: number } | null {
+  if (engine.store.sources.size > 0) return null;
+  const { loaded } = loadSourcesIntoEngine(engine.addSource.bind(engine), { maxTier: 0 });
+  console.log(`[seedRegistryIfEmpty] seeded ${loaded} tier-0 sources from the opportunity-source registry`);
+  return { loaded };
+}
 
 export interface ProductionEngine {
   engine: RadarEngine;
@@ -46,6 +69,7 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   const extractor = process.env.ANTHROPIC_API_KEY ? new LlmExtractor(systemClock) : undefined;
 
   const engine = new RadarEngine({ store, fetcher, extractor });
+  seedRegistryIfEmpty(engine);
 
   return {
     engine,
