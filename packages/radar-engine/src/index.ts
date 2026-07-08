@@ -39,6 +39,14 @@ export {
   createFeedToken, verifyFeedToken, type FeedTokenPayload,
 } from './auth/crypto.js';
 export { buildIcsFeed } from './tracker/calendarFeed.js';
+export {
+  parseSourcesCsv,
+  importSources,
+  type ParsedSourceRow,
+  type ImportRowError,
+  type ImportPreview,
+  type ImportReport,
+} from './import/csvImporter.js';
 export { buildServerDemoWorld, type ServerDemoWorld, type DemoCredential } from './fixtures/serverDemo.js';
 export { buildDemoWorld, ManualClock } from './fixtures/seed.js';
 export {

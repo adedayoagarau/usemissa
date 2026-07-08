@@ -531,6 +531,22 @@ export class RadarServer {
         const limit = Number(url.searchParams.get('limit') ?? 200);
         return json([...store.auditLog].reverse().slice(0, limit));
       }
+
+      // Bulk source import: detect+preview, then a separate explicit import
+      // step -- never a blind one-shot upload (strategy doc's import principle).
+      if (method === 'POST' && b === 'sources' && c === 'preview') {
+        const body = await readJson(req);
+        if (typeof body.csv !== 'string') throw httpError(400, 'csv (string) required');
+        return json(this.engine.previewSourcesCsv(body.csv));
+      }
+      if (method === 'POST' && b === 'sources' && c === 'import') {
+        const body = await readJson(req);
+        if (!Array.isArray(body.rows)) throw httpError(400, 'rows (array, from a prior preview) required');
+        const report = this.engine.importSourcesCsv(body.rows);
+        this.engine.recordAudit(account.id, 'sources.import', 'sources', 'bulk', `${report.created.length} created, ${report.duplicates.length} duplicates`);
+        this.persist();
+        return json(report, 201);
+      }
     }
 
     throw httpError(404, 'Not found');

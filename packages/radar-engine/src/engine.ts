@@ -54,6 +54,7 @@ import { openTask, resolveConflicts, resolveTask, sweepForVerification, verifica
 import { addPiece, deadlineReminders, overdueResponseAlerts, piecesFor, setMyStatus, track, trackerView, withdrawalSuggestionAlerts, type TrackerView } from './tracker/tracker.js';
 import { computeResponseStats, type ResponseStats } from './tracker/responseStats.js';
 import { buildIcsFeed } from './tracker/calendarFeed.js';
+import { importSources, parseSourcesCsv, type ImportPreview, type ImportReport, type ParsedSourceRow } from './import/csvImporter.js';
 import { isoDateOf } from './extraction/dates.js';
 
 export interface TickReport {
@@ -234,6 +235,19 @@ export class RadarEngine {
     const account = this.store.accounts.get(accountId);
     if (!account) throw new Error(`Unknown account: ${accountId}`);
     account.isAdmin = true;
+  }
+
+  /** Preview a sources CSV without touching the store (detect + validate). */
+  previewSourcesCsv(csvText: string): ImportPreview {
+    return parseSourcesCsv(csvText);
+  }
+
+  /** Actually create sources from already-parsed, validated rows; skips URLs already tracked. */
+  importSourcesCsv(rows: ParsedSourceRow[]): ImportReport {
+    const existingUrls = new Set([...this.store.sources.values()].map((s) => s.url));
+    const resolveOrg = (name: string) =>
+      [...this.store.organizations.values()].find((o) => o.name.toLowerCase() === name.toLowerCase())?.id;
+    return importSources(existingUrls, (input) => this.addSource(input), rows, resolveOrg);
   }
 
   // ── The tick: full pipeline ──────────────────────────────────────
