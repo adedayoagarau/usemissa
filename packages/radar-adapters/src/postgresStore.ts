@@ -1,15 +1,10 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import type { Pool } from 'pg';
 import { createStore, type RadarStore } from '@missa/radar-engine';
-
-const SCHEMA_PATH = join(dirname(fileURLToPath(import.meta.url)), 'postgresSchema.sql');
+import { postgresSchema } from './postgresSchema.js';
 
 /** Creates the Radar tables (idempotent — safe to call on every boot). */
 export async function ensurePostgresSchema(pool: Pool): Promise<void> {
-  const schema = readFileSync(SCHEMA_PATH, 'utf8');
-  await pool.query(schema);
+  await pool.query(postgresSchema);
 }
 
 /**

@@ -1,11 +1,20 @@
--- Missa Radar — Postgres persistence schema.
---
--- Each domain collection is a JSONB document store (id + full record), which
--- matches how the in-memory RadarStore already models them; a handful of
--- columns are pulled out for indexing/filtering. This schema is rewritten in
--- full on every save (see postgresStore.ts) — same semantics as the existing
--- JSON-file store, just durable and queryable.
-
+/**
+ * Missa Radar — Postgres persistence schema, as a plain string constant
+ * (not a separate .sql file read via fs at runtime) -- Vercel's serverless
+ * bundling traces JS imports, not files resolved dynamically via
+ * import.meta.url, so a physically separate .sql file doesn't reliably
+ * survive into the deployed function bundle. This was the actual cause of
+ * a production ENOENT ("no such file or directory,
+ * .../dist/src/postgresSchema.sql") once ensurePostgresSchema started
+ * running on every request instead of only the Cron route.
+ *
+ * Each domain collection is a JSONB document store (id + full record), which
+ * matches how the in-memory RadarStore already models them; a handful of
+ * columns are pulled out for indexing/filtering. This schema is rewritten in
+ * full on every save (see postgresStore.ts) — same semantics as the existing
+ * JSON-file store, just durable and queryable.
+ */
+export const postgresSchema = `
 create table if not exists radar_sources (
   id text primary key,
   organization_id text,
@@ -125,3 +134,4 @@ create table if not exists radar_audit_log (
   data jsonb not null
 );
 create index if not exists radar_audit_log_at_idx on radar_audit_log (at);
+`;

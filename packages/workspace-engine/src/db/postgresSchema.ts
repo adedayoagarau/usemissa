@@ -1,8 +1,17 @@
--- Workspace domain schema. snake_case throughout, matching
--- packages/radar-adapters/src/postgresSchema.sql's existing convention.
--- Idempotent (IF NOT EXISTS) -- safe to run on every boot, same contract as
--- the Radar side's ensurePostgresSchema.
-
+/**
+ * Workspace domain schema, as a plain string constant (not a separate .sql
+ * file read via fs at runtime) -- Vercel's serverless bundling traces JS
+ * imports, not files resolved dynamically via import.meta.url, so a
+ * physically separate .sql file doesn't reliably survive into the deployed
+ * function bundle (same fix as radar-adapters/src/postgresSchema.ts, for
+ * the identical reason -- a production ENOENT on this exact file).
+ *
+ * snake_case table/column names throughout, matching
+ * packages/radar-adapters/src/postgresSchema.ts's existing convention.
+ * Idempotent (IF NOT EXISTS) -- safe to run on every boot, same contract as
+ * the Radar side's ensurePostgresSchema.
+ */
+export const postgresSchema = `
 create table if not exists entities (
   id text primary key,
   organization_id text not null,
@@ -74,3 +83,4 @@ create table if not exists review_recommendations (
   notes text,
   recorded_at timestamptz not null
 );
+`;
