@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server';
-import { requireOrgMember } from '@/lib/auth';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { requireOrganizationAccess } from '@/lib/organizationAccess';
 
 /** Story 7.1: "clicking a Submission shows its Works and uploaded files." */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string; submissionId: string }> }) {
   const { id, submissionId } = await params;
-  const auth = await requireOrgMember(request, id);
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const result = await requireOrganizationAccess(request, id);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
-  const engine = await getWorkspaceEngine();
-  const submission = engine.submissionsForOrganization(id).find((s) => s.id === submissionId);
+  const engine = result.access.workspace;
+  const scopedSubmission = result.access.scope.submission(submissionId);
+  const submission = scopedSubmission
+    ? engine.submissionsForOrganization(id).find((candidate) => candidate.id === scopedSubmission.id)
+    : undefined;
   if (!submission) return NextResponse.json({ error: 'Unknown submission for this organization' }, { status: 404 });
 
   const works = engine.worksForSubmission(submissionId);

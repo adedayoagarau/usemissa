@@ -7,3 +7,5 @@ dist/
 .next/
 apps/web/next-env.d.ts
 .env*.local
+apps/web/playwright-report/
+apps/web/test-results/

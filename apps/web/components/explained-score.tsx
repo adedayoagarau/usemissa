@@ -65,13 +65,12 @@ export function FitScoreBadge({ fit }: { fit: FitScore }) {
   );
 }
 
-export function TrustBadge({ trust, lastCheckedAt }: { trust: number; lastCheckedAt?: string }) {
+export function TrustBadge({ trust, checkedLabel }: { trust: number; checkedLabel?: string }) {
   const label = trust >= 70 ? 'Verified' : trust >= 40 ? 'Checked' : 'Unverified';
-  const hoursAgo = lastCheckedAt ? Math.max(0, Math.round((Date.now() - new Date(lastCheckedAt).getTime()) / 3_600_000)) : undefined;
   return (
     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
       <Badge variant="outline">{label}</Badge>
-      {hoursAgo !== undefined && <span>checked {hoursAgo}h ago</span>}
+      {checkedLabel && <span>{checkedLabel}</span>}
     </span>
   );
 }

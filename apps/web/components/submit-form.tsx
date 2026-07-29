@@ -95,7 +95,7 @@ export function SubmitForm({ pathId, categories, fields }: { pathId: string; cat
           {f.type === 'file-upload' ? (
             <input id={f.id} name={f.id} type="file" required={f.required} className="mt-1 block w-full text-sm" />
           ) : f.type === 'fee-toggle' ? (
-            <p className="mt-1 text-sm text-muted-foreground">Fee applies — payment collection isn't wired up yet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Fee applies — payment collection isn&apos;t wired up yet.</p>
           ) : (
             <Input id={f.id} name={f.id} required={f.required} onChange={(e) => setField(f.id, e.target.value)} />
           )}

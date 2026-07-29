@@ -1,8 +1,8 @@
 ---
-stepsCompleted: [1, 2, 3, 4, 5]
+stepsCompleted: [1, 2, 3, 4, 5, 6]
 inputDocuments: []
 workflowType: 'research'
-lastStep: 5
+lastStep: 6
 research_type: 'technical'
 research_topic: 'Missa production dependencies, skills, MCPs, and development tools'
 research_goals: 'Identify the smallest current installation stack that closes the reviewed persistence, authorization, ingestion, UI, testing, file-storage, email, observability, and deployment gaps without overlapping tools.'
@@ -21,6 +21,10 @@ source_verification: true
 ---
 
 ## Research Overview
+
+Missa's difficulty is not a missing UI library or a need for a larger AI framework. The reviewed build has capable foundations, but its product surfaces are connected to unsafe persistence, incomplete tenant authorization, non-durable ingestion, and several simulated production adapters. This research therefore focuses on the smallest set of dependencies, tools, skills, and integration boundaries required to turn the current modular TypeScript codebase into a production-capable application without replacing the frontend or multiplying vendors.
+
+The central recommendation is a row-oriented modular monolith: PostgreSQL is the sole source of truth; a secure data-access layer owns tenant authorization; domain engines remain deterministic and vendor-free; OpenAI is isolated behind a structured-generation port; Vercel Workflow handles durable asynchronous work; Blob, Resend, and Sentry plug in through narrow adapters. Playwright and axe validate complete user and tenant flows. The full rationale, dependency map, adoption gates, risks, and phased roadmap are consolidated in **Research Synthesis: Completing Missa's Production Spine** near the end of this document.
 
 ## Technical Research Scope Confirmation
 
@@ -1053,3 +1057,379 @@ Use the already installed skills for these areas and add only the official Workf
 - Outbox oldest-pending age remains below the defined operational threshold.
 - Core desktop/mobile Playwright and axe gates pass on every release.
 - Unused primitive count is reduced and every semantic system component has documented states.
+
+---
+
+# Research Synthesis: Completing Missa's Production Spine
+
+## Executive Summary
+
+Missa has reached an architecture wall because the interface and the intelligence layer are being asked to behave like a production system while their shared production spine is incomplete. The UI is not failing for lack of components, and the extraction engine is not failing for lack of a general-purpose agent framework. They fail together because identity, persistence, authorization, provenance, background execution, files, notification delivery, and verification are not yet expressed as dependable contracts.
+
+The recommended solution is to retain the current TypeScript, Next.js, React, Tailwind, Base UI/shadcn, PostgreSQL, and Drizzle direction while changing how responsibilities are owned. PostgreSQL becomes the only source of truth. `@missa/contracts` owns boundary schemas, `@missa/db` owns the database schema and repositories, domain packages own deterministic business rules, and server-side use cases compose them. External services are adapters, never domain dependencies. This is a modular monolith deployed as one application, with durable asynchronous execution delegated to Vercel Workflow.
+
+The immediate installation set is intentionally small: Zod, Drizzle/pg, React Hook Form, Playwright/axe, ESLint/Prettier, the OpenAI SDK, Vercel Workflow, private Vercel Blob, Resend/React Email, and Sentry. Anthropic is removed only after an OpenAI fixture benchmark reaches parity. Storybook, Stripe, WorkOS, Redis, alternative AI SDKs, and additional MCPs are deferred behind explicit adoption triggers because installing them now would add interfaces, cost, credentials, and migration work before their prerequisite product contracts exist.
+
+### Key Technical Findings
+
+- The whole-store snapshot persistence model can overwrite concurrent changes and cannot safely enforce row-level tenancy.
+- Counter-derived IDs collide after reload and must be replaced with database-generated UUIDs.
+- Authorization is inconsistently enforced, including privileged mutations and nested organization resources.
+- Ingestion is not durable: a source exception can abort a batch, and timeouts, checkpoints, operator queues, and production claim verification are incomplete.
+- The AI boundary is provider-specific; structured output validation, fixture evaluation, cost accounting, and deterministic fallback are required before it can be trusted.
+- The hosted submission flow does not yet form one transactional path through Submission, Work, files, tracker events, audit, and notification.
+- The design system has too many copied primitives and too few Missa-owned semantic components; Passport and Workspace need distinct responsive shells.
+- Browser-level route, authorization, accessibility, and end-to-end coverage is the most urgent testing gap.
+
+### Strategic Recommendations
+
+1. Repair data identity, migration ownership, and tenant authorization before installing production adapters.
+2. Introduce provider and infrastructure ports so domain packages remain deterministic and vendor-independent.
+3. Connect each user-visible workflow to one row-level transaction plus an outbox event; perform external effects asynchronously and idempotently.
+4. Establish Chromium Playwright/axe gates around critical flows before widening the test matrix.
+5. Prune the UI inventory and build a small semantic component layer before adding Storybook or hosted visual-regression tooling.
+
+## Table of Contents
+
+1. [Technical Research Introduction and Methodology](#1-technical-research-introduction-and-methodology)
+2. [Technical Landscape and Architecture Analysis](#2-technical-landscape-and-architecture-analysis)
+3. [Implementation Approaches and Best Practices](#3-implementation-approaches-and-best-practices)
+4. [Technology Stack Evolution and Current Trends](#4-technology-stack-evolution-and-current-trends)
+5. [Integration and Interoperability Patterns](#5-integration-and-interoperability-patterns)
+6. [Performance and Scalability Analysis](#6-performance-and-scalability-analysis)
+7. [Security and Compliance Considerations](#7-security-and-compliance-considerations)
+8. [Strategic Technical Recommendations](#8-strategic-technical-recommendations)
+9. [Implementation Roadmap and Risk Assessment](#9-implementation-roadmap-and-risk-assessment)
+10. [Future Technical Outlook and Innovation Opportunities](#10-future-technical-outlook-and-innovation-opportunities)
+11. [Technical Research Methodology and Source Verification](#11-technical-research-methodology-and-source-verification)
+12. [Technical Appendices and Reference Materials](#12-technical-appendices-and-reference-materials)
+
+## 1. Technical Research Introduction and Methodology
+
+### Technical Research Significance
+
+The important boundary in Missa is not between “frontend” and “AI.” It is between user-visible promises and the contracts that make those promises true. A verified badge requires a real verification record. A submitted application requires durable ownership, files, tracker state, and delivery evidence. An extracted opportunity requires provenance, confidence, validation, and a human correction path. When these contracts are absent, polish increases the gap between what the interface communicates and what the system can guarantee.
+
+Current official guidance reinforces this direction. Next.js describes Route Handlers as public HTTP boundaries and recommends validation, authentication, and authorization, while its authentication guidance places secure checks close to the data source in a centralized DAL. Vercel Workflow provides durable execution and run observability without a separately operated queue. OpenAI's low-cost nano model supports Structured Outputs, allowing Missa to keep extraction narrow and schema-bound rather than adopting an agent framework. [Next.js BFF guide](https://nextjs.org/docs/app/guides/backend-for-frontend), [Next.js authentication guide](https://nextjs.org/docs/app/guides/authentication), [Vercel Workflow](https://vercel.com/workflows), [OpenAI GPT-5 nano](https://developers.openai.com/api/docs/models/gpt-5-nano)
+
+### Methodology
+
+- **Repository evidence:** architecture, routes, persistence, package manifests, CI, tests, navigation, styling, and existing product documents were inspected.
+- **Adversarial review:** findings were classified as incorrect, partial, unbuilt, unsafe, or structurally inconsistent.
+- **Responsibility mapping:** each proposed dependency was assigned one owner, one boundary, and an explicit non-responsibility.
+- **Current-source verification:** framework, platform, model, storage, workflow, email, database, accessibility, and design-token decisions were checked against official documentation current to 2026-07-29.
+- **Adoption control:** tools that do not close a present risk received measurable installation triggers rather than speculative installation.
+
+### Achieved Objectives
+
+- Identified the minimum production dependency stack and where every dependency plugs into the application.
+- Defined a vendor-neutral intelligence boundary that avoids Anthropic and preserves replacement options.
+- Connected data, workflows, files, notifications, observability, and UI validation into one architectural sequence.
+- Enumerated missing product areas and design-system problems so installation work is not mistaken for product completion.
+- Produced a phased implementation and validation roadmap with deferral gates and failure mitigations.
+
+## 2. Technical Landscape and Architecture Analysis
+
+### Recommended Architecture
+
+Use a modular monolith in the existing monorepo and deploy it as one Next.js application. Keep module boundaries strict even though process and deployment boundaries remain simple.
+
+```text
+Browser / public clients
+        |
+Next.js pages, Server Actions and Route Handlers
+        |
+Server use cases + secure tenant DAL
+        |
+Domain engines and contracts
+        |
+Repositories + transaction/outbox boundary
+        |
+PostgreSQL
+        |
+Vercel Workflow consumers
+        |
+OpenAI | Vercel Blob | Resend | Sentry
+```
+
+The dependency direction points inward. Domain code may depend on contracts and ports, but never on OpenAI, Blob, Resend, Sentry, Next.js, or Workflow. The web composition layer creates adapters and orchestrates use cases. This is a hexagonal boundary inside a modular monolith, not a reason to create microservices.
+
+### Ownership Boundaries
+
+| Layer | Owns | Must not own |
+|---|---|---|
+| `@missa/contracts` | Zod boundary schemas, DTOs, event payloads | database queries, provider SDKs |
+| `@missa/db` | Drizzle schema, migrations, pool, repositories, transactions, audit/outbox | UI state, extraction prompts |
+| domain engines | deterministic scoring, matching, status transitions, policy | HTTP, SQL, SDK calls |
+| web use cases/DAL | authentication, authorization, orchestration, DTO shaping | raw provider behavior in routes |
+| infrastructure adapters | OpenAI, Blob, Resend, Sentry, Workflow bindings | business authority |
+| UI system | tokens, shells, semantic states and actions | tenant authorization decisions |
+
+### Rejected Patterns
+
+- **Microservices:** no independently scaled or independently owned domain currently justifies network boundaries.
+- **Agent/RAG framework:** the current intelligence job is bounded structured extraction, not autonomous planning or retrieval orchestration.
+- **Dual persistence:** snapshots and row repositories cannot remain concurrent writers.
+- **Client-side authorization:** UI visibility is helpful but never an enforcement boundary.
+- **Provider-defined domain types:** this would make switching vendors or running deterministic fixtures expensive.
+
+## 3. Implementation Approaches and Best Practices
+
+### Foundation-First Adoption
+
+Install and implement in four bounded batches. Each batch must produce a working architectural seam rather than merely add packages to `package.json`.
+
+1. **Foundation:** pin Node 22; create contracts and database packages; establish one migration history; replace counter IDs and snapshot writes; centralize tenant authorization; add audit and outbox tables.
+2. **Web quality:** add schema-backed forms, lint/format gates, Playwright, axe, fixtures, and negative cross-tenant flows.
+3. **Intelligence:** add the OpenAI adapter behind `StructuredGenerationClient`, benchmark labelled fixtures, record token/cost/acceptance metrics, then remove Anthropic after parity.
+4. **Production adapters:** add Workflow, private Blob, Resend/React Email, and Sentry only when their tables, ports, idempotency rules, and failure states exist.
+
+### Data Migration Discipline
+
+Use an expand/backfill/cutover/contract sequence. Rehearse against a production-like branch, compare row counts and invariants, verify backups, and allow exactly one writer in each environment. Drizzle schema files must be the sole migration source; handwritten parallel DDL should be retired. [Drizzle generate](https://orm.drizzle.team/docs/drizzle-kit-generate), [Drizzle migrate](https://orm.drizzle.team/docs/drizzle-kit-migrate), [Neon branching](https://neon.com/docs/guides/branching-intro)
+
+### Quality Gates
+
+- TypeScript and ESLint at the root and for each workspace.
+- Migration generation must fail CI when schema changes are uncommitted.
+- Repository tests cover transactions, constraints, duplicate keys, and tenant-negative cases.
+- Playwright covers sign-in, organization context, Radar discovery, hosted submission, tracker state, verification, files, and notification-visible states.
+- Axe runs against critical desktop and 390px mobile states.
+- Provider smoke tests and external writes run only in controlled environments with explicit credentials.
+
+## 4. Technology Stack Evolution and Current Trends
+
+### Retained Stack
+
+Node 22, TypeScript, Next.js 16, React 19, Tailwind 4, Base UI/shadcn source components, PostgreSQL, and Drizzle already fit the product. The evolution is consolidation: fewer persistence paths, fewer UI primitives, fewer provider assumptions, and stronger server-side boundaries.
+
+### Added Stack
+
+| Capability | Immediate technology | Strategic reason |
+|---|---|---|
+| contracts | Zod | one runtime/type boundary for routes, events, and AI output |
+| data | Drizzle ORM/Kit + `pg` | row ownership, constraints, transactions, one migration history |
+| forms | React Hook Form + Zod resolver | accessible, schema-backed client interactions |
+| intelligence | OpenAI SDK + `gpt-5-nano` | low-cost structured extraction behind a provider port |
+| async | Vercel Workflow | durable steps, retries, waiting, versioned runs, observability |
+| files | private Vercel Blob | browser upload of bytes with Postgres metadata/ownership |
+| email | Resend + React Email | transactional delivery, idempotency, signed webhook events |
+| errors | Sentry Next.js SDK | exceptions and trace correlation with PII controls |
+| verification | Playwright + axe | complete workflows, tenant boundaries, accessibility |
+| code health | ESLint + Prettier | deterministic repository gates |
+
+### Adoption Trend Relevant to Missa
+
+The useful trend is composable managed infrastructure with explicit application ownership. Durable workflows, private object storage, structured model output, and server-side DALs reduce operational burden, but they do not replace domain state, idempotency, authorization, or audit design. Missa should use managed services for execution and delivery while retaining its truth and policy in PostgreSQL and domain code.
+
+## 5. Integration and Interoperability Patterns
+
+### Public and Internal Interfaces
+
+- Browser-facing integration uses Next.js Server Actions for same-app mutations and Route Handlers for uploads, webhooks, callbacks, and public APIs.
+- Every public payload is parsed with a contract schema; every protected mutation re-checks tenant and resource relationships in the DAL.
+- Server Components read their source directly through repositories/use cases rather than making an HTTP round trip to the application's own Route Handlers.
+- Cross-module operations are use cases with a single transaction, not imports from one route into another.
+
+### Durable Side Effects
+
+The database transaction writes business state, an audit record, and an outbox event. A Workflow consumer claims the outbox item and calls the external adapter. Consumers use a unique business key and provider idempotency key, then store the provider result. Webhook handlers verify signatures, deduplicate by provider event ID, accept out-of-order delivery, and update delivery state monotonically. Resend explicitly documents at-least-once, potentially out-of-order webhook delivery and idempotency keys, validating this pattern. [Resend webhooks](https://resend.com/docs/webhooks/introduction), [Resend idempotency](https://resend.com/docs/dashboard/emails/idempotency-keys)
+
+### Files
+
+Create an authenticated upload intent in PostgreSQL, authorize a direct private Blob upload, and finalize metadata through an idempotent callback. Bytes never become the ownership record; the database row does. Downloads re-check tenant/resource authorization and issue a short-lived access path. [Vercel Blob](https://vercel.com/docs/vercel-blob), [client uploads](https://vercel.com/docs/vercel-blob/client-upload)
+
+### Intelligence
+
+The provider receives normalized source content and a versioned extraction schema. It returns structured candidates only. Domain code validates, normalizes, scores, deduplicates, and decides whether an item is accepted or placed in a verification queue. Store model snapshot, prompt/schema version, usage, latency, cost, source hash, and validation result; do not treat model confidence as verification.
+
+## 6. Performance and Scalability Analysis
+
+### Request Path
+
+Keep request handlers short and stateless. Persist a command and outbox event, then return. Long ingestion, extraction, notification, and cleanup work belongs in Workflow. This matches serverless deployment constraints where request handlers may time out and cannot share in-memory state between requests. [Next.js deployment caveats](https://nextjs.org/docs/app/guides/backend-for-frontend#deployment-environment)
+
+### Database
+
+- Query by tenant and relationship, not by loading a complete store snapshot.
+- Add compound indexes for the actual access patterns: tenant/status, source/hash, outbox/status/available-at, and submission/work relationships.
+- Use uniqueness constraints for external IDs, idempotency keys, and source hashes.
+- Measure slow queries before adding Redis; authenticated cache keys must include every authorization dimension.
+
+### Ingestion and AI Cost
+
+- Isolate each source so one failure does not discard successful sources.
+- Apply explicit connect/read/total timeouts, bounded concurrency, retry budgets, and checkpoints.
+- Hash and prefilter content before model calls, cap output, and use Batch for non-urgent extraction where appropriate.
+- Track cost per accepted opportunity rather than cost per raw request.
+- Add a tenant/system budget and kill switch before increasing volume.
+
+### Capacity Triggers
+
+Scale components only after a measured pressure exists: database connection saturation, workflow backlog age, source latency, upload throughput, notification lag, or model budget. The modular monolith can scale horizontally while its request path remains stateless; a service split is justified only by distinct scaling, isolation, or ownership needs.
+
+## 7. Security and Compliance Considerations
+
+### Authorization
+
+Adopt deny-by-default, relationship-aware authorization at repository/use-case boundaries. Organization membership does not imply role-management authority. Nested mutations must prove that both parent and child belong to the active organization. Privileged operations create append-only audit records. PostgreSQL row-level security may later provide defense in depth, but it must not be the first or only application authorization design. [OWASP authorization guidance](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html), [PostgreSQL row security](https://www.postgresql.org/docs/17/ddl-rowsecurity.html)
+
+### External Boundaries
+
+- Validate content type, size, schema, and resource ownership.
+- Verify webhook signatures using the raw request body and deduplicate provider event IDs.
+- Keep provider secrets server-only and scoped per environment.
+- Strip sensitive request fields from errors and logs; configure Sentry scrubbing before increasing sampling.
+- Enforce source timeouts and safe-fetch rules, including DNS/IP checks, redirects, and documented robots policy.
+- Rate-limit anonymous endpoints at Vercel WAF first; introduce account-aware application quotas only when required.
+
+### Product Trust
+
+“Verified,” “submitted,” “delivered,” and “private” are security- and trust-relevant states. The interface may display them only when backed by authoritative records and an auditable state transition. Operator corrections must retain before/after values, actor, timestamp, and reason.
+
+## 8. Strategic Technical Recommendations
+
+### Decision Framework
+
+For every proposed dependency, ask:
+
+1. Which present product risk does it close?
+2. Which package/module owns it?
+3. What port prevents the vendor from entering domain code?
+4. What persistent state and idempotency contract does it require?
+5. How will failure, retry, audit, and user-visible status work?
+6. Which automated test proves the integration?
+7. What existing tool does it replace or make unnecessary?
+
+If those answers are missing, the package is premature.
+
+### Competitive Technical Advantage
+
+Missa's advantage will not come from using more AI. It will come from producing trustworthy, traceable opportunity and submission workflows: source provenance, explicit verification, deterministic matching, reliable files and delivery, and organization-safe collaboration. A small semantic UI system can then expose that truth clearly across Passport and Workspace without duplicating business rules.
+
+### MCP and Agent Policy
+
+MCPs are development/operations access, not runtime product dependencies. Keep GitHub and add Vercel MCP for the active delivery loop. Add no database, email, payments, or communications MCP until its service is active, the recurring task is defined, its permissions are narrow, and consequential writes require human confirmation. Runtime workflows remain ordinary application code.
+
+## 9. Implementation Roadmap and Risk Assessment
+
+### Phased Roadmap
+
+| Phase | Outcome | Exit gate |
+|---|---|---|
+| 0. Safety | Node 22, ADRs, root checks, baseline evidence | reproducible local/CI runtime and known baseline |
+| 1. Data/tenant | contracts/db packages, row repositories, UUIDs, constraints, DAL, audit/outbox | no snapshot writes; tenant-negative tests pass |
+| 2. Intelligence/ingestion | provider port, OpenAI eval, source isolation, Workflow checkpoints, provenance | fixture threshold and cost budget met; source failures isolated |
+| 3. Submission loop | real claim/onboarding, private files, Submission/Work/tracker transaction, verification queues | hosted submission persists and reconciles end to end |
+| 4. Delivery/operations | Resend, signed webhooks, Sentry, WAF, dashboards, runbooks | retries are idempotent and operational signals are actionable |
+| 5. UI system | split shells, pruned primitives, semantic components, responsive/axe gates | critical desktop/mobile states pass; APIs stable |
+
+### Principal Risks
+
+- **Migration/data loss:** rehearse, back up, compare invariants, and cut over one writer at a time.
+- **Tenant leakage:** authorize relationships in the DAL and require negative tests for every nested mutation.
+- **Duplicate effects:** transactional outbox, unique business keys, idempotent consumers, provider keys.
+- **Model failure/cost:** labelled fixtures, deterministic fallback, usage ledger, budgets, and kill switch.
+- **False UI promises:** derive trust badges and delivery states from authoritative records only.
+- **Tool sprawl:** one owner and one product responsibility per dependency, with adoption gates for deferred tools.
+
+## 10. Future Technical Outlook and Innovation Opportunities
+
+### Near Term: 0–12 Months
+
+Complete the production spine and one trustworthy end-to-end loop. Use operator review data to improve extraction and matching. Stabilize the semantic UI inventory. This period should reduce architecture options, not add them.
+
+### Medium Term: 1–3 Years
+
+If usage proves the need, add enterprise identity, billing/entitlements, account-aware quotas, broader browser coverage, Storybook-based visual review, and specialized read models. Each is a product program with migration and operational design, not an SDK task.
+
+### Longer Term
+
+Provenance-rich opportunity and submission data could support better ranking, organization knowledge, saved-answer assistance, and constrained retrieval. These should remain explainable extensions of Missa's records. Autonomous multi-agent execution should be considered only where a human-approved workflow, bounded tool permissions, and durable audit trail are already designed.
+
+## 11. Technical Research Methodology and Source Verification
+
+### Primary Sources
+
+- Next.js official documentation for BFF boundaries, authentication/DAL, Server Components, testing, and deployment constraints.
+- Drizzle and PostgreSQL documentation for schema generation, migrations, transactions, constraints, relations, and row security.
+- OpenAI official model, Structured Outputs, Batch, and Node SDK documentation.
+- Vercel official Workflow, Blob, WAF, observability, MCP, and Agent Skills documentation.
+- Playwright official CI and accessibility guidance.
+- Resend official idempotency and webhook delivery documentation.
+- OWASP authorization guidance and the Design Tokens Community Group 2025.10 report.
+
+### Verification Queries
+
+Research covered current official guidance for Next.js secure DAL/BFF patterns; Drizzle/PostgreSQL migrations and transactions; OpenAI structured extraction and pricing; Vercel durable workflows, Blob, WAF, observability, MCP and skills; Resend idempotency/webhooks; Playwright accessibility/CI; and stable design-token standards.
+
+### Confidence and Limitations
+
+- **High confidence:** architectural findings visible in the repository; official capabilities of the recommended frameworks and services; the need for row-level identity, tenant authorization, validation, idempotency, and browser tests.
+- **Medium confidence:** cost and capacity forecasts before production traffic; exact external-service plan limits; the fixture threshold required for acceptable extraction quality.
+- **Requires implementation evidence:** real OpenAI extraction quality, migration duration, workflow step volume, email deliverability, and production query performance.
+
+Versions and pricing are time-sensitive and must be rechecked at installation or procurement time. External service configuration, credentials, domains, and billing are not created by installing SDK packages.
+
+## 12. Technical Appendices and Reference Materials
+
+### Appendix A: Product Capability Gaps
+
+The review found these unbuilt areas that dependencies alone will not supply:
+
+- CSV opportunity import.
+- Email Sync/Autopilot ingestion.
+- Library and Files product areas.
+- Saved Answers and reusable application content.
+- Submission checklist and organization/user Lists.
+- Public Passport profile, privacy controls, and data export.
+- Per-Work decisions and decision email delivery.
+- Delivery tracking and reporting/export.
+- Enterprise roles, seats, and SSO.
+- Payments, billing, fees/payouts, refunds/disputes, and entitlements.
+- Legacy/customer data migration tooling.
+- Props/social-recognition behavior defined by the product documents.
+
+Partially implemented areas include the Works tracker view, reminder delivery, expected-response UI, operator metrics/verification queues, and real file storage. These need completion criteria and end-to-end tests, not just package installation.
+
+### Appendix B: Design-System Problems
+
+- Passport and Workspace currently share navigation assumptions even though their audiences, density, and tasks differ.
+- Responsive navigation and the mobile drawer are incomplete.
+- Forty-six primitives are present while thirty-one appear unused; copied primitives have not become a governed system.
+- Product styling bypasses the documented 8px spacing rhythm in places.
+- Semantic states for verification, ingestion, submissions, delivery, errors, empty states, and permissions are incomplete or inconsistent.
+- Accessibility is described but not operationalized through axe and browser gates.
+- Feedback patterns, terminology, and trust labels do not consistently reflect authoritative system state.
+
+The correction is a four-layer UI architecture: foundation tokens, pruned primitives, Missa-owned semantic components, and product compositions. Maintain two responsive shells and one shared semantic language. Adopt the stable Design Tokens format only where machine-readable exchange is useful; do not add a token tool merely to rename existing CSS variables. [Design Tokens 2025.10](https://www.designtokens.org/tr/2025.10/)
+
+### Appendix C: Deferred-Tool Rule
+
+Deferral means “not yet,” not “never.” Vitest waits for isolated client/pure modules; Storybook waits for a stable semantic component inventory; Chromatic/Percy waits for stable stories; WorkOS waits for the enterprise identity migration; Stripe waits for the billing and ledger model; Redis waits for measured quota/cache requirements; alternate AI SDKs wait for a failed provider benchmark; broader browser and coverage tooling wait for a stable core suite; extra MCPs wait for an active service and recurring operational need. The detailed trigger table appears in **Why the Deferred Tools Are Deferred** above.
+
+### Appendix D: Authoritative Reference Set
+
+- [Next.js Backend for Frontend](https://nextjs.org/docs/app/guides/backend-for-frontend)
+- [Next.js authentication and DAL](https://nextjs.org/docs/app/guides/authentication)
+- [Drizzle transactions](https://orm.drizzle.team/docs/transactions)
+- [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs)
+- [OpenAI Batch](https://developers.openai.com/api/docs/guides/batch)
+- [Vercel Workflow](https://vercel.com/workflows)
+- [Vercel Blob](https://vercel.com/docs/vercel-blob)
+- [Resend idempotency](https://resend.com/docs/dashboard/emails/idempotency-keys)
+- [Playwright accessibility testing](https://playwright.dev/docs/accessibility-testing)
+- [OWASP Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)
+- [Design Tokens 2025.10](https://www.designtokens.org/tr/2025.10/)
+
+---
+
+## Technical Research Conclusion
+
+Missa should install the dependencies that complete its production spine, but installation must follow the order in which the system can safely absorb them. The foundation is row-level truth and tenant authorization. Intelligence follows behind a validated provider port. Durable workflow, files, email, and observability follow behind transactional and idempotent contracts. The UI then becomes simpler because it renders authoritative states instead of simulating them.
+
+The next executable step is Release 0 and Batch 1: pin Node 22, record the architectural decisions, create `@missa/contracts` and `@missa/db`, establish one Drizzle migration history, and introduce the secure DAL. No deferred tool is required to begin that work.
+
+**Technical Research Completion Date:** 2026-07-29
+**Research Period:** current repository analysis and live official-source verification
+**Technical Confidence Level:** high for architecture and immediate stack; implementation evidence required for model quality, production cost, and capacity

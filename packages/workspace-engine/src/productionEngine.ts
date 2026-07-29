@@ -4,9 +4,14 @@
  * one source of truth for "what does a production WorkspaceEngine look
  * like."
  */
-import { Pool } from 'pg';
-import { WorkspaceEngine } from './engine.js';
-import { ensurePostgresSchema, loadStoreFromPostgres, saveStoreToPostgres } from './db/postgresStore.js';
+import { Pool } from "pg";
+import { WorkspaceEngine } from "./engine.js";
+import { uuidWorkspaceIds } from "./ids.js";
+import {
+  ensurePostgresSchema,
+  loadStoreFromPostgres,
+  saveStoreToPostgres,
+} from "./db/postgresStore.js";
 
 export interface ProductionWorkspaceEngine {
   engine: WorkspaceEngine;
@@ -20,14 +25,16 @@ export interface ProductionWorkspaceEngine {
 export async function createProductionWorkspaceEngine(): Promise<ProductionWorkspaceEngine> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    throw new Error('DATABASE_URL is required to build a production WorkspaceEngine.');
+    throw new Error(
+      "DATABASE_URL is required to build a production WorkspaceEngine.",
+    );
   }
 
   const pool = new Pool({ connectionString: databaseUrl });
   await ensurePostgresSchema(pool);
   const store = await loadStoreFromPostgres(pool);
 
-  const engine = new WorkspaceEngine({ store });
+  const engine = new WorkspaceEngine({ store, ids: uuidWorkspaceIds() });
 
   return {
     engine,

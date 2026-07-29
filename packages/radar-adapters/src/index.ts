@@ -7,6 +7,15 @@
  * this package (createProductionEngine included), not just actual Playwright
  * usage. See productionEngine.ts's dynamic import for the same reasoning.
  */
-export { LlmExtractor, type LlmExtractorOptions } from './llmExtractor.js';
-export { ensurePostgresSchema, saveStoreToPostgres, loadStoreFromPostgres } from './postgresStore.js';
-export { createProductionEngine, seedRegistryIfEmpty, type ProductionEngine } from './productionEngine.js';
+export { LlmExtractor, type LlmExtractorOptions } from "./llmExtractor.js";
+export {
+  ensurePostgresSchema,
+  saveStoreToPostgres,
+  loadStoreFromPostgres,
+} from "./postgresStore.js";
+export { uuidIds } from "./uuidIds.js";
+export {
+  createProductionEngine,
+  seedRegistryIfEmpty,
+  type ProductionEngine,
+} from "./productionEngine.js";
