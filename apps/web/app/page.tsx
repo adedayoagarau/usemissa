@@ -15,8 +15,8 @@ const features = [
   {
     number: '01',
     eyebrow: 'Find it',
-    title: 'Open calls, without the scavenger hunt.',
-    copy: 'Magazines, grants, residencies, festivals, and more — gathered in one place and checked against the source.',
+    title: 'Find opportunities that fit.',
+    copy: 'Search grants, residencies, journals, festivals, and more. Follow the original source for the details.',
     art: (
       <div className={styles.radarArt} aria-hidden="true">
         <span />
@@ -29,8 +29,8 @@ const features = [
   {
     number: '02',
     eyebrow: 'Send it',
-    title: 'Your work stays ready to go.',
-    copy: 'Keep works, files, bios, and the answers you use often close at hand. Start a submission without starting from zero.',
+    title: 'Keep your materials ready.',
+    copy: 'Save your work, bio, images, and common answers so the next application starts with what you already have.',
     art: (
       <div className={styles.fileArt} aria-hidden="true">
         <span className={styles.fileBack} />
@@ -45,8 +45,8 @@ const features = [
   {
     number: '03',
     eyebrow: 'Follow it',
-    title: 'Know where every piece stands.',
-    copy: 'Deadlines, submissions, replies, and next steps live in one calm tracker — even when the opportunity lives somewhere else.',
+    title: 'See what happens next.',
+    copy: 'Track deadlines, submissions, and replies in one place, even when the opportunity lives somewhere else.',
     art: (
       <div className={styles.routeArt} aria-hidden="true">
         <span />
@@ -87,7 +87,7 @@ export default async function HomePage() {
           <nav className={styles.nav} aria-label="Main navigation">
             <a href="#how-it-works">How it works</a>
             <a href="#for-organizations">For organizations</a>
-            <a href="#why-missa">Why Missa</a>
+            <a href="#why-missa">Your tracker</a>
           </nav>
 
           <div className={styles.headerActions}>
@@ -106,16 +106,16 @@ export default async function HomePage() {
         <div className={styles.heroPanel} />
         <div className={styles.heroContent}>
           <p className={styles.kicker}>
-            <span /> The home for your submissions
+            <span /> For people who send work
           </p>
           <h1>
-            Send your work
+            Find it. Send it.
             <br />
-            <em>where it belongs.</em>
+            <em>Keep track.</em>
           </h1>
           <p className={styles.heroCopy}>
-            Find opportunities that fit. Keep every deadline in view. Track what you sent and what
-            comes next — all in one place.
+            Find open calls, prepare your submission, and see what happens next. Missa keeps it all
+            together.
           </p>
           <div className={styles.heroActions}>
             <Link className={styles.primaryButton} href={primaryHref}>
@@ -126,12 +126,12 @@ export default async function HomePage() {
               See how it works
             </a>
           </div>
-          {!session && <p className={styles.freeNote}>Free for creatives. No card required.</p>}
+          {!session && <p className={styles.freeNote}>Free to start. No card required.</p>}
         </div>
 
         <div className={styles.heroNote}>
-          <span>Keep looking forward.</span>
-          <p>Missa keeps watch over the details behind you.</p>
+          <span>Find it. Send it. Follow up.</span>
+          <p>One place for the work you send.</p>
         </div>
 
         <a className={styles.videoCredit} href={VIDEO_CREDIT_URL} target="_blank" rel="noreferrer">
@@ -142,36 +142,36 @@ export default async function HomePage() {
       <section className={styles.promiseBar} aria-label="Missa promises">
         <div>
           <span>01</span>
-          <p>Checked against the source</p>
+          <p>Open calls from the source</p>
         </div>
         <div>
           <span>02</span>
-          <p>Your tracker stays private</p>
+          <p>Your work stays in your account</p>
         </div>
         <div>
           <span>03</span>
-          <p>Free for creatives, always</p>
+          <p>Free to start</p>
         </div>
       </section>
 
       <section className={styles.featureSection} id="how-it-works">
         <div className={styles.sectionIntro}>
-          <p className={styles.sectionLabel}>The whole way through</p>
+          <p className={styles.sectionLabel}>What Missa helps you do</p>
           <h2>
-            Less admin.
+            Find the right call.
             <br />
-            <em>More momentum.</em>
+            <em>Send a stronger submission.</em>
           </h2>
           <p>
-            Missa brings discovery and tracking together, so a promising open call never turns into
-            twelve tabs and a spreadsheet you are afraid to touch.
+            Keep opportunities, materials, and deadlines together so you can spend less time
+            searching and more time making.
           </p>
         </div>
 
         <div className={styles.featureProof} aria-label="Sample Missa workflow">
           <div className={styles.featureProofLead}>
-            <span className={styles.sectionLabel}>See it move</span>
-            <p>A single thread from the first find to the reply that comes next.</p>
+            <span className={styles.sectionLabel}>From call to outcome</span>
+            <p>A clear path for every submission.</p>
           </div>
           <div className={styles.featureProofRail}>
             <div className={styles.featureProofItem}>
@@ -210,20 +210,17 @@ export default async function HomePage() {
 
       <section className={styles.trackerSection} id="why-missa">
         <div className={styles.trackerStatement}>
-          <p className={styles.sectionLabel}>A clearer view</p>
+          <p className={styles.sectionLabel}>Your submission tracker</p>
           <h2>
-            Your work moves in
+            Know what you sent.
             <br />
-            more than one direction.
-            <br />
-            <em>Your tracker should too.</em>
+            <em>Know what to do next.</em>
           </h2>
           <p>
-            See each work across every place you sent it. When one answer changes what can happen
-            next, Missa helps you keep the thread.
+            Give every submission a place, a deadline, and a next step.
           </p>
           <Link href={primaryHref}>
-            Build your tracker <ArrowRight aria-hidden="true" size={17} />
+            Open the tracker <ArrowRight aria-hidden="true" size={17} />
           </Link>
         </div>
 
@@ -243,7 +240,7 @@ export default async function HomePage() {
           <div className={styles.demoSummary}>
             <p>In progress</p>
             <strong>08</strong>
-            <span>across 5 opportunities</span>
+            <span>across 5 open calls</span>
           </div>
           <div className={styles.demoRows}>
             <div>
@@ -268,24 +265,24 @@ export default async function HomePage() {
           <div className={styles.demoDisclosure}>
             <p>
               <strong>Example view.</strong> These rows are illustrative. Your tracker shows the
-              opportunities you choose to save.
+              opportunities you save.
             </p>
             <div className={styles.demoTrust} aria-label="Tracker details">
               <div>
                 <span>Source</span>
-                <p>Opportunity records can be traced to their source link.</p>
+                <p>Each opportunity keeps its original source link.</p>
               </div>
               <div>
                 <span>Account</span>
-                <p>Your tracker is tied to your Missa account.</p>
+                <p>Your tracker is tied to your account.</p>
               </div>
               <div>
                 <span>Start</span>
-                <p>No payment details are requested at sign-up.</p>
+                <p>No payment details are needed to get started.</p>
               </div>
             </div>
             <Link href={primaryHref}>
-              Open your tracker <ArrowRight aria-hidden="true" size={15} />
+              Open the tracker <ArrowRight aria-hidden="true" size={15} />
             </Link>
           </div>
         </div>
@@ -296,30 +293,30 @@ export default async function HomePage() {
         <div className={styles.organizationCopy}>
           <p className={styles.sectionLabel}>For organizations</p>
           <h2>
-            Run the open call.
+            Run your open call.
             <br />
-            <em>Not the obstacle course.</em>
+            <em>In one place.</em>
           </h2>
           <p>
-            Create opportunities, receive work, coordinate reviews, send decisions, and manage what
-            happens after yes — from one thoughtful workspace.
+            Publish opportunities, collect submissions, review work, and send decisions without
+            piecing together different tools.
           </p>
           <Link href="/workspace">
-            Open Workspace <ArrowRight aria-hidden="true" size={17} />
+            Open the workspace <ArrowRight aria-hidden="true" size={17} />
           </Link>
           <div className={styles.organizationNextStep}>
-            <p className={styles.organizationNextStepLabel}>For a new organization</p>
+            <p className={styles.organizationNextStepLabel}>Starting a new organization</p>
             <p>
-              Create an account, then sign in to manage your calls and submissions from Workspace.
+              Create an account to publish your first call.
             </p>
             <div className={styles.organizationActions}>
               <Link href="/login?mode=signup">Create an account</Link>
-              <Link href="/opportunities">Browse opportunities</Link>
+              <Link href="/opportunities">See opportunities</Link>
             </div>
           </div>
         </div>
         <div className={styles.orgList}>
-          {['Publish your opportunity', 'Receive submissions', 'Review together', 'Send decisions', 'Deliver what comes next'].map(
+          {['Publish a call', 'Collect submissions', 'Review together', 'Send decisions', 'Keep the record'].map(
             (item, index) => (
               <div key={item}>
                 <span>0{index + 1}</span>
@@ -334,11 +331,11 @@ export default async function HomePage() {
       <section className={styles.finalCta}>
         <FinalVideo videoUrl={VIDEO_URL} poster={VIDEO_POSTER} />
         <div className={styles.finalContent}>
-          <p>There is good work waiting to be sent.</p>
+          <p>Good work is waiting to be found.</p>
           <h2>
-            Find what is open.
+            Find your next opportunity.
             <br />
-            <em>Keep going.</em>
+            <em>Keep moving.</em>
           </h2>
           <Link href={primaryHref}>
             {primaryLabel} <ArrowRight aria-hidden="true" size={19} />
@@ -352,7 +349,7 @@ export default async function HomePage() {
             <MissaMark inverse />
             <span>missa</span>
           </Link>
-          <p>A home for the work you are ready to share.</p>
+          <p>A simple place to find, send, and track creative work.</p>
         </div>
         <div className={styles.footerLinks}>
           <div>
@@ -369,7 +366,7 @@ export default async function HomePage() {
         </div>
         <div className={styles.footerBottom}>
           <span>© {new Date().getFullYear()} Missa</span>
-          <span>Made for the people who keep sending.</span>
+          <span>Built for people who keep sending.</span>
           <a href={VIDEO_CREDIT_URL} target="_blank" rel="noreferrer">Film credit</a>
         </div>
       </footer>

@@ -36,8 +36,8 @@ const fragmentMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Missa',
-  description: 'Find opportunities that fit, track every deadline, and keep your submissions moving.',
+  title: 'Missa — Find, send, track',
+  description: 'Find opportunities, prepare submissions, and track what happens next with Missa.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
