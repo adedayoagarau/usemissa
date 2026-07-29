@@ -10,12 +10,17 @@ marketing, and future AI features from saying different things about the same ob
 
 Missa helps people find opportunities, prepare submissions, and track what happens next.
 
+For organizations, Missa creates a clearer, faster, and more supportive submission pipeline —
+from publishing an opportunity to reviewing work, making decisions, and helping people know what
+happens next.
+
 Missa has two products:
 
 - **Passport** is for people sending work. It includes Opportunities, Tracker, alerts, fit and
   eligibility context, and calendar export.
-- **Workspace** is for organizations running opportunities. It will support forms, submissions,
-  reviews, decisions, messages, delivery, and insights as those capabilities ship.
+- **Workspace** is for organizations running opportunities. It is the submission pipeline for
+  forms, submissions, reviews, decisions, messages, delivery, and insights as those capabilities
+  ship.
 
 **Radar** is the internal intelligence layer. It discovers and checks opportunity information. It
 is not a product label in the user interface.
@@ -150,8 +155,8 @@ The homepage only needs to answer four questions:
 1. What is Missa? A place to find opportunities and track submissions.
 2. Who is it for? People who send work.
 3. What can I do now? Find an opportunity, save it, and keep track of the next step.
-4. What is the organization path? Organizations can claim a listing now; Workspace capabilities
-   are being built.
+4. What is the organization path? Organizations can create a clearer, faster, more supportive
+   submission pipeline. Workspace capabilities are being built.
 
 The homepage should therefore contain:
 
