@@ -14,9 +14,9 @@ const VIDEO_CREDIT_URL =
 const features = [
   {
     number: '01',
-    eyebrow: 'Find it',
-    title: 'Find opportunities that fit.',
-    copy: 'Search grants, residencies, journals, festivals, and more. Follow the original source for the details.',
+    eyebrow: 'Find opportunities',
+    title: 'Start with the source.',
+    copy: 'Browse grants, residencies, journals, festivals, and awards with the deadline, fee, and requirements in view.',
     art: (
       <div className={styles.radarArt} aria-hidden="true">
         <span />
@@ -28,9 +28,9 @@ const features = [
   },
   {
     number: '02',
-    eyebrow: 'Send it',
-    title: 'Keep your materials ready.',
-    copy: 'Save your work, bio, images, and common answers so the next application starts with what you already have.',
+    eyebrow: 'Track submissions',
+    title: 'Keep every deadline in view.',
+    copy: 'Save opportunities and move them from interested to submitted, in review, and outcome.',
     art: (
       <div className={styles.fileArt} aria-hidden="true">
         <span className={styles.fileBack} />
@@ -44,9 +44,9 @@ const features = [
   },
   {
     number: '03',
-    eyebrow: 'Follow it',
-    title: 'See what happens next.',
-    copy: 'Track deadlines, submissions, and replies in one place, even when the opportunity lives somewhere else.',
+    eyebrow: 'Stay informed',
+    title: 'Know when something changes.',
+    copy: 'Get updates when a deadline moves, a call closes, or a response takes longer than expected.',
     art: (
       <div className={styles.routeArt} aria-hidden="true">
         <span />
@@ -71,7 +71,7 @@ export default async function HomePage() {
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
   const primaryHref = session ? '/opportunities' : '/login?mode=signup';
-  const primaryLabel = session ? 'Open Missa' : 'Start for free';
+  const primaryLabel = session ? 'Open opportunities' : 'Get started';
 
   return (
     <main className={styles.home}>
@@ -85,9 +85,9 @@ export default async function HomePage() {
           </Link>
 
           <nav className={styles.nav} aria-label="Main navigation">
-            <a href="#how-it-works">How it works</a>
+            <a href="#how-it-works">For people sending work</a>
             <a href="#for-organizations">For organizations</a>
-            <a href="#why-missa">Your tracker</a>
+            <a href="#why-missa">Tracker</a>
           </nav>
 
           <div className={styles.headerActions}>
@@ -109,29 +109,24 @@ export default async function HomePage() {
             <span /> For people who send work
           </p>
           <h1>
-            Find it. Send it.
+            Find opportunities.
             <br />
-            <em>Keep track.</em>
+            <em>Track what happens next.</em>
           </h1>
           <p className={styles.heroCopy}>
-            Find open calls, prepare your submission, and see what happens next. Missa keeps it all
-            together.
+            Missa helps people find where to send their work and keep track of every submission.
+            Organizations get a clearer pipeline from open call to decision.
           </p>
           <div className={styles.heroActions}>
             <Link className={styles.primaryButton} href={primaryHref}>
               {primaryLabel}
               <ArrowRight aria-hidden="true" size={18} />
             </Link>
-            <a className={styles.textButton} href="#how-it-works">
-              See how it works
+            <a className={styles.textButton} href="#for-organizations">
+              For organizations
             </a>
           </div>
           {!session && <p className={styles.freeNote}>Free to start. No card required.</p>}
-        </div>
-
-        <div className={styles.heroNote}>
-          <span>Find it. Send it. Follow up.</span>
-          <p>One place for the work you send.</p>
         </div>
 
         <a className={styles.videoCredit} href={VIDEO_CREDIT_URL} target="_blank" rel="noreferrer">
@@ -139,57 +134,17 @@ export default async function HomePage() {
         </a>
       </section>
 
-      <section className={styles.promiseBar} aria-label="Missa promises">
-        <div>
-          <span>01</span>
-          <p>Open calls from the source</p>
-        </div>
-        <div>
-          <span>02</span>
-          <p>Your work stays in your account</p>
-        </div>
-        <div>
-          <span>03</span>
-          <p>Free to start</p>
-        </div>
-      </section>
-
       <section className={styles.featureSection} id="how-it-works">
         <div className={styles.sectionIntro}>
-          <p className={styles.sectionLabel}>What Missa helps you do</p>
+          <p className={styles.sectionLabel}>For people sending work</p>
           <h2>
-            Find the right call.
+            Find the right opportunity.
             <br />
-            <em>Send a stronger submission.</em>
+            <em>Keep your next step clear.</em>
           </h2>
           <p>
-            Keep opportunities, materials, and deadlines together so you can spend less time
-            searching and more time making.
+            One place for the opportunities you are considering and the submissions you have sent.
           </p>
-        </div>
-
-        <div className={styles.featureProof} aria-label="Sample Missa workflow">
-          <div className={styles.featureProofLead}>
-            <span className={styles.sectionLabel}>From call to outcome</span>
-            <p>A clear path for every submission.</p>
-          </div>
-          <div className={styles.featureProofRail}>
-            <div className={styles.featureProofItem}>
-              <span>01</span>
-              <p>Saved</p>
-              <small>Northbank Residency</small>
-            </div>
-            <div className={styles.featureProofItem}>
-              <span>02</span>
-              <p>Submitted</p>
-              <small>The Quiet Between</small>
-            </div>
-            <div className={`${styles.featureProofItem} ${styles.featureProofItemFinal}`}>
-              <span>03</span>
-              <p>Accepted</p>
-              <small>Open City Prize</small>
-            </div>
-          </div>
         </div>
 
         <div className={styles.featureGrid}>
@@ -210,7 +165,7 @@ export default async function HomePage() {
 
       <section className={styles.trackerSection} id="why-missa">
         <div className={styles.trackerStatement}>
-          <p className={styles.sectionLabel}>Your submission tracker</p>
+          <p className={styles.sectionLabel}>Tracker</p>
           <h2>
             Know what you sent.
             <br />
@@ -256,34 +211,15 @@ export default async function HomePage() {
             <div>
               <span className={styles.workIcon}>A</span>
               <p><strong>After the Rain</strong><small>Open City Prize</small></p>
-              <em className={styles.accepted}>Accepted</em>
+              <em className={styles.accepted}>In review</em>
             </div>
           </div>
           <div className={styles.demoFooter}>
             <Check aria-hidden="true" size={15} /> Last checked moments ago
           </div>
           <div className={styles.demoDisclosure}>
-            <p>
-              <strong>Example view.</strong> These rows are illustrative. Your tracker shows the
-              opportunities you save.
-            </p>
-            <div className={styles.demoTrust} aria-label="Tracker details">
-              <div>
-                <span>Source</span>
-                <p>Each opportunity keeps its original source link.</p>
-              </div>
-              <div>
-                <span>Account</span>
-                <p>Your tracker is tied to your account.</p>
-              </div>
-              <div>
-                <span>Start</span>
-                <p>No payment details are needed to get started.</p>
-              </div>
-            </div>
-            <Link href={primaryHref}>
-              Open the tracker <ArrowRight aria-hidden="true" size={15} />
-            </Link>
+            <p><strong>Example view.</strong> Your tracker shows the opportunities you save.</p>
+            <Link href={primaryHref}>Open the tracker <ArrowRight aria-hidden="true" size={15} /></Link>
           </div>
         </div>
       </section>
@@ -293,21 +229,21 @@ export default async function HomePage() {
         <div className={styles.organizationCopy}>
           <p className={styles.sectionLabel}>For organizations</p>
           <h2>
-            Run your open call.
+            A clearer pipeline.
             <br />
-            <em>In one place.</em>
+            <em>From call to decision.</em>
           </h2>
           <p>
-            Publish opportunities, collect submissions, review work, and send decisions without
-            piecing together different tools.
+            Missa gives organizations one place to publish opportunities, collect submissions,
+            review work, and send decisions.
           </p>
           <Link href="/workspace">
             Open the workspace <ArrowRight aria-hidden="true" size={17} />
           </Link>
           <div className={styles.organizationNextStep}>
-            <p className={styles.organizationNextStepLabel}>Starting a new organization</p>
+            <p className={styles.organizationNextStepLabel}>Workspace</p>
             <p>
-              Create an account to publish your first call.
+              A more supportive way to move work from submission to decision.
             </p>
             <div className={styles.organizationActions}>
               <Link href="/login?mode=signup">Create an account</Link>
@@ -331,11 +267,11 @@ export default async function HomePage() {
       <section className={styles.finalCta}>
         <FinalVideo videoUrl={VIDEO_URL} poster={VIDEO_POSTER} />
         <div className={styles.finalContent}>
-          <p>Good work is waiting to be found.</p>
+          <p>Start with the next opportunity.</p>
           <h2>
-            Find your next opportunity.
+            Find it.
             <br />
-            <em>Keep moving.</em>
+            <em>Keep track.</em>
           </h2>
           <Link href={primaryHref}>
             {primaryLabel} <ArrowRight aria-hidden="true" size={19} />
@@ -360,7 +296,7 @@ export default async function HomePage() {
           </div>
           <div>
             <span>Account</span>
-            <Link href={session ? '/opportunities' : '/login'}>{session ? 'Open Missa' : 'Log in'}</Link>
+            <Link href={session ? '/opportunities' : '/login'}>{session ? 'Open opportunities' : 'Log in'}</Link>
             <Link href={primaryHref}>{primaryLabel}</Link>
           </div>
         </div>
