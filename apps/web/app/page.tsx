@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { ArrowDownRight, ArrowRight, Check } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
+import { FinalVideo } from '@/components/final-video';
 import { HeroVideo } from '@/components/hero-video';
 import styles from './home.module.css';
 
@@ -331,12 +332,7 @@ export default async function HomePage() {
       </section>
 
       <section className={styles.finalCta}>
-        <div className={styles.finalMedia} aria-hidden="true">
-          <video autoPlay muted loop playsInline preload="none" poster={VIDEO_POSTER}>
-            <source src={VIDEO_URL} type="video/mp4" />
-          </video>
-          <div className={styles.halftone} />
-        </div>
+        <FinalVideo videoUrl={VIDEO_URL} poster={VIDEO_POSTER} />
         <div className={styles.finalContent}>
           <p>There is good work waiting to be sent.</p>
           <h2>
