@@ -264,6 +264,29 @@ export default async function HomePage() {
           <div className={styles.demoFooter}>
             <Check aria-hidden="true" size={15} /> Last checked moments ago
           </div>
+          <div className={styles.demoDisclosure}>
+            <p>
+              <strong>Example view.</strong> These rows are illustrative. Your tracker shows the
+              opportunities you choose to save.
+            </p>
+            <div className={styles.demoTrust} aria-label="Tracker details">
+              <div>
+                <span>Source</span>
+                <p>Opportunity records can be traced to their source link.</p>
+              </div>
+              <div>
+                <span>Account</span>
+                <p>Your tracker is tied to your Missa account.</p>
+              </div>
+              <div>
+                <span>Start</span>
+                <p>No payment details are requested at sign-up.</p>
+              </div>
+            </div>
+            <Link href={primaryHref}>
+              Open your tracker <ArrowRight aria-hidden="true" size={15} />
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -280,9 +303,19 @@ export default async function HomePage() {
             Create opportunities, receive work, coordinate reviews, send decisions, and manage what
             happens after yes — from one thoughtful workspace.
           </p>
-          <Link href="/login">
-            Bring your next call to Missa <ArrowRight aria-hidden="true" size={17} />
+          <Link href="/workspace">
+            Open Workspace <ArrowRight aria-hidden="true" size={17} />
           </Link>
+          <div className={styles.organizationNextStep}>
+            <p className={styles.organizationNextStepLabel}>For a new organization</p>
+            <p>
+              Create an account, then sign in to manage your calls and submissions from Workspace.
+            </p>
+            <div className={styles.organizationActions}>
+              <Link href="/login?mode=signup">Create an account</Link>
+              <Link href="/opportunities">Browse opportunities</Link>
+            </div>
+          </div>
         </div>
         <div className={styles.orgList}>
           {['Publish your opportunity', 'Receive submissions', 'Review together', 'Send decisions', 'Deliver what comes next'].map(
