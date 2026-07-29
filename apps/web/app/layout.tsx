@@ -37,7 +37,7 @@ const fragmentMono = localFont({
 
 export const metadata: Metadata = {
   title: 'Missa',
-  description: 'The free opportunity tracker that updates itself.',
+  description: 'Find opportunities that fit, track every deadline, and keep your submissions moving.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -11,9 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
  * placeholder. Calls the same /api/auth/login and /api/auth/signup
  * endpoints that were built ahead of schedule in Epic 3/6 as test
  * infrastructure -- those routes don't change for this story. */
-export function AuthForm() {
+export function AuthForm({ initialMode = 'login' }: { initialMode?: 'login' | 'signup' }) {
   const router = useRouter();
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [mode, setMode] = useState<'login' | 'signup'>(initialMode);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
