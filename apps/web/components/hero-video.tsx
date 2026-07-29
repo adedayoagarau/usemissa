@@ -42,14 +42,17 @@ export function HeroVideo({ videoUrl, poster }: HeroVideoProps) {
       }
     };
 
-    setReducedMotion(mediaQuery.matches);
+    const preferenceSync = window.setTimeout(() => setReducedMotion(mediaQuery.matches), 0);
     mediaQuery.addEventListener('change', handlePreferenceChange);
 
     if (!mediaQuery.matches && video) {
       startVideo(video);
     }
 
-    return () => mediaQuery.removeEventListener('change', handlePreferenceChange);
+    return () => {
+      window.clearTimeout(preferenceSync);
+      mediaQuery.removeEventListener('change', handlePreferenceChange);
+    };
   }, [startVideo]);
 
   const togglePlayback = () => {

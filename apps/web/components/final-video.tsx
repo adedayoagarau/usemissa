@@ -51,9 +51,12 @@ export function FinalVideo({ videoUrl, poster }: FinalVideoProps) {
       }
     };
 
-    setReducedMotion(mediaQuery.matches);
+    const preferenceSync = window.setTimeout(() => setReducedMotion(mediaQuery.matches), 0);
     mediaQuery.addEventListener('change', handlePreferenceChange);
-    return () => mediaQuery.removeEventListener('change', handlePreferenceChange);
+    return () => {
+      window.clearTimeout(preferenceSync);
+      mediaQuery.removeEventListener('change', handlePreferenceChange);
+    };
   }, [isVisible, loadAndPlay]);
 
   useEffect(() => {
@@ -61,8 +64,8 @@ export function FinalVideo({ videoUrl, poster }: FinalVideoProps) {
     if (!section) return;
 
     if (!('IntersectionObserver' in window)) {
-      setIsVisible(true);
-      return;
+      const fallbackVisibility = globalThis.setTimeout(() => setIsVisible(true), 0);
+      return () => globalThis.clearTimeout(fallbackVisibility);
     }
 
     const observer = new IntersectionObserver(
