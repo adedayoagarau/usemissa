@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { ArrowDownRight, ArrowRight, Check, MoveUpRight } from 'lucide-react';
+import { ArrowDownRight, ArrowRight, Check } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { HeroVideo } from '@/components/hero-video';
 import styles from './home.module.css';
@@ -167,13 +167,37 @@ export default async function HomePage() {
           </p>
         </div>
 
+        <div className={styles.featureProof} aria-label="Sample Missa workflow">
+          <div className={styles.featureProofLead}>
+            <span className={styles.sectionLabel}>See it move</span>
+            <p>A single thread from the first find to the reply that comes next.</p>
+          </div>
+          <div className={styles.featureProofRail}>
+            <div className={styles.featureProofItem}>
+              <span>01</span>
+              <p>Saved</p>
+              <small>Northbank Residency</small>
+            </div>
+            <div className={styles.featureProofItem}>
+              <span>02</span>
+              <p>Submitted</p>
+              <small>The Quiet Between</small>
+            </div>
+            <div className={`${styles.featureProofItem} ${styles.featureProofItemFinal}`}>
+              <span>03</span>
+              <p>Accepted</p>
+              <small>Open City Prize</small>
+            </div>
+          </div>
+        </div>
+
         <div className={styles.featureGrid}>
           {features.map((feature) => (
             <article className={styles.featureCard} key={feature.number}>
               <div className={styles.featureTopline}>
                 <span>{feature.number}</span>
                 <p>{feature.eyebrow}</p>
-                <MoveUpRight aria-hidden="true" size={18} strokeWidth={1.5} />
+                <span className={styles.featureSignal} aria-hidden="true" />
               </div>
               <div className={styles.featureArt}>{feature.art}</div>
               <h3>{feature.title}</h3>
