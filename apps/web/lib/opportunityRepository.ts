@@ -103,7 +103,7 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
       name: source?.url ?? opp.sourceUrl,
       url: opp.sourceUrl,
       checkedAt: source?.lastCheckedAt ?? opp.lastCheckedAt,
-      processingSucceededAt: source?.lastProcessedAt,
+      processingSucceededAt: source?.lastCheckedAt,
       organizationConfirmed: Boolean(opp.claimedByOrganizationId),
     },
     personal: {
