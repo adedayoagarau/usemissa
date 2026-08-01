@@ -13,8 +13,13 @@
 - Opportunities migrations `0001_steady_lockheed.sql` and `0002_spooky_molecule_man.sql` were applied transactionally to Neon and verified. The legacy baseline remains outside Drizzle's migration ledger; do not run the full migrator until baseline reconciliation is complete.
 - Preview and development still need their own database policy before enabling the PostgreSQL repository there.
 
-**Still needed for full production functionality:**
-- `CRON_SECRET` — needed for `/api/cron/tick` to do anything (it currently requires `DATABASE_URL` too, via `createProductionEngine`).
-- A production domain (e.g. `app.usemissa.com`) — not yet added; the project currently only has its `*.vercel.app` URLs.
+**Radar ingestion:**
+- `@missa/radar-adapters` now exposes `missa-radar-worker`, a long-running Postgres-backed worker with bounded batches and advisory-lock serialization (`1984/727`). Run it on a container host with `DATABASE_URL`, `RADAR_WORKER_BATCH_SIZE` (default `10`), and `TICK_MINUTES` (default `15`).
+- Vercel Cron remains a bounded fallback during worker rollout. Once the worker service is healthy, disable inline Cron ingestion so the worker is the single ingestion lane.
 
-**Current preview deployment:** builds clean, all 24 routes generate successfully. The production database is now configured, but the current deployment must be redeployed before the new repository flag and page wiring are active in production.
+**Still needed for full production functionality:**
+- A hosted `missa-radar-worker` process; the package and runbook are ready, but Vercel serverless functions cannot host a long-running worker.
+- `CRON_SECRET` — needed for the bounded `/api/cron/tick` fallback.
+- A production app domain (e.g. `app.usemissa.com`) if the app should be separate from `www.usemissa.com`.
+
+**Current deployment:** the latest production deployment builds clean and is aliased at `https://www.usemissa.com`. The opportunities browse/detail routes are backed by the live Neon relational repository.

@@ -27,3 +27,10 @@ export {
   type SqlQuery,
 } from "./opportunityRepository.js";
 export { saveOpportunityProjectionToPostgres } from "./opportunityRelationalStore.js";
+export {
+  RADAR_INGESTION_LOCK,
+  runRadarWorker,
+  runRadarWorkerTick,
+  type RadarWorkerOptions,
+  type RadarWorkerTickResult,
+} from "./radarWorker.js";

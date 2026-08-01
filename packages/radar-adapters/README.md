@@ -42,6 +42,25 @@ the whole store back to Postgres via `RadarServer`'s `onPersist` hook — the
 engine itself never touches Postgres directly, same "ports & adapters"
 separation as the fetcher/extractor.
 
+## Durable ingestion worker
+
+For production ingestion, use the long-running worker rather than keeping
+Radar ticking inside a request-bound serverless function:
+
+```sh
+DATABASE_URL=postgres://... RADAR_WORKER_BATCH_SIZE=10 \
+  npm run worker --workspace=@missa/radar-adapters
+```
+
+The worker is intended for a container host (Railway, Render, Fly, or an
+equivalent service). Each tick gets a fresh Postgres snapshot, processes a
+bounded batch, persists both compatibility and relational projections, and
+sleeps until the next interval. A Postgres advisory lock (`1984/727`) makes
+duplicate workers and restarts safe: only one tick can ingest at a time.
+`TICK_MINUTES` controls the interval (15 minutes by default). The Vercel Cron
+route remains a bounded fallback while the worker is being hosted; once the
+worker service is healthy, disable inline Cron ingestion.
+
 ## Wiring it in yourself
 
 If you want different pieces than `serve.ts` assembles (e.g. Postgres
