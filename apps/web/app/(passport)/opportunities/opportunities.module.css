@@ -1,10 +1,19 @@
-.hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--border); padding-bottom: 2.5rem; }
-.hero::after { position: absolute; right: -8rem; top: -5rem; width: 22rem; height: 22rem; border: 1px solid color-mix(in oklab, var(--brand-accent) 18%, transparent); border-radius: 999px; content: ''; pointer-events: none; }
-.hero::before { position: absolute; right: 1.5rem; top: 1.5rem; width: 10rem; height: 10rem; border: 1px solid color-mix(in oklab, var(--brand-accent) 12%, transparent); border-radius: 999px; content: ''; pointer-events: none; }
-.filterBar { position: sticky; top: 0; z-index: 20; margin-inline: -1.5rem; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); background: color-mix(in oklab, var(--bg) 92%, transparent); backdrop-filter: blur(14px); }
-.categoryLink { position: relative; padding: 0.7rem 0.1rem; color: var(--ink-2); font-size: 0.875rem; transition: color 160ms ease; }
+.shell { display: grid; min-height: calc(100vh - 4rem); margin-inline: -1.5rem; margin-block: -2rem; grid-template-columns: minmax(0, 1fr) 25rem; background: var(--bg); }
+.browse { min-width: 0; overflow: hidden; }
+.categoryLink { position: relative; display: inline-flex; align-items: center; white-space: nowrap; padding-block: 0.8rem; color: var(--ink-2); font-size: 0.8rem; transition: color 160ms ease; }
 .categoryLink:hover, .categoryLinkActive { color: var(--ink); }
+.categoryLinkActive { font-weight: 600; }
 .categoryLinkActive::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--brand-accent); content: ''; }
-.select { height: 2.25rem; min-width: 8rem; border: 1px solid var(--border); border-radius: 0.55rem; background: var(--surface); padding: 0 2rem 0 0.75rem; color: var(--ink); font-size: 0.8rem; outline: none; }
-.select:focus-visible { border-color: var(--brand-accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-accent) 18%, transparent); }
-@media (max-width: 640px) { .filterBar { margin-inline: -1rem; padding-inline: 1rem; } }
+.filterRow { border-bottom: 1px solid var(--border); padding: 0.9rem 2rem 0.85rem; }
+.filterSelect { display: inline-flex; height: 2.25rem; align-items: center; gap: 0.45rem; border: 1px solid var(--border); border-radius: 0.45rem; background: var(--surface); padding: 0 0.6rem; color: var(--ink); font-size: 0.75rem; }
+.filterSelect select { max-width: 5.7rem; appearance: none; background: transparent; outline: none; }
+.toggle { display: inline-flex; height: 2.25rem; align-items: center; gap: 0.4rem; color: var(--ink-2); font-size: 0.72rem; white-space: nowrap; }
+.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.toggleTrack { position: relative; display: inline-block; width: 1.8rem; height: 1.05rem; border-radius: 999px; background: #c9c9c7; transition: background 160ms ease; }
+.toggleTrack::after { position: absolute; top: 0.15rem; left: 0.15rem; width: 0.75rem; height: 0.75rem; border-radius: 999px; background: white; content: ''; transition: transform 160ms ease; }
+.toggle input:checked + .toggleTrack { background: var(--green); }
+.toggle input:checked + .toggleTrack::after { transform: translateX(0.75rem); }
+.chip { display: inline-flex; align-items: center; gap: 0.45rem; border: 1px solid color-mix(in oklab, var(--green) 20%, var(--border)); border-radius: 0.35rem; background: color-mix(in oklab, var(--green) 8%, var(--surface)); padding: 0.35rem 0.55rem; color: var(--green); font-size: 0.72rem; }
+@media (max-width: 1100px) { .shell { grid-template-columns: minmax(0, 1fr) 22rem; } .filterRow { padding-inline: 1.5rem; } }
+@media (max-width: 900px) { .shell { display: block; margin-inline: -1.5rem; } .shell > aside { border-top: 1px solid var(--border); border-left: 0; } }
+@media (max-width: 640px) { .shell { margin-inline: -1rem; } .filterRow { padding-inline: 1rem; } }

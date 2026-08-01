@@ -12,7 +12,7 @@ export default async function PassportLayout({ children }: { children: React.Rea
   return (
     <div>
       <AppNav email={session.account.email} />
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-[1600px] px-6 py-8">{children}</main>
     </div>
   );
 }

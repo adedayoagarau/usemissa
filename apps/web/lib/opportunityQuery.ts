@@ -19,8 +19,10 @@ function numberParam(params: URLSearchParams, key: string): number | undefined {
 }
 
 function booleanParam(params: URLSearchParams, key: string, fallback: boolean): boolean {
-  const value = params.get(key);
+  const values = params.getAll(key);
+  const value = values.at(-1);
   if (value === null) return fallback;
+  if (value === undefined) return fallback;
   return value === "1" || value === "true";
 }
 
@@ -33,7 +35,7 @@ export function parseOpportunityBrowseQuery(params: URLSearchParams): Opportunit
     disciplines: listParam(params, "discipline"),
     genres: listParam(params, "genre"),
     locations: listParam(params, "location"),
-    feeStatus: params.get("fee") ?? undefined,
+    feeStatus: booleanParam(params, "feeToggle", false) ? "no-fee" : params.get("fee") ?? undefined,
     maxFeeCents: numberParam(params, "maxFeeCents"),
     deadlineWithinDays: numberParam(params, "deadlineWithinDays"),
     openNow: booleanParam(params, "openNow", true),
