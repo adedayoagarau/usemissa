@@ -86,6 +86,18 @@ create table if not exists radar_users (
   data jsonb not null
 );
 
+create table if not exists radar_submission_drafts (
+  id text primary key,
+  user_id text not null,
+  opportunity_id text not null,
+  status text not null,
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists radar_submission_drafts_user_idx on radar_submission_drafts (user_id, updated_at desc);
+create unique index if not exists radar_submission_drafts_active_opp_idx on radar_submission_drafts (user_id, opportunity_id) where status in ('draft', 'ready');
+
 create table if not exists radar_follows (
   user_id text not null,
   organization_id text not null,

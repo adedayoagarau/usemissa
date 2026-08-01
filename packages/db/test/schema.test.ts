@@ -14,6 +14,10 @@ import {
   reviewAssignments,
   trackedOpportunities,
   trackedStatusEvents,
+  profiles,
+  profileMaterials,
+  submissionDrafts,
+  submissionDraftMaterials,
 } from "../src/schema.js";
 
 test("platform schema carries tenant, audit, outbox, and reviewer indexes", () => {
@@ -90,4 +94,15 @@ test("opportunities schema exposes the additive query and personal-state boundar
       (index) => index.config.name === "submission_outbound_opp_idx",
     ),
   );
+});
+
+test("profile and submission preparation schema is normalized and constrained", () => {
+  const profileConfig = getTableConfig(profiles);
+  const materialConfig = getTableConfig(profileMaterials);
+  const draftConfig = getTableConfig(submissionDrafts);
+  const snapshotConfig = getTableConfig(submissionDraftMaterials);
+  assert.ok(profileConfig.indexes.some((index) => index.config.name === "profiles_account_idx"));
+  assert.ok(materialConfig.indexes.some((index) => index.config.name === "profile_materials_account_idx"));
+  assert.ok(draftConfig.indexes.some((index) => index.config.name === "submission_drafts_account_idx"));
+  assert.ok(snapshotConfig.indexes.some((index) => index.config.name === "submission_draft_materials_draft_idx"));
 });

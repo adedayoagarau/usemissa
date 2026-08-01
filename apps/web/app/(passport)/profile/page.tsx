@@ -15,5 +15,6 @@ export default async function ProfilePage({ searchParams }: { searchParams?: Pro
   if (!user) return null;
   const query = searchParams ? await searchParams : {};
   const requestedSection = query.section as ProfileSectionKey;
-  return <ProfileEditor userId={user.id} email={session.account.email} displayName={user.displayName} genres={user.genres} profile={engine.getProfile(user.id)} readiness={engine.getProfileReadiness(user.id)} initialSection={sectionKeys.has(requestedSection) ? requestedSection : undefined} />;
+  const readiness = engine.getProfileReadiness(user.id);
+  return <ProfileEditor userId={user.id} email={session.account.email} displayName={user.displayName} genres={user.genres} profile={engine.getProfile(user.id)} readiness={readiness} initialSection={sectionKeys.has(requestedSection) ? requestedSection : readiness.nextSection ?? 'about'} />;
 }

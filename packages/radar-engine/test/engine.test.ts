@@ -111,6 +111,29 @@ test('profile workflow persists readiness and reusable materials', () => {
   assert.equal(engine.getProfile(user.id).materials.length, 0);
 });
 
+test('submission preparation snapshots selected profile materials and requires consent', async () => {
+  const { engine, ids, magazine } = await discoveredWorld();
+  const user = engine.store.users.get(ids.userAda)!;
+  const material = engine.addProfileMaterial(user.id, {
+    kind: 'work',
+    title: 'Night River',
+    content: 'Original text',
+    status: 'ready',
+    visibility: 'submission-only',
+  });
+  const draft = engine.prepareSubmission(user.id, magazine.id);
+  assert.equal(draft.status, 'ready');
+  assert.equal(draft.materials[0]?.materialId, material.id);
+  engine.updateProfileMaterial(user.id, material.id, { content: 'Changed later' });
+  assert.equal(draft.materials[0]?.content, 'Original text');
+  const updated = engine.updateSubmissionDraft(user.id, draft.id, { materialIds: [material.id], note: 'Review before sending' });
+  assert.equal(updated.note, 'Review before sending');
+  const submitted = engine.markSubmissionSubmitted(user.id, draft.id);
+  assert.equal(submitted.status, 'submitted');
+  assert.ok(submitted.submittedAt);
+  assert.equal(engine.store.tracked.find((item) => item.userId === user.id && item.opportunityId === magazine.id)?.myStatus, 'submitted');
+});
+
 test('bookmarks persist independently from tracker status', async () => {
   const { engine, ids, magazine } = await discoveredWorld();
   const saved = engine.bookmarkOpportunity(ids.userAda, magazine.id);

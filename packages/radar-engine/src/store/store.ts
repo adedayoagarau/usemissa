@@ -14,6 +14,7 @@ import type {
   PageSnapshot,
   RadarProfile,
   Source,
+  SubmissionDraft,
   TrackedOpportunity,
   UserProfile,
   VerificationTask,
@@ -35,6 +36,7 @@ export interface RadarStore {
   verificationTasks: Map<string, VerificationTask>;
   radarProfiles: Map<string, RadarProfile>;
   users: Map<string, UserProfile>;
+  submissionDrafts: Map<string, SubmissionDraft>;
   follows: OrganizationFollow[];
   tracked: TrackedOpportunity[];
   alerts: Map<string, Alert>;
@@ -57,6 +59,7 @@ export function createStore(): RadarStore {
     verificationTasks: new Map(),
     radarProfiles: new Map(),
     users: new Map(),
+    submissionDrafts: new Map(),
     follows: [],
     tracked: [],
     alerts: new Map(),
@@ -78,6 +81,7 @@ interface SerializedStore {
   verificationTasks: VerificationTask[];
   radarProfiles: RadarProfile[];
   users: UserProfile[];
+  submissionDrafts?: SubmissionDraft[];
   follows: OrganizationFollow[];
   tracked: TrackedOpportunity[];
   alerts: Alert[];
@@ -99,6 +103,7 @@ export function saveStore(store: RadarStore, filePath: string): void {
     verificationTasks: [...store.verificationTasks.values()],
     radarProfiles: [...store.radarProfiles.values()],
     users: [...store.users.values()],
+    submissionDrafts: [...store.submissionDrafts.values()],
     follows: store.follows,
     tracked: store.tracked,
     alerts: [...store.alerts.values()],
@@ -125,6 +130,7 @@ export function loadStore(filePath: string): RadarStore {
   for (const t of data.verificationTasks) store.verificationTasks.set(t.id, t);
   for (const p of data.radarProfiles) store.radarProfiles.set(p.id, p);
   for (const u of data.users) store.users.set(u.id, u);
+  for (const draft of data.submissionDrafts ?? []) store.submissionDrafts.set(draft.id, draft);
   store.follows = data.follows;
   store.tracked = data.tracked;
   for (const a of data.alerts) store.alerts.set(a.id, a);

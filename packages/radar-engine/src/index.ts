@@ -16,7 +16,7 @@ export { freshnessScore, confidenceScore, computeTrustSignals, trustScore, STALE
 export { deriveStatus, displayStatus, CLOSING_SOON_DAYS, OPENING_SOON_DAYS, NEEDS_VERIFICATION_CONFIDENCE } from './status/statusEngine.js';
 export { predictNextOpening, recordCycle } from './prediction/prediction.js';
 export { matchesCriteria, matchProfiles, type MatchResult } from './matching/matching.js';
-export { emptyProfile, profileFor, profileReadiness, updateUserProfile, type ProfileReadiness, type ProfileSectionSummary } from './profile/profile.js';
+export { emptyProfile, profileFor, profileReadiness, profileSuggestions, updateUserProfile, type ProfileReadiness, type ProfileSectionSummary, type ProfileSuggestion } from './profile/profile.js';
 export { fitScore, formatFee } from './matching/fit.js';
 export { buildInboxDigest, matchOrganizationByDomain, type InboxDigest } from './alerts/alerts.js';
 export { verificationQueue } from './verification/verification.js';

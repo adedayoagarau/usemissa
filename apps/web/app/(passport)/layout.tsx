@@ -11,8 +11,9 @@ export default async function PassportLayout({ children }: { children: React.Rea
 
   return (
     <div>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-3 focus:text-sm focus:shadow-lg">Skip to content</a>
       <AppNav email={session.account.email} />
-      <main className="mx-auto max-w-[1600px] px-6 py-8">{children}</main>
+      <main id="main-content" className="mx-auto max-w-[1600px] px-6 py-8">{children}</main>
     </div>
   );
 }

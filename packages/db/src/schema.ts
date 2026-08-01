@@ -424,6 +424,131 @@ export const opportunities = pgTable(
   ],
 );
 
+/** Normalized profile boundary. The radar_users JSON document remains a
+ * compatibility read/write path while new profile APIs migrate to these
+ * account-scoped tables. */
+export const profiles = pgTable(
+  "profiles",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    pronouns: text("pronouns"),
+    location: text("location"),
+    bio: text("bio"),
+    disciplines: text("disciplines").array().notNull().default(sql`ARRAY[]::text[]`),
+    genres: text("genres").array().notNull().default(sql`ARRAY[]::text[]`),
+    careerStage: text("career_stage"),
+    languages: text("languages").array().notNull().default(sql`ARRAY[]::text[]`),
+    eligibility: jsonb("eligibility").notNull().$type<Record<string, string>>().default({}),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [uniqueIndex("profiles_account_idx").on(table.accountId)],
+);
+
+export const profilePreferences = pgTable(
+  "profile_preferences",
+  {
+    profileId: text("profile_id")
+      .primaryKey()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    disciplines: text("disciplines").array().notNull().default(sql`ARRAY[]::text[]`),
+    locations: text("locations").array().notNull().default(sql`ARRAY[]::text[]`),
+    languages: text("languages").array().notNull().default(sql`ARRAY[]::text[]`),
+    noFeeOnly: boolean("no_fee_only").notNull().default(false),
+    maxFeeCents: integer("max_fee_cents"),
+    deadlineWithinDays: integer("deadline_within_days"),
+    simultaneousRequired: boolean("simultaneous_required").notNull().default(false),
+    updatedAt,
+  },
+  (table) => [
+    check("profile_preferences_fee_check", sql`${table.maxFeeCents} is null or ${table.maxFeeCents} >= 0`),
+    check("profile_preferences_deadline_check", sql`${table.deadlineWithinDays} is null or ${table.deadlineWithinDays} > 0`),
+  ],
+);
+
+export const profilePrivacy = pgTable("profile_privacy", {
+  profileId: text("profile_id")
+    .primaryKey()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  publicProfile: boolean("public_profile").notNull().default(false),
+  showLocation: boolean("show_location").notNull().default(false),
+  shareContact: boolean("share_contact").notNull().default(false),
+  shareMaterialsByDefault: boolean("share_materials_by_default").notNull().default(false),
+  updatedAt,
+});
+
+export const profileMaterials = pgTable(
+  "profile_materials",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    content: text("content"),
+    url: text("url"),
+    storageKey: text("storage_key"),
+    mimeType: text("mime_type"),
+    sizeBytes: integer("size_bytes"),
+    status: text("status").notNull().default("draft"),
+    visibility: text("visibility").notNull().default("private"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("profile_materials_account_idx").on(table.accountId, table.updatedAt),
+    check("profile_materials_status_check", sql`${table.status} in ('draft', 'ready', 'needs-review', 'archived')`),
+    check("profile_materials_visibility_check", sql`${table.visibility} in ('private', 'submission-only', 'public')`),
+    check("profile_materials_size_check", sql`${table.sizeBytes} is null or ${table.sizeBytes} >= 0`),
+  ],
+);
+
+export const submissionDrafts = pgTable(
+  "submission_drafts",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "restrict" }),
+    status: text("status").notNull().default("draft"),
+    note: text("note"),
+    createdAt,
+    updatedAt,
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("submission_drafts_account_idx").on(table.accountId, table.updatedAt),
+    index("submission_drafts_opportunity_idx").on(table.opportunityId, table.status),
+    check("submission_drafts_status_check", sql`${table.status} in ('draft', 'ready', 'submitted', 'withdrawn')`),
+  ],
+);
+
+export const submissionDraftMaterials = pgTable(
+  "submission_draft_materials",
+  {
+    id: text("id").primaryKey(),
+    draftId: text("draft_id")
+      .notNull()
+      .references(() => submissionDrafts.id, { onDelete: "cascade" }),
+    materialId: text("material_id").notNull(),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    content: text("content"),
+    url: text("url"),
+    materialUpdatedAt: timestamp("material_updated_at", { withTimezone: true }).notNull(),
+    createdAt,
+  },
+  (table) => [index("submission_draft_materials_draft_idx").on(table.draftId, table.createdAt)],
+);
+
 export const opportunityVersions = pgTable(
   "opportunity_versions",
   {

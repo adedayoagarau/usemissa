@@ -332,6 +332,9 @@ export interface ProfileMaterial {
   description?: string;
   content?: string;
   url?: string;
+  storageKey?: string;
+  mimeType?: string;
+  sizeBytes?: number;
   status: ProfileMaterialStatus;
   visibility: ProfileMaterialVisibility;
   updatedAt: IsoDateTime;
@@ -368,6 +371,35 @@ export interface ProfileDetails {
   preferences: ProfilePreferences;
   privacy: ProfilePrivacy;
   updatedAt?: IsoDateTime;
+}
+
+export type SubmissionDraftStatus = 'draft' | 'ready' | 'submitted' | 'withdrawn';
+
+/** Immutable copy of a profile material attached to a submission draft. */
+export interface SubmissionMaterialSnapshot {
+  materialId: string;
+  kind: ProfileMaterialKind;
+  title: string;
+  content?: string;
+  url?: string;
+  storageKey?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  materialUpdatedAt: IsoDateTime;
+}
+
+/** User-owned preparation record. It is separate from Workspace Submission:
+ * this represents review and handoff to an external submission destination. */
+export interface SubmissionDraft {
+  id: string;
+  userId: string;
+  opportunityId: string;
+  status: SubmissionDraftStatus;
+  materials: SubmissionMaterialSnapshot[];
+  note?: string;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+  submittedAt?: IsoDateTime;
 }
 
 export interface UserProfile {

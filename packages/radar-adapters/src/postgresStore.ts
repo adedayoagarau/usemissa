@@ -113,6 +113,82 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
       await client.query('insert into radar_users (id, data) values ($1, $2)', [u.id, u]);
     }
 
+    // New normalized Profile/Submission tables are additive. The JSON user
+    // document above remains the compatibility source until every deployment
+    // has migrated; once present, these tables provide queryable ownership and
+    // immutable submission material snapshots.
+    if (await hasTable(client, 'profiles')) {
+      for (const user of store.users.values()) {
+        const account = [...store.accounts.values()].find((candidate) => candidate.userId === user.id);
+        if (!account) continue;
+        const profile = user.profile;
+        if (!profile) continue;
+        await client.query(
+          `insert into profiles (id, account_id, pronouns, location, bio, disciplines, genres, career_stage, languages, eligibility, created_at, updated_at)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, coalesce($11, now()), coalesce($12, now()))
+           on conflict (id) do update set account_id = excluded.account_id, pronouns = excluded.pronouns, location = excluded.location, bio = excluded.bio, disciplines = excluded.disciplines, genres = excluded.genres, career_stage = excluded.career_stage, languages = excluded.languages, eligibility = excluded.eligibility, updated_at = excluded.updated_at`,
+          [user.id, account.id, profile.pronouns ?? null, profile.location ?? null, profile.bio ?? null, profile.disciplines, user.genres, profile.careerStage ?? null, profile.languages, profile.eligibility, profile.updatedAt, profile.updatedAt],
+        );
+        if (await hasTable(client, 'profile_preferences')) {
+          await client.query(
+            `insert into profile_preferences (profile_id, disciplines, locations, languages, no_fee_only, max_fee_cents, deadline_within_days, simultaneous_required, updated_at)
+             values ($1, $2, $3, $4, $5, $6, $7, $8, now())
+             on conflict (profile_id) do update set disciplines = excluded.disciplines, locations = excluded.locations, languages = excluded.languages, no_fee_only = excluded.no_fee_only, max_fee_cents = excluded.max_fee_cents, deadline_within_days = excluded.deadline_within_days, simultaneous_required = excluded.simultaneous_required, updated_at = excluded.updated_at`,
+            [user.id, profile.preferences.disciplines, profile.preferences.locations, profile.preferences.languages, profile.preferences.noFeeOnly ?? false, profile.preferences.maxFeeCents ?? null, profile.preferences.deadlineWithinDays ?? null, profile.preferences.simultaneousRequired ?? false],
+          );
+        }
+        if (await hasTable(client, 'profile_privacy')) {
+          await client.query(
+            `insert into profile_privacy (profile_id, public_profile, show_location, share_contact, share_materials_by_default, updated_at)
+             values ($1, $2, $3, $4, $5, now())
+             on conflict (profile_id) do update set public_profile = excluded.public_profile, show_location = excluded.show_location, share_contact = excluded.share_contact, share_materials_by_default = excluded.share_materials_by_default, updated_at = excluded.updated_at`,
+            [user.id, profile.privacy.publicProfile, profile.privacy.showLocation, profile.privacy.shareContact, profile.privacy.shareMaterialsByDefault],
+          );
+        }
+        if (await hasTable(client, 'profile_materials')) {
+          await client.query('delete from profile_materials where account_id = $1', [account.id]);
+          for (const material of profile.materials) {
+            await client.query(
+              `insert into profile_materials (id, account_id, kind, title, description, content, url, storage_key, mime_type, size_bytes, status, visibility, updated_at)
+               values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+              [material.id, account.id, material.kind, material.title, material.description ?? null, material.content ?? null, material.url ?? null, material.storageKey ?? null, material.mimeType ?? null, material.sizeBytes ?? null, material.status, material.visibility, material.updatedAt],
+            );
+          }
+        }
+      }
+    }
+
+    if (await hasTable(client, 'submission_drafts')) {
+      for (const draft of store.submissionDrafts.values()) {
+        const account = [...store.accounts.values()].find((candidate) => candidate.userId === draft.userId);
+        if (!account) continue;
+        await client.query(
+          `insert into submission_drafts (id, account_id, opportunity_id, status, note, created_at, updated_at, submitted_at)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)
+           on conflict (id) do update set status = excluded.status, note = excluded.note, updated_at = excluded.updated_at, submitted_at = excluded.submitted_at`,
+          [draft.id, account.id, draft.opportunityId, draft.status, draft.note ?? null, draft.createdAt, draft.updatedAt, draft.submittedAt ?? null],
+        );
+        if (await hasTable(client, 'submission_draft_materials')) {
+          await client.query('delete from submission_draft_materials where draft_id = $1', [draft.id]);
+          for (const [index, material] of draft.materials.entries()) {
+            await client.query(
+              `insert into submission_draft_materials (id, draft_id, material_id, kind, title, content, url, material_updated_at)
+               values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              [`${draft.id}:material:${index}`, draft.id, material.materialId, material.kind, material.title, material.content ?? null, material.url ?? null, material.materialUpdatedAt],
+            );
+          }
+        }
+      }
+    }
+
+    await client.query('delete from radar_submission_drafts');
+    for (const draft of store.submissionDrafts.values()) {
+      await client.query(
+        'insert into radar_submission_drafts (id, user_id, opportunity_id, status, data, created_at, updated_at) values ($1, $2, $3, $4, $5, $6, $7)',
+        [draft.id, draft.userId, draft.opportunityId, draft.status, draft, draft.createdAt, draft.updatedAt],
+      );
+    }
+
     await client.query('delete from radar_follows');
     for (const f of store.follows) {
       await client.query('insert into radar_follows (user_id, organization_id, data) values ($1, $2, $3)', [f.userId, f.organizationId, f]);
@@ -183,7 +259,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
 
   const [
     sources, snapshots, opportunities, versions, changes, organizations, claims, verificationTasks,
-    profiles, users, follows, tracked, alerts, alertKeys, accounts, memberships, auditLog,
+    profiles, users, submissionDrafts, follows, tracked, alerts, alertKeys, accounts, memberships, auditLog,
   ] = await Promise.all([
     pool.query('select data from radar_sources'),
     pool.query('select data from radar_snapshots'),
@@ -195,6 +271,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
     pool.query('select data from radar_verification_tasks'),
     pool.query('select data from radar_profiles'),
     pool.query('select data from radar_users'),
+    pool.query('select data from radar_submission_drafts'),
     pool.query('select data from radar_follows'),
     pool.query('select data from radar_tracked'),
     pool.query('select data from radar_alerts'),
@@ -214,6 +291,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
   for (const row of verificationTasks.rows) store.verificationTasks.set(row.data.id, row.data);
   for (const row of profiles.rows) store.radarProfiles.set(row.data.id, row.data);
   for (const row of users.rows) store.users.set(row.data.id, row.data);
+  for (const row of submissionDrafts.rows) store.submissionDrafts.set(row.data.id, row.data);
   store.follows = follows.rows.map((r) => r.data);
   store.tracked = tracked.rows.map((r) => r.data);
   for (const row of alerts.rows) store.alerts.set(row.data.id, row.data);

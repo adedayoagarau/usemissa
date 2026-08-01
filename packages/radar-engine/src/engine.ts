@@ -17,6 +17,8 @@ import type {
   OrgRole,
   ProfileDetails,
   ProfileMaterial,
+  SubmissionDraft,
+  SubmissionMaterialSnapshot,
   PageSnapshot,
   RadarProfile,
   Source,
@@ -208,6 +210,91 @@ export class RadarEngine {
     profile.materials = profile.materials.filter((item) => item.id !== materialId);
     if (profile.materials.length === before) throw new Error(`Unknown profile material: ${materialId}`);
     profile.updatedAt = this.clock.now().toISOString();
+  }
+
+  listSubmissionDrafts(userId: string): SubmissionDraft[] {
+    return [...this.store.submissionDrafts.values()]
+      .filter((draft) => draft.userId === userId)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  getSubmissionDraft(userId: string, draftId: string): SubmissionDraft {
+    const draft = this.store.submissionDrafts.get(draftId);
+    if (!draft || draft.userId !== userId) throw new Error(`Unknown submission draft: ${draftId}`);
+    return draft;
+  }
+
+  prepareSubmission(userId: string, opportunityId: string): SubmissionDraft {
+    const user = this.store.users.get(userId);
+    if (!user) throw new Error(`Unknown user: ${userId}`);
+    const opportunity = this.mustGet(opportunityId);
+    if (!['opening-soon', 'open', 'closing-soon', 'deadline-extended'].includes(opportunity.status)) {
+      throw new Error('This opportunity is no longer accepting submissions');
+    }
+    const existing = this.listSubmissionDrafts(userId).find((draft) => draft.opportunityId === opportunityId && draft.status !== 'withdrawn');
+    if (existing) return existing;
+    const profile = this.getProfile(userId);
+    const snapshots = profile.materials
+      .filter((material) => material.status === 'ready' && material.visibility !== 'private')
+      .map((material) => this.snapshotMaterial(material));
+    const now = this.clock.now().toISOString();
+    const draft: SubmissionDraft = {
+      id: this.ids.next('submission-draft'),
+      userId,
+      opportunityId,
+      status: snapshots.length > 0 ? 'ready' : 'draft',
+      materials: snapshots,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.store.submissionDrafts.set(draft.id, draft);
+    return draft;
+  }
+
+  updateSubmissionDraft(userId: string, draftId: string, input: { materialIds: string[]; note?: string }): SubmissionDraft {
+    const draft = this.getSubmissionDraft(userId, draftId);
+    if (draft.status === 'submitted' || draft.status === 'withdrawn') throw new Error('This submission can no longer be edited');
+    const profile = this.getProfile(userId);
+    const materialsById = new Map(profile.materials.map((material) => [material.id, material]));
+    const snapshots: SubmissionMaterialSnapshot[] = [];
+    for (const materialId of [...new Set(input.materialIds)]) {
+      const material = materialsById.get(materialId);
+      if (!material) throw new Error(`Unknown profile material: ${materialId}`);
+      if (material.status !== 'ready') throw new Error(`Material is not ready: ${material.title}`);
+      snapshots.push(this.snapshotMaterial(material));
+    }
+    if (snapshots.length === 0) throw new Error('Select at least one ready material before continuing');
+    draft.materials = snapshots;
+    draft.note = input.note?.trim() || undefined;
+    draft.status = 'ready';
+    draft.updatedAt = this.clock.now().toISOString();
+    return draft;
+  }
+
+  markSubmissionSubmitted(userId: string, draftId: string): SubmissionDraft {
+    const draft = this.getSubmissionDraft(userId, draftId);
+    if (draft.status === 'submitted') return draft;
+    if (draft.materials.length === 0) throw new Error('A submission needs at least one approved material');
+    const now = this.clock.now().toISOString();
+    draft.status = 'submitted';
+    draft.submittedAt = now;
+    draft.updatedAt = now;
+    setMyStatus(this.ctx, userId, draft.opportunityId, 'submitted', { source: 'user' });
+    return draft;
+  }
+
+  private snapshotMaterial(material: ProfileMaterial): SubmissionMaterialSnapshot {
+    return {
+      materialId: material.id,
+      kind: material.kind,
+      title: material.title,
+      content: material.content,
+      url: material.url,
+      storageKey: material.storageKey,
+      mimeType: material.mimeType,
+      sizeBytes: material.sizeBytes,
+      materialUpdatedAt: material.updatedAt,
+    };
   }
 
   createRadarProfile(userId: string, name: string, criteria: MatchCriteria): RadarProfile {

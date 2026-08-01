@@ -68,8 +68,8 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
   );
   if (userProfile) {
     const discipline = userProfile.disciplines.find((value) => opp.fields.genres.some((genre) => genre.toLowerCase() === value.toLowerCase()));
-    if (discipline) matchedReasons.push({ code: "profile-discipline", label: `Matches your discipline: ${discipline}` });
-    if (userProfile.preferences.noFeeOnly && opp.fields.fee.disclosed && (opp.fields.fee.amountCents ?? 0) === 0) matchedReasons.push({ code: "profile-preference", label: "Matches your no-fee preference" });
+    if (discipline) matchedReasons.push({ code: "discipline", label: `Matches your discipline: ${discipline}` });
+    if (userProfile.preferences.noFeeOnly && opp.fields.fee.disclosed && (opp.fields.fee.amountCents ?? 0) === 0) matchedReasons.push({ code: "fee", label: "Matches your no-fee preference" });
   }
   const tracked = userId
     ? engine.store.tracked.some((item) => item.userId === userId && item.opportunityId === opp.id)

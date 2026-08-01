@@ -1,0 +1,1 @@
+ALTER TABLE "profile_preferences" ADD COLUMN "disciplines" text[] DEFAULT ARRAY[]::text[] NOT NULL;

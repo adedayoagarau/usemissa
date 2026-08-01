@@ -28,6 +28,18 @@ test('a new user can complete profile sections and keep materials after reload',
   await page.getByRole('button', { name: /Your work/ }).click();
   await expect(page.getByText('Night River')).toBeVisible();
   await page.goto('/library');
-  await expect(page).toHaveURL(/\/profile\?section=materials$/);
+  await expect(page).toHaveURL(/\/library$/);
+  await expect(page.getByRole('heading', { name: 'Your work, ready when you are.' })).toBeVisible();
   await expect(page.getByText('Night River')).toBeVisible();
+
+  const browseResponse = await page.request.get('/api/opportunities?q=North%20River');
+  const browse = await browseResponse.json();
+  const submissionItem = browse.items.find((item: { submissionAvailable?: boolean }) => item.submissionAvailable) ?? browse.items[0];
+  await page.goto(`/opportunities/${submissionItem.id}`);
+  await expect(page.getByRole('heading', { name: new RegExp(submissionItem.title) }).last()).toBeVisible();
+  await page.locator('a[href$="/submit"]').first().click();
+  await expect(page.getByRole('heading', { name: new RegExp(submissionItem.title) }).last()).toBeVisible();
+  await expect(page.getByText('Night River')).toBeVisible();
+  await page.getByRole('button', { name: 'I submitted this' }).click();
+  await expect(page.getByText('Tracker updated to Submitted')).toBeVisible();
 });

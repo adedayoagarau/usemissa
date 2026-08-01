@@ -64,7 +64,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
 
         <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
           <Card><CardContent className="space-y-3 pt-6">
-            {opportunity.submissionUrl && opportunity.submissionAvailable ? <Button render={<Link href={`/api/opportunities/${opportunity.id}/submission`} />} className="h-10 w-full justify-between">Go to submission <ArrowUpRight className="size-4" /></Button> : <Button disabled className="w-full">Submission link unavailable</Button>}
+            {opportunity.submissionUrl && opportunity.submissionAvailable ? <Button nativeButton={false} render={<Link href={`/opportunities/${opportunity.id}/submit`} />} className="h-10 w-full justify-between">Prepare submission <ArrowUpRight className="size-4" /></Button> : <Button disabled className="w-full">Submission link unavailable</Button>}
             {session?.account.userId && !opportunity.personal?.tracked && <TrackButton userId={session.account.userId} opportunityId={opportunity.id} />}
             {session?.account.userId && opportunity.organizationId && !opportunity.personal?.followingOrganization && <FollowButton userId={session.account.userId} organizationId={opportunity.organizationId} organizationName={opportunity.organizationName} />}
             {opportunity.guidelinesUrl && <a className="flex items-center justify-center gap-1 text-center text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href={opportunity.guidelinesUrl} rel="noreferrer" target="_blank">Read guidelines <ExternalLink className="size-3.5" /></a>}
