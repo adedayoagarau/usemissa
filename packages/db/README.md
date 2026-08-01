@@ -28,3 +28,9 @@ backfill, constraint validation, and rollback plan.
 
 Generate migrations with `npm run db:generate`. Apply migrations only with an explicit
 `DATABASE_URL` for the intended environment.
+
+For the original compatibility database, run `npm run db:reconcile-legacy -- --dry-run`
+first, then rerun without `--dry-run`. The command is transactional, creates only
+missing baseline relations, derives legacy membership roles from the stored JSON, and
+records the existing migration history only after validating the reconciled shape. It
+does not replay `0000` over existing tables.
