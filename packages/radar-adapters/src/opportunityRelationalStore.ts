@@ -250,7 +250,15 @@ async function upsertVersionsAndChanges(client: PoolClient, store: RadarStore): 
  * semantics; this projection is the query source for Passport browse/detail.
  */
 export async function saveOpportunityProjectionToPostgres(store: RadarStore, client: PoolClient): Promise<void> {
-  for (const source of store.sources.values()) await upsertSource(client, source);
+  const referencedSourceIds = new Set<string>();
+  for (const opportunity of store.opportunities.values()) referencedSourceIds.add(opportunity.sourceId);
+  // Registry sources without an extracted opportunity are not queryable yet;
+  // defer them until their first opportunity to keep each cron persistence
+  // pass bounded instead of rewriting the full 1,024-source registry.
+  for (const sourceId of referencedSourceIds) {
+    const source = store.sources.get(sourceId);
+    if (source) await upsertSource(client, source);
+  }
   for (const opportunity of store.opportunities.values()) {
     const source = store.sources.get(opportunity.sourceId);
     if (source) await upsertOpportunity(client, opportunity, source);

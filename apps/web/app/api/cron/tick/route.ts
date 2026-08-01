@@ -34,10 +34,13 @@ export async function GET(request: Request) {
 
   const { engine, persist, close } = await createProductionEngine();
   try {
-    const report = await engine.tick({ maxSources: 50 });
+    const report = await engine.tick({ maxSources: 10 });
     await persist();
     return NextResponse.json({
       sourcesChecked: report.sourcesChecked,
+      sourcesFailed: report.sourcesFailed,
+      fetchFailures: report.fetchFailures,
+      processingFailures: report.processingFailures,
       changes: report.changes.length,
       alerts: report.alerts.length,
     });
