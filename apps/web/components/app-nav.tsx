@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   NavigationMenu,
@@ -34,6 +34,7 @@ const NAV_LINKS = [
 
 export function AppNav({ email }: { email: string }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [commandOpen, setCommandOpen] = useState(false);
 
   // Cmd+K / Ctrl+K opens the command palette shell -- navigation-only for
@@ -70,7 +71,8 @@ export function AppNav({ email }: { email: string }) {
             <NavigationMenuItem key={link.href}>
               <NavigationMenuLink
                 render={<Link href={link.href} />}
-                className="text-sm text-foreground hover:text-primary"
+                className={`relative py-2 text-sm transition-colors hover:text-primary ${pathname === link.href || pathname.startsWith(`${link.href}/`) ? 'font-medium text-foreground after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5 after:bg-primary' : 'text-muted-foreground'}`}
+                aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? 'page' : undefined}
               >
                 {link.label}
               </NavigationMenuLink>

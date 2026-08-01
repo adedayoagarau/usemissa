@@ -1,0 +1,10 @@
+.hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--border); padding-bottom: 2.5rem; }
+.hero::after { position: absolute; right: -8rem; top: -5rem; width: 22rem; height: 22rem; border: 1px solid color-mix(in oklab, var(--brand-accent) 18%, transparent); border-radius: 999px; content: ''; pointer-events: none; }
+.hero::before { position: absolute; right: 1.5rem; top: 1.5rem; width: 10rem; height: 10rem; border: 1px solid color-mix(in oklab, var(--brand-accent) 12%, transparent); border-radius: 999px; content: ''; pointer-events: none; }
+.filterBar { position: sticky; top: 0; z-index: 20; margin-inline: -1.5rem; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); background: color-mix(in oklab, var(--bg) 92%, transparent); backdrop-filter: blur(14px); }
+.categoryLink { position: relative; padding: 0.7rem 0.1rem; color: var(--ink-2); font-size: 0.875rem; transition: color 160ms ease; }
+.categoryLink:hover, .categoryLinkActive { color: var(--ink); }
+.categoryLinkActive::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--brand-accent); content: ''; }
+.select { height: 2.25rem; min-width: 8rem; border: 1px solid var(--border); border-radius: 0.55rem; background: var(--surface); padding: 0 2rem 0 0.75rem; color: var(--ink); font-size: 0.8rem; outline: none; }
+.select:focus-visible { border-color: var(--brand-accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-accent) 18%, transparent); }
+@media (max-width: 640px) { .filterBar { margin-inline: -1rem; padding-inline: 1rem; } }
