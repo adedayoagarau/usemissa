@@ -2,6 +2,17 @@ import { verifySessionToken, createSessionToken, membershipsFor, type Account } 
 import { getEngine } from './engine';
 
 export const SESSION_COOKIE = 'missa_session';
+export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 3_600;
+
+export function sessionCookieOptions(maxAge = SESSION_MAX_AGE_SECONDS) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge,
+  };
+}
 
 /** Same cookie name/verification as packages/radar-engine/src/server/server.ts's
  * SESSION_COOKIE, so a session created by either surface is honored by the other
