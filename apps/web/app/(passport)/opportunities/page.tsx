@@ -48,6 +48,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
   const result = await getOpportunityRepository().browse(query, session?.account.id ? { accountId: session.account.id } : undefined);
   const selectedParam = first(rawParams.selected);
   const selectedId = selectedParam === 'none' ? undefined : selectedParam ?? result.items[0]?.id;
+  const selectedExplicitly = selectedParam !== undefined;
   const selected = selectedId ? await getOpportunityRepository().getById(selectedId, session?.account.id ? { accountId: session.account.id } : undefined) : null;
   const filters = activeFilterCount(query);
   const activeChips = [
@@ -102,7 +103,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
         {result.nextCursor && <div className="flex justify-center pb-8"><Button render={<Link href={hrefWith(rawUrlParams, { cursor: result.nextCursor })} />} variant="outline" size="sm">Load more <ChevronDown className="size-3.5" /></Button></div>}
       </section>
 
-      {selected && <OpportunityDetailPanel opportunity={selected} userId={session?.account.userId} closeHref={hrefWith(rawUrlParams, { selected: 'none' })} />}
+      {selected && <OpportunityDetailPanel opportunity={selected} userId={session?.account.userId} closeHref={hrefWith(rawUrlParams, { selected: 'none' })} mobileOpen={selectedExplicitly} />}
     </div>
   );
 }

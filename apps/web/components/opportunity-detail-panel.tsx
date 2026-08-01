@@ -4,6 +4,7 @@ import type { OpportunityDetailProjection } from '@missa/radar-engine';
 import { TrackButton } from '@/components/track-button';
 import { FollowButton } from '@/components/follow-button';
 import { Button } from '@/components/ui/button';
+import styles from '@/app/(passport)/opportunities/opportunities.module.css';
 
 function typeLabel(type: OpportunityDetailProjection['type']): string {
   return type === 'open-call' ? 'Open call' : type.charAt(0).toUpperCase() + type.slice(1);
@@ -22,17 +23,19 @@ export function OpportunityDetailPanel({
   opportunity,
   userId,
   closeHref,
+  mobileOpen = false,
 }: {
   opportunity: OpportunityDetailProjection;
   userId?: string;
   closeHref: string;
+  mobileOpen?: boolean;
 }) {
   const reasons = opportunity.personal?.tailoringReasons ?? [];
   const sourceName = opportunity.organizationName ?? opportunity.source.name;
   const summary = opportunity.organizationSummary ?? `A ${typeLabel(opportunity.type).toLowerCase()} from ${opportunity.organizationName ?? 'this organization'}. Review the requirements and source notes before submitting.`;
 
   return (
-    <aside className="flex min-h-0 flex-col border-l border-border bg-card lg:sticky lg:top-0 lg:h-[calc(100vh-3.75rem)] lg:overflow-y-auto">
+    <aside className={`flex min-h-0 flex-col border-l border-border bg-card lg:sticky lg:top-0 lg:h-[calc(100vh-3.75rem)] lg:overflow-y-auto ${styles.detailPanel} ${mobileOpen ? styles.detailPanelMobileOpen : ''}`}>
       <div className="flex items-start justify-between gap-4 p-6 pb-4">
         <div className="flex min-w-0 gap-4">
           <div className="relative flex h-28 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-[linear-gradient(145deg,#eaf0f2,#c6d6dc)] text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700">
@@ -61,7 +64,7 @@ export function OpportunityDetailPanel({
 
         <section><h3 className="text-base font-semibold text-foreground">Why this is a strong fit</h3>{reasons.length ? <ul className="mt-3 space-y-3">{reasons.map((reason) => <li key={reason.code} className="flex items-start gap-2 text-sm leading-6 text-muted-foreground"><Check className="mt-1 size-4 shrink-0 text-green" />{reason.label}</li>)}</ul> : <p className="mt-3 text-sm leading-6 text-muted-foreground">Complete your Passport profile to see why Missa recommends this opportunity for you.</p>}</section>
 
-        <div className="border-t border-border pt-5"><p className="text-sm text-muted-foreground">Review your materials and submit on the next page.</p><div className="mt-4 space-y-2">{opportunity.submissionAvailable && opportunity.submissionUrl ? <Button render={<Link href={`/api/opportunities/${opportunity.id}/submission`} />} className="h-11 w-full justify-between">Go to submission <ArrowRight className="size-4" /></Button> : <Button disabled className="w-full">Submission link unavailable</Button>}{opportunity.guidelinesUrl && <a href={opportunity.guidelinesUrl} target="_blank" rel="noreferrer" className="flex h-10 items-center justify-center gap-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted">Official guidelines <ExternalLink className="size-3.5" /></a>}</div></div>
+        <div className="border-t border-border pt-5"><p className="text-sm text-muted-foreground">Review your materials and submit on the next page.</p><div className="mt-4 space-y-2">{opportunity.submissionAvailable && opportunity.submissionUrl ? <Button nativeButton={false} render={<Link href={`/api/opportunities/${opportunity.id}/submission`} />} className="h-11 w-full justify-between">Go to submission <ArrowRight className="size-4" /></Button> : <Button disabled className="w-full">Submission link unavailable</Button>}{opportunity.guidelinesUrl && <a href={opportunity.guidelinesUrl} target="_blank" rel="noreferrer" className="flex h-10 items-center justify-center gap-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted">Official guidelines <ExternalLink className="size-3.5" /></a>}</div></div>
 
         {userId && <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">{!opportunity.personal?.tracked && <TrackButton userId={userId} opportunityId={opportunity.id} />}{opportunity.organizationId && !opportunity.personal?.followingOrganization && <FollowButton userId={userId} organizationId={opportunity.organizationId} organizationName={opportunity.organizationName} />}</div>}
       </div>
