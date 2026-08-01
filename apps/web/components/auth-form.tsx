@@ -74,8 +74,8 @@ export function AuthForm({ initialMode = 'login', redirectTo = '/opportunities' 
 
       <section className={styles.formPane} aria-label={mode === 'login' ? 'Log in' : 'Create an account'}>
         <div className={styles.formCard}>
-          <p className={styles.formKicker}>Missa Passport</p>
-          <h2 className={styles.formTitle}>{mode === 'login' ? 'Welcome back.' : 'Start your Passport.'}</h2>
+          <p className={styles.formKicker}>Missa Profile</p>
+          <h2 className={styles.formTitle}>{mode === 'login' ? 'Welcome back.' : 'Create your profile.'}</h2>
           <p className={styles.formDescription}>{mode === 'login' ? 'Pick up where you left off.' : 'Create a free account to find, track, and submit with confidence.'}</p>
 
           <form onSubmit={onSubmit} className={styles.form} noValidate>

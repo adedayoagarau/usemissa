@@ -15,6 +15,8 @@ import type {
   Organization,
   OrgMembership,
   OrgRole,
+  ProfileDetails,
+  ProfileMaterial,
   PageSnapshot,
   RadarProfile,
   Source,
@@ -54,6 +56,7 @@ import { deadlineReminders, overdueResponseAlerts, setMyStatus, track, trackerVi
 import { computeResponseStats, type ResponseStats } from './tracker/responseStats.js';
 import { buildIcsFeed } from './tracker/calendarFeed.js';
 import { isoDateOf } from './extraction/dates.js';
+import { emptyProfile, profileFor, profileReadiness, updateUserProfile, type ProfileReadiness } from './profile/profile.js';
 
 export interface TickReport {
   at: string;
@@ -148,9 +151,63 @@ export class RadarEngine {
   }
 
   addUser(user: Omit<UserProfile, 'id'> & { id?: string }): UserProfile {
-    const full: UserProfile = { id: user.id ?? this.ids.next('user'), ...user };
+    const full: UserProfile = { id: user.id ?? this.ids.next('user'), ...user, profile: user.profile ?? emptyProfile() };
     this.store.users.set(full.id, full);
     return full;
+  }
+
+  getProfile(userId: string): ProfileDetails {
+    const user = this.store.users.get(userId);
+    if (!user) throw new Error(`Unknown user: ${userId}`);
+    const profile = profileFor(user);
+    user.profile = profile;
+    return profile;
+  }
+
+  getProfileReadiness(userId: string): ProfileReadiness {
+    const user = this.store.users.get(userId);
+    if (!user) throw new Error(`Unknown user: ${userId}`);
+    return profileReadiness(user);
+  }
+
+  updateProfile(userId: string, patch: Partial<ProfileDetails>, displayName?: string): ProfileDetails {
+    const user = this.store.users.get(userId);
+    if (!user) throw new Error(`Unknown user: ${userId}`);
+    if (displayName !== undefined) user.displayName = displayName.trim();
+    return updateUserProfile(user, patch, this.clock.now().toISOString());
+  }
+
+  addProfileMaterial(
+    userId: string,
+    input: Omit<ProfileMaterial, 'id' | 'userId' | 'updatedAt'>,
+  ): ProfileMaterial {
+    const profile = this.getProfile(userId);
+    const material: ProfileMaterial = {
+      ...input,
+      id: this.ids.next('material'),
+      userId,
+      updatedAt: this.clock.now().toISOString(),
+    };
+    profile.materials = [material, ...profile.materials];
+    profile.updatedAt = material.updatedAt;
+    return material;
+  }
+
+  updateProfileMaterial(userId: string, materialId: string, patch: Partial<ProfileMaterial>): ProfileMaterial {
+    const profile = this.getProfile(userId);
+    const material = profile.materials.find((item) => item.id === materialId);
+    if (!material || material.userId !== userId) throw new Error(`Unknown profile material: ${materialId}`);
+    Object.assign(material, patch, { id: material.id, userId, updatedAt: this.clock.now().toISOString() });
+    profile.updatedAt = material.updatedAt;
+    return material;
+  }
+
+  removeProfileMaterial(userId: string, materialId: string): void {
+    const profile = this.getProfile(userId);
+    const before = profile.materials.length;
+    profile.materials = profile.materials.filter((item) => item.id !== materialId);
+    if (profile.materials.length === before) throw new Error(`Unknown profile material: ${materialId}`);
+    profile.updatedAt = this.clock.now().toISOString();
   }
 
   createRadarProfile(userId: string, name: string, criteria: MatchCriteria): RadarProfile {

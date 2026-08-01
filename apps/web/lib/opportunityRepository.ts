@@ -7,6 +7,7 @@ import {
   type OpportunityRepository,
   type OpportunityRepositoryContext,
   type OpportunityRepositoryQuery,
+  profileFor,
 } from "@missa/radar-engine";
 import { createPostgresOpportunityRepositoryFromUrl } from "@missa/radar-adapters";
 import { getEngine } from "./engine";
@@ -57,12 +58,19 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
   const profiles = userId
     ? [...engine.store.radarProfiles.values()].filter((profile) => profile.userId === userId)
     : [];
+  const user = userId ? engine.store.users.get(userId) : undefined;
+  const userProfile = user ? profileFor(user) : undefined;
   const matchedReasons = profiles.flatMap((profile) =>
     matchesCriteria(profile.criteria, opp, new Date())?.slice(0, 2).map((reason) => ({
       code: "saved-search",
       label: `Matches ${profile.name}: ${reason}`,
     })) ?? [],
   );
+  if (userProfile) {
+    const discipline = userProfile.disciplines.find((value) => opp.fields.genres.some((genre) => genre.toLowerCase() === value.toLowerCase()));
+    if (discipline) matchedReasons.push({ code: "profile-discipline", label: `Matches your discipline: ${discipline}` });
+    if (userProfile.preferences.noFeeOnly && opp.fields.fee.disclosed && (opp.fields.fee.amountCents ?? 0) === 0) matchedReasons.push({ code: "profile-preference", label: "Matches your no-fee preference" });
+  }
   const tracked = userId
     ? engine.store.tracked.some((item) => item.userId === userId && item.opportunityId === opp.id)
     : false;

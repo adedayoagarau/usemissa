@@ -53,7 +53,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           <Card>
             <CardHeader><CardTitle>How this fits</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              {reasons.length > 0 ? <ul className="space-y-3">{reasons.map((reason) => <li key={reason.code} className="flex items-start gap-2.5 text-sm"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green" /><span>{reason.label}</span></li>)}</ul> : <div className="flex items-start gap-2.5 text-sm text-muted-foreground"><CircleAlert className="mt-0.5 size-4 shrink-0" /><p>Your fit signal is still forming. Add genres, disciplines, and fee preferences to your Passport profile and Missa will explain this match.</p></div>}
+              {reasons.length > 0 ? <ul className="space-y-3">{reasons.map((reason) => <li key={reason.code} className="flex items-start gap-2.5 text-sm"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green" /><span>{reason.label}</span></li>)}</ul> : <div className="flex items-start gap-2.5 text-sm text-muted-foreground"><CircleAlert className="mt-0.5 size-4 shrink-0" /><p>Your fit signal is still forming. Add genres, disciplines, and fee preferences to your Profile and Missa will explain this match.</p></div>}
             </CardContent>
           </Card>
 

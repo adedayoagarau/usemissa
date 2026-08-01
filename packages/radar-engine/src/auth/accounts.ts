@@ -2,6 +2,7 @@ import type { Account, OrgMembership, OrgRole, UserAttributes, UserProfile } fro
 import type { Clock, IdGenerator } from '../ports.js';
 import type { RadarStore } from '../store/store.js';
 import { hashPassword, verifyPassword } from './crypto.js';
+import { emptyProfile } from '../profile/profile.js';
 
 export interface AuthContext {
   store: RadarStore;
@@ -36,7 +37,7 @@ export function signUp(
   if (password.length < 8) throw new AuthError('Password must be at least 8 characters');
   if (findByEmail(ctx.store, normalized)) throw new AuthError('An account with that email already exists');
 
-  const user: UserProfile = { id: ctx.ids.next('user'), displayName, genres, attributes };
+  const user: UserProfile = { id: ctx.ids.next('user'), displayName, genres, attributes, profile: emptyProfile() };
   ctx.store.users.set(user.id, user);
 
   const account: Account = {

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
 
 export default function LibraryAliasPage() {
-  redirect('/opportunities?selected=none');
+  redirect('/profile?section=materials');
 }

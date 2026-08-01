@@ -83,6 +83,34 @@ test('fit score explains itself and hard eligibility disqualifies', async () => 
   assert.ok(carlFit.disqualifiers.some((d) => d.toLowerCase().includes('premiere')));
 });
 
+test('profile workflow persists readiness and reusable materials', () => {
+  const clock = new ManualClock(new Date('2026-08-01T00:00:00Z'));
+  const engine = new RadarEngine({ store: createStore(), fetcher: new FixtureFetcher(), clock });
+  const { user } = engine.signUp('writer@example.com', 'password123', 'Writer');
+
+  assert.equal(engine.getProfileReadiness(user.id).discoverReady, false);
+  engine.updateProfile(user.id, { disciplines: ['poetry'], bio: 'A short bio' }, 'Writer Name');
+  assert.equal(engine.getProfileReadiness(user.id).discoverReady, true);
+  assert.equal(engine.getProfileReadiness(user.id).applyReady, false);
+
+  const material = engine.addProfileMaterial(user.id, {
+    kind: 'work',
+    title: 'Night River',
+    content: 'A poetry manuscript.',
+    status: 'ready',
+    visibility: 'submission-only',
+  });
+  assert.equal(engine.getProfile(user.id).materials[0]?.id, material.id);
+  assert.equal(engine.getProfileReadiness(user.id).applyReady, true);
+
+  engine.updateProfile(user.id, { privacy: { publicProfile: true, showLocation: false, shareContact: false, shareMaterialsByDefault: false } });
+  assert.equal(engine.getProfileReadiness(user.id).publicReady, true);
+  engine.updateProfileMaterial(user.id, material.id, { status: 'draft' });
+  assert.equal(engine.getProfileReadiness(user.id).applyReady, false);
+  engine.removeProfileMaterial(user.id, material.id);
+  assert.equal(engine.getProfile(user.id).materials.length, 0);
+});
+
 test('bookmarks persist independently from tracker status', async () => {
   const { engine, ids, magazine } = await discoveredWorld();
   const saved = engine.bookmarkOpportunity(ids.userAda, magazine.id);

@@ -88,6 +88,7 @@ export function AppNav({ email }: { email: string }) {
           <span className="hidden sm:inline">{email.split('@')[0]}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem render={<Link href="/profile" />}>Profile</DropdownMenuItem>
           <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

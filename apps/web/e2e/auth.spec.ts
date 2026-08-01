@@ -4,7 +4,7 @@ test('people can create an account, recover from a bad login, and log in', async
   const email = `auth-${Date.now()}@example.com`;
 
   await page.goto('/signup?next=/opportunities');
-  await expect(page.getByRole('heading', { name: 'Start your Passport.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Create your profile.' })).toBeVisible();
 
   await page.getByLabel('Your name').fill('Alex Morgan');
   await page.getByLabel('Email address').fill(email);

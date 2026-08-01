@@ -1,5 +1,6 @@
 import type { FitScore, Opportunity, UserProfile } from '../domain/types.js';
 import { daysBetween, isoDateOf } from '../extraction/dates.js';
+import { profileFor } from '../profile/profile.js';
 
 /**
  * Fit Score (strategy § 9): Strong / Possible / Weak / Not Eligible / Unknown,
@@ -11,6 +12,7 @@ export function fitScore(user: UserProfile, opp: Opportunity, now: Date): FitSco
   const watchouts: string[] = [];
   const disqualifiers: string[] = [];
   const f = opp.fields;
+  const profile = profileFor(user);
 
   // Hard eligibility: every rule with a checkable value is compared to user attributes.
   for (const rule of f.eligibility) {
@@ -35,10 +37,19 @@ export function fitScore(user: UserProfile, opp: Opportunity, now: Date): FitSco
     else watchouts.push(`Accepts ${f.genres.join(', ')} — none of your genres`);
   }
 
+  if (profile.disciplines.length > 0 && f.type) {
+    const disciplineMatch = profile.disciplines.find((discipline) => f.genres.some((genre) => genre.toLowerCase() === discipline.toLowerCase()) || discipline.toLowerCase() === f.type.toLowerCase());
+    if (disciplineMatch) reasons.push(`Matches your discipline: ${disciplineMatch}`);
+  }
+
   // Fee.
   if (f.fee.disclosed) {
     if ((f.fee.amountCents ?? 0) === 0) reasons.push('No fee');
-    else reasons.push(`Fee ${formatFee(f.fee.amountCents!)} (disclosed)`);
+    else {
+      if (profile.preferences.noFeeOnly) disqualifiers.push('Your profile prefers opportunities with no fee');
+      else if (profile.preferences.maxFeeCents !== undefined && f.fee.amountCents! > profile.preferences.maxFeeCents) watchouts.push(`Fee is above your ${formatFee(profile.preferences.maxFeeCents)} preference`);
+      reasons.push(`Fee ${formatFee(f.fee.amountCents!)} (disclosed)`);
+    }
   } else {
     watchouts.push('Fee not disclosed');
   }

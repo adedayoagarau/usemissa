@@ -318,11 +318,64 @@ export interface UserAttributes {
   [key: string]: string;
 }
 
+export type ProfileSectionKey = 'about' | 'practice' | 'materials' | 'preferences' | 'privacy';
+export type ProfileSectionStatus = 'not-started' | 'in-progress' | 'complete' | 'needs-review';
+export type ProfileMaterialKind = 'bio' | 'statement' | 'cv' | 'work' | 'link' | 'saved-answer';
+export type ProfileMaterialStatus = 'draft' | 'ready' | 'needs-review' | 'archived';
+export type ProfileMaterialVisibility = 'private' | 'submission-only' | 'public';
+
+export interface ProfileMaterial {
+  id: string;
+  userId: string;
+  kind: ProfileMaterialKind;
+  title: string;
+  description?: string;
+  content?: string;
+  url?: string;
+  status: ProfileMaterialStatus;
+  visibility: ProfileMaterialVisibility;
+  updatedAt: IsoDateTime;
+}
+
+export interface ProfilePreferences {
+  disciplines: string[];
+  locations: string[];
+  careerStage?: string;
+  languages: string[];
+  noFeeOnly?: boolean;
+  maxFeeCents?: number;
+  deadlineWithinDays?: number;
+  simultaneousRequired?: boolean;
+}
+
+export interface ProfilePrivacy {
+  publicProfile: boolean;
+  showLocation: boolean;
+  shareContact: boolean;
+  shareMaterialsByDefault: boolean;
+}
+
+/** The user-owned profile used by onboarding, matching, and submissions. */
+export interface ProfileDetails {
+  pronouns?: string;
+  location?: string;
+  bio?: string;
+  disciplines: string[];
+  careerStage?: string;
+  languages: string[];
+  eligibility: UserAttributes;
+  materials: ProfileMaterial[];
+  preferences: ProfilePreferences;
+  privacy: ProfilePrivacy;
+  updatedAt?: IsoDateTime;
+}
+
 export interface UserProfile {
   id: string;
   displayName: string;
   attributes: UserAttributes;
   genres: string[];
+  profile?: ProfileDetails;
 }
 
 /**
