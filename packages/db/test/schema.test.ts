@@ -1,0 +1,93 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { getTableConfig } from "drizzle-orm/pg-core";
+import {
+  auditEvents,
+  memberships,
+  opportunityPreferences,
+  opportunities,
+  opportunitySourceEvidence,
+  opportunitySources,
+  savedSearches,
+  submissionOutboundEvents,
+  outboxEvents,
+  reviewAssignments,
+  trackedOpportunities,
+  trackedStatusEvents,
+} from "../src/schema.js";
+
+test("platform schema carries tenant, audit, outbox, and reviewer indexes", () => {
+  const membershipConfig = getTableConfig(memberships);
+  const auditConfig = getTableConfig(auditEvents);
+  const outboxConfig = getTableConfig(outboxEvents);
+  const assignmentConfig = getTableConfig(reviewAssignments);
+
+  assert.ok(membershipConfig.primaryKeys.length === 1);
+  assert.ok(
+    auditConfig.indexes.some(
+      (index) => index.config.name === "audit_events_org_created_idx",
+    ),
+  );
+  assert.ok(
+    outboxConfig.indexes.some(
+      (index) => index.config.name === "outbox_events_pending_idx",
+    ),
+  );
+  assert.ok(
+    assignmentConfig.indexes.some(
+      (index) => index.config.name === "review_assignments_unique_idx",
+    ),
+  );
+});
+
+test("opportunities schema exposes the additive query and personal-state boundaries", () => {
+  const opportunityConfig = getTableConfig(opportunities);
+  const sourceConfig = getTableConfig(opportunitySources);
+  const evidenceConfig = getTableConfig(opportunitySourceEvidence);
+  const preferenceConfig = getTableConfig(opportunityPreferences);
+  const savedSearchConfig = getTableConfig(savedSearches);
+  const trackedConfig = getTableConfig(trackedOpportunities);
+  const statusConfig = getTableConfig(trackedStatusEvents);
+  const outboundConfig = getTableConfig(submissionOutboundEvents);
+
+  assert.ok(
+    opportunityConfig.indexes.some(
+      (index) => index.config.name === "opportunities_public_deadline_idx",
+    ),
+  );
+  assert.ok(
+    sourceConfig.indexes.some(
+      (index) => index.config.name === "opportunity_sources_active_idx",
+    ),
+  );
+  assert.ok(
+    evidenceConfig.indexes.some(
+      (index) => index.config.name === "opportunity_evidence_verified_idx",
+    ),
+  );
+  assert.ok(
+    Object.values(preferenceConfig.columns).some(
+      (column) => column.name === "account_id" && column.primary,
+    ),
+  );
+  assert.ok(
+    savedSearchConfig.indexes.some(
+      (index) => index.config.name === "saved_searches_account_idx",
+    ),
+  );
+  assert.ok(
+    trackedConfig.indexes.some(
+      (index) => index.config.name === "tracked_opportunities_account_opp_idx",
+    ),
+  );
+  assert.ok(
+    statusConfig.indexes.some(
+      (index) => index.config.name === "tracked_status_events_idempotency_idx",
+    ),
+  );
+  assert.ok(
+    outboundConfig.indexes.some(
+      (index) => index.config.name === "submission_outbound_opp_idx",
+    ),
+  );
+});

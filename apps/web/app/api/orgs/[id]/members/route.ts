@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server';
-import { requireOrgMember } from '@/lib/auth';
-import { getEngine, persistRadar } from '@/lib/engine';
+import { organizationMemberMutationSchema } from '@missa/contracts';
+import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
 
 /** Story 7.2's AC needs "at least one other org member" to assign as a
  * reviewer -- radar-engine has membershipsFor(accountId) but no reverse
  * membersOf(organizationId), so this reads RadarStore.memberships directly. */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const auth = await requireOrgMember(request, id);
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const result = await requireOrganizationAccess(request, id);
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
-  const engine = await getEngine();
+  const engine = result.access.radar;
   const members = engine.store.memberships
     .filter((m) => m.organizationId === id)
     .map((m) => ({
@@ -33,18 +33,28 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const auth = await requireOrgMember(request, id);
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
 
-  const body = await request.json();
-  if (typeof body.email !== 'string') return NextResponse.json({ error: 'email is required' }, { status: 400 });
+  const body = organizationMemberMutationSchema.safeParse(await request.json());
+  if (!body.success) {
+    return NextResponse.json({ error: 'A valid email and organization role are required' }, { status: 400 });
+  }
 
-  const engine = await getEngine();
-  const account = [...engine.store.accounts.values()].find((a) => a.email === body.email.trim().toLowerCase());
+  const engine = result.access.radar;
+  const account = [...engine.store.accounts.values()].find((candidate) => candidate.email === body.data.email);
   if (!account) return NextResponse.json({ error: 'No account with that email' }, { status: 404 });
 
-  const role = body.role === 'admin' ? 'admin' : 'member';
-  const membership = engine.grantOrgMembership(account.id, id, role);
-  await persistRadar();
+  const membership = engine.grantOrgMembership(account.id, id, body.data.role);
+  await persistOrganizationMutation(
+    result.access,
+    {
+      action: 'membership.upsert',
+      targetType: 'account',
+      targetId: account.id,
+      detail: { organizationId: id, role: body.data.role },
+    },
+    { workspace: false },
+  );
   return NextResponse.json(membership, { status: 201 });
 }

@@ -107,6 +107,9 @@ body {
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-accent-tint: var(--accent-tint);
+  --color-accent-deep: var(--accent-deep);
+  --color-green: var(--green);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);

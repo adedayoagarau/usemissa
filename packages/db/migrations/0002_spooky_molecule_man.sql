@@ -1,0 +1,3 @@
+ALTER TABLE "opportunities" ADD CONSTRAINT "opportunities_status_check" CHECK ("opportunities"."status" in ('opening-soon', 'open', 'closing-soon', 'deadline-extended', 'closed', 'archived'));--> statement-breakpoint
+ALTER TABLE "tracked_opportunities" ADD CONSTRAINT "tracked_opportunities_status_check" CHECK ("tracked_opportunities"."status" in ('interested', 'preparing', 'submitted', 'withdrawn', 'accepted', 'declined', 'archived'));--> statement-breakpoint
+ALTER TABLE "tracked_status_events" ADD CONSTRAINT "tracked_status_events_to_status_check" CHECK ("tracked_status_events"."to_status" in ('interested', 'preparing', 'submitted', 'withdrawn', 'accepted', 'declined', 'archived'));

@@ -11,9 +11,7 @@ import { WorkspaceEngine, createProductionWorkspaceEngine, type ProductionWorksp
  * singleton silently doesn't share state across them.
  */
 declare global {
-  // eslint-disable-next-line no-var
   var __missaWorkspaceEngine: WorkspaceEngine | undefined;
-  // eslint-disable-next-line no-var
   var __missaProductionWorkspaceEnginePromise: Promise<ProductionWorkspaceEngine> | undefined;
 }
 

@@ -1,10 +1,33 @@
-import type { Pool } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import { createStore, type RadarStore } from '@missa/radar-engine';
 import { postgresSchema } from './postgresSchema.js';
+import { saveOpportunityProjectionToPostgres } from './opportunityRelationalStore.js';
 
 /** Creates the Radar tables (idempotent — safe to call on every boot). */
 export async function ensurePostgresSchema(pool: Pool): Promise<void> {
   await pool.query(postgresSchema);
+}
+
+async function hasColumn(client: PoolClient, table: string, column: string): Promise<boolean> {
+  const result = await client.query(
+    `select exists (
+      select 1 from information_schema.columns
+      where table_schema = current_schema() and table_name = $1 and column_name = $2
+    ) as present`,
+    [table, column],
+  );
+  return result.rows[0]?.present === true;
+}
+
+async function hasTable(client: PoolClient, table: string): Promise<boolean> {
+  const result = await client.query(
+    `select exists (
+      select 1 from information_schema.tables
+      where table_schema = current_schema() and table_name = $1
+    ) as present`,
+    [table],
+  );
+  return result.rows[0]?.present === true;
 }
 
 /**
@@ -18,6 +41,7 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
   const client = await pool.connect();
   try {
     await client.query('begin');
+    const membershipsHaveRole = await hasColumn(client, 'radar_memberships', 'role');
 
     await client.query('delete from radar_sources');
     for (const s of store.sources.values()) {
@@ -56,9 +80,14 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
       );
     }
 
-    await client.query('delete from radar_organizations');
+    // Organizations and accounts are parents of Workspace rows in ADR-001's
+    // target schema. Upsert them without clearing the table so the compatibility
+    // writer cannot cascade-delete or violate foreign keys owned by Workspace.
     for (const o of store.organizations.values()) {
-      await client.query('insert into radar_organizations (id, data) values ($1, $2)', [o.id, o]);
+      await client.query(
+        'insert into radar_organizations (id, data) values ($1, $2) on conflict (id) do update set data = excluded.data',
+        [o.id, o],
+      );
     }
 
     await client.query('delete from radar_claims');
@@ -104,17 +133,35 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
       await client.query('insert into radar_emitted_alert_keys (key) values ($1)', [key]);
     }
 
-    await client.query('delete from radar_accounts');
     for (const a of store.accounts.values()) {
-      await client.query('insert into radar_accounts (id, email, data) values ($1, $2, $3)', [a.id, a.email, a]);
+      await client.query(
+        `insert into radar_accounts (id, email, data) values ($1, $2, $3)
+         on conflict (id) do update set email = excluded.email, data = excluded.data`,
+        [a.id, a.email, a],
+      );
     }
 
-    await client.query('delete from radar_memberships');
     for (const m of store.memberships) {
-      await client.query(
-        'insert into radar_memberships (account_id, organization_id, data) values ($1, $2, $3)',
-        [m.accountId, m.organizationId, m],
-      );
+      if (membershipsHaveRole) {
+        await client.query(
+          `insert into radar_memberships (account_id, organization_id, role, data) values ($1, $2, $3, $4)
+           on conflict (account_id, organization_id) do update set role = excluded.role, data = excluded.data`,
+          [m.accountId, m.organizationId, m.role, m],
+        );
+      } else {
+        await client.query(
+          `insert into radar_memberships (account_id, organization_id, data) values ($1, $2, $3)
+           on conflict (account_id, organization_id) do update set data = excluded.data`,
+          [m.accountId, m.organizationId, m],
+        );
+      }
+    }
+
+    // The additive Opportunities schema is deployed separately from the
+    // legacy snapshot schema. Older/local databases can still persist Radar
+    // without it; production dual-writes once the relational table exists.
+    if (await hasTable(client, 'opportunities')) {
+      await saveOpportunityProjectionToPostgres(store, client);
     }
 
     await client.query('delete from radar_audit_log');

@@ -48,13 +48,3 @@ export function createStore(): WorkspaceStore {
     reviewRecommendations: new Map(),
   };
 }
-
-let nextId = 1;
-export function nextIdFor(prefix: string): string {
-  return `${prefix}_${String(nextId++).padStart(4, '0')}`;
-}
-
-/** Test/dev helper to make id generation deterministic across a test run. */
-export function resetIdsForTest(): void {
-  nextId = 1;
-}

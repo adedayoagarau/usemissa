@@ -1,94 +1,97 @@
 'use client';
 
+import Link from 'next/link';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import styles from '@/app/auth.module.css';
 
-/** Story 2.1: the real sign-up/log-in form, replacing the Story 1.2
- * placeholder. Calls the same /api/auth/login and /api/auth/signup
- * endpoints that were built ahead of schedule in Epic 3/6 as test
- * infrastructure -- those routes don't change for this story. */
-export function AuthForm() {
+type AuthMode = 'login' | 'signup';
+
+function authHref(mode: AuthMode, redirectTo: string): string {
+  const params = new URLSearchParams();
+  if (redirectTo !== '/opportunities') params.set('next', redirectTo);
+  const query = params.toString();
+  return `/${mode}${query ? `?${query}` : ''}`;
+}
+
+export function AuthForm({ initialMode = 'login', redirectTo = '/opportunities' }: { initialMode?: AuthMode; redirectTo?: string }) {
   const router = useRouter();
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const mode = initialMode;
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  function submitForm(form: HTMLFormElement) {
     setError(null);
-    const fd = new FormData(e.currentTarget);
-    const body =
-      mode === 'login'
-        ? { email: fd.get('email'), password: fd.get('password') }
-        : { email: fd.get('email'), password: fd.get('password'), displayName: fd.get('displayName') };
+    const data = new FormData(form);
+    const email = String(data.get('email') ?? '').trim();
+    const password = String(data.get('password') ?? '');
+    const displayName = String(data.get('displayName') ?? '').trim();
+    const confirmation = String(data.get('confirmation') ?? '');
+
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError('Enter a valid email address.');
+    if (mode === 'signup' && !displayName) return setError('Tell us what to call you.');
+    if (password.length < 8) return setError('Use at least 8 characters for your password.');
+    if (mode === 'signup' && password !== confirmation) return setError('The passwords do not match.');
 
     startTransition(async () => {
-      const res = await fetch(`/api/auth/${mode}`, {
+      const response = await fetch(`/api/auth/${mode}`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(mode === 'login' ? { email, password } : { email, password, displayName }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error ?? `${mode === 'login' ? 'Log in' : 'Sign up'} failed`);
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        setError(body.error ?? `${mode === 'login' ? 'Log in' : 'Sign up'} failed. Try again.`);
         return;
       }
-      router.push('/opportunities');
+      router.push(redirectTo);
       router.refresh();
     });
-  };
+  }
+
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    submitForm(event.currentTarget);
+  }
 
   return (
-    <Card className="mx-auto mt-16 max-w-sm border-border/80 shadow-sm">
-      <CardHeader>
-        <CardTitle className="text-center">
-          <span className="font-heading text-3xl font-medium text-[var(--brand-accent)]">Missa</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={onSubmit} className="flex flex-col gap-3">
-          {mode === 'signup' && (
-            <div>
-              <Label htmlFor="displayName">Name</Label>
-              <Input id="displayName" name="displayName" autoComplete="name" required />
-            </div>
-          )}
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" autoComplete="username" required />
+    <div className={styles.page}>
+      <section className={styles.story} aria-label="About Missa">
+        <div className={styles.storyContent}>
+          <Link href="/" className={styles.mark}><span className={styles.markDot} />Missa</Link>
+          <div className={styles.storyCopy}>
+            <h1 className={styles.storyTitle}>A clearer way to send your work out into the world.</h1>
+            <p className={styles.storyBody}>Missa brings the right opportunities, requirements, and next steps into one calm place.</p>
+            <div className={styles.promiseList}><p className={styles.promise}>Opportunities tailored to your practice</p><p className={styles.promise}>Requirements visible before you commit</p><p className={styles.promise}>One place to track what happens next</p></div>
           </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              minLength={mode === 'signup' ? 8 : undefined}
-              required
-            />
-          </div>
-          <Button type="submit" disabled={isPending}>
-            {isPending ? '…' : mode === 'login' ? 'Log in' : 'Sign up'}
-          </Button>
-          {error && <p className="text-xs text-destructive">{error}</p>}
-        </form>
-        <div className="mt-3 text-center text-sm text-muted-foreground">
-          {mode === 'login' ? (
-            <button type="button" className="text-primary" onClick={() => setMode('signup')}>
-              Need an account? Sign up
-            </button>
-          ) : (
-            <button type="button" className="text-primary" onClick={() => setMode('login')}>
-              Already have an account? Log in
-            </button>
-          )}
         </div>
-      </CardContent>
-    </Card>
+      </section>
+
+      <section className={styles.formPane} aria-label={mode === 'login' ? 'Log in' : 'Create an account'}>
+        <div className={styles.formCard}>
+          <p className={styles.formKicker}>Missa Passport</p>
+          <h2 className={styles.formTitle}>{mode === 'login' ? 'Welcome back.' : 'Start your Passport.'}</h2>
+          <p className={styles.formDescription}>{mode === 'login' ? 'Pick up where you left off.' : 'Create a free account to find, track, and submit with confidence.'}</p>
+
+          <form onSubmit={onSubmit} className={styles.form} noValidate>
+            {mode === 'signup' && <div className={styles.field}><label htmlFor="displayName" className={styles.label}>Your name</label><Input className="h-11" id="displayName" name="displayName" autoComplete="name" placeholder="Alex Morgan" required /></div>}
+            <div className={styles.field}><label htmlFor="email" className={styles.label}>Email address</label><Input className="h-11" id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required /></div>
+            <div className={styles.field}><label htmlFor="password" className={styles.label}>Password</label><div className={styles.passwordWrap}><Input className="h-11" id="password" name="password" type={showPassword ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="At least 8 characters" minLength={8} required /><button type="button" className={styles.passwordToggle} onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}</button></div></div>
+            {mode === 'signup' && <div className={styles.field}><label htmlFor="confirmation" className={styles.label}>Confirm password</label><div className={styles.passwordWrap}><Input className="h-11" id="confirmation" name="confirmation" type={showConfirmation ? 'text' : 'password'} autoComplete="new-password" placeholder="Repeat your password" minLength={8} required /><button type="button" className={styles.passwordToggle} onClick={() => setShowConfirmation((value) => !value)} aria-label={showConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}>{showConfirmation ? <EyeOff className="size-4" /> : <Eye className="size-4" />}</button></div></div>}
+            {error && <p className={styles.error} role="alert">{error}</p>}
+            <Button type="submit" size="lg" disabled={isPending} className="h-11 justify-between">{isPending ? 'Working…' : mode === 'login' ? 'Log in' : 'Create account'}<ArrowRight className="size-4" /></Button>
+            <p className={styles.finePrint}>{mode === 'signup' ? 'Free to start. You can update your preferences anytime.' : 'You can log out anytime from your account menu.'}</p>
+          </form>
+
+          <p className={styles.switchMode}>{mode === 'login' ? 'New to Missa? ' : 'Already have an account? '}<Link href={authHref(mode === 'login' ? 'signup' : 'login', redirectTo)}>{mode === 'login' ? 'Create an account' : 'Log in'}</Link></p>
+          <Link href="/opportunities-preview" className={styles.backLink}>View the public design preview <ArrowRight className="size-3.5" /></Link>
+        </div>
+      </section>
+    </div>
   );
 }

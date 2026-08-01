@@ -30,9 +30,7 @@ type DemoWorld = ReturnType<typeof buildServerDemoWorld>;
  * fix -- it's a true process-wide object, unaffected by module duplication.
  */
 declare global {
-  // eslint-disable-next-line no-var
   var __missaDemoWorldPromise: Promise<DemoWorld> | undefined;
-  // eslint-disable-next-line no-var
   var __missaProductionEnginePromise: Promise<ProductionEngine> | undefined;
 }
 

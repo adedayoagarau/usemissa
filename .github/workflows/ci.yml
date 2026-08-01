@@ -18,16 +18,68 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build
         run: npm run build
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Test
         run: npm test
 
+      - name: Install Playwright Chromium
+        run: npm exec --workspace=@missa/web -- playwright install --with-deps chromium
+
+      - name: Test organization access in the browser
+        run: npm run test:e2e --workspace=@missa/web
+
+      - name: Verify generated migrations are committed
+        run: npm run db:generate && git diff --exit-code -- packages/db/migrations
+        env:
+          DATABASE_URL: postgres://missa:missa@localhost:5432/missa_schema_check
+
       - name: Check one-way package dependency (workspace-engine must never be imported by radar-engine)
         run: ./scripts/check-package-boundaries.sh
+
+  target-schema:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: missa
+          POSTGRES_PASSWORD: missa
+          POSTGRES_DB: missa_schema
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply target migration to clean Postgres
+        run: npm run db:migrate --workspace=@missa/db
+        env:
+          DATABASE_URL: postgres://missa:missa@localhost:5432/missa_schema
+
+      - name: Test target schema contracts
+        run: npm test --workspace=@missa/db
 
   postgres-integration:
     runs-on: ubuntu-latest
@@ -54,7 +106,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build
         run: npm run build

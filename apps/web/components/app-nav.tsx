@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   NavigationMenu,
@@ -24,16 +24,18 @@ import {
  * labels match docs/missa-naming-decisions.md exactly. Do not reorganize
  * or rename these -- see docs/missa-naming-decisions.md. */
 const NAV_LINKS = [
+  { href: '/home', label: 'Home' },
   { href: '/opportunities', label: 'Opportunities' },
-  { href: '/inbox', label: 'Inbox' },
   { href: '/tracker', label: 'Tracker' },
-  { href: '/workspace', label: 'Workspace' },
-  { href: '/submissions', label: 'Submissions' },
-  { href: '/reviewer', label: 'Your reviews' },
+  { href: '/library', label: 'Library' },
+  { href: '/calendar', label: 'Calendar' },
+  { href: '/messages', label: 'Messages' },
+  { href: '/insights', label: 'Insights' },
 ] as const;
 
 export function AppNav({ email }: { email: string }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [commandOpen, setCommandOpen] = useState(false);
 
   // Cmd+K / Ctrl+K opens the command palette shell -- navigation-only for
@@ -70,7 +72,8 @@ export function AppNav({ email }: { email: string }) {
             <NavigationMenuItem key={link.href}>
               <NavigationMenuLink
                 render={<Link href={link.href} />}
-                className="text-sm text-foreground hover:text-primary"
+                className={`relative py-2 text-sm transition-colors hover:text-primary ${pathname === link.href || pathname.startsWith(`${link.href}/`) ? 'font-medium text-foreground after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5 after:bg-primary' : 'text-muted-foreground'}`}
+                aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? 'page' : undefined}
               >
                 {link.label}
               </NavigationMenuLink>
@@ -80,8 +83,9 @@ export function AppNav({ email }: { email: string }) {
       </NavigationMenu>
 
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />} className="ml-auto text-sm text-muted-foreground">
-          {email}
+      <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />} className="ml-auto gap-2 text-sm text-muted-foreground">
+          <span className="flex size-7 items-center justify-center rounded-full bg-[var(--ink)] text-xs font-semibold text-white">{email.slice(0, 1).toUpperCase()}</span>
+          <span className="hidden sm:inline">{email.split('@')[0]}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>

@@ -7,9 +7,19 @@
 **Environment variables set (all environments — production/preview/development):**
 - `MISSA_SESSION_SECRET` — generated via `crypto.randomBytes(32).toString('hex')`, set directly via `vercel env add`. Required or every request 500s (`lib/auth.ts` throws if absent).
 
-**Not yet set / still needed for full production functionality:**
-- `DATABASE_URL` — without it, `apps/web` runs entirely on the in-memory demo world (`buildServerDemoWorld`). **Important caveat:** Vercel serverless functions are not guaranteed to be one long-running process the way `next start` is locally — a cold start can spin up a fresh instance with a fresh in-memory store, and concurrent warm instances may not share the `globalThis` singleton across each other. The `globalThis` fix (see `bugfix-globalthis-singleton.md`) solves the *same-process* Route-Handler-vs-Page-Server-Component sharing problem verified locally; it does **not** solve cross-instance state sharing in a real multi-instance serverless deployment. Until `DATABASE_URL` is wired in, don't treat the deployed preview's demo data as reliably consistent across requests in production traffic conditions — this is exactly the scalability risk the architecture doc already flagged for the JSON-file store, now confirmed to apply to the in-memory demo store too.
-- `CRON_SECRET` — needed for `/api/cron/tick` to do anything (it currently requires `DATABASE_URL` too, via `createProductionEngine`).
-- A production domain (e.g. `app.usemissa.com`) — not yet added; the project currently only has its `*.vercel.app` URLs.
+**Production database configuration:**
+- `DATABASE_URL` is now set in Vercel production to the Neon pooled connection.
+- `MISSA_OPPORTUNITY_REPOSITORY=postgres` is now set in Vercel production.
+- Opportunities migrations `0001_steady_lockheed.sql` and `0002_spooky_molecule_man.sql` were applied transactionally to Neon and verified. The legacy baseline remains outside Drizzle's migration ledger; do not run the full migrator until baseline reconciliation is complete.
+- Preview and development still need their own database policy before enabling the PostgreSQL repository there.
 
-**Current preview deployment:** builds clean, all 24 routes generate successfully. Not promoted to production (`vercel --prod`) yet, pending `DATABASE_URL` — deploying stateful demo behavior to real production traffic without a real store would misrepresent what's actually working.
+**Radar ingestion:**
+- `@missa/radar-adapters` now exposes `missa-radar-worker`, a long-running Postgres-backed worker with bounded batches and advisory-lock serialization (`1984/727`). Run it on a container host with `DATABASE_URL`, `RADAR_WORKER_BATCH_SIZE` (default `10`), and `TICK_MINUTES` (default `15`).
+- Vercel Cron remains a bounded fallback during worker rollout. Once the worker service is healthy, disable inline Cron ingestion so the worker is the single ingestion lane.
+
+**Still needed for full production functionality:**
+- A hosted `missa-radar-worker` process; the package and runbook are ready, but Vercel serverless functions cannot host a long-running worker.
+- `CRON_SECRET` — needed for the bounded `/api/cron/tick` fallback.
+- A production app domain (e.g. `app.usemissa.com`) if the app should be separate from `www.usemissa.com`.
+
+**Current deployment:** the latest production deployment builds clean and is aliased at `https://www.usemissa.com`. The opportunities browse/detail routes are backed by the live Neon relational repository.

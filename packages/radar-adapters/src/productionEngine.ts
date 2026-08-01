@@ -5,13 +5,24 @@
  * engine the exact same way -- one source of truth for "what does a
  * production RadarEngine look like", not two.
  */
-import { Pool } from 'pg';
-import { RadarEngine, HttpFetcher, systemClock, assembleRegistry, filterSources } from '@missa/radar-engine';
-import { ensurePostgresSchema, loadStoreFromPostgres, saveStoreToPostgres } from './postgresStore.js';
-import { LlmExtractor } from './llmExtractor.js';
+import { Pool } from "pg";
+import {
+  RadarEngine,
+  HttpFetcher,
+  systemClock,
+  assembleRegistry,
+  filterSources,
+} from "@missa/radar-engine";
+import {
+  ensurePostgresSchema,
+  loadStoreFromPostgres,
+  saveStoreToPostgres,
+} from "./postgresStore.js";
+import { LlmExtractor } from "./llmExtractor.js";
+import { uuidIds } from "./uuidIds.js";
 
 function normalizeUrl(url: string): string {
-  return url.replace(/\/$/, '').toLowerCase();
+  return url.replace(/\/$/, "").toLowerCase();
 }
 
 /**
@@ -34,7 +45,9 @@ function normalizeUrl(url: string): string {
  * createProductionEngine) so it's unit-testable against a plain in-memory
  * RadarEngine, without a real Postgres connection.
  */
-export function seedRegistryIfEmpty(engine: RadarEngine): { loaded: number } | null {
+export function seedRegistryIfEmpty(
+  engine: RadarEngine,
+): { loaded: number } | null {
   const existingUrls = new Set(
     [...engine.store.sources.values()].map((s) => normalizeUrl(s.url)),
   );
@@ -56,7 +69,9 @@ export function seedRegistryIfEmpty(engine: RadarEngine): { loaded: number } | n
   }
 
   if (loaded === 0) return null;
-  console.log(`[seedRegistryIfEmpty] seeded ${loaded} new tier-0 sources from the opportunity-source registry`);
+  console.log(
+    `[seedRegistryIfEmpty] seeded ${loaded} new tier-0 sources from the opportunity-source registry`,
+  );
   return { loaded };
 }
 
@@ -75,7 +90,9 @@ export interface ProductionEngine {
 export async function createProductionEngine(): Promise<ProductionEngine> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    throw new Error('DATABASE_URL is required to build a production RadarEngine.');
+    throw new Error(
+      "DATABASE_URL is required to build a production RadarEngine.",
+    );
   }
 
   const pool = new Pool({ connectionString: databaseUrl });
@@ -90,12 +107,14 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   // just the opt-in Playwright path. A dynamic import only pays that cost
   // when the flag is actually on.
   const fetcher =
-    process.env.MISSA_USE_PLAYWRIGHT === '1'
-      ? new (await import('./playwrightFetcher.js')).PlaywrightFetcher()
+    process.env.MISSA_USE_PLAYWRIGHT === "1"
+      ? new (await import("./playwrightFetcher.js")).PlaywrightFetcher()
       : new HttpFetcher();
-  const extractor = process.env.ANTHROPIC_API_KEY ? new LlmExtractor(systemClock) : undefined;
+  const extractor = process.env.ANTHROPIC_API_KEY
+    ? new LlmExtractor(systemClock)
+    : undefined;
 
-  const engine = new RadarEngine({ store, fetcher, extractor });
+  const engine = new RadarEngine({ store, fetcher, extractor, ids: uuidIds() });
   seedRegistryIfEmpty(engine);
 
   return {

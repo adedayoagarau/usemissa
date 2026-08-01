@@ -4,7 +4,6 @@ import type { AddressInfo } from 'node:net';
 import type { Account, MatchCriteria, Opportunity } from '../domain/types.js';
 import type { RadarEngine } from '../engine.js';
 import { saveStore, type RadarStore } from '../store/store.js';
-import { fitScore } from '../matching/fit.js';
 import { buildInboxDigest } from '../alerts/alerts.js';
 import { isMyStatus } from '../tracker/tracker.js';
 import { AuthError } from '../auth/accounts.js';
@@ -200,7 +199,7 @@ export class RadarServer {
       trustSignals: opp.trustSignals.filter((s) => s.present).map((s) => s.label),
       conflicts: opp.conflicts,
       prediction: opp.prediction,
-      fit: user ? fitScore(user, opp, new Date()) : undefined,
+      fit: user ? this.engine.fitFor(user.id, opp.id) : undefined,
       tracked: userId
         ? this.engine.store.tracked.some((t) => t.userId === userId && t.opportunityId === opp.id)
         : false,

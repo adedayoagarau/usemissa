@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createProductionEngine } from '@missa/radar-adapters';
+import { runRadarWorkerTick } from '@missa/radar-adapters';
 
 /**
  * Vercel Cron target (Story 1.5) -- replaces the manual "Check for updates"
@@ -9,15 +9,9 @@ import { createProductionEngine } from '@missa/radar-adapters';
  *
  * Configured in apps/web/vercel.json's "crons" array (every 15 minutes).
  *
- * KNOWN RISK (flagged, not resolved by this story): @missa/radar-adapters
- * depends on `playwright`, which is a heavy dependency not generally meant
- * to be bundled into a Vercel serverless function. The default fetcher here
- * is HttpFetcher (Playwright is opt-in via MISSA_USE_PLAYWRIGHT), but the
- * *bundle* likely still includes playwright's package since the branch is
- * only eliminated at runtime, not statically. Before enabling
- * MISSA_USE_PLAYWRIGHT in this route in production, this needs a real look
- * (next.config's serverExternalPackages, or moving actual browser-based
- * fetching to a separate long-running worker instead of inline in Cron).
+ * The route uses the same bounded worker tick as the self-hosted process. The
+ * Postgres advisory lock means this fallback can safely overlap a hosted
+ * worker while the latter is being rolled out; it will simply return skipped.
  */
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -32,16 +26,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const { engine, persist, close } = await createProductionEngine();
-  try {
-    const report = await engine.tick({ maxSources: 50 });
-    await persist();
-    return NextResponse.json({
-      sourcesChecked: report.sourcesChecked,
-      changes: report.changes.length,
-      alerts: report.alerts.length,
-    });
-  } finally {
-    await close();
+  const result = await runRadarWorkerTick({ maxSources: 10 });
+  if (result.status === 'skipped') {
+    return NextResponse.json({ status: 'skipped', reason: 'another ingestion tick is running' }, { status: 202 });
   }
+
+  const report = result.report!;
+  return NextResponse.json({
+    status: 'completed',
+    sourcesChecked: report.sourcesChecked,
+    sourcesFailed: report.sourcesFailed,
+    changes: report.changes.length,
+    alerts: report.alerts.length,
+  });
 }

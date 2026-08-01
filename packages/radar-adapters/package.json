@@ -6,16 +6,20 @@
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "bin": {
-    "missa-radar-production": "dist/src/serve.js"
+    "missa-radar-production": "dist/src/serve.js",
+    "missa-radar-worker": "dist/src/worker.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/test/*.test.js",
-    "serve": "node dist/src/serve.js"
+    "serve": "node dist/src/serve.js",
+    "worker": "node dist/src/worker.js"
   },
   "dependencies": {
-    "@missa/radar-engine": "^0.1.0",
     "@anthropic-ai/sdk": "^0.32.0",
+    "@missa/db": "^0.1.0",
+    "@missa/radar-engine": "^0.1.0",
+    "openai": "^7.1.0",
     "pg": "^8.13.0",
     "playwright": "^1.49.0"
   },
