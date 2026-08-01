@@ -7,10 +7,14 @@
 **Environment variables set (all environments — production/preview/development):**
 - `MISSA_SESSION_SECRET` — generated via `crypto.randomBytes(32).toString('hex')`, set directly via `vercel env add`. Required or every request 500s (`lib/auth.ts` throws if absent).
 
-**Not yet set / still needed for full production functionality:**
-- `DATABASE_URL` — without it, `apps/web` runs entirely on the in-memory demo world (`buildServerDemoWorld`). **Important caveat:** Vercel serverless functions are not guaranteed to be one long-running process the way `next start` is locally — a cold start can spin up a fresh instance with a fresh in-memory store, and concurrent warm instances may not share the `globalThis` singleton across each other. The `globalThis` fix (see `bugfix-globalthis-singleton.md`) solves the *same-process* Route-Handler-vs-Page-Server-Component sharing problem verified locally; it does **not** solve cross-instance state sharing in a real multi-instance serverless deployment. Until `DATABASE_URL` is wired in, don't treat the deployed preview's demo data as reliably consistent across requests in production traffic conditions — this is exactly the scalability risk the architecture doc already flagged for the JSON-file store, now confirmed to apply to the in-memory demo store too.
-- Opportunities additionally require `MISSA_OPPORTUNITY_REPOSITORY=postgres` after the target database has been migrated. Until then, the page and API intentionally use the compatibility repository and must not be advertised as live persistent data.
+**Production database configuration:**
+- `DATABASE_URL` is now set in Vercel production to the Neon pooled connection.
+- `MISSA_OPPORTUNITY_REPOSITORY=postgres` is now set in Vercel production.
+- Opportunities migrations `0001_steady_lockheed.sql` and `0002_spooky_molecule_man.sql` were applied transactionally to Neon and verified. The legacy baseline remains outside Drizzle's migration ledger; do not run the full migrator until baseline reconciliation is complete.
+- Preview and development still need their own database policy before enabling the PostgreSQL repository there.
+
+**Still needed for full production functionality:**
 - `CRON_SECRET` — needed for `/api/cron/tick` to do anything (it currently requires `DATABASE_URL` too, via `createProductionEngine`).
 - A production domain (e.g. `app.usemissa.com`) — not yet added; the project currently only has its `*.vercel.app` URLs.
 
-**Current preview deployment:** builds clean, all 24 routes generate successfully. Not promoted to production (`vercel --prod`) yet, pending `DATABASE_URL` — deploying stateful demo behavior to real production traffic without a real store would misrepresent what's actually working.
+**Current preview deployment:** builds clean, all 24 routes generate successfully. The production database is now configured, but the current deployment must be redeployed before the new repository flag and page wiring are active in production.

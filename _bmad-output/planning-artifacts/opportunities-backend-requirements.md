@@ -85,7 +85,8 @@ The browse/detail contract and persistence seam are now present:
 
 - `@missa/contracts` exports bounded browse/detail query and response schemas.
 - `@missa/radar-engine` exports the `OpportunityRepository` port and projections.
-- `@missa/db` contains the additive relational Opportunities schema and generated proposal migrations (`0001_steady_lockheed.sql`, `0002_spooky_molecule_man.sql`). These migrations are proposals only and have not been applied to a live database.
+- `@missa/db` contains the additive relational Opportunities schema and generated migrations (`0001_steady_lockheed.sql`, `0002_spooky_molecule_man.sql`). Both migrations were applied transactionally to the production Neon database on 2026-08-01 and verified by table, constraint, index, and live repository queries.
+- The production Neon database predates the Drizzle ledger and contains a partial legacy baseline. The `0000_wet_dracula.sql` baseline was deliberately not replayed because it would conflict with existing compatibility tables. Do not run the full `db:migrate` command against production until that baseline is reconciled and a ledger cutover is rehearsed.
 - `@missa/radar-adapters` implements parameterized PostgreSQL browse/detail queries with publication filtering, keyset cursors, source evidence, and private tracked/following augmentation.
 - `apps/web` exposes `GET /api/opportunities` and `GET /api/opportunities/:id`. Set `MISSA_OPPORTUNITY_REPOSITORY=postgres` with `DATABASE_URL` to opt into PostgreSQL; otherwise the engine-backed compatibility repository remains available during cutover.
 
