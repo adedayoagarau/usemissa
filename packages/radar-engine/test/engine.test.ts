@@ -83,6 +83,17 @@ test('fit score explains itself and hard eligibility disqualifies', async () => 
   assert.ok(carlFit.disqualifiers.some((d) => d.toLowerCase().includes('premiere')));
 });
 
+test('bookmarks persist independently from tracker status', async () => {
+  const { engine, ids, magazine } = await discoveredWorld();
+  const saved = engine.bookmarkOpportunity(ids.userAda, magazine.id);
+  assert.equal(saved.bookmarked, true);
+  assert.equal(saved.myStatus, 'saved');
+  engine.setMyStatus(ids.userAda, magazine.id, 'preparing');
+  assert.equal(engine.store.tracked[0]?.bookmarked, true);
+  engine.unbookmarkOpportunity(ids.userAda, magazine.id);
+  assert.equal(engine.store.tracked[0]?.bookmarked, false);
+});
+
 test('user alerts: matches, follows, deadline extension, close — no duplicates across ticks', async () => {
   const world = await discoveredWorld();
   const { engine, fetcher, clock, ids, magazine } = world;

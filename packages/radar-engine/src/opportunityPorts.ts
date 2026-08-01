@@ -68,6 +68,7 @@ export interface OpportunityRepositoryTailoringReason {
 
 export interface OpportunityRepositoryPersonalState {
   tracked: boolean;
+  bookmarked: boolean;
   followingOrganization: boolean;
   tailoringReasons: OpportunityRepositoryTailoringReason[];
 }

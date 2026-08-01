@@ -52,6 +52,7 @@ interface OpportunityRow extends QueryResultRow {
   organization_confirmed: boolean;
   verified_until: Date | string | null;
   tracked: boolean;
+  bookmarked: boolean;
   following_organization: boolean;
   open_date: string | null;
   simultaneous_allowed: boolean | null;
@@ -125,15 +126,28 @@ function asIso(value: Date | string | null | undefined): string | undefined {
 function baseSelect(context?: OpportunityRepositoryContext): string {
   const personal = context?.accountId
     ? `
-      exists (
-        select 1 from tracked_opportunities t
-        where t.opportunity_id = o.id and t.account_id = $ACCOUNT_ID
+      (
+        exists (
+          select 1 from tracked_opportunities t
+          where t.opportunity_id = o.id and t.account_id = $ACCOUNT_ID
+        ) or exists (
+          select 1 from radar_tracked rt
+          join radar_accounts ra on ra.id = $ACCOUNT_ID
+          where rt.opportunity_id = o.id and rt.user_id = ra.data->>'userId'
+        )
       ) as tracked,
+      coalesce((
+        select (rt.data->>'bookmarked')::boolean
+        from radar_tracked rt
+        join radar_accounts ra on ra.id = $ACCOUNT_ID
+        where rt.opportunity_id = o.id and rt.user_id = ra.data->>'userId'
+        limit 1
+      ), false) as bookmarked,
       exists (
         select 1 from organization_follows f
         where f.organization_id = o.organization_id and f.account_id = $ACCOUNT_ID
       ) as following_organization,`
-    : `false as tracked, false as following_organization,`;
+    : `false as tracked, false as bookmarked, false as following_organization,`;
 
   return `
     o.id,
@@ -364,6 +378,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     },
     personal: {
       tracked: row.tracked,
+      bookmarked: row.bookmarked,
       followingOrganization: row.following_organization,
       tailoringReasons: [],
     },

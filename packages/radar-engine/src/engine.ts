@@ -169,6 +169,18 @@ export class RadarEngine {
     return track(this.ctx, userId, opportunityId, notify);
   }
 
+  bookmarkOpportunity(userId: string, opportunityId: string): TrackedOpportunity {
+    const tracked = track(this.ctx, userId, opportunityId, false);
+    tracked.bookmarked = true;
+    return tracked;
+  }
+
+  unbookmarkOpportunity(userId: string, opportunityId: string): TrackedOpportunity | undefined {
+    const tracked = this.store.tracked.find((item) => item.userId === userId && item.opportunityId === opportunityId);
+    if (tracked) tracked.bookmarked = false;
+    return tracked;
+  }
+
   /** Move an opportunity through the user's pipeline (Saved → Submitted → Accepted…). */
   setMyStatus(userId: string, opportunityId: string, status: MyStatus, opts?: { note?: string; source?: 'user' | 'radar' }) {
     return setMyStatus(this.ctx, userId, opportunityId, status, opts ?? {});

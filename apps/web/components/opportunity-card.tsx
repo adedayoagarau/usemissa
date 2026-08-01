@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { Bookmark, CalendarDays, CheckCircle2, Clock3, MapPin, Tag } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Clock3, MapPin, Tag } from 'lucide-react';
 import type { OpportunityBrowseProjection } from '@missa/radar-engine';
 import { TrackButton } from '@/components/track-button';
+import { BookmarkButton } from '@/components/bookmark-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -50,7 +51,7 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
       <div className="mx-3.5 rounded-sm border border-green/15 bg-green/5 px-2.5 py-1.5">{reasons.length > 0 ? <p className="flex items-center gap-1 text-[11px] font-medium text-green"><CheckCircle2 className="size-3.5" />Strong fit <span className="font-normal text-muted-foreground">· {reasons[0].label}</span></p> : <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 className="size-3.5" />Fit signal pending</p>}</div>
       <div className="relative z-10 mt-auto flex gap-2 p-3.5 pt-2.5">
         {userId && !item.personal?.tracked ? <div className="flex-1"><TrackButton userId={userId} opportunityId={item.id} /></div> : userId ? <Button size="sm" variant="outline" disabled className="flex-1">Tracked</Button> : <Link href={selectionHref} className="flex-1 rounded-md border border-border py-1.5 text-center text-xs text-foreground">View details</Link>}
-        <Button type="button" size="icon-sm" variant="outline" aria-label="Bookmark opportunity" title="Bookmark coming soon"><Bookmark className="size-3.5" /></Button>
+        {userId ? <BookmarkButton userId={userId} opportunityId={item.id} initialBookmarked={item.personal?.bookmarked} /> : <Button type="button" size="icon-sm" variant="outline" aria-label="Sign in to bookmark" title="Sign in to bookmark" disabled><span aria-hidden="true">♡</span></Button>}
       </div>
     </article>
   );

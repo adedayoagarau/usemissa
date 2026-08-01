@@ -134,6 +134,7 @@ export const opportunityTailoringReasonSchema = z.object({
 
 export const opportunityPersonalStateSchema = z.object({
   tracked: z.boolean(),
+  bookmarked: z.boolean().default(false),
   followingOrganization: z.boolean(),
   tailoringReasons: z.array(opportunityTailoringReasonSchema).max(4).default([]),
 });

@@ -11,9 +11,16 @@
 .toggle input { position: absolute; opacity: 0; pointer-events: none; }
 .toggleTrack { position: relative; display: inline-block; width: 1.8rem; height: 1.05rem; border-radius: 999px; background: #c9c9c7; transition: background 160ms ease; }
 .toggleTrack::after { position: absolute; top: 0.15rem; left: 0.15rem; width: 0.75rem; height: 0.75rem; border-radius: 999px; background: white; content: ''; transition: transform 160ms ease; }
-.toggle input:checked + .toggleTrack { background: var(--green); }
-.toggle input:checked + .toggleTrack::after { transform: translateX(0.75rem); }
+.toggle input:checked + .toggleTrack, .toggleTrack[data-enabled='true'] { background: var(--green); }
+.toggle input:checked + .toggleTrack::after, .toggleTrack[data-enabled='true']::after { transform: translateX(0.75rem); }
 .chip { display: inline-flex; align-items: center; gap: 0.45rem; border: 1px solid color-mix(in oklab, var(--green) 20%, var(--border)); border-radius: 0.35rem; background: color-mix(in oklab, var(--green) 8%, var(--surface)); padding: 0.35rem 0.55rem; color: var(--green); font-size: 0.72rem; }
+.detailPanel { min-width: 0; }
+.detailBackdrop { display: none; }
 @media (max-width: 1100px) { .shell { grid-template-columns: minmax(0, 1fr) 22rem; } .filterRow { padding-inline: 1.5rem; } }
-@media (max-width: 900px) { .shell { display: block; margin-inline: -1.5rem; } .shell > aside { border-top: 1px solid var(--border); border-left: 0; } }
+@media (max-width: 1023px) {
+  .shell { display: block; margin-inline: -1.5rem; }
+  .detailPanel { display: none; }
+  .detailPanelMobileOpen { position: fixed; inset: 0; z-index: 60; display: flex; width: 100vw; height: 100dvh; border: 0; box-shadow: -12px 0 36px rgb(0 0 0 / 12%); overflow-y: auto; }
+  .detailBackdrop { position: fixed; inset: 0; z-index: 50; display: block; background: rgb(15 23 42 / 35%); }
+}
 @media (max-width: 640px) { .shell { margin-inline: -1rem; } .filterRow { padding-inline: 1rem; } }

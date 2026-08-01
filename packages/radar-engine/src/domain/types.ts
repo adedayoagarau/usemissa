@@ -430,6 +430,8 @@ export interface TrackedOpportunity {
   opportunityId: string;
   trackedAt: IsoDateTime;
   notify: boolean;
+  /** Lightweight saved-for-later flag, kept separate from the tracker stage. */
+  bookmarked?: boolean;
   myStatus: MyStatus;
   events: StatusEvent[];
   submittedAt?: IsoDateTime;

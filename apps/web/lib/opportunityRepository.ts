@@ -66,6 +66,9 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
   const tracked = userId
     ? engine.store.tracked.some((item) => item.userId === userId && item.opportunityId === opp.id)
     : false;
+  const bookmarked = userId
+    ? engine.store.tracked.some((item) => item.userId === userId && item.opportunityId === opp.id && item.bookmarked === true)
+    : false;
   const followingOrganization = userId && opp.fields.organizationId
     ? engine.store.follows.some(
         (follow) => follow.userId === userId && follow.organizationId === opp.fields.organizationId,
@@ -108,6 +111,7 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
     },
     personal: {
       tracked,
+      bookmarked,
       followingOrganization: Boolean(followingOrganization),
       tailoringReasons: matchedReasons.slice(0, 4),
     },
