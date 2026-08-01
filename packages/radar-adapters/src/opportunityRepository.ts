@@ -315,7 +315,7 @@ export function buildOpportunityBrowseQuery(
     ${baseFrom(context)}
     where ${conditions.join(" and ")}
     order by ${buildOrder(query.sort)}
-    limit $${values.length + 1}
+    limit $${values.length + 1}::int
   `;
   values.push(query.limit + 1);
   return { text, values };
@@ -407,14 +407,18 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       locations: [],
     };
     const built = buildOpportunityBrowseQuery(query, context);
-    const idPlaceholder = `$${built.values.length + 1}`;
+    // The browse query's final value is the page-size sentinel. Detail lookup
+    // replaces that LIMIT with a literal, so do not send an unused parameter
+    // to PostgreSQL (which rejects untyped, unused bind parameters).
+    const detailValues = built.values.slice(0, -1);
+    const idPlaceholder = `$${detailValues.length + 1}`;
     const mainWhereIndex = built.text.lastIndexOf("\n    where ");
     const detailText = mainWhereIndex >= 0
       ? `${built.text.slice(0, mainWhereIndex)}\n    where o.id = ${idPlaceholder} and ${built.text.slice(mainWhereIndex + "\n    where ".length)}`
       : built.text;
     const detailResult = await this.pool.query<OpportunityRow>(
       detailText.replace(/limit \$\d+/, "limit 1"),
-      [...built.values, opportunityId],
+      [...detailValues, opportunityId],
     );
     const row = detailResult.rows[0];
     if (!row) return null;
