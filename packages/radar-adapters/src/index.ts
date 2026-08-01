@@ -26,3 +26,4 @@ export {
   buildOpportunityBrowseQuery,
   type SqlQuery,
 } from "./opportunityRepository.js";
+export { saveOpportunityProjectionToPostgres } from "./opportunityRelationalStore.js";
