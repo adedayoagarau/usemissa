@@ -1,0 +1,148 @@
+import type { OpportunityType } from "./domain/types.js";
+
+export type OpportunityRepositorySort =
+  | "recommended"
+  | "soonest-deadline"
+  | "recently-verified"
+  | "recently-added";
+
+export type OpportunityRepositoryDeadlineKind =
+  | "exact"
+  | "inferred"
+  | "rolling"
+  | "until-filled"
+  | "conflicting"
+  | "unknown";
+
+export interface OpportunityRepositoryQuery {
+  query?: string;
+  category?: string;
+  types?: OpportunityType[];
+  disciplines?: string[];
+  genres?: string[];
+  locations?: string[];
+  feeStatus?: "no-fee" | "paid" | "unknown";
+  maxFeeCents?: number;
+  deadlineWithinDays?: number;
+  openNow?: boolean;
+  verifiedOnly?: boolean;
+  simultaneousRequired?: boolean;
+  sort: OpportunityRepositorySort;
+  cursor?: string;
+  limit: number;
+}
+
+export interface OpportunityRepositoryContext {
+  accountId?: string;
+}
+
+export interface OpportunityRepositoryDeadline {
+  kind: OpportunityRepositoryDeadlineKind;
+  date?: string;
+  time?: string;
+  timezone?: string;
+  raw?: string;
+}
+
+export interface OpportunityRepositoryFee {
+  status: "no-fee" | "paid" | "unknown";
+  amountCents?: number;
+  currency?: string;
+  raw?: string;
+}
+
+export interface OpportunityRepositorySource {
+  kind: string;
+  name: string;
+  url: string;
+  checkedAt: string;
+  processingSucceededAt?: string;
+  organizationConfirmed: boolean;
+  verifiedUntil?: string;
+}
+
+export interface OpportunityRepositoryTailoringReason {
+  code: string;
+  label: string;
+}
+
+export interface OpportunityRepositoryPersonalState {
+  tracked: boolean;
+  followingOrganization: boolean;
+  tailoringReasons: OpportunityRepositoryTailoringReason[];
+}
+
+export interface OpportunityBrowseProjection {
+  id: string;
+  slug: string;
+  /** Internal ordering cursor; transport mappers may omit it from public DTOs. */
+  createdAt?: string;
+  title: string;
+  organizationId?: string;
+  organizationName?: string;
+  organizationVerified?: boolean;
+  identityAssetUrl?: string;
+  identityAssetAlt?: string;
+  status: "opening-soon" | "open" | "closing-soon" | "deadline-extended" | "closed" | "archived";
+  type: OpportunityType;
+  discipline?: string;
+  genres: string[];
+  deadline: OpportunityRepositoryDeadline;
+  fee: OpportunityRepositoryFee;
+  prize?: string;
+  location?: string;
+  /** Whether submissions may be sent to multiple opportunities at once. */
+  simultaneousAllowed?: boolean;
+  submissionAvailable: boolean;
+  source: OpportunityRepositorySource;
+  personal?: OpportunityRepositoryPersonalState;
+}
+
+export interface OpportunityDetailProjection extends OpportunityBrowseProjection {
+  openDate?: string;
+  eligibility: Array<{
+    key: string;
+    description: string;
+    value?: string;
+    certainty: "confirmed" | "inferred" | "unknown";
+  }>;
+  requiredMaterials: Array<{
+    label: string;
+    description?: string;
+    required: boolean;
+    limit?: string;
+  }>;
+  guidelinesUrl?: string;
+  submissionUrl?: string;
+  simultaneousAllowed?: boolean;
+  changes: Array<{
+    kind: string;
+    at: string;
+    oldValue?: string;
+    newValue?: string;
+  }>;
+  organizationSummary?: string;
+  relatedOpportunityIds: string[];
+}
+
+export interface OpportunityBrowsePage {
+  items: OpportunityBrowseProjection[];
+  nextCursor: string | null;
+  total: number;
+}
+
+/**
+ * Storage boundary for public Opportunities. Implementations own SQL,
+ * pagination, publication safety, and private augmentation; callers never
+ * read RadarEngine.store or the compatibility snapshot tables directly.
+ */
+export interface OpportunityRepository {
+  browse(
+    query: OpportunityRepositoryQuery,
+    context?: OpportunityRepositoryContext,
+  ): Promise<OpportunityBrowsePage>;
+  getById(
+    opportunityId: string,
+    context?: OpportunityRepositoryContext,
+  ): Promise<OpportunityDetailProjection | null>;
+}

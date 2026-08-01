@@ -1,13 +1,6 @@
 import { z } from "zod";
-
-export const resourceIdSchema = z
-  .string()
-  .min(3)
-  .max(128)
-  .regex(
-    /^[a-z][a-z0-9-]*_[A-Za-z0-9-]+$/,
-    "Expected a prefixed Missa resource ID",
-  );
+import { resourceIdSchema } from "./shared.js";
+export { resourceIdSchema } from "./shared.js";
 
 export const organizationRoleSchema = z.enum(["member", "admin"]);
 
@@ -41,3 +34,5 @@ export type OrganizationMemberMutation = z.infer<
 >;
 export type AuditEvent = z.infer<typeof auditEventSchema>;
 export type OutboxEvent = z.infer<typeof outboxEventSchema>;
+
+export * from "./opportunities.js";

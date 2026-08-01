@@ -6,6 +6,8 @@ Read `prd/index.md` first if you're new to this project — it links every PRD s
 
 - **[epics.md](./epics.md)** - 13 epics, 37 detailed MVP stories + 3 Growth stubs, with FR coverage map
 - **[ux-design-specification.md](./ux-design-specification.md)** - Design system, components, journeys, and provisional answers to the handoff doc's open design questions
+- **[opportunities-product-design-scope.md](./opportunities-product-design-scope.md)** - Comprehensive scope for tailored Opportunities discovery, factual explanations, deadline urgency, quick/full detail, official submission handoff, tracking, saved searches, interaction states, delivery phases, and acceptance criteria
+- **[opportunities-backend-requirements.md](./opportunities-backend-requirements.md)** - Living build companion for Opportunities contracts, queries, persistence, tailoring, outbound submission safety, migrations, observability, tests, and per-slice backend documentation
 
 ## Subdirectories
 

@@ -19,3 +19,10 @@ export {
   seedRegistryIfEmpty,
   type ProductionEngine,
 } from "./productionEngine.js";
+export {
+  PostgresOpportunityRepository,
+  createPostgresOpportunityRepository,
+  createPostgresOpportunityRepositoryFromUrl,
+  buildOpportunityBrowseQuery,
+  type SqlQuery,
+} from "./opportunityRepository.js";

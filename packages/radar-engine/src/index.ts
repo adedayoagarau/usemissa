@@ -1,5 +1,6 @@
 export * from './domain/types.js';
 export * from './ports.js';
+export * from './opportunityPorts.js';
 export { RadarEngine, type TickReport, type RadarStats, type RadarEngineOptions } from './engine.js';
 export { createStore, loadStore, saveStore, changesFor, versionsFor, type RadarStore } from './store/store.js';
 export { FixtureFetcher, HttpFetcher, stripHtml } from './ingestion/fetcher.js';
