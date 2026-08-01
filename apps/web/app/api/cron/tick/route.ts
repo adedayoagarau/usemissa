@@ -39,8 +39,6 @@ export async function GET(request: Request) {
     return NextResponse.json({
       sourcesChecked: report.sourcesChecked,
       sourcesFailed: report.sourcesFailed,
-      fetchFailures: report.fetchFailures,
-      processingFailures: report.processingFailures,
       changes: report.changes.length,
       alerts: report.alerts.length,
     });
