@@ -25,6 +25,11 @@ const CATEGORY_TYPES: Record<string, string[]> = {
   contests: ["contest"],
 };
 
+function boundedText(value: string | undefined, max: number): string | undefined {
+  if (!value) return value;
+  return value.length <= max ? value : `${value.slice(0, max - 1)}…`;
+}
+
 function feeStatus(opp: Opportunity): "no-fee" | "paid" | "unknown" {
   if (!opp.fields.fee.disclosed) return "unknown";
   return opp.fields.fee.amountCents === 0 ? "no-fee" : "paid";
@@ -97,13 +102,13 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
     deadline: {
       kind: opp.fields.deadline.kind,
       date: opp.fields.deadline.date,
-      raw: opp.fields.deadline.raw,
+      raw: boundedText(opp.fields.deadline.raw, 500),
     },
     fee: {
       status: feeStatus(opp),
       amountCents: opp.fields.fee.amountCents,
       currency: opp.fields.fee.currency,
-      raw: opp.fields.fee.raw,
+      raw: boundedText(opp.fields.fee.raw, 200),
     },
     prize: opp.fields.prize,
     location: opp.fields.location,
