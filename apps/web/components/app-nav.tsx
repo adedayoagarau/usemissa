@@ -19,6 +19,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import { Menu, X } from 'lucide-react';
 
 /** Shared top nav for both the Passport and Workspace route groups --
  * labels match docs/missa-naming-decisions.md exactly. Do not reorganize
@@ -37,6 +38,7 @@ export function AppNav({ email }: { email: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const [commandOpen, setCommandOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Cmd+K / Ctrl+K opens the command palette shell -- navigation-only for
   // this batch, per design-guidance-ui-redesign.md's "shell only" scope.
@@ -59,14 +61,15 @@ export function AppNav({ email }: { email: string }) {
 
   function handleSelectNav(href: string) {
     setCommandOpen(false);
+    setMobileNavOpen(false);
     router.push(href);
   }
 
   return (
-    <header className="flex items-center gap-6 border-b border-border px-6 py-3">
-      <span className="font-heading text-xl font-semibold text-foreground">Missa</span>
+    <header className="relative z-50 flex min-w-0 items-center gap-3 border-b border-border bg-background px-4 py-3 sm:px-6">
+      <Link href="/home" className="shrink-0 font-heading text-xl font-semibold text-foreground">Missa</Link>
 
-      <NavigationMenu>
+      <NavigationMenu className="hidden lg:block">
         <NavigationMenuList className="gap-4">
           {NAV_LINKS.map((link) => (
             <NavigationMenuItem key={link.href}>
@@ -82,8 +85,12 @@ export function AppNav({ email }: { email: string }) {
         </NavigationMenuList>
       </NavigationMenu>
 
+      <button type="button" className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted lg:hidden" aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}>
+        {mobileNavOpen ? <X className="size-4" /> : <Menu className="size-4" />}
+      </button>
+
       <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />} className="ml-auto gap-2 text-sm text-muted-foreground">
+      <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />} className="ml-auto shrink-0 gap-2 text-sm text-muted-foreground">
           <span className="flex size-7 items-center justify-center rounded-full bg-[var(--ink)] text-xs font-semibold text-white">{email.slice(0, 1).toUpperCase()}</span>
           <span className="hidden sm:inline">{email.split('@')[0]}</span>
         </DropdownMenuTrigger>
@@ -91,6 +98,15 @@ export function AppNav({ email }: { email: string }) {
           <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {mobileNavOpen && <nav aria-label="Mobile navigation" className="absolute inset-x-0 top-full border-b border-border bg-background p-2 shadow-lg lg:hidden">
+        <div className="grid gap-1">
+          {NAV_LINKS.map((link) => {
+            const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
+            return <Link key={link.href} href={link.href} onClick={() => setMobileNavOpen(false)} aria-current={active ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${active ? 'bg-accent-tint font-medium text-accent-deep' : 'text-foreground hover:bg-muted'}`}>{link.label}</Link>;
+          })}
+        </div>
+      </nav>}
 
       <CommandDialog open={commandOpen} onOpenChange={setCommandOpen}>
         <CommandInput placeholder="Jump to a page..." />
