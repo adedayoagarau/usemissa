@@ -146,35 +146,6 @@
   letter-spacing: -0.055em;
 }
 
-.mark {
-  position: relative;
-  display: grid;
-  width: 35px;
-  height: 35px;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  font-family: var(--font-heading), serif;
-  font-size: 17px;
-  font-weight: 650;
-  line-height: 1;
-}
-
-.mark i {
-  position: absolute;
-  right: -3px;
-  bottom: -4px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: currentColor;
-}
-
-.markInverse i {
-  background: var(--paper);
-}
-
 .nav {
   display: flex;
   align-items: center;
@@ -887,12 +858,6 @@
   font-weight: 650;
 }
 
-.demoHeader .mark {
-  width: 28px;
-  height: 28px;
-  font-size: 13px;
-}
-
 .demoHeader p,
 .demoTabs,
 .demoSummary p,
@@ -1433,12 +1398,6 @@
   .brand {
     gap: 8px;
     font-size: 1.2rem;
-  }
-
-  .header .mark {
-    width: 31px;
-    height: 31px;
-    font-size: 15px;
   }
 
   .navCta {

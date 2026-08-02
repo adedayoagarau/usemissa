@@ -4,6 +4,7 @@ import { getOpportunityRepository } from '@/lib/opportunityRepository';
 import { parseOpportunityBrowseQuery } from '@/lib/opportunityQuery';
 import { OpportunityCard } from '@/components/opportunity-card';
 import { OpportunityDetailPanel } from '@/components/opportunity-detail-panel';
+import { MissaWordmark } from '@/components/missa-wordmark';
 import styles from '../(passport)/opportunities/opportunities.module.css';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -34,7 +35,7 @@ export default async function OpportunitiesPreviewPage({ searchParams }: { searc
   return (
     <main className="min-h-screen bg-background">
       <header className="flex h-[3.75rem] items-center gap-8 border-b border-border px-6 lg:px-8">
-        <Link href="/opportunities-preview" className="font-heading text-2xl font-semibold text-foreground">Missa</Link>
+        <MissaWordmark href="/opportunities-preview" size="app" />
         <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex"><span>Home</span><span className="border-b-2 border-primary py-5 font-medium text-foreground">Opportunities</span><span>Tracker</span><span>Library</span><span>Calendar</span><span>Messages</span><span>Insights</span></nav>
         <span className="ml-auto rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">Design preview</span>
       </header>

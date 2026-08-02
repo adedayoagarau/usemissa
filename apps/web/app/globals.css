@@ -82,6 +82,46 @@ body {
   color: var(--ink);
 }
 
+/* Canonical brand mark: uppercase MISSA with generous tracking. */
+.missa-wordmark {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  color: currentColor;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.missa-wordmark--marketing {
+  font-size: 1.2rem;
+  letter-spacing: 0.34em;
+}
+
+.missa-wordmark--app {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.missa-wordmark--compact {
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+}
+
+.missa-wordmark--inverse {
+  color: #ffffff;
+}
+
+.missa-wordmark:focus-visible {
+  outline: 2px solid var(--brand-accent);
+  outline-offset: 4px;
+}
+
 @theme inline {
   /* --font-heading/--font-sans/--font-mono are set by next/font/local in
      app/layout.tsx (Fraunces/Instrument Sans/Fragment Mono) -- this just

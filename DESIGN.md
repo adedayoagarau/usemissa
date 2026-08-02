@@ -241,6 +241,14 @@ Missa already owns three self-hosted typefaces. Do not add another family.
 5. Use tabular numerals for changing counts, dates, money, and scores.
 6. Headings should be short and direct. Do not compensate for vague copy with oversized type.
 
+### Wordmark
+
+The canonical Missa wordmark is **MISSA** in uppercase Instrument Sans with generous
+tracking. It is text-based, not a circular mark or decorative symbol, so it stays
+sharp and accessible across marketing, auth, Passport, Workspace, public profiles,
+and transactional surfaces. Use near-black on white surfaces and true white on dark
+surfaces. Do not introduce alternate casing, lockups, or one-off logo treatments.
+
 ## 5. Spacing and Layout
 
 The primary spacing rhythm is 8px. The 4px and 12px values exist for compact internal alignment; page structure should land on the 8px scale.

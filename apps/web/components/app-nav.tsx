@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { MissaWordmark } from '@/components/missa-wordmark';
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -64,7 +65,7 @@ export function AppNav({ email }: { email: string }) {
 
   return (
     <header className="flex items-center gap-6 border-b border-border px-6 py-3">
-      <span className="font-heading text-xl font-semibold text-foreground">Missa</span>
+      <MissaWordmark href="/home" size="app" />
 
       <NavigationMenu>
         <NavigationMenuList className="gap-4">

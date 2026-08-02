@@ -4,6 +4,7 @@ import { ArrowDownRight, ArrowRight, Check } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { FinalVideo } from '@/components/final-video';
 import { HeroVideo } from '@/components/hero-video';
+import { MissaWordmark } from '@/components/missa-wordmark';
 import styles from './home.module.css';
 
 const VIDEO_URL = '/media/missa-bosphorus.mp4';
@@ -58,15 +59,6 @@ const features = [
   },
 ];
 
-function MissaMark({ inverse = false }: { inverse?: boolean }) {
-  return (
-    <span className={`${styles.mark} ${inverse ? styles.markInverse : ''}`} aria-hidden="true">
-      <span>M</span>
-      <i />
-    </span>
-  );
-}
-
 export default async function HomePage() {
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
@@ -80,8 +72,7 @@ export default async function HomePage() {
 
         <header className={styles.header}>
           <Link className={styles.brand} href="/" aria-label="Missa home">
-            <MissaMark />
-            <span>missa</span>
+            <MissaWordmark href={null} size="marketing" />
           </Link>
 
           <nav className={styles.nav} aria-label="Main navigation">
@@ -182,7 +173,7 @@ export default async function HomePage() {
         <div className={styles.trackerDemo} aria-label="Example submission tracker">
           <div className={styles.demoHeader}>
             <div>
-              <MissaMark />
+              <MissaWordmark href={null} size="compact" />
               <span>Tracker</span>
             </div>
             <p>All submissions</p>
@@ -281,10 +272,7 @@ export default async function HomePage() {
 
       <footer className={styles.footer}>
         <div className={styles.footerLead}>
-          <Link className={styles.brand} href="/">
-            <MissaMark inverse />
-            <span>missa</span>
-          </Link>
+          <MissaWordmark href="/" size="marketing" inverse className={styles.brand} />
           <p>A simple place to find, send, and track creative work.</p>
         </div>
         <div className={styles.footerLinks}>

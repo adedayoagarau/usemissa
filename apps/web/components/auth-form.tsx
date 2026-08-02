@@ -5,6 +5,7 @@ import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { MissaWordmark } from '@/components/missa-wordmark';
 import { Input } from '@/components/ui/input';
 import styles from '@/app/auth.module.css';
 
@@ -63,7 +64,7 @@ export function AuthForm({ initialMode = 'login', redirectTo = '/opportunities' 
     <div className={styles.page}>
       <section className={styles.story} aria-label="About Missa">
         <div className={styles.storyContent}>
-          <Link href="/" className={styles.mark}><span className={styles.markDot} />Missa</Link>
+          <MissaWordmark href="/" size="marketing" />
           <div className={styles.storyCopy}>
             <h1 className={styles.storyTitle}>A clearer way to send your work out into the world.</h1>
             <p className={styles.storyBody}>Missa brings the right opportunities, requirements, and next steps into one calm place.</p>
