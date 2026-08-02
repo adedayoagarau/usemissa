@@ -323,15 +323,33 @@ export interface UserProfile {
   displayName: string;
   /** Optional public identity bio. Matching inputs remain private. */
   bio?: string;
+  /** Optional visibility controls; legacy rows use effective defaults. */
+  privacy?: Partial<ProfilePrivacySettings>;
   attributes: UserAttributes;
   genres: string[];
 }
 
+export type ProfileVisibility = 'public' | 'private';
+
+export interface ProfilePrivacySettings {
+  displayName: ProfileVisibility;
+  bio: ProfileVisibility;
+  trackedOpportunityCount: ProfileVisibility;
+}
+
+export interface ProfilePrivacyPatch {
+  displayName?: ProfileVisibility;
+  bio?: ProfileVisibility;
+  trackedOpportunityCount?: ProfileVisibility;
+}
+
 /** The intentionally small public projection used by public profile pages. */
 export interface PublicUserProfile {
-  id: string;
-  displayName: string;
+  id?: string;
+  displayName?: string;
   bio?: string;
+  trackedOpportunityCount?: number;
+  isPrivate?: true;
 }
 
 export interface UserProfilePatch {

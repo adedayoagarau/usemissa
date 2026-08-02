@@ -62,7 +62,7 @@ export async function PATCH(request: Request) {
     const response = ownerResponse(engine, saved.id);
     return NextResponse.json(response, { headers: noStore });
   } catch (error) {
-    if (error instanceof ProfileValidationError) return jsonError(error.message, 400);
+    if (error instanceof ProfileValidationError || (error instanceof Error && error.name === 'ProfileValidationError')) return jsonError(error.message, 400);
     console.error('Profile update failed', error);
     return jsonError('We could not save your profile. Check your connection and try again.', 500);
   }

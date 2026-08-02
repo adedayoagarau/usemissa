@@ -8,6 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+
+type PrivacySettings = { displayName: 'public' | 'private'; bio: 'public' | 'private'; trackedOpportunityCount: 'public' | 'private' };
 
 type ProfileData = {
   id: string;
@@ -15,15 +18,21 @@ type ProfileData = {
   bio?: string;
   completeness: { complete: boolean; missing: Array<'displayName' | 'bio'> };
   publicUrl: string;
+  privacy: PrivacySettings;
 };
 
 export function ProfileForm({ initialProfile }: { initialProfile: ProfileData }) {
   const [displayName, setDisplayName] = useState(initialProfile.displayName);
   const [bio, setBio] = useState(initialProfile.bio ?? '');
   const [profile, setProfile] = useState(initialProfile);
+  const [privacy, setPrivacy] = useState<PrivacySettings>(initialProfile.privacy);
+  const [savedPrivacy, setSavedPrivacy] = useState<PrivacySettings>(initialProfile.privacy);
   const [saving, setSaving] = useState(false);
+  const [privacySaving, setPrivacySaving] = useState(false);
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
+  const [privacyMessage, setPrivacyMessage] = useState<string>();
+  const [privacyError, setPrivacyError] = useState<string>();
 
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,6 +77,33 @@ export function ProfileForm({ initialProfile }: { initialProfile: ProfileData })
     }
   }
 
+  async function savePrivacy() {
+    setPrivacySaving(true);
+    setPrivacyMessage(undefined);
+    setPrivacyError(undefined);
+    try {
+      const response = await fetch('/api/me/profile/privacy', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(privacy) });
+      const body = (await response.json().catch(() => ({}))) as { settings?: PrivacySettings; error?: string };
+      if (!response.ok || !body.settings) {
+        setPrivacyError(body.error ?? 'We could not save your privacy settings. Check your connection and try again.');
+        return;
+      }
+      setPrivacy(body.settings);
+      setSavedPrivacy(body.settings);
+      setPrivacyMessage('Privacy settings saved');
+    } catch {
+      setPrivacyError('We could not save your privacy settings. Check your connection and try again.');
+    } finally {
+      setPrivacySaving(false);
+    }
+  }
+
+  function setVisibility(field: keyof PrivacySettings, isPublic: boolean) {
+    setPrivacy((current) => ({ ...current, [field]: isPublic ? 'public' : 'private' }));
+    setPrivacyMessage(undefined);
+    setPrivacyError(undefined);
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <Card>
@@ -107,7 +143,23 @@ export function ProfileForm({ initialProfile }: { initialProfile: ProfileData })
             <Link className="inline-flex min-h-11 w-full items-center justify-between rounded-lg border border-border px-3 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50" href={profile.publicUrl}>View public profile <ArrowUpRight className="size-4" aria-hidden="true" /></Link>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader><CardTitle>Privacy</CardTitle><p className="text-sm text-muted-foreground">Choose what visitors can see on your public profile.</p></CardHeader>
+          <CardContent className="space-y-1">
+            <PrivacyRow label="Display name" description="Your name helps visitors recognize your profile." value={privacy.displayName} onChange={(checked) => setVisibility('displayName', checked)} />
+            <PrivacyRow label="Short bio" description="Share context about your practice with visitors." value={privacy.bio} onChange={(checked) => setVisibility('bio', checked)} />
+            <PrivacyRow label="Tracked opportunity count" description="Shows only how many opportunities you track—not which ones." value={privacy.trackedOpportunityCount} onChange={(checked) => setVisibility('trackedOpportunityCount', checked)} />
+            {privacy.displayName === 'private' && <p className="mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">Visitors will not see your name on your public profile.</p>}
+            {privacyError && <p role="alert" className="mt-4 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">{privacyError}</p>}
+            {privacyMessage && <p role="status" className="mt-4 flex items-center gap-2 text-sm text-green"><CheckCircle2 className="size-4" aria-hidden="true" />{privacyMessage}</p>}
+            <div className="mt-5 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={privacySaving} onClick={savePrivacy} className="min-h-11">{privacySaving ? 'Saving…' : 'Save privacy settings'}</Button>{JSON.stringify(privacy) !== JSON.stringify(savedPrivacy) && <Button type="button" variant="ghost" disabled={privacySaving} onClick={() => { setPrivacy(savedPrivacy); setPrivacyError(undefined); setPrivacyMessage(undefined); }} className="min-h-11">Restore saved settings</Button>}</div>
+          </CardContent>
+        </Card>
       </aside>
     </div>
   );
+}
+
+function PrivacyRow({ label, description, value, onChange }: { label: string; description: string; value: 'public' | 'private'; onChange: (checked: boolean) => void }) {
+  return <div className="flex items-start justify-between gap-4 border-b border-border py-4 last:border-b-0"><div className="min-w-0"><p className="text-sm font-medium text-foreground">{label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p><p className="mt-1 text-xs font-medium text-foreground">{value === 'public' ? 'Public' : 'Private'}</p></div><Switch checked={value === 'public'} onCheckedChange={onChange} aria-label={`Make ${label.toLowerCase()} ${value === 'public' ? 'private' : 'public'}`} className="mt-1 min-h-11 min-w-11" /> </div>;
 }

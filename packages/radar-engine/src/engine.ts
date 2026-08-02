@@ -22,6 +22,9 @@ import type {
   UserAttributes,
   UserProfile,
   PublicUserProfile,
+  ProfilePrivacyPatch,
+  ProfilePrivacySettings,
+  ProfileVisibility,
   UserProfilePatch,
   VerificationTask,
 } from './domain/types.js';
@@ -65,6 +68,42 @@ export class ProfileValidationError extends Error {
     this.name = 'ProfileValidationError';
     this.field = field;
   }
+}
+
+export class ProfilePrivacyValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ProfilePrivacyValidationError';
+  }
+}
+
+export const DEFAULT_PROFILE_PRIVACY: ProfilePrivacySettings = {
+  displayName: 'public',
+  bio: 'public',
+  trackedOpportunityCount: 'private',
+};
+
+const PRIVACY_KEYS = ['displayName', 'bio', 'trackedOpportunityCount'] as const;
+
+function visibility(value: unknown): ProfileVisibility {
+  return value === 'public' ? 'public' : 'private';
+}
+
+function normalizedPrivacy(value: unknown): ProfilePrivacySettings {
+  const stored = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  return {
+    displayName: stored.displayName === undefined ? DEFAULT_PROFILE_PRIVACY.displayName : visibility(stored.displayName),
+    bio: stored.bio === undefined ? DEFAULT_PROFILE_PRIVACY.bio : visibility(stored.bio),
+    trackedOpportunityCount: stored.trackedOpportunityCount === undefined ? DEFAULT_PROFILE_PRIVACY.trackedOpportunityCount : visibility(stored.trackedOpportunityCount),
+  };
+}
+
+function validatedPrivacyPatch(patch: ProfilePrivacyPatch): ProfilePrivacyPatch {
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new ProfilePrivacyValidationError('Privacy settings must be an object.');
+  const entries = Object.entries(patch as Record<string, unknown>);
+  if (entries.some(([key]) => !(PRIVACY_KEYS as readonly string[]).includes(key))) throw new ProfilePrivacyValidationError('Only supported profile visibility settings can be changed.');
+  if (entries.some(([, value]) => value !== 'public' && value !== 'private')) throw new ProfilePrivacyValidationError('Visibility must be exactly public or private.');
+  return patch;
 }
 
 function normalizedProfileValues(user: UserProfile, patch: UserProfilePatch): { displayName: string; bio?: string } {
@@ -193,9 +232,33 @@ export class RadarEngine {
   /** Return only fields explicitly safe for an unauthenticated visitor. */
   publicUserProfile(userId: string): PublicUserProfile | undefined {
     const user = this.store.users.get(userId);
-    if (!user || !user.displayName.trim()) return undefined;
+    if (!user) return undefined;
+    const settings = normalizedPrivacy(user.privacy);
     const bio = user.bio?.trim() || undefined;
-    return { id: user.id, displayName: user.displayName.trim(), ...(bio ? { bio } : {}) };
+    const displayName = user.displayName.trim();
+    const trackedOpportunityCount = this.store.tracked.filter((tracked) => tracked.userId === user.id).length;
+    const publicProfile: PublicUserProfile = { id: user.id };
+    if (settings.displayName === 'public' && displayName) publicProfile.displayName = displayName;
+    if (settings.bio === 'public' && bio) publicProfile.bio = bio;
+    if (settings.trackedOpportunityCount === 'public') publicProfile.trackedOpportunityCount = trackedOpportunityCount;
+    if (!publicProfile.displayName && !publicProfile.bio && publicProfile.trackedOpportunityCount === undefined) return { isPrivate: true };
+    return publicProfile;
+  }
+
+  profilePrivacy(userId: string): ProfilePrivacySettings | undefined {
+    const user = this.store.users.get(userId);
+    return user ? normalizedPrivacy(user.privacy) : undefined;
+  }
+
+  updateProfilePrivacy(userId: string, patch: ProfilePrivacyPatch): { user: UserProfile; settings: ProfilePrivacySettings; changedFields: Array<keyof ProfilePrivacySettings> } {
+    const user = this.store.users.get(userId);
+    if (!user) throw new Error(`Unknown user: ${userId}`);
+    const validated = validatedPrivacyPatch(patch);
+    const current = normalizedPrivacy(user.privacy);
+    const next: ProfilePrivacySettings = { ...current, ...validated };
+    const changedFields = PRIVACY_KEYS.filter((key) => current[key] !== next[key]);
+    if (changedFields.length > 0) user.privacy = next;
+    return { user, settings: next, changedFields };
   }
 
   profileCompleteness(userId: string): { complete: boolean; missing: Array<'displayName' | 'bio'> } {

@@ -56,7 +56,7 @@ development_status:
   epic-2: in-progress
   2-1-sign-up-log-in-pages-in-apps-web: done
   2-2-public-profile-passport-page: done
-  2-3-privacy-settings: backlog
+  2-3-privacy-settings: done
   2-4-export-tracker-library-data: backlog
   epic-2-retrospective: optional
 
