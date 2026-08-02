@@ -1,5 +1,5 @@
 # generated: 2026-07-07
-# last_updated: 2026-07-07
+# last_updated: 2026-08-02
 # project: Missa
 # project_key: NOKEY
 # tracking_system: file-system
@@ -38,7 +38,7 @@
 #   epic-only entries with no story keys until real stories are written.
 
 generated: 2026-07-07
-last_updated: 2026-07-07
+last_updated: 2026-08-02
 project: Missa
 project_key: NOKEY
 tracking_system: file-system
@@ -55,7 +55,7 @@ development_status:
 
   epic-2: in-progress
   2-1-sign-up-log-in-pages-in-apps-web: done
-  2-2-public-profile-passport-page: backlog
+  2-2-public-profile-passport-page: done
   2-3-privacy-settings: backlog
   2-4-export-tracker-library-data: backlog
   epic-2-retrospective: optional

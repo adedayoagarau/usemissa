@@ -21,9 +21,11 @@ import type {
   SourceKind,
   UserAttributes,
   UserProfile,
+  PublicUserProfile,
+  UserProfilePatch,
   VerificationTask,
 } from './domain/types.js';
-import type { Clock, Extractor, Fetcher, IdGenerator } from './ports.js';
+import type { Clock, Extractor, Fetcher, FetchResult, IdGenerator } from './ports.js';
 import { sequentialIds, systemClock } from './ports.js';
 import { createStore, type RadarStore, changesFor } from './store/store.js';
 import { grantOrgMembership, isOrgMember, logIn, membershipsFor, signUp } from './auth/accounts.js';
@@ -54,6 +56,31 @@ import { deadlineReminders, overdueResponseAlerts, setMyStatus, track, trackerVi
 import { computeResponseStats, type ResponseStats } from './tracker/responseStats.js';
 import { buildIcsFeed } from './tracker/calendarFeed.js';
 import { isoDateOf } from './extraction/dates.js';
+
+export class ProfileValidationError extends Error {
+  readonly field: 'displayName' | 'bio';
+
+  constructor(field: 'displayName' | 'bio', message: string) {
+    super(message);
+    this.name = 'ProfileValidationError';
+    this.field = field;
+  }
+}
+
+function normalizedProfileValues(user: UserProfile, patch: UserProfilePatch): { displayName: string; bio?: string } {
+  const displayName = patch.displayName === undefined ? user.displayName.trim() : patch.displayName.trim();
+  if (!displayName || displayName.length > 120) {
+    throw new ProfileValidationError('displayName', 'Display name must be between 1 and 120 characters.');
+  }
+
+  const bioValue = patch.bio === undefined ? user.bio : patch.bio;
+  const bio = bioValue?.trim() || undefined;
+  if (bio && bio.length > 1_000) {
+    throw new ProfileValidationError('bio', 'Bio must be 1,000 characters or fewer.');
+  }
+
+  return { displayName, bio };
+}
 
 export interface TickReport {
   at: string;
@@ -151,6 +178,33 @@ export class RadarEngine {
     const full: UserProfile = { id: user.id ?? this.ids.next('user'), ...user };
     this.store.users.set(full.id, full);
     return full;
+  }
+
+  /** Normalize and persist the public identity fields without touching matching inputs. */
+  updateUserProfile(userId: string, patch: UserProfilePatch): UserProfile {
+    const user = this.store.users.get(userId);
+    if (!user) throw new Error(`Unknown user: ${userId}`);
+    const values = normalizedProfileValues(user, patch);
+    user.displayName = values.displayName;
+    user.bio = values.bio;
+    return user;
+  }
+
+  /** Return only fields explicitly safe for an unauthenticated visitor. */
+  publicUserProfile(userId: string): PublicUserProfile | undefined {
+    const user = this.store.users.get(userId);
+    if (!user || !user.displayName.trim()) return undefined;
+    const bio = user.bio?.trim() || undefined;
+    return { id: user.id, displayName: user.displayName.trim(), ...(bio ? { bio } : {}) };
+  }
+
+  profileCompleteness(userId: string): { complete: boolean; missing: Array<'displayName' | 'bio'> } {
+    const user = this.store.users.get(userId);
+    if (!user) return { complete: false, missing: ['displayName', 'bio'] };
+    const missing: Array<'displayName' | 'bio'> = [];
+    if (!user.displayName.trim()) missing.push('displayName');
+    if (!user.bio?.trim()) missing.push('bio');
+    return { complete: missing.length === 0, missing };
   }
 
   createRadarProfile(userId: string, name: string, criteria: MatchCriteria): RadarProfile {

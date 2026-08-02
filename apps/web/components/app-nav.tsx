@@ -34,7 +34,7 @@ const NAV_LINKS = [
   { href: '/insights', label: 'Insights' },
 ] as const;
 
-export function AppNav({ email }: { email: string }) {
+export function AppNav({ email, userId }: { email: string; userId?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const [commandOpen, setCommandOpen] = useState(false);
@@ -95,6 +95,7 @@ export function AppNav({ email }: { email: string }) {
           <span className="hidden sm:inline">{email.split('@')[0]}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          {userId && <DropdownMenuItem render={<Link href="/profile" />}>Profile</DropdownMenuItem>}
           <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -105,6 +106,7 @@ export function AppNav({ email }: { email: string }) {
             const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
             return <Link key={link.href} href={link.href} onClick={() => setMobileNavOpen(false)} aria-current={active ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${active ? 'bg-accent-tint font-medium text-accent-deep' : 'text-foreground hover:bg-muted'}`}>{link.label}</Link>;
           })}
+          {userId && <Link href="/profile" onClick={() => setMobileNavOpen(false)} aria-current={pathname === '/profile' ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname === '/profile' ? 'bg-accent-tint font-medium text-accent-deep' : 'text-foreground hover:bg-muted'}`}>Profile</Link>}
         </div>
       </nav>}
 

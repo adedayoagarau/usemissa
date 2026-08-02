@@ -321,8 +321,22 @@ export interface UserAttributes {
 export interface UserProfile {
   id: string;
   displayName: string;
+  /** Optional public identity bio. Matching inputs remain private. */
+  bio?: string;
   attributes: UserAttributes;
   genres: string[];
+}
+
+/** The intentionally small public projection used by public profile pages. */
+export interface PublicUserProfile {
+  id: string;
+  displayName: string;
+  bio?: string;
+}
+
+export interface UserProfilePatch {
+  displayName?: string;
+  bio?: string;
 }
 
 /**
