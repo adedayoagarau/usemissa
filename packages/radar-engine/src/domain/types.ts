@@ -467,6 +467,30 @@ export interface TrackedOpportunity {
   submittedAt?: IsoDateTime;
 }
 
+export interface TrackerExportRow {
+  opportunityId: string;
+  title?: string;
+  organizationName?: string;
+  type?: string;
+  opportunityStatus?: string;
+  myStatus: MyStatus;
+  trackedAt: IsoDateTime;
+  submittedAt?: IsoDateTime;
+  deadline?: IsoDate;
+  deadlineKind?: DeadlineKind;
+  sourceUrl?: string;
+  dataState: 'available' | 'unavailable';
+  statusEvents: StatusEvent[];
+}
+
+export interface TrackerExportV1 {
+  exportVersion: 1;
+  generatedAt: IsoDateTime;
+  included: ['tracker'];
+  omitted: Array<'library'>;
+  tracker: TrackerExportRow[];
+}
+
 export type FitLevel = 'strong' | 'possible' | 'weak' | 'not-eligible' | 'unknown';
 
 export interface FitScore {

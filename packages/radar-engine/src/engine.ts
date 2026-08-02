@@ -26,6 +26,7 @@ import type {
   ProfilePrivacySettings,
   ProfileVisibility,
   UserProfilePatch,
+  TrackerExportV1,
   VerificationTask,
 } from './domain/types.js';
 import type { Clock, Extractor, Fetcher, FetchResult, IdGenerator } from './ports.js';
@@ -294,6 +295,54 @@ export class RadarEngine {
   /** Pipeline + deadline views and personal stats for the tracker UI. */
   getTracker(userId: string): TrackerView {
     return trackerView(this.ctx, userId);
+  }
+
+  /**
+   * Build the versioned, own-user projection used by data exports.
+   *
+   * Tracked rows are deliberately the source of truth: when an opportunity
+   * has since been removed or cannot be resolved, its row (and status history)
+   * remains in the export with dataState=unavailable. This makes an export a
+   * faithful account of the user's tracker rather than a join that silently
+   * drops history.
+   */
+  exportTracker(userId: string, now = this.clock.now()): TrackerExportV1 {
+    if (!this.store.users.has(userId)) throw new Error(`Unknown user: ${userId}`);
+
+    const tracker = this.store.tracked
+      .filter((tracked) => tracked.userId === userId)
+      .slice()
+      .sort((a, b) => a.trackedAt.localeCompare(b.trackedAt) || a.opportunityId.localeCompare(b.opportunityId))
+      .map((tracked) => {
+        const opportunity = this.store.opportunities.get(tracked.opportunityId);
+        const base = {
+          opportunityId: tracked.opportunityId,
+          myStatus: tracked.myStatus,
+          trackedAt: tracked.trackedAt,
+          ...(tracked.submittedAt ? { submittedAt: tracked.submittedAt } : {}),
+          dataState: opportunity ? ('available' as const) : ('unavailable' as const),
+          statusEvents: tracked.events.map((event) => ({ ...event })),
+        };
+        if (!opportunity) return base;
+        return {
+          ...base,
+          title: opportunity.fields.title,
+          ...(opportunity.fields.organizationName ? { organizationName: opportunity.fields.organizationName } : {}),
+          type: opportunity.fields.type,
+          opportunityStatus: opportunity.status,
+          ...(opportunity.fields.deadline.date ? { deadline: opportunity.fields.deadline.date } : {}),
+          deadlineKind: opportunity.fields.deadline.kind,
+          sourceUrl: opportunity.sourceUrl,
+        };
+      });
+
+    return {
+      exportVersion: 1,
+      generatedAt: now.toISOString(),
+      included: ['tracker'],
+      omitted: ['library'],
+      tracker,
+    };
   }
 
   /** Seed known past open/close cycles so prediction works from day one. */

@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { ExportButtons } from './export-buttons';
 
 type PrivacySettings = { displayName: 'public' | 'private'; bio: 'public' | 'private'; trackedOpportunityCount: 'public' | 'private' };
 
@@ -154,6 +155,10 @@ export function ProfileForm({ initialProfile }: { initialProfile: ProfileData })
             {privacyMessage && <p role="status" className="mt-4 flex items-center gap-2 text-sm text-green"><CheckCircle2 className="size-4" aria-hidden="true" />{privacyMessage}</p>}
             <div className="mt-5 flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={privacySaving} onClick={savePrivacy} className="min-h-11">{privacySaving ? 'Saving…' : 'Save privacy settings'}</Button>{JSON.stringify(privacy) !== JSON.stringify(savedPrivacy) && <Button type="button" variant="ghost" disabled={privacySaving} onClick={() => { setPrivacy(savedPrivacy); setPrivacyError(undefined); setPrivacyMessage(undefined); }} className="min-h-11">Restore saved settings</Button>}</div>
           </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>Your data</CardTitle></CardHeader>
+          <CardContent><ExportButtons /></CardContent>
         </Card>
       </aside>
     </div>
