@@ -19,7 +19,7 @@
  * name collision -- used directly in non-shadcn markup (see app/page.tsx).
  */
 :root {
-  --bg: #fafaf9;
+  --bg: #ffffff;
   --surface: #ffffff;
   --ink: #1c1815;
   --ink-2: #6f6862;

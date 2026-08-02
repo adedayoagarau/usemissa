@@ -66,7 +66,7 @@ export function AppNav({ email, userId }: { email: string; userId?: string }) {
   }
 
   return (
-    <header className="relative z-50 flex min-w-0 items-center gap-3 border-b border-border bg-background px-4 py-3 sm:px-6">
+    <header className="relative z-50 flex min-w-0 items-center gap-3 border-b border-border bg-white px-4 py-3 sm:px-6">
       <Link href="/home" className="shrink-0 font-heading text-xl font-semibold text-foreground">Missa</Link>
 
       <NavigationMenu className="hidden lg:block">
@@ -100,7 +100,7 @@ export function AppNav({ email, userId }: { email: string; userId?: string }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {mobileNavOpen && <nav aria-label="Mobile navigation" className="absolute inset-x-0 top-full border-b border-border bg-background p-2 shadow-lg lg:hidden">
+      {mobileNavOpen && <nav aria-label="Mobile navigation" className="absolute inset-x-0 top-full border-b border-border bg-white p-2 shadow-lg lg:hidden">
         <div className="grid gap-1">
           {NAV_LINKS.map((link) => {
             const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
