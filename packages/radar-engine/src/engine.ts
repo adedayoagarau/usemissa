@@ -60,6 +60,7 @@ import { deadlineReminders, overdueResponseAlerts, setMyStatus, track, trackerVi
 import { computeResponseStats, type ResponseStats } from './tracker/responseStats.js';
 import { buildIcsFeed } from './tracker/calendarFeed.js';
 import { isoDateOf } from './extraction/dates.js';
+import { commitTrackerImport as applyTrackerImport, type ImportDecision, type TrackerImportPlan, type TrackerImportResult } from './import/trackerImport.js';
 
 export class ProfileValidationError extends Error {
   readonly field: 'displayName' | 'bio';
@@ -237,7 +238,7 @@ export class RadarEngine {
     const settings = normalizedPrivacy(user.privacy);
     const bio = user.bio?.trim() || undefined;
     const displayName = user.displayName.trim();
-    const trackedOpportunityCount = this.store.tracked.filter((tracked) => tracked.userId === user.id).length;
+    const trackedOpportunityCount = this.store.tracked.filter((tracked) => tracked.userId === user.id).length + this.store.manualTrackerEntries.filter((entry) => entry.userId === user.id).length;
     const publicProfile: PublicUserProfile = { id: user.id };
     if (settings.displayName === 'public' && displayName) publicProfile.displayName = displayName;
     if (settings.bio === 'public' && bio) publicProfile.bio = bio;
@@ -297,6 +298,11 @@ export class RadarEngine {
     return trackerView(this.ctx, userId);
   }
 
+  commitTrackerImport(userId: string, plan: TrackerImportPlan, decisions: Record<string, ImportDecision | { action: ImportDecision; opportunityId?: string }>, now = this.clock.now(), sourceHash = ''): TrackerImportResult {
+    if (!this.store.users.has(userId)) throw new Error(`Unknown user: ${userId}`);
+    return applyTrackerImport(this.store, this.ids, userId, plan, decisions, now, sourceHash);
+  }
+
   /**
    * Build the versioned, own-user projection used by data exports.
    *
@@ -334,7 +340,25 @@ export class RadarEngine {
           deadlineKind: opportunity.fields.deadline.kind,
           sourceUrl: opportunity.sourceUrl,
         };
-      });
+      })
+      .concat(this.store.manualTrackerEntries
+        .filter((entry) => entry.userId === userId)
+        .map((entry) => ({
+          opportunityId: entry.id,
+          title: entry.title,
+          organizationName: entry.organizationName,
+          type: 'manual-import',
+          opportunityStatus: 'private-import',
+          myStatus: entry.myStatus,
+          trackedAt: entry.importedAt,
+          ...(entry.submittedAt ? { submittedAt: entry.submittedAt } : {}),
+          ...(entry.deadline ? { deadline: entry.deadline } : {}),
+          deadlineKind: entry.deadline ? 'exact' as const : 'unknown' as const,
+          ...(entry.sourceUrl ? { sourceUrl: entry.sourceUrl } : {}),
+          dataState: 'unavailable' as const,
+          statusEvents: [],
+        })))
+      .sort((a, b) => a.trackedAt.localeCompare(b.trackedAt) || a.opportunityId.localeCompare(b.opportunityId));
 
     return {
       exportVersion: 1,

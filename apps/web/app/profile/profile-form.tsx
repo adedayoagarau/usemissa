@@ -158,7 +158,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: ProfileData })
         </Card>
         <Card>
           <CardHeader><CardTitle>Your data</CardTitle></CardHeader>
-          <CardContent><ExportButtons /></CardContent>
+          <CardContent><ExportButtons /><Link href="/import" className="mt-4 inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50">Import tracker</Link></CardContent>
         </Card>
       </aside>
     </div>

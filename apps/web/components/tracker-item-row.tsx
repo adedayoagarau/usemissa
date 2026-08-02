@@ -28,7 +28,7 @@ export function TrackerItemRow({ userId, item }: { userId: string; item: Tracker
             <FitScoreBadge fit={item.fit} />
           </div>
         </div>
-        <StatusSelect userId={userId} opportunityId={item.opportunityId} value={item.myStatus} />
+        {item.isManual ? <span className="rounded-md border border-border px-3 py-2 text-xs text-muted-foreground">Imported</span> : <StatusSelect userId={userId} opportunityId={item.opportunityId} value={item.myStatus} />}
       </CardContent>
     </Card>
   );

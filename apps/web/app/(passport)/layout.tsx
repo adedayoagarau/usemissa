@@ -10,7 +10,7 @@ export default async function PassportLayout({ children }: { children: React.Rea
   if (!session) redirect('/login');
 
   return (
-    <div>
+    <div className="min-h-screen bg-white">
       <AppNav email={session.account.email} userId={session.account.userId} />
       <main className="mx-auto max-w-[1600px] px-6 py-8">{children}</main>
     </div>

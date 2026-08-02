@@ -15,6 +15,7 @@ import type {
   RadarProfile,
   Source,
   TrackedOpportunity,
+  ManualTrackerEntry,
   UserProfile,
   VerificationTask,
 } from '../domain/types.js';
@@ -37,6 +38,8 @@ export interface RadarStore {
   users: Map<string, UserProfile>;
   follows: OrganizationFollow[];
   tracked: TrackedOpportunity[];
+  /** Private user-owned rows that have no canonical Radar opportunity. */
+  manualTrackerEntries: ManualTrackerEntry[];
   alerts: Map<string, Alert>;
   /** Alert dedup keys already emitted (e.g. "closing-soon:user_1:opp_1"). */
   emittedAlertKeys: Set<string>;
@@ -59,6 +62,7 @@ export function createStore(): RadarStore {
     users: new Map(),
     follows: [],
     tracked: [],
+    manualTrackerEntries: [],
     alerts: new Map(),
     emittedAlertKeys: new Set(),
     accounts: new Map(),
@@ -80,6 +84,7 @@ interface SerializedStore {
   users: UserProfile[];
   follows: OrganizationFollow[];
   tracked: TrackedOpportunity[];
+  manualTrackerEntries?: ManualTrackerEntry[];
   alerts: Alert[];
   emittedAlertKeys: string[];
   accounts: Account[];
@@ -101,6 +106,7 @@ export function saveStore(store: RadarStore, filePath: string): void {
     users: [...store.users.values()],
     follows: store.follows,
     tracked: store.tracked,
+    manualTrackerEntries: store.manualTrackerEntries,
     alerts: [...store.alerts.values()],
     emittedAlertKeys: [...store.emittedAlertKeys],
     accounts: [...store.accounts.values()],
@@ -127,6 +133,7 @@ export function loadStore(filePath: string): RadarStore {
   for (const u of data.users) store.users.set(u.id, u);
   store.follows = data.follows;
   store.tracked = data.tracked;
+  store.manualTrackerEntries = data.manualTrackerEntries ?? [];
   for (const a of data.alerts) store.alerts.set(a.id, a);
   store.emittedAlertKeys = new Set(data.emittedAlertKeys);
   for (const a of data.accounts ?? []) store.accounts.set(a.id, a);

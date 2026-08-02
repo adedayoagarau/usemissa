@@ -467,6 +467,28 @@ export interface TrackedOpportunity {
   submittedAt?: IsoDateTime;
 }
 
+/** A private Tracker row imported from a source Missa cannot canonically match. */
+export interface ManualTrackerEntry {
+  id: string;
+  userId: string;
+  title: string;
+  organizationName: string;
+  work?: string;
+  genre?: string;
+  myStatus: MyStatus;
+  deadline?: IsoDate;
+  submittedAt?: IsoDateTime;
+  responseAt?: IsoDateTime;
+  feeRaw?: string;
+  notes?: string;
+  sourceUrl?: string;
+  sourceKind: 'csv';
+  sourceRow: number;
+  importedAt: IsoDateTime;
+  /** Internal idempotency marker; never shown in public projections. */
+  importHash?: string;
+}
+
 export interface TrackerExportRow {
   opportunityId: string;
   title?: string;

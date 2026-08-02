@@ -6,6 +6,7 @@ import type {
   OpportunityType,
   TrackedOpportunity,
   UserProfile,
+  ManualTrackerEntry,
 } from '../domain/types.js';
 import { PRE_SUBMISSION_STATUSES } from '../domain/types.js';
 import type { Clock, IdGenerator } from '../ports.js';
@@ -93,6 +94,10 @@ export interface TrackerItem {
   /** Only set once submitted: this organization's typical response-by date and whether it's passed. */
   expectedResponseBy?: string;
   daysOverdue?: number;
+  /** Private imported row with no canonical Radar opportunity. */
+  isManual?: boolean;
+  manualId?: string;
+  notes?: string;
 }
 
 export type PipelineStage = 'planning' | 'submitted' | 'in-progress' | 'outcome' | 'archived';
@@ -156,6 +161,26 @@ function toItem(ctx: TrackerContext, user: UserProfile, tracked: TrackedOpportun
   };
 }
 
+function toManualItem(entry: ManualTrackerEntry): TrackerItem {
+  const fit: FitScore = { level: 'unknown', reasons: [], watchouts: ['This is a private imported row; no Radar match was found.'], disqualifiers: [] };
+  return {
+    opportunityId: entry.id,
+    title: entry.title,
+    organizationName: entry.organizationName,
+    type: 'other',
+    opportunityStatus: 'Private import',
+    myStatus: entry.myStatus,
+    deadline: entry.deadline,
+    deadlineKind: entry.deadline ? 'exact' : 'unknown',
+    fit,
+    trust: 0,
+    events: [],
+    isManual: true,
+    manualId: entry.id,
+    notes: entry.notes,
+  };
+}
+
 export function trackerView(ctx: TrackerContext, userId: string): TrackerView {
   const user = ctx.store.users.get(userId);
   if (!user) throw new Error(`Unknown user: ${userId}`);
@@ -168,6 +193,12 @@ export function trackerView(ctx: TrackerContext, userId: string): TrackerView {
     const item = toItem(ctx, user, t, opp);
     items.push(item);
     pipeline[STAGE_OF[t.myStatus]].push(item);
+  }
+  for (const entry of ctx.store.manualTrackerEntries) {
+    if (entry.userId !== userId) continue;
+    const item = toManualItem(entry);
+    items.push(item);
+    pipeline[STAGE_OF[entry.myStatus]].push(item);
   }
   const deadlines = items
     .filter((i) => PRE_SUBMISSION_STATUSES.includes(i.myStatus) && i.daysToDeadline !== undefined && i.daysToDeadline >= 0)

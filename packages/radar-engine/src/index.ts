@@ -38,6 +38,26 @@ export {
   createFeedToken, verifyFeedToken, type FeedTokenPayload,
 } from './auth/crypto.js';
 export { buildIcsFeed } from './tracker/calendarFeed.js';
+export {
+  TRACKER_IMPORT_MAX_BYTES,
+  TRACKER_IMPORT_MAX_ROWS,
+  TRACKER_IMPORT_FIELDS,
+  TrackerImportError,
+  parseTrackerCsv,
+  detectTrackerImportMapping,
+  validateTrackerImportMapping,
+  normalizeImportedStatus,
+  normalizeImportedDate,
+  planTrackerImport,
+  commitTrackerImport,
+  type ImportField,
+  type ImportMapping,
+  type ImportDecision,
+  type ParsedTrackerCsv,
+  type TrackerImportPlan,
+  type TrackerImportPlanRow,
+  type TrackerImportResult,
+} from './import/trackerImport.js';
 export { buildServerDemoWorld, type ServerDemoWorld, type DemoCredential } from './fixtures/serverDemo.js';
 export { buildDemoWorld, ManualClock } from './fixtures/seed.js';
 export {

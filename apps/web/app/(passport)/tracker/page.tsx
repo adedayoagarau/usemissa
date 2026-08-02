@@ -24,7 +24,7 @@ export default async function TrackerPage() {
     <div>
       <div className="flex items-center justify-between">
         <h1 className="font-heading text-3xl font-medium text-foreground">Tracker</h1>
-        <CalendarFeedButton userId={userId} />
+        <div className="flex flex-wrap items-center gap-2"><Button variant="outline" render={<Link href="/import" />} className="min-h-11">Import tracker</Button><CalendarFeedButton userId={userId} /></div>
       </div>
       <Card className="mt-6">
         <CardContent className="flex flex-wrap gap-6 text-sm">

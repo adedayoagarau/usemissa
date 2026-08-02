@@ -100,6 +100,13 @@ create table if not exists radar_tracked (
   primary key (user_id, opportunity_id)
 );
 
+create table if not exists radar_manual_tracker_entries (
+  id text primary key,
+  user_id text not null,
+  data jsonb not null
+);
+create index if not exists radar_manual_tracker_entries_user_idx on radar_manual_tracker_entries (user_id);
+
 create table if not exists radar_alerts (
   id text primary key,
   data jsonb not null
