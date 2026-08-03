@@ -127,6 +127,26 @@ export class WorkspaceEngine {
     return openCall;
   }
 
+  updateOpenCall(openCallId: string, patch: { title?: string; guidelineUrl?: string; guidelineText?: string }): OpenCall {
+    const openCall = this.store.openCalls.get(openCallId);
+    if (!openCall) throw new Error(`Unknown open call: ${openCallId}`);
+    if (patch.title !== undefined) {
+      const title = patch.title.trim();
+      if (!title) throw new Error('Open call title is required');
+      openCall.title = title;
+    }
+    if (patch.guidelineUrl !== undefined) openCall.guidelineUrl = patch.guidelineUrl.trim() || undefined;
+    if (patch.guidelineText !== undefined) openCall.guidelineText = patch.guidelineText.trim() || undefined;
+    return openCall;
+  }
+
+  closeOpenCall(openCallId: string): OpenCall {
+    const openCall = this.store.openCalls.get(openCallId);
+    if (!openCall) throw new Error(`Unknown open call: ${openCallId}`);
+    openCall.status = 'closed';
+    return openCall;
+  }
+
   openCallsForProgram(programId: string): OpenCall[] {
     return [...this.store.openCalls.values()].filter(
       (o) => o.programId === programId,

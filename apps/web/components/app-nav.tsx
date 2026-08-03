@@ -98,6 +98,8 @@ export function AppNav({ email, userId }: { email: string; userId?: string }) {
         <DropdownMenuContent align="end">
           {userId && <DropdownMenuItem render={<Link href="/profile" />}>Profile</DropdownMenuItem>}
           {userId && <DropdownMenuItem render={<Link href="/workspace" />}>Workspace</DropdownMenuItem>}
+          {userId && <DropdownMenuItem render={<Link href="/submissions" />}>Submission inbox</DropdownMenuItem>}
+          {userId && <DropdownMenuItem render={<Link href="/reviewer" />}>Reviewer queue</DropdownMenuItem>}
           <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

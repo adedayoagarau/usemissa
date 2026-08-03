@@ -8,6 +8,7 @@ import { CreateTeamForm, CreateProgramForm, CreateOpenCallForm, PublishButton } 
 import { FormBuilder } from '@/components/form-builder';
 import { OrganizationSeats } from '@/components/organization-seats';
 import { OrganizationBilling } from '@/components/organization-billing';
+import { OpenCallControls } from '@/components/open-call-controls';
 
 export default async function WorkspacePage() {
   const cookieStore = await cookies();
@@ -86,6 +87,7 @@ export default async function WorkspacePage() {
                           </span>
                           {call.status === 'draft' && <PublishButton organizationId={organizationId} openCallId={call.id} />}
                         </div>
+                        <OpenCallControls organizationId={organizationId} openCall={call} />
                         {call.submissionPaths.length === 0 ? (
                           <FormBuilder organizationId={organizationId} openCallId={call.id} />
                         ) : (
