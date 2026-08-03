@@ -12,6 +12,26 @@ export { parseDate, daysBetween, addDays, isoDateOf, isPlausibleOpportunityDate 
 export { extractFee } from './extraction/fees.js';
 export { OPENING_SIGNALS, CLOSING_SIGNALS, CLOSED_SIGNALS, SUSPICIOUS_SIGNALS, findSignals } from './extraction/signals.js';
 export { findCanonical, titleSimilarity, normalizeName, type DedupMatch } from './dedup/dedup.js';
+export {
+  EMAIL_CANDIDATE_RETENTION_DAYS,
+  EMAIL_MAX_BODY_CHARS,
+  EMAIL_MAX_ENVELOPE_BYTES,
+  createOrGetForwardingAddress,
+  forwardingAddressView,
+  rotateForwardingAddress,
+  setForwardingAddressStatus,
+  revokeForwardingAddress,
+  ingestInboundEmail,
+  listEmailCandidates,
+  cleanupEmailCandidates,
+  reviewEmailCandidate,
+  verifyForwardingToken,
+  EmailForwardingError,
+  type ForwardingAddressView,
+  type EmailReviewDecision,
+  type EmailReviewMutation,
+  type IngestResult,
+} from './email/emailForwarding.js';
 export { freshnessScore, confidenceScore, computeTrustSignals, trustScore, STALE_FRESHNESS_THRESHOLD } from './scoring/scores.js';
 export { deriveStatus, displayStatus, CLOSING_SOON_DAYS, OPENING_SOON_DAYS, NEEDS_VERIFICATION_CONFIDENCE } from './status/statusEngine.js';
 export { predictNextOpening, recordCycle } from './prediction/prediction.js';

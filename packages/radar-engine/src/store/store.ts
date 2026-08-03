@@ -16,6 +16,8 @@ import type {
   Source,
   TrackedOpportunity,
   ManualTrackerEntry,
+  ForwardingAddress,
+  EmailReviewCandidate,
   UserProfile,
   VerificationTask,
 } from '../domain/types.js';
@@ -40,6 +42,8 @@ export interface RadarStore {
   tracked: TrackedOpportunity[];
   /** Private user-owned rows that have no canonical Radar opportunity. */
   manualTrackerEntries: ManualTrackerEntry[];
+  forwardingAddresses: ForwardingAddress[];
+  emailCandidates: EmailReviewCandidate[];
   alerts: Map<string, Alert>;
   /** Alert dedup keys already emitted (e.g. "closing-soon:user_1:opp_1"). */
   emittedAlertKeys: Set<string>;
@@ -63,6 +67,8 @@ export function createStore(): RadarStore {
     follows: [],
     tracked: [],
     manualTrackerEntries: [],
+    forwardingAddresses: [],
+    emailCandidates: [],
     alerts: new Map(),
     emittedAlertKeys: new Set(),
     accounts: new Map(),
@@ -85,6 +91,8 @@ interface SerializedStore {
   follows: OrganizationFollow[];
   tracked: TrackedOpportunity[];
   manualTrackerEntries?: ManualTrackerEntry[];
+  forwardingAddresses?: ForwardingAddress[];
+  emailCandidates?: EmailReviewCandidate[];
   alerts: Alert[];
   emittedAlertKeys: string[];
   accounts: Account[];
@@ -107,6 +115,8 @@ export function saveStore(store: RadarStore, filePath: string): void {
     follows: store.follows,
     tracked: store.tracked,
     manualTrackerEntries: store.manualTrackerEntries,
+    forwardingAddresses: store.forwardingAddresses,
+    emailCandidates: store.emailCandidates,
     alerts: [...store.alerts.values()],
     emittedAlertKeys: [...store.emittedAlertKeys],
     accounts: [...store.accounts.values()],
@@ -134,6 +144,8 @@ export function loadStore(filePath: string): RadarStore {
   store.follows = data.follows;
   store.tracked = data.tracked;
   store.manualTrackerEntries = data.manualTrackerEntries ?? [];
+  store.forwardingAddresses = data.forwardingAddresses ?? [];
+  store.emailCandidates = data.emailCandidates ?? [];
   for (const a of data.alerts) store.alerts.set(a.id, a);
   store.emittedAlertKeys = new Set(data.emittedAlertKeys);
   for (const a of data.accounts ?? []) store.accounts.set(a.id, a);

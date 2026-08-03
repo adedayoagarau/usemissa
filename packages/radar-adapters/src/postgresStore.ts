@@ -128,6 +128,15 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
       await client.query('insert into radar_manual_tracker_entries (id, user_id, data) values ($1, $2, $3)', [entry.id, entry.userId, entry]);
     }
 
+    await client.query('delete from radar_forwarding_addresses');
+    for (const address of store.forwardingAddresses) {
+      await client.query('insert into radar_forwarding_addresses (id, user_id, status, data) values ($1, $2, $3, $4)', [address.id, address.userId, address.status, address]);
+    }
+    await client.query('delete from radar_email_candidates');
+    for (const candidate of store.emailCandidates) {
+      await client.query('insert into radar_email_candidates (id, user_id, forwarding_address_id, provider, provider_message_id, state, data) values ($1, $2, $3, $4, $5, $6, $7)', [candidate.id, candidate.userId, candidate.forwardingAddressId, candidate.provider, candidate.providerMessageId, candidate.state, candidate]);
+    }
+
     await client.query('delete from radar_alerts');
     for (const a of store.alerts.values()) {
       await client.query('insert into radar_alerts (id, data) values ($1, $2)', [a.id, a]);
@@ -188,7 +197,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
 
   const [
     sources, snapshots, opportunities, versions, changes, organizations, claims, verificationTasks,
-    profiles, users, follows, tracked, manualTrackerEntries, alerts, alertKeys, accounts, memberships, auditLog,
+    profiles, users, follows, tracked, manualTrackerEntries, forwardingAddresses, emailCandidates, alerts, alertKeys, accounts, memberships, auditLog,
   ] = await Promise.all([
     pool.query('select data from radar_sources'),
     pool.query('select data from radar_snapshots'),
@@ -203,6 +212,8 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
     pool.query('select data from radar_follows'),
     pool.query('select data from radar_tracked'),
     pool.query('select data from radar_manual_tracker_entries'),
+    pool.query('select data from radar_forwarding_addresses'),
+    pool.query('select data from radar_email_candidates'),
     pool.query('select data from radar_alerts'),
     pool.query('select key from radar_emitted_alert_keys'),
     pool.query('select data from radar_accounts'),
@@ -223,6 +234,8 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
   store.follows = follows.rows.map((r) => r.data);
   store.tracked = tracked.rows.map((r) => r.data);
   store.manualTrackerEntries = manualTrackerEntries.rows.map((r) => r.data);
+  store.forwardingAddresses = forwardingAddresses.rows.map((r) => r.data);
+  store.emailCandidates = emailCandidates.rows.map((r) => r.data);
   for (const row of alerts.rows) store.alerts.set(row.data.id, row.data);
   store.emittedAlertKeys = new Set(alertKeys.rows.map((r) => r.key));
   for (const row of accounts.rows) store.accounts.set(row.data.id, row.data);

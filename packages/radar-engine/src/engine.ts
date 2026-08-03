@@ -61,6 +61,8 @@ import { computeResponseStats, type ResponseStats } from './tracker/responseStat
 import { buildIcsFeed } from './tracker/calendarFeed.js';
 import { isoDateOf } from './extraction/dates.js';
 import { commitTrackerImport as applyTrackerImport, type ImportDecision, type TrackerImportPlan, type TrackerImportResult } from './import/trackerImport.js';
+import { cleanupEmailCandidates as cleanupEmailReviewCandidates, createOrGetForwardingAddress, forwardingAddressView, ingestInboundEmail, listEmailCandidates, reviewEmailCandidate, revokeForwardingAddress, rotateForwardingAddress, setForwardingAddressStatus, type EmailReviewDecision, type IngestResult, type ForwardingAddressView } from './email/emailForwarding.js';
+import type { EmailReviewCandidate } from './domain/types.js';
 
 export class ProfileValidationError extends Error {
   readonly field: 'displayName' | 'bio';
@@ -156,6 +158,28 @@ export interface RadarEngineOptions {
   ids?: IdGenerator;
 }
 
+function* idsInStore(store: RadarStore): Iterable<string> {
+  const maps = [
+    store.sources,
+    store.snapshots,
+    store.opportunities,
+    store.versions,
+    store.changes,
+    store.organizations,
+    store.claims,
+    store.verificationTasks,
+    store.radarProfiles,
+    store.users,
+    store.alerts,
+    store.accounts,
+  ];
+  for (const map of maps) yield* map.keys();
+  for (const entry of store.auditLog) yield entry.id;
+  for (const entry of store.manualTrackerEntries) yield entry.id;
+  for (const entry of store.forwardingAddresses) yield entry.id;
+  for (const entry of store.emailCandidates) yield entry.id;
+}
+
 /**
  * The Missa Radar engine: one tick runs the full pipeline —
  * schedule → fetch → snapshot → change-detect → extract → validate → dedup →
@@ -173,7 +197,7 @@ export class RadarEngine {
     this.store = opts.store ?? createStore();
     this.fetcher = opts.fetcher;
     this.clock = opts.clock ?? systemClock;
-    this.ids = opts.ids ?? sequentialIds();
+    this.ids = opts.ids ?? sequentialIds(idsInStore(this.store));
     this.extractor = opts.extractor ?? new DeterministicExtractor(this.clock);
   }
 
@@ -356,7 +380,7 @@ export class RadarEngine {
           deadlineKind: entry.deadline ? 'exact' as const : 'unknown' as const,
           ...(entry.sourceUrl ? { sourceUrl: entry.sourceUrl } : {}),
           dataState: 'unavailable' as const,
-          statusEvents: [],
+          statusEvents: entry.events?.map((event) => ({ ...event })) ?? [],
         })))
       .sort((a, b) => a.trackedAt.localeCompare(b.trackedAt) || a.opportunityId.localeCompare(b.opportunityId));
 
@@ -408,6 +432,26 @@ export class RadarEngine {
   recordAudit(accountId: string | undefined, action: string, targetType: string, targetId: string, detail?: string): AuditEntry {
     return recordAudit(this.ctx, accountId, action, targetType, targetId, detail);
   }
+
+  forwardingAddress(userId: string): ForwardingAddressView { return forwardingAddressView(this.store, userId); }
+  createForwardingAddress(userId: string): { address: string; created: boolean; view: ForwardingAddressView } {
+    const result = createOrGetForwardingAddress(this.store, userId, this.clock.now(), this.ids);
+    return { address: result.address, created: result.created, view: forwardingAddressView(this.store, userId) };
+  }
+  rotateForwardingAddress(userId: string, idempotencyKey?: string): { address: string; view: ForwardingAddressView } {
+    const result = rotateForwardingAddress(this.store, userId, this.clock.now(), this.ids, idempotencyKey);
+    return { address: result.address, view: forwardingAddressView(this.store, userId) };
+  }
+  setForwardingAddressStatus(userId: string, status: 'active' | 'paused'): ForwardingAddressView {
+    setForwardingAddressStatus(this.store, userId, status); return forwardingAddressView(this.store, userId);
+  }
+  revokeForwardingAddress(userId: string, deletePending = false): { deletedCandidates: number; view: ForwardingAddressView } {
+    const result = revokeForwardingAddress(this.store, userId, this.clock.now(), deletePending); return { ...result, view: forwardingAddressView(this.store, userId) };
+  }
+  ingestInboundEmail(envelope: Parameters<typeof ingestInboundEmail>[1]): IngestResult { return ingestInboundEmail(this.store, envelope, this.clock.now(), this.ids); }
+  emailCandidates(userId: string, state: 'pending' | 'all' = 'pending', classification?: string): EmailReviewCandidate[] { return listEmailCandidates(this.store, userId, state, classification); }
+  reviewEmailCandidate(userId: string, candidateId: string, decision: EmailReviewDecision) { return reviewEmailCandidate(this.store, userId, candidateId, decision, this.clock.now(), this.ids); }
+  cleanupEmailCandidates(): number { return cleanupEmailReviewCandidates(this.store, this.clock.now()); }
 
   /** Seeding/ops only — there is no self-serve path to platform admin. */
   promoteToAdmin(accountId: string): void {

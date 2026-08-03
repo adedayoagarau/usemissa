@@ -5,6 +5,7 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { Card, CardContent } from '@/components/ui/card';
 import { Empty, EmptyTitle, EmptyDescription } from '@/components/ui/empty';
+import { EmailReviewQueue } from '@/components/email-review-queue';
 
 function Section({ title, alerts }: { title: string; alerts: Alert[] }) {
   if (!alerts.length) return null;
@@ -66,6 +67,7 @@ export default async function InboxPage() {
       <Section title="Deadline reminders" alerts={reminders} />
       <Section title="No word back yet" alerts={overdue} />
       <Section title="Got an acceptance — consider withdrawing elsewhere" alerts={withdrawalSuggestions} />
+      <EmailReviewQueue />
     </div>
   );
 }

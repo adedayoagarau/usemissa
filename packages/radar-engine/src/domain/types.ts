@@ -453,8 +453,10 @@ export interface StatusEvent {
   from?: MyStatus;
   to: MyStatus;
   /** 'user' = manual update; 'radar' = detected automatically. */
-  source: 'user' | 'radar';
+  source: 'user' | 'radar' | 'email';
   note?: string;
+  confidence?: 'high' | 'possible' | 'unknown';
+  candidateId?: string;
 }
 
 export interface TrackedOpportunity {
@@ -482,11 +484,84 @@ export interface ManualTrackerEntry {
   feeRaw?: string;
   notes?: string;
   sourceUrl?: string;
-  sourceKind: 'csv';
+  sourceKind: 'csv' | 'email';
   sourceRow: number;
   importedAt: IsoDateTime;
   /** Internal idempotency marker; never shown in public projections. */
   importHash?: string;
+  events?: StatusEvent[];
+}
+
+export type ForwardingAddressStatus = 'active' | 'paused' | 'revoked';
+
+export interface ForwardingAddress {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  tokenCiphertext: string;
+  tokenVersion: number;
+  domain: string;
+  status: ForwardingAddressStatus;
+  createdAt: IsoDateTime;
+  rotatedAt?: IsoDateTime;
+  revokedAt?: IsoDateTime;
+  lastReceivedAt?: IsoDateTime;
+  acceptedCount: number;
+  lastMutationKey?: string;
+}
+
+export interface InboundEmailEnvelope {
+  provider: string;
+  providerMessageId?: string;
+  receivedAt: IsoDateTime;
+  to: string[];
+  from?: string;
+  replyTo?: string;
+  resentFrom?: string;
+  subject: string;
+  textBody?: string;
+  htmlBody?: string;
+  messageIdHeader?: string;
+  headers: Record<string, string>;
+  attachments: Array<{ filename: string; contentType: string; byteLength: number; sha256?: string }>;
+  authResults?: { spf?: 'pass' | 'fail' | 'neutral' | 'unknown'; dkim?: 'pass' | 'fail' | 'neutral' | 'unknown'; dmarc?: 'pass' | 'fail' | 'neutral' | 'unknown' };
+}
+
+export type EmailCandidateState = 'pending' | 'confirmed' | 'ignored' | 'deleted' | 'duplicate' | 'expired';
+export type EmailCandidateClass = 'matched' | 'ambiguous' | 'unmatched' | 'duplicate' | 'unsupported-content' | 'needs-review';
+export type EmailConfidence = 'high' | 'possible' | 'unknown';
+
+export interface EmailReviewCandidate {
+  id: string;
+  userId: string;
+  forwardingAddressId: string;
+  provider: string;
+  providerMessageId: string;
+  receivedAt: IsoDateTime;
+  senderAddress?: string;
+  senderDomain?: string;
+  subject: string;
+  bodyExcerpt: string;
+  bodyHash: string;
+  attachmentMetadata: Array<{ filename: string; contentType: string; byteLength: number; sha256?: string; unsafe: boolean }>;
+  classification: EmailCandidateClass;
+  state: EmailCandidateState;
+  matchedOpportunityId?: string;
+  candidates: Array<{ opportunityId: string; title: string; organizationName?: string; confidence: 'high' | 'possible'; reasons: string[] }>;
+  proposedStatus?: MyStatus;
+  proposedSubmittedAt?: IsoDateTime;
+  proposedResponseAt?: IsoDateTime;
+  proposedDeadline?: IsoDate;
+  proposedWork?: string;
+  confidence: EmailConfidence;
+  warnings: string[];
+  evidenceReasons: string[];
+  createdAt: IsoDateTime;
+  expiresAt: IsoDateTime;
+  reviewedAt?: IsoDateTime;
+  reviewIdempotencyKey?: string;
+  /** Private review replay result; never returned to other users. */
+  reviewResult?: { trackerUpdated: boolean; manualEntryId?: string; statusEventId?: string };
 }
 
 export interface TrackerExportRow {

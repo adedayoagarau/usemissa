@@ -1,0 +1,5 @@
+import { NextResponse } from 'next/server';
+import { getSessionAccount } from '@/lib/auth';
+import { getEngine, persistRadar } from '@/lib/engine';
+function json(value: unknown, status = 200) { return NextResponse.json(value, { status, headers: { 'Cache-Control': 'private, no-store' } }); }
+export async function POST(request: Request) { const session = await getSessionAccount(request.headers.get('cookie')); if (!session) return json({ error: 'Not authenticated' }, 401); if (!session.account.userId) return json({ error: 'Profile not found' }, 404); const engine = await getEngine(); try { const view = engine.setForwardingAddressStatus(session.account.userId, 'active'); engine.recordAudit(session.account.id, 'email.forwarding_resumed', 'forwarding_address', view.addressId ?? 'unknown', JSON.stringify({ userId: session.account.userId, sourceMode: 'forwarding-address' })); await persistRadar(); return json(view); } catch { return json({ error: 'Forwarding address is not configured.' }, 404); } }

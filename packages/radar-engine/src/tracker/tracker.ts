@@ -174,7 +174,7 @@ function toManualItem(entry: ManualTrackerEntry): TrackerItem {
     deadlineKind: entry.deadline ? 'exact' : 'unknown',
     fit,
     trust: 0,
-    events: [],
+    events: entry.events ?? [],
     isManual: true,
     manualId: entry.id,
     notes: entry.notes,
