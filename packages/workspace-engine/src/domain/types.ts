@@ -132,6 +132,18 @@ export interface Submission {
   category?: string;
 }
 
+export interface SubmissionDraft {
+  id: string;
+  submissionPathId: string;
+  submitterAccountId: string;
+  answers: Record<string, string | string[]>;
+  category?: string;
+  workTitles: string[];
+  idempotencyKey?: string;
+  updatedAt: IsoDateTime;
+  expiresAt: IsoDateTime;
+}
+
 export interface Work {
   id: string;
   submissionId: string;

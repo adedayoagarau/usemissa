@@ -4,6 +4,7 @@ import type {
   OpenCall,
   SubmissionPath,
   Submission,
+  SubmissionDraft,
   Work,
   ReviewRound,
   ReviewAssignment,
@@ -31,6 +32,7 @@ export interface WorkspaceStore {
   openCalls: Map<string, OpenCall>;
   submissionPaths: Map<string, SubmissionPath>;
   submissions: Map<string, Submission>;
+  submissionDrafts: Map<string, SubmissionDraft>;
   works: Map<string, Work>;
   reviewRounds: Map<string, ReviewRound>;
   reviewAssignments: Map<string, ReviewAssignment>;
@@ -51,6 +53,7 @@ export function createStore(): WorkspaceStore {
     openCalls: new Map(),
     submissionPaths: new Map(),
     submissions: new Map(),
+    submissionDrafts: new Map(),
     works: new Map(),
     reviewRounds: new Map(),
     reviewAssignments: new Map(),

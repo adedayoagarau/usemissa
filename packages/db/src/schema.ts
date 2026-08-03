@@ -181,6 +181,22 @@ export const submissions = pgTable(
   ],
 );
 
+export const submissionDrafts = pgTable(
+  "submission_drafts",
+  {
+    id: text("id").primaryKey(),
+    submissionPathId: text("submission_path_id").notNull().references(() => submissionPaths.id, { onDelete: "cascade" }),
+    submitterAccountId: text("submitter_account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    answers: jsonb("answers").notNull().$type<Record<string, string | string[]>>(),
+    category: text("category"),
+    workTitles: jsonb("work_titles").notNull().$type<string[]>(),
+    idempotencyKey: text("idempotency_key"),
+    updatedAt,
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [uniqueIndex("submission_drafts_submitter_path_idx").on(table.submitterAccountId, table.submissionPathId), index("submission_drafts_expires_idx").on(table.expiresAt)],
+);
+
 export const works = pgTable(
   "works",
   {

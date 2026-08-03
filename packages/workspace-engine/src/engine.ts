@@ -5,6 +5,7 @@ import type {
   SubmissionPath,
   SubmissionField,
   Submission,
+  SubmissionDraft,
   Work,
   ReviewRound,
   ReviewAssignment,
@@ -30,6 +31,7 @@ function* idsInStore(store: WorkspaceStore): Iterable<string> {
     store.openCalls,
     store.submissionPaths,
     store.submissions,
+    store.submissionDrafts,
     store.works,
     store.reviewRounds,
     store.reviewAssignments,
@@ -281,6 +283,27 @@ export class WorkspaceEngine {
     submission.status = 'withdrawn';
     this.store.auditLog.push({ id: this.ids.next('audit'), at: this.now(), accountId: submitterAccountId, action: 'submission.withdrawn', targetType: 'submission', targetId: submission.id });
     return submission;
+  }
+
+  submissionDraftFor(submissionPathId: string, submitterAccountId: string): SubmissionDraft | undefined {
+    const draft = [...this.store.submissionDrafts.values()].find((candidate) => candidate.submissionPathId === submissionPathId && candidate.submitterAccountId === submitterAccountId);
+    if (!draft) return undefined;
+    if (Date.parse(draft.expiresAt) <= Date.parse(this.now())) { this.store.submissionDrafts.delete(draft.id); return undefined; }
+    return draft;
+  }
+
+  saveSubmissionDraft(submissionPathId: string, submitterAccountId: string, input: { answers: Record<string, string | string[]>; category?: string; workTitles: string[]; idempotencyKey?: string }): SubmissionDraft {
+    if (!this.store.submissionPaths.has(submissionPathId)) throw new Error('Unknown submission path');
+    const existing = this.submissionDraftFor(submissionPathId, submitterAccountId);
+    const updatedAt = this.now();
+    const draft: SubmissionDraft = { id: existing?.id ?? this.ids.next('submission_draft'), submissionPathId, submitterAccountId, answers: input.answers, category: input.category, workTitles: input.workTitles, idempotencyKey: input.idempotencyKey, updatedAt, expiresAt: new Date(Date.parse(updatedAt) + 30 * 24 * 60 * 60 * 1000).toISOString() };
+    this.store.submissionDrafts.set(draft.id, draft);
+    return draft;
+  }
+
+  deleteSubmissionDraft(submissionPathId: string, submitterAccountId: string): void {
+    const draft = this.submissionDraftFor(submissionPathId, submitterAccountId);
+    if (draft) this.store.submissionDrafts.delete(draft.id);
   }
 
   submissionsForOpenCall(openCallId: string): Submission[] {

@@ -131,6 +131,20 @@ test('submitters can withdraw an undecided submission, but not a decided one', (
   assert.throws(() => engine.withdrawSubmission(submission.id, 'acct2'));
 });
 
+test('submission drafts are owner-scoped, refreshed, and expire', () => {
+  let now = '2026-08-03T00:00:00.000Z';
+  const engine = new WorkspaceEngine({ now: () => now });
+  const entity = engine.createEntity('org1', 'Acme');
+  const program = engine.createProgram(entity.id, 'Program');
+  const call = engine.createOpenCall(program.id, 'Call');
+  const path = engine.createSubmissionPath(call.id, [], []);
+  const draft = engine.saveSubmissionDraft(path.id, 'acct1', { answers: { bio: 'Hello' }, workTitles: ['Work'] });
+  assert.equal(engine.submissionDraftFor(path.id, 'acct1')?.id, draft.id);
+  assert.equal(engine.submissionDraftFor(path.id, 'acct2'), undefined);
+  now = '2026-09-03T00:00:01.000Z';
+  assert.equal(engine.submissionDraftFor(path.id, 'acct1'), undefined);
+});
+
 test('Story 7.1: submissionsForOrganization walks Org -> Entity -> Program -> OpenCall -> Submission (drafts included)', () => {
   const engine = new WorkspaceEngine();
   const entity = engine.createEntity('org1', 'Acme Magazine');

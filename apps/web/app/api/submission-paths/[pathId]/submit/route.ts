@@ -62,6 +62,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   const engine = workspace;
   try {
     const submission = engine.createSubmission(pathId, session.account.id, body.works, payment, { answers: normalizedAnswers, category: category || undefined, idempotencyKey });
+    engine.deleteSubmissionDraft(pathId, session.account.id);
     await persistWorkspace();
     const radar = await getEngine();
     const userId = session.account.userId;

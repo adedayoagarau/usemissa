@@ -85,6 +85,19 @@ create table if not exists works (
   "order" integer not null
 );
 
+create table if not exists submission_drafts (
+  id text primary key,
+  submission_path_id text not null references submission_paths(id),
+  submitter_account_id text not null,
+  answers jsonb not null,
+  category text,
+  work_titles jsonb not null,
+  idempotency_key text,
+  updated_at timestamptz not null,
+  expires_at timestamptz not null
+);
+create unique index if not exists submission_drafts_owner_path_idx on submission_drafts (submitter_account_id, submission_path_id);
+
 create table if not exists decisions (
   id text primary key,
   work_id text not null unique references works(id),

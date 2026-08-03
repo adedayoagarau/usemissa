@@ -72,6 +72,18 @@ export const submissions = pgTable('submissions', {
   category: text('category'),
 });
 
+export const submissionDrafts = pgTable('submission_drafts', {
+  id: text('id').primaryKey(),
+  submissionPathId: text('submission_path_id').notNull().references(() => submissionPaths.id),
+  submitterAccountId: text('submitter_account_id').notNull(),
+  answers: jsonb('answers').notNull().$type<Record<string, string | string[]>>(),
+  category: text('category'),
+  workTitles: jsonb('work_titles').notNull().$type<string[]>(),
+  idempotencyKey: text('idempotency_key'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+});
+
 export const works = pgTable('works', {
   id: text('id').primaryKey(),
   submissionId: text('submission_id').notNull().references(() => submissions.id),

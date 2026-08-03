@@ -25,15 +25,25 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
 
   useEffect(() => {
     const raw = sessionStorage.getItem(`missa_submission_draft:${pathId}`);
-    if (!raw) return;
-    try {
-      const draft = JSON.parse(raw) as { category?: string; values?: Record<string, string>; workTitles?: string[] };
+    if (raw) {
+      try {
+        const draft = JSON.parse(raw) as { category?: string; values?: Record<string, string>; workTitles?: string[] };
+        queueMicrotask(() => {
+          if (draft.category) setCategory(draft.category);
+          if (draft.values) setValues(draft.values);
+          if (draft.workTitles?.length) setWorkTitles(draft.workTitles);
+        });
+      } catch { /* ignore malformed local draft */ }
+    }
+    void fetch(`/api/submission-paths/${pathId}/draft`).then((response) => response.ok ? response.json() as Promise<{ draft?: { category?: string; answers?: Record<string, string | string[]>; workTitles?: string[] } | null }> : null).then((body) => {
+      const draft = body?.draft;
+      if (!draft) return;
       queueMicrotask(() => {
         if (draft.category) setCategory(draft.category);
-        if (draft.values) setValues(draft.values);
+        if (draft.answers) setValues(Object.fromEntries(Object.entries(draft.answers).map(([key, value]) => [key, Array.isArray(value) ? value[0] ?? '' : value])));
         if (draft.workTitles?.length) setWorkTitles(draft.workTitles);
       });
-    } catch { /* ignore malformed local draft */ }
+    }).catch(() => undefined);
   }, [pathId]);
 
   const setField = (fieldId: string, value: string) => setValues((v) => ({ ...v, [fieldId]: value }));
@@ -46,26 +56,13 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
     const fileFields = fields.filter((f) => f.type === 'file-upload');
     startTransition(async () => {
       const paymentSessionId = searchParams.get('checkout_session') ?? undefined;
-      if (feeCents && feeCents > 0 && !paymentSessionId) {
-        const draftKey = `missa_submission_draft:${pathId}`;
-        let checkoutKey = crypto.randomUUID();
-        try { const current = JSON.parse(sessionStorage.getItem(draftKey) ?? '{}') as { checkoutKey?: string }; if (current.checkoutKey) checkoutKey = current.checkoutKey; } catch { /* generate a new key */ }
-        sessionStorage.setItem(draftKey, JSON.stringify({ category, values, workTitles, checkoutKey }));
-        const checkout = await fetch(`/api/submission-paths/${pathId}/checkout`, { method: 'POST', headers: { 'Idempotency-Key': checkoutKey } });
-        const checkoutBody = await checkout.json().catch(() => ({}));
-        if (!checkout.ok || !checkoutBody.url) { setResult({ ok: false, message: checkoutBody.error ?? 'Payment could not be started' }); return; }
-        window.location.assign(checkoutBody.url);
-        return;
-      }
       const draftKey = `missa_submission_draft:${pathId}`;
       let submissionKey = crypto.randomUUID();
-      try { const current = JSON.parse(sessionStorage.getItem(draftKey) ?? '{}') as { submissionKey?: string }; if (current.submissionKey) submissionKey = current.submissionKey; } catch { /* generate a new key */ }
-      try {
-        const current = JSON.parse(sessionStorage.getItem(draftKey) ?? '{}') as Record<string, unknown>;
-        sessionStorage.setItem(draftKey, JSON.stringify({ ...current, category, values, workTitles, submissionKey }));
-      } catch { /* submission still works if storage is unavailable */ }
-      const fileUrls: Record<string, string> = {};
+      let checkoutKey = crypto.randomUUID();
+      try { const current = JSON.parse(sessionStorage.getItem(draftKey) ?? '{}') as { submissionKey?: string; checkoutKey?: string }; if (current.submissionKey) submissionKey = current.submissionKey; if (current.checkoutKey) checkoutKey = current.checkoutKey; } catch { /* generate new keys */ }
+      const fileUrls: Record<string, string> = { ...Object.fromEntries(fileFields.flatMap((field) => typeof values[field.id] === 'string' && values[field.id]!.startsWith('http') ? [[field.id, values[field.id]!]] : [])) };
       for (const f of fileFields) {
+        if (fileUrls[f.id]) continue;
         const input = (formElement.elements.namedItem(f.id) as HTMLInputElement) ?? undefined;
         const file = input?.files?.[0];
         if (!file) continue;
@@ -76,8 +73,20 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         if (!upload.ok) { setResult({ ok: false, message: uploadBody.error ?? 'File upload failed' }); return; }
         fileUrls[f.id] = uploadBody.url;
       }
-      const answers: Record<string, string> = { ...values };
-      for (const [fieldId, url] of Object.entries(fileUrls)) answers[fieldId] = url;
+      const answers: Record<string, string> = { ...values, ...fileUrls };
+      try {
+        const current = JSON.parse(sessionStorage.getItem(draftKey) ?? '{}') as Record<string, unknown>;
+        sessionStorage.setItem(draftKey, JSON.stringify({ ...current, category, values: answers, workTitles, submissionKey, checkoutKey }));
+      } catch { /* submission still works if storage is unavailable */ }
+      if (feeCents && feeCents > 0 && !paymentSessionId) {
+        const saveDraft = await fetch(`/api/submission-paths/${pathId}/draft`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ category, answers, workTitles, idempotencyKey: submissionKey }) });
+        if (!saveDraft.ok) { setResult({ ok: false, message: 'Could not save your application draft' }); return; }
+        const checkout = await fetch(`/api/submission-paths/${pathId}/checkout`, { method: 'POST', headers: { 'Idempotency-Key': checkoutKey } });
+        const checkoutBody = await checkout.json().catch(() => ({}));
+        if (!checkout.ok || !checkoutBody.url) { setResult({ ok: false, message: checkoutBody.error ?? 'Payment could not be started' }); return; }
+        window.location.assign(checkoutBody.url);
+        return;
+      }
       const res = await fetch(`/api/submission-paths/${pathId}/submit`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'Idempotency-Key': submissionKey },
@@ -124,7 +133,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
             {f.required && ' *'}
           </Label>
           {f.type === 'file-upload' ? (
-            <input id={f.id} name={f.id} type="file" required={f.required} className="mt-1 block w-full text-sm" />
+            <input id={f.id} name={f.id} type="file" required={f.required && !values[f.id]} className="mt-1 block w-full text-sm" />
           ) : f.type === 'category-select' ? (
             <select id={f.id} name={f.id} required={f.required} value={values[f.id] ?? category} onChange={(e) => { setField(f.id, e.target.value); setCategory(e.target.value); }} className="mt-1 min-h-11 w-full rounded-md border border-input bg-white px-2 py-1.5 text-sm">
               <option value="">Choose a category</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}
