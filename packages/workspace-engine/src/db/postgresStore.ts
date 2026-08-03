@@ -86,11 +86,12 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool): Pr
     }
 
     for (const w of store.works.values()) {
-      await client.query('insert into works (id, submission_id, title, file_url, "order") values ($1, $2, $3, $4, $5)', [
+      await client.query('insert into works (id, submission_id, title, file_url, file_urls, "order") values ($1, $2, $3, $4, $5, $6)', [
         w.id,
         w.submissionId,
         w.title,
         w.fileUrl ?? null,
+        w.fileUrls ? JSON.stringify(w.fileUrls) : null,
         w.order,
       ]);
     }
@@ -254,11 +255,11 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
     store.submissions.set(submission.id, submission);
   }
 
-  const works = await pool.query<{ id: string; submission_id: string; title: string; file_url: string | null; order: number }>(
+  const works = await pool.query<{ id: string; submission_id: string; title: string; file_url: string | null; file_urls: string[] | null; order: number }>(
     'select * from works',
   );
   for (const row of works.rows) {
-    const work: Work = { id: row.id, submissionId: row.submission_id, title: row.title, fileUrl: row.file_url ?? undefined, order: row.order };
+    const work: Work = { id: row.id, submissionId: row.submission_id, title: row.title, fileUrl: row.file_url ?? undefined, fileUrls: row.file_urls ?? undefined, order: row.order };
     store.works.set(work.id, work);
   }
 

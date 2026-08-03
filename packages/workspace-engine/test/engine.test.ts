@@ -82,7 +82,7 @@ test('Story 6.5: submitting creates a Submission with one or more Works (item-le
   const path = engine.createSubmissionPath(openCall.id, ['poetry'], [{ type: 'file-upload', label: 'Manuscript', required: true }]);
 
   const submission = engine.createSubmission(path.id, 'acct1', [
-    { title: 'Poem A', fileUrl: 'https://example.com/a.pdf' },
+    { title: 'Poem A', fileUrl: 'https://example.com/a.pdf', fileUrls: ['https://example.com/a.pdf', 'https://example.com/a-appendix.pdf'] },
     { title: 'Poem B', fileUrl: 'https://example.com/b.pdf' },
   ], undefined, { category: 'poetry', answers: { bio: 'A short bio', manuscript: 'https://example.com/a.pdf' } });
 
@@ -90,6 +90,7 @@ test('Story 6.5: submitting creates a Submission with one or more Works (item-le
   const works = engine.worksForSubmission(submission.id);
   assert.equal(works.length, 2);
   assert.equal(works[0].title, 'Poem A');
+  assert.deepEqual(works[0].fileUrls, ['https://example.com/a.pdf', 'https://example.com/a-appendix.pdf']);
   assert.equal(works[1].title, 'Poem B');
   assert.equal(submission.category, 'poetry');
   assert.deepEqual(submission.answers, { bio: 'A short bio', manuscript: 'https://example.com/a.pdf' });

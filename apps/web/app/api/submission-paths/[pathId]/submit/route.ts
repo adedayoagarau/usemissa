@@ -40,6 +40,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   if (body.works.some((work: unknown) => typeof (work as { fileUrl?: unknown }).fileUrl === 'string' && !ownedFileUrl((work as { fileUrl: string }).fileUrl))) {
     return NextResponse.json({ error: 'Work contains an invalid upload' }, { status: 400 });
   }
+  if (body.works.some((work: unknown) => Array.isArray((work as { fileUrls?: unknown }).fileUrls) && (work as { fileUrls: unknown[] }).fileUrls.some((fileUrl) => typeof fileUrl !== 'string' || !ownedFileUrl(fileUrl)))) {
+    return NextResponse.json({ error: 'Work contains an invalid upload' }, { status: 400 });
+  }
 
   const category = typeof body.category === 'string' ? body.category.trim() : '';
   if (category && !path.categories.includes(category)) return NextResponse.json({ error: 'Choose a valid category' }, { status: 400 });

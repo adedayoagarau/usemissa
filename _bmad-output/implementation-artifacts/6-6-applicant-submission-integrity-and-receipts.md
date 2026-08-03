@@ -41,14 +41,14 @@ response and connect a successful submission to the submitter's Tracker.
   does not return to the browser.
 - A scheduled, authenticated cleanup route deletes expired draft metadata and
   its private Blob uploads in bounded batches.
+- Each Work can now carry multiple private file URLs; the organization file
+  preview route authorizes and streams attachments individually.
 
 ## Still required before this story is done
 
 - Payment failure, refund, and dispute lifecycle handling beyond successful
   Checkout completion.
-- Multiple file attachments per Work and malware scanning remain; cleanup now
-  covers expired draft uploads (the current draft retains one file URL per form
-  field and maps the first file to the first Work).
+- Malware scanning remains; cleanup now covers expired draft uploads.
 - Applicant status notifications (receipt is available; outbound delivery is
   still provider-dependent).
 

@@ -92,6 +92,7 @@ export const works = pgTable('works', {
   // Data-URI values only for now (no file storage adapter yet -- see Story
   // 6.5's dev notes); text, not jsonb, since it's a single opaque string.
   fileUrl: text('file_url'),
+  fileUrls: jsonb('file_urls').$type<string[]>(),
   order: integer('order').notNull(),
 });
 

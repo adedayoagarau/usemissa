@@ -150,6 +150,7 @@ export interface Work {
   submissionId: string;
   title: string;
   fileUrl?: string;
+  fileUrls?: string[];
   order: number;
 }
 

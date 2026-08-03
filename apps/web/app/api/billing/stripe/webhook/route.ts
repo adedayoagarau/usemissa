@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       if (typeof value !== 'string') return false;
       try { const parsed = new URL(value); return parsed.protocol === 'https:' && parsed.pathname.includes(`/missa/submissions/${sessionAccountId}/`); } catch { return false; }
     });
-    const works = draft.workTitles.filter(Boolean).map((title, index) => ({ title, ...(index === 0 && fileUrl ? { fileUrl } : {}) }));
+    const works = draft.workTitles.filter(Boolean).map((title, index) => ({ title, ...(index === 0 && fileUrl ? { fileUrl, fileUrls: [fileUrl] } : {}) }));
     if (works.length === 0) return NextResponse.json({ error: 'Submission draft has no works' }, { status: 409 });
     const submission = workspace.createSubmission(path.id, sessionAccountId, works, { status: 'paid', sessionId: String(object.id ?? ''), feeCents: path.feeCents }, { answers: draft.answers, category: draft.category, idempotencyKey: draft.idempotencyKey });
     workspace.deleteSubmissionDraft(path.id, sessionAccountId);

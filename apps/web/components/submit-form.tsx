@@ -21,16 +21,25 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<{ ok: boolean; message: string; submissionId?: string } | null>(null);
   const [workTitles, setWorkTitles] = useState(['']);
+  const [workFileInputs, setWorkFileInputs] = useState<Record<number, File[]>>({});
+  const [workFileUrls, setWorkFileUrls] = useState<Record<number, string[]>>({});
   const searchParams = useSearchParams();
+
+  const extractWorkFileUrls = (answers: Record<string, string | string[]>): Record<number, string[]> => Object.fromEntries(Object.entries(answers).flatMap(([key, value]) => {
+    const match = key.match(/^__work_files_(\d+)$/);
+    if (!match) return [];
+    const urls = (Array.isArray(value) ? value : [value]).filter((item): item is string => typeof item === 'string' && item.startsWith('https://'));
+    return urls.length ? [[Number(match[1]), urls]] : [];
+  }));
 
   useEffect(() => {
     const raw = sessionStorage.getItem(`missa_submission_draft:${pathId}`);
     if (raw) {
       try {
-        const draft = JSON.parse(raw) as { category?: string; values?: Record<string, string>; workTitles?: string[] };
+        const draft = JSON.parse(raw) as { category?: string; values?: Record<string, string | string[]>; workTitles?: string[] };
         queueMicrotask(() => {
           if (draft.category) setCategory(draft.category);
-          if (draft.values) setValues(draft.values);
+          if (draft.values) { setValues(Object.fromEntries(Object.entries(draft.values).filter(([key]) => !key.startsWith('__work_files_')).map(([key, value]) => [key, Array.isArray(value) ? value[0] ?? '' : value]))); setWorkFileUrls(extractWorkFileUrls(draft.values)); }
           if (draft.workTitles?.length) setWorkTitles(draft.workTitles);
         });
       } catch { /* ignore malformed local draft */ }
@@ -40,7 +49,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
       if (!draft) return;
       queueMicrotask(() => {
         if (draft.category) setCategory(draft.category);
-        if (draft.answers) setValues(Object.fromEntries(Object.entries(draft.answers).map(([key, value]) => [key, Array.isArray(value) ? value[0] ?? '' : value])));
+        if (draft.answers) { setValues(Object.fromEntries(Object.entries(draft.answers).filter(([key]) => !key.startsWith('__work_files_')).map(([key, value]) => [key, Array.isArray(value) ? value[0] ?? '' : value]))); setWorkFileUrls(extractWorkFileUrls(draft.answers)); }
         if (draft.workTitles?.length) setWorkTitles(draft.workTitles);
       });
     }).catch(() => undefined);
@@ -73,7 +82,22 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         if (!upload.ok) { setResult({ ok: false, message: uploadBody.error ?? 'File upload failed' }); return; }
         fileUrls[f.id] = uploadBody.url;
       }
-      const answers: Record<string, string> = { ...values, ...fileUrls };
+      const answers: Record<string, string | string[]> = { ...values, ...fileUrls };
+      const nextWorkFileUrls: Record<number, string[]> = { ...workFileUrls };
+      for (const [indexKey, files] of Object.entries(workFileInputs)) {
+        const index = Number(indexKey);
+        if (!files.length) continue;
+        const uploaded: string[] = [];
+        for (const file of files) {
+          const form = new FormData(); form.set('file', file);
+          const upload = await fetch(`/api/submission-paths/${pathId}/upload`, { method: 'POST', body: form });
+          const uploadBody = await upload.json().catch(() => ({}));
+          if (!upload.ok) { setResult({ ok: false, message: uploadBody.error ?? 'File upload failed' }); return; }
+          if (typeof uploadBody.url === 'string') uploaded.push(uploadBody.url);
+        }
+        nextWorkFileUrls[index] = [...(nextWorkFileUrls[index] ?? []), ...uploaded];
+      }
+      for (const [index, urls] of Object.entries(nextWorkFileUrls)) answers[`__work_files_${index}`] = urls;
       try {
         const current = JSON.parse(sessionStorage.getItem(draftKey) ?? '{}') as Record<string, unknown>;
         sessionStorage.setItem(draftKey, JSON.stringify({ ...current, category, values: answers, workTitles, submissionKey, checkoutKey }));
@@ -90,7 +114,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
       const res = await fetch(`/api/submission-paths/${pathId}/submit`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', 'Idempotency-Key': submissionKey },
-        body: JSON.stringify({ category, answers, works: workTitles.filter((value) => value.trim()).map((value, index) => ({ title: value.trim(), fileUrl: index === 0 ? Object.values(fileUrls)[0] : undefined })), paymentSessionId }),
+        body: JSON.stringify({ category, answers, works: workTitles.filter((value) => value.trim()).map((value, index) => { const attachments = nextWorkFileUrls[index] ?? (index === 0 && Object.values(fileUrls)[0] ? [Object.values(fileUrls)[0]!] : []); return { title: value.trim(), ...(attachments.length ? { fileUrl: attachments[0], fileUrls: attachments } : {}) }; }), paymentSessionId }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -145,7 +169,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
           )}
         </div>
       ))}
-      <div className="space-y-2 rounded-md border border-border p-3"><div className="flex items-center justify-between"><Label>Works in this submission</Label><Button type="button" variant="outline" size="sm" onClick={() => setWorkTitles((current) => [...current, ''])}>Add another work</Button></div>{workTitles.map((workTitle, index) => <div key={index} className="flex gap-2"><Input aria-label={`Work ${index + 1} title`} placeholder={`Work ${index + 1} title`} value={workTitle} required={index === 0} onChange={(e) => setWorkTitles((current) => current.map((value, i) => i === index ? e.target.value : value))} />{index > 0 && <Button type="button" variant="ghost" size="sm" onClick={() => setWorkTitles((current) => current.filter((_, i) => i !== index))}>Remove</Button>}</div>)}</div>
+      <div className="space-y-2 rounded-md border border-border p-3"><div className="flex items-center justify-between"><Label>Works in this submission</Label><Button type="button" variant="outline" size="sm" onClick={() => setWorkTitles((current) => [...current, ''])}>Add another work</Button></div>{workTitles.map((workTitle, index) => <div key={index} className="rounded-md border border-border p-2"><div className="flex gap-2"><Input aria-label={`Work ${index + 1} title`} placeholder={`Work ${index + 1} title`} value={workTitle} required={index === 0} onChange={(e) => setWorkTitles((current) => current.map((value, i) => i === index ? e.target.value : value))} />{index > 0 && <Button type="button" variant="ghost" size="sm" onClick={() => { setWorkTitles((current) => current.filter((_, i) => i !== index)); setWorkFileInputs((current) => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value]))); setWorkFileUrls((current) => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value]))); }}>Remove</Button>}</div><label className="mt-2 block text-xs text-muted-foreground">Files for this work (optional)<input type="file" multiple className="mt-1 block w-full text-sm" aria-label={`Files for work ${index + 1}`} onChange={(event) => setWorkFileInputs((current) => ({ ...current, [index]: Array.from(event.target.files ?? []) }))} />{workFileUrls[index]?.length ? <span className="mt-1 block">{workFileUrls[index].length} uploaded file{workFileUrls[index].length === 1 ? '' : 's'} saved</span> : null}</label></div>)}</div>
       <Button type="submit" disabled={isPending}>
         {isPending ? 'Submitting…' : 'Submit'}
       </Button>

@@ -208,6 +208,7 @@ export const works = pgTable(
       .references(() => submissions.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     fileUrl: text("file_url"),
+    fileUrls: jsonb("file_urls").$type<string[]>(),
     order: integer("order").notNull(),
     createdAt,
     updatedAt,

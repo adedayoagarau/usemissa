@@ -223,7 +223,7 @@ export class WorkspaceEngine {
   createSubmission(
     submissionPathId: string,
     submitterAccountId: string,
-    works: Array<{ title: string; fileUrl?: string }>,
+    works: Array<{ title: string; fileUrl?: string; fileUrls?: string[] }>,
     payment?: { status: 'not-required' | 'paid'; sessionId?: string; feeCents?: number },
     details?: { answers?: Record<string, string | string[]>; category?: string; idempotencyKey?: string },
   ): Submission {
@@ -262,6 +262,7 @@ export class WorkspaceEngine {
         submissionId: submission.id,
         title: w.title,
         fileUrl: w.fileUrl,
+        fileUrls: w.fileUrls,
         order: i,
       };
       this.store.works.set(work.id, work);

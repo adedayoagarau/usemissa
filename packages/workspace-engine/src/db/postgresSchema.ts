@@ -82,6 +82,7 @@ create table if not exists works (
   submission_id text not null references submissions(id),
   title text not null,
   file_url text,
+  file_urls jsonb,
   "order" integer not null
 );
 
