@@ -1,6 +1,7 @@
 import type { Account } from '@missa/radar-engine';
 import type { OpenCall, Submission, SubmissionStatus } from './domain/types.js';
 import type { WorkspaceEngine } from './engine.js';
+import type { ImportSource } from './imports.js';
 
 export const SUBMISSION_IMPORT_MAX_BYTES = 2_000_000;
 export const SUBMISSION_IMPORT_MAX_ROWS = 2_000;
@@ -17,6 +18,7 @@ export interface SubmissionImportRow {
 }
 
 export interface SubmissionImportPlan {
+  source: ImportSource;
   rows: SubmissionImportRow[];
   validRows: number;
   invalidRows: number;
@@ -55,7 +57,7 @@ function callsForOrganization(engine: WorkspaceEngine, organizationId: string): 
   return engine.entitiesForOrganization(organizationId).flatMap((entity) => engine.programsForEntity(entity.id)).flatMap((program) => engine.openCallsForProgram(program.id));
 }
 
-export function planSubmissionImport(csv: string, engine: WorkspaceEngine, organizationId: string, accountByEmail: (email: string) => Account | undefined): SubmissionImportPlan {
+export function planSubmissionImport(csv: string, engine: WorkspaceEngine, organizationId: string, accountByEmail: (email: string) => Account | undefined, source: ImportSource = 'generic'): SubmissionImportPlan {
   if (Buffer.byteLength(csv, 'utf8') > SUBMISSION_IMPORT_MAX_BYTES) throw new Error('CSV is larger than the 2 MB import limit');
   const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim());
   if (lines.length < 2) throw new Error('CSV must include a header row and at least one data row');
@@ -65,10 +67,10 @@ export function planSubmissionImport(csv: string, engine: WorkspaceEngine, organ
   const seen = new Set<string>();
   const rows = lines.slice(1).map((line, index) => {
     const cells = parseLine(line);
-    const openCall = column(cells, headers, 'open call', 'opportunity', 'call', 'title');
-    const submitterEmail = column(cells, headers, 'submitter email', 'email', 'applicant email');
-    const workTitle = column(cells, headers, 'work title', 'work', 'submission title', 'entry title') || 'Imported submission';
-    const submittedAt = column(cells, headers, 'submitted at', 'submission date', 'date') || undefined;
+    const openCall = column(cells, headers, 'open call', 'opportunity', 'call', 'title', 'open call title', 'program');
+    const submitterEmail = column(cells, headers, 'submitter email', 'email', 'applicant email', 'applicant email address', 'email address');
+    const workTitle = column(cells, headers, 'work title', 'work', 'submission title', 'entry title', 'entry name') || 'Imported submission';
+    const submittedAt = column(cells, headers, 'submitted at', 'submission date', 'date', 'created time', 'timestamp') || undefined;
     const row: SubmissionImportRow = { row: index + 2, openCall, submitterEmail: submitterEmail.trim().toLowerCase(), workTitle, submittedAt, status: status(column(cells, headers, 'status', 'decision')), errors: [], warnings: [] };
     const matchingCall = calls.find((candidate) => key(candidate.title) === key(openCall));
     if (!openCall || !matchingCall) row.errors.push('Open call was not found in this organization');
@@ -84,7 +86,7 @@ export function planSubmissionImport(csv: string, engine: WorkspaceEngine, organ
     }
     return row;
   });
-  return { rows, validRows: rows.filter((row) => row.errors.length === 0).length, invalidRows: rows.filter((row) => row.errors.length > 0).length, duplicateRows: rows.filter((row) => row.errors.some((error) => error.startsWith('Duplicate'))).length, unmatchedAccountRows: rows.filter((row) => row.errors.some((error) => error.startsWith('Submitter'))).length };
+  return { source, rows, validRows: rows.filter((row) => row.errors.length === 0).length, invalidRows: rows.filter((row) => row.errors.length > 0).length, duplicateRows: rows.filter((row) => row.errors.some((error) => error.startsWith('Duplicate'))).length, unmatchedAccountRows: rows.filter((row) => row.errors.some((error) => error.startsWith('Submitter'))).length };
 }
 
 export function commitSubmissionImport(plan: SubmissionImportPlan, engine: WorkspaceEngine, organizationId: string, accountByEmail: (email: string) => Account | undefined): { created: Submission[]; skipped: number } {

@@ -9,7 +9,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const body = await request.json().catch(() => ({}));
   if (typeof body.csv !== 'string') return NextResponse.json({ error: 'csv is required' }, { status: 400 });
   try {
-    const plan = planOpenCallImport(body.csv, result.access.workspace, id);
+    const source = ['submittable', 'google-forms', 'airtable', 'generic'].includes(body.source) ? body.source : 'generic';
+    const plan = planOpenCallImport(body.csv, result.access.workspace, id, source);
     if (plan.invalidRows > 0) return NextResponse.json({ error: 'Fix invalid rows before committing', plan }, { status: 422 });
     const imported = commitOpenCallImport(plan, result.access.workspace, id);
     for (const openCall of imported.created) {

@@ -10,7 +10,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (typeof body.csv !== 'string') return NextResponse.json({ error: 'csv is required' }, { status: 400 });
   const accountByEmail = (email: string) => [...result.access.radar.store.accounts.values()].find((account) => account.email === email);
   try {
-    const plan = planSubmissionImport(body.csv, result.access.workspace, id, accountByEmail);
+    const source = ['submittable', 'google-forms', 'airtable', 'generic'].includes(body.source) ? body.source : 'generic';
+    const plan = planSubmissionImport(body.csv, result.access.workspace, id, accountByEmail, source);
     if (plan.invalidRows > 0) return NextResponse.json({ error: 'Fix invalid rows before committing', plan }, { status: 422 });
     const imported = commitSubmissionImport(plan, result.access.workspace, id, accountByEmail);
     await persistOrganizationMutation(result.access, { action: 'submission.import', targetType: 'organization', targetId: id, detail: { created: imported.created.length, skipped: imported.skipped } });

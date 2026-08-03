@@ -23,6 +23,7 @@ export {
   commitOpenCallImport,
   type OpenCallImportPlan,
   type OpenCallImportRow,
+  type ImportSource,
 } from "./imports.js";
 export {
   ensurePostgresSchema,

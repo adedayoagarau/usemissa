@@ -3,6 +3,7 @@ import type { WorkspaceEngine } from './engine.js';
 
 export const OPEN_CALL_IMPORT_MAX_BYTES = 2_000_000;
 export const OPEN_CALL_IMPORT_MAX_ROWS = 1_000;
+export type ImportSource = 'submittable' | 'google-forms' | 'airtable' | 'generic';
 
 export interface OpenCallImportRow {
   row: number;
@@ -16,6 +17,7 @@ export interface OpenCallImportRow {
 }
 
 export interface OpenCallImportPlan {
+  source: ImportSource;
   rows: OpenCallImportRow[];
   validRows: number;
   invalidRows: number;
@@ -56,7 +58,7 @@ function status(valueToNormalize: string): OpenCallStatus {
   return 'draft';
 }
 
-export function planOpenCallImport(csv: string, engine: WorkspaceEngine, organizationId: string): OpenCallImportPlan {
+export function planOpenCallImport(csv: string, engine: WorkspaceEngine, organizationId: string, source: ImportSource = 'generic'): OpenCallImportPlan {
   if (Buffer.byteLength(csv, 'utf8') > OPEN_CALL_IMPORT_MAX_BYTES) throw new Error('CSV is larger than the 2 MB import limit');
   const lines = csv.replace(/^\uFEFF/, '').split(/\r?\n/).filter((line) => line.trim());
   if (lines.length < 2) throw new Error('CSV must include a header row and at least one data row');
@@ -66,9 +68,9 @@ export function planOpenCallImport(csv: string, engine: WorkspaceEngine, organiz
   const entities = engine.entitiesForOrganization(organizationId);
   for (const [offset, line] of lines.slice(1, OPEN_CALL_IMPORT_MAX_ROWS + 1).entries()) {
     const cells = parseLine(line);
-    const title = value(cells, headers, 'title', 'open call', 'opportunity');
-    const team = value(cells, headers, 'team', 'entity', 'department') || 'Imported team';
-    const program = value(cells, headers, 'program', 'imprint', 'category') || 'Imported program';
+    const title = value(cells, headers, 'title', 'open call', 'opportunity', 'open call title', 'name');
+    const team = value(cells, headers, 'team', 'entity', 'department', 'team / department') || 'Imported team';
+    const program = value(cells, headers, 'program', 'imprint', 'category', 'program / category') || 'Imported program';
     const row: OpenCallImportRow = {
       row: offset + 2, title, team, program,
       status: status(value(cells, headers, 'status', 'state')),
@@ -89,7 +91,7 @@ export function planOpenCallImport(csv: string, engine: WorkspaceEngine, organiz
   }
   if (lines.length - 1 > OPEN_CALL_IMPORT_MAX_ROWS) throw new Error(`CSV exceeds the ${OPEN_CALL_IMPORT_MAX_ROWS}-row import limit`);
   return {
-    rows,
+    source, rows,
     validRows: rows.filter((row) => row.errors.length === 0).length,
     invalidRows: rows.filter((row) => row.errors.length > 0).length,
     duplicateRows: rows.filter((row) => row.errors.some((error) => error.startsWith('Duplicate'))).length,
