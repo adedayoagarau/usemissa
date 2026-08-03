@@ -143,6 +143,7 @@ test('submission drafts are owner-scoped, refreshed, and expire', () => {
   assert.equal(engine.saveSubmissionDraft(path.id, 'acct1', { answers: { bio: 'Updated' }, workTitles: ['Work'] }).paymentSessionId, 'cs_test');
   assert.equal(engine.submissionDraftFor(path.id, 'acct2'), undefined);
   now = '2026-09-03T00:00:01.000Z';
+  assert.equal(engine.expiredSubmissionDrafts().length, 1);
   assert.equal(engine.submissionDraftFor(path.id, 'acct1'), undefined);
 });
 

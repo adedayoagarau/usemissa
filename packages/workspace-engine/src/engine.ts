@@ -292,6 +292,11 @@ export class WorkspaceEngine {
     return draft;
   }
 
+  expiredSubmissionDrafts(): SubmissionDraft[] {
+    const now = Date.parse(this.now());
+    return [...this.store.submissionDrafts.values()].filter((draft) => Date.parse(draft.expiresAt) <= now);
+  }
+
   saveSubmissionDraft(submissionPathId: string, submitterAccountId: string, input: { answers: Record<string, string | string[]>; category?: string; workTitles: string[]; idempotencyKey?: string; paymentSessionId?: string }): SubmissionDraft {
     if (!this.store.submissionPaths.has(submissionPathId)) throw new Error('Unknown submission path');
     const existing = this.submissionDraftFor(submissionPathId, submitterAccountId);
