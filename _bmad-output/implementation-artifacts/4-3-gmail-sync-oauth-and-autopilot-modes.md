@@ -1,7 +1,7 @@
 ---
 epic: 4
 story: 4.3
-status: ready-for-dev
+status: review
 title: Gmail Sync OAuth and Autopilot modes
 ---
 
@@ -344,8 +344,12 @@ npm run test:e2e --workspace=@missa/web -- e2e/gmail-sync.spec.ts
 
 ## Dev Notes / Dev Agent Record
 
-Complete during implementation with provider package/version, Google Cloud project and OAuth verification status, environment variable setup, Neon schema/rehearsal evidence, token/key rotation evidence, route/worker/UI files, and validation results. Provider-specific behavior must remain behind the normalized Gmail adapter port.
+Implemented the review-first Gmail vertical slice behind the normalized provider port. The engine now owns encrypted, key-versioned refresh tokens, short-lived PKCE OAuth state, connection/mode/job lifecycle, bounded initial/history sync contracts, leases/retries, source-aware private candidates, and the narrow non-sensitive Autopilot gate. The Google adapter owns OAuth/token/userinfo, message metadata/text normalization, history, watch, and revoke calls; the web layer owns authenticated OAuth/callback, sync/mode/disconnect, cron, and Pub/Sub enqueue routes plus Profile/Inbox controls.
+
+Neon schema initialization and reload were rehearsed non-destructively against the configured database. The live store loaded 1,024 sources, 113 opportunities, 2 users, and 2 accounts; Gmail collections are empty until a real Google connection is authorized. No destructive integration test was run against live data. Local/Vercel environment wiring is present for `DATABASE_URL` and repository selection; Google Cloud credentials and token key still need deployment-specific values.
+
+Validation completed: Radar engine 68/68 tests, adapter TypeScript build, web typecheck, web lint (two pre-existing warnings only), and production web build. The full adapter integration suite and live OAuth/Pub/Sub E2E remain environment-gated. The Pub/Sub endpoint currently uses a shared secret and fast enqueue path; Google OIDC/audience verification should be completed before production enablement. The Autopilot confirmation is a browser confirmation gate in this slice; a shadcn dialog/checkbox can replace it in the accessibility polish pass.
 
 ## Review Notes / QA Results
 
-The reviewer must specifically verify: OAuth state/PKCE/account binding cannot be bypassed; tokens are encrypted and never logged/exported; disconnect revokes and stops all work; review is the default; Autopilot requires explicit opt-in and applies only the documented gates; sensitive outcomes remain review-only; stale history and push retries are safe; Gmail candidates stay private; and all UI follows true-white DESIGN.md/accessibility requirements.
+QA evidence: 68/68 engine tests pass, adapter build passes, web typecheck passes, web lint has no errors (only the two pre-existing opportunities warnings), and the production build generates all Gmail routes. Neon schema/load check passes without deleting or rewriting existing records. Reviewer follow-up: verify Google OAuth verification and redirect configuration, replace shared-secret Pub/Sub authentication with OIDC/audience verification, run mocked route/E2E coverage, and confirm the explicit Autopilot dialog/checkbox and 390px keyboard flow against `DESIGN.md` before marking done.

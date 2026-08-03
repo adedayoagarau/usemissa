@@ -5,6 +5,7 @@ import { getEngine } from '@/lib/engine';
 import { AppNav } from '@/components/app-nav';
 import { ProfileForm } from './profile-form';
 import { EmailForwardingCard } from '@/components/email-forwarding-card';
+import { GmailSyncCard } from '@/components/gmail-sync-card';
 
 export default async function ProfilePage() {
   const cookieStore = await cookies();
@@ -23,5 +24,5 @@ export default async function ProfilePage() {
     publicUrl: `/profile/${encodeURIComponent(user.id)}`,
   };
 
-  return <div className="min-h-screen bg-white"><AppNav email={session.account.email} userId={session.account.userId} /><main className="mx-auto max-w-[1120px] px-4 py-10 sm:px-6 lg:px-8"><header className="max-w-2xl"><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Your account</p><h1 className="mt-2 font-heading text-4xl font-medium tracking-tight text-foreground">Profile</h1><p className="mt-3 text-base leading-7 text-muted-foreground">Keep your public identity current so organizations can understand your work before you submit.</p></header><div className="mt-8 space-y-6"><ProfileForm initialProfile={profile} /><EmailForwardingCard /></div></main></div>;
+  return <div className="min-h-screen bg-white"><AppNav email={session.account.email} userId={session.account.userId} /><main className="mx-auto max-w-[1120px] px-4 py-10 sm:px-6 lg:px-8"><header className="max-w-2xl"><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Your account</p><h1 className="mt-2 font-heading text-4xl font-medium tracking-tight text-foreground">Profile</h1><p className="mt-3 text-base leading-7 text-muted-foreground">Keep your public identity current so organizations can understand your work before you submit.</p></header><div className="mt-8 space-y-6"><ProfileForm initialProfile={profile} /><GmailSyncCard /><EmailForwardingCard /></div></main></div>;
 }

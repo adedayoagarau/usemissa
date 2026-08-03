@@ -544,7 +544,7 @@ export type EmailConfidence = 'high' | 'possible' | 'unknown';
 export interface EmailReviewCandidate {
   id: string;
   userId: string;
-  forwardingAddressId: string;
+  forwardingAddressId?: string;
   provider: string;
   providerMessageId: string;
   receivedAt: IsoDateTime;
@@ -572,6 +572,68 @@ export interface EmailReviewCandidate {
   reviewIdempotencyKey?: string;
   /** Private review replay result; never returned to other users. */
   reviewResult?: { trackerUpdated: boolean; manualEntryId?: string; statusEventId?: string };
+  sourceMode?: 'forwarding' | 'gmail-sync' | 'autopilot';
+  gmailConnectionId?: string;
+  gmailMessageId?: string;
+  gmailThreadId?: string;
+  gmailHistoryId?: string;
+}
+
+export type GmailMode = 'review' | 'autopilot';
+export type GmailConnectionStatus = 'active' | 'syncing' | 'error' | 'revoked' | 'disconnected';
+export interface GmailConnection {
+  id: string;
+  userId: string;
+  googleSubjectId: string;
+  /** HMAC lookup key for provider push notifications; never exposed. */
+  googleAccountHash?: string;
+  accountEmailMasked: string;
+  encryptedRefreshToken: string;
+  tokenKeyVersion: number;
+  grantedScopes: string[];
+  mode: GmailMode;
+  status: GmailConnectionStatus;
+  query?: string;
+  labelIds?: string[];
+  scanWindowDays: 30 | 60 | 90;
+  historyId?: string;
+  watchExpiration?: IsoDateTime;
+  lastSyncAt?: IsoDateTime;
+  nextSyncAt?: IsoDateTime;
+  lastErrorCode?: string;
+  consentedAt: IsoDateTime;
+  disconnectedAt?: IsoDateTime;
+  lastModeMutationKey?: string;
+}
+export type GmailSyncTrigger = 'initial' | 'manual' | 'cron' | 'pubsub' | 'watch-renewal' | 'history-reset';
+export type GmailSyncJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+export interface GmailSyncJob {
+  id: string;
+  connectionId: string;
+  userId: string;
+  trigger: GmailSyncTrigger;
+  status: GmailSyncJobStatus;
+  requestedAt: IsoDateTime;
+  leaseUntil?: IsoDateTime;
+  attemptCount: number;
+  startHistoryId?: string;
+  targetHistoryId?: string;
+  dedupeKey: string;
+  result?: { inspected: number; candidates: number; ignored: number; duplicates: number };
+  errorCode?: string;
+  nextAttemptAt?: IsoDateTime;
+  completedAt?: IsoDateTime;
+}
+export interface GmailOAuthState {
+  id: string;
+  stateHash: string;
+  userId: string;
+  redirectUri: string;
+  encryptedPkceVerifier: string;
+  nonceHash: string;
+  createdAt: IsoDateTime;
+  expiresAt: IsoDateTime;
+  consumedAt?: IsoDateTime;
 }
 
 export interface TrackerExportRow {

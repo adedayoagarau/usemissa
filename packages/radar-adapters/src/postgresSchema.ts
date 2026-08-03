@@ -118,14 +118,54 @@ create unique index if not exists radar_forwarding_addresses_active_user_idx on 
 create table if not exists radar_email_candidates (
   id text primary key,
   user_id text not null,
-  forwarding_address_id text not null,
+  forwarding_address_id text,
   provider text not null,
   provider_message_id text not null,
+  gmail_connection_id text,
+  gmail_message_id text,
   state text not null,
   data jsonb not null,
   unique (forwarding_address_id, provider, provider_message_id)
 );
+alter table radar_email_candidates alter column forwarding_address_id drop not null;
 create index if not exists radar_email_candidates_user_idx on radar_email_candidates (user_id, state);
+alter table radar_email_candidates add column if not exists gmail_connection_id text;
+alter table radar_email_candidates add column if not exists gmail_message_id text;
+create unique index if not exists radar_email_candidates_gmail_identity_idx on radar_email_candidates (gmail_connection_id, gmail_message_id) where gmail_connection_id is not null and gmail_message_id is not null;
+
+create table if not exists radar_gmail_connections (
+  id text primary key,
+  user_id text not null,
+  google_subject_id text not null,
+  status text not null,
+  data jsonb not null
+);
+create unique index if not exists radar_gmail_connections_subject_idx on radar_gmail_connections (google_subject_id);
+create index if not exists radar_gmail_connections_status_idx on radar_gmail_connections (status);
+create index if not exists radar_gmail_connections_next_sync_idx on radar_gmail_connections ((data->>'nextSyncAt'));
+
+create table if not exists radar_gmail_sync_jobs (
+  id text primary key,
+  connection_id text not null,
+  user_id text not null,
+  status text not null,
+  dedupe_key text not null,
+  lease_until timestamptz,
+  next_attempt_at timestamptz,
+  data jsonb not null,
+  unique (connection_id, dedupe_key)
+);
+create index if not exists radar_gmail_sync_jobs_ready_idx on radar_gmail_sync_jobs (status, next_attempt_at, lease_until);
+
+create table if not exists radar_gmail_oauth_states (
+  id text primary key,
+  user_id text not null,
+  state_hash text not null unique,
+  expires_at timestamptz not null,
+  consumed_at timestamptz,
+  data jsonb not null
+);
+create index if not exists radar_gmail_oauth_states_expiry_idx on radar_gmail_oauth_states (expires_at);
 
 create table if not exists radar_alerts (
   id text primary key,

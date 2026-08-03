@@ -153,21 +153,24 @@ function normalizedSubject(value: string): string { return normalizeName(value.r
 
 export interface IngestResult { accepted: boolean; candidateId?: string; reason?: 'unavailable' | 'duplicate' | 'rate-limit'; }
 
-export function ingestInboundEmail(store: RadarStore, envelope: InboundEmailEnvelope, now = new Date(), ids?: IdGenerator): IngestResult {
+export function ingestInboundEmail(store: RadarStore, envelope: InboundEmailEnvelope, now = new Date(), ids?: IdGenerator, options?: { gmailConnectionId?: string }): IngestResult {
+  const gmailConnection = options?.gmailConnectionId ? store.gmailConnections.find((item) => item.id === options.gmailConnectionId && item.status === 'active') : undefined;
   const recipient = envelope.to.map((value) => tokenFromAddress(value, forwardingDomain())).find(Boolean);
   const address = recipient ? store.forwardingAddresses.find((item) => item.tokenHash === hashToken(recipient)) : undefined;
-  if (!address || address.status !== 'active') return { accepted: false, reason: 'unavailable' };
+  if (!gmailConnection && (!address || address.status !== 'active')) return { accepted: false, reason: 'unavailable' };
+  const ownerId = gmailConnection?.userId ?? address!.userId;
+  const forwardingAddressId = address?.id;
   const messageKey = envelope.providerMessageId || envelope.messageIdHeader || candidateHash(envelope, envelope.textBody || envelope.htmlBody || '');
-  const existing = store.emailCandidates.find((candidate) => candidate.forwardingAddressId === address.id && candidate.provider === envelope.provider && candidate.providerMessageId === messageKey);
+  const existing = store.emailCandidates.find((candidate) => (gmailConnection ? candidate.gmailConnectionId === gmailConnection.id : candidate.forwardingAddressId === forwardingAddressId) && candidate.provider === envelope.provider && candidate.providerMessageId === messageKey);
   if (existing) return { accepted: true, candidateId: existing.id, reason: 'duplicate' };
-  const recent = store.emailCandidates.filter((candidate) => candidate.forwardingAddressId === address.id && now.getTime() - Date.parse(candidate.createdAt) < DAY);
+  const recent = store.emailCandidates.filter((candidate) => (gmailConnection ? candidate.gmailConnectionId === gmailConnection.id : candidate.forwardingAddressId === forwardingAddressId) && now.getTime() - Date.parse(candidate.createdAt) < DAY);
   if (recent.filter((candidate) => now.getTime() - Date.parse(candidate.createdAt) < 3_600_000).length >= 30 || recent.length >= 100) return { accepted: false, reason: 'rate-limit' };
   const raw = envelope.textBody?.trim() || (envelope.htmlBody ? htmlToText(envelope.htmlBody) : '');
   const body = cleanBody(raw); const sender = senderParts(envelope.from); const status = extractStatus(body.text);
   if (sender.domain && recent.filter((candidate) => candidate.senderDomain === sender.domain && now.getTime() - Date.parse(candidate.createdAt) < 3_600_000).length >= 10) return { accepted: false, reason: 'rate-limit' };
   const bodyHash = createHash('sha256').update(body.text).digest('hex');
-  const nearDuplicate = store.emailCandidates.find((candidate) => candidate.forwardingAddressId === address.id && candidate.senderDomain === sender.domain && normalizedSubject(candidate.subject) === normalizedSubject(envelope.subject) && candidate.bodyHash === bodyHash && now.getTime() - Date.parse(candidate.createdAt) < DAY);
-  const tracked = trackedForUser(store, address.userId);
+  const nearDuplicate = store.emailCandidates.find((candidate) => (gmailConnection ? candidate.gmailConnectionId === gmailConnection.id : candidate.forwardingAddressId === forwardingAddressId) && candidate.senderDomain === sender.domain && normalizedSubject(candidate.subject) === normalizedSubject(envelope.subject) && candidate.bodyHash === bodyHash && now.getTime() - Date.parse(candidate.createdAt) < DAY);
+  const tracked = trackedForUser(store, ownerId);
   const candidates = tracked.map((row) => {
     const opportunity = store.opportunities.get(row.opportunityId); if (!opportunity) return undefined;
     let score = titleSimilarity(envelope.subject, opportunity.fields.title);
@@ -185,8 +188,8 @@ export function ingestInboundEmail(store: RadarStore, envelope: InboundEmailEnve
   const attachmentMetadata = envelope.attachments.map((item) => ({ filename: safeFilename(item.filename), contentType: item.contentType || 'application/octet-stream', byteLength: Math.max(0, Math.min(item.byteLength, 50 * 1024 * 1024)), ...(item.sha256 ? { sha256: item.sha256 } : {}), unsafe: unsafeAttachment(item.contentType, item.filename) }));
   if (attachmentMetadata.some((item) => item.unsafe)) warnings.push('unsafe-attachment');
   const classification = nearDuplicate ? 'duplicate' : body.warnings.includes('unsupported-content') ? 'unsupported-content' : candidates.length > 1 && candidates[0]!.score - candidates[1]!.score < 0.15 ? 'ambiguous' : candidates.length ? 'matched' : 'unmatched';
-  const candidate: EmailReviewCandidate = { id: ids?.next('email_candidate') ?? `email_candidate_${randomBytes(8).toString('hex')}`, userId: address.userId, forwardingAddressId: address.id, provider: envelope.provider, providerMessageId: messageKey, receivedAt: envelope.receivedAt, ...(sender.address ? { senderAddress: sender.address } : {}), ...(sender.domain ? { senderDomain: sender.domain } : {}), subject: envelope.subject.trim().slice(0, 300), bodyExcerpt: body.text.slice(0, 2_000), bodyHash, attachmentMetadata, classification, state: nearDuplicate ? 'duplicate' : 'pending', ...(candidates[0] ? { matchedOpportunityId: candidates[0].opportunityId } : {}), candidates: candidates.map(({ score: _score, ...item }) => item), ...(status.status ? { proposedStatus: status.status } : {}), ...(parseDate(body.text) ? { proposedDeadline: parseDate(body.text) } : {}), confidence: status.confidence === 'high' && candidates.length ? 'high' : status.confidence === 'unknown' && !candidates.length ? 'unknown' : 'possible', warnings, evidenceReasons: [status.reason, ...(candidates[0]?.reasons ?? []), ...(nearDuplicate ? ['A similar forwarded message was already received recently.'] : [])].filter((item): item is string => Boolean(item)), createdAt: iso(now), expiresAt: new Date(now.getTime() + EMAIL_CANDIDATE_RETENTION_DAYS * DAY).toISOString() };
-  store.emailCandidates.push(candidate); address.lastReceivedAt = iso(now); address.acceptedCount += 1;
+  const candidate: EmailReviewCandidate = { id: ids?.next('email_candidate') ?? `email_candidate_${randomBytes(8).toString('hex')}`, userId: ownerId, ...(forwardingAddressId ? { forwardingAddressId } : {}), ...(gmailConnection ? {} : { sourceMode: 'forwarding' as const }), provider: envelope.provider, providerMessageId: messageKey, receivedAt: envelope.receivedAt, ...(sender.address ? { senderAddress: sender.address } : {}), ...(sender.domain ? { senderDomain: sender.domain } : {}), subject: envelope.subject.trim().slice(0, 300), bodyExcerpt: body.text.slice(0, 2_000), bodyHash, attachmentMetadata, classification, state: nearDuplicate ? 'duplicate' : 'pending', ...(candidates[0] ? { matchedOpportunityId: candidates[0].opportunityId } : {}), candidates: candidates.map(({ score: _score, ...item }) => item), ...(status.status ? { proposedStatus: status.status } : {}), ...(parseDate(body.text) ? { proposedDeadline: parseDate(body.text) } : {}), confidence: status.confidence === 'high' && candidates.length ? 'high' : status.confidence === 'unknown' && !candidates.length ? 'unknown' : 'possible', warnings, evidenceReasons: [status.reason, ...(candidates[0]?.reasons ?? []), ...(nearDuplicate ? ['A similar forwarded message was already received recently.'] : [])].filter((item): item is string => Boolean(item)), createdAt: iso(now), expiresAt: new Date(now.getTime() + EMAIL_CANDIDATE_RETENTION_DAYS * DAY).toISOString() };
+  store.emailCandidates.push(candidate); if (address) { address.lastReceivedAt = iso(now); address.acceptedCount += 1; }
   return { accepted: true, candidateId: candidate.id };
 }
 
@@ -212,15 +215,17 @@ export function reviewEmailCandidate(store: RadarStore, userId: string, candidat
   if (decision.kind === 'confirm') {
     const tracked = store.tracked.find((row) => row.userId === userId && row.opportunityId === decision.opportunityId);
     if (!tracked) throw new EmailForwardingError('forbidden', 'Track this opportunity before confirming an email update.');
-    const event: StatusEvent = { at: iso(now), from: tracked.myStatus, to: status, source: 'email', confidence: candidate.confidence, candidateId: candidate.id, note: 'Confirmed from a forwarded email.' };
+    const sourceLabel = candidate.sourceMode === 'gmail-sync' || candidate.sourceMode === 'autopilot' ? 'Gmail Sync' : 'a forwarded email';
+    const event: StatusEvent = { at: iso(now), from: tracked.myStatus, to: status, source: 'email', confidence: candidate.confidence, candidateId: candidate.id, note: `Confirmed from ${sourceLabel}.` };
     tracked.myStatus = status; if (candidate.proposedSubmittedAt) tracked.submittedAt = candidate.proposedSubmittedAt; tracked.events.push(event);
     candidate.state = 'confirmed'; candidate.reviewedAt = iso(now); candidate.reviewIdempotencyKey = decision.idempotencyKey; candidate.reviewResult = { trackerUpdated: true, statusEventId: ids?.next('status_event') ?? `status_event_${randomBytes(6).toString('hex')}` }; return { candidate, mutation: candidate.reviewResult };
   }
   const title = decision.title.trim(); const organizationName = decision.organizationName.trim();
   if (!title || !organizationName || title.length > 240 || organizationName.length > 240) throw new EmailForwardingError('invalid', 'Title and organization are required.');
-  const manual: ManualTrackerEntry = { id: ids?.next('manual_email') ?? `manual_email_${randomBytes(8).toString('hex')}`, userId, title, organizationName, ...(decision.work ? { work: decision.work.trim().slice(0, 240) } : {}), myStatus: status, ...(candidate.proposedDeadline ? { deadline: candidate.proposedDeadline } : {}), ...(candidate.proposedSubmittedAt ? { submittedAt: candidate.proposedSubmittedAt } : {}), notes: 'Created from a forwarded email.', sourceKind: 'email', sourceRow: 0, importedAt: iso(now), importHash: `email:${candidate.id}` };
+  const sourceLabel = candidate.sourceMode === 'gmail-sync' || candidate.sourceMode === 'autopilot' ? 'Gmail Sync' : 'a forwarded email';
+  const manual: ManualTrackerEntry = { id: ids?.next('manual_email') ?? `manual_email_${randomBytes(8).toString('hex')}`, userId, title, organizationName, ...(decision.work ? { work: decision.work.trim().slice(0, 240) } : {}), myStatus: status, ...(candidate.proposedDeadline ? { deadline: candidate.proposedDeadline } : {}), ...(candidate.proposedSubmittedAt ? { submittedAt: candidate.proposedSubmittedAt } : {}), notes: `Created from ${sourceLabel}.`, sourceKind: 'email', sourceRow: 0, importedAt: iso(now), importHash: `email:${candidate.id}` };
   store.manualTrackerEntries.push(manual);
-  const event: StatusEvent = { at: iso(now), to: status, source: 'email', confidence: candidate.confidence, candidateId: candidate.id, note: 'Confirmed from a forwarded email.' };
+  const event: StatusEvent = { at: iso(now), to: status, source: 'email', confidence: candidate.confidence, candidateId: candidate.id, note: `Confirmed from ${sourceLabel}.` };
   manual.events = [event];
   candidate.state = 'confirmed'; candidate.reviewedAt = iso(now); candidate.reviewIdempotencyKey = decision.idempotencyKey; candidate.reviewResult = { trackerUpdated: true, manualEntryId: manual.id, statusEventId: ids?.next('status_event') ?? `status_event_${randomBytes(6).toString('hex')}` };
   return { candidate, mutation: candidate.reviewResult };

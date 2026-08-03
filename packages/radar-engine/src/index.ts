@@ -32,6 +32,29 @@ export {
   type EmailReviewMutation,
   type IngestResult,
 } from './email/emailForwarding.js';
+export {
+  GMAIL_READONLY_SCOPE,
+  GMAIL_DEFAULT_WINDOW_DAYS,
+  encryptGmailRefreshToken,
+  decryptGmailRefreshToken,
+  createGmailOAuthState,
+  consumeGmailOAuthState,
+  createGmailConnection,
+  queueGmailSyncJob,
+  leaseGmailSyncJob,
+  completeGmailSyncJob,
+  failGmailSyncJob,
+  cleanupGmailOAuthStates,
+  setGmailMode,
+  disconnectGmail,
+  gmailAutopilotGate,
+  ingestGmailEnvelope,
+  gmailAccountLookupKey,
+  type GmailOAuthConfig,
+  type GmailTokenExchange,
+  type GmailProviderPort,
+  type AutopilotGate,
+} from './gmail/gmailSync.js';
 export { freshnessScore, confidenceScore, computeTrustSignals, trustScore, STALE_FRESHNESS_THRESHOLD } from './scoring/scores.js';
 export { deriveStatus, displayStatus, CLOSING_SOON_DAYS, OPENING_SOON_DAYS, NEEDS_VERIFICATION_CONFIDENCE } from './status/statusEngine.js';
 export { predictNextOpening, recordCycle } from './prediction/prediction.js';

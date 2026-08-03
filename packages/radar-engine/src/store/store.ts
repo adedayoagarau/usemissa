@@ -18,6 +18,9 @@ import type {
   ManualTrackerEntry,
   ForwardingAddress,
   EmailReviewCandidate,
+  GmailConnection,
+  GmailSyncJob,
+  GmailOAuthState,
   UserProfile,
   VerificationTask,
 } from '../domain/types.js';
@@ -44,6 +47,9 @@ export interface RadarStore {
   manualTrackerEntries: ManualTrackerEntry[];
   forwardingAddresses: ForwardingAddress[];
   emailCandidates: EmailReviewCandidate[];
+  gmailConnections: GmailConnection[];
+  gmailSyncJobs: GmailSyncJob[];
+  gmailOAuthStates: GmailOAuthState[];
   alerts: Map<string, Alert>;
   /** Alert dedup keys already emitted (e.g. "closing-soon:user_1:opp_1"). */
   emittedAlertKeys: Set<string>;
@@ -69,6 +75,9 @@ export function createStore(): RadarStore {
     manualTrackerEntries: [],
     forwardingAddresses: [],
     emailCandidates: [],
+    gmailConnections: [],
+    gmailSyncJobs: [],
+    gmailOAuthStates: [],
     alerts: new Map(),
     emittedAlertKeys: new Set(),
     accounts: new Map(),
@@ -93,6 +102,9 @@ interface SerializedStore {
   manualTrackerEntries?: ManualTrackerEntry[];
   forwardingAddresses?: ForwardingAddress[];
   emailCandidates?: EmailReviewCandidate[];
+  gmailConnections?: GmailConnection[];
+  gmailSyncJobs?: GmailSyncJob[];
+  gmailOAuthStates?: GmailOAuthState[];
   alerts: Alert[];
   emittedAlertKeys: string[];
   accounts: Account[];
@@ -117,6 +129,9 @@ export function saveStore(store: RadarStore, filePath: string): void {
     manualTrackerEntries: store.manualTrackerEntries,
     forwardingAddresses: store.forwardingAddresses,
     emailCandidates: store.emailCandidates,
+    gmailConnections: store.gmailConnections,
+    gmailSyncJobs: store.gmailSyncJobs,
+    gmailOAuthStates: store.gmailOAuthStates,
     alerts: [...store.alerts.values()],
     emittedAlertKeys: [...store.emittedAlertKeys],
     accounts: [...store.accounts.values()],
@@ -146,6 +161,9 @@ export function loadStore(filePath: string): RadarStore {
   store.manualTrackerEntries = data.manualTrackerEntries ?? [];
   store.forwardingAddresses = data.forwardingAddresses ?? [];
   store.emailCandidates = data.emailCandidates ?? [];
+  store.gmailConnections = data.gmailConnections ?? [];
+  store.gmailSyncJobs = data.gmailSyncJobs ?? [];
+  store.gmailOAuthStates = data.gmailOAuthStates ?? [];
   for (const a of data.alerts) store.alerts.set(a.id, a);
   store.emittedAlertKeys = new Set(data.emittedAlertKeys);
   for (const a of data.accounts ?? []) store.accounts.set(a.id, a);

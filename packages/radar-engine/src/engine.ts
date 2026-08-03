@@ -63,6 +63,8 @@ import { isoDateOf } from './extraction/dates.js';
 import { commitTrackerImport as applyTrackerImport, type ImportDecision, type TrackerImportPlan, type TrackerImportResult } from './import/trackerImport.js';
 import { cleanupEmailCandidates as cleanupEmailReviewCandidates, createOrGetForwardingAddress, forwardingAddressView, ingestInboundEmail, listEmailCandidates, reviewEmailCandidate, revokeForwardingAddress, rotateForwardingAddress, setForwardingAddressStatus, type EmailReviewDecision, type IngestResult, type ForwardingAddressView } from './email/emailForwarding.js';
 import type { EmailReviewCandidate } from './domain/types.js';
+import type { GmailConnection, GmailMode, GmailSyncJob, GmailSyncTrigger, InboundEmailEnvelope } from './domain/types.js';
+import { cleanupGmailOAuthStates, completeGmailSyncJob, createGmailConnection, createGmailOAuthState, consumeGmailOAuthState, disconnectGmail, failGmailSyncJob, gmailAutopilotGate, ingestGmailEnvelope, leaseGmailSyncJob, queueGmailSyncJob, setGmailMode, type GmailOAuthConfig, type GmailTokenExchange } from './gmail/gmailSync.js';
 
 export class ProfileValidationError extends Error {
   readonly field: 'displayName' | 'bio';
@@ -181,6 +183,9 @@ function* idsInStore(store: RadarStore): Iterable<string> {
   for (const entry of store.manualTrackerEntries) yield entry.id;
   for (const entry of store.forwardingAddresses) yield entry.id;
   for (const entry of store.emailCandidates) yield entry.id;
+  for (const entry of store.gmailConnections) yield entry.id;
+  for (const entry of store.gmailSyncJobs) yield entry.id;
+  for (const entry of store.gmailOAuthStates) yield entry.id;
 }
 
 /**
@@ -456,6 +461,20 @@ export class RadarEngine {
   emailCandidates(userId: string, state: 'pending' | 'all' = 'pending', classification?: string): EmailReviewCandidate[] { return listEmailCandidates(this.store, userId, state, classification); }
   reviewEmailCandidate(userId: string, candidateId: string, decision: EmailReviewDecision) { return reviewEmailCandidate(this.store, userId, candidateId, decision, this.clock.now(), this.ids); }
   cleanupEmailCandidates(): number { return cleanupEmailReviewCandidates(this.store, this.clock.now()); }
+  createGmailOAuthState(userId: string, config?: Partial<GmailOAuthConfig>) { return createGmailOAuthState(this.store, userId, config, this.clock.now(), this.ids); }
+  consumeGmailOAuthState(state: string, userId: string, redirectUri: string, nonce?: string) { return consumeGmailOAuthState(this.store, state, userId, redirectUri, this.clock.now(), nonce); }
+  connectGmail(userId: string, exchange: GmailTokenExchange): GmailConnection { return createGmailConnection(this.store, userId, exchange, this.clock.now(), this.ids); }
+  gmailConnection(userId: string): GmailConnection | undefined { return this.store.gmailConnections.find((item) => item.userId === userId && item.status !== 'disconnected'); }
+  queueGmailSync(userId: string, trigger: GmailSyncTrigger, dedupeKey: string): GmailSyncJob { const connection = this.gmailConnection(userId); if (!connection) throw new Error('Gmail is not connected.'); return queueGmailSyncJob(this.store, connection, trigger, dedupeKey, this.clock.now(), this.ids); }
+  leaseGmailSyncJob(jobId: string) { return leaseGmailSyncJob(this.store, jobId, this.clock.now()); }
+  completeGmailSyncJob(jobId: string, result: GmailSyncJob['result'], targetHistoryId?: string) { return completeGmailSyncJob(this.store, jobId, result, targetHistoryId, this.clock.now()); }
+  failGmailSyncJob(jobId: string, errorCode: string) { return failGmailSyncJob(this.store, jobId, errorCode, this.clock.now()); }
+  cleanupGmailOAuthStates() { return cleanupGmailOAuthStates(this.store, this.clock.now()); }
+  setGmailMode(userId: string, mode: GmailMode, confirmation: boolean, idempotencyKey: string): GmailConnection { return setGmailMode(this.store, userId, mode, confirmation, idempotencyKey); }
+  disconnectGmail(userId: string, deletePending = false) { return disconnectGmail(this.store, userId, deletePending, this.clock.now()); }
+  ingestGmailEnvelope(connectionId: string, envelope: InboundEmailEnvelope) { const connection = this.store.gmailConnections.find((item) => item.id === connectionId && item.status === 'active'); if (!connection) return { accepted: false as const, reason: 'unavailable' as const }; return ingestGmailEnvelope(this.store, connection, envelope, this.clock.now(), this.ids); }
+  gmailAutopilotGate(candidateId: string) { const candidate = this.store.emailCandidates.find((item) => item.id === candidateId); if (!candidate?.gmailConnectionId) return { allowed: false, reason: 'This is not a Gmail candidate.' }; const connection = this.store.gmailConnections.find((item) => item.id === candidate.gmailConnectionId); if (!connection) return { allowed: false, reason: 'Gmail is no longer connected.' }; return gmailAutopilotGate(this.store, connection, candidate); }
+  applyGmailAutopilotCandidate(candidateId: string) { const candidate = this.store.emailCandidates.find((item) => item.id === candidateId); if (!candidate?.gmailConnectionId || !candidate.proposedStatus || candidate.candidates.length !== 1) throw new Error('Gmail candidate is not eligible for Autopilot.'); const gate = this.gmailAutopilotGate(candidateId); if (!gate.allowed) throw new Error(gate.reason); return this.reviewEmailCandidate(candidate.userId, candidateId, { kind: 'confirm', opportunityId: candidate.candidates[0]!.opportunityId, status: candidate.proposedStatus, idempotencyKey: `autopilot:${candidateId}` }); }
 
   /** Seeding/ops only — there is no self-serve path to platform admin. */
   promoteToAdmin(accountId: string): void {

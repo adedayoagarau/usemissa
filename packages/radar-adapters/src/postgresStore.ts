@@ -134,7 +134,19 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
     }
     await client.query('delete from radar_email_candidates');
     for (const candidate of store.emailCandidates) {
-      await client.query('insert into radar_email_candidates (id, user_id, forwarding_address_id, provider, provider_message_id, state, data) values ($1, $2, $3, $4, $5, $6, $7)', [candidate.id, candidate.userId, candidate.forwardingAddressId, candidate.provider, candidate.providerMessageId, candidate.state, candidate]);
+      await client.query('insert into radar_email_candidates (id, user_id, forwarding_address_id, provider, provider_message_id, gmail_connection_id, gmail_message_id, state, data) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)', [candidate.id, candidate.userId, candidate.forwardingAddressId ?? null, candidate.provider, candidate.providerMessageId, candidate.gmailConnectionId ?? null, candidate.gmailMessageId ?? null, candidate.state, candidate]);
+    }
+    await client.query('delete from radar_gmail_connections');
+    for (const connection of store.gmailConnections) {
+      await client.query('insert into radar_gmail_connections (id, user_id, google_subject_id, status, data) values ($1, $2, $3, $4, $5)', [connection.id, connection.userId, connection.googleSubjectId, connection.status, connection]);
+    }
+    await client.query('delete from radar_gmail_sync_jobs');
+    for (const job of store.gmailSyncJobs) {
+      await client.query('insert into radar_gmail_sync_jobs (id, connection_id, user_id, status, dedupe_key, lease_until, next_attempt_at, data) values ($1, $2, $3, $4, $5, $6, $7, $8)', [job.id, job.connectionId, job.userId, job.status, job.dedupeKey, job.leaseUntil ?? null, job.nextAttemptAt ?? null, job]);
+    }
+    await client.query('delete from radar_gmail_oauth_states');
+    for (const state of store.gmailOAuthStates) {
+      await client.query('insert into radar_gmail_oauth_states (id, user_id, state_hash, expires_at, consumed_at, data) values ($1, $2, $3, $4, $5, $6)', [state.id, state.userId, state.stateHash, state.expiresAt, state.consumedAt ?? null, state]);
     }
 
     await client.query('delete from radar_alerts');
@@ -197,7 +209,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
 
   const [
     sources, snapshots, opportunities, versions, changes, organizations, claims, verificationTasks,
-    profiles, users, follows, tracked, manualTrackerEntries, forwardingAddresses, emailCandidates, alerts, alertKeys, accounts, memberships, auditLog,
+    profiles, users, follows, tracked, manualTrackerEntries, forwardingAddresses, emailCandidates, gmailConnections, gmailSyncJobs, gmailOAuthStates, alerts, alertKeys, accounts, memberships, auditLog,
   ] = await Promise.all([
     pool.query('select data from radar_sources'),
     pool.query('select data from radar_snapshots'),
@@ -214,6 +226,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
     pool.query('select data from radar_manual_tracker_entries'),
     pool.query('select data from radar_forwarding_addresses'),
     pool.query('select data from radar_email_candidates'),
+    pool.query('select data from radar_gmail_connections'),
+    pool.query('select data from radar_gmail_sync_jobs'),
+    pool.query('select data from radar_gmail_oauth_states'),
     pool.query('select data from radar_alerts'),
     pool.query('select key from radar_emitted_alert_keys'),
     pool.query('select data from radar_accounts'),
@@ -236,6 +251,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
   store.manualTrackerEntries = manualTrackerEntries.rows.map((r) => r.data);
   store.forwardingAddresses = forwardingAddresses.rows.map((r) => r.data);
   store.emailCandidates = emailCandidates.rows.map((r) => r.data);
+  store.gmailConnections = gmailConnections.rows.map((r) => r.data);
+  store.gmailSyncJobs = gmailSyncJobs.rows.map((r) => r.data);
+  store.gmailOAuthStates = gmailOAuthStates.rows.map((r) => r.data);
   for (const row of alerts.rows) store.alerts.set(row.data.id, row.data);
   store.emittedAlertKeys = new Set(alertKeys.rows.map((r) => r.key));
   for (const row of accounts.rows) store.accounts.set(row.data.id, row.data);
