@@ -79,8 +79,8 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool): Pr
 
     for (const s of store.submissions.values()) {
       await client.query(
-        'insert into submissions (id, submission_path_id, submitter_account_id, status, submitted_at) values ($1, $2, $3, $4, $5)',
-        [s.id, s.submissionPathId, s.submitterAccountId, s.status, s.submittedAt],
+        'insert into submissions (id, submission_path_id, submitter_account_id, status, submitted_at, payment_status, payment_session_id, fee_cents) values ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [s.id, s.submissionPathId, s.submitterAccountId, s.status, s.submittedAt, s.paymentStatus ?? 'not-required', s.paymentSessionId ?? null, s.feeCents ?? null],
       );
     }
 
@@ -215,6 +215,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
     submitter_account_id: string;
     status: Submission['status'];
     submitted_at: Date;
+    payment_status: 'not-required' | 'paid' | null;
+    payment_session_id: string | null;
+    fee_cents: number | null;
   }>('select * from submissions');
   for (const row of submissions.rows) {
     const submission: Submission = {
@@ -223,6 +226,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
       submitterAccountId: row.submitter_account_id,
       status: row.status,
       submittedAt: row.submitted_at.toISOString(),
+      paymentStatus: row.payment_status ?? 'not-required',
+      paymentSessionId: row.payment_session_id ?? undefined,
+      feeCents: row.fee_cents ?? undefined,
     };
     store.submissions.set(submission.id, submission);
   }

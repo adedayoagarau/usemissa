@@ -45,7 +45,7 @@ export default async function OpenCallDetailPage({
           to submit.
         </p>
       ) : (
-        <SubmitForm pathId={path.id} categories={path.categories} fields={path.fields} />
+        <SubmitForm pathId={path.id} categories={path.categories} fields={path.fields} feeCents={path.feeCents} />
       )}
     </main>
   );

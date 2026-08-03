@@ -107,6 +107,9 @@ export interface Submission {
   submitterAccountId: string; // FK to radar-engine's Account
   status: SubmissionStatus;
   submittedAt: IsoDateTime;
+  paymentStatus?: 'not-required' | 'paid';
+  paymentSessionId?: string;
+  feeCents?: number;
 }
 
 export interface Work {

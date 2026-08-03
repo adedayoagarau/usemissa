@@ -59,6 +59,9 @@ export const submissions = pgTable('submissions', {
   submitterAccountId: text('submitter_account_id').notNull(),
   status: text('status').notNull(), // 'submitted' | 'in-review' | 'decided' | 'withdrawn'
   submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull(),
+  paymentStatus: text('payment_status').notNull().default('not-required'),
+  paymentSessionId: text('payment_session_id'),
+  feeCents: integer('fee_cents'),
 });
 
 export const works = pgTable('works', {

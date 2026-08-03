@@ -52,7 +52,13 @@ create table if not exists submissions (
   submitter_account_id text not null,
   status text not null,
   submitted_at timestamptz not null
+  ,payment_status text not null default 'not-required'
+  ,payment_session_id text
+  ,fee_cents integer
 );
+alter table submissions add column if not exists payment_status text not null default 'not-required';
+alter table submissions add column if not exists payment_session_id text;
+alter table submissions add column if not exists fee_cents integer;
 
 create table if not exists works (
   id text primary key,

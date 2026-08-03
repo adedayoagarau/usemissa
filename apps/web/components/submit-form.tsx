@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,11 +15,12 @@ import type { SubmissionField } from '@missa/workspace-engine';
  * submission record is created. The Work stores only the opaque blob URL, not
  * the file bytes or a data URI.
  */
-export function SubmitForm({ pathId, categories, fields }: { pathId: string; categories: string[]; fields: SubmissionField[] }) {
+export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: string; categories: string[]; fields: SubmissionField[]; feeCents?: number }) {
   const [category, setCategory] = useState(categories[0] ?? '');
   const [values, setValues] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const searchParams = useSearchParams();
 
   const setField = (fieldId: string, value: string) => setValues((v) => ({ ...v, [fieldId]: value }));
 
@@ -31,6 +33,14 @@ export function SubmitForm({ pathId, categories, fields }: { pathId: string; cat
     const title = values[fields.find((f) => f.type === 'text')?.id ?? ''] || category || 'Untitled submission';
 
     startTransition(async () => {
+      const paymentSessionId = searchParams.get('checkout_session') ?? undefined;
+      if (feeCents && feeCents > 0 && !paymentSessionId) {
+        const checkout = await fetch(`/api/submission-paths/${pathId}/checkout`, { method: 'POST' });
+        const checkoutBody = await checkout.json().catch(() => ({}));
+        if (!checkout.ok || !checkoutBody.url) { setResult({ ok: false, message: checkoutBody.error ?? 'Payment could not be started' }); return; }
+        window.location.assign(checkoutBody.url);
+        return;
+      }
       const fileUrls: Record<string, string> = {};
       for (const f of fileFields) {
         const input = (formElement.elements.namedItem(f.id) as HTMLInputElement) ?? undefined;
@@ -46,7 +56,7 @@ export function SubmitForm({ pathId, categories, fields }: { pathId: string; cat
       const res = await fetch(`/api/submission-paths/${pathId}/submit`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ works: [{ title, fileUrl: Object.values(fileUrls)[0] }] }),
+        body: JSON.stringify({ works: [{ title, fileUrl: Object.values(fileUrls)[0] }], paymentSessionId }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));

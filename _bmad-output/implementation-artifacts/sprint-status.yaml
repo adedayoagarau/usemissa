@@ -108,7 +108,7 @@ development_status:
 
   epic-10: in-progress
   10-1-stripe-connect-onboarding-for-organizations: review
-  10-2-fee-collection-on-submission: backlog
+  10-2-fee-collection-on-submission: review
   10-3-tiered-subscription-billing-for-organizations: review
   epic-10-retrospective: optional
 
