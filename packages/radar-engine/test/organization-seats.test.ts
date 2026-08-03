@@ -31,3 +31,15 @@ test('organization membership can be revoked without changing other seats', () =
   assert.deepEqual(radar.organizationSeatUsage(organization.id), { used: 1, limit: 2, available: 1 });
   assert.equal(radar.isOrgMember(second.id, organization.id), false);
 });
+
+test('SCIM-style provisioning creates an opaque account and can reactivate it', () => {
+  const radar = engine();
+  const organization = radar.addOrganization({ name: 'Provisioned Org', domains: [], verified: true });
+  const first = radar.provisionOrgAccount(organization.id, { email: 'provisioned@example.com', externalId: 'idp-1', displayName: 'Provisioned User', role: 'reviewer' });
+  assert.equal(first.account.externalId, 'idp-1');
+  assert.equal(first.account.passwordHash.length > 0, true);
+  assert.equal(first.membership?.role, 'reviewer');
+  const second = radar.provisionOrgAccount(organization.id, { email: 'provisioned@example.com', role: 'viewer' });
+  assert.equal(second.account.id, first.account.id);
+  assert.equal(second.membership?.role, 'viewer');
+});

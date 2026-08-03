@@ -74,10 +74,30 @@ export function signUp(
 
 export function logIn(ctx: AuthContext, email: string, password: string): Account {
   const account = findByEmail(ctx.store, email);
-  if (!account || !verifyPassword(password, account.passwordHash)) {
+  if (!account || account.active === false || !verifyPassword(password, account.passwordHash)) {
     throw new AuthError('Invalid email or password');
   }
   return account;
+}
+
+export function provisionOrgAccount(
+  ctx: AuthContext,
+  organizationId: string,
+  input: { email: string; externalId?: string; displayName?: string; role?: OrgRole; active?: boolean },
+): { account: Account; membership?: OrgMembership } {
+  if (!ctx.store.organizations.has(organizationId)) throw new AuthError(`Unknown organization: ${organizationId}`);
+  const normalized = input.email.trim().toLowerCase();
+  if (!normalized.includes('@')) throw new AuthError('A valid email is required');
+  let account = findByEmail(ctx.store, normalized);
+  if (!account) {
+    account = { id: ctx.ids.next('acct'), email: normalized, passwordHash: hashPassword(`${ctx.ids.next('scim-secret')}-${ctx.clock.now().toISOString()}`), isAdmin: false, createdAt: ctx.clock.now().toISOString(), active: input.active !== false };
+    ctx.store.accounts.set(account.id, account);
+  }
+  account.active = input.active !== false;
+  account.externalId = input.externalId ?? account.externalId;
+  account.displayName = input.displayName?.trim() || account.displayName;
+  const membership = account.active === false ? undefined : grantOrgMembership(ctx, account.id, organizationId, input.role ?? 'member');
+  return { account, membership };
 }
 
 export function grantOrgMembership(ctx: AuthContext, accountId: string, organizationId: string, role: OrgRole): OrgMembership {

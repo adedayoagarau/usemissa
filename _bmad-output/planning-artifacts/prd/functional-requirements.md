@@ -73,7 +73,7 @@ Organized by capability area (matching the approved user-facing module names fro
 
 - FR50. Institutions can operate multiple Teams (the user-facing label for `entity`) under one Organization, with per-institution relabeling (Departments/Imprints/Chapters). **[Built]**
 - FR51. Enterprise admins can manage Seats and Members with role-based access (Owner/Admin, Team Admin, Program Manager, Reviewer, Finance, Legal, Viewer, Guest). **[Built — seat limits, role changes, revocation, and access capability mapping; SSO/SCIM remains FR52]**
-- FR52. Enterprise institutions can enable SSO/SCIM for member provisioning. **[Not built]**
+- FR52. Enterprise institutions can enable SSO/SCIM for member provisioning. **[Partial — token-bound SCIM 2.0 provisioning is available for a configured organization; OIDC/SAML browser SSO remains provider-dependent]**
 
 ## Payments & Billing
 

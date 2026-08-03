@@ -484,6 +484,10 @@ export interface Account {
   /** Platform admin — can see the verification queue and claim reviews. */
   isAdmin: boolean;
   createdAt: IsoDateTime;
+  /** Enterprise provisioning identifiers; private and never in public projections. */
+  externalId?: string;
+  displayName?: string;
+  active?: boolean;
 }
 
 /** Organization roles. `member` remains the compatibility role for existing workspaces. */

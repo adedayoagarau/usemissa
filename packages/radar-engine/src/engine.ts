@@ -38,7 +38,7 @@ import type {
 import type { Clock, Extractor, Fetcher, FetchResult, IdGenerator } from './ports.js';
 import { sequentialIds, systemClock } from './ports.js';
 import { createStore, type RadarStore, changesFor } from './store/store.js';
-import { grantOrgMembership, isOrgMember, logIn, membershipsFor, organizationSeatUsage, revokeOrgMembership, signUp } from './auth/accounts.js';
+import { grantOrgMembership, isOrgMember, logIn, membershipsFor, organizationSeatUsage, provisionOrgAccount, revokeOrgMembership, signUp } from './auth/accounts.js';
 import { recordAudit } from './auth/audit.js';
 import { dueSources } from './ingestion/scheduler.js';
 import { contentHash } from './ingestion/snapshot.js';
@@ -441,6 +441,10 @@ export class RadarEngine {
 
   logIn(email: string, password: string): Account {
     return logIn(this.ctx, email, password);
+  }
+
+  provisionOrgAccount(organizationId: string, input: { email: string; externalId?: string; displayName?: string; role?: OrgRole; active?: boolean }) {
+    return provisionOrgAccount(this.ctx, organizationId, input);
   }
 
   grantOrgMembership(accountId: string, organizationId: string, role: OrgRole): OrgMembership {

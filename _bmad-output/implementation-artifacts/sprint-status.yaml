@@ -114,6 +114,7 @@ development_status:
 
   epic-11: done
   11-1-organization-seats-and-role-access: done
+  11-2-scim-provisioning: done
   epic-11-retrospective: optional
 
   epic-12: done
