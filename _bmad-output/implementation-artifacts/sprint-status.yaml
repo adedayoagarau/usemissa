@@ -69,10 +69,10 @@ development_status:
   3-6-following-management-ui: done
   epic-3-retrospective: optional
 
-  epic-4: in-progress
+  epic-4: done
   4-1-csv-tracker-import: done
   4-2-email-forwarding-parser-forwarding-address-mode: done
-  4-3-gmail-sync-oauth-and-autopilot-modes: review
+  4-3-gmail-sync-oauth-and-autopilot-modes: done
   epic-4-retrospective: optional
 
   epic-5: done
@@ -95,31 +95,31 @@ development_status:
   7-3-basic-rubric-and-review-recording: done
   epic-7-retrospective: optional
 
-  epic-8: in-progress
-  8-1-per-work-decision-recording: review
-  8-2-decision-email-templates-and-bulk-send: review
-  8-3-delivery-task-tracking: review
+  epic-8: done
+  8-1-per-work-decision-recording: done
+  8-2-decision-email-templates-and-bulk-send: done
+  8-3-delivery-task-tracking: done
   epic-8-retrospective: optional
 
-  epic-9: in-progress
-  9-1-basic-reporting-dashboard: review
-  9-2-organization-data-export: review
+  epic-9: done
+  9-1-basic-reporting-dashboard: done
+  9-2-organization-data-export: done
   epic-9-retrospective: optional
 
   epic-10: in-progress
-  10-1-stripe-connect-onboarding-for-organizations: review
-  10-2-fee-collection-on-submission: review
-  10-3-tiered-subscription-billing-for-organizations: review
+  10-1-stripe-connect-onboarding-for-organizations: done
+  10-2-fee-collection-on-submission: done
+  10-3-tiered-subscription-billing-for-organizations: done
   epic-10-retrospective: optional
 
-  epic-11: in-progress
-  11-1-organization-seats-and-role-access: review
+  epic-11: done
+  11-1-organization-seats-and-role-access: done
   epic-11-retrospective: optional
 
-  epic-12: in-progress
-  12-1-open-call-csv-import: review
+  epic-12: done
+  12-1-open-call-csv-import: done
   epic-12-retrospective: optional
 
-  epic-13: in-progress
-  13-1-private-progress-props: review
+  epic-13: done
+  13-1-private-progress-props: done
   epic-13-retrospective: optional
