@@ -36,18 +36,19 @@ response and connect a successful submission to the submitter's Tracker.
 - Drafts expire after 30 days and are removed when the submission succeeds.
 - Uploads reject known executable content types, and final submission validates
   every file URL against the submitting account's private Blob prefix.
+- Verified `checkout.session.completed` and async-success webhooks finalize a
+  matching paid draft with event-idempotent processing, even when the applicant
+  does not return to the browser.
 
 ## Still required before this story is done
 
-- Provider-level payment-intent/webhook reconciliation beyond the Checkout
-  idempotency key.
+- Payment failure, refund, and dispute lifecycle handling beyond successful
+  Checkout completion.
 - Multiple file attachments per Work, malware scanning, retention, and
   abandoned-upload cleanup (the current draft retains one file URL per form
   field and maps the first file to the first Work).
 - Applicant status notifications (receipt is available; outbound delivery is
   still provider-dependent).
-- Stripe Checkout creation forwards the same browser draft key as a Stripe
-  idempotency key; provider webhook reconciliation is still separate.
 
 ## Validation
 
