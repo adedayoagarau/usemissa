@@ -96,7 +96,7 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool): Pr
     }
 
     for (const draft of store.submissionDrafts.values()) {
-      await client.query('insert into submission_drafts (id, submission_path_id, submitter_account_id, answers, category, work_titles, idempotency_key, updated_at, expires_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)', [draft.id, draft.submissionPathId, draft.submitterAccountId, JSON.stringify(draft.answers), draft.category ?? null, JSON.stringify(draft.workTitles), draft.idempotencyKey ?? null, draft.updatedAt, draft.expiresAt]);
+      await client.query('insert into submission_drafts (id, submission_path_id, submitter_account_id, answers, category, work_titles, idempotency_key, payment_session_id, updated_at, expires_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)', [draft.id, draft.submissionPathId, draft.submitterAccountId, JSON.stringify(draft.answers), draft.category ?? null, JSON.stringify(draft.workTitles), draft.idempotencyKey ?? null, draft.paymentSessionId ?? null, draft.updatedAt, draft.expiresAt]);
     }
 
     for (const d of store.decisions.values()) {
@@ -262,9 +262,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
     store.works.set(work.id, work);
   }
 
-  const drafts = await pool.query<{ id: string; submission_path_id: string; submitter_account_id: string; answers: Record<string, string | string[]>; category: string | null; work_titles: string[]; idempotency_key: string | null; updated_at: Date; expires_at: Date }>('select * from submission_drafts where expires_at > now()');
+  const drafts = await pool.query<{ id: string; submission_path_id: string; submitter_account_id: string; answers: Record<string, string | string[]>; category: string | null; work_titles: string[]; idempotency_key: string | null; payment_session_id: string | null; updated_at: Date; expires_at: Date }>('select * from submission_drafts where expires_at > now()');
   for (const row of drafts.rows) {
-    store.submissionDrafts.set(row.id, { id: row.id, submissionPathId: row.submission_path_id, submitterAccountId: row.submitter_account_id, answers: row.answers, category: row.category ?? undefined, workTitles: row.work_titles, idempotencyKey: row.idempotency_key ?? undefined, updatedAt: row.updated_at.toISOString(), expiresAt: row.expires_at.toISOString() });
+    store.submissionDrafts.set(row.id, { id: row.id, submissionPathId: row.submission_path_id, submitterAccountId: row.submitter_account_id, answers: row.answers, category: row.category ?? undefined, workTitles: row.work_titles, idempotencyKey: row.idempotency_key ?? undefined, paymentSessionId: row.payment_session_id ?? undefined, updatedAt: row.updated_at.toISOString(), expiresAt: row.expires_at.toISOString() });
   }
 
   const decisions = await pool.query<{

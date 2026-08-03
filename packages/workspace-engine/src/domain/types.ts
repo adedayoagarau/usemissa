@@ -140,6 +140,7 @@ export interface SubmissionDraft {
   category?: string;
   workTitles: string[];
   idempotencyKey?: string;
+  paymentSessionId?: string;
   updatedAt: IsoDateTime;
   expiresAt: IsoDateTime;
 }

@@ -292,11 +292,11 @@ export class WorkspaceEngine {
     return draft;
   }
 
-  saveSubmissionDraft(submissionPathId: string, submitterAccountId: string, input: { answers: Record<string, string | string[]>; category?: string; workTitles: string[]; idempotencyKey?: string }): SubmissionDraft {
+  saveSubmissionDraft(submissionPathId: string, submitterAccountId: string, input: { answers: Record<string, string | string[]>; category?: string; workTitles: string[]; idempotencyKey?: string; paymentSessionId?: string }): SubmissionDraft {
     if (!this.store.submissionPaths.has(submissionPathId)) throw new Error('Unknown submission path');
     const existing = this.submissionDraftFor(submissionPathId, submitterAccountId);
     const updatedAt = this.now();
-    const draft: SubmissionDraft = { id: existing?.id ?? this.ids.next('submission_draft'), submissionPathId, submitterAccountId, answers: input.answers, category: input.category, workTitles: input.workTitles, idempotencyKey: input.idempotencyKey, updatedAt, expiresAt: new Date(Date.parse(updatedAt) + 30 * 24 * 60 * 60 * 1000).toISOString() };
+    const draft: SubmissionDraft = { id: existing?.id ?? this.ids.next('submission_draft'), submissionPathId, submitterAccountId, answers: input.answers, category: input.category, workTitles: input.workTitles, idempotencyKey: input.idempotencyKey, paymentSessionId: input.paymentSessionId ?? existing?.paymentSessionId, updatedAt, expiresAt: new Date(Date.parse(updatedAt) + 30 * 24 * 60 * 60 * 1000).toISOString() };
     this.store.submissionDrafts.set(draft.id, draft);
     return draft;
   }

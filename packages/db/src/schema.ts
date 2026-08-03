@@ -165,6 +165,7 @@ export const submissions = pgTable(
     answers: jsonb("answers").$type<Record<string, string | string[]>>(),
     category: text("category"),
     idempotencyKey: text("idempotency_key"),
+    paymentSessionId: text("payment_session_id"),
     updatedAt,
   },
   (table) => [
@@ -191,6 +192,7 @@ export const submissionDrafts = pgTable(
     category: text("category"),
     workTitles: jsonb("work_titles").notNull().$type<string[]>(),
     idempotencyKey: text("idempotency_key"),
+    paymentSessionId: text("payment_session_id"),
     updatedAt,
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },

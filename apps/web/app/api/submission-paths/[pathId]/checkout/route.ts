@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getWorkspaceEngine, persistWorkspace } from '@/lib/workspaceEngine';
 
 export async function POST(request: Request, { params }: { params: Promise<{ pathId: string }> }) {
   const { pathId } = await params;
@@ -41,5 +41,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   const response = await fetch('https://api.stripe.com/v1/checkout/sessions', { method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded', ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) }, body: form });
   const data = await response.json() as { id?: string; url?: string; error?: { message?: string } };
   if (!response.ok || !data.id || !data.url) return NextResponse.json({ error: data.error?.message ?? 'Unable to start payment' }, { status: 502 });
+  const draft = workspace.submissionDraftFor(pathId, session.account.id);
+  if (draft) {
+    workspace.saveSubmissionDraft(pathId, session.account.id, { answers: draft.answers, category: draft.category, workTitles: draft.workTitles, idempotencyKey: draft.idempotencyKey, paymentSessionId: data.id });
+    await persistWorkspace();
+  }
   return NextResponse.json({ id: data.id, url: data.url, feeCents: path.feeCents });
 }

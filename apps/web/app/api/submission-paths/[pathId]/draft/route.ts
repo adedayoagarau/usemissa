@@ -23,7 +23,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ path
   const answers = body.answers && typeof body.answers === 'object' && !Array.isArray(body.answers) ? body.answers as Record<string, string | string[]> : {};
   const workTitles = Array.isArray(body.workTitles) ? body.workTitles.filter((value: unknown): value is string => typeof value === 'string').map((value: string) => value.trim()).filter(Boolean).slice(0, 100) : [];
   try {
-    const draft = workspace.saveSubmissionDraft(pathId, session.account.id, { answers, category: typeof body.category === 'string' ? body.category.trim() || undefined : undefined, workTitles, idempotencyKey: typeof body.idempotencyKey === 'string' ? body.idempotencyKey.slice(0, 200) : undefined });
+    const draft = workspace.saveSubmissionDraft(pathId, session.account.id, { answers, category: typeof body.category === 'string' ? body.category.trim() || undefined : undefined, workTitles, idempotencyKey: typeof body.idempotencyKey === 'string' ? body.idempotencyKey.slice(0, 200) : undefined, paymentSessionId: typeof body.paymentSessionId === 'string' ? body.paymentSessionId.slice(0, 200) : undefined });
     await persistWorkspace();
     return NextResponse.json({ draft }, { headers });
   } catch (error) {

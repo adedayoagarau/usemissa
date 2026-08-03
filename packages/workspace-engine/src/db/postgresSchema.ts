@@ -93,10 +93,12 @@ create table if not exists submission_drafts (
   category text,
   work_titles jsonb not null,
   idempotency_key text,
+  payment_session_id text,
   updated_at timestamptz not null,
   expires_at timestamptz not null
 );
 create unique index if not exists submission_drafts_owner_path_idx on submission_drafts (submitter_account_id, submission_path_id);
+alter table submission_drafts add column if not exists payment_session_id text;
 
 create table if not exists decisions (
   id text primary key,

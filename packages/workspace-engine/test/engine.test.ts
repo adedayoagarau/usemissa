@@ -138,8 +138,9 @@ test('submission drafts are owner-scoped, refreshed, and expire', () => {
   const program = engine.createProgram(entity.id, 'Program');
   const call = engine.createOpenCall(program.id, 'Call');
   const path = engine.createSubmissionPath(call.id, [], []);
-  const draft = engine.saveSubmissionDraft(path.id, 'acct1', { answers: { bio: 'Hello' }, workTitles: ['Work'] });
+  const draft = engine.saveSubmissionDraft(path.id, 'acct1', { answers: { bio: 'Hello' }, workTitles: ['Work'], paymentSessionId: 'cs_test' });
   assert.equal(engine.submissionDraftFor(path.id, 'acct1')?.id, draft.id);
+  assert.equal(engine.saveSubmissionDraft(path.id, 'acct1', { answers: { bio: 'Updated' }, workTitles: ['Work'] }).paymentSessionId, 'cs_test');
   assert.equal(engine.submissionDraftFor(path.id, 'acct2'), undefined);
   now = '2026-09-03T00:00:01.000Z';
   assert.equal(engine.submissionDraftFor(path.id, 'acct1'), undefined);

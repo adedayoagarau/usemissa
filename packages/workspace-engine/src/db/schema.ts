@@ -80,6 +80,7 @@ export const submissionDrafts = pgTable('submission_drafts', {
   category: text('category'),
   workTitles: jsonb('work_titles').notNull().$type<string[]>(),
   idempotencyKey: text('idempotency_key'),
+  paymentSessionId: text('payment_session_id'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
 });
