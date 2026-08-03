@@ -1,7 +1,7 @@
 ---
 epic: 2
 story: 2.4
-status: ready-for-dev
+status: done
 title: Export tracker and library data
 ---
 
@@ -281,3 +281,10 @@ Mobile/interaction smoke at a 390px viewport with reduced motion enabled confirm
 Privacy review: the engine projection filters by the session-linked user ID, retains orphaned tracker rows as `dataState: "unavailable"`, clones ordered status events, and excludes account credentials, matching attributes/genres, audit details, and organization data. CSV encoding quotes commas/quotes/newlines, preserves Unicode, uses CRLF rows, and prefixes formula-leading cells with an apostrophe.
 
 The shared app canvas was also normalized to true white during leader review: `--bg` now resolves to `#ffffff`, and the shared app/mobile navigation uses the white surface explicitly. This removes the prior paper-tinted shell mismatch with `DESIGN.md` without changing the export interaction contract.
+
+### Addendum: Library export completion (2026-08-02)
+
+`scope=library` now returns a private JSON envelope or CSV rows for Works,
+Files, and Saved Answers. `scope=all` includes the same Library envelope beside
+the tracker. Export controls expose both formats, and every response remains
+session-owned, no-store, audited, and subject to the existing cooldown.

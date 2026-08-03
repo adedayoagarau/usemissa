@@ -25,7 +25,7 @@ test('profile data export downloads tracker JSON and enforces an account cooldow
   await expect(page.getByText('Your data', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download JSON' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download CSV' })).toBeVisible();
-  await expect(page.getByText(/Library exports will appear/)).toBeVisible();
+  await expect(page.getByText(/Works, Files, and Saved Answers/)).toBeVisible();
 
   const json = await page.request.get('/api/me/export?format=json&scope=tracker');
   expect(json.status()).toBe(200);
@@ -45,20 +45,18 @@ test('profile data export downloads tracker JSON and enforces an account cooldow
   expect((await cooldown.json()).error).toContain('cooldown');
 });
 
-test('export route keeps unavailable library scope explicit and emits CSV attachments', async ({ page }) => {
+test('export route includes private library scope', async ({ page }) => {
   const profile = await createAccount(page, 'CSV Export User');
   await trackFirstOpportunity(page, profile.id);
 
-  const csv = await page.request.get('/api/me/export?format=csv');
-  expect(csv.status()).toBe(200);
-  expect(csv.headers()['content-type']).toContain('text/csv');
-  expect(csv.headers()['content-disposition']).toContain('.csv');
-  const text = await csv.text();
-  expect(text.split('\r\n')[0]).toBe('opportunity_id,title,organization_name,type,opportunity_status,my_status,tracked_at,submitted_at,deadline,deadline_kind,source_url,data_state,status_events_json');
+  const createdWork = await page.request.post('/api/me/library/works', { data: { title: 'Night River' } });
+  expect(createdWork.status()).toBe(201);
+  const library = await page.request.get('/api/me/export?format=json&scope=library');
+  expect(library.status()).toBe(200);
+  expect((await library.json()).works[0].title).toBe('Night River');
 
-  const library = await page.request.get('/api/me/export?scope=library');
-  expect(library.status()).toBe(409);
-  expect((await library.json()).error).toBe('Library export is not available yet.');
+  const cooldown = await page.request.get('/api/me/export?format=csv');
+  expect(cooldown.status()).toBe(429);
 });
 
 test('export is session-owned and rejects unauthenticated or user-selected scope', async ({ page }) => {

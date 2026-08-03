@@ -51,7 +51,7 @@ Organized by capability area (matching the approved user-facing module names fro
 - FR33. All auth and claim actions are recorded in an append-only audit log. **[Built]**
 - FR34. Users have a public Profile / Passport page presenting their public-facing submitter identity. **[Built]**
 - FR35. Users can configure privacy settings controlling what's visible on their public profile. **[Built]**
-- FR36. Users can export their own tracker/library data. **[Built — private JSON/CSV tracker export; Library export remains scoped separately]**
+- FR36. Users can export their own tracker/library data. **[Built — private JSON/CSV exports include tracker, Works, Files, and Saved Answers with owner scoping]**
 
 ## Missa Workspace — Organizations
 

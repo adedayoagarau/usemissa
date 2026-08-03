@@ -30,6 +30,26 @@ function trackerForScope(exportData: TrackerExportV1, scope: 'all' | 'tracker'):
   return scope === 'tracker' ? { ...exportData, omitted: [] } : exportData;
 }
 
+function libraryForScope(engine: Awaited<ReturnType<typeof getEngine>>, userId: string) {
+  const library = engine.library(userId);
+  return {
+    exportVersion: 1 as const,
+    included: ['library'] as const,
+    works: library.works.map((work) => ({ ...work })),
+    files: library.files.map((file) => ({ ...file })),
+    savedAnswers: library.savedAnswers.map((answer) => ({ ...answer })),
+  };
+}
+
+function encodeLibraryCsv(library: ReturnType<typeof libraryForScope>): string {
+  const cell = (value: unknown) => { const text = value == null ? '' : String(value); const safe = /^[=+\-@]/.test(text) ? `'${text}` : text; return /[",\r\n]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe; };
+  const rows = [['kind', 'id', 'name', 'body_or_title', 'storage_key', 'created_at', 'updated_at']];
+  for (const work of library.works) rows.push(['work', work.id, '', work.title, '', work.createdAt, work.updatedAt]);
+  for (const file of library.files) rows.push(['file', file.id, file.filename, '', file.storageKey, file.createdAt, '']);
+  for (const answer of library.savedAnswers) rows.push(['saved_answer', answer.id, answer.name, answer.body, '', answer.createdAt, answer.updatedAt]);
+  return rows.map((row) => row.map(cell).join(',')).join('\r\n') + '\r\n';
+}
+
 export async function GET(request: Request) {
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session) return errorResponse('Not authenticated', 401);
@@ -42,8 +62,6 @@ export async function GET(request: Request) {
   const scope = url.searchParams.get('scope') ?? 'all';
   if (format !== 'json' && format !== 'csv') return errorResponse('Format must be json or csv.', 400);
   if (scope !== 'all' && scope !== 'tracker' && scope !== 'library') return errorResponse('Scope must be all, tracker, or library.', 400);
-  if (scope === 'library') return errorResponse('Library export is not available yet.', 409);
-
   const userId = session.account.userId;
   if (!userId) return errorResponse('Profile not found', 404);
 
@@ -56,15 +74,19 @@ export async function GET(request: Request) {
 
   const engine = await getEngine();
   let exportData: TrackerExportV1;
+  let libraryData: ReturnType<typeof libraryForScope> | undefined;
   try {
-    exportData = trackerForScope(engine.exportTracker(userId, new Date(nowMs)), scope);
+    exportData = trackerForScope(engine.exportTracker(userId, new Date(nowMs)), scope === 'library' ? 'all' : scope);
+    libraryData = libraryForScope(engine, userId);
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Unknown user:')) return errorResponse('Profile not found', 404);
     console.error('Tracker export projection failed', error);
     return errorResponse('We could not prepare your export. Please try again.', 500);
   }
 
-  const body = format === 'csv' ? encodeTrackerCsv(exportData) : JSON.stringify(exportData, null, 2);
+  const body = scope === 'library'
+    ? (format === 'csv' ? encodeLibraryCsv(libraryData!) : JSON.stringify(libraryData, null, 2))
+    : (format === 'csv' ? encodeTrackerCsv(exportData) : JSON.stringify(scope === 'all' ? { ...exportData, included: ['tracker', 'library'], omitted: [], library: libraryData } : exportData, null, 2));
   const date = new Date(nowMs).toISOString().slice(0, 10);
   const extension = format === 'csv' ? 'csv' : 'json';
   const contentType = format === 'csv' ? 'text/csv; charset=utf-8' : 'application/json; charset=utf-8';
@@ -76,7 +98,7 @@ export async function GET(request: Request) {
     'data.exported',
     'user_profile',
     userId,
-    JSON.stringify({ format, scope, rowCount: exportData.tracker.length }),
+    JSON.stringify({ format, scope, rowCount: exportData.tracker.length, libraryRows: (libraryData?.works.length ?? 0) + (libraryData?.files.length ?? 0) + (libraryData?.savedAnswers.length ?? 0) }),
   );
   try {
     await persistRadar();
@@ -91,7 +113,7 @@ export async function GET(request: Request) {
     headers: {
       'Cache-Control': 'private, no-store',
       'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="missa-tracker-${date}.${extension}"`,
+      'Content-Disposition': `attachment; filename="missa-${scope === 'library' ? 'library' : 'tracker'}-${date}.${extension}"`,
     },
   });
 }
