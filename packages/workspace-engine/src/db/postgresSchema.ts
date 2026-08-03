@@ -56,6 +56,30 @@ create table if not exists submission_paths (
   created_at timestamptz not null
 );
 
+-- Early Neon baselines used submission_drafts for an unrelated draft shape
+-- (account_id/opportunity_id). Preserve that empty legacy table before making
+-- the current path-scoped draft contract. This keeps cold starts idempotent
+-- while avoiding an unsafe in-place reinterpretation of old rows.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = current_schema() and table_name = 'submission_drafts'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = current_schema() and table_name = 'submission_drafts' and column_name = 'submitter_account_id'
+  ) then
+    if not exists (
+      select 1 from information_schema.tables
+      where table_schema = current_schema() and table_name = 'submission_drafts_legacy_20260803'
+    ) then
+      alter table submission_drafts rename to submission_drafts_legacy_20260803;
+    else
+      execute 'alter table submission_drafts rename to submission_drafts_legacy_' || to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+    end if;
+  end if;
+end $$;
+
 create table if not exists submissions (
   id text primary key,
   submission_path_id text not null references submission_paths(id),

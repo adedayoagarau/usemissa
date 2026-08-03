@@ -11,6 +11,11 @@
 - `DATABASE_URL` is now set in Vercel production to the Neon pooled connection.
 - `MISSA_OPPORTUNITY_REPOSITORY=postgres` is now set in Vercel production.
 - Opportunities migrations `0001_steady_lockheed.sql` and `0002_spooky_molecule_man.sql` were applied transactionally to Neon and verified. The legacy baseline remains outside Drizzle's migration ledger; do not run the full migrator until baseline reconciliation is complete.
+- The live Neon Workspace schema was reconciled on 2026-08-03: the empty
+  legacy `submission_drafts` table was preserved as
+  `submission_drafts_legacy_20260803`, the current path-scoped draft table was
+  created, and `works.file_urls` was added for multi-attachment submissions.
+  The runtime `ensurePostgresSchema` remains idempotent for cold starts.
 - Preview and development still need their own database policy before enabling the PostgreSQL repository there.
 
 **Radar ingestion:**
