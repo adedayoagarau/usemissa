@@ -34,8 +34,18 @@ create table if not exists open_calls (
   status text not null,
   radar_opportunity_id text,
   created_at timestamptz not null,
-  published_at timestamptz
+  published_at timestamptz,
+  guideline_url text,
+  guideline_text text,
+  guideline_source_type text,
+  guideline_imported_at timestamptz,
+  guideline_import_report jsonb
 );
+alter table open_calls add column if not exists guideline_url text;
+alter table open_calls add column if not exists guideline_text text;
+alter table open_calls add column if not exists guideline_source_type text;
+alter table open_calls add column if not exists guideline_imported_at timestamptz;
+alter table open_calls add column if not exists guideline_import_report jsonb;
 
 create table if not exists submission_paths (
   id text primary key,

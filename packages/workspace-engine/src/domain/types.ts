@@ -65,6 +65,20 @@ export interface OpenCall {
   radarOpportunityId?: string;
   createdAt: IsoDateTime;
   publishedAt?: IsoDateTime;
+  guidelineUrl?: string;
+  guidelineText?: string;
+  guidelineSourceType?: 'html' | 'pdf';
+  guidelineImportedAt?: IsoDateTime;
+  guidelineImportReport?: GuidelineImportReport;
+}
+
+export interface GuidelineImportReport {
+  sourceUrl: string;
+  sourceType: 'html' | 'pdf';
+  byteLength: number;
+  extractedCharacters: number;
+  confidence: 'high' | 'low';
+  warnings: string[];
 }
 
 export type SubmissionFieldType = 'text' | 'file-upload' | 'category-select' | 'fee-toggle';

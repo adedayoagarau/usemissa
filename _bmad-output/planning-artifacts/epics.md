@@ -629,9 +629,11 @@ product does not simulate enterprise provisioning.
 
 ## Epic 12: Import/Migration Stack *(Growth)*
 
-Covers FR55–57. Story 12.1 delivers a bounded Submittable-style/open-call CSV
-preview and commit flow with an explicit Import Report. Google Forms, Airtable,
-and guideline URL/PDF adapters remain separate provider stories.
+Covers FR55–57. Stories 12.1 and 12.2 deliver bounded Submittable-style
+open-call and submission CSV preview/commit flows with explicit Import Reports.
+Guideline URL/HTML and best-effort PDF extraction are also available with
+confidence warnings. Google Forms/Airtable adapters remain separate provider
+stories.
 
 ## Epic 13: Props / Gamification *(Growth)*
 

@@ -82,9 +82,9 @@ Organized by capability area (matching the approved user-facing module names fro
 
 ## Import / Migration (Growth-tier, tracked here for completeness)
 
-- FR55. Organizations can import existing calls/submissions from Submittable exports, Google Forms, or Airtable. **[Partial — bounded Submittable-style/open-call CSV importer; Google Forms/Airtable adapters remain]**
-- FR56. Organizations can import an open call's guidelines from a URL or PDF. **[Not built]**
-- FR57. The system reports the completeness/accuracy of any migration import (the "Import Report"). **[Partial — CSV preview reports valid, invalid, duplicate, warning, and created/skipped counts]**
+- FR55. Organizations can import existing calls/submissions from Submittable exports, Google Forms, or Airtable. **[Partial — bounded Submittable-style calls and submissions CSV importers; Google Forms/Airtable adapters remain]**
+- FR56. Organizations can import an open call's guidelines from a URL or PDF. **[Partial — bounded URL/HTML import and best-effort PDF extraction with confidence warnings]**
+- FR57. The system reports the completeness/accuracy of any migration import (the "Import Report"). **[Built for supported CSV/URL flows — reports valid, invalid, duplicate, unmatched, warning, confidence, and created/skipped counts]**
 
 ## Props (Gamification)
 

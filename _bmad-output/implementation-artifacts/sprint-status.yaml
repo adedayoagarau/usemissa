@@ -118,6 +118,7 @@ development_status:
 
   epic-12: done
   12-1-open-call-csv-import: done
+  12-2-submission-migration-import: done
   epic-12-retrospective: optional
 
   epic-13: done

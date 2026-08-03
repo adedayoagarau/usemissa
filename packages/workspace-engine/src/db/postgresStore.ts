@@ -65,8 +65,8 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool): Pr
 
     for (const o of store.openCalls.values()) {
       await client.query(
-        'insert into open_calls (id, program_id, title, status, radar_opportunity_id, created_at, published_at) values ($1, $2, $3, $4, $5, $6, $7)',
-        [o.id, o.programId, o.title, o.status, o.radarOpportunityId ?? null, o.createdAt, o.publishedAt ?? null],
+        'insert into open_calls (id, program_id, title, status, radar_opportunity_id, created_at, published_at, guideline_url, guideline_text, guideline_source_type, guideline_imported_at, guideline_import_report) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+        [o.id, o.programId, o.title, o.status, o.radarOpportunityId ?? null, o.createdAt, o.publishedAt ?? null, o.guidelineUrl ?? null, o.guidelineText ?? null, o.guidelineSourceType ?? null, o.guidelineImportedAt ?? null, o.guidelineImportReport ? JSON.stringify(o.guidelineImportReport) : null],
       );
     }
 
@@ -175,6 +175,11 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
     radar_opportunity_id: string | null;
     created_at: Date;
     published_at: Date | null;
+    guideline_url: string | null;
+    guideline_text: string | null;
+    guideline_source_type: OpenCall['guidelineSourceType'] | null;
+    guideline_imported_at: Date | null;
+    guideline_import_report: OpenCall['guidelineImportReport'] | null;
   }>('select * from open_calls');
   for (const row of openCalls.rows) {
     const openCall: OpenCall = {
@@ -185,6 +190,11 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
       radarOpportunityId: row.radar_opportunity_id ?? undefined,
       createdAt: row.created_at.toISOString(),
       publishedAt: row.published_at?.toISOString(),
+      guidelineUrl: row.guideline_url ?? undefined,
+      guidelineText: row.guideline_text ?? undefined,
+      guidelineSourceType: row.guideline_source_type ?? undefined,
+      guidelineImportedAt: row.guideline_imported_at?.toISOString(),
+      guidelineImportReport: row.guideline_import_report ?? undefined,
     };
     store.openCalls.set(openCall.id, openCall);
   }

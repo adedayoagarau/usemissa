@@ -42,6 +42,11 @@ export const openCalls = pgTable('open_calls', {
   radarOpportunityId: text('radar_opportunity_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   publishedAt: timestamp('published_at', { withTimezone: true }),
+  guidelineUrl: text('guideline_url'),
+  guidelineText: text('guideline_text'),
+  guidelineSourceType: text('guideline_source_type'),
+  guidelineImportedAt: timestamp('guideline_imported_at', { withTimezone: true }),
+  guidelineImportReport: jsonb('guideline_import_report'),
 });
 
 export const submissionPaths = pgTable('submission_paths', {
