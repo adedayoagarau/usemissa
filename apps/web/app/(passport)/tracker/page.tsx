@@ -63,7 +63,7 @@ export default async function TrackerPage() {
         </Empty>
       ) : (
         <div className="mt-6">
-          <TrackerViewSwitcher userId={userId} pipeline={view.pipeline} allItems={allItems} />
+          <TrackerViewSwitcher userId={userId} pipeline={view.pipeline} allItems={allItems} lists={engine.lists(userId)} memberships={engine.listMemberships(userId)} />
         </div>
       )}
     </div>

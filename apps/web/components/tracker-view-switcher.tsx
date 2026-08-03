@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusPipelineBoard } from '@/components/status-pipeline-board';
 import { TrackerItemRow } from '@/components/tracker-item-row';
-import type { TrackerItem, PipelineStage } from '@missa/radar-engine';
+import type { TrackerItem, PipelineStage, CustomList, CustomListMembership } from '@missa/radar-engine';
 
 type ViewMode = 'pipeline' | 'deadline' | 'type' | 'organization' | 'list';
 
@@ -43,12 +43,17 @@ export function TrackerViewSwitcher({
   userId,
   pipeline,
   allItems,
+  lists,
+  memberships,
 }: {
   userId: string;
   pipeline: Record<PipelineStage, TrackerItem[]>;
   allItems: TrackerItem[];
+  lists: CustomList[];
+  memberships: CustomListMembership[];
 }) {
   const [mode, setMode] = useState<ViewMode>('pipeline');
+  const [listId, setListId] = useState<string>('all');
   const modes: ViewMode[] = ['pipeline', 'deadline', 'type', 'organization', 'list'];
 
   return (
@@ -110,9 +115,14 @@ export function TrackerViewSwitcher({
 
       {mode === 'list' && (
         <div className="mt-4 space-y-2">
-          {allItems.map((item) => (
+          <div className="flex flex-wrap gap-2" aria-label="Filter by List">
+            <button type="button" onClick={() => setListId('all')} className={`min-h-11 rounded-md border px-3 text-sm ${listId === 'all' ? 'border-primary bg-accent-tint' : 'border-border'}`}>All tracked</button>
+            {lists.map((list) => <button type="button" key={list.id} onClick={() => setListId(list.id)} className={`min-h-11 rounded-md border px-3 text-sm ${listId === list.id ? 'border-primary bg-accent-tint' : 'border-border'}`}>{list.name}</button>)}
+          </div>
+          {(listId === 'all' ? allItems : allItems.filter((item) => memberships.some((membership) => membership.listId === listId && membership.opportunityId === item.opportunityId))).map((item) => (
             <TrackerItemRow key={item.opportunityId} userId={userId} item={item} />
           ))}
+          {listId !== 'all' && !allItems.some((item) => memberships.some((membership) => membership.listId === listId && membership.opportunityId === item.opportunityId)) && <p className="text-sm text-muted-foreground">No opportunities in this List yet.</p>}
         </div>
       )}
     </div>

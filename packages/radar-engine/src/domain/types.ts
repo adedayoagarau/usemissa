@@ -371,6 +371,63 @@ export interface SavedAnswer {
   updatedAt: IsoDateTime;
 }
 
+/** A private user-defined grouping of tracked opportunities. */
+export interface CustomList {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  /** Semantic token such as `coral` or `sage`, never a raw CSS value. */
+  colorToken?: string;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+  archivedAt?: IsoDateTime;
+}
+
+/** Composite-key membership; one opportunity may belong to several Lists. */
+export interface CustomListMembership {
+  listId: string;
+  userId: string;
+  opportunityId: string;
+  addedAt: IsoDateTime;
+}
+
+/** A private, opportunity-specific preparation state for one tracked call. */
+export type ChecklistItemState = 'missing' | 'ready' | 'complete' | 'not-applicable';
+
+export type ChecklistItemSource = 'opportunity-required-material' | 'user-added';
+export type ChecklistSourceConfidence = 'high' | 'possible' | 'unknown';
+
+export interface OpportunityChecklist {
+  id: string;
+  userId: string;
+  opportunityId: string;
+  /** The tracking timestamp that caused this checklist to be created. */
+  trackedAt: IsoDateTime;
+  /** The opportunity version whose required materials were last reconciled. */
+  sourceVersion?: string;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+}
+
+export interface ChecklistItem {
+  id: string;
+  checklistId: string;
+  label: string;
+  /** Lower-case, whitespace-collapsed key used to reconcile refreshes. */
+  normalizedKey: string;
+  order: number;
+  state: ChecklistItemState;
+  libraryWorkId?: string;
+  libraryFileId?: string;
+  savedAnswerId?: string;
+  note?: string;
+  source: ChecklistItemSource;
+  sourceConfidence?: ChecklistSourceConfidence;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+}
+
 export type ProfileVisibility = 'public' | 'private';
 
 export interface ProfilePrivacySettings {

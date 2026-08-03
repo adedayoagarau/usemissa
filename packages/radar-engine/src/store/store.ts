@@ -25,6 +25,10 @@ import type {
   LibraryWork,
   LibraryFile,
   SavedAnswer,
+  CustomList,
+  CustomListMembership,
+  OpportunityChecklist,
+  ChecklistItem,
   VerificationTask,
 } from '../domain/types.js';
 
@@ -56,6 +60,12 @@ export interface RadarStore {
   libraryWorks: Map<string, LibraryWork>;
   libraryFiles: Map<string, LibraryFile>;
   savedAnswers: Map<string, SavedAnswer>;
+  /** Private opportunity-specific preparation state. */
+  checklists: Map<string, OpportunityChecklist>;
+  checklistItems: Map<string, ChecklistItem>;
+  customLists: Map<string, CustomList>;
+  /** Composite key `${userId}:${listId}:${opportunityId}` → membership. */
+  customListMemberships: Map<string, CustomListMembership>;
   alerts: Map<string, Alert>;
   /** Alert dedup keys already emitted (e.g. "closing-soon:user_1:opp_1"). */
   emittedAlertKeys: Set<string>;
@@ -87,6 +97,10 @@ export function createStore(): RadarStore {
     libraryWorks: new Map(),
     libraryFiles: new Map(),
     savedAnswers: new Map(),
+    checklists: new Map(),
+    checklistItems: new Map(),
+    customLists: new Map(),
+    customListMemberships: new Map(),
     alerts: new Map(),
     emittedAlertKeys: new Set(),
     accounts: new Map(),
@@ -117,6 +131,10 @@ interface SerializedStore {
   libraryWorks?: LibraryWork[];
   libraryFiles?: LibraryFile[];
   savedAnswers?: SavedAnswer[];
+  checklists?: OpportunityChecklist[];
+  checklistItems?: ChecklistItem[];
+  customLists?: CustomList[];
+  customListMemberships?: CustomListMembership[];
   alerts: Alert[];
   emittedAlertKeys: string[];
   accounts: Account[];
@@ -147,6 +165,10 @@ export function saveStore(store: RadarStore, filePath: string): void {
     libraryWorks: [...store.libraryWorks.values()],
     libraryFiles: [...store.libraryFiles.values()],
     savedAnswers: [...store.savedAnswers.values()],
+    checklists: [...store.checklists.values()],
+    checklistItems: [...store.checklistItems.values()],
+    customLists: [...store.customLists.values()],
+    customListMemberships: [...store.customListMemberships.values()],
     alerts: [...store.alerts.values()],
     emittedAlertKeys: [...store.emittedAlertKeys],
     accounts: [...store.accounts.values()],
@@ -182,12 +204,21 @@ export function loadStore(filePath: string): RadarStore {
   for (const work of data.libraryWorks ?? []) store.libraryWorks.set(work.id, work);
   for (const file of data.libraryFiles ?? []) store.libraryFiles.set(file.id, file);
   for (const answer of data.savedAnswers ?? []) store.savedAnswers.set(answer.id, answer);
+  for (const checklist of data.checklists ?? []) store.checklists.set(checklist.id, checklist);
+  for (const item of data.checklistItems ?? []) store.checklistItems.set(item.id, item);
+  for (const list of data.customLists ?? []) store.customLists.set(list.id, list);
+  for (const membership of data.customListMemberships ?? []) store.customListMemberships.set(membershipKey(membership), membership);
   for (const a of data.alerts) store.alerts.set(a.id, a);
   store.emittedAlertKeys = new Set(data.emittedAlertKeys);
   for (const a of data.accounts ?? []) store.accounts.set(a.id, a);
   store.memberships = data.memberships ?? [];
   store.auditLog = data.auditLog ?? [];
   return store;
+}
+
+/** Stable key used by the in-memory adapter and JSON persistence. */
+export function membershipKey(membership: Pick<CustomListMembership, 'userId' | 'listId' | 'opportunityId'>): string {
+  return `${membership.userId}:${membership.listId}:${membership.opportunityId}`;
 }
 
 export function changesFor(store: RadarStore, opportunityId: string): OpportunityChange[] {

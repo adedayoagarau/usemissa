@@ -41,8 +41,8 @@ Organized by capability area (matching the approved user-facing module names fro
 ## Library (submitter-facing)
 
 - FR28. Submitters maintain a Library of Works, Files, and Saved Answers reusable across submissions. **[Built — CRUD and private storage boundary; Blob deployment configuration remains]**
-- FR29. Submitters can prepare an opportunity-specific checklist of required materials before submitting. **[Not built]**
-- FR30. Submitters can organize opportunities into custom Lists. **[Not built]**
+- FR29. Submitters can prepare an opportunity-specific checklist of required materials before submitting. **[Built — private, owner-scoped checklist generation, reconciliation, progress, and API/UI foundations]**
+- FR30. Submitters can organize opportunities into custom Lists. **[Built — private, owner-scoped CRUD, tracked-only memberships, and API foundations]**
 
 ## Accounts, Auth & Passport
 

@@ -15,6 +15,7 @@ import { addDays, daysBetween, isoDateOf } from '../extraction/dates.js';
 import { fitScore } from '../matching/fit.js';
 import { displayStatus } from '../status/statusEngine.js';
 import { expectedResponseWindowDays } from './responseStats.js';
+import { opportunityChecklist } from '../checklist/checklist.js';
 
 export interface TrackerContext {
   store: RadarStore;
@@ -51,6 +52,11 @@ export function track(ctx: TrackerContext, userId: string, opportunityId: string
     events: [{ at: now, to: 'saved', source: 'user' }],
   };
   ctx.store.tracked.push(tracked);
+  // Preparing is private creator state, but tracking is the explicit moment
+  // at which we snapshot the opportunity's extracted requirements. The
+  // helper is owner-aware; demo/legacy callers without a user row still get
+  // the historical tracking behaviour.
+  if (ctx.store.users.has(userId)) opportunityChecklist(ctx.store, userId, opportunityId, ctx.clock.now(), ctx.ids);
   return tracked;
 }
 

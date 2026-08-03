@@ -188,6 +188,37 @@ create table if not exists radar_saved_answers (
 );
 create index if not exists radar_saved_answers_user_idx on radar_saved_answers (user_id, id);
 
+create table if not exists radar_opportunity_checklists (
+  id text primary key,
+  user_id text not null,
+  opportunity_id text not null,
+  data jsonb not null
+);
+create unique index if not exists radar_checklists_user_opportunity_idx on radar_opportunity_checklists (user_id, opportunity_id);
+
+create table if not exists radar_checklist_items (
+  id text primary key,
+  checklist_id text not null,
+  data jsonb not null
+);
+create index if not exists radar_checklist_items_checklist_idx on radar_checklist_items (checklist_id);
+
+create table if not exists radar_custom_lists (
+  id text primary key,
+  user_id text not null,
+  data jsonb not null
+);
+create unique index if not exists radar_custom_lists_user_name_idx on radar_custom_lists (user_id, lower(data->>'name'));
+
+create table if not exists radar_custom_list_memberships (
+  user_id text not null,
+  list_id text not null,
+  opportunity_id text not null,
+  data jsonb not null,
+  primary key (user_id, list_id, opportunity_id)
+);
+create index if not exists radar_custom_list_memberships_list_idx on radar_custom_list_memberships (user_id, list_id);
+
 create table if not exists radar_alerts (
   id text primary key,
   data jsonb not null

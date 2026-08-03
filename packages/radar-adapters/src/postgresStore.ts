@@ -161,6 +161,22 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
     for (const answer of store.savedAnswers.values()) {
       await client.query('insert into radar_saved_answers (id, user_id, data) values ($1, $2, $3)', [answer.id, answer.userId, answer]);
     }
+    await client.query('delete from radar_opportunity_checklists');
+    for (const checklist of store.checklists.values()) {
+      await client.query('insert into radar_opportunity_checklists (id, user_id, opportunity_id, data) values ($1, $2, $3, $4)', [checklist.id, checklist.userId, checklist.opportunityId, checklist]);
+    }
+    await client.query('delete from radar_checklist_items');
+    for (const item of store.checklistItems.values()) {
+      await client.query('insert into radar_checklist_items (id, checklist_id, data) values ($1, $2, $3)', [item.id, item.checklistId, item]);
+    }
+    await client.query('delete from radar_custom_lists');
+    for (const list of store.customLists.values()) {
+      await client.query('insert into radar_custom_lists (id, user_id, data) values ($1, $2, $3)', [list.id, list.userId, list]);
+    }
+    await client.query('delete from radar_custom_list_memberships');
+    for (const membership of store.customListMemberships.values()) {
+      await client.query('insert into radar_custom_list_memberships (user_id, list_id, opportunity_id, data) values ($1, $2, $3, $4)', [membership.userId, membership.listId, membership.opportunityId, membership]);
+    }
 
     await client.query('delete from radar_alerts');
     for (const a of store.alerts.values()) {
@@ -222,7 +238,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
 
   const [
     sources, snapshots, opportunities, versions, changes, organizations, claims, verificationTasks,
-    profiles, users, follows, tracked, manualTrackerEntries, forwardingAddresses, emailCandidates, gmailConnections, gmailSyncJobs, gmailOAuthStates, libraryWorks, libraryFiles, savedAnswers, alerts, alertKeys, accounts, memberships, auditLog,
+    profiles, users, follows, tracked, manualTrackerEntries, forwardingAddresses, emailCandidates, gmailConnections, gmailSyncJobs, gmailOAuthStates, libraryWorks, libraryFiles, savedAnswers, checklists, checklistItems, customLists, customListMemberships, alerts, alertKeys, accounts, memberships, auditLog,
   ] = await Promise.all([
     pool.query('select data from radar_sources'),
     pool.query('select data from radar_snapshots'),
@@ -245,6 +261,10 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
     pool.query('select data from radar_library_works'),
     pool.query('select data from radar_library_files'),
     pool.query('select data from radar_saved_answers'),
+    pool.query('select data from radar_opportunity_checklists'),
+    pool.query('select data from radar_checklist_items'),
+    pool.query('select data from radar_custom_lists'),
+    pool.query('select data from radar_custom_list_memberships'),
     pool.query('select data from radar_alerts'),
     pool.query('select key from radar_emitted_alert_keys'),
     pool.query('select data from radar_accounts'),
@@ -273,6 +293,10 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
   for (const row of libraryWorks.rows) store.libraryWorks.set(row.data.id, row.data);
   for (const row of libraryFiles.rows) store.libraryFiles.set(row.data.id, row.data);
   for (const row of savedAnswers.rows) store.savedAnswers.set(row.data.id, row.data);
+  for (const row of checklists.rows) store.checklists.set(row.data.id, row.data);
+  for (const row of checklistItems.rows) store.checklistItems.set(row.data.id, row.data);
+  for (const row of customLists.rows) store.customLists.set(row.data.id, row.data);
+  for (const row of customListMemberships.rows) store.customListMemberships.set(`${row.data.userId}:${row.data.listId}:${row.data.opportunityId}`, row.data);
   for (const row of alerts.rows) store.alerts.set(row.data.id, row.data);
   store.emittedAlertKeys = new Set(alertKeys.rows.map((r) => r.key));
   for (const row of accounts.rows) store.accounts.set(row.data.id, row.data);

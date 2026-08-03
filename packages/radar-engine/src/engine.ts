@@ -31,6 +31,9 @@ import type {
   LibraryWork,
   LibraryFile,
   SavedAnswer,
+  ChecklistItem,
+  CustomList,
+  CustomListMembership,
 } from './domain/types.js';
 import type { Clock, Extractor, Fetcher, FetchResult, IdGenerator } from './ports.js';
 import { sequentialIds, systemClock } from './ports.js';
@@ -69,6 +72,8 @@ import type { EmailReviewCandidate } from './domain/types.js';
 import type { GmailConnection, GmailMode, GmailSyncJob, GmailSyncTrigger, InboundEmailEnvelope } from './domain/types.js';
 import { cleanupGmailOAuthStates, completeGmailSyncJob, createGmailConnection, createGmailOAuthState, consumeGmailOAuthState, disconnectGmail, failGmailSyncJob, gmailAutopilotGate, ingestGmailEnvelope, leaseGmailSyncJob, queueGmailSyncJob, setGmailMode, type GmailOAuthConfig, type GmailTokenExchange } from './gmail/gmailSync.js';
 import { createLibraryFile, createLibraryWork, createSavedAnswer, deleteLibraryFile, deleteLibraryWork, deleteSavedAnswer, libraryForUser, updateLibraryWork, updateSavedAnswer } from './library/library.js';
+import { addChecklistItem, checklistForUser, deleteChecklistItem, getOpportunityChecklist, refreshOpportunityChecklist, updateChecklistItem, type ChecklistItemPatch, type OpportunityChecklistView } from './checklist/checklist.js';
+import { addOpportunityToCustomList as addToList, customListsForOpportunity, customListsForUser, createCustomList, deleteCustomList, opportunitiesForCustomList, removeOpportunityFromCustomList, updateCustomList } from './lists/lists.js';
 
 export class ProfileValidationError extends Error {
   readonly field: 'displayName' | 'bio';
@@ -181,6 +186,9 @@ function* idsInStore(store: RadarStore): Iterable<string> {
     store.users,
     store.alerts,
     store.accounts,
+    store.checklists,
+    store.checklistItems,
+    store.customLists,
   ];
   for (const map of maps) yield* map.keys();
   for (const entry of store.auditLog) yield entry.id;
@@ -488,6 +496,36 @@ export class RadarEngine {
   createSavedAnswer(userId: string, input: { name: unknown; body: unknown }): SavedAnswer { return createSavedAnswer(this.store, userId, input, this.clock.now(), this.ids); }
   updateSavedAnswer(userId: string, answerId: string, input: { name?: unknown; body?: unknown }): SavedAnswer { return updateSavedAnswer(this.store, userId, answerId, input, this.clock.now()); }
   deleteSavedAnswer(userId: string, answerId: string): void { deleteSavedAnswer(this.store, userId, answerId); }
+
+  opportunityChecklist(userId: string, opportunityId: string): OpportunityChecklistView {
+    return getOpportunityChecklist(this.store, userId, opportunityId, this.clock.now(), this.ids);
+  }
+
+  refreshOpportunityChecklist(userId: string, opportunityId: string): OpportunityChecklistView {
+    return refreshOpportunityChecklist(this.store, userId, opportunityId, this.clock.now(), this.ids);
+  }
+
+  checklistForUser(userId: string): OpportunityChecklistView[] { return checklistForUser(this.store, userId); }
+
+  addChecklistItem(userId: string, opportunityId: string, input: { label: unknown; note?: unknown }): ChecklistItem {
+    return addChecklistItem(this.store, userId, opportunityId, input, this.clock.now(), this.ids);
+  }
+
+  updateChecklistItem(userId: string, itemId: string, input: ChecklistItemPatch): ChecklistItem {
+    return updateChecklistItem(this.store, userId, itemId, input, this.clock.now());
+  }
+
+  deleteChecklistItem(userId: string, itemId: string): void { deleteChecklistItem(this.store, userId, itemId, this.clock.now()); }
+
+  lists(userId: string, includeArchived = false): CustomList[] { return customListsForUser(this.store, userId, includeArchived); }
+  createList(userId: string, input: { name: unknown; description?: unknown; colorToken?: unknown }): CustomList { return createCustomList(this.store, userId, input, this.clock.now(), this.ids); }
+  updateList(userId: string, listId: string, input: { name?: unknown; description?: unknown; colorToken?: unknown; archived?: unknown }): CustomList { return updateCustomList(this.store, userId, listId, input, this.clock.now()); }
+  deleteList(userId: string, listId: string): void { deleteCustomList(this.store, userId, listId); }
+  listMemberships(userId: string, listId?: string): CustomListMembership[] { return this.store.customListMemberships ? [...this.store.customListMemberships.values()].filter((m) => m.userId === userId && (listId === undefined || m.listId === listId)) : []; }
+  listsForOpportunity(userId: string, opportunityId: string): CustomList[] { return customListsForOpportunity(this.store, userId, opportunityId); }
+  addToList(userId: string, listId: string, opportunityId: string): CustomListMembership { return addToList(this.store, userId, listId, opportunityId, this.clock.now()); }
+  removeFromList(userId: string, listId: string, opportunityId: string): void { removeOpportunityFromCustomList(this.store, userId, listId, opportunityId); }
+  opportunitiesInList(userId: string, listId: string): Opportunity[] { return opportunitiesForCustomList(this.store, userId, listId); }
 
   /** Seeding/ops only — there is no self-serve path to platform admin. */
   promoteToAdmin(accountId: string): void {
