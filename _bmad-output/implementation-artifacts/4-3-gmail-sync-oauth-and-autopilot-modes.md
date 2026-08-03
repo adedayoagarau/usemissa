@@ -348,7 +348,7 @@ Implemented the review-first Gmail vertical slice behind the normalized provider
 
 Neon schema initialization and reload were rehearsed non-destructively against the configured database. The live store loaded 1,024 sources, 113 opportunities, 2 users, and 2 accounts; Gmail collections are empty until a real Google connection is authorized. No destructive integration test was run against live data. Local/Vercel environment wiring is present for `DATABASE_URL` and repository selection; Google Cloud credentials and token key still need deployment-specific values.
 
-Validation completed: Radar engine 68/68 tests, adapter TypeScript build, web typecheck, web lint (two pre-existing warnings only), and production web build. The full adapter integration suite and live OAuth/Pub/Sub E2E remain environment-gated. The Pub/Sub endpoint currently uses a shared secret and fast enqueue path; Google OIDC/audience verification should be completed before production enablement. The Autopilot confirmation is a browser confirmation gate in this slice; a shadcn dialog/checkbox can replace it in the accessibility polish pass.
+Validation completed: Radar engine 68/68 tests, adapter tests 20 passing with the live Postgres test skipped, web typecheck, web lint (two pre-existing warnings only), production web build, and a signed RSA Pub/Sub OIDC fixture. The live OAuth/Pub/Sub E2E remains environment-gated. The Pub/Sub endpoint now verifies Google OIDC issuer, audience, expiry, service-account identity, and signature when configured; local development retains the shared-secret fallback. The Autopilot confirmation is a browser confirmation gate in this slice; a shadcn dialog/checkbox can replace it in the accessibility polish pass.
 
 ## Review Notes / QA Results
 

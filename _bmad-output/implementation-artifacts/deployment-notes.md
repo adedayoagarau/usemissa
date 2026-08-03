@@ -22,4 +22,11 @@
 - `CRON_SECRET` — needed for the bounded `/api/cron/tick` fallback.
 - A production app domain (e.g. `app.usemissa.com`) if the app should be separate from `www.usemissa.com`.
 
+**Gmail Sync production configuration:**
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and exact `GOOGLE_REDIRECT_URI` for the deployed app callback.
+- `MISSA_GMAIL_TOKEN_KEY` plus `MISSA_GMAIL_TOKEN_KEY_VERSION` (and `MISSA_GMAIL_TOKEN_KEY_PREVIOUS` during rotation).
+- `GMAIL_PUBSUB_TOPIC` for Gmail watch registration, `GMAIL_PUBSUB_OIDC_AUDIENCE` matching the push endpoint, and optional `GMAIL_PUBSUB_SERVICE_ACCOUNT` to pin the publisher identity.
+- `CRON_SECRET` is also required by `/api/cron/gmail-sync`. Configure the Pub/Sub push subscription with OIDC authentication; the shared-secret fallback is development-only and production fails closed without OIDC configuration.
+- Google OAuth consent/scope verification, Gmail API enablement, Pub/Sub topic IAM (`gmail-api-push@system.gserviceaccount.com` publisher), and a disposable Neon rehearsal are required before enabling a real mailbox.
+
 **Current deployment:** the latest production deployment builds clean and is aliased at `https://www.usemissa.com`. The opportunities browse/detail routes are backed by the live Neon relational repository.
