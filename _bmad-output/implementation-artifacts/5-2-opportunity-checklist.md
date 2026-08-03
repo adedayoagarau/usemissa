@@ -16,7 +16,7 @@ The creator's preparation state is private and separate from Radar's canonical o
 - Eager checklist creation when an authenticated user tracks an opportunity; lazy read/create remains idempotent.
 - Additive Neon persistence tables and JSON store persistence.
 - Authenticated no-store routes for read, refresh, add, update, and delete.
-- Opportunity detail Prepare panel with progress, keyboard-accessible toggles, add requirement, refresh, and submission boundary language.
+- Opportunity detail Prepare panel with progress, keyboard-accessible toggles, add requirement, refresh, deliberate `Not applicable`, Library attachment picker, and submission boundary language.
 
 ## Contracts
 
@@ -34,4 +34,4 @@ The session determines the owner. A complete item is only the creator's readines
 
 ## Follow-up release polish
 
-The next UI polish slice should replace the temporary inline add prompt with a dialog, add an explicit `Not applicable` confirmation and Library picker, and thread idempotency/audit keys through mutation routes before declaring the story fully done.
+Replace the temporary inline add prompt with a design-system dialog and thread idempotency/audit keys through mutation routes before declaring the story fully done.

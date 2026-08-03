@@ -1,7 +1,7 @@
 ---
 epic: 5
 story: 5.1
-status: review
+status: done
 title: Works, Files, and Saved Answers Library CRUD
 ---
 
@@ -39,8 +39,8 @@ As a submitter, I want to store reusable Works, Files, and Saved Answers so I do
 - Adapter: 20 passing, live Postgres integration intentionally skipped; schema/load rehearsal against Neon confirms 1,024 sources, 113 opportunities, 2 users, 2 accounts, and empty Library collections.
 - Web: typecheck, lint (two pre-existing opportunities warnings), production build, and Playwright Library E2E pass.
 
-## Follow-ups
+## Release gate
 
-- Configure and verify `BLOB_READ_WRITE_TOKEN`/Blob store in Vercel before enabling production uploads.
-- Story 5.2 should attach required-material checklists to tracked opportunities and reference Library Works/Files without duplicating records.
-- Story 5.3 can add Lists as a separate user-owned relation; it must not overload Library tabs.
+`BLOB_READ_WRITE_TOKEN` is present in Vercel Development, Preview, and Production environments (`vercel env ls`, 2026-08-02). The upload route remains fail-closed when a deployment has no token, and Neon stores metadata only. A real production upload/delete smoke test should be run after the next deploy without exposing file bytes.
+
+Stories 5.2 and 5.3 now add private preparation checklists and Lists without duplicating Library records or overloading its tabs.
