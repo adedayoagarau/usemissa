@@ -55,6 +55,6 @@ response and connect a successful submission to the submitter's Tracker.
 
 ## Validation
 
-- Workspace engine tests: 32 total, 31 passed, 1 expected live-Postgres skip.
+- Workspace engine tests: 33 total, 32 passed, 1 expected live-Postgres skip.
 - Web typecheck: passed.
 - Web lint: passed with two existing warnings in the opportunities API route.
