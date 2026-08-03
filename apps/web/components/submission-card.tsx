@@ -131,7 +131,7 @@ export function SubmissionCard({
               <ul className="mt-1 space-y-1 text-sm">
                 {works?.map((w) => (
                   <li key={w.id} className="flex flex-wrap items-center justify-between gap-2">
-                    <span>{w.title}{w.fileUrl && <span className="ml-2 text-xs text-primary">file attached</span>}</span>
+                    <span>{w.title}{w.fileUrl && <a className="ml-2 text-xs text-primary underline" href={`/api/orgs/${organizationId}/works/${w.id}/file`} target="_blank" rel="noreferrer">open file</a>}</span>
                     <select aria-label={`Decision for ${w.title}`} value={decisions.find((decision) => decision.workId === w.id)?.outcome ?? ''} onChange={(event) => decide(w.id, event.target.value)} disabled={isPending} className="min-h-11 rounded-md border border-input bg-white px-2 text-xs">
                       <option value="">Record decision</option><option value="accepted">Accepted</option><option value="declined">Declined</option><option value="waitlisted">Waitlisted</option>
                     </select>
