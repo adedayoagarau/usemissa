@@ -167,6 +167,27 @@ create table if not exists radar_gmail_oauth_states (
 );
 create index if not exists radar_gmail_oauth_states_expiry_idx on radar_gmail_oauth_states (expires_at);
 
+create table if not exists radar_library_works (
+  id text primary key,
+  user_id text not null,
+  data jsonb not null
+);
+create index if not exists radar_library_works_user_idx on radar_library_works (user_id, id);
+
+create table if not exists radar_library_files (
+  id text primary key,
+  user_id text not null,
+  data jsonb not null
+);
+create index if not exists radar_library_files_user_idx on radar_library_files (user_id, id);
+
+create table if not exists radar_saved_answers (
+  id text primary key,
+  user_id text not null,
+  data jsonb not null
+);
+create index if not exists radar_saved_answers_user_idx on radar_saved_answers (user_id, id);
+
 create table if not exists radar_alerts (
   id text primary key,
   data jsonb not null

@@ -28,6 +28,9 @@ import type {
   UserProfilePatch,
   TrackerExportV1,
   VerificationTask,
+  LibraryWork,
+  LibraryFile,
+  SavedAnswer,
 } from './domain/types.js';
 import type { Clock, Extractor, Fetcher, FetchResult, IdGenerator } from './ports.js';
 import { sequentialIds, systemClock } from './ports.js';
@@ -65,6 +68,7 @@ import { cleanupEmailCandidates as cleanupEmailReviewCandidates, createOrGetForw
 import type { EmailReviewCandidate } from './domain/types.js';
 import type { GmailConnection, GmailMode, GmailSyncJob, GmailSyncTrigger, InboundEmailEnvelope } from './domain/types.js';
 import { cleanupGmailOAuthStates, completeGmailSyncJob, createGmailConnection, createGmailOAuthState, consumeGmailOAuthState, disconnectGmail, failGmailSyncJob, gmailAutopilotGate, ingestGmailEnvelope, leaseGmailSyncJob, queueGmailSyncJob, setGmailMode, type GmailOAuthConfig, type GmailTokenExchange } from './gmail/gmailSync.js';
+import { createLibraryFile, createLibraryWork, createSavedAnswer, deleteLibraryFile, deleteLibraryWork, deleteSavedAnswer, libraryForUser, updateLibraryWork, updateSavedAnswer } from './library/library.js';
 
 export class ProfileValidationError extends Error {
   readonly field: 'displayName' | 'bio';
@@ -475,6 +479,15 @@ export class RadarEngine {
   ingestGmailEnvelope(connectionId: string, envelope: InboundEmailEnvelope) { const connection = this.store.gmailConnections.find((item) => item.id === connectionId && item.status === 'active'); if (!connection) return { accepted: false as const, reason: 'unavailable' as const }; return ingestGmailEnvelope(this.store, connection, envelope, this.clock.now(), this.ids); }
   gmailAutopilotGate(candidateId: string) { const candidate = this.store.emailCandidates.find((item) => item.id === candidateId); if (!candidate?.gmailConnectionId) return { allowed: false, reason: 'This is not a Gmail candidate.' }; const connection = this.store.gmailConnections.find((item) => item.id === candidate.gmailConnectionId); if (!connection) return { allowed: false, reason: 'Gmail is no longer connected.' }; return gmailAutopilotGate(this.store, connection, candidate); }
   applyGmailAutopilotCandidate(candidateId: string) { const candidate = this.store.emailCandidates.find((item) => item.id === candidateId); if (!candidate?.gmailConnectionId || !candidate.proposedStatus || candidate.candidates.length !== 1) throw new Error('Gmail candidate is not eligible for Autopilot.'); const gate = this.gmailAutopilotGate(candidateId); if (!gate.allowed) throw new Error(gate.reason); return this.reviewEmailCandidate(candidate.userId, candidateId, { kind: 'confirm', opportunityId: candidate.candidates[0]!.opportunityId, status: candidate.proposedStatus, idempotencyKey: `autopilot:${candidateId}` }); }
+  library(userId: string) { return libraryForUser(this.store, userId); }
+  createLibraryWork(userId: string, input: { title: unknown; description?: unknown; fileId?: unknown }): LibraryWork { return createLibraryWork(this.store, userId, input, this.clock.now(), this.ids); }
+  updateLibraryWork(userId: string, workId: string, input: { title?: unknown; description?: unknown; fileId?: unknown | null }): LibraryWork { return updateLibraryWork(this.store, userId, workId, input, this.clock.now()); }
+  deleteLibraryWork(userId: string, workId: string): void { deleteLibraryWork(this.store, userId, workId); }
+  createLibraryFile(userId: string, input: { filename: unknown; contentType: unknown; byteLength: unknown; storageKey: unknown }): LibraryFile { return createLibraryFile(this.store, userId, input, this.clock.now(), this.ids); }
+  deleteLibraryFile(userId: string, fileId: string): void { deleteLibraryFile(this.store, userId, fileId); }
+  createSavedAnswer(userId: string, input: { name: unknown; body: unknown }): SavedAnswer { return createSavedAnswer(this.store, userId, input, this.clock.now(), this.ids); }
+  updateSavedAnswer(userId: string, answerId: string, input: { name?: unknown; body?: unknown }): SavedAnswer { return updateSavedAnswer(this.store, userId, answerId, input, this.clock.now()); }
+  deleteSavedAnswer(userId: string, answerId: string): void { deleteSavedAnswer(this.store, userId, answerId); }
 
   /** Seeding/ops only — there is no self-serve path to platform admin. */
   promoteToAdmin(accountId: string): void {

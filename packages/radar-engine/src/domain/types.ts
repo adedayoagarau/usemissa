@@ -339,6 +339,38 @@ export interface UserProfile {
   genres: string[];
 }
 
+/** Private, reusable creative material owned by one submitter. */
+export interface LibraryWork {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  fileId?: string;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+}
+
+/** File metadata only. Bytes live in the configured private blob provider. */
+export interface LibraryFile {
+  id: string;
+  userId: string;
+  filename: string;
+  contentType: string;
+  byteLength: number;
+  storageKey: string;
+  createdAt: IsoDateTime;
+}
+
+/** A reusable response such as an artist statement or short bio. */
+export interface SavedAnswer {
+  id: string;
+  userId: string;
+  name: string;
+  body: string;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+}
+
 export type ProfileVisibility = 'public' | 'private';
 
 export interface ProfilePrivacySettings {

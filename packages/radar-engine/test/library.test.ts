@@ -1,0 +1,42 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { createStore, FixtureFetcher, LibraryValidationError, RadarEngine } from '../src/index.js';
+
+function engineFor(userId = 'user_1') {
+  const store = createStore();
+  store.users.set(userId, { id: userId, displayName: 'Creator', attributes: {}, genres: [] });
+  return new RadarEngine({ store, fetcher: new FixtureFetcher() });
+}
+
+test('Library CRUD is owner-scoped and separates Works from Saved Answers', () => {
+  const engine = engineFor();
+  const work = engine.createLibraryWork('user_1', { title: 'Night River', description: 'Poetry manuscript' });
+  const answer = engine.createSavedAnswer('user_1', { name: 'Short bio', body: 'A writer working across poetry and criticism.' });
+  assert.equal(engine.library('user_1').works[0]?.title, 'Night River');
+  assert.equal(engine.library('user_1').savedAnswers[0]?.name, 'Short bio');
+  assert.deepEqual(engine.library('user_2'), { works: [], files: [], savedAnswers: [] });
+  engine.updateLibraryWork('user_1', work.id, { title: 'Night River — revised' });
+  engine.updateSavedAnswer('user_1', answer.id, { body: 'Updated bio.' });
+  assert.equal(engine.library('user_1').works[0]?.title, 'Night River — revised');
+  assert.equal(engine.library('user_1').savedAnswers[0]?.body, 'Updated bio.');
+  engine.deleteLibraryWork('user_1', work.id);
+  engine.deleteSavedAnswer('user_1', answer.id);
+  assert.deepEqual(engine.library('user_1'), { works: [], files: [], savedAnswers: [] });
+});
+
+test('Library validation rejects oversized content and cross-user access', () => {
+  const engine = engineFor();
+  const work = engine.createLibraryWork('user_1', { title: 'A Work' });
+  assert.throws(() => engine.createSavedAnswer('user_1', { name: 'Bio', body: '' }), LibraryValidationError);
+  assert.throws(() => engine.updateLibraryWork('user_2', work.id, { title: 'Nope' }), /Work not found/);
+  assert.throws(() => engine.createLibraryWork('user_1', { title: 'x'.repeat(201) }), /Title/);
+});
+
+test('Deleting a Library file unlinks it from the owner work', () => {
+  const engine = engineFor();
+  const file = engine.createLibraryFile('user_1', { filename: 'river.pdf', contentType: 'application/pdf', byteLength: 128, storageKey: 'user_1/river.pdf' });
+  const work = engine.createLibraryWork('user_1', { title: 'Night River', fileId: file.id });
+  engine.deleteLibraryFile('user_1', file.id);
+  assert.equal(engine.library('user_1').files.length, 0);
+  assert.equal(engine.library('user_1').works.find((item) => item.id === work.id)?.fileId, undefined);
+});

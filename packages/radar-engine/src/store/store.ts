@@ -22,6 +22,9 @@ import type {
   GmailSyncJob,
   GmailOAuthState,
   UserProfile,
+  LibraryWork,
+  LibraryFile,
+  SavedAnswer,
   VerificationTask,
 } from '../domain/types.js';
 
@@ -50,6 +53,9 @@ export interface RadarStore {
   gmailConnections: GmailConnection[];
   gmailSyncJobs: GmailSyncJob[];
   gmailOAuthStates: GmailOAuthState[];
+  libraryWorks: Map<string, LibraryWork>;
+  libraryFiles: Map<string, LibraryFile>;
+  savedAnswers: Map<string, SavedAnswer>;
   alerts: Map<string, Alert>;
   /** Alert dedup keys already emitted (e.g. "closing-soon:user_1:opp_1"). */
   emittedAlertKeys: Set<string>;
@@ -78,6 +84,9 @@ export function createStore(): RadarStore {
     gmailConnections: [],
     gmailSyncJobs: [],
     gmailOAuthStates: [],
+    libraryWorks: new Map(),
+    libraryFiles: new Map(),
+    savedAnswers: new Map(),
     alerts: new Map(),
     emittedAlertKeys: new Set(),
     accounts: new Map(),
@@ -105,6 +114,9 @@ interface SerializedStore {
   gmailConnections?: GmailConnection[];
   gmailSyncJobs?: GmailSyncJob[];
   gmailOAuthStates?: GmailOAuthState[];
+  libraryWorks?: LibraryWork[];
+  libraryFiles?: LibraryFile[];
+  savedAnswers?: SavedAnswer[];
   alerts: Alert[];
   emittedAlertKeys: string[];
   accounts: Account[];
@@ -132,6 +144,9 @@ export function saveStore(store: RadarStore, filePath: string): void {
     gmailConnections: store.gmailConnections,
     gmailSyncJobs: store.gmailSyncJobs,
     gmailOAuthStates: store.gmailOAuthStates,
+    libraryWorks: [...store.libraryWorks.values()],
+    libraryFiles: [...store.libraryFiles.values()],
+    savedAnswers: [...store.savedAnswers.values()],
     alerts: [...store.alerts.values()],
     emittedAlertKeys: [...store.emittedAlertKeys],
     accounts: [...store.accounts.values()],
@@ -164,6 +179,9 @@ export function loadStore(filePath: string): RadarStore {
   store.gmailConnections = data.gmailConnections ?? [];
   store.gmailSyncJobs = data.gmailSyncJobs ?? [];
   store.gmailOAuthStates = data.gmailOAuthStates ?? [];
+  for (const work of data.libraryWorks ?? []) store.libraryWorks.set(work.id, work);
+  for (const file of data.libraryFiles ?? []) store.libraryFiles.set(file.id, file);
+  for (const answer of data.savedAnswers ?? []) store.savedAnswers.set(answer.id, answer);
   for (const a of data.alerts) store.alerts.set(a.id, a);
   store.emittedAlertKeys = new Set(data.emittedAlertKeys);
   for (const a of data.accounts ?? []) store.accounts.set(a.id, a);

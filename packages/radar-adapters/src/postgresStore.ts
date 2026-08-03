@@ -149,6 +149,19 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
       await client.query('insert into radar_gmail_oauth_states (id, user_id, state_hash, expires_at, consumed_at, data) values ($1, $2, $3, $4, $5, $6)', [state.id, state.userId, state.stateHash, state.expiresAt, state.consumedAt ?? null, state]);
     }
 
+    await client.query('delete from radar_library_works');
+    for (const work of store.libraryWorks.values()) {
+      await client.query('insert into radar_library_works (id, user_id, data) values ($1, $2, $3)', [work.id, work.userId, work]);
+    }
+    await client.query('delete from radar_library_files');
+    for (const file of store.libraryFiles.values()) {
+      await client.query('insert into radar_library_files (id, user_id, data) values ($1, $2, $3)', [file.id, file.userId, file]);
+    }
+    await client.query('delete from radar_saved_answers');
+    for (const answer of store.savedAnswers.values()) {
+      await client.query('insert into radar_saved_answers (id, user_id, data) values ($1, $2, $3)', [answer.id, answer.userId, answer]);
+    }
+
     await client.query('delete from radar_alerts');
     for (const a of store.alerts.values()) {
       await client.query('insert into radar_alerts (id, data) values ($1, $2)', [a.id, a]);
@@ -209,7 +222,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
 
   const [
     sources, snapshots, opportunities, versions, changes, organizations, claims, verificationTasks,
-    profiles, users, follows, tracked, manualTrackerEntries, forwardingAddresses, emailCandidates, gmailConnections, gmailSyncJobs, gmailOAuthStates, alerts, alertKeys, accounts, memberships, auditLog,
+    profiles, users, follows, tracked, manualTrackerEntries, forwardingAddresses, emailCandidates, gmailConnections, gmailSyncJobs, gmailOAuthStates, libraryWorks, libraryFiles, savedAnswers, alerts, alertKeys, accounts, memberships, auditLog,
   ] = await Promise.all([
     pool.query('select data from radar_sources'),
     pool.query('select data from radar_snapshots'),
@@ -229,6 +242,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
     pool.query('select data from radar_gmail_connections'),
     pool.query('select data from radar_gmail_sync_jobs'),
     pool.query('select data from radar_gmail_oauth_states'),
+    pool.query('select data from radar_library_works'),
+    pool.query('select data from radar_library_files'),
+    pool.query('select data from radar_saved_answers'),
     pool.query('select data from radar_alerts'),
     pool.query('select key from radar_emitted_alert_keys'),
     pool.query('select data from radar_accounts'),
@@ -254,6 +270,9 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
   store.gmailConnections = gmailConnections.rows.map((r) => r.data);
   store.gmailSyncJobs = gmailSyncJobs.rows.map((r) => r.data);
   store.gmailOAuthStates = gmailOAuthStates.rows.map((r) => r.data);
+  for (const row of libraryWorks.rows) store.libraryWorks.set(row.data.id, row.data);
+  for (const row of libraryFiles.rows) store.libraryFiles.set(row.data.id, row.data);
+  for (const row of savedAnswers.rows) store.savedAnswers.set(row.data.id, row.data);
   for (const row of alerts.rows) store.alerts.set(row.data.id, row.data);
   store.emittedAlertKeys = new Set(alertKeys.rows.map((r) => r.key));
   for (const row of accounts.rows) store.accounts.set(row.data.id, row.data);
