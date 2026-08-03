@@ -19,6 +19,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const openCall = path ? result.access.workspace.store.openCalls.get(path.openCallId) : undefined;
     const submitter = submission ? result.access.radar.store.accounts.get(submission.submitterAccountId) : undefined;
     const trackerStatus = body.outcome === 'accepted' ? 'accepted' : body.outcome === 'declined' ? 'declined' : 'waitlisted';
+    if (submitter?.userId) {
+      result.access.radar.addUserAlert({
+        dedupKey: `submission:decision:${decision.id}`,
+        userId: submitter.userId,
+        kind: 'submission-decision',
+        title: `${body.outcome[0].toUpperCase()}${body.outcome.slice(1)}: ${work?.title ?? 'your work'}`,
+        body: `The organization recorded a ${body.outcome} decision. Open My submissions for the full receipt.`,
+        reason: 'an organization updated a work in your Missa submission',
+        ...(openCall?.radarOpportunityId ? { opportunityId: openCall.radarOpportunityId } : {}),
+      });
+    }
     if (submitter?.userId && openCall?.radarOpportunityId && result.access.radar.store.opportunities.has(openCall.radarOpportunityId)) {
       result.access.radar.setMyStatus(submitter.userId, openCall.radarOpportunityId, trackerStatus, { source: 'radar', note: `Organization decision for Work ${workId}` });
     }

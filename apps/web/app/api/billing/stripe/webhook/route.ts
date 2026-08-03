@@ -62,6 +62,17 @@ export async function POST(request: Request) {
     await persistWorkspace();
     const openCall = workspace.store.openCalls.get(path.openCallId);
     const account = radar.store.accounts.get(sessionAccountId);
+    if (account?.userId) {
+      radar.addUserAlert({
+        dedupKey: `submission:receipt:${submission.id}`,
+        userId: account.userId,
+        kind: 'submission-receipt',
+        title: `Submission sent: ${openCall?.title ?? 'Missa submission'}`,
+        body: 'Your receipt is ready in My submissions.',
+        reason: 'you submitted through a Missa-hosted form',
+        ...(openCall?.radarOpportunityId ? { opportunityId: openCall.radarOpportunityId } : {}),
+      });
+    }
     if (account?.userId && openCall?.radarOpportunityId && radar.store.opportunities.has(openCall.radarOpportunityId)) {
       radar.setMyStatus(account.userId, openCall.radarOpportunityId, 'submitted', { source: 'user', note: `Missa submission ${submission.id}` });
     }

@@ -1,6 +1,7 @@
 import type {
   Account,
   Alert,
+  AlertKind,
   AuditEntry,
   ChangeKind,
   FitScore,
@@ -473,6 +474,36 @@ export class RadarEngine {
 
   recordAudit(accountId: string | undefined, action: string, targetType: string, targetId: string, detail?: string): AuditEntry {
     return recordAudit(this.ctx, accountId, action, targetType, targetId, detail);
+  }
+
+  /** Add a deduplicated user Inbox alert for product events outside Radar's
+   * ingestion tick (for example a Missa-hosted submission or organization
+   * decision). The same alert stream powers the optional email digest. */
+  addUserAlert(input: {
+    dedupKey: string;
+    userId: string;
+    kind: Extract<AlertKind, 'submission-receipt' | 'submission-decision'>;
+    title: string;
+    body: string;
+    reason: string;
+    opportunityId?: string;
+  }): Alert | undefined {
+    if (this.store.emittedAlertKeys.has(input.dedupKey)) return undefined;
+    this.store.emittedAlertKeys.add(input.dedupKey);
+    const alert: Alert = {
+      id: this.ids.next('alert'),
+      audience: 'user',
+      userId: input.userId,
+      kind: input.kind,
+      ...(input.opportunityId ? { opportunityId: input.opportunityId } : {}),
+      title: input.title,
+      body: input.body,
+      reason: input.reason,
+      createdAt: this.clock.now().toISOString(),
+      read: false,
+    };
+    this.store.alerts.set(alert.id, alert);
+    return alert;
   }
 
   forwardingAddress(userId: string): ForwardingAddressView { return forwardingAddressView(this.store, userId); }

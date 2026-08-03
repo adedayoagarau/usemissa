@@ -83,10 +83,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     const radar = await getEngine();
     const userId = session.account.userId;
     const linkedOpportunityId = openCall.radarOpportunityId;
+    let radarDirty = false;
+    if (userId) {
+      radar.addUserAlert({
+        dedupKey: `submission:receipt:${submission.id}`,
+        userId,
+        kind: 'submission-receipt',
+        title: `Submission sent: ${openCall.title}`,
+        body: 'Your receipt is ready in My submissions.',
+        reason: 'you submitted through a Missa-hosted form',
+        ...(linkedOpportunityId ? { opportunityId: linkedOpportunityId } : {}),
+      });
+      radarDirty = true;
+    }
     if (userId && linkedOpportunityId && radar.store.opportunities.has(linkedOpportunityId)) {
       radar.setMyStatus(userId, linkedOpportunityId, 'submitted', { source: 'user', note: `Missa submission ${submission.id}` });
-      await persistRadar();
+      radarDirty = true;
     }
+    if (radarDirty) await persistRadar();
     return NextResponse.json({ submission, works: engine.worksForSubmission(submission.id), trackerLinked: Boolean(userId && linkedOpportunityId), idempotent: false }, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'failed' }, { status: 404 });

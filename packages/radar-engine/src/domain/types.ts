@@ -796,6 +796,8 @@ export type AlertKind =
   | 'response-overdue'
   | 'withdrawal-suggested'
   | 'followed-org-new-call'
+  | 'submission-receipt'
+  | 'submission-decision'
   // organization
   | 'claim-invite'
   // admin
