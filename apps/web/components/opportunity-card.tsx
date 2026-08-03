@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { Bookmark, CalendarDays, CheckCircle2, Clock3, MapPin, Tag } from 'lucide-react';
 import type { OpportunityBrowseProjection } from '@missa/radar-engine';
 import { TrackButton } from '@/components/track-button';
+import { SaveOpportunityButton } from '@/components/save-opportunity-button';
+import { ListPicker } from '@/components/list-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -50,7 +52,7 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
       <div className="mx-3.5 rounded-sm border border-green/15 bg-green/5 px-2.5 py-1.5">{reasons.length > 0 ? <p className="flex items-center gap-1 text-[11px] font-medium text-green"><CheckCircle2 className="size-3.5" />Strong fit <span className="font-normal text-muted-foreground">· {reasons[0].label}</span></p> : <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 className="size-3.5" />Fit signal pending</p>}</div>
       <div className="relative z-10 mt-auto flex gap-2 p-3.5 pt-2.5">
         {userId && !item.personal?.tracked ? <div className="flex-1"><TrackButton userId={userId} opportunityId={item.id} /></div> : userId ? <Button size="sm" variant="outline" disabled className="flex-1">Tracked</Button> : <Link href={selectionHref} className="flex-1 rounded-md border border-border py-1.5 text-center text-xs text-foreground">View details</Link>}
-        <Button type="button" size="icon-sm" variant="outline" aria-label="Bookmark opportunity" title="Bookmark coming soon"><Bookmark className="size-3.5" /></Button>
+        {userId && item.personal?.tracked ? <ListPicker opportunityId={item.id} enabled compact /> : userId ? <SaveOpportunityButton userId={userId} opportunityId={item.id} /> : <Button type="button" size="icon-sm" variant="outline" aria-label="Save opportunity" title="Log in to save"><Bookmark className="size-3.5" aria-hidden="true" /></Button>}
       </div>
     </article>
   );

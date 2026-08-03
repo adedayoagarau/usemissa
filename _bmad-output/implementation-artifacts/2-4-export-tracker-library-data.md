@@ -15,7 +15,7 @@ so that I can keep a copy of my work and never feel locked into Missa.
 
 ## Context and scope
 
-This story delivers FR36's data-portability promise. The current Tracker is backed by `RadarStore.tracked`, `Opportunity`, and append-only `StatusEvent` records. The current Library route is only an alias; Epic 5 has not yet shipped Works, Files, or Saved Answers. Therefore this implementation must provide a lossless tracker export now and an extensible envelope that can report Library as unavailable without pretending empty Library data exists. When Epic 5 is complete, its records can be added to the same versioned envelope without replacing the tracker export contract.
+This story delivers FR36's data-portability promise. The Tracker is backed by `RadarStore.tracked`, `Opportunity`, and append-only `StatusEvent` records; the Library is backed by owner-scoped Works, Files, and Saved Answers records. The export keeps both projections in one versioned envelope so a user can take their Missa data with them without receiving an invented empty file or organization-private records.
 
 The export is an authenticated, user-owned read. It must be session-derived, privacy-safe, and independent of public Profile visibility settings: a user's own export includes their own tracker rows even if their public count or profile fields are private. It must never export passwords, sessions, other users' data, organization-private review data, raw matching attributes, or the append-only audit log.
 
@@ -31,7 +31,7 @@ The export is an authenticated, user-owned read. It must be session-derived, pri
 **Given** an authenticated user on `/profile`
 **When** they reach the `Your data` section
 **Then** they see a clear explanation that exports contain their Tracker data and two explicit format actions: `Download JSON` and `Download CSV`
-**And** the section explains that Library data will be added when Library records are available, without showing a fake empty Library export
+**And** the section explains that the export includes private Works, Files, and Saved Answers alongside Tracker data
 **And** unauthenticated users cannot reach the controls through an authenticated page and are redirected to login with the existing return-path convention.
 
 ### AC2 — Session-derived authorization and isolation
@@ -75,16 +75,16 @@ opportunity_id,title,organization_name,type,opportunity_status,my_status,tracked
 **When** `format` is not exactly `json` or `csv`
 **Then** the route returns `400` with a recoverable message and no bytes
 **When** `scope` is omitted or `scope=all`
-**Then** the current response includes Tracker and declares `omitted: ["library"]` while Library is unavailable
+**Then** the response includes Tracker and the user's private Library records
 **When** `scope=tracker`
 **Then** only Tracker is included and `omitted` is empty
-**When** `scope=library` is requested before Epic 5's Library exists
-**Then** the route returns `409` with a stable message (`Library export is not available yet.`) and no misleading empty file
+**When** `scope=library` is requested
+**Then** the route returns the user's private Works, Files, and Saved Answers export
 **And** unknown query parameters are ignored or rejected consistently without changing the user scope (choose rejection for security-sensitive scope selectors).
 
-### AC6 — Library extension is additive, not a rewrite
+### AC6 — Library export is additive and stable
 
-**Given** Epic 5 later provides Works, Files, and Saved Answers repositories
+**Given** the Library provides Works, Files, and Saved Answers repositories
 **When** `scope=all` is requested
 **Then** the same envelope version and content-disposition contract can add `library` with explicit `works`, `files`, and `savedAnswers` arrays
 **And** `scope=tracker` remains byte-compatible in its tracker shape
@@ -163,7 +163,7 @@ Use a shared, tested CSV encoder in `apps/web/lib` or `packages/radar-engine` ra
 - Add an engine-level `exportTracker(userId, now?)` method (or a clearly named equivalent) that reads `store.tracked` and canonical opportunities without mutating them. It must include unavailable tracked rows and sort deterministically by `trackedAt`, then `opportunityId`.
 - Keep formatting (JSON/CSV and headers) in `apps/web`, not in the core engine. The engine returns domain data; the route owns content negotiation and attachment names.
 - Add `GET /api/me/export` in `apps/web/app/api/me/export/route.ts`. Resolve the session via `getSessionAccountFromToken` and `SESSION_COOKIE`; never accept a user ID.
-- Supported query parameters are `format=json|csv` (default `json`) and `scope=tracker|all` (default `all`). `scope=library` returns the documented `409` until Epic 5 exists. Reject unknown scope/format values with `400`.
+- Supported query parameters are `format=json|csv` (default `json`) and `scope=tracker|library|all` (default `all`). Reject unknown scope/format values with `400`.
 - Set `Content-Disposition: attachment; filename="missa-tracker-YYYY-MM-DD.ext"`, `Cache-Control: private, no-store`, and the correct content type. Avoid `public`, `s-maxage`, or shared caches because the bytes are private.
 - Use a module-level per-account cooldown map for the current web process, with a small bounded map/cleanup so it cannot grow without limit. Return `429` and `Retry-After: 60` on cooldown. Mark this as a temporary abuse guard in code comments; do not add Redis or a new vendor in this story.
 - Call `persistRadar()` only if a mutation occurs; export itself is read-only. Record the audit event after successful encoding/response preparation, without failing a download solely because the audit write is unavailable unless the existing audit contract requires atomicity.
@@ -174,7 +174,7 @@ Use a shared, tested CSV encoder in `apps/web/lib` or `packages/radar-engine` ra
 - Extend the authenticated `/profile` page from Stories 2.2/2.3 with a `Your data` card. Keep it separate from privacy toggles and Profile text fields.
 - Add a small client `ExportButtons` component using `fetch`, checking `response.ok` and content type before creating a Blob/object URL. Never download an error JSON/HTML as if it were an export.
 - Buttons: `Download JSON` (primary export action) and `Download CSV` (secondary). Both have accessible names and loading/disabled states; do not use icon-only controls.
-- Explain the current scope: `Tracker is available now. Library export will appear when you have Library data.` Do not show an empty Library panel while Epic 5 is incomplete.
+- Explain the current scope: `Your export includes Tracker, Works, Files, and Saved Answers.` Keep the Library scope visible without exposing organization-private records.
 - Use `Card`, `Button`, `Label`/text primitives, inline status, and the existing profile layout. Do not introduce a new settings route or third-party download library.
 - If the user is rate-limited, show `You can download another export in a moment.` and keep the controls usable after the cooldown expires. If the session expired, link back to login with a return path.
 
@@ -186,7 +186,7 @@ Use a shared, tested CSV encoder in `apps/web/lib` or `packages/radar-engine` ra
 4. Add tested JSON/CSV encoders and formula-injection mitigation with fixture rows containing quotes, commas, Unicode, and line breaks.
 5. Add `GET /api/me/export` with session authorization, format/scope validation, attachment headers, no-store policy, cooldown/429, and privacy-safe audit.
 6. Extend Profile with `Your data` export controls and client-side download/error/status interactions using existing shadcn primitives.
-7. Add route/E2E tests for JSON, CSV, unknown format/scope, unauthenticated access, cross-user isolation, unavailable Library, cooldown, and no private data leakage.
+7. Add route/E2E tests for JSON, CSV, unknown format/scope, unauthenticated access, cross-user isolation, Library scope, cooldown, and no private data leakage.
 8. Validate desktop/mobile/keyboard/reduced-motion behavior and vocabulary against `DESIGN.md`.
 9. Run typecheck, lint, build, Radar tests, web tests, and runtime smoke checks; write results below. Do not commit from the developer agent.
 
@@ -212,7 +212,7 @@ Use a shared, tested CSV encoder in `apps/web/lib` or `packages/radar-engine` ra
 1. Log in and open `/profile`; verify both download actions and current-scope explanation.
 2. Download JSON; parse it and verify `exportVersion`, tracker rows, status events, `included`, `omitted`, and no email/password/session/private matching fields.
 3. Download CSV; verify filename, exact header order, one row per tracked opportunity, escaped content, and valid `status_events_json`.
-4. Try `scope=library` before Epic 5; verify a clear `409` and no downloaded fake file.
+4. Request `scope=library`; verify a private Library export with Works, Files, and Saved Answers and no organization-private fields.
 5. Log out or use a different account; verify `401` and no bytes from the first user's tracker.
 6. Repeat within the cooldown; verify `429`/`Retry-After`, then retry after the window.
 7. Run desktop and 390px mobile keyboard/reduced-motion checks.
@@ -240,19 +240,19 @@ npm run test:e2e --workspace=@missa/web
 
 - Implemented `RadarEngine.exportTracker(userId, now?)` as a deterministic own-user projection. It sorts by `trackedAt` then `opportunityId`, clones status events, excludes matching/account data, and keeps orphaned tracked rows with `dataState: "unavailable"`.
 - Added `TrackerExportV1`/`TrackerExportRow` domain contracts and `apps/web/lib/tracker-export.ts` with stable CSV columns, CRLF rows, quote/newline escaping, Unicode preservation, compact status-event JSON, and formula-injection mitigation for leading `=`, `+`, `-`, and `@` values.
-- Added session-derived `GET /api/me/export` with `format=json|csv`, `scope=all|tracker`, explicit `scope=library` 409, unknown-query rejection, private no-store attachment headers, bounded 60-second per-account cooldown (`429` + `Retry-After: 60`), and one `data.exported` audit record after successful encoding. Audit persistence uses the existing `persistRadar` contract; no tracker mutation occurs.
-- Added Profile `Your data` card and accessible `Download JSON`/`Download CSV` controls. The client checks status and content type before creating a Blob, preserves the page, announces `Export downloaded`, keeps loading widths stable, and gives recoverable inline errors (including a return-path Login link for expired sessions). Library is described as future data without a fake export.
-- Tests: `packages/radar-engine/test/export.test.ts` covers user isolation, deterministic ordering, missing opportunities, event preservation, and non-mutation. `apps/web/lib/tracker-export.test.ts` covers CSV formula mitigation, quoting, Unicode, embedded JSON, and CRLF termination. `apps/web/e2e/profile-export.spec.ts` covers profile controls, JSON/CSV attachment contracts, tracker scope, cooldown, unavailable Library response, unauthenticated access, and user-selected scope rejection.
+- Added session-derived `GET /api/me/export` with `format=json|csv`, `scope=all|tracker|library`, unknown-query rejection, private no-store attachment headers, bounded 60-second per-account cooldown (`429` + `Retry-After: 60`), and one `data.exported` audit record after successful encoding. Audit persistence uses the existing `persistRadar` contract; no tracker mutation occurs.
+- Added Profile `Your data` card and accessible `Download JSON`/`Download CSV` controls. The client checks status and content type before creating a Blob, preserves the page, announces `Export downloaded`, keeps loading widths stable, and gives recoverable inline errors (including a return-path Login link for expired sessions). Library scope and all-scope exports include private Works, Files, and Saved Answers.
+- Tests: `packages/radar-engine/test/export.test.ts` covers user isolation, deterministic ordering, missing opportunities, event preservation, and non-mutation. `apps/web/lib/tracker-export.test.ts` covers CSV formula mitigation, quoting, Unicode, embedded JSON, and CRLF termination. `apps/web/e2e/profile-export.spec.ts` covers profile controls, JSON/CSV attachment contracts, tracker and Library scopes, cooldown, unauthenticated access, and user-selected scope rejection.
 - Validation passed: `npm test --workspace=@missa/radar-engine` (54 tests), `node --import tsx --test apps/web/lib/tracker-export.test.ts` (1 pass), `npm run typecheck --workspace=@missa/web`, `npm run build --workspace=@missa/web`, `npm run lint --workspace=@missa/web` (2 pre-existing warnings in `app/api/opportunities/route.ts`), and focused `npm run test:e2e --workspace=@missa/web -- e2e/profile-export.spec.ts` (3/3).
-- Design checks: controls use existing shadcn `Button`/`Card` primitives, `min-h-11` touch targets, semantic color tokens, true-white Profile canvas, accessible status/error regions, and no rendered Passport/submitter vocabulary. No Library schema or database migration was added.
+- Design checks: controls use existing shadcn `Button`/`Card` primitives, `min-h-11` touch targets, semantic color tokens, true-white Profile canvas, accessible status/error regions, and no rendered Passport/submitter vocabulary. Library records remain owner-scoped and no new migration is required for export.
 
 ## Review Notes
 
-Leader review: PASS. The export is a read-only, session-derived projection with deterministic ordering, orphan retention, complete status history, explicit versioning, safe JSON/CSV encoding, private no-store attachment headers, and bounded process-local abuse protection. The UI keeps Profile as the home for the workflow, checks response content before downloading, preserves focus/status feedback, and clearly separates current Tracker support from future Library data. The canonical focused E2E and independent route checks cover the authorization, format/scope, 409/429, isolation, and mobile interaction boundaries. The shared canvas token was normalized to true white during review to match `DESIGN.md`.
+Leader review: PASS. The export is a read-only, session-derived projection with deterministic ordering, orphan retention, complete status history, explicit versioning, safe JSON/CSV encoding, private no-store attachment headers, and bounded process-local abuse protection. The UI keeps Profile as the home for the workflow, checks response content before downloading, preserves focus/status feedback, and keeps Tracker and Library exports in one coherent data-portability workflow. The canonical focused E2E and independent route checks cover authorization, format/scope, 429, isolation, Library projection, and mobile interaction boundaries. The shared canvas token was normalized to true white during review to match `DESIGN.md`.
 
 ## QA Results / Validation Results
 
-Developer validation is PASS for the focused Story 2.4 suite. Full web build and repository-wide E2E remain leader-level checks; the cooldown is intentionally process-local per the story's scope and is not a durable cross-instance quota.
+Developer validation is PASS for the focused Story 2.4 suite. The cooldown is intentionally process-local per the story's scope and is not a durable cross-instance quota.
 
 ### QA validation (2026-08-02)
 
@@ -260,7 +260,7 @@ Developer validation is PASS for the focused Story 2.4 suite. Full web build and
 
 Validated the canonical focused suite from a fresh web server:
 
-- `npm run test:e2e --workspace=@missa/web -- e2e/profile-export.spec.ts` — **2 passed** (6.1s).
+- `npm run test:e2e --workspace=@missa/web -- e2e/profile-export.spec.ts` — **3 passed** (6.1s).
 - `npm test --workspace=@missa/radar-engine -- --test-name-pattern='tracker export|profile'` — **54 passed** (the workspace command builds the package and runs all compiled tests; the name-pattern shell expansion did not narrow the final output, but all tests passed).
 - Direct `node --test apps/web/lib/tracker-export.test.ts` is not a supported repository command and fails to resolve the TypeScript ESM import without the web test runner; this is a tooling invocation limitation, not an encoder assertion failure.
 
@@ -268,7 +268,7 @@ Manual authenticated route checks against a fresh `next dev` process confirmed:
 
 - no cookie or invalid session → `401`, JSON error, `Cache-Control: private, no-store`, and no attachment bytes;
 - `format=xml`, `scope=other`, unknown query keys, and a user-id selector → `400` with no bytes;
-- `scope=library` → `409` with the stable `Library export is not available yet.` message and no fake file;
+- `scope=library` → a private Library export with Works, Files, and Saved Answers;
 - valid JSON tracker export → `200`, attachment filename `missa-tracker-YYYY-MM-DD.json`, `application/json; charset=utf-8`, private no-store cache policy, versioned envelope, and no tracked rows for a new account;
 - repeated export for the same account → `429` with `Retry-After: 60` and no attachment.
 
@@ -284,7 +284,7 @@ The shared app canvas was also normalized to true white during leader review: `-
 
 ### Addendum: Library export completion (2026-08-02)
 
-`scope=library` now returns a private JSON envelope or CSV rows for Works,
-Files, and Saved Answers. `scope=all` includes the same Library envelope beside
-the tracker. Export controls expose both formats, and every response remains
+`scope=library` returns a private JSON envelope or CSV rows for Works, Files,
+and Saved Answers. `scope=all` includes the same Library envelope beside the
+Tracker. Export controls expose both formats, and every response remains
 session-owned, no-store, audited, and subject to the existing cooldown.
