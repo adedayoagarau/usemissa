@@ -62,6 +62,32 @@ create table if not exists works (
   "order" integer not null
 );
 
+create table if not exists decisions (
+  id text primary key,
+  work_id text not null unique references works(id),
+  outcome text not null,
+  decided_by_account_id text not null,
+  decided_at timestamptz not null
+);
+
+create table if not exists workspace_audit_log (
+  id text primary key,
+  at timestamptz not null,
+  account_id text,
+  action text not null,
+  target_type text not null,
+  target_id text not null,
+  detail text
+);
+
+create table if not exists delivery_tasks (
+  id text primary key,
+  work_id text not null unique references works(id),
+  status text not null,
+  due_date text,
+  completed_at timestamptz
+);
+
 create table if not exists review_rounds (
   id text primary key,
   open_call_id text not null references open_calls(id),

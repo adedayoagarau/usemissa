@@ -12,7 +12,7 @@
  *     adding Story 7.2's tables)
  *   Story 7.2 -> review_rounds, review_assignments
  *   Story 7.3 -> review_recommendations
- * Later stories (8.1, 8.3) add decisions/delivery_tasks here when built.
+ * Story 8.1 -> decisions; Story 8.3 adds delivery_tasks.
  *
  * snake_case table/column names throughout, matching
  * packages/radar-adapters/src/postgresSchema.ts's existing convention.
@@ -71,6 +71,24 @@ export const works = pgTable('works', {
   order: integer('order').notNull(),
 });
 
+export const decisions = pgTable('decisions', {
+  id: text('id').primaryKey(),
+  workId: text('work_id').notNull().unique().references(() => works.id),
+  outcome: text('outcome').notNull(), // 'accepted' | 'declined' | 'waitlisted'
+  decidedByAccountId: text('decided_by_account_id').notNull(),
+  decidedAt: timestamp('decided_at', { withTimezone: true }).notNull(),
+});
+
+export const workspaceAuditLog = pgTable('workspace_audit_log', {
+  id: text('id').primaryKey(),
+  at: timestamp('at', { withTimezone: true }).notNull(),
+  accountId: text('account_id'),
+  action: text('action').notNull(),
+  targetType: text('target_type').notNull(),
+  targetId: text('target_id').notNull(),
+  detail: text('detail'),
+});
+
 export const reviewRounds = pgTable('review_rounds', {
   id: text('id').primaryKey(),
   openCallId: text('open_call_id').notNull().references(() => openCalls.id),
@@ -91,4 +109,12 @@ export const reviewRecommendations = pgTable('review_recommendations', {
   score: integer('score'),
   notes: text('notes'),
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+});
+
+export const deliveryTasks = pgTable('delivery_tasks', {
+  id: text('id').primaryKey(),
+  workId: text('work_id').notNull().unique().references(() => works.id),
+  status: text('status').notNull(),
+  dueDate: text('due_date'),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
 });

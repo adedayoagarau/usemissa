@@ -94,6 +94,11 @@ export type SubmissionStatus =
   | 'submitted'
   | 'in-review'
   | 'decided' // summary status once every Work under it has a Decision — derived, not hand-set
+  | 'accepted'
+  | 'declined'
+  | 'waitlisted'
+  | 'partially-accepted'
+  | 'mixed'
   | 'withdrawn';
 
 export interface Submission {

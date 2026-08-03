@@ -19,6 +19,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     ...a,
     recommendation: engine.recommendationForAssignment(a.id),
   }));
+  const decisions = engine.decisionsForSubmission(id, submissionId);
+  const deliveryTasks = engine.deliveryTasksForOrganization(id).filter((task) => works.some((work) => work.id === task.workId));
 
-  return NextResponse.json({ submission, works, reviewAssignments });
+  return NextResponse.json({ submission, works, reviewAssignments, decisions, deliveryTasks }, { headers: { 'Cache-Control': 'private, no-store' } });
 }

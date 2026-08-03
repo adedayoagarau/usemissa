@@ -6,6 +6,8 @@ import type {
   ReviewRound,
   Submission,
   SubmissionPath,
+  Work,
+  Decision,
 } from "./domain/types.js";
 import type { WorkspaceStore } from "./store/store.js";
 
@@ -43,6 +45,16 @@ export class OrganizationScope {
   submission(submissionId: string): Submission | undefined {
     const submission = this.store.submissions.get(submissionId);
     return submission && this.submissionPath(submission.submissionPathId) ? submission : undefined;
+  }
+
+  work(workId: string): Work | undefined {
+    const work = this.store.works.get(workId);
+    return work && this.submission(work.submissionId) ? work : undefined;
+  }
+
+  decision(decisionId: string): Decision | undefined {
+    const decision = this.store.decisions.get(decisionId);
+    return decision && this.work(decision.workId) ? decision : undefined;
   }
 
   reviewRound(reviewRoundId: string): ReviewRound | undefined {

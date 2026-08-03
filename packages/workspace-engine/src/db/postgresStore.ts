@@ -11,6 +11,8 @@ import type {
   ReviewRound,
   ReviewAssignment,
   ReviewRecommendation,
+  Decision,
+  DeliveryTask,
 } from '../domain/types.js';
 import { postgresSchema } from './postgresSchema.js';
 
@@ -35,6 +37,8 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool): Pr
     await client.query('delete from review_recommendations');
     await client.query('delete from review_assignments');
     await client.query('delete from review_rounds');
+    await client.query('delete from decisions');
+    await client.query('delete from delivery_tasks');
     await client.query('delete from works');
     await client.query('delete from submissions');
     await client.query('delete from submission_paths');
@@ -90,6 +94,17 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool): Pr
       ]);
     }
 
+    for (const d of store.decisions.values()) {
+      await client.query(
+        'insert into decisions (id, work_id, outcome, decided_by_account_id, decided_at) values ($1, $2, $3, $4, $5)',
+        [d.id, d.workId, d.outcome, d.decidedByAccountId, d.decidedAt],
+      );
+    }
+
+    for (const task of store.deliveryTasks.values()) {
+      await client.query('insert into delivery_tasks (id, work_id, status, due_date, completed_at) values ($1, $2, $3, $4, $5)', [task.id, task.workId, task.status, task.dueDate ?? null, task.completedAt ?? null]);
+    }
+
     for (const r of store.reviewRounds.values()) {
       await client.query('insert into review_rounds (id, open_call_id, name, created_at) values ($1, $2, $3, $4)', [
         r.id,
@@ -110,6 +125,13 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool): Pr
       await client.query(
         'insert into review_recommendations (review_assignment_id, score, notes, recorded_at) values ($1, $2, $3, $4)',
         [r.reviewAssignmentId, r.score ?? null, r.notes ?? null, r.recordedAt],
+      );
+    }
+
+    for (const entry of store.auditLog) {
+      await client.query(
+        'insert into workspace_audit_log (id, at, account_id, action, target_type, target_id, detail) values ($1, $2, $3, $4, $5, $6, $7) on conflict (id) do nothing',
+        [entry.id, entry.at, entry.accountId ?? null, entry.action, entry.targetType, entry.targetId, entry.detail ?? null],
       );
     }
 
@@ -213,6 +235,30 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
     store.works.set(work.id, work);
   }
 
+  const decisions = await pool.query<{
+    id: string;
+    work_id: string;
+    outcome: Decision['outcome'];
+    decided_by_account_id: string;
+    decided_at: Date;
+  }>('select * from decisions');
+  for (const row of decisions.rows) {
+    const decision: Decision = {
+      id: row.id,
+      workId: row.work_id,
+      outcome: row.outcome,
+      decidedByAccountId: row.decided_by_account_id,
+      decidedAt: row.decided_at.toISOString(),
+    };
+    store.decisions.set(decision.id, decision);
+  }
+
+  const deliveryTasks = await pool.query<{ id: string; work_id: string; status: DeliveryTask['status']; due_date: string | null; completed_at: Date | null }>('select * from delivery_tasks');
+  for (const row of deliveryTasks.rows) {
+    const task: DeliveryTask = { id: row.id, workId: row.work_id, status: row.status, dueDate: row.due_date as DeliveryTask['dueDate'], completedAt: row.completed_at?.toISOString() };
+    store.deliveryTasks.set(task.id, task);
+  }
+
   const reviewRounds = await pool.query<{ id: string; open_call_id: string; name: string; created_at: Date }>('select * from review_rounds');
   for (const row of reviewRounds.rows) {
     const round: ReviewRound = { id: row.id, openCallId: row.open_call_id, name: row.name, createdAt: row.created_at.toISOString() };
@@ -252,6 +298,25 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
     };
     store.reviewRecommendations.set(recommendation.reviewAssignmentId, recommendation);
   }
+
+  const auditLog = await pool.query<{
+    id: string;
+    at: Date;
+    account_id: string | null;
+    action: string;
+    target_type: string;
+    target_id: string;
+    detail: string | null;
+  }>('select * from workspace_audit_log order by at asc');
+  store.auditLog.push(...auditLog.rows.map((row) => ({
+    id: row.id,
+    at: row.at.toISOString(),
+    accountId: row.account_id ?? undefined,
+    action: row.action,
+    targetType: row.target_type,
+    targetId: row.target_id,
+    detail: row.detail ?? undefined,
+  })));
 
   return store;
 }

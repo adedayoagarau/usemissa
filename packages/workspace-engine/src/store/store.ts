@@ -8,7 +8,10 @@ import type {
   ReviewRound,
   ReviewAssignment,
   ReviewRecommendation,
+  Decision,
+  DeliveryTask,
 } from '../domain/types.js';
+import type { AuditEntry } from '@missa/radar-engine';
 
 /**
  * In-memory store for the Workspace domain -- mirrors radar-engine's
@@ -33,6 +36,12 @@ export interface WorkspaceStore {
   reviewAssignments: Map<string, ReviewAssignment>;
   /** Keyed by reviewAssignmentId -- one recommendation per assignment. */
   reviewRecommendations: Map<string, ReviewRecommendation>;
+  /** Append-only audit entries for Workspace mutations (including decisions). */
+  auditLog: AuditEntry[];
+  /** One Decision per Work. Keyed by decision id; workId is unique by domain rule. */
+  decisions: Map<string, Decision>;
+  /** One delivery task per accepted Work in the MVP. */
+  deliveryTasks: Map<string, DeliveryTask>;
 }
 
 export function createStore(): WorkspaceStore {
@@ -46,5 +55,8 @@ export function createStore(): WorkspaceStore {
     reviewRounds: new Map(),
     reviewAssignments: new Map(),
     reviewRecommendations: new Map(),
+    auditLog: [],
+    decisions: new Map(),
+    deliveryTasks: new Map(),
   };
 }

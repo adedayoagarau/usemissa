@@ -167,3 +167,70 @@ test('Story 7.3: reviewer records a recommendation, marking the assignment compl
   assert.ok(engine.reviewAssignmentsForSubmission(submission.id)[0].completedAt);
   assert.deepEqual(engine.recommendationForAssignment(assignment.id), recommendation);
 });
+
+test('Story 8.1: records one decision per Work and derives a partially accepted packet status', () => {
+  const engine = new WorkspaceEngine();
+  const entity = engine.createEntity('org1', 'Acme');
+  const program = engine.createProgram(entity.id, 'Program');
+  const openCall = engine.createOpenCall(program.id, 'Call');
+  const path = engine.createSubmissionPath(openCall.id, [], []);
+  const submission = engine.createSubmission(path.id, 'submitterA', [
+    { title: 'Poem A' },
+    { title: 'Poem B' },
+    { title: 'Poem C' },
+  ]);
+  const [a, b, c] = engine.worksForSubmission(submission.id);
+
+  const accepted = engine.recordDecision('org1', a.id, 'accepted', 'editor1');
+  const declined = engine.recordDecision('org1', b.id, 'declined', 'editor1');
+  assert.equal(accepted.workId, a.id);
+  assert.equal(declined.workId, b.id);
+  assert.equal(submission.status, 'partially-accepted');
+  assert.equal(engine.decisionForWork('org1', c.id), undefined);
+  assert.equal(engine.decisionsForSubmission('org1', submission.id).length, 2);
+  assert.equal(engine.store.auditLog.length, 2);
+  assert.equal(engine.store.auditLog[0].targetType, 'work_decision');
+});
+
+test('Story 8.1: decisions are organization-scoped and updates keep one row per Work', () => {
+  const engine = new WorkspaceEngine();
+  const e1 = engine.createEntity('org1', 'Acme');
+  const p1 = engine.createProgram(e1.id, 'Program');
+  const call1 = engine.createOpenCall(p1.id, 'Call');
+  const path1 = engine.createSubmissionPath(call1.id, [], []);
+  const submission1 = engine.createSubmission(path1.id, 'submitterA', [{ title: 'A' }]);
+  const [work] = engine.worksForSubmission(submission1.id);
+  const e2 = engine.createEntity('org2', 'Other');
+  assert.throws(() => engine.recordDecision('org2', work.id, 'declined', 'editor2'));
+
+  const decision = engine.createDecision('org1', work.id, 'waitlisted', 'editor1');
+  assert.throws(() => engine.createDecision('org1', work.id, 'accepted', 'editor1'));
+  const updated = engine.updateDecision('org1', decision.id, 'accepted', 'editor1');
+  assert.equal(updated.id, decision.id);
+  assert.equal(engine.decisionsForOrganization('org1').length, 1);
+  assert.equal(engine.decisionsForOrganization('org2').length, 0);
+  assert.equal(engine.store.auditLog.length, 2);
+
+  engine.deleteDecision('org1', decision.id);
+  assert.equal(engine.decisionForWork('org1', work.id), undefined);
+  assert.equal(engine.store.auditLog.length, 3);
+  assert.equal(submission1.status, 'submitted');
+});
+
+test('Story 8.3: delivery tasks require accepted Works and complete explicitly', () => {
+  const engine = new WorkspaceEngine();
+  const entity = engine.createEntity('org1', 'Acme');
+  const program = engine.createProgram(entity.id, 'Program');
+  const call = engine.createOpenCall(program.id, 'Call');
+  const path = engine.createSubmissionPath(call.id, [], []);
+  const submission = engine.createSubmission(path.id, 'submitter', [{ title: 'Accepted work' }]);
+  const work = engine.worksForSubmission(submission.id)[0]!;
+  assert.throws(() => engine.createDeliveryTask('org1', work.id));
+  engine.recordDecision('org1', work.id, 'accepted', 'admin');
+  const task = engine.createDeliveryTask('org1', work.id, '2026-09-01');
+  assert.equal(task.status, 'pending');
+  assert.equal(engine.createDeliveryTask('org1', work.id).id, task.id);
+  const complete = engine.updateDeliveryTask('org1', task.id, 'complete');
+  assert.equal(complete.status, 'complete');
+  assert.ok(complete.completedAt);
+});

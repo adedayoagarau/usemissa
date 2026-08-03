@@ -9,6 +9,9 @@ import type {
   ReviewRound,
   ReviewAssignment,
   ReviewRecommendation,
+  Decision,
+  DecisionOutcome,
+  DeliveryTask,
 } from "./domain/types.js";
 import { createStore, type WorkspaceStore } from "./store/store.js";
 import { sequentialWorkspaceIds, type WorkspaceIdGenerator } from "./ids.js";
@@ -30,11 +33,14 @@ function* idsInStore(store: WorkspaceStore): Iterable<string> {
     store.works,
     store.reviewRounds,
     store.reviewAssignments,
+    store.decisions,
+    store.deliveryTasks,
   ];
   for (const map of maps) yield* map.keys();
   for (const path of store.submissionPaths.values()) {
     for (const field of path.fields) yield field.id;
   }
+  for (const entry of store.auditLog) yield entry.id;
 }
 
 /**
@@ -350,5 +356,158 @@ export class WorkspaceEngine {
     reviewAssignmentId: string,
   ): ReviewRecommendation | undefined {
     return this.store.reviewRecommendations.get(reviewAssignmentId);
+  }
+
+  /**
+   * Records the final outcome for one Work. The organization argument is an
+   * authorization boundary: callers cannot create or mutate a decision for a
+   * Work that is not owned by that organization. Recording again is an
+   * intentional upsert so an editor can correct a decision without creating
+   * competing rows for the same Work.
+   */
+  recordDecision(
+    organizationId: string,
+    workId: string,
+    outcome: DecisionOutcome,
+    decidedByAccountId: string,
+  ): Decision {
+    const scope = this.organizationScope(organizationId);
+    const work = scope.work(workId);
+    if (!work) throw new Error("Work is not part of this organization");
+    const existing = [...this.store.decisions.values()].find((d) => d.workId === workId);
+    const decision: Decision = existing
+      ? {
+          ...existing,
+          outcome,
+          decidedByAccountId,
+          decidedAt: this.now(),
+        }
+      : {
+          id: this.ids.next("decision"),
+          workId,
+          outcome,
+          decidedByAccountId,
+          decidedAt: this.now(),
+        };
+    this.store.decisions.set(decision.id, decision);
+    this.recordDecisionAudit(decision, existing ? "decision.updated" : "decision.recorded");
+    this.refreshSubmissionStatus(work.submissionId);
+    return decision;
+  }
+
+  /** Explicit create alias for repository/route callers that use CRUD naming. */
+  createDecision(
+    organizationId: string,
+    workId: string,
+    outcome: DecisionOutcome,
+    decidedByAccountId: string,
+  ): Decision {
+    const existing = this.decisionForWork(organizationId, workId);
+    if (existing) throw new Error(`A decision already exists for work: ${workId}`);
+    return this.recordDecision(organizationId, workId, outcome, decidedByAccountId);
+  }
+
+  updateDecision(
+    organizationId: string,
+    decisionId: string,
+    outcome: DecisionOutcome,
+    decidedByAccountId: string,
+  ): Decision {
+    const decision = this.organizationScope(organizationId).decision(decisionId);
+    if (!decision) throw new Error("Decision is not part of this organization");
+    return this.recordDecision(organizationId, decision.workId, outcome, decidedByAccountId);
+  }
+
+  deleteDecision(organizationId: string, decisionId: string): void {
+    const decision = this.organizationScope(organizationId).decision(decisionId);
+    if (!decision) throw new Error("Decision is not part of this organization");
+    this.store.decisions.delete(decisionId);
+    this.recordDecisionAudit(decision, "decision.deleted");
+    const work = this.store.works.get(decision.workId);
+    if (work) this.refreshSubmissionStatus(work.submissionId);
+  }
+
+  decisionForWork(organizationId: string, workId: string): Decision | undefined {
+    if (!this.organizationScope(organizationId).work(workId)) return undefined;
+    return [...this.store.decisions.values()].find((d) => d.workId === workId);
+  }
+
+  decisionsForOrganization(organizationId: string): Decision[] {
+    const scope = this.organizationScope(organizationId);
+    return [...this.store.decisions.values()].filter((decision) => Boolean(scope.decision(decision.id)));
+  }
+
+  decisionsForSubmission(organizationId: string, submissionId: string): Decision[] {
+    const scope = this.organizationScope(organizationId);
+    if (!scope.submission(submissionId)) return [];
+    const workIds = new Set(this.worksForSubmission(submissionId).map((work) => work.id));
+    return [...this.store.decisions.values()].filter((decision) => workIds.has(decision.workId));
+  }
+
+  createDeliveryTask(organizationId: string, workId: string, dueDate?: string): DeliveryTask {
+    const scope = this.organizationScope(organizationId);
+    const work = scope.work(workId);
+    if (!work) throw new Error("Work is not part of this organization");
+    const decision = this.decisionForWork(organizationId, workId);
+    if (!decision || decision.outcome !== "accepted") throw new Error("Delivery tasks require an accepted Work");
+    const existing = [...this.store.deliveryTasks.values()].find((task) => task.workId === workId);
+    if (existing) return existing;
+    if (dueDate !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) throw new Error("dueDate must be YYYY-MM-DD");
+    const task: DeliveryTask = { id: this.ids.next("delivery_task"), workId, status: "pending", ...(dueDate ? { dueDate: dueDate as `${number}-${number}-${number}` } : {}) };
+    this.store.deliveryTasks.set(task.id, task);
+    this.store.auditLog.push({ id: this.ids.next("audit"), at: this.now(), accountId: undefined, action: "delivery.created", targetType: "delivery_task", targetId: task.id, detail: JSON.stringify({ workId }) });
+    return task;
+  }
+
+  updateDeliveryTask(organizationId: string, taskId: string, status: "pending" | "complete"): DeliveryTask {
+    const task = this.store.deliveryTasks.get(taskId);
+    if (!task || !this.organizationScope(organizationId).work(task.workId)) throw new Error("Delivery task is not part of this organization");
+    task.status = status;
+    task.completedAt = status === "complete" ? this.now() : undefined;
+    this.store.auditLog.push({ id: this.ids.next("audit"), at: this.now(), accountId: undefined, action: "delivery.updated", targetType: "delivery_task", targetId: task.id, detail: JSON.stringify({ status }) });
+    return task;
+  }
+
+  deliveryTasksForOrganization(organizationId: string): DeliveryTask[] {
+    const scope = this.organizationScope(organizationId);
+    return [...this.store.deliveryTasks.values()].filter((task) => Boolean(scope.work(task.workId)));
+  }
+
+  private recordDecisionAudit(decision: Decision, action: string): void {
+    this.store.auditLog.push({
+      id: this.ids.next("audit"),
+      at: decision.decidedAt,
+      accountId: decision.decidedByAccountId,
+      action,
+      targetType: "work_decision",
+      targetId: decision.id,
+      detail: JSON.stringify({ workId: decision.workId, outcome: decision.outcome }),
+    });
+  }
+
+  /** Derives packet status from item-level outcomes; never hand-set by callers. */
+  private refreshSubmissionStatus(submissionId: string): void {
+    const submission = this.store.submissions.get(submissionId);
+    if (!submission || submission.status === "withdrawn") return;
+    const works = this.worksForSubmission(submissionId);
+    const outcomes = works
+      .map((work) => [...this.store.decisions.values()].find((decision) => decision.workId === work.id)?.outcome)
+      .filter((outcome): outcome is DecisionOutcome => Boolean(outcome));
+    if (outcomes.length === 0) {
+      // A removed decision must not leave a stale terminal summary behind.
+      submission.status = "submitted";
+      return;
+    }
+    const unique = new Set(outcomes);
+    const complete = outcomes.length === works.length;
+    if (unique.size === 1 && complete) {
+      submission.status = outcomes[0];
+      return;
+    }
+    if (unique.has("accepted")) {
+      submission.status = "partially-accepted";
+      return;
+    }
+    if (complete) submission.status = "mixed";
   }
 }

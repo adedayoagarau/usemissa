@@ -64,9 +64,9 @@ Organized by capability area (matching the approved user-facing module names fro
 - FR43. Submitters can upload files against a Submission through the organization's defined form. **[Not built]**
 - FR44. Organizations have an admin inbox of incoming Submissions. **[Not built]**
 - FR45. Organizations can assign reviewers to Submissions/rounds and collect recommendations against a basic rubric. **[Not built]**
-- FR46. Organizations can record a Decision per Work (not just per Submission), supporting the item-level decision model. **[Not built]**
-- FR47. Organizations can send decisions via templated, bulk decision emails. **[Not built]**
-- FR48. Organizations can track Delivery tasks (award/publication/selection workflows) per accepted Work, with per-vertical relabeling (Awards/Publication/Selections). **[Not built]**
+- FR46. Organizations can record a Decision per Work (not just per Submission), supporting the item-level decision model. **[Built — owner-scoped decision CRUD, derived packet summaries, audit, and Neon persistence]**
+- FR47. Organizations can send decisions via templated, bulk decision emails. **[Built — preview and Resend-backed bulk route; production sending requires Resend configuration]**
+- FR48. Organizations can track Delivery tasks (award/publication/selection workflows) per accepted Work, with per-vertical relabeling (Awards/Publication/Selections). **[Built — accepted-Work guard, task lifecycle, org routes, and Neon persistence]**
 - FR49. Organizations get basic reporting (submission volume, conversion, response times) and export. **[Not built]**
 
 ## Enterprise
