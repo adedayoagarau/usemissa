@@ -47,13 +47,23 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
     startTransition(async () => {
       const paymentSessionId = searchParams.get('checkout_session') ?? undefined;
       if (feeCents && feeCents > 0 && !paymentSessionId) {
-        sessionStorage.setItem(`missa_submission_draft:${pathId}`, JSON.stringify({ category, values, workTitles }));
-        const checkout = await fetch(`/api/submission-paths/${pathId}/checkout`, { method: 'POST' });
+        const draftKey = `missa_submission_draft:${pathId}`;
+        let checkoutKey = crypto.randomUUID();
+        try { const current = JSON.parse(sessionStorage.getItem(draftKey) ?? '{}') as { checkoutKey?: string }; if (current.checkoutKey) checkoutKey = current.checkoutKey; } catch { /* generate a new key */ }
+        sessionStorage.setItem(draftKey, JSON.stringify({ category, values, workTitles, checkoutKey }));
+        const checkout = await fetch(`/api/submission-paths/${pathId}/checkout`, { method: 'POST', headers: { 'Idempotency-Key': checkoutKey } });
         const checkoutBody = await checkout.json().catch(() => ({}));
         if (!checkout.ok || !checkoutBody.url) { setResult({ ok: false, message: checkoutBody.error ?? 'Payment could not be started' }); return; }
         window.location.assign(checkoutBody.url);
         return;
       }
+      const draftKey = `missa_submission_draft:${pathId}`;
+      let submissionKey = crypto.randomUUID();
+      try { const current = JSON.parse(sessionStorage.getItem(draftKey) ?? '{}') as { submissionKey?: string }; if (current.submissionKey) submissionKey = current.submissionKey; } catch { /* generate a new key */ }
+      try {
+        const current = JSON.parse(sessionStorage.getItem(draftKey) ?? '{}') as Record<string, unknown>;
+        sessionStorage.setItem(draftKey, JSON.stringify({ ...current, category, values, workTitles, submissionKey }));
+      } catch { /* submission still works if storage is unavailable */ }
       const fileUrls: Record<string, string> = {};
       for (const f of fileFields) {
         const input = (formElement.elements.namedItem(f.id) as HTMLInputElement) ?? undefined;
@@ -70,7 +80,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
       for (const [fieldId, url] of Object.entries(fileUrls)) answers[fieldId] = url;
       const res = await fetch(`/api/submission-paths/${pathId}/submit`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'Idempotency-Key': submissionKey },
         body: JSON.stringify({ category, answers, works: workTitles.filter((value) => value.trim()).map((value, index) => ({ title: value.trim(), fileUrl: index === 0 ? Object.values(fileUrls)[0] : undefined })), paymentSessionId }),
       });
       if (!res.ok) {

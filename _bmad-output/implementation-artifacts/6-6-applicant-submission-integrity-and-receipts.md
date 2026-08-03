@@ -44,7 +44,9 @@ response and connect a successful submission to the submitter's Tracker.
   upload cleanup.
 - Applicant status notifications (receipt is available; outbound delivery is
   still provider-dependent).
-- Idempotency keys for payment completion in addition to submission completion.
+- Stripe Checkout creation now forwards the same browser draft key as a Stripe
+  idempotency key; provider webhook reconciliation is still a separate
+  production hardening task.
 - File scanning, retention, and abandoned-upload cleanup.
 
 ## Validation

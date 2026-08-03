@@ -37,7 +37,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     'metadata[account_id]': session.account.id,
     'metadata[organization_id]': organizationId,
   });
-  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', { method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: form });
+  const idempotencyKey = request.headers.get('Idempotency-Key')?.trim().slice(0, 200);
+  const response = await fetch('https://api.stripe.com/v1/checkout/sessions', { method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded', ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) }, body: form });
   const data = await response.json() as { id?: string; url?: string; error?: { message?: string } };
   if (!response.ok || !data.id || !data.url) return NextResponse.json({ error: data.error?.message ?? 'Unable to start payment' }, { status: 502 });
   return NextResponse.json({ id: data.id, url: data.url, feeCents: path.feeCents });
