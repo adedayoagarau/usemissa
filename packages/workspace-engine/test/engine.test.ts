@@ -132,6 +132,19 @@ test('submitters can withdraw an undecided submission, but not a decided one', (
   assert.throws(() => engine.withdrawSubmission(submission.id, 'acct2'));
 });
 
+test('payment lifecycle reconciliation preserves the submission and records the provider state', () => {
+  const engine = new WorkspaceEngine();
+  const entity = engine.createEntity('org1', 'Acme');
+  const program = engine.createProgram(entity.id, 'Program');
+  const call = engine.createOpenCall(program.id, 'Paid Call');
+  const path = engine.createSubmissionPath(call.id, [], [], 2500);
+  const submission = engine.createSubmission(path.id, 'acct1', [{ title: 'Work' }], { status: 'paid', sessionId: 'cs_test', feeCents: 2500 });
+
+  assert.equal(engine.updateSubmissionPaymentStatus(submission.id, 'refunded').paymentStatus, 'refunded');
+  assert.equal(engine.store.submissions.get(submission.id)?.status, 'submitted');
+  assert.throws(() => engine.updateSubmissionPaymentStatus('missing', 'disputed'));
+});
+
 test('submission drafts are owner-scoped, refreshed, and expire', () => {
   let now = '2026-08-03T00:00:00.000Z';
   const engine = new WorkspaceEngine({ now: () => now });

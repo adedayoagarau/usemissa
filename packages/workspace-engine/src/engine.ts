@@ -271,6 +271,19 @@ export class WorkspaceEngine {
     return submission;
   }
 
+  /** Reconcile a provider payment event without changing the applicant's
+   * submission status. Refunds and disputes are payment facts; the submission
+   * remains visible to both sides with the payment state made explicit. */
+  updateSubmissionPaymentStatus(
+    submissionId: string,
+    status: 'failed' | 'refunded' | 'disputed',
+  ): Submission {
+    const submission = this.store.submissions.get(submissionId);
+    if (!submission) throw new Error(`Unknown submission: ${submissionId}`);
+    submission.paymentStatus = status;
+    return submission;
+  }
+
   worksForSubmission(submissionId: string): Work[] {
     return [...this.store.works.values()]
       .filter((w) => w.submissionId === submissionId)

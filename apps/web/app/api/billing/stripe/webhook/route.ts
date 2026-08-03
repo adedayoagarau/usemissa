@@ -80,6 +80,50 @@ export async function POST(request: Request) {
     await persistRadar();
     return NextResponse.json({ received: true, submissionId: submission.id });
   }
+  const paymentLifecycle: Record<string, 'failed' | 'refunded' | 'disputed'> = {
+    'checkout.session.expired': 'failed',
+    'payment_intent.payment_failed': 'failed',
+    'charge.refunded': 'refunded',
+    'charge.dispute.created': 'disputed',
+    'charge.dispute.closed': 'refunded',
+  };
+  const lifecycleStatus = paymentLifecycle[event.type];
+  if (lifecycleStatus && (metadata.path_id || metadata.submission_id || metadata.account_id)) {
+    const radar = await getEngine();
+    const eventId = event.id ?? `${event.type}:${String(object.id ?? '')}`;
+    const alreadyReconciled = radar.store.auditLog.some((entry) => {
+      if (!entry.action.startsWith('submission.payment.') || !entry.detail) return false;
+      try { return (JSON.parse(entry.detail) as { eventId?: string }).eventId === eventId; } catch { return false; }
+    });
+    if (alreadyReconciled) return NextResponse.json({ received: true, idempotent: true });
+    const workspace = await getWorkspaceEngine();
+    const paymentSessionId = metadata.payment_session_id
+      ?? (typeof object.checkout_session === 'string' ? object.checkout_session : undefined)
+      ?? (typeof object.id === 'string' && object.id.startsWith('cs_') ? object.id : undefined);
+    const submission = metadata.submission_id
+      ? workspace.store.submissions.get(metadata.submission_id)
+      : [...workspace.store.submissions.values()].find((candidate) =>
+        candidate.submissionPathId === metadata.path_id
+        && candidate.submitterAccountId === metadata.account_id
+        && (!paymentSessionId || candidate.paymentSessionId === paymentSessionId),
+      );
+    if (submission) {
+      workspace.updateSubmissionPaymentStatus(submission.id, lifecycleStatus);
+      await persistWorkspace();
+      radar.recordAudit(undefined, `submission.payment.${lifecycleStatus}`, 'submission', submission.id, JSON.stringify({ eventId, eventType: event.type, paymentSessionId }));
+      await persistRadar();
+      return NextResponse.json({ received: true, submissionId: submission.id, paymentStatus: lifecycleStatus });
+    }
+    const draft = metadata.path_id && metadata.account_id
+      ? workspace.submissionDraftFor(metadata.path_id, metadata.account_id)
+      : undefined;
+    if (draft) {
+      radar.recordAudit(undefined, `submission.payment.${lifecycleStatus}`, 'submission_draft', draft.id, JSON.stringify({ eventId, eventType: event.type, paymentSessionId }));
+      await persistRadar();
+      return NextResponse.json({ received: true, draftId: draft.id, paymentStatus: lifecycleStatus });
+    }
+    return NextResponse.json({ received: true, reconciled: false });
+  }
   if (!organizationId) return NextResponse.json({ received: true });
   const radar = await getEngine();
   const organization = radar.store.organizations.get(organizationId);

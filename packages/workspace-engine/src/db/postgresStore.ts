@@ -231,7 +231,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
     submitter_account_id: string;
     status: Submission['status'];
     submitted_at: Date;
-    payment_status: 'not-required' | 'paid' | null;
+    payment_status: 'not-required' | 'paid' | 'failed' | 'refunded' | 'disputed' | null;
     payment_session_id: string | null;
     fee_cents: number | null;
     idempotency_key: string | null;

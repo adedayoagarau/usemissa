@@ -43,14 +43,15 @@ response and connect a successful submission to the submitter's Tracker.
   its private Blob uploads in bounded batches.
 - Each Work can now carry multiple private file URLs; the organization file
   preview route authorizes and streams attachments individually.
+- Payment lifecycle events are reconciled beyond success: expired/failed
+  payments, refunds, and disputes are idempotently audited and reflected on
+  the Submission payment status without hiding the receipt.
+- Submission receipts and organization decisions emit private Inbox alerts;
+  the existing bounded Resend digest can deliver them when configured.
 
 ## Still required before this story is done
 
-- Payment failure, refund, and dispute lifecycle handling beyond successful
-  Checkout completion.
 - Malware scanning remains; cleanup now covers expired draft uploads.
-- Applicant status notifications (receipt is available; outbound delivery is
-  still provider-dependent).
 
 ## Validation
 
