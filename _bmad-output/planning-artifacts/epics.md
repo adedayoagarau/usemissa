@@ -7,7 +7,7 @@ inputDocuments: [_bmad-output/planning-artifacts/prd, _bmad-output/planning-arti
 
 ## Overview
 
-This document decomposes the PRD's 58 Functional Requirements and the Architecture's structural decisions into implementable epics and stories. It is written brownfield-aware: Epic 1 covers only the engineering foundation gaps the architecture doc identified (CI, new package scaffolds, Postgres-as-default); it does **not** re-implement anything already built and tested in `packages/radar-engine`/`radar-adapters`. Every MVP-tier PRD capability area has a corresponding epic; Growth-tier areas (Enterprise, Import/Migration, Props, per the PRD's own phasing) are represented as scope-reserved stub epics rather than full story breakdowns, so nothing is silently dropped but effort isn't spent detailing work explicitly deferred by the PRD itself.
+This document decomposes the PRD's 58 Functional Requirements and the Architecture's structural decisions into implementable epics and stories. It is written brownfield-aware: Epic 1 covers only the engineering foundation gaps the architecture doc identified (CI, new package scaffolds, Postgres-as-default); it does **not** re-implement anything already built and tested in `packages/radar-engine`/`radar-adapters`. Growth-tier areas now have bounded foundations: seat management (Epic 11), open-call CSV migration (Epic 12), and provider-backed billing boundaries (Epic 10). SSO/SCIM, external migration adapters, fee collection, and Props remain explicit follow-on work rather than simulated functionality.
 
 **Stories are sized for single-dev-agent completion and sequenced so no story depends on a later story in the same epic** (per the workflow's dependency principle). Database/schema changes happen incrementally, story-by-story, not as one upfront migration.
 
@@ -15,7 +15,7 @@ This document decomposes the PRD's 58 Functional Requirements and the Architectu
 
 ### Functional Requirements
 
-See `_bmad-output/planning-artifacts/prd/functional-requirements.md` for the full FR1–FR58 list with Built/Partial/Not-built status. Summary: FR1–13 (Radar core) built; FR14–18 (Opportunities/Fit) built at API level, no polished UI; FR19–25 (Tracker) built at API level, partial UI; FR26–36 (Import, Email Sync, Library, Passport/Privacy/Export) not built; FR37–39 (claim flow) built; FR40–58 (Workspace, Enterprise, Payments, Import/Migration, Props) not built.
+See `_bmad-output/planning-artifacts/prd/functional-requirements.md` for the full FR1–FR58 list with Built/Partial/Not-built status. Workspace submission management (FR40–49) is built; Enterprise seats and subscription billing have production-safe foundations; external SSO/SCIM, fee collection, third-party migrations, and Props are still explicitly open.
 
 ### Non-Functional Requirements
 
@@ -45,8 +45,8 @@ The two shared custom components identified in the UX spec (Explained Score, Sta
 | FR46–48 (Decisions/Delivery) | Epic 8 |
 | FR49 (Reporting/Export) | Epic 9 |
 | FR53–54 (Payments/Billing) | Epic 10 |
-| FR50–52 (Enterprise) | Epic 11 (stub) |
-| FR55–57 (Import/Migration) | Epic 12 (stub) |
+| FR50–52 (Enterprise) | Epic 11 |
+| FR55–57 (Import/Migration) | Epic 12 |
 | FR58 (Props) | Epic 13 (stub) |
 
 ## Epic List
@@ -620,13 +620,18 @@ So that I can access the Workspace features gated behind each tier (FR54).
 
 ---
 
-## Epic 11: Enterprise *(Growth — stub, not detailed per PRD phasing)*
+## Epic 11: Enterprise *(Growth)*
 
-Covers FR50–52. Per the PRD's explicit beachhead-then-expand sequencing, this epic is intentionally left as a placeholder — detailed story-writing should happen once there's a real enterprise prospect, not speculatively now. Reserved scope: multi-Team hierarchy under one Organization with per-institution relabeling, Seats/Members with the full role set (Owner/Admin/Team Admin/Program Manager/Reviewer/Finance/Legal/Viewer/Guest), and WorkOS SSO/SCIM.
+Covers FR50–52. Story 11.1 now delivers the multi-Team hierarchy and seat
+management foundation with the full role vocabulary and plan limits. SSO/SCIM
+remains a provider-backed follow-on once an identity provider is selected; the
+product does not simulate enterprise provisioning.
 
-## Epic 12: Import/Migration Stack *(Growth — stub)*
+## Epic 12: Import/Migration Stack *(Growth)*
 
-Covers FR55–57. Reserved scope: Submittable-export import, Google Forms import, Airtable import, guidelines-URL/PDF import, and the Import Report. Not detailed now — write real stories once Epic 6 (Open Call creation) has shipped, since migration only makes sense once there's something to migrate *into*.
+Covers FR55–57. Story 12.1 delivers a bounded Submittable-style/open-call CSV
+preview and commit flow with an explicit Import Report. Google Forms, Airtable,
+and guideline URL/PDF adapters remain separate provider stories.
 
 ## Epic 13: Props / Gamification *(Growth — stub)*
 

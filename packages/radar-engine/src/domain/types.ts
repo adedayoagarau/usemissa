@@ -264,7 +264,16 @@ export interface Organization {
   name: string;
   domains: string[];
   verified: boolean;
+  /** Commercial plan and seat override are optional for backwards-compatible imported orgs. */
+  billingTier?: OrganizationBillingTier;
+  seatLimit?: number;
+  billingStatus?: OrganizationBillingStatus;
+  billingCustomerId?: string;
+  billingSubscriptionId?: string;
 }
+
+export type OrganizationBillingTier = 'free' | 'indie' | 'pro' | 'program' | 'enterprise';
+export type OrganizationBillingStatus = 'inactive' | 'trialing' | 'active' | 'past_due' | 'canceled';
 
 export type ClaimStatus = 'pending' | 'approved' | 'rejected';
 
@@ -475,7 +484,8 @@ export interface Account {
   createdAt: IsoDateTime;
 }
 
-export type OrgRole = 'member' | 'admin';
+/** Organization roles. `member` remains the compatibility role for existing workspaces. */
+export type OrgRole = 'member' | 'admin' | 'owner' | 'team-admin' | 'program-manager' | 'reviewer' | 'finance' | 'legal' | 'viewer' | 'guest';
 
 /** Which accounts can act for which organization, and with what role. */
 export interface OrgMembership {

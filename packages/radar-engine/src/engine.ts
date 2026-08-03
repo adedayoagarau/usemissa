@@ -38,7 +38,7 @@ import type {
 import type { Clock, Extractor, Fetcher, FetchResult, IdGenerator } from './ports.js';
 import { sequentialIds, systemClock } from './ports.js';
 import { createStore, type RadarStore, changesFor } from './store/store.js';
-import { grantOrgMembership, isOrgMember, logIn, membershipsFor, signUp } from './auth/accounts.js';
+import { grantOrgMembership, isOrgMember, logIn, membershipsFor, organizationSeatUsage, revokeOrgMembership, signUp } from './auth/accounts.js';
 import { recordAudit } from './auth/audit.js';
 import { dueSources } from './ingestion/scheduler.js';
 import { contentHash } from './ingestion/snapshot.js';
@@ -440,6 +440,14 @@ export class RadarEngine {
 
   grantOrgMembership(accountId: string, organizationId: string, role: OrgRole): OrgMembership {
     return grantOrgMembership(this.ctx, accountId, organizationId, role);
+  }
+
+  revokeOrgMembership(accountId: string, organizationId: string): OrgMembership {
+    return revokeOrgMembership(this.store, accountId, organizationId);
+  }
+
+  organizationSeatUsage(organizationId: string): ReturnType<typeof organizationSeatUsage> {
+    return organizationSeatUsage(this.store, organizationId);
   }
 
   membershipsFor(accountId: string): OrgMembership[] {

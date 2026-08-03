@@ -4,6 +4,15 @@ import { getSessionAccount, type SessionAccount } from "./auth";
 import { getEngine, persistRadar } from "./engine";
 import { getWorkspaceEngine, persistWorkspace } from "./workspaceEngine";
 
+/** Requested elevated capabilities intentionally map legacy `admin` routes to
+ * owner/admin, so existing links keep working while new workspaces can use
+ * reviewer, program-manager, finance, and viewer seats. */
+function hasRequestedRole(actual: OrgRole, requested: OrgRole): boolean {
+  if (requested === 'admin') return actual === 'admin' || actual === 'owner';
+  if (requested === 'member') return true;
+  return actual === requested || actual === 'admin' || actual === 'owner';
+}
+
 export interface OrganizationAccess {
   organizationId: string;
   session: SessionAccount;
@@ -35,7 +44,7 @@ export async function requireOrganizationAccess(
     return { ok: false, status: 403, error: "You are not a member of this organization" };
   }
 
-  if (options.roles && !options.roles.includes(membership.role)) {
+  if (options.roles && !options.roles.some((role) => hasRequestedRole(membership.role, role))) {
     return { ok: false, status: 403, error: "Your organization role cannot perform this action" };
   }
 

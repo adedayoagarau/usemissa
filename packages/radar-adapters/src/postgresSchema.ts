@@ -242,9 +242,11 @@ create unique index if not exists radar_accounts_email_idx on radar_accounts (em
 create table if not exists radar_memberships (
   account_id text not null,
   organization_id text not null,
+  role text not null default 'member',
   data jsonb not null,
   primary key (account_id, organization_id)
 );
+alter table radar_memberships add column if not exists role text not null default 'member';
 create index if not exists radar_memberships_org_idx on radar_memberships (organization_id);
 
 create table if not exists radar_audit_log (

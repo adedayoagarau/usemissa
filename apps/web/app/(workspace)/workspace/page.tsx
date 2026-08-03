@@ -6,6 +6,8 @@ import { getEngine } from '@/lib/engine';
 import { getWorkspaceEngine } from '@/lib/workspaceEngine';
 import { CreateTeamForm, CreateProgramForm, CreateOpenCallForm, PublishButton } from '@/components/workspace-forms';
 import { FormBuilder } from '@/components/form-builder';
+import { OrganizationSeats } from '@/components/organization-seats';
+import { OrganizationBilling } from '@/components/organization-billing';
 
 export default async function WorkspacePage() {
   const cookieStore = await cookies();
@@ -48,6 +50,13 @@ export default async function WorkspacePage() {
       <p className="mt-1 text-sm text-muted-foreground">
         Public page: <Link href={`/org/${organizationId}`}>/org/{organizationId}</Link>
       </p>
+
+      <div className="mt-6">
+        <OrganizationSeats organizationId={organizationId} canManage={session.memberships[0].role === 'admin' || session.memberships[0].role === 'owner'} />
+      </div>
+      <div className="mt-6">
+        <OrganizationBilling organizationId={organizationId} canManage={session.memberships[0].role === 'admin' || session.memberships[0].role === 'owner'} />
+      </div>
 
       <div className="mt-6">
         <CreateTeamForm organizationId={organizationId} />

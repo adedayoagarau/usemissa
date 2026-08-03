@@ -34,7 +34,7 @@ CREATE TABLE "radar_memberships" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "radar_memberships_account_id_organization_id_pk" PRIMARY KEY("account_id","organization_id"),
-	CONSTRAINT "radar_memberships_role_check" CHECK ("radar_memberships"."role" in ('member', 'admin'))
+	CONSTRAINT "radar_memberships_role_check" CHECK ("radar_memberships"."role" in ('member', 'admin', 'owner', 'team-admin', 'program-manager', 'reviewer', 'finance', 'legal', 'viewer', 'guest'))
 );
 --> statement-breakpoint
 CREATE TABLE "open_calls" (

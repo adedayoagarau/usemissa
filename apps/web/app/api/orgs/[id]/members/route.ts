@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { organizationMemberMutationSchema } from '@missa/contracts';
+import { AuthError } from '@missa/radar-engine';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
 
 /** Story 7.2's AC needs "at least one other org member" to assign as a
@@ -55,7 +56,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'An organization must keep at least one admin' }, { status: 409 });
   }
 
-  const membership = engine.grantOrgMembership(account.id, id, body.data.role);
+  let membership;
+  try {
+    membership = engine.grantOrgMembership(account.id, id, body.data.role);
+  } catch (error) {
+    if (error instanceof AuthError) return NextResponse.json({ error: error.message }, { status: 409 });
+    throw error;
+  }
   await persistOrganizationMutation(
     result.access,
     {

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { resourceIdSchema } from "./shared.js";
 export { resourceIdSchema } from "./shared.js";
 
-export const organizationRoleSchema = z.enum(["member", "admin"]);
+export const organizationRoleSchema = z.enum(["member", "admin", "owner", "team-admin", "program-manager", "reviewer", "finance", "legal", "viewer", "guest"]);
 
 export const organizationMemberMutationSchema = z.object({
   email: z.string().trim().toLowerCase().email(),

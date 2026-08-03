@@ -17,7 +17,7 @@ test("resource IDs accept legacy and UUID-backed prefixed identities", () => {
   );
 });
 
-test("organization member mutations normalize email and restrict roles", () => {
+test("organization member mutations normalize email and accept the enterprise role set", () => {
   assert.deepEqual(
     organizationMemberMutationSchema.parse({ email: " EDITOR@EXAMPLE.COM " }),
     {
@@ -25,12 +25,7 @@ test("organization member mutations normalize email and restrict roles", () => {
       role: "member",
     },
   );
-  assert.throws(() =>
-    organizationMemberMutationSchema.parse({
-      email: "editor@example.com",
-      role: "owner",
-    }),
-  );
+  assert.equal(organizationMemberMutationSchema.parse({ email: "editor@example.com", role: "owner" }).role, "owner");
 });
 
 test("browse queries default to safe, bounded public search behavior", () => {

@@ -59,7 +59,7 @@ export const memberships = pgTable(
     index("radar_memberships_org_idx").on(table.organizationId),
     check(
       "radar_memberships_role_check",
-      sql`${table.role} in ('member', 'admin')`,
+      sql`${table.role} in ('member', 'admin', 'owner', 'team-admin', 'program-manager', 'reviewer', 'finance', 'legal', 'viewer', 'guest')`,
     ),
   ],
 );

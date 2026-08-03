@@ -26,4 +26,9 @@ POST /api/submission-paths/subpath_0004/submit {works: [{title: "My Poem", fileU
 - Response: `201 Created`, `Submission` + `Work` persisted with `title: "My Test Poem"` and `fileUrl: "data:text/plain;base64,VGhpcyBpcyBteSB0ZXN0IG1hbnVzY3JpcHQgY29udGVudC4="` — decodes to the exact file content uploaded, confirming the FileReader → data-URI → API round trip is genuinely correct, not just wired up.
 - **Tooling note, not an app bug:** the `preview_click` tool's synthetic click on the Submit button didn't trigger form submission (no `fetch` fired); a direct `element.click()` via the browser's own JS did. Documented so this isn't mistaken for a real submission bug if re-tested.
 
-**Gap #1 still open — no real file storage backend.** No S3/Vercel Blob/equivalent is provisioned. Data-URI encoding works and is verified for small files but doesn't scale (bloats the JSON/Postgres store, has practical size limits) — flagged in `submit-form.tsx`'s own code comment. This needs a real storage adapter before any real-sized manuscript upload would work in production.
+**Storage hardening completed:** file bytes now upload through
+`POST /api/submission-paths/:pathId/upload` to the configured private Vercel
+Blob store (25 MB per file). Submission rows retain only the opaque Blob URL;
+the submit route validates that the form exists, is published, and every Work
+has a title. Missing Blob configuration fails closed with `503` rather than
+falling back to data URIs.

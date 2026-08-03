@@ -106,16 +106,18 @@ development_status:
   9-2-organization-data-export: review
   epic-9-retrospective: optional
 
-  epic-10: backlog
+  epic-10: in-progress
   10-1-stripe-connect-onboarding-for-organizations: backlog
   10-2-fee-collection-on-submission: backlog
-  10-3-tiered-subscription-billing-for-organizations: backlog
+  10-3-tiered-subscription-billing-for-organizations: review
   epic-10-retrospective: optional
 
-  epic-11: backlog
+  epic-11: in-progress
+  11-1-organization-seats-and-role-access: review
   epic-11-retrospective: optional
 
-  epic-12: backlog
+  epic-12: in-progress
+  12-1-open-call-csv-import: review
   epic-12-retrospective: optional
 
   epic-13: backlog

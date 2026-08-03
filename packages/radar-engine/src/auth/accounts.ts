@@ -1,4 +1,4 @@
-import type { Account, OrgMembership, OrgRole, UserAttributes, UserProfile } from '../domain/types.js';
+import type { Account, OrgMembership, OrgRole, Organization, OrganizationBillingTier, UserAttributes, UserProfile } from '../domain/types.js';
 import type { Clock, IdGenerator } from '../ports.js';
 import type { RadarStore } from '../store/store.js';
 import { hashPassword, verifyPassword } from './crypto.js';
@@ -10,6 +10,27 @@ export interface AuthContext {
 }
 
 export class AuthError extends Error {}
+
+export const DEFAULT_SEAT_LIMITS: Record<OrganizationBillingTier, number> = {
+  free: 3,
+  indie: 5,
+  pro: 10,
+  program: 25,
+  enterprise: 1000,
+};
+
+export function organizationSeatLimit(organization: Organization): number {
+  if (organization.seatLimit !== undefined) return Math.max(1, Math.floor(organization.seatLimit));
+  return DEFAULT_SEAT_LIMITS[organization.billingTier ?? 'free'];
+}
+
+export function organizationSeatUsage(store: RadarStore, organizationId: string): { used: number; limit: number; available: number } {
+  const organization = store.organizations.get(organizationId);
+  if (!organization) throw new AuthError(`Unknown organization: ${organizationId}`);
+  const used = store.memberships.filter((membership) => membership.organizationId === organizationId).length;
+  const limit = organizationSeatLimit(organization);
+  return { used, limit, available: Math.max(0, limit - used) };
+}
 
 function findByEmail(store: RadarStore, email: string): Account | undefined {
   const normalized = email.trim().toLowerCase();
@@ -67,8 +88,19 @@ export function grantOrgMembership(ctx: AuthContext, accountId: string, organiza
     existing.role = role;
     return existing;
   }
+  const seats = organizationSeatUsage(ctx.store, organizationId);
+  if (seats.used >= seats.limit) {
+    throw new AuthError(`This organization has reached its ${seats.limit}-seat limit`);
+  }
   const membership: OrgMembership = { accountId, organizationId, role, grantedAt: ctx.clock.now().toISOString() };
   ctx.store.memberships.push(membership);
+  return membership;
+}
+
+export function revokeOrgMembership(store: RadarStore, accountId: string, organizationId: string): OrgMembership {
+  const index = store.memberships.findIndex((membership) => membership.accountId === accountId && membership.organizationId === organizationId);
+  if (index < 0) throw new AuthError('Organization membership not found');
+  const [membership] = store.memberships.splice(index, 1);
   return membership;
 }
 

@@ -5,11 +5,8 @@ import { getWorkspaceEngine, persistWorkspace } from '@/lib/workspaceEngine';
 /**
  * Story 6.5: submitter file upload against a Submission Path.
  *
- * KNOWN LIMITATION: no file storage backend (S3/Vercel Blob/etc.) is
- * provisioned yet, so this accepts a `fileUrl` string per work directly in
- * the JSON body rather than handling a real multipart upload -- it proves
- * the Submission/Work creation flow end to end, but real file handling is
- * unbuilt. Flagging rather than faking a working upload.
+ * File bytes are uploaded separately to private Blob storage. This endpoint
+ * only receives opaque file URLs and creates the durable Submission/Work row.
  */
 export async function POST(request: Request, { params }: { params: Promise<{ pathId: string }> }) {
   const { pathId } = await params;
@@ -20,8 +17,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   if (!Array.isArray(body.works) || body.works.length === 0) {
     return NextResponse.json({ error: 'At least one work is required' }, { status: 400 });
   }
+  const workspace = await getWorkspaceEngine();
+  const path = workspace.store.submissionPaths.get(pathId);
+  if (!path) return NextResponse.json({ error: 'Unknown submission form' }, { status: 404 });
+  const openCall = workspace.store.openCalls.get(path.openCallId);
+  if (!openCall || openCall.status !== 'published') return NextResponse.json({ error: 'This submission form is not open' }, { status: 409 });
+  if (body.works.some((work: unknown) => !work || typeof work !== 'object' || typeof (work as { title?: unknown }).title !== 'string' || !(work as { title: string }).title.trim())) {
+    return NextResponse.json({ error: 'Each work needs a title' }, { status: 400 });
+  }
 
-  const engine = await getWorkspaceEngine();
+  const engine = workspace;
   try {
     const submission = engine.createSubmission(pathId, session.account.id, body.works);
     await persistWorkspace();

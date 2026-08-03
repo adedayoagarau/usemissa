@@ -58,12 +58,12 @@ Organized by capability area (matching the approved user-facing module names fro
 - FR37. Organizations can claim a Radar-discovered listing whose domain matches their own, with domain-match claims auto-approved and others routed to admin review. **[Built]**
 - FR38. Approved claims flag the listing as claimed, grant the organization authoritative field overrides, and boost its trust score. **[Built]**
 - FR39. Organization admins can view claimed-listing analytics (claimed/open counts, followers, average trust, pending reviews). **[Built]**
-- FR40. Organizations can create an Entity/Program/Open Call hierarchy independent of a claimed Radar listing. **[Not built]**
-- FR41. Organizations can define Submission Paths (categories/tracks/rules per open call) via a Form Builder, without exposing "Submission Path" as a user-facing term (users see "form" and "categories"). **[Not built]**
-- FR42. Organizations get a public organization page presenting their open calls. **[Not built]**
-- FR43. Submitters can upload files against a Submission through the organization's defined form. **[Not built]**
-- FR44. Organizations have an admin inbox of incoming Submissions. **[Not built]**
-- FR45. Organizations can assign reviewers to Submissions/rounds and collect recommendations against a basic rubric. **[Not built]**
+- FR40. Organizations can create an Entity/Program/Open Call hierarchy independent of a claimed Radar listing. **[Built]**
+- FR41. Organizations can define Submission Paths (categories/tracks/rules per open call) via a Form Builder, without exposing "Submission Path" as a user-facing term (users see "form" and "categories"). **[Built]**
+- FR42. Organizations get a public organization page presenting their open calls. **[Built]**
+- FR43. Submitters can upload files against a Submission through the organization's defined form. **[Built]**
+- FR44. Organizations have an admin inbox of incoming Submissions. **[Built]**
+- FR45. Organizations can assign reviewers to Submissions/rounds and collect recommendations against a basic rubric. **[Built]**
 - FR46. Organizations can record a Decision per Work (not just per Submission), supporting the item-level decision model. **[Built — owner-scoped decision CRUD, derived packet summaries, audit, and Neon persistence]**
 - FR47. Organizations can send decisions via templated, bulk decision emails. **[Built — preview and Resend-backed bulk route; production sending requires Resend configuration]**
 - FR48. Organizations can track Delivery tasks (award/publication/selection workflows) per accepted Work, with per-vertical relabeling (Awards/Publication/Selections). **[Built — accepted-Work guard, task lifecycle, org routes, and Neon persistence]**
@@ -71,20 +71,20 @@ Organized by capability area (matching the approved user-facing module names fro
 
 ## Enterprise
 
-- FR50. Institutions can operate multiple Teams (the user-facing label for `entity`) under one Organization, with per-institution relabeling (Departments/Imprints/Chapters). **[Not built]**
-- FR51. Enterprise admins can manage Seats and Members with role-based access (Owner/Admin, Team Admin, Program Manager, Reviewer, Finance, Legal, Viewer, Guest). **[Not built]**
+- FR50. Institutions can operate multiple Teams (the user-facing label for `entity`) under one Organization, with per-institution relabeling (Departments/Imprints/Chapters). **[Built]**
+- FR51. Enterprise admins can manage Seats and Members with role-based access (Owner/Admin, Team Admin, Program Manager, Reviewer, Finance, Legal, Viewer, Guest). **[Built — seat limits, role changes, revocation, and access capability mapping; SSO/SCIM remains FR52]**
 - FR52. Enterprise institutions can enable SSO/SCIM for member provisioning. **[Not built]**
 
 ## Payments & Billing
 
 - FR53. Organizations can collect submission fees via Stripe, with Missa taking a 1.5%-capped-at-$1.50 fee per transaction. **[Not built]**
-- FR54. Organizations are billed on a tiered subscription (Free/Indie/Pro/Program/Program Pro/Enterprise). **[Not built]**
+- FR54. Organizations are billed on a tiered subscription (Free/Indie/Pro/Program/Program Pro/Enterprise). **[Partial — Stripe Checkout, plan metadata, seat limits, and signed webhooks; Connect and self-serve cancellation remain]**
 
 ## Import / Migration (Growth-tier, tracked here for completeness)
 
-- FR55. Organizations can import existing calls/submissions from Submittable exports, Google Forms, or Airtable. **[Not built]**
+- FR55. Organizations can import existing calls/submissions from Submittable exports, Google Forms, or Airtable. **[Partial — bounded Submittable-style/open-call CSV importer; Google Forms/Airtable adapters remain]**
 - FR56. Organizations can import an open call's guidelines from a URL or PDF. **[Not built]**
-- FR57. The system reports the completeness/accuracy of any migration import (the "Import Report"). **[Not built]**
+- FR57. The system reports the completeness/accuracy of any migration import (the "Import Report"). **[Partial — CSV preview reports valid, invalid, duplicate, warning, and created/skipped counts]**
 
 ## Props (Gamification)
 

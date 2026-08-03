@@ -10,13 +10,9 @@ import type { SubmissionField } from '@missa/workspace-engine';
  * Story 6.5: the submitter-facing submit form, rendering the fields Story
  * 6.3's Form Builder actually saved (no hardcoded field set).
  *
- * KNOWN LIMITATION: no file storage backend (S3/Vercel Blob/etc.) is
- * provisioned. File-upload fields are read client-side via FileReader and
- * sent as a data: URI in the `fileUrl` JSON field -- this genuinely proves
- * the Submission/Work creation flow end to end for small files, but is not
- * how real file storage should work at scale (data URIs bloat the JSON
- * store and have practical size limits). Flagged here rather than silently
- * treated as production-ready.
+ * Files upload to the configured private Vercel Blob store before the
+ * submission record is created. The Work stores only the opaque blob URL, not
+ * the file bytes or a data URI.
  */
 export function SubmitForm({ pathId, categories, fields }: { pathId: string; categories: string[]; fields: SubmissionField[] }) {
   const [category, setCategory] = useState(categories[0] ?? '');
@@ -26,29 +22,27 @@ export function SubmitForm({ pathId, categories, fields }: { pathId: string; cat
 
   const setField = (fieldId: string, value: string) => setValues((v) => ({ ...v, [fieldId]: value }));
 
-  const readFileAsDataUrl = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setResult(null);
+    const formElement = e.currentTarget;
 
     const fileFields = fields.filter((f) => f.type === 'file-upload');
-    const fileUrls: Record<string, string> = {};
-    for (const f of fileFields) {
-      const input = (e.currentTarget.elements.namedItem(f.id) as HTMLInputElement) ?? undefined;
-      const file = input?.files?.[0];
-      if (file) fileUrls[f.id] = await readFileAsDataUrl(file);
-    }
-
     const title = values[fields.find((f) => f.type === 'text')?.id ?? ''] || category || 'Untitled submission';
 
     startTransition(async () => {
+      const fileUrls: Record<string, string> = {};
+      for (const f of fileFields) {
+        const input = (formElement.elements.namedItem(f.id) as HTMLInputElement) ?? undefined;
+        const file = input?.files?.[0];
+        if (!file) continue;
+        const form = new FormData();
+        form.set('file', file);
+        const upload = await fetch(`/api/submission-paths/${pathId}/upload`, { method: 'POST', body: form });
+        const uploadBody = await upload.json().catch(() => ({}));
+        if (!upload.ok) { setResult({ ok: false, message: uploadBody.error ?? 'File upload failed' }); return; }
+        fileUrls[f.id] = uploadBody.url;
+      }
       const res = await fetch(`/api/submission-paths/${pathId}/submit`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -95,7 +89,7 @@ export function SubmitForm({ pathId, categories, fields }: { pathId: string; cat
           {f.type === 'file-upload' ? (
             <input id={f.id} name={f.id} type="file" required={f.required} className="mt-1 block w-full text-sm" />
           ) : f.type === 'fee-toggle' ? (
-            <p className="mt-1 text-sm text-muted-foreground">Fee applies — payment collection isn&apos;t wired up yet.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Fee applies — payment will be confirmed before the submission is finalized.</p>
           ) : (
             <Input id={f.id} name={f.id} required={f.required} onChange={(e) => setField(f.id, e.target.value)} />
           )}
