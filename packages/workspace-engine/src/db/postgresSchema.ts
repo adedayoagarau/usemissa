@@ -85,6 +85,7 @@ create table if not exists works (
   file_urls jsonb,
   "order" integer not null
 );
+alter table works add column if not exists file_urls jsonb;
 
 create table if not exists submission_drafts (
   id text primary key,

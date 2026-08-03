@@ -50,7 +50,12 @@ export async function POST(request: Request) {
       if (typeof value !== 'string') return false;
       try { const parsed = new URL(value); return parsed.protocol === 'https:' && parsed.pathname.includes(`/missa/submissions/${sessionAccountId}/`); } catch { return false; }
     });
-    const works = draft.workTitles.filter(Boolean).map((title, index) => ({ title, ...(index === 0 && fileUrl ? { fileUrl, fileUrls: [fileUrl] } : {}) }));
+    const works = draft.workTitles.filter(Boolean).map((title, index) => {
+      const saved = draft.answers[`__work_files_${index}`];
+      const attachments = (Array.isArray(saved) ? saved : saved ? [saved] : []).filter((value): value is string => typeof value === 'string' && value.startsWith('https://'));
+      const resolved = attachments.length ? attachments : (index === 0 && fileUrl ? [fileUrl] : []);
+      return { title, ...(resolved.length ? { fileUrl: resolved[0], fileUrls: resolved } : {}) };
+    });
     if (works.length === 0) return NextResponse.json({ error: 'Submission draft has no works' }, { status: 409 });
     const submission = workspace.createSubmission(path.id, sessionAccountId, works, { status: 'paid', sessionId: String(object.id ?? ''), feeCents: path.feeCents }, { answers: draft.answers, category: draft.category, idempotencyKey: draft.idempotencyKey });
     workspace.deleteSubmissionDraft(path.id, sessionAccountId);
