@@ -77,7 +77,7 @@ Organized by capability area (matching the approved user-facing module names fro
 
 ## Payments & Billing
 
-- FR53. Organizations can collect submission fees via Stripe, with Missa taking a 1.5%-capped-at-$1.50 fee per transaction. **[Not built]**
+- FR53. Organizations can collect submission fees via Stripe, with Missa taking a 1.5%-capped-at-$1.50 fee per transaction. **[Partial — hosted Connect onboarding and signed account webhooks; fee checkout/finalization remains]**
 - FR54. Organizations are billed on a tiered subscription (Free/Indie/Pro/Program/Program Pro/Enterprise). **[Partial — Stripe Checkout, plan metadata, seat limits, and signed webhooks; Connect and self-serve cancellation remain]**
 
 ## Import / Migration (Growth-tier, tracked here for completeness)

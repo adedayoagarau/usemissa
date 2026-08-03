@@ -13,6 +13,17 @@ export async function POST(request: Request) {
   const object = event.data?.object ?? {};
   const metadata = (object.metadata ?? {}) as Record<string, string>;
   const organizationId = metadata.organization_id ?? (object.client_reference_id as string | undefined);
+  if (event.type === 'account.updated') {
+    const accountId = object.id as string | undefined;
+    const radar = await getEngine();
+    const organization = [...radar.store.organizations.values()].find((candidate) => candidate.stripeConnectAccountId === accountId);
+    if (organization) {
+      organization.stripeConnectStatus = object.charges_enabled === true && object.payouts_enabled === true ? 'connected' : 'pending';
+      radar.recordAudit(undefined, 'billing.account_updated', 'organization', organization.id);
+      await persistRadar();
+    }
+    return NextResponse.json({ received: true });
+  }
   if (!organizationId) return NextResponse.json({ received: true });
   const radar = await getEngine();
   const organization = radar.store.organizations.get(organizationId);

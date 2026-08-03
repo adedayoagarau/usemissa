@@ -270,6 +270,8 @@ export interface Organization {
   billingStatus?: OrganizationBillingStatus;
   billingCustomerId?: string;
   billingSubscriptionId?: string;
+  stripeConnectAccountId?: string;
+  stripeConnectStatus?: 'not-connected' | 'pending' | 'connected';
 }
 
 export type OrganizationBillingTier = 'free' | 'indie' | 'pro' | 'program' | 'enterprise';
