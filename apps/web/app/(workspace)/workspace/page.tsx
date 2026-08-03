@@ -10,7 +10,7 @@ import { OrganizationSeats } from '@/components/organization-seats';
 import { OrganizationBilling } from '@/components/organization-billing';
 import { OpenCallControls } from '@/components/open-call-controls';
 
-export default async function WorkspacePage() {
+export default async function WorkspacePage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
   if (!session) redirect('/login');
@@ -27,7 +27,8 @@ export default async function WorkspacePage() {
     );
   }
 
-  const organizationId = session.memberships[0].organizationId;
+  const requestedOrganizationId = (await searchParams).organizationId;
+  const organizationId = session.memberships.find((membership) => membership.organizationId === requestedOrganizationId)?.organizationId ?? session.memberships[0].organizationId;
   const radarEngine = await getEngine();
   const org = radarEngine.store.organizations.get(organizationId);
   const radarOpportunities = [...radarEngine.store.opportunities.values()].filter((opportunity) => opportunity.claimedByOrganizationId === organizationId).map((opportunity) => ({ id: opportunity.id, title: opportunity.fields.title }));
