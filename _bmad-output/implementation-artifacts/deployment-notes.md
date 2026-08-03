@@ -21,6 +21,14 @@
 - A hosted `missa-radar-worker` process; the package and runbook are ready, but Vercel serverless functions cannot host a long-running worker.
 - `CRON_SECRET` — needed for the bounded `/api/cron/tick` fallback.
 - A production app domain (e.g. `app.usemissa.com`) if the app should be separate from `www.usemissa.com`.
+- `RESEND_API_KEY` and `RESEND_FROM` — enable submitter alert digests and
+  organization decision emails. Delivery fails closed when unset.
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_INDIE`,
+  `STRIPE_PRICE_PRO`, and `STRIPE_PRICE_PROGRAM` — enable Connect onboarding,
+  submission fee checkout, subscriptions, and period-end cancellation.
+- `SCIM_BEARER_TOKEN` and `SCIM_ORGANIZATION_ID` — bind SCIM provisioning to one
+  organization; rotate the bearer token through the identity provider's secret
+  manager rather than committing it to the repository.
 
 **Gmail Sync production configuration:**
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and exact `GOOGLE_REDIRECT_URI` for the deployed app callback.
