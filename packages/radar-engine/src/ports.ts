@@ -35,8 +35,14 @@ export interface IdGenerator {
   next(prefix: string): string;
 }
 
-export function sequentialIds(): IdGenerator {
+export function sequentialIds(existingIds: Iterable<string> = []): IdGenerator {
   const counters = new Map<string, number>();
+  for (const id of existingIds) {
+    const match = /^(.+)_(\d+)$/.exec(id);
+    if (!match) continue;
+    const [, prefix, raw] = match;
+    counters.set(prefix, Math.max(counters.get(prefix) ?? 0, Number(raw)));
+  }
   return {
     next(prefix: string): string {
       const n = (counters.get(prefix) ?? 0) + 1;

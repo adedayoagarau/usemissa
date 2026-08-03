@@ -128,7 +128,10 @@ function normalizedProfileValues(user: UserProfile, patch: UserProfilePatch): { 
 export interface TickReport {
   at: string;
   sourcesChecked: number;
+  /** Total fetch and processing failures. */
   sourcesFailed: number;
+  fetchFailures: number;
+  processingFailures: number;
   pagesUnchanged: number;
   pagesChanged: number;
   opportunitiesCreated: string[];
@@ -229,6 +232,7 @@ export class RadarEngine {
       checkIntervalHours: input.checkIntervalHours ?? 24,
       active: true,
       consecutiveFailures: 0,
+      consecutiveProcessingFailures: 0,
     };
     this.store.sources.set(source.id, source);
     return source;
@@ -478,6 +482,8 @@ export class RadarEngine {
       at: now.toISOString(),
       sourcesChecked: 0,
       sourcesFailed: 0,
+      fetchFailures: 0,
+      processingFailures: 0,
       pagesUnchanged: 0,
       pagesChanged: 0,
       opportunitiesCreated: [],
@@ -495,57 +501,85 @@ export class RadarEngine {
 
     for (const source of sourcesToProcess) {
       report.sourcesChecked++;
-      const result = await this.fetcher.fetch(source);
       source.lastCheckedAt = now.toISOString();
+
+      let result: FetchResult;
+      try {
+        result = await this.fetcher.fetch(source);
+      } catch {
+        source.consecutiveFailures++;
+        report.sourcesFailed++;
+        report.fetchFailures++;
+        continue;
+      }
 
       if (result.status === 'error') {
         source.consecutiveFailures++;
         report.sourcesFailed++;
+        report.fetchFailures++;
         continue;
       }
       source.consecutiveFailures = 0;
 
       if (result.status === 'gone') {
+        source.consecutiveProcessingFailures = 0;
         report.pagesChanged++;
         this.handlePageGone(source, report);
         continue;
       }
 
+      source.lastSuccessfulFetchAt = now.toISOString();
       const hash = contentHash(result.content);
+      source.lastFetchedContentHash = hash;
       if (hash === source.lastContentHash) {
+        source.consecutiveProcessingFailures = 0;
         report.pagesUnchanged++;
         this.touchOpportunities(source, now);
         continue;
       }
-      source.lastContentHash = hash;
       report.pagesChanged++;
 
-      const snapshot: PageSnapshot = {
-        id: this.ids.next('snap'),
-        sourceId: source.id,
-        url: source.url,
-        fetchedAt: now.toISOString(),
-        status: 'ok',
-        contentHash: hash,
-        content: result.content,
-      };
-      this.store.snapshots.set(snapshot.id, snapshot);
+      try {
+        const snapshot: PageSnapshot = {
+          id: this.ids.next('snap'),
+          sourceId: source.id,
+          url: source.url,
+          fetchedAt: now.toISOString(),
+          status: 'ok',
+          contentHash: hash,
+          content: result.content,
+        };
+        this.store.snapshots.set(snapshot.id, snapshot);
 
-      const candidate = await this.extractor.extract(source, snapshot);
-      if (hasFatalIssues(candidate) || !looksLikeOpportunity(candidate)) continue;
+        const candidate = await this.extractor.extract(source, snapshot);
+        if (hasFatalIssues(candidate) || !looksLikeOpportunity(candidate)) {
+          source.consecutiveProcessingFailures = (source.consecutiveProcessingFailures ?? 0) + 1;
+          report.sourcesFailed++;
+          report.processingFailures++;
+          continue;
+        }
 
-      const match = findCanonical(candidate, this.store.opportunities.values());
-      if (match.kind === 'same-page') {
-        const changes = this.applyUpdate(match.opportunity, candidate, now);
-        report.changes.push(...changes);
-        if (changes.length > 0) report.opportunitiesUpdated.push(match.opportunity.id);
-      } else if (match.kind === 'duplicate') {
-        report.duplicatesMerged++;
-        this.mergeDuplicate(match.opportunity, candidate, source, report);
-      } else {
-        const opp = this.createOpportunity(candidate, source, now);
-        newOpportunities.push(opp);
-        report.opportunitiesCreated.push(opp.id);
+        const match = findCanonical(candidate, this.store.opportunities.values());
+        if (match.kind === 'same-page') {
+          const changes = this.applyUpdate(match.opportunity, candidate, now);
+          report.changes.push(...changes);
+          if (changes.length > 0) report.opportunitiesUpdated.push(match.opportunity.id);
+        } else if (match.kind === 'duplicate') {
+          report.duplicatesMerged++;
+          this.mergeDuplicate(match.opportunity, candidate, source, report);
+        } else {
+          const opp = this.createOpportunity(candidate, source, now);
+          newOpportunities.push(opp);
+          report.opportunitiesCreated.push(opp.id);
+        }
+
+        source.lastContentHash = hash;
+        source.lastProcessedAt = now.toISOString();
+        source.consecutiveProcessingFailures = 0;
+      } catch {
+        source.consecutiveProcessingFailures = (source.consecutiveProcessingFailures ?? 0) + 1;
+        report.sourcesFailed++;
+        report.processingFailures++;
       }
     }
 

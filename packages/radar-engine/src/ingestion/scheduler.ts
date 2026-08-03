@@ -10,7 +10,11 @@ const MS_PER_HOUR = 60 * 60 * 1000;
 export function isDue(source: Source, now: Date): boolean {
   if (!source.active) return false;
   if (!source.lastCheckedAt) return true;
-  const backoff = Math.min(2 ** source.consecutiveFailures, 8);
+  const failures = Math.max(
+    source.consecutiveFailures,
+    source.consecutiveProcessingFailures ?? 0,
+  );
+  const backoff = Math.min(2 ** failures, 8);
   const intervalMs = source.checkIntervalHours * MS_PER_HOUR * backoff;
   return now.getTime() - Date.parse(source.lastCheckedAt) >= intervalMs;
 }

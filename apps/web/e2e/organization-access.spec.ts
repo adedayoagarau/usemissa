@@ -45,6 +45,11 @@ test('organization members can read but cannot change structure or elevate roles
     });
     expect(forbiddenElevation.status()).toBe(403);
 
+    const finalAdminDemotion = await admin.post(`/api/orgs/${organizationId}/members`, {
+      data: { email: 'editor@northriverreview.org', role: 'member' },
+    });
+    expect(finalAdminDemotion.status()).toBe(409);
+
     const foreignNestedResource = await admin.post(`/api/orgs/${organizationId}/open-calls/opencall_foreign/publish`);
     expect(foreignNestedResource.status()).toBe(404);
   } finally {

@@ -20,6 +20,23 @@ export interface WorkspaceEngineOptions {
   ids?: WorkspaceIdGenerator;
 }
 
+function* idsInStore(store: WorkspaceStore): Iterable<string> {
+  const maps = [
+    store.entities,
+    store.programs,
+    store.openCalls,
+    store.submissionPaths,
+    store.submissions,
+    store.works,
+    store.reviewRounds,
+    store.reviewAssignments,
+  ];
+  for (const map of maps) yield* map.keys();
+  for (const path of store.submissionPaths.values()) {
+    for (const field of path.fields) yield field.id;
+  }
+}
+
 /**
  * Facade over the Workspace domain, mirroring RadarEngine's shape
  * (packages/radar-engine/src/engine.ts) deliberately -- apps/web's route
@@ -33,7 +50,7 @@ export class WorkspaceEngine {
   constructor(opts: WorkspaceEngineOptions = {}) {
     this.store = opts.store ?? createStore();
     this.now = opts.now ?? (() => new Date().toISOString());
-    this.ids = opts.ids ?? sequentialWorkspaceIds();
+    this.ids = opts.ids ?? sequentialWorkspaceIds(idsInStore(this.store));
   }
 
   createEntity(organizationId: string, name: string, label?: string): Entity {

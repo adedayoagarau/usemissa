@@ -68,9 +68,19 @@ export interface Source {
   /** Polite per-source cadence. */
   checkIntervalHours: number;
   active: boolean;
+  /** Latest fetch attempt, including failures. Kept as the scheduler cursor. */
   lastCheckedAt?: IsoDateTime;
+  /** Latest fetch that returned usable page content. */
+  lastSuccessfulFetchAt?: IsoDateTime;
+  /** Latest content hash observed, even when extraction later failed. */
+  lastFetchedContentHash?: string;
+  /** Latest content hash that completed extraction and canonicalization. */
   lastContentHash?: string;
+  /** Latest time content completed extraction and canonicalization. */
+  lastProcessedAt?: IsoDateTime;
   consecutiveFailures: number;
+  /** Processing failures are tracked separately from network failures. */
+  consecutiveProcessingFailures?: number;
 }
 
 export type FetchStatus = 'ok' | 'error' | 'gone';

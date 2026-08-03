@@ -4,7 +4,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildDemoWorld, MAGAZINE_PAGE_V2_EXTENDED, MAGAZINE_PAGE_V3_CLOSED } from '../src/fixtures/seed.js';
 import { saveStore, loadStore } from '../src/store/store.js';
-import { RadarEngine, ManualClock, createStore, FixtureFetcher, dueSources } from '../src/index.js';
+import {
+  RadarEngine,
+  ManualClock,
+  createStore,
+  DeterministicExtractor,
+  FixtureFetcher,
+  dueSources,
+  type Extractor,
+} from '../src/index.js';
 
 async function discoveredWorld() {
   const world = buildDemoWorld();
@@ -62,6 +70,120 @@ test('tick({ maxSources }): caps due sources processed per call; the rest remain
 
   const stillDue = dueSources(engine.store.sources.values(), clock.now());
   assert.equal(stillDue.length, 2, 'the remaining 2 untouched sources should still be due for the next tick');
+});
+
+test('a processing failure does not poison the content hash or abort the source batch', async () => {
+  const clock = new ManualClock(new Date('2026-07-07T00:00:00Z'));
+  const fetcher = new FixtureFetcher();
+  const deterministic = new DeterministicExtractor(clock);
+  const attempts = new Map<string, number>();
+  const flakyUrl = 'https://flaky.example/call';
+  const stableUrl = 'https://stable.example/call';
+
+  fetcher.setPage(
+    flakyUrl,
+    `Flaky Arts Fellowship
+Presented by: Flaky Arts
+Applications are open for visual artists. Deadline: August 5, 2026. No application fee.`,
+  );
+  fetcher.setPage(
+    stableUrl,
+    `Stable Poetry Prize
+Presented by: Stable Press
+Submissions are open for poetry. Deadline: August 10, 2026. No entry fee.`,
+  );
+
+  const extractor: Extractor = {
+    async extract(source, snapshot) {
+      const count = (attempts.get(source.id) ?? 0) + 1;
+      attempts.set(source.id, count);
+      if (source.url === flakyUrl && count === 1) throw new Error('temporary extractor failure');
+      return deterministic.extract(source, snapshot);
+    },
+  };
+
+  const engine = new RadarEngine({ store: createStore(), fetcher, extractor, clock });
+  const flaky = engine.addSource({
+    name: 'Flaky Arts',
+    url: flakyUrl,
+    kind: 'organization-website',
+    checkIntervalHours: 1,
+  });
+  const stable = engine.addSource({
+    name: 'Stable Press',
+    url: stableUrl,
+    kind: 'organization-website',
+    checkIntervalHours: 1,
+  });
+
+  const first = await engine.tick();
+  assert.equal(first.sourcesChecked, 2);
+  assert.equal(first.sourcesFailed, 1);
+  assert.equal(first.fetchFailures, 0);
+  assert.equal(first.processingFailures, 1);
+  assert.equal(engine.store.opportunities.size, 1, 'the stable source still completes');
+  assert.ok(flaky.lastCheckedAt);
+  assert.ok(flaky.lastSuccessfulFetchAt);
+  assert.ok(flaky.lastFetchedContentHash);
+  assert.equal(flaky.lastContentHash, undefined, 'failed content is not marked processed');
+  assert.equal(flaky.lastProcessedAt, undefined);
+  assert.ok(stable.lastProcessedAt);
+
+  clock.advanceDays(1 / 24);
+  const backedOff = await engine.tick();
+  assert.equal(backedOff.sourcesChecked, 1, 'processing failures use the source backoff');
+  assert.equal(attempts.get(flaky.id), 1, 'the failed source is not retried too aggressively');
+
+  clock.advanceDays(1 / 24);
+  const retried = await engine.tick();
+  assert.equal(retried.processingFailures, 0);
+  assert.equal(attempts.get(flaky.id), 2);
+  assert.equal(engine.store.opportunities.size, 2);
+  assert.equal(flaky.lastContentHash, flaky.lastFetchedContentHash);
+  assert.ok(flaky.lastProcessedAt);
+  assert.equal(flaky.consecutiveProcessingFailures, 0);
+});
+
+test('a rejected candidate is retried when the fetched content is unchanged', async () => {
+  const clock = new ManualClock(new Date('2026-07-07T00:00:00Z'));
+  const fetcher = new FixtureFetcher();
+  const deterministic = new DeterministicExtractor(clock);
+  const url = 'https://retry.example/call';
+  let attempts = 0;
+
+  fetcher.setPage(
+    url,
+    `Retry Residency
+Hosted by: Retry House
+Applications are open for writers. Deadline: August 20, 2026. No application fee.`,
+  );
+
+  const extractor: Extractor = {
+    extract(source, snapshot) {
+      attempts++;
+      const candidate = deterministic.extract(source, snapshot);
+      if (attempts === 1) candidate.issues.push('fatal: simulated invalid extraction');
+      return candidate;
+    },
+  };
+
+  const engine = new RadarEngine({ store: createStore(), fetcher, extractor, clock });
+  const source = engine.addSource({
+    name: 'Retry House',
+    url,
+    kind: 'organization-website',
+    checkIntervalHours: 1,
+  });
+
+  const rejected = await engine.tick();
+  assert.equal(rejected.processingFailures, 1);
+  assert.equal(source.lastContentHash, undefined);
+
+  clock.advanceDays(2 / 24);
+  const accepted = await engine.tick();
+  assert.equal(accepted.opportunitiesCreated.length, 1);
+  assert.equal(attempts, 2);
+  assert.equal(source.lastContentHash, source.lastFetchedContentHash);
 });
 
 test('fit score explains itself and hard eligibility disqualifies', async () => {
@@ -208,6 +330,12 @@ test('store persists and reloads losslessly', async () => {
   assert.equal(reloaded.alerts.size, engine.store.alerts.size);
   assert.equal(reloaded.emittedAlertKeys.size, engine.store.emittedAlertKeys.size);
   assert.ok(reloaded.users.get(ids.userAda));
+
+  const organizationCount = reloaded.organizations.size;
+  const resumed = new RadarEngine({ store: reloaded, fetcher: new FixtureFetcher() });
+  const added = resumed.addOrganization({ name: 'After Reload', domains: ['after-reload.example'], verified: false });
+  assert.equal(reloaded.organizations.size, organizationCount + 1);
+  assert.equal(added.id, 'org_0003', 'legacy sequential IDs resume after the highest persisted value');
 });
 
 test('stats snapshot reports engine metrics', async () => {

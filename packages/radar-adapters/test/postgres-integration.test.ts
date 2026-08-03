@@ -28,12 +28,28 @@ test('ensurePostgresSchema + save/load round-trip against a real Postgres connec
     const store = createStore();
     store.organizations.set('org_1', { id: 'org_1', name: 'Real PG Test Org', domains: ['realpg.test'], verified: true });
     store.users.set('user_1', { id: 'user_1', displayName: 'Real PG Test User', genres: ['poetry'], attributes: {} });
+    store.accounts.set('acct_1', {
+      id: 'acct_1',
+      email: 'admin@realpg.test',
+      passwordHash: 'test-only:test-only',
+      userId: 'user_1',
+      isAdmin: false,
+      createdAt: '2026-07-07T00:00:00.000Z',
+    });
+    store.memberships.push({
+      accountId: 'acct_1',
+      organizationId: 'org_1',
+      role: 'admin',
+      grantedAt: '2026-07-07T00:00:00.000Z',
+    });
 
     await saveStoreToPostgres(store, pool);
     const loaded = await loadStoreFromPostgres(pool);
 
     assert.deepEqual(loaded.organizations.get('org_1'), store.organizations.get('org_1'));
     assert.deepEqual(loaded.users.get('user_1'), store.users.get('user_1'));
+    assert.deepEqual(loaded.accounts.get('acct_1'), store.accounts.get('acct_1'));
+    assert.deepEqual(loaded.memberships, store.memberships);
 
     // Running ensurePostgresSchema a second time must not fail or duplicate data —
     // this is what makes it safe to call on every cold start in production.

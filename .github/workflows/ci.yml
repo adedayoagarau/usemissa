@@ -81,6 +81,19 @@ jobs:
       - name: Test target schema contracts
         run: npm test --workspace=@missa/db
 
+      - name: Build compatibility adapters
+        run: npm run build
+
+      - name: Test Radar compatibility writer against target schema
+        run: npm test --workspace=@missa/radar-adapters
+        env:
+          DATABASE_URL: postgres://missa:missa@localhost:5432/missa_schema
+
+      - name: Test Workspace compatibility writer against target schema
+        run: npm test --workspace=@missa/workspace-engine
+        env:
+          DATABASE_URL: postgres://missa:missa@localhost:5432/missa_schema
+
   postgres-integration:
     runs-on: ubuntu-latest
     services:

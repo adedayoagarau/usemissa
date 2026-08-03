@@ -20,6 +20,14 @@ _Avoid_: Inner workspace
 A call, grant, award, residency, fellowship, contest, or other opening that can be discovered or published.
 _Avoid_: Opportunity card, open call in application navigation
 
+**Source**:
+A monitored website, feed, directory, partner endpoint, or user-suggested URL from which Missa discovers and verifies Opportunities.
+_Avoid_: Scrape target
+
+**Source Freshness**:
+The evidence that distinguishes when a Source was attempted, successfully fetched, and successfully processed into Opportunity information.
+_Avoid_: A single ambiguous last checked timestamp
+
 **Submission**:
 The package sent through an opportunity's form, containing one or more Works.
 _Avoid_: Submission package

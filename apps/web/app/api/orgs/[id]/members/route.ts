@@ -45,6 +45,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const account = [...engine.store.accounts.values()].find((candidate) => candidate.email === body.data.email);
   if (!account) return NextResponse.json({ error: 'No account with that email' }, { status: 404 });
 
+  const existing = engine.store.memberships.find(
+    (membership) => membership.accountId === account.id && membership.organizationId === id,
+  );
+  const adminCount = engine.store.memberships.filter(
+    (membership) => membership.organizationId === id && membership.role === 'admin',
+  ).length;
+  if (existing?.role === 'admin' && body.data.role === 'member' && adminCount === 1) {
+    return NextResponse.json({ error: 'An organization must keep at least one admin' }, { status: 409 });
+  }
+
   const membership = engine.grantOrgMembership(account.id, id, body.data.role);
   await persistOrganizationMutation(
     result.access,
