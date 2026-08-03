@@ -270,6 +270,7 @@ export interface Organization {
   billingStatus?: OrganizationBillingStatus;
   billingCustomerId?: string;
   billingSubscriptionId?: string;
+  billingCancelAtPeriodEnd?: boolean;
   stripeConnectAccountId?: string;
   stripeConnectStatus?: 'not-connected' | 'pending' | 'connected';
 }
@@ -582,6 +583,8 @@ export interface TrackedOpportunity {
   myStatus: MyStatus;
   events: StatusEvent[];
   submittedAt?: IsoDateTime;
+  /** Optional private Library Work this opportunity is being submitted with. */
+  workId?: string;
 }
 
 /** A private Tracker row imported from a source Missa cannot canonically match. */
@@ -811,4 +814,6 @@ export interface Alert {
   reason: string;
   createdAt: IsoDateTime;
   read: boolean;
+  /** Set only after the alert has been successfully included in an outbound digest. */
+  emailSentAt?: IsoDateTime;
 }

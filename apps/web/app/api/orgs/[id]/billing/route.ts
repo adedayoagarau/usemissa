@@ -13,6 +13,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     status: organization.billingStatus ?? 'inactive',
     customerId: organization.billingCustomerId ?? null,
     subscriptionId: organization.billingSubscriptionId ?? null,
+    cancelAtPeriodEnd: organization.billingCancelAtPeriodEnd ?? false,
     connectAccountId: organization.stripeConnectAccountId ?? null,
     connectStatus: organization.stripeConnectStatus ?? 'not-connected',
   });

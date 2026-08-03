@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { runRadarWorkerTick } from '@missa/radar-adapters';
+import { deliverPendingAlertEmails } from '@/lib/alert-delivery';
 
 /**
  * Vercel Cron target (Story 1.5) -- replaces the manual "Check for updates"
@@ -26,7 +27,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const result = await runRadarWorkerTick({ maxSources: 10 });
+  let emailDelivery: Awaited<ReturnType<typeof deliverPendingAlertEmails>> | undefined;
+  const result = await runRadarWorkerTick({ maxSources: 10, afterTick: async (engine) => { emailDelivery = await deliverPendingAlertEmails(engine); } });
   if (result.status === 'skipped') {
     return NextResponse.json({ status: 'skipped', reason: 'another ingestion tick is running' }, { status: 202 });
   }
@@ -38,5 +40,6 @@ export async function GET(request: Request) {
     sourcesFailed: report.sourcesFailed,
     changes: report.changes.length,
     alerts: report.alerts.length,
+    emailDelivery,
   });
 }

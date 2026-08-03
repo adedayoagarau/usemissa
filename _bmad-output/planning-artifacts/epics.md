@@ -7,7 +7,7 @@ inputDocuments: [_bmad-output/planning-artifacts/prd, _bmad-output/planning-arti
 
 ## Overview
 
-This document decomposes the PRD's 58 Functional Requirements and the Architecture's structural decisions into implementable epics and stories. It is written brownfield-aware: Epic 1 covers only the engineering foundation gaps the architecture doc identified (CI, new package scaffolds, Postgres-as-default); it does **not** re-implement anything already built and tested in `packages/radar-engine`/`radar-adapters`. Growth-tier areas now have bounded foundations: seat management (Epic 11), open-call CSV migration (Epic 12), and provider-backed billing boundaries (Epic 10). SSO/SCIM, external migration adapters, fee collection, and Props remain explicit follow-on work rather than simulated functionality.
+This document decomposes the PRD's 58 Functional Requirements and the Architecture's structural decisions into implementable epics and stories. It is written brownfield-aware: Epic 1 covers only the engineering foundation gaps the architecture doc identified (CI, new package scaffolds, Postgres-as-default); it does **not** re-implement anything already built and tested in `packages/radar-engine`/`radar-adapters`. Growth-tier areas now have bounded, tested foundations: seats/SCIM (Epic 11), migration reports and guideline import (Epic 12), Stripe billing/Connect/fees (Epic 10), and Props (Epic 13). Provider credentials and optional third-party adapters remain explicit configuration boundaries rather than simulated functionality.
 
 **Stories are sized for single-dev-agent completion and sequenced so no story depends on a later story in the same epic** (per the workflow's dependency principle). Database/schema changes happen incrementally, story-by-story, not as one upfront migration.
 
@@ -15,7 +15,7 @@ This document decomposes the PRD's 58 Functional Requirements and the Architectu
 
 ### Functional Requirements
 
-See `_bmad-output/planning-artifacts/prd/functional-requirements.md` for the full FR1–FR58 list with Built/Partial/Not-built status. Workspace submission management (FR40–49) is built; Enterprise seats and subscription billing have production-safe foundations; external SSO/SCIM, fee collection, third-party migrations, and Props are still explicitly open.
+See `_bmad-output/planning-artifacts/prd/functional-requirements.md` for the full FR1–FR58 list with Built/Partial status. Workspace submission management (FR40–49), seats, SCIM provisioning, fee checkout, imports, and Props are implemented; remaining partials are provider-dependent OIDC/SAML, external Google Forms/Airtable connectors, PDF extraction confidence, and production Stripe/Resend configuration.
 
 ### Non-Functional Requirements
 
@@ -63,7 +63,7 @@ The two shared custom components identified in the UX spec (Explained Score, Sta
 10. Payments & Billing
 11. Enterprise *(Growth — stub)*
 12. Import/Migration Stack *(Growth — stub)*
-13. Props / Gamification *(Growth — stub)*
+13. Props / Gamification *(Growth)*
 
 ---
 
@@ -616,16 +616,22 @@ So that I can access the Workspace features gated behind each tier (FR54).
 **Given** an organization on the Free tier
 **When** an admin selects and confirms a paid tier via Stripe Billing
 **Then** their organization's tier is updated and tier-gated features (e.g. number of active Open Calls, reviewer seats) reflect the new limit
-**And** downgrading or cancelling is self-serve, not support-ticket-gated.
+**And** downgrading or cancelling is self-serve, not support-ticket-gated (period-end cancellation is Story 10.4).
+
+### Story 10.4: Self-serve period-end cancellation
+
+Implemented at `apps/web/app/api/orgs/[id]/billing/cancel` with Stripe period-end
+cancellation, audit logging, webhook reconciliation, and an admin Workspace
+control. Provider configuration is required in production.
 
 ---
 
 ## Epic 11: Enterprise *(Growth)*
 
-Covers FR50–52. Story 11.1 now delivers the multi-Team hierarchy and seat
-management foundation with the full role vocabulary and plan limits. SSO/SCIM
-remains a provider-backed follow-on once an identity provider is selected; the
-product does not simulate enterprise provisioning.
+Covers FR50–52. Stories 11.1 and 11.2 deliver the multi-Team hierarchy, seat
+management, full role vocabulary, plan limits, and token-bound SCIM 2.0
+provisioning. OIDC/SAML browser SSO remains a provider-backed follow-on once an
+identity provider is selected; the product does not simulate that flow.
 
 ## Epic 12: Import/Migration Stack *(Growth)*
 

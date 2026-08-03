@@ -104,6 +104,9 @@ export interface TrackerItem {
   isManual?: boolean;
   manualId?: string;
   notes?: string;
+  /** Private Library Work link, when the submitter has assigned one. */
+  workId?: string;
+  workTitle?: string;
 }
 
 export type PipelineStage = 'planning' | 'submitted' | 'in-progress' | 'outcome' | 'archived';
@@ -164,7 +167,22 @@ function toItem(ctx: TrackerContext, user: UserProfile, tracked: TrackedOpportun
     events: tracked.events,
     expectedResponseBy,
     daysOverdue,
+    workId: tracked.workId,
+    workTitle: tracked.workId ? ctx.store.libraryWorks.get(tracked.workId)?.title : undefined,
   };
+}
+
+/** Link a tracked opportunity to one of the current user's private Library Works. */
+export function linkTrackedOpportunityToWork(ctx: TrackerContext, userId: string, opportunityId: string, workId?: string): TrackedOpportunity {
+  const tracked = findTracked(ctx.store, userId, opportunityId);
+  if (!tracked) throw new Error('Opportunity is not tracked.');
+  if (workId !== undefined) {
+    const work = ctx.store.libraryWorks.get(workId);
+    if (!work || work.userId !== userId) throw new Error('Work not found.');
+  }
+  if (workId === undefined) delete tracked.workId;
+  else tracked.workId = workId;
+  return tracked;
 }
 
 function toManualItem(entry: ManualTrackerEntry): TrackerItem {

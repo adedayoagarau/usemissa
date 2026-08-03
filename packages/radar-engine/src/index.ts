@@ -81,6 +81,7 @@ export { buildInboxDigest, matchOrganizationByDomain, type InboxDigest } from '.
 export { verificationQueue } from './verification/verification.js';
 export {
   isMyStatus,
+  linkTrackedOpportunityToWork,
   deadlineReminders,
   overdueResponseAlerts,
   withdrawalSuggestionAlerts,

@@ -1,5 +1,6 @@
 import type { PoolClient } from "pg";
 import type { TickReport } from "@missa/radar-engine";
+import type { RadarEngine } from "@missa/radar-engine";
 import { createProductionEngine } from "./productionEngine.js";
 
 /**
@@ -17,6 +18,8 @@ export interface RadarWorkerOptions {
   intervalMs?: number;
   /** Optional logger, useful for hosted worker runtimes and tests. */
   logger?: Pick<Console, "info" | "error" | "warn">;
+  /** Optional post-tick work executed before the durable snapshot is persisted. */
+  afterTick?: (engine: RadarEngine) => Promise<void>;
 }
 
 export interface RadarWorkerTickResult {
@@ -45,7 +48,7 @@ async function releaseAdvisoryLock(client: PoolClient): Promise<void> {
 
 /** Run one bounded, serialized production tick. */
 export async function runRadarWorkerTick(
-  options: Pick<RadarWorkerOptions, "maxSources" | "logger"> = {},
+  options: Pick<RadarWorkerOptions, "maxSources" | "logger" | "afterTick"> = {},
 ): Promise<RadarWorkerTickResult> {
   const logger = options.logger ?? console;
   const maxSources = positiveInteger(options.maxSources, 10);
@@ -62,6 +65,7 @@ export async function runRadarWorkerTick(
     }
 
     const report = await production.engine.tick({ maxSources });
+    await options.afterTick?.(production.engine);
     await production.persist();
     logger.info(
       `[missa-radar-worker] tick complete: ${report.sourcesChecked} sources checked, ${report.sourcesFailed} failed`,

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-type Billing = { plan: string; status: string; connectStatus: string };
+type Billing = { plan: string; status: string; connectStatus: string; subscriptionId?: string | null; cancelAtPeriodEnd?: boolean };
 
 export function OrganizationBilling({ organizationId, canManage }: { organizationId: string; canManage: boolean }) {
   const [billing, setBilling] = useState<Billing | null>(null);
@@ -22,6 +22,14 @@ export function OrganizationBilling({ organizationId, canManage }: { organizatio
     if (!response.ok) { setError(body.error ?? 'Unable to start Stripe onboarding'); return; }
     if (body.url) window.location.assign(body.url);
   }
+  async function cancel() {
+    setError(null);
+    if (!window.confirm('Cancel this plan at the end of the current billing period?')) return;
+    const response = await fetch(`/api/orgs/${organizationId}/billing/cancel`, { method: 'POST' });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) { setError(body.error ?? 'Unable to schedule cancellation'); return; }
+    setBilling((current) => current ? { ...current, ...body } : current);
+  }
   if (!billing) return null;
   return (
     <section className="rounded-lg border border-border bg-white p-5 shadow-sm" aria-labelledby="organization-billing-heading">
@@ -30,7 +38,8 @@ export function OrganizationBilling({ organizationId, canManage }: { organizatio
         <span className="rounded-full bg-muted px-3 py-1 text-xs capitalize text-muted-foreground">{billing.plan} · {billing.status}</span>
       </div>
       {error && <p className="mt-3 text-sm text-red-700" role="alert">{error}</p>}
-      {canManage && <div className="mt-4 flex flex-wrap gap-2">{billing.connectStatus !== 'connected' && <button type="button" onClick={() => void connect()} className="rounded-md border border-border px-3 py-2 text-sm text-foreground">Connect payouts</button>}{billing.plan === 'free' && <><button type="button" onClick={() => void start('pro')} className="rounded-md bg-foreground px-3 py-2 text-sm text-white">Upgrade to Pro</button><button type="button" onClick={() => void start('program')} className="rounded-md border border-border px-3 py-2 text-sm text-foreground">Program plan</button></>}</div>}
+      {canManage && <div className="mt-4 flex flex-wrap gap-2">{billing.connectStatus !== 'connected' && <button type="button" onClick={() => void connect()} className="rounded-md border border-border px-3 py-2 text-sm text-foreground">Connect payouts</button>}{billing.plan === 'free' && <><button type="button" onClick={() => void start('pro')} className="rounded-md bg-foreground px-3 py-2 text-sm text-white">Upgrade to Pro</button><button type="button" onClick={() => void start('program')} className="rounded-md border border-border px-3 py-2 text-sm text-foreground">Program plan</button></>}{billing.subscriptionId && !billing.cancelAtPeriodEnd && <button type="button" onClick={() => void cancel()} className="rounded-md border border-red-200 px-3 py-2 text-sm text-red-700">Cancel at period end</button>}</div>}
+      {billing.cancelAtPeriodEnd && <p className="mt-3 text-sm text-muted-foreground">Your plan will remain active until the current billing period ends.</p>}
     </section>
   );
 }

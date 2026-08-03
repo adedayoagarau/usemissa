@@ -67,6 +67,7 @@ development_status:
   3-4-inbox-digest-ui: done
   3-5-status-pipeline-board-component-tracker-views: done
   3-6-following-management-ui: done
+  3-7-alert-email-delivery: done
   epic-3-retrospective: optional
 
   epic-4: done
@@ -106,10 +107,11 @@ development_status:
   9-2-organization-data-export: done
   epic-9-retrospective: optional
 
-  epic-10: in-progress
+  epic-10: done
   10-1-stripe-connect-onboarding-for-organizations: done
   10-2-fee-collection-on-submission: done
   10-3-tiered-subscription-billing-for-organizations: done
+  10-4-self-serve-billing-cancellation: done
   epic-10-retrospective: optional
 
   epic-11: done

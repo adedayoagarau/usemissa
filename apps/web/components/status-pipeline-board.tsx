@@ -1,5 +1,6 @@
 import { TrackerItemRow } from '@/components/tracker-item-row';
 import type { TrackerItem, PipelineStage } from '@missa/radar-engine';
+import type { LibraryWork } from '@missa/radar-engine';
 
 const STAGE_LABEL: Record<PipelineStage, string> = {
   planning: 'Planning',
@@ -19,9 +20,11 @@ const STAGE_LABEL: Record<PipelineStage, string> = {
 export function StatusPipelineBoard({
   userId,
   pipeline,
+  works = [],
 }: {
   userId: string;
   pipeline: Record<PipelineStage, TrackerItem[]>;
+  works?: LibraryWork[];
 }) {
   const stages: PipelineStage[] = ['planning', 'submitted', 'in-progress', 'outcome', 'archived'];
 
@@ -37,7 +40,7 @@ export function StatusPipelineBoard({
             </h2>
             <div className="mt-2 space-y-2">
               {items.map((item) => (
-                <TrackerItemRow key={item.opportunityId} userId={userId} item={item} />
+                <TrackerItemRow key={item.opportunityId} userId={userId} item={item} works={works} />
               ))}
             </div>
           </div>

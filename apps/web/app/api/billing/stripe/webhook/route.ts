@@ -33,8 +33,10 @@ export async function POST(request: Request) {
     organization.billingStatus = event.type === 'checkout.session.completed' ? 'active' : (object.status as typeof organization.billingStatus) ?? 'active';
     organization.billingCustomerId = (object.customer as string | undefined) ?? organization.billingCustomerId;
     organization.billingSubscriptionId = (object.subscription as string | undefined) ?? (object.id as string | undefined) ?? organization.billingSubscriptionId;
+    organization.billingCancelAtPeriodEnd = object.cancel_at_period_end === true;
   } else if (event.type === 'customer.subscription.deleted') {
     organization.billingStatus = 'canceled';
+    organization.billingCancelAtPeriodEnd = false;
   }
   radar.recordAudit(undefined, `billing.${event.type}`, 'organization', organizationId);
   await persistRadar();

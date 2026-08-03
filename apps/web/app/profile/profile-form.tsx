@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { ExportButtons } from './export-buttons';
 
 type PrivacySettings = { displayName: 'public' | 'private'; bio: 'public' | 'private'; trackedOpportunityCount: 'public' | 'private' };
@@ -166,5 +165,6 @@ export function ProfileForm({ initialProfile }: { initialProfile: ProfileData })
 }
 
 function PrivacyRow({ label, description, value, onChange }: { label: string; description: string; value: 'public' | 'private'; onChange: (checked: boolean) => void }) {
-  return <div className="flex items-start justify-between gap-4 border-b border-border py-4 last:border-b-0"><div className="min-w-0"><p className="text-sm font-medium text-foreground">{label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p><p className="mt-1 text-xs font-medium text-foreground">{value === 'public' ? 'Public' : 'Private'}</p></div><Switch checked={value === 'public'} onCheckedChange={onChange} aria-label={`Make ${label.toLowerCase()} ${value === 'public' ? 'private' : 'public'}`} className="mt-1 min-h-11 min-w-11" /> </div>;
+  const controlLabel = `Make ${label.toLowerCase()} ${value === 'public' ? 'private' : 'public'}`;
+  return <div className="flex items-start justify-between gap-4 border-b border-border py-4 last:border-b-0"><div className="min-w-0"><p className="text-sm font-medium text-foreground">{label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p><p className="mt-1 text-xs font-medium text-foreground">{value === 'public' ? 'Public' : 'Private'}</p></div><button type="button" role="switch" aria-checked={value === 'public'} onClick={() => onChange(value !== 'public')} className={`relative mt-1 inline-flex min-h-11 min-w-11 shrink-0 items-center rounded-full border p-1 transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${value === 'public' ? 'border-primary bg-primary' : 'border-border bg-muted'}`}><span className={`size-4 rounded-full bg-white shadow-sm transition-transform ${value === 'public' ? 'translate-x-5' : 'translate-x-0'}`} /><span className="sr-only">{controlLabel}</span></button> </div>;
 }

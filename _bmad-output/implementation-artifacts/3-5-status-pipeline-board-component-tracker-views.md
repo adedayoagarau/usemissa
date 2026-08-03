@@ -22,7 +22,9 @@ GET /api/users/user_0001/tracker -> pipeline.submitted contains the item with co
   daysToDeadline, fit, and event history
 ```
 
-**Deviation from AC — partial, not done:** the AC calls for **pipeline, deadline, work-based, type, organization, and list views**. Only the **Pipeline view** is implemented (the default, and the one with the richest existing engine support via `getTracker()`). Deadline/work-based/type/organization/list views are view-mode toggles over the same underlying `TrackerView` data (no new API needed) but weren't built in the time available this session — marking this story `partial`, not `done`, so it isn't lost track of. Recommended next step: add a view-mode tab switcher above the board that re-groups `view.pipeline`'s flattened items client-side by the other five dimensions, since the data already contains everything needed (organizationName, type, deadline are all present on `TrackerItem`).
+The initial implementation started with Pipeline; Addendum 3 closed Calendar,
+Types, Organizations, and List, and Story 3.6 closes the Work view with a
+private Library link and owner-scoped persistence.
 
 **Addendum — re-verified after the globalThis singleton fix (see `bugfix-globalthis-singleton.md`):** the original verification above only exercised the `/api/users/:id/tracker` *route*, not the `/tracker` *page*. A cross-cutting bug (found later, while building Epic 6) meant a plain module-level singleton didn't reliably share state between Route Handlers and Page Server Components — so the page specifically was never actually confirmed to reflect a track/status change until the fix landed. Re-tested after the fix: `POST .../track` → `POST .../status` → `GET /tracker` (the page) now correctly shows the item in the Pipeline view with the right status. This story's `done`-adjacent claims are now fully page-level verified, not just API-level.
 
@@ -32,6 +34,7 @@ GET /api/users/user_0001/tracker -> pipeline.submitted contains the item with co
 
 Along the way, found `TrackerItem` (the domain type itself, in `packages/radar-engine/src/tracker/tracker.ts`) was **missing a `type` field** — `organizationName` and `deadline` were present for the Organization/Deadline views but the opportunity's type (grant/magazine/contest/etc.) needed for the Types view wasn't. Added it (`type: opp.fields.type` in `toItem()`), a small additive change to a public exported interface — verified no existing test broke (all 44 `radar-engine` tests still pass) and added a new assertion confirming the field carries the real value through.
 
-**Explicitly not implemented — "Work-Based View"** (the fifth view in `docs/missa-naming-decisions.md`'s Tracker views table): this requires linking a tracked opportunity to a specific creative Work the user submitted, which depends on the Library feature (Epic 5, not built) existing first — `TrackedOpportunity` has no work reference to group by today. Approximating it against opportunity data alone would misrepresent what the view is supposed to mean, so it's left out with this explanation rather than faked. Recommended to revisit once Epic 5 (Library) ships.
+Work-based linking is completed in Story 3.6 now that Library ownership and
+persistence are available; the Work tab groups linked and unassigned rows.
 
 Verified in the running app: all five tab labels (Pipeline/Calendar/Types/Organizations/List) render on the Tracker page with a real tracked item.

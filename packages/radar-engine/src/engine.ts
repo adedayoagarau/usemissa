@@ -62,7 +62,7 @@ import {
 } from './alerts/alerts.js';
 import { applyOrganizationOverride, approveClaim, rejectClaim, requestClaim } from './claims/claims.js';
 import { openTask, resolveConflicts, resolveTask, sweepForVerification, verificationQueue } from './verification/verification.js';
-import { deadlineReminders, overdueResponseAlerts, setMyStatus, track, trackerView, withdrawalSuggestionAlerts, type TrackerView } from './tracker/tracker.js';
+import { deadlineReminders, linkTrackedOpportunityToWork, overdueResponseAlerts, setMyStatus, track, trackerView, withdrawalSuggestionAlerts, type TrackerView } from './tracker/tracker.js';
 import { computeResponseStats, type ResponseStats } from './tracker/responseStats.js';
 import { buildIcsFeed } from './tracker/calendarFeed.js';
 import { isoDateOf } from './extraction/dates.js';
@@ -342,6 +342,10 @@ export class RadarEngine {
   /** Pipeline + deadline views and personal stats for the tracker UI. */
   getTracker(userId: string): TrackerView {
     return trackerView(this.ctx, userId);
+  }
+
+  linkTrackedOpportunityToWork(userId: string, opportunityId: string, workId?: string): TrackedOpportunity {
+    return linkTrackedOpportunityToWork(this.ctx, userId, opportunityId, workId);
   }
 
   propsForUser(userId: string): UserProp[] {

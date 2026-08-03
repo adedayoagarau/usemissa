@@ -62,6 +62,20 @@ test('tracker view: pipeline stages, deadline ordering, personal stats', async (
   assert.equal(view.pipeline.submitted[0].type, grant.fields.type);
 });
 
+test('tracked opportunities can be linked to an owned Library Work and grouped in the Work view', async () => {
+  const { engine, ids, magazine } = await trackedWorld();
+  engine.trackOpportunity(ids.userAda, magazine.id);
+  const work = engine.createLibraryWork(ids.userAda, { title: 'Night River' });
+  engine.linkTrackedOpportunityToWork(ids.userAda, magazine.id, work.id);
+  const linked = engine.store.tracked.find((row) => row.userId === ids.userAda && row.opportunityId === magazine.id)!;
+  assert.equal(linked.workId, work.id);
+  assert.equal(engine.getTracker(ids.userAda).pipeline.planning[0].workTitle, 'Night River');
+  engine.trackOpportunity(ids.userBen, magazine.id);
+  assert.throws(() => engine.linkTrackedOpportunityToWork(ids.userBen, magazine.id, work.id), /Work not found/);
+  engine.linkTrackedOpportunityToWork(ids.userAda, magazine.id);
+  assert.equal(linked.workId, undefined);
+});
+
 test('deadline reminder ladder fires at 7/3/1 days and stops after submission', async () => {
   const { engine, clock, ids, magazine } = await trackedWorld();
   engine.trackOpportunity(ids.userAda, magazine.id); // deadline 2026-03-01, today 2026-01-05

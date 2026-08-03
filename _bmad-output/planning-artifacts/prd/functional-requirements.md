@@ -30,8 +30,8 @@ Organized by capability area (matching the approved user-facing module names fro
 
 - FR19. Submitters can track any opportunity and record/update their own status through the full lifecycle vocabulary (Interested → … → Archived), independent of the opportunity's own status. **[Built]**
 - FR20. Every status change is recorded as an auditable `StatusEvent` with source (user/email/Missa-hosted/Radar/import) and confidence. **[Built]**
-- FR21. Submitters see pipeline, deadline, work-based, type, organization, and list views of their tracked opportunities. **[Partial]** — pipeline/deadline data exists in the engine; only a single flat tracker view is rendered today, not the full view set from `missa-naming-decisions.md`.
-- FR22. The system fires deadline reminders on a 7/3/1-day ladder, stopping once submitted. **[Partial]** (engine trigger and Inbox surface are built; outbound email/push delivery remains)
+- FR21. Submitters see pipeline, deadline, work-based, type, organization, and list views of their tracked opportunities. **[Built]** — the Work view links private Library Works to tracked opportunities with owner-scoped persistence.
+- FR22. The system fires deadline reminders on a 7/3/1-day ladder, stopping once submitted. **[Built]** — engine and Inbox alerts are delivered as idempotent Resend digests when outbound email is configured; missing provider configuration fails closed.
 - FR23. The system computes per-organization median/p90 response times and fires an overdue nudge once a submission exceeds the organization's typical response window. **[Built]**
 - FR24. On recording an acceptance, the system suggests (once, never automatically) withdrawing other active submissions for the same work. **[Built]**
 - FR25. Submitters can subscribe to a personal, token-scoped iCal feed of deadlines and expected-response events from any calendar client. **[Built]**
@@ -72,13 +72,13 @@ Organized by capability area (matching the approved user-facing module names fro
 ## Enterprise
 
 - FR50. Institutions can operate multiple Teams (the user-facing label for `entity`) under one Organization, with per-institution relabeling (Departments/Imprints/Chapters). **[Built]**
-- FR51. Enterprise admins can manage Seats and Members with role-based access (Owner/Admin, Team Admin, Program Manager, Reviewer, Finance, Legal, Viewer, Guest). **[Built — seat limits, role changes, revocation, and access capability mapping; SSO/SCIM remains FR52]**
+- FR51. Enterprise admins can manage Seats and Members with role-based access (Owner/Admin, Team Admin, Program Manager, Reviewer, Finance, Legal, Viewer, Guest). **[Built — seat limits, role changes, revocation, and access capability mapping]**
 - FR52. Enterprise institutions can enable SSO/SCIM for member provisioning. **[Partial — token-bound SCIM 2.0 provisioning is available for a configured organization; OIDC/SAML browser SSO remains provider-dependent]**
 
 ## Payments & Billing
 
-- FR53. Organizations can collect submission fees via Stripe, with Missa taking a 1.5%-capped-at-$1.50 fee per transaction. **[Partial — hosted Connect onboarding and signed account webhooks; fee checkout/finalization remains]**
-- FR54. Organizations are billed on a tiered subscription (Free/Indie/Pro/Program/Program Pro/Enterprise). **[Partial — Stripe Checkout, plan metadata, seat limits, and signed webhooks; Connect and self-serve cancellation remain]**
+- FR53. Organizations can collect submission fees via Stripe, with Missa taking a 1.5%-capped-at-$1.50 fee per transaction. **[Built for configured organizations — hosted Connect onboarding, signed webhooks, Checkout payment verification, and fee metadata are wired; production Stripe keys remain required]**
+- FR54. Organizations are billed on a tiered subscription (Free/Indie/Pro/Program/Program Pro/Enterprise). **[Partial — Stripe Checkout, plan metadata, seat limits, signed webhooks, and self-serve period-end cancellation are built; production plan price/provider configuration remains]**
 
 ## Import / Migration (Growth-tier, tracked here for completeness)
 

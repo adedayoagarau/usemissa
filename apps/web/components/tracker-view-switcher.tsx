@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { StatusPipelineBoard } from '@/components/status-pipeline-board';
 import { TrackerItemRow } from '@/components/tracker-item-row';
-import type { TrackerItem, PipelineStage, CustomList, CustomListMembership } from '@missa/radar-engine';
+import type { TrackerItem, PipelineStage, CustomList, CustomListMembership, LibraryWork } from '@missa/radar-engine';
 
-type ViewMode = 'pipeline' | 'deadline' | 'type' | 'organization' | 'list';
+type ViewMode = 'pipeline' | 'deadline' | 'work' | 'type' | 'organization' | 'list';
 
 const VIEW_LABEL: Record<ViewMode, string> = {
   pipeline: 'Pipeline',
   deadline: 'Calendar',
+  work: 'Works',
   type: 'Types',
   organization: 'Organizations',
   list: 'List',
@@ -32,12 +33,8 @@ function groupBy<T>(items: T[], key: (item: T) => string): [string, T[]][] {
  * Calendar (deadline-sorted) / Types / Organizations / List. All re-group the
  * SAME already-fetched TrackerView data client-side -- no extra API calls.
  *
- * "Work-Based View" (also in that table) is intentionally NOT implemented
- * here: it requires linking a tracked opportunity to a specific creative
- * Work the user submitted, which depends on the Library feature (Epic 5,
- * not built) existing first -- TrackedOpportunity has no work reference to
- * group by today. Faking it against opportunity data alone would misrepresent
- * what the view actually means, so it's left out rather than approximated.
+ * The Work view is backed by an owner-scoped Library Work link on each tracked
+ * row; unassigned rows stay visible under "Unassigned" rather than being lost.
  */
 export function TrackerViewSwitcher({
   userId,
@@ -45,16 +42,18 @@ export function TrackerViewSwitcher({
   allItems,
   lists,
   memberships,
+  works,
 }: {
   userId: string;
   pipeline: Record<PipelineStage, TrackerItem[]>;
   allItems: TrackerItem[];
   lists: CustomList[];
   memberships: CustomListMembership[];
+  works: LibraryWork[];
 }) {
   const [mode, setMode] = useState<ViewMode>('pipeline');
   const [listId, setListId] = useState<string>('all');
-  const modes: ViewMode[] = ['pipeline', 'deadline', 'type', 'organization', 'list'];
+  const modes: ViewMode[] = ['pipeline', 'deadline', 'work', 'type', 'organization', 'list'];
 
   return (
     <div>
@@ -68,7 +67,7 @@ export function TrackerViewSwitcher({
         </TabsList>
       </Tabs>
 
-      {mode === 'pipeline' && <StatusPipelineBoard userId={userId} pipeline={pipeline} />}
+      {mode === 'pipeline' && <StatusPipelineBoard userId={userId} pipeline={pipeline} works={works} />}
 
       {mode === 'deadline' &&
         (() => {
@@ -78,12 +77,23 @@ export function TrackerViewSwitcher({
           return (
             <div className="mt-4 space-y-2">
               {withDeadline.map((item) => (
-                <TrackerItemRow key={item.opportunityId} userId={userId} item={item} />
+                <TrackerItemRow key={item.opportunityId} userId={userId} item={item} works={works} />
               ))}
               {withDeadline.length === 0 && <p className="text-muted-foreground">Nothing with a deadline tracked.</p>}
             </div>
           );
         })()}
+
+      {mode === 'work' &&
+        <>
+          {groupBy(allItems, (item) => item.workTitle ?? 'Unassigned').map(([work, items]) => (
+            <div key={work} className="mt-6">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{work} ({items.length})</h2>
+              <div className="mt-2 space-y-2">{items.map((item) => <TrackerItemRow key={item.opportunityId} userId={userId} item={item} works={works} />)}</div>
+            </div>
+          ))}
+          {works.length === 0 && <p className="mt-4 text-sm text-muted-foreground">Add a Work in Library to connect submissions to the piece you sent.</p>}
+        </>}
 
       {mode === 'type' &&
         groupBy(allItems, (i) => i.type).map(([type, items]) => (
@@ -92,8 +102,8 @@ export function TrackerViewSwitcher({
               {type} ({items.length})
             </h2>
             <div className="mt-2 space-y-2">
-              {items.map((item) => (
-                <TrackerItemRow key={item.opportunityId} userId={userId} item={item} />
+                {items.map((item) => (
+                <TrackerItemRow key={item.opportunityId} userId={userId} item={item} works={works} />
               ))}
             </div>
           </div>
@@ -106,8 +116,8 @@ export function TrackerViewSwitcher({
               {org} ({items.length})
             </h2>
             <div className="mt-2 space-y-2">
-              {items.map((item) => (
-                <TrackerItemRow key={item.opportunityId} userId={userId} item={item} />
+                {items.map((item) => (
+                <TrackerItemRow key={item.opportunityId} userId={userId} item={item} works={works} />
               ))}
             </div>
           </div>
@@ -120,7 +130,7 @@ export function TrackerViewSwitcher({
             {lists.map((list) => <button type="button" key={list.id} onClick={() => setListId(list.id)} className={`min-h-11 rounded-md border px-3 text-sm ${listId === list.id ? 'border-primary bg-accent-tint' : 'border-border'}`}>{list.name}</button>)}
           </div>
           {(listId === 'all' ? allItems : allItems.filter((item) => memberships.some((membership) => membership.listId === listId && membership.opportunityId === item.opportunityId))).map((item) => (
-            <TrackerItemRow key={item.opportunityId} userId={userId} item={item} />
+            <TrackerItemRow key={item.opportunityId} userId={userId} item={item} works={works} />
           ))}
           {listId !== 'all' && !allItems.some((item) => memberships.some((membership) => membership.listId === listId && membership.opportunityId === item.opportunityId)) && <p className="text-sm text-muted-foreground">No opportunities in this List yet.</p>}
         </div>
