@@ -65,14 +65,17 @@ create table if not exists submissions (
   ,payment_status text not null default 'not-required'
   ,payment_session_id text
   ,fee_cents integer
+  ,idempotency_key text
   ,answers jsonb
   ,category text
 );
 alter table submissions add column if not exists payment_status text not null default 'not-required';
 alter table submissions add column if not exists payment_session_id text;
 alter table submissions add column if not exists fee_cents integer;
+alter table submissions add column if not exists idempotency_key text;
 alter table submissions add column if not exists answers jsonb;
 alter table submissions add column if not exists category text;
+create unique index if not exists submissions_submitter_path_idempotency_idx on submissions (submitter_account_id, submission_path_id, idempotency_key) where idempotency_key is not null;
 
 create table if not exists works (
   id text primary key,

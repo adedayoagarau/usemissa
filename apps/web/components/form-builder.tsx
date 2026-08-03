@@ -15,9 +15,17 @@ const FIELD_TYPE_LABEL: Record<FieldType, string> = {
 };
 
 interface DraftField {
+  id?: string;
   type: FieldType;
   label: string;
   required: boolean;
+}
+
+interface ExistingPath {
+  id: string;
+  categories: string[];
+  fields: Array<{ id: string; type: FieldType; label: string; required: boolean; order: number }>;
+  feeCents?: number;
 }
 
 /**
@@ -27,10 +35,11 @@ interface DraftField {
  * never says "Submission Path" -- this component's own labels say "form"
  * and "categories", per docs/missa-naming-decisions.md.
  */
-export function FormBuilder({ organizationId, openCallId }: { organizationId: string; openCallId: string }) {
+export function FormBuilder({ organizationId, openCallId, existingPath }: { organizationId: string; openCallId: string; existingPath?: ExistingPath }) {
   const router = useRouter();
-  const [categories, setCategories] = useState('');
-  const [fields, setFields] = useState<DraftField[]>([{ type: 'file-upload', label: 'Manuscript', required: true }]);
+  const [categories, setCategories] = useState(existingPath?.categories.join(', ') ?? '');
+  const [feeCents, setFeeCents] = useState(existingPath?.feeCents ? String(existingPath.feeCents / 100) : '');
+  const [fields, setFields] = useState<DraftField[]>(existingPath?.fields.slice().sort((a, b) => a.order - b.order).map(({ id, type, label, required }) => ({ id, type, label, required })) ?? [{ type: 'file-upload', label: 'Manuscript', required: true }]);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -50,11 +59,13 @@ export function FormBuilder({ organizationId, openCallId }: { organizationId: st
     setError(null);
     startTransition(async () => {
       const res = await fetch(`/api/orgs/${organizationId}/open-calls/${openCallId}/submission-paths`, {
-        method: 'POST',
+        method: existingPath ? 'PATCH' : 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          pathId: existingPath?.id,
           categories: categories.split(',').map((c) => c.trim()).filter(Boolean),
           fields,
+          feeCents: feeCents.trim() ? Math.round(Number(feeCents) * 100) : undefined,
         }),
       });
       if (!res.ok) {
@@ -68,13 +79,14 @@ export function FormBuilder({ organizationId, openCallId }: { organizationId: st
 
   return (
     <div className="mt-2 rounded-md border border-dashed border-border p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Form & categories</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{existingPath ? 'Edit form & categories' : 'Form & categories'}</p>
       <Input
         className="mt-2"
         placeholder="Categories (comma-separated, e.g. fiction, poetry)"
         value={categories}
         onChange={(e) => setCategories(e.target.value)}
       />
+      <Input className="mt-2" type="number" min="0" step="0.01" placeholder="Application fee in USD (optional)" value={feeCents} onChange={(e) => setFeeCents(e.target.value)} />
       <div className="mt-3 space-y-2">
         {fields.map((field, i) => (
           <div key={i} className="flex items-center gap-2">

@@ -23,6 +23,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   if (!path) return NextResponse.json({ error: 'Unknown submission form' }, { status: 404 });
   const openCall = workspace.store.openCalls.get(path.openCallId);
   if (!openCall || openCall.status !== 'published') return NextResponse.json({ error: 'This submission form is not open' }, { status: 409 });
+  const idempotencyKey = request.headers.get('Idempotency-Key')?.trim().slice(0, 200) || undefined;
+  if (idempotencyKey) {
+    const existing = [...workspace.store.submissions.values()].find((candidate) => candidate.submissionPathId === pathId && candidate.submitterAccountId === session.account.id && candidate.idempotencyKey === idempotencyKey);
+    if (existing) return NextResponse.json({ submission: existing, works: workspace.worksForSubmission(existing.id), trackerLinked: false, idempotent: true }, { status: 200 });
+  }
   if (body.works.some((work: unknown) => !work || typeof work !== 'object' || typeof (work as { title?: unknown }).title !== 'string' || !(work as { title: string }).title.trim())) {
     return NextResponse.json({ error: 'Each work needs a title' }, { status: 400 });
   }
@@ -56,7 +61,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
 
   const engine = workspace;
   try {
-    const submission = engine.createSubmission(pathId, session.account.id, body.works, payment, { answers: normalizedAnswers, category: category || undefined });
+    const submission = engine.createSubmission(pathId, session.account.id, body.works, payment, { answers: normalizedAnswers, category: category || undefined, idempotencyKey });
     await persistWorkspace();
     const radar = await getEngine();
     const userId = session.account.userId;
@@ -65,7 +70,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
       radar.setMyStatus(userId, linkedOpportunityId, 'submitted', { source: 'user', note: `Missa submission ${submission.id}` });
       await persistRadar();
     }
-    return NextResponse.json({ submission, works: engine.worksForSubmission(submission.id), trackerLinked: Boolean(userId && linkedOpportunityId) }, { status: 201 });
+    return NextResponse.json({ submission, works: engine.worksForSubmission(submission.id), trackerLinked: Boolean(userId && linkedOpportunityId), idempotent: false }, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'failed' }, { status: 404 });
   }

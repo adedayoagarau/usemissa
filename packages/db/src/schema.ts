@@ -164,6 +164,7 @@ export const submissions = pgTable(
       .defaultNow(),
     answers: jsonb("answers").$type<Record<string, string | string[]>>(),
     category: text("category"),
+    idempotencyKey: text("idempotency_key"),
     updatedAt,
   },
   (table) => [
@@ -172,6 +173,7 @@ export const submissions = pgTable(
       table.status,
     ),
     index("submissions_submitter_idx").on(table.submitterAccountId),
+    uniqueIndex("submissions_submitter_path_idempotency_idx").on(table.submitterAccountId, table.submissionPathId, table.idempotencyKey),
     check(
       "submissions_status_check",
       sql`${table.status} in ('submitted', 'in-review', 'decided', 'withdrawn')`,

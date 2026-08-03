@@ -106,6 +106,31 @@ test('createSubmission rejects zero works', () => {
   assert.throws(() => engine.createSubmission(path.id, 'acct1', []));
 });
 
+test('createSubmission returns the existing packet for a repeated idempotency key', () => {
+  const engine = new WorkspaceEngine();
+  const entity = engine.createEntity('org1', 'Acme');
+  const program = engine.createProgram(entity.id, 'Program');
+  const call = engine.createOpenCall(program.id, 'Call');
+  const path = engine.createSubmissionPath(call.id, [], []);
+  const first = engine.createSubmission(path.id, 'acct1', [{ title: 'First' }], undefined, { idempotencyKey: 'submit-123' });
+  const replay = engine.createSubmission(path.id, 'acct1', [{ title: 'Different retry payload' }], undefined, { idempotencyKey: 'submit-123' });
+
+  assert.equal(replay.id, first.id);
+  assert.equal(engine.store.submissions.size, 1);
+  assert.equal(engine.worksForSubmission(first.id).length, 1);
+});
+
+test('submitters can withdraw an undecided submission, but not a decided one', () => {
+  const engine = new WorkspaceEngine();
+  const entity = engine.createEntity('org1', 'Acme');
+  const program = engine.createProgram(entity.id, 'Program');
+  const call = engine.createOpenCall(program.id, 'Call');
+  const path = engine.createSubmissionPath(call.id, [], []);
+  const submission = engine.createSubmission(path.id, 'acct1', [{ title: 'Work' }]);
+  assert.equal(engine.withdrawSubmission(submission.id, 'acct1').status, 'withdrawn');
+  assert.throws(() => engine.withdrawSubmission(submission.id, 'acct2'));
+});
+
 test('Story 7.1: submissionsForOrganization walks Org -> Entity -> Program -> OpenCall -> Submission (drafts included)', () => {
   const engine = new WorkspaceEngine();
   const entity = engine.createEntity('org1', 'Acme Magazine');

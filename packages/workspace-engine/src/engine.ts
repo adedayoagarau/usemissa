@@ -199,6 +199,22 @@ export class WorkspaceEngine {
     );
   }
 
+  updateSubmissionPath(
+    submissionPathId: string,
+    input: {
+      categories: string[];
+      fields: Array<Omit<SubmissionField, 'id' | 'order'> & { id?: string; order?: number }>;
+      feeCents?: number;
+    },
+  ): SubmissionPath {
+    const path = this.store.submissionPaths.get(submissionPathId);
+    if (!path) throw new Error(`Unknown submission path: ${submissionPathId}`);
+    path.categories = input.categories;
+    path.feeCents = input.feeCents;
+    path.fields = input.fields.map((field, index) => ({ ...field, id: field.id ?? this.ids.next('field'), order: field.order ?? index }));
+    return path;
+  }
+
   /** Creates a Submission with one or more Works in one step -- the item-
    * level decision model (see domain/types.ts's ADR) means a Submission is
    * never created without at least one Work under it. */
@@ -207,12 +223,21 @@ export class WorkspaceEngine {
     submitterAccountId: string,
     works: Array<{ title: string; fileUrl?: string }>,
     payment?: { status: 'not-required' | 'paid'; sessionId?: string; feeCents?: number },
-    details?: { answers?: Record<string, string | string[]>; category?: string },
+    details?: { answers?: Record<string, string | string[]>; category?: string; idempotencyKey?: string },
   ): Submission {
     if (!this.store.submissionPaths.has(submissionPathId))
       throw new Error(`Unknown submission path: ${submissionPathId}`);
     if (works.length === 0)
       throw new Error("A submission needs at least one work");
+
+    if (details?.idempotencyKey) {
+      const existing = [...this.store.submissions.values()].find((candidate) =>
+        candidate.submissionPathId === submissionPathId &&
+        candidate.submitterAccountId === submitterAccountId &&
+        candidate.idempotencyKey === details.idempotencyKey,
+      );
+      if (existing) return existing;
+    }
 
     const submission: Submission = {
       id: this.ids.next("submission"),
@@ -223,6 +248,7 @@ export class WorkspaceEngine {
       paymentStatus: payment?.status ?? 'not-required',
       paymentSessionId: payment?.sessionId,
       feeCents: payment?.feeCents,
+      idempotencyKey: details?.idempotencyKey,
       answers: details?.answers,
       category: details?.category,
     };
@@ -246,6 +272,15 @@ export class WorkspaceEngine {
     return [...this.store.works.values()]
       .filter((w) => w.submissionId === submissionId)
       .sort((a, b) => a.order - b.order);
+  }
+
+  withdrawSubmission(submissionId: string, submitterAccountId: string): Submission {
+    const submission = this.store.submissions.get(submissionId);
+    if (!submission || submission.submitterAccountId !== submitterAccountId) throw new Error('Submission not found');
+    if (['accepted', 'declined', 'waitlisted', 'partially-accepted', 'mixed'].includes(submission.status)) throw new Error('A decided submission cannot be withdrawn');
+    submission.status = 'withdrawn';
+    this.store.auditLog.push({ id: this.ids.next('audit'), at: this.now(), accountId: submitterAccountId, action: 'submission.withdrawn', targetType: 'submission', targetId: submission.id });
+    return submission;
   }
 
   submissionsForOpenCall(openCallId: string): Submission[] {

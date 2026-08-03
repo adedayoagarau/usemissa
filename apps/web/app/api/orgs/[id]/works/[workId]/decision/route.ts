@@ -13,6 +13,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!(outcomes as readonly string[]).includes(body.outcome)) return NextResponse.json({ error: 'outcome must be accepted, declined, or waitlisted' }, { status: 400, headers });
   try {
     const decision = result.access.workspace.recordDecision(id, workId, body.outcome, result.access.session.account.id);
+    const work = result.access.workspace.store.works.get(workId);
+    const submission = work ? result.access.workspace.store.submissions.get(work.submissionId) : undefined;
+    const path = submission ? result.access.workspace.store.submissionPaths.get(submission.submissionPathId) : undefined;
+    const openCall = path ? result.access.workspace.store.openCalls.get(path.openCallId) : undefined;
+    const submitter = submission ? result.access.radar.store.accounts.get(submission.submitterAccountId) : undefined;
+    const trackerStatus = body.outcome === 'accepted' ? 'accepted' : body.outcome === 'declined' ? 'declined' : 'waitlisted';
+    if (submitter?.userId && openCall?.radarOpportunityId && result.access.radar.store.opportunities.has(openCall.radarOpportunityId)) {
+      result.access.radar.setMyStatus(submitter.userId, openCall.radarOpportunityId, trackerStatus, { source: 'radar', note: `Organization decision for Work ${workId}` });
+    }
     await persistOrganizationMutation(result.access, { action: 'decision.recorded', targetType: 'work_decision', targetId: decision.id, detail: { workId, outcome: decision.outcome } });
     return NextResponse.json(decision, { headers });
   } catch (error) {

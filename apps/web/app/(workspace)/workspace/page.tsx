@@ -88,14 +88,7 @@ export default async function WorkspacePage() {
                           {call.status === 'draft' && <PublishButton organizationId={organizationId} openCallId={call.id} />}
                         </div>
                         <OpenCallControls organizationId={organizationId} openCall={call} />
-                        {call.submissionPaths.length === 0 ? (
-                          <FormBuilder organizationId={organizationId} openCallId={call.id} />
-                        ) : (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Form saved · {call.submissionPaths[0].categories.join(', ') || 'no categories'} ·{' '}
-                            {call.submissionPaths[0].fields.length} field(s)
-                          </p>
-                        )}
+                        <FormBuilder organizationId={organizationId} openCallId={call.id} existingPath={call.submissionPaths[0]} />
                       </div>
                     ))}
                   </div>
