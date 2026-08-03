@@ -67,6 +67,7 @@ import { computeResponseStats, type ResponseStats } from './tracker/responseStat
 import { buildIcsFeed } from './tracker/calendarFeed.js';
 import { isoDateOf } from './extraction/dates.js';
 import { commitTrackerImport as applyTrackerImport, type ImportDecision, type TrackerImportPlan, type TrackerImportResult } from './import/trackerImport.js';
+import { propsForUser, type UserProp } from './props/props.js';
 import { cleanupEmailCandidates as cleanupEmailReviewCandidates, createOrGetForwardingAddress, forwardingAddressView, ingestInboundEmail, listEmailCandidates, reviewEmailCandidate, revokeForwardingAddress, rotateForwardingAddress, setForwardingAddressStatus, type EmailReviewDecision, type IngestResult, type ForwardingAddressView } from './email/emailForwarding.js';
 import type { EmailReviewCandidate } from './domain/types.js';
 import type { GmailConnection, GmailMode, GmailSyncJob, GmailSyncTrigger, InboundEmailEnvelope } from './domain/types.js';
@@ -341,6 +342,10 @@ export class RadarEngine {
   /** Pipeline + deadline views and personal stats for the tracker UI. */
   getTracker(userId: string): TrackerView {
     return trackerView(this.ctx, userId);
+  }
+
+  propsForUser(userId: string): UserProp[] {
+    return propsForUser(this.store, userId);
   }
 
   commitTrackerImport(userId: string, plan: TrackerImportPlan, decisions: Record<string, ImportDecision | { action: ImportDecision; opportunityId?: string }>, now = this.clock.now(), sourceHash = ''): TrackerImportResult {

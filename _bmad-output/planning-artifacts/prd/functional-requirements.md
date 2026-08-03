@@ -88,6 +88,6 @@ Organized by capability area (matching the approved user-facing module names fro
 
 ## Props (Gamification)
 
-- FR58. The system surfaces tasteful, non-cruel positive-reinforcement moments ("Props") on submitter milestones, with explicit rules against language that could feel punitive around rejection. **[Not built]**
+- FR58. The system surfaces tasteful, non-cruel positive-reinforcement moments ("Props") on submitter milestones, with explicit rules against language that could feel punitive around rejection. **[Built — private progress projection and Profile surface]**
 
 ---

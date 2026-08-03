@@ -633,6 +633,8 @@ Covers FR55–57. Story 12.1 delivers a bounded Submittable-style/open-call CSV
 preview and commit flow with an explicit Import Report. Google Forms, Airtable,
 and guideline URL/PDF adapters remain separate provider stories.
 
-## Epic 13: Props / Gamification *(Growth — stub)*
+## Epic 13: Props / Gamification *(Growth)*
 
-Covers FR58. Reserved scope: milestone-based positive reinforcement moments, explicitly designed against the naming decision doc's anti-cruelty rules around rejection language. Not detailed now — genuinely lowest priority per the PRD's own "Do Not Build Early" list adjacency, though not literally on that list.
+Covers FR58. Story 13.1 provides a private, descriptive progress projection for
+submitter milestones. It is deliberately not a leaderboard, score, streak, or
+negative outcome mechanic.

@@ -120,5 +120,6 @@ development_status:
   12-1-open-call-csv-import: review
   epic-12-retrospective: optional
 
-  epic-13: backlog
+  epic-13: in-progress
+  13-1-private-progress-props: review
   epic-13-retrospective: optional
