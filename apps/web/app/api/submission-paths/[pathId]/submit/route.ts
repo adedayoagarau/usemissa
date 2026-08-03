@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
 import { getWorkspaceEngine, persistWorkspace } from '@/lib/workspaceEngine';
+import { getEngine, persistRadar } from '@/lib/engine';
 
 /**
  * Story 6.5: submitter file upload against a Submission Path.
@@ -26,6 +27,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     return NextResponse.json({ error: 'Each work needs a title' }, { status: 400 });
   }
 
+  const category = typeof body.category === 'string' ? body.category.trim() : '';
+  if (category && !path.categories.includes(category)) return NextResponse.json({ error: 'Choose a valid category' }, { status: 400 });
+  const answers = body.answers && typeof body.answers === 'object' && !Array.isArray(body.answers) ? body.answers as Record<string, unknown> : {};
+  const normalizedAnswers: Record<string, string | string[]> = {};
+  for (const field of path.fields) {
+    const value = answers[field.id];
+    if (field.type === 'category-select') {
+      if (field.required && !category) return NextResponse.json({ error: `${field.label} is required` }, { status: 400 });
+      continue;
+    }
+    if (field.type === 'fee-toggle') continue;
+    const normalized = Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean) : typeof value === 'string' ? value.trim() : '';
+    if (field.required && (!normalized || (Array.isArray(normalized) && normalized.length === 0))) return NextResponse.json({ error: `${field.label} is required` }, { status: 400 });
+    if (normalized && (!Array.isArray(normalized) || normalized.length > 0)) normalizedAnswers[field.id] = normalized;
+  }
+
   let payment: { status: 'not-required' | 'paid'; sessionId?: string; feeCents?: number } = { status: 'not-required' };
   if (path.feeCents && path.feeCents > 0) {
     const paymentSessionId = typeof body.paymentSessionId === 'string' ? body.paymentSessionId : '';
@@ -39,9 +56,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
 
   const engine = workspace;
   try {
-    const submission = engine.createSubmission(pathId, session.account.id, body.works, payment);
+    const submission = engine.createSubmission(pathId, session.account.id, body.works, payment, { answers: normalizedAnswers, category: category || undefined });
     await persistWorkspace();
-    return NextResponse.json({ submission, works: engine.worksForSubmission(submission.id) }, { status: 201 });
+    const radar = await getEngine();
+    const userId = session.account.userId;
+    const linkedOpportunityId = openCall.radarOpportunityId;
+    if (userId && linkedOpportunityId && radar.store.opportunities.has(linkedOpportunityId)) {
+      radar.setMyStatus(userId, linkedOpportunityId, 'submitted', { source: 'user', note: `Missa submission ${submission.id}` });
+      await persistRadar();
+    }
+    return NextResponse.json({ submission, works: engine.worksForSubmission(submission.id), trackerLinked: Boolean(userId && linkedOpportunityId) }, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'failed' }, { status: 404 });
   }

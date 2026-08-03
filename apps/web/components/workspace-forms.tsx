@@ -58,11 +58,12 @@ export function CreateProgramForm({ organizationId, entityId }: { organizationId
   );
 }
 
-export function CreateOpenCallForm({ organizationId, programId }: { organizationId: string; programId: string }) {
-  const { onSubmit, isPending, error } = useSubmit(`/api/orgs/${organizationId}/open-calls`, (fd) => ({ programId, title: fd.get('title') }));
+export function CreateOpenCallForm({ organizationId, programId, radarOpportunities = [] }: { organizationId: string; programId: string; radarOpportunities?: Array<{ id: string; title: string }> }) {
+  const { onSubmit, isPending, error } = useSubmit(`/api/orgs/${organizationId}/open-calls`, (fd) => ({ programId, title: fd.get('title'), radarOpportunityId: fd.get('radarOpportunityId') || undefined }));
   return (
-    <form onSubmit={onSubmit} className="flex items-end gap-2">
+    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
       <input name="title" placeholder="Open call title" required className="rounded-md border border-input px-2 py-1 text-sm" />
+      {radarOpportunities.length > 0 && <select name="radarOpportunityId" defaultValue="" className="min-h-9 rounded-md border border-input bg-white px-2 py-1 text-xs"><option value="">Link a claimed opportunity (optional)</option>{radarOpportunities.map((opportunity) => <option key={opportunity.id} value={opportunity.id}>{opportunity.title}</option>)}</select>}
       <Button size="sm" variant="outline" type="submit" disabled={isPending}>
         Create Open Call
       </Button>

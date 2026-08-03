@@ -162,6 +162,8 @@ export const submissions = pgTable(
     submittedAt: timestamp("submitted_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    answers: jsonb("answers").$type<Record<string, string | string[]>>(),
+    category: text("category"),
     updatedAt,
   },
   (table) => [

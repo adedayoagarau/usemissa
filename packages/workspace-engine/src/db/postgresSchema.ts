@@ -65,10 +65,14 @@ create table if not exists submissions (
   ,payment_status text not null default 'not-required'
   ,payment_session_id text
   ,fee_cents integer
+  ,answers jsonb
+  ,category text
 );
 alter table submissions add column if not exists payment_status text not null default 'not-required';
 alter table submissions add column if not exists payment_session_id text;
 alter table submissions add column if not exists fee_cents integer;
+alter table submissions add column if not exists answers jsonb;
+alter table submissions add column if not exists category text;
 
 create table if not exists works (
   id text primary key,

@@ -28,6 +28,7 @@ const NAV_LINKS = [
   { href: '/home', label: 'Home' },
   { href: '/opportunities', label: 'Opportunities' },
   { href: '/tracker', label: 'Tracker' },
+  { href: '/my-submissions', label: 'Submissions' },
   { href: '/library', label: 'Library' },
   { href: '/calendar', label: 'Calendar' },
   { href: '/messages', label: 'Messages' },
@@ -96,6 +97,7 @@ export function AppNav({ email, userId }: { email: string; userId?: string }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {userId && <DropdownMenuItem render={<Link href="/profile" />}>Profile</DropdownMenuItem>}
+          {userId && <DropdownMenuItem render={<Link href="/workspace" />}>Workspace</DropdownMenuItem>}
           <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

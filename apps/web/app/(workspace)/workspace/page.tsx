@@ -29,6 +29,7 @@ export default async function WorkspacePage() {
   const organizationId = session.memberships[0].organizationId;
   const radarEngine = await getEngine();
   const org = radarEngine.store.organizations.get(organizationId);
+  const radarOpportunities = [...radarEngine.store.opportunities.values()].filter((opportunity) => opportunity.claimedByOrganizationId === organizationId).map((opportunity) => ({ id: opportunity.id, title: opportunity.fields.title }));
   const workspaceEngine = await getWorkspaceEngine();
   const entities = workspaceEngine.entitiesForOrganization(organizationId).map((e) => ({
     ...e,
@@ -74,7 +75,7 @@ export default async function WorkspacePage() {
                 <div key={program.id} className="rounded-md border border-border bg-background p-3">
                   <h3 className="font-heading text-base font-medium text-foreground">{program.name}</h3>
                   <div className="mt-2">
-                    <CreateOpenCallForm organizationId={organizationId} programId={program.id} />
+                    <CreateOpenCallForm organizationId={organizationId} programId={program.id} radarOpportunities={radarOpportunities} />
                   </div>
                   <div className="mt-2 space-y-3">
                     {program.openCalls.map((call) => (

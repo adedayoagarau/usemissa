@@ -84,13 +84,15 @@ test('Story 6.5: submitting creates a Submission with one or more Works (item-le
   const submission = engine.createSubmission(path.id, 'acct1', [
     { title: 'Poem A', fileUrl: 'https://example.com/a.pdf' },
     { title: 'Poem B', fileUrl: 'https://example.com/b.pdf' },
-  ]);
+  ], undefined, { category: 'poetry', answers: { bio: 'A short bio', manuscript: 'https://example.com/a.pdf' } });
 
   assert.equal(submission.status, 'submitted');
   const works = engine.worksForSubmission(submission.id);
   assert.equal(works.length, 2);
   assert.equal(works[0].title, 'Poem A');
   assert.equal(works[1].title, 'Poem B');
+  assert.equal(submission.category, 'poetry');
+  assert.deepEqual(submission.answers, { bio: 'A short bio', manuscript: 'https://example.com/a.pdf' });
   assert.deepEqual(engine.submissionsForOpenCall(openCall.id), [submission]);
 });
 

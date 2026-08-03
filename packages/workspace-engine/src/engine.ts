@@ -187,6 +187,7 @@ export class WorkspaceEngine {
     submitterAccountId: string,
     works: Array<{ title: string; fileUrl?: string }>,
     payment?: { status: 'not-required' | 'paid'; sessionId?: string; feeCents?: number },
+    details?: { answers?: Record<string, string | string[]>; category?: string },
   ): Submission {
     if (!this.store.submissionPaths.has(submissionPathId))
       throw new Error(`Unknown submission path: ${submissionPathId}`);
@@ -202,6 +203,8 @@ export class WorkspaceEngine {
       paymentStatus: payment?.status ?? 'not-required',
       paymentSessionId: payment?.sessionId,
       feeCents: payment?.feeCents,
+      answers: details?.answers,
+      category: details?.category,
     };
     this.store.submissions.set(submission.id, submission);
 

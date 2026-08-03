@@ -39,7 +39,7 @@ export default async function OpenCallDetailPage({
         <p className="mt-4 text-muted-foreground">This call doesn&apos;t have a submission form yet.</p>
       ) : !session ? (
         <p className="mt-4 text-muted-foreground">
-          <Link href="/login" className="text-primary underline-offset-2 hover:underline">
+          <Link href={`/login?next=${encodeURIComponent(`/org/${organizationId}/${openCallId}`)}`} className="text-primary underline-offset-2 hover:underline">
             Log in
           </Link>{' '}
           to submit.

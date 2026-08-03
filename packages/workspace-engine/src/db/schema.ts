@@ -67,6 +67,8 @@ export const submissions = pgTable('submissions', {
   paymentStatus: text('payment_status').notNull().default('not-required'),
   paymentSessionId: text('payment_session_id'),
   feeCents: integer('fee_cents'),
+  answers: jsonb('answers').$type<Record<string, string | string[]>>(),
+  category: text('category'),
 });
 
 export const works = pgTable('works', {

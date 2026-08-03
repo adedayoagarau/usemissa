@@ -124,6 +124,10 @@ export interface Submission {
   paymentStatus?: 'not-required' | 'paid';
   paymentSessionId?: string;
   feeCents?: number;
+  /** Applicant answers keyed by the saved form field id. File answers store
+   * opaque private Blob URLs; work files remain represented on Work. */
+  answers?: Record<string, string | string[]>;
+  category?: string;
 }
 
 export interface Work {
