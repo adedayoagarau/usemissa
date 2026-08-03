@@ -63,7 +63,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
     <div className={styles.shell}>
       <section className={styles.browse}>
         <header className="px-6 pb-5 pt-7 lg:px-8">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Passport</p>
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Opportunities</p>
           <h1 className="mt-2 text-[2rem] font-semibold tracking-[-0.035em] text-foreground">Explore opportunities</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Find calls for submissions, grants, awards, and more. Track what fits and submit with confidence.</p>
         </header>
