@@ -21,9 +21,9 @@ Organized by capability area (matching the approved user-facing module names fro
 ## Opportunities & Fit (submitter-facing)
 
 - FR14. Submitters can browse/discover open opportunities with organization, type, deadline, trust score, and status visible. **[Built]** (via `renderDiscover`/`/api/users/:id/discover`)
-- FR15. Submitters can define saved-search profiles (type, genre, discipline, location, fee ceiling, no-fee-only, verified-only, deadline window, keywords, career stage). **[Built]** (`RadarProfile`, engine-level; UI for creating/editing profiles not yet exposed)
+- FR15. Submitters can define saved-search profiles (type, genre, discipline, location, fee ceiling, no-fee-only, verified-only, deadline window, keywords, career stage). **[Built — Profile exposes saved-search create/delete controls]**
 - FR16. Every match against a submitter's profile shows a self-explaining Fit Score (Strong/Possible/Weak/Not Eligible/Unknown) with reasons, watch-outs, and hard disqualifiers. **[Built]**
-- FR17. Submitters can follow organizations to receive alerts on new calls, openings, deadline changes, results, and new categories. **[Built]** (engine-level; no dedicated "Following" management UI)
+- FR17. Submitters can follow organizations to receive alerts on new calls, openings, deadline changes, results, and new categories. **[Built — Profile exposes following management]**
 - FR18. Submitters receive a digest inbox (new for you, opening soon, closing soon, recently updated, from followed orgs, reminders, overdue, withdrawal suggestions) with a reason attached to every item. **[Built]**
 
 ## Tracker (submitter-facing "Tracker")
@@ -31,16 +31,16 @@ Organized by capability area (matching the approved user-facing module names fro
 - FR19. Submitters can track any opportunity and record/update their own status through the full lifecycle vocabulary (Interested → … → Archived), independent of the opportunity's own status. **[Built]**
 - FR20. Every status change is recorded as an auditable `StatusEvent` with source (user/email/Missa-hosted/Radar/import) and confidence. **[Built]**
 - FR21. Submitters see pipeline, deadline, work-based, type, organization, and list views of their tracked opportunities. **[Partial]** — pipeline/deadline data exists in the engine; only a single flat tracker view is rendered today, not the full view set from `missa-naming-decisions.md`.
-- FR22. The system fires deadline reminders on a 7/3/1-day ladder, stopping once submitted. **[Built]** (engine-level trigger logic; not yet wired to an actual email/push delivery channel)
+- FR22. The system fires deadline reminders on a 7/3/1-day ladder, stopping once submitted. **[Partial]** (engine trigger and Inbox surface are built; outbound email/push delivery remains)
 - FR23. The system computes per-organization median/p90 response times and fires an overdue nudge once a submission exceeds the organization's typical response window. **[Built]**
 - FR24. On recording an acceptance, the system suggests (once, never automatically) withdrawing other active submissions for the same work. **[Built]**
 - FR25. Submitters can subscribe to a personal, token-scoped iCal feed of deadlines and expected-response events from any calendar client. **[Built]**
-- FR26. Submitters can import an existing tracker via CSV. **[Not built]**
-- FR27. Submitters can connect Gmail (forwarding address, Gmail Sync, or full Autopilot) to auto-update tracker status from email. **[Not built]**
+- FR26. Submitters can import an existing tracker via CSV. **[Built — private preview/commit flow with manual-entry and formula safety]**
+- FR27. Submitters can connect Gmail (forwarding address, Gmail Sync, or full Autopilot) to auto-update tracker status from email. **[Built — review-first forwarding/Gmail sync with narrow Autopilot gate]**
 
 ## Library (submitter-facing)
 
-- FR28. Submitters maintain a Library of Works, Files, and Saved Answers reusable across submissions. **[Built — CRUD and private storage boundary; Blob deployment configuration remains]**
+- FR28. Submitters maintain a Library of Works, Files, and Saved Answers reusable across submissions. **[Built — CRUD, private Blob storage, and owner-scoped reuse boundary]**
 - FR29. Submitters can prepare an opportunity-specific checklist of required materials before submitting. **[Built — private, owner-scoped checklist generation, reconciliation, progress, and API/UI foundations]**
 - FR30. Submitters can organize opportunities into custom Lists. **[Built — private, owner-scoped CRUD, tracked-only memberships, and API foundations]**
 
@@ -49,9 +49,9 @@ Organized by capability area (matching the approved user-facing module names fro
 - FR31. Users can sign up and log in with email/password (scrypt-hashed, HMAC-signed session cookies). **[Built]**
 - FR32. Sessions are enforced server-side per route (own-user routes require own session; org routes require membership; admin routes require the admin flag). **[Built]**
 - FR33. All auth and claim actions are recorded in an append-only audit log. **[Built]**
-- FR34. Users have a public Profile / Passport page presenting their public-facing submitter identity. **[Not built]**
-- FR35. Users can configure privacy settings controlling what's visible on their public profile. **[Not built]**
-- FR36. Users can export their own tracker/library data. **[Not built]**
+- FR34. Users have a public Profile / Passport page presenting their public-facing submitter identity. **[Built]**
+- FR35. Users can configure privacy settings controlling what's visible on their public profile. **[Built]**
+- FR36. Users can export their own tracker/library data. **[Built — private JSON/CSV tracker export; Library export remains scoped separately]**
 
 ## Missa Workspace — Organizations
 
