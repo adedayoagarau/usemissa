@@ -39,6 +39,8 @@ export default async function InboxPage() {
   const reminders = alerts.filter((a) => a.kind === 'deadline-reminder');
   const overdue = alerts.filter((a) => a.kind === 'response-overdue');
   const withdrawalSuggestions = alerts.filter((a) => a.kind === 'withdrawal-suggested');
+  const submissionReceipts = alerts.filter((a) => a.kind === 'submission-receipt');
+  const submissionDecisions = alerts.filter((a) => a.kind === 'submission-decision');
   const isEmpty =
     digest.newForYou.length === 0 &&
     digest.closingSoon.length === 0 &&
@@ -47,7 +49,9 @@ export default async function InboxPage() {
     digest.fromFollowedOrgs.length === 0 &&
     reminders.length === 0 &&
     overdue.length === 0 &&
-    withdrawalSuggestions.length === 0;
+    withdrawalSuggestions.length === 0 &&
+    submissionReceipts.length === 0 &&
+    submissionDecisions.length === 0;
 
   return (
     <div>
@@ -66,7 +70,9 @@ export default async function InboxPage() {
       <Section title="From organizations you follow" alerts={digest.fromFollowedOrgs} />
       <Section title="Deadline reminders" alerts={reminders} />
       <Section title="No word back yet" alerts={overdue} />
-      <Section title="Got an acceptance — consider withdrawing elsewhere" alerts={withdrawalSuggestions} />
+  <Section title="Got an acceptance — consider withdrawing elsewhere" alerts={withdrawalSuggestions} />
+      <Section title="Submission receipts" alerts={submissionReceipts} />
+      <Section title="Submission decisions" alerts={submissionDecisions} />
       <EmailReviewQueue />
     </div>
   );

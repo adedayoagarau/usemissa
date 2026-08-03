@@ -14,6 +14,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const reminders = alerts.filter((a) => a.kind === 'deadline-reminder');
   const overdue = alerts.filter((a) => a.kind === 'response-overdue');
   const withdrawalSuggestions = alerts.filter((a) => a.kind === 'withdrawal-suggested');
+  const submissionReceipts = alerts.filter((a) => a.kind === 'submission-receipt');
+  const submissionDecisions = alerts.filter((a) => a.kind === 'submission-decision');
 
-  return NextResponse.json({ ...digest, reminders, overdue, withdrawalSuggestions });
+  return NextResponse.json({ ...digest, reminders, overdue, withdrawalSuggestions, submissionReceipts, submissionDecisions });
 }
