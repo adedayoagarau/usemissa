@@ -26,18 +26,29 @@ response and connect a successful submission to the submitter's Tracker.
   item to `submitted` with a source note.
 - New open calls can optionally link to a claimed Radar opportunity from the
   Workspace create flow.
+- Submission retries accept an `Idempotency-Key` and return the original receipt
+  rather than creating a second packet; the relational proposal includes the
+  corresponding scoped unique index.
+- Applicants can withdraw an undecided submission from its receipt; linked
+  Tracker state follows the withdrawal.
+- Organization reviewers can stream private Vercel Blob files through an
+  organization-scoped endpoint instead of receiving an unprotected file URL.
 
 ## Still required before this story is done
 
 - Durable draft/payment-intent records so files and checkout state survive a
   browser/device change.
-- Multiple file attachments per Work and secure reviewer preview/download.
-- Applicant withdrawal and status notification flows.
-- Idempotency keys for submit and payment completion.
+- Durable draft/payment-intent records so files and checkout state survive a
+  browser/device change.
+- Multiple file attachments per Work, file scanning, retention, and abandoned
+  upload cleanup.
+- Applicant status notifications (receipt is available; outbound delivery is
+  still provider-dependent).
+- Idempotency keys for payment completion in addition to submission completion.
 - File scanning, retention, and abandoned-upload cleanup.
 
 ## Validation
 
-- Workspace engine tests: 28 passed, 1 expected live-Postgres skip.
+- Workspace engine tests: 31 total, 30 passed, 1 expected live-Postgres skip.
 - Web typecheck: passed.
 - Web lint: passed with two existing warnings in the opportunities API route.
