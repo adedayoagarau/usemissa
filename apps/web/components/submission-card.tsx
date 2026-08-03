@@ -16,6 +16,8 @@ interface Work {
   title: string;
   fileUrl?: string;
 }
+interface Decision { id: string; workId: string; outcome: 'accepted' | 'declined' | 'waitlisted'; decidedAt: string }
+interface DeliveryTask { id: string; workId: string; status: 'pending' | 'complete'; dueDate?: string; completedAt?: string }
 
 interface ReviewAssignment {
   id: string;
@@ -44,6 +46,8 @@ export function SubmissionCard({
   const [expanded, setExpanded] = useState(false);
   const [works, setWorks] = useState<Work[] | null>(null);
   const [assignments, setAssignments] = useState<ReviewAssignment[] | null>(null);
+  const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [deliveryTasks, setDeliveryTasks] = useState<DeliveryTask[]>([]);
   const [reviewerId, setReviewerId] = useState(members[0]?.accountId ?? '');
   const [roundName, setRoundName] = useState('Round 1');
   const [isPending, startTransition] = useTransition();
@@ -54,8 +58,24 @@ export function SubmissionCard({
       const data = await res.json();
       setWorks(data.works);
       setAssignments(data.reviewAssignments);
+      setDecisions(data.decisions ?? []);
+      setDeliveryTasks(data.deliveryTasks ?? []);
     });
   };
+
+  const decide = (workId: string, outcome: string) => {
+    if (!outcome) return;
+    startTransition(async () => {
+      const res = await fetch(`/api/orgs/${organizationId}/works/${workId}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ outcome }) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      setDecisions((current) => [...current.filter((decision) => decision.workId !== workId), data]);
+      router.refresh();
+    });
+  };
+
+  const createDelivery = (workId: string) => startTransition(async () => { const res = await fetch(`/api/orgs/${organizationId}/works/${workId}/delivery-tasks`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({}) }); const task = await res.json().catch(() => null); if (!res.ok) return; setDeliveryTasks((current) => current.some((item) => item.id === task.id) ? current : [...current, task]); });
+  const toggleDelivery = (task: DeliveryTask) => startTransition(async () => { const res = await fetch(`/api/orgs/${organizationId}/delivery-tasks/${task.id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: task.status === 'complete' ? 'pending' : 'complete' }) }); const updated = await res.json().catch(() => null); if (!res.ok) return; setDeliveryTasks((current) => current.map((item) => item.id === task.id ? updated : item)); });
 
   const toggle = () => {
     const next = !expanded;
@@ -110,9 +130,12 @@ export function SubmissionCard({
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Works</p>
               <ul className="mt-1 space-y-1 text-sm">
                 {works?.map((w) => (
-                  <li key={w.id}>
-                    {w.title}
-                    {w.fileUrl && <span className="ml-2 text-xs text-primary">file attached</span>}
+                  <li key={w.id} className="flex flex-wrap items-center justify-between gap-2">
+                    <span>{w.title}{w.fileUrl && <span className="ml-2 text-xs text-primary">file attached</span>}</span>
+                    <select aria-label={`Decision for ${w.title}`} value={decisions.find((decision) => decision.workId === w.id)?.outcome ?? ''} onChange={(event) => decide(w.id, event.target.value)} disabled={isPending} className="min-h-11 rounded-md border border-input bg-white px-2 text-xs">
+                      <option value="">Record decision</option><option value="accepted">Accepted</option><option value="declined">Declined</option><option value="waitlisted">Waitlisted</option>
+                    </select>
+                    {decisions.find((decision) => decision.workId === w.id)?.outcome === 'accepted' && (() => { const task = deliveryTasks.find((item) => item.workId === w.id); return task ? <button type="button" onClick={() => toggleDelivery(task)} className="min-h-11 rounded-md border border-border px-2 text-xs">{task.status === 'complete' ? 'Delivery complete' : 'Mark delivery complete'}</button> : <button type="button" onClick={() => createDelivery(w.id)} className="min-h-11 rounded-md border border-border px-2 text-xs">Create delivery task</button>; })()}
                   </li>
                 ))}
               </ul>
