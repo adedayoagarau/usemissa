@@ -39,6 +39,7 @@ export default async function SubmissionsPage() {
   const workspaceEngine = await getWorkspaceEngine();
 
   const submissions = workspaceEngine.submissionsForOrganization(organizationId);
+  const reporting = workspaceEngine.reportingForOrganization(organizationId);
   const members = radarEngine.store.memberships
     .filter((m) => m.organizationId === organizationId)
     .map((m) => ({
@@ -52,6 +53,9 @@ export default async function SubmissionsPage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
       <h1 className="font-heading text-3xl font-medium text-foreground">Submissions</h1>
+      <section aria-label="Submission insights" className="mt-4 rounded-lg border border-border bg-card p-4">
+        <div className="flex flex-wrap items-end justify-between gap-4"><div className="flex flex-wrap gap-6 text-sm"><span><b className="block font-mono text-xl">{reporting.submissions}</b>submissions</span><span><b className="block font-mono text-xl">{Math.round(reporting.conversionRate * 100)}%</b>accepted</span><span><b className="block font-mono text-xl">{reporting.medianDaysToDecision ?? '—'}</b>median days to decision</span></div><a className="min-h-11 rounded-md border border-border px-3 py-2 text-sm hover:bg-muted" href={`/api/orgs/${organizationId}/insights/export`}>Export CSV</a></div>
+      </section>
       {stages.map((stage) => {
         const items = submissions.filter((s) => s.status === stage);
         if (items.length === 0) return null;

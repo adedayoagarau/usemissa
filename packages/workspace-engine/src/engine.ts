@@ -473,6 +473,18 @@ export class WorkspaceEngine {
     return [...this.store.deliveryTasks.values()].filter((task) => Boolean(scope.work(task.workId)));
   }
 
+  reportingForOrganization(organizationId: string): { submissions: number; decisions: number; accepted: number; declined: number; waitlisted: number; conversionRate: number; medianDaysToDecision: number | null; byMonth: Array<{ month: string; submissions: number }> } {
+    const submissions = this.submissionsForOrganization(organizationId);
+    const decisions = this.decisionsForOrganization(organizationId);
+    const counts = { accepted: 0, declined: 0, waitlisted: 0 };
+    for (const decision of decisions) counts[decision.outcome]++;
+    const times = submissions.flatMap((submission) => { const workIds = new Set(this.worksForSubmission(submission.id).map((work) => work.id)); const decided = decisions.filter((decision) => workIds.has(decision.workId)); if (!decided.length) return []; const latest = decided.reduce((max, decision) => Math.max(max, Date.parse(decision.decidedAt)), 0); return latest > 0 ? [(latest - Date.parse(submission.submittedAt)) / 86_400_000] : []; }).sort((a, b) => a - b);
+    const medianDaysToDecision = times.length ? Math.round(times[Math.floor(times.length / 2)]! * 10) / 10 : null;
+    const byMonthMap = new Map<string, number>();
+    for (const submission of submissions) { const month = submission.submittedAt.slice(0, 7); byMonthMap.set(month, (byMonthMap.get(month) ?? 0) + 1); }
+    return { submissions: submissions.length, decisions: decisions.length, ...counts, conversionRate: decisions.length ? Math.round((counts.accepted / decisions.length) * 1000) / 1000 : 0, medianDaysToDecision, byMonth: [...byMonthMap.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([month, count]) => ({ month, submissions: count })) };
+  }
+
   private recordDecisionAudit(decision: Decision, action: string): void {
     this.store.auditLog.push({
       id: this.ids.next("audit"),

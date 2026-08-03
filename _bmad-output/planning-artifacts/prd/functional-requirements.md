@@ -67,7 +67,7 @@ Organized by capability area (matching the approved user-facing module names fro
 - FR46. Organizations can record a Decision per Work (not just per Submission), supporting the item-level decision model. **[Built — owner-scoped decision CRUD, derived packet summaries, audit, and Neon persistence]**
 - FR47. Organizations can send decisions via templated, bulk decision emails. **[Built — preview and Resend-backed bulk route; production sending requires Resend configuration]**
 - FR48. Organizations can track Delivery tasks (award/publication/selection workflows) per accepted Work, with per-vertical relabeling (Awards/Publication/Selections). **[Built — accepted-Work guard, task lifecycle, org routes, and Neon persistence]**
-- FR49. Organizations get basic reporting (submission volume, conversion, response times) and export. **[Not built]**
+- FR49. Organizations get basic reporting (submission volume, conversion, response times) and export. **[Built — organization-scoped metrics and CSV export]**
 
 ## Enterprise
 

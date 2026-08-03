@@ -101,9 +101,9 @@ development_status:
   8-3-delivery-task-tracking: review
   epic-8-retrospective: optional
 
-  epic-9: backlog
-  9-1-basic-reporting-dashboard: backlog
-  9-2-organization-data-export: backlog
+  epic-9: in-progress
+  9-1-basic-reporting-dashboard: review
+  9-2-organization-data-export: review
   epic-9-retrospective: optional
 
   epic-10: backlog
