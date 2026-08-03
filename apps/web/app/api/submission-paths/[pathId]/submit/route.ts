@@ -23,6 +23,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   if (!path) return NextResponse.json({ error: 'Unknown submission form' }, { status: 404 });
   const openCall = workspace.store.openCalls.get(path.openCallId);
   if (!openCall || openCall.status !== 'published') return NextResponse.json({ error: 'This submission form is not open' }, { status: 409 });
+  const ownedFileUrl = (value: string): boolean => {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'https:' && parsed.pathname.includes(`/missa/submissions/${session.account.id}/`);
+    } catch { return false; }
+  };
   const idempotencyKey = request.headers.get('Idempotency-Key')?.trim().slice(0, 200) || undefined;
   if (idempotencyKey) {
     const existing = [...workspace.store.submissions.values()].find((candidate) => candidate.submissionPathId === pathId && candidate.submitterAccountId === session.account.id && candidate.idempotencyKey === idempotencyKey);
@@ -30,6 +36,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   }
   if (body.works.some((work: unknown) => !work || typeof work !== 'object' || typeof (work as { title?: unknown }).title !== 'string' || !(work as { title: string }).title.trim())) {
     return NextResponse.json({ error: 'Each work needs a title' }, { status: 400 });
+  }
+  if (body.works.some((work: unknown) => typeof (work as { fileUrl?: unknown }).fileUrl === 'string' && !ownedFileUrl((work as { fileUrl: string }).fileUrl))) {
+    return NextResponse.json({ error: 'Work contains an invalid upload' }, { status: 400 });
   }
 
   const category = typeof body.category === 'string' ? body.category.trim() : '';
@@ -44,6 +53,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     }
     if (field.type === 'fee-toggle') continue;
     const normalized = Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean) : typeof value === 'string' ? value.trim() : '';
+    if (field.type === 'file-upload') {
+      const fileValues = Array.isArray(normalized) ? normalized : normalized ? [normalized] : [];
+      if (fileValues.some((fileUrl) => !ownedFileUrl(fileUrl))) return NextResponse.json({ error: `${field.label} contains an invalid upload` }, { status: 400 });
+    }
     if (field.required && (!normalized || (Array.isArray(normalized) && normalized.length === 0))) return NextResponse.json({ error: `${field.label} is required` }, { status: 400 });
     if (normalized && (!Array.isArray(normalized) || normalized.length > 0)) normalizedAnswers[field.id] = normalized;
   }

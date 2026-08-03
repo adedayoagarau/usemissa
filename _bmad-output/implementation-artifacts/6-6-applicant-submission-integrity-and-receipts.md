@@ -34,6 +34,8 @@ response and connect a successful submission to the submitter's Tracker.
 - Organization reviewers can stream private Vercel Blob files through an
   organization-scoped endpoint instead of receiving an unprotected file URL.
 - Drafts expire after 30 days and are removed when the submission succeeds.
+- Uploads reject known executable content types, and final submission validates
+  every file URL against the submitting account's private Blob prefix.
 
 ## Still required before this story is done
 
