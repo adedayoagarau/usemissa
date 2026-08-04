@@ -417,7 +417,20 @@ export async function saveRadarStoreDeltaToPostgres(
     for (const entry of newAuditEntries) await client.query('insert into radar_audit_log (id, at, data) values ($1, $2, $3) on conflict (id) do nothing', [entry.id, entry.at, entry]);
 
     if (maps.sources.upserts.length || maps.opportunities.upserts.length || maps.versions.upserts.length || maps.changes.upserts.length) {
-      await saveOpportunityProjectionToPostgres(current, client);
+      const opportunityIds = new Set<string>([
+        ...maps.opportunities.upserts.map((row) => row.key),
+        ...maps.versions.upserts.map((row) => row.value.opportunityId),
+        ...maps.changes.upserts.map((row) => row.value.opportunityId),
+      ]);
+      for (const sourceId of maps.sources.upserts.map((row) => row.key)) {
+        for (const opportunity of current.opportunities.values()) {
+          if (opportunity.sourceId === sourceId) opportunityIds.add(opportunity.id);
+        }
+      }
+      await saveOpportunityProjectionToPostgres(current, client, {
+        opportunityIds,
+        sourceIds: new Set(maps.sources.upserts.map((row) => row.key)),
+      });
     }
     const nextVersion = currentVersion + 1;
     await client.query('insert into missa_snapshot_versions (domain, version, updated_at) values ($1, $2, now()) on conflict (domain) do update set version = excluded.version, updated_at = excluded.updated_at', [RADAR_SNAPSHOT_DOMAIN, nextVersion]);

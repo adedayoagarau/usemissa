@@ -64,12 +64,28 @@ function searchDocument(opportunity: Opportunity): string {
     .toLowerCase();
 }
 
-async function upsertSource(client: PoolClient, source: Source): Promise<void> {
+async function upsertSources(client: PoolClient, sources: Source[]): Promise<void> {
+  if (sources.length === 0) return;
+  const values = sources.flatMap((source) => [
+    source.id,
+    source.organizationId ?? null,
+    source.name,
+    source.url,
+    source.kind,
+    source.active,
+    source.lastCheckedAt ?? null,
+    source.lastSuccessfulFetchAt ?? null,
+    source.lastProcessedAt ?? null,
+  ]);
+  const rows = sources.map((_, index) => {
+    const offset = index * 9;
+    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9})`;
+  }).join(', ');
   await client.query(
     `insert into opportunity_sources (
        id, organization_id, name, url, kind, active,
        last_checked_at, last_successful_fetch_at, last_processed_at
-     ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+     ) values ${rows}
      on conflict (id) do update set
        organization_id = excluded.organization_id,
        name = excluded.name,
@@ -80,17 +96,7 @@ async function upsertSource(client: PoolClient, source: Source): Promise<void> {
        last_successful_fetch_at = excluded.last_successful_fetch_at,
        last_processed_at = excluded.last_processed_at,
        updated_at = now()`,
-    [
-      source.id,
-      source.organizationId ?? null,
-      source.name,
-      source.url,
-      source.kind,
-      source.active,
-      source.lastCheckedAt ?? null,
-      source.lastSuccessfulFetchAt ?? null,
-      source.lastProcessedAt ?? null,
-    ],
+    values,
   );
 }
 
@@ -226,8 +232,14 @@ async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, s
   );
 }
 
-async function upsertVersionsAndChanges(client: PoolClient, store: RadarStore): Promise<void> {
-  for (const version of store.versions.values()) {
+async function upsertVersionsAndChanges(client: PoolClient, store: RadarStore, opportunityIds?: Set<string>): Promise<void> {
+  const versions = opportunityIds
+    ? [...store.versions.values()].filter((version) => opportunityIds.has(version.opportunityId))
+    : [...store.versions.values()];
+  const changes = opportunityIds
+    ? [...store.changes.values()].filter((change) => opportunityIds.has(change.opportunityId))
+    : [...store.changes.values()];
+  for (const version of versions) {
     await client.query(
       `insert into opportunity_versions (id, opportunity_id, source_snapshot_id, fields, created_at)
        values ($1, $2, $3, $4, $5)
@@ -235,7 +247,7 @@ async function upsertVersionsAndChanges(client: PoolClient, store: RadarStore): 
       [version.id, version.opportunityId, version.snapshotId ?? null, version.fields, version.createdAt],
     );
   }
-  for (const change of store.changes.values()) {
+  for (const change of changes) {
     await client.query(
       `insert into opportunity_changes
          (id, opportunity_id, kind, field, old_value, new_value, source_snapshot_id, created_at)
@@ -254,19 +266,26 @@ async function upsertVersionsAndChanges(client: PoolClient, store: RadarStore): 
  * projection. The compatibility store remains the source for Radar tick
  * semantics; this projection is the query source for Passport browse/detail.
  */
-export async function saveOpportunityProjectionToPostgres(store: RadarStore, client: PoolClient): Promise<void> {
+export async function saveOpportunityProjectionToPostgres(
+  store: RadarStore,
+  client: PoolClient,
+  scope?: { opportunityIds?: Set<string>; sourceIds?: Set<string> },
+): Promise<void> {
   const referencedSourceIds = new Set<string>();
-  for (const opportunity of store.opportunities.values()) referencedSourceIds.add(opportunity.sourceId);
+  const opportunities = scope?.opportunityIds
+    ? [...scope.opportunityIds].map((id) => store.opportunities.get(id)).filter((value): value is Opportunity => Boolean(value))
+    : [...store.opportunities.values()];
+  for (const opportunity of opportunities) referencedSourceIds.add(opportunity.sourceId);
+  for (const sourceId of scope?.sourceIds ?? []) referencedSourceIds.add(sourceId);
   // Registry sources without an extracted opportunity are not queryable yet;
   // defer them until their first opportunity to keep each cron persistence
   // pass bounded instead of rewriting the full 1,024-source registry.
-  for (const sourceId of referencedSourceIds) {
-    const source = store.sources.get(sourceId);
-    if (source) await upsertSource(client, source);
-  }
-  for (const opportunity of store.opportunities.values()) {
+  await upsertSources(client, [...referencedSourceIds]
+    .map((sourceId) => store.sources.get(sourceId))
+    .filter((value): value is Source => Boolean(value)));
+  for (const opportunity of opportunities) {
     const source = store.sources.get(opportunity.sourceId);
     if (source) await upsertOpportunity(client, opportunity, source);
   }
-  await upsertVersionsAndChanges(client, store);
+  await upsertVersionsAndChanges(client, store, scope?.opportunityIds);
 }
