@@ -10,6 +10,7 @@ import type {
   OpportunityRepositoryFee,
   OpportunityRepositoryQuery,
   OpportunityRepositorySource,
+  OpportunityCallProfile,
 } from "@missa/radar-engine";
 
 export interface SqlQuery {
@@ -58,6 +59,7 @@ interface OpportunityRow extends QueryResultRow {
   guidelines_url: string | null;
   tailoring_reasons: unknown;
   created_at: Date | string;
+  call_profile: OpportunityCallProfile | null;
 }
 
 interface EligibilityRow extends QueryResultRow {
@@ -175,6 +177,7 @@ function baseSelect(context?: OpportunityRepositoryContext): string {
     o.open_date::text as open_date,
     o.simultaneous_allowed,
     o.guidelines_url,
+    call_profile.profile as call_profile,
     '[]'::jsonb as tailoring_reasons,
     o.created_at,
     count(*) over() as total_count
@@ -201,6 +204,43 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
       order by e.checked_at desc
       limit 1
     ) evidence on true
+    left join lateral (
+      select jsonb_build_object(
+        'callKind', p.call_kind,
+        'marketKind', p.market_kind,
+        'publicationFormats', p.publication_formats,
+        'acceptedFormats', p.accepted_formats,
+        'subgenres', p.subgenres,
+        'readingPeriodKind', p.reading_period_kind,
+        'readingPeriodLabel', p.reading_period_label,
+        'issueTheme', p.issue_theme,
+        'paymentType', p.payment_type,
+        'paymentAmountCents', p.payment_amount_cents,
+        'paymentCurrency', p.payment_currency,
+        'reprintsAllowed', p.reprints_allowed,
+        'previouslyUnpublishedRequired', p.previously_unpublished_required,
+        'multipleSubmissionsAllowed', p.multiple_submissions_allowed,
+        'wordLimitMin', p.word_limit_min,
+        'wordLimitMax', p.word_limit_max,
+        'pageLimitMin', p.page_limit_min,
+        'pageLimitMax', p.page_limit_max,
+        'responseTimeDays', p.response_time_days,
+        'acceptanceRate', p.acceptance_rate,
+        'statsSampleSize', p.stats_sample_size,
+        'judgeName', p.judge_name,
+        'prizeSummary', p.prize_summary,
+        'eligibilitySummary', p.eligibility_summary,
+        'rightsSummary', p.rights_summary,
+        'confidence', p.confidence,
+        'sourceUrl', p.source_url,
+        'lastVerifiedAt', p.last_verified_at,
+        'prizes', coalesce((select jsonb_agg(jsonb_build_object('rank', z.rank, 'title', z.title, 'amountCents', z.amount_cents, 'currency', z.currency, 'description', z.description, 'judgeName', z.judge_name, 'sourceUrl', z.source_url, 'confidence', z.confidence) order by z.rank nulls last, z.id) from opportunity_call_prizes z where z.opportunity_id = o.id), '[]'::jsonb),
+        'windows', coalesce((select jsonb_agg(jsonb_build_object('label', w.label, 'opensAt', w.opens_at, 'closesAt', w.closes_at, 'kind', w.kind, 'timezone', w.timezone, 'current', w.current, 'sourceUrl', w.source_url, 'confidence', w.confidence) order by w.closes_at nulls last, w.id) from opportunity_call_windows w where w.opportunity_id = o.id), '[]'::jsonb)
+      ) as profile
+      from opportunity_call_profiles p
+      where p.opportunity_id = o.id
+      limit 1
+    ) call_profile on true
     ${accountPlaceholder}
   `;
 }
@@ -370,6 +410,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
       followingOrganization: row.following_organization,
       tailoringReasons: [],
     },
+    ...(row.call_profile ? { callProfile: row.call_profile } : {}),
   };
 }
 
@@ -462,6 +503,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       })),
       guidelinesUrl: row.guidelines_url ?? undefined,
       submissionUrl: row.submission_url ?? undefined,
+      ...(row.call_profile ? { callProfile: row.call_profile } : {}),
       simultaneousAllowed: row.simultaneous_allowed ?? undefined,
       changes: changes.rows.map((item) => ({
         kind: item.kind,

@@ -138,6 +138,61 @@ export const opportunityPersonalStateSchema = z.object({
   tailoringReasons: z.array(opportunityTailoringReasonSchema).max(4).default([]),
 });
 
+export const opportunityCallPrizeSchema = z.object({
+  rank: z.number().int().min(1).max(100).optional(),
+  title: z.string().trim().max(240).optional(),
+  amountCents: z.number().int().min(0).optional(),
+  currency: z.string().trim().length(3).optional(),
+  description: z.string().trim().max(600).optional(),
+  judgeName: z.string().trim().max(240).optional(),
+  sourceUrl: httpUrlSchema,
+  confidence: z.enum(["confirmed", "probable", "unknown"]),
+});
+
+export const opportunityCallWindowSchema = z.object({
+  label: z.string().trim().max(160).optional(),
+  opensAt: z.iso.date().optional(),
+  closesAt: z.iso.date().optional(),
+  kind: z.enum(["exact", "rolling", "year-round", "seasonal", "unknown"]),
+  timezone: z.string().trim().max(64).optional(),
+  current: z.boolean(),
+  sourceUrl: httpUrlSchema,
+  confidence: z.enum(["confirmed", "probable", "unknown"]),
+});
+
+export const opportunityCallProfileSchema = z.object({
+  callKind: z.enum(["general-submission", "themed-call", "contest", "prize", "fellowship", "grant", "residency", "open-call", "unknown"]),
+  marketKind: z.enum(["magazine", "journal", "press", "anthology", "contest", "award", "organization", "unknown"]),
+  publicationFormats: z.array(z.string().trim().min(1).max(80)).max(16),
+  acceptedFormats: z.array(z.string().trim().min(1).max(80)).max(32),
+  subgenres: z.array(z.string().trim().min(1).max(80)).max(32),
+  readingPeriodKind: z.enum(["exact", "rolling", "year-round", "seasonal", "unknown"]),
+  readingPeriodLabel: z.string().trim().max(160).optional(),
+  issueTheme: z.string().trim().max(240).optional(),
+  paymentType: z.enum(["none", "contributor-copy", "flat-fee", "royalty", "varies", "unknown"]).optional(),
+  paymentAmountCents: z.number().int().min(0).optional(),
+  paymentCurrency: z.string().trim().length(3).optional(),
+  reprintsAllowed: z.boolean().optional(),
+  previouslyUnpublishedRequired: z.boolean().optional(),
+  multipleSubmissionsAllowed: z.boolean().optional(),
+  wordLimitMin: z.number().int().min(0).max(1_000_000).optional(),
+  wordLimitMax: z.number().int().min(0).max(1_000_000).optional(),
+  pageLimitMin: z.number().int().min(0).max(10_000).optional(),
+  pageLimitMax: z.number().int().min(0).max(10_000).optional(),
+  responseTimeDays: z.number().int().min(0).max(3_650).optional(),
+  acceptanceRate: z.number().min(0).max(100).optional(),
+  statsSampleSize: z.number().int().min(0).optional(),
+  judgeName: z.string().trim().max(240).optional(),
+  prizeSummary: z.string().trim().max(600).optional(),
+  eligibilitySummary: z.string().trim().max(1_000).optional(),
+  rightsSummary: z.string().trim().max(1_000).optional(),
+  confidence: z.enum(["confirmed", "probable", "unknown"]),
+  sourceUrl: httpUrlSchema,
+  lastVerifiedAt: z.iso.datetime().optional(),
+  prizes: z.array(opportunityCallPrizeSchema).max(32),
+  windows: z.array(opportunityCallWindowSchema).max(32),
+});
+
 const opportunityIdentitySchema = z.object({
   id: resourceIdSchema,
   slug: z.string().trim().min(1).max(160),
@@ -210,6 +265,7 @@ export const opportunityDetailResponseSchema = opportunityBrowseItemSchema.exten
   changes: z.array(opportunityChangeSchema).max(32),
   organizationSummary: z.string().trim().max(1000).optional(),
   relatedOpportunityIds: z.array(resourceIdSchema).max(24),
+  callProfile: opportunityCallProfileSchema.optional(),
 });
 
 export const opportunityPreferenceInputSchema = z.object({
@@ -283,3 +339,4 @@ export type TrackedStatusInput = z.infer<typeof trackedStatusInputSchema>;
 export type FollowOrganizationInput = z.infer<typeof followOrganizationInputSchema>;
 export type OutboundDestinationState = z.infer<typeof outboundDestinationStateSchema>;
 export type OpportunityIssueReportInput = z.infer<typeof opportunityIssueReportInputSchema>;
+export type OpportunityCallProfile = z.infer<typeof opportunityCallProfileSchema>;

@@ -87,9 +87,14 @@ never blocked by slow media or archive pages:
       npm run enrichment-worker --workspace=@missa/radar-adapters
 
 It creates one idempotent job per published opportunity for media, past-winner
-links, and guidelines. Jobs use Postgres leases and exponential retry; the
-worker writes provenance-tagged evidence with `unknown` rights status and does
-not promote a claim directly into the public opportunity record. Railway
+links, guidelines, and call profiles. Jobs use Postgres leases and exponential
+retry; the worker writes provenance-tagged evidence with `unknown` rights
+status and does not promote a claim directly into the public opportunity
+record. Call profiles model magazine/journal submissions, themed calls,
+prizes, and contests separately: accepted formats, reading periods, payment,
+reprint and simultaneous-submission rules, limits, response-time statistics,
+eligibility, rights, judges, prize rows, and seasonal windows are all optional
+and confidence-tagged. Railway
 currently handles HTML evidence. PDF extraction and object storage are
 separate follow-on contracts so the rights policy can be reviewed first.
 

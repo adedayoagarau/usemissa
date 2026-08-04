@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { ensureEnrichmentSchema } from "./enrichmentSchema.js";
 
-type JobKind = "media" | "winners" | "guidelines";
+type JobKind = "media" | "winners" | "guidelines" | "call-profile";
 type ClaimedJob = {
   id: string;
   opportunityId: string;
@@ -12,6 +12,8 @@ type ClaimedJob = {
   attempts: number;
   sourceUrl: string;
   title: string;
+  opportunityType: string;
+  genres: string[];
 };
 
 const USER_AGENT = "MissaRadar/1.0 (+https://www.usemissa.com; enrichment; evidence-only)";
@@ -104,7 +106,7 @@ async function seedJobs(client: PoolClient): Promise<void> {
        case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 20 else 0 end,
        jsonb_build_object('title', o.title)
      from opportunities o
-     cross join (values ('media'::text), ('winners'::text), ('guidelines'::text)) as kinds(kind)
+       cross join (values ('media'::text), ('winners'::text), ('guidelines'::text), ('call-profile'::text)) as kinds(kind)
      where o.publication_state in ('published', 'reviewable')
      on conflict (opportunity_id, kind) do nothing`,
   );
@@ -129,10 +131,116 @@ async function claimJobs(client: PoolClient, limit: number): Promise<ClaimedJob[
      left join opportunity_sources s on s.id = o.source_id
      where j.id = n.id and o.id = j.opportunity_id
      returning j.id, j.opportunity_id as "opportunityId", j.kind,
-       j.attempts, coalesce(o.guidelines_url, o.submission_url, s.url) as "sourceUrl", o.title`,
+       j.attempts, coalesce(o.guidelines_url, o.submission_url, s.url) as "sourceUrl", o.title,
+       o.type as "opportunityType", o.genres`,
     [limit],
   );
   return rows.filter((row) => Boolean(row.sourceUrl));
+}
+
+function firstNumber(text: string, pattern: RegExp): number | undefined {
+  const match = text.match(pattern);
+  if (!match) return undefined;
+  const value = Number(match[1].replaceAll(",", ""));
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function includesAny(text: string, words: string[]): boolean {
+  return words.some((word) => text.includes(word));
+}
+
+function inferMarketKind(job: ClaimedJob, text: string): string {
+  if (job.opportunityType === "contest") return "contest";
+  if (job.opportunityType === "award") return "award";
+  if (includesAny(text, ["contest", "competition", "prize"])) return "contest";
+  if (includesAny(text, ["journal", "academic journal"])) return "journal";
+  if (includesAny(text, ["literary magazine", "magazine", "review"])) return "magazine";
+  if (includesAny(text, ["anthology", "book prize", "chapbook"])) return "anthology";
+  if (includesAny(text, ["press", "publisher"])) return "press";
+  return "unknown";
+}
+
+function inferCallKind(job: ClaimedJob, text: string): string {
+  if (job.opportunityType === "contest") return "contest";
+  if (job.opportunityType === "award") return "prize";
+  if (job.opportunityType === "fellowship") return "fellowship";
+  if (job.opportunityType === "grant") return "grant";
+  if (job.opportunityType === "residency") return "residency";
+  if (includesAny(text, ["contest", "competition"])) return "contest";
+  if (includesAny(text, ["prize", "award"])) return "prize";
+  if (includesAny(text, ["call for submissions", "submissions open", "reading period"])) return "general-submission";
+  return "open-call";
+}
+
+async function writeCallProfile(client: PoolClient, job: ClaimedJob, html: string, finalUrl: string): Promise<void> {
+  const text = cleanText(html).toLowerCase();
+  const marketKind = inferMarketKind(job, text);
+  const callKind = inferCallKind(job, text);
+  const readingPeriodKind = text.includes("year-round") || text.includes("year round")
+    ? "year-round"
+    : text.includes("rolling")
+      ? "rolling"
+      : "unknown";
+  const acceptedFormats = job.genres.length ? job.genres : [
+    ...(text.includes("poetry") ? ["poetry"] : []),
+    ...(text.includes("fiction") ? ["fiction"] : []),
+    ...(text.includes("nonfiction") || text.includes("non-fiction") ? ["nonfiction"] : []),
+    ...(text.includes("translation") ? ["translation"] : []),
+    ...(text.includes("photography") ? ["photography"] : []),
+    ...(text.includes("comics") ? ["comics"] : []),
+  ];
+  const wordLimitMax = firstNumber(text, /(?:up to|max(?:imum)?|less than)\s+([\d,]+)\s+words?/i);
+  const pageLimitMax = firstNumber(text, /(?:up to|max(?:imum)?|less than)\s+([\d,]+)\s+pages?/i);
+  const paymentType = includesAny(text, ["pay contributors", "pays", "payment", "honorarium", "honoraria"])
+    ? "varies"
+    : text.includes("no payment") || text.includes("does not pay")
+      ? "none"
+      : "unknown";
+  const reprintsAllowed = includesAny(text, ["reprints accepted", "previously published work welcome"])
+    ? true
+    : includesAny(text, ["no reprints", "previously unpublished only"])
+      ? false
+      : undefined;
+  const previouslyUnpublishedRequired = includesAny(text, ["previously unpublished", "never been published"])
+    ? true
+    : undefined;
+  const multipleSubmissionsAllowed = includesAny(text, ["simultaneous submissions accepted", "simultaneous submissions welcome", "sim subs accepted"])
+    ? true
+    : includesAny(text, ["no simultaneous submissions", "no sim subs"])
+      ? false
+      : undefined;
+  const judgeName = html.match(/(?:judge|judged by|final judge)[:\s]+([^<.]{2,120})/i)?.[1]?.trim();
+  const prizes = extractLinks(html, finalUrl, /prize|award|winner|judge/i).slice(0, 8);
+
+  await client.query(
+    `insert into opportunity_call_profiles
+      (opportunity_id, call_kind, market_kind, publication_formats, accepted_formats,
+       subgenres, reading_period_kind, payment_type, reprints_allowed,
+       previously_unpublished_required, multiple_submissions_allowed,
+       word_limit_max, page_limit_max, judge_name, confidence, source_url,
+       last_verified_at, metadata, updated_at)
+     values ($1, $2, $3, '{}', $4, '{}', $5, $6, $7, $8, $9, $10, $11, $12,
+       'probable', $13, now(), $14::jsonb, now())
+     on conflict (opportunity_id) do update set
+       call_kind = excluded.call_kind, market_kind = excluded.market_kind,
+       accepted_formats = excluded.accepted_formats, reading_period_kind = excluded.reading_period_kind,
+       payment_type = excluded.payment_type, reprints_allowed = excluded.reprints_allowed,
+       previously_unpublished_required = excluded.previously_unpublished_required,
+       multiple_submissions_allowed = excluded.multiple_submissions_allowed,
+       word_limit_max = excluded.word_limit_max, page_limit_max = excluded.page_limit_max,
+       judge_name = excluded.judge_name, confidence = excluded.confidence,
+       source_url = excluded.source_url, last_verified_at = now(), metadata = excluded.metadata,
+       updated_at = now()`,
+    [job.opportunityId, callKind, marketKind, acceptedFormats, readingPeriodKind, paymentType, reprintsAllowed ?? null, previouslyUnpublishedRequired ?? null, multipleSubmissionsAllowed ?? null, wordLimitMax ?? null, pageLimitMax ?? null, judgeName ?? null, finalUrl, JSON.stringify({ parserVersion: "call-profile-v1", sourceTitle: pageTitle(html) ?? job.title })],
+  );
+  await client.query("delete from opportunity_call_prizes where opportunity_id = $1", [job.opportunityId]);
+  for (const [index, prize] of prizes.entries()) {
+    await client.query(
+      `insert into opportunity_call_prizes (id, opportunity_id, rank, title, source_url, confidence, updated_at)
+       values ($1, $2, $3, $4, $5, 'probable', now())`,
+      [`${job.opportunityId}:prize:${index}`, job.opportunityId, index + 1, prize.title ?? undefined, prize.url],
+    );
+  }
 }
 
 async function writeEvidence(client: PoolClient, job: ClaimedJob, evidence: { url: string; title?: string; excerpt?: string; mediaUrl?: string; kind: "media" | "winner" | "guideline"; confidence?: "confirmed" | "probable" | "unknown" }): Promise<void> {
@@ -183,6 +291,11 @@ async function processJob(client: PoolClient, job: ClaimedJob): Promise<void> {
     const links = extractLinks(html, finalUrl, /winner|alumni|recipient|selected|honou?r|past[- ]?award/i);
     for (const link of links) await writeEvidence(client, job, { kind: "winner", url: link.url, title: link.title, excerpt: excerptFor(html, /winner|recipient|alumni/i), confidence: "probable" });
     await completeJob(client, job, { winnerLinks: links.length, checkedUrl: finalUrl });
+    return;
+  }
+  if (job.kind === "call-profile") {
+    await writeCallProfile(client, job, html, finalUrl);
+    await completeJob(client, job, { profileExtracted: true, checkedUrl: finalUrl });
     return;
   }
   const links = extractLinks(html, finalUrl, /guideline|submission|apply|application/i);

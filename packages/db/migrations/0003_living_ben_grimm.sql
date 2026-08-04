@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS "radar_enrichment_jobs" (
 	"completed_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "radar_enrichment_jobs_kind_check" CHECK ("kind" in ('media', 'winners', 'guidelines')),
+	CONSTRAINT "radar_enrichment_jobs_kind_check" CHECK ("kind" in ('media', 'winners', 'guidelines', 'call-profile')),
 	CONSTRAINT "radar_enrichment_jobs_status_check" CHECK ("status" in ('queued', 'processing', 'completed', 'failed', 'blocked')),
 	CONSTRAINT "radar_enrichment_jobs_attempts_check" CHECK ("attempts" >= 0),
 	CONSTRAINT "radar_enrichment_jobs_priority_check" CHECK ("priority" between -100 and 100),

@@ -643,6 +643,105 @@ export const radarOpportunityEnrichmentEvidence = pgTable(
   ],
 );
 
+export const opportunityCallProfiles = pgTable(
+  "opportunity_call_profiles",
+  {
+    opportunityId: text("opportunity_id")
+      .primaryKey()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    callKind: text("call_kind").notNull().default("unknown"),
+    marketKind: text("market_kind").notNull().default("unknown"),
+    publicationFormats: text("publication_formats").array().notNull().default(sql`ARRAY[]::text[]`),
+    acceptedFormats: text("accepted_formats").array().notNull().default(sql`ARRAY[]::text[]`),
+    subgenres: text("subgenres").array().notNull().default(sql`ARRAY[]::text[]`),
+    readingPeriodKind: text("reading_period_kind").notNull().default("unknown"),
+    readingPeriodLabel: text("reading_period_label"),
+    issueTheme: text("issue_theme"),
+    paymentType: text("payment_type"),
+    paymentAmountCents: integer("payment_amount_cents"),
+    paymentCurrency: text("payment_currency"),
+    reprintsAllowed: boolean("reprints_allowed"),
+    previouslyUnpublishedRequired: boolean("previously_unpublished_required"),
+    multipleSubmissionsAllowed: boolean("multiple_submissions_allowed"),
+    wordLimitMin: integer("word_limit_min"),
+    wordLimitMax: integer("word_limit_max"),
+    pageLimitMin: integer("page_limit_min"),
+    pageLimitMax: integer("page_limit_max"),
+    responseTimeDays: integer("response_time_days"),
+    acceptanceRate: integer("acceptance_rate"),
+    statsSampleSize: integer("stats_sample_size"),
+    judgeName: text("judge_name"),
+    prizeSummary: text("prize_summary"),
+    eligibilitySummary: text("eligibility_summary"),
+    rightsSummary: text("rights_summary"),
+    confidence: text("confidence").notNull().default("unknown"),
+    sourceUrl: text("source_url").notNull(),
+    lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+    metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("opportunity_call_profiles_market_idx").on(table.marketKind, table.callKind),
+    index("opportunity_call_profiles_period_idx").on(table.readingPeriodKind, table.lastVerifiedAt),
+    check("opportunity_call_profiles_call_kind_check", sql`${table.callKind} in ('general-submission', 'themed-call', 'contest', 'prize', 'fellowship', 'grant', 'residency', 'open-call', 'unknown')`),
+    check("opportunity_call_profiles_market_kind_check", sql`${table.marketKind} in ('magazine', 'journal', 'press', 'anthology', 'contest', 'award', 'organization', 'unknown')`),
+    check("opportunity_call_profiles_period_check", sql`${table.readingPeriodKind} in ('exact', 'rolling', 'year-round', 'seasonal', 'unknown')`),
+    check("opportunity_call_profiles_confidence_check", sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`),
+    check("opportunity_call_profiles_numbers_check", sql`${table.acceptanceRate} is null or (${table.acceptanceRate} >= 0 and ${table.acceptanceRate} <= 100)`),
+  ],
+);
+
+export const opportunityCallPrizes = pgTable(
+  "opportunity_call_prizes",
+  {
+    id: text("id").primaryKey(),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    rank: integer("rank"),
+    title: text("title"),
+    amountCents: integer("amount_cents"),
+    currency: text("currency"),
+    description: text("description"),
+    judgeName: text("judge_name"),
+    sourceUrl: text("source_url").notNull(),
+    confidence: text("confidence").notNull().default("unknown"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("opportunity_call_prizes_opp_idx").on(table.opportunityId, table.rank),
+    check("opportunity_call_prizes_confidence_check", sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`),
+    check("opportunity_call_prizes_amount_check", sql`${table.amountCents} is null or ${table.amountCents} >= 0`),
+  ],
+);
+
+export const opportunityCallWindows = pgTable(
+  "opportunity_call_windows",
+  {
+    id: text("id").primaryKey(),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    label: text("label"),
+    opensAt: date("opens_at"),
+    closesAt: date("closes_at"),
+    kind: text("kind").notNull().default("unknown"),
+    timezone: text("timezone"),
+    current: boolean("current").notNull().default(false),
+    sourceUrl: text("source_url").notNull(),
+    confidence: text("confidence").notNull().default("unknown"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("opportunity_call_windows_opp_idx").on(table.opportunityId, table.current, table.closesAt),
+    check("opportunity_call_windows_kind_check", sql`${table.kind} in ('exact', 'rolling', 'year-round', 'seasonal', 'unknown')`),
+    check("opportunity_call_windows_confidence_check", sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`),
+  ],
+);
+
 export const opportunityPreferences = pgTable(
   "opportunity_preferences",
   {

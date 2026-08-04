@@ -72,6 +72,63 @@ export interface OpportunityRepositoryPersonalState {
   tailoringReasons: OpportunityRepositoryTailoringReason[];
 }
 
+export interface OpportunityCallPrize {
+  rank?: number;
+  title?: string;
+  amountCents?: number;
+  currency?: string;
+  description?: string;
+  judgeName?: string;
+  sourceUrl: string;
+  confidence: "confirmed" | "probable" | "unknown";
+}
+
+export interface OpportunityCallWindow {
+  label?: string;
+  opensAt?: string;
+  closesAt?: string;
+  kind: "exact" | "rolling" | "year-round" | "seasonal" | "unknown";
+  timezone?: string;
+  current: boolean;
+  sourceUrl: string;
+  confidence: "confirmed" | "probable" | "unknown";
+}
+
+/** Call-level metadata modeled after literary market directories, but always
+ * separated from the canonical opportunity row and marked with provenance. */
+export interface OpportunityCallProfile {
+  callKind: "general-submission" | "themed-call" | "contest" | "prize" | "fellowship" | "grant" | "residency" | "open-call" | "unknown";
+  marketKind: "magazine" | "journal" | "press" | "anthology" | "contest" | "award" | "organization" | "unknown";
+  publicationFormats: string[];
+  acceptedFormats: string[];
+  subgenres: string[];
+  readingPeriodKind: "exact" | "rolling" | "year-round" | "seasonal" | "unknown";
+  readingPeriodLabel?: string;
+  issueTheme?: string;
+  paymentType?: "none" | "contributor-copy" | "flat-fee" | "royalty" | "varies" | "unknown";
+  paymentAmountCents?: number;
+  paymentCurrency?: string;
+  reprintsAllowed?: boolean;
+  previouslyUnpublishedRequired?: boolean;
+  multipleSubmissionsAllowed?: boolean;
+  wordLimitMin?: number;
+  wordLimitMax?: number;
+  pageLimitMin?: number;
+  pageLimitMax?: number;
+  responseTimeDays?: number;
+  acceptanceRate?: number;
+  statsSampleSize?: number;
+  judgeName?: string;
+  prizeSummary?: string;
+  eligibilitySummary?: string;
+  rightsSummary?: string;
+  confidence: "confirmed" | "probable" | "unknown";
+  sourceUrl: string;
+  lastVerifiedAt?: string;
+  prizes: OpportunityCallPrize[];
+  windows: OpportunityCallWindow[];
+}
+
 export interface OpportunityBrowseProjection {
   id: string;
   slug: string;
@@ -96,6 +153,7 @@ export interface OpportunityBrowseProjection {
   submissionAvailable: boolean;
   source: OpportunityRepositorySource;
   personal?: OpportunityRepositoryPersonalState;
+  callProfile?: OpportunityCallProfile;
 }
 
 export interface OpportunityDetailProjection extends OpportunityBrowseProjection {

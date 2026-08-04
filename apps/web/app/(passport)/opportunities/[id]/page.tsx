@@ -25,6 +25,10 @@ function typeLabel(type: string): string {
   return type === 'open-call' ? 'Open call' : type.charAt(0).toUpperCase() + type.slice(1);
 }
 
+function marketLabel(kind: string): string {
+  return kind === 'unknown' ? 'Publication details' : kind.charAt(0).toUpperCase() + kind.slice(1);
+}
+
 export default async function OpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
@@ -61,6 +65,19 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
           </Card>
 
           <Card><CardHeader><CardTitle>What you need</CardTitle></CardHeader><CardContent>{opportunity.requiredMaterials.length ? <ul className="divide-y divide-border">{opportunity.requiredMaterials.map((material) => <li key={material.label} className="flex items-start gap-3 py-3 text-sm first:pt-0 last:pb-0"><CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green" /><span>{material.label}{material.limit && <span className="ml-1 text-muted-foreground">· {material.limit}</span>}</span></li>)}</ul> : <p className="text-sm text-muted-foreground">Required materials have not been confirmed.</p>}</CardContent></Card>
+
+          {opportunity.callProfile && <Card><CardHeader><CardTitle>{marketLabel(opportunity.callProfile.marketKind)} details</CardTitle></CardHeader><CardContent className="space-y-4 text-sm">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div><p className="text-xs text-muted-foreground">Call</p><p className="mt-1 capitalize">{opportunity.callProfile.callKind.replaceAll('-', ' ')}</p></div>
+              <div><p className="text-xs text-muted-foreground">Reading period</p><p className="mt-1">{opportunity.callProfile.readingPeriodLabel ?? opportunity.callProfile.readingPeriodKind.replaceAll('-', ' ')}</p></div>
+              {opportunity.callProfile.acceptedFormats.length > 0 && <div><p className="text-xs text-muted-foreground">Accepts</p><p className="mt-1">{opportunity.callProfile.acceptedFormats.join(', ')}</p></div>}
+              {opportunity.callProfile.paymentType && <div><p className="text-xs text-muted-foreground">Payment</p><p className="mt-1 capitalize">{opportunity.callProfile.paymentType.replaceAll('-', ' ')}</p></div>}
+              {(opportunity.callProfile.wordLimitMax || opportunity.callProfile.pageLimitMax) && <div><p className="text-xs text-muted-foreground">Limits</p><p className="mt-1">{opportunity.callProfile.wordLimitMax ? `Up to ${opportunity.callProfile.wordLimitMax.toLocaleString()} words` : ''}{opportunity.callProfile.wordLimitMax && opportunity.callProfile.pageLimitMax ? ' · ' : ''}{opportunity.callProfile.pageLimitMax ? `Up to ${opportunity.callProfile.pageLimitMax} pages` : ''}</p></div>}
+              {opportunity.callProfile.responseTimeDays && <div><p className="text-xs text-muted-foreground">Typical response</p><p className="mt-1">About {opportunity.callProfile.responseTimeDays} days</p></div>}
+            </div>
+            {opportunity.callProfile.prizes.length > 0 && <div className="border-t border-border pt-3"><p className="text-xs text-muted-foreground">Prize or award notes</p><ul className="mt-2 space-y-2">{opportunity.callProfile.prizes.slice(0, 5).map((prize, index) => <li key={`${prize.sourceUrl}-${index}`} className="flex items-start gap-2"><span className="text-muted-foreground">{prize.rank ? `${prize.rank}.` : '·'}</span><span>{prize.title ?? 'Prize details'}<span className="ml-2 text-xs text-muted-foreground">{prize.confidence}</span></span></li>)}</ul></div>}
+            <p className="text-xs text-muted-foreground">Call details are extracted from the public source and may need confirmation.</p>
+          </CardContent></Card>}
 
           {opportunity.eligibility.length > 0 && <Card><CardHeader><CardTitle>Eligibility</CardTitle></CardHeader><CardContent><ul className="space-y-3">{opportunity.eligibility.map((rule) => <li key={rule.key} className="flex items-start gap-2.5 text-sm"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-muted-foreground" /><span>{rule.description}{rule.value && <span className="ml-1 text-muted-foreground">· {rule.value}</span>}<span className="ml-2 text-xs text-muted-foreground">{rule.certainty}</span></span></li>)}</ul></CardContent></Card>}
           <PrepareChecklist opportunityId={opportunity.id} enabled={Boolean(session?.account.userId && opportunity.personal?.tracked)} />
