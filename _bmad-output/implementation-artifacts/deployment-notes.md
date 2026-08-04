@@ -51,4 +51,4 @@
 
 **Current deployment:** the latest production deployment builds clean and is aliased at `https://www.usemissa.com`. The opportunities browse/detail routes are backed by the live Neon relational repository.
 
-**Latest verified Preview (2026-08-03):** `https://missa-qc1q3rzlv-adedayoagarau.vercel.app` (Vercel deployment `dpl_5KZ6hgAWU3gJ3j74NFzfMQZWhWNk`, target `preview`, state `READY`). Use this URL for acceptance testing before promoting to production.
+**Latest verified Preview (2026-08-03):** `https://missa-kokqdpwjy-adedayoagarau.vercel.app` (Vercel deployment `dpl_ArBu1tn3DYor9yJ6joP4MTHLnYEq`, target `preview`, state `READY`). Use this URL for acceptance testing before promoting to production.
