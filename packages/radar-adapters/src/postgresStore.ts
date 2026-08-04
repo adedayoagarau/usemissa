@@ -41,6 +41,7 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
   const client = await pool.connect();
   try {
     await client.query('begin');
+    await client.query("select pg_advisory_xact_lock(hashtext('missa.radar.snapshot'))");
     const membershipsHaveRole = await hasColumn(client, 'radar_memberships', 'role');
 
     await client.query('delete from radar_sources');

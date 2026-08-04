@@ -32,6 +32,7 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool): Pr
   const client = await pool.connect();
   try {
     await client.query('begin');
+    await client.query("select pg_advisory_xact_lock(hashtext('missa.workspace.snapshot'))");
 
     // Children first, so foreign keys never point at a row we're about to delete.
     await client.query('delete from review_recommendations');

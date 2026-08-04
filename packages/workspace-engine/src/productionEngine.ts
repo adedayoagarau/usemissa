@@ -35,11 +35,16 @@ export async function createProductionWorkspaceEngine(): Promise<ProductionWorks
   const store = await loadStoreFromPostgres(pool);
 
   const engine = new WorkspaceEngine({ store, ids: uuidWorkspaceIds() });
+  let pendingPersist = Promise.resolve();
 
   return {
     engine,
     pool,
-    persist: () => saveStoreToPostgres(engine.store, pool),
+    persist: () => {
+      const next = pendingPersist.then(() => saveStoreToPostgres(engine.store, pool));
+      pendingPersist = next.catch(() => undefined);
+      return next;
+    },
     close: () => pool.end(),
   };
 }
