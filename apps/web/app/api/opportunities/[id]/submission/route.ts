@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { getSessionAccount } from '@/lib/auth';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const session = await getSessionAccount(request.headers.get('cookie'));
+  if (!session) return NextResponse.json({ error: 'Log in to continue to submission.' }, { status: 401, headers: { 'cache-control': 'private, no-store' } });
   const { id } = await params;
   const opportunity = await getOpportunityRepository().getById(id);
   if (!opportunity || !['opening-soon', 'open', 'closing-soon', 'deadline-extended'].includes(opportunity.status)) {

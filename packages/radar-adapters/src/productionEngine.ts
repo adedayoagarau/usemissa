@@ -50,8 +50,8 @@ function normalizeUrl(url: string): string {
 export function seedRegistryIfEmpty(
   engine: RadarEngine,
 ): { loaded: number } | null {
-  const existingUrls = new Set(
-    [...engine.store.sources.values()].map((s) => normalizeUrl(s.url)),
+  const existingByUrl = new Map(
+    [...engine.store.sources.values()].map((source) => [normalizeUrl(source.url), source] as const),
   );
   const registry = assembleRegistry();
   const entries = filterSources(registry, { maxTier: 0 });
@@ -59,14 +59,29 @@ export function seedRegistryIfEmpty(
   let loaded = 0;
   for (const entry of entries) {
     const key = normalizeUrl(entry.url);
-    if (existingUrls.has(key)) continue;
-    engine.addSource({
+    const existing = existingByUrl.get(key);
+    if (existing) {
+      existing.registryVerticalId = entry.verticalId;
+      existing.registryGroup = registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.group;
+      existing.registryDisciplines = entry.disciplines ?? registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.disciplines;
+      existing.registryGeography = entry.geography;
+      existing.registryOpportunityTypes = entry.opportunityTypes;
+      existing.registryOrganizationName = entry.organizationName;
+      continue;
+    }
+    const added = engine.addSource({
       name: entry.name,
       url: entry.url,
       kind: entry.kind,
       checkIntervalHours: entry.checkIntervalHours,
+      registryVerticalId: entry.verticalId,
+      registryGroup: registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.group,
+      registryDisciplines: entry.disciplines ?? registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.disciplines,
+      registryGeography: entry.geography,
+      registryOpportunityTypes: entry.opportunityTypes,
+      registryOrganizationName: entry.organizationName,
     });
-    existingUrls.add(key);
+    existingByUrl.set(key, added);
     loaded++;
   }
 

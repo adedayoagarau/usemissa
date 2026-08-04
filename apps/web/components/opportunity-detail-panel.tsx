@@ -34,7 +34,7 @@ export function OpportunityDetailPanel({
   const reasons = opportunity.personal?.tailoringReasons ?? [];
   const sourceName = opportunity.organizationName ?? opportunity.source.name;
   const summary = opportunity.organizationSummary ?? `A ${typeLabel(opportunity.type).toLowerCase()} from ${opportunity.organizationName ?? 'this organization'}. Review the requirements and source notes before submitting.`;
-  const freshness = opportunityFreshness(opportunity.source.checkedAt);
+  const freshness = opportunityFreshness(opportunity.source.processingSucceededAt);
 
   return (
     <aside className={`flex min-h-0 flex-col border-l border-border bg-card lg:sticky lg:top-0 lg:h-[calc(100vh-3.75rem)] lg:overflow-y-auto ${styles.detailPanel} ${mobileOpen ? styles.detailPanelMobileOpen : ''}`}>

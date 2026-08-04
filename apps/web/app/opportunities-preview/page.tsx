@@ -3,14 +3,9 @@ import { Search, X } from 'lucide-react';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
 import { parseOpportunityBrowseQuery } from '@/lib/opportunityQuery';
 import { OpportunityCard } from '@/components/opportunity-card';
-import { OpportunityDetailPanel } from '@/components/opportunity-detail-panel';
 import styles from '../(passport)/opportunities/opportunities.module.css';
 
 type SearchParams = Record<string, string | string[] | undefined>;
-
-function first(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
 
 function previewHref(params: URLSearchParams, selected?: string): string {
   const next = new URLSearchParams(params);
@@ -27,9 +22,6 @@ export default async function OpportunitiesPreviewPage({ searchParams }: { searc
   const query = parseOpportunityBrowseQuery(params);
   const repository = getOpportunityRepository();
   const result = await repository.browse(query);
-  const selectedParam = first(raw.selected);
-  const selectedId = selectedParam === 'none' ? undefined : selectedParam ?? result.items[0]?.id;
-  const selected = selectedId ? await repository.getById(selectedId) : null;
 
   return (
     <main className="min-h-screen bg-background">
@@ -46,9 +38,8 @@ export default async function OpportunitiesPreviewPage({ searchParams }: { searc
           <div className="border-b border-border px-6 py-4 lg:px-8"><form action="/opportunities-preview" className="flex items-center rounded-md border border-input bg-background px-3"><Search className="mr-2 size-4 text-muted-foreground" /><input name="q" defaultValue={query.query} placeholder="Search opportunities or organizations" className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />{query.query && <Link href="/opportunities-preview" aria-label="Clear search"><X className="size-4 text-muted-foreground" /></Link>}</form></div>
           <div className={styles.filterRow}><div className="flex flex-wrap items-center gap-2"><span className={styles.filterSelect}>◉ Discipline⌄</span><span className={styles.filterSelect}>▣ Genre⌄</span><span className={styles.filterSelect}>⌖ Location⌄</span><span className={styles.filterSelect}>◇ Fee⌄</span><span className={styles.filterSelect}>▣ Deadline⌄</span><span className="ml-auto text-xs text-muted-foreground">Verified&nbsp; ◉ &nbsp;No fee&nbsp; ◉ &nbsp;Open now&nbsp; ◉</span><span className="rounded-md border border-border px-3 py-2 text-xs">Save search</span></div></div>
           <div className="flex items-center justify-between px-6 pb-3 pt-5 lg:px-8"><p className="text-sm font-medium text-foreground">{result.total.toLocaleString()} opportunities shown</p><span className="text-xs text-muted-foreground">Sort by&nbsp; <strong className="text-foreground">Best fit⌄</strong></span></div>
-          <div className="grid gap-3 px-6 pb-8 md:grid-cols-2 xl:grid-cols-3 lg:px-8">{result.items.map((item) => <OpportunityCard key={item.id} item={item} selected={selectedId === item.id} selectionHref={previewHref(params, item.id)} />)}</div>
+          <div className="grid gap-3 px-6 pb-8 md:grid-cols-2 xl:grid-cols-3 lg:px-8">{result.items.map((item) => <OpportunityCard key={item.id} item={item} selectionHref={previewHref(params, item.id)} />)}</div>
         </section>
-        {selected && <OpportunityDetailPanel opportunity={selected} closeHref={previewHref(params, 'none')} />}
       </div>
     </main>
   );

@@ -11,6 +11,7 @@ import type {
   Opportunity,
   OpportunityChange,
   OpportunityCandidate,
+  OpportunityType,
   OpportunityCycle,
   OpportunityFields,
   Organization,
@@ -76,6 +77,33 @@ import { cleanupGmailOAuthStates, completeGmailSyncJob, createGmailConnection, c
 import { createLibraryFile, createLibraryWork, createSavedAnswer, deleteLibraryFile, deleteLibraryWork, deleteSavedAnswer, libraryForUser, updateLibraryWork, updateSavedAnswer } from './library/library.js';
 import { addChecklistItem, checklistForUser, deleteChecklistItem, getOpportunityChecklist, refreshOpportunityChecklist, updateChecklistItem, type ChecklistItemPatch, type OpportunityChecklistView } from './checklist/checklist.js';
 import { addOpportunityToCustomList as addToList, customListsForOpportunity, customListsForUser, createCustomList, deleteCustomList, opportunitiesForCustomList, removeOpportunityFromCustomList, updateCustomList } from './lists/lists.js';
+
+const DEFAULT_FETCH_CONCURRENCY = 8;
+const MAX_FETCH_CONCURRENCY = 16;
+
+function fetchConcurrency(): number {
+  const configured = Number(process.env.RADAR_FETCH_CONCURRENCY);
+  if (!Number.isInteger(configured) || configured < 1) return DEFAULT_FETCH_CONCURRENCY;
+  return Math.min(configured, MAX_FETCH_CONCURRENCY);
+}
+
+/** Fetch sources concurrently, then process their results in registry order. */
+async function fetchSources(sources: Source[], fetcher: Fetcher): Promise<FetchResult[]> {
+  const results: FetchResult[] = new Array(sources.length);
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < sources.length) {
+      const index = next++;
+      try {
+        results[index] = await fetcher.fetch(sources[index]!);
+      } catch {
+        results[index] = { status: 'error', content: '' };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(fetchConcurrency(), sources.length) }, worker));
+  return results;
+}
 
 export class ProfileValidationError extends Error {
   readonly field: 'displayName' | 'bio';
@@ -240,6 +268,12 @@ export class RadarEngine {
     url: string;
     kind: SourceKind;
     organizationId?: string;
+    registryVerticalId?: string;
+    registryGroup?: string;
+    registryDisciplines?: string[];
+    registryGeography?: string[];
+    registryOpportunityTypes?: OpportunityType[];
+    registryOrganizationName?: string;
     checkIntervalHours?: number;
   }): Source {
     const source: Source = {
@@ -248,6 +282,12 @@ export class RadarEngine {
       url: input.url,
       kind: input.kind,
       organizationId: input.organizationId,
+      registryVerticalId: input.registryVerticalId,
+      registryGroup: input.registryGroup,
+      registryDisciplines: input.registryDisciplines,
+      registryGeography: input.registryGeography,
+      registryOpportunityTypes: input.registryOpportunityTypes,
+      registryOrganizationName: input.registryOrganizationName,
       checkIntervalHours: input.checkIntervalHours ?? 24,
       active: true,
       consecutiveFailures: 0,
@@ -621,19 +661,11 @@ export class RadarEngine {
     const due = dueSources(this.store.sources.values(), now);
     const sourcesToProcess = opts?.maxSources !== undefined ? due.slice(0, opts.maxSources) : due;
 
-    for (const source of sourcesToProcess) {
+    const fetchedResults = await fetchSources(sourcesToProcess, this.fetcher);
+    for (const [index, source] of sourcesToProcess.entries()) {
       report.sourcesChecked++;
       source.lastCheckedAt = now.toISOString();
-
-      let result: FetchResult;
-      try {
-        result = await this.fetcher.fetch(source);
-      } catch {
-        source.consecutiveFailures++;
-        report.sourcesFailed++;
-        report.fetchFailures++;
-        continue;
-      }
+      const result = fetchedResults[index]!;
 
       if (result.status === 'error') {
         source.consecutiveFailures++;

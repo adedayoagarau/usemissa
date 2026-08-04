@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { CalendarDays, ChevronDown, MapPin, Palette, Search, Tag, SlidersHorizontal, Sparkles, X } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
@@ -8,6 +9,7 @@ import { OpportunityCard } from '@/components/opportunity-card';
 import { OpportunityDetailPanel } from '@/components/opportunity-detail-panel';
 import { SaveSearchButton } from '@/components/save-search-button';
 import { Button } from '@/components/ui/button';
+import { DISCIPLINE_OPTIONS, LOCATION_OPTIONS } from '@/lib/opportunityTaxonomy';
 import styles from './opportunities.module.css';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -47,7 +49,10 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
   const query = parseOpportunityBrowseQuery(rawUrlParams);
   const result = await getOpportunityRepository().browse(query, session?.account.id ? { accountId: session.account.id } : undefined);
   const selectedParam = first(rawParams.selected);
-  const selectedId = selectedParam === 'none' ? undefined : selectedParam ?? result.items[0]?.id;
+  if (selectedParam && !session) {
+    redirect(`/login?next=${encodeURIComponent(`/opportunities?${rawUrlParams.toString()}`)}`);
+  }
+  const selectedId = session ? (selectedParam === 'none' ? undefined : selectedParam ?? result.items[0]?.id) : undefined;
   const selectedExplicitly = selectedParam !== undefined;
   const selected = selectedId ? await getOpportunityRepository().getById(selectedId, session?.account.id ? { accountId: session.account.id } : undefined) : null;
   const filters = activeFilterCount(query);
@@ -81,9 +86,9 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
         <div className={styles.filterRow}>
           <form action="/opportunities" className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="category" value={query.category} />{query.query && <input type="hidden" name="q" value={query.query} />}
-            <label className={styles.filterSelect}><Palette className="size-4 text-muted-foreground" /><span className="sr-only">Discipline</span><select name="discipline" defaultValue={query.disciplines[0] ?? ''}><option value="">Discipline</option><option value="poetry">Poetry</option><option value="fiction">Fiction</option><option value="visual art">Visual art</option><option value="film">Film</option></select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
-            <label className={styles.filterSelect}><Tag className="size-4 text-muted-foreground" /><span className="sr-only">Genre</span><select name="genre" defaultValue={query.genres[0] ?? ''}><option value="">Genre</option><option value="poetry">Poetry</option><option value="fiction">Fiction</option><option value="essays">Essays</option><option value="nonfiction">Nonfiction</option></select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
-            <label className={styles.filterSelect}><MapPin className="size-4 text-muted-foreground" /><span className="sr-only">Location</span><select name="location" defaultValue={query.locations[0] ?? ''}><option value="">Location</option><option value="United States">United States</option><option value="Remote">Remote</option><option value="International">International</option></select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
+            <label className={styles.filterSelect}><Palette className="size-4 text-muted-foreground" /><span className="sr-only">Discipline</span><select name="discipline" defaultValue={query.disciplines[0] ?? ''}><option value="">Discipline</option>{DISCIPLINE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
+            <label className={styles.filterSelect}><Tag className="size-4 text-muted-foreground" /><span className="sr-only">Genre</span><select name="genre" defaultValue={query.genres[0] ?? ''}><option value="">Genre</option>{DISCIPLINE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
+            <label className={styles.filterSelect}><MapPin className="size-4 text-muted-foreground" /><span className="sr-only">Location</span><select name="location" defaultValue={query.locations[0] ?? ''}><option value="">Location</option>{LOCATION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
             <label className={styles.filterSelect}><Tag className="size-4 text-muted-foreground" /><span className="sr-only">Fee</span><select name="fee" defaultValue={query.feeStatus ?? ''}><option value="">Fee</option><option value="no-fee">No fee</option><option value="paid">Paid</option><option value="unknown">Not confirmed</option></select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
             <label className={styles.filterSelect}><CalendarDays className="size-4 text-muted-foreground" /><span className="sr-only">Deadline</span><select name="deadlineWithinDays" defaultValue={query.deadlineWithinDays?.toString() ?? ''}><option value="">Deadline</option><option value="7">Next 7 days</option><option value="30">Next 30 days</option><option value="90">Next 90 days</option></select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
             <div className="ml-auto flex flex-wrap items-center gap-2">

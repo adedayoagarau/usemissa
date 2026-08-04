@@ -82,6 +82,7 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
     organizationVerified: organization?.verified,
     status: publicStatus(opp),
     type: opp.fields.type,
+    discipline: opp.fields.genres[0] ?? source?.registryDisciplines?.[0],
     genres: opp.fields.genres,
     deadline: {
       kind: opp.fields.deadline.kind,
@@ -95,7 +96,7 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
       raw: opp.fields.fee.raw,
     },
     prize: opp.fields.prize,
-    location: opp.fields.location,
+    location: opp.fields.location ?? source?.registryGeography?.join(', '),
     simultaneousAllowed: opp.fields.simultaneousAllowed,
     submissionAvailable: Boolean(opp.fields.submissionUrl),
     source: {
@@ -103,7 +104,7 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
       name: source?.url ?? opp.sourceUrl,
       url: opp.sourceUrl,
       checkedAt: source?.lastCheckedAt ?? opp.lastCheckedAt,
-      processingSucceededAt: source?.lastCheckedAt,
+      processingSucceededAt: source?.lastProcessedAt ?? source?.lastSuccessfulFetchAt,
       organizationConfirmed: Boolean(opp.claimedByOrganizationId),
     },
     personal: {

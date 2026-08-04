@@ -88,8 +88,8 @@ async function upsertSource(client: PoolClient, source: Source): Promise<void> {
       source.kind,
       source.active,
       source.lastCheckedAt ?? null,
-      source.lastCheckedAt ?? null,
-      source.lastCheckedAt ?? null,
+      source.lastSuccessfulFetchAt ?? null,
+      source.lastProcessedAt ?? null,
     ],
   );
 }
@@ -98,7 +98,12 @@ async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, s
   const lifecycle = statusFor(opportunity.status);
   const submission = submissionFor(opportunity.fields.submissionUrl);
   const organizationId = opportunity.fields.organizationId ?? source.organizationId ?? null;
-  const checkedAt = opportunity.lastCheckedAt || opportunity.createdAt;
+  // `lastCheckedAt` is an attempt timestamp. It must not be presented as a
+  // successful verification after a failed fetch. The opportunity is only
+  // persisted after extraction, so its processing timestamp is the source's
+  // successful canonicalization time when available.
+  const checkedAt = source.lastCheckedAt ?? opportunity.lastCheckedAt ?? opportunity.createdAt;
+  const processedAt = source.lastProcessedAt ?? source.lastSuccessfulFetchAt ?? null;
 
   await client.query(
     `insert into opportunities (
@@ -154,7 +159,7 @@ async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, s
       lifecycle.status,
       lifecycle.publicationState,
       opportunity.fields.type,
-      null,
+      opportunity.fields.genres[0] ?? source.registryDisciplines?.[0] ?? null,
       opportunity.fields.genres,
       opportunity.fields.openDate ?? null,
       opportunity.fields.deadline.date ?? null,
@@ -168,7 +173,7 @@ async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, s
       opportunity.fields.fee.amountCents ?? null,
       opportunity.fields.fee.currency ?? null,
       opportunity.fields.prize ?? null,
-      opportunity.fields.location ?? null,
+      opportunity.fields.location ?? source.registryGeography?.join(', ') ?? null,
       opportunity.fields.simultaneousAllowed ?? null,
       opportunity.fields.guidelinesUrl ?? null,
       submission.url,
@@ -176,7 +181,7 @@ async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, s
       submission.state,
       searchDocument(opportunity),
       checkedAt,
-      checkedAt,
+      processedAt,
       opportunity.lastChangedAt,
       opportunity.createdAt,
     ],
@@ -215,7 +220,7 @@ async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, s
       source.name,
       source.url,
       checkedAt,
-      checkedAt,
+      processedAt,
       Boolean(opportunity.claimedByOrganizationId),
     ],
   );

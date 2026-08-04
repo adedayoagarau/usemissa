@@ -28,6 +28,7 @@ const opportunityImages = [
 ];
 
 function browseHref(isSignedIn: boolean, selectedId?: string) {
+  if (!isSignedIn && selectedId) return `/login?next=${encodeURIComponent(`/opportunities?selected=${selectedId}`)}`;
   const path = isSignedIn ? '/opportunities' : '/opportunities-preview';
   return selectedId ? path + '?selected=' + encodeURIComponent(selectedId) : path;
 }

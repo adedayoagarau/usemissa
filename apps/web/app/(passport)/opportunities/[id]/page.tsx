@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { ArrowLeft, ArrowUpRight, CheckCircle2, CircleAlert, ExternalLink, ShieldCheck } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
@@ -29,11 +29,12 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
   const { id } = await params;
+  if (!session) redirect(`/login?next=${encodeURIComponent(`/opportunities/${id}`)}`);
   const opportunity = await getOpportunityRepository().getById(id, session?.account.id ? { accountId: session.account.id } : undefined);
   if (!opportunity) notFound();
 
   const reasons = opportunity.personal?.tailoringReasons ?? [];
-  const sourceChecked = opportunity.source.checkedAt ? new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(opportunity.source.checkedAt)) : 'not yet confirmed';
+  const sourceChecked = opportunity.source.processingSucceededAt ? new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(opportunity.source.processingSucceededAt)) : 'not yet confirmed';
 
   return (
     <div className="space-y-8 pb-16">

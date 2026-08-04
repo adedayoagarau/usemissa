@@ -28,11 +28,14 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
   const deadline = deadlineCopy(item.deadline);
   const sourceName = item.organizationName ?? item.source.name ?? 'Missa source';
   const reasons = item.personal?.tailoringReasons ?? [];
-  const freshness = opportunityFreshness(item.source.checkedAt);
+  // A failed fetch updates checkedAt but must not make a public card look
+  // freshly verified. Prefer the last successful processing timestamp.
+  const freshness = opportunityFreshness(item.source.processingSucceededAt);
+  const detailHref = userId ? selectionHref : `/login?next=${encodeURIComponent(selectionHref.replace('/opportunities-preview', '/opportunities'))}`;
 
   return (
     <article className={cn('relative flex min-h-[16.5rem] flex-col overflow-hidden rounded-md border bg-card transition-colors', selected ? 'border-2 border-primary' : 'border-border hover:border-foreground/30')}>
-      <Link href={selectionHref} className="flex gap-3 p-3.5 pb-2.5">
+      <Link href={detailHref} className="flex gap-3 p-3.5 pb-2.5">
         <div className="relative flex h-28 w-[4.75rem] shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border bg-[linear-gradient(145deg,#e9f0f2,#b9cdd2)] text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700">
           {item.identityAssetUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -54,7 +57,7 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
       </div>
       <div className="mx-3.5 rounded-sm border border-green/15 bg-green/5 px-2.5 py-1.5">{reasons.length > 0 ? <p className="flex items-center gap-1 text-[11px] font-medium text-green"><CheckCircle2 className="size-3.5" />Strong fit <span className="font-normal text-muted-foreground">· {reasons[0].label}</span></p> : <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 className="size-3.5" />Fit signal pending</p>}</div>
       <div className="relative z-10 mt-auto flex gap-2 p-3.5 pt-2.5">
-        {userId && !item.personal?.tracked ? <div className="flex-1"><TrackButton userId={userId} opportunityId={item.id} /></div> : userId ? <Button size="sm" variant="outline" disabled className="flex-1">Tracked</Button> : <Link href={selectionHref} className="flex-1 rounded-md border border-border py-1.5 text-center text-xs text-foreground">View details</Link>}
+        {userId && !item.personal?.tracked ? <div className="flex-1"><TrackButton userId={userId} opportunityId={item.id} /></div> : userId ? <Button size="sm" variant="outline" disabled className="flex-1">Tracked</Button> : <Link href={detailHref} className="flex-1 rounded-md border border-border py-1.5 text-center text-xs text-foreground">Log in to view details</Link>}
         {userId && item.personal?.tracked ? <ListPicker opportunityId={item.id} enabled compact /> : userId ? <SaveOpportunityButton userId={userId} opportunityId={item.id} /> : <Button type="button" size="icon-sm" variant="outline" aria-label="Save opportunity" title="Log in to save"><Bookmark className="size-3.5" aria-hidden="true" /></Button>}
       </div>
     </article>

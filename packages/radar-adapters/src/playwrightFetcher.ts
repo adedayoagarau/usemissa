@@ -43,10 +43,11 @@ export class PlaywrightFetcher implements Fetcher {
     const browser = await this.ensureBrowser();
     const page = await browser.newPage({ userAgent: this.userAgent });
     try {
-      const response = await page.goto(source.url, { waitUntil: 'networkidle', timeout: this.timeoutMs });
+      const response = await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: this.timeoutMs });
       if (!response) return { status: 'error', content: '' };
       if (response.status() === 404 || response.status() === 410) return { status: 'gone', content: '' };
       if (!response.ok()) return { status: 'error', content: '' };
+      await page.waitForLoadState('networkidle', { timeout: Math.min(this.timeoutMs, 2_000) }).catch(() => undefined);
       const html = await page.content();
       return { status: 'ok', content: stripHtml(html) };
     } catch {
@@ -79,7 +80,7 @@ export class PlaywrightFetcher implements Fetcher {
 
   private async fetchRobots(origin: string): Promise<RobotsRule> {
     try {
-      const res = await globalThis.fetch(`${origin}/robots.txt`, { headers: { 'user-agent': this.userAgent } });
+      const res = await globalThis.fetch(`${origin}/robots.txt`, { headers: { 'user-agent': this.userAgent }, signal: AbortSignal.timeout(5_000) });
       if (!res.ok) return { disallow: [] };
       const text = await res.text();
       return { disallow: parseDisallowForUserAgent(text, this.userAgent) };

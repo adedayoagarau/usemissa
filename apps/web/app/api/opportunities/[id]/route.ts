@@ -7,8 +7,9 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id } = await params;
   const session = await getSessionAccount(request.headers.get("cookie"));
+  if (!session) return NextResponse.json({ error: "Log in to view opportunity details." }, { status: 401, headers: { "cache-control": "private, no-store" } });
+  const { id } = await params;
   const result = await getOpportunityRepository().getById(
     id,
     session?.account.id ? { accountId: session.account.id } : undefined,

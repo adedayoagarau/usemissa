@@ -41,6 +41,7 @@ export class HttpFetcher implements Fetcher {
       const res = await globalThis.fetch(source.url, {
         headers: { 'user-agent': this.userAgent },
         redirect: 'follow',
+        signal: AbortSignal.timeout(fetchTimeoutMs()),
       });
       if (res.status === 404 || res.status === 410) return { status: 'gone', content: '' };
       if (!res.ok) return { status: 'error', content: '' };
@@ -57,6 +58,15 @@ export class HttpFetcher implements Fetcher {
       return { status: 'error', content: '' };
     }
   }
+}
+
+const DEFAULT_FETCH_TIMEOUT_MS = 20_000;
+const MAX_FETCH_TIMEOUT_MS = 60_000;
+
+function fetchTimeoutMs(): number {
+  const configured = Number(process.env.RADAR_FETCH_TIMEOUT_MS);
+  if (!Number.isInteger(configured) || configured < 5_000) return DEFAULT_FETCH_TIMEOUT_MS;
+  return Math.min(configured, MAX_FETCH_TIMEOUT_MS);
 }
 
 function isTextualContentType(contentType: string): boolean {

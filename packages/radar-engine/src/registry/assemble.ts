@@ -24,6 +24,12 @@ function toRadarSource(entry: SourceRegistryEntry): Source {
     name: entry.name,
     url: entry.url,
     kind: entry.kind,
+    registryVerticalId: entry.verticalId,
+    registryGroup: REGISTRY_VERTICALS.find((vertical) => vertical.id === entry.verticalId)?.group,
+    registryDisciplines: entry.disciplines ?? REGISTRY_VERTICALS.find((vertical) => vertical.id === entry.verticalId)?.disciplines,
+    registryGeography: entry.geography,
+    registryOpportunityTypes: entry.opportunityTypes,
+    registryOrganizationName: entry.organizationName,
     checkIntervalHours: entry.checkIntervalHours,
     active: entry.active,
     consecutiveFailures: 0,
@@ -117,6 +123,12 @@ export function loadSourcesIntoEngine(
     url: string;
     kind: SourceKind;
     checkIntervalHours?: number;
+    registryVerticalId?: string;
+    registryGroup?: VerticalGroup;
+    registryDisciplines?: string[];
+    registryGeography?: string[];
+    registryOpportunityTypes?: SourceRegistryEntry['opportunityTypes'];
+    registryOrganizationName?: string;
   }) => Source,
   opts?: LoadRegistryOptions,
 ): { loaded: number; skipped: number; entries: SourceRegistryEntry[] } {
@@ -129,6 +141,12 @@ export function loadSourcesIntoEngine(
       url: entry.url,
       kind: entry.kind,
       checkIntervalHours: entry.checkIntervalHours,
+      registryVerticalId: entry.verticalId,
+      registryGroup: getVertical(entry.verticalId)?.group,
+      registryDisciplines: entry.disciplines ?? getVertical(entry.verticalId)?.disciplines,
+      registryGeography: entry.geography,
+      registryOpportunityTypes: entry.opportunityTypes,
+      registryOrganizationName: entry.organizationName,
     });
     loaded++;
   }

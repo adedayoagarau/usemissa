@@ -65,6 +65,13 @@ export interface Source {
   kind: SourceKind;
   /** Organization the source belongs to, when known (org websites). */
   organizationId?: string;
+  /** Registry context used to tailor and facet source-derived listings. */
+  registryVerticalId?: string;
+  registryGroup?: string;
+  registryDisciplines?: string[];
+  registryGeography?: string[];
+  registryOpportunityTypes?: OpportunityType[];
+  registryOrganizationName?: string;
   /** Polite per-source cadence. */
   checkIntervalHours: number;
   active: boolean;
