@@ -1,0 +1,70 @@
+# Missa Railway topology
+
+Railway hosts the durable Radar processes that cannot live inside a Vercel
+request. The user-facing application remains on Vercel and Neon remains the
+single production database. This is deliberately a small modular deployment,
+not a set of independently writable microservices.
+
+## Project
+
+- **Project:** `missa-production`
+- **Project ID:** `e32bad5f-e08d-47e4-b0c7-6f10fae7c11c`
+- **Environment:** `production` (`5577121c-de0f-4db2-9766-deba1ca976f8`)
+- **Database:** Neon Postgres, supplied through `DATABASE_URL`
+- **Container:** repository-root `Dockerfile`
+
+## Services
+
+| Service | Responsibility | Cadence | Important variables |
+| --- | --- | --- | --- |
+| `research-agent` | Broad, tiered discovery across canonical, directory, and feed sources. New records stay evidence-gated until they can be published. | Every 5 minutes, 25 sources/tick | `MISSA_WORKER_MODE=research`, `RADAR_RESEARCH_INTERVAL_MINUTES`, `RADAR_RESEARCH_BATCH_SIZE` |
+| `radar-worker` | Canonical refresh, validation, deduplication, status changes, relational projection, and alert evaluation. | Every 15 minutes, 25 sources/tick | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE` |
+
+Both services receive the same Neon URL and use the same advisory ingestion
+lock (`1984/727`). That serialization is intentional: it prevents two
+long-lived snapshots from overwriting each other's opportunity changes. The
+services are separate supervisors and can be restarted independently, but
+there is one authoritative writer at a time.
+
+## Deployment contract
+
+From the repository root:
+
+```sh
+railway up --service research-agent --environment production --detach --ci
+railway up --service radar-worker --environment production --detach --ci
+```
+
+Never place `DATABASE_URL` in the repository or in build logs. Set it as a
+Railway service variable from the local secret manager. Verify variables with
+presence-only output, and verify deployments with:
+
+```sh
+railway service status -s research-agent -e production --json
+railway service status -s radar-worker -e production --json
+```
+
+## Boundaries we are not creating yet
+
+- **Enrichment worker:** planned for media, PDFs, past-winner evidence, and
+  richer organization histories. It needs its own queue/lease tables and
+  object-storage contract before a Railway service is created; a placeholder
+  service would create cost without useful work.
+- **Redis/queue service:** not required while Radar writes are serialized by
+  Postgres advisory locks. Introduce it with the enrichment worker when work
+  needs independent retries and concurrency.
+- **Second Postgres instance:** not needed. Neon is the source of truth.
+- **Always-on staging workers:** not enabled. Vercel preview plus an isolated
+  Neon branch is safer than two unattended workers writing to production.
+
+## Operational rules
+
+1. Keep Vercel Cron as a bounded fallback until Railway has been observed
+   healthy; after that, disable the production Cron schedule to avoid duplicate
+   work.
+2. Do not enable Playwright in these images until Chromium is deliberately
+   added. The default HTTP fetcher is the safe, lightweight path.
+3. Treat discovery volume and published opportunity volume as different
+   metrics. No synthetic records are allowed to inflate the public catalogue.
+4. Add the enrichment service only after the evidence/media schema and queue
+   contract are merged and tested against a disposable Neon branch.
