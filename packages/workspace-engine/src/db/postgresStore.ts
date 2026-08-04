@@ -16,6 +16,22 @@ import type {
 } from '../domain/types.js';
 import { postgresSchema } from './postgresSchema.js';
 
+export const WORKSPACE_SNAPSHOT_DOMAIN = 'workspace';
+
+export class SnapshotConflictError extends Error {
+  readonly domain: string;
+  readonly expectedVersion: number;
+  readonly currentVersion: number;
+
+  constructor(domain: string, expectedVersion: number, currentVersion: number) {
+    super(`The ${domain} snapshot changed before this write completed`);
+    this.name = 'SnapshotConflictError';
+    this.domain = domain;
+    this.expectedVersion = expectedVersion;
+    this.currentVersion = currentVersion;
+  }
+}
+
 /** Creates the Workspace tables (idempotent — safe to call on every boot). */
 export async function ensurePostgresSchema(pool: Pool): Promise<void> {
   await pool.query(postgresSchema);
@@ -28,11 +44,19 @@ export async function ensurePostgresSchema(pool: Pool): Promise<void> {
  * the way Radar's store does) since every field here already has a proper
  * column.
  */
-export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool): Promise<void> {
+export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool, expectedVersion?: number): Promise<number> {
   const client = await pool.connect();
   try {
     await client.query('begin');
     await client.query("select pg_advisory_xact_lock(hashtext('missa.workspace.snapshot'))");
+    const versionRow = await client.query<{ version: string }>(
+      'select version from missa_snapshot_versions where domain = $1 for update',
+      [WORKSPACE_SNAPSHOT_DOMAIN],
+    );
+    const currentVersion = Number(versionRow.rows[0]?.version ?? 0);
+    if (expectedVersion !== undefined && expectedVersion !== currentVersion) {
+      throw new SnapshotConflictError(WORKSPACE_SNAPSHOT_DOMAIN, expectedVersion, currentVersion);
+    }
 
     // Children first, so foreign keys never point at a row we're about to delete.
     await client.query('delete from review_recommendations');
@@ -142,13 +166,27 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool): Pr
       );
     }
 
+    const nextVersion = currentVersion + 1;
+    await client.query(
+      'insert into missa_snapshot_versions (domain, version, updated_at) values ($1, $2, now()) on conflict (domain) do update set version = excluded.version, updated_at = excluded.updated_at',
+      [WORKSPACE_SNAPSHOT_DOMAIN, nextVersion],
+    );
     await client.query('commit');
+    return nextVersion;
   } catch (err) {
     await client.query('rollback');
     throw err;
   } finally {
     client.release();
   }
+}
+
+export async function readSnapshotVersion(pool: Pool): Promise<number> {
+  const result = await pool.query<{ version: string }>(
+    'select version from missa_snapshot_versions where domain = $1',
+    [WORKSPACE_SNAPSHOT_DOMAIN],
+  );
+  return Number(result.rows[0]?.version ?? 0);
 }
 
 export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore> {

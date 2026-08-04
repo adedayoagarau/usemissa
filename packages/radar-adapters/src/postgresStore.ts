@@ -3,6 +3,22 @@ import { createStore, type RadarStore } from '@missa/radar-engine';
 import { postgresSchema } from './postgresSchema.js';
 import { saveOpportunityProjectionToPostgres } from './opportunityRelationalStore.js';
 
+export const RADAR_SNAPSHOT_DOMAIN = 'radar';
+
+export class SnapshotConflictError extends Error {
+  readonly domain: string;
+  readonly expectedVersion: number;
+  readonly currentVersion: number;
+
+  constructor(domain: string, expectedVersion: number, currentVersion: number) {
+    super(`The ${domain} snapshot changed before this write completed`);
+    this.name = 'SnapshotConflictError';
+    this.domain = domain;
+    this.expectedVersion = expectedVersion;
+    this.currentVersion = currentVersion;
+  }
+}
+
 /** Creates the Radar tables (idempotent — safe to call on every boot). */
 export async function ensurePostgresSchema(pool: Pool): Promise<void> {
   await pool.query(postgresSchema);
@@ -35,13 +51,23 @@ async function hasTable(client: PoolClient, table: string): Promise<boolean> {
  * contract as `loadStore`/`saveStore` (the JSON-file adapter in the core
  * package) — the engine itself stays synchronous, in-memory Maps; this just
  * gives the process a durable, queryable backing store to load from on boot
- * and flush to after each tick, same as the file adapter does today.
+ * and flush to after each tick, same as the file adapter does today. A
+ * snapshot version rejects stale writers instead of silently overwriting a
+ * newer serverless snapshot.
  */
-export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promise<void> {
+export async function saveStoreToPostgres(store: RadarStore, pool: Pool, expectedVersion?: number): Promise<number> {
   const client = await pool.connect();
   try {
     await client.query('begin');
     await client.query("select pg_advisory_xact_lock(hashtext('missa.radar.snapshot'))");
+    const versionRow = await client.query<{ version: string }>(
+      'select version from missa_snapshot_versions where domain = $1 for update',
+      [RADAR_SNAPSHOT_DOMAIN],
+    );
+    const currentVersion = Number(versionRow.rows[0]?.version ?? 0);
+    if (expectedVersion !== undefined && expectedVersion !== currentVersion) {
+      throw new SnapshotConflictError(RADAR_SNAPSHOT_DOMAIN, expectedVersion, currentVersion);
+    }
     const membershipsHaveRole = await hasColumn(client, 'radar_memberships', 'role');
 
     await client.query('delete from radar_sources');
@@ -225,13 +251,27 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool): Promis
       await client.query('insert into radar_audit_log (id, at, data) values ($1, $2, $3)', [entry.id, entry.at, entry]);
     }
 
+    const nextVersion = currentVersion + 1;
+    await client.query(
+      'insert into missa_snapshot_versions (domain, version, updated_at) values ($1, $2, now()) on conflict (domain) do update set version = excluded.version, updated_at = excluded.updated_at',
+      [RADAR_SNAPSHOT_DOMAIN, nextVersion],
+    );
     await client.query('commit');
+    return nextVersion;
   } catch (err) {
     await client.query('rollback');
     throw err;
   } finally {
     client.release();
   }
+}
+
+export async function readSnapshotVersion(pool: Pool): Promise<number> {
+  const result = await pool.query<{ version: string }>(
+    'select version from missa_snapshot_versions where domain = $1',
+    [RADAR_SNAPSHOT_DOMAIN],
+  );
+  return Number(result.rows[0]?.version ?? 0);
 }
 
 export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {

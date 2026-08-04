@@ -20,7 +20,6 @@
  *                       of the deterministic extractor
  */
 import { RadarServer } from '@missa/radar-engine';
-import { saveStoreToPostgres } from './postgresStore.js';
 import { createProductionEngine } from './productionEngine.js';
 
 async function main(): Promise<void> {
@@ -29,7 +28,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const { engine, pool } = await createProductionEngine();
+  const production = await createProductionEngine();
+  const { engine, persist, close } = production;
   const port = Number(process.env.PORT ?? 4173);
   const tickMinutes = Number(process.env.TICK_MINUTES ?? 15);
 
@@ -38,7 +38,7 @@ async function main(): Promise<void> {
     port,
     sessionSecret: process.env.MISSA_SESSION_SECRET,
     tickIntervalMs: tickMinutes > 0 ? tickMinutes * 60_000 : undefined,
-    onPersist: (s) => saveStoreToPostgres(s, pool),
+    onPersist: () => persist(),
   });
 
   const boundPort = await server.start();
@@ -49,7 +49,7 @@ async function main(): Promise<void> {
 
   const shutdown = async () => {
     await server.stop();
-    await pool.end();
+    await close();
     process.exit(0);
   };
   process.on('SIGINT', shutdown);

@@ -12,6 +12,15 @@
  * the Radar side's ensurePostgresSchema.
  */
 export const postgresSchema = `
+create table if not exists missa_snapshot_versions (
+  domain text primary key,
+  version bigint not null default 0,
+  updated_at timestamptz not null default now()
+);
+insert into missa_snapshot_versions (domain, version)
+values ('workspace', 0)
+on conflict (domain) do nothing;
+
 create table if not exists entities (
   id text primary key,
   organization_id text not null,

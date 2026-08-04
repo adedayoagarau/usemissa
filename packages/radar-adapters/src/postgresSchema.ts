@@ -15,6 +15,15 @@
  * JSON-file store, just durable and queryable.
  */
 export const postgresSchema = `
+create table if not exists missa_snapshot_versions (
+  domain text primary key,
+  version bigint not null default 0,
+  updated_at timestamptz not null default now()
+);
+insert into missa_snapshot_versions (domain, version)
+values ('radar', 0)
+on conflict (domain) do nothing;
+
 create table if not exists radar_sources (
   id text primary key,
   organization_id text,

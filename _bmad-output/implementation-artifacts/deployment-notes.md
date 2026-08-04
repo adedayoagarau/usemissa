@@ -51,9 +51,14 @@
 
 **Current deployment:** the latest production deployment builds clean and is aliased at `https://www.usemissa.com`. The opportunities browse/detail routes are backed by the live Neon relational repository.
 
-**Latest verified Preview (2026-08-03):** `https://missa-kokqdpwjy-adedayoagarau.vercel.app` (Vercel deployment `dpl_ArBu1tn3DYor9yJ6joP4MTHLnYEq`, target `preview`, state `READY`). Use this URL for acceptance testing before promoting to production.
+**Latest verified Preview (2026-08-04):** `https://missa-4ltvcejbm-adedayoagarau.vercel.app` (Vercel deployment `dpl_EYwW74P1AJR3NFqy2bgezsSvGdz2`, target `preview`, state `READY`). Use this URL for acceptance testing before promoting to production.
 
 **Readiness probe:** `GET /api/health/readiness` returns `200` when the core
 database/session configuration is present and `503` otherwise. It reports
 presence-only states for optional file storage, cron, email, payments, Gmail,
 SCIM, and malware scanning configuration; it never returns secret values.
+
+**Persistence safety:** Radar and Workspace snapshots now carry a Postgres
+version. A stale warm instance fails with a snapshot conflict instead of
+silently overwriting a newer snapshot. This is a safe guard while the future
+row-level repositories are designed; it is not a merge engine.

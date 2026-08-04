@@ -16,6 +16,7 @@ import {
 import {
   ensurePostgresSchema,
   loadStoreFromPostgres,
+  readSnapshotVersion,
   saveStoreToPostgres,
 } from "./postgresStore.js";
 import { LlmExtractor } from "./llmExtractor.js";
@@ -98,6 +99,7 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   const pool = new Pool({ connectionString: databaseUrl });
   await ensurePostgresSchema(pool);
   const store = await loadStoreFromPostgres(pool);
+  let snapshotVersion = await readSnapshotVersion(pool);
 
   // Dynamic import, not a top-level static one: `playwright`'s own module-load
   // code reaches for browser-registry files (browsers.json) that don't exist
@@ -122,7 +124,9 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
     engine,
     pool,
     persist: () => {
-      const next = pendingPersist.then(() => saveStoreToPostgres(engine.store, pool));
+      const next = pendingPersist.then(async () => {
+        snapshotVersion = await saveStoreToPostgres(engine.store, pool, snapshotVersion);
+      });
       pendingPersist = next.catch(() => undefined);
       return next;
     },

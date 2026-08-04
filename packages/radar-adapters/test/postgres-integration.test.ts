@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Pool } from 'pg';
 import { createStore } from '@missa/radar-engine';
-import { ensurePostgresSchema, saveStoreToPostgres, loadStoreFromPostgres } from '../src/postgresStore.js';
+import { ensurePostgresSchema, readSnapshotVersion, saveStoreToPostgres, loadStoreFromPostgres, SnapshotConflictError } from '../src/postgresStore.js';
 
 /**
  * Unlike adapters.test.ts's postgresStore round-trip test (which uses a
@@ -43,8 +43,16 @@ test('ensurePostgresSchema + save/load round-trip against a real Postgres connec
       grantedAt: '2026-07-07T00:00:00.000Z',
     });
 
-    await saveStoreToPostgres(store, pool);
+    const initialVersion = await readSnapshotVersion(pool);
+    const savedVersion = await saveStoreToPostgres(store, pool, initialVersion);
+    assert.equal(savedVersion, initialVersion + 1);
     const loaded = await loadStoreFromPostgres(pool);
+
+    await assert.rejects(
+      () => saveStoreToPostgres(store, pool, initialVersion),
+      (error: unknown) => error instanceof SnapshotConflictError,
+      'a stale snapshot must not overwrite a newer write',
+    );
 
     assert.deepEqual(loaded.organizations.get('org_1'), store.organizations.get('org_1'));
     assert.deepEqual(loaded.users.get('user_1'), store.users.get('user_1'));

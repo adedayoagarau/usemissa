@@ -10,6 +10,7 @@ import { uuidWorkspaceIds } from "./ids.js";
 import {
   ensurePostgresSchema,
   loadStoreFromPostgres,
+  readSnapshotVersion,
   saveStoreToPostgres,
 } from "./db/postgresStore.js";
 
@@ -33,6 +34,7 @@ export async function createProductionWorkspaceEngine(): Promise<ProductionWorks
   const pool = new Pool({ connectionString: databaseUrl });
   await ensurePostgresSchema(pool);
   const store = await loadStoreFromPostgres(pool);
+  let snapshotVersion = await readSnapshotVersion(pool);
 
   const engine = new WorkspaceEngine({ store, ids: uuidWorkspaceIds() });
   let pendingPersist = Promise.resolve();
@@ -41,7 +43,9 @@ export async function createProductionWorkspaceEngine(): Promise<ProductionWorks
     engine,
     pool,
     persist: () => {
-      const next = pendingPersist.then(() => saveStoreToPostgres(engine.store, pool));
+      const next = pendingPersist.then(async () => {
+        snapshotVersion = await saveStoreToPostgres(engine.store, pool, snapshotVersion);
+      });
       pendingPersist = next.catch(() => undefined);
       return next;
     },

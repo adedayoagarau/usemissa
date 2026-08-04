@@ -80,13 +80,10 @@ export async function getEngine(): Promise<RadarEngine> {
  * warm instance. No-op in demo mode (no DATABASE_URL) since that store is
  * intentionally in-memory only.
  *
- * KNOWN LIMITATION: persist() is a whole-store delete+reinsert (see
- * radar-adapters/src/postgresStore.ts) and multiple warm serverless
- * instances each hold their own in-memory copy loaded at cold start -- two
- * instances persisting concurrently can race and the later write wins,
- * clobbering the other's change. Acceptable for current traffic levels; a
- * real fix (per-entity upserts, or moving off whole-store snapshotting) is
- * follow-up work, not blocking this wiring.
+ * Persistence is still a whole-store delete+reinsert, but the database
+ * snapshot version rejects stale writers instead of allowing a later warm
+ * instance to silently clobber a newer write. A future row-level repository
+ * can merge independent changes instead of surfacing a conflict.
  */
 export async function persistRadar(): Promise<void> {
   if (!process.env.DATABASE_URL) return;

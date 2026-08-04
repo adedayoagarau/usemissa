@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Pool } from 'pg';
 import { createStore } from '../src/store/store.js';
-import { ensurePostgresSchema, saveStoreToPostgres, loadStoreFromPostgres } from '../src/db/postgresStore.js';
+import { ensurePostgresSchema, readSnapshotVersion, saveStoreToPostgres, loadStoreFromPostgres, SnapshotConflictError } from '../src/db/postgresStore.js';
 
 /**
  * Real-Postgres round trip, mirroring
@@ -35,8 +35,16 @@ test('ensurePostgresSchema + save/load round-trip against a real Postgres connec
       createdAt: new Date().toISOString(),
     });
 
-    await saveStoreToPostgres(store, pool);
+    const initialVersion = await readSnapshotVersion(pool);
+    const savedVersion = await saveStoreToPostgres(store, pool, initialVersion);
+    assert.equal(savedVersion, initialVersion + 1);
     const loaded = await loadStoreFromPostgres(pool);
+
+    await assert.rejects(
+      () => saveStoreToPostgres(store, pool, initialVersion),
+      (error: unknown) => error instanceof SnapshotConflictError,
+      'a stale snapshot must not overwrite a newer write',
+    );
 
     assert.deepEqual(loaded.entities.get('entity_1'), store.entities.get('entity_1'));
     assert.deepEqual(loaded.programs.get('program_1'), store.programs.get('program_1'));

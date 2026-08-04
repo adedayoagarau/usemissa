@@ -30,9 +30,9 @@ export async function getWorkspaceEngine(): Promise<WorkspaceEngine> {
 
 /**
  * Route handlers must call this after any mutating engine call, same
- * contract as lib/engine.ts's persistRadar -- see that file's comment for
- * the known whole-store-snapshot / multi-instance-race caveat, which
- * applies identically here.
+ * contract as lib/engine.ts's persistRadar. Snapshot versions reject stale
+ * multi-instance writers; a future row-level repository can merge independent
+ * changes instead of surfacing a conflict.
  */
 export async function persistWorkspace(): Promise<void> {
   if (!process.env.DATABASE_URL) return;

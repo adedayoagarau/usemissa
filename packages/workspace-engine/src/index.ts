@@ -29,6 +29,8 @@ export {
   ensurePostgresSchema,
   saveStoreToPostgres,
   loadStoreFromPostgres,
+  readSnapshotVersion,
+  SnapshotConflictError,
 } from "./db/postgresStore.js";
 export {
   createProductionWorkspaceEngine,
