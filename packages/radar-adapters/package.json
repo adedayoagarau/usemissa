@@ -17,7 +17,8 @@
     "serve": "node dist/src/serve.js",
     "worker": "node dist/src/worker.js",
     "research-agent": "node dist/src/researchWorker.js",
-    "enrichment-worker": "node dist/src/enrichmentWorker.js"
+    "enrichment-worker": "node dist/src/enrichmentWorker.js",
+    "review-agent": "node dist/src/reviewWorker.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",

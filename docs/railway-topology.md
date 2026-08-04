@@ -20,12 +20,14 @@ not a set of independently writable microservices.
 | `research-agent` | Broad, tiered discovery across canonical, directory, and feed sources. New records stay evidence-gated until they can be published. | Every 5 minutes, 25 sources/tick | `MISSA_WORKER_MODE=research`, `RADAR_RESEARCH_INTERVAL_MINUTES`, `RADAR_RESEARCH_BATCH_SIZE` |
 | `radar-worker` | Canonical refresh, validation, deduplication, status changes, relational projection, and alert evaluation. | Every 15 minutes, 25 sources/tick | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE` |
 | `enrichment-worker` | Fetches public opportunity pages for media, guideline, past-winner, and call-profile evidence. Writes provenance-tagged evidence and retries failures through a leased queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=enrichment`, `RADAR_ENRICHMENT_INTERVAL_MINUTES`, `RADAR_ENRICHMENT_BATCH_SIZE` |
+| `review-agent` | Scores reviewable opportunities, records explainable decisions, publishes only when strict evidence gates pass, and hands ambiguous records to a human-review queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=review`, `RADAR_REVIEW_INTERVAL_MINUTES`, `RADAR_REVIEW_BATCH_SIZE` |
 
-Both services receive the same Neon URL and use the same advisory ingestion
-lock (`1984/727`). That serialization is intentional: it prevents two
-long-lived snapshots from overwriting each other's opportunity changes. The
-services are separate supervisors and can be restarted independently, but
-there is one authoritative writer at a time.
+The research and radar services receive the same Neon URL and use the same
+advisory ingestion lock (`1984/727`). That serialization is intentional: it
+prevents two long-lived snapshots from overwriting each other's opportunity
+changes. Enrichment and review use independent row-level leases, so they can
+work from the same projection without becoming a second source of truth. The
+services are separate supervisors and can be restarted independently.
 
 The enrichment worker uses its own row-level leases in
 `radar_enrichment_jobs`; it does not write the Radar snapshot. Its evidence is
@@ -34,6 +36,26 @@ claims remain reviewable. Call profiles are also evidence-gated: inferred
 formats, reading periods, fees, limits, rights, response times, and prize
 metadata are never treated as confirmed until a reviewer or authoritative
 source verifies them.
+
+## Agent graph
+
+The lanes coordinate through the same Neon database rather than maintaining
+independent catalogues:
+
+```text
+research -> radar -> enrichment -> review -> publisher
+              \\                   /       \\
+               -> review ---------         human-review
+freshness -> radar + review
+```
+
+`radar_agent_runs` records each agent run, `radar_agent_handoffs` records the
+edge and payload handed to the next lane, `radar_review_jobs` leases review
+work, and `radar_review_decisions` keeps the append-only decision history. The
+review policy is fail-closed: missing source processing, destination URL,
+deadline/reading window, or organization confirmation routes to
+`human-review`; only a high-scoring, active, fully evidenced record can move
+to `publisher`.
 
 ## Call profile model
 
@@ -65,6 +87,8 @@ From the repository root:
 ```sh
 railway up --service research-agent --environment production --detach --ci
 railway up --service radar-worker --environment production --detach --ci
+railway up --service enrichment-worker --environment production --detach --ci
+railway up --service review-agent --environment production --detach --ci
 ```
 
 Never place `DATABASE_URL` in the repository or in build logs. Set it as a
@@ -74,6 +98,8 @@ presence-only output, and verify deployments with:
 ```sh
 railway service status -s research-agent -e production --json
 railway service status -s radar-worker -e production --json
+railway service status -s enrichment-worker -e production --json
+railway service status -s review-agent -e production --json
 ```
 
 ## Boundaries we are not creating yet
@@ -97,5 +123,5 @@ railway service status -s radar-worker -e production --json
    added. The default HTTP fetcher is the safe, lightweight path.
 3. Treat discovery volume and published opportunity volume as different
    metrics. No synthetic records are allowed to inflate the public catalogue.
-4. Add the enrichment service only after the evidence/media schema and queue
-   contract are merged and tested against a disposable Neon branch.
+4. Keep enrichment and review additive: neither worker may overwrite the
+   canonical snapshot or publish a claim without its evidence and policy gate.

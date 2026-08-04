@@ -31,6 +31,9 @@ export {
 } from "./opportunityRepository.js";
 export { saveOpportunityProjectionToPostgres } from "./opportunityRelationalStore.js";
 export { ensureEnrichmentSchema, enrichmentSchema } from "./enrichmentSchema.js";
+export { ensureAgentGraphSchema, agentGraphSchema } from "./agentGraphSchema.js";
+export { RADAR_AGENT_GRAPH, agentGraphSnapshot, type RadarAgentKind } from "./agentGraph.js";
+export { runReviewTick, reviewCandidate, type ReviewCandidate } from "./reviewWorker.js";
 export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';
 export {

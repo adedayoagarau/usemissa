@@ -26,6 +26,7 @@
 - The hosted fallback reads the same `RADAR_WORKER_BATCH_SIZE` (default `10`, maximum `50`) and runs every 15 minutes. Production and Preview are configured at the maximum batch (`50`), with a 5-second fetch timeout and 16 concurrent fetches. A live Neon rehearsal on 2026-08-04 completed bounded source ticks; binary/non-text responses now fail closed before they can enter JSON snapshots. Opportunities retain their last successful processing time, so failed fetches do not falsely advance the public “checked” timestamp.
 - The source registry currently contains 1,114 active source pages across literary, film/media, visual arts, grants/funding, craft/design, music, academic/professional, and identity-led verticals. That is source coverage, not a claim that 1,114 verified opportunity records have already been extracted. The live relational projection should only publish records with usable evidence; the workers are responsible for growing this count from verified upstream pages rather than synthetic catalogue generation.
 - Call-level enrichment is now additive in migration `0004_amused_blonde_phantom.sql`. Published opportunities receive leased `call-profile` jobs that populate `opportunity_call_profiles`, `opportunity_call_prizes`, and `opportunity_call_windows`. This covers magazine and journal reading periods, accepted formats, fees/pay, reprints, simultaneous submissions, limits, response-time and acceptance-rate statistics, contest judges/prizes, eligibility, rights, and provenance without leaking those fields into signed-out browse cards.
+- The agent graph and review gate are additive in migration `0005_nervous_salo.sql`. `review-agent` leases reviewable opportunities, records explainable decisions in `radar_review_decisions`, and writes graph handoffs in `radar_agent_handoffs`. It only publishes active records with fresh processing, a destination URL, a deadline/reading window, and confirmed organization evidence; all other candidates go to `human-review`.
 - Public browse exposes discovery-level fields only. Full eligibility, requirements, change history, and submission links are authenticated; signed-out card selection routes to login instead of leaking the detail panel.
 
 **Railway production workers (2026-08-04):** the durable Radar processes are
@@ -35,8 +36,11 @@ five minutes; `radar-worker`
 (`86ac7836-0709-497b-ba3d-e2e71c558dac`) runs canonical refreshes every fifteen
 minutes; `enrichment-worker`
 (`f6bc694a-778c-43e2-bf24-20328ef46a26`) enriches public-page evidence every
-ten minutes. All three use the Neon `DATABASE_URL`; the Radar pair share the
-advisory ingestion lock, while enrichment uses row-level queue leases. See
+ten minutes; `review-agent`
+(`d6874ad6-f0d8-441d-bb66-2f1ecfabfe3f`) evaluates the publication queue every
+ten minutes.
+All four use the Neon `DATABASE_URL`; the Radar pair share the advisory
+ingestion lock, while enrichment and review use row-level queue leases. See
 [`docs/railway-topology.md`](../../docs/railway-topology.md) for the service
 contract and evidence boundary.
 

@@ -605,7 +605,7 @@ export const radarEnrichmentJobs = pgTable(
   (table) => [
     uniqueIndex("radar_enrichment_jobs_opp_kind_idx").on(table.opportunityId, table.kind),
     index("radar_enrichment_jobs_ready_idx").on(table.status, table.nextAttemptAt, table.leaseUntil, table.priority),
-    check("radar_enrichment_jobs_kind_check", sql`${table.kind} in ('media', 'winners', 'guidelines')`),
+    check("radar_enrichment_jobs_kind_check", sql`${table.kind} in ('media', 'winners', 'guidelines', 'call-profile')`),
     check("radar_enrichment_jobs_status_check", sql`${table.status} in ('queued', 'processing', 'completed', 'failed', 'blocked')`),
     check("radar_enrichment_jobs_attempts_check", sql`${table.attempts} >= 0`),
     check("radar_enrichment_jobs_priority_check", sql`${table.priority} between -100 and 100`),
@@ -640,6 +640,94 @@ export const radarOpportunityEnrichmentEvidence = pgTable(
     check("radar_enrichment_evidence_kind_check", sql`${table.kind} in ('media', 'winner', 'guideline', 'organization')`),
     check("radar_enrichment_evidence_confidence_check", sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`),
     check("radar_enrichment_evidence_rights_check", sql`${table.rightsStatus} in ('unknown', 'review', 'permitted')`),
+  ],
+);
+
+/** Durable coordination state for the Radar agent graph. Agent runs and
+ * handoffs are append-only operational records; they are not user-facing
+ * opportunity content. */
+export const radarAgentRuns = pgTable(
+  "radar_agent_runs",
+  {
+    id: text("id").primaryKey(),
+    agentKind: text("agent_kind").notNull(),
+    status: text("status").notNull().default("running"),
+    correlationId: text("correlation_id"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    inputCount: integer("input_count").notNull().default(0),
+    outputCount: integer("output_count").notNull().default(0),
+    error: text("error"),
+    metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+  },
+  (table) => [
+    index("radar_agent_runs_kind_started_idx").on(table.agentKind, table.startedAt),
+    check("radar_agent_runs_status_check", sql`${table.status} in ('running', 'completed', 'failed', 'cancelled')`),
+  ],
+);
+
+export const radarAgentHandoffs = pgTable(
+  "radar_agent_handoffs",
+  {
+    id: text("id").primaryKey(),
+    runId: text("run_id").notNull().references(() => radarAgentRuns.id, { onDelete: "cascade" }),
+    opportunityId: text("opportunity_id").references(() => opportunities.id, { onDelete: "cascade" }),
+    fromAgent: text("from_agent").notNull(),
+    toAgent: text("to_agent").notNull(),
+    kind: text("kind").notNull(),
+    status: text("status").notNull().default("queued"),
+    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    createdAt,
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("radar_agent_handoffs_unique_idx").on(table.runId, table.opportunityId, table.toAgent, table.kind),
+    index("radar_agent_handoffs_queue_idx").on(table.toAgent, table.status, table.createdAt),
+    check("radar_agent_handoffs_status_check", sql`${table.status} in ('queued', 'processing', 'completed', 'failed', 'blocked')`),
+  ],
+);
+
+export const radarReviewJobs = pgTable(
+  "radar_review_jobs",
+  {
+    id: text("id").primaryKey(),
+    opportunityId: text("opportunity_id").notNull().unique().references(() => opportunities.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("queued"),
+    priority: integer("priority").notNull().default(0),
+    attempts: integer("attempts").notNull().default(0),
+    inputVersion: text("input_version").notNull(),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    lastError: text("last_error"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("radar_review_jobs_ready_idx").on(table.status, table.nextAttemptAt, table.leaseUntil, table.priority),
+    check("radar_review_jobs_status_check", sql`${table.status} in ('queued', 'processing', 'completed', 'failed', 'needs-human', 'blocked')`),
+    check("radar_review_jobs_attempts_check", sql`${table.attempts} >= 0`),
+    check("radar_review_jobs_priority_check", sql`${table.priority} between -100 and 100`),
+  ],
+);
+
+export const radarReviewDecisions = pgTable(
+  "radar_review_decisions",
+  {
+    id: text("id").primaryKey(),
+    jobId: text("job_id").notNull().references(() => radarReviewJobs.id, { onDelete: "cascade" }),
+    opportunityId: text("opportunity_id").notNull().references(() => opportunities.id, { onDelete: "cascade" }),
+    runId: text("run_id").notNull().references(() => radarAgentRuns.id, { onDelete: "cascade" }),
+    decision: text("decision").notNull(),
+    score: integer("score").notNull().default(0),
+    reasons: jsonb("reasons").notNull().default(sql`'[]'::jsonb`).$type<string[]>(),
+    checks: jsonb("checks").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    createdAt,
+  },
+  (table) => [
+    index("radar_review_decisions_opp_created_idx").on(table.opportunityId, table.createdAt),
+    index("radar_review_decisions_run_idx").on(table.runId),
+    check("radar_review_decisions_decision_check", sql`${table.decision} in ('publish', 'needs-human', 'suppress', 'error')`),
+    check("radar_review_decisions_score_check", sql`${table.score} between 0 and 100`),
   ],
 );
 
