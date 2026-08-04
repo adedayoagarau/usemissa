@@ -34,10 +34,19 @@ export { ensureEnrichmentSchema, enrichmentSchema } from "./enrichmentSchema.js"
 export { ensureAgentGraphSchema, agentGraphSchema } from "./agentGraphSchema.js";
 export { RADAR_AGENT_GRAPH, agentGraphSnapshot, type RadarAgentKind } from "./agentGraph.js";
 export { runReviewTick, reviewCandidate, type ReviewCandidate } from "./reviewWorker.js";
+export {
+  runDiscoveryWorker,
+  runDiscoveryWorkerTick,
+  extractDiscoveryLinks,
+  discoveryBatchSize,
+  type DiscoveryWorkerOptions,
+  type DiscoveryTickResult,
+} from "./discoveryWorker.js";
 export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';
 export {
   RADAR_INGESTION_LOCK,
+  DISCOVERY_INGESTION_LOCK,
   DEFAULT_RADAR_WORKER_BATCH_SIZE,
   MAX_RADAR_WORKER_BATCH_SIZE,
   radarWorkerBatchSize,

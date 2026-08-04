@@ -4,9 +4,10 @@
  * the same Neon opportunity row and an append-only agent run.
  */
 export const RADAR_AGENT_GRAPH = {
-  version: "1.0",
+  version: "1.1",
   nodes: [
     { id: "research", label: "Research", responsibility: "Discover candidate source pages across registry tiers." },
+    { id: "discovery", label: "Discovery fan-out", responsibility: "Expand directories and feeds into bounded canonical call-page sources." },
     { id: "radar", label: "Radar", responsibility: "Fetch, validate, deduplicate, score, and project canonical opportunities." },
     { id: "enrichment", label: "Enrichment", responsibility: "Collect call profiles, guidelines, media, and winner evidence." },
     { id: "review", label: "Review", responsibility: "Apply publication checks and explain publish, suppress, or human-review decisions." },
@@ -15,7 +16,8 @@ export const RADAR_AGENT_GRAPH = {
     { id: "freshness", label: "Freshness", responsibility: "Recheck deadlines, status, source health, and stale evidence." },
   ],
   edges: [
-    { from: "research", to: "radar", kind: "candidate" },
+    { from: "research", to: "discovery", kind: "directory-seed" },
+    { from: "discovery", to: "radar", kind: "canonical-source" },
     { from: "radar", to: "enrichment", kind: "evidence-request" },
     { from: "radar", to: "review", kind: "review-request" },
     { from: "enrichment", to: "review", kind: "evidence-ready" },

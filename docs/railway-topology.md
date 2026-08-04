@@ -17,17 +17,18 @@ not a set of independently writable microservices.
 
 | Service | Responsibility | Cadence | Important variables |
 | --- | --- | --- | --- |
-| `research-agent` | Broad, tiered discovery across canonical, directory, and feed sources. New records stay evidence-gated until they can be published. | Every 5 minutes, 25 sources/tick | `MISSA_WORKER_MODE=research`, `RADAR_RESEARCH_INTERVAL_MINUTES`, `RADAR_RESEARCH_BATCH_SIZE` |
-| `radar-worker` | Canonical refresh, validation, deduplication, status changes, relational projection, and alert evaluation. | Every 15 minutes, 25 sources/tick | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE` |
+| `research-agent` | Directory/feed fan-out. Fetches bounded source pages, extracts call links, and registers canonical URLs without publishing them. | Every 5 minutes, 100 directory pages/tick, up to 500 new URLs | `MISSA_WORKER_MODE=research`, `RADAR_DISCOVERY_INTERVAL_MINUTES`, `RADAR_DISCOVERY_BATCH_SIZE`, `RADAR_DISCOVERY_LINKS_PER_PAGE` |
+| `radar-worker` | Canonical tier-0 refresh, validation, deduplication, status changes, relational projection, and alert evaluation. | Every 15 minutes, 25 canonical sources/tick | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE`, `RADAR_MAX_TIER=0` |
 | `enrichment-worker` | Fetches public opportunity pages for media, guideline, past-winner, and call-profile evidence. Writes provenance-tagged evidence and retries failures through a leased queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=enrichment`, `RADAR_ENRICHMENT_INTERVAL_MINUTES`, `RADAR_ENRICHMENT_BATCH_SIZE` |
 | `review-agent` | Scores reviewable opportunities, records explainable decisions, publishes only when strict evidence gates pass, and hands ambiguous records to a human-review queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=review`, `RADAR_REVIEW_INTERVAL_MINUTES`, `RADAR_REVIEW_BATCH_SIZE` |
 
-The research and radar services receive the same Neon URL and use the same
-advisory ingestion lock (`1984/727`). That serialization is intentional: it
-prevents two long-lived snapshots from overwriting each other's opportunity
-changes. Enrichment and review use independent row-level leases, so they can
-work from the same projection without becoming a second source of truth. The
-services are separate supervisors and can be restarted independently.
+The research and radar services receive the same Neon URL but use independent
+transaction-scoped locks: discovery uses `1984/728`, while canonical Radar
+uses `1984/727`. This prevents the directory fan-out lane from blocking
+canonical refreshes (and avoids leaking session locks through Neon pooling).
+Enrichment and review use independent row-level leases, so they can work from
+the same projection without becoming a second source of truth. The services
+are separate supervisors and can be restarted independently.
 
 The enrichment worker uses its own row-level leases in
 `radar_enrichment_jobs`; it does not write the Radar snapshot. Its evidence is
@@ -43,7 +44,7 @@ The lanes coordinate through the same Neon database rather than maintaining
 independent catalogues:
 
 ```text
-research -> radar -> enrichment -> review -> publisher
+research -> discovery -> radar -> enrichment -> review -> publisher
               \\                   /       \\
                -> review ---------         human-review
 freshness -> radar + review

@@ -9,8 +9,7 @@
  * canonical; directory/feed tiers are research inputs whose extracted calls
  * stay reviewable until evidence is sufficient for publication.
  */
-import { createProductionEngine, seedRegistryIfEmpty } from './productionEngine.js';
-import { radarWorkerBatchSize, runRadarWorker, type RadarWorkerOptions } from './radarWorker.js';
+import { runDiscoveryWorker } from './discoveryWorker.js';
 
 function intervalMs(): number {
   const minutes = Number(process.env.RADAR_RESEARCH_INTERVAL_MINUTES ?? 5);
@@ -24,26 +23,19 @@ async function main(): Promise<void> {
     return;
   }
 
-  // The normal production engine seeds canonical tier-0 sources. The research
-  // lane additionally brings directory/feed tiers into the same durable store.
-  const production = await createProductionEngine();
-  seedRegistryIfEmpty(production.engine, { maxTier: 3 });
-  await production.persist();
-  await production.close();
-
   const controller = new AbortController();
   const stop = () => controller.abort();
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
 
-  const options: RadarWorkerOptions & { signal: AbortSignal } = {
-    maxSources: radarWorkerBatchSize(process.env.RADAR_RESEARCH_BATCH_SIZE ?? process.env.RADAR_WORKER_BATCH_SIZE),
-    intervalMs: intervalMs(),
+  const interval = intervalMs();
+  console.log('[missa-research-agent] running bounded directory fan-out every ' + Math.round(interval / 60_000) + ' minutes');
+  await runDiscoveryWorker({
+    maxSources: Number(process.env.RADAR_RESEARCH_BATCH_SIZE ?? process.env.RADAR_DISCOVERY_BATCH_SIZE ?? 100),
+    intervalMs: interval,
     signal: controller.signal,
     logger: console,
-  };
-  console.log('[missa-research-agent] running every ' + Math.round(options.intervalMs! / 60_000) + ' minutes across registry tiers');
-  await runRadarWorker(options);
+  });
 }
 
 main().catch((error) => {

@@ -72,6 +72,10 @@ export interface Source {
   registryGeography?: string[];
   registryOpportunityTypes?: OpportunityType[];
   registryOrganizationName?: string;
+  /** Source position in the opportunity graph (0 = canonical call page). */
+  registryTier?: 0 | 1 | 2 | 3;
+  /** Directory/feed sources may fan out to linked canonical call pages. */
+  followsOutboundLinks?: boolean;
   /** Polite per-source cadence. */
   checkIntervalHours: number;
   active: boolean;
@@ -88,6 +92,9 @@ export interface Source {
   consecutiveFailures: number;
   /** Processing failures are tracked separately from network failures. */
   consecutiveProcessingFailures?: number;
+  /** Independent cursor for directory fan-out; never shares Radar's cadence. */
+  discoveryLastCheckedAt?: IsoDateTime;
+  discoveryConsecutiveFailures?: number;
 }
 
 export type FetchStatus = 'ok' | 'error' | 'gone';

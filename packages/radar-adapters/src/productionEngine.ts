@@ -68,6 +68,8 @@ export function seedRegistryIfEmpty(
       existing.registryGeography = entry.geography;
       existing.registryOpportunityTypes = entry.opportunityTypes;
       existing.registryOrganizationName = entry.organizationName;
+      existing.registryTier = entry.tier;
+      existing.followsOutboundLinks = entry.followsOutboundLinks;
       continue;
     }
     const added = engine.addSource({
@@ -81,6 +83,8 @@ export function seedRegistryIfEmpty(
       registryGeography: entry.geography,
       registryOpportunityTypes: entry.opportunityTypes,
       registryOrganizationName: entry.organizationName,
+      registryTier: entry.tier,
+      followsOutboundLinks: entry.followsOutboundLinks,
     });
     existingByUrl.set(key, added);
     loaded++;

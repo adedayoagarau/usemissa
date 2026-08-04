@@ -22,6 +22,7 @@
 
 **Radar ingestion:**
 - `@missa/radar-adapters` now exposes `missa-radar-worker`, a long-running Postgres-backed worker with bounded batches and advisory-lock serialization (`1984/727`). Run it on a container host with `DATABASE_URL`, `RADAR_WORKER_BATCH_SIZE` (default `10`), and `TICK_MINUTES` (default `15`).
+- The research service is now a separate discovery fan-out lane: it reads tier-2 directories/feeds, extracts bounded outbound call links, and inserts canonical source URLs with provenance. It uses an independent transaction-scoped lock (`1984/728`) and never publishes directly; the canonical Radar lane remains the only extractor/publisher input.
 - Vercel Cron remains a bounded fallback during worker rollout. Once the worker service is healthy, disable inline Cron ingestion so the worker is the single ingestion lane.
 - The hosted fallback reads the same `RADAR_WORKER_BATCH_SIZE` (default `10`, maximum `50`) and runs every 15 minutes. Production and Preview are configured at the maximum batch (`50`), with a 5-second fetch timeout and 16 concurrent fetches. A live Neon rehearsal on 2026-08-04 completed bounded source ticks; binary/non-text responses now fail closed before they can enter JSON snapshots. Opportunities retain their last successful processing time, so failed fetches do not falsely advance the public “checked” timestamp.
 - The source registry currently contains 1,114 active source pages across literary, film/media, visual arts, grants/funding, craft/design, music, academic/professional, and identity-led verticals. That is source coverage, not a claim that 1,114 verified opportunity records have already been extracted. The live relational projection should only publish records with usable evidence; the workers are responsible for growing this count from verified upstream pages rather than synthetic catalogue generation.
@@ -39,8 +40,9 @@ minutes; `enrichment-worker`
 ten minutes; `review-agent`
 (`d6874ad6-f0d8-441d-bb66-2f1ecfabfe3f`) evaluates the publication queue every
 ten minutes.
-All four use the Neon `DATABASE_URL`; the Radar pair share the advisory
-ingestion lock, while enrichment and review use row-level queue leases. See
+All four use the Neon `DATABASE_URL`; Radar uses transaction-scoped advisory
+lock `1984/727`, discovery uses independent lock `1984/728`, while enrichment
+and review use row-level queue leases. See
 [`docs/railway-topology.md`](../../docs/railway-topology.md) for the service
 contract and evidence boundary.
 

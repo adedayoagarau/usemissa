@@ -10,12 +10,15 @@ import { createProductionEngine } from "./productionEngine.js";
  * in-memory snapshot.
  */
 export const RADAR_INGESTION_LOCK = { namespace: 1984, key: 727 } as const;
+export const DISCOVERY_INGESTION_LOCK = { namespace: 1984, key: 728 } as const;
 export const DEFAULT_RADAR_WORKER_BATCH_SIZE = 10;
 export const MAX_RADAR_WORKER_BATCH_SIZE = 50;
 
 export interface RadarWorkerOptions {
   /** Number of due sources processed per tick. Defaults to 10. */
   maxSources?: number;
+  minRegistryTier?: 0 | 1 | 2 | 3;
+  maxRegistryTier?: 0 | 1 | 2 | 3;
   /** Delay between completed ticks. Defaults to TICK_MINUTES or 15 minutes. */
   intervalMs?: number;
   /** Optional logger, useful for hosted worker runtimes and tests. */
@@ -39,24 +42,27 @@ export function radarWorkerBatchSize(value: string | number | undefined = proces
   return positiveInteger(parsed, DEFAULT_RADAR_WORKER_BATCH_SIZE, MAX_RADAR_WORKER_BATCH_SIZE);
 }
 
-async function tryAdvisoryLock(client: PoolClient): Promise<boolean> {
+export async function tryAdvisoryLock(client: PoolClient, lock: { namespace: number; key: number } = RADAR_INGESTION_LOCK): Promise<boolean> {
+  // Neon commonly sits behind a pooler. Session-scoped advisory locks can
+  // survive `client.release()` on an idle pooled backend, starving every
+  // other lane. Keep the lock inside an explicit transaction instead.
+  await client.query("begin");
   const result = await client.query(
-    "select pg_try_advisory_lock($1, $2) as locked",
-    [RADAR_INGESTION_LOCK.namespace, RADAR_INGESTION_LOCK.key],
+    "select pg_try_advisory_xact_lock($1, $2) as locked",
+    [lock.namespace, lock.key],
   );
-  return result.rows[0]?.locked === true;
+  const locked = result.rows[0]?.locked === true;
+  if (!locked) await client.query("rollback");
+  return locked;
 }
 
-async function releaseAdvisoryLock(client: PoolClient): Promise<void> {
-  await client.query(
-    "select pg_advisory_unlock($1, $2)",
-    [RADAR_INGESTION_LOCK.namespace, RADAR_INGESTION_LOCK.key],
-  );
+export async function releaseAdvisoryLock(client: PoolClient): Promise<void> {
+  await client.query("commit");
 }
 
 /** Run one bounded, serialized production tick. */
 export async function runRadarWorkerTick(
-  options: Pick<RadarWorkerOptions, "maxSources" | "logger" | "afterTick"> = {},
+  options: Pick<RadarWorkerOptions, "maxSources" | "minRegistryTier" | "maxRegistryTier" | "logger" | "afterTick"> = {},
 ): Promise<RadarWorkerTickResult> {
   const logger = options.logger ?? console;
   const maxSources = positiveInteger(options.maxSources, DEFAULT_RADAR_WORKER_BATCH_SIZE, MAX_RADAR_WORKER_BATCH_SIZE);
@@ -72,7 +78,7 @@ export async function runRadarWorkerTick(
       return { status: "skipped" };
     }
 
-    const report = await production.engine.tick({ maxSources });
+    const report = await production.engine.tick({ maxSources, minRegistryTier: options.minRegistryTier, maxRegistryTier: options.maxRegistryTier });
     await options.afterTick?.(production.engine);
     await production.persist();
     logger.info(
@@ -117,10 +123,12 @@ export async function runRadarWorker(
     options.intervalMs,
     positiveInteger(Number(process.env.TICK_MINUTES) * 60_000, 15 * 60_000),
   );
+  const configuredMaxTier = Number(process.env.RADAR_MAX_TIER);
+  const maxRegistryTier = configuredMaxTier >= 0 && configuredMaxTier <= 3 ? configuredMaxTier as 0 | 1 | 2 | 3 : undefined;
 
   while (!options.signal?.aborted) {
     try {
-      await runRadarWorkerTick({ maxSources, logger });
+      await runRadarWorkerTick({ maxSources, maxRegistryTier, logger });
     } catch (error) {
       logger.error("[missa-radar-worker] tick failed; retrying after interval", error);
     }

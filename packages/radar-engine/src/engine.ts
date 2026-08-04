@@ -274,6 +274,8 @@ export class RadarEngine {
     registryGeography?: string[];
     registryOpportunityTypes?: OpportunityType[];
     registryOrganizationName?: string;
+    registryTier?: 0 | 1 | 2 | 3;
+    followsOutboundLinks?: boolean;
     checkIntervalHours?: number;
   }): Source {
     const source: Source = {
@@ -288,6 +290,8 @@ export class RadarEngine {
       registryGeography: input.registryGeography,
       registryOpportunityTypes: input.registryOpportunityTypes,
       registryOrganizationName: input.registryOrganizationName,
+      registryTier: input.registryTier,
+      followsOutboundLinks: input.followsOutboundLinks,
       checkIntervalHours: input.checkIntervalHours ?? 24,
       active: true,
       consecutiveFailures: 0,
@@ -638,7 +642,7 @@ export class RadarEngine {
    *   which is the default and keeps every existing caller (demo world,
    *   serve.ts's long-running server, existing tests) unchanged.
    */
-  async tick(opts?: { maxSources?: number }): Promise<TickReport> {
+  async tick(opts?: { maxSources?: number; minRegistryTier?: 0 | 1 | 2 | 3; maxRegistryTier?: 0 | 1 | 2 | 3 }): Promise<TickReport> {
     const now = this.clock.now();
     const report: TickReport = {
       at: now.toISOString(),
@@ -658,7 +662,11 @@ export class RadarEngine {
 
     const newOpportunities: Opportunity[] = [];
 
-    const due = dueSources(this.store.sources.values(), now);
+    const due = dueSources(this.store.sources.values(), now).filter((source) => {
+      if (opts?.minRegistryTier !== undefined && (source.registryTier ?? 0) < opts.minRegistryTier) return false;
+      if (opts?.maxRegistryTier !== undefined && (source.registryTier ?? 0) > opts.maxRegistryTier) return false;
+      return true;
+    });
     const sourcesToProcess = opts?.maxSources !== undefined ? due.slice(0, opts.maxSources) : due;
 
     const fetchedResults = await fetchSources(sourcesToProcess, this.fetcher);
