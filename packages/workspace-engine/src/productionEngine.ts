@@ -6,12 +6,13 @@
  */
 import { Pool } from "pg";
 import { WorkspaceEngine } from "./engine.js";
+import { cloneStore } from "./store/store.js";
 import { uuidWorkspaceIds } from "./ids.js";
 import {
   ensurePostgresSchema,
   loadStoreFromPostgres,
   readSnapshotVersion,
-  saveStoreToPostgres,
+  saveStoreDeltaToPostgres,
 } from "./db/postgresStore.js";
 
 export interface ProductionWorkspaceEngine {
@@ -35,6 +36,7 @@ export async function createProductionWorkspaceEngine(): Promise<ProductionWorks
   await ensurePostgresSchema(pool);
   const store = await loadStoreFromPostgres(pool);
   let snapshotVersion = await readSnapshotVersion(pool);
+  let persistedStore = cloneStore(store);
 
   const engine = new WorkspaceEngine({ store, ids: uuidWorkspaceIds() });
   let pendingPersist = Promise.resolve();
@@ -44,7 +46,20 @@ export async function createProductionWorkspaceEngine(): Promise<ProductionWorks
     pool,
     persist: () => {
       const next = pendingPersist.then(async () => {
-        snapshotVersion = await saveStoreToPostgres(engine.store, pool, snapshotVersion);
+        try {
+          snapshotVersion = await saveStoreDeltaToPostgres(engine.store, persistedStore, pool, snapshotVersion);
+        } catch (error) {
+          // Rebase the local delta once when another instance committed first.
+          // Unchanged rows are not included in the delta, so independent edits
+          // merge without resurrecting rows deleted by the other instance.
+          if (error instanceof Error && error.name === 'SnapshotConflictError') {
+            snapshotVersion = await readSnapshotVersion(pool);
+            snapshotVersion = await saveStoreDeltaToPostgres(engine.store, persistedStore, pool, snapshotVersion);
+          } else {
+            throw error;
+          }
+        }
+        persistedStore = cloneStore(engine.store);
       });
       pendingPersist = next.catch(() => undefined);
       return next;

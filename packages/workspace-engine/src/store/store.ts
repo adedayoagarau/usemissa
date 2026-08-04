@@ -63,3 +63,25 @@ export function createStore(): WorkspaceStore {
     deliveryTasks: new Map(),
   };
 }
+
+/** Clone a store before a persistence boundary so later in-place domain
+ * mutations can be compared without sharing object references. */
+export function cloneStore(source: WorkspaceStore): WorkspaceStore {
+  const cloneMap = <K, V>(map: Map<K, V>): Map<K, V> =>
+    new Map([...map].map(([key, value]) => [key, structuredClone(value)] as [K, V]));
+  return {
+    entities: cloneMap(source.entities),
+    programs: cloneMap(source.programs),
+    openCalls: cloneMap(source.openCalls),
+    submissionPaths: cloneMap(source.submissionPaths),
+    submissions: cloneMap(source.submissions),
+    submissionDrafts: cloneMap(source.submissionDrafts),
+    works: cloneMap(source.works),
+    reviewRounds: cloneMap(source.reviewRounds),
+    reviewAssignments: cloneMap(source.reviewAssignments),
+    reviewRecommendations: cloneMap(source.reviewRecommendations),
+    auditLog: structuredClone(source.auditLog),
+    decisions: cloneMap(source.decisions),
+    deliveryTasks: cloneMap(source.deliveryTasks),
+  };
+}

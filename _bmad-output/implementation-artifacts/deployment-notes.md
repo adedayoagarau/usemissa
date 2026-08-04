@@ -58,7 +58,8 @@ database/session configuration is present and `503` otherwise. It reports
 presence-only states for optional file storage, cron, email, payments, Gmail,
 SCIM, and malware scanning configuration; it never returns secret values.
 
-**Persistence safety:** Radar and Workspace snapshots now carry a Postgres
-version. A stale warm instance fails with a snapshot conflict instead of
-silently overwriting a newer snapshot. This is a safe guard while the future
-row-level repositories are designed; it is not a merge engine.
+**Persistence safety:** Radar snapshots carry a Postgres version and reject
+stale writers. Workspace persistence now applies row-level deltas and rebases
+once on a stale version, allowing independent submitter/reviewer changes to
+merge without replacing the whole Workspace store. Radar still needs the same
+row-level delta migration before high-concurrency ingestion and user writes.

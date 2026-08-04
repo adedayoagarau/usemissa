@@ -1,6 +1,6 @@
 export * from "./domain/types.js";
 export { WorkspaceEngine, type WorkspaceEngineOptions } from "./engine.js";
-export { createStore, type WorkspaceStore } from "./store/store.js";
+export { createStore, cloneStore, type WorkspaceStore } from "./store/store.js";
 export {
   sequentialWorkspaceIds,
   uuidWorkspaceIds,
@@ -30,6 +30,7 @@ export {
   saveStoreToPostgres,
   loadStoreFromPostgres,
   readSnapshotVersion,
+  saveStoreDeltaToPostgres,
   SnapshotConflictError,
 } from "./db/postgresStore.js";
 export {

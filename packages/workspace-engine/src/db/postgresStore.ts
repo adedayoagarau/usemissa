@@ -189,6 +189,145 @@ export async function readSnapshotVersion(pool: Pool): Promise<number> {
   return Number(result.rows[0]?.version ?? 0);
 }
 
+type MapDelta<T> = { upserts: T[]; deletes: string[] };
+
+function mapDelta<T>(before: Map<string, T>, after: Map<string, T>): MapDelta<T & { id: string }> {
+  const upserts: Array<T & { id: string }> = [];
+  for (const [id, value] of after) {
+    const previous = before.get(id);
+    if (previous === undefined || JSON.stringify(previous) !== JSON.stringify(value)) {
+      upserts.push({ ...(value as T), id } as T & { id: string });
+    }
+  }
+  const deletes = [...before.keys()].filter((id) => !after.has(id));
+  return { upserts, deletes };
+}
+
+/**
+ * Applies only the changes between two Workspace snapshots. This is the
+ * production write path: independent serverless instances can merge changes
+ * to different rows, while same-row edits remain last-writer-wins.
+ */
+export async function saveStoreDeltaToPostgres(
+  current: WorkspaceStore,
+  previous: WorkspaceStore,
+  pool: Pool,
+  expectedVersion?: number,
+): Promise<number> {
+  const delta = {
+    entities: mapDelta(previous.entities, current.entities),
+    programs: mapDelta(previous.programs, current.programs),
+    openCalls: mapDelta(previous.openCalls, current.openCalls),
+    submissionPaths: mapDelta(previous.submissionPaths, current.submissionPaths),
+    submissions: mapDelta(previous.submissions, current.submissions),
+    submissionDrafts: mapDelta(previous.submissionDrafts, current.submissionDrafts),
+    works: mapDelta(previous.works, current.works),
+    reviewRounds: mapDelta(previous.reviewRounds, current.reviewRounds),
+    reviewAssignments: mapDelta(previous.reviewAssignments, current.reviewAssignments),
+    reviewRecommendations: mapDelta(previous.reviewRecommendations, current.reviewRecommendations),
+    decisions: mapDelta(previous.decisions, current.decisions),
+    deliveryTasks: mapDelta(previous.deliveryTasks, current.deliveryTasks),
+  };
+  const previousAuditIds = new Set(previous.auditLog.map((entry) => entry.id));
+  const newAuditEntries = current.auditLog.filter((entry) => !previousAuditIds.has(entry.id));
+  const changed = Object.values(delta).some((item) => item.upserts.length > 0 || item.deletes.length > 0) || newAuditEntries.length > 0;
+  if (!changed) return expectedVersion ?? await readSnapshotVersion(pool);
+
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query("select pg_advisory_xact_lock(hashtext('missa.workspace.snapshot'))");
+    const versionRow = await client.query<{ version: string }>(
+      'select version from missa_snapshot_versions where domain = $1 for update',
+      [WORKSPACE_SNAPSHOT_DOMAIN],
+    );
+    const currentVersion = Number(versionRow.rows[0]?.version ?? 0);
+    if (expectedVersion !== undefined && expectedVersion !== currentVersion) {
+      throw new SnapshotConflictError(WORKSPACE_SNAPSHOT_DOMAIN, expectedVersion, currentVersion);
+    }
+
+    // Delete children before parents where a caller explicitly removed rows.
+    for (const id of delta.reviewRecommendations.deletes) await client.query('delete from review_recommendations where review_assignment_id = $1', [id]);
+    for (const id of delta.reviewAssignments.deletes) await client.query('delete from review_assignments where id = $1', [id]);
+    for (const id of delta.reviewRounds.deletes) await client.query('delete from review_rounds where id = $1', [id]);
+    for (const id of delta.decisions.deletes) await client.query('delete from decisions where id = $1', [id]);
+    for (const id of delta.deliveryTasks.deletes) await client.query('delete from delivery_tasks where id = $1', [id]);
+    for (const id of delta.works.deletes) await client.query('delete from works where id = $1', [id]);
+    for (const id of delta.submissions.deletes) await client.query('delete from submissions where id = $1', [id]);
+    for (const id of delta.submissionDrafts.deletes) await client.query('delete from submission_drafts where id = $1', [id]);
+    for (const id of delta.submissionPaths.deletes) await client.query('delete from submission_paths where id = $1', [id]);
+    for (const id of delta.openCalls.deletes) await client.query('delete from open_calls where id = $1', [id]);
+    for (const id of delta.programs.deletes) await client.query('delete from programs where id = $1', [id]);
+    for (const id of delta.entities.deletes) await client.query('delete from entities where id = $1', [id]);
+
+    for (const e of delta.entities.upserts) await client.query(
+      'insert into entities (id, organization_id, name, label, created_at) values ($1, $2, $3, $4, $5) on conflict (id) do update set organization_id = excluded.organization_id, name = excluded.name, label = excluded.label, created_at = excluded.created_at',
+      [e.id, e.organizationId, e.name, e.label ?? null, e.createdAt],
+    );
+    for (const p of delta.programs.upserts) await client.query(
+      'insert into programs (id, entity_id, name, created_at) values ($1, $2, $3, $4) on conflict (id) do update set entity_id = excluded.entity_id, name = excluded.name, created_at = excluded.created_at',
+      [p.id, p.entityId, p.name, p.createdAt],
+    );
+    for (const o of delta.openCalls.upserts) await client.query(
+      'insert into open_calls (id, program_id, title, status, radar_opportunity_id, created_at, published_at, guideline_url, guideline_text, guideline_source_type, guideline_imported_at, guideline_import_report) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) on conflict (id) do update set program_id = excluded.program_id, title = excluded.title, status = excluded.status, radar_opportunity_id = excluded.radar_opportunity_id, created_at = excluded.created_at, published_at = excluded.published_at, guideline_url = excluded.guideline_url, guideline_text = excluded.guideline_text, guideline_source_type = excluded.guideline_source_type, guideline_imported_at = excluded.guideline_imported_at, guideline_import_report = excluded.guideline_import_report',
+      [o.id, o.programId, o.title, o.status, o.radarOpportunityId ?? null, o.createdAt, o.publishedAt ?? null, o.guidelineUrl ?? null, o.guidelineText ?? null, o.guidelineSourceType ?? null, o.guidelineImportedAt ?? null, o.guidelineImportReport ? JSON.stringify(o.guidelineImportReport) : null],
+    );
+    for (const s of delta.submissionPaths.upserts) await client.query(
+      'insert into submission_paths (id, open_call_id, categories, fields, fee_cents, created_at) values ($1, $2, $3, $4, $5, $6) on conflict (id) do update set open_call_id = excluded.open_call_id, categories = excluded.categories, fields = excluded.fields, fee_cents = excluded.fee_cents, created_at = excluded.created_at',
+      [s.id, s.openCallId, JSON.stringify(s.categories), JSON.stringify(s.fields), s.feeCents ?? null, s.createdAt],
+    );
+    for (const s of delta.submissions.upserts) await client.query(
+      'insert into submissions (id, submission_path_id, submitter_account_id, status, submitted_at, payment_status, payment_session_id, fee_cents, idempotency_key, answers, category) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (submitter_account_id, submission_path_id, idempotency_key) where idempotency_key is not null do update set status = excluded.status, submitted_at = excluded.submitted_at, payment_status = excluded.payment_status, payment_session_id = excluded.payment_session_id, fee_cents = excluded.fee_cents, answers = excluded.answers, category = excluded.category',
+      [s.id, s.submissionPathId, s.submitterAccountId, s.status, s.submittedAt, s.paymentStatus ?? 'not-required', s.paymentSessionId ?? null, s.feeCents ?? null, s.idempotencyKey ?? null, s.answers ? JSON.stringify(s.answers) : null, s.category ?? null],
+    );
+    for (const w of delta.works.upserts) await client.query(
+      'insert into works (id, submission_id, title, file_url, file_urls, "order") values ($1, $2, $3, $4, $5, $6) on conflict (id) do update set submission_id = excluded.submission_id, title = excluded.title, file_url = excluded.file_url, file_urls = excluded.file_urls, "order" = excluded."order"',
+      [w.id, w.submissionId, w.title, w.fileUrl ?? null, w.fileUrls ? JSON.stringify(w.fileUrls) : null, w.order],
+    );
+    for (const draft of delta.submissionDrafts.upserts) await client.query(
+      'insert into submission_drafts (id, submission_path_id, submitter_account_id, answers, category, work_titles, idempotency_key, payment_session_id, updated_at, expires_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) on conflict (id) do update set submission_path_id = excluded.submission_path_id, submitter_account_id = excluded.submitter_account_id, answers = excluded.answers, category = excluded.category, work_titles = excluded.work_titles, idempotency_key = excluded.idempotency_key, payment_session_id = excluded.payment_session_id, updated_at = excluded.updated_at, expires_at = excluded.expires_at',
+      [draft.id, draft.submissionPathId, draft.submitterAccountId, JSON.stringify(draft.answers), draft.category ?? null, JSON.stringify(draft.workTitles), draft.idempotencyKey ?? null, draft.paymentSessionId ?? null, draft.updatedAt, draft.expiresAt],
+    );
+    for (const round of delta.reviewRounds.upserts) await client.query(
+      'insert into review_rounds (id, open_call_id, name, created_at) values ($1, $2, $3, $4) on conflict (id) do update set open_call_id = excluded.open_call_id, name = excluded.name, created_at = excluded.created_at',
+      [round.id, round.openCallId, round.name, round.createdAt],
+    );
+    for (const assignment of delta.reviewAssignments.upserts) await client.query(
+      'insert into review_assignments (id, review_round_id, submission_id, reviewer_account_id, completed_at) values ($1, $2, $3, $4, $5) on conflict (id) do update set review_round_id = excluded.review_round_id, submission_id = excluded.submission_id, reviewer_account_id = excluded.reviewer_account_id, completed_at = excluded.completed_at',
+      [assignment.id, assignment.reviewRoundId, assignment.submissionId, assignment.reviewerAccountId, assignment.completedAt ?? null],
+    );
+    for (const recommendation of delta.reviewRecommendations.upserts) await client.query(
+      'insert into review_recommendations (review_assignment_id, score, notes, recorded_at) values ($1, $2, $3, $4) on conflict (review_assignment_id) do update set score = excluded.score, notes = excluded.notes, recorded_at = excluded.recorded_at',
+      [recommendation.reviewAssignmentId, recommendation.score ?? null, recommendation.notes ?? null, recommendation.recordedAt],
+    );
+    for (const decision of delta.decisions.upserts) await client.query(
+      'insert into decisions (id, work_id, outcome, decided_by_account_id, decided_at) values ($1, $2, $3, $4, $5) on conflict (work_id) do update set outcome = excluded.outcome, decided_by_account_id = excluded.decided_by_account_id, decided_at = excluded.decided_at',
+      [decision.id, decision.workId, decision.outcome, decision.decidedByAccountId, decision.decidedAt],
+    );
+    for (const task of delta.deliveryTasks.upserts) await client.query(
+      'insert into delivery_tasks (id, work_id, status, due_date, completed_at) values ($1, $2, $3, $4, $5) on conflict (work_id) do update set status = excluded.status, due_date = excluded.due_date, completed_at = excluded.completed_at',
+      [task.id, task.workId, task.status, task.dueDate ?? null, task.completedAt ?? null],
+    );
+    for (const entry of newAuditEntries) await client.query(
+      'insert into workspace_audit_log (id, at, account_id, action, target_type, target_id, detail) values ($1, $2, $3, $4, $5, $6, $7) on conflict (id) do nothing',
+      [entry.id, entry.at, entry.accountId ?? null, entry.action, entry.targetType, entry.targetId, entry.detail ?? null],
+    );
+
+    const nextVersion = currentVersion + 1;
+    await client.query(
+      'insert into missa_snapshot_versions (domain, version, updated_at) values ($1, $2, now()) on conflict (domain) do update set version = excluded.version, updated_at = excluded.updated_at',
+      [WORKSPACE_SNAPSHOT_DOMAIN, nextVersion],
+    );
+    await client.query('commit');
+    return nextVersion;
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore> {
   const store = createStore();
 
