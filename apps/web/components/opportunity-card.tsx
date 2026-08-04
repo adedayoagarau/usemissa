@@ -7,6 +7,7 @@ import { ListPicker } from '@/components/list-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { opportunityFreshness } from '@/lib/opportunityFreshness';
 
 function deadlineCopy(deadline: OpportunityBrowseProjection['deadline']): { label: string; detail: string; urgent: boolean } {
   if (!deadline.date) return { label: deadline.kind === 'rolling' ? 'Rolling' : deadline.kind === 'until-filled' ? 'Until filled' : 'Date unconfirmed', detail: deadline.raw ?? 'Check the guidelines', urgent: false };
@@ -27,6 +28,7 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
   const deadline = deadlineCopy(item.deadline);
   const sourceName = item.organizationName ?? item.source.name ?? 'Missa source';
   const reasons = item.personal?.tailoringReasons ?? [];
+  const freshness = opportunityFreshness(item.source.checkedAt);
 
   return (
     <article className={cn('relative flex min-h-[16.5rem] flex-col overflow-hidden rounded-md border bg-card transition-colors', selected ? 'border-2 border-primary' : 'border-border hover:border-foreground/30')}>
@@ -42,6 +44,7 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
           <h2 className="mt-2 line-clamp-2 text-[0.95rem] font-semibold leading-snug text-foreground">{item.title}</h2>
           <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{item.organizationName ?? 'Organization not confirmed'}</p>
           <p className="mt-2 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">{item.discipline && <span>{item.discipline}</span>}{item.genres.slice(0, 1).map((genre) => <span key={genre}>{genre}</span>)}{item.location && <span className="inline-flex items-center gap-0.5"><MapPin className="size-3" />{item.location}</span>}</p>
+          <p className={cn('mt-2 text-[11px]', freshness.state === 'fresh' ? 'text-green' : freshness.state === 'stale' ? 'text-accent-deep' : 'text-muted-foreground')} title={freshness.detail}>{freshness.label} · {freshness.detail.replace(/^Checked /, '')}</p>
         </div>
       </Link>
       <div className="mx-3.5 border-t border-border" />

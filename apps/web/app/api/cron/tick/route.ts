@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { runRadarWorkerTick } from '@missa/radar-adapters';
+import { radarWorkerBatchSize, runRadarWorkerTick } from '@missa/radar-adapters';
 import { deliverPendingAlertEmails } from '@/lib/alert-delivery';
 
 /**
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   }
 
   let emailDelivery: Awaited<ReturnType<typeof deliverPendingAlertEmails>> | undefined;
-  const result = await runRadarWorkerTick({ maxSources: 10, afterTick: async (engine) => { emailDelivery = await deliverPendingAlertEmails(engine); } });
+  const result = await runRadarWorkerTick({ maxSources: radarWorkerBatchSize(), afterTick: async (engine) => { emailDelivery = await deliverPendingAlertEmails(engine); } });
   if (result.status === 'skipped') {
     return NextResponse.json({ status: 'skipped', reason: 'another ingestion tick is running' }, { status: 202 });
   }

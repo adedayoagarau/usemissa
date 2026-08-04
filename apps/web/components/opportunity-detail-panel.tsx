@@ -5,6 +5,7 @@ import { TrackButton } from '@/components/track-button';
 import { FollowButton } from '@/components/follow-button';
 import { Button } from '@/components/ui/button';
 import styles from '@/app/(passport)/opportunities/opportunities.module.css';
+import { opportunityFreshness } from '@/lib/opportunityFreshness';
 
 function typeLabel(type: OpportunityDetailProjection['type']): string {
   return type === 'open-call' ? 'Open call' : type.charAt(0).toUpperCase() + type.slice(1);
@@ -33,6 +34,7 @@ export function OpportunityDetailPanel({
   const reasons = opportunity.personal?.tailoringReasons ?? [];
   const sourceName = opportunity.organizationName ?? opportunity.source.name;
   const summary = opportunity.organizationSummary ?? `A ${typeLabel(opportunity.type).toLowerCase()} from ${opportunity.organizationName ?? 'this organization'}. Review the requirements and source notes before submitting.`;
+  const freshness = opportunityFreshness(opportunity.source.checkedAt);
 
   return (
     <aside className={`flex min-h-0 flex-col border-l border-border bg-card lg:sticky lg:top-0 lg:h-[calc(100vh-3.75rem)] lg:overflow-y-auto ${styles.detailPanel} ${mobileOpen ? styles.detailPanelMobileOpen : ''}`}>
@@ -44,7 +46,7 @@ export function OpportunityDetailPanel({
               <img src={opportunity.identityAssetUrl} alt={opportunity.identityAssetAlt ?? sourceName} className="h-full w-full object-cover" />
             ) : <span className="px-2">{sourceInitials(sourceName)}</span>}
           </div>
-          <div className="min-w-0 pt-1"><h2 className="text-lg font-semibold leading-snug text-foreground">{opportunity.title}</h2><p className="mt-1 text-sm text-muted-foreground">{opportunity.organizationName ?? 'Organization not confirmed'}</p><p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1 text-green"><ShieldCheck className="size-3.5" />Verified</span><span>·</span><span>{opportunity.source.organizationConfirmed ? 'Missa-hosted' : 'Official page'}</span><span>·</span><span>checked {new Intl.DateTimeFormat('en', { dateStyle: 'medium' }).format(new Date(opportunity.source.checkedAt))}</span></p></div>
+          <div className="min-w-0 pt-1"><h2 className="text-lg font-semibold leading-snug text-foreground">{opportunity.title}</h2><p className="mt-1 text-sm text-muted-foreground">{opportunity.organizationName ?? 'Organization not confirmed'}</p><p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1 text-green"><ShieldCheck className="size-3.5" />Verified</span><span>·</span><span>{opportunity.source.organizationConfirmed ? 'Missa-hosted' : 'Official page'}</span><span>·</span><span className={freshness.state === 'stale' ? 'text-accent-deep' : freshness.state === 'fresh' ? 'text-green' : undefined}>{freshness.detail}</span></p></div>
         </div>
         <Link href={closeHref} aria-label="Close opportunity details" className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><X className="size-5" /></Link>
       </div>

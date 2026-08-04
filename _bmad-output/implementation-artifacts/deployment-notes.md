@@ -23,6 +23,7 @@
 **Radar ingestion:**
 - `@missa/radar-adapters` now exposes `missa-radar-worker`, a long-running Postgres-backed worker with bounded batches and advisory-lock serialization (`1984/727`). Run it on a container host with `DATABASE_URL`, `RADAR_WORKER_BATCH_SIZE` (default `10`), and `TICK_MINUTES` (default `15`).
 - Vercel Cron remains a bounded fallback during worker rollout. Once the worker service is healthy, disable inline Cron ingestion so the worker is the single ingestion lane.
+- The hosted fallback reads the same `RADAR_WORKER_BATCH_SIZE` (default `10`, maximum `50`) and runs every 15 minutes. A live Neon rehearsal on 2026-08-04 completed a 25-source tick; binary/non-text responses now fail closed before they can enter JSON snapshots. Opportunities retain their last successful processing time, so failed fetches do not falsely advance the public “checked” timestamp.
 
 **Still needed for full production functionality:**
 - A hosted `missa-radar-worker` process; the package and runbook are ready, but Vercel serverless functions cannot host a long-running worker.

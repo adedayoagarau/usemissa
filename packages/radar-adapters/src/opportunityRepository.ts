@@ -164,8 +164,11 @@ function baseSelect(context?: OpportunityRepositoryContext): string {
     source.kind as source_kind,
     source.name as source_name,
     source.url as source_url,
-    coalesce(evidence.checked_at, source.last_checked_at) as source_checked_at,
-    coalesce(evidence.processing_succeeded_at, source.last_processed_at) as processing_succeeded_at,
+    -- Public freshness is the last successful opportunity processing pass,
+    -- never merely the last attempt to fetch a source. A failed fetch or
+    -- failed extraction must leave the previous checked timestamp visible.
+    coalesce(evidence.checked_at, o.source_checked_at) as source_checked_at,
+    coalesce(evidence.processing_succeeded_at, o.processing_succeeded_at) as processing_succeeded_at,
     coalesce(evidence.organization_confirmed, false) as organization_confirmed,
     evidence.verified_until,
     ${personal}

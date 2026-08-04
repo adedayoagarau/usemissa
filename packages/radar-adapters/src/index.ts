@@ -34,6 +34,9 @@ export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';
 export {
   RADAR_INGESTION_LOCK,
+  DEFAULT_RADAR_WORKER_BATCH_SIZE,
+  MAX_RADAR_WORKER_BATCH_SIZE,
+  radarWorkerBatchSize,
   runRadarWorker,
   runRadarWorkerTick,
   type RadarWorkerOptions,

@@ -10,6 +10,8 @@ import { createProductionEngine } from "./productionEngine.js";
  * in-memory snapshot.
  */
 export const RADAR_INGESTION_LOCK = { namespace: 1984, key: 727 } as const;
+export const DEFAULT_RADAR_WORKER_BATCH_SIZE = 10;
+export const MAX_RADAR_WORKER_BATCH_SIZE = 50;
 
 export interface RadarWorkerOptions {
   /** Number of due sources processed per tick. Defaults to 10. */
@@ -27,8 +29,14 @@ export interface RadarWorkerTickResult {
   report?: TickReport;
 }
 
-function positiveInteger(value: number | undefined, fallback: number): number {
-  return value !== undefined && Number.isInteger(value) && value > 0 ? value : fallback;
+function positiveInteger(value: number | undefined, fallback: number, max = Number.MAX_SAFE_INTEGER): number {
+  return value !== undefined && Number.isInteger(value) && value > 0 ? Math.min(value, max) : fallback;
+}
+
+/** Bounded batch size shared by the hosted cron and long-running worker. */
+export function radarWorkerBatchSize(value: string | number | undefined = process.env.RADAR_WORKER_BATCH_SIZE): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return positiveInteger(parsed, DEFAULT_RADAR_WORKER_BATCH_SIZE, MAX_RADAR_WORKER_BATCH_SIZE);
 }
 
 async function tryAdvisoryLock(client: PoolClient): Promise<boolean> {
@@ -51,7 +59,7 @@ export async function runRadarWorkerTick(
   options: Pick<RadarWorkerOptions, "maxSources" | "logger" | "afterTick"> = {},
 ): Promise<RadarWorkerTickResult> {
   const logger = options.logger ?? console;
-  const maxSources = positiveInteger(options.maxSources, 10);
+  const maxSources = positiveInteger(options.maxSources, DEFAULT_RADAR_WORKER_BATCH_SIZE, MAX_RADAR_WORKER_BATCH_SIZE);
   const production = await createProductionEngine();
   let lockClient: PoolClient | undefined;
   let locked = false;
@@ -104,7 +112,7 @@ export async function runRadarWorker(
   options: RadarWorkerOptions & { signal?: AbortSignal } = {},
 ): Promise<void> {
   const logger = options.logger ?? console;
-  const maxSources = positiveInteger(options.maxSources, 10);
+  const maxSources = radarWorkerBatchSize(options.maxSources);
   const intervalMs = positiveInteger(
     options.intervalMs,
     positiveInteger(Number(process.env.TICK_MINUTES) * 60_000, 15 * 60_000),

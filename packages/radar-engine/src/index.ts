@@ -20,7 +20,7 @@ export {
   type OpportunityChecklistView,
   type ChecklistItemPatch,
 } from './checklist/checklist.js';
-export { FixtureFetcher, HttpFetcher, stripHtml } from './ingestion/fetcher.js';
+export { FixtureFetcher, HttpFetcher, isSafeTextPayload, stripHtml } from './ingestion/fetcher.js';
 export { isDue, dueSources } from './ingestion/scheduler.js';
 export { contentHash } from './ingestion/snapshot.js';
 export { DeterministicExtractor } from './extraction/extractor.js';

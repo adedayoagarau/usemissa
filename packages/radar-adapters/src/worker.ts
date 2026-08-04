@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runRadarWorker } from "./radarWorker.js";
+import { radarWorkerBatchSize, runRadarWorker } from "./radarWorker.js";
 
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL is required to run the Missa Radar worker.");
@@ -12,7 +12,7 @@ process.once("SIGINT", stop);
 process.once("SIGTERM", stop);
 
 runRadarWorker({
-  maxSources: Number(process.env.RADAR_WORKER_BATCH_SIZE ?? 10),
+  maxSources: radarWorkerBatchSize(),
   signal: abortController.signal,
 }).catch((error) => {
   console.error("[missa-radar-worker] stopped unexpectedly", error);
