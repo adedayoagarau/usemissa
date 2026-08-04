@@ -103,7 +103,8 @@ async function seedJobs(client: PoolClient): Promise<void> {
   await client.query(
     `insert into radar_enrichment_jobs (id, opportunity_id, kind, priority, payload)
      select md5(o.id || ':' || kinds.kind), o.id, kinds.kind,
-       case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 20 else 0 end,
+       (case when kinds.kind = 'call-profile' then 10 else 0 end) +
+       (case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 20 else 0 end),
        jsonb_build_object('title', o.title)
      from opportunities o
        cross join (values ('media'::text), ('winners'::text), ('guidelines'::text), ('call-profile'::text)) as kinds(kind)
