@@ -36,3 +36,4 @@ export type AuditEvent = z.infer<typeof auditEventSchema>;
 export type OutboxEvent = z.infer<typeof outboxEventSchema>;
 
 export * from "./opportunities.js";
+export * from "./taxonomy.js";
