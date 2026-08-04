@@ -56,6 +56,7 @@ function searchDocument(opportunity: Opportunity): string {
     opportunity.fields.organizationName,
     opportunity.fields.type,
     ...opportunity.fields.genres,
+    ...(opportunity.fields.taxonomyAssignments ?? []).flatMap((assignment) => assignment.termId ? [assignment.termId] : []),
     opportunity.fields.location,
     opportunity.fields.prize,
   ]
@@ -100,7 +101,50 @@ async function upsertSources(client: PoolClient, sources: Source[]): Promise<voi
   );
 }
 
-async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, source: Source): Promise<void> {
+async function taxonomyTablesAvailable(client: PoolClient): Promise<boolean> {
+  if (process.env.MISSA_TAXONOMY_PERSISTENCE === "0") return false;
+  const result = await client.query<{ ready: boolean }>(
+    `select to_regclass('public.taxonomy_terms') is not null
+      and to_regclass('public.opportunity_taxonomy_terms') is not null
+      and to_regclass('public.opportunity_source_taxonomy_terms') is not null as ready`,
+  );
+  return result.rows[0]?.ready === true;
+}
+
+async function upsertSourceTaxonomy(client: PoolClient, source: Source): Promise<void> {
+  const termIds = source.registryTaxonomyTermIds ?? [];
+  await client.query(
+    `update opportunity_sources set
+       canonical_url = coalesce(canonical_url, $2),
+       normalized_url = coalesce(normalized_url, lower(regexp_replace($2, '/+$', ''))),
+       source_tier = coalesce($3, source_tier),
+       follows_outbound_links = coalesce($4, follows_outbound_links),
+       geography_codes = coalesce($5, geography_codes),
+       updated_at = now()
+     where id = $1`,
+    [source.id, source.url, source.registryTier ?? 0, source.followsOutboundLinks ?? false, source.registryGeography ?? []],
+  );
+  await client.query(
+    `delete from opportunity_source_taxonomy_terms
+     where source_id = $1 and assignment_origin in ('registry', 'backfill', 'extractor')`,
+    [source.id],
+  );
+  for (const termId of termIds) {
+    await client.query(
+      `insert into opportunity_source_taxonomy_terms
+         (source_id, term_id, coverage_kind, assignment_origin, source_phrase, confidence, updated_at)
+       values ($1, $2, 'accepts', 'registry', $3, 90, now())
+       on conflict (source_id, term_id, coverage_kind) do update set
+         assignment_origin = case when opportunity_source_taxonomy_terms.assignment_origin = 'reviewer' then opportunity_source_taxonomy_terms.assignment_origin else excluded.assignment_origin end,
+         source_phrase = case when opportunity_source_taxonomy_terms.assignment_origin = 'reviewer' then opportunity_source_taxonomy_terms.source_phrase else excluded.source_phrase end,
+         confidence = case when opportunity_source_taxonomy_terms.assignment_origin = 'reviewer' then opportunity_source_taxonomy_terms.confidence else excluded.confidence end,
+         updated_at = now()`,
+      [source.id, termId, source.registryVerticalId ?? null],
+    );
+  }
+}
+
+async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, source: Source, taxonomyEnabled: boolean): Promise<void> {
   const lifecycle = statusFor(opportunity.status);
   const submission = submissionFor(opportunity.fields.submissionUrl);
   const organizationId = opportunity.fields.organizationId ?? source.organizationId ?? null;
@@ -230,6 +274,46 @@ async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, s
       Boolean(opportunity.claimedByOrganizationId),
     ],
   );
+
+  // Evidence is inserted before taxonomy assignments because the canonical
+  // junction preserves its evidence FK. Reviewer/organization assignments are
+  // left intact; only extractor-owned rows are replaced on reprocessing.
+  if (taxonomyEnabled) {
+    const assignments = (opportunity.fields.taxonomyAssignments ?? []).filter((assignment) => assignment.termId);
+    await client.query(
+      `delete from opportunity_taxonomy_terms
+       where opportunity_id = $1 and assignment_origin in ('extractor', 'backfill', 'registry')`,
+      [opportunity.id],
+    );
+    for (const assignment of assignments) {
+      await client.query(
+        `insert into opportunity_taxonomy_terms
+           (opportunity_id, term_id, source_evidence_id, source_snapshot_id,
+            source_phrase, normalized_phrase, assignment_origin, certainty, "primary", updated_at)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+         on conflict (opportunity_id, term_id) do update set
+           source_evidence_id = case when opportunity_taxonomy_terms.assignment_origin in ('organization', 'reviewer') then opportunity_taxonomy_terms.source_evidence_id else excluded.source_evidence_id end,
+           source_snapshot_id = case when opportunity_taxonomy_terms.assignment_origin in ('organization', 'reviewer') then opportunity_taxonomy_terms.source_snapshot_id else excluded.source_snapshot_id end,
+           source_phrase = case when opportunity_taxonomy_terms.assignment_origin in ('organization', 'reviewer') then opportunity_taxonomy_terms.source_phrase else excluded.source_phrase end,
+           normalized_phrase = case when opportunity_taxonomy_terms.assignment_origin in ('organization', 'reviewer') then opportunity_taxonomy_terms.normalized_phrase else excluded.normalized_phrase end,
+           assignment_origin = case when opportunity_taxonomy_terms.assignment_origin in ('organization', 'reviewer') then opportunity_taxonomy_terms.assignment_origin else excluded.assignment_origin end,
+           certainty = case when opportunity_taxonomy_terms.assignment_origin in ('organization', 'reviewer') then opportunity_taxonomy_terms.certainty else excluded.certainty end,
+           "primary" = case when opportunity_taxonomy_terms.assignment_origin in ('organization', 'reviewer') then opportunity_taxonomy_terms."primary" else excluded."primary" end,
+           updated_at = now()`,
+        [
+          opportunity.id,
+          assignment.termId,
+          `${opportunity.id}:evidence:${source.id}`,
+          assignment.snapshotId ?? null,
+          assignment.sourcePhrase,
+          assignment.normalizedPhrase,
+          assignment.assignmentOrigin ?? 'extractor',
+          assignment.certainty,
+          assignment.facet === 'discipline',
+        ],
+      );
+    }
+  }
 }
 
 async function upsertVersionsAndChanges(client: PoolClient, store: RadarStore, opportunityIds?: Set<string>): Promise<void> {
@@ -284,12 +368,17 @@ export async function saveOpportunityProjectionToPostgres(
   // Registry sources without an extracted opportunity are not queryable yet;
   // defer them until their first opportunity to keep each cron persistence
   // pass bounded instead of rewriting the full 1,024-source registry.
-  await upsertSources(client, [...referencedSourceIds]
+  const referencedSources = [...referencedSourceIds]
     .map((sourceId) => store.sources.get(sourceId))
-    .filter((value): value is Source => Boolean(value)));
+    .filter((value): value is Source => Boolean(value));
+  const taxonomyEnabled = await taxonomyTablesAvailable(client);
+  await upsertSources(client, referencedSources);
+  if (taxonomyEnabled) {
+    for (const source of referencedSources) await upsertSourceTaxonomy(client, source);
+  }
   for (const opportunity of opportunities) {
     const source = store.sources.get(opportunity.sourceId);
-    if (source) await upsertOpportunity(client, opportunity, source);
+    if (source) await upsertOpportunity(client, opportunity, source, taxonomyEnabled);
   }
   await upsertVersionsAndChanges(client, store, scope?.opportunityIds);
 }

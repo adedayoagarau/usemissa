@@ -34,6 +34,8 @@ export function parseOpportunityBrowseQuery(params: URLSearchParams): Opportunit
     types: listParam(params, "type"),
     disciplines: listParam(params, "discipline"),
     genres: listParam(params, "genre"),
+    taxonomyTermIds: listParam(params, "taxonomy"),
+    taxonomyIncludeDescendants: booleanParam(params, "taxonomyDescendants", false),
     locations: listParam(params, "location"),
     feeStatus: booleanParam(params, "feeToggle", false) ? "no-fee" : params.get("fee") ?? undefined,
     maxFeeCents: numberParam(params, "maxFeeCents"),

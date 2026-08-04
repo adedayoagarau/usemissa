@@ -23,6 +23,7 @@ import type {
   SourceKind,
   UserAttributes,
   UserProfile,
+  TaxonomyPreference,
   PublicUserProfile,
   ProfilePrivacyPatch,
   ProfilePrivacySettings,
@@ -106,9 +107,9 @@ async function fetchSources(sources: Source[], fetcher: Fetcher): Promise<FetchR
 }
 
 export class ProfileValidationError extends Error {
-  readonly field: 'displayName' | 'bio';
+  readonly field: 'displayName' | 'bio' | 'taxonomyPreferences';
 
-  constructor(field: 'displayName' | 'bio', message: string) {
+  constructor(field: 'displayName' | 'bio' | 'taxonomyPreferences', message: string) {
     super(message);
     this.name = 'ProfileValidationError';
     this.field = field;
@@ -151,7 +152,7 @@ function validatedPrivacyPatch(patch: ProfilePrivacyPatch): ProfilePrivacyPatch 
   return patch;
 }
 
-function normalizedProfileValues(user: UserProfile, patch: UserProfilePatch): { displayName: string; bio?: string } {
+function normalizedProfileValues(user: UserProfile, patch: UserProfilePatch): { displayName: string; bio?: string; taxonomyPreferences?: TaxonomyPreference[] } {
   const displayName = patch.displayName === undefined ? user.displayName.trim() : patch.displayName.trim();
   if (!displayName || displayName.length > 120) {
     throw new ProfileValidationError('displayName', 'Display name must be between 1 and 120 characters.');
@@ -163,7 +164,22 @@ function normalizedProfileValues(user: UserProfile, patch: UserProfilePatch): { 
     throw new ProfileValidationError('bio', 'Bio must be 1,000 characters or fewer.');
   }
 
-  return { displayName, bio };
+  let taxonomyPreferences = user.taxonomyPreferences;
+  if (patch.taxonomyPreferences !== undefined) {
+    if (!Array.isArray(patch.taxonomyPreferences) || patch.taxonomyPreferences.length > 64) throw new ProfileValidationError('taxonomyPreferences', 'Choose no more than 64 practice preferences.');
+    const seen = new Set<string>();
+    taxonomyPreferences = patch.taxonomyPreferences.map((preference) => {
+      if (!preference || typeof preference.termId !== 'string' || !preference.termId.trim()) throw new ProfileValidationError('taxonomyPreferences', 'Each preference needs a canonical term.');
+      if (!['include', 'prefer', 'exclude'].includes(preference.preference)) throw new ProfileValidationError('taxonomyPreferences', 'Preference must be include, prefer, or exclude.');
+      if (!Number.isInteger(preference.weight) || preference.weight < 0 || preference.weight > 100) throw new ProfileValidationError('taxonomyPreferences', 'Preference weight must be between 0 and 100.');
+      const termId = preference.termId.trim();
+      if (seen.has(termId)) throw new ProfileValidationError('taxonomyPreferences', 'A canonical term may only appear once.');
+      seen.add(termId);
+      return { termId, preference: preference.preference, weight: preference.weight };
+    });
+  }
+
+  return { displayName, bio, taxonomyPreferences };
 }
 
 export interface TickReport {
@@ -271,6 +287,9 @@ export class RadarEngine {
     registryVerticalId?: string;
     registryGroup?: string;
     registryDisciplines?: string[];
+    registryTaxonomyTermIds?: string[];
+    registryEligibilityLens?: string;
+    registrySourceChannel?: string;
     registryGeography?: string[];
     registryOpportunityTypes?: OpportunityType[];
     registryOrganizationName?: string;
@@ -287,6 +306,9 @@ export class RadarEngine {
       registryVerticalId: input.registryVerticalId,
       registryGroup: input.registryGroup,
       registryDisciplines: input.registryDisciplines,
+      registryTaxonomyTermIds: input.registryTaxonomyTermIds,
+      registryEligibilityLens: input.registryEligibilityLens,
+      registrySourceChannel: input.registrySourceChannel,
       registryGeography: input.registryGeography,
       registryOpportunityTypes: input.registryOpportunityTypes,
       registryOrganizationName: input.registryOrganizationName,
@@ -319,6 +341,7 @@ export class RadarEngine {
     const values = normalizedProfileValues(user, patch);
     user.displayName = values.displayName;
     user.bio = values.bio;
+    if (values.taxonomyPreferences !== undefined) user.taxonomyPreferences = values.taxonomyPreferences;
     return user;
   }
 
@@ -776,6 +799,7 @@ export class RadarEngine {
       organizationId: source.organizationId,
       type: candidate.type,
       genres: candidate.genres,
+      taxonomyAssignments: candidate.taxonomyAssignments,
       openDate: candidate.openDate,
       deadline: candidate.deadline,
       fee: candidate.fee,
@@ -860,6 +884,10 @@ export class RadarEngine {
       f.genres = candidate.genres;
     }
 
+    if (candidate.taxonomyAssignments?.length) {
+      f.taxonomyAssignments = candidate.taxonomyAssignments;
+    }
+
     const oldElig = JSON.stringify(f.eligibility);
     const newElig = JSON.stringify(candidate.eligibility);
     if (candidate.eligibility.length > 0 && newElig !== oldElig) {
@@ -932,6 +960,9 @@ export class RadarEngine {
     if (!f.submissionUrl && candidate.submissionUrl) f.submissionUrl = candidate.submissionUrl;
     if (!f.prize && candidate.prize) f.prize = candidate.prize;
     if (f.genres.length === 0) f.genres = candidate.genres;
+    if (!f.taxonomyAssignments?.length && candidate.taxonomyAssignments?.length) {
+      f.taxonomyAssignments = candidate.taxonomyAssignments;
+    }
     report.opportunitiesUpdated.push(canonical.id);
   }
 

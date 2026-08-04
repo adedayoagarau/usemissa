@@ -24,6 +24,7 @@ export { FixtureFetcher, HttpFetcher, isSafeTextPayload, stripHtml } from './ing
 export { isDue, dueSources } from './ingestion/scheduler.js';
 export { contentHash } from './ingestion/snapshot.js';
 export { DeterministicExtractor } from './extraction/extractor.js';
+export { taxonomyAssignmentsForPhrases } from './extraction/taxonomy.js';
 export { validateCandidate, hasFatalIssues, looksLikeOpportunity } from './extraction/validate.js';
 export { parseDate, daysBetween, addDays, isoDateOf, isPlausibleOpportunityDate } from './extraction/dates.js';
 export { extractFee } from './extraction/fees.js';
@@ -76,6 +77,18 @@ export { freshnessScore, confidenceScore, computeTrustSignals, trustScore, STALE
 export { deriveStatus, displayStatus, CLOSING_SOON_DAYS, OPENING_SOON_DAYS, NEEDS_VERIFICATION_CONFIDENCE } from './status/statusEngine.js';
 export { predictNextOpening, recordCycle } from './prediction/prediction.js';
 export { matchesCriteria, matchProfiles, type MatchResult } from './matching/matching.js';
+export {
+  assessCoverage,
+  buildCoverageQueries,
+  deduplicateCandidateUrls,
+  summarizeTaxonomyMetrics,
+  type CoverageAssessment,
+  type CoverageCellInput,
+  type CoverageMembershipInput,
+  type DiscoveryQueryInput,
+  type TaxonomyAssignmentMetricInput,
+  type TaxonomyOperationalMetrics,
+} from './coverage/coverage.js';
 export { fitScore, formatFee } from './matching/fit.js';
 export { buildInboxDigest, matchOrganizationByDomain, type InboxDigest } from './alerts/alerts.js';
 export { verificationQueue } from './verification/verification.js';
@@ -133,6 +146,8 @@ export {
   toRadarSources,
   discoverySeeds,
   canonicalSources,
+  auditRegistryTaxonomy,
+  registryVerticalCompatibility,
 } from './registry/index.js';
 export type {
   SourceTier,
@@ -143,3 +158,4 @@ export type {
   RegistryStats,
   LoadRegistryOptions,
 } from './registry/types.js';
+export type { RegistryTaxonomyAudit, RegistryVerticalCompatibility } from './registry/taxonomy.js';

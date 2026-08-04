@@ -22,6 +22,7 @@ export default async function ProfilePage() {
     id: user.id,
     displayName: user.displayName.trim(),
     ...(user.bio?.trim() ? { bio: user.bio.trim() } : {}),
+    ...(user.taxonomyPreferences?.length ? { taxonomyPreferences: user.taxonomyPreferences } : {}),
     completeness: engine.profileCompleteness(user.id),
     privacy: engine.profilePrivacy(user.id)!,
     publicUrl: `/profile/${encodeURIComponent(user.id)}`,

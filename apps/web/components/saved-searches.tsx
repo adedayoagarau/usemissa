@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import type { RadarProfile } from '@missa/radar-engine';
+import { PRACTICE_OPTIONS, taxonomyLabelFor } from '@/lib/taxonomyOptions';
 
 /**
  * Story 3.3: RadarProfile (saved search) creation/edit UI -- this is the
@@ -28,6 +29,8 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [genres, setGenres] = useState('');
+  const [taxonomyTermIds, setTaxonomyTermIds] = useState<string[]>([]);
+  const [taxonomySearch, setTaxonomySearch] = useState('');
   const [noFeeOnly, setNoFeeOnly] = useState(false);
   const [deadlineWithinDays, setDeadlineWithinDays] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -40,6 +43,7 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
         body: JSON.stringify({
           name: name.trim() || 'Saved search',
           criteria: {
+            taxonomyTermIds: taxonomyTermIds.length ? taxonomyTermIds : undefined,
             genres: genres.split(',').map((g) => g.trim()).filter(Boolean),
             noFeeOnly,
             deadlineWithinDays: deadlineWithinDays ? Number(deadlineWithinDays) : undefined,
@@ -53,6 +57,8 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
       }
       setName('');
       setGenres('');
+      setTaxonomyTermIds([]);
+      setTaxonomySearch('');
       setNoFeeOnly(false);
       setDeadlineWithinDays('');
       setOpen(false);
@@ -81,6 +87,31 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
                 <DialogTitle>New saved search</DialogTitle>
               </DialogHeader>
               <div className="flex flex-col gap-4">
+                <Field>
+                  <FieldLabel htmlFor="saved-search-practice">Practices</FieldLabel>
+                  <Input
+                    id="saved-search-practice"
+                    placeholder="Search canonical practices"
+                    value={taxonomySearch}
+                    onChange={(e) => setTaxonomySearch(e.target.value)}
+                  />
+                  <select
+                    aria-label="Canonical practices"
+                    className="mt-2 h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value && !taxonomyTermIds.includes(e.target.value)) setTaxonomyTermIds((current) => [...current, e.target.value]);
+                    }}
+                  >
+                    <option value="">Choose a practice</option>
+                    {PRACTICE_OPTIONS.filter((option) => !taxonomyTermIds.includes(option.value) && option.label.toLowerCase().includes(taxonomySearch.toLowerCase())).slice(0, 12).map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  {taxonomyTermIds.length ? <div className="flex flex-wrap gap-1 text-xs text-muted-foreground">
+                    {taxonomyTermIds.map((termId) => <button key={termId} type="button" className="rounded border border-border px-2 py-1 hover:bg-muted" onClick={() => setTaxonomyTermIds((current) => current.filter((id) => id !== termId))}>{taxonomyLabelFor(termId)} ×</button>)}
+                  </div> : null}
+                </Field>
                 <Field>
                   <FieldLabel htmlFor="saved-search-name">Name</FieldLabel>
                   <Input
@@ -132,6 +163,7 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
             <div key={p.id} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm">
               <span>
                 {p.name}
+                {p.criteria.taxonomyTermIds?.length ? <span className="text-muted-foreground"> · {p.criteria.taxonomyTermIds.map(taxonomyLabelFor).join(', ')}</span> : null}
                 {p.criteria.genres?.length ? <span className="text-muted-foreground"> · {p.criteria.genres.join(', ')}</span> : null}
                 {p.criteria.noFeeOnly ? <span className="text-muted-foreground"> · no fee</span> : null}
                 {p.criteria.deadlineWithinDays ? <span className="text-muted-foreground"> · within {p.criteria.deadlineWithinDays}d</span> : null}

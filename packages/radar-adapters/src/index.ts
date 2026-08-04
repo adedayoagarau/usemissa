@@ -42,6 +42,19 @@ export {
   type DiscoveryWorkerOptions,
   type DiscoveryTickResult,
 } from "./discoveryWorker.js";
+export {
+  runCoverageWorkerTick,
+  materializeCoverageCells,
+  assessCoverageCells,
+  enqueueCoverageQueries,
+  type CoverageWorkerOptions,
+  type CoverageTickResult,
+} from "./coverageWorker.js";
+export {
+  readTaxonomyAdminDashboard,
+  createTaxonomyChangeProposal,
+  type TaxonomyAdminDashboard,
+} from "./taxonomyAdmin.js";
 export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';
 export {

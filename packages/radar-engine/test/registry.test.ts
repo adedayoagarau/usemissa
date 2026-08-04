@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { assembleRegistry, registryStats, filterSources, discoverySeeds, canonicalSources } from '../src/registry/assemble.js';
+import { auditRegistryTaxonomy } from '../src/registry/taxonomy.js';
 
 test('source registry has 1000+ entries across verticals', () => {
   const reg = assembleRegistry();
@@ -31,4 +32,14 @@ test('registry stats sum to total', () => {
   const stats = registryStats(reg);
   const tierSum = Object.values(stats.byTier).reduce((a, b) => a + b, 0);
   assert.equal(tierSum, stats.totalSources);
+});
+
+test('taxonomy compatibility preserves every source and separates platform and eligibility axes', () => {
+  const reg = assembleRegistry();
+  const audit = auditRegistryTaxonomy(reg);
+  assert.equal(audit.sourceCountAfter, audit.sourceCountBefore);
+  assert.equal(audit.verticalsWithoutCompatibility.length, 0);
+  assert.ok(audit.mappedSources > 0);
+  assert.ok(audit.platformOnlySources.length > 0);
+  assert.ok(audit.eligibilityLensSources.length > 0);
 });

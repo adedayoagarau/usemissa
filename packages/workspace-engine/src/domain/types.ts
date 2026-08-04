@@ -99,6 +99,12 @@ export interface SubmissionPath {
   categories: string[];
   fields: SubmissionField[];
   feeCents?: number;
+  /** Canonical practice rules; categories remain a compatibility field. */
+  taxonomyAssignments?: Array<{
+    termId: string;
+    rule: 'accepted' | 'preferred' | 'required' | 'excluded';
+    required?: boolean;
+  }>;
   createdAt: IsoDateTime;
 }
 
@@ -152,6 +158,8 @@ export interface Work {
   fileUrl?: string;
   fileUrls?: string[];
   order: number;
+  /** Shared taxonomy terms for this work, kept private to the submitter. */
+  taxonomyTermIds?: string[];
 }
 
 // --- Review -----------------------------------------------------------------

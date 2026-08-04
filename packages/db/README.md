@@ -42,5 +42,19 @@ branch. Then seed and backfill the validated vocabulary with:
 DATABASE_URL=postgresql://... npm run db:seed-taxonomy --workspace=@missa/db
 ```
 
+The migration is intentionally not in the Drizzle journal yet: its number must be reconciled
+against the live 0006–0010 history before production cutover. A guarded rehearsal helper applies
+the SQL only when an operator explicitly opts in:
+
+```bash
+DATABASE_URL=postgresql://disposable-branch \
+MISSA_TAXONOMY_REHEARSAL=1 \
+npm run db:rehearse-taxonomy --workspace=@missa/db
+```
+
+Run the seed twice on that same disposable database, compare row counts and foreign keys, and
+record the rollback (drop the rehearsal branch or restore its snapshot). Production remains on
+compatibility reads/writes until this rehearsal and dual-read parity are signed off.
+
 The seed is idempotent and leaves the scheme in `draft`; publishing the taxonomy requires a
 separate editorial/provenance review.

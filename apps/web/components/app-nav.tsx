@@ -35,7 +35,7 @@ const NAV_LINKS = [
   { href: '/insights', label: 'Insights' },
 ] as const;
 
-export function AppNav({ email, userId, organizations = [] }: { email: string; userId?: string; organizations?: Array<{ id: string; name: string }> }) {
+export function AppNav({ email, userId, isAdmin = false, organizations = [] }: { email: string; userId?: string; isAdmin?: boolean; organizations?: Array<{ id: string; name: string }> }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -103,6 +103,7 @@ export function AppNav({ email, userId, organizations = [] }: { email: string; u
           {userId && <DropdownMenuItem render={<Link href={scopedHref('/workspace')} />}>Workspace</DropdownMenuItem>}
           {userId && <DropdownMenuItem render={<Link href={scopedHref('/submissions')} />}>Submission inbox</DropdownMenuItem>}
           {userId && <DropdownMenuItem render={<Link href="/reviewer" />}>Reviewer queue</DropdownMenuItem>}
+          {isAdmin && <DropdownMenuItem render={<Link href="/admin/taxonomy" />}>Taxonomy operations</DropdownMenuItem>}
           {organizations.length > 0 && <div className="border-t border-border px-2 py-2"><p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Organizations</p>{organizations.map((organization) => <DropdownMenuItem key={organization.id} render={<Link href={`/workspace?organizationId=${encodeURIComponent(organization.id)}`} />}>{organization.name}</DropdownMenuItem>)}</div>}
           <DropdownMenuItem onClick={handleLogout}>Log out</DropdownMenuItem>
         </DropdownMenuContent>
@@ -115,6 +116,7 @@ export function AppNav({ email, userId, organizations = [] }: { email: string; u
             return <Link key={link.href} href={link.href} onClick={() => setMobileNavOpen(false)} aria-current={active ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${active ? 'bg-accent-tint font-medium text-accent-deep' : 'text-foreground hover:bg-muted'}`}>{link.label}</Link>;
           })}
           {userId && <Link href="/profile" onClick={() => setMobileNavOpen(false)} aria-current={pathname === '/profile' ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname === '/profile' ? 'bg-accent-tint font-medium text-accent-deep' : 'text-foreground hover:bg-muted'}`}>Profile</Link>}
+          {isAdmin && <Link href="/admin/taxonomy" onClick={() => setMobileNavOpen(false)} className="flex min-h-11 items-center rounded-lg px-3 text-sm text-foreground hover:bg-muted">Taxonomy operations</Link>}
           {organizations.length > 1 && <div className="mt-2 border-t border-border pt-2"><p className="px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Organizations</p>{organizations.map((organization) => <Link key={organization.id} href={`/workspace?organizationId=${encodeURIComponent(organization.id)}`} onClick={() => setMobileNavOpen(false)} className="flex min-h-11 items-center rounded-lg px-3 text-sm text-foreground hover:bg-muted">{organization.name}</Link>)}</div>}
         </div>
       </nav>}

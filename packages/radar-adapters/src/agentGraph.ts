@@ -8,6 +8,7 @@ export const RADAR_AGENT_GRAPH = {
   nodes: [
     { id: "research", label: "Research", responsibility: "Discover candidate source pages across registry tiers." },
     { id: "discovery", label: "Discovery fan-out", responsibility: "Expand directories and feeds into bounded canonical call-page sources." },
+    { id: "coverage", label: "Coverage gaps", responsibility: "Materialize taxonomy coverage cells and queue bounded discovery queries." },
     { id: "radar", label: "Radar", responsibility: "Fetch, validate, deduplicate, score, and project canonical opportunities." },
     { id: "enrichment", label: "Enrichment", responsibility: "Collect call profiles, guidelines, media, and winner evidence." },
     { id: "review", label: "Review", responsibility: "Apply publication checks and explain publish, suppress, or human-review decisions." },
@@ -17,6 +18,7 @@ export const RADAR_AGENT_GRAPH = {
   ],
   edges: [
     { from: "research", to: "discovery", kind: "directory-seed" },
+    { from: "coverage", to: "discovery", kind: "gap-priority" },
     { from: "discovery", to: "radar", kind: "canonical-source" },
     { from: "radar", to: "enrichment", kind: "evidence-request" },
     { from: "radar", to: "review", kind: "review-request" },

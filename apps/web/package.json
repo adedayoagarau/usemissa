@@ -17,6 +17,7 @@
     "@missa/contracts": "^0.1.0",
     "@missa/radar-adapters": "^0.1.0",
     "@missa/radar-engine": "^0.1.0",
+    "@missa/taxonomy": "0.1.0",
     "@missa/workspace-engine": "^0.1.0",
     "@sentry/nextjs": "^10.69.0",
     "@vercel/blob": "^2.6.1",

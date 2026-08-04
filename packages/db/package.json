@@ -15,6 +15,7 @@
     "build": "tsc -p tsconfig.json",
     "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
     "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
+    "db:rehearse-taxonomy": "node scripts/rehearse-taxonomy.mjs",
     "db:seed-taxonomy": "npm run build --workspace=@missa/taxonomy && npm run build && node scripts/seed-taxonomy.mjs",
     "test": "npm run build && node --test dist/test/*.test.js"
   },

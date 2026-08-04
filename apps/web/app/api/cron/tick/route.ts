@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { radarWorkerBatchSize, runRadarWorkerTick } from '@missa/radar-adapters';
+import { radarWorkerBatchSize, runRadarWorkerTick, runCoverageWorkerTick } from '@missa/radar-adapters';
 import { deliverPendingAlertEmails } from '@/lib/alert-delivery';
 
 /**
@@ -34,6 +34,7 @@ export async function GET(request: Request) {
   }
 
   const report = result.report!;
+  const coverage = await runCoverageWorkerTick({ logger: console });
   return NextResponse.json({
     status: 'completed',
     sourcesChecked: report.sourcesChecked,
@@ -41,5 +42,6 @@ export async function GET(request: Request) {
     changes: report.changes.length,
     alerts: report.alerts.length,
     emailDelivery,
+    coverage,
   });
 }

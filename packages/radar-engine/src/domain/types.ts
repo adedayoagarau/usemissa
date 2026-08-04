@@ -1,3 +1,5 @@
+import type { TaxonomyFacetKey } from '@missa/taxonomy';
+
 /**
  * Missa Radar domain model.
  *
@@ -69,6 +71,9 @@ export interface Source {
   registryVerticalId?: string;
   registryGroup?: string;
   registryDisciplines?: string[];
+  registryTaxonomyTermIds?: string[];
+  registryEligibilityLens?: string;
+  registrySourceChannel?: string;
   registryGeography?: string[];
   registryOpportunityTypes?: OpportunityType[];
   registryOrganizationName?: string;
@@ -126,6 +131,25 @@ export interface EligibilityRule {
   value?: string;
 }
 
+/** A taxonomy proposal is provenance-first: an extractor can suggest several
+ * terms, but only an unambiguous candidate is safe to persist as canonical. */
+export interface TaxonomyAssignmentProposal {
+  facet: TaxonomyFacetKey;
+  sourcePhrase: string;
+  normalizedPhrase: string;
+  candidateTermIds: string[];
+  termId?: string;
+  mapping: 'exact' | 'close' | 'broad' | 'narrow' | 'legacy';
+  confidence: number;
+  certainty: 'confirmed' | 'probable' | 'inferred' | 'unknown' | 'rejected';
+  reason: string;
+  assignmentOrigin?: 'extractor' | 'registry' | 'backfill' | 'organization' | 'reviewer' | 'user' | 'import';
+  /** Evidence coordinates are carried from the source snapshot into review
+   * and relational persistence; they are never inferred from the label. */
+  evidenceUrl?: string;
+  snapshotId?: string;
+}
+
 export interface DeadlineInfo {
   kind: DeadlineKind;
   date?: IsoDate;
@@ -142,6 +166,8 @@ export interface OpportunityCandidate {
   organizationName?: string;
   type: OpportunityType;
   genres: string[];
+  /** Canonical proposals emitted beside legacy genre strings during cutover. */
+  taxonomyAssignments?: TaxonomyAssignmentProposal[];
   openDate?: IsoDate;
   deadline: DeadlineInfo;
   fee: FeeInfo;
@@ -190,6 +216,8 @@ export interface OpportunityFields {
   organizationId?: string;
   type: OpportunityType;
   genres: string[];
+  /** Canonical assignments survive dedup and are dual-written with legacy fields. */
+  taxonomyAssignments?: TaxonomyAssignmentProposal[];
   openDate?: IsoDate;
   deadline: DeadlineInfo;
   fee: FeeInfo;
@@ -339,6 +367,10 @@ export interface RadarProfile {
 
 export interface MatchCriteria {
   types?: OpportunityType[];
+  /** Canonical taxonomy IDs selected by the submitter. Legacy genres remain
+   * supported during the additive migration window. */
+  taxonomyTermIds?: string[];
+  taxonomyIncludeDescendants?: boolean;
   genres?: string[];
   keywords?: string[];
   maxFeeCents?: number;
@@ -363,6 +395,14 @@ export interface UserProfile {
   privacy?: Partial<ProfilePrivacySettings>;
   attributes: UserAttributes;
   genres: string[];
+  /** Canonical private practice preferences; legacy genres remain during cutover. */
+  taxonomyPreferences?: TaxonomyPreference[];
+}
+
+export interface TaxonomyPreference {
+  termId: string;
+  preference: 'include' | 'prefer' | 'exclude';
+  weight: number;
 }
 
 /** Private, reusable creative material owned by one submitter. */
@@ -480,6 +520,7 @@ export interface PublicUserProfile {
 export interface UserProfilePatch {
   displayName?: string;
   bio?: string;
+  taxonomyPreferences?: TaxonomyPreference[];
 }
 
 /**

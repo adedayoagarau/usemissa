@@ -9,6 +9,7 @@ import {
   type OpportunityRepositoryQuery,
 } from "@missa/radar-engine";
 import { createPostgresOpportunityRepositoryFromUrl } from "@missa/radar-adapters";
+import { MISSA_TAXONOMY } from "@missa/taxonomy";
 import { getEngine } from "./engine";
 
 declare global {
@@ -84,6 +85,11 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
     type: opp.fields.type,
     discipline: opp.fields.genres[0] ?? source?.registryDisciplines?.[0],
     genres: opp.fields.genres,
+    taxonomy: {
+      schemeVersion: 1,
+      termIds: (opp.fields.taxonomyAssignments ?? []).flatMap((assignment) => assignment.termId ? [assignment.termId] : []),
+      primaryTermIds: (opp.fields.taxonomyAssignments ?? []).flatMap((assignment) => assignment.termId && assignment.facet === 'discipline' ? [assignment.termId] : []),
+    },
     deadline: {
       kind: opp.fields.deadline.kind,
       date: opp.fields.deadline.date,
@@ -125,6 +131,13 @@ function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepos
   if (query.types?.length && !query.types.includes(item.type)) return false;
   if (query.disciplines?.length && (!item.discipline || !query.disciplines.includes(item.discipline))) return false;
   if (query.genres?.length && !item.genres.some((genre) => query.genres?.includes(genre))) return false;
+  if (query.taxonomyTermIds?.length) {
+    const requested = new Set(query.taxonomyTermIds);
+    if (query.taxonomyIncludeDescendants) {
+      for (const term of MISSA_TAXONOMY.terms) if (term.broaderTermIds.some((parent) => requested.has(parent))) requested.add(term.id);
+    }
+    if (![...requested].some((termId) => item.taxonomy?.termIds.includes(termId))) return false;
+  }
   if (query.locations?.length && (!item.location || !query.locations.includes(item.location))) return false;
   if (query.feeStatus && item.fee.status !== query.feeStatus) return false;
   if (query.maxFeeCents !== undefined && (item.fee.amountCents === undefined || item.fee.amountCents > query.maxFeeCents)) return false;

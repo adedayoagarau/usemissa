@@ -60,6 +60,7 @@ interface OpportunityRow extends QueryResultRow {
   tailoring_reasons: unknown;
   created_at: Date | string;
   call_profile: OpportunityCallProfile | null;
+  taxonomy: { schemeVersion: number; termIds: string[]; primaryTermIds: string[] } | null;
 }
 
 interface EligibilityRow extends QueryResultRow {
@@ -125,6 +126,13 @@ function asIso(value: Date | string | null | undefined): string | undefined {
 }
 
 function baseSelect(context?: OpportunityRepositoryContext): string {
+  const taxonomySelect = process.env.MISSA_TAXONOMY_READS === "1"
+    ? `coalesce((select jsonb_build_object(
+        'schemeVersion', coalesce((select max(version) from taxonomy_schemes where status in ('active', 'draft')), 1),
+        'termIds', coalesce(jsonb_agg(ott.term_id order by ott.term_id), '[]'::jsonb),
+        'primaryTermIds', coalesce(jsonb_agg(ott.term_id) filter (where ott.primary), '[]'::jsonb)
+      ) from opportunity_taxonomy_terms ott where ott.opportunity_id = o.id and ott.certainty <> 'rejected'), jsonb_build_object('schemeVersion', 1, 'termIds', '[]'::jsonb, 'primaryTermIds', '[]'::jsonb)) as taxonomy,`
+    : `jsonb_build_object('schemeVersion', 1, 'termIds', '[]'::jsonb, 'primaryTermIds', '[]'::jsonb) as taxonomy,`;
   const personal = context?.accountId
     ? `
       exists (
@@ -150,6 +158,7 @@ function baseSelect(context?: OpportunityRepositoryContext): string {
     o.type,
     o.discipline,
     o.genres,
+    ${taxonomySelect}
     o.deadline_kind,
     o.deadline_date::text as deadline_date,
     o.deadline_time,
@@ -325,6 +334,25 @@ export function buildOpportunityBrowseQuery(
   if (types.length) addCondition(conditions, values, "o.type = any($VALUE::text[])", [...new Set(types)]);
   if (query.disciplines?.length) addCondition(conditions, values, "o.discipline = any($VALUE::text[])", query.disciplines);
   if (query.genres?.length) addCondition(conditions, values, "o.genres && $VALUE::text[]", query.genres);
+  if (query.taxonomyTermIds?.length) {
+    if (process.env.MISSA_TAXONOMY_READS === "1") {
+      if (query.taxonomyIncludeDescendants) {
+        addCondition(conditions, values, `exists (
+          with recursive requested(term_id) as (select unnest($VALUE::text[])), descendants(term_id) as (
+            select term_id from requested
+            union
+            select relation.subject_term_id from taxonomy_term_relations relation join descendants on relation.object_term_id = descendants.term_id where relation.relation_type = 'broader'
+          )
+          select 1 from opportunity_taxonomy_terms taxonomy_filter join descendants on descendants.term_id = taxonomy_filter.term_id
+          where taxonomy_filter.opportunity_id = o.id and taxonomy_filter.certainty <> 'rejected'
+        )`, query.taxonomyTermIds);
+      } else {
+        addCondition(conditions, values, "exists (select 1 from opportunity_taxonomy_terms taxonomy_filter where taxonomy_filter.opportunity_id = o.id and taxonomy_filter.term_id = any($VALUE::text[]) and taxonomy_filter.certainty <> 'rejected')", query.taxonomyTermIds);
+      }
+    } else {
+      conditions.push("false");
+    }
+  }
   if (query.locations?.length) addCondition(conditions, values, "o.location = any($VALUE::text[])", query.locations);
   if (query.feeStatus) addCondition(conditions, values, "o.fee_status = $VALUE", query.feeStatus);
   if (query.maxFeeCents !== undefined) addCondition(conditions, values, "o.fee_cents <= $VALUE", query.maxFeeCents);
@@ -379,6 +407,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     type: row.type,
     discipline: row.discipline ?? undefined,
     genres: row.genres ?? [],
+    taxonomy: row.taxonomy ?? { schemeVersion: 1, termIds: [], primaryTermIds: [] },
     deadline: {
       kind: row.deadline_kind,
       date: row.deadline_date ?? undefined,

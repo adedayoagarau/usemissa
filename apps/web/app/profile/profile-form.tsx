@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ExportButtons } from './export-buttons';
+import { PRACTICE_OPTIONS, taxonomyLabelFor } from '@/lib/taxonomyOptions';
 
 type PrivacySettings = { displayName: 'public' | 'private'; bio: 'public' | 'private'; trackedOpportunityCount: 'public' | 'private' };
 
@@ -19,11 +20,14 @@ type ProfileData = {
   completeness: { complete: boolean; missing: Array<'displayName' | 'bio'> };
   publicUrl: string;
   privacy: PrivacySettings;
+  taxonomyPreferences?: Array<{ termId: string; preference: 'include' | 'prefer' | 'exclude'; weight: number }>;
 };
 
 export function ProfileForm({ initialProfile }: { initialProfile: ProfileData }) {
   const [displayName, setDisplayName] = useState(initialProfile.displayName);
   const [bio, setBio] = useState(initialProfile.bio ?? '');
+  const [taxonomyPreferences, setTaxonomyPreferences] = useState(initialProfile.taxonomyPreferences ?? []);
+  const [practiceSearch, setPracticeSearch] = useState('');
   const [profile, setProfile] = useState(initialProfile);
   const [privacy, setPrivacy] = useState<PrivacySettings>(initialProfile.privacy);
   const [savedPrivacy, setSavedPrivacy] = useState<PrivacySettings>(initialProfile.privacy);
@@ -54,7 +58,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: ProfileData })
       const response = await fetch('/api/me/profile', {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ displayName, bio }),
+        body: JSON.stringify({ displayName, bio, taxonomyPreferences }),
       });
       const body = (await response.json().catch(() => ({}))) as Partial<ProfileData> & { error?: string };
       if (!response.ok) {
@@ -69,6 +73,7 @@ export function ProfileForm({ initialProfile }: { initialProfile: ProfileData })
       setDisplayName(saved.displayName);
       setBio(saved.bio ?? '');
       setProfile(saved);
+      setTaxonomyPreferences(saved.taxonomyPreferences ?? []);
       setMessage('Profile saved');
     } catch {
       setError('We could not save your profile. Check your connection and try again.');
@@ -117,6 +122,26 @@ export function ProfileForm({ initialProfile }: { initialProfile: ProfileData })
               <Label htmlFor="display-name">Display name</Label>
               <Input id="display-name" name="displayName" value={displayName} onChange={(event) => setDisplayName(event.target.value)} aria-invalid={Boolean(error && (!displayName.trim() || displayName.length > 120))} aria-describedby="display-name-help" className="h-11" />
               <p id="display-name-help" className="text-xs text-muted-foreground">This is the name visitors will see. Up to 120 characters.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="profile-practice-search">Practices you want to find</Label>
+              <Input id="profile-practice-search" placeholder="Search canonical practices" value={practiceSearch} onChange={(event) => setPracticeSearch(event.target.value)} />
+              <select
+                aria-label="Add a practice preference"
+                className="h-11 w-full rounded-md border border-border bg-background px-3 text-sm"
+                value=""
+                onChange={(event) => {
+                  const termId = event.target.value;
+                  if (termId && !taxonomyPreferences.some((preference) => preference.termId === termId)) setTaxonomyPreferences((current) => [...current, { termId, preference: 'include', weight: 100 }]);
+                }}
+              >
+                <option value="">Add a practice</option>
+                {PRACTICE_OPTIONS.filter((option) => !taxonomyPreferences.some((preference) => preference.termId === option.value) && option.label.toLowerCase().includes(practiceSearch.toLowerCase())).slice(0, 12).map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+              {taxonomyPreferences.length ? <div className="flex flex-wrap gap-2">
+                {taxonomyPreferences.map((preference) => <button type="button" key={preference.termId} className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted" onClick={() => setTaxonomyPreferences((current) => current.filter((item) => item.termId !== preference.termId))}>{taxonomyLabelFor(preference.termId)} ×</button>)}
+              </div> : <p className="text-xs text-muted-foreground">These preferences stay private and explain why Missa recommends a call.</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="bio">Short bio</Label>

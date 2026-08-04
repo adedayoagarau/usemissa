@@ -1,5 +1,6 @@
 import type { MatchCriteria, Opportunity, RadarProfile } from '../domain/types.js';
 import { daysBetween, isoDateOf } from '../extraction/dates.js';
+import { MISSA_TAXONOMY } from '@missa/taxonomy';
 
 export interface MatchResult {
   profile: RadarProfile;
@@ -22,6 +23,17 @@ export function matchesCriteria(criteria: MatchCriteria, opp: Opportunity, now: 
   if (criteria.types?.length) {
     if (!criteria.types.includes(f.type)) return undefined;
     matchedOn.push(`type: ${f.type}`);
+  }
+  if (criteria.taxonomyTermIds?.length) {
+    const assignments = f.taxonomyAssignments ?? [];
+    const available = new Set(assignments.flatMap((assignment) => assignment.termId ? [assignment.termId] : []));
+    const requested = new Set(criteria.taxonomyTermIds);
+    if (criteria.taxonomyIncludeDescendants) {
+      for (const term of MISSA_TAXONOMY.terms) if (term.broaderTermIds.some((parent) => requested.has(parent))) requested.add(term.id);
+    }
+    const overlap = [...requested].filter((termId) => available.has(termId));
+    if (overlap.length === 0) return undefined;
+    matchedOn.push(`practice terms: ${overlap.join(', ')}`);
   }
   if (criteria.genres?.length) {
     const overlap = f.genres.filter((g) => criteria.genres!.includes(g));

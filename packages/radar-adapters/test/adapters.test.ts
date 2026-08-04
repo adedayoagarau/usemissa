@@ -148,6 +148,41 @@ test("LlmExtractor: an implausible model-supplied deadline is discarded by the s
   assert.equal(candidate.deadline.date, undefined);
 });
 
+test("LlmExtractor: taxonomy IDs are bounded to the supplied candidate set", async () => {
+  const clock = new ManualClock(new Date("2026-07-07T00:00:00Z"));
+  const accepted = "taxterm_disc-documentary-filmmaking";
+  const client = fakeAnthropicClient({
+    title: "A documentary call",
+    type: "open-call",
+    genres: ["made-up genre"],
+    taxonomyTermIds: [accepted, "taxterm_disc-not-in-the-catalog"],
+    eligibility: [],
+    requiredMaterials: [],
+    contactEmailPresent: false,
+  });
+  const extractor = new LlmExtractor(clock, { client, apiKey: "unused" });
+  const source: Source = {
+    id: "src_taxonomy",
+    name: "Documentary call",
+    url: "https://example.com/documentary",
+    kind: "organization-website",
+    registryTaxonomyTermIds: [accepted],
+    checkIntervalHours: 24,
+    active: true,
+    consecutiveFailures: 0,
+  };
+  const candidate = await extractor.extract(source, {
+    id: "snap_taxonomy",
+    sourceId: source.id,
+    url: source.url,
+    fetchedAt: clock.now().toISOString(),
+    status: "ok",
+    contentHash: "h",
+    content: "A call for documentary filmmaking projects.",
+  });
+  assert.deepEqual(candidate.taxonomyAssignments?.map((assignment) => assignment.termId), [accepted]);
+});
+
 function fakePool(): { pool: Pool; tables: Map<string, unknown[]> } {
   const tables = new Map<string, unknown[]>();
   const pool = {

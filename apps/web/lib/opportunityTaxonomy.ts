@@ -1,4 +1,5 @@
 import { assembleRegistry } from '@missa/radar-engine';
+import { MISSA_TAXONOMY, type TaxonomyFacetKey } from '@missa/taxonomy';
 
 function labelFor(value: string): string {
   return value
@@ -14,10 +15,29 @@ const registry = assembleRegistry();
  * only directory as new niches are added to the source graph.
  */
 export const DISCIPLINE_OPTIONS = [...new Set(
-  registry.verticals.flatMap((vertical) => vertical.disciplines),
+  MISSA_TAXONOMY.terms.filter((term) => term.facet === 'discipline').map((term) => term.id),
 )]
-  .sort((a, b) => a.localeCompare(b))
-  .map((value) => ({ value, label: labelFor(value) }));
+  .map((value) => {
+    const term = MISSA_TAXONOMY.terms.find((candidate) => candidate.id === value)!;
+    return { value, label: term.preferredLabel };
+  })
+  .sort((a, b) => a.label.localeCompare(b.label));
+
+export const PRACTICE_OPTIONS = MISSA_TAXONOMY.terms
+  .filter((term) => term.facet === 'practice-family')
+  .map((term) => ({ value: term.id, label: term.preferredLabel }));
+
+export const GENRE_OPTIONS = MISSA_TAXONOMY.terms
+  .filter((term) => term.facet === 'genre')
+  .map((term) => ({ value: term.id, label: term.preferredLabel }));
+
+export function taxonomyLabelFor(termId: string): string {
+  return MISSA_TAXONOMY.terms.find((term) => term.id === termId)?.preferredLabel ?? labelFor(termId);
+}
+
+export function taxonomyFacetFor(termId: string): TaxonomyFacetKey | undefined {
+  return MISSA_TAXONOMY.terms.find((term) => term.id === termId)?.facet;
+}
 
 /** ISO/region values represented by registry sources, kept as query values. */
 export const LOCATION_OPTIONS = [...new Set(

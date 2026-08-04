@@ -17,6 +17,7 @@ import {
   findSignals,
 } from './signals.js';
 import { validateCandidate } from './validate.js';
+import { taxonomyAssignmentsForPhrases } from './taxonomy.js';
 
 const TYPE_KEYWORDS: Array<[RegExp, OpportunityType]> = [
   [/\bfellowship\b/i, 'fellowship'],
@@ -139,6 +140,17 @@ export class DeterministicExtractor implements Extractor {
       organizationName: extractOrganization(text, source),
       type,
       genres,
+      taxonomyAssignments: (() => {
+        const extractedAssignments = taxonomyAssignmentsForPhrases(genres);
+        const extractedTermIds = new Set(extractedAssignments.flatMap((assignment) => assignment.termId ? [assignment.termId] : []));
+        return [
+        ...extractedAssignments,
+        ...taxonomyAssignmentsForPhrases([
+          ...(source.registryDisciplines ?? []),
+          ...(source.registryTaxonomyTermIds ?? []),
+        ]).filter((assignment) => !assignment.termId || !extractedTermIds.has(assignment.termId)).map((assignment) => ({ ...assignment, assignmentOrigin: 'registry' as const })),
+        ].map((assignment) => ({ ...assignment, evidenceUrl: source.url, snapshotId: snapshot.id }));
+      })(),
       openDate: extractOpenDate(text, now),
       deadline: extractDeadline(text, now),
       fee: extractFee(text),

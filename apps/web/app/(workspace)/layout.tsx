@@ -14,7 +14,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
 
   return (
     <div>
-      <AppNav email={session.account.email} userId={session.account.userId} organizations={organizations} />
+      <AppNav email={session.account.email} userId={session.account.userId} isAdmin={session.account.isAdmin} organizations={organizations} />
       {children}
     </div>
   );

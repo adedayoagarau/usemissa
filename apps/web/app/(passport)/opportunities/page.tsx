@@ -9,7 +9,7 @@ import { OpportunityCard } from '@/components/opportunity-card';
 import { OpportunityDetailPanel } from '@/components/opportunity-detail-panel';
 import { SaveSearchButton } from '@/components/save-search-button';
 import { Button } from '@/components/ui/button';
-import { DISCIPLINE_OPTIONS, LOCATION_OPTIONS } from '@/lib/opportunityTaxonomy';
+import { DISCIPLINE_OPTIONS, GENRE_OPTIONS, LOCATION_OPTIONS, PRACTICE_OPTIONS, taxonomyLabelFor } from '@/lib/opportunityTaxonomy';
 import styles from './opportunities.module.css';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -34,7 +34,7 @@ function hrefWith(params: URLSearchParams, changes: Record<string, string | unde
 }
 
 function activeFilterCount(query: ReturnType<typeof parseOpportunityBrowseQuery>): number {
-  return query.types.length + query.disciplines.length + query.genres.length + query.locations.length + (query.feeStatus ? 1 : 0) + (query.deadlineWithinDays ? 1 : 0) + (query.verifiedOnly ? 1 : 0);
+  return query.types.length + query.disciplines.length + query.genres.length + query.taxonomyTermIds.length + query.locations.length + (query.taxonomyIncludeDescendants ? 1 : 0) + (query.feeStatus ? 1 : 0) + (query.deadlineWithinDays ? 1 : 0) + (query.verifiedOnly ? 1 : 0);
 }
 
 function first(value: string | string[] | undefined): string | undefined {
@@ -59,10 +59,11 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
   const activeChips = [
     ...query.disciplines.map((value) => ({ key: 'discipline', value, label: value })),
     ...query.genres.map((value) => ({ key: 'genre', value, label: value })),
+    ...query.taxonomyTermIds.map((value) => ({ key: 'taxonomy', value, label: taxonomyLabelFor(value) })),
     ...(query.feeStatus ? [{ key: 'fee', value: query.feeStatus, label: query.feeStatus === 'no-fee' ? 'No fee' : query.feeStatus }] : []),
     ...(query.verifiedOnly ? [{ key: 'verified', value: '1', label: 'Verified' }] : []),
   ];
-  const saveCriteria = { genres: query.genres, noFeeOnly: query.feeStatus === 'no-fee', deadlineWithinDays: query.deadlineWithinDays };
+  const saveCriteria = { taxonomyTermIds: query.taxonomyTermIds, taxonomyIncludeDescendants: query.taxonomyIncludeDescendants, genres: query.genres, noFeeOnly: query.feeStatus === 'no-fee', deadlineWithinDays: query.deadlineWithinDays };
 
   return (
     <div className={styles.shell}>
@@ -86,8 +87,9 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
         <div className={styles.filterRow}>
           <form action="/opportunities" className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="category" value={query.category} />{query.query && <input type="hidden" name="q" value={query.query} />}
-            <label className={styles.filterSelect}><Palette className="size-4 text-muted-foreground" /><span className="sr-only">Discipline</span><select name="discipline" defaultValue={query.disciplines[0] ?? ''}><option value="">Discipline</option>{DISCIPLINE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
-            <label className={styles.filterSelect}><Tag className="size-4 text-muted-foreground" /><span className="sr-only">Genre</span><select name="genre" defaultValue={query.genres[0] ?? ''}><option value="">Genre</option>{DISCIPLINE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
+            <label className={styles.filterSelect}><Palette className="size-4 text-muted-foreground" /><span className="sr-only">Practice</span><select name="taxonomy" defaultValue={query.taxonomyTermIds[0] ?? ''}><option value="">Practice</option>{PRACTICE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
+            <label className={styles.filterSelect}><Palette className="size-4 text-muted-foreground" /><span className="sr-only">Discipline</span><select name="taxonomy" defaultValue={query.taxonomyTermIds.find((id) => DISCIPLINE_OPTIONS.some((option) => option.value === id)) ?? ''}><option value="">Discipline</option>{DISCIPLINE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
+            <label className={styles.filterSelect}><Tag className="size-4 text-muted-foreground" /><span className="sr-only">Genre</span><select name="taxonomy" defaultValue={query.taxonomyTermIds.find((id) => GENRE_OPTIONS.some((option) => option.value === id)) ?? ''}><option value="">Genre</option>{GENRE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
             <label className={styles.filterSelect}><MapPin className="size-4 text-muted-foreground" /><span className="sr-only">Location</span><select name="location" defaultValue={query.locations[0] ?? ''}><option value="">Location</option>{LOCATION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
             <label className={styles.filterSelect}><Tag className="size-4 text-muted-foreground" /><span className="sr-only">Fee</span><select name="fee" defaultValue={query.feeStatus ?? ''}><option value="">Fee</option><option value="no-fee">No fee</option><option value="paid">Paid</option><option value="unknown">Not confirmed</option></select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
             <label className={styles.filterSelect}><CalendarDays className="size-4 text-muted-foreground" /><span className="sr-only">Deadline</span><select name="deadlineWithinDays" defaultValue={query.deadlineWithinDays?.toString() ?? ''}><option value="">Deadline</option><option value="7">Next 7 days</option><option value="30">Next 30 days</option><option value="90">Next 90 days</option></select><ChevronDown className="size-3.5 text-muted-foreground" /></label>
@@ -95,11 +97,12 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
               <label className={styles.toggle}><input type="hidden" name="verified" value="0" /><input type="checkbox" name="verified" value="1" defaultChecked={query.verifiedOnly} /><span className={styles.toggleTrack} />Verified</label>
               <label className={styles.toggle}><input type="hidden" name="feeToggle" value="0" /><input type="checkbox" name="feeToggle" value="1" defaultChecked={query.feeStatus === 'no-fee'} /><span className={styles.toggleTrack} />No fee</label>
               <label className={styles.toggle}><input type="hidden" name="openNow" value="0" /><input type="checkbox" name="openNow" value="1" defaultChecked={query.openNow} /><span className={styles.toggleTrack} />Open now</label>
+              <label className={styles.toggle}><input type="hidden" name="taxonomyDescendants" value="0" /><input type="checkbox" name="taxonomyDescendants" value="1" defaultChecked={query.taxonomyIncludeDescendants} /><span className={styles.toggleTrack} />Include related</label>
               {session?.account.userId && <SaveSearchButton userId={session.account.userId} criteria={saveCriteria} defaultName={query.query ? `Search: ${query.query}` : `${query.category === 'all' ? 'All opportunities' : query.category}`} />}
               <Button type="submit" variant="outline" size="sm" className="gap-1.5"><SlidersHorizontal className="size-3.5" />{filters ? `${filters} filters` : 'Filter'}</Button>
             </div>
           </form>
-          {activeChips.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-2"><span className="sr-only">Active filters</span>{activeChips.map((chip) => <span key={`${chip.key}-${chip.value}`} className={styles.chip}>{chip.label}<Link href={hrefWith(rawUrlParams, { [chip.key]: undefined })} aria-label={`Remove ${chip.label} filter`}><X className="size-3.5" /></Link></span>)}<Link href={hrefWith(rawUrlParams, { discipline: undefined, genre: undefined, location: undefined, fee: undefined, verified: undefined, feeToggle: undefined, deadlineWithinDays: undefined })} className="ml-2 text-xs text-muted-foreground underline-offset-4 hover:underline">Clear all</Link></div>}
+          {activeChips.length > 0 && <div className="mt-3 flex flex-wrap items-center gap-2"><span className="sr-only">Active filters</span>{activeChips.map((chip) => <span key={`${chip.key}-${chip.value}`} className={styles.chip}>{chip.label}<Link href={hrefWith(rawUrlParams, { [chip.key]: undefined })} aria-label={`Remove ${chip.label} filter`}><X className="size-3.5" /></Link></span>)}<Link href={hrefWith(rawUrlParams, { discipline: undefined, genre: undefined, taxonomy: undefined, taxonomyDescendants: undefined, location: undefined, fee: undefined, verified: undefined, feeToggle: undefined, deadlineWithinDays: undefined })} className="ml-2 text-xs text-muted-foreground underline-offset-4 hover:underline">Clear all</Link></div>}
         </div>
 
         <div className="flex items-end justify-between gap-3 px-6 pb-3 pt-5 lg:px-8"><p className="text-sm font-medium text-foreground">{result.total.toLocaleString()} opportunities shown</p><Link href={hrefWith(rawUrlParams, { sort: query.sort === 'recommended' ? 'soonest-deadline' : 'recommended' })} className="flex items-center gap-2 text-xs text-muted-foreground">Sort by <span className="font-medium text-foreground">{query.sort === 'recommended' ? 'Best fit' : 'Deadline'}</span><ChevronDown className="size-3.5" /></Link></div>

@@ -124,17 +124,15 @@ export const submissionPaths = pgTable(
       .notNull()
       .references(() => openCalls.id, { onDelete: "cascade" }),
     categories: jsonb("categories").notNull().$type<string[]>(),
-    fields: jsonb("fields")
-      .notNull()
-      .$type<
-        Array<{
-          id: string;
-          type: string;
-          label: string;
-          required: boolean;
-          order: number;
-        }>
-      >(),
+    fields: jsonb("fields").notNull().$type<
+      Array<{
+        id: string;
+        type: string;
+        label: string;
+        required: boolean;
+        order: number;
+      }>
+    >(),
     feeCents: integer("fee_cents"),
     createdAt,
     updatedAt,
@@ -174,7 +172,11 @@ export const submissions = pgTable(
       table.status,
     ),
     index("submissions_submitter_idx").on(table.submitterAccountId),
-    uniqueIndex("submissions_submitter_path_idempotency_idx").on(table.submitterAccountId, table.submissionPathId, table.idempotencyKey),
+    uniqueIndex("submissions_submitter_path_idempotency_idx").on(
+      table.submitterAccountId,
+      table.submissionPathId,
+      table.idempotencyKey,
+    ),
     check(
       "submissions_status_check",
       sql`${table.status} in ('submitted', 'in-review', 'decided', 'withdrawn')`,
@@ -186,9 +188,15 @@ export const submissionDrafts = pgTable(
   "submission_drafts",
   {
     id: text("id").primaryKey(),
-    submissionPathId: text("submission_path_id").notNull().references(() => submissionPaths.id, { onDelete: "cascade" }),
-    submitterAccountId: text("submitter_account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
-    answers: jsonb("answers").notNull().$type<Record<string, string | string[]>>(),
+    submissionPathId: text("submission_path_id")
+      .notNull()
+      .references(() => submissionPaths.id, { onDelete: "cascade" }),
+    submitterAccountId: text("submitter_account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    answers: jsonb("answers")
+      .notNull()
+      .$type<Record<string, string | string[]>>(),
     category: text("category"),
     workTitles: jsonb("work_titles").notNull().$type<string[]>(),
     idempotencyKey: text("idempotency_key"),
@@ -196,7 +204,13 @@ export const submissionDrafts = pgTable(
     updatedAt,
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
-  (table) => [uniqueIndex("submission_drafts_submitter_path_idx").on(table.submitterAccountId, table.submissionPathId), index("submission_drafts_expires_idx").on(table.expiresAt)],
+  (table) => [
+    uniqueIndex("submission_drafts_submitter_path_idx").on(
+      table.submitterAccountId,
+      table.submissionPathId,
+    ),
+    index("submission_drafts_expires_idx").on(table.expiresAt),
+  ],
 );
 
 export const works = pgTable(
@@ -453,7 +467,10 @@ export const opportunities = pgTable(
     publicationState: text("publication_state").notNull().default("published"),
     type: text("type").notNull(),
     discipline: text("discipline"),
-    genres: text("genres").array().notNull().default(sql`ARRAY[]::text[]`),
+    genres: text("genres")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     openDate: date("open_date"),
     deadlineDate: date("deadline_date"),
     deadlineTime: timestamp("deadline_time", { withTimezone: true }),
@@ -468,11 +485,15 @@ export const opportunities = pgTable(
     guidelinesUrl: text("guidelines_url"),
     submissionUrl: text("submission_url"),
     submissionHost: text("submission_host"),
-    submissionVerifiedAt: timestamp("submission_verified_at", { withTimezone: true }),
+    submissionVerifiedAt: timestamp("submission_verified_at", {
+      withTimezone: true,
+    }),
     submissionState: text("submission_state").notNull().default("unknown"),
     searchDocument: text("search_document").notNull().default(""),
     sourceCheckedAt: timestamp("source_checked_at", { withTimezone: true }),
-    processingSucceededAt: timestamp("processing_succeeded_at", { withTimezone: true }),
+    processingSucceededAt: timestamp("processing_succeeded_at", {
+      withTimezone: true,
+    }),
     lastChangedAt: timestamp("last_changed_at", { withTimezone: true }),
     createdAt,
     updatedAt,
@@ -487,7 +508,10 @@ export const opportunities = pgTable(
     index("opportunities_type_deadline_idx").on(table.type, table.deadlineDate),
     index("opportunities_discipline_idx").on(table.discipline),
     index("opportunities_fee_idx").on(table.feeStatus, table.feeCents),
-    index("opportunities_org_status_idx").on(table.organizationId, table.status),
+    index("opportunities_org_status_idx").on(
+      table.organizationId,
+      table.status,
+    ),
     index("opportunities_verified_idx").on(
       table.publicationState,
       table.sourceCheckedAt,
@@ -524,7 +548,12 @@ export const opportunityVersions = pgTable(
     fields: jsonb("fields").notNull().$type<Record<string, unknown>>(),
     createdAt,
   },
-  (table) => [index("opportunity_versions_opp_idx").on(table.opportunityId, table.createdAt)],
+  (table) => [
+    index("opportunity_versions_opp_idx").on(
+      table.opportunityId,
+      table.createdAt,
+    ),
+  ],
 );
 
 export const opportunityChanges = pgTable(
@@ -541,7 +570,12 @@ export const opportunityChanges = pgTable(
     sourceSnapshotId: text("source_snapshot_id"),
     createdAt,
   },
-  (table) => [index("opportunity_changes_opp_idx").on(table.opportunityId, table.createdAt)],
+  (table) => [
+    index("opportunity_changes_opp_idx").on(
+      table.opportunityId,
+      table.createdAt,
+    ),
+  ],
 );
 
 export const opportunityEligibilityRules = pgTable(
@@ -559,7 +593,10 @@ export const opportunityEligibilityRules = pgTable(
     createdAt,
   },
   (table) => [
-    index("opportunity_eligibility_opp_idx").on(table.opportunityId, table.sortOrder),
+    index("opportunity_eligibility_opp_idx").on(
+      table.opportunityId,
+      table.sortOrder,
+    ),
     check(
       "opportunity_eligibility_certainty_check",
       sql`${table.certainty} in ('confirmed', 'inferred', 'unknown')`,
@@ -581,7 +618,12 @@ export const opportunityRequiredMaterials = pgTable(
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt,
   },
-  (table) => [index("opportunity_materials_opp_idx").on(table.opportunityId, table.sortOrder)],
+  (table) => [
+    index("opportunity_materials_opp_idx").on(
+      table.opportunityId,
+      table.sortOrder,
+    ),
+  ],
 );
 
 export const opportunitySourceEvidence = pgTable(
@@ -598,13 +640,20 @@ export const opportunitySourceEvidence = pgTable(
     name: text("name").notNull(),
     url: text("url").notNull(),
     checkedAt: timestamp("checked_at", { withTimezone: true }).notNull(),
-    processingSucceededAt: timestamp("processing_succeeded_at", { withTimezone: true }),
-    organizationConfirmed: boolean("organization_confirmed").notNull().default(false),
+    processingSucceededAt: timestamp("processing_succeeded_at", {
+      withTimezone: true,
+    }),
+    organizationConfirmed: boolean("organization_confirmed")
+      .notNull()
+      .default(false),
     verifiedUntil: timestamp("verified_until", { withTimezone: true }),
     createdAt,
   },
   (table) => [
-    index("opportunity_evidence_opp_idx").on(table.opportunityId, table.checkedAt),
+    index("opportunity_evidence_opp_idx").on(
+      table.opportunityId,
+      table.checkedAt,
+    ),
     index("opportunity_evidence_verified_idx").on(table.verifiedUntil),
   ],
 );
@@ -660,21 +709,43 @@ export const radarEnrichmentJobs = pgTable(
     status: text("status").notNull().default("queued"),
     priority: integer("priority").notNull().default(0),
     attempts: integer("attempts").notNull().default(0),
-    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     leaseUntil: timestamp("lease_until", { withTimezone: true }),
     lastError: text("last_error"),
-    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    payload: jsonb("payload")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, unknown>>(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt,
     updatedAt,
   },
   (table) => [
-    uniqueIndex("radar_enrichment_jobs_opp_kind_idx").on(table.opportunityId, table.kind),
-    index("radar_enrichment_jobs_ready_idx").on(table.status, table.nextAttemptAt, table.leaseUntil, table.priority),
-    check("radar_enrichment_jobs_kind_check", sql`${table.kind} in ('media', 'winners', 'guidelines', 'call-profile')`),
-    check("radar_enrichment_jobs_status_check", sql`${table.status} in ('queued', 'processing', 'completed', 'failed', 'blocked')`),
+    uniqueIndex("radar_enrichment_jobs_opp_kind_idx").on(
+      table.opportunityId,
+      table.kind,
+    ),
+    index("radar_enrichment_jobs_ready_idx").on(
+      table.status,
+      table.nextAttemptAt,
+      table.leaseUntil,
+      table.priority,
+    ),
+    check(
+      "radar_enrichment_jobs_kind_check",
+      sql`${table.kind} in ('media', 'winners', 'guidelines', 'call-profile')`,
+    ),
+    check(
+      "radar_enrichment_jobs_status_check",
+      sql`${table.status} in ('queued', 'processing', 'completed', 'failed', 'blocked')`,
+    ),
     check("radar_enrichment_jobs_attempts_check", sql`${table.attempts} >= 0`),
-    check("radar_enrichment_jobs_priority_check", sql`${table.priority} between -100 and 100`),
+    check(
+      "radar_enrichment_jobs_priority_check",
+      sql`${table.priority} between -100 and 100`,
+    ),
   ],
 );
 
@@ -695,17 +766,39 @@ export const radarOpportunityEnrichmentEvidence = pgTable(
     mediaUrl: text("media_url"),
     confidence: text("confidence").notNull().default("unknown"),
     rightsStatus: text("rights_status").notNull().default("unknown"),
-    metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
-    retrievedAt: timestamp("retrieved_at", { withTimezone: true }).notNull().defaultNow(),
+    metadata: jsonb("metadata")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, unknown>>(),
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     createdAt,
   },
   (table) => [
-    uniqueIndex("radar_enrichment_evidence_unique_idx").on(table.opportunityId, table.kind, table.url),
-    index("radar_enrichment_evidence_opp_idx").on(table.opportunityId, table.kind, table.retrievedAt),
+    uniqueIndex("radar_enrichment_evidence_unique_idx").on(
+      table.opportunityId,
+      table.kind,
+      table.url,
+    ),
+    index("radar_enrichment_evidence_opp_idx").on(
+      table.opportunityId,
+      table.kind,
+      table.retrievedAt,
+    ),
     index("radar_enrichment_evidence_media_idx").on(table.kind, table.mediaUrl),
-    check("radar_enrichment_evidence_kind_check", sql`${table.kind} in ('media', 'winner', 'guideline', 'organization')`),
-    check("radar_enrichment_evidence_confidence_check", sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`),
-    check("radar_enrichment_evidence_rights_check", sql`${table.rightsStatus} in ('unknown', 'review', 'permitted')`),
+    check(
+      "radar_enrichment_evidence_kind_check",
+      sql`${table.kind} in ('media', 'winner', 'guideline', 'organization')`,
+    ),
+    check(
+      "radar_enrichment_evidence_confidence_check",
+      sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`,
+    ),
+    check(
+      "radar_enrichment_evidence_rights_check",
+      sql`${table.rightsStatus} in ('unknown', 'review', 'permitted')`,
+    ),
   ],
 );
 
@@ -719,16 +812,27 @@ export const radarAgentRuns = pgTable(
     agentKind: text("agent_kind").notNull(),
     status: text("status").notNull().default("running"),
     correlationId: text("correlation_id"),
-    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     inputCount: integer("input_count").notNull().default(0),
     outputCount: integer("output_count").notNull().default(0),
     error: text("error"),
-    metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    metadata: jsonb("metadata")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, unknown>>(),
   },
   (table) => [
-    index("radar_agent_runs_kind_started_idx").on(table.agentKind, table.startedAt),
-    check("radar_agent_runs_status_check", sql`${table.status} in ('running', 'completed', 'failed', 'cancelled')`),
+    index("radar_agent_runs_kind_started_idx").on(
+      table.agentKind,
+      table.startedAt,
+    ),
+    check(
+      "radar_agent_runs_status_check",
+      sql`${table.status} in ('running', 'completed', 'failed', 'cancelled')`,
+    ),
   ],
 );
 
@@ -736,20 +840,39 @@ export const radarAgentHandoffs = pgTable(
   "radar_agent_handoffs",
   {
     id: text("id").primaryKey(),
-    runId: text("run_id").notNull().references(() => radarAgentRuns.id, { onDelete: "cascade" }),
-    opportunityId: text("opportunity_id").references(() => opportunities.id, { onDelete: "cascade" }),
+    runId: text("run_id")
+      .notNull()
+      .references(() => radarAgentRuns.id, { onDelete: "cascade" }),
+    opportunityId: text("opportunity_id").references(() => opportunities.id, {
+      onDelete: "cascade",
+    }),
     fromAgent: text("from_agent").notNull(),
     toAgent: text("to_agent").notNull(),
     kind: text("kind").notNull(),
     status: text("status").notNull().default("queued"),
-    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    payload: jsonb("payload")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, unknown>>(),
     createdAt,
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
   (table) => [
-    uniqueIndex("radar_agent_handoffs_unique_idx").on(table.runId, table.opportunityId, table.toAgent, table.kind),
-    index("radar_agent_handoffs_queue_idx").on(table.toAgent, table.status, table.createdAt),
-    check("radar_agent_handoffs_status_check", sql`${table.status} in ('queued', 'processing', 'completed', 'failed', 'blocked')`),
+    uniqueIndex("radar_agent_handoffs_unique_idx").on(
+      table.runId,
+      table.opportunityId,
+      table.toAgent,
+      table.kind,
+    ),
+    index("radar_agent_handoffs_queue_idx").on(
+      table.toAgent,
+      table.status,
+      table.createdAt,
+    ),
+    check(
+      "radar_agent_handoffs_status_check",
+      sql`${table.status} in ('queued', 'processing', 'completed', 'failed', 'blocked')`,
+    ),
   ],
 );
 
@@ -757,22 +880,38 @@ export const radarReviewJobs = pgTable(
   "radar_review_jobs",
   {
     id: text("id").primaryKey(),
-    opportunityId: text("opportunity_id").notNull().unique().references(() => opportunities.id, { onDelete: "cascade" }),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .unique()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("queued"),
     priority: integer("priority").notNull().default(0),
     attempts: integer("attempts").notNull().default(0),
     inputVersion: text("input_version").notNull(),
-    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     leaseUntil: timestamp("lease_until", { withTimezone: true }),
     lastError: text("last_error"),
     createdAt,
     updatedAt,
   },
   (table) => [
-    index("radar_review_jobs_ready_idx").on(table.status, table.nextAttemptAt, table.leaseUntil, table.priority),
-    check("radar_review_jobs_status_check", sql`${table.status} in ('queued', 'processing', 'completed', 'failed', 'needs-human', 'blocked')`),
+    index("radar_review_jobs_ready_idx").on(
+      table.status,
+      table.nextAttemptAt,
+      table.leaseUntil,
+      table.priority,
+    ),
+    check(
+      "radar_review_jobs_status_check",
+      sql`${table.status} in ('queued', 'processing', 'completed', 'failed', 'needs-human', 'blocked')`,
+    ),
     check("radar_review_jobs_attempts_check", sql`${table.attempts} >= 0`),
-    check("radar_review_jobs_priority_check", sql`${table.priority} between -100 and 100`),
+    check(
+      "radar_review_jobs_priority_check",
+      sql`${table.priority} between -100 and 100`,
+    ),
   ],
 );
 
@@ -780,20 +919,41 @@ export const radarReviewDecisions = pgTable(
   "radar_review_decisions",
   {
     id: text("id").primaryKey(),
-    jobId: text("job_id").notNull().references(() => radarReviewJobs.id, { onDelete: "cascade" }),
-    opportunityId: text("opportunity_id").notNull().references(() => opportunities.id, { onDelete: "cascade" }),
-    runId: text("run_id").notNull().references(() => radarAgentRuns.id, { onDelete: "cascade" }),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => radarReviewJobs.id, { onDelete: "cascade" }),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    runId: text("run_id")
+      .notNull()
+      .references(() => radarAgentRuns.id, { onDelete: "cascade" }),
     decision: text("decision").notNull(),
     score: integer("score").notNull().default(0),
-    reasons: jsonb("reasons").notNull().default(sql`'[]'::jsonb`).$type<string[]>(),
-    checks: jsonb("checks").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    reasons: jsonb("reasons")
+      .notNull()
+      .default(sql`'[]'::jsonb`)
+      .$type<string[]>(),
+    checks: jsonb("checks")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, unknown>>(),
     createdAt,
   },
   (table) => [
-    index("radar_review_decisions_opp_created_idx").on(table.opportunityId, table.createdAt),
+    index("radar_review_decisions_opp_created_idx").on(
+      table.opportunityId,
+      table.createdAt,
+    ),
     index("radar_review_decisions_run_idx").on(table.runId),
-    check("radar_review_decisions_decision_check", sql`${table.decision} in ('publish', 'needs-human', 'suppress', 'error')`),
-    check("radar_review_decisions_score_check", sql`${table.score} between 0 and 100`),
+    check(
+      "radar_review_decisions_decision_check",
+      sql`${table.decision} in ('publish', 'needs-human', 'suppress', 'error')`,
+    ),
+    check(
+      "radar_review_decisions_score_check",
+      sql`${table.score} between 0 and 100`,
+    ),
   ],
 );
 
@@ -805,9 +965,18 @@ export const opportunityCallProfiles = pgTable(
       .references(() => opportunities.id, { onDelete: "cascade" }),
     callKind: text("call_kind").notNull().default("unknown"),
     marketKind: text("market_kind").notNull().default("unknown"),
-    publicationFormats: text("publication_formats").array().notNull().default(sql`ARRAY[]::text[]`),
-    acceptedFormats: text("accepted_formats").array().notNull().default(sql`ARRAY[]::text[]`),
-    subgenres: text("subgenres").array().notNull().default(sql`ARRAY[]::text[]`),
+    publicationFormats: text("publication_formats")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    acceptedFormats: text("accepted_formats")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    subgenres: text("subgenres")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     readingPeriodKind: text("reading_period_kind").notNull().default("unknown"),
     readingPeriodLabel: text("reading_period_label"),
     issueTheme: text("issue_theme"),
@@ -831,18 +1000,42 @@ export const opportunityCallProfiles = pgTable(
     confidence: text("confidence").notNull().default("unknown"),
     sourceUrl: text("source_url").notNull(),
     lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
-    metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    metadata: jsonb("metadata")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, unknown>>(),
     createdAt,
     updatedAt,
   },
   (table) => [
-    index("opportunity_call_profiles_market_idx").on(table.marketKind, table.callKind),
-    index("opportunity_call_profiles_period_idx").on(table.readingPeriodKind, table.lastVerifiedAt),
-    check("opportunity_call_profiles_call_kind_check", sql`${table.callKind} in ('general-submission', 'themed-call', 'contest', 'prize', 'fellowship', 'grant', 'residency', 'open-call', 'unknown')`),
-    check("opportunity_call_profiles_market_kind_check", sql`${table.marketKind} in ('magazine', 'journal', 'press', 'anthology', 'contest', 'award', 'organization', 'unknown')`),
-    check("opportunity_call_profiles_period_check", sql`${table.readingPeriodKind} in ('exact', 'rolling', 'year-round', 'seasonal', 'unknown')`),
-    check("opportunity_call_profiles_confidence_check", sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`),
-    check("opportunity_call_profiles_numbers_check", sql`${table.acceptanceRate} is null or (${table.acceptanceRate} >= 0 and ${table.acceptanceRate} <= 100)`),
+    index("opportunity_call_profiles_market_idx").on(
+      table.marketKind,
+      table.callKind,
+    ),
+    index("opportunity_call_profiles_period_idx").on(
+      table.readingPeriodKind,
+      table.lastVerifiedAt,
+    ),
+    check(
+      "opportunity_call_profiles_call_kind_check",
+      sql`${table.callKind} in ('general-submission', 'themed-call', 'contest', 'prize', 'fellowship', 'grant', 'residency', 'open-call', 'unknown')`,
+    ),
+    check(
+      "opportunity_call_profiles_market_kind_check",
+      sql`${table.marketKind} in ('magazine', 'journal', 'press', 'anthology', 'contest', 'award', 'organization', 'unknown')`,
+    ),
+    check(
+      "opportunity_call_profiles_period_check",
+      sql`${table.readingPeriodKind} in ('exact', 'rolling', 'year-round', 'seasonal', 'unknown')`,
+    ),
+    check(
+      "opportunity_call_profiles_confidence_check",
+      sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`,
+    ),
+    check(
+      "opportunity_call_profiles_numbers_check",
+      sql`${table.acceptanceRate} is null or (${table.acceptanceRate} >= 0 and ${table.acceptanceRate} <= 100)`,
+    ),
   ],
 );
 
@@ -865,9 +1058,18 @@ export const opportunityCallPrizes = pgTable(
     updatedAt,
   },
   (table) => [
-    index("opportunity_call_prizes_opp_idx").on(table.opportunityId, table.rank),
-    check("opportunity_call_prizes_confidence_check", sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`),
-    check("opportunity_call_prizes_amount_check", sql`${table.amountCents} is null or ${table.amountCents} >= 0`),
+    index("opportunity_call_prizes_opp_idx").on(
+      table.opportunityId,
+      table.rank,
+    ),
+    check(
+      "opportunity_call_prizes_confidence_check",
+      sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`,
+    ),
+    check(
+      "opportunity_call_prizes_amount_check",
+      sql`${table.amountCents} is null or ${table.amountCents} >= 0`,
+    ),
   ],
 );
 
@@ -890,9 +1092,19 @@ export const opportunityCallWindows = pgTable(
     updatedAt,
   },
   (table) => [
-    index("opportunity_call_windows_opp_idx").on(table.opportunityId, table.current, table.closesAt),
-    check("opportunity_call_windows_kind_check", sql`${table.kind} in ('exact', 'rolling', 'year-round', 'seasonal', 'unknown')`),
-    check("opportunity_call_windows_confidence_check", sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`),
+    index("opportunity_call_windows_opp_idx").on(
+      table.opportunityId,
+      table.current,
+      table.closesAt,
+    ),
+    check(
+      "opportunity_call_windows_kind_check",
+      sql`${table.kind} in ('exact', 'rolling', 'year-round', 'seasonal', 'unknown')`,
+    ),
+    check(
+      "opportunity_call_windows_confidence_check",
+      sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`,
+    ),
   ],
 );
 
@@ -902,15 +1114,32 @@ export const opportunityPreferences = pgTable(
     accountId: text("account_id")
       .primaryKey()
       .references(() => accounts.id, { onDelete: "cascade" }),
-    types: text("types").array().notNull().default(sql`ARRAY[]::text[]`),
-    disciplines: text("disciplines").array().notNull().default(sql`ARRAY[]::text[]`),
-    genres: text("genres").array().notNull().default(sql`ARRAY[]::text[]`),
-    locations: text("locations").array().notNull().default(sql`ARRAY[]::text[]`),
-    careerStages: text("career_stages").array().notNull().default(sql`ARRAY[]::text[]`),
+    types: text("types")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    disciplines: text("disciplines")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    genres: text("genres")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    locations: text("locations")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    careerStages: text("career_stages")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     maxFeeCents: integer("max_fee_cents"),
     noFeeOnly: boolean("no_fee_only").notNull().default(false),
     deadlineWithinDays: integer("deadline_within_days"),
-    simultaneousRequired: boolean("simultaneous_required").notNull().default(false),
+    simultaneousRequired: boolean("simultaneous_required")
+      .notNull()
+      .default(false),
     createdAt,
     updatedAt,
   },
@@ -940,7 +1169,9 @@ export const savedSearches = pgTable(
     createdAt,
     updatedAt,
   },
-  (table) => [index("saved_searches_account_idx").on(table.accountId, table.updatedAt)],
+  (table) => [
+    index("saved_searches_account_idx").on(table.accountId, table.updatedAt),
+  ],
 );
 
 export const trackedOpportunities = pgTable(
@@ -954,12 +1185,21 @@ export const trackedOpportunities = pgTable(
       .notNull()
       .references(() => opportunities.id, { onDelete: "restrict" }),
     status: text("status").notNull().default("interested"),
-    trackedAt: timestamp("tracked_at", { withTimezone: true }).notNull().defaultNow(),
+    trackedAt: timestamp("tracked_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     updatedAt,
   },
   (table) => [
-    uniqueIndex("tracked_opportunities_account_opp_idx").on(table.accountId, table.opportunityId),
-    index("tracked_opportunities_deadline_idx").on(table.accountId, table.status, table.updatedAt),
+    uniqueIndex("tracked_opportunities_account_opp_idx").on(
+      table.accountId,
+      table.opportunityId,
+    ),
+    index("tracked_opportunities_deadline_idx").on(
+      table.accountId,
+      table.status,
+      table.updatedAt,
+    ),
     check(
       "tracked_opportunities_status_check",
       sql`${table.status} in ('interested', 'preparing', 'submitted', 'withdrawn', 'accepted', 'declined', 'archived')`,
@@ -981,8 +1221,13 @@ export const trackedStatusEvents = pgTable(
     createdAt,
   },
   (table) => [
-    uniqueIndex("tracked_status_events_idempotency_idx").on(table.idempotencyKey),
-    index("tracked_status_events_tracked_idx").on(table.trackedOpportunityId, table.createdAt),
+    uniqueIndex("tracked_status_events_idempotency_idx").on(
+      table.idempotencyKey,
+    ),
+    index("tracked_status_events_tracked_idx").on(
+      table.trackedOpportunityId,
+      table.createdAt,
+    ),
     check(
       "tracked_status_events_to_status_check",
       sql`${table.toStatus} in ('interested', 'preparing', 'submitted', 'withdrawn', 'accepted', 'declined', 'archived')`,
@@ -1011,7 +1256,9 @@ export const submissionOutboundEvents = pgTable(
   "submission_outbound_events",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    accountId: text("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    accountId: text("account_id").references(() => accounts.id, {
+      onDelete: "set null",
+    }),
     opportunityId: text("opportunity_id")
       .notNull()
       .references(() => opportunities.id, { onDelete: "restrict" }),
@@ -1020,8 +1267,14 @@ export const submissionOutboundEvents = pgTable(
     createdAt,
   },
   (table) => [
-    index("submission_outbound_opp_idx").on(table.opportunityId, table.createdAt),
-    index("submission_outbound_account_idx").on(table.accountId, table.createdAt),
+    index("submission_outbound_opp_idx").on(
+      table.opportunityId,
+      table.createdAt,
+    ),
+    index("submission_outbound_account_idx").on(
+      table.accountId,
+      table.createdAt,
+    ),
   ],
 );
 

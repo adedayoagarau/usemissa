@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { MISSA_TAXONOMY, resolveTaxonomyPhrase, resolveTaxonomyTermId } from '@missa/taxonomy';
 import type {
   Clock,
   DeadlineInfo,
@@ -18,6 +19,7 @@ import {
   findSignals,
   isPlausibleOpportunityDate,
   validateCandidate,
+  taxonomyAssignmentsForPhrases,
 } from '@missa/radar-engine';
 
 const OPPORTUNITY_TYPES: OpportunityType[] = [
@@ -35,6 +37,7 @@ const EXTRACTION_TOOL: Anthropic.Tool = {
       organizationName: { type: 'string' },
       type: { type: 'string', enum: OPPORTUNITY_TYPES },
       genres: { type: 'array', items: { type: 'string' } },
+      taxonomyTermIds: { type: 'array', items: { type: 'string', maxLength: 80 }, description: 'Only IDs from the candidate taxonomy term list in the prompt. Never invent an ID.' },
       openDate: { type: 'string', description: 'ISO date (YYYY-MM-DD), only if the page states one' },
       deadlineDate: { type: 'string', description: 'ISO date (YYYY-MM-DD), only if the page states an exact deadline' },
       deadlineRolling: { type: 'boolean', description: 'true if submissions are rolling / accepted on an ongoing basis' },
@@ -56,7 +59,7 @@ const EXTRACTION_TOOL: Anthropic.Tool = {
       contactEmailPresent: { type: 'boolean' },
       simultaneousAllowed: { type: 'boolean' },
     },
-    required: ['type', 'genres', 'eligibility', 'requiredMaterials', 'contactEmailPresent'],
+    required: ['type', 'genres', 'taxonomyTermIds', 'eligibility', 'requiredMaterials', 'contactEmailPresent'],
   },
 };
 
@@ -65,6 +68,7 @@ interface ExtractionFields {
   organizationName?: string;
   type?: string;
   genres?: string[];
+  taxonomyTermIds?: string[];
   openDate?: string;
   deadlineDate?: string;
   deadlineRolling?: boolean;
@@ -106,7 +110,8 @@ export class LlmExtractor implements Extractor {
 
   async extract(source: Source, snapshot: PageSnapshot): Promise<OpportunityCandidate> {
     const now = this.clock.now();
-    const fields = await this.callModel(snapshot.content);
+    const candidateTerms = candidateTaxonomyTerms(source, snapshot.content);
+    const fields = await this.callModel(snapshot.content, candidateTerms);
     const text = snapshot.content;
 
     const deadline = deadlineFrom(fields, now);
@@ -119,6 +124,22 @@ export class LlmExtractor implements Extractor {
       organizationName: fields.organizationName,
       type: isOpportunityType(fields.type) ? fields.type : 'open-call',
       genres: fields.genres ?? [],
+      taxonomyAssignments: (() => {
+        const candidateIds = new Set(candidateTerms.map((term) => term.id));
+        const extractedAssignments = (fields.taxonomyTermIds ?? [])
+          .filter((termId) => candidateIds.has(termId))
+          .map((termId) => resolveTaxonomyTermId(termId))
+          .filter((resolution) => resolution.status === 'resolved' && resolution.termId)
+          .map((resolution) => taxonomyAssignmentsForPhrases([resolution.termId!])[0])
+          .filter((assignment): assignment is NonNullable<typeof assignment> => Boolean(assignment));
+        const extractedTermIds = new Set(extractedAssignments.flatMap((assignment) => assignment.termId ? [assignment.termId] : []));
+        return [
+          ...extractedAssignments,
+          ...taxonomyAssignmentsForPhrases(source.registryTaxonomyTermIds ?? [])
+            .filter((assignment) => !assignment.termId || !extractedTermIds.has(assignment.termId))
+            .map((assignment) => ({ ...assignment, assignmentOrigin: 'registry' as const })),
+        ].map((assignment) => ({ ...assignment, evidenceUrl: source.url, snapshotId: snapshot.id }));
+      })(),
       openDate: fields.openDate && isPlausibleOpportunityDate(fields.openDate, now) ? fields.openDate : undefined,
       deadline,
       fee: feeFrom(fields),
@@ -138,7 +159,8 @@ export class LlmExtractor implements Extractor {
     return validateCandidate(candidate, now);
   }
 
-  private async callModel(pageText: string): Promise<ExtractionFields> {
+  private async callModel(pageText: string, candidateTerms: CandidateTaxonomyTerm[]): Promise<ExtractionFields> {
+    const candidateList = candidateTerms.map((term) => `${term.id} — ${term.label} (${term.facet})`).join('\n');
     const message = await this.client.messages.create({
       model: this.model,
       max_tokens: 1024,
@@ -147,13 +169,36 @@ export class LlmExtractor implements Extractor {
       messages: [
         {
           role: 'user',
-          content: `Extract the opportunity listing fields from this page text:\n\n${pageText.slice(0, 12_000)}`,
+          content: `Extract the opportunity listing fields from this page text. For taxonomy, choose only IDs from this candidate list; if none apply, return an empty taxonomyTermIds array. Do not invent IDs and do not infer from file formats.\n\nCandidate taxonomy terms:\n${candidateList || '(none)'}\n\nPage text:\n${pageText.slice(0, 12_000)}`,
         },
       ],
     });
     const toolUse = message.content.find((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use');
     return (toolUse?.input as ExtractionFields) ?? {};
   }
+}
+
+interface CandidateTaxonomyTerm { id: string; label: string; facet: string }
+
+function candidateTaxonomyTerms(source: Source, pageText: string): CandidateTaxonomyTerm[] {
+  const byId = new Map(MISSA_TAXONOMY.terms.map((term) => [term.id, term]));
+  const ids = new Set<string>();
+  for (const id of source.registryTaxonomyTermIds ?? []) if (byId.has(id)) ids.add(id);
+  for (const phrase of source.registryDisciplines ?? []) {
+    const resolution = resolveTaxonomyPhrase(phrase);
+    if (resolution.status === 'resolved' && resolution.termId) ids.add(resolution.termId);
+    for (const candidate of resolution.candidates.slice(0, 3)) ids.add(candidate.termId);
+  }
+  const normalized = pageText.toLocaleLowerCase();
+  for (const term of MISSA_TAXONOMY.terms) {
+    if (ids.size >= 64) break;
+    const labels = [term.preferredLabel, ...term.aliases].filter((label) => label.length >= 4);
+    if (labels.some((label) => normalized.includes(label.toLocaleLowerCase()))) ids.add(term.id);
+  }
+  return [...ids].slice(0, 64).map((id) => {
+    const term = byId.get(id)!;
+    return { id: term.id, label: term.preferredLabel, facet: term.facet };
+  });
 }
 
 function isOpportunityType(value: string | undefined): value is OpportunityType {

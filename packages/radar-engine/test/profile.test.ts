@@ -16,6 +16,14 @@ test('profile updates trim public fields and derive completeness', () => {
   assert.deepEqual(engine.profileCompleteness(user.id), { complete: true, missing: [] });
 });
 
+test('profile taxonomy preferences are private, canonical-id based, and validated', () => {
+  const { engine, user } = engineWithUser();
+  engine.updateUserProfile(user.id, { taxonomyPreferences: [{ termId: 'term_poetry', preference: 'include', weight: 100 }] });
+  assert.deepEqual(user.taxonomyPreferences, [{ termId: 'term_poetry', preference: 'include', weight: 100 }]);
+  assert.equal(Object.prototype.hasOwnProperty.call(engine.publicUserProfile(user.id), 'taxonomyPreferences'), false);
+  assert.throws(() => engine.updateUserProfile(user.id, { taxonomyPreferences: [{ termId: 'term_poetry', preference: 'include', weight: 101 }] }), (error: unknown) => error instanceof ProfileValidationError && error.field === 'taxonomyPreferences');
+});
+
 test('profile update rejects blank or over-limit values without partial mutation', () => {
   const { engine, user } = engineWithUser();
   assert.throws(() => engine.updateUserProfile(user.id, { displayName: '   ' }), (error: unknown) => error instanceof ProfileValidationError && error.field === 'displayName');

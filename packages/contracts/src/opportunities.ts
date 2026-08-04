@@ -50,10 +50,9 @@ export const sourceKindSchema = z.enum([
 
 export const feeStatusSchema = z.enum(["no-fee", "paid", "unknown"]);
 
-const httpUrlSchema = z.url().refine(
-  (value) => /^https?:\/\//i.test(value),
-  "Expected an http(s) URL",
-);
+const httpUrlSchema = z
+  .url()
+  .refine((value) => /^https?:\/\//i.test(value), "Expected an http(s) URL");
 
 export const opportunitySortSchema = z.enum([
   "recommended",
@@ -79,6 +78,8 @@ export const opportunityBrowseQuerySchema = z.object({
   types: z.array(opportunityTypeSchema).max(16).default([]),
   disciplines: z.array(z.string().trim().min(1).max(80)).max(16).default([]),
   genres: z.array(z.string().trim().min(1).max(80)).max(32).default([]),
+  taxonomyTermIds: z.array(resourceIdSchema).max(32).default([]),
+  taxonomyIncludeDescendants: z.boolean().default(false),
   locations: z.array(z.string().trim().min(1).max(120)).max(32).default([]),
   feeStatus: feeStatusSchema.optional(),
   maxFeeCents: z.number().int().min(0).max(10_000_000).optional(),
@@ -135,7 +136,10 @@ export const opportunityTailoringReasonSchema = z.object({
 export const opportunityPersonalStateSchema = z.object({
   tracked: z.boolean(),
   followingOrganization: z.boolean(),
-  tailoringReasons: z.array(opportunityTailoringReasonSchema).max(4).default([]),
+  tailoringReasons: z
+    .array(opportunityTailoringReasonSchema)
+    .max(4)
+    .default([]),
 });
 
 export const opportunityCallPrizeSchema = z.object({
@@ -161,15 +165,49 @@ export const opportunityCallWindowSchema = z.object({
 });
 
 export const opportunityCallProfileSchema = z.object({
-  callKind: z.enum(["general-submission", "themed-call", "contest", "prize", "fellowship", "grant", "residency", "open-call", "unknown"]),
-  marketKind: z.enum(["magazine", "journal", "press", "anthology", "contest", "award", "organization", "unknown"]),
+  callKind: z.enum([
+    "general-submission",
+    "themed-call",
+    "contest",
+    "prize",
+    "fellowship",
+    "grant",
+    "residency",
+    "open-call",
+    "unknown",
+  ]),
+  marketKind: z.enum([
+    "magazine",
+    "journal",
+    "press",
+    "anthology",
+    "contest",
+    "award",
+    "organization",
+    "unknown",
+  ]),
   publicationFormats: z.array(z.string().trim().min(1).max(80)).max(16),
   acceptedFormats: z.array(z.string().trim().min(1).max(80)).max(32),
   subgenres: z.array(z.string().trim().min(1).max(80)).max(32),
-  readingPeriodKind: z.enum(["exact", "rolling", "year-round", "seasonal", "unknown"]),
+  readingPeriodKind: z.enum([
+    "exact",
+    "rolling",
+    "year-round",
+    "seasonal",
+    "unknown",
+  ]),
   readingPeriodLabel: z.string().trim().max(160).optional(),
   issueTheme: z.string().trim().max(240).optional(),
-  paymentType: z.enum(["none", "contributor-copy", "flat-fee", "royalty", "varies", "unknown"]).optional(),
+  paymentType: z
+    .enum([
+      "none",
+      "contributor-copy",
+      "flat-fee",
+      "royalty",
+      "varies",
+      "unknown",
+    ])
+    .optional(),
   paymentAmountCents: z.number().int().min(0).optional(),
   paymentCurrency: z.string().trim().length(3).optional(),
   reprintsAllowed: z.boolean().optional(),
@@ -262,21 +300,23 @@ export const opportunityChangeSchema = z.object({
   newValue: z.string().trim().max(500).optional(),
 });
 
-export const opportunityDetailResponseSchema = opportunityBrowseItemSchema.extend({
-  openDate: z.iso.date().optional(),
-  eligibility: z.array(opportunityEligibilityRuleSchema).max(64),
-  requiredMaterials: z.array(opportunityRequiredMaterialSchema).max(64),
-  guidelinesUrl: httpUrlSchema.optional(),
-  submissionUrl: httpUrlSchema.optional(),
-  simultaneousAllowed: z.boolean().optional(),
-  changes: z.array(opportunityChangeSchema).max(32),
-  organizationSummary: z.string().trim().max(1000).optional(),
-  relatedOpportunityIds: z.array(resourceIdSchema).max(24),
-  callProfile: opportunityCallProfileSchema.optional(),
-});
+export const opportunityDetailResponseSchema =
+  opportunityBrowseItemSchema.extend({
+    openDate: z.iso.date().optional(),
+    eligibility: z.array(opportunityEligibilityRuleSchema).max(64),
+    requiredMaterials: z.array(opportunityRequiredMaterialSchema).max(64),
+    guidelinesUrl: httpUrlSchema.optional(),
+    submissionUrl: httpUrlSchema.optional(),
+    simultaneousAllowed: z.boolean().optional(),
+    changes: z.array(opportunityChangeSchema).max(32),
+    organizationSummary: z.string().trim().max(1000).optional(),
+    relatedOpportunityIds: z.array(resourceIdSchema).max(24),
+    callProfile: opportunityCallProfileSchema.optional(),
+  });
 
 export const opportunityPreferenceInputSchema = z.object({
   types: z.array(opportunityTypeSchema).max(16).default([]),
+  taxonomyTermIds: z.array(resourceIdSchema).max(64).default([]),
   disciplines: z.array(z.string().trim().min(1).max(80)).max(16).default([]),
   genres: z.array(z.string().trim().min(1).max(80)).max(32).default([]),
   locations: z.array(z.string().trim().min(1).max(120)).max(32).default([]),
@@ -289,7 +329,11 @@ export const opportunityPreferenceInputSchema = z.object({
 
 export const savedSearchInputSchema = z.object({
   name: z.string().trim().min(1).max(120),
-  criteria: opportunityBrowseQuerySchema.omit({ cursor: true, limit: true, sort: true }),
+  criteria: opportunityBrowseQuerySchema.omit({
+    cursor: true,
+    limit: true,
+    sort: true,
+  }),
   includeInDigest: z.boolean().default(false),
 });
 
@@ -327,23 +371,48 @@ export const outboundDestinationStateSchema = z.object({
 
 export const opportunityIssueReportInputSchema = z.object({
   opportunityId: resourceIdSchema,
-  reason: z.enum(["incorrect-details", "closed-or-expired", "unsafe-or-suspicious", "other"]),
+  reason: z.enum([
+    "incorrect-details",
+    "closed-or-expired",
+    "unsafe-or-suspicious",
+    "other",
+  ]),
   note: z.string().trim().max(1000).optional(),
   idempotencyKey: z.uuid(),
 });
 
 export type OpportunityType = z.infer<typeof opportunityTypeSchema>;
-export type OpportunityBrowseQuery = z.infer<typeof opportunityBrowseQuerySchema>;
+export type OpportunityBrowseQuery = z.infer<
+  typeof opportunityBrowseQuerySchema
+>;
 export type OpportunityBrowseItem = z.infer<typeof opportunityBrowseItemSchema>;
-export type OpportunityBrowseResponse = z.infer<typeof opportunityBrowseResponseSchema>;
-export type OpportunityDetailResponse = z.infer<typeof opportunityDetailResponseSchema>;
-export type OpportunityTailoringReason = z.infer<typeof opportunityTailoringReasonSchema>;
-export type OpportunityPersonalState = z.infer<typeof opportunityPersonalStateSchema>;
-export type OpportunityPreferenceInput = z.infer<typeof opportunityPreferenceInputSchema>;
+export type OpportunityBrowseResponse = z.infer<
+  typeof opportunityBrowseResponseSchema
+>;
+export type OpportunityDetailResponse = z.infer<
+  typeof opportunityDetailResponseSchema
+>;
+export type OpportunityTailoringReason = z.infer<
+  typeof opportunityTailoringReasonSchema
+>;
+export type OpportunityPersonalState = z.infer<
+  typeof opportunityPersonalStateSchema
+>;
+export type OpportunityPreferenceInput = z.infer<
+  typeof opportunityPreferenceInputSchema
+>;
 export type SavedSearchInput = z.infer<typeof savedSearchInputSchema>;
 export type TrackOpportunityInput = z.infer<typeof trackOpportunityInputSchema>;
 export type TrackedStatusInput = z.infer<typeof trackedStatusInputSchema>;
-export type FollowOrganizationInput = z.infer<typeof followOrganizationInputSchema>;
-export type OutboundDestinationState = z.infer<typeof outboundDestinationStateSchema>;
-export type OpportunityIssueReportInput = z.infer<typeof opportunityIssueReportInputSchema>;
-export type OpportunityCallProfile = z.infer<typeof opportunityCallProfileSchema>;
+export type FollowOrganizationInput = z.infer<
+  typeof followOrganizationInputSchema
+>;
+export type OutboundDestinationState = z.infer<
+  typeof outboundDestinationStateSchema
+>;
+export type OpportunityIssueReportInput = z.infer<
+  typeof opportunityIssueReportInputSchema
+>;
+export type OpportunityCallProfile = z.infer<
+  typeof opportunityCallProfileSchema
+>;

@@ -16,6 +16,39 @@ import type {
 } from '../domain/types.js';
 import { postgresSchema } from './postgresSchema.js';
 
+async function taxonomyAssignmentsAvailable(client: { query: (text: string, values?: unknown[]) => Promise<{ rows: Array<{ ready: boolean }> }> }): Promise<boolean> {
+  if (process.env.MISSA_TAXONOMY_PERSISTENCE === '0') return false;
+  const result = await client.query(
+    `select to_regclass('public.taxonomy_terms') is not null
+      and to_regclass('public.work_taxonomy_terms') is not null
+      and to_regclass('public.submission_path_taxonomy_terms') is not null as ready`,
+  );
+  return result.rows[0]?.ready === true;
+}
+
+async function writeTaxonomyAssignments(client: { query: (text: string, values?: unknown[]) => Promise<unknown> }, path: SubmissionPath | undefined, work: Work | undefined): Promise<void> {
+  if (path) {
+    await client.query('delete from submission_path_taxonomy_terms where submission_path_id = $1', [path.id]);
+    for (const assignment of path.taxonomyAssignments ?? []) {
+      await client.query(
+        `insert into submission_path_taxonomy_terms (submission_path_id, term_id, rule, required)
+         values ($1, $2, $3, $4) on conflict (submission_path_id, term_id, rule) do update set required = excluded.required`,
+        [path.id, assignment.termId, assignment.rule, assignment.required ?? assignment.rule === 'required'],
+      );
+    }
+  }
+  if (work) {
+    await client.query('delete from work_taxonomy_terms where work_id = $1', [work.id]);
+    for (const [index, termId] of (work.taxonomyTermIds ?? []).entries()) {
+      await client.query(
+        `insert into work_taxonomy_terms (work_id, term_id, primary, assignment_origin)
+         values ($1, $2, $3, 'user') on conflict (work_id, term_id) do update set primary = excluded.primary`,
+        [work.id, termId, index === 0],
+      );
+    }
+  }
+}
+
 export const WORKSPACE_SNAPSHOT_DOMAIN = 'workspace';
 
 export class SnapshotConflictError extends Error {
@@ -57,6 +90,7 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool, exp
     if (expectedVersion !== undefined && expectedVersion !== currentVersion) {
       throw new SnapshotConflictError(WORKSPACE_SNAPSHOT_DOMAIN, expectedVersion, currentVersion);
     }
+    const taxonomyEnabled = await taxonomyAssignmentsAvailable(client);
 
     // Children first, so foreign keys never point at a row we're about to delete.
     await client.query('delete from review_recommendations');
@@ -101,6 +135,7 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool, exp
         'insert into submission_paths (id, open_call_id, categories, fields, fee_cents, created_at) values ($1, $2, $3, $4, $5, $6)',
         [s.id, s.openCallId, JSON.stringify(s.categories), JSON.stringify(s.fields), s.feeCents ?? null, s.createdAt],
       );
+      if (taxonomyEnabled) await writeTaxonomyAssignments(client, s, undefined);
     }
 
     for (const s of store.submissions.values()) {
@@ -119,6 +154,7 @@ export async function saveStoreToPostgres(store: WorkspaceStore, pool: Pool, exp
         w.fileUrls ? JSON.stringify(w.fileUrls) : null,
         w.order,
       ]);
+      if (taxonomyEnabled) await writeTaxonomyAssignments(client, undefined, w);
     }
 
     for (const draft of store.submissionDrafts.values()) {
@@ -245,6 +281,7 @@ export async function saveStoreDeltaToPostgres(
     if (expectedVersion !== undefined && expectedVersion !== currentVersion) {
       throw new SnapshotConflictError(WORKSPACE_SNAPSHOT_DOMAIN, expectedVersion, currentVersion);
     }
+    const taxonomyEnabled = await taxonomyAssignmentsAvailable(client);
 
     // Delete children before parents where a caller explicitly removed rows.
     for (const id of delta.reviewRecommendations.deletes) await client.query('delete from review_recommendations where review_assignment_id = $1', [id]);
@@ -276,6 +313,7 @@ export async function saveStoreDeltaToPostgres(
       'insert into submission_paths (id, open_call_id, categories, fields, fee_cents, created_at) values ($1, $2, $3, $4, $5, $6) on conflict (id) do update set open_call_id = excluded.open_call_id, categories = excluded.categories, fields = excluded.fields, fee_cents = excluded.fee_cents, created_at = excluded.created_at',
       [s.id, s.openCallId, JSON.stringify(s.categories), JSON.stringify(s.fields), s.feeCents ?? null, s.createdAt],
     );
+    if (taxonomyEnabled) for (const s of delta.submissionPaths.upserts) await writeTaxonomyAssignments(client, s, undefined);
     for (const s of delta.submissions.upserts) await client.query(
       'insert into submissions (id, submission_path_id, submitter_account_id, status, submitted_at, payment_status, payment_session_id, fee_cents, idempotency_key, answers, category) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (submitter_account_id, submission_path_id, idempotency_key) where idempotency_key is not null do update set status = excluded.status, submitted_at = excluded.submitted_at, payment_status = excluded.payment_status, payment_session_id = excluded.payment_session_id, fee_cents = excluded.fee_cents, answers = excluded.answers, category = excluded.category',
       [s.id, s.submissionPathId, s.submitterAccountId, s.status, s.submittedAt, s.paymentStatus ?? 'not-required', s.paymentSessionId ?? null, s.feeCents ?? null, s.idempotencyKey ?? null, s.answers ? JSON.stringify(s.answers) : null, s.category ?? null],
@@ -284,6 +322,7 @@ export async function saveStoreDeltaToPostgres(
       'insert into works (id, submission_id, title, file_url, file_urls, "order") values ($1, $2, $3, $4, $5, $6) on conflict (id) do update set submission_id = excluded.submission_id, title = excluded.title, file_url = excluded.file_url, file_urls = excluded.file_urls, "order" = excluded."order"',
       [w.id, w.submissionId, w.title, w.fileUrl ?? null, w.fileUrls ? JSON.stringify(w.fileUrls) : null, w.order],
     );
+    if (taxonomyEnabled) for (const w of delta.works.upserts) await writeTaxonomyAssignments(client, undefined, w);
     for (const draft of delta.submissionDrafts.upserts) await client.query(
       'insert into submission_drafts (id, submission_path_id, submitter_account_id, answers, category, work_titles, idempotency_key, payment_session_id, updated_at, expires_at) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) on conflict (id) do update set submission_path_id = excluded.submission_path_id, submitter_account_id = excluded.submitter_account_id, answers = excluded.answers, category = excluded.category, work_titles = excluded.work_titles, idempotency_key = excluded.idempotency_key, payment_session_id = excluded.payment_session_id, updated_at = excluded.updated_at, expires_at = excluded.expires_at',
       [draft.id, draft.submissionPathId, draft.submitterAccountId, JSON.stringify(draft.answers), draft.category ?? null, JSON.stringify(draft.workTitles), draft.idempotencyKey ?? null, draft.paymentSessionId ?? null, draft.updatedAt, draft.expiresAt],
@@ -402,6 +441,20 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
     };
     store.submissionPaths.set(path.id, path);
   }
+  const taxonomyReady = (await pool.query<{ ready: boolean }>(
+    `select to_regclass('public.taxonomy_terms') is not null
+      and to_regclass('public.work_taxonomy_terms') is not null
+      and to_regclass('public.submission_path_taxonomy_terms') is not null as ready`,
+  )).rows[0]?.ready === true;
+  if (taxonomyReady) {
+    const pathTerms = await pool.query<{ submission_path_id: string; term_id: string; rule: NonNullable<SubmissionPath['taxonomyAssignments']>[number]['rule']; required: boolean }>(
+      'select submission_path_id, term_id, rule, required from submission_path_taxonomy_terms',
+    );
+    for (const row of pathTerms.rows) {
+      const path = store.submissionPaths.get(row.submission_path_id);
+      if (path) (path.taxonomyAssignments ??= []).push({ termId: row.term_id, rule: row.rule, required: row.required });
+    }
+  }
 
   const submissions = await pool.query<{
     id: string;
@@ -439,6 +492,15 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
   for (const row of works.rows) {
     const work: Work = { id: row.id, submissionId: row.submission_id, title: row.title, fileUrl: row.file_url ?? undefined, fileUrls: row.file_urls ?? undefined, order: row.order };
     store.works.set(work.id, work);
+  }
+  if (taxonomyReady) {
+    const workTerms = await pool.query<{ work_id: string; term_id: string; primary: boolean }>(
+      'select work_id, term_id, primary from work_taxonomy_terms order by work_id, primary desc, term_id',
+    );
+    for (const row of workTerms.rows) {
+      const work = store.works.get(row.work_id);
+      if (work) (work.taxonomyTermIds ??= []).push(row.term_id);
+    }
   }
 
   const drafts = await pool.query<{ id: string; submission_path_id: string; submitter_account_id: string; answers: Record<string, string | string[]>; category: string | null; work_titles: string[]; idempotency_key: string | null; payment_session_id: string | null; updated_at: Date; expires_at: Date }>('select * from submission_drafts');

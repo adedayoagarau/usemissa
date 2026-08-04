@@ -14,12 +14,14 @@ import { POETRY_SOURCES } from './bundles/poetry.js';
 import { CNF_SOURCES } from './bundles/creative-nonfiction.js';
 import { BULK_SOURCES } from './sources-bulk.js';
 import { EXPANDED_SOURCES } from './sources-expanded.js';
+import { registryVerticalCompatibility } from './taxonomy.js';
 
 function normalizeUrl(url: string): string {
   return url.replace(/\/$/, '').toLowerCase();
 }
 
 function toRadarSource(entry: SourceRegistryEntry): Source {
+  const compatibility = registryVerticalCompatibility(entry.verticalId);
   return {
     id: entry.id,
     name: entry.name,
@@ -28,6 +30,9 @@ function toRadarSource(entry: SourceRegistryEntry): Source {
     registryVerticalId: entry.verticalId,
     registryGroup: REGISTRY_VERTICALS.find((vertical) => vertical.id === entry.verticalId)?.group,
     registryDisciplines: entry.disciplines ?? REGISTRY_VERTICALS.find((vertical) => vertical.id === entry.verticalId)?.disciplines,
+    registryTaxonomyTermIds: entry.taxonomyTermIds ?? compatibility.taxonomyTermIds,
+    registryEligibilityLens: entry.eligibilityLens ?? compatibility.eligibilityLens,
+    registrySourceChannel: entry.sourceChannel ?? compatibility.sourceChannel,
     registryGeography: entry.geography,
     registryOpportunityTypes: entry.opportunityTypes,
     registryOrganizationName: entry.organizationName,
@@ -130,6 +135,9 @@ export function loadSourcesIntoEngine(
     registryVerticalId?: string;
     registryGroup?: VerticalGroup;
     registryDisciplines?: string[];
+    registryTaxonomyTermIds?: string[];
+    registryEligibilityLens?: string;
+    registrySourceChannel?: string;
     registryGeography?: string[];
     registryOpportunityTypes?: SourceRegistryEntry['opportunityTypes'];
     registryOrganizationName?: string;
@@ -150,6 +158,9 @@ export function loadSourcesIntoEngine(
       registryVerticalId: entry.verticalId,
       registryGroup: getVertical(entry.verticalId)?.group,
       registryDisciplines: entry.disciplines ?? getVertical(entry.verticalId)?.disciplines,
+      registryTaxonomyTermIds: entry.taxonomyTermIds ?? registryVerticalCompatibility(entry.verticalId).taxonomyTermIds,
+      registryEligibilityLens: entry.eligibilityLens ?? registryVerticalCompatibility(entry.verticalId).eligibilityLens,
+      registrySourceChannel: entry.sourceChannel ?? registryVerticalCompatibility(entry.verticalId).sourceChannel,
       registryGeography: entry.geography,
       registryOpportunityTypes: entry.opportunityTypes,
       registryOrganizationName: entry.organizationName,

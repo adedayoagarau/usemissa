@@ -28,6 +28,12 @@ export interface RegistryVertical {
   group: VerticalGroup;
   opportunityTypes: OpportunityType[];
   disciplines: string[];
+  /** Canonical creative-practice terms; opportunity type and eligibility stay separate. */
+  taxonomyTermIds?: string[];
+  /** Values such as identity/community focus are eligibility lenses, not practices. */
+  eligibilityLens?: string;
+  /** Platform/directory identity is a source channel, not a creative facet. */
+  sourceChannel?: string;
   description: string;
 }
 
@@ -41,6 +47,9 @@ export interface SourceRegistryEntry {
   opportunityTypes: OpportunityType[];
   /** Narrower tags within the vertical, e.g. "fiction", "poetry", "sculpture". */
   disciplines?: string[];
+  taxonomyTermIds?: string[];
+  eligibilityLens?: string;
+  sourceChannel?: string;
   /** ISO 3166-1 alpha-2, "global", or region slug like "us", "eu". */
   geography?: string[];
   checkIntervalHours: number;

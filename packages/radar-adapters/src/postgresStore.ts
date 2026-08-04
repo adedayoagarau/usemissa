@@ -46,6 +46,32 @@ async function hasTable(client: PoolClient, table: string): Promise<boolean> {
   return result.rows[0]?.present === true;
 }
 
+/** Dual-write private user preferences once the additive taxonomy tables have
+ * been rehearsed. Legacy genres stay in radar_users until cutover parity is
+ * proven; explicit rows never expose public profile data. */
+async function writeAccountTaxonomyPreferences(client: PoolClient, store: RadarStore): Promise<void> {
+  if (process.env.MISSA_TAXONOMY_PERSISTENCE === '0' || !(await hasTable(client, 'account_taxonomy_preferences'))) return;
+  for (const account of store.accounts.values()) {
+    if (!account.userId) continue;
+    const user = store.users.get(account.userId);
+    if (!user?.taxonomyPreferences) continue;
+    await client.query(`delete from account_taxonomy_preferences where account_id = $1 and origin = 'explicit'`, [account.id]);
+    for (const preference of user.taxonomyPreferences) {
+      await client.query(
+        `insert into account_taxonomy_preferences
+           (account_id, term_id, preference, weight, origin, updated_at)
+         values ($1, $2, $3, $4, 'explicit', now())
+         on conflict (account_id, term_id) do update set
+           preference = excluded.preference,
+           weight = excluded.weight,
+           origin = 'explicit',
+           updated_at = now()`,
+        [account.id, preference.termId, preference.preference, preference.weight],
+      );
+    }
+  }
+}
+
 /**
  * Postgres-backed persistence for `RadarStore`. Same read-whole/write-whole
  * contract as `loadStore`/`saveStore` (the JSON-file adapter in the core
@@ -222,6 +248,7 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool, expecte
         [a.id, a.email, a],
       );
     }
+    await writeAccountTaxonomyPreferences(client, store);
 
     for (const m of store.memberships) {
       if (membershipsHaveRole) {
@@ -511,6 +538,26 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
   for (const row of alerts.rows) store.alerts.set(row.data.id, row.data);
   store.emittedAlertKeys = new Set(alertKeys.rows.map((r) => r.key));
   for (const row of accounts.rows) store.accounts.set(row.data.id, row.data);
+  const taxonomyPreferencesTable = await pool.query<{ present: string | null }>("select to_regclass('public.account_taxonomy_preferences') as present");
+  if (taxonomyPreferencesTable.rows[0]?.present) {
+    const accountById = new Map([...store.accounts.values()].map((account) => [account.id, account] as const));
+    const preferences = await pool.query<{ account_id: string; term_id: string; preference: 'include' | 'prefer' | 'exclude'; weight: number }>(
+      `select account_id, term_id, preference, weight
+         from account_taxonomy_preferences
+        where preference in ('include', 'prefer', 'exclude')
+        order by account_id, term_id`,
+    );
+    for (const row of preferences.rows) {
+      const userId = accountById.get(row.account_id)?.userId;
+      if (!userId) continue;
+      const user = store.users.get(userId);
+      if (!user) continue;
+      user.taxonomyPreferences ??= [];
+      if (!user.taxonomyPreferences.some((preference) => preference.termId === row.term_id)) {
+        user.taxonomyPreferences.push({ termId: row.term_id, preference: row.preference, weight: row.weight });
+      }
+    }
+  }
   store.memberships = memberships.rows.map((r) => r.data);
   store.auditLog = auditLog.rows.map((r) => r.data);
 

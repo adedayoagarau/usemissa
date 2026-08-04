@@ -27,7 +27,13 @@ test("organization member mutations normalize email and accept the enterprise ro
       role: "member",
     },
   );
-  assert.equal(organizationMemberMutationSchema.parse({ email: "editor@example.com", role: "owner" }).role, "owner");
+  assert.equal(
+    organizationMemberMutationSchema.parse({
+      email: "editor@example.com",
+      role: "owner",
+    }).role,
+    "owner",
+  );
 });
 
 test("browse queries default to safe, bounded public search behavior", () => {
@@ -36,6 +42,8 @@ test("browse queries default to safe, bounded public search behavior", () => {
     types: [],
     disciplines: [],
     genres: [],
+    taxonomyTermIds: [],
+    taxonomyIncludeDescendants: false,
     locations: [],
     openNow: true,
     verifiedOnly: false,

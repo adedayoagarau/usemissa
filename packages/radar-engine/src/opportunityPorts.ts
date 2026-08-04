@@ -20,6 +20,8 @@ export interface OpportunityRepositoryQuery {
   types?: OpportunityType[];
   disciplines?: string[];
   genres?: string[];
+  taxonomyTermIds?: string[];
+  taxonomyIncludeDescendants?: boolean;
   locations?: string[];
   feeStatus?: "no-fee" | "paid" | "unknown";
   maxFeeCents?: number;
@@ -144,6 +146,11 @@ export interface OpportunityBrowseProjection {
   type: OpportunityType;
   discipline?: string;
   genres: string[];
+  taxonomy?: {
+    schemeVersion: number;
+    termIds: string[];
+    primaryTermIds: string[];
+  };
   deadline: OpportunityRepositoryDeadline;
   fee: OpportunityRepositoryFee;
   prize?: string;
