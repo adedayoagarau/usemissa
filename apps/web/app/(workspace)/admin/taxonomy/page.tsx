@@ -1,7 +1,5 @@
-import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
-import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { readTaxonomyAdminDashboard, type TaxonomyAdminDashboard } from '@missa/radar-adapters';
+import { requirePlatformAdminPage } from '@/lib/platformAdmin';
 
 const cards: Array<[string, (data: TaxonomyAdminDashboard) => number]> = [
   ['Open proposals', (data) => data.proposals.open + data.proposals.researching],
@@ -11,10 +9,7 @@ const cards: Array<[string, (data: TaxonomyAdminDashboard) => number]> = [
 ] as const;
 
 export default async function TaxonomyAdminPage() {
-  const cookieStore = await cookies();
-  const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!session) redirect('/login');
-  if (!session.account.isAdmin) redirect('/home');
+  await requirePlatformAdminPage();
   const data = process.env.DATABASE_URL ? await readTaxonomyAdminDashboard(process.env.DATABASE_URL) : null;
   const dashboard = data?.available ? data : null;
 

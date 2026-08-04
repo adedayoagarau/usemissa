@@ -55,6 +55,12 @@ export {
   createTaxonomyChangeProposal,
   type TaxonomyAdminDashboard,
 } from "./taxonomyAdmin.js";
+export {
+  readPlatformAdminDurableSummary,
+  type DurableMaturity,
+  type DurableQueueMetric,
+  type PlatformAdminDurableSummary,
+} from "./platformAdmin.js";
 export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';
 export {

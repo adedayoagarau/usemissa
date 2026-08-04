@@ -1,24 +1,17 @@
 import { NextResponse } from 'next/server';
 import { createTaxonomyChangeProposal, readTaxonomyAdminDashboard } from '@missa/radar-adapters';
-import { getSessionAccount } from '@/lib/auth';
-
-async function requireAdmin(request: Request) {
-  const session = await getSessionAccount(request.headers.get('cookie'));
-  if (!session) return { response: NextResponse.json({ error: 'Not authenticated' }, { status: 401 }) };
-  if (!session.account.isAdmin) return { response: NextResponse.json({ error: 'Admin access required' }, { status: 403 }) };
-  return { session };
-}
+import { platformAdminAuthResponse, requirePlatformAdmin } from '@/lib/platformAdmin';
 
 export async function GET(request: Request) {
-  const auth = await requireAdmin(request);
-  if (auth.response) return auth.response;
+  const auth = await requirePlatformAdmin(request);
+  if (!auth.ok) return platformAdminAuthResponse(auth)!;
   if (!process.env.DATABASE_URL) return NextResponse.json({ status: 'unavailable', reason: 'DATABASE_URL is not configured' }, { status: 503 });
   return NextResponse.json(await readTaxonomyAdminDashboard(process.env.DATABASE_URL));
 }
 
 export async function POST(request: Request) {
-  const auth = await requireAdmin(request);
-  if (auth.response) return auth.response;
+  const auth = await requirePlatformAdmin(request);
+  if (!auth.ok) return platformAdminAuthResponse(auth)!;
   if (!process.env.DATABASE_URL) return NextResponse.json({ error: 'Database is not configured' }, { status: 503 });
   let body: unknown;
   try { body = await request.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
