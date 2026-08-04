@@ -16,7 +16,9 @@
   `submission_drafts_legacy_20260803`, the current path-scoped draft table was
   created, and `works.file_urls` was added for multi-attachment submissions.
   The runtime `ensurePostgresSchema` remains idempotent for cold starts.
-- Preview and development still need their own database policy before enabling the PostgreSQL repository there.
+- Preview now has a Neon `DATABASE_URL` and `MISSA_OPPORTUNITY_REPOSITORY`; it
+  should be treated as shared staging until an isolated Neon branch/database
+  policy is chosen. Development remains local-policy by default.
 
 **Radar ingestion:**
 - `@missa/radar-adapters` now exposes `missa-radar-worker`, a long-running Postgres-backed worker with bounded batches and advisory-lock serialization (`1984/727`). Run it on a container host with `DATABASE_URL`, `RADAR_WORKER_BATCH_SIZE` (default `10`), and `TICK_MINUTES` (default `15`).
