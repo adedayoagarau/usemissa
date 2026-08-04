@@ -50,3 +50,5 @@
 - Google OAuth consent/scope verification, Gmail API enablement, Pub/Sub topic IAM (`gmail-api-push@system.gserviceaccount.com` publisher), and a disposable Neon rehearsal are required before enabling a real mailbox.
 
 **Current deployment:** the latest production deployment builds clean and is aliased at `https://www.usemissa.com`. The opportunities browse/detail routes are backed by the live Neon relational repository.
+
+**Latest verified Preview (2026-08-03):** `https://missa-qc1q3rzlv-adedayoagarau.vercel.app` (Vercel deployment `dpl_5KZ6hgAWU3gJ3j74NFzfMQZWhWNk`, target `preview`, state `READY`). Use this URL for acceptance testing before promoting to production.
