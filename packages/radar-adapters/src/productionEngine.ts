@@ -139,7 +139,11 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
     : undefined;
 
   const engine = new RadarEngine({ store, fetcher, extractor, ids: uuidIds() });
-  seedRegistryIfEmpty(engine);
+  // Hydrate registry tier metadata for every persisted source in memory. The
+  // clone used for delta persistence is taken after this call, so this does
+  // not rewrite the full registry; it simply lets worker tier fences operate
+  // correctly on snapshots created before registryTier was added.
+  seedRegistryIfEmpty(engine, { maxTier: 3 });
   let pendingPersist = Promise.resolve();
 
   return {
