@@ -578,6 +578,71 @@ export const opportunityIdentityAssets = pgTable(
   (table) => [index("opportunity_assets_opp_idx").on(table.opportunityId)],
 );
 
+/**
+ * Durable evidence enrichment queue. Jobs are leased with SKIP LOCKED by the
+ * Railway enrichment worker; evidence is append-only and remains provenance
+ * tagged until a reviewer or canonical Radar pass promotes it.
+ */
+export const radarEnrichmentJobs = pgTable(
+  "radar_enrichment_jobs",
+  {
+    id: text("id").primaryKey(),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    status: text("status").notNull().default("queued"),
+    priority: integer("priority").notNull().default(0),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    lastError: text("last_error"),
+    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("radar_enrichment_jobs_opp_kind_idx").on(table.opportunityId, table.kind),
+    index("radar_enrichment_jobs_ready_idx").on(table.status, table.nextAttemptAt, table.leaseUntil, table.priority),
+    check("radar_enrichment_jobs_kind_check", sql`${table.kind} in ('media', 'winners', 'guidelines')`),
+    check("radar_enrichment_jobs_status_check", sql`${table.status} in ('queued', 'processing', 'completed', 'failed', 'blocked')`),
+    check("radar_enrichment_jobs_attempts_check", sql`${table.attempts} >= 0`),
+    check("radar_enrichment_jobs_priority_check", sql`${table.priority} between -100 and 100`),
+  ],
+);
+
+export const radarOpportunityEnrichmentEvidence = pgTable(
+  "radar_opportunity_enrichment_evidence",
+  {
+    id: text("id").primaryKey(),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => radarEnrichmentJobs.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    url: text("url").notNull(),
+    title: text("title"),
+    excerpt: text("excerpt"),
+    mediaUrl: text("media_url"),
+    confidence: text("confidence").notNull().default("unknown"),
+    rightsStatus: text("rights_status").notNull().default("unknown"),
+    metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("radar_enrichment_evidence_unique_idx").on(table.opportunityId, table.kind, table.url),
+    index("radar_enrichment_evidence_opp_idx").on(table.opportunityId, table.kind, table.retrievedAt),
+    index("radar_enrichment_evidence_media_idx").on(table.kind, table.mediaUrl),
+    check("radar_enrichment_evidence_kind_check", sql`${table.kind} in ('media', 'winner', 'guideline', 'organization')`),
+    check("radar_enrichment_evidence_confidence_check", sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`),
+    check("radar_enrichment_evidence_rights_check", sql`${table.rightsStatus} in ('unknown', 'review', 'permitted')`),
+  ],
+);
+
 export const opportunityPreferences = pgTable(
   "opportunity_preferences",
   {

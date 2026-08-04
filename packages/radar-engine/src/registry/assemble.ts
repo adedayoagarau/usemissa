@@ -13,6 +13,7 @@ import { LITERARY_FICTION_SOURCES } from './bundles/literary-fiction.js';
 import { POETRY_SOURCES } from './bundles/poetry.js';
 import { CNF_SOURCES } from './bundles/creative-nonfiction.js';
 import { BULK_SOURCES } from './sources-bulk.js';
+import { EXPANDED_SOURCES } from './sources-expanded.js';
 
 function normalizeUrl(url: string): string {
   return url.replace(/\/$/, '').toLowerCase();
@@ -50,6 +51,7 @@ export function assembleRegistry(): SourceRegistry {
     ...POETRY_SOURCES,
     ...CNF_SOURCES,
     ...BULK_SOURCES,
+    ...EXPANDED_SOURCES,
   ]) {
     add(entry);
   }

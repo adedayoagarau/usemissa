@@ -77,6 +77,22 @@ discoveries remain reviewable until their evidence supports publication. Run
 this on a worker host with a restart policy; Vercel Cron remains a bounded
 fallback, not the continuous process.
 
+## Evidence enrichment worker
+
+The enrichment lane is a separate process so the canonical Radar snapshot is
+never blocked by slow media or archive pages:
+
+    DATABASE_URL=postgres://... RADAR_ENRICHMENT_BATCH_SIZE=20 \
+      RADAR_ENRICHMENT_INTERVAL_MINUTES=10 \
+      npm run enrichment-worker --workspace=@missa/radar-adapters
+
+It creates one idempotent job per published opportunity for media, past-winner
+links, and guidelines. Jobs use Postgres leases and exponential retry; the
+worker writes provenance-tagged evidence with `unknown` rights status and does
+not promote a claim directly into the public opportunity record. Railway
+currently handles HTML evidence. PDF extraction and object storage are
+separate follow-on contracts so the rights policy can be reviewed first.
+
 ## Wiring it in yourself
 
 If you want different pieces than `serve.ts` assembles (e.g. Postgres

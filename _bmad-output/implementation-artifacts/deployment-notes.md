@@ -24,7 +24,7 @@
 - `@missa/radar-adapters` now exposes `missa-radar-worker`, a long-running Postgres-backed worker with bounded batches and advisory-lock serialization (`1984/727`). Run it on a container host with `DATABASE_URL`, `RADAR_WORKER_BATCH_SIZE` (default `10`), and `TICK_MINUTES` (default `15`).
 - Vercel Cron remains a bounded fallback during worker rollout. Once the worker service is healthy, disable inline Cron ingestion so the worker is the single ingestion lane.
 - The hosted fallback reads the same `RADAR_WORKER_BATCH_SIZE` (default `10`, maximum `50`) and runs every 15 minutes. Production and Preview are configured at the maximum batch (`50`), with a 5-second fetch timeout and 16 concurrent fetches. A live Neon rehearsal on 2026-08-04 completed bounded source ticks; binary/non-text responses now fail closed before they can enter JSON snapshots. Opportunities retain their last successful processing time, so failed fetches do not falsely advance the public “checked” timestamp.
-- The source registry currently contains 1,024 active source pages across literary, film/media, visual arts, grants/funding, craft/design, music, academic/professional, and identity-led verticals. That is source coverage, not a claim that 1,024 verified opportunity records have already been extracted. The live relational projection should only publish records with usable evidence; as of this audit it contains 119 extracted records (75 published). The worker is responsible for growing this count from verified upstream pages rather than synthetic catalogue generation.
+- The source registry currently contains 1,114 active source pages across literary, film/media, visual arts, grants/funding, craft/design, music, academic/professional, and identity-led verticals. That is source coverage, not a claim that 1,114 verified opportunity records have already been extracted. The live relational projection should only publish records with usable evidence; the workers are responsible for growing this count from verified upstream pages rather than synthetic catalogue generation.
 - Public browse exposes discovery-level fields only. Full eligibility, requirements, change history, and submission links are authenticated; signed-out card selection routes to login instead of leaking the detail panel.
 
 **Railway production workers (2026-08-04):** the durable Radar processes are
@@ -32,14 +32,16 @@ now deployed in the `missa-production` Railway project. `research-agent`
 (`8253a677-e44d-4e02-b410-63c2e7d25db6`) runs the tiered discovery lane every
 five minutes; `radar-worker`
 (`86ac7836-0709-497b-ba3d-e2e71c558dac`) runs canonical refreshes every fifteen
-minutes. Both use the Neon `DATABASE_URL` and the shared advisory ingestion
-lock. See [`docs/railway-topology.md`](../../docs/railway-topology.md) for the
-service contract and the future enrichment boundary.
+minutes; `enrichment-worker`
+(`f6bc694a-778c-43e2-bf24-20328ef46a26`) enriches public-page evidence every
+ten minutes. All three use the Neon `DATABASE_URL`; the Radar pair share the
+advisory ingestion lock, while enrichment uses row-level queue leases. See
+[`docs/railway-topology.md`](../../docs/railway-topology.md) for the service
+contract and evidence boundary.
 
 **Still needed for full production functionality:**
-- The enrichment worker for media, PDFs, and past-winner evidence is not yet
-  deployed. It is intentionally gated on the queue/lease and object-storage
-  contract described in `docs/railway-topology.md`.
+- S3-compatible object storage and PDF extraction remain optional follow-on
+  work for the enrichment lane; HTML evidence and retryable leases are live.
 - `CRON_SECRET` — needed for the bounded `/api/cron/tick` fallback.
 - A production app domain (e.g. `app.usemissa.com`) if the app should be separate from `www.usemissa.com`.
 - `RESEND_API_KEY` and `RESEND_FROM` — enable submitter alert digests and

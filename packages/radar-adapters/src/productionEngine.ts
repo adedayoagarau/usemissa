@@ -88,7 +88,7 @@ export function seedRegistryIfEmpty(
 
   if (loaded === 0) return null;
   console.log(
-    `[seedRegistryIfEmpty] seeded ${loaded} new tier-0 sources from the opportunity-source registry`,
+    `[seedRegistryIfEmpty] seeded ${loaded} new sources (maxTier=${options.maxTier ?? 'all'}) from the opportunity-source registry`,
   );
   return { loaded };
 }

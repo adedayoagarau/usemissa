@@ -30,6 +30,7 @@ export {
   type SqlQuery,
 } from "./opportunityRepository.js";
 export { saveOpportunityProjectionToPostgres } from "./opportunityRelationalStore.js";
+export { ensureEnrichmentSchema, enrichmentSchema } from "./enrichmentSchema.js";
 export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';
 export {

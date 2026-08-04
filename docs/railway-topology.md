@@ -19,12 +19,18 @@ not a set of independently writable microservices.
 | --- | --- | --- | --- |
 | `research-agent` | Broad, tiered discovery across canonical, directory, and feed sources. New records stay evidence-gated until they can be published. | Every 5 minutes, 25 sources/tick | `MISSA_WORKER_MODE=research`, `RADAR_RESEARCH_INTERVAL_MINUTES`, `RADAR_RESEARCH_BATCH_SIZE` |
 | `radar-worker` | Canonical refresh, validation, deduplication, status changes, relational projection, and alert evaluation. | Every 15 minutes, 25 sources/tick | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE` |
+| `enrichment-worker` | Fetches public opportunity pages for media, guideline, and past-winner evidence. Writes provenance-tagged evidence and retries failures through a leased queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=enrichment`, `RADAR_ENRICHMENT_INTERVAL_MINUTES`, `RADAR_ENRICHMENT_BATCH_SIZE` |
 
 Both services receive the same Neon URL and use the same advisory ingestion
 lock (`1984/727`). That serialization is intentional: it prevents two
 long-lived snapshots from overwriting each other's opportunity changes. The
 services are separate supervisors and can be restarted independently, but
 there is one authoritative writer at a time.
+
+The enrichment worker uses its own row-level leases in
+`radar_enrichment_jobs`; it does not write the Radar snapshot. Its evidence is
+explicitly marked with confidence and rights status so media and past-winner
+claims remain reviewable.
 
 ## Deployment contract
 
@@ -46,10 +52,9 @@ railway service status -s radar-worker -e production --json
 
 ## Boundaries we are not creating yet
 
-- **Enrichment worker:** planned for media, PDFs, past-winner evidence, and
-  richer organization histories. It needs its own queue/lease tables and
-  object-storage contract before a Railway service is created; a placeholder
-  service would create cost without useful work.
+- **Object storage and PDF extraction:** the enrichment worker is live for
+  HTML evidence. Add S3-compatible storage and a PDF extraction step only when
+  the media retention and rights policy is approved.
 - **Redis/queue service:** not required while Radar writes are serialized by
   Postgres advisory locks. Introduce it with the enrichment worker when work
   needs independent retries and concurrency.
