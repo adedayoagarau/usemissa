@@ -234,7 +234,7 @@ retaining old strings for dual-read comparison.
 
 Cutover sequence:
 
-1. Apply `0011_taxonomy_graph.sql` only after migrations 0006–0010 on a disposable Neon branch.
+1. Apply `0003_canonical_taxonomy.sql` on a disposable Neon branch using the current Drizzle journal.
 2. Run and audit the idempotent taxonomy seed.
 3. Compare legacy arrays against canonical assignments, including ambiguous and unresolved values.
 4. Add canonical read paths behind a feature flag and compare browse counts and saved searches.

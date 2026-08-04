@@ -37,7 +37,7 @@ Read these files completely:
 6. `packages/taxonomy/src/validate.ts`
 7. `packages/contracts/src/taxonomy.ts`
 8. the taxonomy section of `packages/db/src/schema.ts`
-9. `packages/db/migrations/0011_taxonomy_graph.sql`
+9. `packages/db/migrations/0003_canonical_taxonomy.sql`
 10. `packages/db/scripts/seed-taxonomy.mjs`
 11. current Radar registry, extractor, relational store, opportunity repository, Passport
     preferences, Library/Works, and Workspace submission-path code.

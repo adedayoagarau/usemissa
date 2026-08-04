@@ -31,12 +31,12 @@ Generate migrations with `npm run db:generate`. Apply migrations only with an ex
 
 ## Taxonomy expansion
 
-`migrations/0011_taxonomy_graph.sql` adds the canonical practice graph, assignment tables,
+`migrations/0003_canonical_taxonomy.sql` adds the canonical practice graph, assignment tables,
 coverage cells, recurring source discovery, and expanded source-health fields. It is additive and
 keeps the legacy `discipline`, `genres`, `subgenres`, and preference arrays for dual-read/backfill.
 
-Apply it only after the reconciled 0006–0010 migrations and rehearse it on a disposable Neon
-branch. Then seed and backfill the validated vocabulary with:
+Apply it through the current Drizzle journal and rehearse it on a disposable Neon branch. Then
+seed and backfill the validated vocabulary with:
 
 ```bash
 DATABASE_URL=postgresql://... npm run db:seed-taxonomy --workspace=@missa/db

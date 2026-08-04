@@ -22,6 +22,13 @@
       "when": 1785546022843,
       "tag": "0002_spooky_molecule_man",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785870412549,
+      "tag": "0003_canonical_taxonomy",
+      "breakpoints": true
     }
   ]
 }

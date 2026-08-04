@@ -38,7 +38,7 @@ replacement through the relational taxonomy graph.
 
 ## Database seed
 
-After applying `packages/db/migrations/0011_taxonomy_graph.sql` to a rehearsed database:
+After applying `packages/db/migrations/0003_canonical_taxonomy.sql` to a rehearsed database:
 
 ```bash
 DATABASE_URL=postgresql://... npm run db:seed-taxonomy --workspace=@missa/db

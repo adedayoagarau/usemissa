@@ -1,5 +1,4 @@
--- Additive taxonomy/source-coverage expansion. Apply only after the reconciled
--- 0006-0010 Workspace migrations; rehearse against a disposable Neon branch.
+-- Additive canonical taxonomy and source-coverage expansion.
 CREATE TABLE "account_taxonomy_preferences" (
 	"account_id" text NOT NULL,
 	"term_id" text NOT NULL,
