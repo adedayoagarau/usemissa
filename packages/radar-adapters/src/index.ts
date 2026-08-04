@@ -13,6 +13,7 @@ export {
   saveStoreToPostgres,
   loadStoreFromPostgres,
   readSnapshotVersion,
+  saveRadarStoreDeltaToPostgres,
   SnapshotConflictError,
 } from "./postgresStore.js";
 export { uuidIds } from "./uuidIds.js";

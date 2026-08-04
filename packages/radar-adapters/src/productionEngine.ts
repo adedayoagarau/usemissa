@@ -12,12 +12,13 @@ import {
   systemClock,
   assembleRegistry,
   filterSources,
+  cloneStore,
 } from "@missa/radar-engine";
 import {
   ensurePostgresSchema,
   loadStoreFromPostgres,
   readSnapshotVersion,
-  saveStoreToPostgres,
+  saveRadarStoreDeltaToPostgres,
 } from "./postgresStore.js";
 import { LlmExtractor } from "./llmExtractor.js";
 import { uuidIds } from "./uuidIds.js";
@@ -100,6 +101,7 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   await ensurePostgresSchema(pool);
   const store = await loadStoreFromPostgres(pool);
   let snapshotVersion = await readSnapshotVersion(pool);
+  let persistedStore = cloneStore(store);
 
   // Dynamic import, not a top-level static one: `playwright`'s own module-load
   // code reaches for browser-registry files (browsers.json) that don't exist
@@ -125,7 +127,17 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
     pool,
     persist: () => {
       const next = pendingPersist.then(async () => {
-        snapshotVersion = await saveStoreToPostgres(engine.store, pool, snapshotVersion);
+        try {
+          snapshotVersion = await saveRadarStoreDeltaToPostgres(engine.store, persistedStore, pool, snapshotVersion);
+        } catch (error) {
+          if (error instanceof Error && error.name === 'SnapshotConflictError') {
+            snapshotVersion = await readSnapshotVersion(pool);
+            snapshotVersion = await saveRadarStoreDeltaToPostgres(engine.store, persistedStore, pool, snapshotVersion);
+          } else {
+            throw error;
+          }
+        }
+        persistedStore = cloneStore(engine.store);
       });
       pendingPersist = next.catch(() => undefined);
       return next;

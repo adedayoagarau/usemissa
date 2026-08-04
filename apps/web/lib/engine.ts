@@ -80,10 +80,9 @@ export async function getEngine(): Promise<RadarEngine> {
  * warm instance. No-op in demo mode (no DATABASE_URL) since that store is
  * intentionally in-memory only.
  *
- * Persistence is still a whole-store delete+reinsert, but the database
- * snapshot version rejects stale writers instead of allowing a later warm
- * instance to silently clobber a newer write. A future row-level repository
- * can merge independent changes instead of surfacing a conflict.
+ * Radar persistence applies row-level deltas and rebases once on a stale
+ * snapshot, so independent warm instances merge their changes without
+ * silently replacing the whole store.
  */
 export async function persistRadar(): Promise<void> {
   if (!process.env.DATABASE_URL) return;

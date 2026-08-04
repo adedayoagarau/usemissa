@@ -58,8 +58,7 @@ database/session configuration is present and `503` otherwise. It reports
 presence-only states for optional file storage, cron, email, payments, Gmail,
 SCIM, and malware scanning configuration; it never returns secret values.
 
-**Persistence safety:** Radar snapshots carry a Postgres version and reject
-stale writers. Workspace persistence now applies row-level deltas and rebases
-once on a stale version, allowing independent submitter/reviewer changes to
-merge without replacing the whole Workspace store. Radar still needs the same
-row-level delta migration before high-concurrency ingestion and user writes.
+**Persistence safety:** Radar and Workspace persistence now apply row-level
+deltas and rebase once on a stale Postgres snapshot version. Independent
+ingestion, submitter, and reviewer changes merge without replacing the whole
+store; same-row edits remain deterministic last-writer-wins.

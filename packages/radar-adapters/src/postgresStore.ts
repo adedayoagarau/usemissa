@@ -274,6 +274,163 @@ export async function readSnapshotVersion(pool: Pool): Promise<number> {
   return Number(result.rows[0]?.version ?? 0);
 }
 
+interface KeyedRow<T> { key: string; value: T }
+interface RowDelta<T> { upserts: Array<KeyedRow<T>>; deletes: string[] }
+
+function rowDelta<T>(before: T[], after: T[], keyOf: (value: T) => string): RowDelta<T> {
+  const beforeRows = new Map(before.map((value) => [keyOf(value), value]));
+  const afterRows = new Map(after.map((value) => [keyOf(value), value]));
+  const upserts: Array<KeyedRow<T>> = [];
+  for (const [key, value] of afterRows) {
+    const previous = beforeRows.get(key);
+    if (previous === undefined || JSON.stringify(previous) !== JSON.stringify(value)) upserts.push({ key, value });
+  }
+  return { upserts, deletes: [...beforeRows.keys()].filter((key) => !afterRows.has(key)) };
+}
+
+function mapRowDelta<T extends { id: string }>(before: Map<string, T>, after: Map<string, T>): RowDelta<T> {
+  return rowDelta([...before.values()], [...after.values()], (value) => value.id);
+}
+
+/** Applies only changed Radar rows and rebases the write against the current
+ * snapshot version. Canonical opportunity projections are dual-written when
+ * an opportunity/source/version/change row changes. */
+export async function saveRadarStoreDeltaToPostgres(
+  current: RadarStore,
+  previous: RadarStore,
+  pool: Pool,
+  expectedVersion?: number,
+): Promise<number> {
+  const maps = {
+    sources: mapRowDelta(previous.sources, current.sources),
+    snapshots: mapRowDelta(previous.snapshots, current.snapshots),
+    opportunities: mapRowDelta(previous.opportunities, current.opportunities),
+    versions: mapRowDelta(previous.versions, current.versions),
+    changes: mapRowDelta(previous.changes, current.changes),
+    organizations: mapRowDelta(previous.organizations, current.organizations),
+    claims: mapRowDelta(previous.claims, current.claims),
+    verificationTasks: mapRowDelta(previous.verificationTasks, current.verificationTasks),
+    radarProfiles: mapRowDelta(previous.radarProfiles, current.radarProfiles),
+    users: mapRowDelta(previous.users, current.users),
+    libraryWorks: mapRowDelta(previous.libraryWorks, current.libraryWorks),
+    libraryFiles: mapRowDelta(previous.libraryFiles, current.libraryFiles),
+    savedAnswers: mapRowDelta(previous.savedAnswers, current.savedAnswers),
+    checklists: mapRowDelta(previous.checklists, current.checklists),
+    checklistItems: mapRowDelta(previous.checklistItems, current.checklistItems),
+    customLists: mapRowDelta(previous.customLists, current.customLists),
+    customListMemberships: rowDelta([...previous.customListMemberships.values()], [...current.customListMemberships.values()], (value) => `${value.userId}:${value.listId}:${value.opportunityId}`),
+    alerts: mapRowDelta(previous.alerts, current.alerts),
+    accounts: mapRowDelta(previous.accounts, current.accounts),
+  };
+  const arrays = {
+    follows: rowDelta(previous.follows, current.follows, (value) => `${value.userId}:${value.organizationId}`),
+    tracked: rowDelta(previous.tracked, current.tracked, (value) => `${value.userId}:${value.opportunityId}`),
+    manualTrackerEntries: rowDelta(previous.manualTrackerEntries, current.manualTrackerEntries, (value) => value.id),
+    forwardingAddresses: rowDelta(previous.forwardingAddresses, current.forwardingAddresses, (value) => value.id),
+    emailCandidates: rowDelta(previous.emailCandidates, current.emailCandidates, (value) => value.id),
+    gmailConnections: rowDelta(previous.gmailConnections, current.gmailConnections, (value) => value.id),
+    gmailSyncJobs: rowDelta(previous.gmailSyncJobs, current.gmailSyncJobs, (value) => value.id),
+    gmailOAuthStates: rowDelta(previous.gmailOAuthStates, current.gmailOAuthStates, (value) => value.id),
+    memberships: rowDelta(previous.memberships, current.memberships, (value) => `${value.accountId}:${value.organizationId}`),
+  };
+  const alertKeys = rowDelta([...previous.emittedAlertKeys], [...current.emittedAlertKeys], (value) => value);
+  const auditIds = new Set(previous.auditLog.map((entry) => entry.id));
+  const newAuditEntries = current.auditLog.filter((entry) => !auditIds.has(entry.id));
+  const hasChangedRows = [...Object.values(maps), ...Object.values(arrays), alertKeys].some((delta) => delta.upserts.length > 0 || delta.deletes.length > 0) || newAuditEntries.length > 0;
+  if (!hasChangedRows) return expectedVersion ?? await readSnapshotVersion(pool);
+
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query("select pg_advisory_xact_lock(hashtext('missa.radar.snapshot'))");
+    const versionRow = await client.query<{ version: string }>('select version from missa_snapshot_versions where domain = $1 for update', [RADAR_SNAPSHOT_DOMAIN]);
+    const currentVersion = Number(versionRow.rows[0]?.version ?? 0);
+    if (expectedVersion !== undefined && expectedVersion !== currentVersion) throw new SnapshotConflictError(RADAR_SNAPSHOT_DOMAIN, expectedVersion, currentVersion);
+
+    const deleteRows = async (table: string, column: string, ids: string[]) => {
+      for (const id of ids) await client.query(`delete from ${table} where ${column} = $1`, [id]);
+    };
+    await deleteRows('radar_emitted_alert_keys', 'key', alertKeys.deletes);
+    await deleteRows('radar_memberships', 'account_id', []);
+    for (const key of arrays.memberships.deletes) {
+      const [accountId, organizationId] = key.split(':');
+      await client.query('delete from radar_memberships where account_id = $1 and organization_id = $2', [accountId, organizationId]);
+    }
+    for (const key of arrays.follows.deletes) { const [userId, organizationId] = key.split(':'); await client.query('delete from radar_follows where user_id = $1 and organization_id = $2', [userId, organizationId]); }
+    for (const key of arrays.tracked.deletes) { const [userId, opportunityId] = key.split(':'); await client.query('delete from radar_tracked where user_id = $1 and opportunity_id = $2', [userId, opportunityId]); }
+    await deleteRows('radar_custom_list_memberships', 'user_id', []);
+    for (const key of maps.customListMemberships.deletes) { const [userId, listId, opportunityId] = key.split(':'); await client.query('delete from radar_custom_list_memberships where user_id = $1 and list_id = $2 and opportunity_id = $3', [userId, listId, opportunityId]); }
+    await deleteRows('radar_email_candidates', 'id', arrays.emailCandidates.deletes);
+    await deleteRows('radar_gmail_connections', 'id', arrays.gmailConnections.deletes);
+    await deleteRows('radar_gmail_sync_jobs', 'id', arrays.gmailSyncJobs.deletes);
+    await deleteRows('radar_gmail_oauth_states', 'id', arrays.gmailOAuthStates.deletes);
+    await deleteRows('radar_forwarding_addresses', 'id', arrays.forwardingAddresses.deletes);
+    await deleteRows('radar_manual_tracker_entries', 'id', arrays.manualTrackerEntries.deletes);
+    await deleteRows('radar_checklist_items', 'id', maps.checklistItems.deletes);
+    await deleteRows('radar_opportunity_checklists', 'id', maps.checklists.deletes);
+    await deleteRows('radar_alerts', 'id', maps.alerts.deletes);
+    await deleteRows('radar_saved_answers', 'id', maps.savedAnswers.deletes);
+    await deleteRows('radar_library_files', 'id', maps.libraryFiles.deletes);
+    await deleteRows('radar_library_works', 'id', maps.libraryWorks.deletes);
+    await deleteRows('radar_accounts', 'id', maps.accounts.deletes);
+    await deleteRows('radar_profiles', 'id', maps.radarProfiles.deletes);
+    await deleteRows('radar_users', 'id', maps.users.deletes);
+    await deleteRows('radar_verification_tasks', 'id', maps.verificationTasks.deletes);
+    await deleteRows('radar_claims', 'id', maps.claims.deletes);
+    await deleteRows('radar_opportunity_changes', 'id', maps.changes.deletes);
+    await deleteRows('radar_opportunity_versions', 'id', maps.versions.deletes);
+    await deleteRows('radar_opportunities', 'id', maps.opportunities.deletes);
+    await deleteRows('radar_snapshots', 'id', maps.snapshots.deletes);
+    await deleteRows('radar_sources', 'id', maps.sources.deletes);
+    await deleteRows('radar_organizations', 'id', maps.organizations.deletes);
+    await deleteRows('radar_audit_log', 'id', current.auditLog.length ? [] : previous.auditLog.map((entry) => entry.id));
+
+    for (const row of maps.sources.upserts) { const value = row.value; await client.query('insert into radar_sources (id, organization_id, active, data) values ($1, $2, $3, $4) on conflict (id) do update set organization_id = excluded.organization_id, active = excluded.active, data = excluded.data', [value.id, value.organizationId ?? null, value.active, value]); }
+    for (const row of maps.snapshots.upserts) { const value = row.value; await client.query('insert into radar_snapshots (id, source_id, data) values ($1, $2, $3) on conflict (id) do update set source_id = excluded.source_id, data = excluded.data', [value.id, value.sourceId, value]); }
+    for (const row of maps.opportunities.upserts) { const value = row.value; await client.query('insert into radar_opportunities (id, status, claimed_by_organization_id, data) values ($1, $2, $3, $4) on conflict (id) do update set status = excluded.status, claimed_by_organization_id = excluded.claimed_by_organization_id, data = excluded.data', [value.id, value.status, value.claimedByOrganizationId ?? null, value]); }
+    for (const row of maps.versions.upserts) { const value = row.value; await client.query('insert into radar_opportunity_versions (id, opportunity_id, data) values ($1, $2, $3) on conflict (id) do update set opportunity_id = excluded.opportunity_id, data = excluded.data', [value.id, value.opportunityId, value]); }
+    for (const row of maps.changes.upserts) { const value = row.value; await client.query('insert into radar_opportunity_changes (id, opportunity_id, data) values ($1, $2, $3) on conflict (id) do update set opportunity_id = excluded.opportunity_id, data = excluded.data', [value.id, value.opportunityId, value]); }
+    for (const row of maps.organizations.upserts) { const value = row.value; await client.query('insert into radar_organizations (id, data) values ($1, $2) on conflict (id) do update set data = excluded.data', [value.id, value]); }
+    for (const row of maps.claims.upserts) { const value = row.value; await client.query('insert into radar_claims (id, organization_id, opportunity_id, status, data) values ($1, $2, $3, $4, $5) on conflict (id) do update set organization_id = excluded.organization_id, opportunity_id = excluded.opportunity_id, status = excluded.status, data = excluded.data', [value.id, value.organizationId, value.opportunityId, value.status, value]); }
+    for (const row of maps.verificationTasks.upserts) { const value = row.value; await client.query('insert into radar_verification_tasks (id, status, data) values ($1, $2, $3) on conflict (id) do update set status = excluded.status, data = excluded.data', [value.id, value.status, value]); }
+    for (const row of maps.radarProfiles.upserts) { const value = row.value; await client.query('insert into radar_profiles (id, user_id, data) values ($1, $2, $3) on conflict (id) do update set user_id = excluded.user_id, data = excluded.data', [value.id, value.userId, value]); }
+    for (const row of maps.users.upserts) { const value = row.value; await client.query('insert into radar_users (id, data) values ($1, $2) on conflict (id) do update set data = excluded.data', [value.id, value]); }
+    for (const row of arrays.follows.upserts) { const value = row.value; await client.query('insert into radar_follows (user_id, organization_id, data) values ($1, $2, $3) on conflict (user_id, organization_id) do update set data = excluded.data', [value.userId, value.organizationId, value]); }
+    for (const row of arrays.tracked.upserts) { const value = row.value; await client.query('insert into radar_tracked (user_id, opportunity_id, data) values ($1, $2, $3) on conflict (user_id, opportunity_id) do update set data = excluded.data', [value.userId, value.opportunityId, value]); }
+    for (const row of arrays.manualTrackerEntries.upserts) { const value = row.value; await client.query('insert into radar_manual_tracker_entries (id, user_id, data) values ($1, $2, $3) on conflict (id) do update set user_id = excluded.user_id, data = excluded.data', [value.id, value.userId, value]); }
+    for (const row of arrays.forwardingAddresses.upserts) { const value = row.value; await client.query('insert into radar_forwarding_addresses (id, user_id, status, data) values ($1, $2, $3, $4) on conflict (id) do update set user_id = excluded.user_id, status = excluded.status, data = excluded.data', [value.id, value.userId, value.status, value]); }
+    for (const row of arrays.emailCandidates.upserts) { const value = row.value; await client.query('insert into radar_email_candidates (id, user_id, forwarding_address_id, provider, provider_message_id, gmail_connection_id, gmail_message_id, state, data) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict (id) do update set user_id = excluded.user_id, forwarding_address_id = excluded.forwarding_address_id, provider = excluded.provider, provider_message_id = excluded.provider_message_id, gmail_connection_id = excluded.gmail_connection_id, gmail_message_id = excluded.gmail_message_id, state = excluded.state, data = excluded.data', [value.id, value.userId, value.forwardingAddressId ?? null, value.provider, value.providerMessageId, value.gmailConnectionId ?? null, value.gmailMessageId ?? null, value.state, value]); }
+    for (const row of arrays.gmailConnections.upserts) { const value = row.value; await client.query('insert into radar_gmail_connections (id, user_id, google_subject_id, status, data) values ($1, $2, $3, $4, $5) on conflict (id) do update set user_id = excluded.user_id, google_subject_id = excluded.google_subject_id, status = excluded.status, data = excluded.data', [value.id, value.userId, value.googleSubjectId, value.status, value]); }
+    for (const row of arrays.gmailSyncJobs.upserts) { const value = row.value; await client.query('insert into radar_gmail_sync_jobs (id, connection_id, user_id, status, dedupe_key, lease_until, next_attempt_at, data) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (id) do update set connection_id = excluded.connection_id, user_id = excluded.user_id, status = excluded.status, dedupe_key = excluded.dedupe_key, lease_until = excluded.lease_until, next_attempt_at = excluded.next_attempt_at, data = excluded.data', [value.id, value.connectionId, value.userId, value.status, value.dedupeKey, value.leaseUntil ?? null, value.nextAttemptAt ?? null, value]); }
+    for (const row of arrays.gmailOAuthStates.upserts) { const value = row.value; await client.query('insert into radar_gmail_oauth_states (id, user_id, state_hash, expires_at, consumed_at, data) values ($1, $2, $3, $4, $5, $6) on conflict (id) do update set user_id = excluded.user_id, state_hash = excluded.state_hash, expires_at = excluded.expires_at, consumed_at = excluded.consumed_at, data = excluded.data', [value.id, value.userId, value.stateHash, value.expiresAt, value.consumedAt ?? null, value]); }
+    for (const row of maps.libraryWorks.upserts) { const value = row.value; await client.query('insert into radar_library_works (id, user_id, data) values ($1, $2, $3) on conflict (id) do update set user_id = excluded.user_id, data = excluded.data', [value.id, value.userId, value]); }
+    for (const row of maps.libraryFiles.upserts) { const value = row.value; await client.query('insert into radar_library_files (id, user_id, data) values ($1, $2, $3) on conflict (id) do update set user_id = excluded.user_id, data = excluded.data', [value.id, value.userId, value]); }
+    for (const row of maps.savedAnswers.upserts) { const value = row.value; await client.query('insert into radar_saved_answers (id, user_id, data) values ($1, $2, $3) on conflict (id) do update set user_id = excluded.user_id, data = excluded.data', [value.id, value.userId, value]); }
+    for (const row of maps.checklists.upserts) { const value = row.value; await client.query('insert into radar_opportunity_checklists (id, user_id, opportunity_id, data) values ($1, $2, $3, $4) on conflict (id) do update set user_id = excluded.user_id, opportunity_id = excluded.opportunity_id, data = excluded.data', [value.id, value.userId, value.opportunityId, value]); }
+    for (const row of maps.checklistItems.upserts) { const value = row.value; await client.query('insert into radar_checklist_items (id, checklist_id, data) values ($1, $2, $3) on conflict (id) do update set checklist_id = excluded.checklist_id, data = excluded.data', [value.id, value.checklistId, value]); }
+    for (const row of maps.customLists.upserts) { const value = row.value; await client.query('insert into radar_custom_lists (id, user_id, data) values ($1, $2, $3) on conflict (id) do update set user_id = excluded.user_id, data = excluded.data', [value.id, value.userId, value]); }
+    for (const row of maps.customListMemberships.upserts) { const value = row.value; await client.query('insert into radar_custom_list_memberships (user_id, list_id, opportunity_id, data) values ($1, $2, $3, $4) on conflict (user_id, list_id, opportunity_id) do update set data = excluded.data', [value.userId, value.listId, value.opportunityId, value]); }
+    for (const row of maps.alerts.upserts) { const value = row.value; await client.query('insert into radar_alerts (id, data) values ($1, $2) on conflict (id) do update set data = excluded.data', [value.id, value]); }
+    for (const key of alertKeys.upserts) await client.query('insert into radar_emitted_alert_keys (key) values ($1) on conflict (key) do nothing', [key.value]);
+    for (const row of maps.accounts.upserts) { const value = row.value; await client.query('insert into radar_accounts (id, email, data) values ($1, $2, $3) on conflict (id) do update set email = excluded.email, data = excluded.data', [value.id, value.email, value]); }
+    for (const row of arrays.memberships.upserts) { const value = row.value; await client.query('insert into radar_memberships (account_id, organization_id, role, data) values ($1, $2, $3, $4) on conflict (account_id, organization_id) do update set role = excluded.role, data = excluded.data', [value.accountId, value.organizationId, value.role, value]); }
+    for (const entry of newAuditEntries) await client.query('insert into radar_audit_log (id, at, data) values ($1, $2, $3) on conflict (id) do nothing', [entry.id, entry.at, entry]);
+
+    if (maps.sources.upserts.length || maps.opportunities.upserts.length || maps.versions.upserts.length || maps.changes.upserts.length) {
+      await saveOpportunityProjectionToPostgres(current, client);
+    }
+    const nextVersion = currentVersion + 1;
+    await client.query('insert into missa_snapshot_versions (domain, version, updated_at) values ($1, $2, now()) on conflict (domain) do update set version = excluded.version, updated_at = excluded.updated_at', [RADAR_SNAPSHOT_DOMAIN, nextVersion]);
+    await client.query('commit');
+    return nextVersion;
+  } catch (error) {
+    await client.query('rollback');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
   const store = createStore();
 

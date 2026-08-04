@@ -109,6 +109,45 @@ export function createStore(): RadarStore {
   };
 }
 
+/** Clone a store before a persistence boundary so in-place engine mutations
+ * can be reduced to row-level deltas without sharing object references. */
+export function cloneStore(source: RadarStore): RadarStore {
+  const cloneMap = <K, V>(map: Map<K, V>): Map<K, V> =>
+    new Map([...map].map(([key, value]) => [key, structuredClone(value)] as [K, V]));
+  return {
+    sources: cloneMap(source.sources),
+    snapshots: cloneMap(source.snapshots),
+    opportunities: cloneMap(source.opportunities),
+    versions: cloneMap(source.versions),
+    changes: cloneMap(source.changes),
+    organizations: cloneMap(source.organizations),
+    claims: cloneMap(source.claims),
+    verificationTasks: cloneMap(source.verificationTasks),
+    radarProfiles: cloneMap(source.radarProfiles),
+    users: cloneMap(source.users),
+    follows: structuredClone(source.follows),
+    tracked: structuredClone(source.tracked),
+    manualTrackerEntries: structuredClone(source.manualTrackerEntries),
+    forwardingAddresses: structuredClone(source.forwardingAddresses),
+    emailCandidates: structuredClone(source.emailCandidates),
+    gmailConnections: structuredClone(source.gmailConnections),
+    gmailSyncJobs: structuredClone(source.gmailSyncJobs),
+    gmailOAuthStates: structuredClone(source.gmailOAuthStates),
+    libraryWorks: cloneMap(source.libraryWorks),
+    libraryFiles: cloneMap(source.libraryFiles),
+    savedAnswers: cloneMap(source.savedAnswers),
+    checklists: cloneMap(source.checklists),
+    checklistItems: cloneMap(source.checklistItems),
+    customLists: cloneMap(source.customLists),
+    customListMemberships: cloneMap(source.customListMemberships),
+    alerts: cloneMap(source.alerts),
+    emittedAlertKeys: new Set(source.emittedAlertKeys),
+    accounts: cloneMap(source.accounts),
+    memberships: structuredClone(source.memberships),
+    auditLog: structuredClone(source.auditLog),
+  };
+}
+
 interface SerializedStore {
   sources: Source[];
   snapshots: PageSnapshot[];
