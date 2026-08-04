@@ -48,10 +48,14 @@ response and connect a successful submission to the submitter's Tracker.
   the Submission payment status without hiding the receipt.
 - Submission receipts and organization decisions emit private Inbox alerts;
   the existing bounded Resend digest can deliver them when configured.
+- Uploads now run through a provider-backed malware scanner before private Blob
+  storage; production fails closed when the scanner is missing or unavailable,
+  while demo mode keeps the local executable-signature policy.
 
 ## Still required before this story is done
 
-- Malware scanning remains; cleanup now covers expired draft uploads.
+- A production malware-scanning provider still needs to be selected and
+  configured (`MALWARE_SCAN_URL` and optional `MALWARE_SCAN_TOKEN`).
 
 ## Validation
 

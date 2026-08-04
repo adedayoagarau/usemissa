@@ -1,6 +1,7 @@
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
+import { scanSubmissionFile } from '@/lib/malwareScanner';
 import { getWorkspaceEngine } from '@/lib/workspaceEngine';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -22,12 +23,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   const contentType = (value.type || 'application/octet-stream').toLowerCase();
   if (BLOCKED_TYPES.has(contentType) || contentType === 'application/octet-stream' && /\.(exe|dll|bat|cmd|sh|php|js|msi)$/i.test(value.name)) return NextResponse.json({ error: 'This file type is not accepted' }, { status: 415 });
   if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ error: 'File storage is not configured' }, { status: 503 });
+  const bytes = Buffer.from(await value.arrayBuffer());
+  const scan = await scanSubmissionFile({ bytes, filename: value.name, contentType });
+  if (scan.status === 'blocked') return NextResponse.json({ error: scan.reason }, { status: 422 });
+  if (scan.status === 'unavailable') return NextResponse.json({ error: scan.reason }, { status: 503 });
   const safeName = value.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(-120) || 'submission-file';
-  const blob = await put(`missa/submissions/${session.account.id}/${crypto.randomUUID()}-${safeName}`, Buffer.from(await value.arrayBuffer()), {
+  const blob = await put(`missa/submissions/${session.account.id}/${crypto.randomUUID()}-${safeName}`, bytes, {
     access: 'private',
     contentType,
     addRandomSuffix: false,
     token: process.env.BLOB_READ_WRITE_TOKEN,
   });
-  return NextResponse.json({ url: blob.url, pathname: blob.pathname, size: value.size, contentType }, { status: 201 });
+  return NextResponse.json({ url: blob.url, pathname: blob.pathname, size: value.size, contentType, scan: { status: scan.status, engine: scan.engine } }, { status: 201 });
 }

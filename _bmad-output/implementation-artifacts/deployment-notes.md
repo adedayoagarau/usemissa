@@ -28,6 +28,11 @@
 - A production app domain (e.g. `app.usemissa.com`) if the app should be separate from `www.usemissa.com`.
 - `RESEND_API_KEY` and `RESEND_FROM` — enable submitter alert digests and
   organization decision emails. Delivery fails closed when unset.
+- `MALWARE_SCAN_URL` and optional `MALWARE_SCAN_TOKEN` — required in
+  production before submission files can be stored. The scanner must accept
+  an HTTPS raw-byte POST and return `{ clean: true }` or a malicious/blocked
+  result. Uploads fail closed when the scanner is unavailable. Preview uses
+  the local executable-signature policy until a preview scanner is supplied.
 - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_INDIE`,
   `STRIPE_PRICE_PRO`, and `STRIPE_PRICE_PROGRAM` — enable Connect onboarding,
   submission fee checkout, subscriptions, and period-end cancellation.
