@@ -40,9 +40,11 @@ minutes; `enrichment-worker`
 ten minutes; `review-agent`
 (`d6874ad6-f0d8-441d-bb66-2f1ecfabfe3f`) evaluates the publication queue every
 ten minutes.
-All four use the Neon `DATABASE_URL`; Radar uses transaction-scoped advisory
-lock `1984/727`, discovery uses independent lock `1984/728`, while enrichment
-and review use row-level queue leases. See
+All four use the Neon `DATABASE_URL`; discovery uses a short independent lock
+`1984/728`, while canonical Radar runs as a single supervisor with snapshot
+version conflict detection (the pooled long-lived advisory lock is opt-in only
+via `RADAR_USE_ADVISORY_LOCK=1`). Enrichment and review use row-level queue
+leases. See
 [`docs/railway-topology.md`](../../docs/railway-topology.md) for the service
 contract and evidence boundary.
 

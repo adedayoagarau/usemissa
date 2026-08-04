@@ -71,11 +71,17 @@ export async function runRadarWorkerTick(
   let locked = false;
 
   try {
-    lockClient = await production.pool.connect();
-    locked = await tryAdvisoryLock(lockClient);
-    if (!locked) {
-      logger.info("[missa-radar-worker] another ingestion tick is running; skipping");
-      return { status: "skipped" };
+    // Neon transaction pooling is not a safe place to hold a session across
+    // network fetches. The canonical lane is single-supervisor in Railway;
+    // persistence uses snapshot-version conflict detection for accidental
+    // overlap. Keep the advisory lock available for explicit opt-in/rehearsal.
+    if (process.env.RADAR_USE_ADVISORY_LOCK === "1") {
+      lockClient = await production.pool.connect();
+      locked = await tryAdvisoryLock(lockClient);
+      if (!locked) {
+        logger.info("[missa-radar-worker] another ingestion tick is running; skipping");
+        return { status: "skipped" };
+      }
     }
 
     const report = await production.engine.tick({ maxSources, minRegistryTier: options.minRegistryTier, maxRegistryTier: options.maxRegistryTier });
