@@ -12,7 +12,7 @@ import { createProductionEngine } from "./productionEngine.js";
 export const RADAR_INGESTION_LOCK = { namespace: 1984, key: 727 } as const;
 export const DISCOVERY_INGESTION_LOCK = { namespace: 1984, key: 728 } as const;
 export const DEFAULT_RADAR_WORKER_BATCH_SIZE = 10;
-export const MAX_RADAR_WORKER_BATCH_SIZE = 50;
+export const MAX_RADAR_WORKER_BATCH_SIZE = 200;
 
 export interface RadarWorkerOptions {
   /** Number of due sources processed per tick. Defaults to 10. */

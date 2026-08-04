@@ -18,7 +18,7 @@ not a set of independently writable microservices.
 | Service | Responsibility | Cadence | Important variables |
 | --- | --- | --- | --- |
 | `research-agent` | Directory/feed fan-out. Fetches bounded source pages, extracts call links, and registers canonical URLs without publishing them. | Every 5 minutes, 100 directory pages/tick, up to 500 new URLs | `MISSA_WORKER_MODE=research`, `RADAR_DISCOVERY_INTERVAL_MINUTES`, `RADAR_DISCOVERY_BATCH_SIZE`, `RADAR_DISCOVERY_LINKS_PER_PAGE` |
-| `radar-worker` | Canonical tier-0 refresh, validation, deduplication, status changes, relational projection, and alert evaluation. | Every 15 minutes, 25 canonical sources/tick | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE`, `RADAR_MAX_TIER=0`, `RADAR_USE_ADVISORY_LOCK=0` |
+| `radar-worker` | Canonical tier-0 refresh, validation, deduplication, status changes, relational projection, and alert evaluation. | Every 5 minutes, 100 canonical sources/tick (bounded max 200) | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE`, `RADAR_MAX_TIER=0`, `RADAR_USE_ADVISORY_LOCK=0` |
 | `enrichment-worker` | Fetches public opportunity pages for media, guideline, past-winner, and call-profile evidence. Writes provenance-tagged evidence and retries failures through a leased queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=enrichment`, `RADAR_ENRICHMENT_INTERVAL_MINUTES`, `RADAR_ENRICHMENT_BATCH_SIZE` |
 | `review-agent` | Scores reviewable opportunities, records explainable decisions, publishes only when strict evidence gates pass, and hands ambiguous records to a human-review queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=review`, `RADAR_REVIEW_INTERVAL_MINUTES`, `RADAR_REVIEW_BATCH_SIZE` |
 
