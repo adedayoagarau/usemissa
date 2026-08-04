@@ -51,7 +51,7 @@
 
 **Current deployment:** the latest production deployment builds clean and is aliased at `https://www.usemissa.com`. The opportunities browse/detail routes are backed by the live Neon relational repository.
 
-**Latest verified Preview (2026-08-04):** `https://missa-edmoj3wnt-adedayoagarau.vercel.app` (Vercel deployment `dpl_Gf7QPPAgj7bUSgnWgn1LeBXBspFU`, target `preview`, state `READY`). Use this URL for acceptance testing before promoting to production.
+**Latest verified Preview (2026-08-04):** `https://missa-6upqtce9t-adedayoagarau.vercel.app` (Vercel deployment `dpl_FN8dyqJ8x5W8NfYRtcQoi8cFUXkk`, target `preview`, state `READY`). Use this URL for acceptance testing before promoting to production.
 
 **Readiness probe:** `GET /api/health/readiness` returns `200` when the core
 database/session configuration is present and `503` otherwise. It reports
