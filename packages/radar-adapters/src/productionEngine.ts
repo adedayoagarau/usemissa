@@ -151,13 +151,20 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
     pool,
     persist: () => {
       const next = pendingPersist.then(async () => {
-        try {
-          snapshotVersion = await saveRadarStoreDeltaToPostgres(engine.store, persistedStore, pool, snapshotVersion);
-        } catch (error) {
-          if (error instanceof Error && error.name === 'SnapshotConflictError') {
-            snapshotVersion = await readSnapshotVersion(pool);
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
             snapshotVersion = await saveRadarStoreDeltaToPostgres(engine.store, persistedStore, pool, snapshotVersion);
-          } else {
+            break;
+          } catch (error) {
+            if (error instanceof Error && error.name === 'SnapshotConflictError') {
+              snapshotVersion = await readSnapshotVersion(pool);
+              continue;
+            }
+            const code = (error as { code?: string }).code;
+            if ((code === '40P01' || code === '40001' || code === '55P03') && attempt < 2) {
+              await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+              continue;
+            }
             throw error;
           }
         }

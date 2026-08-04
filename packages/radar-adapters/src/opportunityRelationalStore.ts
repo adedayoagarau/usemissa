@@ -275,6 +275,10 @@ export async function saveOpportunityProjectionToPostgres(
   const opportunities = scope?.opportunityIds
     ? [...scope.opportunityIds].map((id) => store.opportunities.get(id)).filter((value): value is Opportunity => Boolean(value))
     : [...store.opportunities.values()];
+  // Every writer must lock projection rows in the same order. Review and
+  // enrichment run concurrently with Radar; deterministic ordering prevents
+  // cross-lane deadlocks when two batches touch overlapping opportunities.
+  opportunities.sort((a, b) => a.id.localeCompare(b.id));
   for (const opportunity of opportunities) referencedSourceIds.add(opportunity.sourceId);
   for (const sourceId of scope?.sourceIds ?? []) referencedSourceIds.add(sourceId);
   // Registry sources without an extracted opportunity are not queryable yet;
