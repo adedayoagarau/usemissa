@@ -357,17 +357,83 @@ export const opportunitySources = pgTable(
     }),
     name: text("name").notNull(),
     url: text("url").notNull(),
+    canonicalUrl: text("canonical_url"),
+    normalizedUrl: text("normalized_url"),
+    sourceTier: integer("source_tier").notNull().default(0),
     kind: text("kind").notNull(),
     active: boolean("active").notNull().default(true),
+    followsOutboundLinks: boolean("follows_outbound_links")
+      .notNull()
+      .default(false),
+    checkIntervalHours: integer("check_interval_hours").notNull().default(168),
+    geographyCodes: text("geography_codes")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    languageCodes: text("language_codes")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
-    lastSuccessfulFetchAt: timestamp("last_successful_fetch_at", { withTimezone: true }),
+    lastSuccessfulFetchAt: timestamp("last_successful_fetch_at", {
+      withTimezone: true,
+    }),
     lastProcessedAt: timestamp("last_processed_at", { withTimezone: true }),
+    lastDiscoveryAt: timestamp("last_discovery_at", { withTimezone: true }),
+    lastHttpStatus: integer("last_http_status"),
+    lastFetchedContentHash: text("last_fetched_content_hash"),
+    lastProcessedContentHash: text("last_processed_content_hash"),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    consecutiveProcessingFailures: integer("consecutive_processing_failures")
+      .notNull()
+      .default(0),
+    robotsStatus: text("robots_status").notNull().default("unknown"),
+    termsStatus: text("terms_status").notNull().default("unknown"),
+    healthStatus: text("health_status").notNull().default("unknown"),
+    disabledReason: text("disabled_reason"),
     createdAt,
     updatedAt,
   },
   (table) => [
     index("opportunity_sources_org_idx").on(table.organizationId),
-    index("opportunity_sources_active_idx").on(table.active, table.lastCheckedAt),
+    index("opportunity_sources_active_idx").on(
+      table.active,
+      table.lastCheckedAt,
+    ),
+    index("opportunity_sources_due_idx").on(
+      table.active,
+      table.healthStatus,
+      table.lastCheckedAt,
+    ),
+    index("opportunity_sources_normalized_url_idx").on(table.normalizedUrl),
+    check(
+      "opportunity_sources_tier_check",
+      sql`${table.sourceTier} between 0 and 3`,
+    ),
+    check(
+      "opportunity_sources_interval_check",
+      sql`${table.checkIntervalHours} between 1 and 8760`,
+    ),
+    check(
+      "opportunity_sources_failures_check",
+      sql`${table.consecutiveFailures} >= 0 and ${table.consecutiveProcessingFailures} >= 0`,
+    ),
+    check(
+      "opportunity_sources_http_status_check",
+      sql`${table.lastHttpStatus} is null or ${table.lastHttpStatus} between 100 and 599`,
+    ),
+    check(
+      "opportunity_sources_robots_check",
+      sql`${table.robotsStatus} in ('unknown', 'allowed', 'restricted', 'blocked', 'review')`,
+    ),
+    check(
+      "opportunity_sources_terms_check",
+      sql`${table.termsStatus} in ('unknown', 'allowed', 'restricted', 'blocked', 'review')`,
+    ),
+    check(
+      "opportunity_sources_health_check",
+      sql`${table.healthStatus} in ('unknown', 'healthy', 'degraded', 'stale', 'gone', 'blocked', 'paused')`,
+    ),
   ],
 );
 
@@ -977,7 +1043,720 @@ export const opportunityIssueReports = pgTable(
     updatedAt,
   },
   (table) => [
-    uniqueIndex("opportunity_issue_reports_idempotency_idx").on(table.idempotencyKey),
-    index("opportunity_issue_reports_status_idx").on(table.status, table.createdAt),
+    uniqueIndex("opportunity_issue_reports_idempotency_idx").on(
+      table.idempotencyKey,
+    ),
+    index("opportunity_issue_reports_status_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+  ],
+);
+
+/**
+ * Canonical, versioned taxonomy graph. A term belongs to one facet but can
+ * have multiple broader/related terms, including terms in another facet.
+ * Legacy opportunity text fields remain during the additive backfill.
+ */
+export const taxonomySchemes = pgTable(
+  "taxonomy_schemes",
+  {
+    id: text("id").primaryKey(),
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    description: text("description").notNull(),
+    version: integer("version").notNull().default(1),
+    status: text("status").notNull().default("draft"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("taxonomy_schemes_key_idx").on(table.key),
+    check("taxonomy_schemes_version_check", sql`${table.version} >= 1`),
+    check(
+      "taxonomy_schemes_status_check",
+      sql`${table.status} in ('draft', 'active', 'superseded', 'archived')`,
+    ),
+  ],
+);
+
+export const taxonomyFacets = pgTable(
+  "taxonomy_facets",
+  {
+    id: text("id").primaryKey(),
+    schemeId: text("scheme_id")
+      .notNull()
+      .references(() => taxonomySchemes.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    description: text("description").notNull(),
+    selectionMode: text("selection_mode").notNull().default("multiple"),
+    userVisible: boolean("user_visible").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("taxonomy_facets_scheme_key_idx").on(table.schemeId, table.key),
+    index("taxonomy_facets_scheme_order_idx").on(
+      table.schemeId,
+      table.sortOrder,
+    ),
+    check(
+      "taxonomy_facets_key_check",
+      sql`${table.key} in ('practice-family', 'discipline', 'form', 'genre', 'subgenre', 'medium', 'technique', 'mode', 'role', 'theme', 'audience', 'language')`,
+    ),
+    check(
+      "taxonomy_facets_selection_check",
+      sql`${table.selectionMode} in ('single', 'multiple', 'hierarchical')`,
+    ),
+    check("taxonomy_facets_order_check", sql`${table.sortOrder} >= 0`),
+  ],
+);
+
+export const taxonomyTerms = pgTable(
+  "taxonomy_terms",
+  {
+    id: text("id").primaryKey(),
+    facetId: text("facet_id")
+      .notNull()
+      .references(() => taxonomyFacets.id, { onDelete: "restrict" }),
+    slug: text("slug").notNull(),
+    preferredLabel: text("preferred_label").notNull(),
+    description: text("description"),
+    status: text("status").notNull().default("active"),
+    selectable: boolean("selectable").notNull().default(true),
+    culturallySensitive: boolean("culturally_sensitive")
+      .notNull()
+      .default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("taxonomy_terms_facet_slug_idx").on(table.facetId, table.slug),
+    index("taxonomy_terms_facet_status_idx").on(
+      table.facetId,
+      table.status,
+      table.sortOrder,
+    ),
+    index("taxonomy_terms_label_idx").on(table.preferredLabel),
+    check(
+      "taxonomy_terms_status_check",
+      sql`${table.status} in ('draft', 'active', 'deprecated', 'archived')`,
+    ),
+    check("taxonomy_terms_order_check", sql`${table.sortOrder} >= 0`),
+  ],
+);
+
+export const taxonomyTermLabels = pgTable(
+  "taxonomy_term_labels",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    termId: text("term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "cascade" }),
+    languageCode: text("language_code").notNull().default("en"),
+    regionCode: text("region_code"),
+    label: text("label").notNull(),
+    normalizedLabel: text("normalized_label").notNull(),
+    kind: text("kind").notNull().default("alias"),
+    sourceUrl: text("source_url"),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("taxonomy_term_labels_unique_idx").on(
+      table.termId,
+      table.languageCode,
+      table.normalizedLabel,
+    ),
+    index("taxonomy_term_labels_lookup_idx").on(
+      table.normalizedLabel,
+      table.languageCode,
+    ),
+    check(
+      "taxonomy_term_labels_kind_check",
+      sql`${table.kind} in ('preferred', 'alias', 'abbreviation', 'historical', 'source-label', 'community-name')`,
+    ),
+  ],
+);
+
+export const taxonomyTermRelations = pgTable(
+  "taxonomy_term_relations",
+  {
+    subjectTermId: text("subject_term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "cascade" }),
+    objectTermId: text("object_term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "cascade" }),
+    relationType: text("relation_type").notNull(),
+    weight: integer("weight").notNull().default(100),
+    sourceUrl: text("source_url"),
+    createdAt,
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.subjectTermId, table.objectTermId, table.relationType],
+    }),
+    index("taxonomy_term_relations_object_idx").on(
+      table.objectTermId,
+      table.relationType,
+    ),
+    check(
+      "taxonomy_term_relations_type_check",
+      sql`${table.relationType} in ('broader', 'related', 'exact-match', 'close-match', 'replaced-by', 'requires', 'usually-used-with')`,
+    ),
+    check(
+      "taxonomy_term_relations_self_check",
+      sql`${table.subjectTermId} <> ${table.objectTermId}`,
+    ),
+    check(
+      "taxonomy_term_relations_weight_check",
+      sql`${table.weight} between 0 and 100`,
+    ),
+  ],
+);
+
+export const taxonomyTermEvidence = pgTable(
+  "taxonomy_term_evidence",
+  {
+    id: text("id").primaryKey(),
+    termId: text("term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    title: text("title"),
+    authorityKind: text("authority_kind").notNull().default("other"),
+    languageCode: text("language_code").notNull().default("en"),
+    note: text("note"),
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true }).notNull(),
+    status: text("status").notNull().default("active"),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("taxonomy_term_evidence_unique_idx").on(
+      table.termId,
+      table.url,
+    ),
+    index("taxonomy_term_evidence_term_idx").on(table.termId, table.status),
+    check(
+      "taxonomy_term_evidence_authority_check",
+      sql`${table.authorityKind} in ('standards-body', 'professional-body', 'cultural-institution', 'community', 'publisher', 'academic', 'official-source', 'other')`,
+    ),
+    check(
+      "taxonomy_term_evidence_status_check",
+      sql`${table.status} in ('active', 'stale', 'disputed', 'withdrawn')`,
+    ),
+  ],
+);
+
+export const taxonomyTermRevisions = pgTable(
+  "taxonomy_term_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    termId: text("term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "cascade" }),
+    schemeVersion: integer("scheme_version").notNull(),
+    changeKind: text("change_kind").notNull(),
+    snapshot: jsonb("snapshot").notNull().$type<Record<string, unknown>>(),
+    changedByAccountId: text("changed_by_account_id").references(
+      () => accounts.id,
+      { onDelete: "set null" },
+    ),
+    changeNote: text("change_note"),
+    createdAt,
+  },
+  (table) => [
+    index("taxonomy_term_revisions_term_idx").on(table.termId, table.createdAt),
+    check(
+      "taxonomy_term_revisions_version_check",
+      sql`${table.schemeVersion} >= 1`,
+    ),
+    check(
+      "taxonomy_term_revisions_kind_check",
+      sql`${table.changeKind} in ('created', 'updated', 'renamed', 'reparented', 'deprecated', 'restored')`,
+    ),
+  ],
+);
+
+export const taxonomyExternalMappings = pgTable(
+  "taxonomy_external_mappings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    termId: text("term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "cascade" }),
+    namespace: text("namespace").notNull(),
+    externalValue: text("external_value").notNull(),
+    normalizedValue: text("normalized_value").notNull(),
+    mappingType: text("mapping_type").notNull().default("exact"),
+    confidence: integer("confidence").notNull().default(100),
+    evidenceUrl: text("evidence_url"),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("taxonomy_external_mappings_unique_idx").on(
+      table.namespace,
+      table.normalizedValue,
+      table.termId,
+    ),
+    index("taxonomy_external_mappings_lookup_idx").on(
+      table.namespace,
+      table.normalizedValue,
+    ),
+    check(
+      "taxonomy_external_mappings_type_check",
+      sql`${table.mappingType} in ('exact', 'close', 'broad', 'narrow', 'legacy', 'unresolved')`,
+    ),
+    check(
+      "taxonomy_external_mappings_confidence_check",
+      sql`${table.confidence} between 0 and 100`,
+    ),
+  ],
+);
+
+export const opportunityTaxonomyTerms = pgTable(
+  "opportunity_taxonomy_terms",
+  {
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    termId: text("term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "restrict" }),
+    sourceEvidenceId: text("source_evidence_id").references(
+      () => opportunitySourceEvidence.id,
+      { onDelete: "set null" },
+    ),
+    sourceSnapshotId: text("source_snapshot_id"),
+    sourcePhrase: text("source_phrase"),
+    normalizedPhrase: text("normalized_phrase"),
+    assignmentOrigin: text("assignment_origin").notNull(),
+    certainty: text("certainty").notNull().default("unknown"),
+    primary: boolean("primary").notNull().default(false),
+    reviewedByAccountId: text("reviewed_by_account_id").references(
+      () => accounts.id,
+      { onDelete: "set null" },
+    ),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    primaryKey({ columns: [table.opportunityId, table.termId] }),
+    index("opportunity_taxonomy_terms_term_idx").on(
+      table.termId,
+      table.certainty,
+      table.opportunityId,
+    ),
+    check(
+      "opportunity_taxonomy_terms_origin_check",
+      sql`${table.assignmentOrigin} in ('source', 'extractor', 'registry', 'backfill', 'organization', 'reviewer')`,
+    ),
+    check(
+      "opportunity_taxonomy_terms_certainty_check",
+      sql`${table.certainty} in ('confirmed', 'probable', 'inferred', 'unknown', 'rejected')`,
+    ),
+  ],
+);
+
+export const opportunitySourceTaxonomyTerms = pgTable(
+  "opportunity_source_taxonomy_terms",
+  {
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => opportunitySources.id, { onDelete: "cascade" }),
+    termId: text("term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "restrict" }),
+    coverageKind: text("coverage_kind").notNull().default("accepts"),
+    assignmentOrigin: text("assignment_origin").notNull().default("registry"),
+    sourcePhrase: text("source_phrase"),
+    confidence: integer("confidence").notNull().default(100),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    primaryKey({ columns: [table.sourceId, table.termId, table.coverageKind] }),
+    index("opportunity_source_taxonomy_terms_term_idx").on(
+      table.termId,
+      table.coverageKind,
+    ),
+    check(
+      "opportunity_source_taxonomy_terms_coverage_check",
+      sql`${table.coverageKind} in ('accepts', 'specializes', 'sometimes', 'excludes', 'unknown')`,
+    ),
+    check(
+      "opportunity_source_taxonomy_terms_origin_check",
+      sql`${table.assignmentOrigin} in ('source', 'registry', 'extractor', 'backfill', 'reviewer')`,
+    ),
+    check(
+      "opportunity_source_taxonomy_terms_confidence_check",
+      sql`${table.confidence} between 0 and 100`,
+    ),
+  ],
+);
+
+export const workTaxonomyTerms = pgTable(
+  "work_taxonomy_terms",
+  {
+    workId: text("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    termId: text("term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "restrict" }),
+    primary: boolean("primary").notNull().default(false),
+    assignmentOrigin: text("assignment_origin").notNull().default("user"),
+    createdAt,
+  },
+  (table) => [
+    primaryKey({ columns: [table.workId, table.termId] }),
+    index("work_taxonomy_terms_term_idx").on(table.termId, table.workId),
+    check(
+      "work_taxonomy_terms_origin_check",
+      sql`${table.assignmentOrigin} in ('user', 'import', 'extractor', 'organization', 'reviewer')`,
+    ),
+  ],
+);
+
+export const submissionPathTaxonomyTerms = pgTable(
+  "submission_path_taxonomy_terms",
+  {
+    submissionPathId: text("submission_path_id")
+      .notNull()
+      .references(() => submissionPaths.id, { onDelete: "cascade" }),
+    termId: text("term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "restrict" }),
+    rule: text("rule").notNull().default("accepted"),
+    required: boolean("required").notNull().default(false),
+    createdAt,
+  },
+  (table) => [
+    primaryKey({ columns: [table.submissionPathId, table.termId, table.rule] }),
+    index("submission_path_taxonomy_terms_term_idx").on(
+      table.termId,
+      table.rule,
+    ),
+    check(
+      "submission_path_taxonomy_terms_rule_check",
+      sql`${table.rule} in ('accepted', 'preferred', 'required', 'excluded')`,
+    ),
+  ],
+);
+
+export const accountTaxonomyPreferences = pgTable(
+  "account_taxonomy_preferences",
+  {
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    termId: text("term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "restrict" }),
+    preference: text("preference").notNull().default("include"),
+    weight: integer("weight").notNull().default(100),
+    origin: text("origin").notNull().default("explicit"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    primaryKey({ columns: [table.accountId, table.termId] }),
+    index("account_taxonomy_preferences_term_idx").on(
+      table.termId,
+      table.preference,
+    ),
+    check(
+      "account_taxonomy_preferences_preference_check",
+      sql`${table.preference} in ('include', 'prefer', 'exclude')`,
+    ),
+    check(
+      "account_taxonomy_preferences_origin_check",
+      sql`${table.origin} in ('explicit', 'saved-search', 'import', 'legacy-backfill')`,
+    ),
+    check(
+      "account_taxonomy_preferences_weight_check",
+      sql`${table.weight} between 0 and 100`,
+    ),
+  ],
+);
+
+/** A coverage cell is the stable identity of one source-coverage question.
+ * Its dimension key is a canonical serialization of its term set plus type,
+ * geography, language, and tier. Counts are derived from memberships. */
+export const sourceCoverageCells = pgTable(
+  "source_coverage_cells",
+  {
+    id: text("id").primaryKey(),
+    schemeId: text("scheme_id")
+      .notNull()
+      .references(() => taxonomySchemes.id, { onDelete: "restrict" }),
+    dimensionKey: text("dimension_key").notNull(),
+    opportunityType: text("opportunity_type").notNull(),
+    geographyCode: text("geography_code").notNull().default("global"),
+    languageCode: text("language_code").notNull().default("und"),
+    sourceTier: integer("source_tier").notNull().default(0),
+    minimumSources: integer("minimum_sources").notNull().default(3),
+    minimumCanonicalSources: integer("minimum_canonical_sources")
+      .notNull()
+      .default(1),
+    status: text("status").notNull().default("unassessed"),
+    lastAssessedAt: timestamp("last_assessed_at", { withTimezone: true }),
+    nextReviewAt: timestamp("next_review_at", { withTimezone: true }),
+    blockedReason: text("blocked_reason"),
+    notes: text("notes"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("source_coverage_cells_dimension_idx").on(
+      table.schemeId,
+      table.dimensionKey,
+    ),
+    index("source_coverage_cells_gap_idx").on(
+      table.status,
+      table.nextReviewAt,
+      table.opportunityType,
+    ),
+    index("source_coverage_cells_geography_idx").on(
+      table.geographyCode,
+      table.languageCode,
+      table.status,
+    ),
+    check(
+      "source_coverage_cells_type_check",
+      sql`${table.opportunityType} in ('open-call', 'magazine', 'grant', 'award', 'fellowship', 'residency', 'festival', 'scholarship', 'conference', 'rfp', 'contest', 'pitch', 'exhibition', 'commission', 'other')`,
+    ),
+    check(
+      "source_coverage_cells_tier_check",
+      sql`${table.sourceTier} between 0 and 3`,
+    ),
+    check(
+      "source_coverage_cells_minimum_check",
+      sql`${table.minimumSources} >= 1 and ${table.minimumCanonicalSources} >= 0 and ${table.minimumCanonicalSources} <= ${table.minimumSources}`,
+    ),
+    check(
+      "source_coverage_cells_status_check",
+      sql`${table.status} in ('unassessed', 'gap', 'thin', 'covered', 'strong', 'blocked')`,
+    ),
+  ],
+);
+
+export const sourceCoverageCellTerms = pgTable(
+  "source_coverage_cell_terms",
+  {
+    coverageCellId: text("coverage_cell_id")
+      .notNull()
+      .references(() => sourceCoverageCells.id, { onDelete: "cascade" }),
+    termId: text("term_id")
+      .notNull()
+      .references(() => taxonomyTerms.id, { onDelete: "restrict" }),
+    required: boolean("required").notNull().default(true),
+    createdAt,
+  },
+  (table) => [
+    primaryKey({ columns: [table.coverageCellId, table.termId] }),
+    index("source_coverage_cell_terms_term_idx").on(
+      table.termId,
+      table.coverageCellId,
+    ),
+  ],
+);
+
+export const sourceCoverageMemberships = pgTable(
+  "source_coverage_memberships",
+  {
+    coverageCellId: text("coverage_cell_id")
+      .notNull()
+      .references(() => sourceCoverageCells.id, { onDelete: "cascade" }),
+    sourceId: text("source_id")
+      .notNull()
+      .references(() => opportunitySources.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    status: text("status").notNull().default("candidate"),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    primaryKey({ columns: [table.coverageCellId, table.sourceId, table.role] }),
+    index("source_coverage_memberships_source_idx").on(
+      table.sourceId,
+      table.status,
+    ),
+    check(
+      "source_coverage_memberships_role_check",
+      sql`${table.role} in ('canonical', 'application', 'discovery', 'syndication', 'professional-body', 'funder')`,
+    ),
+    check(
+      "source_coverage_memberships_status_check",
+      sql`${table.status} in ('candidate', 'active', 'stale', 'rejected', 'blocked')`,
+    ),
+  ],
+);
+
+export const sourceDiscoveryQueries = pgTable(
+  "source_discovery_queries",
+  {
+    id: text("id").primaryKey(),
+    coverageCellId: text("coverage_cell_id")
+      .notNull()
+      .references(() => sourceCoverageCells.id, { onDelete: "cascade" }),
+    query: text("query").notNull(),
+    engine: text("engine").notNull().default("web"),
+    locale: text("locale").notNull().default("en"),
+    status: text("status").notNull().default("queued"),
+    priority: integer("priority").notNull().default(0),
+    cadenceHours: integer("cadence_hours").notNull().default(720),
+    cursor: text("cursor"),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    nextRunAt: timestamp("next_run_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    lastError: text("last_error"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("source_discovery_queries_unique_idx").on(
+      table.coverageCellId,
+      table.query,
+      table.locale,
+    ),
+    index("source_discovery_queries_due_idx").on(
+      table.status,
+      table.nextRunAt,
+      table.priority,
+    ),
+    check(
+      "source_discovery_queries_engine_check",
+      sql`${table.engine} in ('web', 'directory', 'feed', 'partner', 'manual')`,
+    ),
+    check(
+      "source_discovery_queries_status_check",
+      sql`${table.status} in ('queued', 'running', 'complete', 'failed', 'paused', 'blocked')`,
+    ),
+    check(
+      "source_discovery_queries_priority_check",
+      sql`${table.priority} between -100 and 100`,
+    ),
+    check(
+      "source_discovery_queries_cadence_check",
+      sql`${table.cadenceHours} between 1 and 8760`,
+    ),
+    check(
+      "source_discovery_queries_failures_check",
+      sql`${table.consecutiveFailures} >= 0`,
+    ),
+  ],
+);
+
+export const sourceDiscoveryCandidates = pgTable(
+  "source_discovery_candidates",
+  {
+    id: text("id").primaryKey(),
+    queryId: text("query_id")
+      .notNull()
+      .references(() => sourceDiscoveryQueries.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    normalizedUrl: text("normalized_url").notNull(),
+    title: text("title"),
+    snippet: text("snippet"),
+    proposedKind: text("proposed_kind"),
+    proposedTier: integer("proposed_tier"),
+    status: text("status").notNull().default("discovered"),
+    score: integer("score").notNull().default(0),
+    rejectionReason: text("rejection_reason"),
+    promotedSourceId: text("promoted_source_id").references(
+      () => opportunitySources.id,
+      { onDelete: "set null" },
+    ),
+    discoveredAt: timestamp("discovered_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("source_discovery_candidates_query_url_idx").on(
+      table.queryId,
+      table.normalizedUrl,
+    ),
+    index("source_discovery_candidates_review_idx").on(
+      table.status,
+      table.score,
+      table.discoveredAt,
+    ),
+    index("source_discovery_candidates_url_idx").on(table.normalizedUrl),
+    check(
+      "source_discovery_candidates_tier_check",
+      sql`${table.proposedTier} is null or ${table.proposedTier} between 0 and 3`,
+    ),
+    check(
+      "source_discovery_candidates_status_check",
+      sql`${table.status} in ('discovered', 'queued', 'reviewing', 'accepted', 'rejected', 'duplicate', 'blocked')`,
+    ),
+    check(
+      "source_discovery_candidates_score_check",
+      sql`${table.score} between 0 and 100`,
+    ),
+  ],
+);
+
+export const taxonomyChangeProposals = pgTable(
+  "taxonomy_change_proposals",
+  {
+    id: text("id").primaryKey(),
+    schemeId: text("scheme_id")
+      .notNull()
+      .references(() => taxonomySchemes.id, { onDelete: "restrict" }),
+    termId: text("term_id").references(() => taxonomyTerms.id, {
+      onDelete: "set null",
+    }),
+    kind: text("kind").notNull(),
+    status: text("status").notNull().default("open"),
+    proposedByAccountId: text("proposed_by_account_id").references(
+      () => accounts.id,
+      { onDelete: "set null" },
+    ),
+    reviewedByAccountId: text("reviewed_by_account_id").references(
+      () => accounts.id,
+      { onDelete: "set null" },
+    ),
+    payload: jsonb("payload").notNull().$type<Record<string, unknown>>(),
+    evidenceUrls: text("evidence_urls")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    decisionNote: text("decision_note"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("taxonomy_change_proposals_queue_idx").on(
+      table.status,
+      table.kind,
+      table.createdAt,
+    ),
+    check(
+      "taxonomy_change_proposals_kind_check",
+      sql`${table.kind} in ('add-term', 'rename-term', 'add-alias', 'change-relation', 'deprecate-term', 'restore-term', 'merge-terms', 'split-term')`,
+    ),
+    check(
+      "taxonomy_change_proposals_status_check",
+      sql`${table.status} in ('open', 'researching', 'approved', 'rejected', 'applied', 'withdrawn')`,
+    ),
   ],
 );

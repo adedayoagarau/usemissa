@@ -10,6 +10,12 @@ import {
   opportunitySources,
   savedSearches,
   submissionOutboundEvents,
+  sourceCoverageCells,
+  sourceDiscoveryCandidates,
+  sourceDiscoveryQueries,
+  taxonomyExternalMappings,
+  taxonomyTermRelations,
+  taxonomyTerms,
   outboxEvents,
   reviewAssignments,
   trackedOpportunities,
@@ -36,6 +42,46 @@ test("platform schema carries tenant, audit, outbox, and reviewer indexes", () =
   assert.ok(
     assignmentConfig.indexes.some(
       (index) => index.config.name === "review_assignments_unique_idx",
+    ),
+  );
+});
+
+test("taxonomy schema supports graph traversal, legacy mapping, and recurring source discovery", () => {
+  const termConfig = getTableConfig(taxonomyTerms);
+  const relationConfig = getTableConfig(taxonomyTermRelations);
+  const mappingConfig = getTableConfig(taxonomyExternalMappings);
+  const coverageConfig = getTableConfig(sourceCoverageCells);
+  const queryConfig = getTableConfig(sourceDiscoveryQueries);
+  const candidateConfig = getTableConfig(sourceDiscoveryCandidates);
+
+  assert.ok(
+    termConfig.indexes.some(
+      (index) => index.config.name === "taxonomy_terms_facet_slug_idx",
+    ),
+  );
+  assert.ok(
+    relationConfig.indexes.some(
+      (index) => index.config.name === "taxonomy_term_relations_object_idx",
+    ),
+  );
+  assert.ok(
+    mappingConfig.indexes.some(
+      (index) => index.config.name === "taxonomy_external_mappings_lookup_idx",
+    ),
+  );
+  assert.ok(
+    coverageConfig.indexes.some(
+      (index) => index.config.name === "source_coverage_cells_gap_idx",
+    ),
+  );
+  assert.ok(
+    queryConfig.indexes.some(
+      (index) => index.config.name === "source_discovery_queries_due_idx",
+    ),
+  );
+  assert.ok(
+    candidateConfig.indexes.some(
+      (index) => index.config.name === "source_discovery_candidates_review_idx",
     ),
   );
 });

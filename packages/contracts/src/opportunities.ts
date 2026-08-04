@@ -209,6 +209,13 @@ export const opportunityBrowseItemSchema = opportunityIdentitySchema.extend({
   type: opportunityTypeSchema,
   discipline: z.string().trim().max(80).optional(),
   genres: z.array(z.string().trim().min(1).max(80)).max(32),
+  taxonomy: z
+    .object({
+      schemeVersion: z.number().int().min(1),
+      termIds: z.array(resourceIdSchema).max(128),
+      primaryTermIds: z.array(resourceIdSchema).max(16),
+    })
+    .optional(),
   deadline: opportunityDeadlineSchema,
   fee: opportunityFeeSchema,
   prize: z.string().trim().max(300).optional(),
