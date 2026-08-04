@@ -98,3 +98,49 @@ test('submitter can save a draft, submit once, replay safely, and withdraw', asy
     await submitter.dispose();
   }
 });
+
+test('organization decision reaches the submitter receipt and Inbox', async ({ baseURL }) => {
+  const admin = await playwrightRequest.newContext({ baseURL });
+  const submitter = await playwrightRequest.newContext({ baseURL });
+  const suffix = `decision-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  try {
+    expect((await admin.post('/api/auth/login', { data: { email: 'editor@northriverreview.org', password: 'north-river-editor' } })).ok()).toBeTruthy();
+    const adminState = (await (await admin.get('/api/auth/me')).json()) as { memberships: Array<{ organizationId: string; role: string }> };
+    const organizationId = adminState.memberships.find((membership) => membership.role === 'admin')!.organizationId;
+    const team = (await (await admin.post(`/api/orgs/${organizationId}/teams`, { data: { name: `Decision team ${suffix}` } })).json()) as { id: string };
+    const program = (await (await admin.post(`/api/orgs/${organizationId}/teams/${team.id}/programs`, { data: { name: `Decision program ${suffix}` } })).json()) as { id: string };
+    const call = (await (await admin.post(`/api/orgs/${organizationId}/open-calls`, { data: { programId: program.id, title: `Decision call ${suffix}` } })).json()) as { id: string };
+    const form = (await (await admin.post(`/api/orgs/${organizationId}/open-calls/${call.id}/submission-paths`, { data: { categories: ['Poetry'], fields: [] } })).json()) as { id: string };
+    expect((await admin.post(`/api/orgs/${organizationId}/open-calls/${call.id}/publish`)).ok()).toBeTruthy();
+
+    expect((await submitter.post('/api/auth/signup', { data: { email: `${suffix}@example.com`, password: 'correct-horse-battery', displayName: 'Decision E2E User' } })).status()).toBe(201);
+    const submittedResponse = await submitter.post(`/api/submission-paths/${form.id}/submit`, {
+      data: { category: 'Poetry', works: [{ title: 'Decision poem' }] },
+      headers: { 'Idempotency-Key': suffix },
+    });
+    expect(submittedResponse.status()).toBe(201);
+    const submitted = (await submittedResponse.json()) as { submission: { id: string } ; works: Array<{ id: string }> };
+    const workId = submitted.works[0]!.id;
+
+    const inbox = await admin.get(`/api/orgs/${organizationId}/submissions`);
+    expect(inbox.ok()).toBeTruthy();
+    expect(((await inbox.json()) as Array<{ id: string }>).some((item) => item.id === submitted.submission.id)).toBe(true);
+    const decisionResponse = await admin.post(`/api/orgs/${organizationId}/works/${workId}/decision`, { data: { outcome: 'accepted' } });
+    expect(decisionResponse.ok()).toBeTruthy();
+
+    const receipt = await submitter.get(`/api/me/submissions/${submitted.submission.id}`);
+    expect(receipt.ok()).toBeTruthy();
+    const receiptBody = (await receipt.json()) as { decisions: Array<{ outcome: string }> };
+    expect(receiptBody.decisions[0]?.outcome).toBe('accepted');
+    const profile = (await (await submitter.get('/api/me/profile')).json()) as { id: string };
+    expect(profile.id).toBeTruthy();
+    const submitterInbox = await submitter.get(`/api/users/${profile.id}/inbox`);
+    expect(submitterInbox.ok()).toBeTruthy();
+    const inboxBody = (await submitterInbox.json()) as { submissionDecisions: Array<{ kind: string }> };
+    expect(inboxBody.submissionDecisions.some((alert) => alert.kind === 'submission-decision')).toBe(true);
+  } finally {
+    await admin.dispose();
+    await submitter.dispose();
+  }
+});
