@@ -54,6 +54,23 @@ test('Story 6.3: creates a Submission Path (form + categories) for an Open Call'
   assert.deepEqual(engine.submissionPathsForOpenCall(openCall.id), [path]);
 });
 
+test('Story 6.3: submission forms validate and retain canonical taxonomy rules', () => {
+  const engine = new WorkspaceEngine();
+  const entity = engine.createEntity('org1', 'Acme Magazine');
+  const program = engine.createProgram(entity.id, 'Fiction Program');
+  const openCall = engine.createOpenCall(program.id, 'Fall Issue');
+  const path = engine.createSubmissionPath(openCall.id, [], [], undefined, [
+    { termId: 'taxterm_disc-poetry', rule: 'preferred' },
+    { termId: 'taxterm_genre-literary-fiction', rule: 'excluded' },
+  ]);
+
+  assert.deepEqual(path.taxonomyAssignments, [
+    { termId: 'taxterm_disc-poetry', rule: 'preferred', required: false },
+    { termId: 'taxterm_genre-literary-fiction', rule: 'excluded', required: false },
+  ]);
+  assert.throws(() => engine.updateSubmissionPath(path.id, { categories: [], fields: [], taxonomyAssignments: [{ termId: 'not-a-term', rule: 'accepted' }] }));
+});
+
 test('Story 6.4: publishedOpenCallsForOrganization walks Org -> Entity -> Program -> OpenCall', () => {
   const engine = new WorkspaceEngine();
   const entity = engine.createEntity('org1', 'Acme Magazine');

@@ -14,6 +14,7 @@ import type {
   DecisionOutcome,
   DeliveryTask,
 } from "./domain/types.js";
+import { MISSA_TAXONOMY } from "@missa/taxonomy";
 import { createStore, type WorkspaceStore } from "./store/store.js";
 import { sequentialWorkspaceIds, type WorkspaceIdGenerator } from "./ids.js";
 import { organizationScope, type OrganizationScope } from "./organizationScope.js";
@@ -59,6 +60,21 @@ export class WorkspaceEngine {
     this.store = opts.store ?? createStore();
     this.now = opts.now ?? (() => new Date().toISOString());
     this.ids = opts.ids ?? sequentialWorkspaceIds(idsInStore(this.store));
+  }
+
+  private normalizeTaxonomyAssignments(assignments: SubmissionPath['taxonomyAssignments'] | undefined): SubmissionPath['taxonomyAssignments'] | undefined {
+    if (assignments === undefined) return undefined;
+    if (!Array.isArray(assignments) || assignments.length > 128) throw new Error('A form may use no more than 128 taxonomy rules');
+    const known = new Set(MISSA_TAXONOMY.terms.map((term) => term.id));
+    const seen = new Set<string>();
+    return assignments.map((assignment) => {
+      if (!assignment || !known.has(assignment.termId)) throw new Error(`Unknown taxonomy term: ${assignment?.termId ?? ''}`);
+      if (!['accepted', 'preferred', 'required', 'excluded'].includes(assignment.rule)) throw new Error('Invalid taxonomy rule');
+      const key = `${assignment.termId}:${assignment.rule}`;
+      if (seen.has(key)) throw new Error('A taxonomy rule may only appear once');
+      seen.add(key);
+      return { termId: assignment.termId, rule: assignment.rule, required: assignment.required ?? assignment.rule === 'required' };
+    });
   }
 
   createEntity(organizationId: string, name: string, label?: string): Entity {
@@ -176,6 +192,7 @@ export class WorkspaceEngine {
     categories: string[],
     fields: Array<Omit<SubmissionField, "id" | "order"> & { order?: number }>,
     feeCents?: number,
+    taxonomyAssignments?: SubmissionPath['taxonomyAssignments'],
   ): SubmissionPath {
     if (!this.store.openCalls.has(openCallId))
       throw new Error(`Unknown open call: ${openCallId}`);
@@ -189,6 +206,7 @@ export class WorkspaceEngine {
         order: f.order ?? i,
       })),
       feeCents,
+      taxonomyAssignments: this.normalizeTaxonomyAssignments(taxonomyAssignments),
       createdAt: this.now(),
     };
     this.store.submissionPaths.set(path.id, path);
@@ -207,12 +225,14 @@ export class WorkspaceEngine {
       categories: string[];
       fields: Array<Omit<SubmissionField, 'id' | 'order'> & { id?: string; order?: number }>;
       feeCents?: number;
+      taxonomyAssignments?: SubmissionPath['taxonomyAssignments'];
     },
   ): SubmissionPath {
     const path = this.store.submissionPaths.get(submissionPathId);
     if (!path) throw new Error(`Unknown submission path: ${submissionPathId}`);
     path.categories = input.categories;
     path.feeCents = input.feeCents;
+    if (input.taxonomyAssignments !== undefined) path.taxonomyAssignments = this.normalizeTaxonomyAssignments(input.taxonomyAssignments);
     path.fields = input.fields.map((field, index) => ({ ...field, id: field.id ?? this.ids.next('field'), order: field.order ?? index }));
     return path;
   }

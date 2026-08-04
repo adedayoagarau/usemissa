@@ -50,5 +50,7 @@ phrase, normalized phrase, candidate IDs, certainty, origin, and evidence refere
   fields. The live seed completed twice; final counts are 1,084 terms, 967 relations, 1,136
   mappings, 1,581 opportunity assignments, and 0 invalid foreign keys across 417 opportunities
   and 1,686 sources.
-- `MISSA_TAXONOMY_READS=1` is configured for Vercel Production and Preview. Roll back reads with
-  `MISSA_TAXONOMY_READS=0`; canonical writes remain additive and guarded by table presence.
+- Migration `0012_activate_missa_taxonomy.sql` promoted v1 to `active` for the shared Passport and
+  Workspace surfaces. `MISSA_TAXONOMY_READS=1` is configured for Vercel Production and Preview.
+  Roll back reads with `MISSA_TAXONOMY_READS=0`; canonical writes remain additive and guarded by
+  table presence.

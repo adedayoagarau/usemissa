@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SUBMISSION_TAXONOMY_OPTIONS, taxonomyLabelFor } from '@/lib/taxonomyOptions';
 
 type FieldType = 'text' | 'file-upload' | 'category-select' | 'fee-toggle';
 const FIELD_TYPE_LABEL: Record<FieldType, string> = {
@@ -26,6 +27,7 @@ interface ExistingPath {
   categories: string[];
   fields: Array<{ id: string; type: FieldType; label: string; required: boolean; order: number }>;
   feeCents?: number;
+  taxonomyAssignments?: Array<{ termId: string; rule: 'accepted' | 'preferred' | 'required' | 'excluded'; required?: boolean }>;
 }
 
 /**
@@ -39,6 +41,7 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
   const router = useRouter();
   const [categories, setCategories] = useState(existingPath?.categories.join(', ') ?? '');
   const [feeCents, setFeeCents] = useState(existingPath?.feeCents ? String(existingPath.feeCents / 100) : '');
+  const [taxonomyAssignments, setTaxonomyAssignments] = useState<NonNullable<ExistingPath['taxonomyAssignments']>>(existingPath?.taxonomyAssignments ?? []);
   const [fields, setFields] = useState<DraftField[]>(existingPath?.fields.slice().sort((a, b) => a.order - b.order).map(({ id, type, label, required }) => ({ id, type, label, required })) ?? [{ type: 'file-upload', label: 'Manuscript', required: true }]);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +69,7 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
           categories: categories.split(',').map((c) => c.trim()).filter(Boolean),
           fields,
           feeCents: feeCents.trim() ? Math.round(Number(feeCents) * 100) : undefined,
+          taxonomyAssignments,
         }),
       });
       if (!res.ok) {
@@ -87,6 +91,23 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
         onChange={(e) => setCategories(e.target.value)}
       />
       <Input className="mt-2" type="number" min="0" step="0.01" placeholder="Application fee in USD (optional)" value={feeCents} onChange={(e) => setFeeCents(e.target.value)} />
+      <div className="mt-3 rounded-md border border-border bg-muted/20 p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Who this form is for</p>
+        <p className="mt-1 text-xs text-muted-foreground">Use canonical practice terms so applicants see the right form and your team can route submissions consistently.</p>
+        <div className="mt-2 space-y-2">
+          {taxonomyAssignments.map((assignment, index) => <div key={`${assignment.termId}-${assignment.rule}-${index}`} className="flex flex-wrap items-center gap-2">
+            <select aria-label="Taxonomy term" className="h-9 min-w-48 flex-1 rounded-md border border-border bg-background px-2 text-sm" value={assignment.termId} onChange={(event) => setTaxonomyAssignments((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, termId: event.target.value } : item))}>
+              <option value="">Choose a practice term</option>{SUBMISSION_TAXONOMY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label} · {option.facet}</option>)}
+            </select>
+            <select aria-label="Taxonomy rule" className="h-9 rounded-md border border-border bg-background px-2 text-sm" value={assignment.rule} onChange={(event) => setTaxonomyAssignments((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, rule: event.target.value as typeof assignment.rule, required: event.target.value === 'required' } : item))}>
+              <option value="accepted">Accepted</option><option value="preferred">Preferred</option><option value="required">Required</option><option value="excluded">Excluded</option>
+            </select>
+            <Button size="sm" variant="outline" type="button" onClick={() => setTaxonomyAssignments((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button>
+          </div>)}
+        </div>
+        <Button size="sm" variant="outline" type="button" className="mt-2" onClick={() => setTaxonomyAssignments((current) => [...current, { termId: SUBMISSION_TAXONOMY_OPTIONS[0]?.value ?? '', rule: 'accepted' }])}>Add practice rule</Button>
+        {taxonomyAssignments.length > 0 && <p className="mt-2 text-xs text-muted-foreground">{taxonomyAssignments.map((assignment) => taxonomyLabelFor(assignment.termId)).filter(Boolean).join(', ')}</p>}
+      </div>
       <div className="mt-3 space-y-2">
         {fields.map((field, i) => (
           <div key={i} className="flex items-center gap-2">

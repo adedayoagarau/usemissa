@@ -18,7 +18,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const engine = result.access.workspace;
   try {
-    const path = engine.createSubmissionPath(openCallId, body.categories, body.fields, body.feeCents);
+    const path = engine.createSubmissionPath(openCallId, body.categories, body.fields, body.feeCents, body.taxonomyAssignments);
     await persistOrganizationMutation(result.access, {
       action: 'submission-form.create',
       targetType: 'submission-path',
@@ -41,7 +41,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const path = result.access.workspace.store.submissionPaths.get(body.pathId);
   if (!path || path.openCallId !== openCallId) return NextResponse.json({ error: 'Unknown form for this opportunity' }, { status: 404 });
   try {
-    const updated = result.access.workspace.updateSubmissionPath(path.id, { categories: body.categories, fields: body.fields, feeCents: typeof body.feeCents === 'number' ? body.feeCents : undefined });
+    const updated = result.access.workspace.updateSubmissionPath(path.id, { categories: body.categories, fields: body.fields, feeCents: typeof body.feeCents === 'number' ? body.feeCents : undefined, taxonomyAssignments: body.taxonomyAssignments });
     await persistOrganizationMutation(result.access, { action: 'submission-form.update', targetType: 'submission-path', targetId: updated.id, detail: { opportunityId: openCallId } });
     return NextResponse.json(updated);
   } catch (err) {
