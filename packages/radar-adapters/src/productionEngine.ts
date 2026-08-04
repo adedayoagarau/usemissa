@@ -49,12 +49,13 @@ function normalizeUrl(url: string): string {
  */
 export function seedRegistryIfEmpty(
   engine: RadarEngine,
+  options: { maxTier?: 0 | 1 | 2 | 3 } = { maxTier: 0 },
 ): { loaded: number } | null {
   const existingByUrl = new Map(
     [...engine.store.sources.values()].map((source) => [normalizeUrl(source.url), source] as const),
   );
   const registry = assembleRegistry();
-  const entries = filterSources(registry, { maxTier: 0 });
+  const entries = filterSources(registry, options);
 
   let loaded = 0;
   for (const entry of entries) {

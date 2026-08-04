@@ -29,6 +29,7 @@
 
 **Still needed for full production functionality:**
 - A hosted `missa-radar-worker` process; the package and runbook are ready, but Vercel serverless functions cannot host a long-running worker.
+- The continuous `missa-research-agent` process is now packaged alongside the worker. It scans all active registry tiers (canonical pages plus directory/feed research seeds) through the same robots-aware extraction and verification pipeline. It still needs a container host with restart policy and the Neon `DATABASE_URL`; this repository cannot create that external service without a hosting target and credentials.
 - `CRON_SECRET` — needed for the bounded `/api/cron/tick` fallback.
 - A production app domain (e.g. `app.usemissa.com`) if the app should be separate from `www.usemissa.com`.
 - `RESEND_API_KEY` and `RESEND_FROM` — enable submitter alert digests and

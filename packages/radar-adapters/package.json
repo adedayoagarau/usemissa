@@ -7,13 +7,15 @@
   "types": "dist/src/index.d.ts",
   "bin": {
     "missa-radar-production": "dist/src/serve.js",
-    "missa-radar-worker": "dist/src/worker.js"
+    "missa-radar-worker": "dist/src/worker.js",
+    "missa-research-agent": "dist/src/researchWorker.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/test/*.test.js",
     "serve": "node dist/src/serve.js",
-    "worker": "node dist/src/worker.js"
+    "worker": "node dist/src/worker.js",
+    "research-agent": "node dist/src/researchWorker.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",

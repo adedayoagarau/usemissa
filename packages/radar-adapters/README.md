@@ -61,6 +61,22 @@ duplicate workers and restarts safe: only one tick can ingest at a time.
 route remains a bounded fallback while the worker is being hosted; once the
 worker service is healthy, disable inline Cron ingestion.
 
+## Continuous research agent
+
+For the broad discovery lane, run the research agent as a separate long-lived
+process:
+
+    DATABASE_URL=postgres://... RADAR_RESEARCH_BATCH_SIZE=25 \
+      RADAR_RESEARCH_INTERVAL_MINUTES=5 \
+      npm run research-agent --workspace=@missa/radar-adapters
+
+It loads canonical, directory, and feed registry tiers into the same durable
+Radar store, then continuously applies the robots-aware fetch, extraction,
+validation, deduplication, and persistence pipeline. Directory/feed
+discoveries remain reviewable until their evidence supports publication. Run
+this on a worker host with a restart policy; Vercel Cron remains a bounded
+fallback, not the continuous process.
+
 ## Wiring it in yourself
 
 If you want different pieces than `serve.ts` assembles (e.g. Postgres
