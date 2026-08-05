@@ -57,18 +57,6 @@ export function QueueCard({ label, value, detail, href, tone = 'neutral' }: { la
   return <Link href={href} className={`block rounded-xl border p-4 transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${tone === 'warning' ? 'border-amber-200 bg-amber-50/40' : 'border-border bg-white'}`}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium text-foreground">{label}</p><p className="mt-1 text-xs leading-5 text-muted-foreground">{detail}</p></div><span className="font-mono text-2xl tabular-nums text-foreground">{value}</span></div><span className="mt-3 inline-block text-xs font-medium text-accent-deep">Open queue →</span></Link>;
 }
 
-export function AdminShellNav({ current }: { current: string }) {
-  const links = [
-    ['/admin', 'Control Room'],
-    ['/admin/radar', 'Radar'],
-    ['/admin/operations', 'Operations'],
-    ['/admin/system', 'System'],
-    ['/admin/audit', 'Audit'],
-    ['/admin/taxonomy', 'Policy → Taxonomy'],
-  ] as const;
-  return <nav aria-label="Platform admin navigation" className="flex gap-1 overflow-x-auto border-b border-border px-4 sm:px-8"><div className="mx-auto flex w-full max-w-[1440px] gap-1">{links.map(([href, label]) => { const active = href === current; return <Link key={href} href={href} aria-current={active ? 'page' : undefined} className={`whitespace-nowrap border-b-2 px-3 py-3 text-sm ${active ? 'border-primary font-medium text-foreground' : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'}`}>{label}</Link>; })}</div></nav>;
-}
-
 export function SourceHealthTable({ rows }: { rows: SourceHealthRow[] }) {
   if (rows.length === 0) return <EmptyState title="No Radar sources in the current store" detail="This is an empty compatibility store, not a fabricated healthy state." />;
   return <div className="overflow-x-auto rounded-xl border border-border bg-white"><table className="w-full min-w-[760px] border-collapse text-left text-sm"><caption className="sr-only">Radar source health with attempt, fetch, process, and freshness distinctions</caption><thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground"><tr><th scope="col" className="px-4 py-3 font-medium">Source</th><th scope="col" className="px-4 py-3 font-medium">Attempted</th><th scope="col" className="px-4 py-3 font-medium">Successful fetch</th><th scope="col" className="px-4 py-3 font-medium">Processed</th><th scope="col" className="px-4 py-3 font-medium">Freshness</th><th scope="col" className="px-4 py-3 font-medium">Failures</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-b border-border last:border-0 hover:bg-muted/30"><th scope="row" className="max-w-[260px] px-4 py-3 font-medium text-foreground"><span className="block truncate">{row.name}</span><span className="mt-0.5 block truncate font-mono text-[11px] font-normal text-muted-foreground">{row.id}</span></th><td className="px-4 py-3"><StatusText value={row.attempted} /></td><td className="px-4 py-3"><StatusText value={row.successfulFetch} /></td><td className="px-4 py-3"><StatusText value={row.processed} /></td><td className={`px-4 py-3 font-mono text-xs ${row.stale ? 'text-amber-700' : 'text-muted-foreground'}`}>{row.stale ? 'stale · ' : ''}{row.freshness}</td><td className="px-4 py-3 font-mono text-xs text-muted-foreground">{row.consecutiveFailures}/{row.consecutiveProcessingFailures}</td></tr>)}</tbody></table></div>;
@@ -133,7 +121,7 @@ function StatusText({ value }: { value: boolean }) {
 }
 
 export function AdminPageFrame({ children }: { children: ReactNode }) {
-  return <main className="mx-auto w-full max-w-[1440px] px-4 py-8 sm:px-8 lg:px-10">{children}</main>;
+  return <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 xl:px-10">{children}</main>;
 }
 
 export function NumberGrid({ items }: { items: Array<{ label: string; value: ReactNode; detail?: string; href?: string }> }) {

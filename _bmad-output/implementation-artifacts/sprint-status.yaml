@@ -128,3 +128,13 @@ development_status:
   epic-13: done
   13-1-private-progress-props: done
   epic-13-retrospective: optional
+
+  epic-14: in-progress
+  14-1-platform-admin-control-room-and-information-architecture: done
+  14-2-platform-customer-directory-and-crm-lite-read-model: done
+  14-3-content-cms-registry-for-radar-and-workspace: done
+  14-4-platform-product-analytics-and-metric-definitions: done
+  14-5-organization-admin-workspace-shell-and-workflow-navigation: backlog
+  14-6-messaging-delivery-and-workflow-automation-foundation: backlog
+  14-7-platform-governance-support-billing-and-agent-loop-operations: backlog
+  epic-14-retrospective: optional

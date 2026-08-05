@@ -9,9 +9,30 @@ test('admin can open the control room and operational loop', async ({ page }) =>
   await page.goto('/admin');
   await expect(page.getByRole('heading', { name: 'Control Room' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Operations', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Customers', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Content', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Analytics', exact: true })).toBeVisible();
+
+  await page.goto('/admin/customers');
+  await expect(page.getByRole('heading', { name: 'Customers', exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Search customers' })).toBeVisible();
+
+  await page.goto('/admin/content');
+  await expect(page.getByRole('heading', { name: 'Content', exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Search content registry' })).toBeVisible();
+
+  await page.goto('/admin/analytics');
+  await expect(page.getByRole('heading', { name: 'Analytics', exact: true })).toBeVisible();
 
   await page.goto('/admin/operations');
-  await expect(page.getByRole('heading', { name: 'Operations', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Run bounded Radar tick' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Roles and handoff loop' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Operations queue' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Run bounded tick' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Search operations queue' })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/admin');
+  await expect(page.getByRole('heading', { name: 'Control Room' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open platform admin navigation' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
 });
