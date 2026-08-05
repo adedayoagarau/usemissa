@@ -10,8 +10,11 @@ test('admin can open the control room and operational loop', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Control Room' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Operations', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Customers', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Organizations', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Content', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Analytics', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Messaging & delivery', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Governance', exact: true })).toBeVisible();
 
   await page.goto('/admin/customers');
   await expect(page.getByRole('heading', { name: 'Customers', exact: true })).toBeVisible();
@@ -24,6 +27,16 @@ test('admin can open the control room and operational loop', async ({ page }) =>
   await page.goto('/admin/analytics');
   await expect(page.getByRole('heading', { name: 'Analytics', exact: true })).toBeVisible();
 
+  await page.goto('/admin/organizations');
+  await expect(page.getByRole('heading', { name: 'Organizations', exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Search organizations' })).toBeVisible();
+
+  await page.goto('/admin/messaging');
+  await expect(page.getByRole('heading', { name: 'Messaging & delivery', exact: true })).toBeVisible();
+
+  await page.goto('/admin/governance');
+  await expect(page.getByRole('heading', { name: 'Governance', exact: true })).toBeVisible();
+
   await page.goto('/admin/operations');
   await expect(page.getByRole('heading', { name: 'Operations queue' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Run bounded tick' })).toBeVisible();
@@ -34,5 +47,8 @@ test('admin can open the control room and operational loop', async ({ page }) =>
   await page.goto('/admin');
   await expect(page.getByRole('heading', { name: 'Control Room' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Open platform admin navigation' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+
+  await page.goto('/admin/governance');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
 });

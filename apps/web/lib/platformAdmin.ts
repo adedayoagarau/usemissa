@@ -87,6 +87,7 @@ export type PlatformAdminCustomerAvailability = 'available' | 'partial' | 'empty
 export type PlatformAdminCustomerActivityState = 'active' | 'attention' | 'quiet' | 'unknown';
 export type PlatformAdminCustomerBillingTier = OrganizationBillingTier | 'unknown';
 export type PlatformAdminCustomerBillingStatus = OrganizationBillingStatus | 'unknown';
+export type PlatformAdminCustomerConnectStatus = 'not-connected' | 'pending' | 'connected' | 'unknown';
 export type PlatformAdminCustomerCount = number | null;
 
 export interface PlatformAdminCustomerActivity {
@@ -108,6 +109,7 @@ export interface PlatformAdminCustomerRow {
   pendingDeliveryCount: PlatformAdminCustomerCount;
   billingTier: PlatformAdminCustomerBillingTier;
   billingStatus: PlatformAdminCustomerBillingStatus;
+  stripeConnectStatus: PlatformAdminCustomerConnectStatus;
   activityState: PlatformAdminCustomerActivityState;
   latestObservedActivity?: PlatformAdminCustomerActivity;
 }
@@ -438,6 +440,7 @@ function buildPlatformAdminCustomers(
       pendingDeliveryCount,
       billingTier: organization.billingTier ?? 'unknown',
       billingStatus: organization.billingStatus ?? 'unknown',
+      stripeConnectStatus: organization.stripeConnectStatus ?? 'not-connected',
       activityState: customerActivityState(latestObservedActivity, pendingDeliveryCount, nowMs),
       ...(latestObservedActivity ? { latestObservedActivity } : {}),
     };

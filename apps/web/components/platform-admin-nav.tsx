@@ -6,10 +6,12 @@ import {
   Activity,
   Bot,
   BarChart3,
+  Building2,
   FileText,
   FileClock,
   LayoutDashboard,
   ListChecks,
+  Mail,
   Menu,
   Radar,
   Settings2,
@@ -31,17 +33,20 @@ type NavItem = {
 const primaryLinks: NavItem[] = [
   { href: '/admin', label: 'Control Room', icon: LayoutDashboard, exact: true },
   { href: '/admin/customers', label: 'Customers', icon: Users },
+  { href: '/admin/organizations', label: 'Organizations', icon: Building2 },
   { href: '/admin/content', label: 'Content', icon: FileText },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
 ];
 
 const operationsLinks: NavItem[] = [
   { href: '/admin/operations', label: 'Operations', icon: ListChecks },
+  { href: '/admin/messaging', label: 'Messaging & delivery', icon: Mail },
   { href: '/admin/radar', label: 'Radar', icon: Radar },
   { href: '/admin/operations?queue=agents', label: 'Agents', icon: Bot, activePath: '/admin/operations', activeQuery: { key: 'queue', value: 'agents' } },
 ];
 
 const systemLinks: NavItem[] = [
+  { href: '/admin/governance', label: 'Governance', icon: ShieldCheck },
   { href: '/admin/system', label: 'System', icon: Settings2 },
   { href: '/admin/audit', label: 'Audit', icon: FileClock },
   { href: '/admin/taxonomy', label: 'Policy → Taxonomy', icon: ShieldCheck },
