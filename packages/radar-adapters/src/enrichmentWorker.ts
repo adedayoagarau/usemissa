@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { ensureEnrichmentSchema } from "./enrichmentSchema.js";
+import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
 
 type JobKind = "media" | "winners" | "guidelines" | "call-profile";
 type ClaimedJob = {
@@ -304,7 +305,7 @@ async function processJob(client: PoolClient, job: ClaimedJob): Promise<void> {
   await completeJob(client, job, { guidelineLinks: links.length, checkedUrl: finalUrl });
 }
 
-async function tick(pool: Pool, limit: number): Promise<void> {
+async function tick(pool: Pool, limit: number): Promise<{ claimed: number; completed: number }> {
   const client = await pool.connect();
   try {
     await client.query("begin");
@@ -317,6 +318,7 @@ async function tick(pool: Pool, limit: number): Promise<void> {
       try { await processJob(worker, job); completed++; } catch (error) { await failJob(worker, job, error); } finally { worker.release(); }
     }
     console.log(`[missa-enrichment-worker] tick: claimed=${jobs.length} completed=${completed}`);
+    return { claimed: jobs.length, completed };
   } catch (error) {
     await client.query("rollback").catch(() => undefined);
     throw error;
@@ -328,6 +330,7 @@ async function main(): Promise<void> {
   if (!databaseUrl) throw new Error("DATABASE_URL is required to run the Missa enrichment worker.");
   const pool = new Pool({ connectionString: databaseUrl, max: 4 });
   await ensureEnrichmentSchema(pool);
+  const workerRunId = await startWorkerRun(pool, "enrichment-worker");
   const controller = new AbortController();
   const stop = () => controller.abort();
   process.once("SIGINT", stop); process.once("SIGTERM", stop);
@@ -335,10 +338,20 @@ async function main(): Promise<void> {
   console.log(`[missa-enrichment-worker] running every ${Math.round(delay / 60_000)} minutes, batch=${limit}`);
   try {
     while (!controller.signal.aborted) {
-      try { await tick(pool, limit); } catch (error) { console.error("[missa-enrichment-worker] tick failed", error); }
+      try {
+        await heartbeatWorkerRun(pool, workerRunId, "enrichment-worker");
+        const result = await tick(pool, limit);
+        await heartbeatWorkerRun(pool, workerRunId, "enrichment-worker", { inputCount: result.claimed, outputCount: result.completed });
+      } catch (error) {
+        await heartbeatWorkerRun(pool, workerRunId, "enrichment-worker", { lastError: error instanceof Error ? error.message : String(error) });
+        console.error("[missa-enrichment-worker] tick failed", error);
+      }
       await new Promise<void>((resolve) => { const timer = setTimeout(resolve, delay); controller.signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true }); });
     }
-  } finally { await pool.end(); }
+  } finally {
+    await finishWorkerRun(pool, workerRunId, "enrichment-worker", "cancelled");
+    await pool.end();
+  }
 }
 
 main().catch((error) => { console.error("[missa-enrichment-worker] stopped unexpectedly", error); process.exitCode = 1; });

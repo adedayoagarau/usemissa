@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import {
+  agentGraphSnapshot,
   readPlatformAdminDurableSummary,
   type DurableQueueMetric,
   type PlatformAdminDurableSummary,
@@ -83,7 +84,7 @@ export interface PlatformAdminWorkspaceData {
 
 export interface PlatformAdminOperationsData {
   worker: {
-    status: 'running' | 'healthy' | 'failed' | 'unknown';
+    status: 'running' | 'stale' | 'healthy' | 'failed' | 'unknown';
     latestStatus?: string;
     latestKind?: string;
     latestAt?: string;
@@ -91,11 +92,21 @@ export interface PlatformAdminOperationsData {
     failed: number;
     completed: number;
     caveat: string;
+    lanes: Array<{
+      workerKind: string;
+      status: 'running' | 'stale' | 'failed' | 'stopped' | 'unknown';
+      runId?: string;
+      lastHeartbeatAt?: string;
+      startedAt?: string;
+      completedAt?: string;
+      error?: string;
+    }>;
   };
   throughput: { sourcesAttempted: number; successfulFetches: number; processedSources: number; activeOpportunities: number; submissions: number; decisions: number; completedDelivery: number };
   pipeline: Array<{ stage: 'due' | 'check' | 'fetch' | 'process' | 'review' | 'publish'; count: number; source: string }>;
   compatibilityQueues: { verification: number; claims: number; emailReview: number; gmailJobs: Record<string, number>; delivery: Record<string, number> };
   durable: PlatformAdminDurableSummary;
+  agentGraph: ReturnType<typeof agentGraphSnapshot>;
 }
 
 export interface PlatformAdminSystemData {
@@ -111,7 +122,7 @@ export interface PlatformAdminSystemData {
 
 export interface PlatformAdminAuditEntry {
   id: string;
-  domain: 'radar' | 'workspace';
+  domain: 'radar' | 'workspace' | 'platform';
   at: string;
   actorAccountId?: string;
   action: string;
@@ -185,11 +196,47 @@ export function emptyPlatformAdminDurableSummary(generatedAt = new Date().toISOS
     reviewDecisions: unavailable(),
     enrichmentJobs: unavailable(),
     outbox: unavailable(),
+    auditEvents: unavailable(),
+    agentRunRows: [],
+    agentHandoffRows: [],
+    reviewJobRows: [],
+    enrichmentJobRows: [],
+    outboxRows: [],
+    auditEventRows: [],
   };
 }
 
 function runtimeMaturity(): AdminMaturity {
   return 'live';
+}
+
+const WORKER_STALE_AFTER_MS = 30 * 60 * 1_000;
+
+function workerLanes(durable: PlatformAdminDurableSummary, nowMs: number): PlatformAdminOperationsData['worker']['lanes'] {
+  const rowsByKind = new Map<string, typeof durable.agentRunRows[number]>();
+  for (const row of durable.agentRunRows) {
+    const kind = row.workerKind ?? (row.agentKind.endsWith('-worker') ? row.agentKind : undefined);
+    if (!kind) continue;
+    const previous = rowsByKind.get(kind);
+    const previousAt = parseTime(previous?.heartbeatAt ?? previous?.startedAt) ?? 0;
+    const currentAt = parseTime(row.heartbeatAt ?? row.startedAt) ?? 0;
+    if (!previous || currentAt > previousAt) rowsByKind.set(kind, row);
+  }
+  return [...rowsByKind.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([workerKind, row]) => {
+    const lastSeen = parseTime(row.heartbeatAt ?? row.startedAt);
+    const status: PlatformAdminOperationsData['worker']['lanes'][number]['status'] = row.status === 'running'
+      ? lastSeen !== undefined && nowMs - lastSeen <= WORKER_STALE_AFTER_MS ? 'running' : 'stale'
+      : row.status === 'failed' ? 'failed' : row.status === 'completed' || row.status === 'cancelled' ? 'stopped' : 'unknown';
+    return {
+      workerKind,
+      status,
+      runId: row.id,
+      ...(row.heartbeatAt ? { lastHeartbeatAt: row.heartbeatAt } : {}),
+      ...(row.startedAt ? { startedAt: row.startedAt } : {}),
+      ...(row.completedAt ? { completedAt: row.completedAt } : {}),
+      ...(row.error ? { error: row.error } : {}),
+    };
+  });
 }
 
 export interface BuildPlatformAdminReadModelInput {
@@ -312,21 +359,30 @@ export function buildPlatformAdminReadModel(input: BuildPlatformAdminReadModelIn
   };
 
   const reviewQueueCount = (metricCount(durable.reviewJobs, 'queued') + metricCount(durable.reviewJobs, 'processing') + metricCount(durable.reviewJobs, 'needs-human')) || radarData.queues.verification;
-  const workerRunning = metricCount(durable.agentRuns, 'running');
-  const workerFailed = metricCount(durable.agentRuns, 'failed');
+  const lanes = workerLanes(durable, nowMs);
+  const workerRunning = lanes.filter((lane) => lane.status === 'running').length;
+  const workerFailed = lanes.filter((lane) => lane.status === 'failed').length;
   const workerCompleted = metricCount(durable.agentRuns, 'completed');
-  const workerStatus: PlatformAdminOperationsData['worker']['status'] = workerRunning > 0 ? 'running' : workerFailed > 0 ? 'failed' : 'unknown';
-  const hasExplicitWorkerSignal = workerStatus !== 'unknown';
+  const workerStatus: PlatformAdminOperationsData['worker']['status'] = workerRunning > 0
+    ? 'running'
+    : lanes.some((lane) => lane.status === 'stale')
+      ? 'stale'
+      : workerFailed > 0
+        ? 'failed'
+        : 'unknown';
+  const latestLane = lanes[0];
+  const hasExplicitWorkerSignal = lanes.length > 0;
   const operationsData: PlatformAdminOperationsData = {
     worker: {
       status: workerStatus,
-      ...(durable.agentRuns.latest?.status ? { latestStatus: durable.agentRuns.latest.status } : {}),
-      ...(durable.agentRuns.latest?.kind ? { latestKind: durable.agentRuns.latest.kind } : {}),
-      ...(durable.agentRuns.latest?.at ? { latestAt: durable.agentRuns.latest.at } : {}),
+      ...(latestLane?.status ? { latestStatus: latestLane.status } : {}),
+      ...(latestLane?.workerKind ? { latestKind: latestLane.workerKind } : {}),
+      ...(latestLane?.lastHeartbeatAt ?? latestLane?.startedAt ? { latestAt: latestLane.lastHeartbeatAt ?? latestLane.startedAt } : {}),
       running: workerRunning,
       failed: workerFailed,
       completed: workerCompleted,
-      caveat: hasExplicitWorkerSignal ? 'Observed durable agent-run signal; this does not establish Railway liveness or productive throughput.' : 'No explicit running, failure, or heartbeat signal is available; agent-run history does not establish Railway liveness.',
+      lanes,
+      caveat: hasExplicitWorkerSignal ? 'Observed durable worker heartbeat records. A stale lane means its last heartbeat exceeded 30 minutes; productive throughput remains a separate signal.' : 'No durable worker heartbeat is available; configuration or completed agent-run history does not establish Railway liveness.',
     },
     throughput: {
       sourcesAttempted: radarData.sourceHealth.summary.attempted,
@@ -353,12 +409,13 @@ export function buildPlatformAdminReadModel(input: BuildPlatformAdminReadModelIn
       delivery: workspaceData.delivery,
     },
     durable,
+    agentGraph: agentGraphSnapshot(),
   };
 
   const durableTables = durable.tables.map((table) => ({ name: table.name, status: table.available ? 'deployed' as const : 'missing' as const }));
   const systemWarnings = [
     ...(databaseConfigured ? [] : ['DATABASE_URL is not configured; stores are demo-scoped in-memory compatibility stores.']),
-    'Worker health is separate from productive throughput; a healthy run does not prove publication or delivery progress.',
+    'Worker health is separate from productive throughput; a live heartbeat does not prove publication or delivery progress.',
     ...durable.warnings,
   ];
   const systemData: PlatformAdminSystemData = {
@@ -367,7 +424,7 @@ export function buildPlatformAdminReadModel(input: BuildPlatformAdminReadModelIn
     sessionSecretConfigured: Boolean(process.env.MISSA_SESSION_SECRET),
     cronSecretConfigured: Boolean(process.env.CRON_SECRET),
     runtimeTruth: 'RadarEngine and WorkspaceEngine compatibility stores are the current runtime read model. Additive relational/agent tables are reported separately.',
-    workerCaveat: 'The web app does not infer an always-on worker from configuration or completed run history. Running or failed run records are explicit signals; a heartbeat is not currently exposed.',
+    workerCaveat: 'Worker liveness is based on durable heartbeat metadata from the Railway/container lane. A lane older than 30 minutes is stale; completed history does not establish that a process is running now.',
     durableTables,
     warnings: systemWarnings,
   };
@@ -375,11 +432,12 @@ export function buildPlatformAdminReadModel(input: BuildPlatformAdminReadModelIn
   const auditEntries: PlatformAdminAuditEntry[] = [
     ...radar.auditLog.map((entry) => ({ id: entry.id, domain: 'radar' as const, at: entry.at, ...(entry.accountId ? { actorAccountId: entry.accountId } : {}), action: entry.action, targetType: entry.targetType, targetId: entry.targetId })),
     ...workspace.auditLog.map((entry) => ({ id: entry.id, domain: 'workspace' as const, at: entry.at, ...(entry.accountId ? { actorAccountId: entry.accountId } : {}), action: entry.action, targetType: entry.targetType, targetId: entry.targetId })),
+    ...durable.auditEventRows.map((entry) => ({ id: entry.id, domain: 'platform' as const, at: entry.createdAt ?? generatedAt, ...(entry.actorAccountId ? { actorAccountId: entry.actorAccountId } : {}), action: entry.action, targetType: entry.targetType, targetId: entry.targetId })),
   ].sort((a, b) => b.at.localeCompare(a.at));
   const auditData: PlatformAdminAuditData = {
     count: auditEntries.length,
     recent: auditEntries.slice(0, 50),
-    limitation: 'Compatibility audit entries are shown without private detail payloads. This view does not claim to be a complete target-schema audit ledger.',
+    limitation: 'Recent compatibility and platform audit entries are shown without private detail payloads. The view remains capped at the latest 50 rows.',
   };
 
   return {
@@ -406,7 +464,7 @@ export function buildPlatformAdminReadModel(input: BuildPlatformAdminReadModelIn
       warnings: systemWarnings,
     },
     audit: {
-      provenance: { maturity: 'partial', source: 'RadarEngine and WorkspaceEngine compatibility audit logs', freshness: `read at ${generatedAt}` },
+      provenance: { maturity: durable.auditEvents.maturity === 'durable' ? 'durable' : 'partial', source: 'RadarEngine, WorkspaceEngine, and optional audit_events records', freshness: `read at ${generatedAt}` },
       data: auditData,
       warnings: [auditData.limitation],
     },

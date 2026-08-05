@@ -4,6 +4,7 @@
 import { createHash } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { assessCoverage, buildCoverageQueries, type CoverageCellInput, type CoverageMembershipInput } from '@missa/radar-engine';
+import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from './workerTelemetry.js';
 
 const LOCK_KEY = 1947350012;
 const DEFAULT_TYPES = ['grant', 'fellowship', 'residency', 'magazine', 'open-call'] as const;
@@ -107,7 +108,18 @@ export async function runCoverageWorkerTick(options: CoverageWorkerOptions = {})
 
 async function main(): Promise<void> {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required to run the Missa coverage worker.');
-  const result = await runCoverageWorkerTick({ logger: console });
-  console.log(JSON.stringify(result));
+  const telemetryPool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
+  const workerRunId = await startWorkerRun(telemetryPool, 'coverage-worker');
+  try {
+    const result = await runCoverageWorkerTick({ logger: console });
+    await heartbeatWorkerRun(telemetryPool, workerRunId, 'coverage-worker', { outputCount: result.queriesQueued });
+    await finishWorkerRun(telemetryPool, workerRunId, 'coverage-worker', 'completed', { outputCount: result.queriesQueued });
+    console.log(JSON.stringify(result));
+  } catch (error) {
+    await finishWorkerRun(telemetryPool, workerRunId, 'coverage-worker', 'failed', { lastError: error instanceof Error ? error.message : String(error) });
+    throw error;
+  } finally {
+    await telemetryPool.end();
+  }
 }
 if (process.argv[1]?.endsWith('coverageWorker.js')) void main();

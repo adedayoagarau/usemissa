@@ -815,6 +815,7 @@ export const radarAgentRuns = pgTable(
     startedAt: timestamp("started_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    heartbeatAt: timestamp("heartbeat_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     inputCount: integer("input_count").notNull().default(0),
     outputCount: integer("output_count").notNull().default(0),

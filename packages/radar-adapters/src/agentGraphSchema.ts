@@ -10,6 +10,7 @@ create table if not exists radar_agent_runs (
   status text not null default 'running',
   correlation_id text,
   started_at timestamptz not null default now(),
+  heartbeat_at timestamptz,
   completed_at timestamptz,
   input_count integer not null default 0,
   output_count integer not null default 0,
@@ -17,7 +18,9 @@ create table if not exists radar_agent_runs (
   metadata jsonb not null default '{}'::jsonb,
   check (status in ('running', 'completed', 'failed', 'cancelled'))
 );
+alter table radar_agent_runs add column if not exists heartbeat_at timestamptz;
 create index if not exists radar_agent_runs_kind_started_idx on radar_agent_runs (agent_kind, started_at);
+create index if not exists radar_agent_runs_heartbeat_idx on radar_agent_runs (heartbeat_at);
 
 create table if not exists radar_agent_handoffs (
   id text primary key,

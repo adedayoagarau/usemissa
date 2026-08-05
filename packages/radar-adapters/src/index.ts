@@ -57,10 +57,30 @@ export {
 } from "./taxonomyAdmin.js";
 export {
   readPlatformAdminDurableSummary,
+  type DurableAgentRunRow,
+  type DurableAuditRow,
+  type DurableHandoffRow,
+  type DurableJobRow,
   type DurableMaturity,
+  type DurableOutboxRow,
   type DurableQueueMetric,
   type PlatformAdminDurableSummary,
 } from "./platformAdmin.js";
+export {
+  finishWorkerRun,
+  heartbeatWorkerRun,
+  startWorkerRun,
+  type RadarWorkerKind,
+  type WorkerRunProgress,
+} from "./workerTelemetry.js";
+export {
+  recordPlatformAdminAudit,
+  mutatePlatformAdminQueue,
+  type PlatformAdminQueue,
+  type PlatformAdminQueueAction,
+  type PlatformAdminQueueMutation,
+  type PlatformAdminQueueMutationResult,
+} from "./platformAdminOperations.js";
 export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';
 export {

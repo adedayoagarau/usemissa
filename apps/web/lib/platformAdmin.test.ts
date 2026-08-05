@@ -53,3 +53,33 @@ test('missing target-schema tables remain explicit partial/unavailable state', (
   assert.equal(model.system.data.durableTables.find((table) => table.name === 'radar_review_jobs')?.status, 'missing');
   assert.match(model.operations.warnings.join('\n'), /radar_review_jobs is not deployed/);
 });
+
+test('durable worker heartbeat drives lane health and platform audit is retained', () => {
+  const durable = emptyPlatformAdminDurableSummary(generatedAt);
+  durable.available = true;
+  durable.tables = [
+    { name: 'radar_agent_runs', available: true },
+    { name: 'audit_events', available: true },
+  ];
+  durable.agentRuns = { maturity: 'durable', counts: { running: 1 } };
+  durable.auditEvents = { maturity: 'durable', counts: { recorded: 1 } };
+  durable.agentRunRows = [{
+    id: 'worker_run_1',
+    agentKind: 'radar-worker',
+    workerKind: 'radar-worker',
+    status: 'running',
+    startedAt: '2026-08-04T11:00:00.000Z',
+    heartbeatAt: '2026-08-04T11:59:00.000Z',
+    inputCount: 2,
+    outputCount: 1,
+  }];
+  durable.auditEventRows = [{ id: 'audit_1', actorAccountId: 'acct_admin', action: 'platform_admin.queue_retry', targetType: 'radar_review_job', targetId: 'job_1', createdAt: generatedAt }];
+
+  const model = buildPlatformAdminReadModel({ radarStore: createRadarStore(), workspaceStore: createWorkspaceStore(), generatedAt, databaseConfigured: true, durable });
+
+  assert.equal(model.operations.data.worker.status, 'running');
+  assert.equal(model.operations.data.worker.lanes[0]?.workerKind, 'radar-worker');
+  assert.equal(model.operations.data.worker.lanes[0]?.status, 'running');
+  assert.equal(model.audit.data.recent[0]?.domain, 'platform');
+  assert.equal(model.audit.data.recent[0]?.action, 'platform_admin.queue_retry');
+});

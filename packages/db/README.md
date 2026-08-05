@@ -56,5 +56,14 @@ Run the seed twice on that same disposable database, compare row counts and fore
 record the rollback (drop the rehearsal branch or restore its snapshot). Production remains on
 compatibility reads/writes until this rehearsal and dual-read parity are signed off.
 
+## Worker telemetry
+
+`migrations/0013_radar_agent_heartbeat.sql` adds the nullable heartbeat cursor
+used by Railway worker runs. The adapter also applies the same additive
+`alter table ... add column if not exists` guard when a worker boots, so an
+already-created target schema can receive the column without a destructive
+cutover. Rehearse and register the migration in the intended environment's
+migration journal before treating it as the sole deployment path.
+
 The seed is idempotent and leaves the scheme in `draft`; publishing the taxonomy requires a
 separate editorial/provenance review.

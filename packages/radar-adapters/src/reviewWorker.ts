@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { ensureAgentGraphSchema } from "./agentGraphSchema.js";
+import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
 
 type ReviewDecision = "publish" | "needs-human" | "suppress" | "error";
 type ReviewJob = { id: string; opportunityId: string; inputVersion: string };
@@ -220,24 +221,33 @@ async function main(): Promise<void> {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required to run the Missa review agent.");
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   await ensureAgentGraphSchema(pool);
+  const workerRunId = await startWorkerRun(pool, "review-worker");
   const controller = new AbortController();
   const stop = () => controller.abort();
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
   console.log(`[missa-review-agent] running every ${Math.round(intervalMs() / 60_000)} minutes, batch=${batchSize()}`);
-  while (!controller.signal.aborted) {
-    try {
-      const result = await runReviewTick(pool);
-      console.log(`[missa-review-agent] tick: claimed=${result.claimed} decisions=${JSON.stringify(result.decisions)}`);
-    } catch (error) {
-      console.error("[missa-review-agent] tick failed; retrying after interval", error);
+  try {
+    while (!controller.signal.aborted) {
+      try {
+        await heartbeatWorkerRun(pool, workerRunId, "review-worker");
+        const result = await runReviewTick(pool);
+        const outputs = Object.values(result.decisions).reduce((sum, count) => sum + count, 0);
+        await heartbeatWorkerRun(pool, workerRunId, "review-worker", { inputCount: result.claimed, outputCount: outputs });
+        console.log(`[missa-review-agent] tick: claimed=${result.claimed} decisions=${JSON.stringify(result.decisions)}`);
+      } catch (error) {
+        await heartbeatWorkerRun(pool, workerRunId, "review-worker", { lastError: error instanceof Error ? error.message : String(error) });
+        console.error("[missa-review-agent] tick failed; retrying after interval", error);
+      }
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, intervalMs());
+        controller.signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true });
+      });
     }
-    await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, intervalMs());
-      controller.signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true });
-    });
+  } finally {
+    await finishWorkerRun(pool, workerRunId, "review-worker", "cancelled");
+    await pool.end();
   }
-  await pool.end();
 }
 
 if (process.argv[1]?.endsWith("reviewWorker.js")) {

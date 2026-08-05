@@ -12,6 +12,7 @@ import { assembleRegistry, contentHash, discoverySeeds, type Source } from "@mis
 import { DISCOVERY_INGESTION_LOCK, releaseAdvisoryLock, tryAdvisoryLock } from "./radarWorker.js";
 import { Pool, type PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
+import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun, type RadarWorkerKind } from "./workerTelemetry.js";
 
 const USER_AGENT = "MissaRadar/1.0 (+https://www.usemissa.com; discovery; evidence-only)";
 const DEFAULT_BATCH_SIZE = 100;
@@ -28,6 +29,7 @@ export interface DiscoveryWorkerOptions {
   intervalMs?: number;
   signal?: AbortSignal;
   logger?: Pick<Console, "info" | "error" | "warn">;
+  workerKind?: RadarWorkerKind;
 }
 
 export interface DiscoveryLink {
@@ -299,14 +301,25 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 export async function runDiscoveryWorker(options: DiscoveryWorkerOptions = {}): Promise<void> {
   const logger = options.logger ?? console;
   const intervalMs = options.intervalMs ?? Math.max(60_000, Number(process.env.RADAR_DISCOVERY_INTERVAL_MINUTES ?? 5) * 60_000);
-  while (!options.signal?.aborted) {
-    try {
-      const result = await runDiscoveryWorkerTick(options);
-      logger.info(`[missa-discovery-worker] checked=${result.sourcesChecked} failures=${result.failures} added=${result.sourcesAdded}`);
-    } catch (error) {
-      logger.error("[missa-discovery-worker] tick failed; retrying after interval", error);
+  const workerKind = options.workerKind ?? "discovery-worker";
+  const telemetryPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, max: 1 }) : undefined;
+  const workerRunId = telemetryPool ? await startWorkerRun(telemetryPool, workerKind) : undefined;
+  try {
+    while (!options.signal?.aborted) {
+      try {
+        await heartbeatWorkerRun(telemetryPool!, workerRunId, workerKind);
+        const result = await runDiscoveryWorkerTick(options);
+        await heartbeatWorkerRun(telemetryPool!, workerRunId, workerKind, { inputCount: result.sourcesChecked, outputCount: result.sourcesAdded });
+        logger.info(`[missa-discovery-worker] checked=${result.sourcesChecked} failures=${result.failures} added=${result.sourcesAdded}`);
+      } catch (error) {
+        await heartbeatWorkerRun(telemetryPool!, workerRunId, workerKind, { lastError: error instanceof Error ? error.message : String(error) });
+        logger.error("[missa-discovery-worker] tick failed; retrying after interval", error);
+      }
+      await sleep(intervalMs, options.signal);
     }
-    await sleep(intervalMs, options.signal);
+  } finally {
+    await finishWorkerRun(telemetryPool!, workerRunId, workerKind, "cancelled");
+    await telemetryPool?.end();
   }
 }
 

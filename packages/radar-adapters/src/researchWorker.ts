@@ -34,6 +34,7 @@ async function main(): Promise<void> {
     maxSources: Number(process.env.RADAR_RESEARCH_BATCH_SIZE ?? process.env.RADAR_DISCOVERY_BATCH_SIZE ?? 100),
     intervalMs: interval,
     signal: controller.signal,
+    workerKind: "research-worker",
     logger: console,
   });
 }
