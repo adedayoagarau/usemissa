@@ -7,6 +7,7 @@ import {
   Bot,
   BarChart3,
   Building2,
+  CreditCard,
   FileText,
   FileClock,
   LayoutDashboard,
@@ -34,7 +35,9 @@ type NavItem = {
 const primaryLinks: NavItem[] = [
   { href: '/admin', label: 'Control Room', icon: LayoutDashboard, exact: true },
   { href: '/admin/customers', label: 'Customers', icon: Users },
+  { href: '/admin/crm', label: 'CRM', icon: Users },
   { href: '/admin/organizations', label: 'Organizations', icon: Building2 },
+  { href: '/admin/billing', label: 'Billing', icon: CreditCard },
   { href: '/admin/content', label: 'Content', icon: FileText },
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
 ];
@@ -44,7 +47,7 @@ const operationsLinks: NavItem[] = [
   { href: '/admin/support', label: 'Support', icon: LifeBuoy },
   { href: '/admin/messaging', label: 'Messaging & delivery', icon: Mail },
   { href: '/admin/radar', label: 'Radar', icon: Radar },
-  { href: '/admin/operations?queue=agents', label: 'Agents', icon: Bot, activePath: '/admin/operations', activeQuery: { key: 'queue', value: 'agents' } },
+  { href: '/admin/agents', label: 'Agent controls', icon: Bot },
 ];
 
 const systemLinks: NavItem[] = [

@@ -1,0 +1,23 @@
+import { DataAreaHeader, LifecycleTable, MaturityBadge, MetricCard, SectionHeading, WarningList } from '@/components/platform-admin';
+import type { AdminArea } from '@/lib/platformAdmin';
+import type { PlatformAdminBillingData } from '@/lib/platformAdminFoundations';
+
+function money(cents?: number, currency?: string): string {
+  if (cents === undefined) return '—';
+  return `${currency ? `${currency.toUpperCase()} ` : ''}${(cents / 100).toFixed(2)}`;
+}
+
+function dateLabel(value?: string): string {
+  return value ? new Date(value).toLocaleString() : 'Not observed';
+}
+
+export default function PlatformAdminBilling({ area }: { area: AdminArea<PlatformAdminBillingData> }) {
+  const summary = area.data.summary;
+  return <div className="space-y-8">
+    <DataAreaHeader area={area} title="Billing ledger" description="Provider-event facts received from Stripe. This is an operational ledger, not a revenue warehouse: amounts remain provider currency units and no plan field is treated as payment evidence." />
+    <WarningList warnings={area.warnings} />
+    <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="Billing summary"><MetricCard label="Ledger entries" value={summary.entries} detail="Durable provider facts" /><MetricCard label="Processed" value={summary.processed} detail="Provider event handled" /><MetricCard label="Received" value={summary.received} detail="Awaiting reconciliation" /><MetricCard label="Failed" value={summary.failed} detail="Needs retry or investigation" /><MetricCard label="Processed amount" value={summary.grossAmountCents ? `${summary.grossAmountCents} cents` : '—'} detail="Mixed currencies are not converted" /></section>
+    <section><SectionHeading eyebrow="Provider facts" title="Stripe event ledger" description="Event IDs are shown for reconciliation; credentials, raw provider payloads, and payment methods are never rendered." /><div className="mt-4 overflow-x-auto border border-border bg-white"><table className="w-full min-w-[1080px] text-left text-sm"><caption className="sr-only">Durable billing provider event ledger</caption><thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground"><tr><th scope="col" className="px-4 py-3 font-medium">Event</th><th scope="col" className="px-4 py-3 font-medium">Organization</th><th scope="col" className="px-4 py-3 font-medium">Entry</th><th scope="col" className="px-4 py-3 font-medium">Status</th><th scope="col" className="px-4 py-3 font-medium">Amount</th><th scope="col" className="px-4 py-3 font-medium">Observed</th><th scope="col" className="px-4 py-3 font-medium">Error</th></tr></thead><tbody>{area.data.rows.map((row) => <tr key={row.id} className="border-b border-border align-top last:border-0"><th scope="row" className="max-w-[300px] px-4 py-3 font-medium text-foreground"><span className="block truncate">{row.eventType}</span><span className="mt-1 block truncate font-mono text-[11px] font-normal text-muted-foreground">{row.provider}:{row.providerEventId}</span></th><td className="px-4 py-3 font-mono text-xs text-muted-foreground">{row.organizationId ?? 'Unmatched'}</td><td className="px-4 py-3 text-xs capitalize">{row.entryType}</td><td className={`px-4 py-3 text-xs font-medium capitalize ${row.status === 'failed' ? 'text-red-700' : row.status === 'processed' ? 'text-green-700' : 'text-amber-700'}`}>{row.status}</td><td className="whitespace-nowrap px-4 py-3 font-mono text-xs">{money(row.amountCents, row.currency)}</td><td className="whitespace-nowrap px-4 py-3 font-mono text-[11px] text-muted-foreground">{dateLabel(row.occurredAt ?? row.createdAt)}</td><td className="max-w-[240px] truncate px-4 py-3 text-xs text-red-700">{row.lastError ?? '—'}</td></tr>)}</tbody></table>{area.data.rows.length === 0 && <p className="px-5 py-12 text-center text-sm text-muted-foreground">No provider ledger entries observed.</p>}</div></section>
+    <section className="grid gap-5 lg:grid-cols-2"><div><SectionHeading eyebrow="Breakdown" title="Entry types" description="Counts reflect the loaded ledger window." /><div className="mt-4"><LifecycleTable label="Billing entry types" counts={area.data.summary.byEntryType} /></div></div><div className="border border-border bg-white p-5"><div className="flex items-center justify-between gap-3"><h2 className="text-sm font-medium text-foreground">Control boundary</h2><MaturityBadge maturity={area.provenance.maturity} /></div><p className="mt-3 text-sm leading-6 text-muted-foreground">Billing mutations remain in the owning organization routes and Stripe webhook. This page records facts and reconciliation state; it does not issue refunds, override entitlements, or expose customer payment details.</p></div></section>
+  </div>;
+}

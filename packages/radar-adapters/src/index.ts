@@ -53,7 +53,11 @@ export {
 export {
   readTaxonomyAdminDashboard,
   createTaxonomyChangeProposal,
+  reviewTaxonomyChangeProposal,
+  TAXONOMY_REVIEW_STATUSES,
   type TaxonomyAdminDashboard,
+  type TaxonomyProposalReviewResult,
+  type TaxonomyReviewStatus,
 } from "./taxonomyAdmin.js";
 export {
   readPlatformAdminDurableSummary,
@@ -97,6 +101,39 @@ export {
   type UpdatePlatformAdminSupportCaseInput,
   type UpdatePlatformAdminSupportCaseResult,
 } from "./platformAdminSupport.js";
+export {
+  beginPlatformMessageEffect,
+  completePlatformMessageEffect,
+  createPlatformCrmNote,
+  ensurePlatformAdminFoundationsSchema,
+  readPlatformAdminAgentControls,
+  readPlatformAdminBilling,
+  readPlatformAdminCrm,
+  readPlatformAdminMessageHistory,
+  processPlatformAgentControlRequests,
+  recordPlatformBillingEvent,
+  requestPlatformAgentControl,
+  platformAdminFoundationsSchema,
+  PLATFORM_AGENT_CONTROL_ACTIONS,
+  billingEventType,
+  type BeginPlatformMessageEffectInput,
+  type BeginPlatformMessageEffectResult,
+  type PlatformAdminAgentControlsData,
+  type PlatformAdminBillingData,
+  type PlatformAdminCrmData,
+  type PlatformAdminMessageHistory,
+  type PlatformAgentControlProcessingResult,
+  type PlatformAgentControlAction,
+  type PlatformAgentControlRequest,
+  type PlatformAgentTargetType,
+  type PlatformBillingEntryType,
+  type PlatformBillingLedgerEntry,
+  type PlatformBillingStatus,
+  type PlatformCrmTimelineEvent,
+  type PlatformMessageAttempt,
+  type PlatformMessageEffect,
+  type PlatformMessageEffectStatus,
+} from "./platformAdminFoundations.js";
 export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';
 export {

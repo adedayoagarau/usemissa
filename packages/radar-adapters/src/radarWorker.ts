@@ -4,6 +4,7 @@ import type { TickReport } from "@missa/radar-engine";
 import type { RadarEngine } from "@missa/radar-engine";
 import { createProductionEngine } from "./productionEngine.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
+import { processPlatformAgentControlRequests } from "./platformAdminFoundations.js";
 
 /**
  * Postgres advisory-lock key for the single Radar ingestion lane. Advisory
@@ -76,6 +77,10 @@ export async function runRadarWorkerTick(
 
   try {
     await heartbeatWorkerRun(production.pool, options.workerRunId, "radar-worker");
+    if (process.env.DATABASE_URL) {
+      const controls = await processPlatformAgentControlRequests(process.env.DATABASE_URL);
+      if (controls.processed > 0) logger.info(`[missa-radar-worker] agent controls: ${controls.applied} applied, ${controls.rejected} rejected`);
+    }
     // Neon transaction pooling is not a safe place to hold a session across
     // network fetches. The canonical lane is single-supervisor in Railway;
     // persistence uses snapshot-version conflict detection for accidental

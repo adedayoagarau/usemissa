@@ -1,4 +1,4 @@
-import { readTaxonomyAdminDashboard, type TaxonomyAdminDashboard } from '@missa/radar-adapters';
+import { readPlatformAdminMessageHistory, readTaxonomyAdminDashboard, type PlatformAdminMessageHistory, type TaxonomyAdminDashboard } from '@missa/radar-adapters';
 import { createStore as createRadarStore, organizationSeatLimit, type RadarStore } from '@missa/radar-engine';
 import { createStore as createWorkspaceStore, type WorkspaceStore } from '@missa/workspace-engine';
 import { getEngine } from './engine';
@@ -236,10 +236,21 @@ export interface PlatformAdminMessagingData {
   };
   configuration: Array<{ label: string; configured: boolean; detail: string }>;
   channels: PlatformAdminMessagingChannel[];
+  history: PlatformAdminMessageHistory;
   boundaries: string[];
 }
 
-function buildMessagingData(stores: RuntimeStores): PlatformAdminMessagingData {
+const emptyMessageHistory: PlatformAdminMessageHistory = {
+  available: false,
+  generatedAt: new Date(0).toISOString(),
+  source: 'platform_message_effects + platform_message_attempts',
+  warnings: [],
+  summary: { effects: 0, attempts: 0, byStatus: {}, attemptsByStatus: {} },
+  effects: [],
+  attempts: [],
+};
+
+function buildMessagingData(stores: RuntimeStores, history: PlatformAdminMessageHistory = emptyMessageHistory): PlatformAdminMessagingData {
   const { radar, workspace } = stores;
   const alerts = [...radar.alerts.values()];
   const candidates = radar.emailCandidates;
@@ -291,7 +302,8 @@ function buildMessagingData(stores: RuntimeStores): PlatformAdminMessagingData {
     summary: { pendingAlertEmails: stores.radarAvailable ? pendingAlertEmails : null, pendingEmailReviews: stores.radarAvailable ? pendingEmailReviews : null, syncFailures: stores.radarAvailable ? syncFailures : null, pendingDelivery: stores.workspaceAvailable ? pendingDelivery : null },
     configuration,
     channels,
-    boundaries: ['No private email body, recipient address, provider token, or attachment payload is rendered.', 'Decision email sends are audited but do not yet have a durable message-delivery table or retry state.', 'A pending Workspace delivery task is not evidence that an email or external handoff was attempted.', 'Automation controls, templates, preferences, and provider-level delivery logs remain future governed capabilities.'],
+    history,
+    boundaries: ['No private email body, recipient address, provider token, or attachment payload is rendered.', 'Decision and alert sends write durable effects only when the additive platform ledger is deployed; compatibility alert state remains separate.', 'A pending Workspace delivery task is not evidence that an email or external handoff was attempted.', 'Provider webhook reconciliation, templates, preferences, and message suppression policy remain separate governed capabilities.'],
   };
 }
 
@@ -384,8 +396,12 @@ export async function getPlatformAdminOrganizations(): Promise<AdminArea<Platfor
 
 export async function getPlatformAdminMessaging(): Promise<AdminArea<PlatformAdminMessagingData>> {
   const generatedAt = new Date().toISOString();
-  const stores = await readRuntimeStores();
-  return area(buildMessagingData(stores), 'RadarStore alerts/email/Gmail records and WorkspaceStore delivery tasks', stores.maturity, generatedAt, stores.warnings);
+  const [stores, history] = await Promise.all([
+    readRuntimeStores(),
+    process.env.DATABASE_URL ? readPlatformAdminMessageHistory(process.env.DATABASE_URL) : Promise.resolve(emptyMessageHistory),
+  ]);
+  const historyWarnings = history.warnings;
+  return area(buildMessagingData(stores, history), 'Compatibility notification state plus durable provider effect and attempt history', stores.maturity, generatedAt, [...stores.warnings, ...historyWarnings]);
 }
 
 export async function getPlatformAdminGovernance(): Promise<AdminArea<PlatformAdminGovernanceData>> {

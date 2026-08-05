@@ -10,11 +10,14 @@ test('admin can open the control room and operational loop', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Control Room' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Operations', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Customers', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'CRM', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Billing', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Organizations', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Content', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Analytics', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Messaging & delivery', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Support', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Agent controls', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Governance', exact: true })).toBeVisible();
 
   await page.goto('/admin/customers');
@@ -31,6 +34,17 @@ test('admin can open the control room and operational loop', async ({ page }) =>
   await page.goto('/admin/organizations');
   await expect(page.getByRole('heading', { name: 'Organizations', exact: true })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Search organizations' })).toBeVisible();
+
+  await page.goto('/admin/crm');
+  await expect(page.getByRole('heading', { name: 'CRM timeline', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Add internal note', exact: true })).toBeVisible();
+
+  await page.goto('/admin/billing');
+  await expect(page.getByRole('heading', { name: 'Billing ledger', exact: true })).toBeVisible();
+
+  await page.goto('/admin/agents');
+  await expect(page.getByRole('heading', { name: 'Agent controls', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Request a control', exact: true })).toBeVisible();
 
   await page.goto('/admin/messaging');
   await expect(page.getByRole('heading', { name: 'Messaging & delivery', exact: true })).toBeVisible();
@@ -57,5 +71,14 @@ test('admin can open the control room and operational loop', async ({ page }) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
 
   await page.goto('/admin/support');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+
+  await page.goto('/admin/crm');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+
+  await page.goto('/admin/billing');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+
+  await page.goto('/admin/agents');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
 });

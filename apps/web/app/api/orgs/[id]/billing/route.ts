@@ -23,6 +23,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  const idempotencyKey = request.headers.get('Idempotency-Key')?.trim().slice(0, 240) || undefined;
   const body = await request.json().catch(() => ({}));
   const plan = body.plan as PaidPlan;
   if (!['indie', 'pro', 'program'].includes(plan)) return NextResponse.json({ error: 'Choose an indie, pro, or program plan' }, { status: 400 });
@@ -42,7 +43,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   });
   const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded', ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) },
     body: form,
   });
   const data = await response.json() as { id?: string; url?: string; error?: { message?: string } };

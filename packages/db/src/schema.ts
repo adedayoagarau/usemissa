@@ -2014,3 +2014,236 @@ export const taxonomyChangeProposals = pgTable(
     ),
   ],
 );
+
+/**
+ * Platform-control-plane foundations. These tables are additive to the
+ * compatibility stores: they record provider effects, operator CRM events,
+ * billing-provider facts, and agent control intents without becoming a
+ * second source of truth for product state.
+ *
+ * The matching SQL is kept in the unreconciled 0014 migration draft and in
+ * the runtime adapter guard. Register/apply it only after the live 0006-0013
+ * migration history has been reconciled.
+ */
+export const platformMessageEffects = pgTable(
+  "platform_message_effects",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id"),
+    accountId: text("account_id"),
+    kind: text("kind").notNull(),
+    provider: text("provider").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    status: text("status").notNull().default("pending"),
+    providerMessageId: text("provider_message_id"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    lastError: text("last_error"),
+    requestedAt: timestamp("requested_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+    metadata: jsonb("metadata")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+  },
+  (table) => [
+    uniqueIndex("platform_message_effects_idempotency_idx").on(
+      table.idempotencyKey,
+    ),
+    index("platform_message_effects_status_idx").on(
+      table.status,
+      table.updatedAt,
+    ),
+    index("platform_message_effects_account_idx").on(
+      table.accountId,
+      table.createdAt,
+    ),
+    check(
+      "platform_message_effects_status_check",
+      sql`${table.status} in ('pending', 'sending', 'sent', 'failed', 'suppressed')`,
+    ),
+    check(
+      "platform_message_effects_attempts_check",
+      sql`${table.attemptCount} >= 0`,
+    ),
+  ],
+);
+
+export const platformMessageAttempts = pgTable(
+  "platform_message_attempts",
+  {
+    id: text("id").primaryKey(),
+    effectId: text("effect_id")
+      .notNull()
+      .references(() => platformMessageEffects.id, { onDelete: "cascade" }),
+    attemptNumber: integer("attempt_number").notNull(),
+    provider: text("provider").notNull(),
+    status: text("status").notNull().default("started"),
+    providerMessageId: text("provider_message_id"),
+    error: text("error"),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    metadata: jsonb("metadata")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+  },
+  (table) => [
+    uniqueIndex("platform_message_attempts_effect_attempt_idx").on(
+      table.effectId,
+      table.attemptNumber,
+    ),
+    index("platform_message_attempts_status_idx").on(
+      table.status,
+      table.startedAt,
+    ),
+    check(
+      "platform_message_attempts_status_check",
+      sql`${table.status} in ('started', 'sent', 'failed')`,
+    ),
+    check(
+      "platform_message_attempts_number_check",
+      sql`${table.attemptNumber} >= 1`,
+    ),
+  ],
+);
+
+export const platformCrmTimelineEvents = pgTable(
+  "platform_crm_timeline_events",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id"),
+    accountId: text("account_id"),
+    eventType: text("event_type").notNull(),
+    source: text("source").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    actorAccountId: text("actor_account_id"),
+    idempotencyKey: text("idempotency_key"),
+    metadata: jsonb("metadata")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("platform_crm_timeline_idempotency_idx").on(
+      table.idempotencyKey,
+    ),
+    index("platform_crm_timeline_org_created_idx").on(
+      table.organizationId,
+      table.createdAt,
+    ),
+    index("platform_crm_timeline_account_created_idx").on(
+      table.accountId,
+      table.createdAt,
+    ),
+    index("platform_crm_timeline_type_created_idx").on(
+      table.eventType,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const platformBillingLedger = pgTable(
+  "platform_billing_ledger",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id"),
+    provider: text("provider").notNull().default("stripe"),
+    providerEventId: text("provider_event_id").notNull(),
+    providerObjectId: text("provider_object_id"),
+    eventType: text("event_type").notNull(),
+    entryType: text("entry_type").notNull(),
+    status: text("status").notNull().default("received"),
+    amountCents: integer("amount_cents"),
+    currency: text("currency"),
+    customerId: text("customer_id"),
+    subscriptionId: text("subscription_id"),
+    invoiceId: text("invoice_id"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    metadata: jsonb("metadata")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("platform_billing_ledger_provider_event_idx").on(
+      table.provider,
+      table.providerEventId,
+      table.entryType,
+    ),
+    index("platform_billing_ledger_org_created_idx").on(
+      table.organizationId,
+      table.createdAt,
+    ),
+    index("platform_billing_ledger_status_created_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+    check(
+      "platform_billing_ledger_status_check",
+      sql`${table.status} in ('received', 'processed', 'failed', 'ignored')`,
+    ),
+    check(
+      "platform_billing_ledger_amount_check",
+      sql`${table.amountCents} is null or ${table.amountCents} >= 0`,
+    ),
+  ],
+);
+
+export const platformAgentControlRequests = pgTable(
+  "platform_agent_control_requests",
+  {
+    id: text("id").primaryKey(),
+    operationId: text("operation_id").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id").notNull(),
+    expectedState: text("expected_state"),
+    action: text("action").notNull(),
+    status: text("status").notNull().default("requested"),
+    actorAccountId: text("actor_account_id").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    policyVersion: text("policy_version").notNull().default("agent-control.v1"),
+    reason: text("reason"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+    metadata: jsonb("metadata")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+  },
+  (table) => [
+    uniqueIndex("platform_agent_control_requests_idempotency_idx").on(
+      table.idempotencyKey,
+    ),
+    index("platform_agent_control_requests_target_idx").on(
+      table.targetType,
+      table.targetId,
+      table.createdAt,
+    ),
+    index("platform_agent_control_requests_status_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+    check(
+      "platform_agent_control_requests_status_check",
+      sql`${table.status} in ('requested', 'accepted', 'applied', 'rejected', 'failed', 'cancelled')`,
+    ),
+    check(
+      "platform_agent_control_requests_action_check",
+      sql`${table.action} in ('pause', 'resume', 'cancel', 'replay', 'requeue', 'release-stale')`,
+    ),
+  ],
+);

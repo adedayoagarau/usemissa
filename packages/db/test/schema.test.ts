@@ -20,6 +20,10 @@ import {
   reviewAssignments,
   trackedOpportunities,
   trackedStatusEvents,
+  platformAgentControlRequests,
+  platformBillingLedger,
+  platformMessageAttempts,
+  platformMessageEffects,
 } from "../src/schema.js";
 
 test("platform schema carries tenant, audit, outbox, and reviewer indexes", () => {
@@ -136,4 +140,15 @@ test("opportunities schema exposes the additive query and personal-state boundar
       (index) => index.config.name === "submission_outbound_opp_idx",
     ),
   );
+});
+
+test("platform foundation schema separates effects, attempts, billing facts, and controls", () => {
+  const effects = getTableConfig(platformMessageEffects);
+  const attempts = getTableConfig(platformMessageAttempts);
+  const billing = getTableConfig(platformBillingLedger);
+  const controls = getTableConfig(platformAgentControlRequests);
+  assert.ok(effects.indexes.some((index) => index.config.name === "platform_message_effects_idempotency_idx"));
+  assert.ok(attempts.indexes.some((index) => index.config.name === "platform_message_attempts_effect_attempt_idx"));
+  assert.ok(billing.indexes.some((index) => index.config.name === "platform_billing_ledger_provider_event_idx"));
+  assert.ok(controls.indexes.some((index) => index.config.name === "platform_agent_control_requests_idempotency_idx"));
 });

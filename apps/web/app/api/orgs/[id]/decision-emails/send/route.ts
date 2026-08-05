@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'node:crypto';
 import { Resend } from 'resend';
+import { beginPlatformMessageEffect, completePlatformMessageEffect } from '@missa/radar-adapters';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
 
 const headers = { 'Cache-Control': 'private, no-store' };
@@ -10,6 +12,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status, headers });
   const idempotencyKey = request.headers.get('Idempotency-Key')?.trim().slice(0, 200) || undefined;
+  const batchKey = idempotencyKey ?? randomUUID();
   if (idempotencyKey) {
     const replay = result.access.radar.store.auditLog.find((entry) => {
       if (entry.action !== 'decision.email.batch_sent' || entry.targetId !== id || !entry.detail) return false;
@@ -34,11 +37,30 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const work = result.access.scope.work(workId); const decision = work && result.access.workspace.decisionForWork(id, workId); const submission = work && result.access.workspace.store.submissions.get(work.submissionId); const account = submission && result.access.radar.store.accounts.get(submission.submitterAccountId); if (!work || !decision || !account?.email) continue;
     const emailSubject = render(subject, { workTitle: work.title, outcome: decision.outcome });
     const emailBody = render(template, { workTitle: work.title, outcome: decision.outcome });
+    let effect: Awaited<ReturnType<typeof beginPlatformMessageEffect>> | undefined;
+    if (process.env.DATABASE_URL) {
+      effect = await beginPlatformMessageEffect(process.env.DATABASE_URL, {
+        idempotencyKey: `decision-email:${batchKey}:${workId}`,
+        accountId: result.access.session.account.id,
+        organizationId: id,
+        kind: 'decision-email',
+        provider: 'resend',
+        metadata: { workId, decisionId: decision.id },
+      });
+    }
+    if (effect && !effect.shouldDeliver) {
+      sent.push(workId);
+      continue;
+    }
     try {
       const response = await resend.emails.send({ from, to: account.email, subject: emailSubject, text: emailBody });
-      if (response.error) { failed.push(workId); continue; }
+      if (response.error) throw new Error(response.error.message);
+      if (effect && process.env.DATABASE_URL) await completePlatformMessageEffect({ connectionString: process.env.DATABASE_URL, effectId: effect.effectId, attemptNumber: effect.attemptNumber, status: 'sent', providerMessageId: response.data?.id });
       sent.push(workId);
-    } catch { failed.push(workId); }
+    } catch (error) {
+      if (effect && process.env.DATABASE_URL) await completePlatformMessageEffect({ connectionString: process.env.DATABASE_URL, effectId: effect.effectId, attemptNumber: effect.attemptNumber, status: 'failed', error: error instanceof Error ? error.message : 'Provider send failed' }).catch(() => undefined);
+      failed.push(workId);
+    }
     result.access.radar.recordAudit(result.access.session.account.id, 'decision.email.sent', 'work_decision', decision.id, JSON.stringify({ recipient: account.email, subject: emailSubject }));
   }
   await persistOrganizationMutation(result.access, { action: 'decision.email.batch_sent', targetType: 'organization', targetId: id, detail: { workIds: sent, failedWorkIds: failed, idempotencyKey } });

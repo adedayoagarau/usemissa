@@ -9,8 +9,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!organization.billingSubscriptionId) return NextResponse.json({ error: 'No active subscription to cancel.' }, { status: 400 });
   const secret = process.env.STRIPE_SECRET_KEY;
   if (!secret) return NextResponse.json({ error: 'Billing is not configured.' }, { status: 503 });
+  const idempotencyKey = request.headers.get('Idempotency-Key')?.trim().slice(0, 240) || undefined;
   const response = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(organization.billingSubscriptionId)}`, {
-    method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ cancel_at_period_end: 'true' }),
+    method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded', ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) }, body: new URLSearchParams({ cancel_at_period_end: 'true' }),
   });
   const data = await response.json() as { cancel_at_period_end?: boolean; status?: string; error?: { message?: string } };
   if (!response.ok) return NextResponse.json({ error: data.error?.message ?? 'Unable to cancel subscription.' }, { status: 502 });
