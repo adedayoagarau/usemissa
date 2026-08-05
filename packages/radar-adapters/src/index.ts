@@ -81,6 +81,22 @@ export {
   type PlatformAdminQueueMutation,
   type PlatformAdminQueueMutationResult,
 } from "./platformAdminOperations.js";
+export {
+  createOpportunityIssueReport,
+  normalizePlatformAdminSupportCase,
+  readPlatformAdminSupportQueue,
+  summarizePlatformAdminSupportCases,
+  updatePlatformAdminSupportCase,
+  PLATFORM_SUPPORT_STATUSES,
+  type CreateOpportunityIssueReportInput,
+  type CreateOpportunityIssueReportResult,
+  type PlatformAdminSupportCase,
+  type PlatformAdminSupportQueue,
+  type PlatformAdminSupportSummary,
+  type PlatformSupportStatus,
+  type UpdatePlatformAdminSupportCaseInput,
+  type UpdatePlatformAdminSupportCaseResult,
+} from "./platformAdminSupport.js";
 export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';
 export {

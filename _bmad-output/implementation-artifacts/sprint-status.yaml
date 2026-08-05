@@ -138,3 +138,9 @@ development_status:
   14-6-messaging-delivery-and-workflow-automation-foundation: done
   14-7-platform-governance-support-billing-and-agent-loop-operations: done
   epic-14-retrospective: optional
+
+  epic-15: in-progress
+  15-1-durable-support-cases-and-issue-outbox: done
+  15-2-durable-message-effect-ledger-and-provider-delivery-history: backlog
+  15-3-governed-crm-billing-and-agent-control-contracts: backlog
+  epic-15-retrospective: optional

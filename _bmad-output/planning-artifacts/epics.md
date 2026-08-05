@@ -764,3 +764,55 @@ So that the product can be operated safely as usage grows (FR67–72).
 **Then** billing/provider state, account/security state, integration health, support incidents, and agent runs/handoffs are separated by source and permission
 **And** destructive actions require explicit confirmation, are idempotent, and write append-only audit records
 **And** agent-to-agent execution remains worker/database coordinated, fail-closed on review/publish, and never becomes an unbounded direct autonomous call chain.
+
+---
+
+## Epic 15: Durable Support and Event Foundations *(Current build)*
+
+Closes the first persistence gap behind the Admin Control Plane using tables
+already present in the authoritative migration journal. This epic deliberately
+separates support-case truth, event coordination, external message delivery,
+CRM history, billing ledgers, and agent controls so a convenient admin screen
+cannot imply a capability the backend does not yet own.
+
+### Story 15.1: Durable support cases and issue outbox
+
+As a Missa user and platform operator,
+I want opportunity issue reports to become an audited, trackable support queue,
+So that reported content problems can be triaged without a shadow database.
+
+**Acceptance Criteria:**
+
+**Given** an authenticated user and a database-backed Missa runtime
+**When** the user reports an opportunity issue
+**Then** the validated report is persisted idempotently, audited, and emits a bounded outbox event
+**And** a platform operator can view cases and change only the supported lifecycle status with an idempotency key
+**And** every status transition is append-only audited and emits a status-change event
+**And** missing database tables are shown as unavailable rather than as an empty healthy queue.
+
+### Story 15.2: Durable message-effect ledger and provider delivery history
+
+As a platform operator,
+I want every outbound message intent, attempt, provider response, and final state to be durable,
+So that Messaging & delivery reports actual delivery instead of compatibility audit hints.
+
+**Acceptance Criteria:**
+
+**Given** a message-producing decision, alert, or workflow event
+**When** a provider send is requested
+**Then** the message effect is recorded with tenant, recipient reference, template/version, idempotency key, attempt state, and provider-safe error metadata
+**And** retries and provider webhooks converge on one effect without exposing message bodies in analytics
+**And** the admin and organization surfaces distinguish queued, attempted, accepted, delivered, bounced, failed, and unknown states.
+
+### Story 15.3: Governed CRM, billing, and agent control contracts
+
+As a Missa platform operator,
+I want customer timelines, financial ledgers, and agent replay controls to be governed actions,
+So that support and operations do not mutate compatibility stores or invoke unbounded agent chains.
+
+**Acceptance Criteria:**
+
+**Given** an explicit durable contract for the target domain
+**When** an operator performs a permitted action
+**Then** authorization, idempotency, confirmation, append-only audit, rollback/recovery semantics, and worker ownership are explicit before UI controls ship
+**And** replay, pause, cancel, billing correction, refund, entitlement, and customer-timeline actions fail closed when their target schema is absent.

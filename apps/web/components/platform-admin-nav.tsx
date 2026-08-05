@@ -10,6 +10,7 @@ import {
   FileText,
   FileClock,
   LayoutDashboard,
+  LifeBuoy,
   ListChecks,
   Mail,
   Menu,
@@ -40,6 +41,7 @@ const primaryLinks: NavItem[] = [
 
 const operationsLinks: NavItem[] = [
   { href: '/admin/operations', label: 'Operations', icon: ListChecks },
+  { href: '/admin/support', label: 'Support', icon: LifeBuoy },
   { href: '/admin/messaging', label: 'Messaging & delivery', icon: Mail },
   { href: '/admin/radar', label: 'Radar', icon: Radar },
   { href: '/admin/operations?queue=agents', label: 'Agents', icon: Bot, activePath: '/admin/operations', activeQuery: { key: 'queue', value: 'agents' } },

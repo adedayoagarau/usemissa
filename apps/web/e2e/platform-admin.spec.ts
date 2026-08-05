@@ -14,6 +14,7 @@ test('admin can open the control room and operational loop', async ({ page }) =>
   await expect(page.getByRole('link', { name: 'Content', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Analytics', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Messaging & delivery', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Support', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Governance', exact: true })).toBeVisible();
 
   await page.goto('/admin/customers');
@@ -37,6 +38,9 @@ test('admin can open the control room and operational loop', async ({ page }) =>
   await page.goto('/admin/governance');
   await expect(page.getByRole('heading', { name: 'Governance', exact: true })).toBeVisible();
 
+  await page.goto('/admin/support');
+  await expect(page.getByRole('heading', { name: 'Support cases', exact: true })).toBeVisible();
+
   await page.goto('/admin/operations');
   await expect(page.getByRole('heading', { name: 'Operations queue' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Run bounded tick' })).toBeVisible();
@@ -50,5 +54,8 @@ test('admin can open the control room and operational loop', async ({ page }) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
 
   await page.goto('/admin/governance');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
+
+  await page.goto('/admin/support');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
 });

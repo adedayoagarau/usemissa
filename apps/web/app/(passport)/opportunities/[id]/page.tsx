@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PrepareChecklist } from '@/components/prepare-checklist';
 import { ListPicker } from '@/components/list-picker';
+import { OpportunityIssueReport } from '@/components/opportunity-issue-report';
 
 function deadlineLabel(item: { date?: string; kind: string; raw?: string }): string {
   if (item.date) return new Intl.DateTimeFormat('en', { dateStyle: 'long' }).format(new Date(`${item.date}T12:00:00`));
@@ -92,6 +93,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
             {opportunity.guidelinesUrl && <a className="flex items-center justify-center gap-1 text-center text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" href={opportunity.guidelinesUrl} rel="noreferrer" target="_blank">Read guidelines <ExternalLink className="size-3.5" /></a>}
           </CardContent></Card>
           <Card><CardHeader><CardTitle>Source confidence</CardTitle></CardHeader><CardContent className="space-y-3 text-sm"><p className="flex items-center gap-2"><ShieldCheck className="size-4 text-green" />{opportunity.source.organizationConfirmed ? 'Organization confirmed' : 'Source checked'}</p><p className="text-muted-foreground">Last checked {sourceChecked}</p><a className="inline-flex items-center gap-1 underline-offset-2 hover:underline" href={opportunity.source.url} rel="noreferrer" target="_blank">Open source <ExternalLink className="size-3.5" /></a></CardContent></Card>
+          <Card><CardContent className="pt-6"><OpportunityIssueReport opportunityId={opportunity.id} /></CardContent></Card>
         </aside>
       </div>
     </div>
