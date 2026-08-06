@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getEngine } from '@/lib/engine';
 import { issueSessionToken, sessionCookieOptions, SESSION_COOKIE } from '@/lib/auth';
+import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
   }
 
   const token = issueSessionToken(account.id);
+  await trackPlatformAnalytics({ eventName: 'auth.login_succeeded', source: 'auth-api', accountId: account.id, properties: { method: 'password' } });
   const response = NextResponse.json({ account: { id: account.id, email: account.email } }, { headers: { 'Cache-Control': 'no-store' } });
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   return response;

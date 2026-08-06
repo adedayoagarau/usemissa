@@ -22,12 +22,8 @@ function intervalMs(): number {
 }
 
 async function startRun(pool: Pool): Promise<string> {
-  const id = randomUUID();
-  await pool.query(
-    `insert into radar_agent_runs (id, agent_kind, status, correlation_id, metadata)
-     values ($1, 'review', 'running', $2, $3::jsonb)`,
-    [id, id, JSON.stringify({ graphVersion: "1.0", policyVersion: "review-v1" })],
-  );
+  const id = await startWorkerRun(pool, "review-worker");
+  if (!id) throw new Error("Unable to start the review worker run telemetry record");
   return id;
 }
 

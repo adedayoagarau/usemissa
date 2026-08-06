@@ -2,6 +2,36 @@ import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
 export const platformAdminFoundationsSchema = `
+alter table if exists radar_agent_runs add column if not exists paused_at timestamptz;
+alter table if exists radar_agent_runs add column if not exists cancelled_at timestamptz;
+alter table if exists radar_agent_runs add column if not exists control_request_id text;
+alter table if exists radar_agent_runs add column if not exists replay_of_run_id text;
+do $$
+begin
+  if to_regclass('public.radar_agent_runs') is not null then
+    if exists (
+      select 1 from pg_constraint
+       where conrelid = 'public.radar_agent_runs'::regclass
+         and conname = 'radar_agent_runs_status_check'
+         and position('paused' in lower(pg_get_constraintdef(oid))) = 0
+    ) then
+      alter table radar_agent_runs drop constraint radar_agent_runs_status_check;
+    end if;
+    if not exists (
+      select 1 from pg_constraint
+       where conrelid = 'public.radar_agent_runs'::regclass
+         and conname = 'radar_agent_runs_status_check'
+    ) then
+      alter table radar_agent_runs add constraint radar_agent_runs_status_check
+        check (status in ('queued', 'running', 'paused', 'completed', 'failed', 'cancelled'));
+    end if;
+  end if;
+end $$;
+create index if not exists radar_agent_runs_lifecycle_idx
+  on radar_agent_runs (status, heartbeat_at, started_at);
+create index if not exists radar_agent_runs_control_idx
+  on radar_agent_runs (control_request_id);
+
 create table if not exists platform_message_effects (
   id text primary key,
   organization_id text,
@@ -123,6 +153,78 @@ create index if not exists platform_agent_control_requests_target_idx
   on platform_agent_control_requests (target_type, target_id, created_at);
 create index if not exists platform_agent_control_requests_status_idx
   on platform_agent_control_requests (status, created_at);
+
+create table if not exists platform_crm_contacts (
+  id text primary key,
+  organization_id text,
+  account_id text,
+  name text not null,
+  email text,
+  role text,
+  status text not null default 'active',
+  source text not null default 'operator',
+  created_by_account_id text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (organization_id is not null or account_id is not null),
+  check (status in ('active', 'inactive', 'lead'))
+);
+create unique index if not exists platform_crm_contacts_org_email_idx
+  on platform_crm_contacts (organization_id, lower(email)) where email is not null;
+create index if not exists platform_crm_contacts_org_idx
+  on platform_crm_contacts (organization_id, updated_at);
+create index if not exists platform_crm_contacts_account_idx
+  on platform_crm_contacts (account_id, updated_at);
+
+create table if not exists platform_crm_tasks (
+  id text primary key,
+  organization_id text,
+  account_id text,
+  contact_id text references platform_crm_contacts(id) on delete set null,
+  title text not null,
+  description text,
+  status text not null default 'open',
+  priority integer not null default 0,
+  due_at timestamptz,
+  owner_account_id text,
+  completed_at timestamptz,
+  created_by_account_id text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  check (organization_id is not null or account_id is not null),
+  check (status in ('open', 'in-progress', 'done', 'snoozed', 'cancelled')),
+  check (priority between -100 and 100)
+);
+create unique index if not exists platform_crm_tasks_idempotency_idx
+  on platform_crm_tasks ((metadata->>'idempotencyKey')) where metadata ? 'idempotencyKey';
+create index if not exists platform_crm_tasks_org_due_idx
+  on platform_crm_tasks (organization_id, status, due_at);
+create index if not exists platform_crm_tasks_owner_status_idx
+  on platform_crm_tasks (owner_account_id, status, due_at);
+
+create table if not exists platform_analytics_events (
+  id text primary key,
+  event_name text not null,
+  source text not null,
+  account_id text,
+  organization_id text,
+  session_id text,
+  path text,
+  properties jsonb not null default '{}'::jsonb,
+  idempotency_key text,
+  occurred_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+create unique index if not exists platform_analytics_events_idempotency_idx
+  on platform_analytics_events (idempotency_key) where idempotency_key is not null;
+create index if not exists platform_analytics_events_name_time_idx
+  on platform_analytics_events (event_name, occurred_at);
+create index if not exists platform_analytics_events_account_time_idx
+  on platform_analytics_events (account_id, occurred_at);
+create index if not exists platform_analytics_events_org_time_idx
+  on platform_analytics_events (organization_id, occurred_at);
 `;
 
 const FOUNDATION_TABLES = [
@@ -559,13 +661,46 @@ export interface PlatformCrmTimelineEvent {
   createdAt?: string;
 }
 
+export interface PlatformCrmContact {
+  id: string;
+  organizationId?: string;
+  accountId?: string;
+  name: string;
+  email?: string;
+  role?: string;
+  status: string;
+  source: string;
+  createdByAccountId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PlatformCrmTask {
+  id: string;
+  organizationId?: string;
+  accountId?: string;
+  contactId?: string;
+  title: string;
+  description?: string;
+  status: string;
+  priority: number;
+  dueAt?: string;
+  ownerAccountId?: string;
+  completedAt?: string;
+  createdByAccountId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface PlatformAdminCrmData {
   available: boolean;
   generatedAt: string;
   source: string;
   warnings: string[];
-  summary: { timelineEvents: number; notes: number; accountsWithActivity: number; organizationsWithActivity: number; latestAt?: string };
+  summary: { timelineEvents: number; notes: number; accountsWithActivity: number; organizationsWithActivity: number; contacts: number; tasks: number; openTasks: number; latestAt?: string };
   rows: PlatformCrmTimelineEvent[];
+  contacts: PlatformCrmContact[];
+  tasks: PlatformCrmTask[];
 }
 
 interface CrmEventRow extends QueryResultRow {
@@ -583,6 +718,37 @@ interface CrmEventRow extends QueryResultRow {
   organization_name?: string | null;
   action?: string | null;
   created_at?: unknown;
+}
+
+interface CrmContactRow extends QueryResultRow {
+  id: string;
+  organization_id?: string | null;
+  account_id?: string | null;
+  name: string;
+  email?: string | null;
+  role?: string | null;
+  status: string;
+  source: string;
+  created_by_account_id?: string | null;
+  created_at?: unknown;
+  updated_at?: unknown;
+}
+
+interface CrmTaskRow extends QueryResultRow {
+  id: string;
+  organization_id?: string | null;
+  account_id?: string | null;
+  contact_id?: string | null;
+  title: string;
+  description?: string | null;
+  status: string;
+  priority?: number | string;
+  due_at?: unknown;
+  owner_account_id?: string | null;
+  completed_at?: unknown;
+  created_by_account_id?: string | null;
+  created_at?: unknown;
+  updated_at?: unknown;
 }
 
 function normalizeCrmEvent(row: CrmEventRow, compatibility = false): PlatformCrmTimelineEvent {
@@ -604,8 +770,43 @@ function normalizeCrmEvent(row: CrmEventRow, compatibility = false): PlatformCrm
   };
 }
 
+function normalizeCrmContact(row: CrmContactRow): PlatformCrmContact {
+  return {
+    id: row.id,
+    ...(text(row.organization_id, 240) ? { organizationId: text(row.organization_id, 240) } : {}),
+    ...(text(row.account_id, 240) ? { accountId: text(row.account_id, 240) } : {}),
+    name: row.name,
+    ...(text(row.email, 320) ? { email: text(row.email, 320) } : {}),
+    ...(text(row.role, 240) ? { role: text(row.role, 240) } : {}),
+    status: row.status,
+    source: row.source,
+    ...(text(row.created_by_account_id, 240) ? { createdByAccountId: text(row.created_by_account_id, 240) } : {}),
+    ...(iso(row.created_at) ? { createdAt: iso(row.created_at) } : {}),
+    ...(iso(row.updated_at) ? { updatedAt: iso(row.updated_at) } : {}),
+  };
+}
+
+function normalizeCrmTask(row: CrmTaskRow): PlatformCrmTask {
+  return {
+    id: row.id,
+    ...(text(row.organization_id, 240) ? { organizationId: text(row.organization_id, 240) } : {}),
+    ...(text(row.account_id, 240) ? { accountId: text(row.account_id, 240) } : {}),
+    ...(text(row.contact_id, 240) ? { contactId: text(row.contact_id, 240) } : {}),
+    title: row.title,
+    ...(text(row.description, 4_000) ? { description: text(row.description, 4_000) } : {}),
+    status: row.status,
+    priority: numberValue(row.priority),
+    ...(iso(row.due_at) ? { dueAt: iso(row.due_at) } : {}),
+    ...(text(row.owner_account_id, 240) ? { ownerAccountId: text(row.owner_account_id, 240) } : {}),
+    ...(iso(row.completed_at) ? { completedAt: iso(row.completed_at) } : {}),
+    ...(text(row.created_by_account_id, 240) ? { createdByAccountId: text(row.created_by_account_id, 240) } : {}),
+    ...(iso(row.created_at) ? { createdAt: iso(row.created_at) } : {}),
+    ...(iso(row.updated_at) ? { updatedAt: iso(row.updated_at) } : {}),
+  };
+}
+
 function emptyCrm(generatedAt: string, warnings: string[]): PlatformAdminCrmData {
-  return { available: false, generatedAt, source: "platform_crm_timeline_events + audit_events", warnings, summary: { timelineEvents: 0, notes: 0, accountsWithActivity: 0, organizationsWithActivity: 0 }, rows: [] };
+  return { available: false, generatedAt, source: "platform_crm_timeline_events + audit_events + contacts + tasks", warnings, summary: { timelineEvents: 0, notes: 0, accountsWithActivity: 0, organizationsWithActivity: 0, contacts: 0, tasks: 0, openTasks: 0 }, rows: [], contacts: [], tasks: [] };
 }
 
 export async function readPlatformAdminCrm(
@@ -616,7 +817,7 @@ export async function readPlatformAdminCrm(
   const limit = Math.min(Math.max(options.limit ?? 250, 1), 500);
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
-    const availability = await tableAvailability(pool, ["platform_crm_timeline_events", "audit_events"]);
+    const availability = await tableAvailability(pool, ["platform_crm_timeline_events", "audit_events", "platform_crm_contacts", "platform_crm_tasks"]);
     if (!availability.get("platform_crm_timeline_events")) return emptyCrm(generatedAt, ["platform_crm_timeline_events is not deployed; CRM notes and timeline are unavailable."]);
     const timeline = await pool.query<CrmEventRow>(
       `select e.id, e.organization_id, e.account_id, e.event_type, e.source, e.title, e.body,
@@ -648,21 +849,50 @@ export async function readPlatformAdminCrm(
     const rows = [...timeline.rows.map((row) => normalizeCrmEvent(row)), ...compatibility]
       .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
       .slice(0, limit);
+    const contacts = availability.get("platform_crm_contacts") ? (await pool.query<CrmContactRow>(
+      `select id, organization_id, account_id, name, email, role, status, source,
+              created_by_account_id, created_at, updated_at
+         from platform_crm_contacts
+        where ($1::text is null or organization_id = $1)
+          and ($2::text is null or account_id = $2)
+        order by updated_at desc limit $3`,
+      [options.organizationId ?? null, options.accountId ?? null, Math.min(limit, 200)],
+    )).rows.map(normalizeCrmContact) : [];
+    const tasks = availability.get("platform_crm_tasks") ? (await pool.query<CrmTaskRow>(
+      `select id, organization_id, account_id, contact_id, title, description, status,
+              priority, due_at, owner_account_id, completed_at, created_by_account_id,
+              created_at, updated_at
+         from platform_crm_tasks
+        where ($1::text is null or organization_id = $1)
+          and ($2::text is null or account_id = $2)
+        order by case when status in ('open', 'in-progress', 'snoozed') then 0 else 1 end,
+                 due_at nulls last, updated_at desc limit $3`,
+      [options.organizationId ?? null, options.accountId ?? null, Math.min(limit, 200)],
+    )).rows.map(normalizeCrmTask) : [];
+    const warnings = [
+      ...(!availability.get("platform_crm_contacts") ? ["platform_crm_contacts is not deployed; CRM contact records are unavailable."] : []),
+      ...(!availability.get("platform_crm_tasks") ? ["platform_crm_tasks is not deployed; CRM follow-up tasks are unavailable."] : []),
+    ];
     const accountIds = new Set(rows.filter((row) => row.subjectType === "account").map((row) => row.subjectId));
     const organizationIds = new Set(rows.filter((row) => row.subjectType === "organization").map((row) => row.subjectId));
     return {
       available: true,
       generatedAt,
-      source: "platform_crm_timeline_events + audit_events",
-      warnings: [],
+      source: "platform_crm_timeline_events + audit_events + contacts + tasks",
+      warnings,
       summary: {
         timelineEvents: rows.length,
         notes: rows.filter((row) => row.eventType === "note").length,
         accountsWithActivity: accountIds.size,
         organizationsWithActivity: organizationIds.size,
+        contacts: contacts.length,
+        tasks: tasks.length,
+        openTasks: tasks.filter((task) => ["open", "in-progress", "snoozed"].includes(task.status)).length,
         ...(rows[0]?.createdAt ? { latestAt: rows[0].createdAt } : {}),
       },
       rows,
+      contacts,
+      tasks,
     };
   } catch {
     return emptyCrm(generatedAt, ["CRM timeline could not be read; no customer activity is inferred from compatibility snapshots."]);
@@ -718,6 +948,361 @@ export async function createPlatformCrmNote(input: {
     } finally {
       client.release();
     }
+  } finally {
+    await pool.end();
+  }
+}
+
+function assertCrmSubject(organizationId?: string, accountId?: string): void {
+  if ((!organizationId && !accountId) || (organizationId && accountId)) throw new Error("Exactly one CRM organizationId or accountId is required");
+  assertIdentifier((organizationId ?? accountId) as string, "CRM subject id");
+}
+
+function normalizeCrmEmail(value: string | undefined): string | undefined {
+  const email = value?.trim().toLowerCase();
+  if (!email) return undefined;
+  if (email.length > 320 || !/^\S+@\S+\.\S+$/.test(email)) throw new Error("Invalid CRM contact email");
+  return email;
+}
+
+export async function createPlatformCrmContact(input: {
+  connectionString: string;
+  actorAccountId: string;
+  organizationId?: string;
+  accountId?: string;
+  name: string;
+  email?: string;
+  role?: string;
+  status?: "active" | "inactive" | "lead";
+  idempotencyKey: string;
+}): Promise<{ status: "created" | "replayed"; idempotent: boolean; contact: PlatformCrmContact }> {
+  assertCrmSubject(input.organizationId, input.accountId);
+  assertIdempotencyKey(input.idempotencyKey);
+  const name = input.name.trim();
+  if (!name || name.length > 240) throw new Error("Invalid CRM contact name");
+  const role = input.role?.trim();
+  if (role && role.length > 240) throw new Error("Invalid CRM contact role");
+  const email = normalizeCrmEmail(input.email);
+  const status = input.status ?? "active";
+  if (!["active", "inactive", "lead"].includes(status)) throw new Error("Invalid CRM contact status");
+  const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
+  try {
+    await pool.query(platformAdminFoundationsSchema);
+    const required = ["platform_crm_contacts", "audit_events", "outbox_events"];
+    const availability = await tableAvailability(pool, required);
+    const missing = missingTables(availability, required);
+    if (missing.length > 0) throw new Error(`${missing.join(", ")} is not deployed`);
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("select pg_advisory_xact_lock(hashtext($1))", [input.idempotencyKey]);
+      const replay = await client.query<CrmContactRow>(
+        `select id, organization_id, account_id, name, email, role, status, source,
+                created_by_account_id, created_at, updated_at
+           from platform_crm_contacts where metadata->>'idempotencyKey' = $1 for update`,
+        [input.idempotencyKey],
+      );
+      if (replay.rows[0]) {
+        await client.query("commit");
+        return { status: "replayed", idempotent: true, contact: normalizeCrmContact(replay.rows[0]) };
+      }
+      const id = `crm_contact_${randomUUID()}`;
+      await client.query(
+        `insert into platform_crm_contacts
+           (id, organization_id, account_id, name, email, role, status, source, created_by_account_id, metadata)
+         values ($1, $2, $3, $4, $5, $6, $7, 'operator', $8, $9::jsonb)`,
+        [id, input.organizationId ?? null, input.accountId ?? null, name, email ?? null, role || null, status, input.actorAccountId, json({ idempotencyKey: input.idempotencyKey })],
+      );
+      await writeAudit(client, { actorAccountId: input.actorAccountId, organizationId: input.organizationId, action: "crm.contact.created", targetType: "crm_contact", targetId: id, detail: { name, email: email ?? null, idempotencyKey: input.idempotencyKey } });
+      await writeOutbox(client, { topic: "crm.contact.created", aggregateType: "crm_contact", aggregateId: id, payload: { organizationId: input.organizationId, accountId: input.accountId, name } });
+      const created = await client.query<CrmContactRow>(
+        `select id, organization_id, account_id, name, email, role, status, source,
+                created_by_account_id, created_at, updated_at
+           from platform_crm_contacts where id = $1`,
+        [id],
+      );
+      await client.query("commit");
+      return { status: "created", idempotent: false, contact: normalizeCrmContact(created.rows[0]) };
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  } finally {
+    await pool.end();
+  }
+}
+
+export async function createPlatformCrmTask(input: {
+  connectionString: string;
+  actorAccountId: string;
+  organizationId?: string;
+  accountId?: string;
+  contactId?: string;
+  title: string;
+  description?: string;
+  priority?: number;
+  dueAt?: string;
+  ownerAccountId?: string;
+  idempotencyKey: string;
+}): Promise<{ status: "created" | "replayed"; idempotent: boolean; task: PlatformCrmTask }> {
+  assertCrmSubject(input.organizationId, input.accountId);
+  assertIdempotencyKey(input.idempotencyKey);
+  const title = input.title.trim();
+  if (!title || title.length > 240) throw new Error("Invalid CRM task title");
+  const description = input.description?.trim();
+  if (description && description.length > 4_000) throw new Error("Invalid CRM task description");
+  const priority = input.priority ?? 0;
+  if (!Number.isInteger(priority) || priority < -100 || priority > 100) throw new Error("Invalid CRM task priority");
+  if (input.dueAt && !Number.isFinite(Date.parse(input.dueAt))) throw new Error("Invalid CRM task due date");
+  if (input.contactId) assertIdentifier(input.contactId, "CRM contact id");
+  if (input.ownerAccountId) assertIdentifier(input.ownerAccountId, "CRM owner account id");
+  const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
+  try {
+    await pool.query(platformAdminFoundationsSchema);
+    const required = ["platform_crm_tasks", "audit_events", "outbox_events"];
+    const availability = await tableAvailability(pool, required);
+    const missing = missingTables(availability, required);
+    if (missing.length > 0) throw new Error(`${missing.join(", ")} is not deployed`);
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("select pg_advisory_xact_lock(hashtext($1))", [input.idempotencyKey]);
+      const replay = await client.query<CrmTaskRow>(
+        `select id, organization_id, account_id, contact_id, title, description, status,
+                priority, due_at, owner_account_id, completed_at, created_by_account_id,
+                created_at, updated_at
+           from platform_crm_tasks where metadata->>'idempotencyKey' = $1 for update`,
+        [input.idempotencyKey],
+      );
+      if (replay.rows[0]) {
+        await client.query("commit");
+        return { status: "replayed", idempotent: true, task: normalizeCrmTask(replay.rows[0]) };
+      }
+      const id = `crm_task_${randomUUID()}`;
+      await client.query(
+        `insert into platform_crm_tasks
+           (id, organization_id, account_id, contact_id, title, description, priority,
+            due_at, owner_account_id, created_by_account_id, metadata)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)`,
+        [id, input.organizationId ?? null, input.accountId ?? null, input.contactId ?? null, title, description || null, priority, input.dueAt ?? null, input.ownerAccountId ?? null, input.actorAccountId, json({ idempotencyKey: input.idempotencyKey })],
+      );
+      await writeAudit(client, { actorAccountId: input.actorAccountId, organizationId: input.organizationId, action: "crm.task.created", targetType: "crm_task", targetId: id, detail: { title, dueAt: input.dueAt ?? null, idempotencyKey: input.idempotencyKey } });
+      await writeOutbox(client, { topic: "crm.task.created", aggregateType: "crm_task", aggregateId: id, payload: { organizationId: input.organizationId, accountId: input.accountId, title } });
+      const created = await client.query<CrmTaskRow>(
+        `select id, organization_id, account_id, contact_id, title, description, status,
+                priority, due_at, owner_account_id, completed_at, created_by_account_id,
+                created_at, updated_at
+           from platform_crm_tasks where id = $1`,
+        [id],
+      );
+      await client.query("commit");
+      return { status: "created", idempotent: false, task: normalizeCrmTask(created.rows[0]) };
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  } finally {
+    await pool.end();
+  }
+}
+
+export async function updatePlatformCrmTaskStatus(input: {
+  connectionString: string;
+  actorAccountId: string;
+  taskId: string;
+  status: "open" | "in-progress" | "done" | "snoozed" | "cancelled";
+}): Promise<PlatformCrmTask> {
+  assertIdentifier(input.taskId, "CRM task id");
+  const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const updated = await client.query<CrmTaskRow>(
+        `update platform_crm_tasks
+            set status = $2, completed_at = case when $2 = 'done' then coalesce(completed_at, now()) else null end, updated_at = now()
+          where id = $1
+        returning id, organization_id, account_id, contact_id, title, description, status,
+                  priority, due_at, owner_account_id, completed_at, created_by_account_id,
+                  created_at, updated_at`,
+        [input.taskId, input.status],
+      );
+      if (!updated.rows[0]) {
+        await client.query("rollback");
+        const error = new Error("CRM task not found");
+        error.name = "NotFoundError";
+        throw error;
+      }
+      const task = normalizeCrmTask(updated.rows[0]);
+      await writeAudit(client, { actorAccountId: input.actorAccountId, organizationId: task.organizationId, action: "crm.task.status_changed", targetType: "crm_task", targetId: input.taskId, detail: { status: input.status } });
+      await writeOutbox(client, { topic: "crm.task.updated", aggregateType: "crm_task", aggregateId: input.taskId, payload: { status: input.status } });
+      await client.query("commit");
+      return task;
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  } finally {
+    await pool.end();
+  }
+}
+
+export interface PlatformAnalyticsEvent {
+  id: string;
+  eventName: string;
+  source: string;
+  accountId?: string;
+  organizationId?: string;
+  path?: string;
+  occurredAt?: string;
+}
+
+export interface PlatformAdminAnalyticsEventsData {
+  available: boolean;
+  generatedAt: string;
+  source: string;
+  warnings: string[];
+  summary: { events: number; last24h: number; last7d: number; uniqueAccounts: number; uniqueOrganizations: number };
+  byEvent: Array<{ eventName: string; count: number; lastAt?: string }>;
+  daily: Array<{ day: string; count: number }>;
+  recent: PlatformAnalyticsEvent[];
+}
+
+interface AnalyticsEventRow extends QueryResultRow {
+  id: string;
+  event_name: string;
+  source: string;
+  account_id?: string | null;
+  organization_id?: string | null;
+  path?: string | null;
+  occurred_at?: unknown;
+}
+
+function normalizeAnalyticsEvent(row: AnalyticsEventRow): PlatformAnalyticsEvent {
+  return {
+    id: row.id,
+    eventName: row.event_name,
+    source: row.source,
+    ...(text(row.account_id, 240) ? { accountId: text(row.account_id, 240) } : {}),
+    ...(text(row.organization_id, 240) ? { organizationId: text(row.organization_id, 240) } : {}),
+    ...(text(row.path, 500) ? { path: text(row.path, 500) } : {}),
+    ...(iso(row.occurred_at) ? { occurredAt: iso(row.occurred_at) } : {}),
+  };
+}
+
+function emptyAnalyticsEvents(generatedAt: string, warnings: string[]): PlatformAdminAnalyticsEventsData {
+  return { available: false, generatedAt, source: "platform_analytics_events", warnings, summary: { events: 0, last24h: 0, last7d: 0, uniqueAccounts: 0, uniqueOrganizations: 0 }, byEvent: [], daily: [], recent: [] };
+}
+
+export async function readPlatformAdminAnalyticsEvents(
+  connectionString: string,
+  options: { limit?: number; days?: number } = {},
+): Promise<PlatformAdminAnalyticsEventsData> {
+  const generatedAt = new Date().toISOString();
+  const limit = Math.min(Math.max(options.limit ?? 100, 1), 500);
+  const days = Math.min(Math.max(options.days ?? 30, 1), 90);
+  const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
+  try {
+    if (!(await tablePresent(pool, "platform_analytics_events"))) return emptyAnalyticsEvents(generatedAt, ["platform_analytics_events is not deployed; first-party analytics are unavailable."]);
+    const [summary, byEvent, daily, recent] = await Promise.all([
+      pool.query<{ events: number | string; last_24h: number | string; last_7d: number | string; unique_accounts: number | string; unique_organizations: number | string }>(
+        `select count(*)::int as events,
+                count(*) filter (where occurred_at >= now() - interval '24 hours')::int as last_24h,
+                count(*) filter (where occurred_at >= now() - interval '7 days')::int as last_7d,
+                count(distinct account_id) filter (where account_id is not null)::int as unique_accounts,
+                count(distinct organization_id) filter (where organization_id is not null)::int as unique_organizations
+           from platform_analytics_events
+          where occurred_at >= now() - ($1::int * interval '1 day')`,
+        [days],
+      ),
+      pool.query<{ event_name: string; count: number | string; last_at?: unknown }>(
+        `select event_name, count(*)::int as count, max(occurred_at) as last_at
+           from platform_analytics_events
+          where occurred_at >= now() - ($1::int * interval '1 day')
+          group by event_name order by count desc, event_name asc limit 50`,
+        [days],
+      ),
+      pool.query<{ day: string; count: number | string }>(
+        `select to_char(date_trunc('day', occurred_at at time zone 'UTC'), 'YYYY-MM-DD') as day,
+                count(*)::int as count
+           from platform_analytics_events
+          where occurred_at >= now() - ($1::int * interval '1 day')
+          group by 1 order by 1 asc`,
+        [days],
+      ),
+      pool.query<AnalyticsEventRow>(
+        `select id, event_name, source, account_id, organization_id, path, occurred_at
+           from platform_analytics_events order by occurred_at desc limit $1`,
+        [limit],
+      ),
+    ]);
+    const row = summary.rows[0];
+    return {
+      available: true,
+      generatedAt,
+      source: "platform_analytics_events",
+      warnings: [],
+      summary: { events: numberValue(row?.events), last24h: numberValue(row?.last_24h), last7d: numberValue(row?.last_7d), uniqueAccounts: numberValue(row?.unique_accounts), uniqueOrganizations: numberValue(row?.unique_organizations) },
+      byEvent: byEvent.rows.map((item) => ({ eventName: item.event_name, count: numberValue(item.count), ...(iso(item.last_at) ? { lastAt: iso(item.last_at) } : {}) })),
+      daily: daily.rows.map((item) => ({ day: item.day, count: numberValue(item.count) })),
+      recent: recent.rows.map(normalizeAnalyticsEvent),
+    };
+  } catch {
+    return emptyAnalyticsEvents(generatedAt, ["First-party analytics could not be read; no product behavior is inferred."]);
+  } finally {
+    await pool.end();
+  }
+}
+
+function analyticsProperties(value: Record<string, unknown> | undefined): Record<string, unknown> {
+  const output: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value ?? {}).slice(0, 40)) {
+    if (!/^[A-Za-z0-9_.-]{1,80}$/.test(key)) continue;
+    if (typeof item === "string") output[key] = item.slice(0, 500);
+    else if (typeof item === "number" && Number.isFinite(item)) output[key] = item;
+    else if (typeof item === "boolean") output[key] = item;
+  }
+  return output;
+}
+
+export async function recordPlatformAnalyticsEvent(input: {
+  connectionString: string;
+  eventName: string;
+  source: string;
+  accountId?: string;
+  organizationId?: string;
+  sessionId?: string;
+  path?: string;
+  properties?: Record<string, unknown>;
+  idempotencyKey?: string;
+  occurredAt?: string;
+}): Promise<{ recorded: boolean; id: string }> {
+  if (!/^[A-Za-z0-9_.:-]{2,120}$/.test(input.eventName)) throw new Error("Invalid analytics event name");
+  if (!/^[A-Za-z0-9_.:-]{2,80}$/.test(input.source)) throw new Error("Invalid analytics event source");
+  if (input.accountId) assertIdentifier(input.accountId, "analytics account id");
+  if (input.organizationId) assertIdentifier(input.organizationId, "analytics organization id");
+  if (input.idempotencyKey) assertIdempotencyKey(input.idempotencyKey);
+  const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
+  try {
+    if (!(await tablePresent(pool, "platform_analytics_events"))) return { recorded: false, id: "" };
+    const id = `analytics_${randomUUID()}`;
+    const result = await pool.query<{ id: string }>(
+      `insert into platform_analytics_events
+         (id, event_name, source, account_id, organization_id, session_id, path, properties, idempotency_key, occurred_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, coalesce($10::timestamptz, now()))
+       on conflict do nothing
+       returning id`,
+      [id, input.eventName, input.source, input.accountId ?? null, input.organizationId ?? null, input.sessionId?.slice(0, 240) ?? null, input.path?.slice(0, 500) ?? null, JSON.stringify(analyticsProperties(input.properties)), input.idempotencyKey ?? null, input.occurredAt ?? null],
+    );
+    if (result.rows[0]) return { recorded: true, id: result.rows[0].id };
+    const replay = input.idempotencyKey ? await pool.query<{ id: string }>("select id from platform_analytics_events where idempotency_key = $1", [input.idempotencyKey]) : undefined;
+    return { recorded: false, id: replay?.rows[0]?.id ?? id };
   } finally {
     await pool.end();
   }
@@ -965,8 +1550,25 @@ export interface PlatformAdminAgentControlsData {
   generatedAt: string;
   source: string;
   warnings: string[];
-  summary: { requests: number; requested: number; applied: number; failed: number; targets: number };
+  summary: { requests: number; requested: number; applied: number; failed: number; targets: number; runs: number; running: number; paused: number; stale: number };
   requests: PlatformAgentControlRequest[];
+  runs: PlatformAgentRunRow[];
+}
+
+export interface PlatformAgentRunRow {
+  id: string;
+  agentKind: string;
+  status: string;
+  correlationId?: string;
+  startedAt?: string;
+  heartbeatAt?: string;
+  completedAt?: string;
+  inputCount: number;
+  outputCount: number;
+  error?: string;
+  controlRequestId?: string;
+  replayOfRunId?: string;
+  stale: boolean;
 }
 
 interface ControlRow extends QueryResultRow {
@@ -983,6 +1585,21 @@ interface ControlRow extends QueryResultRow {
   expires_at?: unknown;
   created_at?: unknown;
   updated_at?: unknown;
+}
+
+interface AgentRunRow extends QueryResultRow {
+  id: string;
+  agent_kind: string;
+  status: string;
+  correlation_id?: string | null;
+  started_at?: unknown;
+  heartbeat_at?: unknown;
+  completed_at?: unknown;
+  input_count?: number | string;
+  output_count?: number | string;
+  error?: string | null;
+  control_request_id?: string | null;
+  replay_of_run_id?: string | null;
 }
 
 function normalizeControl(row: ControlRow): PlatformAgentControlRequest {
@@ -1003,8 +1620,28 @@ function normalizeControl(row: ControlRow): PlatformAgentControlRequest {
   };
 }
 
+function normalizeAgentRun(row: AgentRunRow): PlatformAgentRunRow {
+  const heartbeatAt = iso(row.heartbeat_at);
+  const stale = row.status === "running" && (!heartbeatAt || Date.parse(heartbeatAt) < Date.now() - 10 * 60_000);
+  return {
+    id: row.id,
+    agentKind: row.agent_kind,
+    status: row.status,
+    ...(text(row.correlation_id, 240) ? { correlationId: text(row.correlation_id, 240) } : {}),
+    ...(iso(row.started_at) ? { startedAt: iso(row.started_at) } : {}),
+    ...(heartbeatAt ? { heartbeatAt } : {}),
+    ...(iso(row.completed_at) ? { completedAt: iso(row.completed_at) } : {}),
+    inputCount: numberValue(row.input_count),
+    outputCount: numberValue(row.output_count),
+    ...(safeError(row.error) ? { error: safeError(row.error) } : {}),
+    ...(text(row.control_request_id, 240) ? { controlRequestId: text(row.control_request_id, 240) } : {}),
+    ...(text(row.replay_of_run_id, 240) ? { replayOfRunId: text(row.replay_of_run_id, 240) } : {}),
+    stale,
+  };
+}
+
 function emptyAgentControls(generatedAt: string, warnings: string[]): PlatformAdminAgentControlsData {
-  return { available: false, generatedAt, source: "platform_agent_control_requests + agent graph tables", warnings, summary: { requests: 0, requested: 0, applied: 0, failed: 0, targets: 0 }, requests: [] };
+  return { available: false, generatedAt, source: "platform_agent_control_requests + agent graph tables", warnings, summary: { requests: 0, requested: 0, applied: 0, failed: 0, targets: 0, runs: 0, running: 0, paused: 0, stale: 0 }, requests: [], runs: [] };
 }
 
 export async function readPlatformAdminAgentControls(
@@ -1024,9 +1661,16 @@ export async function readPlatformAdminAgentControls(
       [limit],
     );
     const requests = rows.rows.map(normalizeControl);
+    const runRows = availability.get("radar_agent_runs") ? await pool.query<AgentRunRow>(
+      `select id, agent_kind, status, correlation_id, started_at, heartbeat_at, completed_at,
+              input_count, output_count, error, control_request_id, replay_of_run_id
+         from radar_agent_runs order by started_at desc limit $1`,
+      [Math.min(limit, 100)],
+    ) : { rows: [] as AgentRunRow[] };
+    const runs = runRows.rows.map(normalizeAgentRun);
     const counts: Record<string, number> = {};
     for (const row of requests) counts[row.status] = (counts[row.status] ?? 0) + 1;
-    return { available: true, generatedAt, source: "platform_agent_control_requests + agent graph tables", warnings, summary: { requests: requests.length, requested: counts.requested ?? 0, applied: counts.applied ?? 0, failed: (counts.failed ?? 0) + (counts.rejected ?? 0), targets: new Set(requests.map((row) => `${row.targetType}:${row.targetId}`)).size }, requests };
+    return { available: true, generatedAt, source: "platform_agent_control_requests + agent graph tables", warnings, summary: { requests: requests.length, requested: counts.requested ?? 0, applied: counts.applied ?? 0, failed: (counts.failed ?? 0) + (counts.rejected ?? 0), targets: new Set(requests.map((row) => `${row.targetType}:${row.targetId}`)).size, runs: runs.length, running: runs.filter((row) => row.status === "running").length, paused: runs.filter((row) => row.status === "paused").length, stale: runs.filter((row) => row.stale).length }, requests, runs };
   } catch {
     return emptyAgentControls(generatedAt, ["Agent control requests could not be read; the worker remains the only execution owner."]);
   } finally {
@@ -1041,11 +1685,13 @@ export async function requestPlatformAgentControl(input: {
   targetId: string;
   action: PlatformAgentControlAction;
   idempotencyKey: string;
+  expectedState?: string;
   reason?: string;
 }): Promise<{ status: "requested" | "replayed"; idempotent: boolean; request: PlatformAgentControlRequest }> {
   assertIdentifier(input.targetId, "agent target id");
   assertIdempotencyKey(input.idempotencyKey);
   if (!CONTROL_TARGET_TABLE[input.targetType] || !CONTROL_ACTIONS[input.targetType].includes(input.action)) throw new Error("Unsupported agent control action");
+  if (input.expectedState && (input.expectedState.length > 120 || !/^[A-Za-z0-9_-]+$/.test(input.expectedState))) throw new Error("Invalid expected agent state");
   if (input.reason && input.reason.length > 1_000) throw new Error("Agent control reason is too long");
   const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
@@ -1078,12 +1724,12 @@ export async function requestPlatformAgentControl(input: {
         `insert into platform_agent_control_requests
            (id, operation_id, target_type, target_id, expected_state, action, status, actor_account_id, idempotency_key, policy_version, reason, expires_at)
          values ($1, $1, $2, $3, $4, $5, 'requested', $6, $7, 'agent-control.v1', $8, now() + interval '30 minutes')`,
-        [id, input.targetType, input.targetId, target.rows[0].status, input.action, input.actorAccountId, input.idempotencyKey, input.reason?.trim() || null],
+        [id, input.targetType, input.targetId, input.expectedState ?? target.rows[0].status, input.action, input.actorAccountId, input.idempotencyKey, input.reason?.trim() || null],
       );
       await writeAudit(client, { actorAccountId: input.actorAccountId, action: "agent.control.requested", targetType: input.targetType, targetId: input.targetId, detail: { requestId: id, action: input.action, idempotencyKey: input.idempotencyKey } });
       await writeOutbox(client, { topic: "agent.control.requested", aggregateType: input.targetType, aggregateId: input.targetId, payload: { requestId: id, action: input.action, targetType: input.targetType } });
       await client.query("commit");
-      return { status: "requested", idempotent: false, request: { id, operationId: id, targetType: input.targetType, targetId: input.targetId, action: input.action, status: "requested", actorAccountId: input.actorAccountId, policyVersion: "agent-control.v1", expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(), ...(input.reason ? { reason: input.reason.trim() } : {}) } };
+      return { status: "requested", idempotent: false, request: { id, operationId: id, targetType: input.targetType, targetId: input.targetId, expectedState: input.expectedState ?? target.rows[0].status, action: input.action, status: "requested", actorAccountId: input.actorAccountId, policyVersion: "agent-control.v1", expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(), ...(input.reason ? { reason: input.reason.trim() } : {}) } };
     } catch (error) {
       await client.query("rollback").catch(() => undefined);
       throw error;
@@ -1133,9 +1779,11 @@ export async function processPlatformAgentControlRequests(
         let outcome: "applied" | "rejected" = "rejected";
         let reason = "The worker does not support this control action yet.";
         if (table && availability.get(table) && CONTROL_ACTIONS[targetType]?.includes(request.action as PlatformAgentControlAction)) {
-          const target = targetType === "handoff" || targetType === "agent-run"
-            ? await client.query<{ status: string; lease_until?: unknown }>(`select status from ${table} where id = $1 for update`, [request.target_id])
-            : await client.query<{ status: string; lease_until?: unknown }>(`select status, lease_until from ${table} where id = $1 for update`, [request.target_id]);
+          const target = targetType === "agent-run"
+            ? await client.query<{ status: string; lease_until?: unknown; agent_kind?: string; correlation_id?: string | null; metadata?: Record<string, unknown> | null }>(`select status, agent_kind, correlation_id, metadata from ${table} where id = $1 for update`, [request.target_id])
+            : targetType === "handoff"
+            ? await client.query<{ status: string; lease_until?: unknown; agent_kind?: string; correlation_id?: string | null; metadata?: Record<string, unknown> | null }>(`select status from ${table} where id = $1 for update`, [request.target_id])
+            : await client.query<{ status: string; lease_until?: unknown; agent_kind?: string; correlation_id?: string | null; metadata?: Record<string, unknown> | null }>(`select status, lease_until from ${table} where id = $1 for update`, [request.target_id]);
           const current = target.rows[0];
           const leaseExpired = !current?.lease_until || (current.lease_until instanceof Date ? current.lease_until.getTime() < Date.now() : Date.parse(String(current?.lease_until)) < Date.now());
           const action = request.action as PlatformAgentControlAction;
@@ -1161,7 +1809,51 @@ export async function processPlatformAgentControlRequests(
             outcome = "applied";
             reason = "The worker requeued the handoff after validating its terminal state.";
           } else if (current && targetType === "agent-run") {
-            reason = "Run pause, resume, cancel, and replay require a cooperative worker lifecycle contract; the request was not applied.";
+            const metadata = current.metadata ?? {};
+            if (action === "pause" && current.status === "running") {
+              await client.query(
+                `update radar_agent_runs
+                    set status = 'paused', paused_at = now(), control_request_id = $2,
+                        metadata = metadata || $3::jsonb
+                  where id = $1`,
+                [request.target_id, request.id, JSON.stringify({ controlAction: "pause" })],
+              );
+              outcome = "applied";
+              reason = "The worker marked the run paused; its cooperative loop will skip further work.";
+            } else if (action === "resume" && current.status === "paused") {
+              await client.query(
+                `update radar_agent_runs
+                    set status = 'running', paused_at = null, control_request_id = $2,
+                        metadata = metadata || $3::jsonb
+                  where id = $1`,
+                [request.target_id, request.id, JSON.stringify({ controlAction: "resume" })],
+              );
+              outcome = "applied";
+              reason = "The worker marked the paused run running; the next loop iteration may resume work.";
+            } else if (action === "cancel" && ["running", "paused"].includes(current.status)) {
+              await client.query(
+                `update radar_agent_runs
+                    set status = 'cancelled', cancelled_at = now(), completed_at = coalesce(completed_at, now()), control_request_id = $2,
+                        metadata = metadata || $3::jsonb
+                  where id = $1`,
+                [request.target_id, request.id, JSON.stringify({ controlAction: "cancel" })],
+              );
+              outcome = "applied";
+              reason = "The worker marked the run cancelled; in-flight work must stop at its next cooperative checkpoint.";
+            } else if (action === "replay" && ["completed", "failed", "cancelled"].includes(current.status)) {
+              const replayId = `agent_run_${randomUUID()}`;
+              const replayKind = current.agent_kind === "review" ? "review-worker" : current.agent_kind === "enrichment" ? "enrichment-worker" : current.agent_kind ?? "unknown";
+              await client.query(
+                `insert into radar_agent_runs
+                   (id, agent_kind, status, correlation_id, replay_of_run_id, control_request_id, metadata)
+                 values ($1, $2, 'queued', coalesce($3, $4), $4, $5, $6::jsonb)`,
+                [replayId, replayKind, current.correlation_id ?? null, request.target_id, request.id, JSON.stringify({ ...metadata, replayOf: request.target_id, replayRequestId: request.id })],
+              );
+              outcome = "applied";
+              reason = `The worker queued replay run ${replayId}; the matching worker lane owns execution.`;
+            } else {
+              reason = `Action ${action} is not valid while the run is ${current.status}.`;
+            }
           } else if (!current) {
             reason = "The worker target no longer exists.";
           }

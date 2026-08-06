@@ -12,15 +12,44 @@ create table if not exists radar_agent_runs (
   started_at timestamptz not null default now(),
   heartbeat_at timestamptz,
   completed_at timestamptz,
+  paused_at timestamptz,
+  cancelled_at timestamptz,
+  control_request_id text,
+  replay_of_run_id text,
   input_count integer not null default 0,
   output_count integer not null default 0,
   error text,
   metadata jsonb not null default '{}'::jsonb,
-  check (status in ('running', 'completed', 'failed', 'cancelled'))
+  check (status in ('queued', 'running', 'paused', 'completed', 'failed', 'cancelled'))
 );
 alter table radar_agent_runs add column if not exists heartbeat_at timestamptz;
+alter table radar_agent_runs add column if not exists paused_at timestamptz;
+alter table radar_agent_runs add column if not exists cancelled_at timestamptz;
+alter table radar_agent_runs add column if not exists control_request_id text;
+alter table radar_agent_runs add column if not exists replay_of_run_id text;
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+     where conrelid = 'public.radar_agent_runs'::regclass
+       and conname = 'radar_agent_runs_status_check'
+       and position('paused' in lower(pg_get_constraintdef(oid))) = 0
+  ) then
+    alter table radar_agent_runs drop constraint radar_agent_runs_status_check;
+  end if;
+  if not exists (
+    select 1 from pg_constraint
+     where conrelid = 'public.radar_agent_runs'::regclass
+       and conname = 'radar_agent_runs_status_check'
+  ) then
+    alter table radar_agent_runs add constraint radar_agent_runs_status_check
+      check (status in ('queued', 'running', 'paused', 'completed', 'failed', 'cancelled'));
+  end if;
+end $$;
 create index if not exists radar_agent_runs_kind_started_idx on radar_agent_runs (agent_kind, started_at);
 create index if not exists radar_agent_runs_heartbeat_idx on radar_agent_runs (heartbeat_at);
+create index if not exists radar_agent_runs_lifecycle_idx on radar_agent_runs (status, heartbeat_at, started_at);
+create index if not exists radar_agent_runs_control_idx on radar_agent_runs (control_request_id);
 
 create table if not exists radar_agent_handoffs (
   id text primary key,

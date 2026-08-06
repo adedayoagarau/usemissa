@@ -73,8 +73,10 @@ export {
 export {
   finishWorkerRun,
   heartbeatWorkerRun,
+  readWorkerRunLifecycle,
   startWorkerRun,
   type RadarWorkerKind,
+  type WorkerRunLifecycleStatus,
   type WorkerRunProgress,
 } from "./workerTelemetry.js";
 export {
@@ -104,14 +106,18 @@ export {
 export {
   beginPlatformMessageEffect,
   completePlatformMessageEffect,
+  createPlatformCrmContact,
   createPlatformCrmNote,
+  createPlatformCrmTask,
   ensurePlatformAdminFoundationsSchema,
+  readPlatformAdminAnalyticsEvents,
   readPlatformAdminAgentControls,
   readPlatformAdminBilling,
   readPlatformAdminCrm,
   readPlatformAdminMessageHistory,
   processPlatformAgentControlRequests,
   recordPlatformBillingEvent,
+  recordPlatformAnalyticsEvent,
   requestPlatformAgentControl,
   platformAdminFoundationsSchema,
   PLATFORM_AGENT_CONTROL_ACTIONS,
@@ -119,6 +125,7 @@ export {
   type BeginPlatformMessageEffectInput,
   type BeginPlatformMessageEffectResult,
   type PlatformAdminAgentControlsData,
+  type PlatformAdminAnalyticsEventsData,
   type PlatformAdminBillingData,
   type PlatformAdminCrmData,
   type PlatformAdminMessageHistory,
@@ -130,9 +137,13 @@ export {
   type PlatformBillingLedgerEntry,
   type PlatformBillingStatus,
   type PlatformCrmTimelineEvent,
+  type PlatformCrmContact,
+  type PlatformCrmTask,
+  type PlatformAgentRunRow,
   type PlatformMessageAttempt,
   type PlatformMessageEffect,
   type PlatformMessageEffectStatus,
+  updatePlatformCrmTaskStatus,
 } from "./platformAdminFoundations.js";
 export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';

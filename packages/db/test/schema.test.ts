@@ -24,6 +24,9 @@ import {
   platformBillingLedger,
   platformMessageAttempts,
   platformMessageEffects,
+  platformCrmContacts,
+  platformCrmTasks,
+  platformAnalyticsEvents,
 } from "../src/schema.js";
 
 test("platform schema carries tenant, audit, outbox, and reviewer indexes", () => {
@@ -151,4 +154,13 @@ test("platform foundation schema separates effects, attempts, billing facts, and
   assert.ok(attempts.indexes.some((index) => index.config.name === "platform_message_attempts_effect_attempt_idx"));
   assert.ok(billing.indexes.some((index) => index.config.name === "platform_billing_ledger_provider_event_idx"));
   assert.ok(controls.indexes.some((index) => index.config.name === "platform_agent_control_requests_idempotency_idx"));
+});
+
+test("admin operations schema carries CRM ownership, follow-up, and analytics indexes", () => {
+  const contacts = getTableConfig(platformCrmContacts);
+  const tasks = getTableConfig(platformCrmTasks);
+  const events = getTableConfig(platformAnalyticsEvents);
+  assert.ok(contacts.indexes.some((index) => index.config.name === "platform_crm_contacts_org_idx"));
+  assert.ok(tasks.indexes.some((index) => index.config.name === "platform_crm_tasks_org_due_idx"));
+  assert.ok(events.indexes.some((index) => index.config.name === "platform_analytics_events_name_time_idx"));
 });

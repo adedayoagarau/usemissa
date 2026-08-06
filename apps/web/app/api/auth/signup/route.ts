@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { AuthError } from '@missa/radar-engine';
 import { getEngine, persistRadar } from '@/lib/engine';
 import { issueSessionToken, sessionCookieOptions, SESSION_COOKIE } from '@/lib/auth';
+import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
   await persistRadar();
 
   const token = issueSessionToken(account.id);
+  await trackPlatformAnalytics({ eventName: 'auth.signup_succeeded', source: 'auth-api', accountId: account.id, properties: { method: 'password' } });
   const response = NextResponse.json({ account: { id: account.id, email: account.email } }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   return response;

@@ -47,10 +47,12 @@ const emptyMessage: PlatformAdminMessageHistory = {
 const emptyCrm: PlatformAdminCrmData = {
   available: false,
   generatedAt: new Date(0).toISOString(),
-  source: 'platform_crm_timeline_events + audit_events',
+  source: 'platform_crm_timeline_events + audit_events + contacts + tasks',
   warnings: [],
-  summary: { timelineEvents: 0, notes: 0, accountsWithActivity: 0, organizationsWithActivity: 0 },
+  summary: { timelineEvents: 0, notes: 0, accountsWithActivity: 0, organizationsWithActivity: 0, contacts: 0, tasks: 0, openTasks: 0 },
   rows: [],
+  contacts: [],
+  tasks: [],
 };
 
 const emptyBilling: PlatformAdminBillingData = {
@@ -67,8 +69,9 @@ const emptyAgentControls: PlatformAdminAgentControlsData = {
   generatedAt: new Date(0).toISOString(),
   source: 'platform_agent_control_requests + agent graph tables',
   warnings: [],
-  summary: { requests: 0, requested: 0, applied: 0, failed: 0, targets: 0 },
+  summary: { requests: 0, requested: 0, applied: 0, failed: 0, targets: 0, runs: 0, running: 0, paused: 0, stale: 0 },
   requests: [],
+  runs: [],
 };
 
 export async function getPlatformAdminMessageHistory(): Promise<AdminArea<PlatformAdminMessageHistory>> {

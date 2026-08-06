@@ -17,4 +17,8 @@ test('platform foundation schema carries idempotency and control boundaries', ()
   assert.match(platformAdminFoundationsSchema, /platform_agent_control_requests/);
   assert.match(platformAdminFoundationsSchema, /policy_version/);
   assert.match(platformAdminFoundationsSchema, /policy_version/);
+  assert.match(platformAdminFoundationsSchema, /platform_crm_contacts/);
+  assert.match(platformAdminFoundationsSchema, /platform_crm_tasks/);
+  assert.match(platformAdminFoundationsSchema, /platform_analytics_events/);
+  assert.match(platformAdminFoundationsSchema, /radar_agent_runs_lifecycle_idx/);
 });

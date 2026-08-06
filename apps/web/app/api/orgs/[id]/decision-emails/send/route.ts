@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Resend } from 'resend';
 import { beginPlatformMessageEffect, completePlatformMessageEffect } from '@missa/radar-adapters';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
+import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 
 const headers = { 'Cache-Control': 'private, no-store' };
 function render(template: string, values: Record<string, string>): string { return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key: string) => values[key] ?? ''); }
@@ -64,5 +65,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     result.access.radar.recordAudit(result.access.session.account.id, 'decision.email.sent', 'work_decision', decision.id, JSON.stringify({ recipient: account.email, subject: emailSubject }));
   }
   await persistOrganizationMutation(result.access, { action: 'decision.email.batch_sent', targetType: 'organization', targetId: id, detail: { workIds: sent, failedWorkIds: failed, idempotencyKey } });
+  await trackPlatformAnalytics({ eventName: 'organization.decision_email_batch_sent', source: 'organization-api', accountId: result.access.session.account.id, organizationId: id, properties: { sent: sent.length, failed: failed.length } });
   return NextResponse.json({ sent: sent.length, workIds: sent, failedWorkIds: failed, idempotent: false }, { headers });
 }

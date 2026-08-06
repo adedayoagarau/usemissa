@@ -1,5 +1,6 @@
 import { createStore as createRadarStore, type RadarStore } from '@missa/radar-engine';
 import { createStore as createWorkspaceStore, type WorkspaceStore } from '@missa/workspace-engine';
+import { readPlatformAdminAnalyticsEvents, type PlatformAdminAnalyticsEventsData } from '@missa/radar-adapters';
 import { getEngine } from './engine';
 import { getWorkspaceEngine } from './workspaceEngine';
 import { getPlatformAdminOverview, type AdminArea, type AdminMaturity, type PlatformAdminOverview } from './platformAdmin';
@@ -51,7 +52,19 @@ export interface PlatformAdminAnalyticsData {
   trends: PlatformAdminAnalyticsTrend[];
   quality: Array<{ label: string; value: number; detail: string }>;
   definitions: string[];
+  durable: PlatformAdminAnalyticsEventsData;
 }
+
+const emptyDurableAnalytics: PlatformAdminAnalyticsEventsData = {
+  available: false,
+  generatedAt: new Date(0).toISOString(),
+  source: 'platform_analytics_events',
+  warnings: [],
+  summary: { events: 0, last24h: 0, last7d: 0, uniqueAccounts: 0, uniqueOrganizations: 0 },
+  byEvent: [],
+  daily: [],
+  recent: [],
+};
 
 function area<T>(data: T, source: string, maturity: AdminMaturity, generatedAt: string, warnings: string[] = []): AdminArea<T> {
   return {
@@ -140,7 +153,7 @@ function monthFor(value?: string): string | undefined {
   return value.slice(0, 7);
 }
 
-function buildAnalyticsData(radar: RadarStore, workspace: WorkspaceStore, overview: PlatformAdminOverview): PlatformAdminAnalyticsData {
+function buildAnalyticsData(radar: RadarStore, workspace: WorkspaceStore, overview: PlatformAdminOverview, durable: PlatformAdminAnalyticsEventsData = emptyDurableAnalytics): PlatformAdminAnalyticsData {
   const submissions = [...workspace.submissions.values()];
   const decisions = [...workspace.decisions.values()];
   const delivery = [...workspace.deliveryTasks.values()];
@@ -207,6 +220,7 @@ function buildAnalyticsData(radar: RadarStore, workspace: WorkspaceStore, overvi
       'Worker liveness, source freshness, and productive throughput remain separate measures.',
       'Retention, cohorts, attribution, experiment results, revenue recognition, and scheduled reports are not persisted by this view.',
     ],
+    durable,
   };
 }
 
@@ -218,9 +232,13 @@ export async function getPlatformAdminContent(): Promise<AdminArea<PlatformAdmin
 
 export async function getPlatformAdminAnalytics(): Promise<AdminArea<PlatformAdminAnalyticsData>> {
   const generatedAt = new Date().toISOString();
-  const [stores, overview] = await Promise.all([readRuntimeStores(), getPlatformAdminOverview()]);
+  const [stores, overview, durable] = await Promise.all([
+    readRuntimeStores(),
+    getPlatformAdminOverview(),
+    process.env.DATABASE_URL ? readPlatformAdminAnalyticsEvents(process.env.DATABASE_URL) : Promise.resolve(emptyDurableAnalytics),
+  ]);
   const maturity = stores.maturity === 'unavailable' ? 'unavailable' : stores.maturity === 'partial' ? 'partial' : 'derived';
-  return area(buildAnalyticsData(stores.radar, stores.workspace, overview), 'Derived from current RadarStore, WorkspaceStore, and platform operations read model', maturity, generatedAt, [...stores.warnings, ...overview.warnings, 'Historical analytics are bounded by the records available in the current runtime stores.']);
+  return area(buildAnalyticsData(stores.radar, stores.workspace, overview, durable), 'Compatibility workflow records + platform_analytics_events', maturity, generatedAt, [...stores.warnings, ...overview.warnings, ...durable.warnings, 'Historical analytics are bounded by the records available in the current runtime stores and first-party event ledger.']);
 }
 
 export { buildAnalyticsData, buildContentData };

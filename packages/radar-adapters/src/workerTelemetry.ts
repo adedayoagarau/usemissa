@@ -17,6 +17,8 @@ export interface WorkerRunProgress {
   lastError?: string;
 }
 
+export type WorkerRunLifecycleStatus = "queued" | "running" | "paused" | "completed" | "failed" | "cancelled" | "missing";
+
 function instanceId(): string | undefined {
   return process.env.RAILWAY_REPLICA_ID ?? process.env.RAILWAY_SERVICE_ID ?? process.env.HOSTNAME;
 }
@@ -40,15 +42,57 @@ export async function startWorkerRun(pool: Pool, workerKind: RadarWorkerKind): P
   const id = randomUUID();
   try {
     await ensureAgentGraphSchema(pool);
-    await pool.query(
-      `insert into radar_agent_runs
-        (id, agent_kind, status, correlation_id, metadata)
-       values ($1, $2, 'running', $1, $3::jsonb)`,
-      [id, workerKind, JSON.stringify(metadata(workerKind))],
-    );
-    return id;
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const queued = await client.query<{ id: string }>(
+        `select id from radar_agent_runs
+          where agent_kind = $1 and status = 'queued'
+          order by started_at asc
+          for update skip locked limit 1`,
+        [workerKind],
+      );
+      if (queued.rows[0]) {
+        await client.query(
+          `update radar_agent_runs
+              set status = 'running', heartbeat_at = now(), completed_at = null,
+                  paused_at = null, cancelled_at = null, control_request_id = null,
+                  metadata = metadata || $2::jsonb
+            where id = $1`,
+          [queued.rows[0].id, JSON.stringify({ ...metadata(workerKind), claimedAt: new Date().toISOString() })],
+        );
+        await client.query("commit");
+        return queued.rows[0].id;
+      }
+      await client.query(
+        `insert into radar_agent_runs
+          (id, agent_kind, status, correlation_id, metadata)
+         values ($1, $2, 'running', $1, $3::jsonb)`,
+        [id, workerKind, JSON.stringify(metadata(workerKind))],
+      );
+      await client.query("commit");
+      return id;
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
   } catch {
     return undefined;
+  }
+}
+
+export async function readWorkerRunLifecycle(pool: Pool, runId: string | undefined): Promise<WorkerRunLifecycleStatus> {
+  if (!runId) return "missing";
+  try {
+    const result = await pool.query<{ status: WorkerRunLifecycleStatus }>(
+      "select status from radar_agent_runs where id = $1",
+      [runId],
+    );
+    return result.rows[0]?.status ?? "missing";
+  } catch {
+    return "missing";
   }
 }
 
@@ -91,7 +135,7 @@ export async function finishWorkerRun(
            output_count = coalesce($4, output_count),
            error = coalesce($5, error),
            metadata = metadata || $6::jsonb
-       where id = $1`,
+       where id = $1 and status in ('running', 'paused', 'queued')`,
       [runId, status, progress.inputCount ?? null, progress.outputCount ?? null, progress.lastError?.slice(0, 500) ?? null, JSON.stringify(metadata(workerKind, progress))],
     );
   } catch {

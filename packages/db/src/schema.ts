@@ -2247,3 +2247,135 @@ export const platformAgentControlRequests = pgTable(
     ),
   ],
 );
+
+export const platformCrmContacts = pgTable(
+  "platform_crm_contacts",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id"),
+    accountId: text("account_id"),
+    name: text("name").notNull(),
+    email: text("email"),
+    role: text("role"),
+    status: text("status").notNull().default("active"),
+    source: text("source").notNull().default("operator"),
+    createdByAccountId: text("created_by_account_id"),
+    metadata: jsonb("metadata")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("platform_crm_contacts_org_email_idx").on(
+      table.organizationId,
+      sql`lower(${table.email})`,
+    ),
+    index("platform_crm_contacts_org_idx").on(
+      table.organizationId,
+      table.updatedAt,
+    ),
+    index("platform_crm_contacts_account_idx").on(
+      table.accountId,
+      table.updatedAt,
+    ),
+    check(
+      "platform_crm_contacts_subject_check",
+      sql`${table.organizationId} is not null or ${table.accountId} is not null`,
+    ),
+    check(
+      "platform_crm_contacts_status_check",
+      sql`${table.status} in ('active', 'inactive', 'lead')`,
+    ),
+  ],
+);
+
+export const platformCrmTasks = pgTable(
+  "platform_crm_tasks",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id"),
+    accountId: text("account_id"),
+    contactId: text("contact_id").references(() => platformCrmContacts.id, {
+      onDelete: "set null",
+    }),
+    title: text("title").notNull(),
+    description: text("description"),
+    status: text("status").notNull().default("open"),
+    priority: integer("priority").notNull().default(0),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    ownerAccountId: text("owner_account_id"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdByAccountId: text("created_by_account_id"),
+    metadata: jsonb("metadata")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("platform_crm_tasks_org_due_idx").on(
+      table.organizationId,
+      table.status,
+      table.dueAt,
+    ),
+    index("platform_crm_tasks_owner_status_idx").on(
+      table.ownerAccountId,
+      table.status,
+      table.dueAt,
+    ),
+    check(
+      "platform_crm_tasks_subject_check",
+      sql`${table.organizationId} is not null or ${table.accountId} is not null`,
+    ),
+    check(
+      "platform_crm_tasks_status_check",
+      sql`${table.status} in ('open', 'in-progress', 'done', 'snoozed', 'cancelled')`,
+    ),
+    check(
+      "platform_crm_tasks_priority_check",
+      sql`${table.priority} between -100 and 100`,
+    ),
+  ],
+);
+
+export const platformAnalyticsEvents = pgTable(
+  "platform_analytics_events",
+  {
+    id: text("id").primaryKey(),
+    eventName: text("event_name").notNull(),
+    source: text("source").notNull(),
+    accountId: text("account_id"),
+    organizationId: text("organization_id"),
+    sessionId: text("session_id"),
+    path: text("path"),
+    properties: jsonb("properties")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+    idempotencyKey: text("idempotency_key"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("platform_analytics_events_idempotency_idx").on(
+      table.idempotencyKey,
+    ),
+    index("platform_analytics_events_name_time_idx").on(
+      table.eventName,
+      table.occurredAt,
+    ),
+    index("platform_analytics_events_account_time_idx").on(
+      table.accountId,
+      table.occurredAt,
+    ),
+    index("platform_analytics_events_org_time_idx").on(
+      table.organizationId,
+      table.occurredAt,
+    ),
+  ],
+);

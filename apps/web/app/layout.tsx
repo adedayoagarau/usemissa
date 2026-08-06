@@ -4,6 +4,7 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
+import { AnalyticsProvider } from '@/components/analytics-provider';
 
 /**
  * Brand typography per _bmad-output/planning-artifacts/ux-design-specification.md
@@ -49,7 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     >
       <body>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          {children}
+          <AnalyticsProvider>{children}</AnalyticsProvider>
           <Toaster />
         </ThemeProvider>
       </body>

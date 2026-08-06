@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import type { TickReport } from "@missa/radar-engine";
 import type { RadarEngine } from "@missa/radar-engine";
 import { createProductionEngine } from "./productionEngine.js";
-import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
+import { finishWorkerRun, heartbeatWorkerRun, readWorkerRunLifecycle, startWorkerRun } from "./workerTelemetry.js";
 import { processPlatformAgentControlRequests } from "./platformAdminFoundations.js";
 
 /**
@@ -35,6 +35,7 @@ export interface RadarWorkerOptions {
 export interface RadarWorkerTickResult {
   status: "completed" | "skipped";
   report?: TickReport;
+  control?: "paused" | "cancelled";
 }
 
 function positiveInteger(value: number | undefined, fallback: number, max = Number.MAX_SAFE_INTEGER): number {
@@ -81,6 +82,11 @@ export async function runRadarWorkerTick(
       const controls = await processPlatformAgentControlRequests(process.env.DATABASE_URL);
       if (controls.processed > 0) logger.info(`[missa-radar-worker] agent controls: ${controls.applied} applied, ${controls.rejected} rejected`);
     }
+    const lifecycle = await readWorkerRunLifecycle(production.pool, options.workerRunId);
+    if (lifecycle === "paused" || lifecycle === "cancelled") {
+      logger.info(`[missa-radar-worker] ${lifecycle} by an operator control request; skipping tick`);
+      return { status: "skipped", control: lifecycle };
+    }
     // Neon transaction pooling is not a safe place to hold a session across
     // network fetches. The canonical lane is single-supervisor in Railway;
     // persistence uses snapshot-version conflict detection for accidental
@@ -95,6 +101,11 @@ export async function runRadarWorkerTick(
     }
 
     const report = await production.engine.tick({ maxSources, minRegistryTier: options.minRegistryTier, maxRegistryTier: options.maxRegistryTier });
+    const afterTickLifecycle = await readWorkerRunLifecycle(production.pool, options.workerRunId);
+    if (afterTickLifecycle === "paused" || afterTickLifecycle === "cancelled") {
+      logger.info(`[missa-radar-worker] ${afterTickLifecycle} during tick; discarding unpersisted tick state`);
+      return { status: "skipped", control: afterTickLifecycle };
+    }
     await options.afterTick?.(production.engine);
     await production.persist();
     logger.info(
@@ -151,7 +162,8 @@ export async function runRadarWorker(
   try {
     while (!options.signal?.aborted) {
       try {
-        await runRadarWorkerTick({ maxSources, maxRegistryTier, logger, workerRunId });
+        const tick = await runRadarWorkerTick({ maxSources, maxRegistryTier, logger, workerRunId });
+        if (tick.control === "cancelled") break;
       } catch (error) {
         await heartbeatWorkerRun(telemetryPool!, workerRunId, "radar-worker", { lastError: error instanceof Error ? error.message : String(error) });
         logger.error("[missa-radar-worker] tick failed; retrying after interval", error);
