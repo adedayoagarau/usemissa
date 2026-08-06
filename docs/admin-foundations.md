@@ -26,13 +26,14 @@ owns target mutation and acknowledgement.
 
 ## Migration boundary
 
-`packages/db/migrations/0014_platform_admin_foundations.sql` is intentionally an
-unregistered draft. The repository's migration journal stops at `0005`, while
-the repository also contains separately numbered `0006`–`0013` migration
-artifacts. Do not register or apply `0014` until that history is reconciled and
-rehearsed on a disposable Neon branch. The adapter has an idempotent runtime
-schema guard for controlled development/worker bootstraps; a missing table is
-shown as unavailable by admin reads rather than as an empty healthy queue.
+`packages/db/migrations/0014_platform_admin_foundations.sql` is registered in
+the Drizzle journal and has been applied to the configured Neon target after a
+read-only preflight confirmed that the separately numbered `0006`–`0013`
+schema additions were already present. Other environments must still verify
+their live history before applying `0014`; the repository's runtime adapter
+retains a guarded bootstrap path for environments that may lag the migration.
+A missing table is shown as unavailable by admin reads rather than as an empty
+healthy queue.
 
 ## Worker controls
 

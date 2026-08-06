@@ -1,6 +1,7 @@
--- UNJOURNALED DRAFT: reconcile against the live 0006-0013 history before
--- registering or applying this migration. The runtime adapter has the same
--- idempotent guard for controlled local/worker bootstraps.
+-- Additive platform-admin ledgers and governed control intents. The migration
+-- is registered in the Drizzle journal after reconciling the live 0006-0013
+-- schema history. The runtime adapter retains a guarded bootstrap path for
+-- environments that may lag the migration.
 CREATE TABLE IF NOT EXISTS "platform_message_effects" (
   "id" text PRIMARY KEY NOT NULL,
   "organization_id" text,

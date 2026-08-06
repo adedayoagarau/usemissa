@@ -2021,9 +2021,9 @@ export const taxonomyChangeProposals = pgTable(
  * billing-provider facts, and agent control intents without becoming a
  * second source of truth for product state.
  *
- * The matching SQL is kept in the unreconciled 0014 migration draft and in
- * the runtime adapter guard. Register/apply it only after the live 0006-0013
- * migration history has been reconciled.
+ * The matching SQL lives in registered migration 0014. The runtime adapter
+ * guard remains for controlled bootstraps in environments that may lag the
+ * migration.
  */
 export const platformMessageEffects = pgTable(
   "platform_message_effects",
