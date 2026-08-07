@@ -65,6 +65,8 @@ export function seedRegistryIfEmpty(
       existing.registryVerticalId = entry.verticalId;
       existing.registryGroup = registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.group;
       existing.registryDisciplines = entry.disciplines ?? registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.disciplines;
+      existing.registryTaxonomyTermIds = entry.taxonomyTermIds;
+      existing.registryTrust = entry.trust;
       existing.registryGeography = entry.geography;
       existing.registryOpportunityTypes = entry.opportunityTypes;
       existing.registryOrganizationName = entry.organizationName;
@@ -80,6 +82,8 @@ export function seedRegistryIfEmpty(
       registryVerticalId: entry.verticalId,
       registryGroup: registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.group,
       registryDisciplines: entry.disciplines ?? registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.disciplines,
+      registryTaxonomyTermIds: entry.taxonomyTermIds,
+      registryTrust: entry.trust,
       registryGeography: entry.geography,
       registryOpportunityTypes: entry.opportunityTypes,
       registryOrganizationName: entry.organizationName,

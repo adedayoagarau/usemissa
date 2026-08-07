@@ -288,6 +288,7 @@ export class RadarEngine {
     registryGroup?: string;
     registryDisciplines?: string[];
     registryTaxonomyTermIds?: string[];
+    registryTrust?: import('./registry/types.js').SourceTrust;
     registryEligibilityLens?: string;
     registrySourceChannel?: string;
     registryGeography?: string[];
@@ -307,6 +308,7 @@ export class RadarEngine {
       registryGroup: input.registryGroup,
       registryDisciplines: input.registryDisciplines,
       registryTaxonomyTermIds: input.registryTaxonomyTermIds,
+      registryTrust: input.registryTrust,
       registryEligibilityLens: input.registryEligibilityLens,
       registrySourceChannel: input.registrySourceChannel,
       registryGeography: input.registryGeography,

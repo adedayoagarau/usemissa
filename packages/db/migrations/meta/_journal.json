@@ -71,6 +71,13 @@
       "when": 1786072505000,
       "tag": "0017_chat_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786100000000,
+      "tag": "0018_trusted_source_registry",
+      "breakpoints": true
     }
   ]
 }

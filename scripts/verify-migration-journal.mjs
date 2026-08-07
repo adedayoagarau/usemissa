@@ -21,6 +21,7 @@ const requiredTags = [
   '0015_admin_operations',
   '0016_opportunity_intelligence',
   '0017_chat_baseline',
+  '0018_trusted_source_registry',
 ];
 for (const tag of requiredTags) {
   if (!journal.entries.some((entry) => entry.tag === tag)) {
@@ -31,6 +32,7 @@ for (const tag of requiredTags) {
 const expectedObjects = {
   '0016_opportunity_intelligence.sql': ['opportunity_contents', 'radar_content_review_jobs', 'radar_content_review_decisions'],
   '0017_chat_baseline.sql': ['chat_conversations', 'chat_runs', 'chat_messages', 'chat_run_events'],
+  '0018_trusted_source_registry.sql': ['opportunity_sources', 'trust_status', 'trust_score', 'authority_kind'],
 };
 for (const [fileName, objects] of Object.entries(expectedObjects)) {
   const sql = await readFile(join(migrationsRoot, fileName), 'utf8');

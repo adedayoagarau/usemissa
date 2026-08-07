@@ -1,4 +1,5 @@
 import type { TaxonomyFacetKey } from '@missa/taxonomy';
+import type { SourceTrust } from '../registry/types.js';
 
 /**
  * Missa Radar domain model.
@@ -72,6 +73,7 @@ export interface Source {
   registryGroup?: string;
   registryDisciplines?: string[];
   registryTaxonomyTermIds?: string[];
+  registryTrust?: SourceTrust;
   registryEligibilityLens?: string;
   registrySourceChannel?: string;
   registryGeography?: string[];

@@ -1,5 +1,13 @@
-import { resolveTaxonomyPhrase, type TaxonomyFacetKey } from '@missa/taxonomy';
-import type { SourceRegistry } from './types.js';
+import { MISSA_TAXONOMY, resolveTaxonomyPhrase, type TaxonomyFacetKey } from '@missa/taxonomy';
+import type {
+  RegistryCoverageStatus,
+  RegistryCoverageSummary,
+  RegistryFacetCoverage,
+  RegistryTermCoverage,
+  SourceRegistry,
+  SourceRegistryEntry,
+  SourceTrust,
+} from './types.js';
 import { REGISTRY_VERTICALS } from './verticals.js';
 
 export interface RegistryVerticalCompatibility {
@@ -84,6 +92,82 @@ export function registryVerticalCompatibility(verticalId: string): RegistryVerti
   return COMPATIBILITY[verticalId] ?? { taxonomyTermIds: [], opportunityTypes: [] };
 }
 
+/** Resolve legacy source labels only when the shared resolver has a safe
+ * answer. Ambiguous labels remain in the audit and are not guessed into a
+ * canonical term. */
+export function registryTaxonomyTermIds(entry: SourceRegistryEntry): string[] {
+  const vertical = REGISTRY_VERTICALS.find((candidate) => candidate.id === entry.verticalId);
+  const labels = entry.disciplines ?? vertical?.disciplines ?? [];
+  const resolved = labels.flatMap((label) => {
+    const result = resolveTaxonomyPhrase(label);
+    return result.status === 'resolved' || result.status === 'deprecated' ? result.termId ? [result.termId] : [] : [];
+  });
+  return [...new Set([
+    ...registryVerticalCompatibility(entry.verticalId).taxonomyTermIds,
+    ...(entry.taxonomyTermIds ?? []),
+    ...resolved,
+  ])];
+}
+
+/** The default trust posture is deliberately conservative. Registry curation
+ * is evidence that a source is worth monitoring; it is not a live claim that
+ * every page or deadline published by that source is current. */
+export function defaultSourceTrust(entry: Pick<SourceRegistryEntry, 'tier' | 'kind'>): SourceTrust {
+  if (entry.tier === 0) return { status: 'curated', authorityKind: 'official-source', score: 80 };
+  if (entry.tier === 1) return { status: 'curated', authorityKind: 'platform', score: 70 };
+  if (entry.tier === 2) return { status: 'needs-review', authorityKind: 'directory', score: 50 };
+  return { status: 'needs-review', authorityKind: entry.kind === 'feed' || entry.kind === 'newsletter' ? 'feed' : 'other', score: 40 };
+}
+
+export function trustedSource(entry: SourceRegistryEntry): boolean {
+  const trust = entry.trust ?? defaultSourceTrust(entry);
+  return entry.active && (trust.status === 'curated' || trust.status === 'verified') && trust.score >= 60;
+}
+
+function coverageStatus(sourceCount: number, trustedSourceCount: number): RegistryCoverageStatus {
+  if (trustedSourceCount >= 3) return 'covered';
+  if (trustedSourceCount > 0 || sourceCount > 0) return 'thin';
+  return 'gap';
+}
+
+/** Build coverage for every selectable taxonomy term, including terms with no
+ * current source. Gaps are first-class output for bounded discovery. */
+export function buildRegistryCoverage(registry: Pick<SourceRegistry, 'sources'>): RegistryCoverageSummary {
+  const counts = new Map<string, { sourceCount: number; canonicalSourceCount: number; trustedSourceCount: number }>();
+  for (const source of registry.sources) {
+    const isTrusted = trustedSource(source);
+    for (const termId of new Set(source.taxonomyTermIds ?? [])) {
+      const current = counts.get(termId) ?? { sourceCount: 0, canonicalSourceCount: 0, trustedSourceCount: 0 };
+      current.sourceCount += 1;
+      if (source.tier === 0) current.canonicalSourceCount += 1;
+      if (isTrusted) current.trustedSourceCount += 1;
+      counts.set(termId, current);
+    }
+  }
+  const terms: RegistryTermCoverage[] = MISSA_TAXONOMY.terms.filter((term) => term.selectable).map((term) => {
+    const count = counts.get(term.id) ?? { sourceCount: 0, canonicalSourceCount: 0, trustedSourceCount: 0 };
+    return { termId: term.id, facet: term.facet, label: term.preferredLabel, ...count, status: coverageStatus(count.sourceCount, count.trustedSourceCount) };
+  });
+  const byFacet: Record<string, RegistryFacetCoverage> = {};
+  for (const term of terms) {
+    const facet = byFacet[term.facet] ?? { totalTerms: 0, coveredTerms: 0, thinTerms: 0, gapTerms: 0 };
+    facet.totalTerms += 1;
+    if (term.status === 'covered') facet.coveredTerms += 1;
+    else if (term.status === 'thin') facet.thinTerms += 1;
+    else facet.gapTerms += 1;
+    byFacet[term.facet] = facet;
+  }
+  return {
+    schemeVersion: MISSA_TAXONOMY.scheme.version,
+    totalTerms: terms.length,
+    coveredTerms: terms.filter((term) => term.status === 'covered').length,
+    thinTerms: terms.filter((term) => term.status === 'thin').length,
+    gapTerms: terms.filter((term) => term.status === 'gap').length,
+    byFacet,
+    terms,
+  };
+}
+
 export interface RegistryTaxonomyAudit {
   sourceCountBefore: number;
   sourceCountAfter: number;
@@ -93,6 +177,7 @@ export interface RegistryTaxonomyAudit {
   platformOnlySources: string[];
   eligibilityLensSources: string[];
   verticalsWithoutCompatibility: string[];
+  coverage: RegistryCoverageSummary;
 }
 
 /** Read-only migration audit. It never removes or relabels registry entries. */
@@ -104,14 +189,15 @@ export function auditRegistryTaxonomy(registry: SourceRegistry): RegistryTaxonom
   let mappedSources = 0;
   for (const source of registry.sources) {
     const compatibility = registryVerticalCompatibility(source.verticalId);
-    const values = source.disciplines ?? [];
+    const vertical = REGISTRY_VERTICALS.find((candidate) => candidate.id === source.verticalId);
+    const values = source.disciplines ?? vertical?.disciplines ?? [];
     const ambiguous = values.filter((value) => resolveTaxonomyPhrase(value).status === 'ambiguous');
     const unresolved = values.filter((value) => resolveTaxonomyPhrase(value).status === 'unresolved');
     if (ambiguous.length) ambiguousSources.push({ sourceId: source.id, values: ambiguous });
     if (unresolved.length) unresolvedLegacyValues.push({ sourceId: source.id, values: unresolved });
-    if (compatibility.sourceChannel && compatibility.taxonomyTermIds.length === 0) platformOnlySources.push(source.id);
+    if (compatibility.sourceChannel && !(source.taxonomyTermIds?.length ?? compatibility.taxonomyTermIds.length)) platformOnlySources.push(source.id);
     if (compatibility.eligibilityLens) eligibilityLensSources.push(source.id);
-    if (compatibility.taxonomyTermIds.length || compatibility.sourceChannel || compatibility.eligibilityLens) mappedSources += 1;
+    if ((source.taxonomyTermIds?.length ?? 0) || compatibility.sourceChannel || compatibility.eligibilityLens) mappedSources += 1;
   }
   return {
     sourceCountBefore: registry.sources.length,
@@ -122,5 +208,6 @@ export function auditRegistryTaxonomy(registry: SourceRegistry): RegistryTaxonom
     platformOnlySources,
     eligibilityLensSources,
     verticalsWithoutCompatibility: REGISTRY_VERTICALS.map((vertical) => vertical.id).filter((id) => !(id in COMPATIBILITY)),
+    coverage: registry.coverage ?? buildRegistryCoverage(registry),
   };
 }
