@@ -7,6 +7,7 @@ COPY packages ./packages
 
 RUN npm ci \
   && npm run build --workspace=@missa/contracts \
+  && npm run build --workspace=@missa/taxonomy \
   && npm run build --workspace=@missa/radar-engine \
   && npm run build --workspace=@missa/radar-adapters
 
