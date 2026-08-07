@@ -125,21 +125,39 @@ async function upsertSources(client: PoolClient, sources: Source[]): Promise<voi
     [['trust_status', 'trust_score', 'authority_kind', 'trust_evidence_url', 'trust_reviewed_at', 'trust_review_note']],
   );
   if (trustColumns.rows[0]?.present !== true) return;
-  for (const source of sources) {
+  const trustRows = sources.map((source) => {
     const trust = source.registryTrust ?? defaultSourceTrust({ tier: source.registryTier ?? 0, kind: source.kind });
-    await client.query(
-      `update opportunity_sources set
-         trust_status = $2,
-         trust_score = $3,
-         authority_kind = $4,
-         trust_evidence_url = $5,
-         trust_reviewed_at = $6,
-         trust_review_note = $7,
-         updated_at = now()
-       where id = $1`,
-      [source.id, trust.status, trust.score, trust.authorityKind, trust.evidenceUrl ?? null, trust.reviewedAt ?? null, trust.reviewNote ?? null],
-    );
-  }
+    return {
+      id: source.id,
+      trustStatus: trust.status,
+      trustScore: trust.score,
+      authorityKind: trust.authorityKind,
+      trustEvidenceUrl: trust.evidenceUrl ?? null,
+      trustReviewedAt: trust.reviewedAt ?? null,
+      trustReviewNote: trust.reviewNote ?? null,
+    };
+  });
+  await client.query(
+    `update opportunity_sources as target set
+       trust_status = incoming.trust_status,
+       trust_score = incoming.trust_score,
+       authority_kind = incoming.authority_kind,
+       trust_evidence_url = incoming.trust_evidence_url,
+       trust_reviewed_at = incoming.trust_reviewed_at,
+       trust_review_note = incoming.trust_review_note,
+       updated_at = now()
+     from jsonb_to_recordset($1::jsonb) as incoming(
+       id text,
+       trust_status text,
+       trust_score integer,
+       authority_kind text,
+       trust_evidence_url text,
+       trust_reviewed_at timestamptz,
+       trust_review_note text
+     )
+     where target.id = incoming.id`,
+    [JSON.stringify(trustRows)],
+  );
 }
 
 async function taxonomyTablesAvailable(client: PoolClient): Promise<boolean> {
@@ -394,7 +412,7 @@ async function upsertVersionsAndChanges(client: PoolClient, store: RadarStore, o
 export async function saveOpportunityProjectionToPostgres(
   store: RadarStore,
   client: PoolClient,
-  scope?: { opportunityIds?: Set<string>; sourceIds?: Set<string> },
+  scope?: { opportunityIds?: Set<string>; sourceIds?: Set<string>; taxonomySourceIds?: Set<string> },
 ): Promise<void> {
   const referencedSourceIds = new Set<string>();
   const opportunities = scope?.opportunityIds
@@ -415,7 +433,10 @@ export async function saveOpportunityProjectionToPostgres(
   const taxonomyEnabled = await taxonomyTablesAvailable(client);
   await upsertSources(client, referencedSources);
   if (taxonomyEnabled) {
-    for (const source of referencedSources) await upsertSourceTaxonomy(client, source);
+    const taxonomySourceIds = scope?.taxonomySourceIds;
+    for (const source of referencedSources) {
+      if (!scope || taxonomySourceIds?.has(source.id)) await upsertSourceTaxonomy(client, source);
+    }
   }
   for (const opportunity of opportunities) {
     const source = store.sources.get(opportunity.sourceId);
