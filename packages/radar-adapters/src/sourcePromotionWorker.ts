@@ -20,6 +20,7 @@ const DEFAULT_CONCURRENCY = 12;
 const MAX_CONCURRENCY = 32;
 const MAX_HTML_BYTES = 2_000_000;
 const MAX_TERMS_BYTES = 500_000;
+const MAX_BODY_READ_GAP_MS = 5_000;
 const SOURCE_PROMOTION_LOCK = { namespace: 1984, key: 730 } as const;
 const ACCEPTED_KINDS = new Set<SourceKind>([
   "organization-website",
@@ -104,15 +105,26 @@ async function readLimitedText(response: Response, maxBytes: number): Promise<st
   let bytes = 0;
   try {
     while (true) {
-      const next = await reader.read();
-      if (next.done) break;
-      bytes += next.value.byteLength;
-      chunks.push(decoder.decode(next.value, { stream: bytes < maxBytes }));
-      if (bytes >= maxBytes) {
-        await reader.cancel();
-        break;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const timeout = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error("response body read timed out")), MAX_BODY_READ_GAP_MS);
+        });
+        const next = await Promise.race([reader.read(), timeout]);
+        if (next.done) break;
+        bytes += next.value.byteLength;
+        chunks.push(decoder.decode(next.value, { stream: bytes < maxBytes }));
+        if (bytes >= maxBytes) {
+          await reader.cancel();
+          break;
+        }
+      } finally {
+        if (timer) clearTimeout(timer);
       }
     }
+  } catch (error) {
+    await reader.cancel().catch(() => undefined);
+    throw error;
   } finally {
     reader.releaseLock();
   }
