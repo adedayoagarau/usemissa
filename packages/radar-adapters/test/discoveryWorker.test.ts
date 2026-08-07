@@ -27,6 +27,16 @@ test("discovery batch is bounded for hosted workers", () => {
   assert.equal(discoveryBatchSize("not-a-number"), 100);
 });
 
+test("external-only discovery skips directory navigation and sharing links", () => {
+  const html = `
+    <a href="/guide-submission-opportunities/example-call">Internal call detail</a>
+    <a href="https://bsky.app/intent/compose?text=call">Share this call</a>
+    <a href="https://publisher.example.org/submit">Submit to publisher</a>
+  `;
+  const links = extractDiscoveryLinks(html, "https://directory.example.org/list", 10, true);
+  assert.deepEqual(links.map((link) => link.url), ["https://publisher.example.org/submit"]);
+});
+
 test("discovery persistence declares VALUES parameter types", () => {
   assert.deepEqual(discoverySourceUpdatePlaceholders(2), [
     "($1::text, $2::boolean, $3::jsonb)",

@@ -81,6 +81,8 @@ export interface Source {
   registryTier?: 0 | 1 | 2 | 3;
   /** Directory/feed sources may fan out to linked canonical call pages. */
   followsOutboundLinks?: boolean;
+  /** Some directory pages contain substantial internal navigation; only use external links for fan-out. */
+  discoveryExternalOnly?: boolean;
   /** Polite per-source cadence. */
   checkIntervalHours: number;
   active: boolean;

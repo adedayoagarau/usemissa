@@ -22,6 +22,7 @@ export interface CompactSource {
   geography?: string[];
   checkIntervalHours?: number;
   followsOutboundLinks?: boolean;
+  discoveryExternalOnly?: boolean;
   notes?: string;
 }
 
@@ -59,6 +60,7 @@ export function expandSource(
     active: true,
     organizationName: tier === 0 ? input.name : undefined,
     followsOutboundLinks: input.followsOutboundLinks ?? tier === 2,
+    discoveryExternalOnly: input.discoveryExternalOnly,
     notes: input.notes,
   };
 }

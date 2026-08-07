@@ -21,6 +21,7 @@ const DEFAULT_LINKS_PER_PAGE = 50;
 const MAX_LINKS_PER_PAGE = 100;
 const MAX_NEW_SOURCES_PER_TICK = 500;
 const MAX_HTML_BYTES = 2_000_000;
+const DISCOVERY_NOISE_HOSTS = /(?:^|\.)bsky\.app$|(?:^|\.)facebook\.com$|(?:^|\.)threads\.net$|(?:^|\.)twitter\.com$|(?:^|\.)linkedin\.com$|(?:^|\.)reddit\.com$|(?:^|\.)npofficespace\.com$/i;
 
 export interface DiscoveryWorkerOptions {
   maxSources?: number;
@@ -85,12 +86,21 @@ function absoluteHttpUrl(value: string, base: string): string | undefined {
 const CALL_WORDS = /(?:apply|application|submit|submission|open[- ]?call|opportunit|contest|prize|award|fellowship|grant|residen|fund|deadline|entry|call[- ]?for|reading[- ]?period|artist[- ]?program)/i;
 
 /** Extract bounded, evidence-oriented outbound call links from a directory page. */
-export function extractDiscoveryLinks(html: string, sourceUrl: string, limit = DEFAULT_LINKS_PER_PAGE): DiscoveryLink[] {
+export function extractDiscoveryLinks(html: string, sourceUrl: string, limit = DEFAULT_LINKS_PER_PAGE, externalOnly = false): DiscoveryLink[] {
   const results: DiscoveryLink[] = [];
   const seen = new Set<string>();
+  const sourceHost = (() => {
+    try { return new URL(sourceUrl).hostname.toLowerCase(); } catch { return undefined; }
+  })();
   const linkPattern = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of html.matchAll(linkPattern)) {
     const url = absoluteHttpUrl(match[1]!, sourceUrl);
+    if (url) {
+      try { if (DISCOVERY_NOISE_HOSTS.test(new URL(url).hostname)) continue; } catch { continue; }
+    }
+    if (url && externalOnly && sourceHost) {
+      try { if (new URL(url).hostname.toLowerCase() === sourceHost) continue; } catch { continue; }
+    }
     const title = match[2]!.replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim().slice(0, 240);
     if (!url || (!CALL_WORDS.test(url) && !CALL_WORDS.test(title))) continue;
     const key = normalizeUrl(url);
@@ -162,7 +172,7 @@ async function fetchDirectory(source: Source, linkLimit: number): Promise<Fetche
       checkedAt,
       html: result.html,
       finalUrl: result.finalUrl,
-      links: extractDiscoveryLinks(result.html, result.finalUrl, linkLimit),
+      links: extractDiscoveryLinks(result.html, result.finalUrl, linkLimit, source.discoveryExternalOnly),
     };
   } catch (error) {
     return { source, checkedAt, links: [], error: error instanceof Error ? error.message : "fetch failed" };

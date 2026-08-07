@@ -57,6 +57,8 @@ export interface SourceRegistryEntry {
   organizationName?: string;
   /** For tier-2 directories: enqueue linked org pages as tier-0 sources. */
   followsOutboundLinks?: boolean;
+  /** Ignore same-origin navigation when extracting discovery links from this directory. */
+  discoveryExternalOnly?: boolean;
   notes?: string;
 }
 

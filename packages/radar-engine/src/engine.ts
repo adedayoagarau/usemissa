@@ -295,6 +295,7 @@ export class RadarEngine {
     registryOrganizationName?: string;
     registryTier?: 0 | 1 | 2 | 3;
     followsOutboundLinks?: boolean;
+    discoveryExternalOnly?: boolean;
     checkIntervalHours?: number;
   }): Source {
     const source: Source = {
@@ -314,6 +315,7 @@ export class RadarEngine {
       registryOrganizationName: input.registryOrganizationName,
       registryTier: input.registryTier,
       followsOutboundLinks: input.followsOutboundLinks,
+      discoveryExternalOnly: input.discoveryExternalOnly,
       checkIntervalHours: input.checkIntervalHours ?? 24,
       active: true,
       consecutiveFailures: 0,

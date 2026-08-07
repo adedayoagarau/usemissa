@@ -27,6 +27,17 @@ test('registry filter by group and tier', () => {
   assert.ok(seeds.length >= 10);
 });
 
+test('NewPages calls for submissions is a literary discovery seed', () => {
+  const reg = assembleRegistry();
+  const source = reg.sources.find((entry) => entry.url === 'https://www.newpages.com/submission-opportunities/calls-for-submissions/');
+  assert.ok(source);
+  assert.equal(source.tier, 2);
+  assert.equal(source.kind, 'directory');
+  assert.equal(source.followsOutboundLinks, true);
+  assert.equal(source.discoveryExternalOnly, true);
+  assert.equal(source.verticalId, 'literary-fiction');
+});
+
 test('registry stats sum to total', () => {
   const reg = assembleRegistry();
   const stats = registryStats(reg);

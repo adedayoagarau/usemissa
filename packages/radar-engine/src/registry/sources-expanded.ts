@@ -16,6 +16,7 @@ const SOURCES: CompactSource[] = [
   platform('Authors Publish', 'https://authorspublish.com/', 'novel-book', { disciplines: ['novel', 'manuscript', 'poetry'], opportunityTypes: ['magazine', 'contest', 'fellowship'], geography: ['global'] }),
   platform('Submittable Discover', 'https://discover.submittable.com/', 'platform-submittable', { disciplines: ['all-disciplines'], opportunityTypes: ['open-call', 'grant', 'contest', 'magazine'], geography: ['global'] }),
   directory('Literary Hub Opportunities', 'https://lithub.com/category/lit-magazines/', 'creative-nonfiction', { disciplines: ['fiction', 'poetry', 'nonfiction'], opportunityTypes: ['magazine', 'contest'], geography: ['global'] }),
+  directory('NewPages Calls for Submissions', 'https://www.newpages.com/submission-opportunities/calls-for-submissions/', 'literary-fiction', { disciplines: ['fiction', 'poetry', 'nonfiction', 'art', 'drama', 'screenplay'], opportunityTypes: ['magazine', 'open-call'], geography: ['US', 'global'], discoveryExternalOnly: true, notes: 'Public directory seed; follow outbound publisher links and verify the first-party page before publication.' }),
   directory('The Poetry Society Opportunities', 'https://poetrysociety.org.uk/competitions/', 'poetry', { disciplines: ['poetry'], opportunityTypes: ['contest', 'award', 'fellowship'], geography: ['GB'] }),
 
   // Grants, fellowships and public funding.
