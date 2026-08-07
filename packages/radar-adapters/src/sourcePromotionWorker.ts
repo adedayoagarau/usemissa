@@ -96,6 +96,29 @@ interface DocumentResult {
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
+async function readLimitedText(response: Response, maxBytes: number): Promise<string> {
+  if (!response.body) return (await response.text()).slice(0, maxBytes);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const chunks: string[] = [];
+  let bytes = 0;
+  try {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      bytes += next.value.byteLength;
+      chunks.push(decoder.decode(next.value, { stream: bytes < maxBytes }));
+      if (bytes >= maxBytes) {
+        await reader.cancel();
+        break;
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return chunks.join("").slice(0, maxBytes);
+}
+
 function bounded(value: string | number | undefined, fallback: number, max: number): number {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, max) : fallback;
@@ -176,7 +199,7 @@ async function fetchDocument(fetchImpl: FetchLike, url: string, maxBytes: number
     signal: AbortSignal.timeout(Number(process.env.MISSA_SOURCE_PROMOTION_TIMEOUT_MS ?? 15_000)),
   });
   const contentType = response.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
-  const html = (await response.text()).slice(0, maxBytes);
+  const html = await readLimitedText(response, maxBytes);
   return { html, finalUrl: response.url || url, status: response.status, contentType };
 }
 
@@ -191,7 +214,7 @@ async function robotsDecision(fetchImpl: FetchLike, pageUrl: string): Promise<{ 
     });
     if (response.status === 404 || response.status === 410) return { decision: "allowed", detail: "robots.txt not published" };
     if (!response.ok) return { decision: "review", detail: `robots.txt HTTP ${response.status}` };
-    const body = await response.text();
+    const body = await readLimitedText(response, 200_000);
     const path = new URL(pageUrl).pathname;
     return robotsAllowsPath(body, path, USER_AGENT)
       ? { decision: "allowed", detail: "robots.txt allows the candidate path" }
