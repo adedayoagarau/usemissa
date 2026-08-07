@@ -373,7 +373,7 @@ test("detail projection strips nullable call profile fields before contract vali
       rightsSummary: null,
       confidence: "unknown",
       sourceUrl: "https://harbor.example/calls",
-      lastVerifiedAt: null,
+      lastVerifiedAt: "2026-07-30T00:00:00+00:00",
       prizes: [{ rank: 1, title: null, amountCents: null, currency: null, description: null, judgeName: null, sourceUrl: "https://harbor.example/calls", confidence: "unknown" }],
       windows: [],
     },
@@ -390,5 +390,6 @@ test("detail projection strips nullable call profile fields before contract vali
   assert.ok(result);
   assert.doesNotThrow(() => opportunityDetailResponseSchema.parse({ ...result, createdAt: undefined }));
   assert.equal(result.callProfile?.readingPeriodLabel, undefined);
+  assert.equal(result.callProfile?.lastVerifiedAt, "2026-07-30T00:00:00.000Z");
   assert.equal(result.callProfile?.prizes[0]?.title, undefined);
 });
