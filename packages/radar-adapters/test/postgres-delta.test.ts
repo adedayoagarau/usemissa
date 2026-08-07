@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Pool, QueryResult } from 'pg';
 import { createStore } from '@missa/radar-engine';
-import { saveRadarStoreDeltaToPostgres } from '../src/postgresStore.js';
+import { opportunityProjectionChanged, saveRadarStoreDeltaToPostgres } from '../src/postgresStore.js';
 
 function fakePool(initialVersion = '0', taxonomyReady = false): { pool: Pool; calls: string[] } {
   const calls: string[] = [];
@@ -52,4 +52,36 @@ test('Radar delta persistence dual-writes changed taxonomy exclusions', async ()
 
   assert.ok(calls.some((sql) => sql.includes("delete from account_taxonomy_preferences where account_id = $1 and origin = 'explicit'")));
   assert.ok(calls.some((sql) => sql.startsWith('insert into account_taxonomy_preferences')));
+});
+
+test('derived rescoring does not force a full relational opportunity projection', () => {
+  const previous = {
+    id: 'opp_1',
+    status: 'open',
+    sourceId: 'src_1',
+    sourceUrl: 'https://example.com/call',
+    alternateSourceIds: [],
+    createdAt: '2026-08-04T00:00:00.000Z',
+    fields: { title: 'Call', type: 'open-call', genres: [], deadline: { kind: 'rolling' }, fee: { disclosed: false }, eligibility: [], requiredMaterials: [] },
+    scores: { freshness: 80, confidence: 80, trust: 80 },
+    trustSignals: [],
+    lastCheckedAt: '2026-08-04T00:00:00.000Z',
+    lastChangedAt: '2026-08-04T00:00:00.000Z',
+    lastExtractionConfidence: 80,
+    lastOpenSignal: true,
+    lastClosedSignal: false,
+    lastSuspiciousSignals: [],
+    pastCycles: [],
+    conflicts: [],
+  } as any;
+  const rescored = {
+    ...previous,
+    scores: { freshness: 79, confidence: 80, trust: 80 },
+    trustSignals: [{ key: 'official', label: 'Official', present: true, weight: 10 }],
+    prediction: { expectedOpenStart: '2026-08-05', expectedOpenEnd: '2026-08-06', confidence: 'low', basedOnCycles: 0 },
+    lastCheckedAt: '2026-08-05T00:00:00.000Z',
+  };
+
+  assert.equal(opportunityProjectionChanged(previous, rescored), false);
+  assert.equal(opportunityProjectionChanged(previous, { ...rescored, fields: { ...rescored.fields, title: 'Updated call' } }), true);
 });

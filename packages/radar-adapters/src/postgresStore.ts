@@ -1,9 +1,40 @@
 import type { Pool, PoolClient } from 'pg';
-import { createStore, type RadarStore } from '@missa/radar-engine';
+import { createStore, type Opportunity, type RadarStore } from '@missa/radar-engine';
 import { postgresSchema } from './postgresSchema.js';
 import { saveOpportunityProjectionToPostgres } from './opportunityRelationalStore.js';
 
 export const RADAR_SNAPSHOT_DOMAIN = 'radar';
+
+/**
+ * Rescoring runs across every live opportunity at the end of each Radar tick.
+ * Scores, trust signals, and opening predictions are derived views and are
+ * intentionally excluded from the relational projection fingerprint. Without
+ * this boundary, a routine tick rewrites every evidence/taxonomy/material row
+ * even when no extracted opportunity facts changed.
+ */
+export function opportunityProjectionChanged(previous: Opportunity | undefined, current: Opportunity): boolean {
+  if (!previous) return true;
+  const fingerprint = (opportunity: Opportunity) => JSON.stringify({
+    status: opportunity.status,
+    sourceId: opportunity.sourceId,
+    sourceUrl: opportunity.sourceUrl,
+    alternateSourceIds: opportunity.alternateSourceIds,
+    duplicateOfId: opportunity.duplicateOfId ?? null,
+    claimedByOrganizationId: opportunity.claimedByOrganizationId ?? null,
+    organizationOverrides: opportunity.organizationOverrides ?? null,
+    fields: opportunity.fields,
+    lastChangedAt: opportunity.lastChangedAt,
+    lastExtractionConfidence: opportunity.lastExtractionConfidence,
+    lastOpenSignal: opportunity.lastOpenSignal,
+    lastClosedSignal: opportunity.lastClosedSignal,
+    lastSuspiciousSignals: opportunity.lastSuspiciousSignals,
+    lastDeadlineExtensionAt: opportunity.lastDeadlineExtensionAt ?? null,
+    previousDeadline: opportunity.previousDeadline ?? null,
+    pastCycles: opportunity.pastCycles,
+    conflicts: opportunity.conflicts,
+  });
+  return fingerprint(previous) !== fingerprint(current);
+}
 
 export class SnapshotConflictError extends Error {
   readonly domain: string;
@@ -449,15 +480,19 @@ export async function saveRadarStoreDeltaToPostgres(
     for (const row of arrays.memberships.upserts) { const value = row.value; await client.query('insert into radar_memberships (account_id, organization_id, role, data) values ($1, $2, $3, $4) on conflict (account_id, organization_id) do update set role = excluded.role, data = excluded.data', [value.accountId, value.organizationId, value.role, value]); }
     for (const entry of newAuditEntries) await client.query('insert into radar_audit_log (id, at, data) values ($1, $2, $3) on conflict (id) do nothing', [entry.id, entry.at, entry]);
 
-    if (maps.sources.upserts.length || maps.opportunities.upserts.length || maps.versions.upserts.length || maps.changes.upserts.length) {
-      const opportunityIds = new Set<string>([
-        ...maps.opportunities.upserts.map((row) => row.key),
+    const projectionOpportunityIds = new Set<string>([
+      ...maps.opportunities.upserts
+        .filter(({ key, value }) => opportunityProjectionChanged(previous.opportunities.get(key), value))
+        .map((row) => row.key),
         ...maps.versions.upserts.map((row) => row.value.opportunityId),
         ...maps.changes.upserts.map((row) => row.value.opportunityId),
-      ]);
+    ]);
+    if (maps.sources.upserts.length || projectionOpportunityIds.size > 0 || maps.versions.upserts.length || maps.changes.upserts.length) {
       for (const sourceId of maps.sources.upserts.map((row) => row.key)) {
         for (const opportunity of current.opportunities.values()) {
-          if (opportunity.sourceId === sourceId) opportunityIds.add(opportunity.id);
+          if (opportunity.sourceId === sourceId && opportunityProjectionChanged(previous.opportunities.get(opportunity.id), opportunity)) {
+            projectionOpportunityIds.add(opportunity.id);
+          }
         }
       }
       const taxonomySourceIds = new Set(
@@ -475,7 +510,7 @@ export async function saveRadarStoreDeltaToPostgres(
           .map(({ key }) => key),
       );
       await saveOpportunityProjectionToPostgres(current, client, {
-        opportunityIds,
+        opportunityIds: projectionOpportunityIds,
         sourceIds: new Set(maps.sources.upserts.map((row) => row.key)),
         taxonomySourceIds,
       });
