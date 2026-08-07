@@ -460,9 +460,24 @@ export async function saveRadarStoreDeltaToPostgres(
           if (opportunity.sourceId === sourceId) opportunityIds.add(opportunity.id);
         }
       }
+      const taxonomySourceIds = new Set(
+        maps.sources.upserts
+          .filter(({ key, value }) => {
+            const previousSource = previous.sources.get(key);
+            return !previousSource
+              || previousSource.url !== value.url
+              || previousSource.registryTier !== value.registryTier
+              || previousSource.followsOutboundLinks !== value.followsOutboundLinks
+              || JSON.stringify(previousSource.registryTaxonomyTermIds ?? []) !== JSON.stringify(value.registryTaxonomyTermIds ?? [])
+              || JSON.stringify(previousSource.registryGeography ?? []) !== JSON.stringify(value.registryGeography ?? [])
+              || JSON.stringify(previousSource.registryTrust ?? null) !== JSON.stringify(value.registryTrust ?? null);
+          })
+          .map(({ key }) => key),
+      );
       await saveOpportunityProjectionToPostgres(current, client, {
         opportunityIds,
         sourceIds: new Set(maps.sources.upserts.map((row) => row.key)),
+        taxonomySourceIds,
       });
     }
     const nextVersion = currentVersion + 1;
