@@ -17,7 +17,8 @@
     "format:check": "prettier --check .",
     "test:e2e": "npm run test:e2e --workspace=@missa/web",
     "db:generate": "npm run db:generate --workspace=@missa/db",
-    "db:seed-taxonomy": "npm run db:seed-taxonomy --workspace=@missa/db"
+    "db:seed-taxonomy": "npm run db:seed-taxonomy --workspace=@missa/db",
+    "seo:indexnow": "node scripts/indexnow-submit.mjs"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.10",

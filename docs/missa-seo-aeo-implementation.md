@@ -47,6 +47,24 @@ PostHog receives the same public discovery events when configured. Public page v
 
 For ongoing search measurement, keep Google Search Console and Bing Webmaster Tools connected to the canonical host. Use Bing’s AI Performance report to monitor cited pages and grounding queries, and submit meaningful source updates through IndexNow when available. Use `utm_source=chatgpt.com` referral data and sampled answer checks to distinguish AI referral traffic from ordinary search traffic; do not treat the presence of a crawler as proof of a citation.
 
+## Bing freshness lane
+
+The repository includes an IndexNow ownership key at the public site root and a
+bounded submission script. Store the matching key as the deployment secret
+`INDEXNOW_KEY`, then submit only canonical, published URLs after a meaningful
+content change:
+
+```bash
+INDEXNOW_KEY="$INDEXNOW_KEY" npm run seo:indexnow -- \
+  https://www.usemissa.com/ \
+  https://www.usemissa.com/sitemap.xml \
+  https://www.usemissa.com/methodology
+```
+
+The script refuses non-HTTPS URLs, other hosts, credentials, and batches larger
+than the IndexNow protocol limit. A successful response means the URLs were
+received, not that Bing has already crawled, indexed, ranked, or cited them.
+
 ## Release gates
 
 Before production promotion:

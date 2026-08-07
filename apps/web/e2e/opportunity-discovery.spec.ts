@@ -64,6 +64,12 @@ test('public crawl endpoints expose only the intended discovery surfaces', async
   expect(contestsHtml).toContain('Compare these facts');
   expect(contestsHtml).toContain('application/ld+json');
 
+  const guide = await request.get('/guides/verify-an-opportunity-before-applying');
+  expect(guide.status()).toBe(200);
+  const guideHtml = await guide.text();
+  expect(guideHtml).toContain('Questions creators ask');
+  expect(guideHtml).toContain('FAQPage');
+
   for (const path of ['/about', '/methodology']) {
     const response = await request.get(path);
     expect(response.status()).toBe(200);
