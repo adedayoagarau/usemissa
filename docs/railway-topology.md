@@ -19,10 +19,10 @@ not a set of independently writable microservices.
 | --- | --- | --- | --- |
 | `research-agent` | Directory/feed fan-out plus bounded source verification. It selects only Postgres sources explicitly marked to follow outbound links, checks candidate HTML, canonical links, robots policy, and explicit anti-automation terms before operator-approved source promotion; it never publishes opportunities. | Every 5 minutes, 100 directory pages/tick, up to 50 candidate checks/tick | `MISSA_WORKER_MODE=research`, `RADAR_DISCOVERY_INTERVAL_MINUTES`, `RADAR_DISCOVERY_BATCH_SIZE`, `RADAR_DISCOVERY_LINKS_PER_PAGE`, `MISSA_SOURCE_PROMOTION_MODE`, `MISSA_SOURCE_PROMOTION_BATCH_SIZE`, `MISSA_SOURCE_PROMOTION_CONCURRENCY`, `RADAR_DEFAULT_CHECK_INTERVAL_HOURS` |
 | `taxonomy-discovery-worker` | Executes canonical taxonomy coverage queries against the approved search provider and stores reviewable candidates. Never publishes directly. | Every 15 minutes, 8 taxonomy queries/tick, up to 25 results/query | `MISSA_WORKER_MODE=taxonomy-discovery`, `MISSA_TAXONOMY_DISCOVERY_ENDPOINT`, `MISSA_TAXONOMY_DISCOVERY_TOKEN`, `MISSA_TAXONOMY_DISCOVERY_BATCH_SIZE`, `MISSA_TAXONOMY_DISCOVERY_RESULT_LIMIT` |
-| `radar-worker` | Canonical refresh, validation, deduplication, status changes, relational projection, and alert evaluation. New sources are immediately due; canonical sources default to a 24-hour cadence. | Every 5 minutes, 100 sources/tick (bounded max 200) | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE`, `RADAR_DEFAULT_CHECK_INTERVAL_HOURS=24`, `RADAR_MAX_TIER=0`, `RADAR_USE_ADVISORY_LOCK=0` |
+| `radar-worker` | Canonical refresh, validation, deduplication, status changes, relational projection, and alert evaluation. New sources are immediately due; canonical sources default to a 24-hour cadence. | Every 5 minutes, current production batch 10 (bounded max 200) | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE`, `RADAR_DEFAULT_CHECK_INTERVAL_HOURS=24`, `RADAR_MAX_TIER`, `RADAR_USE_ADVISORY_LOCK=0` |
 | `enrichment-worker` | Fetches public opportunity pages for media, guideline, past-winner, and call-profile evidence. Writes provenance-tagged evidence and retries failures through a leased queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=enrichment`, `RADAR_ENRICHMENT_INTERVAL_MINUTES`, `RADAR_ENRICHMENT_BATCH_SIZE` |
 | `review-agent` | Scores reviewable opportunities, records explainable decisions, publishes only when strict evidence gates pass, and hands ambiguous records to a human-review queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=review`, `RADAR_REVIEW_INTERVAL_MINUTES`, `RADAR_REVIEW_BATCH_SIZE` |
-| `content-worker` *(implemented; provision after migration rehearsal)* | Builds source-linked Opportunity Intelligence briefs, persists them, then reviews the exact built content for provenance, bounded claims, and completeness. Approved content is exposed; the worker never mutates canonical opportunity facts. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=content`, `RADAR_CONTENT_INTERVAL_MINUTES`, `RADAR_CONTENT_BATCH_SIZE` |
+| `content-worker` | Builds source-linked Opportunity Intelligence briefs, persists them, then reviews the exact built content for provenance, bounded claims, and completeness. Approved content is exposed; the worker never mutates canonical opportunity facts. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=content`, `RADAR_CONTENT_INTERVAL_MINUTES`, `RADAR_CONTENT_BATCH_SIZE` |
 
 The research and radar services receive the same Neon URL. Discovery uses a
 short transaction-scoped lock (`1984/728`); canonical Radar runs as one
@@ -35,6 +35,12 @@ canonical refreshes and avoids Neon pooler protocol errors.
 processes tiers 0 through 2, and an unset or literal `null` value leaves all
 tiers eligible. Keep the production default at `0` until higher-tier source
 quality has been rehearsed and explicitly approved.
+
+The coverage worker is implemented as an operator/library lane but is not a
+Railway service. It materializes coverage cells and queues discovery queries;
+it does not create or publish opportunities. Keep the code and coverage tables
+until a replacement source-intake path exists. Running it requires an explicit
+operator decision and an approved search provider configuration.
 Enrichment and review use independent row-level leases, so they can work from
 the same projection without becoming a second source of truth. The services
 are separate supervisors and can be restarted independently.
