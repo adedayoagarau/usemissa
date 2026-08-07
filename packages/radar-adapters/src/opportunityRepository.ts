@@ -118,6 +118,16 @@ function contentReadsEnabled(): boolean {
   return process.env.MISSA_OPPORTUNITY_CONTENT_READS?.trim() === "1";
 }
 
+function stripJsonNulls<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(stripJsonNulls) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).flatMap(([key, item]) => item === null ? [] : [[key, stripJsonNulls(item)]]),
+    ) as T;
+  }
+  return value;
+}
+
 function encodeCursor(cursor: Cursor): string {
   return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
 }
@@ -547,6 +557,7 @@ export function buildOpportunityBrowseQuery(
 }
 
 function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
+  const callProfile = stripJsonNulls(row.call_profile);
   const tailoringReasons = Array.isArray(row.tailoring_reasons)
     ? row.tailoring_reasons.flatMap((value) => {
         if (!value || typeof value !== "object") return [];
@@ -605,7 +616,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
       tailoringReasons,
     },
     ...(row.content ? { content: row.content } : {}),
-    ...(row.call_profile ? { callProfile: row.call_profile } : {}),
+    ...(callProfile ? { callProfile } : {}),
   };
 }
 
