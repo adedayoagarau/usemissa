@@ -8,7 +8,7 @@
  * register those links as tier-0 sources for Radar's normal evidence pipeline.
  * Nothing discovered here is published directly.
  */
-import { assembleRegistry, contentHash, discoverySeeds, type Source } from "@missa/radar-engine";
+import { assembleRegistry, contentHash, discoverySeeds, toRadarSources, type Source } from "@missa/radar-engine";
 import { DISCOVERY_INGESTION_LOCK, releaseAdvisoryLock, tryAdvisoryLock } from "./radarWorker.js";
 import { Pool, type PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
@@ -275,6 +275,24 @@ async function persistDiscoveryResults(
   }
 }
 
+/** Materialize newly added registry directories without rewriting existing source state. */
+async function ensureDiscoverySeeds(pool: Pool): Promise<number> {
+  const currentRows = await pool.query<{ data: Source }>("select data from radar_sources");
+  const existing = new Set(currentRows.rows.map((row) => normalizeUrl(row.data.url)));
+  const missing = toRadarSources()
+    .filter((source) => source.registryTier === 2 && source.followsOutboundLinks)
+    .filter((source) => !existing.has(normalizeUrl(source.url)));
+  if (!missing.length) return 0;
+  const values = missing.flatMap((source) => [source.id, source.organizationId ?? null, source.active, JSON.stringify(source)]);
+  await pool.query(
+    `insert into radar_sources (id, organization_id, active, data)
+     values ${discoverySourceInsertPlaceholders(missing.length).join(",")}
+     on conflict (id) do nothing`,
+    values,
+  );
+  return missing.length;
+}
+
 function isDiscoveryDue(source: Source, now: Date): boolean {
   if (!source.discoveryLastCheckedAt) return true;
   const failures = Math.max(0, source.discoveryConsecutiveFailures ?? 0);
@@ -290,8 +308,10 @@ export async function runDiscoveryWorkerTick(options: Pick<DiscoveryWorkerOption
   const linkLimit = discoveryLinkLimit(options.maxLinksPerSource);
   const maxNewSources = bounded(options.maxNewSources, MAX_NEW_SOURCES_PER_TICK, MAX_NEW_SOURCES_PER_TICK);
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const seedsAdded = await ensureDiscoverySeeds(pool);
   const sourceRows = await pool.query<{ data: Source }>("select data from radar_sources");
   await pool.end();
+  if (seedsAdded) logger.info(`[missa-discovery-worker] materialized ${seedsAdded} new registry discovery seeds`);
   const now = new Date();
   // Older persisted snapshots predate registryTier metadata. Match against
   // the registry URL set as a compatibility fallback, so discovery starts
