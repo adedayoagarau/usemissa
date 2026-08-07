@@ -121,6 +121,13 @@ test("opportunities schema exposes the additive query and personal-state boundar
     ),
   );
   assert.ok(
+    sourceConfig.indexes.some(
+      (index) => index.config.name === "opportunity_sources_trust_idx",
+    ),
+  );
+  assert.ok(Object.values(sourceConfig.columns).some((column) => column.name === "trust_status"));
+  assert.ok(Object.values(sourceConfig.columns).some((column) => column.name === "trust_score"));
+  assert.ok(
     evidenceConfig.indexes.some(
       (index) => index.config.name === "opportunity_evidence_verified_idx",
     ),

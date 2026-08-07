@@ -5,6 +5,7 @@ import type {
   RadarStore,
   Source,
 } from '@missa/radar-engine';
+import { defaultSourceTrust } from '@missa/radar-engine';
 
 type PublicationState = 'published' | 'reviewable' | 'suppressed';
 
@@ -99,6 +100,34 @@ async function upsertSources(client: PoolClient, sources: Source[]): Promise<voi
        updated_at = now()`,
     values,
   );
+
+  // Trust columns were added after the original source projection. Keep this
+  // second write guarded so older deployments continue to persist sources
+  // while the additive migration is rolling out.
+  const trustColumns = await client.query<{ present: boolean }>(
+    `select count(*) = 6 as present
+       from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'opportunity_sources'
+        and column_name = any($1::text[])`,
+    [['trust_status', 'trust_score', 'authority_kind', 'trust_evidence_url', 'trust_reviewed_at', 'trust_review_note']],
+  );
+  if (trustColumns.rows[0]?.present !== true) return;
+  for (const source of sources) {
+    const trust = source.registryTrust ?? defaultSourceTrust({ tier: source.registryTier ?? 0, kind: source.kind });
+    await client.query(
+      `update opportunity_sources set
+         trust_status = $2,
+         trust_score = $3,
+         authority_kind = $4,
+         trust_evidence_url = $5,
+         trust_reviewed_at = $6,
+         trust_review_note = $7,
+         updated_at = now()
+       where id = $1`,
+      [source.id, trust.status, trust.score, trust.authorityKind, trust.evidenceUrl ?? null, trust.reviewedAt ?? null, trust.reviewNote ?? null],
+    );
+  }
 }
 
 async function taxonomyTablesAvailable(client: PoolClient): Promise<boolean> {

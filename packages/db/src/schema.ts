@@ -373,6 +373,12 @@ export const opportunitySources = pgTable(
     url: text("url").notNull(),
     canonicalUrl: text("canonical_url"),
     normalizedUrl: text("normalized_url"),
+    trustStatus: text("trust_status").notNull().default("needs-review"),
+    trustScore: integer("trust_score").notNull().default(0),
+    authorityKind: text("authority_kind").notNull().default("other"),
+    trustEvidenceUrl: text("trust_evidence_url"),
+    trustReviewedAt: timestamp("trust_reviewed_at", { withTimezone: true }),
+    trustReviewNote: text("trust_review_note"),
     sourceTier: integer("source_tier").notNull().default(0),
     kind: text("kind").notNull(),
     active: boolean("active").notNull().default(true),
@@ -420,6 +426,19 @@ export const opportunitySources = pgTable(
       table.lastCheckedAt,
     ),
     index("opportunity_sources_normalized_url_idx").on(table.normalizedUrl),
+    index("opportunity_sources_trust_idx").on(table.trustStatus, table.trustScore),
+    check(
+      "opportunity_sources_trust_status_check",
+      sql`${table.trustStatus} in ('curated', 'verified', 'needs-review', 'blocked')`,
+    ),
+    check(
+      "opportunity_sources_trust_score_check",
+      sql`${table.trustScore} between 0 and 100`,
+    ),
+    check(
+      "opportunity_sources_authority_check",
+      sql`${table.authorityKind} in ('official-source', 'professional-body', 'publisher', 'platform', 'directory', 'feed', 'funder', 'academic', 'community', 'other')`,
+    ),
     check(
       "opportunity_sources_tier_check",
       sql`${table.sourceTier} between 0 and 3`,

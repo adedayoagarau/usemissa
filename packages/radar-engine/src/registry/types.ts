@@ -10,6 +10,32 @@ import type { OpportunityType, Source, SourceKind } from '../domain/types.js';
  */
 export type SourceTier = 0 | 1 | 2 | 3;
 
+/** Trust describes Missa's confidence in the publisher/channel, not whether
+ * a particular opportunity is currently open. A curated source is suitable
+ * for the trusted registry; live verification is still performed by Radar. */
+export type SourceTrustStatus = 'curated' | 'verified' | 'needs-review' | 'blocked';
+
+export type SourceAuthorityKind =
+  | 'official-source'
+  | 'professional-body'
+  | 'publisher'
+  | 'platform'
+  | 'directory'
+  | 'feed'
+  | 'funder'
+  | 'academic'
+  | 'community'
+  | 'other';
+
+export interface SourceTrust {
+  status: SourceTrustStatus;
+  authorityKind: SourceAuthorityKind;
+  score: number;
+  evidenceUrl?: string;
+  reviewedAt?: string;
+  reviewNote?: string;
+}
+
 export type VerticalGroup =
   | 'literary'
   | 'visual-arts'
@@ -58,6 +84,36 @@ export interface SourceRegistryEntry {
   /** For tier-2 directories: enqueue linked org pages as tier-0 sources. */
   followsOutboundLinks?: boolean;
   notes?: string;
+  trust?: SourceTrust;
+}
+
+export type RegistryCoverageStatus = 'gap' | 'thin' | 'covered';
+
+export interface RegistryTermCoverage {
+  termId: string;
+  facet: string;
+  label: string;
+  sourceCount: number;
+  canonicalSourceCount: number;
+  trustedSourceCount: number;
+  status: RegistryCoverageStatus;
+}
+
+export interface RegistryFacetCoverage {
+  totalTerms: number;
+  coveredTerms: number;
+  thinTerms: number;
+  gapTerms: number;
+}
+
+export interface RegistryCoverageSummary {
+  schemeVersion: number;
+  totalTerms: number;
+  coveredTerms: number;
+  thinTerms: number;
+  gapTerms: number;
+  byFacet: Record<string, RegistryFacetCoverage>;
+  terms: RegistryTermCoverage[];
 }
 
 export interface SourceRegistry {
@@ -65,6 +121,7 @@ export interface SourceRegistry {
   generatedAt: string;
   verticals: RegistryVertical[];
   sources: SourceRegistryEntry[];
+  coverage: RegistryCoverageSummary;
 }
 
 export interface RegistryStats {
@@ -74,6 +131,8 @@ export interface RegistryStats {
   byGroup: Record<string, number>;
   byTier: Record<SourceTier, number>;
   byKind: Record<SourceKind, number>;
+  trustedSources: number;
+  byTrustStatus: Record<SourceTrustStatus, number>;
 }
 
 export interface LoadRegistryOptions {

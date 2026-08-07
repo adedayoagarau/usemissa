@@ -148,7 +148,11 @@ export {
   discoverySeeds,
   canonicalSources,
   auditRegistryTaxonomy,
+  buildRegistryCoverage,
+  defaultSourceTrust,
+  registryTaxonomyTermIds,
   registryVerticalCompatibility,
+  trustedSource,
 } from './registry/index.js';
 export type {
   SourceTier,
@@ -158,5 +162,12 @@ export type {
   SourceRegistry,
   RegistryStats,
   LoadRegistryOptions,
+  SourceTrust,
+  SourceTrustStatus,
+  SourceAuthorityKind,
+  RegistryCoverageStatus,
+  RegistryTermCoverage,
+  RegistryFacetCoverage,
+  RegistryCoverageSummary,
 } from './registry/types.js';
 export type { RegistryTaxonomyAudit, RegistryVerticalCompatibility } from './registry/taxonomy.js';

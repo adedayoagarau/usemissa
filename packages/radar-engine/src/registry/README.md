@@ -1,6 +1,15 @@
-# Opportunity Source Registry
+# Trusted Opportunity Source Registry
 
-> **1,042 curated sources** across **49 verticals** for Missa Radar ingestion.
+> **1,114 curated registry sources** across **49 verticals**, with explicit trust posture and canonical taxonomy coverage for Missa Radar ingestion.
+
+The registry is trusted in a deliberately bounded sense: tier-0 and tier-1 entries are curated
+monitoring sources, while tier-2 directories and tier-3 feeds remain discovery inputs that need
+review. A curated source is not a live verification claim about every deadline on its pages.
+
+`taxonomyTermIds` contains only canonical terms resolved by the shared `@missa/taxonomy` resolver.
+`coverage` reports every selectable term across all 12 facets. Discipline and genre gaps are
+intentional discovery work; they must not be filled by copying a broad practice label into a
+narrower term.
 
 This registry is the seed list for crawling and monitoring artist/writer opportunities. It follows the three-tier graph model:
 
@@ -30,12 +39,12 @@ This registry is the seed list for crawling and monitoring artist/writer opportu
 
 ```
 src/registry/
-├── types.ts              # RegistryVertical, SourceRegistryEntry, SourceTier
+├── types.ts              # RegistryVertical, SourceRegistryEntry, trust and coverage contracts
 ├── verticals.ts          # 49 vertical definitions
 ├── helpers.ts            # org() / platform() / directory() builders
 ├── assemble.ts           # Merge bundles + bulk JSON → full registry
 ├── sources-bulk.json     # Generated non-literary sources (grants, film, visual…)
-├── sources.json          # Full assembled export (1042 entries)
+├── sources.json          # Full assembled export (1114 entries + coverage summary)
 ├── bundles/
 │   ├── literary-fiction.ts   # 131 tier-0 lit mags
 │   ├── poetry.ts             # 128 tier-0 poetry markets
@@ -48,6 +57,9 @@ src/registry/
 ```bash
 # Summary stats
 npm run build && node dist/src/cli.js registry stats
+
+# Show every taxonomy facet's covered/thin/gap terms
+node dist/src/cli.js registry coverage --limit 50
 
 # List sources (filter by group or vertical)
 node dist/src/cli.js registry list --group literary --limit 20
