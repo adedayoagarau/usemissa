@@ -58,7 +58,7 @@ test("repository maps rows and returns a continuation cursor", async () => {
     {
     id: "opp_0001",
       total_count: "2",
-      slug: "poetry-call",
+      slug: "a".repeat(240),
       title: "Poetry Call",
       organization_id: "org_0001",
       organization_name: "Harbor Review",
@@ -78,7 +78,7 @@ test("repository maps rows and returns a continuation cursor", async () => {
       fee_cents: null,
       fee_currency: null,
       fee_raw: null,
-      prize: null,
+      prize: "P".repeat(340),
       location: "Remote",
       submission_url: "https://harbor.example/submit",
       submission_state: "available",
@@ -151,6 +151,9 @@ test("repository maps rows and returns a continuation cursor", async () => {
   assert.equal(result.items.length, 1);
   assert.equal(result.total, 2);
   assert.equal(result.items[0]?.submissionAvailable, true);
+  assert.equal(result.items[0]?.slug.length, 160);
+  assert.equal(result.items[0]?.prize?.length, 300);
+  assert.equal(result.items[0]?.prize?.endsWith("…"), true);
   assert.ok(result.nextCursor);
 });
 

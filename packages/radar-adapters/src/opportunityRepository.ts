@@ -125,6 +125,20 @@ function asIso(value: Date | string | null | undefined): string | undefined {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
+function boundedSlug(value: string | null | undefined, fallback: string): string {
+  const normalized = value?.trim() ?? "";
+  if (!normalized) return fallback;
+  if (normalized.length <= 160) return normalized;
+  return normalized.slice(0, 160).replace(/[-\s]+$/u, "") || fallback;
+}
+
+function browseSummary(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim();
+  if (!normalized) return undefined;
+  return normalized.length <= 300 ? normalized : `${normalized.slice(0, 299).trimEnd()}…`;
+}
+
 function baseSelect(context?: OpportunityRepositoryContext): string {
   const taxonomySelect = process.env.MISSA_TAXONOMY_READS === "1"
     ? `coalesce((select jsonb_build_object(
@@ -395,7 +409,7 @@ export function buildOpportunityBrowseQuery(
 function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
   return {
     id: row.id,
-    slug: row.slug,
+    slug: boundedSlug(row.slug, row.id),
     createdAt: asIso(row.created_at),
     title: row.title,
     organizationId: row.organization_id ?? undefined,
@@ -421,7 +435,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
       currency: row.fee_currency ?? undefined,
       raw: row.fee_raw ?? undefined,
     },
-    prize: row.prize ?? undefined,
+    prize: browseSummary(row.prize),
     location: row.location ?? undefined,
     simultaneousAllowed: row.simultaneous_allowed ?? undefined,
     submissionAvailable: row.submission_state === "available" && Boolean(row.submission_url),
