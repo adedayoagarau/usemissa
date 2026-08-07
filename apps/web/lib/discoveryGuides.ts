@@ -4,6 +4,10 @@ import type { OpportunityRepositoryQuery } from '@missa/radar-engine';
 // accurate lastmod values to prioritize recrawls; it ignores cosmetic sitemap
 // fields such as priority and changefreq.
 export const discoveryContentLastModified = new Date('2026-08-07T00:00:00.000Z');
+export const discoveryContentLastModifiedLabel = new Intl.DateTimeFormat('en-US', {
+  dateStyle: 'long',
+  timeZone: 'UTC',
+}).format(discoveryContentLastModified);
 
 export interface DiscoveryGuide {
   slug: string;

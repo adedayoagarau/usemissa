@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { JsonLd, absoluteUrl, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { discoveryContentLastModified, discoveryContentLastModifiedLabel } from "@/lib/discoveryGuides";
 
 export const metadata = pageMetadata({
   title: "About Missa",
@@ -35,6 +36,7 @@ export default function AboutPage() {
           description:
             "Missa helps creators find and understand submission opportunities.",
           url: absoluteUrl("/about"),
+          dateModified: discoveryContentLastModified.toISOString(),
           about: {
             "@type": "Organization",
             name: "Missa",
@@ -85,6 +87,7 @@ export default function AboutPage() {
             contests into one place, with the details that help you decide
             whether an opportunity is worth your time.
           </p>
+          <p className="mt-3 text-xs text-muted-foreground"><time dateTime={discoveryContentLastModified.toISOString()}>Reviewed {discoveryContentLastModifiedLabel}</time></p>
         </header>
 
         <section

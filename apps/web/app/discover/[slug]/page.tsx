@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
 import type { OpportunityBrowseProjection } from '@missa/radar-engine';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
-import { discoveryCollection, discoveryCollections, discoveryGuide } from '@/lib/discoveryGuides';
+import { discoveryCollection, discoveryCollections, discoveryContentLastModified, discoveryContentLastModifiedLabel, discoveryGuide } from '@/lib/discoveryGuides';
 import { JsonLd, absoluteUrl, breadcrumbJsonLd, pageMetadata } from '@/lib/seo';
 import { opportunityFreshness } from '@/lib/opportunityFreshness';
 import { PublicDiscoveryEvent } from '@/components/public-discovery-event';
@@ -41,6 +41,7 @@ export default async function DiscoveryCollectionPage({ params }: { params: Prom
         name: collection.title,
         description: collection.description,
         url: absoluteUrl(`/discover/${collection.slug}`),
+        dateModified: discoveryContentLastModified.toISOString(),
         isPartOf: { '@type': 'WebSite', name: 'Missa', url: absoluteUrl('/') },
         mainEntity: {
           '@type': 'ItemList',
@@ -71,6 +72,7 @@ export default async function DiscoveryCollectionPage({ params }: { params: Prom
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Missa discovery</p>
           <h1 className="mt-3 font-heading text-4xl font-medium tracking-[-0.04em] sm:text-6xl">{collection.title}</h1>
           <p className="mt-5 text-base leading-7 text-muted-foreground">{collection.description}</p>
+          <p className="mt-3 text-xs text-muted-foreground"><time dateTime={discoveryContentLastModified.toISOString()}>Reviewed {discoveryContentLastModifiedLabel}</time></p>
           <p className="mt-4 text-sm leading-6 text-muted-foreground">{collection.audience}</p>
         </header>
 

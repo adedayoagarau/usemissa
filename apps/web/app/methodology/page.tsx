@@ -6,6 +6,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { JsonLd, absoluteUrl, breadcrumbJsonLd, pageMetadata } from "@/lib/seo";
+import { discoveryContentLastModified, discoveryContentLastModifiedLabel } from "@/lib/discoveryGuides";
 
 export const metadata = pageMetadata({
   title: "How Missa verifies opportunities",
@@ -43,6 +44,7 @@ export default function MethodologyPage() {
           name: "How Missa verifies opportunities",
           description: "Missa source and verification methodology.",
           url: absoluteUrl("/methodology"),
+          dateModified: discoveryContentLastModified.toISOString(),
           isPartOf: {
             "@type": "WebSite",
             name: "Missa",
@@ -92,6 +94,7 @@ export default function MethodologyPage() {
             important checks easier to see before you spend time preparing an
             application.
           </p>
+          <p className="mt-3 text-xs text-muted-foreground"><time dateTime={discoveryContentLastModified.toISOString()}>Reviewed {discoveryContentLastModifiedLabel}</time></p>
         </header>
 
         <section className="mt-16" aria-labelledby="checks-heading">
