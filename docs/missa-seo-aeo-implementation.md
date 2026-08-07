@@ -10,6 +10,7 @@ This document records the public discovery lane added for the SEO/AEO rollout.
 - `/discover/{collection}` — public category hubs for contests, magazines, poetry, grants, residencies, and fellowships.
 - `/org/{organizationId}` and `/org/{organizationId}/{openCallId}` — published organization and Workspace call pages.
 - `/guides` and `/guides/{slug}` — answer-led, source-first guides backed by the same published opportunity repository.
+- `/about` and `/methodology` — trust, source, and verification context for creators and search systems.
 - `/robots.txt` and `/sitemap.xml` — crawler policy and bounded dynamic public URL inventory.
 
 ## Public answer contract
@@ -42,7 +43,9 @@ The first-party event ledger now receives:
 - `public.guide_view`;
 - anonymous `page_view` events on public paths.
 
-PostHog receives the same public discovery events when configured. The durable analytics view should later add prompt/citation imports from Search Console, Bing Webmaster AI Performance, and controlled ChatGPT/Perplexity query samples; those external systems are measurement inputs, not runtime dependencies.
+PostHog receives the same public discovery events when configured. Public page views and discovery events attach campaign parameters (`utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, and `utm_term`) plus an external `referrer_host`, never the full referrer URL. The durable analytics view should later add prompt/citation imports from Search Console, Bing Webmaster AI Performance, and controlled ChatGPT/Perplexity query samples; those external systems are measurement inputs, not runtime dependencies.
+
+For ongoing search measurement, keep Google Search Console and Bing Webmaster Tools connected to the canonical host. Use Bing’s AI Performance report to monitor cited pages and grounding queries, and submit meaningful source updates through IndexNow when available. Use `utm_source=chatgpt.com` referral data and sampled answer checks to distinguish AI referral traffic from ordinary search traffic; do not treat the presence of a crawler as proof of a citation.
 
 ## Release gates
 

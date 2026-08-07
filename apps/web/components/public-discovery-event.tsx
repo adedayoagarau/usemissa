@@ -2,13 +2,13 @@
 
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
-import { captureProductEvent } from '@/components/analytics-provider';
+import { browserAttributionProperties, captureProductEvent } from '@/components/analytics-provider';
 
 export function PublicDiscoveryEvent({ eventName, properties }: { eventName: `public.${string}`; properties?: Record<string, unknown> }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const payload = { ...(properties ?? {}), path: pathname };
+    const payload = { ...browserAttributionProperties(), ...(properties ?? {}), path: pathname };
     captureProductEvent(eventName, payload);
     void fetch('/api/analytics/events', {
       method: 'POST',
