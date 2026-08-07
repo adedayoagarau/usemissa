@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { opportunityDetailResponseSchema } from "@missa/contracts";
 import {
   PostgresOpportunityRepository,
   buildOpportunityBrowseQuery,
@@ -299,4 +300,95 @@ test("detail lookup removes the browse limit bind parameter", async () => {
   assert.equal(await repository.getById("opp_missing"), null);
   assert.match(calls[0]?.text ?? "", /where \(o\.id = \$1 or o\.slug = \$1\)/);
   assert.deepEqual(calls[0]?.values, ["opp_missing"]);
+});
+
+test("detail projection strips nullable call profile fields before contract validation", async () => {
+  const detailRow = {
+    id: "opp_0001",
+    total_count: "1",
+    slug: "poetry-call",
+    title: "Poetry Call",
+    organization_id: "org_0001",
+    organization_name: "Harbor Review",
+    organization_verified: "true",
+    identity_asset_url: null,
+    identity_asset_alt: null,
+    status: "open",
+    type: "magazine",
+    discipline: "writing",
+    genres: ["poetry"],
+    taxonomy: { schemeVersion: 1, termIds: [], primaryTermIds: [] },
+    deadline_kind: "rolling",
+    deadline_date: null,
+    deadline_time: null,
+    deadline_timezone: null,
+    deadline_raw: "Rolling",
+    fee_status: "unknown",
+    fee_cents: null,
+    fee_currency: null,
+    fee_raw: null,
+    prize: null,
+    location: null,
+    submission_url: "https://harbor.example/submit",
+    submission_state: "available",
+    source_kind: "organization-website",
+    source_name: "Harbor Review",
+    source_url: "https://harbor.example/calls",
+    source_checked_at: "2026-07-30T00:00:00.000Z",
+    processing_succeeded_at: "2026-07-30T00:00:00.000Z",
+    organization_confirmed: true,
+    verified_until: null,
+    tracked: false,
+    following_organization: false,
+    open_date: null,
+    simultaneous_allowed: null,
+    guidelines_url: null,
+    tailoring_reasons: [],
+    created_at: "2026-07-20T00:00:00.000Z",
+    call_profile: {
+      callKind: "general-submission",
+      marketKind: "magazine",
+      publicationFormats: ["online"],
+      acceptedFormats: ["poetry"],
+      subgenres: [],
+      readingPeriodKind: "rolling",
+      readingPeriodLabel: null,
+      issueTheme: null,
+      paymentType: "none",
+      paymentAmountCents: null,
+      paymentCurrency: null,
+      reprintsAllowed: null,
+      previouslyUnpublishedRequired: null,
+      multipleSubmissionsAllowed: null,
+      wordLimitMin: null,
+      wordLimitMax: null,
+      pageLimitMin: null,
+      pageLimitMax: null,
+      responseTimeDays: null,
+      acceptanceRate: null,
+      statsSampleSize: null,
+      judgeName: null,
+      prizeSummary: null,
+      eligibilitySummary: null,
+      rightsSummary: null,
+      confidence: "unknown",
+      sourceUrl: "https://harbor.example/calls",
+      lastVerifiedAt: null,
+      prizes: [{ rank: 1, title: null, amountCents: null, currency: null, description: null, judgeName: null, sourceUrl: "https://harbor.example/calls", confidence: "unknown" }],
+      windows: [],
+    },
+  };
+  const pool = {
+    async query(text: string) {
+      if (text.includes("where (o.id =")) return { rows: [detailRow] };
+      return { rows: [] };
+    },
+  } as never;
+  const repository = new PostgresOpportunityRepository(pool);
+  const result = await repository.getById("opp_0001");
+
+  assert.ok(result);
+  assert.doesNotThrow(() => opportunityDetailResponseSchema.parse({ ...result, createdAt: undefined }));
+  assert.equal(result.callProfile?.readingPeriodLabel, undefined);
+  assert.equal(result.callProfile?.prizes[0]?.title, undefined);
 });
