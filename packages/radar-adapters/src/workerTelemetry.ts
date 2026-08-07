@@ -7,6 +7,7 @@ export type RadarWorkerKind =
   | "radar-worker"
   | "research-worker"
   | "discovery-worker"
+  | "source-promotion-worker"
   | "coverage-worker"
   | "enrichment-worker"
   | "review-worker";

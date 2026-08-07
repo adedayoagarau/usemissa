@@ -1,6 +1,8 @@
 import { chromium, type Browser } from 'playwright';
 import type { Fetcher, FetchResult, Source } from '@missa/radar-engine';
 import { stripHtml } from '@missa/radar-engine';
+import { parseDisallowForUserAgent } from './sourcePolicy.js';
+export { parseDisallowForUserAgent } from './sourcePolicy.js';
 
 export interface PlaywrightFetcherOptions {
   userAgent?: string;
@@ -88,52 +90,4 @@ export class PlaywrightFetcher implements Fetcher {
       return { disallow: [] };
     }
   }
-}
-
-interface RobotsGroup {
-  agents: string[];
-  disallow: string[];
-}
-
-/**
- * Minimal robots.txt parser (RFC 9309 subset): groups of consecutive
- * "User-agent" lines followed by directives; prefers a group matching our own
- * user agent, falling back to the wildcard ("*") group.
- */
-export function parseDisallowForUserAgent(robotsTxt: string, userAgent: string): string[] {
-  const lines = robotsTxt
-    .split(/\r?\n/)
-    .map((l) => l.split('#')[0].trim())
-    .filter(Boolean);
-
-  const groups: RobotsGroup[] = [];
-  let current: RobotsGroup | null = null;
-  let sawDirectiveSinceLastAgent = false;
-
-  for (const line of lines) {
-    const idx = line.indexOf(':');
-    if (idx < 0) continue;
-    const key = line.slice(0, idx).trim().toLowerCase();
-    const value = line.slice(idx + 1).trim();
-
-    if (key === 'user-agent') {
-      if (!current || sawDirectiveSinceLastAgent) {
-        current = { agents: [], disallow: [] };
-        groups.push(current);
-        sawDirectiveSinceLastAgent = false;
-      }
-      current.agents.push(value.toLowerCase());
-    } else if (key === 'disallow' && current) {
-      if (value) current.disallow.push(value);
-      sawDirectiveSinceLastAgent = true;
-    } else if ((key === 'allow' || key === 'crawl-delay') && current) {
-      sawDirectiveSinceLastAgent = true;
-    }
-  }
-
-  const ua = userAgent.toLowerCase();
-  const specific = groups.find((g) => g.agents.some((a) => ua.includes(a) || a.includes(ua)));
-  if (specific) return specific.disallow;
-  const wildcard = groups.find((g) => g.agents.includes('*'));
-  return wildcard ? wildcard.disallow : [];
 }
