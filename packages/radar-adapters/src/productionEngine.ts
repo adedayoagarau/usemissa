@@ -138,7 +138,6 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   await ensurePostgresSchema(pool);
   const store = await loadStoreFromPostgres(pool);
   let snapshotVersion = await readSnapshotVersion(pool);
-  let persistedStore = cloneStore(store);
 
   // Dynamic import, not a top-level static one: `playwright`'s own module-load
   // code reaches for browser-registry files (browsers.json) that don't exist
@@ -161,6 +160,10 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   // not rewrite the full registry; it simply lets worker tier fences operate
   // correctly on snapshots created before registryTier was added.
   seedRegistryIfEmpty(engine, { maxTier: 3 });
+  // The persistence baseline must include the hydrated registry metadata.
+  // Taking it before hydration makes every seeded source look changed on the
+  // first tick and forces a large sequential relational rewrite.
+  let persistedStore = cloneStore(engine.store);
   let pendingPersist = Promise.resolve();
 
   return {
