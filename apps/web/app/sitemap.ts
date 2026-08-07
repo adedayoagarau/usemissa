@@ -5,6 +5,11 @@ import { discoveryCollections, discoveryGuides } from '@/lib/discoveryGuides';
 import { getEngine } from '@/lib/engine';
 import { getWorkspaceEngine } from '@/lib/workspaceEngine';
 
+// Keep the database-backed URL inventory out of the deployment build. Vercel
+// can serve this route on demand while the static discovery URLs remain
+// available even if the repository is warming up.
+export const dynamic = 'force-dynamic';
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = siteUrl();
   const entries: MetadataRoute.Sitemap = [
@@ -21,7 +26,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // opportunity records that power the browse surface.
   try {
     let cursor: string | undefined;
-    for (let page = 0; page < 25; page += 1) {
+    for (let page = 0; page < 5; page += 1) {
       const result = await getOpportunityRepository().browse({ openNow: true, sort: 'soonest-deadline', limit: 48, ...(cursor ? { cursor } : {}) });
       entries.push(...result.items.map((item) => ({
         url: `${baseUrl}/discover/opportunities/${item.slug}`,
