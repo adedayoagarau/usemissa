@@ -41,8 +41,8 @@ async function writeTaxonomyAssignments(client: { query: (text: string, values?:
     await client.query('delete from work_taxonomy_terms where work_id = $1', [work.id]);
     for (const [index, termId] of (work.taxonomyTermIds ?? []).entries()) {
       await client.query(
-        `insert into work_taxonomy_terms (work_id, term_id, primary, assignment_origin)
-         values ($1, $2, $3, 'user') on conflict (work_id, term_id) do update set primary = excluded.primary`,
+        `insert into work_taxonomy_terms (work_id, term_id, "primary", assignment_origin)
+         values ($1, $2, $3, 'user') on conflict (work_id, term_id) do update set "primary" = excluded."primary"`,
         [work.id, termId, index === 0],
       );
     }
@@ -495,7 +495,7 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<WorkspaceStore>
   }
   if (taxonomyReady) {
     const workTerms = await pool.query<{ work_id: string; term_id: string; primary: boolean }>(
-      'select work_id, term_id, primary from work_taxonomy_terms order by work_id, primary desc, term_id',
+      'select work_id, term_id, "primary" from work_taxonomy_terms order by work_id, "primary" desc, term_id',
     );
     for (const row of workTerms.rows) {
       const work = store.works.get(row.work_id);

@@ -73,8 +73,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Apply target migration to clean Postgres
-        run: npm run db:migrate --workspace=@missa/db
+      - name: Apply reconciled target schema to clean Postgres
+        run: npm run db:target-schema --workspace=@missa/db
         env:
           DATABASE_URL: postgres://missa:missa@localhost:5432/missa_schema
 
