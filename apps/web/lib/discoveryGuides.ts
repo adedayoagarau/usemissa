@@ -13,6 +13,9 @@ export interface DiscoveryCollection {
   title: string;
   description: string;
   answer: string;
+  audience: string;
+  checklist: string[];
+  relatedGuideSlug: string;
   query: OpportunityRepositoryQuery;
 }
 
@@ -69,6 +72,9 @@ export const discoveryCollections: DiscoveryCollection[] = [
     title: 'Contests for creators',
     description: 'Open contests, prizes, and calls for entries with deadlines and source details in view.',
     answer: 'Compare the closing date, fee, eligibility, prize information, and official submission path before entering a contest. Missa shows the current source record; the organizer’s page remains the authority.',
+    audience: 'Creators looking for prizes, calls for entries, and time-bound competitions.',
+    checklist: ['Closing date and time zone', 'Entry fee and prize information', 'Eligibility and accepted formats', 'Official submission path'],
+    relatedGuideSlug: 'verify-an-opportunity-before-applying',
     query: { ...baseQuery, types: ['contest'] },
   },
   {
@@ -76,6 +82,9 @@ export const discoveryCollections: DiscoveryCollection[] = [
     title: 'Magazine submissions',
     description: 'Find open magazine calls and review reading periods, fees, formats, and source links.',
     answer: 'For magazine submissions, check the current reading period, accepted formats, simultaneous-submission rules, fee, rights, and response expectations on the publication’s own guidelines.',
+    audience: 'Writers, poets, artists, and editors comparing publications and reading periods.',
+    checklist: ['Reading period or rolling status', 'Accepted formats and genres', 'Fee, rights, and simultaneous-submission rules', 'Official guidelines and response expectations'],
+    relatedGuideSlug: 'magazine-submissions',
     query: { ...baseQuery, types: ['magazine'] },
   },
   {
@@ -83,6 +92,9 @@ export const discoveryCollections: DiscoveryCollection[] = [
     title: 'Poetry opportunities',
     description: 'Browse current poetry-related submission opportunities and open calls for writers.',
     answer: 'A poetry opportunity can be a magazine call, contest, grant, or residency. Start with the source-linked deadline and requirements, then confirm the publication or organizer’s current guidelines before sending work.',
+    audience: 'Poets looking across magazines, contests, grants, and residencies rather than one opportunity type.',
+    checklist: ['Opportunity type and fit', 'Deadline or reading period', 'Accepted work and length limits', 'Fee, rights, and official requirements'],
+    relatedGuideSlug: 'find-submission-opportunities',
     query: { ...baseQuery, query: 'poetry' },
   },
   {
@@ -90,6 +102,9 @@ export const discoveryCollections: DiscoveryCollection[] = [
     title: 'Grants for creators',
     description: 'Open grants for creative work, with eligibility, deadline, and source context kept together.',
     answer: 'Before preparing a grant application, confirm the funder’s geography, career-stage rules, budget limits, project fit, and reporting expectations on the official source.',
+    audience: 'Creators seeking project, practice, or professional-development funding.',
+    checklist: ['Geography and career-stage eligibility', 'Project fit and eligible costs', 'Budget and reporting rules', 'Deadline and official application instructions'],
+    relatedGuideSlug: 'grants-for-creators',
     query: { ...baseQuery, types: ['grant'] },
   },
   {
@@ -97,6 +112,9 @@ export const discoveryCollections: DiscoveryCollection[] = [
     title: 'Residencies for creators',
     description: 'Browse open residencies with location, deadline, fee, and official source context.',
     answer: 'Residencies vary in what they offer: time, space, money, mentorship, or community. Compare location, duration, costs, eligibility, and required materials before applying.',
+    audience: 'Creators comparing places, time, community, and support for developing new work.',
+    checklist: ['Location, duration, and what is provided', 'Eligibility and required materials', 'Costs, travel, and accessibility', 'Deadline and official program details'],
+    relatedGuideSlug: 'residencies-and-fellowships',
     query: { ...baseQuery, types: ['residency'] },
   },
   {
@@ -104,6 +122,9 @@ export const discoveryCollections: DiscoveryCollection[] = [
     title: 'Fellowships for creators',
     description: 'Find open fellowships and review the requirements and source evidence before preparing an application.',
     answer: 'A fellowship may support a project, practice, period of research, or professional development. Confirm what the award includes, who can apply, and what the recipient must deliver.',
+    audience: 'Creators, researchers, and practitioners looking for structured support beyond a single submission.',
+    checklist: ['What the fellowship provides', 'Eligibility and selection criteria', 'Required materials and timeline', 'Recipient obligations and official source'],
+    relatedGuideSlug: 'residencies-and-fellowships',
     query: { ...baseQuery, types: ['fellowship'] },
   },
 ];

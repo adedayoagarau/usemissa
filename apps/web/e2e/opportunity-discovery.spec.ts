@@ -52,6 +52,8 @@ test('public crawl endpoints expose only the intended discovery surfaces', async
   const sitemapBody = await sitemap.text();
   expect(sitemapBody).toContain('/opportunities-preview');
   expect(sitemapBody).toContain('/for-organizations');
+  expect(sitemapBody).toContain('/about');
+  expect(sitemapBody).toContain('/methodology');
   expect(sitemapBody).toContain('/discover/contests');
   expect(sitemapBody).not.toContain('usemissa.com/opportunities/');
 
@@ -59,7 +61,14 @@ test('public crawl endpoints expose only the intended discovery surfaces', async
   expect(contests.status()).toBe(200);
   const contestsHtml = await contests.text();
   expect(contestsHtml).toContain('Contests for creators');
+  expect(contestsHtml).toContain('Compare these facts');
   expect(contestsHtml).toContain('application/ld+json');
+
+  for (const path of ['/about', '/methodology']) {
+    const response = await request.get(path);
+    expect(response.status()).toBe(200);
+    expect((await response.text())).toContain('application/ld+json');
+  }
 });
 
 test('public discovery APIs return bounded JSON without leaking an auth failure', async ({ request }) => {

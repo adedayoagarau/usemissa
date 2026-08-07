@@ -524,7 +524,8 @@ export default async function HomePage() {
           </div>
           <div>
             <p>Company</p>
-            <a href="#for-creators">About</a>
+            <Link href="/about">About</Link>
+            <Link href="/methodology">How we verify</Link>
             <Link href="/login">Careers</Link>
             <Link href="/login">Privacy</Link>
             <Link href="/login">Terms</Link>
