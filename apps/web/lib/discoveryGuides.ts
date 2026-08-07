@@ -1,5 +1,10 @@
 import type { OpportunityRepositoryQuery } from '@missa/radar-engine';
 
+// Keep this aligned with meaningful edits to public discovery copy. Bing uses
+// accurate lastmod values to prioritize recrawls; it ignores cosmetic sitemap
+// fields such as priority and changefreq.
+export const discoveryContentLastModified = new Date('2026-08-07T00:00:00.000Z');
+
 export interface DiscoveryGuide {
   slug: string;
   title: string;

@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { siteUrl } from '@/lib/siteUrl';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
-import { discoveryCollections, discoveryGuides } from '@/lib/discoveryGuides';
+import { discoveryCollections, discoveryContentLastModified, discoveryGuides } from '@/lib/discoveryGuides';
 
 // Keep the database-backed URL inventory out of the deployment build. Vercel
 // can serve this route on demand while the static discovery URLs remain
@@ -14,11 +14,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: baseUrl, changeFrequency: 'weekly', priority: 1 },
     { url: `${baseUrl}/opportunities-preview`, changeFrequency: 'daily', priority: 0.9 },
     { url: `${baseUrl}/for-organizations`, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${baseUrl}/about`, changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${baseUrl}/methodology`, changeFrequency: 'monthly', priority: 0.7 },
-    { url: `${baseUrl}/guides`, changeFrequency: 'weekly', priority: 0.8 },
-    ...discoveryGuides.map((guide) => ({ url: `${baseUrl}/guides/${guide.slug}`, changeFrequency: 'weekly' as const, priority: 0.7 })),
-    ...discoveryCollections.map((collection) => ({ url: `${baseUrl}/discover/${collection.slug}`, changeFrequency: 'daily' as const, priority: 0.75 })),
+    { url: `${baseUrl}/about`, lastModified: discoveryContentLastModified, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${baseUrl}/methodology`, lastModified: discoveryContentLastModified, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${baseUrl}/guides`, lastModified: discoveryContentLastModified, changeFrequency: 'weekly', priority: 0.8 },
+    ...discoveryGuides.map((guide) => ({ url: `${baseUrl}/guides/${guide.slug}`, lastModified: discoveryContentLastModified, changeFrequency: 'weekly' as const, priority: 0.7 })),
+    ...discoveryCollections.map((collection) => ({ url: `${baseUrl}/discover/${collection.slug}`, lastModified: discoveryContentLastModified, changeFrequency: 'daily' as const, priority: 0.75 })),
   ];
 
   // Keep the sitemap useful even while a database is unavailable during a
@@ -26,8 +26,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // opportunity records that power the browse surface.
   try {
     let cursor: string | undefined;
-    for (let page = 0; page < 5; page += 1) {
-      const result = await getOpportunityRepository().browse({ openNow: true, sort: 'soonest-deadline', limit: 48, ...(cursor ? { cursor } : {}) });
+    for (let page = 0; page < 50; page += 1) {
+      const result = await getOpportunityRepository().browse({ openNow: true, sort: 'soonest-deadline', limit: 200, ...(cursor ? { cursor } : {}) });
       entries.push(...result.items.map((item) => ({
         url: `${baseUrl}/discover/opportunities/${item.slug}`,
         lastModified: item.source.processingSucceededAt ? new Date(item.source.processingSucceededAt) : undefined,
