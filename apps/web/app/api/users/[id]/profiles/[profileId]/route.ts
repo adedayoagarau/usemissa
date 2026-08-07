@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import type { MatchCriteria } from '@missa/radar-engine';
+import { canonicalTaxonomySelection } from '@missa/taxonomy';
+import { savedSearchCriteriaSchema } from '@missa/contracts';
 import { requireSelf } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
 
@@ -21,9 +22,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const profile = engine.store.radarProfiles.get(profileId);
   if (!profile || profile.userId !== id) return NextResponse.json({ error: 'Unknown saved search' }, { status: 404 });
 
-  const body = await request.json();
-  if (typeof body.name === 'string' && body.name.trim()) profile.name = body.name.trim();
-  if (body.criteria && typeof body.criteria === 'object') profile.criteria = body.criteria as MatchCriteria;
+  const body = await request.json().catch(() => undefined);
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Request body must be an object.' }, { status: 400 });
+  if (typeof body.name === 'string' && body.name.trim()) {
+    if (body.name.trim().length > 120) return NextResponse.json({ error: 'Saved search name is too long.' }, { status: 400 });
+    profile.name = body.name.trim();
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'criteria')) {
+    const parsed = savedSearchCriteriaSchema.safeParse(body.criteria);
+    if (!parsed.success) return NextResponse.json({ error: 'Saved search criteria are invalid.' }, { status: 400 });
+    const taxonomy = canonicalTaxonomySelection(parsed.data.taxonomyTermIds);
+    if (taxonomy.invalidTermIds.length > 0) return NextResponse.json({ error: 'Saved search contains an unknown taxonomy term.' }, { status: 400 });
+    profile.criteria = parsed.data;
+  }
 
   await persistRadar();
   return NextResponse.json(profile);

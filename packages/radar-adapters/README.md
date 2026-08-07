@@ -98,6 +98,59 @@ and confidence-tagged. Railway
 currently handles HTML evidence. PDF extraction and object storage are
 separate follow-on contracts so the rights policy can be reviewed first.
 
+## Opportunity Intelligence content worker
+
+The content lane builds a source-linked opportunity brief from the normalized
+record, commits it to `opportunity_contents`, and then reviews that exact
+persisted version in a separate queue phase. Only `approved` content is read
+by the public Postgres repository when `MISSA_OPPORTUNITY_CONTENT_READS=1`.
+Pending, blocked, and needs-human content remains private to the durable queue.
+
+Run it on its own Railway service after rehearsing migration `0016` against an
+isolated Neon branch:
+
+```sh
+DATABASE_URL=postgres://... RADAR_CONTENT_BATCH_SIZE=20 \
+  RADAR_CONTENT_INTERVAL_MINUTES=10 \
+  npm run content-worker --workspace=@missa/radar-adapters
+```
+
+The worker is deterministic and provenance-first in this first slice. It does
+not call a runtime autonomous agent or invent claims; ambiguous content is
+handed to `human-review` through the same Postgres-coordinated agent graph.
+Platform admins resolve that queue at `/admin/content`; each decision appends
+actor-attributed review history, writes an audit event, and completes the
+publisher handoff in one transaction. Human approval is still fail-closed:
+only the approved generated projection becomes readable by the public
+opportunity repository.
+
+## Taxonomy-driven discovery
+
+The coverage worker materializes gaps across the canonical practice taxonomy,
+opportunity type, geography, language, and source tier. It writes bounded
+`source_discovery_queries`; the taxonomy discovery worker is the lane that
+actually executes those queries and stores reviewable `source_discovery_candidates`.
+It never promotes a URL to a source or publishes an opportunity.
+
+Run it as a separate Railway worker (or another long-lived container):
+
+```sh
+DATABASE_URL=postgres://... \
+SERPER_API_KEY=... \
+npm run taxonomy-discovery --workspace=@missa/radar-adapters
+```
+
+With `SERPER_API_KEY`, the worker uses Serper's Google-compatible search API.
+Alternatively, `MISSA_TAXONOMY_DISCOVERY_ENDPOINT` can point to an approved
+internal provider; that endpoint accepts a JSON `POST` body with `query`, `locale`, `cursor`,
+`limit`, and a `context` containing the canonical taxonomy terms plus
+opportunity type, geography, language, and source tier. It returns
+`{ "results": [{ "url", "title?", "snippet?", "score?", "proposedKind?", "proposedTier?", "robotsAllowed?", "termsAllowed?", "blockedReason?" }], "nextCursor?" }`.
+Only HTTP(S) URLs are retained; duplicate URLs are marked as duplicates and
+policy-blocked results remain blocked for review. The provider must perform
+its own search-engine, robots, terms, rate-limit, and allowlist checks. No
+provider means the worker reports `unavailable` and leaves queued work intact.
+
 ## Wiring it in yourself
 
 If you want different pieces than `serve.ts` assembles (e.g. Postgres

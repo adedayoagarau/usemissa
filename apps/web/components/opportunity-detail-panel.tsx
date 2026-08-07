@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Check, ExternalLink, ShieldCheck, X } from 'lucide-react';
+import { ArrowRight, Check, CircleAlert, ExternalLink, ShieldCheck, X } from 'lucide-react';
 import type { OpportunityDetailProjection } from '@missa/radar-engine';
 import { TrackButton } from '@/components/track-button';
 import { FollowButton } from '@/components/follow-button';
@@ -33,8 +33,12 @@ export function OpportunityDetailPanel({
 }) {
   const reasons = opportunity.personal?.tailoringReasons ?? [];
   const sourceName = opportunity.organizationName ?? opportunity.source.name;
-  const summary = opportunity.organizationSummary ?? `A ${typeLabel(opportunity.type).toLowerCase()} from ${opportunity.organizationName ?? 'this organization'}. Review the requirements and source notes before submitting.`;
+  const summary = opportunity.content?.summary ?? opportunity.organizationSummary ?? `A ${typeLabel(opportunity.type).toLowerCase()} from ${opportunity.organizationName ?? 'this organization'}. Review the requirements and source notes before submitting.`;
   const freshness = opportunityFreshness(opportunity.source.processingSucceededAt);
+  const sourceConfirmed = opportunity.source.organizationConfirmed;
+  const sourceLabel = sourceConfirmed ? 'Organization confirmed' : freshness.state === 'unknown' ? 'Needs verification' : freshness.state === 'fresh' ? 'Recently checked' : freshness.state === 'aging' ? 'Check is aging' : 'Needs a fresh check';
+  const SourceIcon = sourceConfirmed ? ShieldCheck : CircleAlert;
+  const sourceLabelClass = sourceConfirmed ? 'text-green' : freshness.state === 'stale' || freshness.state === 'unknown' ? 'text-accent-deep' : 'text-muted-foreground';
 
   return (
     <aside className={`flex min-h-0 flex-col border-l border-border bg-card lg:sticky lg:top-0 lg:h-[calc(100vh-3.75rem)] lg:overflow-y-auto ${styles.detailPanel} ${mobileOpen ? styles.detailPanelMobileOpen : ''}`}>
@@ -46,7 +50,7 @@ export function OpportunityDetailPanel({
               <img src={opportunity.identityAssetUrl} alt={opportunity.identityAssetAlt ?? sourceName} className="h-full w-full object-cover" />
             ) : <span className="px-2">{sourceInitials(sourceName)}</span>}
           </div>
-          <div className="min-w-0 pt-1"><h2 className="text-lg font-semibold leading-snug text-foreground">{opportunity.title}</h2><p className="mt-1 text-sm text-muted-foreground">{opportunity.organizationName ?? 'Organization not confirmed'}</p><p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1 text-green"><ShieldCheck className="size-3.5" />Verified</span><span>·</span><span>{opportunity.source.organizationConfirmed ? 'Missa-hosted' : 'Official page'}</span><span>·</span><span className={freshness.state === 'stale' ? 'text-accent-deep' : freshness.state === 'fresh' ? 'text-green' : undefined}>{freshness.detail}</span></p></div>
+          <div className="min-w-0 pt-1"><h2 className="text-lg font-semibold leading-snug text-foreground">{opportunity.title}</h2><p className="mt-1 text-sm text-muted-foreground">{opportunity.organizationName ?? 'Organization not confirmed'}</p><p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground"><span className={`inline-flex items-center gap-1 ${sourceLabelClass}`}><SourceIcon className="size-3.5" aria-hidden="true" />{sourceLabel}</span><span>·</span><span className={freshness.state === 'stale' || freshness.state === 'unknown' ? 'text-accent-deep' : freshness.state === 'fresh' ? 'text-green' : undefined}>{freshness.label}</span><span>·</span><span>{freshness.detail}</span></p></div>
         </div>
         <Link href={closeHref} aria-label="Close opportunity details" className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"><X className="size-5" /></Link>
       </div>
@@ -64,7 +68,7 @@ export function OpportunityDetailPanel({
 
         <section className="rounded-lg border border-border p-4"><h3 className="text-sm font-semibold text-foreground">Ready to apply</h3><p className="mt-1 text-xs text-muted-foreground">Review the essentials before you submit.</p><ul className="mt-3 space-y-2.5">{opportunity.requiredMaterials.length ? opportunity.requiredMaterials.map((material) => <li key={material.label} className="flex items-start gap-2 text-xs text-foreground"><Check className="mt-0.5 size-3.5 shrink-0 text-green" />{material.label}</li>) : <li className="text-xs text-muted-foreground">Materials have not been confirmed yet.</li>}</ul></section>
 
-          <section><h3 className="text-base font-semibold text-foreground">Why this is a strong fit</h3>{reasons.length ? <ul className="mt-3 space-y-3">{reasons.map((reason, index) => <li key={`${reason.code}-${index}`} className="flex items-start gap-2 text-sm leading-6 text-muted-foreground"><Check className="mt-1 size-4 shrink-0 text-green" />{reason.label}</li>)}</ul> : <p className="mt-3 text-sm leading-6 text-muted-foreground">Complete your profile to see why Missa recommends this opportunity for you.</p>}</section>
+          <section><h3 className="text-base font-semibold text-foreground">Why this may fit</h3>{reasons.length ? <ul className="mt-3 space-y-3">{reasons.map((reason, index) => <li key={`${reason.code}-${index}`} className="flex items-start gap-2 text-sm leading-6 text-muted-foreground"><Check className="mt-1 size-4 shrink-0 text-green" />{reason.label}</li>)}</ul> : <p className="mt-3 text-sm leading-6 text-muted-foreground">Complete your profile or Library to see the preference signals Missa can explain for this opportunity.</p>}</section>
 
         <div className="border-t border-border pt-5"><p className="text-sm text-muted-foreground">Review your materials and submit on the next page.</p><div className="mt-4 space-y-2">{opportunity.submissionAvailable && opportunity.submissionUrl ? <Button nativeButton={false} render={<Link href={`/api/opportunities/${opportunity.id}/submission`} />} className="h-11 w-full justify-between">Go to submission <ArrowRight className="size-4" /></Button> : <Button disabled className="w-full">Submission link unavailable</Button>}{opportunity.guidelinesUrl && <a href={opportunity.guidelinesUrl} target="_blank" rel="noreferrer" className="flex h-10 items-center justify-center gap-2 rounded-lg border border-border text-sm text-foreground hover:bg-muted">Official guidelines <ExternalLink className="size-3.5" /></a>}</div></div>
 

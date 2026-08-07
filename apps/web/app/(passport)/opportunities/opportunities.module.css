@@ -6,9 +6,9 @@
 .categoryLinkActive { font-weight: 600; }
 .categoryLinkActive::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--brand-accent); content: ''; }
 .filterRow { border-bottom: 1px solid var(--border); padding: 0.9rem 2rem 0.85rem; }
-.filterSelect { display: inline-flex; height: 2.25rem; align-items: center; gap: 0.45rem; border: 1px solid var(--border); border-radius: 0.45rem; background: var(--surface); padding: 0 0.6rem; color: var(--ink); font-size: 0.75rem; }
-.filterSelect select { max-width: 5.7rem; appearance: none; background: transparent; outline: none; }
-.toggle { display: inline-flex; height: 2.25rem; align-items: center; gap: 0.4rem; color: var(--ink-2); font-size: 0.72rem; white-space: nowrap; }
+.filterSelect { display: inline-flex; min-height: 2.75rem; align-items: center; gap: 0.45rem; border: 1px solid var(--border); border-radius: 0.45rem; background: var(--surface); padding: 0 0.6rem; color: var(--ink); font-size: 0.75rem; }
+.filterSelect select { max-width: 11rem; appearance: none; background: transparent; outline: none; }
+.toggle { display: inline-flex; min-height: 2.75rem; align-items: center; gap: 0.4rem; color: var(--ink-2); font-size: 0.72rem; white-space: nowrap; }
 .toggle input { position: absolute; opacity: 0; pointer-events: none; }
 .toggleTrack { position: relative; display: inline-block; width: 1.8rem; height: 1.05rem; border-radius: 999px; background: #c9c9c7; transition: background 160ms ease; }
 .toggleTrack::after { position: absolute; top: 0.15rem; left: 0.15rem; width: 0.75rem; height: 0.75rem; border-radius: 999px; background: white; content: ''; transition: transform 160ms ease; }
@@ -17,4 +17,4 @@
 .chip { display: inline-flex; align-items: center; gap: 0.45rem; border: 1px solid color-mix(in oklab, var(--green) 20%, var(--border)); border-radius: 0.35rem; background: color-mix(in oklab, var(--green) 8%, var(--surface)); padding: 0.35rem 0.55rem; color: var(--green); font-size: 0.72rem; }
 @media (max-width: 1100px) { .shell { grid-template-columns: minmax(0, 1fr) 22rem; } .filterRow { padding-inline: 1.5rem; } }
 @media (max-width: 1023px) { .shell { display: block; margin-inline: -1.5rem; } .shell > aside { border-top: 1px solid var(--border); border-left: 0; } .detailPanel { position: fixed; inset: 0; z-index: 60; display: flex; width: 100%; max-height: 100svh; border: 0; box-shadow: 0 16px 48px rgb(28 24 21 / 18%); overflow-y: auto; } .detailPanel:not(.detailPanelMobileOpen) { display: none; } }
-@media (max-width: 640px) { .shell { margin-inline: -1rem; } .filterRow { padding-inline: 1rem; } }
+@media (max-width: 640px) { .shell { margin-inline: -1rem; } .filterRow { padding-inline: 1rem; } .filterSelect { max-width: 100%; } .filterSelect select { max-width: 8.5rem; } }

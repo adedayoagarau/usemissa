@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { radarWorkerBatchSize, runRadarWorkerTick, runCoverageWorkerTick } from '@missa/radar-adapters';
+import { radarWorkerBatchSize, runRadarWorkerTick, runCoverageWorkerTick, runTaxonomyDiscoveryWorkerTick } from '@missa/radar-adapters';
 import { deliverPendingAlertEmails } from '@/lib/alert-delivery';
 
 /**
@@ -17,7 +17,7 @@ import { deliverPendingAlertEmails } from '@/lib/alert-delivery';
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {
-    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 503 });
   }
 
   const auth = request.headers.get('authorization');
@@ -35,6 +35,7 @@ export async function GET(request: Request) {
 
   const report = result.report!;
   const coverage = await runCoverageWorkerTick({ logger: console });
+  const discovery = await runTaxonomyDiscoveryWorkerTick({ logger: console });
   return NextResponse.json({
     status: 'completed',
     sourcesChecked: report.sourcesChecked,
@@ -43,5 +44,6 @@ export async function GET(request: Request) {
     alerts: report.alerts.length,
     emailDelivery,
     coverage,
+    discovery,
   });
 }

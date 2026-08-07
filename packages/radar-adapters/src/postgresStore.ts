@@ -49,8 +49,11 @@ async function hasTable(client: PoolClient, table: string): Promise<boolean> {
 /** Dual-write private user preferences once the additive taxonomy tables have
  * been rehearsed. Legacy genres stay in radar_users until cutover parity is
  * proven; explicit rows never expose public profile data. */
-async function writeAccountTaxonomyPreferences(client: PoolClient, store: RadarStore): Promise<void> {
+async function writeAccountTaxonomyPreferences(client: PoolClient, store: RadarStore, deletedAccountIds: string[] = []): Promise<void> {
   if (process.env.MISSA_TAXONOMY_PERSISTENCE === '0' || !(await hasTable(client, 'account_taxonomy_preferences'))) return;
+  for (const accountId of deletedAccountIds) {
+    await client.query(`delete from account_taxonomy_preferences where account_id = $1 and origin = 'explicit'`, [accountId]);
+  }
   for (const account of store.accounts.values()) {
     if (!account.userId) continue;
     const user = store.users.get(account.userId);
@@ -440,6 +443,9 @@ export async function saveRadarStoreDeltaToPostgres(
     for (const row of maps.alerts.upserts) { const value = row.value; await client.query('insert into radar_alerts (id, data) values ($1, $2) on conflict (id) do update set data = excluded.data', [value.id, value]); }
     for (const key of alertKeys.upserts) await client.query('insert into radar_emitted_alert_keys (key) values ($1) on conflict (key) do nothing', [key.value]);
     for (const row of maps.accounts.upserts) { const value = row.value; await client.query('insert into radar_accounts (id, email, data) values ($1, $2, $3) on conflict (id) do update set email = excluded.email, data = excluded.data', [value.id, value.email, value]); }
+    if (maps.users.upserts.length || maps.users.deletes.length || maps.accounts.upserts.length || maps.accounts.deletes.length) {
+      await writeAccountTaxonomyPreferences(client, current, maps.accounts.deletes);
+    }
     for (const row of arrays.memberships.upserts) { const value = row.value; await client.query('insert into radar_memberships (account_id, organization_id, role, data) values ($1, $2, $3, $4) on conflict (account_id, organization_id) do update set role = excluded.role, data = excluded.data', [value.accountId, value.organizationId, value.role, value]); }
     for (const entry of newAuditEntries) await client.query('insert into radar_audit_log (id, at, data) values ($1, $2, $3) on conflict (id) do nothing', [entry.id, entry.at, entry]);
 

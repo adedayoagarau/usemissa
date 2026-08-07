@@ -7,7 +7,7 @@ import { assessCoverage, buildCoverageQueries, type CoverageCellInput, type Cove
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from './workerTelemetry.js';
 
 const LOCK_KEY = 1947350012;
-const DEFAULT_TYPES = ['grant', 'fellowship', 'residency', 'magazine', 'open-call'] as const;
+const DEFAULT_TYPES = ['open-call', 'magazine', 'grant', 'award', 'fellowship', 'residency', 'festival', 'scholarship', 'conference', 'rfp', 'contest', 'pitch', 'exhibition', 'commission', 'other'] as const;
 const DEFAULT_GEOS = ['global', 'US', 'NG', 'GB', 'CA', 'AU'] as const;
 const DEFAULT_LANGUAGES = ['en'] as const;
 
@@ -39,7 +39,16 @@ export async function materializeCoverageCells(client: PoolClient, options: Pick
   const scheme = await client.query<{ id: string }>(`select id from taxonomy_schemes where status in ('active', 'draft') order by version desc limit 1`);
   const schemeId = scheme.rows[0]?.id;
   if (!schemeId) return 0;
-  const terms = await client.query<{ id: string; preferred_label: string }>(`select id, preferred_label from taxonomy_terms where status = 'active' and selectable = true order by id limit $1`, [maxTerms]);
+  // Prefer terms with the fewest existing cells. This makes repeated bounded
+  // ticks walk the whole active vocabulary instead of retrying the first IDs
+  // forever once their initial cells already exist.
+  const terms = await client.query<{ id: string; preferred_label: string }>(`select t.id, t.preferred_label
+    from taxonomy_terms t
+    where t.status = 'active' and t.selectable = true
+    order by (select count(*) from source_coverage_cell_terms ct
+      join source_coverage_cells c on c.id = ct.coverage_cell_id
+      where c.scheme_id = $1 and ct.term_id = t.id), t.id
+    limit $2`, [schemeId, maxTerms]);
   const types = listEnv('MISSA_COVERAGE_TYPES', DEFAULT_TYPES);
   const geographies = listEnv('MISSA_COVERAGE_GEOGRAPHIES', DEFAULT_GEOS);
   const languages = listEnv('MISSA_COVERAGE_LANGUAGES', DEFAULT_LANGUAGES);
@@ -49,11 +58,11 @@ export async function materializeCoverageCells(client: PoolClient, options: Pick
     if (inserted >= maxCells) return inserted;
     const dimensionKey = JSON.stringify({ termIds: [term.id], opportunityType, geographyCode, languageCode, sourceTier });
     const id = idFor(`${schemeId}:${dimensionKey}`);
-    await client.query(`insert into source_coverage_cells
+    const cell = await client.query(`insert into source_coverage_cells
       (id, scheme_id, dimension_key, opportunity_type, geography_code, language_code, source_tier, minimum_sources, minimum_canonical_sources, status, updated_at)
       values ($1, $2, $3, $4, $5, $6, $7, 3, 1, 'unassessed', now()) on conflict (id) do nothing`, [id, schemeId, dimensionKey, opportunityType, geographyCode, languageCode, sourceTier]);
     await client.query(`insert into source_coverage_cell_terms (coverage_cell_id, term_id, required, created_at) values ($1, $2, true, now()) on conflict do nothing`, [id, term.id]);
-    inserted += 1;
+    inserted += cell.rowCount ?? 0;
   }
   return inserted;
 }

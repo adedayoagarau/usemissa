@@ -1,6 +1,12 @@
 import { createStore as createRadarStore, type RadarStore } from '@missa/radar-engine';
 import { createStore as createWorkspaceStore, type WorkspaceStore } from '@missa/workspace-engine';
-import { readPlatformAdminAnalyticsEvents, type PlatformAdminAnalyticsEventsData } from '@missa/radar-adapters';
+import {
+  emptyContentReviewQueue,
+  readContentReviewQueue,
+  readPlatformAdminAnalyticsEvents,
+  type ContentReviewQueueData,
+  type PlatformAdminAnalyticsEventsData,
+} from '@missa/radar-adapters';
 import { getEngine } from './engine';
 import { getWorkspaceEngine } from './workspaceEngine';
 import { getPlatformAdminOverview, type AdminArea, type AdminMaturity, type PlatformAdminOverview } from './platformAdmin';
@@ -27,6 +33,7 @@ export interface PlatformAdminContentData {
     drafts: number;
   };
   rows: PlatformAdminContentRow[];
+  reviewQueue: ContentReviewQueueData;
   planned: string[];
 }
 
@@ -103,7 +110,7 @@ function workspaceOpenCallContext(workspace: WorkspaceStore, organizationNames: 
   return context;
 }
 
-function buildContentData(radar: RadarStore, workspace: WorkspaceStore): PlatformAdminContentData {
+function buildContentData(radar: RadarStore, workspace: WorkspaceStore, reviewQueue = emptyContentReviewQueue()): PlatformAdminContentData {
   const organizationNames = new Map([...radar.organizations.values()].map((organization) => [organization.id, organization.name]));
   const openCallContext = workspaceOpenCallContext(workspace, organizationNames);
   const opportunities = [...radar.opportunities.values()];
@@ -144,7 +151,8 @@ function buildContentData(radar: RadarStore, workspace: WorkspaceStore): Platfor
       drafts: [...workspace.openCalls.values()].filter((openCall) => openCall.status === 'draft').length,
     },
     rows,
-    planned: ['Editorial drafts and revisions', 'Media assets and structured content blocks', 'Approval workflow and scheduled publishing', 'Editorial roles, collections, and public content analytics'],
+    reviewQueue,
+    planned: ['Organization-owned editorial drafts and revisions', 'Media assets and structured content blocks', 'Organization-owned scheduled publishing', 'Editorial roles, collections, and public content analytics'],
   };
 }
 
@@ -226,8 +234,13 @@ function buildAnalyticsData(radar: RadarStore, workspace: WorkspaceStore, overvi
 
 export async function getPlatformAdminContent(): Promise<AdminArea<PlatformAdminContentData>> {
   const generatedAt = new Date().toISOString();
-  const stores = await readRuntimeStores();
-  return area(buildContentData(stores.radar, stores.workspace), 'RadarStore opportunities/claims and WorkspaceStore open calls', stores.maturity, generatedAt, stores.warnings);
+  const [stores, reviewQueue] = await Promise.all([
+    readRuntimeStores(),
+    process.env.DATABASE_URL
+      ? readContentReviewQueue(process.env.DATABASE_URL)
+      : Promise.resolve(emptyContentReviewQueue(generatedAt, 'DATABASE_URL is not configured; durable content review is unavailable.')),
+  ]);
+  return area(buildContentData(stores.radar, stores.workspace, reviewQueue), 'RadarStore opportunities/claims and WorkspaceStore open calls + durable content review', stores.maturity, generatedAt, [...stores.warnings, ...reviewQueue.warnings]);
 }
 
 export async function getPlatformAdminAnalytics(): Promise<AdminArea<PlatformAdminAnalyticsData>> {

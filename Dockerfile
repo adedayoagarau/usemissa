@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim
+FROM node:24-bookworm-slim
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -7,6 +7,7 @@ COPY packages ./packages
 
 RUN npm ci \
   && npm run build --workspace=@missa/contracts \
+  && npm run build --workspace=@missa/taxonomy \
   && npm run build --workspace=@missa/radar-engine \
   && npm run build --workspace=@missa/radar-adapters
 
@@ -25,5 +26,10 @@ ENV RADAR_ENRICHMENT_BATCH_SIZE=20
 ENV RADAR_ENRICHMENT_INTERVAL_MINUTES=10
 ENV RADAR_REVIEW_BATCH_SIZE=20
 ENV RADAR_REVIEW_INTERVAL_MINUTES=10
+ENV RADAR_CONTENT_BATCH_SIZE=20
+ENV RADAR_CONTENT_INTERVAL_MINUTES=10
+ENV MISSA_TAXONOMY_DISCOVERY_BATCH_SIZE=8
+ENV MISSA_TAXONOMY_DISCOVERY_RESULT_LIMIT=25
+ENV MISSA_TAXONOMY_DISCOVERY_INTERVAL_MINUTES=15
 
-CMD ["sh", "-c", "if [ \"$MISSA_WORKER_MODE\" = \"research\" ] || [ \"$MISSA_WORKER_MODE\" = \"discovery\" ]; then npm run discovery-agent --workspace=@missa/radar-adapters; elif [ \"$MISSA_WORKER_MODE\" = \"enrichment\" ]; then npm run enrichment-worker --workspace=@missa/radar-adapters; elif [ \"$MISSA_WORKER_MODE\" = \"review\" ]; then npm run review-agent --workspace=@missa/radar-adapters; else npm run worker --workspace=@missa/radar-adapters; fi"]
+CMD ["sh", "-c", "if [ \"$MISSA_WORKER_MODE\" = \"research\" ]; then npm run research-agent --workspace=@missa/radar-adapters; elif [ \"$MISSA_WORKER_MODE\" = \"discovery\" ]; then npm run discovery-agent --workspace=@missa/radar-adapters; elif [ \"$MISSA_WORKER_MODE\" = \"taxonomy-discovery\" ]; then npm run taxonomy-discovery --workspace=@missa/radar-adapters; elif [ \"$MISSA_WORKER_MODE\" = \"enrichment\" ]; then npm run enrichment-worker --workspace=@missa/radar-adapters; elif [ \"$MISSA_WORKER_MODE\" = \"content\" ]; then npm run content-worker --workspace=@missa/radar-adapters; elif [ \"$MISSA_WORKER_MODE\" = \"review\" ]; then npm run review-agent --workspace=@missa/radar-adapters; else npm run worker --workspace=@missa/radar-adapters; fi"]

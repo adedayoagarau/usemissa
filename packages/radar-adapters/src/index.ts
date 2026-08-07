@@ -32,8 +32,33 @@ export {
 export { saveOpportunityProjectionToPostgres } from "./opportunityRelationalStore.js";
 export { ensureEnrichmentSchema, enrichmentSchema } from "./enrichmentSchema.js";
 export { ensureAgentGraphSchema, agentGraphSchema } from "./agentGraphSchema.js";
+export { ensureContentReviewSchema, contentReviewSchema } from "./contentReviewSchema.js";
+export {
+  CHAT_BASELINE_GRAPH_VERSION,
+  PostgresChatStore,
+  createPostgresChatStore,
+  createPostgresChatStoreFromUrl,
+  type BeginChatTurnInput,
+  type BeginChatTurnResult,
+  type ChatConversationRecord,
+  type ChatConversationView,
+  type ChatMessageRecord,
+  type ChatMessageRole,
+  type ChatRunRecord,
+  type ChatRunStatus,
+  type ChatRunView,
+} from "./chatPersistence.js";
+export {
+  readContentReviewQueue,
+  resolveContentReview,
+  emptyContentReviewQueue,
+  type ContentReviewQueueData,
+  type ContentReviewQueueRow,
+  type HumanContentReviewDecision,
+} from "./contentReviewAdmin.js";
 export { RADAR_AGENT_GRAPH, agentGraphSnapshot, type RadarAgentKind } from "./agentGraph.js";
 export { runReviewTick, reviewCandidate, type ReviewCandidate } from "./reviewWorker.js";
+export { runContentReviewTick } from "./contentWorker.js";
 export {
   runDiscoveryWorker,
   runDiscoveryWorkerTick,
@@ -50,6 +75,21 @@ export {
   type CoverageWorkerOptions,
   type CoverageTickResult,
 } from "./coverageWorker.js";
+export {
+  HttpTaxonomySearchProvider,
+  SerperTaxonomySearchProvider,
+  taxonomySearchProviderFromEnv,
+  taxonomyDiscoveryBatchSize,
+  taxonomyDiscoveryResultLimit,
+  parseTaxonomySearchResponse,
+  runTaxonomyDiscoveryWorker,
+  runTaxonomyDiscoveryWorkerTick,
+  type TaxonomyDiscoveryWorkerOptions,
+  type TaxonomyDiscoveryTickResult,
+  type TaxonomySearchProvider,
+  type TaxonomySearchResponse,
+  type TaxonomySearchResult,
+} from "./taxonomyDiscoveryWorker.js";
 export {
   readTaxonomyAdminDashboard,
   createTaxonomyChangeProposal,

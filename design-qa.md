@@ -1,4 +1,61 @@
-# Organization marketing page — Design QA
+# Missa admin dashboard — Design QA gate
+
+## Comparison target
+
+- Source visual truth: selected Image Gen direction 3, “Operations queue,” at `/Users/adedayoagarau/.codex/generated_images/019fce4a-e0c7-79a3-aec9-4b42b4ca0832/exec-6b82e56d-6c14-4ed8-a0dd-c353d74a0f13.png` (1440 × 1024 px).
+- Rendered implementation URL: `http://localhost:3002/admin` (local production render; intended production route is `https://www.usemissa.com/admin`).
+- Implementation screenshot path: not captured. This session has no user-selected browser available, and the Product Design browser override does not permit an unrequested Playwright capture.
+- Combined comparison input: not available.
+
+## Capture normalization
+
+- Intended comparison viewport: 1440 × 1024 CSS px, device scale factor 1.
+- Source dimensions: 1440 × 1024 px. Implementation dimensions: unavailable because no screenshot was captured.
+- Density normalization: not performed.
+
+## State
+
+- Intended state: authenticated platform administrator on the Operations queue route, populated backend read model, light theme.
+- The implementation source was inspected in `apps/web/app/(admin)/admin/page.tsx`, `apps/web/app/(admin)/admin/operations/page.tsx`, `apps/web/components/platform-admin.tsx`, and `apps/web/lib/platformAdmin.ts`.
+
+## Full-view and focused comparison evidence
+
+- Full-view comparison: blocked because the browser-rendered implementation screenshot is missing; the selected source visual is available.
+- Focused-region comparison: not performed; there is no normalized visual pair to inspect.
+
+## Findings
+
+- [P1] Visual fidelity comparison cannot be completed.
+  Location: Missa platform admin Control Room and Operations routes.
+  Evidence: the selected Image Gen direction is available, but there is no browser capture of the authenticated implementation in this session.
+  Impact: approving a redesign would make the visual target implicit and could reproduce the current dashboard's density problems under a new skin.
+  Fix: capture the implementation at the same viewport and authenticated state, then compare it with the selected direction.
+
+### Required fidelity surfaces
+
+- Fonts and typography: intended families and hierarchy are defined in `DESIGN.md`; visual fidelity is unverified.
+- Spacing and layout rhythm: intended Workspace density is defined in `DESIGN.md`; visual fidelity is unverified.
+- Colors and visual tokens: true white, semantic neutrals, terracotta action, and restrained state colors are defined in `DESIGN.md`; visual fidelity is unverified.
+- Image quality and asset fidelity: no source visual assets are part of this admin target; visual fidelity is unverified.
+- Copy and content: current admin vocabulary is visible in the route source; target hierarchy and task language remain unapproved.
+
+## Comparison history
+
+- Pass 0 — gate check: blocked after implementation. The source direction is selected, but no browser-rendered implementation screenshot was available for comparison.
+
+## Implementation checklist
+
+- [x] Generate and select an admin visual direction.
+- [x] Implement the selected data-first operations-queue direction against the backend read model.
+- [ ] Capture the selected source visual and authenticated implementation at 1440 × 1024, plus responsive states.
+- [ ] Compare full view and focused regions together.
+- [ ] Fix P0/P1/P2 findings and repeat the comparison.
+
+final result: blocked
+
+---
+
+# Historical QA — Organization marketing page
 
 ## Comparison target
 
@@ -82,4 +139,4 @@ No actionable P0, P1, or P2 mismatches remain.
 - [x] Production build, typecheck, and lint pass.
 - [x] Full-view and focused source/implementation comparisons captured.
 
-final result: passed
+historical final result: passed

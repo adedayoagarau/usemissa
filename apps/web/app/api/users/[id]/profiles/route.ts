@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import type { MatchCriteria } from '@missa/radar-engine';
+import { canonicalTaxonomySelection } from '@missa/taxonomy';
+import { savedSearchInputSchema } from '@missa/contracts';
 import { requireSelf } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
 
@@ -17,13 +18,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const auth = await requireSelf(request, id);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
-  const body = await request.json();
-  if (typeof body.name !== 'string' || !body.name.trim()) {
-    return NextResponse.json({ error: 'name is required' }, { status: 400 });
-  }
+  const body = await request.json().catch(() => undefined);
+  const parsed = savedSearchInputSchema.safeParse({
+    name: body && typeof body === 'object' && !Array.isArray(body) ? body.name : undefined,
+    criteria: body && typeof body === 'object' && !Array.isArray(body) ? body.criteria ?? {} : {},
+    includeInDigest: body && typeof body === 'object' && !Array.isArray(body) ? body.includeInDigest : undefined,
+  });
+  if (!parsed.success) return NextResponse.json({ error: 'Saved search criteria are invalid.' }, { status: 400 });
+  const taxonomy = canonicalTaxonomySelection(parsed.data.criteria.taxonomyTermIds);
+  if (taxonomy.invalidTermIds.length > 0) return NextResponse.json({ error: 'Saved search contains an unknown taxonomy term.' }, { status: 400 });
 
   const engine = await getEngine();
-  const profile = engine.createRadarProfile(id, body.name.trim(), (body.criteria as MatchCriteria) ?? {});
+  const profile = engine.createRadarProfile(id, parsed.data.name, parsed.data.criteria);
   await persistRadar();
   return NextResponse.json(profile, { status: 201 });
 }

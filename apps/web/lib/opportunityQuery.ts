@@ -2,6 +2,7 @@ import {
   opportunityBrowseQuerySchema,
   type OpportunityBrowseQuery,
 } from "@missa/contracts";
+import { MISSA_TAXONOMY, canonicalTaxonomySelection } from "@missa/taxonomy";
 
 function listParam(params: URLSearchParams, key: string): string[] {
   return params
@@ -28,14 +29,18 @@ function booleanParam(params: URLSearchParams, key: string, fallback: boolean): 
 
 /** Parses public URL state into the bounded contract used by every repository. */
 export function parseOpportunityBrowseQuery(params: URLSearchParams): OpportunityBrowseQuery {
+  const taxonomySelection = canonicalTaxonomySelection(params.getAll("taxonomy").flatMap((value) => value.split(",")));
   const candidate = {
     query: params.get("q") ?? undefined,
     category: params.get("category") ?? "all",
     types: listParam(params, "type"),
     disciplines: listParam(params, "discipline"),
     genres: listParam(params, "genre"),
-    taxonomyTermIds: listParam(params, "taxonomy"),
-    taxonomyIncludeDescendants: booleanParam(params, "taxonomyDescendants", false),
+    taxonomyTermIds: taxonomySelection.termIds,
+    taxonomySchemeVersion: numberParam(params, "taxonomyVersion") ?? MISSA_TAXONOMY.scheme.version,
+    taxonomyIncludeDescendants: params.has("taxonomyDescendants")
+      ? booleanParam(params, "taxonomyDescendants", false)
+      : listParam(params, "taxonomy").length > 0,
     locations: listParam(params, "location"),
     feeStatus: booleanParam(params, "feeToggle", false) ? "no-fee" : params.get("fee") ?? undefined,
     maxFeeCents: numberParam(params, "maxFeeCents"),

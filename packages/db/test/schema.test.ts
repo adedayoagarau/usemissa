@@ -27,6 +27,13 @@ import {
   platformCrmContacts,
   platformCrmTasks,
   platformAnalyticsEvents,
+  opportunityContents,
+  radarContentReviewJobs,
+  radarContentReviewDecisions,
+  chatConversations,
+  chatRuns,
+  chatMessages,
+  chatRunEvents,
 } from "../src/schema.js";
 
 test("platform schema carries tenant, audit, outbox, and reviewer indexes", () => {
@@ -163,4 +170,27 @@ test("admin operations schema carries CRM ownership, follow-up, and analytics in
   assert.ok(contacts.indexes.some((index) => index.config.name === "platform_crm_contacts_org_idx"));
   assert.ok(tasks.indexes.some((index) => index.config.name === "platform_crm_tasks_org_due_idx"));
   assert.ok(events.indexes.some((index) => index.config.name === "platform_analytics_events_name_time_idx"));
+});
+
+test("opportunity intelligence keeps generated content and review history durable", () => {
+  const content = getTableConfig(opportunityContents);
+  const jobs = getTableConfig(radarContentReviewJobs);
+  const decisions = getTableConfig(radarContentReviewDecisions);
+  assert.ok(content.indexes.some((index) => index.config.name === "opportunity_contents_review_idx"));
+  assert.ok(jobs.indexes.some((index) => index.config.name === "radar_content_review_jobs_ready_idx"));
+  assert.ok(decisions.indexes.some((index) => index.config.name === "radar_content_review_decisions_opp_created_idx"));
+  assert.ok(Object.values(decisions.columns).some((column) => column.name === "reviewer_account_id"));
+  assert.ok(Object.values(decisions.columns).some((column) => column.name === "decision_source"));
+});
+
+test("chat schema separates conversation history, runs, messages, and events", () => {
+  const conversations = getTableConfig(chatConversations);
+  const runs = getTableConfig(chatRuns);
+  const messages = getTableConfig(chatMessages);
+  const events = getTableConfig(chatRunEvents);
+  assert.ok(conversations.indexes.some((index) => index.config.name === "chat_conversations_account_updated_idx"));
+  assert.ok(runs.indexes.some((index) => index.config.name === "chat_runs_account_idempotency_idx"));
+  assert.ok(messages.indexes.some((index) => index.config.name === "chat_messages_run_idx"));
+  assert.ok(events.indexes.some((index) => index.config.name === "chat_run_events_run_sequence_idx"));
+  assert.ok(Object.values(runs.columns).some((column) => column.name === "graph_version"));
 });

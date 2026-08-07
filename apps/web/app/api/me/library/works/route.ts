@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Request body must be an object.' }, { status: 400, headers });
   try {
     const engine = await getEngine();
-    const work = engine.createLibraryWork(session.account.userId, body as { title: unknown; description?: unknown; fileId?: unknown });
+    const work = engine.createLibraryWork(session.account.userId, body as { title: unknown; description?: unknown; fileId?: unknown; taxonomyTermIds?: unknown });
     engine.recordAudit(session.account.id, 'library.work_created', 'library_work', work.id);
     await persistRadar();
     return NextResponse.json(work, { status: 201, headers });

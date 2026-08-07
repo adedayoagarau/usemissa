@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { canonicalTaxonomySelection } from '@missa/taxonomy';
 import type { IdGenerator } from '../ports.js';
-import type { LibraryFile, LibraryWork, SavedAnswer } from '../domain/types.js';
+import type { LibraryFile, LibraryWork, LibraryWorkTaxonomyAssignment, SavedAnswer } from '../domain/types.js';
 import type { RadarStore } from '../store/store.js';
 
 export class LibraryValidationError extends Error {
@@ -24,6 +25,22 @@ function optionalText(value: unknown, label: string, max: number): string | unde
 }
 function owner(store: RadarStore, userId: string): void { if (!store.users.has(userId)) throw new LibraryValidationError('Profile not found.'); }
 
+function taxonomyAssignments(value: unknown): LibraryWorkTaxonomyAssignment[] | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return [];
+  if (!Array.isArray(value) || value.length > 32) throw new LibraryValidationError('Choose no more than 32 canonical Work terms.');
+  if (value.some((termId) => typeof termId !== 'string' || !termId.trim())) throw new LibraryValidationError('Each Work term must be a canonical term ID.');
+  const selection = canonicalTaxonomySelection(value.map((termId) => termId.trim()));
+  if (selection.invalidTermIds.length > 0 || selection.termIds.length !== value.length) {
+    throw new LibraryValidationError(`Unknown Work taxonomy term: ${selection.invalidTermIds[0] ?? 'duplicate term'}.`);
+  }
+  return selection.termIds.map((termId, index) => ({
+    termId,
+    primary: index === 0,
+    assignmentOrigin: 'user',
+  }));
+}
+
 export function libraryForUser(store: RadarStore, userId: string): { works: LibraryWork[]; files: LibraryFile[]; savedAnswers: SavedAnswer[] } {
   return {
     works: [...store.libraryWorks.values()].filter((item) => item.userId === userId).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
@@ -32,20 +49,23 @@ export function libraryForUser(store: RadarStore, userId: string): { works: Libr
   };
 }
 
-export function createLibraryWork(store: RadarStore, userId: string, input: { title: unknown; description?: unknown; fileId?: unknown }, now = new Date(), ids?: IdGenerator): LibraryWork {
+export function createLibraryWork(store: RadarStore, userId: string, input: { title: unknown; description?: unknown; fileId?: unknown; taxonomyTermIds?: unknown }, now = new Date(), ids?: IdGenerator): LibraryWork {
   owner(store, userId);
   const fileId = optionalText(input.fileId, 'File', 200);
   if (fileId && store.libraryFiles.get(fileId)?.userId !== userId) throw new LibraryValidationError('That file is not available in your Library.');
-  const work: LibraryWork = { id: id(ids, 'library_work'), userId, title: text(input.title, 'Title', 200), ...(optionalText(input.description, 'Description', 4_000) ? { description: optionalText(input.description, 'Description', 4_000) } : {}), ...(fileId ? { fileId } : {}), createdAt: nowIso(now), updatedAt: nowIso(now) };
+  const assignments = taxonomyAssignments(input.taxonomyTermIds);
+  const work: LibraryWork = { id: id(ids, 'library_work'), userId, title: text(input.title, 'Title', 200), ...(optionalText(input.description, 'Description', 4_000) ? { description: optionalText(input.description, 'Description', 4_000) } : {}), ...(fileId ? { fileId } : {}), ...(assignments?.length ? { taxonomyAssignments: assignments } : {}), createdAt: nowIso(now), updatedAt: nowIso(now) };
   store.libraryWorks.set(work.id, work); return work;
 }
 
-export function updateLibraryWork(store: RadarStore, userId: string, workId: string, input: { title?: unknown; description?: unknown; fileId?: unknown | null }, now = new Date()): LibraryWork {
+export function updateLibraryWork(store: RadarStore, userId: string, workId: string, input: { title?: unknown; description?: unknown; fileId?: unknown | null; taxonomyTermIds?: unknown }, now = new Date()): LibraryWork {
   const work = store.libraryWorks.get(workId); if (!work || work.userId !== userId) throw new LibraryValidationError('Work not found.');
   const fileId = input.fileId === null ? undefined : input.fileId === undefined ? work.fileId : optionalText(input.fileId, 'File', 200);
   if (fileId && store.libraryFiles.get(fileId)?.userId !== userId) throw new LibraryValidationError('That file is not available in your Library.');
+  const assignments = taxonomyAssignments(input.taxonomyTermIds);
   if (input.title !== undefined) work.title = text(input.title, 'Title', 200);
   if (input.description !== undefined) work.description = optionalText(input.description, 'Description', 4_000);
+  if (input.taxonomyTermIds !== undefined) work.taxonomyAssignments = assignments?.length ? assignments : undefined;
   work.fileId = fileId; work.updatedAt = nowIso(now); return work;
 }
 

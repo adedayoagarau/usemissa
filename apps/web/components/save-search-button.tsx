@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { captureProductEvent } from '@/components/analytics-provider';
 
 export function SaveSearchButton({ userId, criteria, defaultName }: { userId: string; criteria: Record<string, unknown>; defaultName: string }) {
   const router = useRouter();
@@ -29,6 +30,7 @@ export function SaveSearchButton({ userId, criteria, defaultName }: { userId: st
       setSaved(true);
       setOpen(false);
       toast.success('Search saved');
+      captureProductEvent('opportunity_search_saved', { taxonomyTermCount: Array.isArray(criteria.taxonomyTermIds) ? criteria.taxonomyTermIds.length : 0 });
       router.refresh();
     });
   }

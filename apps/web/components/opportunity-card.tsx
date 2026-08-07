@@ -31,7 +31,7 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
   // A failed fetch updates checkedAt but must not make a public card look
   // freshly verified. Prefer the last successful processing timestamp.
   const freshness = opportunityFreshness(item.source.processingSucceededAt);
-  const detailHref = userId ? selectionHref : `/login?next=${encodeURIComponent(selectionHref.replace('/opportunities-preview', '/opportunities'))}`;
+  const detailHref = userId ? selectionHref : `/discover/opportunities/${item.slug}`;
 
   return (
     <article className={cn('relative flex min-h-[16.5rem] flex-col overflow-hidden rounded-md border bg-card transition-colors', selected ? 'border-2 border-primary' : 'border-border hover:border-foreground/30')}>
@@ -55,9 +55,10 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
         <div className="flex items-start gap-1.5"><CalendarDays className="mt-0.5 size-3.5 text-muted-foreground" /><div><p className="font-mono font-medium text-foreground">{deadline.label}</p><p className={cn(deadline.urgent ? 'font-medium text-accent-deep' : 'text-muted-foreground')}>{deadline.detail}</p></div></div>
         <div className="flex items-start gap-1.5"><Tag className="mt-0.5 size-3.5 text-muted-foreground" /><div><p className="font-medium text-foreground">{item.fee.status === 'no-fee' ? 'No fee' : item.fee.status === 'paid' ? 'Paid' : 'Fee unclear'}</p><p className="line-clamp-1 text-muted-foreground">{item.prize ?? 'Submission details'}</p></div></div>
       </div>
-      <div className="mx-3.5 rounded-sm border border-green/15 bg-green/5 px-2.5 py-1.5">{reasons.length > 0 ? <p className="flex items-center gap-1 text-[11px] font-medium text-green"><CheckCircle2 className="size-3.5" />Strong fit <span className="font-normal text-muted-foreground">· {reasons[0].label}</span></p> : <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 className="size-3.5" />Fit signal pending</p>}</div>
+      <div className="mx-3.5 rounded-sm border border-green/15 bg-green/5 px-2.5 py-1.5">{reasons.length > 0 ? <p className="flex items-center gap-1 text-[11px] font-medium text-green"><CheckCircle2 className="size-3.5" />Matches your preferences <span className="font-normal text-muted-foreground">· {reasons[0].label}</span></p> : <p className="flex items-center gap-1 text-[11px] text-muted-foreground"><Clock3 className="size-3.5" />Fit signal pending</p>}</div>
       <div className="relative z-10 mt-auto flex gap-2 p-3.5 pt-2.5">
-        {userId && !item.personal?.tracked ? <div className="flex-1"><TrackButton userId={userId} opportunityId={item.id} /></div> : userId ? <Button size="sm" variant="outline" disabled className="flex-1">Tracked</Button> : <Link href={detailHref} className="flex-1 rounded-md border border-border py-1.5 text-center text-xs text-foreground">Log in to view details</Link>}
+        {userId && !item.personal?.tracked ? <div className="flex-1"><TrackButton userId={userId} opportunityId={item.id} /></div> : userId ? <Button size="sm" variant="outline" disabled className="flex-1">Tracked</Button> : <Link href={detailHref} className="flex-1 rounded-md border border-border py-1.5 text-center text-xs text-foreground">View call</Link>}
+        {item.submissionAvailable && item.id ? <Button nativeButton={false} render={<Link href={userId ? `/api/opportunities/${item.id}/submission` : detailHref} />} size="sm" className="flex-1">{userId ? 'Apply' : 'View call'}</Button> : null}
         {userId && item.personal?.tracked ? <ListPicker opportunityId={item.id} enabled compact /> : userId ? <SaveOpportunityButton userId={userId} opportunityId={item.id} /> : <Button type="button" size="icon-sm" variant="outline" aria-label="Save opportunity" title="Log in to save"><Bookmark className="size-3.5" aria-hidden="true" /></Button>}
       </div>
     </article>

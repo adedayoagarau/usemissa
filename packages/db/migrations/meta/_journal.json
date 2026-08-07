@@ -57,6 +57,20 @@
       "when": 1785988497417,
       "tag": "0015_admin_operations",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786017913000,
+      "tag": "0016_opportunity_intelligence",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786072505000,
+      "tag": "0017_chat_baseline",
+      "breakpoints": true
     }
   ]
 }

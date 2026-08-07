@@ -406,12 +406,20 @@ export interface TaxonomyPreference {
 }
 
 /** Private, reusable creative material owned by one submitter. */
+export interface LibraryWorkTaxonomyAssignment {
+  termId: string;
+  primary: boolean;
+  assignmentOrigin: 'user' | 'import' | 'extractor' | 'organization' | 'reviewer';
+}
+
 export interface LibraryWork {
   id: string;
   userId: string;
   title: string;
   description?: string;
   fileId?: string;
+  /** Canonical private terms used to explain opportunity matches. */
+  taxonomyAssignments?: LibraryWorkTaxonomyAssignment[];
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
 }

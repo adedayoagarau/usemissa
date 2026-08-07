@@ -11,7 +11,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const body = await request.json().catch(() => undefined);
   if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Request body must be an object.' }, { status: 400, headers });
   try {
-    const engine = await getEngine(); const work = engine.updateLibraryWork(session.account.userId, (await context.params).id, body as { title?: unknown; description?: unknown; fileId?: unknown | null });
+    const engine = await getEngine(); const work = engine.updateLibraryWork(session.account.userId, (await context.params).id, body as { title?: unknown; description?: unknown; fileId?: unknown | null; taxonomyTermIds?: unknown });
     engine.recordAudit(session.account.id, 'library.work_updated', 'library_work', work.id); await persistRadar();
     return NextResponse.json(work, { headers });
   } catch (error) {

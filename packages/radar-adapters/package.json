@@ -10,8 +10,10 @@
     "missa-radar-worker": "dist/src/worker.js",
     "missa-research-agent": "dist/src/researchWorker.js",
     "missa-enrichment-worker": "dist/src/enrichmentWorker.js",
+    "missa-content-worker": "dist/src/contentWorker.js",
     "missa-discovery-agent": "dist/src/discoveryWorker.js",
-    "missa-coverage-worker": "dist/src/coverageWorker.js"
+    "missa-coverage-worker": "dist/src/coverageWorker.js",
+    "missa-taxonomy-discovery": "dist/src/taxonomyDiscoveryWorker.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -20,9 +22,11 @@
     "worker": "node dist/src/worker.js",
     "research-agent": "node dist/src/researchWorker.js",
     "enrichment-worker": "node dist/src/enrichmentWorker.js",
+    "content-worker": "node dist/src/contentWorker.js",
     "review-agent": "node dist/src/reviewWorker.js",
     "discovery-agent": "node dist/src/discoveryWorker.js",
-    "coverage-worker": "node dist/src/coverageWorker.js"
+    "coverage-worker": "node dist/src/coverageWorker.js",
+    "taxonomy-discovery": "node dist/src/taxonomyDiscoveryWorker.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",

@@ -1109,6 +1109,147 @@ export const opportunityCallWindows = pgTable(
   ],
 );
 
+/**
+ * User-facing Opportunity Intelligence is an additive projection. It is
+ * generated from canonical opportunity facts and remains separate from the
+ * Radar row so editorial copy can be rebuilt and reviewed without mutating
+ * source truth.
+ */
+export const opportunityContents = pgTable(
+  "opportunity_contents",
+  {
+    opportunityId: text("opportunity_id")
+      .primaryKey()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    inputVersion: text("input_version").notNull(),
+    builderVersion: text("builder_version").notNull(),
+    content: jsonb("content")
+      .notNull()
+      .$type<Record<string, unknown>>(),
+    reviewStatus: text("review_status").notNull().default("pending"),
+    reviewScore: integer("review_score").notNull().default(0),
+    reviewReasons: jsonb("review_reasons")
+      .notNull()
+      .default(sql`'[]'::jsonb`)
+      .$type<string[]>(),
+    reviewChecks: jsonb("review_checks")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, unknown>>(),
+    generatedAt: timestamp("generated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("opportunity_contents_review_idx").on(
+      table.reviewStatus,
+      table.reviewedAt,
+    ),
+    check(
+      "opportunity_contents_status_check",
+      sql`${table.reviewStatus} in ('pending', 'approved', 'needs-human', 'blocked')`,
+    ),
+    check(
+      "opportunity_contents_score_check",
+      sql`${table.reviewScore} between 0 and 100`,
+    ),
+  ],
+);
+
+/** Durable build -> review queue for the user-facing content projection. */
+export const radarContentReviewJobs = pgTable(
+  "radar_content_review_jobs",
+  {
+    id: text("id").primaryKey(),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .unique()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("queued"),
+    priority: integer("priority").notNull().default(0),
+    attempts: integer("attempts").notNull().default(0),
+    inputVersion: text("input_version").notNull(),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    lastError: text("last_error"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("radar_content_review_jobs_ready_idx").on(
+      table.status,
+      table.nextAttemptAt,
+      table.leaseUntil,
+      table.priority,
+    ),
+    check(
+      "radar_content_review_jobs_status_check",
+      sql`${table.status} in ('queued', 'building', 'pending-review', 'processing', 'completed', 'failed', 'needs-human', 'blocked')`,
+    ),
+    check("radar_content_review_jobs_attempts_check", sql`${table.attempts} >= 0`),
+    check(
+      "radar_content_review_jobs_priority_check",
+      sql`${table.priority} between -100 and 100`,
+    ),
+  ],
+);
+
+/** Append-only review history for Opportunity Intelligence content. */
+export const radarContentReviewDecisions = pgTable(
+  "radar_content_review_decisions",
+  {
+    id: text("id").primaryKey(),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => radarContentReviewJobs.id, { onDelete: "cascade" }),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    runId: text("run_id")
+      .notNull()
+      .references(() => radarAgentRuns.id, { onDelete: "cascade" }),
+    reviewerAccountId: text("reviewer_account_id").references(() => accounts.id, {
+      onDelete: "set null",
+    }),
+    decisionSource: text("decision_source").notNull().default("automated"),
+    decision: text("decision").notNull(),
+    score: integer("score").notNull().default(0),
+    reasons: jsonb("reasons")
+      .notNull()
+      .default(sql`'[]'::jsonb`)
+      .$type<string[]>(),
+    checks: jsonb("checks")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, unknown>>(),
+    createdAt,
+  },
+  (table) => [
+    index("radar_content_review_decisions_opp_created_idx").on(
+      table.opportunityId,
+      table.createdAt,
+    ),
+    index("radar_content_review_decisions_run_idx").on(table.runId),
+    check(
+      "radar_content_review_decisions_decision_check",
+      sql`${table.decision} in ('approved', 'needs-human', 'blocked', 'error')`,
+    ),
+    check(
+      "radar_content_review_decisions_source_check",
+      sql`${table.decisionSource} in ('automated', 'human')`,
+    ),
+    check(
+      "radar_content_review_decisions_score_check",
+      sql`${table.score} between 0 and 100`,
+    ),
+  ],
+);
+
 export const opportunityPreferences = pgTable(
   "opportunity_preferences",
   {
@@ -2377,5 +2518,153 @@ export const platformAnalyticsEvents = pgTable(
       table.organizationId,
       table.occurredAt,
     ),
+  ],
+);
+
+/**
+ * Durable state for the first read-only assistant slice. Conversation state is
+ * operational history; it is not authoritative opportunity or publication
+ * state. Structured response metadata keeps evidence and evaluation fields
+ * available without making the transcript the source of truth.
+ */
+export const chatConversations = pgTable(
+  "chat_conversations",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
+    status: text("status").notNull().default("active"),
+    title: text("title"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("chat_conversations_account_updated_idx").on(
+      table.accountId,
+      table.updatedAt,
+    ),
+    index("chat_conversations_organization_updated_idx").on(
+      table.organizationId,
+      table.updatedAt,
+    ),
+    check(
+      "chat_conversations_status_check",
+      sql`${table.status} in ('active', 'archived')`,
+    ),
+  ],
+);
+
+export const chatRuns = pgTable(
+  "chat_runs",
+  {
+    id: text("id").primaryKey(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => chatConversations.id, { onDelete: "cascade" }),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id").references(() => organizations.id, {
+      onDelete: "cascade",
+    }),
+    status: text("status").notNull().default("running"),
+    intent: text("intent").notNull().default("opportunity-search"),
+    graphVersion: text("graph_version").notNull().default("chat-baseline.v1"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    inputMessageId: text("input_message_id"),
+    outputMessageId: text("output_message_id"),
+    error: text("error"),
+    metadata: jsonb("metadata")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("chat_runs_account_idempotency_idx").on(
+      table.accountId,
+      table.idempotencyKey,
+    ),
+    index("chat_runs_conversation_started_idx").on(
+      table.conversationId,
+      table.startedAt,
+    ),
+    index("chat_runs_organization_status_idx").on(
+      table.organizationId,
+      table.status,
+      table.startedAt,
+    ),
+    check(
+      "chat_runs_status_check",
+      sql`${table.status} in ('running', 'completed', 'failed', 'blocked')`,
+    ),
+  ],
+);
+
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    id: text("id").primaryKey(),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => chatConversations.id, { onDelete: "cascade" }),
+    runId: text("run_id").references(() => chatRuns.id, {
+      onDelete: "set null",
+    }),
+    sequence: integer("sequence").notNull(),
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    metadata: jsonb("metadata")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("chat_messages_conversation_sequence_idx").on(
+      table.conversationId,
+      table.sequence,
+    ),
+    index("chat_messages_run_idx").on(table.runId, table.createdAt),
+    check(
+      "chat_messages_role_check",
+      sql`${table.role} in ('user', 'assistant')`,
+    ),
+    check("chat_messages_sequence_check", sql`${table.sequence} >= 0`),
+  ],
+);
+
+export const chatRunEvents = pgTable(
+  "chat_run_events",
+  {
+    id: text("id").primaryKey(),
+    runId: text("run_id")
+      .notNull()
+      .references(() => chatRuns.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    eventType: text("event_type").notNull(),
+    payload: jsonb("payload")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("chat_run_events_run_sequence_idx").on(
+      table.runId,
+      table.sequence,
+    ),
+    index("chat_run_events_type_created_idx").on(
+      table.eventType,
+      table.createdAt,
+    ),
+    check("chat_run_events_sequence_check", sql`${table.sequence} >= 0`),
   ],
 );
