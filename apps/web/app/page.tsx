@@ -24,7 +24,7 @@ import styles from './home.module.css';
 import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
-  title: 'Submission opportunities tailored for you',
+  title: 'Missa — Submission opportunities for creators',
   description: 'Find grants, magazines, residencies, fellowships, awards, and other submission opportunities with source context and visible deadlines.',
   path: '/',
 });
@@ -322,6 +322,33 @@ export default async function HomePage() {
             <Link className={styles.secondaryButton} href={primaryHref}>Browse the opportunity library</Link>
           </div>
         )}
+      </section>
+
+      <section className={styles.discoverySection} aria-labelledby="discovery-heading">
+        <div className={styles.sectionHeading}>
+          <div>
+            <p className={styles.sectionEyebrow}>Discover</p>
+            <h2 id="discovery-heading">Start with what you make.</h2>
+          </div>
+          <Link className={styles.inlineLink} href="/guides">
+            Read the guides <ArrowRight aria-hidden="true" size={15} strokeWidth={1.8} />
+          </Link>
+        </div>
+        <div className={styles.discoveryGrid}>
+          {[
+            ['Contests', '/discover/contests', 'Prizes, calls for entries, and deadlines.'],
+            ['Magazines', '/discover/magazines', 'Publications and current reading periods.'],
+            ['Poetry', '/discover/poetry', 'Poetry-related calls and submission paths.'],
+            ['Grants', '/discover/grants', 'Funding opportunities for creative work.'],
+            ['Residencies', '/discover/residencies', 'Places and time to develop new work.'],
+            ['Fellowships', '/discover/fellowships', 'Support for practice and research.'],
+          ].map(([label, href, copy]) => (
+            <Link key={href} href={href} className={styles.discoveryCard}>
+              <span className={styles.discoveryCardTitle}>{label}<ArrowRight aria-hidden="true" size={15} /></span>
+              <span className={styles.discoveryCardCopy}>{copy}</span>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className={styles.profileStory} id="how-it-works" aria-labelledby="profile-story-heading">

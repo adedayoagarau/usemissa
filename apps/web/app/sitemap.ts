@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { siteUrl } from '@/lib/siteUrl';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
-import { discoveryGuides } from '@/lib/discoveryGuides';
+import { discoveryCollections, discoveryGuides } from '@/lib/discoveryGuides';
 import { getEngine } from '@/lib/engine';
 import { getWorkspaceEngine } from '@/lib/workspaceEngine';
 
@@ -13,6 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/for-organizations`, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/guides`, changeFrequency: 'weekly', priority: 0.8 },
     ...discoveryGuides.map((guide) => ({ url: `${baseUrl}/guides/${guide.slug}`, changeFrequency: 'weekly' as const, priority: 0.7 })),
+    ...discoveryCollections.map((collection) => ({ url: `${baseUrl}/discover/${collection.slug}`, changeFrequency: 'daily' as const, priority: 0.75 })),
   ];
 
   // Keep the sitemap useful even while a database is unavailable during a

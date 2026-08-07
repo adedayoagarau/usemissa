@@ -4,8 +4,6 @@ import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 
 export async function POST(request: Request) {
   const session = await getSessionAccount(request.headers.get('cookie'));
-  if (!session) return NextResponse.json({ error: 'not authenticated' }, { status: 401 });
-
   let body: unknown;
   try {
     body = await request.json();
@@ -24,14 +22,24 @@ export async function POST(request: Request) {
   if (!/^[A-Za-z0-9_.:-]{2,120}$/.test(eventName)) {
     return NextResponse.json({ error: 'eventName must contain only letters, numbers, dots, underscores, colons, or hyphens.' }, { status: 400 });
   }
+  if (!session && eventName !== 'page_view' && !eventName.startsWith('public.')) {
+    return NextResponse.json({ error: 'event is not available to anonymous visitors' }, { status: 401 });
+  }
+  if (!session && eventName === 'page_view' && path && !isPublicPath(path)) {
+    return NextResponse.json({ error: 'anonymous page views are limited to public paths' }, { status: 403 });
+  }
   if (path && path.length > 500) return NextResponse.json({ error: 'path is too long.' }, { status: 400 });
   await trackPlatformAnalytics({
     eventName,
     source: 'web-client',
-    accountId: session.account.id,
+    ...(session?.account.id ? { accountId: session.account.id } : {}),
     path,
     properties,
     idempotencyKey,
   });
   return NextResponse.json({ accepted: true }, { status: 202, headers: { 'Cache-Control': 'no-store' } });
+}
+
+function isPublicPath(path: string): boolean {
+  return path === '/' || ['/for-organizations', '/opportunities-preview', '/guides', '/discover/', '/org/', '/profile/', '/login', '/signup'].some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }

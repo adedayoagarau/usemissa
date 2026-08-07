@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { AnalyticsProvider } from '@/components/analytics-provider';
+import { DEFAULT_DESCRIPTION, SITE_NAME } from '@/lib/seo';
+import { siteUrl } from '@/lib/siteUrl';
 
 /**
  * Brand typography per _bmad-output/planning-artifacts/ux-design-specification.md
@@ -37,8 +39,18 @@ const fragmentMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Missa — Submission opportunities tailored for you',
-  description: 'Find the submission opportunities that fit your work, prepare with context, and keep every deadline in view.',
+  metadataBase: new URL(siteUrl()),
+  title: {
+    default: `${SITE_NAME} — Submission opportunities tailored for you`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    siteName: SITE_NAME,
+    type: 'website',
+  },
+  twitter: { card: 'summary' },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
