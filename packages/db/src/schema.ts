@@ -385,7 +385,7 @@ export const opportunitySources = pgTable(
     followsOutboundLinks: boolean("follows_outbound_links")
       .notNull()
       .default(false),
-    checkIntervalHours: integer("check_interval_hours").notNull().default(168),
+    checkIntervalHours: integer("check_interval_hours").notNull().default(24),
     geographyCodes: text("geography_codes")
       .array()
       .notNull()
@@ -395,11 +395,13 @@ export const opportunitySources = pgTable(
       .notNull()
       .default(sql`ARRAY[]::text[]`),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    firstVerifiedAt: timestamp("first_verified_at", { withTimezone: true }),
     lastSuccessfulFetchAt: timestamp("last_successful_fetch_at", {
       withTimezone: true,
     }),
     lastProcessedAt: timestamp("last_processed_at", { withTimezone: true }),
     lastDiscoveryAt: timestamp("last_discovery_at", { withTimezone: true }),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }),
     lastHttpStatus: integer("last_http_status"),
     lastFetchedContentHash: text("last_fetched_content_hash"),
     lastProcessedContentHash: text("last_processed_content_hash"),

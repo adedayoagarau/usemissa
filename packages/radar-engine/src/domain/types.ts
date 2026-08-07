@@ -88,6 +88,8 @@ export interface Source {
   active: boolean;
   /** Latest fetch attempt, including failures. Kept as the scheduler cursor. */
   lastCheckedAt?: IsoDateTime;
+  /** First time the source passed verification or completed a usable fetch. */
+  firstVerifiedAt?: IsoDateTime;
   /** Latest fetch that returned usable page content. */
   lastSuccessfulFetchAt?: IsoDateTime;
   /** Latest content hash observed, even when extraction later failed. */
@@ -102,6 +104,8 @@ export interface Source {
   /** Independent cursor for directory fan-out; never shares Radar's cadence. */
   discoveryLastCheckedAt?: IsoDateTime;
   discoveryConsecutiveFailures?: number;
+  /** Persisted scheduler target; absent means immediately due when never checked. */
+  nextCheckAt?: IsoDateTime;
 }
 
 export type FetchStatus = 'ok' | 'error' | 'gone';

@@ -40,20 +40,21 @@ export class PlaywrightFetcher implements Fetcher {
 
   async fetch(source: Source): Promise<FetchResult> {
     if (this.respectRobotsTxt && !(await this.isAllowed(source.url))) {
-      return { status: 'error', content: '' };
+      return { status: 'error', content: '', failureReason: 'robots-blocked' };
     }
     const browser = await this.ensureBrowser();
     const page = await browser.newPage({ userAgent: this.userAgent });
     try {
       const response = await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: this.timeoutMs });
-      if (!response) return { status: 'error', content: '' };
+      if (!response) return { status: 'error', content: '', failureReason: 'empty-response' };
       if (response.status() === 404 || response.status() === 410) return { status: 'gone', content: '' };
-      if (!response.ok()) return { status: 'error', content: '' };
+      if (!response.ok()) return { status: 'error', content: '', failureReason: `http-${response.status()}` };
       await page.waitForLoadState('networkidle', { timeout: Math.min(this.timeoutMs, 2_000) }).catch(() => undefined);
       const html = await page.content();
       return { status: 'ok', content: stripHtml(html) };
-    } catch {
-      return { status: 'error', content: '' };
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : '';
+      return { status: 'error', content: '', failureReason: message.includes('timeout') ? 'timeout' : 'network' };
     } finally {
       await page.close();
     }

@@ -22,6 +22,11 @@ const MAX_LINKS_PER_PAGE = 100;
 const MAX_NEW_SOURCES_PER_TICK = 500;
 const MAX_HTML_BYTES = 2_000_000;
 
+function canonicalCheckIntervalHours(): number {
+  const configured = Number(process.env.RADAR_DEFAULT_CHECK_INTERVAL_HOURS);
+  return Number.isFinite(configured) ? Math.min(24, Math.max(12, configured)) : 24;
+}
+
 export interface DiscoveryWorkerOptions {
   maxSources?: number;
   maxLinksPerSource?: number;
@@ -220,7 +225,7 @@ async function persistDiscoveryResults(
         if (existing.has(key)) continue;
         const added: Source = {
           id: randomUUID(), name: sourceName(link, item.source), url: link.url,
-          kind: "organization-website", active: true, checkIntervalHours: 168,
+          kind: "organization-website", active: true, checkIntervalHours: canonicalCheckIntervalHours(),
           consecutiveFailures: 0, consecutiveProcessingFailures: 0,
           registryVerticalId: item.source.registryVerticalId, registryGroup: item.source.registryGroup,
           registryDisciplines: item.source.registryDisciplines, registryGeography: item.source.registryGeography,

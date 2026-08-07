@@ -27,6 +27,18 @@ function normalizeUrl(url: string): string {
   return url.replace(/\/$/, "").toLowerCase();
 }
 
+export function defaultCanonicalCheckIntervalHours(value: string | number | undefined = process.env.RADAR_DEFAULT_CHECK_INTERVAL_HOURS): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) return 24;
+  return Math.min(24, Math.max(12, parsed));
+}
+
+function checkIntervalForEntry(entry: { tier: number; followsOutboundLinks?: boolean; checkIntervalHours: number }): number {
+  return entry.tier === 0 && entry.followsOutboundLinks !== true
+    ? defaultCanonicalCheckIntervalHours()
+    : entry.checkIntervalHours;
+}
+
 /**
  * Seeds the engine's sources from the built opportunity-source registry
  * (packages/radar-engine/src/registry/ -- 49 verticals, ~1,024 tier-0
@@ -72,13 +84,14 @@ export function seedRegistryIfEmpty(
       existing.registryOrganizationName = entry.organizationName;
       existing.registryTier = entry.tier;
       existing.followsOutboundLinks = entry.followsOutboundLinks;
+      existing.checkIntervalHours = checkIntervalForEntry(entry);
       continue;
     }
     const added = engine.addSource({
       name: entry.name,
       url: entry.url,
       kind: entry.kind,
-      checkIntervalHours: entry.checkIntervalHours,
+      checkIntervalHours: checkIntervalForEntry(entry),
       registryVerticalId: entry.verticalId,
       registryGroup: registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.group,
       registryDisciplines: entry.disciplines ?? registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.disciplines,

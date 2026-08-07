@@ -75,18 +75,25 @@ async function upsertSources(client: PoolClient, sources: Source[]): Promise<voi
     source.url,
     source.kind,
     source.active,
+    source.registryTier ?? 0,
+    source.followsOutboundLinks ?? false,
+    source.checkIntervalHours,
+    source.firstVerifiedAt ?? null,
+    source.nextCheckAt ?? null,
     source.lastCheckedAt ?? null,
     source.lastSuccessfulFetchAt ?? null,
     source.lastProcessedAt ?? null,
   ]);
   const rows = sources.map((_, index) => {
-    const offset = index * 9;
-    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9})`;
+    const offset = index * 14;
+    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12}, $${offset + 13}, $${offset + 14})`;
   }).join(', ');
   await client.query(
     `insert into opportunity_sources (
-       id, organization_id, name, url, kind, active,
-       last_checked_at, last_successful_fetch_at, last_processed_at
+       id, organization_id, name, url, kind, active, source_tier,
+       follows_outbound_links, check_interval_hours, first_verified_at,
+       next_check_at, last_checked_at, last_successful_fetch_at,
+       last_processed_at
      ) values ${rows}
      on conflict (id) do update set
        organization_id = excluded.organization_id,
@@ -94,6 +101,11 @@ async function upsertSources(client: PoolClient, sources: Source[]): Promise<voi
        url = excluded.url,
        kind = excluded.kind,
        active = excluded.active,
+       source_tier = excluded.source_tier,
+       follows_outbound_links = excluded.follows_outbound_links,
+       check_interval_hours = excluded.check_interval_hours,
+       first_verified_at = excluded.first_verified_at,
+       next_check_at = excluded.next_check_at,
        last_checked_at = excluded.last_checked_at,
        last_successful_fetch_at = excluded.last_successful_fetch_at,
        last_processed_at = excluded.last_processed_at,

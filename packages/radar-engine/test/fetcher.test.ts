@@ -20,7 +20,7 @@ test('rejects binary content types before decoding them as opportunity text', as
     headers: { 'content-type': 'image/png' },
   });
   try {
-    assert.deepEqual(await new HttpFetcher().fetch(source), { status: 'error', content: '' });
+    assert.deepEqual(await new HttpFetcher().fetch(source), { status: 'error', content: '', failureReason: 'unsupported-content-type' });
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -35,9 +35,8 @@ test('rejects control characters even when a server mislabels binary content as 
   try {
     assert.equal(isSafeTextPayload('Open call\n\tworks'), true);
     assert.equal(isSafeTextPayload('Open call\u0000works'), false);
-    assert.deepEqual(await new HttpFetcher().fetch(source), { status: 'error', content: '' });
+    assert.deepEqual(await new HttpFetcher().fetch(source), { status: 'error', content: '', failureReason: 'unsafe-payload' });
   } finally {
     globalThis.fetch = originalFetch;
   }
 });
-
