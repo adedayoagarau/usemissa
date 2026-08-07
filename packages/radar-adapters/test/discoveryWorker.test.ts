@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { discoveryBatchSize, extractDiscoveryLinks } from "../src/discoveryWorker.js";
+import {
+  discoveryBatchSize,
+  discoverySourceInsertPlaceholders,
+  discoverySourceUpdatePlaceholders,
+  extractDiscoveryLinks,
+} from "../src/discoveryWorker.js";
 
 test("discovery extracts bounded call links and drops assets", () => {
   const html = `
@@ -20,4 +25,14 @@ test("discovery extracts bounded call links and drops assets", () => {
 test("discovery batch is bounded for hosted workers", () => {
   assert.equal(discoveryBatchSize("1000"), 250);
   assert.equal(discoveryBatchSize("not-a-number"), 100);
+});
+
+test("discovery persistence declares VALUES parameter types", () => {
+  assert.deepEqual(discoverySourceUpdatePlaceholders(2), [
+    "($1::text, $2::boolean, $3::jsonb)",
+    "($4::text, $5::boolean, $6::jsonb)",
+  ]);
+  assert.deepEqual(discoverySourceInsertPlaceholders(1), [
+    "($1::text, $2::text, $3::boolean, $4::jsonb)",
+  ]);
 });

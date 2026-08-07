@@ -139,6 +139,20 @@ type FetchedDirectory = {
   error?: string;
 };
 
+export function discoverySourceUpdatePlaceholders(count: number): string[] {
+  return Array.from({ length: count }, (_, index) => {
+    const offset = index * 3;
+    return `($${offset + 1}::text, $${offset + 2}::boolean, $${offset + 3}::jsonb)`;
+  });
+}
+
+export function discoverySourceInsertPlaceholders(count: number): string[] {
+  return Array.from({ length: count }, (_, index) => {
+    const offset = index * 4;
+    return `($${offset + 1}::text, $${offset + 2}::text, $${offset + 3}::boolean, $${offset + 4}::jsonb)`;
+  });
+}
+
 async function fetchDirectory(source: Source, linkLimit: number): Promise<FetchedDirectory> {
   const checkedAt = new Date().toISOString();
   try {
@@ -224,26 +238,18 @@ async function persistDiscoveryResults(
       .filter((source): source is Source => Boolean(source));
     if (updatedSources.length) {
       const updateValues = updatedSources.flatMap((source) => [source.id, source.active, JSON.stringify(source)]);
-      const updatePlaceholders = updatedSources.map((_, index) => {
-        const offset = index * 3;
-        return `($${offset + 1}, $${offset + 2}, $${offset + 3}::jsonb)`;
-      });
       await lockClient.query(
         `update radar_sources as target set active = incoming.active, data = incoming.data
-         from (values ${updatePlaceholders.join(",")}) as incoming(id, active, data)
+         from (values ${discoverySourceUpdatePlaceholders(updatedSources.length).join(",")}) as incoming(id, active, data)
          where target.id = incoming.id`,
         updateValues,
       );
     }
     if (newSources.length) {
       const insertValues = newSources.flatMap((source) => [source.id, source.organizationId ?? null, source.active, JSON.stringify(source)]);
-      const insertPlaceholders = newSources.map((_, index) => {
-        const offset = index * 4;
-        return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}::jsonb)`;
-      });
       await lockClient.query(
         `insert into radar_sources (id, organization_id, active, data)
-         values ${insertPlaceholders.join(",")}
+         values ${discoverySourceInsertPlaceholders(newSources.length).join(",")}
          on conflict (id) do update set active = excluded.active, data = excluded.data`,
         insertValues,
       );
