@@ -21,6 +21,8 @@ const MAX_CONCURRENCY = 32;
 const MAX_HTML_BYTES = 2_000_000;
 const MAX_TERMS_BYTES = 500_000;
 const MAX_BODY_READ_GAP_MS = 5_000;
+const DEFAULT_PROMOTED_SOURCE_INTERVAL_HOURS = 24;
+const MAX_PROMOTED_SOURCE_INTERVAL_HOURS = 168;
 const SOURCE_PROMOTION_LOCK = { namespace: 1984, key: 730 } as const;
 const ACCEPTED_KINDS = new Set<SourceKind>([
   "organization-website",
@@ -340,6 +342,13 @@ function sourceKind(value: string | null): SourceKind {
   return value && ACCEPTED_KINDS.has(value as SourceKind) ? value as SourceKind : "organization-website";
 }
 
+export function promotedSourceIntervalHours(value: string | number | undefined = process.env.MISSA_PROMOTED_SOURCE_INTERVAL_HOURS): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) && parsed > 0
+    ? Math.min(parsed, MAX_PROMOTED_SOURCE_INTERVAL_HOURS)
+    : DEFAULT_PROMOTED_SOURCE_INTERVAL_HOURS;
+}
+
 async function claimCandidates(client: PoolClient, limit: number): Promise<CandidateRow[]> {
   const result = await client.query<CandidateRow>(`with due as (
       select id from source_discovery_candidates
@@ -378,13 +387,14 @@ async function persistResult(client: PoolClient, candidate: CandidateRow, result
     );
     return false;
   }
+  const checkIntervalHours = promotedSourceIntervalHours();
   const source = {
     id: sourceIdFor(result.evidence.canonicalUrl ?? result.evidence.finalUrl ?? candidate.url),
     name: sourceName(candidate, result.evidence.canonicalUrl ?? result.evidence.finalUrl ?? candidate.url),
     url: result.evidence.canonicalUrl ?? result.evidence.finalUrl ?? candidate.url,
     kind: sourceKind(candidate.proposed_kind),
     active: true,
-    checkIntervalHours: 168,
+    checkIntervalHours,
     registryTier: 0,
     followsOutboundLinks: false,
     consecutiveFailures: 0,
@@ -400,12 +410,12 @@ async function persistResult(client: PoolClient, candidate: CandidateRow, result
     `insert into opportunity_sources
        (id, name, url, canonical_url, normalized_url, source_tier, kind, active,
         follows_outbound_links, check_interval_hours, robots_status, terms_status, health_status)
-     values ($1, $2, $3, $4, $5, 0, $6, true, false, 168, 'allowed', 'allowed', 'unknown')
+     values ($1, $2, $3, $4, $5, 0, $6, true, false, $7, 'allowed', 'allowed', 'unknown')
      on conflict (id) do update set
        name = excluded.name, url = excluded.url, canonical_url = excluded.canonical_url,
        normalized_url = excluded.normalized_url, source_tier = 0, kind = excluded.kind,
        active = true, robots_status = 'allowed', terms_status = 'allowed', updated_at = now()`,
-    [source.id, source.name, source.url, source.url, normalizeUrl(source.url), source.kind],
+    [source.id, source.name, source.url, source.url, normalizeUrl(source.url), source.kind, checkIntervalHours],
   );
   await client.query(
     `update source_discovery_candidates

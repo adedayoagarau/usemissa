@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { verifySourceCandidate } from "../src/sourcePromotionWorker.js";
+import { promotedSourceIntervalHours, verifySourceCandidate } from "../src/sourcePromotionWorker.js";
 
 function fakeFetch(pages: Record<string, { status?: number; body: string; contentType?: string }>) {
   return async (input: string): Promise<Response> => {
@@ -12,6 +12,13 @@ function fakeFetch(pages: Record<string, { status?: number; body: string; conten
     });
   };
 }
+
+test("promoted source cadence defaults to 24 hours and stays bounded", () => {
+  assert.equal(promotedSourceIntervalHours(undefined), 24);
+  assert.equal(promotedSourceIntervalHours("12"), 12);
+  assert.equal(promotedSourceIntervalHours("999"), 168);
+  assert.equal(promotedSourceIntervalHours("invalid"), 24);
+});
 
 test("source verifier accepts a canonical call page with robots and terms evidence", async () => {
   const result = await verifySourceCandidate(

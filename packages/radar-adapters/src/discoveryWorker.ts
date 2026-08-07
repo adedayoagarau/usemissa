@@ -8,7 +8,7 @@
  * register those links as tier-0 sources for Radar's normal evidence pipeline.
  * Nothing discovered here is published directly.
  */
-import { assembleRegistry, contentHash, discoverySeeds, type Source } from "@missa/radar-engine";
+import { contentHash, type Source } from "@missa/radar-engine";
 import { DISCOVERY_INGESTION_LOCK, releaseAdvisoryLock, tryAdvisoryLock } from "./radarWorker.js";
 import { Pool, type PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
@@ -56,6 +56,11 @@ export function discoveryBatchSize(value: string | number | undefined = process.
 
 export function discoveryLinkLimit(value: string | number | undefined = process.env.RADAR_DISCOVERY_LINKS_PER_PAGE): number {
   return bounded(value, DEFAULT_LINKS_PER_PAGE, MAX_LINKS_PER_PAGE);
+}
+
+/** Only explicit Postgres source metadata may opt a page into outbound fan-out. */
+export function isDiscoverySource(source: Pick<Source, "active" | "followsOutboundLinks">): boolean {
+  return source.active && source.followsOutboundLinks === true;
 }
 
 function normalizeUrl(value: string): string {
@@ -283,12 +288,8 @@ export async function runDiscoveryWorkerTick(options: Pick<DiscoveryWorkerOption
   const sourceRows = await pool.query<{ data: Source }>("select data from radar_sources");
   await pool.end();
   const now = new Date();
-  // Older persisted snapshots predate registryTier metadata. Match against
-  // the registry URL set as a compatibility fallback, so discovery starts
-  // immediately instead of waiting for a full snapshot rewrite.
-  const discoveryUrls = new Set(discoverySeeds(assembleRegistry()).map((entry) => normalizeUrl(entry.url)));
   const candidates = sourceRows.rows.map((row) => row.data)
-    .filter((source) => source.active && discoveryUrls.has(normalizeUrl(source.url)) && isDiscoveryDue(source, now))
+    .filter((source) => isDiscoverySource(source) && isDiscoveryDue(source, now))
     .slice(0, maxSources);
   const fetched = await mapConcurrent(candidates, Number(process.env.RADAR_DISCOVERY_CONCURRENCY ?? 16), (source) => fetchDirectory(source, linkLimit));
   const failures = fetched.filter((item) => item.error).length;
