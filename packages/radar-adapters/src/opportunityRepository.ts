@@ -730,7 +730,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       })),
       guidelinesUrl: row.guidelines_url ?? undefined,
       submissionUrl: row.submission_url ?? undefined,
-      ...(row.call_profile ? { callProfile: row.call_profile } : {}),
+      ...(row.call_profile ? { callProfile: stripJsonNulls(row.call_profile) } : {}),
       simultaneousAllowed: row.simultaneous_allowed ?? undefined,
       changes: changes.rows.map((item) => ({
         kind: item.kind,
