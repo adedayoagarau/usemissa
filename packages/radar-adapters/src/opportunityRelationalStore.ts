@@ -129,12 +129,12 @@ async function upsertSources(client: PoolClient, sources: Source[]): Promise<voi
     const trust = source.registryTrust ?? defaultSourceTrust({ tier: source.registryTier ?? 0, kind: source.kind });
     return {
       id: source.id,
-      trustStatus: trust.status,
-      trustScore: trust.score,
-      authorityKind: trust.authorityKind,
-      trustEvidenceUrl: trust.evidenceUrl ?? null,
-      trustReviewedAt: trust.reviewedAt ?? null,
-      trustReviewNote: trust.reviewNote ?? null,
+      trust_status: trust.status,
+      trust_score: trust.score,
+      authority_kind: trust.authorityKind,
+      trust_evidence_url: trust.evidenceUrl ?? null,
+      trust_reviewed_at: trust.reviewedAt ?? null,
+      trust_review_note: trust.reviewNote ?? null,
     };
   });
   await client.query(
