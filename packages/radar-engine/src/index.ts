@@ -22,7 +22,7 @@ export {
   type ChecklistItemPatch,
 } from './checklist/checklist.js';
 export { FixtureFetcher, HttpFetcher, isSafeTextPayload, stripHtml } from './ingestion/fetcher.js';
-export { isDue, dueSources } from './ingestion/scheduler.js';
+export { isDue, dueSources, nextCheckAt } from './ingestion/scheduler.js';
 export { contentHash } from './ingestion/snapshot.js';
 export { DeterministicExtractor } from './extraction/extractor.js';
 export { taxonomyAssignmentsForPhrases } from './extraction/taxonomy.js';

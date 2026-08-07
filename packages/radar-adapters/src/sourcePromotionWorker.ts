@@ -342,7 +342,7 @@ function sourceKind(value: string | null): SourceKind {
   return value && ACCEPTED_KINDS.has(value as SourceKind) ? value as SourceKind : "organization-website";
 }
 
-export function promotedSourceIntervalHours(value: string | number | undefined = process.env.MISSA_PROMOTED_SOURCE_INTERVAL_HOURS): number {
+export function promotedSourceIntervalHours(value: string | number | undefined = process.env.RADAR_DEFAULT_CHECK_INTERVAL_HOURS ?? process.env.MISSA_PROMOTED_SOURCE_INTERVAL_HOURS): number {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) && parsed > 0
     ? Math.min(parsed, MAX_PROMOTED_SOURCE_INTERVAL_HOURS)
@@ -395,6 +395,7 @@ async function persistResult(client: PoolClient, candidate: CandidateRow, result
     kind: sourceKind(candidate.proposed_kind),
     active: true,
     checkIntervalHours,
+    firstVerifiedAt: result.evidence.checkedAt,
     registryTier: 0,
     followsOutboundLinks: false,
     consecutiveFailures: 0,

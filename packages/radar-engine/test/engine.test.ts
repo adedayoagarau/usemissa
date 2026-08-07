@@ -72,6 +72,19 @@ test('tick({ maxSources }): caps due sources processed per call; the rest remain
   assert.equal(stillDue.length, 2, 'the remaining 2 untouched sources should still be due for the next tick');
 });
 
+test('tick report exposes throughput metrics for ingestion logs', async () => {
+  const world = buildDemoWorld();
+  const report = await world.engine.tick();
+
+  assert.equal(report.sourcesSelected, 5);
+  assert.equal(report.sourcesFetched, 5);
+  assert.equal(report.successfulFetches, 5);
+  assert.equal(report.failedFetches, 0);
+  assert.equal(report.extractionFailures, 0);
+  assert.equal(report.opportunitiesCreated.length, 4);
+  assert.equal(report.duplicatesMerged, 1);
+});
+
 test('a processing failure does not poison the content hash or abort the source batch', async () => {
   const clock = new ManualClock(new Date('2026-07-07T00:00:00Z'));
   const fetcher = new FixtureFetcher();

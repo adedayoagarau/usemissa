@@ -6,7 +6,27 @@ import {
   parseTaxonomySearchResponse,
   taxonomyDiscoveryBatchSize,
   taxonomyDiscoveryResultLimit,
+  TAXONOMY_CANDIDATE_SCHEMA_PROBE,
+  TAXONOMY_EXISTING_URLS_QUERY,
 } from "../src/taxonomyDiscoveryWorker.js";
+import { Pool } from "pg";
+
+test("taxonomy candidate SQL uses the canonical URL columns", () => {
+  assert.match(TAXONOMY_CANDIDATE_SCHEMA_PROBE, /select url, normalized_url from source_discovery_candidates/i);
+  assert.match(TAXONOMY_EXISTING_URLS_QUERY, /source_discovery_candidates where normalized_url/i);
+  assert.match(TAXONOMY_EXISTING_URLS_QUERY, /data->>'url'/i);
+  assert.doesNotMatch(TAXONOMY_EXISTING_URLS_QUERY, /from radar_sources\s+where\s+url\b/i);
+});
+
+test("taxonomy candidate schema probe executes against Postgres when configured", { skip: !process.env.DATABASE_URL }, async () => {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  try {
+    const result = await pool.query(TAXONOMY_CANDIDATE_SCHEMA_PROBE);
+    assert.equal(result.fields.map((field) => field.name).join(","), "url,normalized_url");
+  } finally {
+    await pool.end();
+  }
+});
 
 test("taxonomy discovery provider output is bounded, normalized, and safe", () => {
   const response = parseTaxonomySearchResponse({

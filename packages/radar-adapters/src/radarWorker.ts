@@ -48,6 +48,13 @@ export function radarWorkerBatchSize(value: string | number | undefined = proces
   return positiveInteger(parsed, DEFAULT_RADAR_WORKER_BATCH_SIZE, MAX_RADAR_WORKER_BATCH_SIZE);
 }
 
+/** Parse the inclusive tier fence. Unset, null, or invalid means all tiers. */
+export function maxRegistryTierFromEnv(value: string | number | null | undefined = process.env.RADAR_MAX_TIER): 0 | 1 | 2 | 3 | undefined {
+  if (value === undefined || value === null || String(value).trim().toLowerCase() === 'null' || String(value).trim() === '') return undefined;
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 3 ? parsed as 0 | 1 | 2 | 3 : undefined;
+}
+
 export async function tryAdvisoryLock(client: PoolClient, lock: { namespace: number; key: number } = RADAR_INGESTION_LOCK): Promise<boolean> {
   // Neon commonly sits behind a pooler. Session-scoped advisory locks can
   // survive `client.release()` on an idle pooled backend, starving every
@@ -108,9 +115,20 @@ export async function runRadarWorkerTick(
     }
     await options.afterTick?.(production.engine);
     await production.persist();
-    logger.info(
-      `[missa-radar-worker] tick complete: ${report.sourcesChecked} sources checked, ${report.sourcesFailed} failed`,
-    );
+    logger.info(JSON.stringify({
+      event: 'radar.tick',
+      sourcesSelected: report.sourcesSelected,
+      sourcesFetched: report.sourcesFetched,
+      successfulFetches: report.successfulFetches,
+      failedFetches: report.failedFetches,
+      failedFetchesByReason: report.failedFetchesByReason,
+      extractionSuccesses: report.extractionSuccesses,
+      extractionFailures: report.extractionFailures,
+      extractionFailuresByReason: report.extractionFailuresByReason,
+      opportunitiesCreated: report.opportunitiesCreated.length,
+      opportunitiesUpdated: report.opportunitiesUpdated.length,
+      duplicatesMerged: report.duplicatesMerged,
+    }));
     await heartbeatWorkerRun(production.pool, options.workerRunId, "radar-worker", {
       inputCount: report.sourcesChecked,
       outputCount: report.changes.length,
@@ -154,8 +172,7 @@ export async function runRadarWorker(
     options.intervalMs,
     positiveInteger(Number(process.env.TICK_MINUTES) * 60_000, 15 * 60_000),
   );
-  const configuredMaxTier = Number(process.env.RADAR_MAX_TIER);
-  const maxRegistryTier = configuredMaxTier >= 0 && configuredMaxTier <= 3 ? configuredMaxTier as 0 | 1 | 2 | 3 : undefined;
+  const maxRegistryTier = maxRegistryTierFromEnv();
   const telemetryPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, max: 1 }) : undefined;
   const workerRunId = telemetryPool ? await startWorkerRun(telemetryPool, "radar-worker") : undefined;
 

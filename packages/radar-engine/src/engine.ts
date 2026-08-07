@@ -43,7 +43,7 @@ import { sequentialIds, systemClock } from './ports.js';
 import { createStore, type RadarStore, changesFor } from './store/store.js';
 import { grantOrgMembership, isOrgMember, logIn, membershipsFor, organizationSeatUsage, provisionOrgAccount, revokeOrgMembership, signUp } from './auth/accounts.js';
 import { recordAudit } from './auth/audit.js';
-import { dueSources } from './ingestion/scheduler.js';
+import { dueSources, nextCheckAt } from './ingestion/scheduler.js';
 import { contentHash } from './ingestion/snapshot.js';
 import { DeterministicExtractor } from './extraction/extractor.js';
 import { hasFatalIssues, looksLikeOpportunity } from './extraction/validate.js';
@@ -97,8 +97,8 @@ async function fetchSources(sources: Source[], fetcher: Fetcher): Promise<FetchR
       const index = next++;
       try {
         results[index] = await fetcher.fetch(sources[index]!);
-      } catch {
-        results[index] = { status: 'error', content: '' };
+      } catch (error) {
+        results[index] = { status: 'error', content: '', failureReason: error instanceof Error ? 'network' : 'unknown' };
       }
     }
   };
@@ -184,6 +184,14 @@ function normalizedProfileValues(user: UserProfile, patch: UserProfilePatch): { 
 
 export interface TickReport {
   at: string;
+  sourcesSelected: number;
+  sourcesFetched: number;
+  successfulFetches: number;
+  failedFetches: number;
+  failedFetchesByReason: Record<string, number>;
+  extractionSuccesses: number;
+  extractionFailures: number;
+  extractionFailuresByReason: Record<string, number>;
   sourcesChecked: number;
   /** Total fetch and processing failures. */
   sourcesFailed: number;
@@ -671,6 +679,14 @@ export class RadarEngine {
     const now = this.clock.now();
     const report: TickReport = {
       at: now.toISOString(),
+      sourcesSelected: 0,
+      sourcesFetched: 0,
+      successfulFetches: 0,
+      failedFetches: 0,
+      failedFetchesByReason: {},
+      extractionSuccesses: 0,
+      extractionFailures: 0,
+      extractionFailuresByReason: {},
       sourcesChecked: 0,
       sourcesFailed: 0,
       fetchFailures: 0,
@@ -693,10 +709,12 @@ export class RadarEngine {
       return true;
     });
     const sourcesToProcess = opts?.maxSources !== undefined ? due.slice(0, opts.maxSources) : due;
+    report.sourcesSelected = sourcesToProcess.length;
 
     const fetchedResults = await fetchSources(sourcesToProcess, this.fetcher);
     for (const [index, source] of sourcesToProcess.entries()) {
       report.sourcesChecked++;
+      report.sourcesFetched++;
       source.lastCheckedAt = now.toISOString();
       const result = fetchedResults[index]!;
 
@@ -704,22 +722,30 @@ export class RadarEngine {
         source.consecutiveFailures++;
         report.sourcesFailed++;
         report.fetchFailures++;
+        report.failedFetches++;
+        const reason = result.failureReason ?? 'unknown';
+        report.failedFetchesByReason[reason] = (report.failedFetchesByReason[reason] ?? 0) + 1;
+        source.nextCheckAt = nextCheckAt(source, now).toISOString();
         continue;
       }
+      report.successfulFetches++;
       source.consecutiveFailures = 0;
 
       if (result.status === 'gone') {
         source.consecutiveProcessingFailures = 0;
+        source.nextCheckAt = nextCheckAt(source, now).toISOString();
         report.pagesChanged++;
         this.handlePageGone(source, report);
         continue;
       }
 
+      source.firstVerifiedAt ??= now.toISOString();
       source.lastSuccessfulFetchAt = now.toISOString();
       const hash = contentHash(result.content);
       source.lastFetchedContentHash = hash;
       if (hash === source.lastContentHash) {
         source.consecutiveProcessingFailures = 0;
+        source.nextCheckAt = nextCheckAt(source, now).toISOString();
         report.pagesUnchanged++;
         this.touchOpportunities(source, now);
         continue;
@@ -739,10 +765,14 @@ export class RadarEngine {
         this.store.snapshots.set(snapshot.id, snapshot);
 
         const candidate = await this.extractor.extract(source, snapshot);
+        report.extractionSuccesses++;
         if (hasFatalIssues(candidate) || !looksLikeOpportunity(candidate)) {
           source.consecutiveProcessingFailures = (source.consecutiveProcessingFailures ?? 0) + 1;
           report.sourcesFailed++;
           report.processingFailures++;
+          report.extractionFailures++;
+          report.extractionFailuresByReason.validation = (report.extractionFailuresByReason.validation ?? 0) + 1;
+          source.nextCheckAt = nextCheckAt(source, now).toISOString();
           continue;
         }
 
@@ -763,10 +793,14 @@ export class RadarEngine {
         source.lastContentHash = hash;
         source.lastProcessedAt = now.toISOString();
         source.consecutiveProcessingFailures = 0;
+        source.nextCheckAt = nextCheckAt(source, now).toISOString();
       } catch {
         source.consecutiveProcessingFailures = (source.consecutiveProcessingFailures ?? 0) + 1;
         report.sourcesFailed++;
         report.processingFailures++;
+        report.extractionFailures++;
+        report.extractionFailuresByReason.extractor = (report.extractionFailuresByReason.extractor ?? 0) + 1;
+        source.nextCheckAt = nextCheckAt(source, now).toISOString();
       }
     }
 
