@@ -1,4 +1,4 @@
-import { MISSA_TAXONOMY } from '@missa/taxonomy';
+import { MISSA_TAXONOMY, taxonomyLabelFor as canonicalTaxonomyLabelFor } from '@missa/taxonomy';
 
 export const PRACTICE_OPTIONS = MISSA_TAXONOMY.terms
   .filter((term) => term.facet === 'practice-family')
@@ -9,5 +9,5 @@ export const SUBMISSION_TAXONOMY_OPTIONS = MISSA_TAXONOMY.terms
   .map((term) => ({ value: term.id, label: term.preferredLabel, facet: term.facet }));
 
 export function taxonomyLabelFor(termId: string): string {
-  return MISSA_TAXONOMY.terms.find((term) => term.id === termId)?.preferredLabel ?? termId;
+  return canonicalTaxonomyLabelFor(termId, MISSA_TAXONOMY);
 }

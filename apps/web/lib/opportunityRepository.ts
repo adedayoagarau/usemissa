@@ -9,7 +9,7 @@ import {
   type OpportunityRepositoryQuery,
 } from "@missa/radar-engine";
 import { createPostgresOpportunityRepositoryFromUrl } from "@missa/radar-adapters";
-import { MISSA_TAXONOMY } from "@missa/taxonomy";
+import { MISSA_TAXONOMY, taxonomyDescendantIds, taxonomyLabelFor } from "@missa/taxonomy";
 import { getEngine } from "./engine";
 
 declare global {
@@ -28,6 +28,13 @@ const CATEGORY_TYPES: Record<string, string[]> = {
 function feeStatus(opp: Opportunity): "no-fee" | "paid" | "unknown" {
   if (!opp.fields.fee.disclosed) return "unknown";
   return opp.fields.fee.amountCents === 0 ? "no-fee" : "paid";
+}
+
+function boundedSlug(value: string, fallback: string): string {
+  const normalized = value.trim();
+  if (!normalized) return fallback;
+  if (normalized.length <= 160) return normalized;
+  return normalized.slice(0, 160).replace(/[-\s]+$/u, "") || fallback;
 }
 
 function publicStatus(opp: Opportunity): OpportunityBrowseProjection["status"] {
@@ -55,15 +62,35 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
     : undefined;
   const source = engine.store.sources.get(opp.sourceId);
   const userId = userIdFor(engine, context);
+  const user = userId ? engine.store.users.get(userId) : undefined;
   const profiles = userId
     ? [...engine.store.radarProfiles.values()].filter((profile) => profile.userId === userId)
     : [];
-  const matchedReasons = profiles.flatMap((profile) =>
+  const savedSearchReasons = profiles.flatMap((profile) =>
     matchesCriteria(profile.criteria, opp, new Date())?.slice(0, 2).map((reason) => ({
       code: "saved-search",
       label: `Matches ${profile.name}: ${reason}`,
     })) ?? [],
   );
+  const assignedTermIds = new Set((opp.fields.taxonomyAssignments ?? []).flatMap((assignment) => assignment.termId ? [assignment.termId] : []));
+  const preferenceReasons = (user?.taxonomyPreferences ?? []).flatMap((preference) => {
+    if (preference.preference === 'exclude') return [];
+    const matched = taxonomyDescendantIds(preference.termId).some((termId) => assignedTermIds.has(termId));
+    if (!matched) return [];
+    const label = taxonomyLabelFor(preference.termId);
+    return [{
+      code: 'discipline' as const,
+      label: preference.preference === 'prefer' ? `Matches your preferred practice: ${label}` : `Matches your practice: ${label}`,
+    }];
+  });
+  const workReasons = engine.library(userId ?? '').works.flatMap((work) =>
+    (work.taxonomyAssignments ?? []).flatMap((assignment) => {
+      const matched = taxonomyDescendantIds(assignment.termId).some((termId) => assignedTermIds.has(termId));
+      if (!matched) return [];
+      return [{ code: 'work' as const, label: `Matches your Work: ${taxonomyLabelFor(assignment.termId)}` }];
+    }),
+  );
+  const matchedReasons = [...preferenceReasons, ...workReasons, ...savedSearchReasons].slice(0, 4);
   const tracked = userId
     ? engine.store.tracked.some((item) => item.userId === userId && item.opportunityId === opp.id)
     : false;
@@ -75,7 +102,7 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
 
   return {
     id: opp.id,
-    slug: opp.fields.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""),
+    slug: boundedSlug(opp.fields.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), opp.id),
     createdAt: opp.createdAt,
     title: opp.fields.title,
     organizationId: opp.fields.organizationId,
@@ -121,9 +148,20 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
   };
 }
 
+function excludedByPrivatePreferences(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity, context?: OpportunityRepositoryContext): boolean {
+  const userId = userIdFor(engine, context);
+  const user = userId ? engine.store.users.get(userId) : undefined;
+  if (!user) return false;
+  const assignedTermIds = new Set((opp.fields.taxonomyAssignments ?? []).flatMap((assignment) => assignment.termId ? [assignment.termId] : []));
+  return (user.taxonomyPreferences ?? []).some((preference) => preference.preference === 'exclude' && taxonomyDescendantIds(preference.termId).some((termId) => assignedTermIds.has(termId)));
+}
+
 function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepositoryQuery): boolean {
   if (query.query) {
-    const haystack = `${item.title} ${item.organizationName ?? ""} ${item.genres.join(" ")}`.toLowerCase();
+    const taxonomyLabels = (item.taxonomy?.termIds ?? [])
+      .map((termId) => MISSA_TAXONOMY.terms.find((term) => term.id === termId)?.preferredLabel ?? "")
+      .join(" ");
+    const haystack = `${item.title} ${item.organizationName ?? ""} ${item.genres.join(" ")} ${taxonomyLabels}`.toLowerCase();
     if (!haystack.includes(query.query.toLowerCase())) return false;
   }
   const categoryTypes = query.category ? CATEGORY_TYPES[query.category] ?? [] : [];
@@ -132,11 +170,23 @@ function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepos
   if (query.disciplines?.length && (!item.discipline || !query.disciplines.includes(item.discipline))) return false;
   if (query.genres?.length && !item.genres.some((genre) => query.genres?.includes(genre))) return false;
   if (query.taxonomyTermIds?.length) {
-    const requested = new Set(query.taxonomyTermIds);
-    if (query.taxonomyIncludeDescendants) {
-      for (const term of MISSA_TAXONOMY.terms) if (term.broaderTermIds.some((parent) => requested.has(parent))) requested.add(term.id);
-    }
-    if (![...requested].some((termId) => item.taxonomy?.termIds.includes(termId))) return false;
+    const matchesRequested = (requestedId: string): boolean => {
+      if (item.taxonomy?.termIds.includes(requestedId)) return true;
+      if (!query.taxonomyIncludeDescendants) return false;
+      const descendants = new Set<string>([requestedId]);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const term of MISSA_TAXONOMY.terms) {
+          if (term.broaderTermIds.some((parent) => descendants.has(parent)) && !descendants.has(term.id)) {
+            descendants.add(term.id);
+            changed = true;
+          }
+        }
+      }
+      return [...descendants].some((termId) => item.taxonomy?.termIds.includes(termId));
+    };
+    if (!query.taxonomyTermIds.every(matchesRequested)) return false;
   }
   if (query.locations?.length && (!item.location || !query.locations.includes(item.location))) return false;
   if (query.feeStatus && item.fee.status !== query.feeStatus) return false;
@@ -151,6 +201,7 @@ class EngineOpportunityRepository implements OpportunityRepository {
     const engine = await getEngine();
     const items = [...engine.store.opportunities.values()]
       .filter((opp) => !opp.duplicateOfId && !["archived", "closed", "duplicate", "uncertain"].includes(opp.status))
+      .filter((opp) => !excludedByPrivatePreferences(engine, opp, context))
       .map((opp) => project(engine, opp, context))
       .filter((item) => matchesQuery(item, query));
 
@@ -168,9 +219,15 @@ class EngineOpportunityRepository implements OpportunityRepository {
 
   async getById(opportunityId: string, context?: OpportunityRepositoryContext): Promise<OpportunityDetailProjection | null> {
     const engine = await getEngine();
-    const opp = engine.store.opportunities.get(opportunityId);
-    if (!opp || opp.duplicateOfId) return null;
+    const opp = engine.store.opportunities.get(opportunityId) ?? [...engine.store.opportunities.values()].find((candidate) => {
+      const slug = boundedSlug(candidate.fields.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""), candidate.id);
+      return slug === opportunityId;
+    });
+    if (!opp || opp.duplicateOfId || excludedByPrivatePreferences(engine, opp, context)) return null;
     const base = project(engine, opp, context);
+    // The in-memory compatibility repository has no durable review decision.
+    // Do not synthesize a pending brief into a user-facing detail response;
+    // only the Postgres repository may expose content after approved review.
     return {
       ...base,
       openDate: opp.fields.openDate,
@@ -185,7 +242,7 @@ class EngineOpportunityRepository implements OpportunityRepository {
       submissionUrl: opp.fields.submissionUrl,
       simultaneousAllowed: opp.fields.simultaneousAllowed,
       changes: [...engine.store.changes.values()]
-        .filter((change) => change.opportunityId === opportunityId)
+        .filter((change) => change.opportunityId === opp.id)
         .slice(-32)
         .map((change) => ({ kind: change.kind, at: change.at, oldValue: change.oldValue, newValue: change.newValue })),
       relatedOpportunityIds: [...engine.store.opportunities.values()]
@@ -197,7 +254,7 @@ class EngineOpportunityRepository implements OpportunityRepository {
 }
 
 export function getOpportunityRepository(): OpportunityRepository {
-  if (process.env.MISSA_OPPORTUNITY_REPOSITORY === "postgres" && process.env.DATABASE_URL) {
+  if (process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" && process.env.DATABASE_URL) {
     if (!globalThis.__missaOpportunityRepository) {
       globalThis.__missaOpportunityRepository = createPostgresOpportunityRepositoryFromUrl(process.env.DATABASE_URL);
     }

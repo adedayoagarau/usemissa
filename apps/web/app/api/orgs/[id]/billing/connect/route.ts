@@ -8,6 +8,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   const secret = process.env.STRIPE_SECRET_KEY;
   if (!secret) return NextResponse.json({ error: 'Stripe Connect is not configured' }, { status: 503 });
+  const idempotencyKey = request.headers.get('Idempotency-Key')?.trim().slice(0, 240) || undefined;
   const organization = result.access.radar.store.organizations.get(id)!;
   const origin = request.headers.get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const body = await request.json().catch(() => ({}));
@@ -15,7 +16,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   let accountId = organization.stripeConnectAccountId;
   if (!accountId) {
     const accountForm = new URLSearchParams({ type: 'express', country, 'capabilities[card_payments][requested]': 'true', 'capabilities[transfers][requested]': 'true', 'metadata[organization_id]': id });
-    const accountResponse = await fetch('https://api.stripe.com/v1/accounts', { method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded' }, body: accountForm });
+    const accountResponse = await fetch('https://api.stripe.com/v1/accounts', { method: 'POST', headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/x-www-form-urlencoded', ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) }, body: accountForm });
     const account = await accountResponse.json() as { id?: string; error?: { message?: string } };
     if (!accountResponse.ok || !account.id) return NextResponse.json({ error: account.error?.message ?? 'Unable to create connected account' }, { status: 502 });
     accountId = account.id;

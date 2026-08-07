@@ -1,7 +1,6 @@
-import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
-import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { readTaxonomyAdminDashboard, type TaxonomyAdminDashboard } from '@missa/radar-adapters';
+import { requirePlatformAdminPage } from '@/lib/platformAdmin';
+import PlatformAdminTaxonomyProposals from '@/components/platform-admin-taxonomy-proposals';
 
 const cards: Array<[string, (data: TaxonomyAdminDashboard) => number]> = [
   ['Open proposals', (data) => data.proposals.open + data.proposals.researching],
@@ -11,10 +10,7 @@ const cards: Array<[string, (data: TaxonomyAdminDashboard) => number]> = [
 ] as const;
 
 export default async function TaxonomyAdminPage() {
-  const cookieStore = await cookies();
-  const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!session) redirect('/login');
-  if (!session.account.isAdmin) redirect('/home');
+  await requirePlatformAdminPage();
   const data = process.env.DATABASE_URL ? await readTaxonomyAdminDashboard(process.env.DATABASE_URL) : null;
   const dashboard = data?.available ? data : null;
 
@@ -40,6 +36,7 @@ export default async function TaxonomyAdminPage() {
               <div className="rounded-2xl border border-border bg-white p-6 shadow-sm"><h2 className="font-heading text-xl font-medium">Coverage health</h2><dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">{Object.entries(dashboard.coverage).map(([key, value]) => <div key={key} className="rounded-lg bg-muted p-3"><dt className="text-muted-foreground">{key}</dt><dd className="mt-1 text-lg font-medium">{String(value)}</dd></div>)}</dl></div>
               <div className="rounded-2xl border border-border bg-white p-6 shadow-sm"><h2 className="font-heading text-xl font-medium">Assignment provenance</h2><p className="mt-2 text-sm text-muted-foreground">Canonical assignments by origin and certainty.</p><div className="mt-4 space-y-2 text-sm">{dashboard.assignments.byOrigin.map((row) => <div key={row.origin} className="flex justify-between border-b border-border py-2"><span>{row.origin}</span><span>{row.count}</span></div>)}</div></div>
             </section>
+            <PlatformAdminTaxonomyProposals proposals={dashboard.proposalRows} />
           </>
         )}
       </div>

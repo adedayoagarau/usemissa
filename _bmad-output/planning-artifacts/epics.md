@@ -646,3 +646,173 @@ stories.
 Covers FR58. Story 13.1 provides a private, descriptive progress projection for
 submitter milestones. It is deliberately not a leaderboard, score, streak, or
 negative outcome mechanic.
+
+---
+
+## Epic 14: Admin Control Plane & Operations *(Current build)*
+
+Covers the missing admin information architecture across two explicit planes:
+
+- **Platform Admin** — Missa operators who need tenant-independent visibility into customers, content quality, product health, billing, security, support, and agent operations.
+- **Organization Admin** — customer teams who need to run Opportunities, Submissions, Reviews, Decisions, Messages, Delivery, Insights, and Settings for their own organization.
+
+The first stories use the current RadarEngine and WorkspaceEngine stores as the
+runtime truth and label the maturity of every metric. They do not invent a
+durable CMS, CRM, message, or product-event schema that does not exist yet.
+Persistence-heavy capabilities are deliberately sequenced after the connected
+read surfaces so the data contracts can be designed from real workflows.
+
+### Story 14.1: Platform Admin control room and information architecture
+
+As a Missa platform operator,
+I want a responsive control room organized around attention, customers, content, analytics, and operations,
+So that I can understand what needs action without navigating a collection of unrelated cards (FR59).
+
+**Acceptance Criteria:**
+
+**Given** an active platform-admin session
+**When** the operator opens `/admin`
+**Then** the page presents a clear Platform Admin shell with Control Room, Customers, Content, Analytics, Operations, Radar, Agents, System, Audit, and Policy navigation
+**And** the Control Room shows current customer, content, product, and operational metrics with visible source/freshness/maturity labels
+**And** attention items link to the existing queue/read surfaces rather than presenting decorative or fabricated counts
+**And** the layout remains usable at mobile widths without horizontal page overflow; dense tables may scroll within their own region
+**And** unauthorized requests retain the existing fail-closed 401/403/page redirect behavior.
+
+### Story 14.2: Platform customer directory and CRM-lite read model
+
+As a Missa platform operator,
+I want to find organizations, accounts, memberships, plan state, and current activity in one customer directory,
+So that I can support customers and understand adoption without querying stores manually (FR60).
+
+**Acceptance Criteria:**
+
+**Given** current Radar and Workspace runtime stores
+**When** the operator opens `/admin/customers`
+**Then** the directory lists organizations with member/account counts, plan and billing status, open-call count, submission count, and latest observed activity
+**And** the operator can filter the read model by organization name, billing state, and activity state
+**And** the response never includes password hashes, session tokens, raw provider credentials, or private submission/message content
+**And** fields that require new CRM persistence (notes, contacts beyond account identity, segments, tasks, and interaction timelines) are labelled as planned rather than rendered as fake data.
+
+### Story 14.3: Content/CMS registry for Radar and Workspace content
+
+As a Missa platform operator,
+I want one registry for Radar opportunities, claimed listings, and organization open calls,
+So that I can understand what content exists, its lifecycle, and where its source of truth lives (FR61).
+
+**Acceptance Criteria:**
+
+**Given** current Radar opportunities and Workspace open calls
+**When** the operator opens `/admin/content`
+**Then** the registry shows content type, title, organization, lifecycle status, source/maturity, and last observed time
+**And** Radar and Workspace records remain visibly distinct; an open call is not relabelled as a canonical Radar opportunity
+**And** each row links to the existing safe management/read surface where one exists
+**And** missing capabilities such as rich editorial drafts, media assets, approvals, revisions, and scheduled publishing are identified as target-schema work rather than simulated controls.
+
+### Story 14.4: Platform product analytics and metric definitions
+
+As a Missa platform operator,
+I want adoption, workflow funnel, Radar quality, and operational trend metrics with definitions,
+So that I can make product decisions from observed data rather than ambiguous counters (FR62).
+
+**Acceptance Criteria:**
+
+**Given** current account, organization, Radar, Workspace, audit, and delivery records
+**When** the operator opens `/admin/analytics`
+**Then** the page shows totals and time-series summaries for active organizations/accounts, open calls, submissions, decisions, acceptance, delivery completion, Radar freshness, and queue health
+**And** each metric includes its grain, calculation, source, and freshness
+**And** the page distinguishes derived runtime analytics from a future event/fact warehouse and does not claim retention, cohort, attribution, revenue-recognition, or experiment metrics that are not persisted
+**And** the data is scoped to platform-admin access and avoids private content payloads.
+
+### Story 14.5: Organization Admin workspace shell and workflow navigation
+
+As an organization admin,
+I want a dedicated workspace shell with Opportunities, Submissions, Reviews, Decisions, Messages, Delivery, Insights, People, and Settings,
+So that running a program feels like an operating system rather than one oversized page (FR63).
+
+**Acceptance Criteria:**
+
+**Given** a member with the relevant organization role
+**When** they enter Workspace
+**Then** the organization scope is explicit and every route enforces the centralized organization access boundary
+**And** existing backend-connected screens are reachable from the approved navigation without changing their contracts
+**And** mobile navigation collapses without page-level horizontal overflow.
+
+### Story 14.6: Messaging, delivery, and workflow automation foundation
+
+As an organization admin,
+I want message history/templates, delivery tracking, and explainable workflow triggers,
+So that decisions can become reliable communications and completed handoffs (FR64–66).
+
+**Acceptance Criteria:**
+
+**Given** an organization with decisions and delivery tasks
+**When** an admin uses Messages or Delivery
+**Then** sent decision emails, delivery tasks, status, owner, due dates, and audit entries are visible in the organization scope
+**And** future templates, threads, replies, scheduled sends, automations, retries, and consent state use explicit durable models and idempotent contracts before UI claims them as supported
+**And** no message body or recipient data is written to generic product analytics.
+
+### Story 14.7: Platform governance, support, billing, and agent-loop operations
+
+As a Missa platform operator,
+I want customer billing, support/incident state, security controls, audit, integrations, and agent-loop traces in one governed plane,
+So that the product can be operated safely as usage grows (FR67–72).
+
+**Acceptance Criteria:**
+
+**Given** platform-admin authorization
+**When** the operator opens governance surfaces
+**Then** billing/provider state, account/security state, integration health, support incidents, and agent runs/handoffs are separated by source and permission
+**And** destructive actions require explicit confirmation, are idempotent, and write append-only audit records
+**And** agent-to-agent execution remains worker/database coordinated, fail-closed on review/publish, and never becomes an unbounded direct autonomous call chain.
+
+---
+
+## Epic 15: Durable Support and Event Foundations *(Current build)*
+
+Closes the first persistence gap behind the Admin Control Plane using tables
+already present in the authoritative migration journal. This epic deliberately
+separates support-case truth, event coordination, external message delivery,
+CRM history, billing ledgers, and agent controls so a convenient admin screen
+cannot imply a capability the backend does not yet own.
+
+### Story 15.1: Durable support cases and issue outbox
+
+As a Missa user and platform operator,
+I want opportunity issue reports to become an audited, trackable support queue,
+So that reported content problems can be triaged without a shadow database.
+
+**Acceptance Criteria:**
+
+**Given** an authenticated user and a database-backed Missa runtime
+**When** the user reports an opportunity issue
+**Then** the validated report is persisted idempotently, audited, and emits a bounded outbox event
+**And** a platform operator can view cases and change only the supported lifecycle status with an idempotency key
+**And** every status transition is append-only audited and emits a status-change event
+**And** missing database tables are shown as unavailable rather than as an empty healthy queue.
+
+### Story 15.2: Durable message-effect ledger and provider delivery history
+
+As a platform operator,
+I want every outbound message intent, attempt, provider response, and final state to be durable,
+So that Messaging & delivery reports actual delivery instead of compatibility audit hints.
+
+**Acceptance Criteria:**
+
+**Given** a message-producing decision, alert, or workflow event
+**When** a provider send is requested
+**Then** the message effect is recorded with tenant, recipient reference, template/version, idempotency key, attempt state, and provider-safe error metadata
+**And** retries and provider webhooks converge on one effect without exposing message bodies in analytics
+**And** the admin and organization surfaces distinguish queued, attempted, accepted, delivered, bounced, failed, and unknown states.
+
+### Story 15.3: Governed CRM, billing, and agent control contracts
+
+As a Missa platform operator,
+I want customer timelines, financial ledgers, and agent replay controls to be governed actions,
+So that support and operations do not mutate compatibility stores or invoke unbounded agent chains.
+
+**Acceptance Criteria:**
+
+**Given** an explicit durable contract for the target domain
+**When** an operator performs a permitted action
+**Then** authorization, idempotency, confirmation, append-only audit, rollback/recovery semantics, and worker ownership are explicit before UI controls ship
+**And** replay, pause, cancel, billing correction, refund, entitlement, and customer-timeline actions fail closed when their target schema is absent.

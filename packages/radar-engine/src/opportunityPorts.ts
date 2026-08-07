@@ -1,4 +1,5 @@
 import type { OpportunityType } from "./domain/types.js";
+import type { OpportunityContent } from "./content/opportunityContent.js";
 
 export type OpportunityRepositorySort =
   | "recommended"
@@ -161,6 +162,7 @@ export interface OpportunityBrowseProjection {
   source: OpportunityRepositorySource;
   personal?: OpportunityRepositoryPersonalState;
   callProfile?: OpportunityCallProfile;
+  content?: OpportunityContent;
 }
 
 export interface OpportunityDetailProjection extends OpportunityBrowseProjection {

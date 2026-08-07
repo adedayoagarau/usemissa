@@ -11,6 +11,7 @@ import type {
   OpportunityRepositoryQuery,
   OpportunityRepositorySource,
   OpportunityCallProfile,
+  OpportunityContent,
 } from "@missa/radar-engine";
 
 export interface SqlQuery {
@@ -60,6 +61,7 @@ interface OpportunityRow extends QueryResultRow {
   tailoring_reasons: unknown;
   created_at: Date | string;
   call_profile: OpportunityCallProfile | null;
+  content: OpportunityContent | null;
   taxonomy: { schemeVersion: number; termIds: string[]; primaryTermIds: string[] } | null;
 }
 
@@ -105,6 +107,17 @@ const CATEGORY_TYPES: Record<string, string[]> = {
 
 const PUBLIC_STATUSES = ["opening-soon", "open", "closing-soon", "deadline-extended"];
 
+// Values provisioned from stdin can carry a trailing newline in Vercel.
+// Normalize feature flags so a valid production configuration cannot silently
+// fall back to legacy taxonomy reads.
+function taxonomyReadsEnabled(): boolean {
+  return process.env.MISSA_TAXONOMY_READS?.trim() === "1";
+}
+
+function contentReadsEnabled(): boolean {
+  return process.env.MISSA_OPPORTUNITY_CONTENT_READS?.trim() === "1";
+}
+
 function encodeCursor(cursor: Cursor): string {
   return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
 }
@@ -125,14 +138,88 @@ function asIso(value: Date | string | null | undefined): string | undefined {
   return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
 }
 
-function baseSelect(context?: OpportunityRepositoryContext): string {
-  const taxonomySelect = process.env.MISSA_TAXONOMY_READS === "1"
+function browseSummary(value: string | null | undefined, max = 300): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.trim();
+  if (!normalized) return undefined;
+  return normalized.length <= max ? normalized : `${normalized.slice(0, max - 1).trimEnd()}…`;
+}
+
+function boundedSlug(value: string | null | undefined, fallback: string): string {
+  const normalized = value?.trim() ?? "";
+  if (!normalized) return fallback;
+  if (normalized.length <= 160) return normalized;
+  return normalized.slice(0, 160).replace(/[-\s]+$/u, "") || fallback;
+}
+
+function baseSelect(context?: OpportunityRepositoryContext, taxonomyReads = taxonomyReadsEnabled()): string {
+  const taxonomySelect = taxonomyReads
     ? `coalesce((select jsonb_build_object(
         'schemeVersion', coalesce((select max(version) from taxonomy_schemes where status in ('active', 'draft')), 1),
         'termIds', coalesce(jsonb_agg(ott.term_id order by ott.term_id), '[]'::jsonb),
         'primaryTermIds', coalesce(jsonb_agg(ott.term_id) filter (where ott.primary), '[]'::jsonb)
       ) from opportunity_taxonomy_terms ott where ott.opportunity_id = o.id and ott.certainty <> 'rejected'), jsonb_build_object('schemeVersion', 1, 'termIds', '[]'::jsonb, 'primaryTermIds', '[]'::jsonb)) as taxonomy,`
     : `jsonb_build_object('schemeVersion', 1, 'termIds', '[]'::jsonb, 'primaryTermIds', '[]'::jsonb) as taxonomy,`;
+  const contentSelect = contentReadsEnabled()
+    ? `intelligence.content as content,`
+    : `null::jsonb as content,`;
+  const tailoringSelect = taxonomyReads && context?.accountId
+    ? `coalesce((
+        select jsonb_agg(reasons.reason order by reasons.priority, reasons.weight desc, reasons.label asc)
+        from (
+          select 0 as priority, preference.weight, preference_term.preferred_label as label,
+            jsonb_build_object(
+              'code', case when preference_term.facet_id = 'genre' then 'genre' else 'discipline' end,
+              'label', case when preference.preference = 'prefer'
+                then 'Matches your preferred practice: ' || preference_term.preferred_label
+                else 'Matches your practice: ' || preference_term.preferred_label end
+            ) as reason
+          from account_taxonomy_preferences preference
+          join taxonomy_terms preference_term on preference_term.id = preference.term_id
+          where preference.account_id = $ACCOUNT_ID
+            and preference.preference in ('include', 'prefer')
+            and exists (
+              with recursive expanded(term_id) as (
+                select preference.term_id
+                union
+                select relation.subject_term_id
+                from taxonomy_term_relations relation
+                join expanded on relation.object_term_id = expanded.term_id
+                where relation.relation_type = 'broader'
+              )
+              select 1
+              from expanded
+              join opportunity_taxonomy_terms assignment on assignment.term_id = expanded.term_id
+              where assignment.opportunity_id = o.id and assignment.certainty <> 'rejected'
+            )
+          union all
+          select 1 as priority, 0 as weight, work_term.preferred_label as label,
+            jsonb_build_object(
+              'code', 'work',
+              'label', 'Matches your Work: ' || work_term.preferred_label
+            ) as reason
+          from radar_accounts work_account
+          join radar_library_works library_work on library_work.user_id = work_account.data->>'userId'
+          cross join lateral jsonb_array_elements(coalesce(library_work.data->'taxonomyAssignments', '[]'::jsonb)) work_assignment
+          join taxonomy_terms work_term on work_term.id = work_assignment.value->>'termId'
+          where work_account.id = $ACCOUNT_ID
+            and exists (
+              with recursive expanded(term_id) as (
+                select work_term.id
+                union
+                select relation.subject_term_id
+                from taxonomy_term_relations relation
+                join expanded on relation.object_term_id = expanded.term_id
+                where relation.relation_type = 'broader'
+              )
+              select 1
+              from expanded
+              join opportunity_taxonomy_terms assignment on assignment.term_id = expanded.term_id
+              where assignment.opportunity_id = o.id and assignment.certainty <> 'rejected'
+            )
+        ) reasons
+      ), '[]'::jsonb) as tailoring_reasons,`
+    : `'[]'::jsonb as tailoring_reasons,`;
   const personal = context?.accountId
     ? `
       exists (
@@ -186,8 +273,9 @@ function baseSelect(context?: OpportunityRepositoryContext): string {
     o.open_date::text as open_date,
     o.simultaneous_allowed,
     o.guidelines_url,
+    ${contentSelect}
     call_profile.profile as call_profile,
-    '[]'::jsonb as tailoring_reasons,
+    ${tailoringSelect}
     o.created_at,
     count(*) over() as total_count
   `;
@@ -195,6 +283,16 @@ function baseSelect(context?: OpportunityRepositoryContext): string {
 
 function baseFrom(context?: OpportunityRepositoryContext): string {
   const accountPlaceholder = context?.accountId ? "" : "";
+  const contentJoin = contentReadsEnabled()
+    ? `
+    left join lateral (
+      select c.content
+      from opportunity_contents c
+      where c.opportunity_id = o.id and c.review_status = 'approved'
+      order by c.reviewed_at desc nulls last, c.updated_at desc
+      limit 1
+    ) intelligence on true`
+    : "";
   return `
     from opportunities o
     join opportunity_sources source on source.id = o.source_id
@@ -250,6 +348,7 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
       where p.opportunity_id = o.id
       limit 1
     ) call_profile on true
+    ${contentJoin}
     ${accountPlaceholder}
   `;
 }
@@ -270,6 +369,7 @@ function buildOrder(sort: OpportunityRepositoryQuery["sort"]): string {
     case "recently-added":
       return "o.created_at desc, o.id asc";
     case "recommended":
+      return "case when evidence.verified_until > now() then 0 else 1 end, o.deadline_date asc nulls last, o.processing_succeeded_at desc nulls last, o.id asc";
     case "soonest-deadline":
     default:
       return "o.deadline_date asc nulls last, o.id asc";
@@ -322,7 +422,9 @@ function addCursorCondition(
 export function buildOpportunityBrowseQuery(
   query: OpportunityRepositoryQuery,
   context?: OpportunityRepositoryContext,
+  options: { taxonomyReads?: boolean } = {},
 ): SqlQuery {
+  const taxonomyReads = options.taxonomyReads ?? taxonomyReadsEnabled();
   const values: unknown[] = [];
   const conditions: string[] = [
     "o.publication_state = 'published'",
@@ -335,20 +437,32 @@ export function buildOpportunityBrowseQuery(
   if (query.disciplines?.length) addCondition(conditions, values, "o.discipline = any($VALUE::text[])", query.disciplines);
   if (query.genres?.length) addCondition(conditions, values, "o.genres && $VALUE::text[]", query.genres);
   if (query.taxonomyTermIds?.length) {
-    if (process.env.MISSA_TAXONOMY_READS === "1") {
-      if (query.taxonomyIncludeDescendants) {
-        addCondition(conditions, values, `exists (
-          with recursive requested(term_id) as (select unnest($VALUE::text[])), descendants(term_id) as (
-            select term_id from requested
+    if (taxonomyReads) {
+      const taxonomyPredicate = query.taxonomyIncludeDescendants
+        ? `with recursive requested(term_id) as (select unnest($VALUE::text[])), expanded(root_id, term_id) as (
+            select term_id, term_id from requested
             union
-            select relation.subject_term_id from taxonomy_term_relations relation join descendants on relation.object_term_id = descendants.term_id where relation.relation_type = 'broader'
+            select expanded.root_id, relation.subject_term_id
+            from taxonomy_term_relations relation
+            join expanded on relation.object_term_id = expanded.term_id
+            where relation.relation_type = 'broader'
           )
-          select 1 from opportunity_taxonomy_terms taxonomy_filter join descendants on descendants.term_id = taxonomy_filter.term_id
-          where taxonomy_filter.opportunity_id = o.id and taxonomy_filter.certainty <> 'rejected'
-        )`, query.taxonomyTermIds);
-      } else {
-        addCondition(conditions, values, "exists (select 1 from opportunity_taxonomy_terms taxonomy_filter where taxonomy_filter.opportunity_id = o.id and taxonomy_filter.term_id = any($VALUE::text[]) and taxonomy_filter.certainty <> 'rejected')", query.taxonomyTermIds);
-      }
+          select 1 from requested root
+          where not exists (
+            select 1 from expanded
+            join opportunity_taxonomy_terms taxonomy_filter on taxonomy_filter.term_id = expanded.term_id
+            where expanded.root_id = root.term_id
+              and taxonomy_filter.opportunity_id = o.id
+              and taxonomy_filter.certainty <> 'rejected'
+          )`
+        : `select 1 from unnest($VALUE::text[]) requested(term_id)
+          where not exists (
+            select 1 from opportunity_taxonomy_terms taxonomy_filter
+            where taxonomy_filter.opportunity_id = o.id
+              and taxonomy_filter.term_id = requested.term_id
+              and taxonomy_filter.certainty <> 'rejected'
+          )`;
+      addCondition(conditions, values, `not exists (${taxonomyPredicate})`, query.taxonomyTermIds);
     } else {
       conditions.push("false");
     }
@@ -371,7 +485,24 @@ export function buildOpportunityBrowseQuery(
     conditions.push("evidence.verified_until is not null and evidence.verified_until > now()");
   }
   if (query.query) {
-    addCondition(conditions, values, "o.search_document ilike $VALUE", `%${query.query}%`);
+    const searchValue = `%${query.query}%`;
+    const taxonomySearch = taxonomyReads
+      ? ` or exists (
+          select 1
+          from opportunity_taxonomy_terms search_taxonomy
+          join taxonomy_terms search_term on search_term.id = search_taxonomy.term_id
+          where search_taxonomy.opportunity_id = o.id
+            and search_taxonomy.certainty <> 'rejected'
+            and (
+              search_term.preferred_label ilike $VALUE
+              or exists (
+                select 1 from taxonomy_term_labels search_label
+                where search_label.term_id = search_term.id and search_label.label ilike $VALUE
+              )
+            )
+        )`
+      : "";
+    addCondition(conditions, values, `(o.search_document ilike $VALUE${taxonomySearch})`, searchValue);
   }
   addCursorCondition(conditions, values, query);
 
@@ -380,9 +511,32 @@ export function buildOpportunityBrowseQuery(
   if (accountValue) {
     values.push(accountId);
   }
+  if (taxonomyReads && accountValue) {
+    conditions.push(`not exists (
+      select 1
+      from account_taxonomy_preferences excluded_preference
+      join taxonomy_terms excluded_term on excluded_term.id = excluded_preference.term_id
+      where excluded_preference.account_id = ${accountValue}
+        and excluded_preference.preference = 'exclude'
+        and exists (
+          with recursive expanded(term_id) as (
+            select excluded_term.id
+            union
+            select relation.subject_term_id
+            from taxonomy_term_relations relation
+            join expanded on relation.object_term_id = expanded.term_id
+            where relation.relation_type = 'broader'
+          )
+          select 1
+          from expanded
+          join opportunity_taxonomy_terms assignment on assignment.term_id = expanded.term_id
+          where assignment.opportunity_id = o.id and assignment.certainty <> 'rejected'
+        )
+    )`);
+  }
 
   const text = `
-    select ${baseSelect(context).replaceAll("$ACCOUNT_ID", accountValue ?? "null")}
+    select ${baseSelect(context, taxonomyReads).replaceAll("$ACCOUNT_ID", accountValue ?? "null")}
     ${baseFrom(context)}
     where ${conditions.join(" and ")}
     order by ${buildOrder(query.sort)}
@@ -393,9 +547,20 @@ export function buildOpportunityBrowseQuery(
 }
 
 function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
+  const tailoringReasons = Array.isArray(row.tailoring_reasons)
+    ? row.tailoring_reasons.flatMap((value) => {
+        if (!value || typeof value !== "object") return [];
+        const item = value as { code?: unknown; label?: unknown };
+        if (typeof item.label !== "string" || !item.label.trim()) return [];
+        return [{
+          code: item.code === "genre" ? "genre" as const : item.code === "work" ? "work" as const : "discipline" as const,
+          label: item.label.trim().slice(0, 160),
+        }];
+      }).slice(0, 4)
+    : [];
   return {
     id: row.id,
-    slug: row.slug,
+    slug: boundedSlug(row.slug, row.id),
     createdAt: asIso(row.created_at),
     title: row.title,
     organizationId: row.organization_id ?? undefined,
@@ -421,7 +586,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
       currency: row.fee_currency ?? undefined,
       raw: row.fee_raw ?? undefined,
     },
-    prize: row.prize ?? undefined,
+    prize: browseSummary(row.prize),
     location: row.location ?? undefined,
     simultaneousAllowed: row.simultaneous_allowed ?? undefined,
     submissionAvailable: row.submission_state === "available" && Boolean(row.submission_url),
@@ -437,8 +602,9 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     personal: {
       tracked: row.tracked,
       followingOrganization: row.following_organization,
-      tailoringReasons: [],
+      tailoringReasons,
     },
+    ...(row.content ? { content: row.content } : {}),
     ...(row.call_profile ? { callProfile: row.call_profile } : {}),
   };
 }
@@ -453,10 +619,30 @@ function cursorFor(row: OpportunityBrowseProjection, sort: OpportunityRepository
 }
 
 export class PostgresOpportunityRepository implements OpportunityRepository {
+  private taxonomyReadsReady: boolean | undefined;
+
   constructor(private readonly pool: Pick<Pool, "query">) {}
 
+  private async taxonomyReadsAvailable(): Promise<boolean> {
+    if (!taxonomyReadsEnabled()) return false;
+    if (this.taxonomyReadsReady !== undefined) return this.taxonomyReadsReady;
+    try {
+      const result = await this.pool.query<{ ready: boolean }>(
+        `select count(*) = 6 as ready
+         from information_schema.tables
+         where table_schema = current_schema()
+           and table_name = any($1::text[])`,
+        [["taxonomy_schemes", "taxonomy_terms", "taxonomy_term_relations", "opportunity_taxonomy_terms", "account_taxonomy_preferences", "radar_library_works"]],
+      );
+      this.taxonomyReadsReady = result.rows[0]?.ready === true;
+    } catch {
+      this.taxonomyReadsReady = false;
+    }
+    return this.taxonomyReadsReady;
+  }
+
   async browse(query: OpportunityRepositoryQuery, context?: OpportunityRepositoryContext): Promise<OpportunityBrowsePage> {
-    const built = buildOpportunityBrowseQuery(query, context);
+    const built = buildOpportunityBrowseQuery(query, context, { taxonomyReads: await this.taxonomyReadsAvailable() });
     const result = await this.pool.query<OpportunityRow>(built.text, built.values);
     const rows = result.rows;
     const hasNext = rows.length > query.limit;
@@ -479,7 +665,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       genres: [],
       locations: [],
     };
-    const built = buildOpportunityBrowseQuery(query, context);
+    const built = buildOpportunityBrowseQuery(query, context, { taxonomyReads: await this.taxonomyReadsAvailable() });
     // The browse query's final value is the page-size sentinel. Detail lookup
     // replaces that LIMIT with a literal, so do not send an unused parameter
     // to PostgreSQL (which rejects untyped, unused bind parameters).
@@ -487,7 +673,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     const idPlaceholder = `$${detailValues.length + 1}`;
     const mainWhereIndex = built.text.lastIndexOf("\n    where ");
     const detailText = mainWhereIndex >= 0
-      ? `${built.text.slice(0, mainWhereIndex)}\n    where o.id = ${idPlaceholder} and ${built.text.slice(mainWhereIndex + "\n    where ".length)}`
+      ? `${built.text.slice(0, mainWhereIndex)}\n    where (o.id = ${idPlaceholder} or o.slug = ${idPlaceholder}) and ${built.text.slice(mainWhereIndex + "\n    where ".length)}`
       : built.text;
     const detailResult = await this.pool.query<OpportunityRow>(
       detailText.replace(/limit \$\d+/, "limit 1"),
@@ -496,22 +682,23 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     const row = detailResult.rows[0];
     if (!row) return null;
 
+    const canonicalId = row.id;
     const [eligibility, materials, changes, related] = await Promise.all([
       this.pool.query<EligibilityRow>(
         "select rule_key, description, value, certainty from opportunity_eligibility_rules where opportunity_id = $1 order by sort_order asc",
-        [opportunityId],
+        [canonicalId],
       ),
       this.pool.query<MaterialRow>(
         "select label, description, required, \"limit\" from opportunity_required_materials where opportunity_id = $1 order by sort_order asc",
-        [opportunityId],
+        [canonicalId],
       ),
       this.pool.query<ChangeRow>(
         "select kind, created_at, old_value, new_value from opportunity_changes where opportunity_id = $1 order by created_at desc limit 32",
-        [opportunityId],
+        [canonicalId],
       ),
       this.pool.query<RelatedRow>(
         "select id from opportunities where organization_id = $1 and id <> $2 and publication_state = 'published' and status in ('opening-soon', 'open', 'closing-soon', 'deadline-extended') order by deadline_date asc nulls last, id asc limit 24",
-        [row.organization_id, opportunityId],
+      [row.organization_id, canonicalId],
       ),
     ]);
 

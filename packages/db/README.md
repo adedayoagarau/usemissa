@@ -56,5 +56,29 @@ Run the seed twice on that same disposable database, compare row counts and fore
 record the rollback (drop the rehearsal branch or restore its snapshot). Production remains on
 compatibility reads/writes until this rehearsal and dual-read parity are signed off.
 
+## Worker telemetry
+
+`migrations/0013_radar_agent_heartbeat.sql` adds the nullable heartbeat cursor
+used by Railway worker runs. The adapter also applies the same additive
+`alter table ... add column if not exists` guard when a worker boots, so an
+already-created target schema can receive the column without a destructive
+cutover. Rehearse and register the migration in the intended environment's
+migration journal before treating it as the sole deployment path.
+
 The seed is idempotent and leaves the scheme in `draft`; publishing the taxonomy requires a
 separate editorial/provenance review.
+
+## Opportunity Intelligence projection
+
+`migrations/0016_opportunity_intelligence.sql` adds the source-linked content projection and
+build/review decision queues. It is additive: canonical opportunity facts remain authoritative,
+and only reviewed content can be exposed. Rehearse it against a production-shaped disposable
+Neon branch before applying it to the live journal, then enable
+`MISSA_OPPORTUNITY_CONTENT_READS=1` only after the new tables and foreign keys are verified.
+
+## Read-only chatbot baseline
+
+`migrations/0017_chat_baseline.sql` and the `chat_*` tables in `src/schema.ts` describe the
+first durable, read-only Passport assistant slice. The adapter deliberately does not run DDL
+from a web request. Reconcile this migration with the live journal and rehearse it on a
+disposable database before enabling `/api/me/chat` in a shared environment.

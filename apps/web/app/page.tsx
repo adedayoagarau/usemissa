@@ -19,7 +19,15 @@ import type { OpportunityBrowseProjection } from '@missa/radar-engine';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
 import { MissaWordmark } from '@/components/missa-wordmark';
+import { opportunityFreshness } from '@/lib/opportunityFreshness';
 import styles from './home.module.css';
+import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
+
+export const metadata = pageMetadata({
+  title: 'Missa — Submission opportunities for creators',
+  description: 'Find grants, magazines, residencies, fellowships, awards, and other submission opportunities with source context and visible deadlines.',
+  path: '/',
+});
 
 const opportunityImages = [
   '/media/home/opportunity-architecture.webp',
@@ -27,8 +35,8 @@ const opportunityImages = [
   '/media/home/opportunity-dance.webp',
 ];
 
-function browseHref(isSignedIn: boolean, selectedId?: string) {
-  if (!isSignedIn && selectedId) return `/login?next=${encodeURIComponent(`/opportunities?selected=${selectedId}`)}`;
+function browseHref(isSignedIn: boolean, selectedId?: string, selectedSlug?: string) {
+  if (!isSignedIn && selectedId) return `/discover/opportunities/${selectedSlug ?? selectedId}`;
   const path = isSignedIn ? '/opportunities' : '/opportunities-preview';
   return selectedId ? path + '?selected=' + encodeURIComponent(selectedId) : path;
 }
@@ -79,8 +87,8 @@ function feeLabel(opportunity: OpportunityBrowseProjection) {
 
 function sourceLabel(opportunity: OpportunityBrowseProjection) {
   if (opportunity.organizationName) return opportunity.organizationName;
-  if (opportunity.source.organizationConfirmed) return 'Verified organization';
-  return 'Source details available';
+  if (opportunity.source.organizationConfirmed) return 'Organization confirmed';
+  return opportunityFreshness(opportunity.source.processingSucceededAt).label;
 }
 
 function fitReasons(opportunity: OpportunityBrowseProjection | undefined, signedIn: boolean) {
@@ -130,6 +138,18 @@ export default async function HomePage() {
 
   return (
     <main className={styles.home} id="main-content">
+      <JsonLd data={{
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'Missa',
+        url: absoluteUrl('/'),
+        description: 'Submission opportunities tailored for creators.',
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${absoluteUrl('/opportunities-preview')}?q={search_term_string}`,
+          'query-input': 'required name=search_term_string',
+        },
+      }} />
       <a className={styles.skipLink} href="#open-opportunities">
         Skip to open opportunities
       </a>
@@ -231,7 +251,7 @@ export default async function HomePage() {
                     <dd>{feeLabel(featuredOpportunity)}</dd>
                   </div>
                 </dl>
-                <Link href={browseHref(isSignedIn, featuredOpportunity.id)}>
+                <Link href={browseHref(isSignedIn, featuredOpportunity.id, featuredOpportunity.slug)}>
                   View opportunity <ArrowRight aria-hidden="true" size={14} />
                 </Link>
               </>
@@ -289,7 +309,7 @@ export default async function HomePage() {
                       <dd>{feeLabel(opportunity)}</dd>
                     </div>
                   </dl>
-                  <Link href={browseHref(isSignedIn, opportunity.id)}>
+                  <Link href={browseHref(isSignedIn, opportunity.id, opportunity.slug)}>
                     View opportunity <ArrowRight aria-hidden="true" size={14} strokeWidth={1.8} />
                   </Link>
                 </div>
@@ -302,6 +322,33 @@ export default async function HomePage() {
             <Link className={styles.secondaryButton} href={primaryHref}>Browse the opportunity library</Link>
           </div>
         )}
+      </section>
+
+      <section className={styles.discoverySection} aria-labelledby="discovery-heading">
+        <div className={styles.sectionHeading}>
+          <div>
+            <p className={styles.sectionEyebrow}>Discover</p>
+            <h2 id="discovery-heading">Start with what you make.</h2>
+          </div>
+          <Link className={styles.inlineLink} href="/guides">
+            Read the guides <ArrowRight aria-hidden="true" size={15} strokeWidth={1.8} />
+          </Link>
+        </div>
+        <div className={styles.discoveryGrid}>
+          {[
+            ['Contests', '/discover/contests', 'Prizes, calls for entries, and deadlines.'],
+            ['Magazines', '/discover/magazines', 'Publications and current reading periods.'],
+            ['Poetry', '/discover/poetry', 'Poetry-related calls and submission paths.'],
+            ['Grants', '/discover/grants', 'Funding opportunities for creative work.'],
+            ['Residencies', '/discover/residencies', 'Places and time to develop new work.'],
+            ['Fellowships', '/discover/fellowships', 'Support for practice and research.'],
+          ].map(([label, href, copy]) => (
+            <Link key={href} href={href} className={styles.discoveryCard}>
+              <span className={styles.discoveryCardTitle}>{label}<ArrowRight aria-hidden="true" size={15} /></span>
+              <span className={styles.discoveryCardCopy}>{copy}</span>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className={styles.profileStory} id="how-it-works" aria-labelledby="profile-story-heading">
@@ -395,7 +442,7 @@ export default async function HomePage() {
               <span>Resources</span>
             </div>
             <div className={styles.fitWhy}>
-              <p>Why this {featuredOpportunity?.personal?.tailoringReasons.length ? 'fits' : 'could fit'}</p>
+              <p>Why this may fit</p>
               <span>
                 {featuredOpportunity?.personal?.tailoringReasons.length
                   ? 'Missa has matched this opportunity to details you added to your profile.'
@@ -408,7 +455,7 @@ export default async function HomePage() {
               </ul>
             </div>
             <div className={styles.fitActions}>
-              <Link className={styles.primaryButton} href={featuredOpportunity ? browseHref(isSignedIn, featuredOpportunity.id) : profileHref(isSignedIn)}>
+              <Link className={styles.primaryButton} href={featuredOpportunity ? browseHref(isSignedIn, featuredOpportunity.id, featuredOpportunity.slug) : profileHref(isSignedIn)}>
                 {featuredOpportunity ? 'View opportunity' : 'Build your profile'}
               </Link>
               {featuredOpportunity && <Link href={primaryHref}>See all details <ArrowRight aria-hidden="true" size={14} /></Link>}
@@ -464,6 +511,7 @@ export default async function HomePage() {
           <div>
             <p>For creators</p>
             <Link href={primaryHref}>Find opportunities</Link>
+            <Link href="/guides">Opportunity guides</Link>
             <a href="#how-it-works">How it works</a>
             <Link href={profileHref(isSignedIn)}>Profile</Link>
             <Link href="/login">Help center</Link>

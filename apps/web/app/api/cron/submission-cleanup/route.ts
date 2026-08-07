@@ -4,7 +4,7 @@ import { getWorkspaceEngine, persistWorkspace } from '@/lib/workspaceEngine';
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 });
+  if (!secret) return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 503 });
   const authorized = request.headers.get('authorization') === `Bearer ${secret}` || new URL(request.url).searchParams.get('secret') === secret;
   if (!authorized) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const workspace = await getWorkspaceEngine();

@@ -38,8 +38,13 @@ export interface SessionAccount {
  * (redirect, 401 JSON, etc.), this helper never throws for "not logged in". */
 export async function getSessionAccount(cookieHeader: string | null): Promise<SessionAccount | undefined> {
   if (!cookieHeader) return undefined;
-  const token = parseCookie(cookieHeader, SESSION_COOKIE);
-  return getSessionAccountFromToken(token);
+  try {
+    const token = parseCookie(cookieHeader, SESSION_COOKIE);
+    return getSessionAccountFromToken(token);
+  } catch {
+    // Malformed cookies and missing verification configuration fail closed.
+    return undefined;
+  }
 }
 
 /** Same as getSessionAccount, but takes the raw session-cookie token value
@@ -47,15 +52,21 @@ export async function getSessionAccount(cookieHeader: string | null): Promise<Se
  * (which exposes .get(name).value, not a raw Cookie header string). */
 export async function getSessionAccountFromToken(token: string | undefined): Promise<SessionAccount | undefined> {
   if (!token) return undefined;
+  try {
+    const payload = verifySessionToken(token, sessionSecret(), new Date());
+    if (!payload) return undefined;
 
-  const payload = verifySessionToken(token, sessionSecret(), new Date());
-  if (!payload) return undefined;
+    const engine = await getEngine();
+    const account = engine.store.accounts.get(payload.accountId);
+    if (!account || account.active === false) return undefined;
 
-  const engine = await getEngine();
-  const account = engine.store.accounts.get(payload.accountId);
-  if (!account) return undefined;
-
-  return { account, memberships: membershipsFor(engine.store, account.id) };
+    return { account, memberships: membershipsFor(engine.store, account.id) };
+  } catch {
+    // Session verification is an authorization boundary. Do not turn a bad
+    // token or unavailable verification configuration into an authenticated
+    // request or an information-bearing error response.
+    return undefined;
+  }
 }
 
 /** Issues a new signed session token for an account -- used by the (minimal,

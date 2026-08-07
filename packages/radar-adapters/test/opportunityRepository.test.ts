@@ -38,6 +38,86 @@ test("browse SQL is parameterized and keeps public publication boundaries", () =
   assert.equal(built.values.at(-1), 2);
 });
 
+test("canonical taxonomy filters require every selected hierarchy root", () => {
+  const previous = process.env.MISSA_TAXONOMY_READS;
+  process.env.MISSA_TAXONOMY_READS = "1";
+  try {
+    const built = buildOpportunityBrowseQuery({
+      ...baseQuery,
+      taxonomyTermIds: ["taxterm_pf-writing-and-literature", "taxterm_disc-poetry"],
+      taxonomyIncludeDescendants: true,
+    });
+
+    assert.match(built.text, /with recursive requested\(term_id\)/);
+    assert.match(built.text, /select 1 from expanded/);
+    assert.deepEqual(built.values[1], ["taxterm_pf-writing-and-literature", "taxterm_disc-poetry"]);
+  } finally {
+    if (previous === undefined) delete process.env.MISSA_TAXONOMY_READS;
+    else process.env.MISSA_TAXONOMY_READS = previous;
+  }
+});
+
+test("authenticated taxonomy reads explain matches from explicit profile preferences", () => {
+  const previous = process.env.MISSA_TAXONOMY_READS;
+  process.env.MISSA_TAXONOMY_READS = "1";
+  try {
+    const built = buildOpportunityBrowseQuery(baseQuery, { accountId: "acct_0001" });
+    assert.match(built.text, /account_taxonomy_preferences/);
+    assert.match(built.text, /radar_library_works/);
+    assert.match(built.text, /excluded_preference\.preference = 'exclude'/);
+    assert.match(built.text, /Matches your preferred practice/);
+    assert.match(built.text, /with recursive expanded\(term_id\)/);
+  } finally {
+    if (previous === undefined) delete process.env.MISSA_TAXONOMY_READS;
+    else process.env.MISSA_TAXONOMY_READS = previous;
+  }
+});
+
+test("repository disables taxonomy SQL when the additive schema is not ready", async () => {
+  const previous = process.env.MISSA_TAXONOMY_READS;
+  process.env.MISSA_TAXONOMY_READS = "1";
+  const calls: string[] = [];
+  try {
+    const pool = {
+      async query(text: string) {
+        calls.push(text);
+        if (text.includes("information_schema.tables")) return { rows: [{ ready: false }] };
+        return { rows: [] };
+      },
+    } as never;
+    const repository = new PostgresOpportunityRepository(pool);
+    await repository.browse({
+      ...baseQuery,
+      taxonomyTermIds: ["taxterm_pf-writing-and-literature"],
+    }, { accountId: "acct_0001" });
+    assert.equal(calls.length, 2);
+    assert.match(calls[1] ?? "", /false/);
+    assert.doesNotMatch(calls[1] ?? "", /taxonomy_terms/);
+  } finally {
+    if (previous === undefined) delete process.env.MISSA_TAXONOMY_READS;
+    else process.env.MISSA_TAXONOMY_READS = previous;
+  }
+});
+
+test("opportunity content reads are fail-closed and expose approved content only", () => {
+  const previous = process.env.MISSA_OPPORTUNITY_CONTENT_READS;
+  try {
+    delete process.env.MISSA_OPPORTUNITY_CONTENT_READS;
+    const legacy = buildOpportunityBrowseQuery(baseQuery);
+    assert.doesNotMatch(legacy.text, /opportunity_contents/);
+    assert.match(legacy.text, /null::jsonb as content/);
+
+    process.env.MISSA_OPPORTUNITY_CONTENT_READS = "1";
+    const enabled = buildOpportunityBrowseQuery(baseQuery);
+    assert.match(enabled.text, /opportunity_contents/);
+    assert.match(enabled.text, /c\.review_status = 'approved'/);
+    assert.match(enabled.text, /intelligence\.content as content/);
+  } finally {
+    if (previous === undefined) delete process.env.MISSA_OPPORTUNITY_CONTENT_READS;
+    else process.env.MISSA_OPPORTUNITY_CONTENT_READS = previous;
+  }
+});
+
 test("keyset cursor allocates independent key and id parameters", () => {
   const first = buildOpportunityBrowseQuery(baseQuery);
   const cursor = Buffer.from(
@@ -58,7 +138,7 @@ test("repository maps rows and returns a continuation cursor", async () => {
     {
     id: "opp_0001",
       total_count: "2",
-      slug: "poetry-call",
+      slug: "a".repeat(240),
       title: "Poetry Call",
       organization_id: "org_0001",
       organization_name: "Harbor Review",
@@ -94,7 +174,10 @@ test("repository maps rows and returns a continuation cursor", async () => {
       open_date: null,
       simultaneous_allowed: true,
       guidelines_url: "https://harbor.example/guidelines",
-      tailoring_reasons: [],
+      tailoring_reasons: [
+        { code: "discipline", label: "Matches your practice: Poetry" },
+        { code: "work", label: "Matches your Work: Poetry" },
+      ],
       created_at: "2026-07-20T00:00:00.000Z",
     },
     {
@@ -150,7 +233,12 @@ test("repository maps rows and returns a continuation cursor", async () => {
 
   assert.equal(result.items.length, 1);
   assert.equal(result.total, 2);
+  assert.equal(result.items[0]?.slug.length, 160);
   assert.equal(result.items[0]?.submissionAvailable, true);
+  assert.deepEqual(result.items[0]?.personal?.tailoringReasons, [
+    { code: "discipline", label: "Matches your practice: Poetry" },
+    { code: "work", label: "Matches your Work: Poetry" },
+  ]);
   assert.ok(result.nextCursor);
 });
 
@@ -164,6 +252,6 @@ test("detail lookup removes the browse limit bind parameter", async () => {
   } as never;
   const repository = new PostgresOpportunityRepository(pool);
   assert.equal(await repository.getById("opp_missing"), null);
-  assert.match(calls[0]?.text ?? "", /where o\.id = \$1/);
+  assert.match(calls[0]?.text ?? "", /where \(o\.id = \$1 or o\.slug = \$1\)/);
   assert.deepEqual(calls[0]?.values, ["opp_missing"]);
 });

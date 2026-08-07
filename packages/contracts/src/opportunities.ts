@@ -79,6 +79,7 @@ export const opportunityBrowseQuerySchema = z.object({
   disciplines: z.array(z.string().trim().min(1).max(80)).max(16).default([]),
   genres: z.array(z.string().trim().min(1).max(80)).max(32).default([]),
   taxonomyTermIds: z.array(resourceIdSchema).max(32).default([]),
+  taxonomySchemeVersion: z.number().int().min(1).default(1),
   taxonomyIncludeDescendants: z.boolean().default(false),
   locations: z.array(z.string().trim().min(1).max(120)).max(32).default([]),
   feeStatus: feeStatusSchema.optional(),
@@ -122,6 +123,7 @@ export const opportunityTailoringReasonSchema = z.object({
     "type",
     "discipline",
     "genre",
+    "work",
     "location",
     "fee",
     "deadline",
@@ -231,6 +233,31 @@ export const opportunityCallProfileSchema = z.object({
   windows: z.array(opportunityCallWindowSchema).max(32),
 });
 
+export const opportunityContentFactSchema = z.object({
+  label: z.string().trim().min(1).max(80),
+  value: z.string().trim().min(1).max(320),
+  sourceUrl: httpUrlSchema,
+  certainty: z.enum(["confirmed", "unknown"]),
+});
+
+export const opportunityContentSchema = z.object({
+  builderVersion: z.string().trim().min(1).max(80),
+  summary: z.string().trim().min(40).max(600),
+  highlights: z.array(opportunityContentFactSchema).min(2).max(8),
+  preparation: z.array(z.string().trim().min(1).max(240)).min(1).max(32),
+  unknowns: z.array(z.string().trim().min(1).max(240)).max(16),
+  nextAction: z.string().trim().min(1).max(300),
+  sourceUrl: httpUrlSchema,
+  generatedAt: z.iso.datetime(),
+  review: z.object({
+    status: z.enum(["pending", "approved", "needs-human", "blocked"]),
+    score: z.number().int().min(0).max(100),
+    reasons: z.array(z.string().trim().min(1).max(500)).max(16),
+    checks: z.record(z.string(), z.unknown()),
+    reviewedAt: z.iso.datetime().optional(),
+  }),
+});
+
 const opportunityIdentitySchema = z.object({
   id: resourceIdSchema,
   slug: z.string().trim().min(1).max(160),
@@ -312,6 +339,7 @@ export const opportunityDetailResponseSchema =
     organizationSummary: z.string().trim().max(1000).optional(),
     relatedOpportunityIds: z.array(resourceIdSchema).max(24),
     callProfile: opportunityCallProfileSchema.optional(),
+    content: opportunityContentSchema.optional(),
   });
 
 export const opportunityPreferenceInputSchema = z.object({
@@ -327,13 +355,17 @@ export const opportunityPreferenceInputSchema = z.object({
   simultaneousRequired: z.boolean().default(false),
 });
 
+export const savedSearchCriteriaSchema = opportunityBrowseQuerySchema.omit({
+  cursor: true,
+  limit: true,
+  sort: true,
+}).extend({
+  noFeeOnly: z.boolean().default(false),
+});
+
 export const savedSearchInputSchema = z.object({
   name: z.string().trim().min(1).max(120),
-  criteria: opportunityBrowseQuerySchema.omit({
-    cursor: true,
-    limit: true,
-    sort: true,
-  }),
+  criteria: savedSearchCriteriaSchema,
   includeInDigest: z.boolean().default(false),
 });
 
@@ -402,6 +434,7 @@ export type OpportunityPreferenceInput = z.infer<
   typeof opportunityPreferenceInputSchema
 >;
 export type SavedSearchInput = z.infer<typeof savedSearchInputSchema>;
+export type SavedSearchCriteria = z.infer<typeof savedSearchCriteriaSchema>;
 export type TrackOpportunityInput = z.infer<typeof trackOpportunityInputSchema>;
 export type TrackedStatusInput = z.infer<typeof trackedStatusInputSchema>;
 export type FollowOrganizationInput = z.infer<
@@ -416,3 +449,4 @@ export type OpportunityIssueReportInput = z.infer<
 export type OpportunityCallProfile = z.infer<
   typeof opportunityCallProfileSchema
 >;
+export type OpportunityContent = z.infer<typeof opportunityContentSchema>;

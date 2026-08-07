@@ -1,6 +1,7 @@
 export * from './domain/types.js';
 export * from './ports.js';
 export * from './opportunityPorts.js';
+export * from './content/opportunityContent.js';
 export { DEFAULT_PROFILE_PRIVACY, RadarEngine, ProfilePrivacyValidationError, ProfileValidationError, type TickReport, type RadarStats, type RadarEngineOptions } from './engine.js';
 export { createStore, cloneStore, loadStore, saveStore, changesFor, versionsFor, membershipKey, type RadarStore } from './store/store.js';
 export { LibraryValidationError, libraryForUser, createLibraryWork, updateLibraryWork, deleteLibraryWork, createLibraryFile, deleteLibraryFile, createSavedAnswer, updateSavedAnswer, deleteSavedAnswer } from './library/library.js';

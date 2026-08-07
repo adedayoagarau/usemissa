@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "npm run build --workspace=@missa/contracts --prefix ../.. && npm run build --workspace=@missa/radar-engine --prefix ../.. && npm run build --workspace=@missa/radar-adapters --prefix ../.. && npm run build --workspace=@missa/workspace-engine --prefix ../.. && next build",
+    "build": "npm run build --workspace=@missa/contracts --prefix ../.. && npm run build --workspace=@missa/taxonomy --prefix ../.. && npm run build --workspace=@missa/radar-engine --prefix ../.. && npm run build --workspace=@missa/radar-adapters --prefix ../.. && npm run build --workspace=@missa/workspace-engine --prefix ../.. && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit --incremental false",
@@ -30,6 +30,7 @@
     "lucide-react": "^1.23.0",
     "next": "16.2.12",
     "next-themes": "^0.4.6",
+    "posthog-js": "^1.413.2",
     "react": "19.2.7",
     "react-day-picker": "^10.0.1",
     "react-dom": "19.2.7",

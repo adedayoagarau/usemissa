@@ -13,6 +13,13 @@ import {
 } from "lucide-react";
 import { OrgProductShowcase } from "./showcase";
 import styles from "./org.module.css";
+import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
+
+export const metadata = pageMetadata({
+  title: 'Submission management for organizations',
+  description: 'Publish open calls, receive applications, review together, and send decisions from one clear Missa workspace.',
+  path: '/for-organizations',
+});
 
 const proofPoints = [
   { label: "Publish", copy: "A call your audience can understand", icon: Globe2 },
@@ -55,6 +62,24 @@ function MissaLogo() {
 export default function ForOrganizationsPage() {
   return (
     <main className={styles.page}>
+      <JsonLd data={{
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'Missa',
+        applicationCategory: 'BusinessApplication',
+        operatingSystem: 'Web',
+        description: 'Submission management for organizations running open calls.',
+        url: absoluteUrl('/for-organizations'),
+      }} />
+      <JsonLd data={{
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+        })),
+      }} />
       <header className={styles.header}>
         <Link href="/" aria-label="Missa home" className={styles.logoLink}>
           <MissaLogo />

@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  chatAssistantPayloadSchema,
+  chatPostInputSchema,
   opportunityBrowseQuerySchema,
   opportunityDetailResponseSchema,
+  opportunityContentSchema,
   opportunityPreferenceInputSchema,
   opportunityTailoringReasonSchema,
   organizationMemberMutationSchema,
   resourceIdSchema,
+  savedSearchInputSchema,
   sourceCoverageCellSchema,
   taxonomyAssignmentSetSchema,
 } from "../src/index.js";
@@ -43,6 +47,7 @@ test("browse queries default to safe, bounded public search behavior", () => {
     disciplines: [],
     genres: [],
     taxonomyTermIds: [],
+    taxonomySchemeVersion: 1,
     taxonomyIncludeDescendants: false,
     locations: [],
     openNow: true,
@@ -97,6 +102,25 @@ test("detail contracts distinguish unknown fee and deadline states", () => {
   assert.equal(detail.deadline.kind, "unknown");
 });
 
+test("opportunity intelligence content carries review state and source-linked facts", () => {
+  const content = opportunityContentSchema.parse({
+    builderVersion: "opportunity-brief.v1",
+    summary: "Example Arts is offering an open call for poetry. The current source lists September 1 as the deadline.",
+    highlights: [
+      { label: "Deadline", value: "2026-09-01", sourceUrl: "https://example.com/call", certainty: "confirmed" },
+      { label: "Fee", value: "No fee disclosed", sourceUrl: "https://example.com/call", certainty: "confirmed" },
+    ],
+    preparation: ["Manuscript"],
+    unknowns: ["Rights need confirmation."],
+    nextAction: "Read the official guidelines before preparing your submission.",
+    sourceUrl: "https://example.com/call",
+    generatedAt: "2026-08-06T00:00:00.000Z",
+    review: { status: "approved", score: 100, reasons: ["Source-linked."], checks: { sourcePresent: true }, reviewedAt: "2026-08-06T00:01:00.000Z" },
+  });
+  assert.equal(content.review.status, "approved");
+  assert.equal(content.highlights[0]?.sourceUrl, "https://example.com/call");
+});
+
 test("public source and submission URLs reject non-http protocols", () => {
   assert.throws(() =>
     opportunityDetailResponseSchema.parse({
@@ -135,6 +159,19 @@ test("preference input is separate from manuscript Fit", () => {
   assert.equal(preferences.noFeeOnly, true);
 });
 
+test("saved searches retain bounded canonical terms and no-fee intent", () => {
+  const saved = savedSearchInputSchema.parse({
+    name: "Poetry, no fee",
+    criteria: {
+      taxonomyTermIds: ["taxterm_disc-poetry"],
+      taxonomyIncludeDescendants: true,
+      noFeeOnly: true,
+    },
+  });
+  assert.deepEqual(saved.criteria.taxonomyTermIds, ["taxterm_disc-poetry"]);
+  assert.equal(saved.criteria.noFeeOnly, true);
+});
+
 test("canonical taxonomy assignments are versioned and bounded", () => {
   const assignmentSet = taxonomyAssignmentSetSchema.parse({
     schemeVersion: 1,
@@ -165,4 +202,47 @@ test("source coverage cells separate practice terms from opportunity type and ge
     status: "gap",
   });
   assert.equal(cell.opportunityType, "grant");
+});
+
+test("chat input is bounded and the baseline payload keeps evidence source-linked", () => {
+  const input = chatPostInputSchema.parse({
+    message: " Find free fellowships for writers ",
+  });
+  assert.equal(input.message, "Find free fellowships for writers");
+  assert.throws(() => chatPostInputSchema.parse({ message: "x".repeat(2_001) }));
+
+  const payload = chatAssistantPayloadSchema.parse({
+    intent: "opportunity-search",
+    engine: "deterministic-baseline",
+    answer: "I found one published fellowship.",
+    search: { types: ["fellowship"], feeStatus: "no-fee", sort: "soonest-deadline" },
+    results: [
+      {
+        id: "opp_1",
+        title: "Example Fellowship",
+        status: "open",
+        type: "fellowship",
+        deadline: { kind: "fixed", date: "2026-09-01" },
+        fee: { status: "no-fee" },
+        source: {
+          opportunityId: "opp_1",
+          title: "Example Fellowship",
+          url: "https://example.com/fellowship",
+          checkedAt: "2026-08-06T00:00:00.000Z",
+          organizationConfirmed: true,
+        },
+      },
+    ],
+    evidence: [
+      {
+        opportunityId: "opp_1",
+        title: "Example Fellowship",
+        url: "https://example.com/fellowship",
+        checkedAt: "2026-08-06T00:00:00.000Z",
+        organizationConfirmed: true,
+      },
+    ],
+  });
+  assert.equal(payload.results[0]?.source.opportunityId, "opp_1");
+  assert.throws(() => chatAssistantPayloadSchema.parse({ ...payload, engine: "model" }));
 });

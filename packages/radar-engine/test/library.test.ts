@@ -32,6 +32,18 @@ test('Library validation rejects oversized content and cross-user access', () =>
   assert.throws(() => engine.createLibraryWork('user_1', { title: 'x'.repeat(201) }), /Title/);
 });
 
+test('Library Works retain canonical taxonomy terms for explainable matching', () => {
+  const engine = engineFor();
+  const work = engine.createLibraryWork('user_1', {
+    title: 'Night River',
+    taxonomyTermIds: ['taxterm_disc-poetry'],
+  });
+  assert.deepEqual(work.taxonomyAssignments, [{ termId: 'taxterm_disc-poetry', primary: true, assignmentOrigin: 'user' }]);
+  engine.updateLibraryWork('user_1', work.id, { taxonomyTermIds: [] });
+  assert.equal(engine.library('user_1').works[0]?.taxonomyAssignments, undefined);
+  assert.throws(() => engine.createLibraryWork('user_1', { title: 'Unknown', taxonomyTermIds: ['not-a-canonical-term'] }), /Unknown Work taxonomy term/);
+});
+
 test('Deleting a Library file unlinks it from the owner work', () => {
   const engine = engineFor();
   const file = engine.createLibraryFile('user_1', { filename: 'river.pdf', contentType: 'application/pdf', byteLength: 128, storageKey: 'user_1/river.pdf' });

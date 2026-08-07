@@ -37,6 +37,12 @@ export default async function SubmissionsPage({ searchParams }: { searchParams: 
 
   const filters = await searchParams;
   const organizationId = session.memberships.find((membership) => membership.organizationId === filters.organizationId)?.organizationId ?? session.memberships[0].organizationId;
+  if (filters.organizationId !== organizationId) {
+    const params = new URLSearchParams({ organizationId });
+    if (filters.q) params.set('q', filters.q);
+    if (filters.status) params.set('status', filters.status);
+    redirect(`/submissions?${params.toString()}`);
+  }
   const radarEngine = await getEngine();
   const workspaceEngine = await getWorkspaceEngine();
 

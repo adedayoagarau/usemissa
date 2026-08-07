@@ -29,6 +29,8 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
 
   const requestedOrganizationId = (await searchParams).organizationId;
   const organizationId = session.memberships.find((membership) => membership.organizationId === requestedOrganizationId)?.organizationId ?? session.memberships[0].organizationId;
+  if (requestedOrganizationId !== organizationId) redirect(`/workspace?organizationId=${encodeURIComponent(organizationId)}`);
+  const membership = session.memberships.find((item) => item.organizationId === organizationId) ?? session.memberships[0];
   const radarEngine = await getEngine();
   const org = radarEngine.store.organizations.get(organizationId);
   const radarOpportunities = [...radarEngine.store.opportunities.values()].filter((opportunity) => opportunity.claimedByOrganizationId === organizationId).map((opportunity) => ({ id: opportunity.id, title: opportunity.fields.title }));
@@ -55,10 +57,10 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
       </p>
 
       <div className="mt-6">
-        <OrganizationSeats organizationId={organizationId} canManage={session.memberships[0].role === 'admin' || session.memberships[0].role === 'owner'} />
+        <OrganizationSeats organizationId={organizationId} canManage={membership.role === 'admin' || membership.role === 'owner'} />
       </div>
       <div className="mt-6">
-        <OrganizationBilling organizationId={organizationId} canManage={session.memberships[0].role === 'admin' || session.memberships[0].role === 'owner'} />
+        <OrganizationBilling organizationId={organizationId} canManage={membership.role === 'admin' || membership.role === 'owner'} />
       </div>
 
       <div className="mt-6">

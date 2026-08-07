@@ -1,7 +1,10 @@
 import type { PoolClient } from "pg";
+import { Pool } from "pg";
 import type { TickReport } from "@missa/radar-engine";
 import type { RadarEngine } from "@missa/radar-engine";
 import { createProductionEngine } from "./productionEngine.js";
+import { finishWorkerRun, heartbeatWorkerRun, readWorkerRunLifecycle, startWorkerRun } from "./workerTelemetry.js";
+import { processPlatformAgentControlRequests } from "./platformAdminFoundations.js";
 
 /**
  * Postgres advisory-lock key for the single Radar ingestion lane. Advisory
@@ -25,11 +28,14 @@ export interface RadarWorkerOptions {
   logger?: Pick<Console, "info" | "error" | "warn">;
   /** Optional post-tick work executed before the durable snapshot is persisted. */
   afterTick?: (engine: RadarEngine) => Promise<void>;
+  /** Internal long-running worker telemetry handle. */
+  workerRunId?: string;
 }
 
 export interface RadarWorkerTickResult {
   status: "completed" | "skipped";
   report?: TickReport;
+  control?: "paused" | "cancelled";
 }
 
 function positiveInteger(value: number | undefined, fallback: number, max = Number.MAX_SAFE_INTEGER): number {
@@ -62,7 +68,7 @@ export async function releaseAdvisoryLock(client: PoolClient): Promise<void> {
 
 /** Run one bounded, serialized production tick. */
 export async function runRadarWorkerTick(
-  options: Pick<RadarWorkerOptions, "maxSources" | "minRegistryTier" | "maxRegistryTier" | "logger" | "afterTick"> = {},
+  options: Pick<RadarWorkerOptions, "maxSources" | "minRegistryTier" | "maxRegistryTier" | "logger" | "afterTick" | "workerRunId"> = {},
 ): Promise<RadarWorkerTickResult> {
   const logger = options.logger ?? console;
   const maxSources = positiveInteger(options.maxSources, DEFAULT_RADAR_WORKER_BATCH_SIZE, MAX_RADAR_WORKER_BATCH_SIZE);
@@ -71,6 +77,16 @@ export async function runRadarWorkerTick(
   let locked = false;
 
   try {
+    await heartbeatWorkerRun(production.pool, options.workerRunId, "radar-worker");
+    if (process.env.DATABASE_URL) {
+      const controls = await processPlatformAgentControlRequests(process.env.DATABASE_URL);
+      if (controls.processed > 0) logger.info(`[missa-radar-worker] agent controls: ${controls.applied} applied, ${controls.rejected} rejected`);
+    }
+    const lifecycle = await readWorkerRunLifecycle(production.pool, options.workerRunId);
+    if (lifecycle === "paused" || lifecycle === "cancelled") {
+      logger.info(`[missa-radar-worker] ${lifecycle} by an operator control request; skipping tick`);
+      return { status: "skipped", control: lifecycle };
+    }
     // Neon transaction pooling is not a safe place to hold a session across
     // network fetches. The canonical lane is single-supervisor in Railway;
     // persistence uses snapshot-version conflict detection for accidental
@@ -85,11 +101,20 @@ export async function runRadarWorkerTick(
     }
 
     const report = await production.engine.tick({ maxSources, minRegistryTier: options.minRegistryTier, maxRegistryTier: options.maxRegistryTier });
+    const afterTickLifecycle = await readWorkerRunLifecycle(production.pool, options.workerRunId);
+    if (afterTickLifecycle === "paused" || afterTickLifecycle === "cancelled") {
+      logger.info(`[missa-radar-worker] ${afterTickLifecycle} during tick; discarding unpersisted tick state`);
+      return { status: "skipped", control: afterTickLifecycle };
+    }
     await options.afterTick?.(production.engine);
     await production.persist();
     logger.info(
       `[missa-radar-worker] tick complete: ${report.sourcesChecked} sources checked, ${report.sourcesFailed} failed`,
     );
+    await heartbeatWorkerRun(production.pool, options.workerRunId, "radar-worker", {
+      inputCount: report.sourcesChecked,
+      outputCount: report.changes.length,
+    });
     return { status: "completed", report };
   } finally {
     if (locked && lockClient) {
@@ -131,13 +156,22 @@ export async function runRadarWorker(
   );
   const configuredMaxTier = Number(process.env.RADAR_MAX_TIER);
   const maxRegistryTier = configuredMaxTier >= 0 && configuredMaxTier <= 3 ? configuredMaxTier as 0 | 1 | 2 | 3 : undefined;
+  const telemetryPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, max: 1 }) : undefined;
+  const workerRunId = telemetryPool ? await startWorkerRun(telemetryPool, "radar-worker") : undefined;
 
-  while (!options.signal?.aborted) {
-    try {
-      await runRadarWorkerTick({ maxSources, maxRegistryTier, logger });
-    } catch (error) {
-      logger.error("[missa-radar-worker] tick failed; retrying after interval", error);
+  try {
+    while (!options.signal?.aborted) {
+      try {
+        const tick = await runRadarWorkerTick({ maxSources, maxRegistryTier, logger, workerRunId });
+        if (tick.control === "cancelled") break;
+      } catch (error) {
+        await heartbeatWorkerRun(telemetryPool!, workerRunId, "radar-worker", { lastError: error instanceof Error ? error.message : String(error) });
+        logger.error("[missa-radar-worker] tick failed; retrying after interval", error);
+      }
+      await sleep(intervalMs, options.signal);
     }
-    await sleep(intervalMs, options.signal);
+  } finally {
+    await finishWorkerRun(telemetryPool!, workerRunId, "radar-worker", "cancelled");
+    await telemetryPool?.end();
   }
 }
