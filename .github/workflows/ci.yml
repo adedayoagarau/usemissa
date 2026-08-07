@@ -38,8 +38,8 @@ jobs:
       - name: Test organization access in the browser
         run: npm run test:e2e --workspace=@missa/web
 
-      - name: Verify generated migrations are committed
-        run: npm run db:generate && git diff --exit-code -- packages/db/migrations
+      - name: Verify reconciled migration ledger is committed
+        run: node scripts/verify-migration-journal.mjs
         env:
           DATABASE_URL: postgres://missa:missa@localhost:5432/missa_schema_check
 
