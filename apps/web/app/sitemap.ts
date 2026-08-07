@@ -2,8 +2,6 @@ import type { MetadataRoute } from 'next';
 import { siteUrl } from '@/lib/siteUrl';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
 import { discoveryCollections, discoveryGuides } from '@/lib/discoveryGuides';
-import { getEngine } from '@/lib/engine';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
 
 // Keep the database-backed URL inventory out of the deployment build. Vercel
 // can serve this route on demand while the static discovery URLs remain
@@ -40,20 +38,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   } catch {
     // Static discovery and guide URLs remain valid if the runtime store is
     // unavailable; do not turn /sitemap.xml into a 500.
-  }
-
-  try {
-    const radarEngine = await getEngine();
-    const workspaceEngine = await getWorkspaceEngine();
-    for (const organization of radarEngine.store.organizations.values()) {
-      const calls = workspaceEngine.publishedOpenCallsForOrganization(organization.id);
-      if (calls.length === 0) continue;
-      entries.push({ url: `${baseUrl}/org/${organization.id}`, changeFrequency: 'weekly', priority: 0.55 });
-      entries.push(...calls.map((call) => ({ url: `${baseUrl}/org/${organization.id}/${call.id}`, lastModified: call.publishedAt ? new Date(call.publishedAt) : undefined, changeFrequency: 'weekly' as const, priority: 0.5 })));
-    }
-  } catch {
-    // Organization pages are additive to the core sitemap and may be absent
-    // while the compatibility workspace store is warming up.
   }
 
   const seen = new Set<string>();
