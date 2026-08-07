@@ -17,7 +17,7 @@ not a set of independently writable microservices.
 
 | Service | Responsibility | Cadence | Important variables |
 | --- | --- | --- | --- |
-| `research-agent` | Directory/feed fan-out. Fetches bounded source pages, extracts call links, and registers canonical URLs without publishing them. | Every 5 minutes, 100 directory pages/tick, up to 500 new URLs | `MISSA_WORKER_MODE=research`, `RADAR_DISCOVERY_INTERVAL_MINUTES`, `RADAR_DISCOVERY_BATCH_SIZE`, `RADAR_DISCOVERY_LINKS_PER_PAGE` |
+| `research-agent` | Directory/feed fan-out plus bounded source verification. It checks candidate HTML, canonical links, robots policy, and explicit anti-automation terms before operator-approved source promotion; it never publishes opportunities. | Every 5 minutes, 100 directory pages/tick, up to 50 candidate checks/tick | `MISSA_WORKER_MODE=research`, `RADAR_DISCOVERY_INTERVAL_MINUTES`, `RADAR_DISCOVERY_BATCH_SIZE`, `RADAR_DISCOVERY_LINKS_PER_PAGE`, `MISSA_SOURCE_PROMOTION_MODE`, `MISSA_SOURCE_PROMOTION_BATCH_SIZE`, `MISSA_SOURCE_PROMOTION_CONCURRENCY` |
 | `taxonomy-discovery-worker` | Executes canonical taxonomy coverage queries against the approved search provider and stores reviewable candidates. Never publishes directly. | Every 15 minutes, 8 taxonomy queries/tick, up to 25 results/query | `MISSA_WORKER_MODE=taxonomy-discovery`, `MISSA_TAXONOMY_DISCOVERY_ENDPOINT`, `MISSA_TAXONOMY_DISCOVERY_TOKEN`, `MISSA_TAXONOMY_DISCOVERY_BATCH_SIZE`, `MISSA_TAXONOMY_DISCOVERY_RESULT_LIMIT` |
 | `radar-worker` | Canonical tier-0 refresh, validation, deduplication, status changes, relational projection, and alert evaluation. | Every 5 minutes, 100 canonical sources/tick (bounded max 200) | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE`, `RADAR_MAX_TIER=0`, `RADAR_USE_ADVISORY_LOCK=0` |
 | `enrichment-worker` | Fetches public opportunity pages for media, guideline, past-winner, and call-profile evidence. Writes provenance-tagged evidence and retries failures through a leased queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=enrichment`, `RADAR_ENRICHMENT_INTERVAL_MINUTES`, `RADAR_ENRICHMENT_BATCH_SIZE` |
@@ -53,7 +53,7 @@ The lanes coordinate through the same Neon database rather than maintaining
 independent catalogues:
 
 ```text
-research -> discovery -> radar -> enrichment -> review -> publisher
+research -> discovery -> source-verification -> radar -> enrichment -> review -> publisher
               \\                   /       \\
                -> review ---------         human-review
 coverage -> taxonomy-discovery -> human-review

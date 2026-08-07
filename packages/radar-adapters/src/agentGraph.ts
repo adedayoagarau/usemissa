@@ -8,6 +8,7 @@ export const RADAR_AGENT_GRAPH = {
   nodes: [
     { id: "research", label: "Research", responsibility: "Discover candidate source pages across registry tiers." },
     { id: "discovery", label: "Discovery fan-out", responsibility: "Expand directories and feeds into bounded canonical call-page sources." },
+    { id: "source-verification", label: "Source verification", responsibility: "Check candidate canonical pages, robots policy, terms, and evidence before source promotion." },
     { id: "coverage", label: "Coverage gaps", responsibility: "Materialize taxonomy coverage cells and queue bounded discovery queries." },
     { id: "taxonomy-discovery", label: "Taxonomy discovery", responsibility: "Search canonical taxonomy gaps and store reviewable source candidates without publishing." },
     { id: "radar", label: "Radar", responsibility: "Fetch, validate, deduplicate, score, and project canonical opportunities." },
@@ -24,7 +25,10 @@ export const RADAR_AGENT_GRAPH = {
     { from: "coverage", to: "discovery", kind: "gap-priority" },
     { from: "coverage", to: "taxonomy-discovery", kind: "taxonomy-query" },
     { from: "taxonomy-discovery", to: "human-review", kind: "candidate-review" },
+    { from: "coverage", to: "source-verification", kind: "candidate-review" },
     { from: "discovery", to: "radar", kind: "canonical-source" },
+    { from: "source-verification", to: "radar", kind: "verified-source" },
+    { from: "source-verification", to: "human-review", kind: "ambiguous-source" },
     { from: "radar", to: "enrichment", kind: "evidence-request" },
     { from: "radar", to: "review", kind: "review-request" },
     { from: "enrichment", to: "review", kind: "evidence-ready" },

@@ -68,6 +68,17 @@ export {
   type DiscoveryTickResult,
 } from "./discoveryWorker.js";
 export {
+  runSourcePromotionWorker,
+  runSourcePromotionWorkerTick,
+  sourcePromotionBatchSize,
+  sourcePromotionConcurrency,
+  verifySourceCandidate,
+  type SourcePromotionWorkerOptions,
+  type SourcePromotionTickResult,
+  type SourceVerificationEvidence,
+  type SourceVerificationResult,
+} from "./sourcePromotionWorker.js";
+export {
   runCoverageWorkerTick,
   materializeCoverageCells,
   assessCoverageCells,
