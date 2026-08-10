@@ -48,6 +48,14 @@ export const selectedSystemGroups: readonly SelectedSystemGroup[] = [
         customerFacing: true,
       },
       {
+        title: 'Opportunity journey',
+        objective: 'Review the public shell, browse, detail, auth return, and Tracker handoff as one connected path.',
+        selectedPath: '/design-system/opportunity-journey',
+        selection: 'Five-screen promotion tranche',
+        surface: 'creator',
+        customerFacing: true,
+      },
+      {
         title: 'Opportunity detail',
         objective: 'Explain decisive facts, requirements, and the official source without inventing certainty.',
         selectedPath: '/design-system/opportunity-detail',
