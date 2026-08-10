@@ -113,6 +113,8 @@
   .headerActions .account em, .headerActions > a { display: none; }
   .menuButton { display: inline-flex; }
   .productIdentity em { max-width: 135px; }
+  .productIdentity[data-compact='true'] em { display: block; max-width: 92px; }
+  .productIdentity[data-compact='true'] > span { display: inline; }
   .contextBar, .sideRail { display: none; }
   .mobileMenu { display: grid; position: relative; z-index: 20; gap: 16px; padding: 16px; border-bottom: 1px solid var(--border); background: #fff; box-shadow: 0 14px 30px rgb(45 34 50 / 10%); }
   .mobileMenu > div:first-child { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
