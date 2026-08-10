@@ -44,6 +44,7 @@ type Work = {
   title: string
   description: string
   image?: string
+  primaryFile: string
   medium: string
   terms: string[]
   updated: string
@@ -80,6 +81,7 @@ const baseWorks: Work[] = [
     title: 'Saltwater Lessons',
     description: 'A linked essay cycle about memory, coastlines, and the stories a family keeps revising.',
     image: '/media/home/portfolio-still-life.webp',
+    primaryFile: 'saltwater-lessons-v3.pdf',
     medium: 'Writing · Creative nonfiction',
     terms: ['Essay', 'Memoir', 'English'],
     updated: '7 Aug 2026',
@@ -94,6 +96,7 @@ const baseWorks: Work[] = [
     title: 'After the Harmattan',
     description: 'A photographic and sound study of dust, movement, and seasonal memory.',
     image: '/media/home/artist-at-work.webp',
+    primaryFile: 'harmattan-field-recording-02.wav',
     medium: 'Photography · Sound',
     terms: ['Documentary', 'Field recording', 'Environment'],
     updated: '28 Jul 2026',
@@ -108,6 +111,7 @@ const baseWorks: Work[] = [
     title: 'Borrowed Ground',
     description: 'An installation proposal using found materials, oral histories, and projected text.',
     image: '/media/home/gallery-interior.webp',
+    primaryFile: 'borrowed-ground-walkthrough.mp4',
     medium: 'Installation · Moving image',
     terms: ['Site-specific', 'Oral history', 'Projection'],
     updated: '19 Jul 2026',
@@ -121,6 +125,7 @@ const baseWorks: Work[] = [
     id: 'blue-room',
     title: 'Notes from the Blue Room',
     description: 'Early notes, fragments, and reference material for a new performance work.',
+    primaryFile: 'blue-room-notes-v1.pdf',
     medium: 'Performance · Research',
     terms: ['Performance', 'Archive', 'In development'],
     updated: '2 Jun 2026',
@@ -352,8 +357,8 @@ function WorkDetail({ work, fixture, detailView, setDetailView, onClose, onStatu
             <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Current material</p><h3>{work.currentVersion}</h3></div><Button type='button' variant='ghost'>View all files</Button></div>
             <div className={styles.currentFile}>
               <span><FileText aria-hidden='true' /></span>
-              <div><strong>saltwater-lessons-v3.pdf</strong><p>PDF · 1.8 MB · Added 7 Aug 2026</p></div>
-              <Button type='button' variant='outline' size='icon' aria-label='Download saltwater-lessons-v3.pdf'><Download aria-hidden='true' /></Button>
+              <div><strong>{work.primaryFile}</strong><p>Current file · {work.currentVersion}</p></div>
+              <Button type='button' variant='outline' size='icon' aria-label={`Download ${work.primaryFile}`}><Download aria-hidden='true' /></Button>
             </div>
           </section>
           <section className={styles.detailGrid}>
@@ -410,7 +415,21 @@ export function LibraryWorkSelected() {
     return [...filtered].sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title) : b.updated.localeCompare(a.updated))
   }, [allWorks, query, sort])
 
-  const count = view === 'works' ? allWorks.length : view === 'files' ? files.length : answers.length
+  const filteredFiles = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    const filtered = needle ? files.filter((file) => `${file.name} ${file.linkedTo} ${file.kind}`.toLowerCase().includes(needle)) : files
+    return [...filtered].sort((a, b) => sort === 'title' ? a.name.localeCompare(b.name) : b.updated.localeCompare(a.updated))
+  }, [query, sort])
+
+  const filteredAnswers = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    const filtered = needle ? answers.filter((answer) => `${answer.name} ${answer.excerpt}`.toLowerCase().includes(needle)) : answers
+    return [...filtered].sort((a, b) => sort === 'title' ? a.name.localeCompare(b.name) : b.updated.localeCompare(a.updated))
+  }, [query, sort])
+
+  const visibleItems = view === 'works' ? filteredWorks : view === 'files' ? filteredFiles : filteredAnswers
+  const totalItems = view === 'works' ? allWorks : view === 'files' ? files : answers
+  const viewLabel = view === 'answers' ? 'Saved Answers' : view[0]!.toUpperCase() + view.slice(1)
 
   function chooseFixture(next: Fixture) {
     setFixture(next)
@@ -448,12 +467,12 @@ export function LibraryWorkSelected() {
                 <Button type='button' variant='outline'><Filter aria-hidden='true' />Filter</Button>
                 <label className={styles.sortField}><span className={styles.srOnly}>Sort results</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option value='updated'>Recently updated</option><option value='title'>Title A–Z</option></select><ChevronDown aria-hidden='true' /></label>
               </div>
-              <div className={styles.resultMeta}><p>{query ? `${filteredWorks.length} matching` : count} {view === 'answers' ? 'Saved Answers' : view}</p><span>{fixture === 'large' ? 'Showing 24 of 128' : 'All items'}</span></div>
+              <div className={styles.resultMeta}><p>{query ? `${visibleItems.length} matching` : visibleItems.length} {viewLabel}</p><span>{fixture === 'large' && view === 'works' ? 'Showing 24 of 128' : `${totalItems.length} total`}</span></div>
               <div className={styles.resultList}>
                 {view === 'works' ? filteredWorks.map((work) => <WorkRow key={work.id} work={work} selected={selectedWork?.id === work.id} onOpen={(next) => { setSelectedWork(next); setDetailView('overview') }} />) : null}
-                {view === 'files' ? files.map((file) => <FileRow key={file.id} file={fixture === 'missing' && file.id === 'cover' ? { ...file, state: 'missing' } : file} onOpen={setStatus} />) : null}
-                {view === 'answers' ? answers.map((answer) => <AnswerRow key={answer.id} answer={answer} onCopy={(item) => setStatus(`${item.name} copied.`)} />) : null}
-                {view === 'works' && !filteredWorks.length ? <div className={styles.noResults}><Search aria-hidden='true' /><h2>No Works match “{query}”</h2><p>Clear search or try a title, medium, or practice term.</p><Button type='button' variant='outline' onClick={() => setQuery('')}>Clear search</Button></div> : null}
+                {view === 'files' ? filteredFiles.map((file) => <FileRow key={file.id} file={fixture === 'missing' && file.id === 'cover' ? { ...file, state: 'missing' } : file} onOpen={setStatus} />) : null}
+                {view === 'answers' ? filteredAnswers.map((answer) => <AnswerRow key={answer.id} answer={answer} onCopy={(item) => setStatus(`${item.name} copied.`)} />) : null}
+                {!visibleItems.length && query ? <div className={styles.noResults}><Search aria-hidden='true' /><h2>No {viewLabel} match “{query}”</h2><p>Clear search or try a title, file name, medium, or practice term.</p><Button type='button' variant='outline' onClick={() => setQuery('')}>Clear search</Button></div> : null}
               </div>
               {fixture === 'large' ? <div className={styles.pagination}><Button type='button' variant='outline' disabled>Previous</Button><span>Page 1 of 6</span><Button type='button' variant='outline'>Next</Button></div> : null}
             </section>
