@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import {
   AlertTriangle,
   ArrowRight,
@@ -41,6 +42,8 @@ type TrackerItem = {
   action: string
   tone?: 'attention' | 'positive' | 'neutral'
   imported?: boolean
+  imageSrc?: string
+  imageAlt?: string
 }
 
 const baseItems: TrackerItem[] = [
@@ -63,6 +66,8 @@ const baseItems: TrackerItem[] = [
     deadline: '31 Oct 2026',
     note: 'No Work linked yet.',
     action: 'Review opportunity',
+    imageSrc: '/media/home/artist-at-work.webp',
+    imageAlt: 'Writer working at a table',
   },
   {
     id: 'compass',
@@ -73,6 +78,8 @@ const baseItems: TrackerItem[] = [
     work: 'After the Harmattan',
     note: 'Creator-recorded external submission.',
     action: 'Open record',
+    imageSrc: '/media/home/portfolio-still-life.webp',
+    imageAlt: 'Still life with books and sculptural objects',
   },
   {
     id: 'ecologies',
@@ -83,6 +90,8 @@ const baseItems: TrackerItem[] = [
     work: 'Borrowed Ground',
     note: 'Hosted submission · receipt available.',
     action: 'View submission',
+    imageSrc: '/media/home/opportunity-architecture.webp',
+    imageAlt: 'Contemporary arts building under a clear sky',
   },
 ]
 
@@ -209,11 +218,24 @@ function FixtureNotice({ fixture }: { fixture: Fixture }) {
   return null
 }
 
+function ItemMedia({ item }: { item: TrackerItem }) {
+  const [failed, setFailed] = useState(false)
+  const initials = item.organization === 'Organization not confirmed'
+    ? '?'
+    : item.organization.split(' ').slice(0, 2).map((part) => part[0]).join('')
+
+  if (item.imageSrc && !failed) {
+    return <span className={styles.itemPhoto}><Image src={item.imageSrc} alt={item.imageAlt ?? ''} fill sizes='56px' onError={() => setFailed(true)} /></span>
+  }
+
+  return <span className={styles.itemMonogram} aria-hidden='true'>{initials}</span>
+}
+
 function ItemCard({ item, compact = false, onAction }: { item: TrackerItem; compact?: boolean; onAction?: (item: TrackerItem) => void }) {
   return (
     <Card className={compact ? styles.itemCardCompact : styles.itemCard}>
       <div className={styles.itemIdentity}>
-        <span className={styles.itemMonogram} aria-hidden='true'>{item.organization === 'Organization not confirmed' ? '?' : item.organization.split(' ').slice(0, 2).map((part) => part[0]).join('')}</span>
+        <ItemMedia item={item} />
         <div>
           <div className={styles.itemLabels}>
             <Badge variant='outline'>{item.stage}</Badge>

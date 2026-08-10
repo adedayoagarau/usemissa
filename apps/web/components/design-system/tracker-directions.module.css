@@ -628,6 +628,20 @@
   text-transform: uppercase;
 }
 
+.itemPhoto {
+  position: relative;
+  display: block;
+  width: 46px;
+  height: 54px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: var(--muted);
+}
+
+.itemPhoto img {
+  object-fit: cover;
+}
+
 .itemLabels {
   display: flex;
   flex-wrap: wrap;
@@ -757,6 +771,11 @@
 }
 
 .itemCardCompact .itemMonogram {
+  width: 36px;
+  height: 42px;
+}
+
+.itemCardCompact .itemPhoto {
   width: 36px;
   height: 42px;
 }
