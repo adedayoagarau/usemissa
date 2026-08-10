@@ -6,9 +6,9 @@ This document records the public discovery lane added for the SEO/AEO rollout.
 
 - `/` — marketing and featured opportunity entry point.
 - `/opportunities-preview` — crawlable browse surface. Filtered query URLs are `noindex` and canonicalize to the base browse page.
-- `/discover/opportunities/{slug}` — public, source-linked opportunity detail. The authenticated Passport route remains private.
+- `/discover/opportunities/{slug}` — public, source-linked opportunity detail. The authenticated Profile route remains private.
 - `/discover/{collection}` — public category hubs for contests, magazines, poetry, grants, residencies, and fellowships.
-- `/org/{organizationId}` and `/org/{organizationId}/{openCallId}` — published organization and Workspace call pages.
+- `/org/{organizationId}` and `/org/{organizationId}/{openCallId}` — published organization and Organization call pages.
 - `/guides` and `/guides/{slug}` — answer-led, source-first guides backed by the same published opportunity repository.
 - `/about` and `/methodology` — trust, source, and verification context for creators and search systems.
 - `/robots.txt` and `/sitemap.xml` — crawler policy and bounded dynamic public URL inventory of up to 10,000 open opportunities, with meaningful `lastmod` values for public copy.

@@ -22,6 +22,12 @@ import {
 } from "./postgresStore.js";
 import { LlmExtractor } from "./llmExtractor.js";
 import { uuidIds } from "./uuidIds.js";
+import {
+  commitTrackerImportTransaction,
+  consumeTrackerImportPreviewRateLimit,
+  type DurableTrackerImportInput,
+  type DurableTrackerImportResult,
+} from './trackerImportPersistence.js';
 
 function normalizeUrl(url: string): string {
   return url.replace(/\/$/, "").toLowerCase();
@@ -121,6 +127,10 @@ export interface ProductionEngine {
    * every tick in a short-lived (serverless) caller -- there's no long-running
    * process to rely on periodic autosave the way serve.ts's RadarServer has. */
   persist(): Promise<void>;
+  /** Runs the CSV import under the shared Radar snapshot lock, a per-key
+   * advisory lock, durable rate limiting, and one database transaction. */
+  commitTrackerImport(input: Omit<DurableTrackerImportInput, 'baseStore'>): Promise<DurableTrackerImportResult>;
+  consumeTrackerImportPreview(accountId: string): Promise<void>;
   /** Callers must call this when done (serverless: at the end of the request;
    * long-running: on shutdown) -- leaving pool connections open leaks them. */
   close(): Promise<void>;
@@ -193,6 +203,21 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
       pendingPersist = next.catch(() => undefined);
       return next;
     },
+    commitTrackerImport: async (input) => {
+      let output: DurableTrackerImportResult | undefined;
+      const next = pendingPersist.then(async () => {
+        output = await commitTrackerImportTransaction(pool, { ...input, baseStore: engine.store });
+        engine.store.tracked = [...engine.store.tracked.filter((row) => row.userId !== input.userId), ...output.tracked];
+        engine.store.manualTrackerEntries = [...engine.store.manualTrackerEntries.filter((row) => row.userId !== input.userId), ...output.manualTrackerEntries];
+        if (output.auditEntry && !engine.store.auditLog.some((entry) => entry.id === output!.auditEntry!.id)) engine.store.auditLog.push(output.auditEntry);
+        snapshotVersion = output.snapshotVersion;
+        persistedStore = cloneStore(engine.store);
+      });
+      pendingPersist = next.catch(() => undefined);
+      await next;
+      return output!;
+    },
+    consumeTrackerImportPreview: (accountId) => consumeTrackerImportPreviewRateLimit(pool, { accountId, limit: 5, windowMs: 10 * 60_000 }),
     close: () => pool.end(),
   };
 }

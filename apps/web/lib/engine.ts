@@ -1,5 +1,20 @@
-import { RadarEngine, buildServerDemoWorld } from '@missa/radar-engine';
-import { createProductionEngine, type ProductionEngine } from '@missa/radar-adapters';
+import {
+  RadarEngine,
+  buildServerDemoWorld,
+  cloneStore,
+  planTrackerImport,
+  type ImportMapping,
+  type ImportRowDecision,
+  type ParsedTrackerCsv,
+  type TrackerImportResult,
+} from '@missa/radar-engine';
+import {
+  createProductionEngine,
+  trackerImportCandidateHash,
+  trackerImportStateHash,
+  TrackerImportPersistenceError,
+  type ProductionEngine,
+} from '@missa/radar-adapters';
 
 /**
  * Shared RadarEngine for apps/web's route handlers, in-process (per the
@@ -32,6 +47,20 @@ type DemoWorld = ReturnType<typeof buildServerDemoWorld>;
 declare global {
   var __missaDemoWorldPromise: Promise<DemoWorld> | undefined;
   var __missaProductionEnginePromise: Promise<ProductionEngine> | undefined;
+}
+
+const demoPreviewRequests = new Map<string, number[]>();
+const demoCommitRequests = new Map<string, number[]>();
+const demoImportReceipts = new Map<string, { requestHash: string; result: TrackerImportResult }>();
+
+function consumeDemoLimit(store: Map<string, number[]>, key: string, limit: number, windowMs: number): void {
+  const now = Date.now();
+  const recent = (store.get(key) ?? []).filter((at) => now - at < windowMs);
+  if (recent.length >= limit) {
+    const retryAfter = Math.max(1, Math.ceil((windowMs - (now - recent[0]!)) / 1000));
+    throw new TrackerImportPersistenceError('Too many import requests. Try again later.', 'rate-limit', retryAfter);
+  }
+  store.set(key, [...recent, now]);
 }
 
 async function buildAndTick(): Promise<DemoWorld> {
@@ -88,4 +117,55 @@ export async function persistRadar(): Promise<void> {
   if (!process.env.DATABASE_URL) return;
   const { persist } = await getProductionEngine();
   await persist();
+}
+
+export async function consumeTrackerImportPreview(accountId: string): Promise<void> {
+  if (process.env.DATABASE_URL) {
+    await (await getProductionEngine()).consumeTrackerImportPreview(accountId);
+    return;
+  }
+  consumeDemoLimit(demoPreviewRequests, accountId, 5, 10 * 60_000);
+}
+
+export async function commitTrackerImportWithReceipt(input: {
+  accountId: string;
+  userId: string;
+  idempotencyKey: string;
+  requestHash: string;
+  sourceHash: string;
+  expectedCandidateHash: string;
+  expectedTrackerHash: string;
+  parsed: ParsedTrackerCsv;
+  mapping: ImportMapping;
+  decisions: Record<string, ImportRowDecision>;
+}): Promise<{ result: TrackerImportResult; idempotent: boolean }> {
+  if (process.env.DATABASE_URL) {
+    const committed = await (await getProductionEngine()).commitTrackerImport(input);
+    return { result: committed.result, idempotent: committed.idempotent };
+  }
+
+  const receiptKey = `${input.accountId}:${input.idempotencyKey}`;
+  const existing = demoImportReceipts.get(receiptKey);
+  if (existing) {
+    if (existing.requestHash !== input.requestHash) throw new TrackerImportPersistenceError('This confirmation key belongs to a different import.', 'idempotency-conflict');
+    return { result: existing.result, idempotent: true };
+  }
+  consumeDemoLimit(demoCommitRequests, input.accountId, 3, 10 * 60_000);
+  const engine = await getEngine();
+  if (trackerImportStateHash(engine.store, input.userId) !== input.expectedTrackerHash) throw new TrackerImportPersistenceError('Your Tracker changed after this preview. Prepare a new preview.', 'conflict');
+  const plan = planTrackerImport(engine.store, input.userId, input.parsed, input.mapping);
+  if (trackerImportCandidateHash(plan.candidateSet) !== input.expectedCandidateHash) throw new TrackerImportPersistenceError('Opportunity matches changed after this preview. Prepare a new preview.', 'conflict');
+  const before = cloneStore(engine.store);
+  try {
+    const result = engine.commitTrackerImport(input.userId, plan, input.decisions, new Date(), input.sourceHash);
+    if (result.needsReview > 0) throw new TrackerImportPersistenceError('Resolve every row issue before importing.', 'review');
+    engine.recordAudit(input.accountId, 'tracker.imported', 'user_profile', input.userId, JSON.stringify({ importId: result.importId, sourceKind: 'csv', imported: result.imported, matched: result.matched, createdManual: result.createdManual, skipped: result.skipped, unresolvedTaxonomy: result.unresolvedTaxonomy, idempotencyKey: input.idempotencyKey }));
+    demoImportReceipts.set(receiptKey, { requestHash: input.requestHash, result });
+    return { result, idempotent: false };
+  } catch (error) {
+    engine.store.tracked = before.tracked;
+    engine.store.manualTrackerEntries = before.manualTrackerEntries;
+    engine.store.auditLog = before.auditLog;
+    throw error;
+  }
 }

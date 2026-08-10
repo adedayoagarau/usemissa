@@ -44,7 +44,7 @@ without checking what that page actually is first.
 - **Never show a bare numeric score** without its reasons attached (Fit Score, Trust score) — `ExplainedScore` already does this correctly, don't regress it.
 - **Immediate feedback, no reload-to-confirm** — every mutating action gets a toast, not a silent success or a full-page reload as the only signal.
 - **8px spacing scale** (`--s1` through `--s12`, already in `globals.css`) — use these, don't invent new spacing values.
-- **Terracotta accent (`--brand-accent`/`--primary`) sparingly** — primary actions and active nav state only. Green (`--green`) for positive/success states only. No red/alarm colors for anything that isn't genuinely time-sensitive.
+- **Aubergine accent (`--brand-accent`/`--primary`) sparingly** — primary actions and active nav state only. Lichen (`--green`) for positive/success states only. Aged ochre for attention and Mineral blue for neutral information. No red/alarm colors for anything that isn't genuinely time-sensitive.
 - **Fraunces for headlines only**, Instrument Sans for UI/body, Fragment Mono for tabular/data (deadlines, IDs, counts) — already wired via `font-heading`/`font-sans`/`font-mono` Tailwind classes from `layout.tsx`'s `next/font/local` setup. Use those existing classes, don't add new font declarations.
 
 ## What "redesign" means for this pass (scope discipline)

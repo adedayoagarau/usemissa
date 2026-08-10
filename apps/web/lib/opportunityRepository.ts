@@ -1,5 +1,6 @@
 import {
   matchesCriteria,
+  matchesOpportunityPreferences,
   type Opportunity,
   type OpportunityBrowsePage,
   type OpportunityBrowseProjection,
@@ -72,6 +73,12 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
       label: `Matches ${profile.name}: ${reason}`,
     })) ?? [],
   );
+  const opportunityPreferenceReasons = user?.opportunityPreferences
+    ? matchesOpportunityPreferences(user.opportunityPreferences, opp, new Date())?.map((reason) => ({
+        code: 'profile-preference' as const,
+        label: `Matches your preferences: ${reason}`,
+      })) ?? []
+    : [];
   const assignedTermIds = new Set((opp.fields.taxonomyAssignments ?? []).flatMap((assignment) => assignment.termId ? [assignment.termId] : []));
   const preferenceReasons = (user?.taxonomyPreferences ?? []).flatMap((preference) => {
     if (preference.preference === 'exclude') return [];
@@ -90,7 +97,7 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
       return [{ code: 'work' as const, label: `Matches your Work: ${taxonomyLabelFor(assignment.termId)}` }];
     }),
   );
-  const matchedReasons = [...preferenceReasons, ...workReasons, ...savedSearchReasons].slice(0, 4);
+  const matchedReasons = [...opportunityPreferenceReasons, ...preferenceReasons, ...workReasons, ...savedSearchReasons].slice(0, 4);
   const tracked = userId
     ? engine.store.tracked.some((item) => item.userId === userId && item.opportunityId === opp.id)
     : false;
@@ -152,6 +159,7 @@ function excludedByPrivatePreferences(engine: Awaited<ReturnType<typeof getEngin
   const userId = userIdFor(engine, context);
   const user = userId ? engine.store.users.get(userId) : undefined;
   if (!user) return false;
+  if (user.opportunityPreferences && !matchesOpportunityPreferences(user.opportunityPreferences, opp, new Date())) return true;
   const assignedTermIds = new Set((opp.fields.taxonomyAssignments ?? []).flatMap((assignment) => assignment.termId ? [assignment.termId] : []));
   return (user.taxonomyPreferences ?? []).some((preference) => preference.preference === 'exclude' && taxonomyDescendantIds(preference.termId).some((termId) => assignedTermIds.has(termId)));
 }

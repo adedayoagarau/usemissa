@@ -11,7 +11,7 @@ export const RADAR_AGENT_GRAPH = {
     { id: "source-verification", label: "Source verification", responsibility: "Check candidate canonical pages, robots policy, terms, and evidence before source promotion." },
     { id: "coverage", label: "Coverage gaps", responsibility: "Materialize taxonomy coverage cells and queue bounded discovery queries." },
     { id: "taxonomy-discovery", label: "Taxonomy discovery", responsibility: "Search canonical taxonomy gaps and store reviewable source candidates without publishing." },
-    { id: "radar", label: "Radar", responsibility: "Fetch, validate, deduplicate, score, and project canonical opportunities." },
+    { id: "radar", label: "Opportunities", responsibility: "Fetch, validate, deduplicate, score, and project canonical opportunities." },
     { id: "enrichment", label: "Enrichment", responsibility: "Collect call profiles, guidelines, media, and winner evidence." },
     { id: "review", label: "Review", responsibility: "Apply publication checks and explain publish, suppress, or human-review decisions." },
     { id: "content-builder", label: "Content builder", responsibility: "Build a source-linked Opportunity Intelligence brief from approved canonical facts." },

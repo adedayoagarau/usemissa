@@ -1,0 +1,11 @@
+.page { max-width: 1320px; margin: 0 auto; padding: 10px 0 70px; }
+.heading { max-width: 790px; }
+.heading > p { margin: 0 0 7px; color: var(--primary); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.heading h1 { margin: 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(45px, 6vw, 70px); font-weight: 560; letter-spacing: -.045em; line-height: .96; }
+.heading > span { display: block; margin-top: 13px; color: var(--muted-foreground); font-size: 15px; line-height: 1.6; }
+
+@media (max-width: 700px) {
+  .page { padding-top: 0; }
+  .heading h1 { font-size: 49px; }
+  .heading > span { font-size: 13px; }
+}

@@ -255,7 +255,7 @@ test('user alerts: matches, follows, deadline extension, close — no duplicates
 
   // Inbox digest groups everything with a summary.
   const digest = engine.getInboxDigest(ids.userAda);
-  assert.ok(digest.summary.includes('Missa Radar found'));
+  assert.ok(digest.summary.includes('Missa found'));
   assert.equal(digest.newForYou.length, 1);
   assert.ok(digest.recentlyUpdated.length >= 2);
 });

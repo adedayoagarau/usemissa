@@ -190,7 +190,7 @@ archived                            → archived
 **And** required fields and row errors are communicated by text and icons, not color alone; counts have accessible names
 **And** the current step is announced with `aria-current`, errors use `role="alert"`, progress/result updates use `aria-live="polite"`, and keyboard focus moves to the first actionable error after validation
 **And** the page uses the true-white `#ffffff` canvas, existing semantic tokens, Instrument Sans/Fraunces/Fragment Mono roles, and existing shadcn primitives from `DESIGN.md`
-**And** primary terracotta is reserved for the current commit action; mapping, download, back, and skip actions use secondary/tertiary treatments
+**And** primary Aubergine is reserved for the current commit action; mapping, download, back, and skip actions use secondary/tertiary treatments
 **And** motion is limited to explaining step changes and honors `prefers-reduced-motion`.
 
 ## Import contracts

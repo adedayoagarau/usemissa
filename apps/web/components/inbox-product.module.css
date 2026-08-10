@@ -1,0 +1,65 @@
+.shell { max-width: 1180px; margin: 0 auto; color: var(--foreground); }
+.heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; padding: 18px 0 30px; }
+.heading > div > p, .briefingIntro > div > p, .empty > p { margin: 0 0 7px; color: var(--primary); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.heading h1 { margin: 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(46px, 6vw, 72px); font-weight: 560; letter-spacing: -.045em; line-height: .95; }
+.heading > div > span { display: block; max-width: 700px; margin-top: 14px; color: var(--muted-foreground); font-size: 15px; line-height: 1.55; }
+.heading > button { min-height: 44px; flex: 0 0 auto; }
+.views { display: flex; gap: 26px; overflow-x: auto; border-bottom: 1px solid var(--border); }
+.views button { display: inline-flex; min-height: 48px; flex: 0 0 auto; align-items: center; gap: 8px; margin-bottom: -1px; padding: 0 1px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted-foreground); font: inherit; font-size: 13px; cursor: pointer; }
+.views button[aria-current='page'] { border-bottom-color: var(--primary); color: var(--foreground); font-weight: 650; }
+.views button span { display: inline-flex; min-width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 999px; background: var(--muted); font-family: var(--font-mono), monospace; font-size: 9px; }
+.views button svg { width: 15px; }
+.briefing { max-width: 980px; margin: 0 auto; padding: 42px 0 80px; }
+.briefingIntro { display: grid; align-items: stretch; gap: 32px; padding-bottom: 34px; border-bottom: 1px solid var(--border); grid-template-columns: minmax(0, 1fr) minmax(280px, 370px); }
+.briefingIntro h2 { margin: 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(31px, 4vw, 44px); font-weight: 570; letter-spacing: -.035em; line-height: 1.04; }
+.briefingIntro > div > span { display: block; max-width: 560px; margin-top: 11px; color: var(--muted-foreground); font-size: 13px; line-height: 1.6; }
+.group { padding: 30px 0; border-bottom: 1px solid var(--border); }
+.group > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 12px; }
+.group > header h2 { margin: 0; font-family: var(--font-heading), Georgia, serif; font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+.group > header p { max-width: 620px; margin: 5px 0 0; color: var(--muted-foreground); font-size: 12px; line-height: 1.5; }
+.group > header > span { display: inline-flex; min-width: 27px; height: 27px; align-items: center; justify-content: center; border-radius: 50%; background: var(--muted); font-family: var(--font-mono), monospace; font-size: 10px; }
+.rows { border-top: 1px solid var(--border); }
+.rows article { position: relative; display: grid; min-width: 0; align-items: start; gap: 15px; padding: 19px 2px; border-bottom: 1px solid var(--border); grid-template-columns: 42px minmax(0, 1fr) auto; }
+.rows article:last-child { border-bottom: 0; }
+.rows article[data-unread='true'] h3::after { display: inline-block; width: 7px; height: 7px; margin-left: 9px; border-radius: 50%; background: var(--primary); vertical-align: .15em; content: ''; }
+.itemIcon { display: inline-flex; width: 42px; height: 42px; align-items: center; justify-content: center; border-radius: 10px; background: var(--muted); color: var(--primary); }
+.itemIcon svg { width: 18px; height: 18px; }
+.itemCopy { min-width: 0; }
+.itemCopy > div { display: flex; justify-content: space-between; gap: 18px; color: var(--muted-foreground); font-family: var(--font-mono), monospace; font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
+.itemCopy h3 { margin: 6px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: 19px; font-weight: 600; line-height: 1.2; }
+.itemCopy > p { margin: 5px 0 0; color: var(--muted-foreground); font-size: 12px; line-height: 1.55; }
+.itemCopy small { display: flex; gap: 7px; margin-top: 11px; color: var(--muted-foreground); font-size: 10px; line-height: 1.45; }
+.itemCopy small strong { flex: 0 0 auto; color: var(--foreground); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
+.rows article > button { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; align-self: center; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--primary); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.rows article > button:hover { background: color-mix(in srgb, #fff 94%, var(--primary) 6%); }
+.rows article > button svg { width: 15px; }
+.unread { position: absolute; overflow: hidden; width: 1px; height: 1px; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+.empty { display: grid; justify-items: center; padding: 86px 24px; text-align: center; }
+.empty > svg { width: 38px; height: 38px; margin-bottom: 17px; color: var(--primary); stroke-width: 1.4; }
+.empty h2 { margin: 0; font-family: var(--font-heading), Georgia, serif; font-size: 31px; font-weight: 570; }
+.empty > span { max-width: 570px; margin-top: 12px; color: var(--muted-foreground); font-size: 13px; line-height: 1.6; }
+.liveStatus { min-height: 20px; margin: 0; color: var(--muted-foreground); font-size: 12px; }
+.views button:focus-visible, .rows article > button:focus-visible { outline: 3px solid color-mix(in srgb, var(--ring) 28%, transparent); outline-offset: 2px; }
+
+@media (max-width: 760px) {
+  .heading { align-items: flex-start; padding-top: 6px; flex-direction: column; }
+  .heading h1 { font-size: 50px; }
+  .heading > button { width: 100%; }
+  .briefing { padding-top: 30px; }
+  .briefingIntro { gap: 24px; grid-template-columns: 1fr; }
+  .rows article { gap: 12px; grid-template-columns: 38px minmax(0, 1fr); }
+  .itemIcon { width: 38px; height: 38px; }
+  .rows article > button { justify-self: stretch; margin-left: 50px; grid-column: 1 / -1; }
+  .itemCopy > div time { display: none; }
+  .itemCopy small { display: grid; gap: 3px; }
+}
+
+@media (max-width: 390px) {
+  .heading > div > span { font-size: 13px; }
+  .group > header p { font-size: 11px; }
+  .itemCopy h3 { font-size: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell *, .shell *::before, .shell *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}

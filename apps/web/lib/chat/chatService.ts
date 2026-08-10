@@ -1,14 +1,14 @@
 import {
   chatAssistantPayloadSchema,
   type ChatAssistantPayload,
+  type ChatMessage,
   type ChatPostInput,
   type ChatTurnResponse,
 } from "@missa/contracts";
 import {
   createPostgresChatStoreFromUrl,
   createPostgresOpportunityRepositoryFromUrl,
-  type ChatConversationRecord,
-  type ChatConversationView,
+  type ChatMessageRecord,
   type ChatRunView,
   type PostgresChatStore,
 } from "@missa/radar-adapters";
@@ -77,6 +77,22 @@ function payloadFromView(view: ChatRunView): ChatAssistantPayload | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
+/** Only this authored projection crosses the customer API boundary. Raw run,
+ * graph, source-processing, and arbitrary message metadata remain private. */
+export function publicChatMessage(message: ChatMessageRecord): ChatMessage {
+  const payload = message.role === 'assistant'
+    ? chatAssistantPayloadSchema.safeParse(message.metadata)
+    : undefined;
+  return {
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    sequence: message.sequence,
+    createdAt: message.createdAt,
+    metadata: payload?.success ? payload.data : {},
+  };
+}
+
 function responseFromView(view: ChatRunView, idempotent: boolean): ChatTurnResponse {
   const payload = payloadFromView(view);
 
@@ -85,14 +101,7 @@ function responseFromView(view: ChatRunView, idempotent: boolean): ChatTurnRespo
     runId: view.run.id,
     status: view.run.status,
     idempotent,
-    messages: view.messages.map((message) => ({
-      id: message.id,
-      role: message.role,
-      content: message.content,
-      sequence: message.sequence,
-      createdAt: message.createdAt,
-      metadata: message.metadata,
-    })),
+    messages: view.messages.map(publicChatMessage),
     ...(payload ? { payload } : {}),
   };
 }
@@ -164,13 +173,33 @@ export async function runReadOnlyChatTurn(input: {
   return responseFromView(completed, false);
 }
 
-export async function listReadOnlyChatConversations(accountId: string): Promise<ChatConversationRecord[]> {
-  return chatStore().listConversations({ accountId });
+export async function listReadOnlyChatConversations(accountId: string): Promise<PublicChatConversationSummary[]> {
+  const conversations = await chatStore().listConversations({ accountId });
+  return conversations.map(({ id, status, title, createdAt, updatedAt }) => ({ id, status, title, createdAt, updatedAt }));
 }
+
+export type PublicChatConversationSummary = {
+  id: string;
+  status: 'active' | 'archived';
+  title?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PublicChatConversationView = {
+  conversation: PublicChatConversationSummary;
+  messages: ChatMessage[];
+};
 
 export async function readReadOnlyChatConversation(input: {
   accountId: string;
   conversationId: string;
-}): Promise<ChatConversationView | null> {
-  return chatStore().getConversation(input);
+}): Promise<PublicChatConversationView | null> {
+  const view = await chatStore().getConversation(input);
+  if (!view) return null;
+  const { id, status, title, createdAt, updatedAt } = view.conversation;
+  return {
+    conversation: { id, status, title, createdAt, updatedAt },
+    messages: view.messages.map(publicChatMessage),
+  };
 }

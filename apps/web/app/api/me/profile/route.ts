@@ -24,6 +24,7 @@ function ownerResponse(engine: Awaited<ReturnType<typeof getEngine>>, userId: st
     displayName: user.displayName.trim(),
     ...(user.bio?.trim() ? { bio: user.bio.trim() } : {}),
     ...(user.taxonomyPreferences?.length ? { taxonomyPreferences: user.taxonomyPreferences } : {}),
+    ...(user.opportunityPreferences ? { opportunityPreferences: user.opportunityPreferences } : {}),
     completeness,
     publicUrl: `/profile/${encodeURIComponent(user.id)}`,
   };
@@ -51,9 +52,13 @@ export async function PATCH(request: Request) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return jsonError('Request body must be an object.', 400);
 
   const entries = Object.entries(body as Record<string, unknown>);
-  if (entries.some(([key]) => key !== 'displayName' && key !== 'bio' && key !== 'taxonomyPreferences')) return jsonError('Only profile identity and taxonomy preferences can be updated.', 400);
-  if (entries.some(([key, value]) => key !== 'taxonomyPreferences' && typeof value !== 'string')) return jsonError('Display name and bio must be strings.', 400);
+  if (entries.some(([key]) => key !== 'displayName' && key !== 'bio' && key !== 'taxonomyPreferences' && key !== 'opportunityPreferences')) return jsonError('Only profile identity and opportunity preferences can be updated.', 400);
+  if (entries.some(([key, value]) => (key === 'displayName' || key === 'bio') && typeof value !== 'string')) return jsonError('Display name and bio must be strings.', 400);
   if (Object.prototype.hasOwnProperty.call(body, 'taxonomyPreferences') && (!Array.isArray((body as Record<string, unknown>).taxonomyPreferences))) return jsonError('Taxonomy preferences must be an array.', 400);
+  if (Object.prototype.hasOwnProperty.call(body, 'opportunityPreferences')) {
+    const preferences = (body as Record<string, unknown>).opportunityPreferences;
+    if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) return jsonError('Opportunity preferences must be an object.', 400);
+  }
 
   const patch = body as UserProfilePatch;
   const engine = await getEngine();

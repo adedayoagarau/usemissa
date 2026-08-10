@@ -1,67 +1,74 @@
-import { notFound } from 'next/navigation';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { getEngine } from '@/lib/engine';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import { ArrowRight, Building2, CalendarDays, CircleDollarSign, ImageIcon, Info } from 'lucide-react';
+import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
+import { getEngine } from '@/lib/engine';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
+import { organizationMonogram, publicDeadlineLabel, publicFeeLabel, publicPracticeLabels, safePublicMedia } from '@/lib/publicOrganizationProfile';
 import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
+import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { MissaSiteHeader } from '@/components/missa-site-header';
+import styles from './public-organization.module.css';
 
-/**
- * Story 6.4: public organization page -- no auth required. Only published
- * Open Calls are ever visible here (draft calls never reach unauthenticated
- * visitors, per the AC).
- *
- * force-dynamic: this page doesn't read cookies/headers, so without this
- * Next.js renders it once on first request and caches that HTML for every
- * subsequent visitor -- a real bug found while smoke-testing this story
- * (publishing a call had no visible effect on the public page until this
- * was added). The org's open calls change whenever an admin publishes one,
- * so this must never be served from a stale cache.
- */
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ organizationId: string }> }): Promise<Metadata> {
   const { organizationId } = await params;
   try {
-    const radarEngine = await getEngine();
-    const org = radarEngine.store.organizations.get(organizationId);
-    if (!org) return pageMetadata({ title: 'Organization not found', description: 'This public Missa organization page is not available.', path: `/org/${organizationId}`, noIndex: true });
-    return pageMetadata({ title: `${org.name} opportunities`, description: `Published submission opportunities from ${org.name} on Missa.`, path: `/org/${organizationId}` });
+    const organization = (await getEngine()).store.organizations.get(organizationId);
+    if (!organization) return pageMetadata({ title: 'Organization not found', description: 'This public Missa Organization page is not available.', path: `/org/${organizationId}`, noIndex: true });
+    return pageMetadata({ title: `${organization.name} opportunities`, description: `Published Opportunities from ${organization.name} on Missa.`, path: `/org/${organizationId}` });
   } catch {
-    return pageMetadata({ title: 'Organization opportunities', description: 'Published submission opportunities on Missa.', path: `/org/${organizationId}`, noIndex: true });
+    return pageMetadata({ title: 'Organization opportunities', description: 'Published Opportunities on Missa.', path: `/org/${organizationId}`, noIndex: true });
   }
 }
 
-export default async function PublicOrgPage({ params }: { params: Promise<{ organizationId: string }> }) {
+export default async function PublicOrganizationPage({ params }: { params: Promise<{ organizationId: string }> }) {
   const { organizationId } = await params;
-  const radarEngine = await getEngine();
-  const org = radarEngine.store.organizations.get(organizationId);
-  if (!org) notFound();
+  const radar = await getEngine();
+  const organization = radar.store.organizations.get(organizationId);
+  if (!organization) notFound();
+  const workspace = await getWorkspaceEngine();
+  const openCalls = workspace.publishedOpenCallsForOrganization(organizationId);
+  const opportunityRepository = await getOpportunityRepository();
+  const linked = await Promise.all(openCalls.map((call) => call.radarOpportunityId ? opportunityRepository.getById(call.radarOpportunityId).catch(() => null) : null));
+  const rows = openCalls.map((call, index) => {
+    const opportunity = linked[index];
+    const hasHostedForm = workspace.submissionPathsForOpenCall(call.id).length > 0;
+    return { call, opportunity, hasHostedForm, image: safePublicMedia(opportunity?.identityAssetUrl) };
+  });
+  const practiceLabels = publicPracticeLabels(linked);
+  const session = await getSessionAccountFromToken((await cookies()).get(SESSION_COOKIE)?.value);
+  const headerSession = session ? { email: session.account.email, hasOrganization: session.memberships.length > 0 } : null;
+  const monogram = organizationMonogram(organization.name);
 
-  const workspaceEngine = await getWorkspaceEngine();
-  const openCalls = workspaceEngine.publishedOpenCallsForOrganization(organizationId);
-  const linkedOpportunities = await Promise.all(openCalls.map(async (call) => call.radarOpportunityId ? getOpportunityRepository().getById(call.radarOpportunityId).catch(() => null) : null));
-
-  return (
-    <main className="mx-auto max-w-2xl px-6 py-12">
-      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'Organization', name: org.name, url: absoluteUrl(`/org/${organizationId}`), subjectOf: { '@type': 'ItemList', itemListElement: openCalls.map((call, index) => ({ '@type': 'ListItem', position: index + 1, name: call.title, url: absoluteUrl(`/org/${organizationId}/${call.id}`) })) } }} />
-      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'ItemList', name: `${org.name} published opportunities`, numberOfItems: openCalls.length, itemListElement: openCalls.map((call, index) => ({ '@type': 'ListItem', position: index + 1, name: call.title, url: absoluteUrl(`/org/${organizationId}/${call.id}`) })) }} />
-      <h1 className="font-heading text-4xl font-medium text-foreground">{org.name}</h1>
-      <p className="mt-3 text-sm leading-6 text-muted-foreground">Published calls from this organization. Read the official guidelines before applying.</p>
-      <div className="mt-8 space-y-3">
-        {openCalls.map((call, index) => (
-          <Link
-            key={call.id}
-            href={`/org/${organizationId}/${call.id}`}
-            className="block rounded-lg border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/30"
-          >
-            <h2 className="font-heading text-lg font-medium text-foreground">{call.title}</h2>
-            {linkedOpportunities[index] && <p className="mt-1 text-xs text-muted-foreground">{linkedOpportunities[index]?.deadline.date ? `Deadline ${linkedOpportunities[index]?.deadline.date}` : linkedOpportunities[index]?.deadline.raw ?? 'Deadline to be confirmed'} · {linkedOpportunities[index]?.fee.status === 'no-fee' ? 'No fee' : linkedOpportunities[index]?.fee.status === 'paid' ? 'Paid submission' : 'Fee not confirmed'}</p>}
-            <span className="text-sm text-primary">View & submit →</span>
-          </Link>
-        ))}
-        {openCalls.length === 0 && <p className="text-muted-foreground">No open calls right now.</p>}
+  return <>
+    <MissaSiteHeader session={headerSession} current="Organization" />
+    <main id="main-content" className={styles.main}>
+      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'Organization', name: organization.name, url: absoluteUrl(`/org/${organizationId}`), subjectOf: { '@type': 'ItemList', itemListElement: openCalls.map((call, index) => ({ '@type': 'ListItem', position: index + 1, name: call.title, url: absoluteUrl(`/org/${organizationId}/${call.id}`) })) } }} />
+      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'ItemList', name: `${organization.name} published Opportunities`, numberOfItems: openCalls.length, itemListElement: openCalls.map((call, index) => ({ '@type': 'ListItem', position: index + 1, name: call.title, url: absoluteUrl(`/org/${organizationId}/${call.id}`) })) }} />
+      <header className={styles.identity}>
+        <span className={styles.logo} aria-hidden="true">{monogram || <Building2 />}</span>
+        <div><p className={styles.eyebrow}>Public Organization profile</p><h1>{organization.name}</h1><p>Published Opportunities from this Organization. Public profile details are currently limited, so confirm each Opportunity through its linked guidelines or source.</p></div>
+      </header>
+      <aside className={styles.identityBoundary}><Info aria-hidden="true" /><div><strong>Limited public profile</strong><p>Missa currently has the Organization name and published hosted Opportunities. A verified internal domain flag is not shown as a public endorsement, and no private or operational records appear here.</p></div></aside>
+      <section className={styles.opportunities} aria-labelledby="published-opportunities-title">
+        <header className={styles.sectionHeader}><div><p className={styles.eyebrow}>Current choices</p><h2 id="published-opportunities-title">Published Opportunities</h2><p>{rows.length} currently published {rows.length === 1 ? 'Opportunity' : 'Opportunities'}</p></div></header>
+        {rows.length ? <div className={styles.grid}>{rows.map(({ call, opportunity, hasHostedForm, image }) => <article className={styles.card} key={call.id}>
+          <div className={styles.media}>{image ? <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- approved remote source media cannot use a fixed Next host allowlist */}
+            <img src={image} alt={opportunity?.identityAssetAlt ?? ''} />
+          </> : <span aria-hidden="true"><ImageIcon /><small>Media not provided</small></span>}</div>
+          <div className={styles.cardBody}><div className={styles.cardMeta}><span>{hasHostedForm ? 'Hosted application' : 'Published details'}</span>{opportunity?.type ? <span>{opportunity.type.replaceAll('-', ' ')}</span> : null}</div><h3>{call.title}</h3>{opportunity?.content?.summary ? <p className={styles.summary}>{opportunity.content.summary}</p> : <p className={styles.summary}>Read the published details, guidelines, deadline, and application route before preparing your Work.</p>}<dl className={styles.facts}><div><dt><CalendarDays aria-hidden="true" />Deadline</dt><dd>{publicDeadlineLabel(opportunity)}</dd></div><div><dt><CircleDollarSign aria-hidden="true" />Fee</dt><dd>{publicFeeLabel(opportunity)}</dd></div></dl><Link href={`/org/${encodeURIComponent(organizationId)}/${encodeURIComponent(call.id)}`}>Open Opportunity <ArrowRight aria-hidden="true" /></Link></div>
+        </article>)}</div> : <div className={styles.empty}><Building2 aria-hidden="true" /><h3>No published Opportunities</h3><p>This Organization does not currently have a published hosted Opportunity on Missa. No historical activity or future opening is inferred.</p><Link href="/opportunities">Browse all Opportunities</Link></div>}
+      </section>
+      <div className={styles.supporting}>
+        <section><p className={styles.eyebrow}>About</p><h2>Organization information</h2><p>This Organization has not added an allowlisted public biography, official website, location, language, contact policy, logo, or public Program description yet.</p><small>Private domains are not converted into a public website link.</small></section>
+        <section><p className={styles.eyebrow}>Derived from Opportunities shown</p><h2>Opportunities have included</h2>{practiceLabels.length ? <ul className={styles.labels}>{practiceLabels.map((label) => <li key={label}>{label}</li>)}</ul> : <p>No canonical practice labels are available for the published Opportunities shown.</p>}<small>These labels describe the Opportunities above. They do not define, rate, or endorse the Organization.</small></section>
       </div>
+      <footer className={styles.footer}><p>Public Organization profile · Confirm application details before submitting.</p><Link href="/opportunities">Browse Opportunities</Link></footer>
     </main>
-  );
+  </>;
 }

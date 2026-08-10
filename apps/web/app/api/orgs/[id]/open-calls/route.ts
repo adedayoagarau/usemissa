@@ -32,7 +32,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         ? result.access.radar.store.opportunities.get(body.radarOpportunityId)
         : undefined;
     if (!radarOpportunity || radarOpportunity.claimedByOrganizationId !== id) {
-      return NextResponse.json({ error: 'Radar opportunity must be claimed by this organization' }, { status: 400 });
+      return NextResponse.json({ error: 'This opportunity must be claimed by the organization' }, { status: 400 });
     }
   }
 

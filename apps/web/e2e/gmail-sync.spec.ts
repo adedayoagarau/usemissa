@@ -21,9 +21,10 @@ test('Gmail Sync keeps review mode default and requires explicit Autopilot conse
     await route.continue();
   });
 
-  await page.goto('/profile');
+  await page.goto('/profile?section=integrations');
   const card = page.locator('#gmail-sync');
   await expect(card).toContainText('Review before import');
+  await expect(card.getByText(/last sync|scan window|confidence|error code/i)).toHaveCount(0);
   await card.getByRole('button', { name: 'Enable Autopilot', exact: true }).click();
 
   const dialog = page.getByRole('dialog');

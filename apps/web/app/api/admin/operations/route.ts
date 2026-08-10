@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       await recordPlatformAdminAudit(process.env.DATABASE_URL, auth.session.account.id, 'platform_admin.radar_tick', 'radar_worker', 'manual', summary).catch(() => undefined);
       return NextResponse.json(summary, { headers: { 'cache-control': 'private, no-store' } });
     } catch {
-      return NextResponse.json({ error: 'The bounded Radar tick failed; inspect Operations for worker and queue state.' }, { status: 503 });
+      return NextResponse.json({ error: 'The bounded source check failed; inspect Operations for worker and queue state.' }, { status: 503 });
     }
   }
 

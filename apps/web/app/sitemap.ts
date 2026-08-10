@@ -12,7 +12,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = siteUrl();
   const entries: MetadataRoute.Sitemap = [
     { url: baseUrl, changeFrequency: 'weekly', priority: 1 },
-    { url: `${baseUrl}/opportunities-preview`, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${baseUrl}/signup`, changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${baseUrl}/opportunities`, changeFrequency: 'daily', priority: 0.9 },
     { url: `${baseUrl}/for-organizations`, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${baseUrl}/about`, lastModified: discoveryContentLastModified, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${baseUrl}/methodology`, lastModified: discoveryContentLastModified, changeFrequency: 'monthly', priority: 0.7 },
@@ -29,8 +30,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (let page = 0; page < 50; page += 1) {
       const result = await getOpportunityRepository().browse({ openNow: true, sort: 'soonest-deadline', limit: 200, ...(cursor ? { cursor } : {}) });
       entries.push(...result.items.map((item) => ({
-        url: `${baseUrl}/discover/opportunities/${item.slug}`,
-        lastModified: item.source.processingSucceededAt ? new Date(item.source.processingSucceededAt) : undefined,
+        url: `${baseUrl}/opportunities/${item.slug}`,
         changeFrequency: 'daily' as const,
         priority: 0.65,
       })));

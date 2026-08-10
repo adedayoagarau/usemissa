@@ -2,7 +2,7 @@
 import { radarWorkerBatchSize, runRadarWorker } from "./radarWorker.js";
 
 if (!process.env.DATABASE_URL) {
-  console.error("DATABASE_URL is required to run the Missa Radar worker.");
+  console.error("DATABASE_URL is required to run the Missa source monitor.");
   process.exit(1);
 }
 

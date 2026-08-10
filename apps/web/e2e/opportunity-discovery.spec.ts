@@ -1,16 +1,16 @@
 import { expect, test } from '@playwright/test';
 
-test('anonymous discovery keeps canonical taxonomy state across search and categories', async ({ page }) => {
-  await page.goto('/opportunities-preview');
+test('anonymous opportunities keep canonical taxonomy state across search', async ({ page }) => {
+  await page.goto('/opportunities');
 
   const aria = await page.getByRole('main').ariaSnapshot();
-  expect(aria).toContain('heading "Explore opportunities"');
+  expect(aria).toContain('heading "Opportunities"');
   expect(aria).toContain('search:');
-  expect(aria).toContain('combobox "Discipline"');
+  expect(aria).toContain('group "Practice family"');
 
-  const discipline = page.getByLabel('Discipline');
-  await expect(discipline).toBeVisible();
-  await discipline.selectOption({ index: 1 });
+  const practiceFamily = page.getByRole('group', { name: 'Practice family' }).getByRole('checkbox').first();
+  await expect(practiceFamily).toBeVisible();
+  await practiceFamily.locator('xpath=ancestor::label').click();
   await expect(page).toHaveURL(/taxonomy=/);
 
   const selectedTaxonomy = new URL(page.url()).searchParams.get('taxonomy');
@@ -19,44 +19,46 @@ test('anonymous discovery keeps canonical taxonomy state across search and categ
   expect(new URL(page.url()).searchParams.get('taxonomyVersion')).toBeTruthy();
 
   await page.reload();
-  await expect(discipline).toHaveValue(selectedTaxonomy!);
+  await expect(page.getByRole('group', { name: 'Practice family' }).getByRole('checkbox').first()).toBeChecked();
 
   const search = page.getByRole('search').getByLabel('Search opportunities or organizations');
   await search.fill('example search');
   await search.press('Enter');
   await expect(page).toHaveURL(/q=example(?:%20|\+)search/);
   expect(new URL(page.url()).searchParams.get('taxonomy')).toBe(selectedTaxonomy);
-
-  await page.getByRole('link', { name: 'Grants', exact: true }).click();
-  await expect(page).toHaveURL(/category=grants/);
-  expect(new URL(page.url()).searchParams.get('taxonomy')).toBe(selectedTaxonomy);
-  expect(new URL(page.url()).searchParams.get('q')).toBe('example search');
 });
 
 test('anonymous empty states explain a failed search and offer recovery', async ({ page }) => {
-  await page.goto('/opportunities-preview?q=definitely-no-missa-opportunity-9f3d');
+  await page.goto('/opportunities?q=definitely-no-missa-opportunity-9f3d');
 
-  await expect(page.getByText('No opportunities match.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No opportunities match these filters' })).toBeVisible();
   await expect(page.getByText(/No opportunities match “definitely-no-missa-opportunity-9f3d”/)).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Clear filters', exact: true })).toBeVisible();
+  await expect(page.getByText('Clear filters', { exact: true })).toBeVisible();
+});
+
+test('legacy preview redirects to the canonical catalogue without dropping filters', async ({ request }) => {
+  const response = await request.get('/opportunities-preview?q=poetry&type=grant', { maxRedirects: 0 });
+  expect(response.status()).toBe(308);
+  expect(response.headers().location).toBe('/opportunities?q=poetry&type=grant');
 });
 
 test('public crawl endpoints expose only the intended discovery surfaces', async ({ request }) => {
   const robots = await request.get('/robots.txt');
   expect(robots.status()).toBe(200);
   expect(await robots.text()).toContain('/sitemap.xml');
-  expect(await robots.text()).toContain('/opportunities-preview');
+  expect(await robots.text()).toContain('/opportunities');
+  expect(await robots.text()).not.toContain('/opportunities-preview');
 
   const sitemap = await request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   const sitemapBody = await sitemap.text();
-  expect(sitemapBody).toContain('/opportunities-preview');
+  expect(sitemapBody).toContain('/opportunities');
+  expect(sitemapBody).not.toContain('/opportunities-preview');
   expect(sitemapBody).toContain('/for-organizations');
   expect(sitemapBody).toContain('/about');
   expect(sitemapBody).toContain('/methodology');
   expect(sitemapBody).toContain('/discover/contests');
   expect(sitemapBody).toContain('<lastmod>2026-08-07T00:00:00.000Z</lastmod>');
-  expect(sitemapBody).not.toContain('usemissa.com/opportunities/');
 
   const contests = await request.get('/discover/contests');
   expect(contests.status()).toBe(200);
@@ -93,7 +95,7 @@ test('public discovery APIs return bounded JSON without leaking an auth failure'
     const detailBody = await detailApi.json();
     expect(detailBody.title).toBe(firstOpportunity.title);
 
-    const detailPage = await request.get(`/discover/opportunities/${firstOpportunity.slug}`);
+    const detailPage = await request.get(`/opportunities/${firstOpportunity.slug}`);
     expect(detailPage.status()).toBe(200);
     const detailHtml = await detailPage.text();
     expect(detailHtml).toContain(firstOpportunity.title);

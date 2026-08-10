@@ -12,6 +12,8 @@ import type {
   OpportunityChange,
   OpportunityCandidate,
   OpportunityType,
+  OpportunityPreferences,
+  OpportunityPreferencesPatch,
   OpportunityCycle,
   OpportunityFields,
   Organization,
@@ -69,7 +71,7 @@ import { deadlineReminders, linkTrackedOpportunityToWork, overdueResponseAlerts,
 import { computeResponseStats, type ResponseStats } from './tracker/responseStats.js';
 import { buildIcsFeed } from './tracker/calendarFeed.js';
 import { isoDateOf } from './extraction/dates.js';
-import { commitTrackerImport as applyTrackerImport, type ImportDecision, type TrackerImportPlan, type TrackerImportResult } from './import/trackerImport.js';
+import { commitTrackerImport as applyTrackerImport, type ImportRowDecision, type TrackerImportPlan, type TrackerImportResult } from './import/trackerImport.js';
 import { propsForUser, type UserProp } from './props/props.js';
 import { cleanupEmailCandidates as cleanupEmailReviewCandidates, createOrGetForwardingAddress, forwardingAddressView, ingestInboundEmail, listEmailCandidates, reviewEmailCandidate, revokeForwardingAddress, rotateForwardingAddress, setForwardingAddressStatus, type EmailReviewDecision, type IngestResult, type ForwardingAddressView } from './email/emailForwarding.js';
 import type { EmailReviewCandidate } from './domain/types.js';
@@ -107,9 +109,9 @@ async function fetchSources(sources: Source[], fetcher: Fetcher): Promise<FetchR
 }
 
 export class ProfileValidationError extends Error {
-  readonly field: 'displayName' | 'bio' | 'taxonomyPreferences';
+  readonly field: 'displayName' | 'bio' | 'taxonomyPreferences' | 'opportunityPreferences';
 
-  constructor(field: 'displayName' | 'bio' | 'taxonomyPreferences', message: string) {
+  constructor(field: 'displayName' | 'bio' | 'taxonomyPreferences' | 'opportunityPreferences', message: string) {
     super(message);
     this.name = 'ProfileValidationError';
     this.field = field;
@@ -152,7 +154,56 @@ function validatedPrivacyPatch(patch: ProfilePrivacyPatch): ProfilePrivacyPatch 
   return patch;
 }
 
-function normalizedProfileValues(user: UserProfile, patch: UserProfilePatch): { displayName: string; bio?: string; taxonomyPreferences?: TaxonomyPreference[] } {
+const OPPORTUNITY_PREFERENCE_TYPES: ReadonlySet<OpportunityType> = new Set([
+  'open-call', 'magazine', 'grant', 'award', 'fellowship', 'residency', 'festival',
+  'scholarship', 'conference', 'rfp', 'contest', 'pitch', 'exhibition', 'commission', 'other',
+]);
+const CAREER_STAGES = new Set(['emerging', 'mid-career', 'established']);
+const EMPTY_OPPORTUNITY_PREFERENCES: OpportunityPreferences = {
+  types: [],
+  disciplines: [],
+  genres: [],
+  locations: [],
+  careerStages: [],
+  noFeeOnly: false,
+  simultaneousRequired: false,
+};
+
+function normalizedStringList(field: string, value: unknown, max: number): string[] {
+  if (!Array.isArray(value) || value.length > max || value.some((item) => typeof item !== 'string')) {
+    throw new ProfileValidationError('opportunityPreferences', `${field} must be a list of at most ${max} text values.`);
+  }
+  const values = value.map((item) => item.trim()).filter(Boolean);
+  if (values.some((item) => item.length > 120)) throw new ProfileValidationError('opportunityPreferences', `${field} values must be 120 characters or fewer.`);
+  return [...new Set(values)];
+}
+
+function normalizedOpportunityPreferences(user: UserProfile, patch: OpportunityPreferencesPatch): OpportunityPreferences {
+  const current = user.opportunityPreferences ?? EMPTY_OPPORTUNITY_PREFERENCES;
+  const next = { ...current, ...patch } as Record<string, unknown>;
+  const types = normalizedStringList('types', next.types, 16) as OpportunityType[];
+  if (types.some((type) => !OPPORTUNITY_PREFERENCE_TYPES.has(type))) throw new ProfileValidationError('opportunityPreferences', 'Choose supported opportunity types.');
+  const careerStages = normalizedStringList('careerStages', next.careerStages, 3);
+  if (careerStages.some((stage) => !CAREER_STAGES.has(stage))) throw new ProfileValidationError('opportunityPreferences', 'Choose supported career stages.');
+  const maxFeeCents = next.maxFeeCents;
+  if (maxFeeCents !== undefined && maxFeeCents !== null && (typeof maxFeeCents !== 'number' || !Number.isInteger(maxFeeCents) || maxFeeCents < 0)) throw new ProfileValidationError('opportunityPreferences', 'Maximum fee must be a non-negative whole number of cents.');
+  const deadlineWithinDays = next.deadlineWithinDays;
+  if (deadlineWithinDays !== undefined && deadlineWithinDays !== null && (typeof deadlineWithinDays !== 'number' || !Number.isInteger(deadlineWithinDays) || deadlineWithinDays < 0 || deadlineWithinDays > 366)) throw new ProfileValidationError('opportunityPreferences', 'Deadline window must be between 0 and 366 days.');
+  if (typeof next.noFeeOnly !== 'boolean' || typeof next.simultaneousRequired !== 'boolean') throw new ProfileValidationError('opportunityPreferences', 'Fee and simultaneous-submission preferences must be boolean values.');
+  return {
+    types,
+    disciplines: normalizedStringList('disciplines', next.disciplines, 32),
+    genres: normalizedStringList('genres', next.genres, 32),
+    locations: normalizedStringList('locations', next.locations, 32),
+    careerStages,
+    ...(typeof maxFeeCents === 'number' ? { maxFeeCents } : {}),
+    noFeeOnly: next.noFeeOnly,
+    ...(typeof deadlineWithinDays === 'number' ? { deadlineWithinDays } : {}),
+    simultaneousRequired: next.simultaneousRequired,
+  };
+}
+
+function normalizedProfileValues(user: UserProfile, patch: UserProfilePatch): { displayName: string; bio?: string; taxonomyPreferences?: TaxonomyPreference[]; opportunityPreferences?: OpportunityPreferences } {
   const displayName = patch.displayName === undefined ? user.displayName.trim() : patch.displayName.trim();
   if (!displayName || displayName.length > 120) {
     throw new ProfileValidationError('displayName', 'Display name must be between 1 and 120 characters.');
@@ -179,7 +230,11 @@ function normalizedProfileValues(user: UserProfile, patch: UserProfilePatch): { 
     });
   }
 
-  return { displayName, bio, taxonomyPreferences };
+  const opportunityPreferences = patch.opportunityPreferences === undefined
+    ? user.opportunityPreferences
+    : normalizedOpportunityPreferences(user, patch.opportunityPreferences);
+
+  return { displayName, bio, taxonomyPreferences, opportunityPreferences };
 }
 
 export interface TickReport {
@@ -352,6 +407,7 @@ export class RadarEngine {
     user.displayName = values.displayName;
     user.bio = values.bio;
     if (values.taxonomyPreferences !== undefined) user.taxonomyPreferences = values.taxonomyPreferences;
+    if (values.opportunityPreferences !== undefined) user.opportunityPreferences = values.opportunityPreferences;
     return user;
   }
 
@@ -362,12 +418,12 @@ export class RadarEngine {
     const settings = normalizedPrivacy(user.privacy);
     const bio = user.bio?.trim() || undefined;
     const displayName = user.displayName.trim();
-    const trackedOpportunityCount = this.store.tracked.filter((tracked) => tracked.userId === user.id).length + this.store.manualTrackerEntries.filter((entry) => entry.userId === user.id).length;
     const publicProfile: PublicUserProfile = { id: user.id };
     if (settings.displayName === 'public' && displayName) publicProfile.displayName = displayName;
     if (settings.bio === 'public' && bio) publicProfile.bio = bio;
-    if (settings.trackedOpportunityCount === 'public') publicProfile.trackedOpportunityCount = trackedOpportunityCount;
-    if (!publicProfile.displayName && !publicProfile.bio && publicProfile.trackedOpportunityCount === undefined) return { isPrivate: true };
+    // Legacy rows may still carry trackedOpportunityCount visibility. Tracker
+    // activity is private product state and is never part of the public Profile.
+    if (!publicProfile.displayName && !publicProfile.bio) return { isPrivate: true };
     return publicProfile;
   }
 
@@ -387,12 +443,13 @@ export class RadarEngine {
     return { user, settings: next, changedFields };
   }
 
-  profileCompleteness(userId: string): { complete: boolean; missing: Array<'displayName' | 'bio'> } {
+  profileCompleteness(userId: string): { complete: boolean; missing: Array<'displayName' | 'bio' | 'opportunityPreferences'> } {
     const user = this.store.users.get(userId);
-    if (!user) return { complete: false, missing: ['displayName', 'bio'] };
-    const missing: Array<'displayName' | 'bio'> = [];
+    if (!user) return { complete: false, missing: ['displayName', 'bio', 'opportunityPreferences'] };
+    const missing: Array<'displayName' | 'bio' | 'opportunityPreferences'> = [];
     if (!user.displayName.trim()) missing.push('displayName');
     if (!user.bio?.trim()) missing.push('bio');
+    if (!user.opportunityPreferences) missing.push('opportunityPreferences');
     return { complete: missing.length === 0, missing };
   }
 
@@ -430,7 +487,7 @@ export class RadarEngine {
     return propsForUser(this.store, userId);
   }
 
-  commitTrackerImport(userId: string, plan: TrackerImportPlan, decisions: Record<string, ImportDecision | { action: ImportDecision; opportunityId?: string }>, now = this.clock.now(), sourceHash = ''): TrackerImportResult {
+  commitTrackerImport(userId: string, plan: TrackerImportPlan, decisions: Record<string, ImportRowDecision>, now = this.clock.now(), sourceHash = ''): TrackerImportResult {
     if (!this.store.users.has(userId)) throw new Error(`Unknown user: ${userId}`);
     return applyTrackerImport(this.store, this.ids, userId, plan, decisions, now, sourceHash);
   }

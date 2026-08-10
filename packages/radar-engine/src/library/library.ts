@@ -8,6 +8,16 @@ export class LibraryValidationError extends Error {
   constructor(message: string) { super(message); this.name = 'LibraryValidationError'; }
 }
 
+export class LibraryConflictError extends LibraryValidationError {
+  constructor(message: string) { super(message); this.name = 'LibraryConflictError'; }
+}
+
+export interface LibraryReferenceCounts {
+  tracker: number;
+  checklists: number;
+  works: number;
+}
+
 function nowIso(now: Date): string { return now.toISOString(); }
 function id(ids: IdGenerator | undefined, prefix: string): string { return ids?.next(prefix) ?? `${prefix}_${randomUUID()}`; }
 function text(value: unknown, label: string, max: number): string {
@@ -24,6 +34,41 @@ function optionalText(value: unknown, label: string, max: number): string | unde
   return result || undefined;
 }
 function owner(store: RadarStore, userId: string): void { if (!store.users.has(userId)) throw new LibraryValidationError('Profile not found.'); }
+
+function ownedChecklistIds(store: RadarStore, userId: string): Set<string> {
+  return new Set([...store.checklists.values()].filter((checklist) => checklist.userId === userId).map((checklist) => checklist.id));
+}
+
+export function libraryWorkReferences(store: RadarStore, userId: string, workId: string): LibraryReferenceCounts {
+  const checklistIds = ownedChecklistIds(store, userId);
+  return {
+    tracker: store.tracked.filter((item) => item.userId === userId && item.workId === workId).length,
+    checklists: [...store.checklistItems.values()].filter((item) => checklistIds.has(item.checklistId) && item.libraryWorkId === workId).length,
+    works: 0,
+  };
+}
+
+export function libraryFileReferences(store: RadarStore, userId: string, fileId: string): LibraryReferenceCounts {
+  const checklistIds = ownedChecklistIds(store, userId);
+  return {
+    tracker: 0,
+    checklists: [...store.checklistItems.values()].filter((item) => checklistIds.has(item.checklistId) && item.libraryFileId === fileId).length,
+    works: [...store.libraryWorks.values()].filter((work) => work.userId === userId && work.fileId === fileId).length,
+  };
+}
+
+export function savedAnswerReferences(store: RadarStore, userId: string, answerId: string): LibraryReferenceCounts {
+  const checklistIds = ownedChecklistIds(store, userId);
+  return {
+    tracker: 0,
+    checklists: [...store.checklistItems.values()].filter((item) => checklistIds.has(item.checklistId) && item.savedAnswerId === answerId).length,
+    works: 0,
+  };
+}
+
+function referenceLabel(count: number, singular: string): string {
+  return `${count} ${singular}${count === 1 ? '' : 's'}`;
+}
 
 function taxonomyAssignments(value: unknown): LibraryWorkTaxonomyAssignment[] | undefined {
   if (value === undefined) return undefined;
@@ -71,6 +116,9 @@ export function updateLibraryWork(store: RadarStore, userId: string, workId: str
 
 export function deleteLibraryWork(store: RadarStore, userId: string, workId: string): void {
   const work = store.libraryWorks.get(workId); if (!work || work.userId !== userId) throw new LibraryValidationError('Work not found.');
+  const references = libraryWorkReferences(store, userId, workId);
+  const linked = [references.tracker ? referenceLabel(references.tracker, 'Tracker item') : '', references.checklists ? referenceLabel(references.checklists, 'checklist item') : ''].filter(Boolean);
+  if (linked.length) throw new LibraryConflictError(`This Work is still linked to ${linked.join(' and ')}. Remove those links before deleting it.`);
   store.libraryWorks.delete(workId);
 }
 
@@ -87,7 +135,9 @@ export function createLibraryFile(store: RadarStore, userId: string, input: { fi
 
 export function deleteLibraryFile(store: RadarStore, userId: string, fileId: string): void {
   const file = store.libraryFiles.get(fileId); if (!file || file.userId !== userId) throw new LibraryValidationError('File not found.');
-  for (const work of store.libraryWorks.values()) if (work.userId === userId && work.fileId === fileId) { work.fileId = undefined; work.updatedAt = new Date().toISOString(); }
+  const references = libraryFileReferences(store, userId, fileId);
+  const linked = [references.works ? referenceLabel(references.works, 'Work') : '', references.checklists ? referenceLabel(references.checklists, 'checklist item') : ''].filter(Boolean);
+  if (linked.length) throw new LibraryConflictError(`This file is still linked to ${linked.join(' and ')}. Detach it before deleting the stored file.`);
   store.libraryFiles.delete(fileId);
 }
 
@@ -106,5 +156,7 @@ export function updateSavedAnswer(store: RadarStore, userId: string, answerId: s
 
 export function deleteSavedAnswer(store: RadarStore, userId: string, answerId: string): void {
   const answer = store.savedAnswers.get(answerId); if (!answer || answer.userId !== userId) throw new LibraryValidationError('Saved Answer not found.');
+  const references = savedAnswerReferences(store, userId, answerId);
+  if (references.checklists) throw new LibraryConflictError(`This Saved Answer is still linked to ${referenceLabel(references.checklists, 'checklist item')}. Remove that link before deleting it.`);
   store.savedAnswers.delete(answerId);
 }

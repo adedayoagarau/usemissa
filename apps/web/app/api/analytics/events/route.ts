@@ -41,5 +41,5 @@ export async function POST(request: Request) {
 }
 
 function isPublicPath(path: string): boolean {
-  return path === '/' || ['/about', '/methodology', '/for-organizations', '/opportunities-preview', '/guides', '/discover/', '/org/', '/profile/', '/login', '/signup'].some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+  return path === '/' || ['/about', '/methodology', '/waitlist', '/for-organizations', '/opportunities', '/guides', '/discover/', '/org/', '/profile/', '/login', '/signup'].some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }

@@ -108,14 +108,16 @@ export const opportunityFeeSchema = z.object({
   raw: z.string().trim().max(200).optional(),
 });
 
+/** Customer-safe source attribution.
+ *
+ * Fetch timestamps, processing outcomes, review confidence and verification
+ * windows remain internal operational evidence. Public Opportunity responses
+ * identify the source without exposing those implementation details.
+ */
 export const opportunitySourceEvidenceSchema = z.object({
   kind: sourceKindSchema,
   name: z.string().trim().min(1).max(200),
   url: httpUrlSchema,
-  checkedAt: z.iso.datetime(),
-  processingSucceededAt: z.iso.datetime().optional(),
-  organizationConfirmed: z.boolean(),
-  verifiedUntil: z.iso.datetime().optional(),
 });
 
 export const opportunityTailoringReasonSchema = z.object({

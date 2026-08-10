@@ -14,8 +14,26 @@ export const chatEvidenceSchema = z.object({
   opportunityId: z.string().trim().min(1).max(128),
   title: z.string().trim().min(1).max(240),
   url: httpUrlSchema,
-  checkedAt: z.iso.datetime(),
-  organizationConfirmed: z.boolean(),
+});
+
+const taxonomyFacetSchema = z.enum([
+  "practice-family",
+  "discipline",
+  "form",
+  "genre",
+  "subgenre",
+  "medium",
+  "technique",
+  "mode",
+  "role",
+  "theme",
+  "audience",
+  "language",
+]);
+
+const chatTaxonomyLabelSchema = z.object({
+  facet: taxonomyFacetSchema,
+  label: z.string().trim().min(1).max(120),
 });
 
 export const chatResultSchema = z.object({
@@ -34,18 +52,23 @@ export const chatResultSchema = z.object({
     amountCents: z.number().int().min(0).optional(),
     currency: z.string().trim().length(3).optional(),
   }),
+  taxonomy: z.array(chatTaxonomyLabelSchema).max(12).default([]),
   source: chatEvidenceSchema,
 });
 
 export const chatAssistantPayloadSchema = z.object({
   intent: z.literal("opportunity-search"),
-  engine: z.literal("deterministic-baseline"),
   answer: z.string().trim().min(1).max(4_000),
   search: z.object({
     query: z.string().trim().max(200).optional(),
     types: z.array(z.string().trim().min(1).max(64)).max(8),
     feeStatus: z.enum(["no-fee", "paid", "unknown"]).optional(),
     sort: z.string().trim().min(1).max(64),
+    taxonomy: z.array(chatTaxonomyLabelSchema).max(12).default([]),
+    clarifications: z.array(z.object({
+      phrase: z.string().trim().min(1).max(120),
+      options: z.array(chatTaxonomyLabelSchema).min(2).max(8),
+    })).max(4).default([]),
   }),
   results: z.array(chatResultSchema).max(8),
   evidence: z.array(chatEvidenceSchema).max(8),

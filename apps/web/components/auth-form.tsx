@@ -6,18 +6,30 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { serializeAuthIntent, type AuthIntent } from '@/lib/authRedirect';
 import styles from '@/app/auth.module.css';
 
 type AuthMode = 'login' | 'signup';
 
-function authHref(mode: AuthMode, redirectTo: string): string {
+function authHref(mode: AuthMode, redirectTo: string, intent?: AuthIntent): string {
   const params = new URLSearchParams();
   if (redirectTo !== '/opportunities') params.set('next', redirectTo);
+  const serializedIntent = serializeAuthIntent(intent);
+  if (serializedIntent) params.set('intent', serializedIntent);
   const query = params.toString();
   return `/${mode}${query ? `?${query}` : ''}`;
 }
 
-export function AuthForm({ initialMode = 'login', redirectTo = '/opportunities' }: { initialMode?: AuthMode; redirectTo?: string }) {
+export function AuthForm({
+  initialMode = 'login',
+  redirectTo = '/opportunities',
+  intent,
+}: {
+  initialMode?: AuthMode;
+  redirectTo?: string;
+  intent?: AuthIntent;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
@@ -46,8 +58,21 @@ export function AuthForm({ initialMode = 'login', redirectTo = '/opportunities' 
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        setError(body.error ?? `${mode === 'login' ? 'Log in' : 'Sign up'} failed. Try again.`);
+        setError(body.error ?? (mode === 'login' ? 'We could not log you in. Check your details and try again.' : 'We could not create your account. Check your details and try again.'));
         return;
+      }
+      if (intent?.kind === 'save-to-tracker') {
+        const intentResponse = await fetch('/api/me/tracker', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ opportunityId: intent.opportunityId }),
+        });
+        if (!intentResponse.ok) {
+          toast.error('You are logged in, but Missa could not save that opportunity. Try Save to Tracker again.');
+        } else {
+          const intentResult = (await intentResponse.json()) as { status?: string };
+          toast.success(intentResult.status === 'already-present' ? 'Already in Tracker' : 'Saved to Tracker');
+        }
       }
       router.push(redirectTo);
       router.refresh();
@@ -63,11 +88,18 @@ export function AuthForm({ initialMode = 'login', redirectTo = '/opportunities' 
     <div className={styles.page}>
       <section className={styles.story} aria-label="About Missa">
         <div className={styles.storyContent}>
-          <Link href="/" className={styles.mark}><span className={styles.markDot} />Missa</Link>
+          <Link href="/" className={styles.mark}>
+            <span className={styles.markDot} />
+            Missa
+          </Link>
           <div className={styles.storyCopy}>
             <h1 className={styles.storyTitle}>A clearer way to send your work out into the world.</h1>
-            <p className={styles.storyBody}>Missa brings the right opportunities, requirements, and next steps into one calm place.</p>
-            <div className={styles.promiseList}><p className={styles.promise}>Opportunities tailored to your practice</p><p className={styles.promise}>Requirements visible before you commit</p><p className={styles.promise}>One place to track what happens next</p></div>
+            <p className={styles.storyBody}>Missa brings the right opportunities, requirements, and next steps into one place.</p>
+            <div className={styles.promiseList}>
+              <p className={styles.promise}>Opportunities tailored to your practice</p>
+              <p className={styles.promise}>Requirements visible before you commit</p>
+              <p className={styles.promise}>One place to track what happens next</p>
+            </div>
           </div>
         </div>
       </section>
@@ -76,20 +108,66 @@ export function AuthForm({ initialMode = 'login', redirectTo = '/opportunities' 
         <div className={styles.formCard}>
           <p className={styles.formKicker}>Missa</p>
           <h2 className={styles.formTitle}>{mode === 'login' ? 'Welcome back.' : 'Create your account.'}</h2>
-          <p className={styles.formDescription}>{mode === 'login' ? 'Pick up where you left off.' : 'Create a free account to find, track, and submit with confidence.'}</p>
+          <p className={styles.formDescription}>{mode === 'login' ? 'Pick up where you left off.' : 'Find source-linked opportunities, understand what they ask, and track what happens next.'}</p>
 
           <form onSubmit={onSubmit} className={styles.form} noValidate>
-            {mode === 'signup' && <div className={styles.field}><label htmlFor="displayName" className={styles.label}>Your name</label><Input className="h-11" id="displayName" name="displayName" autoComplete="name" placeholder="Alex Morgan" required /></div>}
-            <div className={styles.field}><label htmlFor="email" className={styles.label}>Email address</label><Input className="h-11" id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required /></div>
-            <div className={styles.field}><label htmlFor="password" className={styles.label}>Password</label><div className={styles.passwordWrap}><Input className="h-11" id="password" name="password" type={showPassword ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="At least 8 characters" minLength={8} required /><button type="button" className={styles.passwordToggle} onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}</button></div></div>
-            {mode === 'signup' && <div className={styles.field}><label htmlFor="confirmation" className={styles.label}>Confirm password</label><div className={styles.passwordWrap}><Input className="h-11" id="confirmation" name="confirmation" type={showConfirmation ? 'text' : 'password'} autoComplete="new-password" placeholder="Repeat your password" minLength={8} required /><button type="button" className={styles.passwordToggle} onClick={() => setShowConfirmation((value) => !value)} aria-label={showConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}>{showConfirmation ? <EyeOff className="size-4" /> : <Eye className="size-4" />}</button></div></div>}
-            {error && <p className={styles.error} role="alert">{error}</p>}
-            <Button type="submit" size="lg" disabled={isPending} className="h-11 justify-between">{isPending ? 'Working…' : mode === 'login' ? 'Log in' : 'Create account'}<ArrowRight className="size-4" /></Button>
-            <p className={styles.finePrint}>{mode === 'signup' ? 'Free to start. You can update your preferences anytime.' : 'You can log out anytime from your account menu.'}</p>
+            {mode === 'signup' && (
+              <div className={styles.field}>
+                <label htmlFor="displayName" className={styles.label}>
+                  Your name
+                </label>
+                <Input className="h-11" id="displayName" name="displayName" autoComplete="name" placeholder="Alex Morgan" required />
+              </div>
+            )}
+            <div className={styles.field}>
+              <label htmlFor="email" className={styles.label}>
+                Email address
+              </label>
+              <Input className="h-11" id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required />
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="password" className={styles.label}>
+                Password
+              </label>
+              <div className={styles.passwordWrap}>
+                <Input className="h-11" id="password" name="password" type={showPassword ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} placeholder="At least 8 characters" minLength={8} required />
+                <button type="button" className={styles.passwordToggle} onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                  {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+            </div>
+            {mode === 'signup' && (
+              <div className={styles.field}>
+                <label htmlFor="confirmation" className={styles.label}>
+                  Confirm password
+                </label>
+                <div className={styles.passwordWrap}>
+                  <Input className="h-11" id="confirmation" name="confirmation" type={showConfirmation ? 'text' : 'password'} autoComplete="new-password" placeholder="Repeat your password" minLength={8} required />
+                  <button type="button" className={styles.passwordToggle} onClick={() => setShowConfirmation((value) => !value)} aria-label={showConfirmation ? 'Hide password confirmation' : 'Show password confirmation'}>
+                    {showConfirmation ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+            {error && (
+              <p className={styles.error} role="alert">
+                {error}
+              </p>
+            )}
+            <Button type="submit" size="lg" disabled={isPending} className="h-11 justify-between">
+              {isPending ? (mode === 'login' ? 'Logging in…' : 'Creating account…') : mode === 'login' ? 'Log in' : 'Create account'}
+              <ArrowRight className="size-4" />
+            </Button>
+            <p className={styles.finePrint}>{mode === 'signup' ? 'Update your profile and preferences whenever your work changes.' : 'Use the account that holds your Tracker and Library.'}</p>
           </form>
 
-          <p className={styles.switchMode}>{mode === 'login' ? 'New to Missa? ' : 'Already have an account? '}<Link href={authHref(mode === 'login' ? 'signup' : 'login', redirectTo)}>{mode === 'login' ? 'Create an account' : 'Log in'}</Link></p>
-          <Link href="/opportunities-preview" className={styles.backLink}>View the public design preview <ArrowRight className="size-3.5" /></Link>
+          <p className={styles.switchMode}>
+            {mode === 'login' ? 'New to Missa? ' : 'Already have an account? '}
+            <Link href={authHref(mode === 'login' ? 'signup' : 'login', redirectTo, intent)}>{mode === 'login' ? 'Create an account' : 'Log in'}</Link>
+          </p>
+          <Link href="/opportunities" className={styles.backLink}>
+            Browse public opportunities <ArrowRight className="size-3.5" />
+          </Link>
         </div>
       </section>
     </div>

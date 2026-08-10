@@ -786,7 +786,7 @@ This surface follows the root `DESIGN.md`.
 - Primary canvas: true white `#ffffff`.
 - No paper, cream, or beige page tint.
 - Neutral surfaces and borders provide structure without turning every object into a card.
-- Missa terracotta is reserved for the primary action, active state, or one meaningful emphasis.
+- Missa Aubergine is reserved for the primary action, active state, or one meaningful emphasis.
 - Green is reserved for verified or positive states.
 - Closing-soon urgency is not styled as a generic error.
 

@@ -1,6 +1,6 @@
 # Missa — Naming Decisions
 
-The rename spec. Companion to `missa-naming-inventory.md` (the research inventory).
+The rename spec. Companion to `missa-naming-inventory.md` (the research inventory). Voice, tone, and user-facing writing patterns are governed by [`missa-content-style-guide.md`](./missa-content-style-guide.md).
 
 ## The Rule
 
@@ -14,15 +14,15 @@ Three registers, three jobs:
 | Standard nouns (Opportunities, Submissions, Reviews, Messages, Insights) | App navigation, buttons, statuses | Everything users click |
 | Database language (SubmissionPackage, SubmissionPath, Entity, ReviewRound) | Code and schema only — never rendered | Engineers keep these; users never see them |
 
-The brand voice shows up in empty states, notifications, and Props copy — not in labels:
+The brand voice shows up in empty states and notifications — not in labels:
 
-- **Messages**, empty state: *"Every opportunity begins with a conversation."*
-- **Pending**, empty state: *"Good work takes time. We'll let you know when something changes."*
-- **Saved**, empty state: *"Save the calls you're not ready for yet."*
+- **Messages**, empty state: *"No messages yet. Updates from organizations will appear here."*
+- **Pending**, empty state: *"No decision yet. We'll show the next confirmed update here."*
+- **Saved**, empty state: *"Save opportunities you want to look at again."*
 
 ---
 
-## Submitter Side (Missa Passport)
+## Creator product
 
 App navigation: **Home · Opportunities · Tracker · Library · Calendar · Messages · Insights**
 
@@ -32,9 +32,9 @@ App navigation: **Home · Opportunities · Tracker · Library · Calendar · Mes
 | Missa Discover | **Opportunities** | Matches Submittable/Foundant vocabulary |
 | Missa Tracker | **Tracker** | Keep — Duotrope/Chill Subs users already say "tracker" |
 | Opportunity Card | **Opportunity** | Nobody names the card |
-| Universal Submitter Profile | **My Passport** (marketing) / **Profile** (settings) | |
+| Universal Submitter Profile | **Profile** | |
 | Public Submitter Pages | **Public Profile** | |
-| Works Library + Portfolio Library + Reusable Answers | **Library** (tabs: Works · Files · Saved Answers) | "Submission Wallet" survives as marketing copy for the Passport bundle, not a nav item |
+| Works Library + Portfolio Library + Reusable Answers | **Library** (tabs: Works · Files · Saved Answers) | Do not name the bundle |
 | Draft Workspace | **Drafts** | |
 | Submission Packet | **Submission** | "Packet" allowed in copy for multi-piece sends (poets say packet) |
 | Auto Calendar | **Calendar** | Automation is expected, not named |
@@ -44,7 +44,7 @@ App navigation: **Home · Opportunities · Tracker · Library · Calendar · Mes
 | Expected Response Window | **Expected Response** | Landing page already uses this label — align app to it |
 | Fit Score | **Fit Score** | Keep |
 | Eligibility Guardrails / Checker | **Eligibility Check** | |
-| Trust Layer / Trust Signals / Freshness | **Verified** (badge) + "checked 4h ago" copy | "Trust Layer" is internal architecture speak |
+| Trust Layer / Trust Signals / Freshness | *(no customer-facing feature name)* | Keep freshness and refresh state in backend/admin operations; link to the official source where useful |
 | Simultaneous Submission Intelligence | *(no feature name)* | It's just the Tracker doing its job; UI shows "Out at 4 places" |
 | One-Click Import / Import Existing Tracker | **Import** | |
 | Personal Analytics Dashboard / Submitter Analytics | **Insights** | |
@@ -52,7 +52,7 @@ App navigation: **Home · Opportunities · Tracker · Library · Calendar · Mes
 | Opportunity Lists and Playlists | **Lists** | |
 | Organization Follow System | **Following** | |
 | Opportunity Matching / Recommendations | **For You** (feed section) | |
-| Props | **Props** | Keep — already the right register |
+| Props | *(no feature name)* | Remove gamification language unless a later product decision restores it |
 
 ### Tracker views
 
@@ -67,7 +67,7 @@ App navigation: **Home · Opportunities · Tracker · Library · Calendar · Mes
 
 ### The word "Submitter"
 
-Never shown to the user about themselves — the UI says **you / your work / My Passport**.
+Never shown to the user about themselves — the UI says **you / your work / Profile**.
 Admin-side, the noun is **configurable per opportunity type** (this falls out of the existing
 taxonomy system): default **Submitters**, templates set **Applicants** (grants/fellowships),
 **Entrants** (awards), **Writers/Artists/Filmmakers** (creative verticals). One schema word
@@ -75,7 +75,7 @@ taxonomy system): default **Submitters**, templates set **Applicants** (grants/f
 
 ---
 
-## Organization Side (Missa Workspace)
+## Organization product
 
 The eight verb modules become noun navigation:
 
@@ -184,7 +184,7 @@ renaming the status.
 
 ---
 
-## Marketing (unchanged)
+## Marketing
 
 The landing page keeps its register — it is doing a different job than navigation:
 
@@ -199,4 +199,5 @@ Submission Package · Submission Item · Submission Path · Opportunity Card · 
 Universal Submitter Profile · Email Reminder Engine · Rules Engine · Trust Layer ·
 Simultaneous Submission Intelligence · Auto-Bucketing · Migration Integrity Report ·
 Enterprise Admin Console · Personal Analytics Dashboard · Setup Wizard ·
-Template Marketplace · Notification Digest (as a name) · "Submitter" (user-facing)
+Template Marketplace · Notification Digest (as a name) · "Submitter" (user-facing) ·
+Passport · Radar · Workspace · Discover (as a product name) · Props

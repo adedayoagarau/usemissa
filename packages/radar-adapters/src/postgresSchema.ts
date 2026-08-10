@@ -116,6 +116,27 @@ create table if not exists radar_manual_tracker_entries (
 );
 create index if not exists radar_manual_tracker_entries_user_idx on radar_manual_tracker_entries (user_id);
 
+create table if not exists tracker_import_receipts (
+  id text primary key,
+  account_id text not null,
+  user_id text not null,
+  idempotency_key text not null,
+  request_hash text not null,
+  source_hash text not null,
+  created_at timestamptz not null,
+  result jsonb not null
+);
+create unique index if not exists tracker_import_receipts_account_key_idx on tracker_import_receipts (account_id, idempotency_key);
+create index if not exists tracker_import_receipts_user_created_idx on tracker_import_receipts (user_id, created_at desc);
+
+create table if not exists tracker_import_rate_events (
+  id text primary key,
+  account_id text not null,
+  kind text not null check (kind in ('preview', 'commit')),
+  occurred_at timestamptz not null
+);
+create index if not exists tracker_import_rate_events_scope_idx on tracker_import_rate_events (account_id, kind, occurred_at);
+
 create table if not exists radar_forwarding_addresses (
   id text primary key,
   user_id text not null,

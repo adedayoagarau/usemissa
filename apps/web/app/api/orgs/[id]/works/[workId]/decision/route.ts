@@ -25,7 +25,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         userId: submitter.userId,
         kind: 'submission-decision',
         title: `${body.outcome[0].toUpperCase()}${body.outcome.slice(1)}: ${work?.title ?? 'your work'}`,
-        body: `The organization recorded a ${body.outcome} decision. Open My submissions for the full receipt.`,
+        body: `The Organization recorded a ${body.outcome} decision. Open Tracker for the full receipt.`,
         reason: 'an organization updated a work in your Missa submission',
         ...(openCall?.radarOpportunityId ? { opportunityId: openCall.radarOpportunityId } : {}),
       });

@@ -1,6 +1,7 @@
 import { expect, request as playwrightRequest, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
-test('submitter can save a draft, submit once, replay safely, and withdraw', async ({ baseURL }) => {
+test('submitter can save a draft, submit once, replay safely, and withdraw', async ({ baseURL, browser }) => {
   const admin = await playwrightRequest.newContext({ baseURL });
   const submitter = await playwrightRequest.newContext({ baseURL });
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -85,6 +86,33 @@ test('submitter can save a draft, submit once, replay safely, and withdraw', asy
     const listing = (await mySubmissions.json()) as { submissions: Array<{ id: string; works: Array<{ title: string }> }> };
     expect(listing.submissions.find((submission) => submission.id === submitted.submission.id)?.works[0]?.title).toBe('Finished poem');
 
+    const productReceipt = await submitter.get(`/tracker/submissions/${submitted.submission.id}`);
+    expect(productReceipt.ok()).toBeTruthy();
+    const productReceiptHtml = await productReceipt.text();
+    expect(productReceiptHtml).toContain('Submission receipt');
+    expect(productReceiptHtml).toContain('Finished poem');
+    expect(productReceiptHtml).toContain('Submitted through Missa');
+
+    const visualContext = await browser.newContext({ baseURL, storageState: await submitter.storageState(), viewport: { width: 1280, height: 900 } });
+    const visualPage = await visualContext.newPage();
+    await visualPage.goto(`/tracker/submissions/${submitted.submission.id}`);
+    await expect(visualPage.getByRole('heading', { level: 1, name: `E2E call ${suffix}` })).toBeVisible();
+    await visualPage.screenshot({ path: 'outputs/submission-detail-product-desktop.png', fullPage: true });
+    await visualPage.setViewportSize({ width: 390, height: 844 });
+    await visualPage.reload();
+    expect(await visualPage.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
+    const accessibility = await new AxeBuilder({ page: visualPage }).analyze();
+    expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
+    await visualPage.screenshot({ path: 'outputs/submission-detail-product-mobile.png', fullPage: true });
+    await visualContext.close();
+
+    const unauthorizedReceipt = await admin.get(`/tracker/submissions/${submitted.submission.id}`);
+    expect(unauthorizedReceipt.status()).toBe(404);
+
+    const legacyReceipt = await submitter.get(`/my-submissions/${submitted.submission.id}`, { maxRedirects: 0 });
+    expect(legacyReceipt.status()).toBe(308);
+    expect(legacyReceipt.headers().location).toBe(`/tracker/submissions/${submitted.submission.id}`);
+
     const withdraw = await submitter.post(`/api/me/submissions/${submitted.submission.id}/withdraw`);
     expect(withdraw.ok()).toBeTruthy();
     const withdrawn = (await withdraw.json()) as { status: string };
@@ -133,6 +161,11 @@ test('organization decision reaches the submitter receipt and Inbox', async ({ b
     expect(receipt.ok()).toBeTruthy();
     const receiptBody = (await receipt.json()) as { decisions: Array<{ outcome: string }> };
     expect(receiptBody.decisions[0]?.outcome).toBe('accepted');
+    const productReceipt = await submitter.get(`/tracker/submissions/${submitted.submission.id}`);
+    expect(productReceipt.ok()).toBeTruthy();
+    const productReceiptHtml = await productReceipt.text();
+    expect(productReceiptHtml).toContain('Decision poem');
+    expect(productReceiptHtml).toContain('Accepted');
     const profile = (await (await submitter.get('/api/me/profile')).json()) as { id: string };
     expect(profile.id).toBeTruthy();
     const submitterInbox = await submitter.get(`/api/users/${profile.id}/inbox`);

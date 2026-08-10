@@ -65,7 +65,7 @@ export function buildIcsFeed(ctx: TrackerContext, userId: string): string {
   return [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Missa Radar//Opportunity Deadlines//EN',
+    'PRODID:-//Missa//Opportunity Deadlines//EN',
     'CALSCALE:GREGORIAN',
     // X-WR-CALNAME is the calendar's display name in Google/Apple/Outlook
     // Calendar's UI -- user-facing, unlike PRODID (an internal client

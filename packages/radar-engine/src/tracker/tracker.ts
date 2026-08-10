@@ -107,6 +107,8 @@ export interface TrackerItem {
   /** Private Library Work link, when the submitter has assigned one. */
   workId?: string;
   workTitle?: string;
+  /** Private CSV receipt that last changed or created this Tracker item. */
+  importId?: string;
 }
 
 export type PipelineStage = 'planning' | 'submitted' | 'in-progress' | 'outcome' | 'archived';
@@ -169,6 +171,7 @@ function toItem(ctx: TrackerContext, user: UserProfile, tracked: TrackedOpportun
     daysOverdue,
     workId: tracked.workId,
     workTitle: tracked.workId ? ctx.store.libraryWorks.get(tracked.workId)?.title : undefined,
+    importId: tracked.lastImportId,
   };
 }
 
@@ -186,7 +189,7 @@ export function linkTrackedOpportunityToWork(ctx: TrackerContext, userId: string
 }
 
 function toManualItem(entry: ManualTrackerEntry): TrackerItem {
-  const fit: FitScore = { level: 'unknown', reasons: [], watchouts: ['This is a private imported row; no Radar match was found.'], disqualifiers: [] };
+  const fit: FitScore = { level: 'unknown', reasons: [], watchouts: ['This is a private imported row; no matching opportunity was found.'], disqualifiers: [] };
   return {
     opportunityId: entry.id,
     title: entry.title,
@@ -202,6 +205,7 @@ function toManualItem(entry: ManualTrackerEntry): TrackerItem {
     isManual: true,
     manualId: entry.id,
     notes: entry.notes,
+    importId: entry.importId,
   };
 }
 

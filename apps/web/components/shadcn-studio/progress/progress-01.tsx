@@ -1,0 +1,19 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+
+import { Progress } from '@/components/ui/progress'
+
+const ProgressDemo = () => {
+  const [progress, setProgress] = useState(0)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setProgress(50), 500)
+
+    return () => clearTimeout(timer)
+  }, [])
+
+  return <Progress value={progress} className='w-full' />
+}
+
+export default ProgressDemo

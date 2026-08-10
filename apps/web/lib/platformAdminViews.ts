@@ -13,7 +13,7 @@ import { getPlatformAdminOverview, type AdminArea, type AdminMaturity, type Plat
 
 export interface PlatformAdminContentRow {
   id: string;
-  type: 'Radar opportunity' | 'Workspace open call';
+  type: 'Canonical opportunity' | 'Organization open call';
   title: string;
   organization?: string;
   organizationId?: string;
@@ -87,8 +87,8 @@ async function readRuntimeStores(): Promise<{ radar: RadarStore; workspace: Work
     getWorkspaceEngine().then((engine) => engine.store).catch(() => undefined),
   ]);
   const warnings = [
-    ...(!radarResult ? ['Radar compatibility store could not be read; Radar content metrics are unavailable.'] : []),
-    ...(!workspaceResult ? ['Workspace compatibility store could not be read; Workspace content metrics are unavailable.'] : []),
+    ...(!radarResult ? ['Opportunity records could not be read; opportunity content metrics are unavailable.'] : []),
+    ...(!workspaceResult ? ['Organization records could not be read; organization content metrics are unavailable.'] : []),
   ];
   return {
     radar: radarResult ?? createRadarStore(),
@@ -117,7 +117,7 @@ function buildContentData(radar: RadarStore, workspace: WorkspaceStore, reviewQu
   const canonical = opportunities.filter((opportunity) => !opportunity.duplicateOfId);
   const rows: PlatformAdminContentRow[] = opportunities.map((opportunity) => ({
     id: `radar:${opportunity.id}`,
-    type: 'Radar opportunity',
+    type: 'Canonical opportunity',
     title: opportunity.fields.title,
     ...(opportunity.claimedByOrganizationId ? { organizationId: opportunity.claimedByOrganizationId, organization: organizationNames.get(opportunity.claimedByOrganizationId) } : {}),
     status: opportunity.duplicateOfId ? 'duplicate' : opportunity.status,
@@ -130,12 +130,12 @@ function buildContentData(radar: RadarStore, workspace: WorkspaceStore, reviewQu
     const context = openCallContext.get(openCall.id);
     rows.push({
       id: `workspace:${openCall.id}`,
-      type: 'Workspace open call',
+    type: 'Organization open call',
       title: openCall.title,
       ...(context?.organizationId ? { organizationId: context.organizationId } : {}),
       ...(context?.organization ? { organization: context.organization } : {}),
       status: openCall.status,
-      source: context?.program ? `Workspace · ${context.program}` : 'WorkspaceEngine open calls',
+      source: context?.program ? `Organization · ${context.program}` : 'Organization open calls',
       maturity: 'live',
       lastObservedAt: openCall.publishedAt ?? openCall.createdAt,
       href: context?.organizationId ? `/workspace?organizationId=${encodeURIComponent(context.organizationId)}` : '/workspace',
@@ -195,16 +195,16 @@ function buildAnalyticsData(radar: RadarStore, workspace: WorkspaceStore, overvi
   const acceptedRate = totalDecisions ? `${Math.round((acceptedWorks.length / totalDecisions) * 100)}%` : '—';
   const deliveryRate = delivery.length ? `${Math.round((delivery.filter((task) => task.status === 'complete').length / delivery.length) * 100)}%` : '—';
   const metrics: PlatformAdminAnalyticsMetric[] = [
-    { label: 'Active organizations', value: [...radar.organizations.values()].filter((organization) => [...radar.memberships].some((membership) => membership.organizationId === organization.id)).length, detail: 'Organizations with at least one membership', grain: 'organization', source: 'RadarStore organizations + memberships' },
-    { label: 'Active accounts', value: [...radar.accounts.values()].filter((account) => account.active !== false).length, detail: 'Accounts not marked inactive', grain: 'account', source: 'RadarStore accounts' },
-    { label: 'Open calls', value: workspace.openCalls.size, detail: `${[...workspace.openCalls.values()].filter((openCall) => openCall.status === 'published').length} published`, grain: 'open call', source: 'WorkspaceStore openCalls' },
-    { label: 'Acceptance rate', value: acceptedRate, detail: 'Accepted decisions ÷ all decisions', grain: 'decision', source: 'WorkspaceStore decisions' },
-    { label: 'Delivery completion', value: deliveryRate, detail: 'Completed tasks ÷ all delivery tasks', grain: 'delivery task', source: 'WorkspaceStore deliveryTasks' },
+    { label: 'Active organizations', value: [...radar.organizations.values()].filter((organization) => [...radar.memberships].some((membership) => membership.organizationId === organization.id)).length, detail: 'Organizations with at least one membership', grain: 'organization', source: 'Organization records and memberships' },
+    { label: 'Active accounts', value: [...radar.accounts.values()].filter((account) => account.active !== false).length, detail: 'Accounts not marked inactive', grain: 'account', source: 'Missa account records' },
+    { label: 'Open calls', value: workspace.openCalls.size, detail: `${[...workspace.openCalls.values()].filter((openCall) => openCall.status === 'published').length} published`, grain: 'open call', source: 'Organization open calls' },
+    { label: 'Acceptance rate', value: acceptedRate, detail: 'Accepted decisions ÷ all decisions', grain: 'decision', source: 'Organization decisions' },
+    { label: 'Delivery completion', value: deliveryRate, detail: 'Completed tasks ÷ all delivery tasks', grain: 'delivery task', source: 'Organization delivery tasks' },
     { label: 'Queue attention', value: overview.operations.data.queue.summary.attention, detail: 'High-severity operational rows', grain: 'queue row', source: 'PlatformAdmin operations read model' },
   ];
   const quality = [
-    { label: 'Active Radar sources', value: overview.radar.data.sourceHealth.summary.active, detail: 'Configured active sources' },
-    { label: 'Stale Radar sources', value: overview.radar.data.sourceHealth.summary.stale, detail: 'Past configured check cadence' },
+    { label: 'Opportunities', value: overview.radar.data.sourceHealth.summary.active, detail: 'Configured opportunity sources' },
+    { label: 'Stale opportunities', value: overview.radar.data.sourceHealth.summary.stale, detail: 'Past configured check cadence' },
     { label: 'Open verification', value: overview.radar.data.queues.verification, detail: 'Compatibility verification tasks' },
     { label: 'Pending claims', value: overview.radar.data.queues.claims, detail: 'Organization claims awaiting review' },
     { label: 'Low-trust opportunities', value: overview.radar.data.queues.lowTrust, detail: 'Canonical trust score below 40' },
@@ -212,8 +212,8 @@ function buildAnalyticsData(radar: RadarStore, workspace: WorkspaceStore, overvi
   return {
     metrics,
     funnel: [
-      { label: 'Open calls', value: workspace.openCalls.size, grain: 'open call', calculation: 'All Workspace open calls' },
-      { label: 'Submissions', value: submissions.length, grain: 'submission', calculation: 'All Workspace submissions' },
+      { label: 'Open calls', value: workspace.openCalls.size, grain: 'open call', calculation: 'All organization open calls' },
+      { label: 'Submissions', value: submissions.length, grain: 'submission', calculation: 'All organization submissions' },
       { label: 'Decisions', value: decisions.length, grain: 'decision', calculation: 'All Work-level decisions' },
       { label: 'Accepted Works', value: acceptedWorks.length, grain: 'work decision', calculation: 'Decisions with outcome accepted' },
       { label: 'Delivery tasks', value: delivery.length, grain: 'delivery task', calculation: 'All delivery tasks' },
@@ -222,7 +222,7 @@ function buildAnalyticsData(radar: RadarStore, workspace: WorkspaceStore, overvi
     trends: [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month)).slice(-12),
     quality,
     definitions: [
-      'This is a derived read model over the current RadarEngine and WorkspaceEngine stores; it is not a product-event warehouse.',
+      'This is a derived read model over the current opportunity and organization records; it is not a product-event warehouse.',
       'Active organizations require at least one observed membership. Account activity uses the explicit active flag; missing flags are treated as active for compatibility.',
       'Acceptance and delivery rates show an em dash when their denominator is zero; no zero-denominator success is implied.',
       'Worker liveness, source freshness, and productive throughput remain separate measures.',
@@ -240,7 +240,7 @@ export async function getPlatformAdminContent(): Promise<AdminArea<PlatformAdmin
       ? readContentReviewQueue(process.env.DATABASE_URL)
       : Promise.resolve(emptyContentReviewQueue(generatedAt, 'DATABASE_URL is not configured; durable content review is unavailable.')),
   ]);
-  return area(buildContentData(stores.radar, stores.workspace, reviewQueue), 'RadarStore opportunities/claims and WorkspaceStore open calls + durable content review', stores.maturity, generatedAt, [...stores.warnings, ...reviewQueue.warnings]);
+  return area(buildContentData(stores.radar, stores.workspace, reviewQueue), 'Opportunities, organization open calls, and durable content review', stores.maturity, generatedAt, [...stores.warnings, ...reviewQueue.warnings]);
 }
 
 export async function getPlatformAdminAnalytics(): Promise<AdminArea<PlatformAdminAnalyticsData>> {

@@ -11,9 +11,9 @@ slice, test it, and report exact remaining production cutover steps.
 
 ## Product context
 
-Missa helps people find opportunities, prepare submissions, and track what happens next. Radar is
-the internal intelligence layer that discovers and checks opportunity information. Passport is the
-submitter-facing product. Workspace is the organisation-facing submission system.
+Missa helps people find opportunities, prepare submissions, and track what happens next. Opportunities is
+the internal intelligence layer that discovers and checks opportunity information. Profile is the
+submitter-facing product. Organization is the organisation-facing submission system.
 
 Missa previously overloaded several strings and arrays:
 
@@ -39,8 +39,8 @@ Read these files completely:
 8. the taxonomy section of `packages/db/src/schema.ts`
 9. `packages/db/migrations/0011_taxonomy_graph.sql`
 10. `packages/db/scripts/seed-taxonomy.mjs`
-11. current Radar registry, extractor, relational store, opportunity repository, Passport
-    preferences, Library/Works, and Workspace submission-path code.
+11. current Opportunities registry, extractor, relational store, opportunity repository, Profile
+    preferences, Library/Works, and Organization submission-path code.
 
 Also inspect current repository instructions, git state, migrations, live-schema notes, lockfiles,
 tests, and deployment configuration. Preserve unrelated working-tree changes.
@@ -122,7 +122,7 @@ source registry and discovery
 → opportunity browse/search/detail
 → account preferences and saved searches
 → Works and Library
-→ Workspace submission paths and eligibility
+→ Organization submission paths and eligibility
 → source coverage and recurring discovery
 → governance, analytics, and administration
 ```
@@ -147,7 +147,7 @@ Create a shared resolver around `@missa/taxonomy` that:
 
 Do not reimplement normalization independently in each package.
 
-### 2. Migrate the Radar source registry
+### 2. Migrate the Opportunities source registry
 
 Keep every existing source. Replace the overloaded meaning of registry `verticalId` with explicit
 facets:
@@ -224,7 +224,7 @@ Update the production opportunity repository to:
 
 Update in-memory compatibility repositories to behave equivalently in tests.
 
-### 6. Connect Passport preferences and saved searches
+### 6. Connect Profile preferences and saved searches
 
 Replace new free-text practice/genre preference writes with `account_taxonomy_preferences`.
 
@@ -250,11 +250,11 @@ Use `work_taxonomy_terms` for every Work:
 - retain user-entered source wording where it does not resolve cleanly;
 - do not infer genre from file extension or MIME type;
 - treat files as representations of a Work, not the Work itself;
-- keep assignments private unless existing Passport privacy settings explicitly expose them.
+- keep assignments private unless existing Profile privacy settings explicitly expose them.
 
 Use Work terms to help prepare and match submissions, never to generate unsupported quality claims.
 
-### 8. Connect Workspace and submission paths
+### 8. Connect Organization and submission paths
 
 Use `submission_path_taxonomy_terms` so an organisation can mark terms as accepted, preferred,
 required, or excluded.
@@ -382,7 +382,7 @@ The work is complete only when:
 - new extraction emits canonical assignments with source phrase, evidence, origin, and certainty;
 - production persistence dual-writes canonical and legacy taxonomy safely;
 - browse/detail/search and preferences can use canonical IDs;
-- Works and Workspace submission paths use the same shared taxonomy;
+- Works and Organization submission paths use the same shared taxonomy;
 - gap-driven source discovery can create, review, promote, and reassess sources without automatic
   publication;
 - governance and observability exist for vocabulary and coverage changes;

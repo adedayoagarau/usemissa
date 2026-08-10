@@ -54,7 +54,7 @@ export const UI_HTML = `<!doctype html>
     <button data-tab="discover" class="active">Opportunities</button>
     <button data-tab="inbox">Inbox</button>
     <button data-tab="tracker">Tracker</button>
-    <button data-tab="workspace" id="workspaceTabBtn">Workspace</button>
+    <button data-tab="workspace" id="workspaceTabBtn">Organization</button>
     <button data-tab="admin" id="adminTabBtn">Admin</button>
   </nav>
   <span style="flex:1"></span>
@@ -203,7 +203,7 @@ async function renderTracker(el) {
 async function renderNoMembership(el) {
   const orgs = await api('/api/organizations');
   const opps = await api('/api/opportunities');
-  el.innerHTML = '<h2>Missa Workspace</h2><p class="meta">You are not a member of any organization yet. Request a claim on a listing your organization owns — a domain match approves instantly, otherwise an admin reviews it.</p>'
+  el.innerHTML = '<h2>Missa organization</h2><p class="meta">You are not a member of any organization yet. Request a claim on a listing your organization owns — a domain match approves instantly, otherwise an admin reviews it.</p>'
     + '<form id="claimForm" class="card">'
     + '<label>Organization <select name="organizationId">' + orgs.map(o => '<option value="' + o.id + '">' + esc(o.name) + '</option>').join('') + '</select></label><br><br>'
     + '<label>Opportunity <select name="opportunityId">' + opps.map(o => '<option value="' + o.id + '">' + esc(o.title) + '</option>').join('') + '</select></label><br><br>'
@@ -267,7 +267,7 @@ async function renderAdmin(el) {
     api('/api/admin/claims'),
     api('/api/admin/stats'),
   ]);
-  el.innerHTML = '<h2>Radar health</h2><div class="stats">'
+  el.innerHTML = '<h2>Source health</h2><div class="stats">'
     + '<div><b>' + stats.opportunitiesDiscovered + '</b>discovered</div>'
     + '<div><b>' + stats.opportunitiesOpen + '</b>open</div>'
     + '<div><b>' + stats.openVerificationTasks + '</b>open tasks</div>'

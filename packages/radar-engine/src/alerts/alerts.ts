@@ -95,7 +95,7 @@ export function alertChanges(ctx: AlertContext, changes: OpportunityChange[]): A
         kind: mapping.kind,
         opportunityId: opp.id,
         title: mapping.title(opp, change),
-        body: `Detected by Missa Radar from ${opp.sourceUrl}.`,
+        body: `Detected by Missa from ${opp.sourceUrl}.`,
         reason,
       });
       if (alert) out.push(alert);
@@ -270,7 +270,7 @@ export function buildInboxDigest(store: RadarStore, userId: string): InboxDigest
   };
   const parts: string[] = [];
   const total = mine.length;
-  parts.push(`Missa Radar found ${total} update${total === 1 ? '' : 's'} for you:`);
+  parts.push(`Missa found ${total} update${total === 1 ? '' : 's'} for you:`);
   if (digest.newForYou.length) parts.push(`${digest.newForYou.length} new match${digest.newForYou.length === 1 ? '' : 'es'}`);
   if (digest.closingSoon.length) parts.push(`${digest.closingSoon.length} closing soon`);
   if (digest.openingSoon.length) parts.push(`${digest.openingSoon.length} opening soon or expected to reopen`);

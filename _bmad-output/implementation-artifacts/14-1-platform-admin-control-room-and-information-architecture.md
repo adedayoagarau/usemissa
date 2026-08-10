@@ -318,7 +318,7 @@ Follow `DESIGN.md` as the visual source of truth:
 - Keep attention/KPI blocks few and meaningful above the fold. Red/amber/green
   communicate explicit status and must always have text or an icon; do not call
   an unobserved state `healthy`.
-- Active navigation uses a restrained terracotta indicator/text, not a large
+- Active navigation uses a restrained Aubergine indicator/text, not a large
   coloured capsule. Primary actions are scarce; the read-only Control Room's
   refresh is a secondary action.
 - Use the existing shadcn `Sheet` for mobile navigation and preserve focus

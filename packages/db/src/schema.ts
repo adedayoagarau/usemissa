@@ -2689,3 +2689,65 @@ export const chatRunEvents = pgTable(
     check("chat_run_events_sequence_check", sql`${table.sequence} >= 0`),
   ],
 );
+
+export const trackerImportReceipts = pgTable(
+  "tracker_import_receipts",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    userId: text("user_id").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    createdAt,
+    result: jsonb("result")
+      .notNull()
+      .$type<Record<string, unknown>>(),
+  },
+  (table) => [
+    uniqueIndex("tracker_import_receipts_account_key_idx").on(
+      table.accountId,
+      table.idempotencyKey,
+    ),
+    index("tracker_import_receipts_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const trackerImportRateEvents = pgTable(
+  "tracker_import_rate_events",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    kind: text("kind").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("tracker_import_rate_events_scope_idx").on(
+      table.accountId,
+      table.kind,
+      table.occurredAt,
+    ),
+    check(
+      "tracker_import_rate_events_kind_check",
+      sql`${table.kind} in ('preview', 'commit')`,
+    ),
+  ],
+);
+
+export const waitlistSignups = pgTable(
+  "waitlist_signups",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    source: text("source").notNull().default("/waitlist"),
+    campaign: jsonb("campaign")
+      .notNull()
+      .$type<Record<string, string>>()
+      .default(sql`'{}'::jsonb`),
+    createdAt,
+  },
+  (table) => [uniqueIndex("waitlist_signups_email_idx").on(table.email)],
+);

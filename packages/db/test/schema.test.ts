@@ -34,6 +34,8 @@ import {
   chatRuns,
   chatMessages,
   chatRunEvents,
+  trackerImportReceipts,
+  trackerImportRateEvents,
 } from "../src/schema.js";
 
 test("platform schema carries tenant, audit, outbox, and reviewer indexes", () => {
@@ -200,4 +202,13 @@ test("chat schema separates conversation history, runs, messages, and events", (
   assert.ok(messages.indexes.some((index) => index.config.name === "chat_messages_run_idx"));
   assert.ok(events.indexes.some((index) => index.config.name === "chat_run_events_run_sequence_idx"));
   assert.ok(Object.values(runs.columns).some((column) => column.name === "graph_version"));
+});
+
+test("tracker import schema keeps replay receipts and distributed rate events durable", () => {
+  const receipts = getTableConfig(trackerImportReceipts);
+  const rateEvents = getTableConfig(trackerImportRateEvents);
+  assert.ok(receipts.indexes.some((index) => index.config.name === "tracker_import_receipts_account_key_idx" && index.config.unique));
+  assert.ok(receipts.indexes.some((index) => index.config.name === "tracker_import_receipts_user_created_idx"));
+  assert.ok(rateEvents.indexes.some((index) => index.config.name === "tracker_import_rate_events_scope_idx"));
+  assert.ok(rateEvents.checks.some((constraint) => constraint.name === "tracker_import_rate_events_kind_check"));
 });

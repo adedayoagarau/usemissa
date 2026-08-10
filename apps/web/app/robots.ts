@@ -4,8 +4,8 @@ import { siteUrl } from '@/lib/siteUrl';
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = siteUrl();
   const crawlerRules = {
-    allow: ['/', '/about', '/methodology', '/opportunities-preview', '/discover/', '/guides/', '/org/'],
-    disallow: ['/api/', '/admin/', '/login', '/signup', '/opportunities/', '/opportunities?', '/tracker', '/library', '/calendar', '/messages', '/insights', '/my-submissions', '/workspace', '/profile/'],
+    allow: ['/', '/about', '/methodology', '/signup', '/opportunities', '/opportunities/', '/discover/', '/guides/', '/org/'],
+    disallow: ['/api/', '/admin/', '/login', '/signup', '/opportunities?', '/tracker', '/library', '/calendar', '/messages', '/insights', '/my-submissions', '/workspace', '/profile/'],
   };
   return {
     rules: [

@@ -24,6 +24,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
   const [workFileInputs, setWorkFileInputs] = useState<Record<number, File[]>>({});
   const [workFileUrls, setWorkFileUrls] = useState<Record<number, string[]>>({});
   const searchParams = useSearchParams();
+  const submitLabel = feeCents && feeCents > 0 ? `Pay $${(feeCents / 100).toFixed(2)} USD and submit` : 'Submit application';
 
   const extractWorkFileUrls = (answers: Record<string, string | string[]>): Record<number, string[]> => Object.fromEntries(Object.entries(answers).flatMap(([key, value]) => {
     const match = key.match(/^__work_files_(\d+)$/);
@@ -128,17 +129,17 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
   };
 
   if (result?.ok) {
-    return <div className="mt-4 space-y-3 text-sm"><p className="text-[var(--green)]">{result.message}</p>{result.submissionId && <a className="inline-flex min-h-11 items-center rounded-md border border-border px-3 py-2 font-medium hover:bg-muted" href={`/my-submissions/${result.submissionId}`}>View submission receipt</a>}</div>;
+    return <div className="mt-4 space-y-3 text-sm"><p className="text-[var(--green)]">{result.message}</p>{result.submissionId && <a className="inline-flex min-h-11 items-center rounded-md border border-border px-3 py-2 font-medium hover:bg-muted" href={`/tracker/submissions/${result.submissionId}`}>View submission receipt</a>}</div>;
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3">
+    <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-6">
       {categories.length > 0 && (
         <div>
-          <Label htmlFor="category">Category</Label>
+          <Label htmlFor="category">Category — Required</Label>
           <select
             id="category"
-            className="mt-1 w-full rounded-md border border-input bg-transparent px-2 py-1.5 text-sm"
+            className="mt-2 min-h-11 w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           >
@@ -150,30 +151,21 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
           </select>
         </div>
       )}
-      {fields.map((f) => (
+      <section className="space-y-3 rounded-lg border border-border p-4" aria-labelledby="application-works-title">
+        <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 id="application-works-title" className="text-sm font-semibold">Works — At least one required</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Titles and selected files become a submission snapshot. Files stay private until submission.</p></div><Button type="button" variant="outline" size="sm" onClick={() => setWorkTitles((current) => [...current, ''])}>Add another Work</Button></div>
+        {workTitles.map((workTitle, index) => <div key={index} className="rounded-md border border-border p-3"><div className="flex flex-wrap gap-2"><Input aria-label={`Work ${index + 1} title`} placeholder={`Work ${index + 1} title`} value={workTitle} required={index === 0} onChange={(e) => setWorkTitles((current) => current.map((value, i) => i === index ? e.target.value : value))} />{index > 0 && <Button type="button" variant="ghost" size="sm" onClick={() => { setWorkTitles((current) => current.filter((_, i) => i !== index)); setWorkFileInputs((current) => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value]))); setWorkFileUrls((current) => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value]))); }}>Remove Work</Button>}</div><label className="mt-3 block text-xs leading-5 text-muted-foreground">Files for Work {index + 1} — Optional · 25 MB per file<input type="file" multiple className="mt-2 block min-h-11 w-full text-sm" aria-label={`Files for work ${index + 1}`} onChange={(event) => setWorkFileInputs((current) => ({ ...current, [index]: Array.from(event.target.files ?? []) }))} />{workFileUrls[index]?.length ? <span className="mt-1 block">{workFileUrls[index].length} uploaded file{workFileUrls[index].length === 1 ? '' : 's'} saved</span> : null}</label></div>)}
+      </section>
+      {fields.length ? <section className="space-y-5" aria-labelledby="application-questions-title"><div><h3 id="application-questions-title" className="text-sm font-semibold">Organization questions</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Required and Optional are stated in text. Answers remain private until submission.</p></div>{fields.map((f) => (
         <div key={f.id}>
-          <Label htmlFor={f.id}>
-            {f.label}
-            {f.required && ' *'}
-          </Label>
-          {f.type === 'file-upload' ? (
-            <input id={f.id} name={f.id} type="file" required={f.required && !values[f.id]} className="mt-1 block w-full text-sm" />
-          ) : f.type === 'category-select' ? (
-            <select id={f.id} name={f.id} required={f.required} value={values[f.id] ?? category} onChange={(e) => { setField(f.id, e.target.value); setCategory(e.target.value); }} className="mt-1 min-h-11 w-full rounded-md border border-input bg-white px-2 py-1.5 text-sm">
-              <option value="">Choose a category</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          ) : f.type === 'fee-toggle' ? (
-            <p className="mt-1 text-sm text-muted-foreground">Fee applies — payment will be confirmed before the submission is finalized.</p>
-          ) : (
-            <Input id={f.id} name={f.id} required={f.required} onChange={(e) => setField(f.id, e.target.value)} />
-          )}
+          <Label htmlFor={f.id}>{f.label} — {f.required ? 'Required' : 'Optional'}</Label>
+          {f.type === 'file-upload' ? <><input id={f.id} name={f.id} type="file" required={f.required && !values[f.id]} className="mt-2 block min-h-11 w-full text-sm" /><p className="mt-1 text-xs text-muted-foreground">Maximum 25 MB. The current form does not yet show upload progress or retry.</p></> : f.type === 'category-select' ? <select id={f.id} name={f.id} required={f.required} value={values[f.id] ?? category} onChange={(e) => { setField(f.id, e.target.value); setCategory(e.target.value); }} className="mt-2 min-h-11 w-full rounded-md border border-input bg-white px-3 py-2 text-sm"><option value="">Choose a category</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select> : f.type === 'fee-toggle' ? <p className="mt-2 text-sm text-muted-foreground">The application fee is reviewed before external checkout. Payment and submission receipt remain separate states.</p> : <Input id={f.id} name={f.id} required={f.required} className="mt-2 min-h-11" onChange={(e) => setField(f.id, e.target.value)} />}
         </div>
-      ))}
-      <div className="space-y-2 rounded-md border border-border p-3"><div className="flex items-center justify-between"><Label>Works in this submission</Label><Button type="button" variant="outline" size="sm" onClick={() => setWorkTitles((current) => [...current, ''])}>Add another work</Button></div>{workTitles.map((workTitle, index) => <div key={index} className="rounded-md border border-border p-2"><div className="flex gap-2"><Input aria-label={`Work ${index + 1} title`} placeholder={`Work ${index + 1} title`} value={workTitle} required={index === 0} onChange={(e) => setWorkTitles((current) => current.map((value, i) => i === index ? e.target.value : value))} />{index > 0 && <Button type="button" variant="ghost" size="sm" onClick={() => { setWorkTitles((current) => current.filter((_, i) => i !== index)); setWorkFileInputs((current) => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value]))); setWorkFileUrls((current) => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value]))); }}>Remove</Button>}</div><label className="mt-2 block text-xs text-muted-foreground">Files for this work (optional)<input type="file" multiple className="mt-1 block w-full text-sm" aria-label={`Files for work ${index + 1}`} onChange={(event) => setWorkFileInputs((current) => ({ ...current, [index]: Array.from(event.target.files ?? []) }))} />{workFileUrls[index]?.length ? <span className="mt-1 block">{workFileUrls[index].length} uploaded file{workFileUrls[index].length === 1 ? '' : 's'} saved</span> : null}</label></div>)}</div>
+      ))}</section> : <section aria-labelledby="application-questions-title"><h3 id="application-questions-title" className="text-sm font-semibold">No Organization questions</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">This published form requires the Work packet only.</p></section>}
+      <aside className="rounded-lg border border-border bg-muted/30 p-4 text-xs leading-5 text-muted-foreground"><strong className="block text-foreground">Before submitting</strong>The current form has no separate recipient-visible Review step. Check every Work, file, category, and answer above before continuing.</aside>
       <Button type="submit" disabled={isPending}>
-        {isPending ? 'Submitting…' : 'Submit'}
+        {isPending ? 'Submitting…' : submitLabel}
       </Button>
-      {result && !result.ok && <p className="text-xs text-destructive">{result.message}</p>}
+      {result && !result.ok && <p className="text-xs text-destructive" role="alert">{result.message}</p>}
     </form>
   );
 }

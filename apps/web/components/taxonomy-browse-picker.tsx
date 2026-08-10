@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  MISSA_TAXONOMY,
   TAXONOMY_BROWSE_LAYERS,
   taxonomyDescendantIds,
   taxonomyLabelFor,
@@ -103,7 +102,7 @@ export function TaxonomyBrowsePicker({
         {control('genre', genreOptions.map((term) => ({ id: term.id, label: term.preferredLabel })), !activeDiscipline)}
         {control('style', styleOptions.map((term) => ({ id: term.id, label: term.preferredLabel })), !activeGenre)}
       </div>
-      <p className="text-xs leading-5 text-muted-foreground">{description} Scheme {MISSA_TAXONOMY.scheme.version}.</p>
+      <p className="text-xs leading-5 text-muted-foreground">{description}</p>
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-2" aria-label="Selected taxonomy terms">
           {selected.map((termId) => {
@@ -118,9 +117,9 @@ export function TaxonomyBrowsePicker({
                     onChange={(event) => changePreference(termId, event.target.value as TaxonomyPreferenceValue)}
                     className="h-7 rounded border border-border bg-background px-1.5 text-[11px]"
                   >
-                    <option value="include">Want this</option>
-                    <option value="prefer">Prefer this</option>
-                    <option value="exclude">Exclude this</option>
+                    <option value="include">Show me opportunities like this</option>
+                    <option value="prefer">Especially interested</option>
+                    <option value="exclude">Do not show this practice</option>
                   </select>
                 )}
                 <button type="button" aria-label={`Remove ${taxonomyLabelFor(termId)}`} onClick={() => removeTerm(termId)} className="rounded px-1 text-muted-foreground hover:bg-muted hover:text-foreground">×</button>

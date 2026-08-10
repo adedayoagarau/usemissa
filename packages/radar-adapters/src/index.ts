@@ -30,6 +30,17 @@ export {
   type SqlQuery,
 } from "./opportunityRepository.js";
 export { saveOpportunityProjectionToPostgres } from "./opportunityRelationalStore.js";
+export {
+  commitTrackerImportTransaction,
+  consumeTrackerImportPreviewRateLimit,
+  trackerImportCandidateHash,
+  trackerImportRequestHash,
+  trackerImportStateHash,
+  TrackerImportPersistenceError,
+  type DurableTrackerImportInput,
+  type DurableTrackerImportResult,
+  type TrackerImportPersistenceErrorCode,
+} from './trackerImportPersistence.js';
 export { ensureEnrichmentSchema, enrichmentSchema } from "./enrichmentSchema.js";
 export { ensureAgentGraphSchema, agentGraphSchema } from "./agentGraphSchema.js";
 export { ensureContentReviewSchema, contentReviewSchema } from "./contentReviewSchema.js";
@@ -196,6 +207,7 @@ export {
   type PlatformMessageEffectStatus,
   updatePlatformCrmTaskStatus,
 } from "./platformAdminFoundations.js";
+export { createWaitlistSignup } from "./waitlist.js";
 export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';
 export {

@@ -99,7 +99,7 @@ export async function POST(request: Request) {
         userId: account.userId,
         kind: 'submission-receipt',
         title: `Submission sent: ${openCall?.title ?? 'Missa submission'}`,
-        body: 'Your receipt is ready in My submissions.',
+        body: 'Your receipt is ready in Tracker.',
         reason: 'you submitted through a Missa-hosted form',
         ...(openCall?.radarOpportunityId ? { opportunityId: openCall.radarOpportunityId } : {}),
       });

@@ -18,11 +18,8 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
   if (session.memberships.length === 0) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
-        <h1 className="font-heading text-3xl font-medium text-foreground">Missa Workspace</h1>
-        <p className="mt-2 text-muted-foreground">
-          You are not a member of any organization yet. Request a claim on a listing your organization owns from
-          the Opportunities tab — a domain match approves instantly, otherwise an admin reviews it.
-        </p>
+        <h1 className="font-heading text-3xl font-medium text-foreground">Organization</h1>
+        <p className="mt-2 text-muted-foreground">You do not have access to an organization yet. Open an opportunity owned by your organization and choose Claim this listing. Missa will show whether it can confirm the domain or needs an administrator to review the request.</p>
       </main>
     );
   }
@@ -33,7 +30,12 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
   const membership = session.memberships.find((item) => item.organizationId === organizationId) ?? session.memberships[0];
   const radarEngine = await getEngine();
   const org = radarEngine.store.organizations.get(organizationId);
-  const radarOpportunities = [...radarEngine.store.opportunities.values()].filter((opportunity) => opportunity.claimedByOrganizationId === organizationId).map((opportunity) => ({ id: opportunity.id, title: opportunity.fields.title }));
+  const radarOpportunities = [...radarEngine.store.opportunities.values()]
+    .filter((opportunity) => opportunity.claimedByOrganizationId === organizationId)
+    .map((opportunity) => ({
+      id: opportunity.id,
+      title: opportunity.fields.title,
+    }));
   const workspaceEngine = await getWorkspaceEngine();
   const entities = workspaceEngine.entitiesForOrganization(organizationId).map((e) => ({
     ...e,
@@ -50,10 +52,10 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
     <main className="mx-auto max-w-3xl px-6 py-8">
       <h1 className="font-heading text-3xl font-medium text-foreground">
         {org?.name ?? organizationId}
-        {org?.verified && <span className="ml-2 align-middle text-xs font-sans font-normal text-muted-foreground">verified</span>}
+        {org?.verified && <span className="ml-2 align-middle font-sans text-xs font-normal text-muted-foreground">Verified organization</span>}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Public page: <Link href={`/org/${organizationId}`}>/org/{organizationId}</Link>
+        Public organization page: <Link href={`/org/${organizationId}`}>View page</Link>
       </p>
 
       <div className="mt-6">
@@ -100,7 +102,7 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
             </div>
           </div>
         ))}
-        {entities.length === 0 && <p className="text-muted-foreground">Create your first Team to get started.</p>}
+        {entities.length === 0 && <p className="text-muted-foreground">Create your first team to begin a program.</p>}
       </div>
     </main>
   );

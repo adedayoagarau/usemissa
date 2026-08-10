@@ -44,10 +44,13 @@ test('Library Works retain canonical taxonomy terms for explainable matching', (
   assert.throws(() => engine.createLibraryWork('user_1', { title: 'Unknown', taxonomyTermIds: ['not-a-canonical-term'] }), /Unknown Work taxonomy term/);
 });
 
-test('Deleting a Library file unlinks it from the owner work', () => {
+test('Library deletion blocks silent orphan references', () => {
   const engine = engineFor();
   const file = engine.createLibraryFile('user_1', { filename: 'river.pdf', contentType: 'application/pdf', byteLength: 128, storageKey: 'user_1/river.pdf' });
   const work = engine.createLibraryWork('user_1', { title: 'Night River', fileId: file.id });
+  assert.throws(() => engine.deleteLibraryFile('user_1', file.id), /still linked to 1 Work/);
+  assert.equal(engine.library('user_1').files.length, 1);
+  engine.updateLibraryWork('user_1', work.id, { fileId: null });
   engine.deleteLibraryFile('user_1', file.id);
   assert.equal(engine.library('user_1').files.length, 0);
   assert.equal(engine.library('user_1').works.find((item) => item.id === work.id)?.fileId, undefined);

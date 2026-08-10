@@ -6,18 +6,18 @@ phrase, normalized phrase, candidate IDs, certainty, origin, and evidence refere
 
 ## Implemented
 
-- Radar registry compatibility maps separate practice terms, opportunity types, geography,
+- Opportunities registry compatibility maps separate practice terms, opportunity types, geography,
   eligibility lenses, and source channels. `auditRegistryTaxonomy` proves source count is stable
   and reports ambiguous, unresolved, platform-only, and eligibility-only rows.
 - Deterministic and model-assisted extraction emit taxonomy proposals beside legacy genres.
   Ambiguous and unknown phrases remain unresolved for review.
-- Radar's relational projection dual-writes opportunity and source taxonomy assignments when the
+- Opportunities's relational projection dual-writes opportunity and source taxonomy assignments when the
   target tables exist. Extractor-owned rows are idempotent and never replace reviewer or
   organisation assignments.
-- Passport browse/search accepts canonical term IDs and the UI exposes canonical practice,
+- Profile browse/search accepts canonical term IDs and the UI exposes canonical practice,
   discipline, and genre filters. Saved searches and private profile preferences use canonical IDs
   while legacy values remain readable.
-- Works and Workspace submission paths carry taxonomy assignments through the existing additive
+- Works and Organization submission paths carry taxonomy assignments through the existing additive
   relational tables.
 - Coverage assessment derives status from active memberships; bounded locale-aware queries and
   global URL deduplication are available to the discovery worker.
@@ -50,7 +50,7 @@ phrase, normalized phrase, candidate IDs, certainty, origin, and evidence refere
   fields. The live seed completed twice; final counts are 1,084 terms, 967 relations, 1,136
   mappings, 1,581 opportunity assignments, and 0 invalid foreign keys across 417 opportunities
   and 1,686 sources.
-- Migration `0012_activate_missa_taxonomy.sql` promoted v1 to `active` for the shared Passport and
-  Workspace surfaces. `MISSA_TAXONOMY_READS=1` is configured for Vercel Production and Preview.
+- Migration `0012_activate_missa_taxonomy.sql` promoted v1 to `active` for the shared Profile and
+  Organization surfaces. `MISSA_TAXONOMY_READS=1` is configured for Vercel Production and Preview.
   Roll back reads with `MISSA_TAXONOMY_READS=0`; canonical writes remain additive and guarded by
   table presence.

@@ -85,6 +85,20 @@
       "when": 1786103600000,
       "tag": "0019_radar_ingestion_reliability",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786142000000,
+      "tag": "0020_waitlist_signups",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786150000000,
+      "tag": "0021_tracker_import_transactions",
+      "breakpoints": true
     }
   ]
 }
