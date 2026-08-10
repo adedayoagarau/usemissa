@@ -131,7 +131,7 @@ export function OpportunityJourneyReview() {
           <h2 id='guardrails-title'>What stays true across all five.</h2>
         </div>
         <ul>
-          <li><Check aria-hidden='true' />Opportunity images may appear when source-provided and useful; no visible “Opportunity photo” label.</li>
+          <li><Check aria-hidden='true' />Source-provided imagery may appear when useful; it is never presented as a separate product field.</li>
           <li><Check aria-hidden='true' />Profile is the customer-facing identity; internal route vocabulary stays out of the customer journey.</li>
           <li><Check aria-hidden='true' />Taxonomy, eligibility, geography, fee, and preparation remain separate facts.</li>
           <li><Check aria-hidden='true' />Official-source links finish the decision; Missa does not promise eligibility or acceptance.</li>

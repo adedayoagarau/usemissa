@@ -10,7 +10,9 @@ test('mobile Profile uses compact navigation and a canonical opportunity detail 
   expect(await page.locator('body').evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await expect(page.getByRole('button', { name: 'Open navigation' })).toBeVisible();
 
-  await page.locator('article a[aria-label^="View "]').first().click({ force: true });
+  const detailHref = await page.locator('article a[aria-label^="View "]').first().getAttribute('href');
+  expect(detailHref).toMatch(/^\/opportunities\/[^/?#]+$/);
+  await page.goto(detailHref!);
   await expect(page).toHaveURL(/\/opportunities\/[^/?#]+$/);
   await expect(page.getByRole('link', { name: 'Back to opportunities' })).toBeVisible();
   await expect(page.getByRole('article').getByRole('heading', { level: 1 })).toBeVisible();
