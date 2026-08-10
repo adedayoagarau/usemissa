@@ -23,7 +23,6 @@ export interface AdminProvenance {
   source: string;
   freshness: string;
 }
-
 export interface AdminArea<T> {
   provenance: AdminProvenance;
   data: T;
@@ -338,20 +337,20 @@ function buildPlatformAdminCustomers(
     const ids = accountIds.get(membership.organizationId) ?? new Set<string>();
     ids.add(membership.accountId);
     accountIds.set(membership.organizationId, ids);
-    addCustomerActivity(activities, membership.organizationId, membership.grantedAt, 'Radar membership granted');
-    addCustomerActivity(activities, membership.organizationId, radar.accounts.get(membership.accountId)?.createdAt, 'Radar account created');
+    addCustomerActivity(activities, membership.organizationId, membership.grantedAt, 'Opportunity membership granted');
+    addCustomerActivity(activities, membership.organizationId, radar.accounts.get(membership.accountId)?.createdAt, 'Missa account created');
   }
 
   for (const claim of radar.claims.values()) {
     if (!radar.organizations.has(claim.organizationId)) continue;
-    addCustomerActivity(activities, claim.organizationId, claim.requestedAt, 'Radar claim requested');
-    addCustomerActivity(activities, claim.organizationId, claim.decidedAt, 'Radar claim decided');
+    addCustomerActivity(activities, claim.organizationId, claim.requestedAt, 'Opportunity claim requested');
+    addCustomerActivity(activities, claim.organizationId, claim.decidedAt, 'Opportunity claim decided');
   }
 
   for (const entry of radar.auditLog) {
     const targetType = entry.targetType.toLowerCase();
     if (radar.organizations.has(entry.targetId) && (targetType === 'org' || targetType.includes('organization'))) {
-      addCustomerActivity(activities, entry.targetId, entry.at, 'Radar organization audit');
+      addCustomerActivity(activities, entry.targetId, entry.at, 'Organization audit');
     }
   }
 
@@ -366,57 +365,57 @@ function buildPlatformAdminCustomers(
     for (const entity of workspace.entities.values()) {
       if (!radar.organizations.has(entity.organizationId)) continue;
       entityOrganizations.set(entity.id, entity.organizationId);
-      addCustomerActivity(activities, entity.organizationId, entity.createdAt, 'Workspace entity created');
+      addCustomerActivity(activities, entity.organizationId, entity.createdAt, 'Organization record created');
     }
     for (const program of workspace.programs.values()) {
       const organizationId = entityOrganizations.get(program.entityId);
       if (!organizationId) continue;
       programOrganizations.set(program.id, organizationId);
-      addCustomerActivity(activities, organizationId, program.createdAt, 'Workspace program created');
+      addCustomerActivity(activities, organizationId, program.createdAt, 'Organization program created');
     }
     for (const openCall of workspace.openCalls.values()) {
       const organizationId = programOrganizations.get(openCall.programId);
       if (!organizationId) continue;
       openCallOrganizations.set(openCall.id, organizationId);
       incrementCustomerCount(openCallCounts, organizationId);
-      addCustomerActivity(activities, organizationId, openCall.createdAt, 'Workspace open call created');
-      addCustomerActivity(activities, organizationId, openCall.publishedAt, 'Workspace open call published');
+      addCustomerActivity(activities, organizationId, openCall.createdAt, 'Organization opportunity created');
+      addCustomerActivity(activities, organizationId, openCall.publishedAt, 'Organization opportunity published');
     }
     for (const path of workspace.submissionPaths.values()) {
       const organizationId = openCallOrganizations.get(path.openCallId);
       if (!organizationId) continue;
       submissionPathOrganizations.set(path.id, organizationId);
-      addCustomerActivity(activities, organizationId, path.createdAt, 'Workspace submission path created');
+      addCustomerActivity(activities, organizationId, path.createdAt, 'Organization submission path created');
     }
     for (const submission of workspace.submissions.values()) {
       const organizationId = submissionPathOrganizations.get(submission.submissionPathId);
       if (!organizationId) continue;
       submissionOrganizations.set(submission.id, organizationId);
       incrementCustomerCount(submissionCounts, organizationId);
-      addCustomerActivity(activities, organizationId, submission.submittedAt, 'Workspace submission received');
+      addCustomerActivity(activities, organizationId, submission.submittedAt, 'Organization submission received');
     }
     for (const work of workspace.works.values()) {
       const organizationId = submissionOrganizations.get(work.submissionId);
       if (organizationId) workOrganizations.set(work.id, organizationId);
     }
     for (const round of workspace.reviewRounds.values()) {
-      addCustomerActivity(activities, openCallOrganizations.get(round.openCallId), round.createdAt, 'Workspace review round created');
+      addCustomerActivity(activities, openCallOrganizations.get(round.openCallId), round.createdAt, 'Organization review round created');
     }
     for (const assignment of workspace.reviewAssignments.values()) {
-      addCustomerActivity(activities, submissionOrganizations.get(assignment.submissionId), assignment.completedAt, 'Workspace review completed');
+      addCustomerActivity(activities, submissionOrganizations.get(assignment.submissionId), assignment.completedAt, 'Organization review completed');
     }
     for (const decision of workspace.decisions.values()) {
       const organizationId = workOrganizations.get(decision.workId);
       if (!organizationId) continue;
       incrementCustomerCount(decisionCounts, organizationId);
-      addCustomerActivity(activities, organizationId, decision.decidedAt, 'Workspace decision recorded');
+      addCustomerActivity(activities, organizationId, decision.decidedAt, 'Organization decision recorded');
     }
     for (const task of workspace.deliveryTasks.values()) {
       const organizationId = workOrganizations.get(task.workId);
       if (!organizationId) continue;
       incrementCustomerCount(deliveryCounts, organizationId);
       if (task.status === 'pending') incrementCustomerCount(pendingDeliveryCounts, organizationId);
-      addCustomerActivity(activities, organizationId, task.completedAt, 'Workspace delivery completed');
+      addCustomerActivity(activities, organizationId, task.completedAt, 'Organization delivery completed');
     }
   }
 
@@ -459,16 +458,16 @@ function buildPlatformAdminCustomers(
         ? 'partial'
         : 'available';
   const warnings = [
-    ...(!radarAvailable ? ['Radar compatibility store could not be read; the customer directory is unavailable.'] : []),
-    ...(!workspaceAvailable ? ['Workspace compatibility store could not be read; Workspace counts and activity are unavailable.'] : []),
+    ...(!radarAvailable ? ['Source store could not be read; the customer directory is unavailable.'] : []),
+    ...(!workspaceAvailable ? ['Organization records could not be read; organization counts and activity are unavailable.'] : []),
   ];
   const source = radarAvailable && workspaceAvailable
     ? databaseConfigured
-      ? 'RadarEngine organizations/memberships plus WorkspaceEngine activity compatibility stores backed by Postgres snapshots'
-      : 'RadarEngine organizations/memberships plus WorkspaceEngine activity compatibility stores'
+      ? 'Missa organization records and activity backed by Postgres snapshots'
+      : 'Missa organization records and activity'
     : !radarAvailable
-      ? 'RadarEngine organization compatibility store unavailable'
-      : 'RadarEngine organizations/memberships with WorkspaceEngine activity compatibility store unavailable';
+      ? 'Missa organization records unavailable'
+      : 'Missa organization records and activity unavailable';
   const maturity: AdminMaturity = !radarAvailable ? 'unavailable' : !workspaceAvailable ? 'partial' : 'live';
 
   return {
@@ -631,13 +630,13 @@ function buildPlatformAdminQueue(
       status: failureCount > 0 ? 'failed' : 'stale',
       severity: failureCount > 0 ? 'high' : 'medium',
       maturity: radarMaturity,
-      source: 'RadarEngine source health',
-      action: { type: 'link', label: 'Open Radar', href: '/admin/radar?focus=stale-sources' },
+      source: 'Opportunities',
+      action: { type: 'link', label: 'Open opportunities', href: '/admin/radar?focus=stale-sources' },
       detail: {
         why: source.consecutiveFailures > 0
-          ? `Radar recorded ${source.consecutiveFailures} consecutive fetch failure${source.consecutiveFailures === 1 ? '' : 's'} for this active source.`
+          ? `Missa recorded ${source.consecutiveFailures} consecutive fetch failure${source.consecutiveFailures === 1 ? '' : 's'} for this active source.`
           : source.consecutiveProcessingFailures > 0
-            ? `Radar recorded ${source.consecutiveProcessingFailures} consecutive processing failure${source.consecutiveProcessingFailures === 1 ? '' : 's'} after fetching this source.`
+            ? `Missa recorded ${source.consecutiveProcessingFailures} consecutive processing failure${source.consecutiveProcessingFailures === 1 ? '' : 's'} after fetching this source.`
             : `The source is past its configured ${source.freshness} check cadence.`,
         evidence: [
           { label: 'Last check', value: source.lastCheckedAt ?? 'Not observed' },
@@ -649,7 +648,7 @@ function buildPlatformAdminQueue(
           { label: 'Source ID', value: source.id },
           { label: 'URL', value: source.url, href: source.url },
         ],
-        recovery: 'Inspect the source in Radar before changing its cadence or retrying the worker. A successful fetch does not prove processing completed.',
+        recovery: 'Inspect the source before changing its cadence or retrying the worker. A successful fetch does not prove processing completed.',
       },
     });
   }
@@ -672,8 +671,8 @@ function buildPlatformAdminQueue(
       status: task.status,
       severity: task.reason === 'page-gone' || task.reason === 'conflicting-data' ? 'high' : 'medium',
       maturity: radarMaturity,
-      source: 'RadarEngine verification tasks',
-      action: { type: 'link', label: 'Open Radar', href: '/admin/radar?focus=verification' },
+      source: 'Source verification tasks',
+      action: { type: 'link', label: 'Open opportunities', href: '/admin/radar?focus=verification' },
       detail: {
         why: task.details,
         evidence: [
@@ -686,7 +685,7 @@ function buildPlatformAdminQueue(
           ...(task.opportunityId ? [{ label: 'Opportunity', value: task.opportunityId, href: `/admin/radar?focus=verification` }] : []),
           ...(task.claimRequestId ? [{ label: 'Claim request', value: task.claimRequestId, href: '/admin/radar?focus=claims' }] : []),
         ],
-        recovery: 'Review the source evidence and resolve or dismiss the task in the Radar workflow. This dashboard does not mark verification complete by itself.',
+        recovery: 'Review the source evidence and resolve or dismiss the task in the source workflow. This dashboard does not mark verification complete by itself.',
       },
     });
   }
@@ -708,7 +707,7 @@ function buildPlatformAdminQueue(
       status: claim.status,
       severity: claim.verificationMethod === 'manual-review' ? 'high' : 'medium',
       maturity: radarMaturity,
-      source: 'RadarEngine organization claims',
+      source: 'Organization claims',
       action: { type: 'link', label: 'Open claims', href: '/admin/radar?focus=claims' },
       detail: {
         why: `An organization requested ownership of this opportunity through ${claim.verificationMethod}.`,
@@ -886,17 +885,17 @@ function buildPlatformAdminQueue(
       id: `workspace:${task.id}`,
       kind: 'workspace-delivery',
       queue: 'workspace',
-      title: `Workspace delivery ${task.id}`,
+      title: `Organization delivery ${task.id}`,
       subtitle: work?.title ?? task.workId,
       reason: 'Delivery task pending',
-      lane: 'Workspace delivery',
+      lane: 'Organization delivery',
       age: task.dueDate ? `Due ${task.dueDate}` : 'No due date',
       ...(ageAt ? { ageAt } : {}),
       status: task.status,
       severity: 'low',
       maturity: workspaceMaturity,
-      source: 'WorkspaceEngine delivery tasks',
-      action: { type: 'link', label: 'Open Workspace', href: '/home?tab=workspace' },
+      source: 'Organization delivery tasks',
+      action: { type: 'link', label: 'Open organization area', href: '/home?tab=workspace' },
       detail: {
         why: 'The accepted Work has a delivery task that has not been marked complete.',
         evidence: [
@@ -907,7 +906,7 @@ function buildPlatformAdminQueue(
           { label: 'Delivery task', value: task.id },
           { label: 'Work', value: work?.title ?? task.workId, href: '/home?tab=workspace' },
         ],
-        recovery: 'Open Workspace to review the delivery task and mark it complete only when the organization-facing handoff is confirmed.',
+        recovery: 'Open the organization area to review the delivery task and mark it complete only when the organization-facing handoff is confirmed.',
       },
     });
   }
@@ -1090,10 +1089,10 @@ export function buildPlatformAdminReadModel(input: BuildPlatformAdminReadModelIn
     },
     pipeline: [
       { stage: 'due', count: radarData.sourceHealth.summary.stale, source: 'Derived from source cadence and last attempt.' },
-      { stage: 'check', count: radarData.sourceHealth.summary.attempted, source: 'Radar compatibility source lastCheckedAt.' },
-      { stage: 'fetch', count: radarData.sourceHealth.summary.successfulFetch, source: 'Radar compatibility source lastSuccessfulFetchAt.' },
-      { stage: 'process', count: radarData.sourceHealth.summary.processed, source: 'Radar compatibility source lastProcessedAt/content hash.' },
-      { stage: 'review', count: reviewQueueCount, source: durable.reviewJobs.maturity === 'unavailable' ? 'Radar verification tasks; durable review jobs unavailable.' : 'Durable review jobs plus compatibility verification tasks.' },
+      { stage: 'check', count: radarData.sourceHealth.summary.attempted, source: 'Source record lastCheckedAt.' },
+      { stage: 'fetch', count: radarData.sourceHealth.summary.successfulFetch, source: 'Source record lastSuccessfulFetchAt.' },
+      { stage: 'process', count: radarData.sourceHealth.summary.processed, source: 'Source record lastProcessedAt/content hash.' },
+      { stage: 'review', count: reviewQueueCount, source: durable.reviewJobs.maturity === 'unavailable' ? 'Source verification tasks; durable review jobs unavailable.' : 'Durable review jobs plus compatibility verification tasks.' },
       { stage: 'publish', count: radarData.publication.active, source: 'Compatibility active opportunity statuses; not target publication_state.' },
     ],
     compatibilityQueues: {
@@ -1119,7 +1118,7 @@ export function buildPlatformAdminReadModel(input: BuildPlatformAdminReadModelIn
     databaseConfigured,
     sessionSecretConfigured: Boolean(process.env.MISSA_SESSION_SECRET),
     cronSecretConfigured: Boolean(process.env.CRON_SECRET),
-    runtimeTruth: 'RadarEngine and WorkspaceEngine compatibility stores are the current runtime read model. Additive relational/agent tables are reported separately.',
+    runtimeTruth: 'Missa compatibility stores are the current runtime read model. Additive relational/agent tables are reported separately.',
     workerCaveat: 'Worker liveness is based on durable heartbeat metadata from the Railway/container lane. A lane older than 30 minutes is stale; completed history does not establish that a process is running now.',
     durableTables,
     warnings: systemWarnings,
@@ -1139,14 +1138,14 @@ export function buildPlatformAdminReadModel(input: BuildPlatformAdminReadModelIn
     generatedAt,
     warnings: [...warnings, ...customers.warnings],
     radar: {
-      provenance: { maturity: radarAvailable ? runtimeMaturity() : 'unavailable', source: radarAvailable ? databaseConfigured ? 'RadarEngine compatibility store backed by Postgres snapshot' : 'RadarEngine demo compatibility store' : 'RadarEngine compatibility store unavailable', freshness: `read at ${generatedAt}` },
+      provenance: { maturity: radarAvailable ? runtimeMaturity() : 'unavailable', source: radarAvailable ? databaseConfigured ? 'Missa source store backed by Postgres snapshot' : 'Missa source store' : 'Missa source store unavailable', freshness: `read at ${generatedAt}` },
       data: radarData,
-      warnings: radarAvailable ? [] : ['Radar compatibility store could not be read; these zero counts are unavailable, not a healthy empty state.'],
+      warnings: radarAvailable ? [] : ['Source store could not be read; these zero counts are unavailable, not a healthy empty state.'],
     },
     workspace: {
-      provenance: { maturity: workspaceAvailable ? runtimeMaturity() : 'unavailable', source: workspaceAvailable ? databaseConfigured ? 'WorkspaceEngine compatibility store backed by Postgres snapshot' : 'WorkspaceEngine compatibility store' : 'WorkspaceEngine compatibility store unavailable', freshness: `read at ${generatedAt}` },
+      provenance: { maturity: workspaceAvailable ? runtimeMaturity() : 'unavailable', source: workspaceAvailable ? databaseConfigured ? 'Missa organization records backed by Postgres snapshot' : 'Missa organization records' : 'Missa organization records unavailable', freshness: `read at ${generatedAt}` },
       data: workspaceData,
-      warnings: workspaceAvailable ? [] : ['Workspace compatibility store could not be read; these zero counts are unavailable, not a healthy empty state.'],
+      warnings: workspaceAvailable ? [] : ['Organization records could not be read; these zero counts are unavailable, not a healthy empty state.'],
     },
     operations: {
       provenance: { maturity: durable.available ? durable.warnings.length ? 'partial' : 'durable' : databaseConfigured ? 'partial' : 'latest-run-only', source: durable.available ? 'Optional durable agent/enrichment/review tables plus compatibility stores' : 'Compatibility queues and optional durable tables', freshness: `read at ${generatedAt}` },
@@ -1159,7 +1158,7 @@ export function buildPlatformAdminReadModel(input: BuildPlatformAdminReadModelIn
       warnings: systemWarnings,
     },
     audit: {
-      provenance: { maturity: durable.auditEvents.maturity === 'durable' ? 'durable' : 'partial', source: 'RadarEngine, WorkspaceEngine, and optional audit_events records', freshness: `read at ${generatedAt}` },
+      provenance: { maturity: durable.auditEvents.maturity === 'durable' ? 'durable' : 'partial', source: 'Missa source records, organization records, and optional audit_events records', freshness: `read at ${generatedAt}` },
       data: auditData,
       warnings: [auditData.limitation],
     },
@@ -1177,8 +1176,8 @@ export async function getPlatformAdminOverview(): Promise<PlatformAdminOverview>
       : Promise.resolve(emptyPlatformAdminDurableSummary(generatedAt)),
   ]);
   const warnings: string[] = [];
-  if (!radarResult) warnings.push('Radar compatibility store could not be read; Radar metrics are unavailable.');
-  if (!workspaceResult) warnings.push('Workspace compatibility store could not be read; Workspace metrics are unavailable.');
+  if (!radarResult) warnings.push('Source store could not be read; source metrics are unavailable.');
+  if (!workspaceResult) warnings.push('Organization records could not be read; organization metrics are unavailable.');
   return buildPlatformAdminReadModel({ radarStore: radarResult, workspaceStore: workspaceResult, durable: durableResult, generatedAt, warnings });
 }
 

@@ -1,0 +1,39 @@
+.main { width: min(100% - 48px, 1240px); margin: 0 auto; padding: 38px 0 80px; }
+.eyebrow { margin: 0; color: var(--accent-deep); font-size: .68rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+.header { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; padding-bottom: 26px; border-bottom: 1px solid var(--border); }
+.header h1 { margin: 7px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(2.6rem, 5vw, 4.6rem); font-weight: 520; letter-spacing: -.05em; line-height: 1; }
+.header span { display: block; max-width: 650px; margin-top: 12px; color: var(--muted-foreground); font-size: .88rem; line-height: 1.55; }
+.roleBadge { flex: 0 0 auto; padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-deep); font-size: .72rem; font-weight: 750; }
+.next { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 16px; align-items: center; margin-top: 24px; padding: 20px; border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border)); border-radius: 12px; background: color-mix(in srgb, var(--primary) 4%, white); }
+.next > svg { width: 22px; color: var(--primary); }
+.next h2, .next p { margin: 0; }
+.next h2 { font-size: .95rem; }
+.next p { margin-top: 5px; color: var(--muted-foreground); font-size: .8rem; line-height: 1.5; }
+.next a, .attention a, .opportunities a { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; color: var(--primary); font-size: .8rem; font-weight: 700; text-decoration: none; }
+.next svg:last-child, .attention a svg, .opportunities a svg { width: 15px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr); gap: 32px; margin-top: 42px; }
+.sectionHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 15px; }
+.sectionHeader h2 { margin: 6px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: 1.8rem; font-weight: 560; }
+.sectionHeader > span { color: var(--muted-foreground); font-size: .74rem; }
+.attention { border-top: 1px solid var(--border); }
+.attention article { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 14px; align-items: center; min-height: 86px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.attention article > i { width: 8px; height: 8px; border-radius: 999px; background: var(--ochre); }
+.attention article[data-tone='danger'] > i { background: var(--destructive); }
+.attention h3, .attention p { margin: 0; }
+.attention h3 { font-size: .85rem; }
+.attention p { margin-top: 5px; color: var(--muted-foreground); font-size: .76rem; line-height: 1.45; }
+.empty { padding: 28px 0; border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: .84rem; }
+.summary { display: grid; gap: 10px; }
+.summary a, .summary div { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 14px; padding: 0 14px; border: 1px solid var(--border); border-radius: 9px; color: var(--foreground); text-decoration: none; }
+.summary span { color: var(--muted-foreground); font-size: .76rem; }
+.summary strong { font-family: var(--font-mono), monospace; font-size: 1rem; }
+.opportunities { margin-top: 48px; }
+.opportunityList { border-top: 1px solid var(--border); }
+.opportunityList article { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(150px, .6fr) auto auto; gap: 18px; align-items: center; min-height: 72px; border-bottom: 1px solid var(--border); }
+.opportunityList h3, .opportunityList p { margin: 0; }
+.opportunityList h3 { font-size: .84rem; }
+.opportunityList p { margin-top: 4px; color: var(--muted-foreground); font-size: .72rem; }
+.opportunityList > article > span { color: var(--muted-foreground); font-size: .76rem; }
+.status { padding: 5px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-deep) !important; font-size: .68rem !important; text-transform: capitalize; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+@media (max-width: 680px) { .main { width: min(100% - 32px, 620px); padding-top: 26px; } .header { display: grid; } .roleBadge { width: fit-content; } .next { grid-template-columns: 32px minmax(0, 1fr); } .next a { grid-column: 2; } .attention article { grid-template-columns: 10px minmax(0, 1fr); padding: 14px 0; } .attention a { grid-column: 2; } .opportunityList article { grid-template-columns: 1fr auto; gap: 7px 12px; padding: 14px 0; } .opportunityList article > span:not(.status) { grid-column: 1; } .opportunityList article > a { grid-column: 1; } .status { grid-column: 2; grid-row: 1; } }

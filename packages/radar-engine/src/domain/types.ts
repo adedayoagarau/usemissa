@@ -1,4 +1,5 @@
 import type { TaxonomyFacetKey } from '@missa/taxonomy';
+import type { SourceTrust } from '../registry/types.js';
 
 /**
  * Missa Radar domain model.
@@ -72,6 +73,7 @@ export interface Source {
   registryGroup?: string;
   registryDisciplines?: string[];
   registryTaxonomyTermIds?: string[];
+  registryTrust?: SourceTrust;
   registryEligibilityLens?: string;
   registrySourceChannel?: string;
   registryGeography?: string[];
@@ -86,6 +88,8 @@ export interface Source {
   active: boolean;
   /** Latest fetch attempt, including failures. Kept as the scheduler cursor. */
   lastCheckedAt?: IsoDateTime;
+  /** First time the source passed verification or completed a usable fetch. */
+  firstVerifiedAt?: IsoDateTime;
   /** Latest fetch that returned usable page content. */
   lastSuccessfulFetchAt?: IsoDateTime;
   /** Latest content hash observed, even when extraction later failed. */
@@ -100,6 +104,8 @@ export interface Source {
   /** Independent cursor for directory fan-out; never shares Radar's cadence. */
   discoveryLastCheckedAt?: IsoDateTime;
   discoveryConsecutiveFailures?: number;
+  /** Persisted scheduler target; absent means immediately due when never checked. */
+  nextCheckAt?: IsoDateTime;
 }
 
 export type FetchStatus = 'ok' | 'error' | 'gone';
@@ -381,6 +387,22 @@ export interface MatchCriteria {
   simultaneousRequired?: boolean;
 }
 
+/** Private creator-side configuration used to narrow and explain opportunity matches. */
+export interface OpportunityPreferences {
+  types: OpportunityType[];
+  /** Legacy free-form discipline values remain available during taxonomy cutover. */
+  disciplines: string[];
+  genres: string[];
+  locations: string[];
+  careerStages: string[];
+  maxFeeCents?: number;
+  noFeeOnly: boolean;
+  deadlineWithinDays?: number;
+  simultaneousRequired: boolean;
+}
+
+export type OpportunityPreferencesPatch = Partial<Omit<OpportunityPreferences, 'types'>> & { types?: string[] };
+
 /** Attributes checked against EligibilityRules for the Fit Score. */
 export interface UserAttributes {
   [key: string]: string;
@@ -397,6 +419,8 @@ export interface UserProfile {
   genres: string[];
   /** Canonical private practice preferences; legacy genres remain during cutover. */
   taxonomyPreferences?: TaxonomyPreference[];
+  /** Private opportunity search configuration; absent means not configured yet. */
+  opportunityPreferences?: OpportunityPreferences;
 }
 
 export interface TaxonomyPreference {
@@ -521,7 +545,6 @@ export interface PublicUserProfile {
   id?: string;
   displayName?: string;
   bio?: string;
-  trackedOpportunityCount?: number;
   isPrivate?: true;
 }
 
@@ -529,6 +552,7 @@ export interface UserProfilePatch {
   displayName?: string;
   bio?: string;
   taxonomyPreferences?: TaxonomyPreference[];
+  opportunityPreferences?: OpportunityPreferencesPatch;
 }
 
 /**
@@ -648,6 +672,8 @@ export interface TrackedOpportunity {
   submittedAt?: IsoDateTime;
   /** Optional private Library Work this opportunity is being submitted with. */
   workId?: string;
+  /** Private receipt that most recently changed this Tracker row through CSV import. */
+  lastImportId?: string;
 }
 
 /** A private Tracker row imported from a source Missa cannot canonically match. */
@@ -657,6 +683,16 @@ export interface ManualTrackerEntry {
   title: string;
   organizationName: string;
   work?: string;
+  /** Explicitly confirmed canonical practice selections from a legacy import. */
+  taxonomySelections?: Array<{
+    termId: string;
+    facet: TaxonomyFacetKey;
+    label: string;
+    sourcePhrase: string;
+  }>;
+  /** Legacy practice text the creator explicitly kept without canonicalising. */
+  unresolvedTaxonomyLabels?: string[];
+  /** Compatibility-only raw legacy column. Never treated as canonical taxonomy. */
   genre?: string;
   myStatus: MyStatus;
   deadline?: IsoDate;
@@ -670,6 +706,8 @@ export interface ManualTrackerEntry {
   importedAt: IsoDateTime;
   /** Internal idempotency marker; never shown in public projections. */
   importHash?: string;
+  /** Private receipt that created this imported Tracker row. */
+  importId?: string;
   events?: StatusEvent[];
 }
 

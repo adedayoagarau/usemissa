@@ -11,11 +11,11 @@ Missa has four surfaces. They share identity and the canonical taxonomy, but the
 | Surface | Entry | User | Primary job |
 | --- | --- | --- | --- |
 | Public | `/` | visitor | Understand Missa and choose creator or organisation path |
-| Passport | `/home` | submitter/creator | Find, prepare, submit, and track work |
-| Workspace | `/workspace` | organisation/team | Publish calls, collect submissions, review, decide, and deliver |
-| Platform admin | `/admin` | Missa operator | Operate Radar, content, customers, taxonomy, and system health |
+| Profile | `/home` | submitter/creator | Find, prepare, submit, and track work |
+| Organization | `/workspace` | organisation/team | Publish calls, collect submissions, review, decide, and deliver |
+| Platform admin | `/admin` | Missa operator | Operate Opportunities, content, customers, taxonomy, and system health |
 
-The public site is acquisition. Passport and Workspace are authenticated products. Platform admin is tenant-independent and must never be presented as a normal product destination.
+The public site is acquisition. Profile and Organization are authenticated products. Platform admin is tenant-independent and must never be presented as a normal product destination.
 
 ## Canonical state contract
 
@@ -39,17 +39,17 @@ OpportunityBrowseState {
 }
 ```
 
-The source of truth is `@missa/taxonomy`. The web UI, query parser, Radar resolver, relational assignments, Workspace rules, and the `/api/taxonomy` catalog seam must use the same stable term IDs and scheme version. Labels are presentation; IDs are state.
+The source of truth is `@missa/taxonomy`. The web UI, query parser, Opportunities resolver, relational assignments, Organization rules, and the `/api/taxonomy` catalog seam must use the same stable term IDs and scheme version. Labels are presentation; IDs are state.
 
 ### Public browse language
 
-The taxonomy graph remains independent and multi-facet. Passport deliberately exposes a small guided hierarchy:
+The taxonomy graph remains independent and multi-facet. Profile deliberately exposes a small guided hierarchy:
 
 1. **Discipline** → practice family (`Writing & literature`, `Visual arts`, `Film & moving image`)
 2. **Genre** → canonical discipline under that family (`Poetry`, `Fiction`, `Photography`)
 3. **Style** → canonical genre under that discipline (`Epic poetry`, `Lyric poetry`, `Literary fiction`)
 
-This is a presentation projection, not a rewrite of the storage facets. Form, subgenre, medium, technique, mode, role, theme, audience, and language remain available to matching, profile, Works, and Workspace rules without being dumped into the browse toolbar.
+This is a presentation projection, not a rewrite of the storage facets. Form, subgenre, medium, technique, mode, role, theme, audience, and language remain available to matching, profile, Works, and Organization rules without being dumped into the browse toolbar.
 
 ## Target navigation
 
@@ -63,9 +63,9 @@ This is a presentation projection, not a rewrite of the storage facets. Form, su
 | `/signup` | Create an account and choose creator/organisation intent | `Create account` | onboarding state |
 | `/opportunities-preview` | Public, limited discovery proof | `Create profile to see matches` | `/signup?next=...` |
 
-Public pages must not create a second taxonomy vocabulary. If the preview shows filters, it uses the same `OpportunityBrowseState` and catalog as Passport.
+Public pages must not create a second taxonomy vocabulary. If the preview shows filters, it uses the same `OpportunityBrowseState` and catalog as Profile.
 
-### Passport (submitter)
+### Profile (submitter)
 
 | Route | Owns | Primary action | Required continuity |
 | --- | --- | --- | --- |
@@ -81,9 +81,9 @@ Public pages must not create a second taxonomy vocabulary. If the preview shows 
 | `/insights` | personal activity and conversion feedback | act on a recommendation | account and tracker data |
 | `/profile` | identity, preferences, privacy, integrations | complete/edit profile | taxonomy preferences, Works, saved searches |
 
-`Profile` is the product name. “Passport” is an implementation/surface term, not user-facing IA.
+`Profile` is the product name. “Profile” is an implementation/surface term, not user-facing IA.
 
-### Workspace (organisation)
+### Organization (organisation)
 
 | Route | Owns | Primary action | Required continuity |
 | --- | --- | --- | --- |
@@ -94,7 +94,7 @@ Public pages must not create a second taxonomy vocabulary. If the preview shows 
 | `/submissions?organizationId=` | intake and submission queue | triage a submission | organisation ID, filters, queue state |
 | `/reviewer` | assigned review work | complete a review | reviewer assignment ID |
 
-Workspace must have an explicit organisation switcher in its shell. It should not depend on a hidden profile-menu link to be discoverable.
+Organization must have an explicit organisation switcher in its shell. It should not depend on a hidden profile-menu link to be discoverable.
 
 ### Platform admin
 
@@ -129,7 +129,7 @@ The user should never lose the selected practice, search text, or originating op
 ### Organisation: first visit to a published call
 
 ```text
-Organisation landing → Organisation signup → Workspace
+Organisation landing → Organisation signup → Organization
   → Create call → Define submission paths and canonical taxonomy rules
   → Preview → Publish
   → Public call page → Submission inbox
@@ -140,12 +140,12 @@ The same taxonomy term ID controls call eligibility, intake form routing, matchi
 
 ## Current IA risks found
 
-1. Workspace and reviewer destinations are mostly hidden in the profile dropdown while Passport destinations occupy the primary shell.
-2. `/profile`, `/my-submissions`, and several organisation routes sit outside the Passport route group and can render a different shell or lose shared state.
+1. Organization and reviewer destinations are mostly hidden in the profile dropdown while Profile destinations occupy the primary shell.
+2. `/profile`, `/my-submissions`, and several organisation routes sit outside the Profile route group and can render a different shell or lose shared state.
 3. Legacy `discipline`, `genres[]`, and free-text saved-search fields remain compatibility inputs. They must be read only during migration, never used to create new UI state.
 4. Taxonomy options were previously duplicated in `opportunityTaxonomy.ts` and `taxonomyOptions.ts`. They now consume the shared `@missa/taxonomy` browse helpers.
 5. A URL can contain stale or arbitrary taxonomy IDs. The parser now normalizes to selectable canonical IDs and records the scheme version before repository SQL.
-6. The public API now exposes `/api/taxonomy` so Passport, Workspace tooling, and future mobile clients have a versioned catalog seam.
+6. The public API now exposes `/api/taxonomy` so Profile, Organization tooling, and future mobile clients have a versioned catalog seam.
 7. A “style” option can be structurally valid but have no evidence-backed opportunity assignments yet. The UI must explain an empty result as coverage state, not claim that no such opportunities exist.
 8. Search, filter, detail, tracker, and submission states need explicit analytics events so we can see where people abandon the journey.
 
@@ -160,7 +160,7 @@ The same taxonomy term ID controls call eligibility, intake form routing, matchi
 
 ## Next IA build sequence
 
-1. Put an explicit Profile/Workspace switcher in the authenticated shell and preserve `organizationId` across all Workspace links.
+1. Put an explicit Profile/Organization switcher in the authenticated shell and preserve `organizationId` across all Organization links.
 2. Move `/profile` and `/my-submissions` into the shared authenticated shell or extract one shared shell component so navigation and pending states are identical.
 3. Replace the saved-search and profile “practice” controls with the shared three-layer taxonomy picker, plus an advanced facet drawer for medium, language, audience, and eligibility.
 4. Add a shared breadcrumb/back-state contract for opportunity detail, submission preparation, tracker, and calendar.

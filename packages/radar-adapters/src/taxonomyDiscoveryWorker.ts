@@ -30,6 +30,14 @@ const ALLOWED_KINDS = new Set([
   "partner-feed",
 ]);
 
+/** Schema probes and SQL contracts shared with the Postgres regression test. */
+export const TAXONOMY_CANDIDATE_SCHEMA_PROBE = "select url, normalized_url from source_discovery_candidates limit 0";
+export const TAXONOMY_EXISTING_URLS_QUERY = `select normalized_url from source_discovery_candidates where normalized_url = any($1::text[])
+    union select lower(regexp_replace(data->>'url', '/$', '')) from radar_sources where lower(regexp_replace(data->>'url', '/$', '')) = any($1::text[])`;
+const TAXONOMY_CANDIDATE_INSERT_QUERY = `insert into source_discovery_candidates (id, query_id, url, normalized_url, title, snippet, proposed_kind, proposed_tier, status, score, rejection_reason, discovered_at, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now())
+      on conflict (query_id, normalized_url) do update set title = coalesce(excluded.title, source_discovery_candidates.title), snippet = coalesce(excluded.snippet, source_discovery_candidates.snippet), proposed_kind = coalesce(excluded.proposed_kind, source_discovery_candidates.proposed_kind), proposed_tier = coalesce(excluded.proposed_tier, source_discovery_candidates.proposed_tier), score = greatest(source_discovery_candidates.score, excluded.score), updated_at = now()`;
+
 export interface TaxonomyDiscoveryTerm {
   id: string;
   label: string;
@@ -317,8 +325,7 @@ async function failQuery(client: PoolClient, query: TaxonomyDiscoveryQuery, erro
 
 async function existingUrls(client: PoolClient, urls: string[]): Promise<Set<string>> {
   if (!urls.length) return new Set();
-  const result = await client.query<{ normalized_url: string }>(`select normalized_url from source_discovery_candidates where normalized_url = any($1::text[])
-    union select lower(regexp_replace(data->>'url', '/$', '')) from radar_sources where lower(regexp_replace(data->>'url', '/$', '')) = any($1::text[])`, [urls]);
+  const result = await client.query<{ normalized_url: string }>(TAXONOMY_EXISTING_URLS_QUERY, [urls]);
   return new Set(result.rows.map((row) => row.normalized_url));
 }
 
@@ -339,9 +346,7 @@ async function persistCandidates(client: PoolClient, query: TaxonomyDiscoveryQue
     if (policyBlocked) blocked++;
     else if (duplicate) duplicates++;
     else discovered++;
-    await client.query(`insert into source_discovery_candidates (id, query_id, url, normalized_url, title, snippet, proposed_kind, proposed_tier, status, score, rejection_reason, discovered_at, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now())
-      on conflict (query_id, normalized_url) do update set title = coalesce(excluded.title, source_discovery_candidates.title), snippet = coalesce(excluded.snippet, source_discovery_candidates.snippet), proposed_kind = coalesce(excluded.proposed_kind, source_discovery_candidates.proposed_kind), proposed_tier = coalesce(excluded.proposed_tier, source_discovery_candidates.proposed_tier), score = greatest(source_discovery_candidates.score, excluded.score), updated_at = now()`, [candidateId(query.id, url), query.id, result.url, url, result.title ?? null, result.snippet ?? null, result.proposedKind ?? null, result.proposedTier ?? null, status, result.score ?? 25, policyBlocked ? (result.blockedReason ?? "robots or terms preflight blocked") : duplicate ? "duplicate candidate URL" : null]);
+    await client.query(TAXONOMY_CANDIDATE_INSERT_QUERY, [candidateId(query.id, url), query.id, result.url, url, result.title ?? null, result.snippet ?? null, result.proposedKind ?? null, result.proposedTier ?? null, status, result.score ?? 25, policyBlocked ? (result.blockedReason ?? "robots or terms preflight blocked") : duplicate ? "duplicate candidate URL" : null]);
     seenThisTick.add(url);
     existing.add(url);
   }

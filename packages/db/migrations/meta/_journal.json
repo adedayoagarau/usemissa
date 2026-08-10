@@ -71,6 +71,34 @@
       "when": 1786072505000,
       "tag": "0017_chat_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786100000000,
+      "tag": "0018_trusted_source_registry",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786103600000,
+      "tag": "0019_radar_ingestion_reliability",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786142000000,
+      "tag": "0020_waitlist_signups",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786150000000,
+      "tag": "0021_tracker_import_transactions",
+      "breakpoints": true
     }
   ]
 }

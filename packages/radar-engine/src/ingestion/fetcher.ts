@@ -23,7 +23,7 @@ export class FixtureFetcher implements Fetcher {
   async fetch(source: Source): Promise<FetchResult> {
     if (this.gone.has(source.url)) return { status: 'gone', content: '' };
     const content = this.pages.get(source.url);
-    if (content === undefined) return { status: 'error', content: '' };
+    if (content === undefined) return { status: 'error', content: '', failureReason: 'not-found-in-fixture' };
     return { status: 'ok', content };
   }
 }
@@ -44,18 +44,19 @@ export class HttpFetcher implements Fetcher {
         signal: AbortSignal.timeout(fetchTimeoutMs()),
       });
       if (res.status === 404 || res.status === 410) return { status: 'gone', content: '' };
-      if (!res.ok) return { status: 'error', content: '' };
+      if (!res.ok) return { status: 'error', content: '', failureReason: `http-${res.status}` };
       // A source URL can point at an image, PDF, or another binary asset. Do
       // not decode those bytes as text: binary payloads can contain NULs and
       // other control characters that cannot be persisted in Postgres JSON,
       // and they are not useful to the opportunity extractor anyway.
       const contentType = res.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase();
-      if (contentType && !isTextualContentType(contentType)) return { status: 'error', content: '' };
+      if (contentType && !isTextualContentType(contentType)) return { status: 'error', content: '', failureReason: 'unsupported-content-type' };
       const raw = await res.text();
-      if (!isSafeTextPayload(raw)) return { status: 'error', content: '' };
+      if (!isSafeTextPayload(raw)) return { status: 'error', content: '', failureReason: 'unsafe-payload' };
       return { status: 'ok', content: stripHtml(raw) };
-    } catch {
-      return { status: 'error', content: '' };
+    } catch (error) {
+      const message = error instanceof Error ? error.message.toLowerCase() : '';
+      return { status: 'error', content: '', failureReason: message.includes('timeout') ? 'timeout' : 'network' };
     }
   }
 }

@@ -25,9 +25,19 @@ interface DraftField {
 interface ExistingPath {
   id: string;
   categories: string[];
-  fields: Array<{ id: string; type: FieldType; label: string; required: boolean; order: number }>;
+  fields: Array<{
+    id: string;
+    type: FieldType;
+    label: string;
+    required: boolean;
+    order: number;
+  }>;
   feeCents?: number;
-  taxonomyAssignments?: Array<{ termId: string; rule: 'accepted' | 'preferred' | 'required' | 'excluded'; required?: boolean }>;
+  taxonomyAssignments?: Array<{
+    termId: string;
+    rule: 'accepted' | 'preferred' | 'required' | 'excluded';
+    required?: boolean;
+  }>;
 }
 
 /**
@@ -42,7 +52,17 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
   const [categories, setCategories] = useState(existingPath?.categories.join(', ') ?? '');
   const [feeCents, setFeeCents] = useState(existingPath?.feeCents ? String(existingPath.feeCents / 100) : '');
   const [taxonomyAssignments, setTaxonomyAssignments] = useState<NonNullable<ExistingPath['taxonomyAssignments']>>(existingPath?.taxonomyAssignments ?? []);
-  const [fields, setFields] = useState<DraftField[]>(existingPath?.fields.slice().sort((a, b) => a.order - b.order).map(({ id, type, label, required }) => ({ id, type, label, required })) ?? [{ type: 'file-upload', label: 'Manuscript', required: true }]);
+  const [fields, setFields] = useState<DraftField[]>(
+    existingPath?.fields
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .map(({ id, type, label, required }) => ({
+        id,
+        type,
+        label,
+        required,
+      })) ?? [{ type: 'file-upload', label: 'Manuscript', required: true }],
+  );
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -66,7 +86,10 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           pathId: existingPath?.id,
-          categories: categories.split(',').map((c) => c.trim()).filter(Boolean),
+          categories: categories
+            .split(',')
+            .map((c) => c.trim())
+            .filter(Boolean),
           fields,
           feeCents: feeCents.trim() ? Math.round(Number(feeCents) * 100) : undefined,
           taxonomyAssignments,
@@ -74,7 +97,7 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error ?? 'Failed to save form');
+        setError(data.error ?? 'We could not save this form. Check the fields and try again.');
         return;
       }
       router.refresh();
@@ -83,30 +106,77 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
 
   return (
     <div className="mt-2 rounded-md border border-dashed border-border p-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{existingPath ? 'Edit form & categories' : 'Form & categories'}</p>
-      <Input
-        className="mt-2"
-        placeholder="Categories (comma-separated, e.g. fiction, poetry)"
-        value={categories}
-        onChange={(e) => setCategories(e.target.value)}
-      />
+      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{existingPath ? 'Edit form & categories' : 'Form & categories'}</p>
+      <Input className="mt-2" placeholder="Categories (comma-separated, e.g. fiction, poetry)" value={categories} onChange={(e) => setCategories(e.target.value)} />
       <Input className="mt-2" type="number" min="0" step="0.01" placeholder="Application fee in USD (optional)" value={feeCents} onChange={(e) => setFeeCents(e.target.value)} />
       <div className="mt-3 rounded-md border border-border bg-muted/20 p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Who this form is for</p>
+        <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Who this form is for</p>
         <p className="mt-1 text-xs text-muted-foreground">Use canonical practice terms so applicants see the right form and your team can route submissions consistently.</p>
         <div className="mt-2 space-y-2">
-          {taxonomyAssignments.map((assignment, index) => <div key={`${assignment.termId}-${assignment.rule}-${index}`} className="flex flex-wrap items-center gap-2">
-            <select aria-label="Taxonomy term" className="h-9 min-w-48 flex-1 rounded-md border border-border bg-background px-2 text-sm" value={assignment.termId} onChange={(event) => setTaxonomyAssignments((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, termId: event.target.value } : item))}>
-              <option value="">Choose a practice term</option>{SUBMISSION_TAXONOMY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label} · {option.facet}</option>)}
-            </select>
-            <select aria-label="Taxonomy rule" className="h-9 rounded-md border border-border bg-background px-2 text-sm" value={assignment.rule} onChange={(event) => setTaxonomyAssignments((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, rule: event.target.value as typeof assignment.rule, required: event.target.value === 'required' } : item))}>
-              <option value="accepted">Accepted</option><option value="preferred">Preferred</option><option value="required">Required</option><option value="excluded">Excluded</option>
-            </select>
-            <Button size="sm" variant="outline" type="button" onClick={() => setTaxonomyAssignments((current) => current.filter((_, itemIndex) => itemIndex !== index))}>Remove</Button>
-          </div>)}
+          {taxonomyAssignments.map((assignment, index) => (
+            <div key={`${assignment.termId}-${assignment.rule}-${index}`} className="flex flex-wrap items-center gap-2">
+              <select aria-label="Taxonomy term" className="h-9 min-w-48 flex-1 rounded-md border border-border bg-background px-2 text-sm" value={assignment.termId} onChange={(event) => setTaxonomyAssignments((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, termId: event.target.value } : item)))}>
+                <option value="">Choose a practice term</option>
+                {SUBMISSION_TAXONOMY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label} · {option.facet}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Taxonomy rule"
+                className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+                value={assignment.rule}
+                onChange={(event) =>
+                  setTaxonomyAssignments((current) =>
+                    current.map((item, itemIndex) =>
+                      itemIndex === index
+                        ? {
+                            ...item,
+                            rule: event.target.value as typeof assignment.rule,
+                            required: event.target.value === 'required',
+                          }
+                        : item,
+                    ),
+                  )
+                }
+              >
+                <option value="accepted">Accepted</option>
+                <option value="preferred">Preferred</option>
+                <option value="required">Required</option>
+                <option value="excluded">Excluded</option>
+              </select>
+              <Button size="sm" variant="outline" type="button" onClick={() => setTaxonomyAssignments((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
+                Remove
+              </Button>
+            </div>
+          ))}
         </div>
-        <Button size="sm" variant="outline" type="button" className="mt-2" onClick={() => setTaxonomyAssignments((current) => [...current, { termId: SUBMISSION_TAXONOMY_OPTIONS[0]?.value ?? '', rule: 'accepted' }])}>Add practice rule</Button>
-        {taxonomyAssignments.length > 0 && <p className="mt-2 text-xs text-muted-foreground">{taxonomyAssignments.map((assignment) => taxonomyLabelFor(assignment.termId)).filter(Boolean).join(', ')}</p>}
+        <Button
+          size="sm"
+          variant="outline"
+          type="button"
+          className="mt-2"
+          onClick={() =>
+            setTaxonomyAssignments((current) => [
+              ...current,
+              {
+                termId: SUBMISSION_TAXONOMY_OPTIONS[0]?.value ?? '',
+                rule: 'accepted',
+              },
+            ])
+          }
+        >
+          Add practice rule
+        </Button>
+        {taxonomyAssignments.length > 0 && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {taxonomyAssignments
+              .map((assignment) => taxonomyLabelFor(assignment.termId))
+              .filter(Boolean)
+              .join(', ')}
+          </p>
+        )}
       </div>
       <div className="mt-3 space-y-2">
         {fields.map((field, i) => (
@@ -123,12 +193,7 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
                 ))}
               </SelectContent>
             </Select>
-            <Input
-              className="flex-1"
-              placeholder="Field label"
-              value={field.label}
-              onChange={(e) => updateField(i, { label: e.target.value })}
-            />
+            <Input className="flex-1" placeholder="Field label" value={field.label} onChange={(e) => updateField(i, { label: e.target.value })} />
             <label className="flex items-center gap-1 text-xs text-muted-foreground">
               <input type="checkbox" checked={field.required} onChange={(e) => updateField(i, { required: e.target.checked })} />
               required

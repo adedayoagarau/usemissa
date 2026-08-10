@@ -3,17 +3,21 @@ import type { RadarStore } from '../store/store.js';
 import { normalizeName, titleSimilarity } from '../dedup/dedup.js';
 import { isMyStatus } from '../tracker/tracker.js';
 import type { IdGenerator } from '../ports.js';
+import { resolveTaxonomyPhrase, type TaxonomyFacetKey } from '@missa/taxonomy';
 
 export const TRACKER_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 export const TRACKER_IMPORT_MAX_ROWS = 10_000;
+export const TRACKER_IMPORT_MAX_COLUMNS = 256;
+export const TRACKER_IMPORT_MAX_CELL_CHARS = 100_000;
+export const TRACKER_IMPORT_MAX_PROCESSING_MS = 3_000;
 export const TRACKER_IMPORT_FIELDS = [
   'title', 'organization', 'status', 'deadline', 'submittedAt', 'responseAt',
   'work', 'genre', 'fee', 'notes', 'sourceUrl',
 ] as const;
 export type ImportField = typeof TRACKER_IMPORT_FIELDS[number];
 
-export type ImportWarning = 'formulaLike' | 'ambiguousDate' | 'unknownStatus' | 'duplicate';
-export type ImportClassification = 'matched' | 'ambiguous' | 'unmatched' | 'invalid' | 'duplicate-in-file';
+export type ImportWarning = 'formulaLike' | 'ambiguousDate' | 'unknownStatus' | 'duplicate' | 'taxonomyReview';
+export type ImportClassification = 'matched' | 'possible-match' | 'unmatched' | 'invalid' | 'duplicate-in-file';
 
 export interface ParsedCsvRow {
   rowNumber: number;
@@ -60,6 +64,7 @@ function decodeInput(input: string | Uint8Array): string {
 
 /** RFC 4180 parser. It treats every cell as text and never evaluates formulas. */
 export function parseTrackerCsv(input: string | Uint8Array): ParsedTrackerCsv {
+  const startedAt = Date.now();
   const text = decodeInput(input);
   if (!text.trim()) throw new TrackerImportError('CSV file is empty.', 'file');
 
@@ -73,7 +78,7 @@ export function parseTrackerCsv(input: string | Uint8Array): ParsedTrackerCsv {
   let columnNumber = 1;
 
   const pushField = () => {
-    if (field.length > 100_000) throw new TrackerImportError(`A CSV cell is too long at row ${rowNumber}, column ${columnNumber}.`, 'limit', rowNumber, columnNumber);
+    if (field.length > TRACKER_IMPORT_MAX_CELL_CHARS) throw new TrackerImportError(`A CSV cell is too long at row ${rowNumber}, column ${columnNumber}.`, 'limit', rowNumber, columnNumber);
     row.push(field);
     field = '';
     fieldStarted = false;
@@ -90,6 +95,7 @@ export function parseTrackerCsv(input: string | Uint8Array): ParsedTrackerCsv {
   };
 
   for (let i = 0; i < text.length; i++) {
+    if ((i & 16_383) === 0 && Date.now() - startedAt > TRACKER_IMPORT_MAX_PROCESSING_MS) throw new TrackerImportError('CSV processing took too long. Split the file and try again.', 'limit');
     const ch = text[i];
     if (quoted) {
       if (ch === '"') {
@@ -121,6 +127,13 @@ export function parseTrackerCsv(input: string | Uint8Array): ParsedTrackerCsv {
 
   const columns = rows[0].map((column) => column.trim());
   if (columns.length === 0 || columns.every((column) => !column)) throw new TrackerImportError('CSV needs a header row.', 'file');
+  if (columns.length > TRACKER_IMPORT_MAX_COLUMNS) throw new TrackerImportError(`CSV has more than ${TRACKER_IMPORT_MAX_COLUMNS} columns.`, 'limit');
+  if (columns.some((column) => !column)) throw new TrackerImportError('Every CSV column needs a header.', 'mapping');
+  const headerKeys = columns.map(key);
+  const duplicateHeader = headerKeys.find((header, index) => headerKeys.indexOf(header) !== index);
+  if (duplicateHeader) throw new TrackerImportError('CSV column headers must be unique.', 'mapping');
+  const oversizedRow = rows.slice(1).findIndex((cells) => cells.length > columns.length);
+  if (oversizedRow >= 0) throw new TrackerImportError(`CSV row ${oversizedRow + 2} has more cells than the header.`, 'parse', oversizedRow + 2);
   return {
     columns,
     rows: rows.slice(1).map((cells, index) => ({
@@ -234,9 +247,20 @@ export interface TrackerImportCandidate {
   opportunityId: string;
   title: string;
   organizationName?: string;
+  matchKind: 'exact-source-url' | 'possible';
+  reasons: string[];
+  /** Internal ranking evidence. Never expose through a customer projection. */
   confidence: 'high' | 'possible';
+  /** Internal ranking score. Never expose through a customer projection. */
   score: number;
+  /** @deprecated Use reasons in customer-safe projections. */
   reason: string;
+}
+
+export interface TrackerImportTaxonomyReview {
+  sourcePhrase: string;
+  status: 'resolved' | 'ambiguous' | 'unresolved';
+  options: Array<{ termId: string; facet: TaxonomyFacetKey; label: string }>;
 }
 
 export interface TrackerImportConflict {
@@ -255,6 +279,7 @@ export interface TrackerImportPlanRow {
   defaultAction: 'match' | 'create-manual' | 'skip' | 'needs-review';
   warnings: ImportWarning[];
   errors: string[];
+  taxonomy?: TrackerImportTaxonomyReview;
   conflict?: TrackerImportConflict;
 }
 
@@ -263,7 +288,7 @@ export interface TrackerImportPlan {
   mapping: ImportMapping;
   rows: TrackerImportPlanRow[];
   candidateSet: string[];
-  summary: { total: number; matched: number; createManual: number; needsReview: number; skipped: number };
+  summary: { total: number; matched: number; createManual: number; needsReview: number; taxonomyReview: number; skipped: number };
 }
 
 function mappedValues(parsed: ParsedTrackerCsv, row: ParsedCsvRow, mapping: ImportMapping): Partial<Record<ImportField, string>> {
@@ -293,7 +318,9 @@ function normalizeRow(values: Partial<Record<ImportField, string>>): { normalize
   const title = values.title?.trim() ?? ''; const organization = values.organization?.trim() ?? '';
   const normalized: NormalizedImportRow = { title, organization };
   if (!title) errors.push('Title is required.');
+  else if (title.length > 500) errors.push('Title must be 500 characters or fewer.');
   if (!organization) errors.push('Organization is required.');
+  else if (organization.length > 500) errors.push('Organization must be 500 characters or fewer.');
   const statusValue = values.status?.trim() ?? '';
   if (!statusValue) errors.push('Status is required.');
   else {
@@ -314,6 +341,10 @@ function normalizeRow(values: Partial<Record<ImportField, string>>): { normalize
   normalized.fee = fee(values.fee);
   normalized.notes = values.notes?.trim() || undefined;
   normalized.sourceUrl = values.sourceUrl?.trim() || undefined;
+  if ((normalized.work?.length ?? 0) > 500) errors.push('Work title must be 500 characters or fewer.');
+  if ((normalized.genre?.length ?? 0) > 500) errors.push('Practice text must be 500 characters or fewer.');
+  if ((normalized.notes?.length ?? 0) > 10_000) errors.push('Notes must be 10,000 characters or fewer.');
+  if ((normalized.sourceUrl?.length ?? 0) > 2_048) errors.push('Source URL must be 2,048 characters or fewer.');
   return { normalized, warnings, errors };
 }
 
@@ -334,6 +365,33 @@ function opportunitiesFor(store: RadarStore): Opportunity[] {
   return [...store.opportunities.values()].filter((opportunity) => !opportunity.duplicateOfId);
 }
 
+function comparableHttpUrl(value: string | undefined): string | undefined {
+  if (!value?.trim()) return undefined;
+  try {
+    const url = new URL(value.trim());
+    if (!['http:', 'https:'].includes(url.protocol)) return undefined;
+    url.hash = '';
+    return url.toString().replace(/\/$/, '').toLocaleLowerCase('en');
+  } catch {
+    return undefined;
+  }
+}
+
+function taxonomyReviewFor(sourcePhrase: string | undefined): TrackerImportTaxonomyReview | undefined {
+  const phrase = sourcePhrase?.trim();
+  if (!phrase) return undefined;
+  const resolution = resolveTaxonomyPhrase(phrase);
+  const options = resolution.candidates
+    .filter((candidate, index, candidates) => candidates.findIndex((other) => other.termId === candidate.termId) === index)
+    .slice(0, 8)
+    .map((candidate) => ({ termId: candidate.termId, facet: candidate.facet, label: candidate.preferredLabel }));
+  return {
+    sourcePhrase: phrase,
+    status: resolution.status === 'resolved' ? 'resolved' : resolution.status === 'ambiguous' ? 'ambiguous' : 'unresolved',
+    options,
+  };
+}
+
 export function planTrackerImport(store: RadarStore, userId: string, parsed: ParsedTrackerCsv, mapping: ImportMapping): TrackerImportPlan {
   const mappingErrors = validateTrackerImportMapping(parsed.columns, mapping);
   if (mappingErrors.length) throw new TrackerImportError(mappingErrors.join(' '), 'mapping');
@@ -345,41 +403,78 @@ export function planTrackerImport(store: RadarStore, userId: string, parsed: Par
     const normalizedResult = normalizeRow(values);
     const warnings = [...normalizedResult.warnings, ...parsedRow.warnings.map(() => 'formulaLike' as const)];
     const errors = [...normalizedResult.errors];
+    const taxonomy = taxonomyReviewFor(normalizedResult.normalized.genre);
+    if (taxonomy) warnings.push('taxonomyReview');
     const key = `${normalizeName(normalizedResult.normalized.title)}|${normalizeName(normalizedResult.normalized.organization)}`;
     const duplicateOf = seen.get(key);
-    if (duplicateOf) { warnings.push('duplicate'); rows.push({ rowNumber: parsedRow.rowNumber, values, normalized: toNormalizedRecord(normalizedResult.normalized), normalizedRow: normalizedResult.normalized, classification: 'duplicate-in-file', candidates: [], defaultAction: 'skip', warnings, errors: [...errors, `Duplicate of row ${duplicateOf}.` ] }); continue; }
+    if (duplicateOf) { warnings.push('duplicate'); rows.push({ rowNumber: parsedRow.rowNumber, values, normalized: toNormalizedRecord(normalizedResult.normalized), normalizedRow: normalizedResult.normalized, classification: 'duplicate-in-file', candidates: [], defaultAction: 'skip', warnings, errors: [...errors, `Duplicate of row ${duplicateOf}.` ], ...(taxonomy ? { taxonomy } : {}) }); continue; }
     seen.set(key, parsedRow.rowNumber);
-    if (errors.length) { rows.push({ rowNumber: parsedRow.rowNumber, values, normalized: toNormalizedRecord(normalizedResult.normalized), normalizedRow: normalizedResult.normalized, classification: 'invalid', candidates: [], defaultAction: 'needs-review', warnings, errors }); continue; }
+    if (errors.length) { rows.push({ rowNumber: parsedRow.rowNumber, values, normalized: toNormalizedRecord(normalizedResult.normalized), normalizedRow: normalizedResult.normalized, classification: 'invalid', candidates: [], defaultAction: 'needs-review', warnings, errors, ...(taxonomy ? { taxonomy } : {}) }); continue; }
+    const importedSourceUrl = comparableHttpUrl(normalizedResult.normalized.sourceUrl);
     const candidates = candidatesPool
-      .filter((opportunity) => normalizeName(opportunity.fields.organizationName ?? '') === normalizeName(normalizedResult.normalized.organization))
-      .map((opportunity) => ({ opportunity, score: titleSimilarity(normalizedResult.normalized.title, opportunity.fields.title) }))
-      .filter(({ score }) => score >= 0.5)
-      .sort((a, b) => b.score - a.score || a.opportunity.id.localeCompare(b.opportunity.id))
+      .filter((opportunity) => {
+        const exactSource = importedSourceUrl && comparableHttpUrl(opportunity.sourceUrl) === importedSourceUrl;
+        const sameOrganization = normalizeName(opportunity.fields.organizationName ?? '') === normalizeName(normalizedResult.normalized.organization);
+        return exactSource || sameOrganization;
+      })
+      .map((opportunity) => {
+        const score = titleSimilarity(normalizedResult.normalized.title, opportunity.fields.title);
+        const exactSource = Boolean(importedSourceUrl && comparableHttpUrl(opportunity.sourceUrl) === importedSourceUrl);
+        return { opportunity, score, exactSource };
+      })
+      .filter(({ score, exactSource }) => exactSource || score >= 0.5)
+      .sort((a, b) => Number(b.exactSource) - Number(a.exactSource) || b.score - a.score || a.opportunity.id.localeCompare(b.opportunity.id))
       .slice(0, 3)
-      .map(({ opportunity, score }): TrackerImportCandidate => ({ opportunityId: opportunity.id, title: opportunity.fields.title, organizationName: opportunity.fields.organizationName, confidence: score >= 0.8 ? 'high' : 'possible', score, reason: `Organization matches; title similarity ${Math.round(score * 100)}%.` }));
-    const classification: ImportClassification = candidates.length === 0 ? 'unmatched' : candidates.length > 1 ? 'ambiguous' : 'matched';
+      .map(({ opportunity, score, exactSource }): TrackerImportCandidate => {
+        const reasons = exactSource
+          ? ['The imported source URL matches this published Opportunity.']
+          : [
+              'The Organization name matches.',
+              normalizeName(normalizedResult.normalized.title) === normalizeName(opportunity.fields.title)
+                ? 'The normalized title matches exactly.'
+                : 'The title wording is similar.',
+            ];
+        return {
+          opportunityId: opportunity.id,
+          title: opportunity.fields.title,
+          organizationName: opportunity.fields.organizationName,
+          matchKind: exactSource ? 'exact-source-url' : 'possible',
+          reasons,
+          confidence: exactSource || score >= 0.8 ? 'high' : 'possible',
+          score,
+          reason: reasons.join(' '),
+        };
+      });
+    const exactCandidates = candidates.filter((candidate) => candidate.matchKind === 'exact-source-url');
+    const classification: ImportClassification = candidates.length === 0 ? 'unmatched' : exactCandidates.length === 1 ? 'matched' : 'possible-match';
     const defaultAction = classification === 'matched' ? 'match' : classification === 'unmatched' ? 'create-manual' : 'needs-review';
-    const top = candidates[0];
+    const top = exactCandidates[0] ?? candidates[0];
     const existing = top && store.tracked.find((tracked) => tracked.userId === userId && tracked.opportunityId === top.opportunityId);
     const conflict = existing && (existing.myStatus !== normalizedResult.normalized.status || Boolean(existing.submittedAt) !== Boolean(normalizedResult.normalized.submittedAt)) ? {
       opportunityId: top.opportunityId,
       current: { status: existing.myStatus, ...(existing.submittedAt ? { submittedAt: existing.submittedAt } : {}) },
       imported: { ...(normalizedResult.normalized.status ? { status: normalizedResult.normalized.status } : {}), ...(normalizedResult.normalized.submittedAt ? { submittedAt: normalizedResult.normalized.submittedAt } : {}) },
     } : undefined;
-    rows.push({ rowNumber: parsedRow.rowNumber, values, normalized: toNormalizedRecord(normalizedResult.normalized), normalizedRow: normalizedResult.normalized, classification, candidates, defaultAction, warnings, errors, conflict });
+    rows.push({ rowNumber: parsedRow.rowNumber, values, normalized: toNormalizedRecord(normalizedResult.normalized), normalizedRow: normalizedResult.normalized, classification, candidates, defaultAction, warnings, errors, ...(taxonomy ? { taxonomy } : {}), conflict });
   }
   const candidateSet = rows.flatMap((row) => row.candidates.map((candidate) => `${row.rowNumber}:${candidate.opportunityId}`)).sort();
   const summary = {
     total: rows.length,
     matched: rows.filter((row) => row.classification === 'matched').length,
     createManual: rows.filter((row) => row.defaultAction === 'create-manual').length,
-    needsReview: rows.filter((row) => row.classification === 'ambiguous' || row.classification === 'invalid' || row.warnings.length > 0 || Boolean(row.conflict)).length,
+    needsReview: rows.filter((row) => row.classification === 'possible-match' || row.classification === 'invalid' || row.warnings.length > 0 || Boolean(row.conflict)).length,
+    taxonomyReview: rows.filter((row) => Boolean(row.taxonomy)).length,
     skipped: rows.filter((row) => row.defaultAction === 'skip').length,
   };
   return { columns: parsed.columns, mapping, rows, candidateSet, summary };
 }
 
 export type ImportDecision = 'match' | 'create-manual' | 'keep-current' | 'use-imported' | 'skip';
+export type ImportTaxonomyDecision =
+  | { action: 'use-term'; termId: string }
+  | { action: 'keep-unresolved' }
+  | { action: 'use-opportunity' };
+export type ImportRowDecision = ImportDecision | { action: ImportDecision; opportunityId?: string; taxonomy?: ImportTaxonomyDecision; dateLocale?: Exclude<DateLocale, undefined> };
 
 export interface TrackerImportResult {
   importId: string;
@@ -388,6 +483,7 @@ export interface TrackerImportResult {
   createdManual: number;
   skipped: number;
   needsReview: number;
+  unresolvedTaxonomy: number;
   reasons: Array<{ rowNumber: number; code: string; message: string }>;
 }
 
@@ -395,11 +491,11 @@ function trackedFor(store: RadarStore, userId: string, opportunityId: string): T
   return store.tracked.find((tracked) => tracked.userId === userId && tracked.opportunityId === opportunityId);
 }
 
-function addOrUpdateTracked(store: RadarStore, ids: IdGenerator, userId: string, row: TrackerImportPlanRow, opportunityId: string, useImported: boolean, now: string): boolean {
+function addOrUpdateTracked(store: RadarStore, ids: IdGenerator, userId: string, row: TrackerImportPlanRow, opportunityId: string, useImported: boolean, now: string, importId: string): boolean {
   const importedStatus = row.normalizedRow.status ?? 'saved';
   const existing = trackedFor(store, userId, opportunityId);
   if (!existing) {
-    store.tracked.push({ userId, opportunityId, trackedAt: now, notify: true, myStatus: importedStatus, ...(row.normalizedRow.submittedAt ? { submittedAt: row.normalizedRow.submittedAt } : {}), events: [{ at: now, to: importedStatus, source: 'user', note: `Imported from CSV row ${row.rowNumber}` }] });
+    store.tracked.push({ userId, opportunityId, trackedAt: now, notify: true, myStatus: importedStatus, ...(row.normalizedRow.submittedAt ? { submittedAt: row.normalizedRow.submittedAt } : {}), lastImportId: importId, events: [{ at: now, to: importedStatus, source: 'user', note: `Imported from CSV row ${row.rowNumber}` }] });
     return true;
   }
   if (!useImported) return false;
@@ -408,41 +504,78 @@ function addOrUpdateTracked(store: RadarStore, ids: IdGenerator, userId: string,
   existing.events.push({ at: now, from: existing.myStatus, to: importedStatus, source: 'user', note: `Imported from CSV row ${row.rowNumber}` });
   existing.myStatus = importedStatus;
   if (row.normalizedRow.submittedAt) existing.submittedAt = row.normalizedRow.submittedAt;
+  existing.lastImportId = importId;
   return true;
 }
 
-export function commitTrackerImport(store: RadarStore, ids: IdGenerator, userId: string, plan: TrackerImportPlan, decisions: Record<string, ImportDecision | { action: ImportDecision; opportunityId?: string }>, now: Date, sourceHash = ''): TrackerImportResult {
-  const result: TrackerImportResult = { importId: ids.next('import'), imported: 0, matched: 0, createdManual: 0, skipped: 0, needsReview: 0, reasons: [] };
+function rowWithDateLocale(row: TrackerImportPlanRow, locale: Exclude<DateLocale, undefined> | undefined): TrackerImportPlanRow {
+  if (!locale || !row.warnings.includes('ambiguousDate')) return row;
+  const normalizedRow = { ...row.normalizedRow };
+  const fields: Array<[ImportField, 'deadline' | 'submittedAt' | 'responseAt']> = [['deadline', 'deadline'], ['submittedAt', 'submittedAt'], ['responseAt', 'responseAt']];
+  for (const [field, target] of fields) {
+    const raw = row.values[field];
+    if (!raw) continue;
+    const resolved = normalizeImportedDate(raw, locale);
+    if (resolved.date) normalizedRow[target] = resolved.date;
+  }
+  return { ...row, normalizedRow };
+}
+
+export function commitTrackerImport(store: RadarStore, ids: IdGenerator, userId: string, plan: TrackerImportPlan, decisions: Record<string, ImportRowDecision>, now: Date, sourceHash = ''): TrackerImportResult {
+  const result: TrackerImportResult = { importId: ids.next('import'), imported: 0, matched: 0, createdManual: 0, skipped: 0, needsReview: 0, unresolvedTaxonomy: 0, reasons: [] };
   for (const row of plan.rows) {
     const raw = decisions[String(row.rowNumber)];
     const decision: ImportDecision = typeof raw === 'string' ? raw : raw?.action ?? row.defaultAction;
-    const selectedOpportunityId = typeof raw === 'object' ? raw.opportunityId : row.candidates[0]?.opportunityId;
+    const selectedOpportunityId = typeof raw === 'object'
+      ? raw.opportunityId
+      : row.defaultAction === 'match'
+        ? row.candidates[0]?.opportunityId
+        : undefined;
+    const taxonomyDecision = typeof raw === 'object' ? raw.taxonomy : undefined;
+    const dateLocale = typeof raw === 'object' ? raw.dateLocale : undefined;
+    const effectiveRow = rowWithDateLocale(row, dateLocale);
     if (decision === 'skip') { result.skipped++; continue; }
     const hardErrors = row.errors.length > 0 && row.classification !== 'duplicate-in-file';
     const explicitlyResolved = raw !== undefined && ['use-imported', 'keep-current', 'create-manual'].includes(decision);
-    if (hardErrors || row.warnings.includes('unknownStatus') || (row.warnings.includes('ambiguousDate') && !explicitlyResolved) || (row.warnings.includes('formulaLike') && !explicitlyResolved) || row.classification === 'ambiguous' && !selectedOpportunityId && decision !== 'create-manual') {
+    const taxonomyUnresolved = Boolean(row.taxonomy && !taxonomyDecision);
+    const possibleMatchUnresolved = row.classification === 'possible-match' && !selectedOpportunityId && decision !== 'create-manual';
+    const ambiguousDateUnresolved = row.warnings.includes('ambiguousDate') && decision !== 'keep-current' && !dateLocale;
+    if (hardErrors || row.warnings.includes('unknownStatus') || ambiguousDateUnresolved || (row.warnings.includes('formulaLike') && !explicitlyResolved) || possibleMatchUnresolved || taxonomyUnresolved) {
       result.needsReview++;
-      result.reasons.push({ rowNumber: row.rowNumber, code: 'needs-review', message: 'Resolve row issues before importing.' });
+      result.reasons.push({ rowNumber: row.rowNumber, code: taxonomyUnresolved ? 'taxonomy-review' : 'needs-review', message: taxonomyUnresolved ? 'Review the imported practice value before importing.' : 'Resolve row issues before importing.' });
+      continue;
+    }
+    if (row.taxonomy && taxonomyDecision?.action === 'use-term' && !row.taxonomy.options.some((option) => option.termId === taxonomyDecision.termId)) {
+      result.needsReview++;
+      result.reasons.push({ rowNumber: row.rowNumber, code: 'invalid-taxonomy', message: 'The selected practice term is no longer available. Preview again.' });
+      continue;
+    }
+    if (decision === 'create-manual' && taxonomyDecision?.action === 'use-opportunity') {
+      result.needsReview++;
+      result.reasons.push({ rowNumber: row.rowNumber, code: 'missing-opportunity-taxonomy', message: 'Choose a canonical practice or keep the imported value unresolved.' });
       continue;
     }
     if (decision === 'create-manual') {
       const already = store.manualTrackerEntries.find((entry) => entry.userId === userId && entry.sourceRow === row.rowNumber && entry.importHash === sourceHash);
       if (!already) {
-        const entry: ManualTrackerEntry = { id: ids.next('manual'), userId, title: row.normalizedRow.title, organizationName: row.normalizedRow.organization, ...(row.normalizedRow.work ? { work: row.normalizedRow.work } : {}), ...(row.normalizedRow.genre ? { genre: row.normalizedRow.genre } : {}), myStatus: row.normalizedRow.status!, ...(row.normalizedRow.deadline ? { deadline: row.normalizedRow.deadline } : {}), ...(row.normalizedRow.submittedAt ? { submittedAt: row.normalizedRow.submittedAt } : {}), ...(row.normalizedRow.responseAt ? { responseAt: row.normalizedRow.responseAt } : {}), ...(row.normalizedRow.fee?.raw ? { feeRaw: row.normalizedRow.fee.raw } : {}), ...(row.normalizedRow.notes ? { notes: row.normalizedRow.notes } : {}), ...(row.normalizedRow.sourceUrl ? { sourceUrl: row.normalizedRow.sourceUrl } : {}), sourceKind: 'csv', sourceRow: row.rowNumber, importedAt: now.toISOString(), ...(sourceHash ? { importHash: sourceHash } : {}) };
+        const selectedTaxonomy = row.taxonomy && taxonomyDecision?.action === 'use-term'
+          ? row.taxonomy.options.find((option) => option.termId === taxonomyDecision.termId)
+          : undefined;
+        const entry: ManualTrackerEntry = { id: ids.next('manual'), userId, title: effectiveRow.normalizedRow.title, organizationName: effectiveRow.normalizedRow.organization, ...(effectiveRow.normalizedRow.work ? { work: effectiveRow.normalizedRow.work } : {}), ...(effectiveRow.normalizedRow.genre ? { genre: effectiveRow.normalizedRow.genre } : {}), ...(selectedTaxonomy && row.taxonomy ? { taxonomySelections: [{ ...selectedTaxonomy, sourcePhrase: row.taxonomy.sourcePhrase }] } : {}), ...(row.taxonomy && taxonomyDecision?.action === 'keep-unresolved' ? { unresolvedTaxonomyLabels: [row.taxonomy.sourcePhrase] } : {}), myStatus: effectiveRow.normalizedRow.status!, ...(effectiveRow.normalizedRow.deadline ? { deadline: effectiveRow.normalizedRow.deadline } : {}), ...(effectiveRow.normalizedRow.submittedAt ? { submittedAt: effectiveRow.normalizedRow.submittedAt } : {}), ...(effectiveRow.normalizedRow.responseAt ? { responseAt: effectiveRow.normalizedRow.responseAt } : {}), ...(effectiveRow.normalizedRow.fee?.raw ? { feeRaw: effectiveRow.normalizedRow.fee.raw } : {}), ...(effectiveRow.normalizedRow.notes ? { notes: effectiveRow.normalizedRow.notes } : {}), ...(effectiveRow.normalizedRow.sourceUrl ? { sourceUrl: effectiveRow.normalizedRow.sourceUrl } : {}), sourceKind: 'csv', sourceRow: row.rowNumber, importedAt: now.toISOString(), ...(sourceHash ? { importHash: sourceHash } : {}), importId: result.importId };
         store.manualTrackerEntries.push(entry);
       }
       if (already) result.skipped++;
-      else { result.createdManual++; result.imported++; }
+      else { result.createdManual++; result.imported++; if (taxonomyDecision?.action === 'keep-unresolved') result.unresolvedTaxonomy++; }
       continue;
     }
     if ((decision === 'match' || decision === 'keep-current' || decision === 'use-imported') && !selectedOpportunityId) {
-      result.needsReview++; result.reasons.push({ rowNumber: row.rowNumber, code: 'missing-match', message: 'Choose a Radar opportunity or create a manual entry.' }); continue;
+      result.needsReview++; result.reasons.push({ rowNumber: row.rowNumber, code: 'missing-match', message: 'Choose an opportunity or create a manual entry.' }); continue;
     }
     if (selectedOpportunityId && !row.candidates.some((candidate) => candidate.opportunityId === selectedOpportunityId)) {
       result.needsReview++; result.reasons.push({ rowNumber: row.rowNumber, code: 'invalid-match', message: 'The selected opportunity is no longer a candidate. Preview again.' }); continue;
     }
     if (selectedOpportunityId) {
-      const changed = addOrUpdateTracked(store, ids, userId, row, selectedOpportunityId, decision === 'use-imported' || !trackedFor(store, userId, selectedOpportunityId), now.toISOString());
+      const changed = addOrUpdateTracked(store, ids, userId, effectiveRow, selectedOpportunityId, decision === 'use-imported' || !trackedFor(store, userId, selectedOpportunityId), now.toISOString(), result.importId);
       if (changed) result.imported++;
       result.matched++;
     }

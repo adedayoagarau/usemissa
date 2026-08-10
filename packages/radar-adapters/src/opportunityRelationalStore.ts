@@ -5,6 +5,7 @@ import type {
   RadarStore,
   Source,
 } from '@missa/radar-engine';
+import { defaultSourceTrust } from '@missa/radar-engine';
 
 type PublicationState = 'published' | 'reviewable' | 'suppressed';
 
@@ -74,18 +75,25 @@ async function upsertSources(client: PoolClient, sources: Source[]): Promise<voi
     source.url,
     source.kind,
     source.active,
+    source.registryTier ?? 0,
+    source.followsOutboundLinks ?? false,
+    source.checkIntervalHours,
+    source.firstVerifiedAt ?? null,
+    source.nextCheckAt ?? null,
     source.lastCheckedAt ?? null,
     source.lastSuccessfulFetchAt ?? null,
     source.lastProcessedAt ?? null,
   ]);
   const rows = sources.map((_, index) => {
-    const offset = index * 9;
-    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9})`;
+    const offset = index * 14;
+    return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8}, $${offset + 9}, $${offset + 10}, $${offset + 11}, $${offset + 12}, $${offset + 13}, $${offset + 14})`;
   }).join(', ');
   await client.query(
     `insert into opportunity_sources (
-       id, organization_id, name, url, kind, active,
-       last_checked_at, last_successful_fetch_at, last_processed_at
+       id, organization_id, name, url, kind, active, source_tier,
+       follows_outbound_links, check_interval_hours, first_verified_at,
+       next_check_at, last_checked_at, last_successful_fetch_at,
+       last_processed_at
      ) values ${rows}
      on conflict (id) do update set
        organization_id = excluded.organization_id,
@@ -93,11 +101,62 @@ async function upsertSources(client: PoolClient, sources: Source[]): Promise<voi
        url = excluded.url,
        kind = excluded.kind,
        active = excluded.active,
+       source_tier = excluded.source_tier,
+       follows_outbound_links = excluded.follows_outbound_links,
+       check_interval_hours = excluded.check_interval_hours,
+       first_verified_at = excluded.first_verified_at,
+       next_check_at = excluded.next_check_at,
        last_checked_at = excluded.last_checked_at,
        last_successful_fetch_at = excluded.last_successful_fetch_at,
        last_processed_at = excluded.last_processed_at,
        updated_at = now()`,
     values,
+  );
+
+  // Trust columns were added after the original source projection. Keep this
+  // second write guarded so older deployments continue to persist sources
+  // while the additive migration is rolling out.
+  const trustColumns = await client.query<{ present: boolean }>(
+    `select count(*) = 6 as present
+       from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'opportunity_sources'
+        and column_name = any($1::text[])`,
+    [['trust_status', 'trust_score', 'authority_kind', 'trust_evidence_url', 'trust_reviewed_at', 'trust_review_note']],
+  );
+  if (trustColumns.rows[0]?.present !== true) return;
+  const trustRows = sources.map((source) => {
+    const trust = source.registryTrust ?? defaultSourceTrust({ tier: source.registryTier ?? 0, kind: source.kind });
+    return {
+      id: source.id,
+      trust_status: trust.status,
+      trust_score: trust.score,
+      authority_kind: trust.authorityKind,
+      trust_evidence_url: trust.evidenceUrl ?? null,
+      trust_reviewed_at: trust.reviewedAt ?? null,
+      trust_review_note: trust.reviewNote ?? null,
+    };
+  });
+  await client.query(
+    `update opportunity_sources as target set
+       trust_status = incoming.trust_status,
+       trust_score = incoming.trust_score,
+       authority_kind = incoming.authority_kind,
+       trust_evidence_url = incoming.trust_evidence_url,
+       trust_reviewed_at = incoming.trust_reviewed_at,
+       trust_review_note = incoming.trust_review_note,
+       updated_at = now()
+     from jsonb_to_recordset($1::jsonb) as incoming(
+       id text,
+       trust_status text,
+       trust_score integer,
+       authority_kind text,
+       trust_evidence_url text,
+       trust_reviewed_at timestamptz,
+       trust_review_note text
+     )
+     where target.id = incoming.id`,
+    [JSON.stringify(trustRows)],
   );
 }
 
@@ -353,7 +412,7 @@ async function upsertVersionsAndChanges(client: PoolClient, store: RadarStore, o
 export async function saveOpportunityProjectionToPostgres(
   store: RadarStore,
   client: PoolClient,
-  scope?: { opportunityIds?: Set<string>; sourceIds?: Set<string> },
+  scope?: { opportunityIds?: Set<string>; sourceIds?: Set<string>; taxonomySourceIds?: Set<string> },
 ): Promise<void> {
   const referencedSourceIds = new Set<string>();
   const opportunities = scope?.opportunityIds
@@ -374,7 +433,10 @@ export async function saveOpportunityProjectionToPostgres(
   const taxonomyEnabled = await taxonomyTablesAvailable(client);
   await upsertSources(client, referencedSources);
   if (taxonomyEnabled) {
-    for (const source of referencedSources) await upsertSourceTaxonomy(client, source);
+    const taxonomySourceIds = scope?.taxonomySourceIds;
+    for (const source of referencedSources) {
+      if (!scope || taxonomySourceIds?.has(source.id)) await upsertSourceTaxonomy(client, source);
+    }
   }
   for (const opportunity of opportunities) {
     const source = store.sources.get(opportunity.sourceId);

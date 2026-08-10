@@ -1,0 +1,48 @@
+.main { width: min(100% - 48px, 1120px); margin: 0 auto; }
+.hero { max-width: 880px; padding: clamp(64px, 9vw, 116px) 0 54px; }
+.eyebrow { margin: 0; color: var(--accent-deep); font-size: .7rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.hero h1 { margin: 14px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(3rem, 6vw, 6rem); font-weight: 520; letter-spacing: -.055em; line-height: .98; }
+.hero > p:not(.eyebrow) { max-width: 760px; margin: 24px 0 0; color: var(--muted-foreground); font-size: clamp(1rem, 1.5vw, 1.16rem); line-height: 1.65; }
+.principles, .guideList { border-top: 1px solid var(--border); }
+.principles article, .guideList article { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 24px; padding: 28px 0; border-bottom: 1px solid var(--border); }
+.principles article > span, .guideList article > span { color: var(--accent-deep); font-family: var(--font-mono), monospace; font-size: .72rem; }
+.principles h2, .guideList h2 { margin: 0; font-family: var(--font-heading), Georgia, serif; font-size: 1.75rem; font-weight: 560; }
+.principles p, .guideList p { max-width: 760px; margin: 8px 0 0; color: var(--muted-foreground); font-size: .9rem; line-height: 1.6; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px 24px; padding: 38px 0 20px; }
+.actions a, .guideList a, .related a { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; color: var(--primary); font-size: .86rem; font-weight: 700; text-decoration: none; }
+.actions svg, .guideList svg, .related svg { width: 16px; height: 16px; }
+.section { padding: 42px 0; border-top: 1px solid var(--border); }
+.sectionHeader { max-width: 760px; }
+.sectionHeader h2, .responsibility h2, .related h2 { margin: 8px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 540; letter-spacing: -.04em; }
+.sectionHeader > p:last-child { margin: 12px 0 0; color: var(--muted-foreground); line-height: 1.6; }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 26px; }
+.facts article { padding: 24px; border: 1px solid var(--border); border-radius: 12px; }
+.facts h3 { margin: 0; font-size: .94rem; }
+.facts p { margin: 9px 0 0; color: var(--muted-foreground); font-size: .84rem; line-height: 1.55; }
+.responsibility { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .65fr); gap: 40px; padding: 52px 0; border-top: 1px solid var(--border); }
+.responsibility > div > p { color: var(--muted-foreground); line-height: 1.65; }
+.notice { padding: 24px; border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border)); border-radius: 12px; background: color-mix(in srgb, var(--primary) 4%, white); }
+.notice strong { display: block; }
+.notice p { margin: 8px 0 0; color: var(--muted-foreground); font-size: .84rem; line-height: 1.6; }
+.guideList article { grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; }
+.guideList small { color: var(--accent-deep); font-size: .68rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.guideList a { justify-self: end; }
+.articleLayout { display: grid; grid-template-columns: minmax(0, 760px) minmax(240px, 320px); gap: clamp(40px, 8vw, 110px); padding: 64px 0; }
+.article h1 { margin: 14px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(2.8rem, 5vw, 5rem); font-weight: 520; letter-spacing: -.05em; line-height: 1; }
+.lede { margin: 24px 0 0; color: var(--muted-foreground); font-size: 1.1rem; line-height: 1.65; }
+.answer { margin-top: 34px; padding: 24px; border: 1px solid var(--border); border-radius: 12px; }
+.answer h2 { margin: 0; font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; }
+.answer p { margin: 10px 0 0; font-size: 1rem; line-height: 1.7; }
+.faq { margin-top: 40px; }
+.faq > h2 { font-family: var(--font-heading), Georgia, serif; font-size: 2rem; font-weight: 560; }
+.faq article { padding: 22px 0; border-top: 1px solid var(--border); }
+.faq h3 { margin: 0; font-size: 1rem; }
+.faq p { margin: 9px 0 0; color: var(--muted-foreground); font-size: .88rem; line-height: 1.6; }
+.related { align-self: start; position: sticky; top: 104px; padding: 22px; border: 1px solid var(--border); border-radius: 12px; }
+.related h2 { font-size: 1.5rem; }
+.related p { color: var(--muted-foreground); font-size: .84rem; line-height: 1.55; }
+.relatedList { display: grid; gap: 14px; margin-top: 18px; }
+.relatedList article { padding-top: 14px; border-top: 1px solid var(--border); }
+.relatedList h3 { margin: 0; font-family: var(--font-heading), Georgia, serif; font-size: 1.05rem; }
+.relatedList p { margin: 7px 0 0; }
+@media (max-width: 760px) { .main { width: min(100% - 32px, 640px); } .facts { grid-template-columns: 1fr; } .responsibility, .articleLayout { grid-template-columns: 1fr; } .related { position: static; } .guideList article { grid-template-columns: 38px minmax(0, 1fr); } .guideList a { grid-column: 2; justify-self: start; } }

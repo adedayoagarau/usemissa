@@ -1,0 +1,25 @@
+.chooser { margin-top: 38px; border-top: 1px solid var(--border); }
+.chooser > header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding: 26px 0 18px; }
+.chooser > header p, .chooser > header h2 { margin: 0; }
+.chooser > header p { color: var(--accent-deep); font-size: .68rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+.chooser > header h2 { margin-top: 5px; font-family: var(--font-heading), Georgia, serif; font-size: 2rem; font-weight: 560; }
+.chooser > header > span { color: var(--muted-foreground); font-size: .78rem; }
+.search { display: flex; align-items: center; gap: 8px; width: min(100%, 460px); min-height: 46px; margin-bottom: 16px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; }
+.search svg { width: 16px; }
+.search input { width: 100%; min-height: 44px; outline: none; }
+.list { border-top: 1px solid var(--border); }
+.list article { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; gap: 16px; align-items: center; min-height: 84px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.mark { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--primary) 7%, white); color: var(--primary); }
+.mark svg { width: 19px; }
+.list h3, .list p { margin: 0; }
+.list h3 { font-size: .9rem; }
+.list p { margin-top: 5px; color: var(--muted-foreground); font-size: .75rem; }
+.role { padding: 5px 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted-foreground); font-size: .68rem; }
+.list article > a { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; color: var(--primary); font-size: .8rem; font-weight: 700; text-decoration: none; }
+.list article > a svg { width: 15px; }
+.empty { padding: 34px; text-align: center; }
+.empty > svg { width: 22px; color: var(--primary); }
+.empty h3 { margin-top: 12px; }
+.empty p { margin: 8px 0; }
+.empty button { min-height: 44px; color: var(--primary); font-weight: 700; }
+@media (max-width: 620px) { .list article { grid-template-columns: 44px minmax(0, 1fr) auto; } .role { grid-column: 2; width: fit-content; } .list article > a { grid-column: 3; grid-row: 1 / span 2; } }

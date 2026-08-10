@@ -5,6 +5,7 @@ import {
   discoverySourceInsertPlaceholders,
   discoverySourceUpdatePlaceholders,
   extractDiscoveryLinks,
+  isDiscoverySource,
 } from "../src/discoveryWorker.js";
 
 test("discovery extracts bounded call links and drops assets", () => {
@@ -25,6 +26,13 @@ test("discovery extracts bounded call links and drops assets", () => {
 test("discovery batch is bounded for hosted workers", () => {
   assert.equal(discoveryBatchSize("1000"), 250);
   assert.equal(discoveryBatchSize("not-a-number"), 100);
+});
+
+test("discovery selects only explicitly opted-in Postgres sources", () => {
+  assert.equal(isDiscoverySource({ active: true, followsOutboundLinks: true }), true);
+  assert.equal(isDiscoverySource({ active: true, followsOutboundLinks: false }), false);
+  assert.equal(isDiscoverySource({ active: true, followsOutboundLinks: undefined }), false);
+  assert.equal(isDiscoverySource({ active: false, followsOutboundLinks: true }), false);
 });
 
 test("discovery persistence declares VALUES parameter types", () => {

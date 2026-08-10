@@ -4,7 +4,7 @@ export * from './opportunityPorts.js';
 export * from './content/opportunityContent.js';
 export { DEFAULT_PROFILE_PRIVACY, RadarEngine, ProfilePrivacyValidationError, ProfileValidationError, type TickReport, type RadarStats, type RadarEngineOptions } from './engine.js';
 export { createStore, cloneStore, loadStore, saveStore, changesFor, versionsFor, membershipKey, type RadarStore } from './store/store.js';
-export { LibraryValidationError, libraryForUser, createLibraryWork, updateLibraryWork, deleteLibraryWork, createLibraryFile, deleteLibraryFile, createSavedAnswer, updateSavedAnswer, deleteSavedAnswer } from './library/library.js';
+export { LibraryValidationError, LibraryConflictError, libraryForUser, libraryWorkReferences, libraryFileReferences, savedAnswerReferences, createLibraryWork, updateLibraryWork, deleteLibraryWork, createLibraryFile, deleteLibraryFile, createSavedAnswer, updateSavedAnswer, deleteSavedAnswer, type LibraryReferenceCounts } from './library/library.js';
 export { CustomListValidationError, customListsForUser, customListMembershipsForUser, customListsForOpportunity, opportunitiesForCustomList, createCustomList, updateCustomList, deleteCustomList, addOpportunityToCustomList, removeOpportunityFromCustomList } from './lists/lists.js';
 export { propsForUser, type UserProp } from './props/props.js';
 export {
@@ -22,7 +22,7 @@ export {
   type ChecklistItemPatch,
 } from './checklist/checklist.js';
 export { FixtureFetcher, HttpFetcher, isSafeTextPayload, stripHtml } from './ingestion/fetcher.js';
-export { isDue, dueSources } from './ingestion/scheduler.js';
+export { isDue, dueSources, nextCheckAt } from './ingestion/scheduler.js';
 export { contentHash } from './ingestion/snapshot.js';
 export { DeterministicExtractor } from './extraction/extractor.js';
 export { taxonomyAssignmentsForPhrases } from './extraction/taxonomy.js';
@@ -77,7 +77,7 @@ export {
 export { freshnessScore, confidenceScore, computeTrustSignals, trustScore, STALE_FRESHNESS_THRESHOLD } from './scoring/scores.js';
 export { deriveStatus, displayStatus, CLOSING_SOON_DAYS, OPENING_SOON_DAYS, NEEDS_VERIFICATION_CONFIDENCE } from './status/statusEngine.js';
 export { predictNextOpening, recordCycle } from './prediction/prediction.js';
-export { matchesCriteria, matchProfiles, type MatchResult } from './matching/matching.js';
+export { matchesCriteria, matchesOpportunityPreferences, matchProfiles, type MatchResult } from './matching/matching.js';
 export {
   assessCoverage,
   buildCoverageQueries,
@@ -116,6 +116,9 @@ export { buildIcsFeed } from './tracker/calendarFeed.js';
 export {
   TRACKER_IMPORT_MAX_BYTES,
   TRACKER_IMPORT_MAX_ROWS,
+  TRACKER_IMPORT_MAX_COLUMNS,
+  TRACKER_IMPORT_MAX_CELL_CHARS,
+  TRACKER_IMPORT_MAX_PROCESSING_MS,
   TRACKER_IMPORT_FIELDS,
   TrackerImportError,
   parseTrackerCsv,
@@ -128,9 +131,12 @@ export {
   type ImportField,
   type ImportMapping,
   type ImportDecision,
+  type ImportTaxonomyDecision,
+  type ImportRowDecision,
   type ParsedTrackerCsv,
   type TrackerImportPlan,
   type TrackerImportPlanRow,
+  type TrackerImportTaxonomyReview,
   type TrackerImportResult,
 } from './import/trackerImport.js';
 export { buildServerDemoWorld, type ServerDemoWorld, type DemoCredential } from './fixtures/serverDemo.js';
@@ -148,7 +154,11 @@ export {
   discoverySeeds,
   canonicalSources,
   auditRegistryTaxonomy,
+  buildRegistryCoverage,
+  defaultSourceTrust,
+  registryTaxonomyTermIds,
   registryVerticalCompatibility,
+  trustedSource,
 } from './registry/index.js';
 export type {
   SourceTier,
@@ -158,5 +168,12 @@ export type {
   SourceRegistry,
   RegistryStats,
   LoadRegistryOptions,
+  SourceTrust,
+  SourceTrustStatus,
+  SourceAuthorityKind,
+  RegistryCoverageStatus,
+  RegistryTermCoverage,
+  RegistryFacetCoverage,
+  RegistryCoverageSummary,
 } from './registry/types.js';
 export type { RegistryTaxonomyAudit, RegistryVerticalCompatibility } from './registry/taxonomy.js';

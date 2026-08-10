@@ -12,6 +12,8 @@ type DrawerContextProps = {
   swipeDirection: NonNullable<DrawerPrimitive.Root.Props["swipeDirection"]>
 }
 
+type DrawerDirection = 'top' | 'right' | 'bottom' | 'left'
+
 const DrawerContext = React.createContext<DrawerContextProps | null>(null)
 
 function useDrawer() {
@@ -25,6 +27,7 @@ function useDrawer() {
 }
 
 function Drawer({
+  direction,
   modal = true,
   showSwipeHandle = false,
   snapPoints,
@@ -32,11 +35,14 @@ function Drawer({
   ...props
 }: DrawerPrimitive.Root.Props & {
   showSwipeHandle?: boolean
+  direction?: DrawerDirection
 }) {
+  const resolvedSwipeDirection: NonNullable<DrawerPrimitive.Root.Props['swipeDirection']> =
+    direction === 'top' ? 'up' : direction === 'bottom' ? 'down' : direction ?? swipeDirection
   const hasSnapPoints = snapPoints != null && snapPoints.length > 0
   const contextValue = React.useMemo(
-    () => ({ hasSnapPoints, modal, showSwipeHandle, swipeDirection }),
-    [hasSnapPoints, modal, showSwipeHandle, swipeDirection]
+    () => ({ hasSnapPoints, modal, showSwipeHandle, swipeDirection: resolvedSwipeDirection }),
+    [hasSnapPoints, modal, showSwipeHandle, resolvedSwipeDirection]
   )
 
   return (
@@ -45,7 +51,7 @@ function Drawer({
         data-slot="drawer"
         modal={modal}
         snapPoints={snapPoints}
-        swipeDirection={swipeDirection}
+        swipeDirection={resolvedSwipeDirection}
         {...props}
       />
     </DrawerContext.Provider>
@@ -100,8 +106,9 @@ function DrawerSwipeHandle({
 function DrawerContent({
   className,
   children,
+  overlayClassName,
   ...props
-}: DrawerPrimitive.Popup.Props) {
+}: DrawerPrimitive.Popup.Props & { overlayClassName?: string }) {
   const { hasSnapPoints, modal, showSwipeHandle, swipeDirection } = useDrawer()
   const swipeAxis =
     swipeDirection === "down" || swipeDirection === "up" ? "y" : "x"
@@ -109,7 +116,10 @@ function DrawerContent({
   return (
     <DrawerPortal data-slot="drawer-portal">
       {modal === true && (
-        <DrawerOverlay data-snap-points={hasSnapPoints ? "" : undefined} />
+        <DrawerOverlay
+          className={overlayClassName}
+          data-snap-points={hasSnapPoints ? "" : undefined}
+        />
       )}
       <DrawerPrimitive.Viewport
         data-slot="drawer-viewport"

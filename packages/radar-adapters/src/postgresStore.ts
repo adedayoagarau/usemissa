@@ -1,5 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
-import { createStore, type RadarStore } from '@missa/radar-engine';
+import { createStore, type OpportunityType, type RadarStore } from '@missa/radar-engine';
 import { postgresSchema } from './postgresSchema.js';
 import { saveOpportunityProjectionToPostgres } from './opportunityRelationalStore.js';
 
@@ -72,6 +72,52 @@ async function writeAccountTaxonomyPreferences(client: PoolClient, store: RadarS
         [account.id, preference.termId, preference.preference, preference.weight],
       );
     }
+  }
+}
+
+/** Dual-write creator opportunity preferences when the additive target table
+ * is present. The compatibility user snapshot remains authoritative until
+ * the wider row-level cutover is approved. */
+async function writeOpportunityPreferences(client: PoolClient, store: RadarStore, deletedAccountIds: string[] = []): Promise<void> {
+  if (!(await hasTable(client, 'opportunity_preferences'))) return;
+  for (const accountId of deletedAccountIds) {
+    await client.query('delete from opportunity_preferences where account_id = $1', [accountId]);
+  }
+  for (const account of store.accounts.values()) {
+    if (!account.userId) continue;
+    const preferences = store.users.get(account.userId)?.opportunityPreferences;
+    if (!preferences) {
+      await client.query('delete from opportunity_preferences where account_id = $1', [account.id]);
+      continue;
+    }
+    await client.query(
+      `insert into opportunity_preferences
+         (account_id, types, disciplines, genres, locations, career_stages, max_fee_cents, no_fee_only, deadline_within_days, simultaneous_required, updated_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+       on conflict (account_id) do update set
+         types = excluded.types,
+         disciplines = excluded.disciplines,
+         genres = excluded.genres,
+         locations = excluded.locations,
+         career_stages = excluded.career_stages,
+         max_fee_cents = excluded.max_fee_cents,
+         no_fee_only = excluded.no_fee_only,
+         deadline_within_days = excluded.deadline_within_days,
+         simultaneous_required = excluded.simultaneous_required,
+         updated_at = now()`,
+      [
+        account.id,
+        preferences.types,
+        preferences.disciplines,
+        preferences.genres,
+        preferences.locations,
+        preferences.careerStages,
+        preferences.maxFeeCents ?? null,
+        preferences.noFeeOnly,
+        preferences.deadlineWithinDays ?? null,
+        preferences.simultaneousRequired,
+      ],
+    );
   }
 }
 
@@ -252,6 +298,7 @@ export async function saveStoreToPostgres(store: RadarStore, pool: Pool, expecte
       );
     }
     await writeAccountTaxonomyPreferences(client, store);
+    await writeOpportunityPreferences(client, store);
 
     for (const m of store.memberships) {
       if (membershipsHaveRole) {
@@ -445,6 +492,7 @@ export async function saveRadarStoreDeltaToPostgres(
     for (const row of maps.accounts.upserts) { const value = row.value; await client.query('insert into radar_accounts (id, email, data) values ($1, $2, $3) on conflict (id) do update set email = excluded.email, data = excluded.data', [value.id, value.email, value]); }
     if (maps.users.upserts.length || maps.users.deletes.length || maps.accounts.upserts.length || maps.accounts.deletes.length) {
       await writeAccountTaxonomyPreferences(client, current, maps.accounts.deletes);
+      await writeOpportunityPreferences(client, current, maps.accounts.deletes);
     }
     for (const row of arrays.memberships.upserts) { const value = row.value; await client.query('insert into radar_memberships (account_id, organization_id, role, data) values ($1, $2, $3, $4) on conflict (account_id, organization_id) do update set role = excluded.role, data = excluded.data', [value.accountId, value.organizationId, value.role, value]); }
     for (const entry of newAuditEntries) await client.query('insert into radar_audit_log (id, at, data) values ($1, $2, $3) on conflict (id) do nothing', [entry.id, entry.at, entry]);
@@ -460,9 +508,24 @@ export async function saveRadarStoreDeltaToPostgres(
           if (opportunity.sourceId === sourceId) opportunityIds.add(opportunity.id);
         }
       }
+      const taxonomySourceIds = new Set(
+        maps.sources.upserts
+          .filter(({ key, value }) => {
+            const previousSource = previous.sources.get(key);
+            return !previousSource
+              || previousSource.url !== value.url
+              || previousSource.registryTier !== value.registryTier
+              || previousSource.followsOutboundLinks !== value.followsOutboundLinks
+              || JSON.stringify(previousSource.registryTaxonomyTermIds ?? []) !== JSON.stringify(value.registryTaxonomyTermIds ?? [])
+              || JSON.stringify(previousSource.registryGeography ?? []) !== JSON.stringify(value.registryGeography ?? [])
+              || JSON.stringify(previousSource.registryTrust ?? null) !== JSON.stringify(value.registryTrust ?? null);
+          })
+          .map(({ key }) => key),
+      );
       await saveOpportunityProjectionToPostgres(current, client, {
         opportunityIds,
         sourceIds: new Set(maps.sources.upserts.map((row) => row.key)),
+        taxonomySourceIds,
       });
     }
     const nextVersion = currentVersion + 1;
@@ -562,6 +625,46 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
       if (!user.taxonomyPreferences.some((preference) => preference.termId === row.term_id)) {
         user.taxonomyPreferences.push({ termId: row.term_id, preference: row.preference, weight: row.weight });
       }
+    }
+  }
+  const opportunityPreferencesTable = await pool.query<{ present: string | null }>("select to_regclass('public.opportunity_preferences') as present");
+  if (opportunityPreferencesTable.rows[0]?.present) {
+    const accountById = new Map([...store.accounts.values()].map((account) => [account.id, account] as const));
+    const preferences = await pool.query<{
+      account_id: string;
+      types: string[];
+      disciplines: string[];
+      genres: string[];
+      locations: string[];
+      career_stages: string[];
+      max_fee_cents: number | null;
+      no_fee_only: boolean;
+      deadline_within_days: number | null;
+      simultaneous_required: boolean;
+    }>(
+      `select account_id, types, disciplines, genres, locations, career_stages,
+              max_fee_cents, no_fee_only, deadline_within_days, simultaneous_required
+         from opportunity_preferences`,
+    );
+    for (const row of preferences.rows) {
+      const userId = accountById.get(row.account_id)?.userId;
+      if (!userId) continue;
+      const user = store.users.get(userId);
+      if (!user) continue;
+      // During the compatibility window, preserve an already-loaded snapshot
+      // value and use the target row to hydrate older accounts only.
+      if (user.opportunityPreferences) continue;
+      user.opportunityPreferences = {
+        types: (row.types ?? []) as OpportunityType[],
+        disciplines: row.disciplines ?? [],
+        genres: row.genres ?? [],
+        locations: row.locations ?? [],
+        careerStages: row.career_stages ?? [],
+        ...(row.max_fee_cents === null ? {} : { maxFeeCents: row.max_fee_cents }),
+        noFeeOnly: row.no_fee_only,
+        ...(row.deadline_within_days === null ? {} : { deadlineWithinDays: row.deadline_within_days }),
+        simultaneousRequired: row.simultaneous_required,
+      };
     }
   }
   store.memberships = memberships.rows.map((r) => r.data);

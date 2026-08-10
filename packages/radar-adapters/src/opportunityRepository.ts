@@ -321,7 +321,7 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
     left join lateral (
       select a.url, a.alt
       from opportunity_identity_assets a
-      where a.opportunity_id = o.id and a.rights_status in ('unknown', 'cleared')
+      where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')
       order by a.created_at desc
       limit 1
     ) asset on true

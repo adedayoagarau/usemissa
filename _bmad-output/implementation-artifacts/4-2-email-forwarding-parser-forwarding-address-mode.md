@@ -185,7 +185,7 @@ deadline extended / closes on           → deadline evidence only; never change
 **And** candidate confidence and warnings are text plus optional icon, never color alone; no decision status uses alarm-red styling by default
 **And** dialog confirmations trap focus and restore it; copy confirmation uses an `aria-live` status; review result/errors use `role="alert"`/`aria-live="polite"`
 **And** each candidate's status/opportunity selector has a visible label and keyboard path; filtered queue updates are announced
-**And** one terracotta primary action is used per view; rotate/delete confirmation triggers remain secondary until the destructive step
+**And** one Aubergine primary action is used per view; rotate/delete confirmation triggers remain secondary until the destructive step
 **And** motion is limited to queue insertion/detail disclosure and honors `prefers-reduced-motion`.
 
 ## Domain contracts

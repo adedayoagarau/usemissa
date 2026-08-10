@@ -213,9 +213,9 @@ test("chat input is bounded and the baseline payload keeps evidence source-linke
 
   const payload = chatAssistantPayloadSchema.parse({
     intent: "opportunity-search",
-    engine: "deterministic-baseline",
+    engine: "legacy-internal-value-must-be-stripped",
     answer: "I found one published fellowship.",
-    search: { types: ["fellowship"], feeStatus: "no-fee", sort: "soonest-deadline" },
+    search: { types: ["fellowship"], feeStatus: "no-fee", sort: "soonest-deadline", taxonomy: [{ facet: "role", label: "Writer" }], clarifications: [] },
     results: [
       {
         id: "opp_1",
@@ -224,6 +224,7 @@ test("chat input is bounded and the baseline payload keeps evidence source-linke
         type: "fellowship",
         deadline: { kind: "fixed", date: "2026-09-01" },
         fee: { status: "no-fee" },
+        taxonomy: [{ facet: "role", label: "Writer" }],
         source: {
           opportunityId: "opp_1",
           title: "Example Fellowship",
@@ -244,5 +245,8 @@ test("chat input is bounded and the baseline payload keeps evidence source-linke
     ],
   });
   assert.equal(payload.results[0]?.source.opportunityId, "opp_1");
-  assert.throws(() => chatAssistantPayloadSchema.parse({ ...payload, engine: "model" }));
+  assert.equal('engine' in payload, false);
+  assert.equal('checkedAt' in payload.results[0]!.source, false);
+  assert.equal('organizationConfirmed' in payload.results[0]!.source, false);
+  assert.deepEqual(payload.search.taxonomy, [{ facet: "role", label: "Writer" }]);
 });

@@ -8,30 +8,15 @@ import {
   TRACKER_IMPORT_MAX_BYTES,
   type ImportMapping,
 } from '@missa/radar-engine';
+import { trackerImportCandidateHash, trackerImportStateHash, TrackerImportPersistenceError } from '@missa/radar-adapters';
 import { getSessionAccount } from '@/lib/auth';
-import { getEngine } from '@/lib/engine';
+import { consumeTrackerImportPreview, getEngine } from '@/lib/engine';
 import { signTrackerImportPreviewToken, stableMappingHash } from '@/lib/tracker-import-token';
 
 const PREVIEW_WINDOW_SECONDS = 15 * 60;
-const PREVIEW_LIMIT = 5;
-const PREVIEW_WINDOW_MS = 10 * 60_000;
-const previewRequests = new Map<string, number[]>();
 
 function jsonError(error: string, status: 400 | 401 | 404 | 409 | 413 | 429 | 500, extra?: Record<string, string>) {
   return NextResponse.json({ error }, { status, headers: { 'Cache-Control': 'private, no-store', ...extra } });
-}
-
-function withinRateLimit(accountId: string): { ok: true } | { ok: false; retryAfter: number } {
-  const now = Date.now();
-  const recent = (previewRequests.get(accountId) ?? []).filter((at) => now - at < PREVIEW_WINDOW_MS);
-  if (recent.length >= PREVIEW_LIMIT) {
-    previewRequests.set(accountId, recent);
-    return { ok: false, retryAfter: Math.max(1, Math.ceil((PREVIEW_WINDOW_MS - (now - recent[0]!)) / 1000)) };
-  }
-  recent.push(now);
-  previewRequests.set(accountId, recent);
-  if (previewRequests.size > 1_000) for (const [key, values] of previewRequests) if (!values.length || now - values[values.length - 1]! >= PREVIEW_WINDOW_MS) previewRequests.delete(key);
-  return { ok: true };
 }
 
 function fileLooksLikeCsv(file: File): boolean {
@@ -40,10 +25,6 @@ function fileLooksLikeCsv(file: File): boolean {
 
 function sourceHash(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
-}
-
-function candidateHash(candidateSet: string[]): string {
-  return createHash('sha256').update(candidateSet.join('|')).digest('hex');
 }
 
 function parseMapping(value: FormDataEntryValue | null, columns: string[]): ImportMapping {
@@ -56,22 +37,29 @@ function parseMapping(value: FormDataEntryValue | null, columns: string[]): Impo
   }
 }
 
-function previewResponse(plan: ReturnType<typeof planTrackerImport>, sourceHashValue: string, token: string, expiresAt: string) {
+function previewResponse(plan: ReturnType<typeof planTrackerImport>, token: string, expiresAt: string) {
   return {
     previewToken: token,
     expiresAt,
-    sourceHash: sourceHashValue,
     columns: plan.columns,
     detectedMapping: plan.mapping,
     rows: plan.rows.map((row) => ({
       rowNumber: row.rowNumber,
       values: row.values,
-      normalized: row.normalized,
-      classification: row.classification,
-      candidates: row.candidates.map(({ opportunityId, title, organizationName, confidence, reason }) => ({ opportunityId, title, organizationName, confidence, reason })),
+      state: row.classification === 'matched'
+        ? 'exact-match'
+        : row.classification === 'possible-match'
+          ? 'possible-match'
+          : row.classification === 'unmatched'
+            ? 'no-match'
+            : row.classification === 'duplicate-in-file'
+              ? 'duplicate-row'
+              : 'needs-correction',
+      candidates: row.candidates.map(({ opportunityId, title, organizationName, matchKind, reasons }) => ({ opportunityId, title, organizationName, matchKind, reasons })),
       defaultAction: row.defaultAction,
       warnings: row.warnings,
       errors: row.errors,
+      ...(row.taxonomy ? { taxonomy: row.taxonomy } : {}),
       ...(row.conflict ? { conflict: row.conflict } : {}),
     })),
     summary: plan.summary,
@@ -82,8 +70,12 @@ export async function POST(request: Request) {
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session) return jsonError('Not authenticated', 401);
   if (!session.account.userId) return jsonError('Profile not found', 404);
-  const rate = withinRateLimit(session.account.id);
-  if (!rate.ok) return jsonError('Too many previews. Try again later.', 429, { 'Retry-After': String(rate.retryAfter) });
+  try {
+    await consumeTrackerImportPreview(session.account.id);
+  } catch (error) {
+    if (error instanceof TrackerImportPersistenceError && error.code === 'rate-limit') return jsonError('Too many previews. Try again later.', 429, { 'Retry-After': String(error.retryAfter ?? 60) });
+    return jsonError('We could not start this preview. Please try again.', 500);
+  }
   const contentLength = Number(request.headers.get('content-length') ?? '0');
   if (contentLength > TRACKER_IMPORT_MAX_BYTES + 512_000) return jsonError('CSV file is larger than 5 MiB.', 413);
 
@@ -110,8 +102,8 @@ export async function POST(request: Request) {
     const plan = planTrackerImport(engine.store, session.account.userId, parsed, mapping);
     const sourceHashValue = sourceHash(bytes);
     const expiresAtSeconds = Math.floor(Date.now() / 1000) + PREVIEW_WINDOW_SECONDS;
-    const token = signTrackerImportPreviewToken({ v: 1, userId: session.account.userId, sourceHash: sourceHashValue, mappingHash: stableMappingHash(mapping), candidateHash: candidateHash(plan.candidateSet), exp: expiresAtSeconds });
-    return NextResponse.json(previewResponse(plan, sourceHashValue, token, new Date(expiresAtSeconds * 1000).toISOString()), { headers: { 'Cache-Control': 'private, no-store' } });
+    const token = signTrackerImportPreviewToken({ v: 1, userId: session.account.userId, sourceHash: sourceHashValue, mappingHash: stableMappingHash(mapping), candidateHash: trackerImportCandidateHash(plan.candidateSet), trackerHash: trackerImportStateHash(engine.store, session.account.userId), exp: expiresAtSeconds });
+    return NextResponse.json(previewResponse(plan, token, new Date(expiresAtSeconds * 1000).toISOString()), { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     if (error instanceof TrackerImportError) return jsonError(error.message, error.code === 'limit' ? 413 : 400);
     console.error('Tracker import preview failed', error);

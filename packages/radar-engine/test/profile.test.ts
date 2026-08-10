@@ -10,10 +10,29 @@ function engineWithUser() {
 
 test('profile updates trim public fields and derive completeness', () => {
   const { engine, user } = engineWithUser();
-  const saved = engine.updateUserProfile(user.id, { displayName: '  Ada Lovelace  ', bio: '  Writer and researcher.  ' });
+  const saved = engine.updateUserProfile(user.id, {
+    displayName: '  Ada Lovelace  ',
+    bio: '  Writer and researcher.  ',
+    opportunityPreferences: { types: ['magazine'], locations: ['Nigeria'], careerStages: ['emerging'], noFeeOnly: true, deadlineWithinDays: 30, simultaneousRequired: false },
+  });
   assert.equal(saved.displayName, 'Ada Lovelace');
   assert.equal(saved.bio, 'Writer and researcher.');
   assert.deepEqual(engine.profileCompleteness(user.id), { complete: true, missing: [] });
+});
+
+test('profile completeness calls out unconfigured opportunity preferences', () => {
+  const { engine, user } = engineWithUser();
+  assert.deepEqual(engine.profileCompleteness(user.id), { complete: false, missing: ['opportunityPreferences'] });
+});
+
+test('opportunity preferences are normalized and validated', () => {
+  const { engine, user } = engineWithUser();
+  const saved = engine.updateUserProfile(user.id, { opportunityPreferences: { types: [' magazine ', 'magazine'], maxFeeCents: 500, noFeeOnly: false, deadlineWithinDays: 90, simultaneousRequired: true } });
+  assert.deepEqual(saved.opportunityPreferences, {
+    types: ['magazine'], disciplines: [], genres: [], locations: [], careerStages: [], maxFeeCents: 500,
+    noFeeOnly: false, deadlineWithinDays: 90, simultaneousRequired: true,
+  });
+  assert.throws(() => engine.updateUserProfile(user.id, { opportunityPreferences: { types: ['workshop'] } }), (error: unknown) => error instanceof ProfileValidationError && error.field === 'opportunityPreferences');
 });
 
 test('profile taxonomy preferences are private, canonical-id based, and validated', () => {
@@ -47,7 +66,7 @@ test('privacy defaults fail closed and public projection only includes opted-in 
   assert.deepEqual(engine.profilePrivacy(user.id), { displayName: 'public', bio: 'public', trackedOpportunityCount: 'private' });
   user.privacy = { displayName: 'unexpected' as never, bio: 'unexpected' as never, trackedOpportunityCount: 'public' };
   const publicProfile = engine.publicUserProfile(user.id);
-  assert.deepEqual(publicProfile, { id: user.id, trackedOpportunityCount: 0 });
+  assert.deepEqual(publicProfile, { isPrivate: true });
 });
 
 test('privacy updates are strict, complete, and no-op safe', () => {
@@ -55,7 +74,7 @@ test('privacy updates are strict, complete, and no-op safe', () => {
   const first = engine.updateProfilePrivacy(user.id, { bio: 'private', trackedOpportunityCount: 'public' });
   assert.deepEqual(first.settings, { displayName: 'public', bio: 'private', trackedOpportunityCount: 'public' });
   assert.deepEqual(first.changedFields, ['bio', 'trackedOpportunityCount']);
-  assert.deepEqual(engine.publicUserProfile(user.id), { id: user.id, displayName: 'Ada', trackedOpportunityCount: 0 });
+  assert.deepEqual(engine.publicUserProfile(user.id), { id: user.id, displayName: 'Ada' });
   const noOp = engine.updateProfilePrivacy(user.id, { bio: 'private' });
   assert.deepEqual(noOp.changedFields, []);
   assert.throws(() => engine.updateProfilePrivacy(user.id, { bio: 'hidden' as never }), ProfilePrivacyValidationError);
@@ -63,11 +82,11 @@ test('privacy updates are strict, complete, and no-op safe', () => {
   assert.equal(user.privacy?.bio, 'private');
 });
 
-test('public tracked count is recomputed from tracked rows and private identity can result in no projection', () => {
+test('legacy tracked-count visibility never exposes private Tracker activity', () => {
   const { engine, user } = engineWithUser();
   user.privacy = { displayName: 'private', bio: 'private', trackedOpportunityCount: 'private' };
   assert.deepEqual(engine.publicUserProfile(user.id), { isPrivate: true });
   user.privacy = { displayName: 'private', bio: 'private', trackedOpportunityCount: 'public' };
   engine.store.tracked.push({ userId: user.id, opportunityId: 'opp-a', trackedAt: 'now', notify: true, myStatus: 'saved', events: [] });
-  assert.deepEqual(engine.publicUserProfile(user.id), { id: user.id, trackedOpportunityCount: 1 });
+  assert.deepEqual(engine.publicUserProfile(user.id), { isPrivate: true });
 });

@@ -10,6 +10,8 @@ export const systemClock: Clock = { now: () => new Date() };
 export interface FetchResult {
   status: 'ok' | 'error' | 'gone';
   content: string;
+  /** Bounded machine-readable reason for a failed fetch; never contains page data. */
+  failureReason?: string;
 }
 
 /**

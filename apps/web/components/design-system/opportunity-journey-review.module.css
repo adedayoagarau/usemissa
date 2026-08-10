@@ -1,0 +1,67 @@
+.page { min-height: 100vh; color: #211d22; background: #fff; font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif); }
+.skipLink { position: fixed; z-index: 30; top: 8px; left: 8px; padding: 10px 14px; border-radius: 8px; color: #fff; background: #5a3f68; transform: translateY(calc(-100% - 16px)); }
+.skipLink:focus { transform: translateY(0); }
+.header { display: flex; min-height: 68px; align-items: center; justify-content: space-between; gap: 16px; padding: 0 clamp(20px, 5vw, 72px); border-bottom: 1px solid #e9e4e9; }
+.wordmark { color: #5a3f68; font-family: var(--font-heading, Georgia, serif); font-size: 25px; font-weight: 700; text-decoration: none; }
+.localBadge { display: inline-flex; min-height: 36px; align-items: center; gap: 7px; padding: 0 11px; border: 1px solid #d9cedd; border-radius: 999px; color: #5a3f68; font-size: 12px; font-weight: 700; }
+.localBadge svg { width: 14px; }
+.hero, .summary, .journey, .guardrails, .footer { width: min(1120px, calc(100% - 40px)); margin-inline: auto; }
+.hero { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr); gap: clamp(32px, 7vw, 92px); align-items: end; padding: clamp(52px, 9vw, 110px) 0 56px; }
+.eyebrow { margin: 0 0 10px; color: #765982; font-size: 11px; font-weight: 780; letter-spacing: .13em; text-transform: uppercase; }
+.hero h1 { max-width: 760px; margin: 0; color: #332937; font-family: var(--font-heading, Georgia, serif); font-size: clamp(42px, 7vw, 76px); font-weight: 520; letter-spacing: -.05em; line-height: .98; }
+.lede { max-width: 700px; margin: 24px 0 0; color: #625b63; font-size: clamp(17px, 2vw, 20px); line-height: 1.6; }
+.promise { display: flex; gap: 14px; align-items: flex-start; padding: 20px; border: 1px solid #d9cedd; border-radius: 16px; background: #fbf9fb; }
+.promise > svg { width: 20px; flex: 0 0 auto; color: #5a3f68; }
+.promise strong { display: block; color: #332937; font-size: 15px; }
+.promise p { margin: 7px 0 0; color: #6b636c; font-size: 14px; line-height: 1.55; }
+.summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 22px 0; border-block: 1px solid #e9e4e9; }
+.summary > div { min-width: 0; padding: 0 24px; border-right: 1px solid #e9e4e9; }
+.summary > div:first-child { padding-left: 0; }
+.summary > div:last-child { border-right: 0; }
+.summary dt { color: #746d75; font-size: 13px; }
+.summary dd { display: flex; margin: 7px 0 0; align-items: center; gap: 7px; color: #332937; font-family: var(--font-heading, Georgia, serif); font-size: 21px; }
+.summary dd svg { width: 17px; color: #5a3f68; }
+.journey { padding: 76px 0 88px; }
+.sectionHeading { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1fr); gap: 32px; align-items: end; padding-bottom: 20px; border-bottom: 1px solid #ded7df; }
+.sectionHeading h2, .guardrails h2 { margin: 0; color: #332937; font-family: var(--font-heading, Georgia, serif); font-size: clamp(30px, 4vw, 46px); font-weight: 520; letter-spacing: -.035em; line-height: 1; }
+.sectionHeading > p { max-width: 620px; margin: 0; color: #6b636c; line-height: 1.6; }
+.steps { margin: 0; padding: 34px 0 0; list-style: none; }
+.step { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 18px; }
+.stepRail { display: flex; position: relative; align-items: center; flex-direction: column; }
+.stepRail span { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid #b9a6bf; border-radius: 50%; color: #5a3f68; background: #fff; font-family: var(--font-mono, monospace); font-size: 12px; font-weight: 700; }
+.stepRail i { width: 1px; flex: 1; margin: 10px 0 -1px; background: #d9cedd; }
+.stepCard { display: grid; min-height: 184px; grid-template-columns: minmax(0, 1fr) minmax(190px, .38fr); gap: 30px; align-items: center; padding: 25px 28px; border: 1px solid #e0d9e1; border-radius: 16px; background: #fff; box-shadow: 0 10px 28px rgb(71 48 80 / 4%); }
+.step + .step { padding-top: 16px; }
+.stepBody { min-width: 0; }
+.stepLabel { margin: 0 0 7px; color: #765982; font-size: 11px; font-weight: 780; letter-spacing: .12em; text-transform: uppercase; }
+.stepBody h3 { margin: 0; color: #332937; font-family: var(--font-heading, Georgia, serif); font-size: 28px; font-weight: 580; letter-spacing: -.025em; }
+.description { max-width: 650px; margin: 10px 0 0; color: #625b63; line-height: 1.55; }
+.check { display: flex; margin: 18px 0 0; align-items: center; gap: 8px; color: #473050; font-size: 13px; font-weight: 650; }
+.check svg { width: 16px; flex: 0 0 auto; }
+.stepAction { display: grid; gap: 14px; justify-items: start; align-content: center; }
+.stepAction > span { color: #746d75; font-size: 12px; font-weight: 700; }
+.stepAction a, .footer a { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; color: #5a3f68; font-size: 14px; font-weight: 750; text-decoration: none; }
+.stepAction a svg, .footer a svg { width: 16px; }
+.stepAction a:hover, .stepAction a:focus-visible, .footer a:hover, .footer a:focus-visible { text-decoration: underline; text-underline-offset: 4px; }
+.guardrails { display: grid; grid-template-columns: minmax(220px, .75fr) minmax(0, 1fr); gap: 42px; padding: 30px 0 56px; border-top: 1px solid #ded7df; }
+.guardrails ul { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.guardrails li { display: flex; gap: 10px; color: #625b63; line-height: 1.55; }
+.guardrails li svg { width: 17px; flex: 0 0 auto; margin-top: 3px; color: #5a3f68; }
+.footer { display: flex; justify-content: space-between; gap: 20px; padding: 22px 0 48px; border-top: 1px solid #e9e4e9; }
+.footer a:last-child { color: #746d75; font-weight: 650; }
+@media (max-width: 720px) {
+  .hero, .sectionHeading, .guardrails { grid-template-columns: 1fr; }
+  .hero { gap: 28px; padding-top: 48px; }
+  .hero h1 { font-size: clamp(40px, 13vw, 62px); }
+  .summary { grid-template-columns: 1fr; gap: 16px; }
+  .summary > div, .summary > div:first-child { padding: 0; border-right: 0; }
+  .summary dd { font-size: 19px; }
+  .sectionHeading { gap: 14px; }
+  .journey { padding-top: 56px; }
+  .step { grid-template-columns: 42px minmax(0, 1fr); gap: 12px; }
+  .stepRail span { width: 36px; height: 36px; font-size: 11px; }
+  .stepCard { display: block; min-height: 0; padding: 21px 18px; }
+  .stepBody h3 { font-size: 25px; }
+  .stepAction { margin-top: 22px; padding-top: 16px; border-top: 1px solid #eee9ee; }
+  .footer { align-items: flex-start; flex-direction: column; }
+}

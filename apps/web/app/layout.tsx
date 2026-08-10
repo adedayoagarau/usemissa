@@ -9,25 +9,20 @@ import { DEFAULT_DESCRIPTION, SITE_NAME } from '@/lib/seo';
 import { siteUrl } from '@/lib/siteUrl';
 
 /**
- * Brand typography per _bmad-output/planning-artifacts/ux-design-specification.md
- * -> Visual Design Foundation: Fraunces for headlines only, Instrument Sans
- * for UI/body, Fragment Mono for tabular/data display. Self-hosted from the
- * same font files landing/ already uses (latin-subset variants only, since
- * the app doesn't need the full charset coverage the marketing page ships) --
- * NOT the shadcn-init default (Geist), which is a generic look this brand
- * already has real typography to replace.
+ * Missa typography: Ysabeau carries both editorial display and product UI;
+ * Fragment Mono remains reserved for technical and tabular metadata.
  */
-const fraunces = localFont({
-  src: '../fonts/fraunces.woff2',
+const ysabeau = localFont({
+  src: '../fonts/ysabeau-variable.ttf',
   variable: '--font-heading',
   weight: '100 900',
   display: 'swap',
 });
 
-const instrumentSans = localFont({
-  src: '../fonts/instrument-sans.woff2',
+const ysabeauOffice = localFont({
+  src: '../fonts/ysabeau-variable.ttf',
   variable: '--font-sans',
-  weight: '400 700',
+  weight: '100 900',
   display: 'swap',
 });
 
@@ -57,7 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={cn(fraunces.variable, instrumentSans.variable, fragmentMono.variable, 'font-sans')}
+      className={cn(ysabeau.variable, ysabeauOffice.variable, fragmentMono.variable, 'font-sans')}
       suppressHydrationWarning
     >
       <body>

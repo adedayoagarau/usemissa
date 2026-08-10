@@ -1,20 +1,45 @@
 import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+
+const cardVariants = cva(
+  "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl border border-border bg-card text-sm text-card-foreground [--card-spacing:--spacing(4)] shadow-[0_1px_2px_rgba(28,24,21,0.05)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+  {
+    variants: {
+      size: {
+        sm: "[--card-spacing:--spacing(3)]",
+        default: "[--card-spacing:--spacing(4)]",
+        lg: "[--card-spacing:--spacing(6)]",
+      },
+      variant: {
+        default: "",
+        interactive:
+          "cursor-pointer transition-[border-color,box-shadow] hover:border-foreground/30 hover:shadow-[0_4px_14px_rgba(28,24,21,0.08)] focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15",
+        selected: "border-primary ring-2 ring-primary/15",
+        muted: "bg-muted/35",
+        danger: "border-destructive/35 bg-destructive/5",
+      },
+    },
+    defaultVariants: {
+      size: "default",
+      variant: "default",
+    },
+  }
+)
 
 function Card({
   className,
   size = "default",
+  variant = "default",
   ...props
-}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+}: React.ComponentProps<"div"> & VariantProps<typeof cardVariants>) {
   return (
     <div
       data-slot="card"
       data-size={size}
-      className={cn(
-        "group/card flex flex-col gap-(--card-spacing) overflow-hidden rounded-xl bg-card py-(--card-spacing) text-sm text-card-foreground ring-1 ring-foreground/10 [--card-spacing:--spacing(4)] has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:[--card-spacing:--spacing(3)] data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
-        className
-      )}
+      data-variant={variant}
+      className={cn(cardVariants({ size, variant, className }), "py-(--card-spacing)")}
       {...props}
     />
   )
@@ -38,7 +63,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-title"
       className={cn(
-        "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+        "font-heading text-base leading-snug font-semibold group-data-[size=sm]/card:text-sm",
         className
       )}
       {...props}

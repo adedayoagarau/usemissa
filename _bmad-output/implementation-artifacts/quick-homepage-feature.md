@@ -10,7 +10,7 @@ status: implementation-complete
 
 - Kept the feature cards as informational articles and removed the northeast-arrow affordance and hover lift. The cards do not currently navigate anywhere, so the visual treatment no longer implies a hidden action.
 - Replaced the arrow with a small status marker and introduced a compact “See it move” proof rail before the cards. The rail shows a clearly labelled sample workflow (Saved → Submitted → Accepted) so product evidence appears beside the feature explanation rather than only in the later tracker section.
-- Added the Missa terracotta accent (`#c6402a`) only to workflow markers and step numbers; the rest of the landing page remains ink/paper.
+- Added the Missa Aubergine accent (`#5a3f68`) only to workflow markers and step numbers; the rest of the landing page remains ink/paper.
 - Added a tablet breakpoint at 900px. At 768–900px the feature grid uses two columns, with the third card spanning the row; cards have `min-width: 0`, and the route illustration is constrained to its card width. This prevents the previous 768px clipping while preserving the three-column desktop composition.
 - The proof rail collapses to a one-column timeline on narrow screens. Film credit sizing was raised and given a larger tap target for readability.
 - No hero auth/video behavior, tracker markup, organization section, or final CTA/footer behavior was changed.
@@ -25,4 +25,3 @@ status: implementation-complete
 
 - `apps/web/app/page.tsx`
 - `apps/web/app/home.module.css`
-

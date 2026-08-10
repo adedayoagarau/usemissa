@@ -373,13 +373,19 @@ export const opportunitySources = pgTable(
     url: text("url").notNull(),
     canonicalUrl: text("canonical_url"),
     normalizedUrl: text("normalized_url"),
+    trustStatus: text("trust_status").notNull().default("needs-review"),
+    trustScore: integer("trust_score").notNull().default(0),
+    authorityKind: text("authority_kind").notNull().default("other"),
+    trustEvidenceUrl: text("trust_evidence_url"),
+    trustReviewedAt: timestamp("trust_reviewed_at", { withTimezone: true }),
+    trustReviewNote: text("trust_review_note"),
     sourceTier: integer("source_tier").notNull().default(0),
     kind: text("kind").notNull(),
     active: boolean("active").notNull().default(true),
     followsOutboundLinks: boolean("follows_outbound_links")
       .notNull()
       .default(false),
-    checkIntervalHours: integer("check_interval_hours").notNull().default(168),
+    checkIntervalHours: integer("check_interval_hours").notNull().default(24),
     geographyCodes: text("geography_codes")
       .array()
       .notNull()
@@ -389,11 +395,13 @@ export const opportunitySources = pgTable(
       .notNull()
       .default(sql`ARRAY[]::text[]`),
     lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    firstVerifiedAt: timestamp("first_verified_at", { withTimezone: true }),
     lastSuccessfulFetchAt: timestamp("last_successful_fetch_at", {
       withTimezone: true,
     }),
     lastProcessedAt: timestamp("last_processed_at", { withTimezone: true }),
     lastDiscoveryAt: timestamp("last_discovery_at", { withTimezone: true }),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }),
     lastHttpStatus: integer("last_http_status"),
     lastFetchedContentHash: text("last_fetched_content_hash"),
     lastProcessedContentHash: text("last_processed_content_hash"),
@@ -420,6 +428,19 @@ export const opportunitySources = pgTable(
       table.lastCheckedAt,
     ),
     index("opportunity_sources_normalized_url_idx").on(table.normalizedUrl),
+    index("opportunity_sources_trust_idx").on(table.trustStatus, table.trustScore),
+    check(
+      "opportunity_sources_trust_status_check",
+      sql`${table.trustStatus} in ('curated', 'verified', 'needs-review', 'blocked')`,
+    ),
+    check(
+      "opportunity_sources_trust_score_check",
+      sql`${table.trustScore} between 0 and 100`,
+    ),
+    check(
+      "opportunity_sources_authority_check",
+      sql`${table.authorityKind} in ('official-source', 'professional-body', 'publisher', 'platform', 'directory', 'feed', 'funder', 'academic', 'community', 'other')`,
+    ),
     check(
       "opportunity_sources_tier_check",
       sql`${table.sourceTier} between 0 and 3`,
@@ -2667,4 +2688,66 @@ export const chatRunEvents = pgTable(
     ),
     check("chat_run_events_sequence_check", sql`${table.sequence} >= 0`),
   ],
+);
+
+export const trackerImportReceipts = pgTable(
+  "tracker_import_receipts",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    userId: text("user_id").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    createdAt,
+    result: jsonb("result")
+      .notNull()
+      .$type<Record<string, unknown>>(),
+  },
+  (table) => [
+    uniqueIndex("tracker_import_receipts_account_key_idx").on(
+      table.accountId,
+      table.idempotencyKey,
+    ),
+    index("tracker_import_receipts_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const trackerImportRateEvents = pgTable(
+  "tracker_import_rate_events",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    kind: text("kind").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("tracker_import_rate_events_scope_idx").on(
+      table.accountId,
+      table.kind,
+      table.occurredAt,
+    ),
+    check(
+      "tracker_import_rate_events_kind_check",
+      sql`${table.kind} in ('preview', 'commit')`,
+    ),
+  ],
+);
+
+export const waitlistSignups = pgTable(
+  "waitlist_signups",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    source: text("source").notNull().default("/waitlist"),
+    campaign: jsonb("campaign")
+      .notNull()
+      .$type<Record<string, string>>()
+      .default(sql`'{}'::jsonb`),
+    createdAt,
+  },
+  (table) => [uniqueIndex("waitlist_signups_email_idx").on(table.email)],
 );

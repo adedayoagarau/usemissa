@@ -90,7 +90,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
         userId,
         kind: 'submission-receipt',
         title: `Submission sent: ${openCall.title}`,
-        body: 'Your receipt is ready in My submissions.',
+        body: 'Your receipt is ready in Tracker.',
         reason: 'you submitted through a Missa-hosted form',
         ...(linkedOpportunityId ? { opportunityId: linkedOpportunityId } : {}),
       });

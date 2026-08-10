@@ -505,7 +505,7 @@ The source inventory built from this taxonomy should record, for every cell:
 
 ## 6. Immediate migration notes
 
-The current Radar registry is a useful source seed, but its `verticalId` and `disciplines` values
+The current Opportunities registry is a useful source seed, but its `verticalId` and `disciplines` values
 mix several axes. Migration should preserve every source and map it onto the new facets.
 
 - `writing-residency` → practice `writing-literature`; opportunity type `residency`.

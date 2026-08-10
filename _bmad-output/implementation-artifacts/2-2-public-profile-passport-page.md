@@ -94,14 +94,14 @@ The user-facing name is **Profile**. Do not render “Passport”, “My Passpor
 
 **Given** desktop, tablet, and a 390px mobile viewport
 **Then** Profile remains a single-column, touch-usable surface with no horizontal overflow and controls at least 44x44px on touch layouts
-**And** labels remain visible (placeholders do not replace labels), focus-visible states use the Missa terracotta focus ring, and inline errors are associated with their fields
+**And** labels remain visible (placeholders do not replace labels), focus-visible states use the Missa Aubergine focus ring, and inline errors are associated with their fields
 **And** the page meets WCAG 2.1 AA contrast and keyboard requirements, has a meaningful page heading, and honors `prefers-reduced-motion`
 **And** any icon-only control has an accessible name.
 
 ### AC10 — Vocabulary and design-system regression guard
 
 **Given** the implementation is reviewed in the rendered DOM and screenshots
-**Then** the primary page background is `#ffffff` (true white), with existing Missa semantic tokens for ink, borders, surfaces, and terracotta actions
+**Then** the primary page background is `#ffffff` (true white), with existing Missa semantic tokens for ink, borders, surfaces, and Aubergine actions
 **And** the implementation uses existing shadcn/ui primitives and Instrument Sans/Fraunces/Fragment Mono roles according to `DESIGN.md`
 **And** no rendered copy contains “Passport” or “submitter”.
 
@@ -145,7 +145,7 @@ The route contract must not add a second auth system, direct `pg` import, or a s
 - Use existing `Card`, `Input`, `Textarea`, `Label`, `Button`, and toast/inline feedback primitives. Do not hand-roll a new design system.
 - Owner view: page heading, short explanatory copy, display name field, bio textarea, derived completeness prompt, `Save changes` primary action, and `View public profile` secondary link.
 - Public view: name-led identity header, bio when present, an intentional empty state when absent, and a clear path to browse opportunities/sign up. Do not show a decorative “portfolio” panel until Library/Works exists.
-- Loading state preserves form width; save action has default, hover, active, focus-visible, loading, disabled, and error states. Use only one terracotta-filled primary action in the view.
+- Loading state preserves form width; save action has default, hover, active, focus-visible, loading, disabled, and error states. Use only one Aubergine-filled primary action in the view.
 - Confirm save with a toast or inline status; do not use a blocking dialog for routine profile edits. Preserve unsaved values after a recoverable network/server error.
 - Do not introduce paper/cream canvas, gratuitous gradients, pill-shaped primary buttons, or unsupported icon-only controls. Follow `DESIGN.md` exactly.
 

@@ -51,7 +51,7 @@ test('content registry keeps Radar and Workspace records distinct', () => {
 
   const data = buildContentData(radar, workspace);
   assert.deepEqual(data.summary, { canonicalRadar: 1, duplicateRadar: 1, workspaceOpenCalls: 1, publishedOpenCalls: 1, drafts: 0 });
-  assert.equal(data.rows.filter((row) => row.type === 'Radar opportunity').length, 2);
+  assert.equal(data.rows.filter((row) => row.type === 'Canonical opportunity').length, 2);
   assert.equal(data.rows.find((row) => row.id === 'workspace:call_1')?.organization, 'Arts Org');
   assert.ok(data.planned.length > 0);
 });

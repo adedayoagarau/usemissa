@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { LibraryValidationError } from '@missa/radar-engine';
+import { LibraryConflictError, LibraryValidationError } from '@missa/radar-engine';
 import { getSessionAccount } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
 
@@ -24,6 +24,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   try {
     const engine = await getEngine(); const id = (await context.params).id; engine.deleteSavedAnswer(session.account.userId, id); engine.recordAudit(session.account.id, 'library.saved_answer_deleted', 'saved_answer', id); await persistRadar(); return NextResponse.json({ deleted: true }, { headers });
   } catch (error) {
+    if (error instanceof LibraryConflictError) return NextResponse.json({ error: error.message }, { status: 409, headers });
     if (error instanceof LibraryValidationError) return NextResponse.json({ error: error.message }, { status: 404, headers });
     return NextResponse.json({ error: 'We could not delete that answer.' }, { status: 500, headers });
   }

@@ -208,6 +208,8 @@ async function registry(args: string[]): Promise<void> {
     console.log(`\nMissa Radar Source Registry v${reg.version}`);
     console.log(`Generated: ${reg.generatedAt}`);
     console.log(`Total sources: ${stats.totalSources} (${stats.activeSources} active)`);
+    console.log(`Trusted registry sources: ${stats.trustedSources}`);
+    console.log(`Taxonomy coverage: ${reg.coverage.coveredTerms} covered / ${reg.coverage.thinTerms} thin / ${reg.coverage.gapTerms} gap of ${reg.coverage.totalTerms}`);
     console.log(`Verticals: ${reg.verticals.length}`);
     console.log(`\nBy tier (0=org page, 1=platform, 2=directory, 3=feed):`);
     for (const [tier, n] of Object.entries(stats.byTier)) {
@@ -247,6 +249,21 @@ async function registry(args: string[]): Promise<void> {
     return;
   }
 
+  if (sub === 'coverage') {
+    console.log(`Missa taxonomy source coverage v${reg.coverage.schemeVersion}`);
+    for (const [facet, summary] of Object.entries(reg.coverage.byFacet)) {
+      console.log(`${facet}: ${summary.coveredTerms} covered, ${summary.thinTerms} thin, ${summary.gapTerms} gap / ${summary.totalTerms}`);
+    }
+    const gaps = reg.coverage.terms.filter((term) => term.status !== 'covered');
+    const limit = Number(opt('limit') ?? 30);
+    console.log(`\nTerms needing more trusted sources (${gaps.length}):`);
+    for (const term of gaps.slice(0, limit)) {
+      console.log(`  [${term.status}] ${term.facet}: ${term.label} (${term.trustedSourceCount} trusted, ${term.sourceCount} total)`);
+    }
+    if (gaps.length > limit) console.log(`… and ${gaps.length - limit} more (use --limit)`);
+    return;
+  }
+
   if (sub === 'export') {
     const { writeFileSync } = await import('node:fs');
     const path = opt('out') ?? 'sources-export.json';
@@ -256,7 +273,7 @@ async function registry(args: string[]): Promise<void> {
     return;
   }
 
-  console.error(`Unknown registry subcommand: ${sub}. Try: stats | list | verticals | export`);
+  console.error(`Unknown registry subcommand: ${sub}. Try: stats | coverage | list | verticals | export`);
   process.exit(1);
 }
 

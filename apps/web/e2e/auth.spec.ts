@@ -1,5 +1,14 @@
 import { expect, test } from '@playwright/test';
 
+test('authenticated pages preserve the exact return path through login', async ({ page }) => {
+  await page.goto('/tracker?view=submissions');
+
+  await expect(page.getByRole('heading', { name: 'Welcome back.' })).toBeVisible();
+  const destination = new URL(page.url());
+  expect(destination.pathname).toBe('/login');
+  expect(destination.searchParams.get('next')).toBe('/tracker?view=submissions');
+});
+
 test('people can create an account, recover from a bad login, and log in', async ({ page }) => {
   const email = `auth-${Date.now()}@example.com`;
 

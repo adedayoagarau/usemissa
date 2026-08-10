@@ -8,6 +8,7 @@ export interface TrackerImportPreviewToken {
   sourceHash: string;
   mappingHash: string;
   candidateHash: string;
+  trackerHash: string;
   exp: number;
 }
 
@@ -37,7 +38,7 @@ export function verifyTrackerImportPreviewToken(token: string): TrackerImportPre
     const actual = Buffer.from(signature, 'base64url');
     if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return undefined;
     const payload = JSON.parse(decode(body)) as TrackerImportPreviewToken;
-    if (payload.v !== 1 || typeof payload.userId !== 'string' || typeof payload.sourceHash !== 'string' || typeof payload.mappingHash !== 'string' || typeof payload.candidateHash !== 'string' || typeof payload.exp !== 'number' || payload.exp < Math.floor(Date.now() / 1000)) return undefined;
+    if (payload.v !== 1 || typeof payload.userId !== 'string' || typeof payload.sourceHash !== 'string' || typeof payload.mappingHash !== 'string' || typeof payload.candidateHash !== 'string' || typeof payload.trackerHash !== 'string' || typeof payload.exp !== 'number' || payload.exp < Math.floor(Date.now() / 1000)) return undefined;
     return payload;
   } catch {
     return undefined;

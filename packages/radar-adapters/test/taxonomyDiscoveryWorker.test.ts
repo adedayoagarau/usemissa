@@ -6,7 +6,32 @@ import {
   parseTaxonomySearchResponse,
   taxonomyDiscoveryBatchSize,
   taxonomyDiscoveryResultLimit,
+  TAXONOMY_CANDIDATE_SCHEMA_PROBE,
+  TAXONOMY_EXISTING_URLS_QUERY,
 } from "../src/taxonomyDiscoveryWorker.js";
+import { Pool } from "pg";
+
+test("taxonomy candidate SQL uses the canonical URL columns", () => {
+  assert.match(TAXONOMY_CANDIDATE_SCHEMA_PROBE, /select url, normalized_url from source_discovery_candidates/i);
+  assert.match(TAXONOMY_EXISTING_URLS_QUERY, /source_discovery_candidates where normalized_url/i);
+  assert.match(TAXONOMY_EXISTING_URLS_QUERY, /data->>'url'/i);
+  assert.doesNotMatch(TAXONOMY_EXISTING_URLS_QUERY, /from radar_sources\s+where\s+url\b/i);
+});
+
+test("taxonomy candidate schema probe executes against Postgres when the target table exists", { skip: !process.env.DATABASE_URL }, async (t) => {
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  try {
+    const table = await pool.query<{ relation: string | null }>("select to_regclass('public.source_discovery_candidates') as relation");
+    if (!table.rows[0]?.relation) {
+      t.skip('source_discovery_candidates is not part of the compatibility schema');
+      return;
+    }
+    const result = await pool.query(TAXONOMY_CANDIDATE_SCHEMA_PROBE);
+    assert.equal(result.fields.map((field) => field.name).join(","), "url,normalized_url");
+  } finally {
+    await pool.end();
+  }
+});
 
 test("taxonomy discovery provider output is bounded, normalized, and safe", () => {
   const response = parseTaxonomySearchResponse({

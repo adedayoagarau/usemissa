@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { assembleRegistry, registryStats, filterSources, discoverySeeds, canonicalSources } from '../src/registry/assemble.js';
-import { auditRegistryTaxonomy } from '../src/registry/taxonomy.js';
+import { auditRegistryTaxonomy, trustedSource } from '../src/registry/taxonomy.js';
 
 test('source registry has 1000+ entries across verticals', () => {
   const reg = assembleRegistry();
@@ -32,6 +32,8 @@ test('registry stats sum to total', () => {
   const stats = registryStats(reg);
   const tierSum = Object.values(stats.byTier).reduce((a, b) => a + b, 0);
   assert.equal(tierSum, stats.totalSources);
+  assert.equal(Object.values(stats.byTrustStatus).reduce((a, b) => a + b, 0), stats.totalSources);
+  assert.ok(stats.trustedSources > 900);
 });
 
 test('taxonomy compatibility preserves every source and separates platform and eligibility axes', () => {
@@ -42,4 +44,14 @@ test('taxonomy compatibility preserves every source and separates platform and e
   assert.ok(audit.mappedSources > 0);
   assert.ok(audit.platformOnlySources.length > 0);
   assert.ok(audit.eligibilityLensSources.length > 0);
+});
+
+test('trusted registry exposes explicit coverage for every selectable discipline and genre', () => {
+  const reg = assembleRegistry();
+  assert.equal(reg.coverage.totalTerms, reg.coverage.terms.length);
+  assert.ok(reg.coverage.byFacet.discipline);
+  assert.ok(reg.coverage.byFacet.genre);
+  assert.ok(reg.coverage.gapTerms > 0, 'unsupported terms must remain visible as gaps');
+  assert.ok(reg.sources.every((source) => source.trust));
+  assert.ok(reg.sources.some((source) => trustedSource(source)));
 });

@@ -22,9 +22,27 @@ import {
 } from "./postgresStore.js";
 import { LlmExtractor } from "./llmExtractor.js";
 import { uuidIds } from "./uuidIds.js";
+import {
+  commitTrackerImportTransaction,
+  consumeTrackerImportPreviewRateLimit,
+  type DurableTrackerImportInput,
+  type DurableTrackerImportResult,
+} from './trackerImportPersistence.js';
 
 function normalizeUrl(url: string): string {
   return url.replace(/\/$/, "").toLowerCase();
+}
+
+export function defaultCanonicalCheckIntervalHours(value: string | number | undefined = process.env.RADAR_DEFAULT_CHECK_INTERVAL_HOURS): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) return 24;
+  return Math.min(24, Math.max(12, parsed));
+}
+
+function checkIntervalForEntry(entry: { tier: number; followsOutboundLinks?: boolean; checkIntervalHours: number }): number {
+  return entry.tier === 0 && entry.followsOutboundLinks !== true
+    ? defaultCanonicalCheckIntervalHours()
+    : entry.checkIntervalHours;
 }
 
 /**
@@ -65,21 +83,26 @@ export function seedRegistryIfEmpty(
       existing.registryVerticalId = entry.verticalId;
       existing.registryGroup = registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.group;
       existing.registryDisciplines = entry.disciplines ?? registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.disciplines;
+      existing.registryTaxonomyTermIds = entry.taxonomyTermIds;
+      existing.registryTrust = entry.trust;
       existing.registryGeography = entry.geography;
       existing.registryOpportunityTypes = entry.opportunityTypes;
       existing.registryOrganizationName = entry.organizationName;
       existing.registryTier = entry.tier;
       existing.followsOutboundLinks = entry.followsOutboundLinks;
+      existing.checkIntervalHours = checkIntervalForEntry(entry);
       continue;
     }
     const added = engine.addSource({
       name: entry.name,
       url: entry.url,
       kind: entry.kind,
-      checkIntervalHours: entry.checkIntervalHours,
+      checkIntervalHours: checkIntervalForEntry(entry),
       registryVerticalId: entry.verticalId,
       registryGroup: registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.group,
       registryDisciplines: entry.disciplines ?? registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.disciplines,
+      registryTaxonomyTermIds: entry.taxonomyTermIds,
+      registryTrust: entry.trust,
       registryGeography: entry.geography,
       registryOpportunityTypes: entry.opportunityTypes,
       registryOrganizationName: entry.organizationName,
@@ -104,6 +127,10 @@ export interface ProductionEngine {
    * every tick in a short-lived (serverless) caller -- there's no long-running
    * process to rely on periodic autosave the way serve.ts's RadarServer has. */
   persist(): Promise<void>;
+  /** Runs the CSV import under the shared Radar snapshot lock, a per-key
+   * advisory lock, durable rate limiting, and one database transaction. */
+  commitTrackerImport(input: Omit<DurableTrackerImportInput, 'baseStore'>): Promise<DurableTrackerImportResult>;
+  consumeTrackerImportPreview(accountId: string): Promise<void>;
   /** Callers must call this when done (serverless: at the end of the request;
    * long-running: on shutdown) -- leaving pool connections open leaks them. */
   close(): Promise<void>;
@@ -121,7 +148,6 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   await ensurePostgresSchema(pool);
   const store = await loadStoreFromPostgres(pool);
   let snapshotVersion = await readSnapshotVersion(pool);
-  let persistedStore = cloneStore(store);
 
   // Dynamic import, not a top-level static one: `playwright`'s own module-load
   // code reaches for browser-registry files (browsers.json) that don't exist
@@ -144,6 +170,10 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   // not rewrite the full registry; it simply lets worker tier fences operate
   // correctly on snapshots created before registryTier was added.
   seedRegistryIfEmpty(engine, { maxTier: 3 });
+  // The persistence baseline must include the hydrated registry metadata.
+  // Taking it before hydration makes every seeded source look changed on the
+  // first tick and forces a large sequential relational rewrite.
+  let persistedStore = cloneStore(engine.store);
   let pendingPersist = Promise.resolve();
 
   return {
@@ -173,6 +203,21 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
       pendingPersist = next.catch(() => undefined);
       return next;
     },
+    commitTrackerImport: async (input) => {
+      let output: DurableTrackerImportResult | undefined;
+      const next = pendingPersist.then(async () => {
+        output = await commitTrackerImportTransaction(pool, { ...input, baseStore: engine.store });
+        engine.store.tracked = [...engine.store.tracked.filter((row) => row.userId !== input.userId), ...output.tracked];
+        engine.store.manualTrackerEntries = [...engine.store.manualTrackerEntries.filter((row) => row.userId !== input.userId), ...output.manualTrackerEntries];
+        if (output.auditEntry && !engine.store.auditLog.some((entry) => entry.id === output!.auditEntry!.id)) engine.store.auditLog.push(output.auditEntry);
+        snapshotVersion = output.snapshotVersion;
+        persistedStore = cloneStore(engine.store);
+      });
+      pendingPersist = next.catch(() => undefined);
+      await next;
+      return output!;
+    },
+    consumeTrackerImportPreview: (accountId) => consumeTrackerImportPreviewRateLimit(pool, { accountId, limit: 5, windowMs: 10 * 60_000 }),
     close: () => pool.end(),
   };
 }

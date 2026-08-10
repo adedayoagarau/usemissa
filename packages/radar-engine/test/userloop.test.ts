@@ -286,7 +286,7 @@ test('HTTP API drives the full user loop end to end (behind real auth)', async (
 
     // 4. Inbox digest has the saved-search match with its reason.
     const inbox = await get(`/api/users/${ada.id}/inbox`);
-    assert.ok(inbox.summary.includes('Missa Radar found'));
+    assert.ok(inbox.summary.includes('Missa found'));
     assert.ok(inbox.newForYou.length >= 1);
     assert.ok(inbox.newForYou[0].reason.includes('No-fee poetry & fiction'));
 

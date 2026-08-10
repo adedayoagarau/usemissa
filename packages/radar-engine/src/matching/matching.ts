@@ -1,4 +1,4 @@
-import type { MatchCriteria, Opportunity, RadarProfile } from '../domain/types.js';
+import type { MatchCriteria, Opportunity, OpportunityPreferences, RadarProfile } from '../domain/types.js';
 import { daysBetween, isoDateOf } from '../extraction/dates.js';
 import { MISSA_TAXONOMY } from '@missa/taxonomy';
 
@@ -73,6 +73,32 @@ export function matchesCriteria(criteria: MatchCriteria, opp: Opportunity, now: 
     if (!ok) return undefined;
   }
   if (criteria.simultaneousRequired && f.simultaneousAllowed === false) return undefined;
+
+  return matchedOn;
+}
+
+/** Match the persisted creator configuration while remaining conservative about
+ * eligibility fields that an opportunity has not supplied. */
+export function matchesOpportunityPreferences(preferences: OpportunityPreferences, opp: Opportunity, now: Date): string[] | undefined {
+  const matchedOn = matchesCriteria({
+    types: preferences.types,
+    genres: preferences.genres,
+    maxFeeCents: preferences.maxFeeCents,
+    noFeeOnly: preferences.noFeeOnly,
+    deadlineWithinDays: preferences.deadlineWithinDays,
+    locations: preferences.locations,
+    simultaneousRequired: preferences.simultaneousRequired,
+  }, opp, now);
+  if (!matchedOn) return undefined;
+
+  if (preferences.careerStages.length > 0) {
+    const opportunityStages = opp.fields.eligibility
+      .filter((rule) => rule.key === 'career-stage' && rule.value)
+      .map((rule) => rule.value!.toLowerCase());
+    const matchingStage = preferences.careerStages.find((stage) => opportunityStages.includes(stage.toLowerCase()));
+    if (opportunityStages.length > 0 && !matchingStage) return undefined;
+    if (matchingStage) matchedOn.push(`career stage: ${matchingStage}`);
+  }
 
   return matchedOn;
 }

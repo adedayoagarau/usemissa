@@ -30,8 +30,8 @@ async function readRuntimeStores(): Promise<RuntimeStores> {
     workspaceAvailable,
     maturity: radarAvailable && workspaceAvailable ? 'live' : radarAvailable || workspaceAvailable ? 'partial' : 'unavailable',
     warnings: [
-      ...(!radarAvailable ? ['Radar compatibility store could not be read; organization identity and messaging metrics are unavailable.'] : []),
-      ...(!workspaceAvailable ? ['Workspace compatibility store could not be read; workflow and delivery metrics are unavailable.'] : []),
+      ...(!radarAvailable ? ['Opportunity records could not be read; organization identity and messaging metrics are unavailable.'] : []),
+      ...(!workspaceAvailable ? ['Organization records could not be read; workflow and delivery metrics are unavailable.'] : []),
     ],
   };
 }
@@ -275,27 +275,27 @@ function buildMessagingData(stores: RuntimeStores, history: PlatformAdminMessage
   const channels: PlatformAdminMessagingChannel[] = [
     {
       id: 'alert-email', label: 'Alert email digest', status: process.env.RESEND_API_KEY && process.env.RESEND_FROM ? pendingAlertEmails > 0 ? 'attention' : 'idle' : 'unconfigured', pending: pendingAlertEmails, completed: sentAlertEmails,
-      lastObservedAt: latest(alerts.map((alert) => alert.emailSentAt ?? alert.createdAt)), detail: 'User alerts awaiting or already included in an outbound digest; alert content is not shown here.', source: 'RadarStore alerts + alert delivery worker', maturity: channelMaturity,
+      lastObservedAt: latest(alerts.map((alert) => alert.emailSentAt ?? alert.createdAt)), detail: 'User alerts awaiting or already included in an outbound digest; alert content is not shown here.', source: 'Opportunity alerts + alert delivery worker', maturity: channelMaturity,
     },
     {
       id: 'email-review', label: 'Email review queue', status: pendingEmailReviews > 0 ? 'attention' : candidates.length > 0 ? 'idle' : 'unknown', pending: pendingEmailReviews, completed: confirmedEmailReviews,
-      lastObservedAt: latest(candidates.map((candidate) => candidate.receivedAt)), detail: 'Forwarded/Gmail messages awaiting a user-owned review decision; body and recipient details are intentionally omitted.', source: 'RadarStore emailCandidates', maturity: channelMaturity,
+      lastObservedAt: latest(candidates.map((candidate) => candidate.receivedAt)), detail: 'Forwarded/Gmail messages awaiting a user-owned review decision; body and recipient details are intentionally omitted.', source: 'Email candidates', maturity: channelMaturity,
     },
     {
       id: 'forwarding', label: 'Forwarding addresses', status: forwarding.some((item) => item.status === 'paused') ? 'attention' : forwarding.some((item) => item.status === 'active') ? 'configured' : 'idle', pending: forwarding.filter((item) => item.status === 'paused').length, completed: forwarding.filter((item) => item.status === 'active').length,
-      lastObservedAt: latest(forwarding.map((item) => item.lastReceivedAt ?? item.createdAt)), detail: 'Active and paused forwarding configuration; opaque addresses and token material are never exposed.', source: 'RadarStore forwardingAddresses', maturity: channelMaturity,
+      lastObservedAt: latest(forwarding.map((item) => item.lastReceivedAt ?? item.createdAt)), detail: 'Active and paused forwarding configuration; opaque addresses and token material are never exposed.', source: 'Forwarding addresses', maturity: channelMaturity,
     },
     {
       id: 'gmail-sync', label: 'Gmail Sync', status: syncFailures > 0 || gmailConnections.some((connection) => connection.status === 'error') ? 'attention' : gmailConnections.length > 0 ? 'configured' : 'idle', pending: syncJobs.filter((job) => job.status === 'queued' || job.status === 'running').length, completed: syncJobs.filter((job) => job.status === 'succeeded').length,
-      lastObservedAt: latest([...gmailConnections.map((connection) => connection.lastSyncAt), ...syncJobs.map((job) => job.completedAt ?? job.requestedAt)]), detail: 'Connection mode, sync lifecycle, and failures are visible without tokens, provider IDs, or message content.', source: 'RadarStore gmailConnections + gmailSyncJobs', maturity: channelMaturity,
+      lastObservedAt: latest([...gmailConnections.map((connection) => connection.lastSyncAt), ...syncJobs.map((job) => job.completedAt ?? job.requestedAt)]), detail: 'Connection mode, sync lifecycle, and failures are visible without tokens, provider IDs, or message content.', source: 'Gmail connections and sync jobs', maturity: channelMaturity,
     },
     {
       id: 'decision-email', label: 'Decision email', status: process.env.RESEND_API_KEY && process.env.RESEND_FROM ? 'configured' : 'unconfigured', pending: 0, completed: decisionEmailSent.length,
-      lastObservedAt: latest(decisionEmailSent.map((entry) => entry.at)), detail: 'Organization-triggered decision email sends recorded in the compatibility audit; there is no durable delivery log yet.', source: 'RadarStore auditLog + Resend configuration', maturity: channelMaturity,
+      lastObservedAt: latest(decisionEmailSent.map((entry) => entry.at)), detail: 'Organization-triggered decision email sends recorded in the compatibility audit; there is no durable delivery log yet.', source: 'Decision activity + Resend configuration', maturity: channelMaturity,
     },
     {
-      id: 'workspace-delivery', label: 'Workspace delivery', status: pendingDelivery > 0 ? 'attention' : deliveryTasks.length > 0 ? 'idle' : 'unknown', pending: pendingDelivery, completed: deliveryTasks.filter((task) => task.status === 'complete').length,
-      lastObservedAt: latest(deliveryTasks.map((task) => task.completedAt ?? (task.dueDate ? `${task.dueDate}T00:00:00.000Z` : undefined))), detail: 'Accepted Work delivery tasks; completing a task remains an organization workflow action, not an automated send.', source: 'WorkspaceStore deliveryTasks', maturity: channelMaturity,
+      id: 'workspace-delivery', label: 'Organization delivery', status: pendingDelivery > 0 ? 'attention' : deliveryTasks.length > 0 ? 'idle' : 'unknown', pending: pendingDelivery, completed: deliveryTasks.filter((task) => task.status === 'complete').length,
+      lastObservedAt: latest(deliveryTasks.map((task) => task.completedAt ?? (task.dueDate ? `${task.dueDate}T00:00:00.000Z` : undefined))), detail: 'Accepted Work delivery tasks; completing a task remains an organization workflow action, not an automated send.', source: 'Organization delivery tasks', maturity: channelMaturity,
     },
   ];
   return {
@@ -303,7 +303,7 @@ function buildMessagingData(stores: RuntimeStores, history: PlatformAdminMessage
     configuration,
     channels,
     history,
-    boundaries: ['No private email body, recipient address, provider token, or attachment payload is rendered.', 'Decision and alert sends write durable effects only when the additive platform ledger is deployed; compatibility alert state remains separate.', 'A pending Workspace delivery task is not evidence that an email or external handoff was attempted.', 'Provider webhook reconciliation, templates, preferences, and message suppression policy remain separate governed capabilities.'],
+    boundaries: ['No private email body, recipient address, provider token, or attachment payload is rendered.', 'Decision and alert sends write durable effects only when the additive platform ledger is deployed; compatibility alert state remains separate.', 'A pending organization delivery task is not evidence that an email or external handoff was attempted.', 'Provider webhook reconciliation, templates, preferences, and message suppression policy remain separate governed capabilities.'],
   };
 }
 
@@ -391,7 +391,7 @@ function buildGovernanceData(overview: PlatformAdminOverview, taxonomy: Taxonomy
 export async function getPlatformAdminOrganizations(): Promise<AdminArea<PlatformAdminOrganizationsData>> {
   const generatedAt = new Date().toISOString();
   const stores = await readRuntimeStores();
-  return area(buildOrganizationData(stores), 'RadarStore organizations/memberships and WorkspaceStore workflow aggregates', stores.maturity, generatedAt, stores.warnings);
+  return area(buildOrganizationData(stores), 'Organization records, memberships, and workflow aggregates', stores.maturity, generatedAt, stores.warnings);
 }
 
 export async function getPlatformAdminMessaging(): Promise<AdminArea<PlatformAdminMessagingData>> {

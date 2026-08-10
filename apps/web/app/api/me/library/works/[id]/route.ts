@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { LibraryValidationError } from '@missa/radar-engine';
+import { LibraryConflictError, LibraryValidationError } from '@missa/radar-engine';
 import { getSessionAccount } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
 
@@ -26,7 +26,11 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
   try {
     const engine = await getEngine(); const id = (await context.params).id; engine.deleteLibraryWork(session.account.userId, id); engine.recordAudit(session.account.id, 'library.work_deleted', 'library_work', id); await persistRadar(); return NextResponse.json({ deleted: true }, { headers });
   } catch (error) {
-    if (error instanceof LibraryValidationError) return NextResponse.json({ error: error.message }, { status: 404, headers });
+    // Next can evaluate workspace packages in separate route chunks during dev.
+    // Keep the domain name check so a genuine conflict is not misreported as a
+    // server failure when the Error constructor came from another chunk.
+    if (error instanceof LibraryConflictError || error instanceof Error && error.name === 'LibraryConflictError') return NextResponse.json({ error: error.message }, { status: 409, headers });
+    if (error instanceof LibraryValidationError || error instanceof Error && error.name === 'LibraryValidationError') return NextResponse.json({ error: error.message }, { status: 404, headers });
     return NextResponse.json({ error: 'We could not delete that Work.' }, { status: 500, headers });
   }
 }

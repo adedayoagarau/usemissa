@@ -9,12 +9,7 @@ export function absoluteUrl(path = '/'): string {
   return new URL(path, `${siteUrl()}/`).toString();
 }
 
-export function pageMetadata(input: {
-  title: string;
-  description: string;
-  path: string;
-  noIndex?: boolean;
-}): Metadata {
+export function pageMetadata(input: { title: string; description: string; path: string; noIndex?: boolean }): Metadata {
   const url = absoluteUrl(input.path);
   return {
     title: input.title,
@@ -54,21 +49,13 @@ export function breadcrumbJsonLd(items: Array<{ name: string; path?: string }>):
   };
 }
 
-export function opportunityDescription(item: {
-  title: string;
-  organizationName?: string;
-  type: string;
-  deadline: { date?: string; raw?: string; kind: string };
-  fee: { status: string; amountCents?: number; currency?: string };
-  location?: string;
-  content?: { summary?: string };
-}): string {
+export function opportunityDescription(item: { title: string; organizationName?: string; type: string; deadline: { date?: string; raw?: string; kind: string }; fee: { status: string; amountCents?: number; currency?: string }; location?: string; content?: { summary?: string } }): string {
   if (item.content?.summary) return item.content.summary;
   const organization = item.organizationName ? ` from ${item.organizationName}` : '';
-  const deadline = item.deadline.date
-    ? `Deadline ${item.deadline.date}`
-    : item.deadline.raw ?? (item.deadline.kind === 'rolling' ? 'rolling deadline' : 'deadline to be confirmed');
-  const fee = item.fee.status === 'no-fee' ? 'no fee' : item.fee.status === 'paid' ? 'paid submission' : 'fee not confirmed';
+  const type = item.type.replaceAll('-', ' ');
+  const article = /^[aeiou]/i.test(type) ? 'an' : 'a';
+  const deadline = item.deadline.date ? `Deadline: ${new Intl.DateTimeFormat('en', { dateStyle: 'long' }).format(new Date(`${item.deadline.date}T12:00:00`))}.` : item.deadline.raw ? `Deadline: ${item.deadline.raw}.` : item.deadline.kind === 'rolling' ? 'Rolling deadline.' : item.deadline.kind === 'until-filled' ? 'Open until filled.' : 'Deadline needs confirmation.';
+  const fee = item.fee.status === 'no-fee' ? 'No application fee.' : item.fee.status === 'paid' ? 'An application fee is listed.' : 'Fee unclear.';
   const location = item.location ? ` Location: ${item.location}.` : '';
-  return `${item.title}${organization} is a ${item.type.replaceAll('-', ' ')}. ${deadline}; ${fee}.${location} Confirm the official source before applying.`.slice(0, 300);
+  return `${item.title}${organization} is listed as ${article} ${type}. ${deadline} ${fee}${location} Confirm the official source before applying.`.slice(0, 300);
 }

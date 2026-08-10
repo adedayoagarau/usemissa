@@ -1,18 +1,19 @@
 import { redirect } from 'next/navigation';
+
 import { AskMissa } from '@/components/chat/ask-missa';
+
+import styles from './ask.module.css';
 
 export default function AskPage() {
   if (process.env.MISSA_CHAT_ENABLED?.trim() !== '1') redirect('/opportunities');
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="max-w-2xl">
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Missa assistant</p>
-        <h1 className="mt-2 font-heading text-3xl font-medium text-foreground">Ask Missa</h1>
-        <p className="mt-2 leading-6 text-muted-foreground">
-          Search published opportunities in plain language. Every result keeps its source and last checked time visible.
-        </p>
-      </div>
+    <main className={styles.page}>
+      <header className={styles.heading}>
+        <p>Bounded, source-linked search</p>
+        <h1>Ask Missa</h1>
+        <span>Search Missa’s published Opportunities in plain language. Practice filters stay separate across all 12 facets, and every result keeps its official-source link.</span>
+      </header>
       <AskMissa />
-    </div>
+    </main>
   );
 }

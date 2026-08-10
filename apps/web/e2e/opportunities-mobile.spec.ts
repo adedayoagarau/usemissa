@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-test('mobile Passport uses a compact nav and a full-screen opportunity detail sheet', async ({ page }) => {
+test('mobile Profile uses compact navigation and a canonical opportunity detail page', async ({ page }) => {
   const login = await page.request.post('/api/auth/login', { data: { email: 'ada@example.com', password: 'poetry-and-fiction' } });
   expect(login.ok()).toBeTruthy();
 
@@ -10,8 +10,11 @@ test('mobile Passport uses a compact nav and a full-screen opportunity detail sh
   expect(await page.locator('body').evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await expect(page.getByRole('button', { name: 'Open navigation' })).toBeVisible();
 
-  await page.locator('article a').first().click();
-  await expect(page.getByLabel('Close opportunity details')).toBeVisible();
-  await expect(page.locator('aside')).toHaveCSS('position', 'fixed');
-  await expect(page.locator('aside')).toHaveCSS('width', '390px');
+  const detailHref = await page.locator('article a[aria-label^="View "]').first().getAttribute('href');
+  expect(detailHref).toMatch(/^\/opportunities\/[^/?#]+$/);
+  await page.goto(detailHref!);
+  await expect(page).toHaveURL(/\/opportunities\/[^/?#]+$/);
+  await expect(page.getByRole('link', { name: 'Back to opportunities' })).toBeVisible();
+  await expect(page.getByRole('article').getByRole('heading', { level: 1 })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
 });

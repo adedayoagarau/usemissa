@@ -5,7 +5,7 @@ import { AppNav } from '@/components/app-nav';
 import { WorkspaceShellNav } from '@/components/workspace-shell-nav';
 import { getEngine } from '@/lib/engine';
 
-/** Auth-gated shell for the organization-facing (Missa Workspace) surface. */
+/** Auth-gated shell for the organization-facing Missa surface. */
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);

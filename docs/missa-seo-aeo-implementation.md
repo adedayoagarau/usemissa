@@ -6,12 +6,12 @@ This document records the public discovery lane added for the SEO/AEO rollout.
 
 - `/` — marketing and featured opportunity entry point.
 - `/opportunities-preview` — crawlable browse surface. Filtered query URLs are `noindex` and canonicalize to the base browse page.
-- `/discover/opportunities/{slug}` — public, source-linked opportunity detail. The authenticated Passport route remains private.
+- `/discover/opportunities/{slug}` — public, source-linked opportunity detail. The authenticated Profile route remains private.
 - `/discover/{collection}` — public category hubs for contests, magazines, poetry, grants, residencies, and fellowships.
-- `/org/{organizationId}` and `/org/{organizationId}/{openCallId}` — published organization and Workspace call pages.
+- `/org/{organizationId}` and `/org/{organizationId}/{openCallId}` — published organization and Organization call pages.
 - `/guides` and `/guides/{slug}` — answer-led, source-first guides backed by the same published opportunity repository.
 - `/about` and `/methodology` — trust, source, and verification context for creators and search systems.
-- `/robots.txt` and `/sitemap.xml` — crawler policy and bounded dynamic public URL inventory.
+- `/robots.txt` and `/sitemap.xml` — crawler policy and bounded dynamic public URL inventory of up to 10,000 open opportunities, with meaningful `lastmod` values for public copy.
 
 ## Public answer contract
 
@@ -47,6 +47,24 @@ PostHog receives the same public discovery events when configured. Public page v
 
 For ongoing search measurement, keep Google Search Console and Bing Webmaster Tools connected to the canonical host. Use Bing’s AI Performance report to monitor cited pages and grounding queries, and submit meaningful source updates through IndexNow when available. Use `utm_source=chatgpt.com` referral data and sampled answer checks to distinguish AI referral traffic from ordinary search traffic; do not treat the presence of a crawler as proof of a citation.
 
+## Bing freshness lane
+
+The repository includes an IndexNow ownership key at the public site root and a
+bounded submission script. Store the matching key as the deployment secret
+`INDEXNOW_KEY`, then submit only canonical, published URLs after a meaningful
+content change:
+
+```bash
+INDEXNOW_KEY="$INDEXNOW_KEY" npm run seo:indexnow -- \
+  https://www.usemissa.com/ \
+  https://www.usemissa.com/sitemap.xml \
+  https://www.usemissa.com/methodology
+```
+
+The script refuses non-HTTPS URLs, other hosts, credentials, and batches larger
+than the IndexNow protocol limit. A successful response means the URLs were
+received, not that Bing has already crawled, indexed, ranked, or cited them.
+
 ## Release gates
 
 Before production promotion:
@@ -58,5 +76,6 @@ Before production promotion:
 5. Check `/robots.txt` allows `/discover/`, `/guides/`, and `/opportunities-preview` while disallowing private routes.
 6. Check `/sitemap.xml` contains only published public records and no legacy private `/opportunities/{id}` URLs.
 7. Confirm source freshness and content-review workers are healthy before increasing distribution.
+8. Keep the public-copy `discoveryContentLastModified` value aligned with meaningful guide, hub, or trust-page edits; do not set it to every sitemap request time.
 
 The collection and public-detail improvements are intended for the production Missa deployment. Re-run the release gates above after each data-model or public-route change.

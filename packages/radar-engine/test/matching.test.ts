@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { matchesCriteria } from '../src/matching/matching.js';
+import { matchesCriteria, matchesOpportunityPreferences } from '../src/matching/matching.js';
 import type { Opportunity } from '../src/domain/types.js';
 
 const opportunity = (taxonomyTermIds: string[]): Opportunity => ({
@@ -25,4 +25,16 @@ test('saved searches match canonical taxonomy IDs and explain the match', () => 
 
 test('canonical taxonomy criteria fail closed when assignments are absent', () => {
   assert.equal(matchesCriteria({ taxonomyTermIds: ['term_poetry'] }, opportunity([]), new Date('2026-08-02T00:00:00Z')), undefined);
+});
+
+test('creator opportunity preferences filter and explain matching opportunities', () => {
+  const matched = matchesOpportunityPreferences({
+    types: ['magazine'], disciplines: [], genres: ['poetry'], locations: [], careerStages: [],
+    noFeeOnly: true, simultaneousRequired: false,
+  }, opportunity(['term_poetry']), new Date('2026-08-02T00:00:00Z'));
+  assert.ok(matched?.some((reason) => reason.includes('type: magazine')));
+  assert.ok(matched?.some((reason) => reason.includes('no fee')));
+  assert.equal(matchesOpportunityPreferences({
+    types: ['grant'], disciplines: [], genres: [], locations: [], careerStages: [], noFeeOnly: false, simultaneousRequired: false,
+  }, opportunity(['term_poetry']), new Date('2026-08-02T00:00:00Z')), undefined);
 });

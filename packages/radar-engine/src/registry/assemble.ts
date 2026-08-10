@@ -14,7 +14,7 @@ import { POETRY_SOURCES } from './bundles/poetry.js';
 import { CNF_SOURCES } from './bundles/creative-nonfiction.js';
 import { BULK_SOURCES } from './sources-bulk.js';
 import { EXPANDED_SOURCES } from './sources-expanded.js';
-import { registryVerticalCompatibility } from './taxonomy.js';
+import { buildRegistryCoverage, defaultSourceTrust, registryTaxonomyTermIds, registryVerticalCompatibility, trustedSource } from './taxonomy.js';
 
 function normalizeUrl(url: string): string {
   return url.replace(/\/$/, '').toLowerCase();
@@ -31,6 +31,7 @@ function toRadarSource(entry: SourceRegistryEntry): Source {
     registryGroup: REGISTRY_VERTICALS.find((vertical) => vertical.id === entry.verticalId)?.group,
     registryDisciplines: entry.disciplines ?? REGISTRY_VERTICALS.find((vertical) => vertical.id === entry.verticalId)?.disciplines,
     registryTaxonomyTermIds: entry.taxonomyTermIds ?? compatibility.taxonomyTermIds,
+    registryTrust: entry.trust ?? defaultSourceTrust(entry),
     registryEligibilityLens: entry.eligibilityLens ?? compatibility.eligibilityLens,
     registrySourceChannel: entry.sourceChannel ?? compatibility.sourceChannel,
     registryGeography: entry.geography,
@@ -50,7 +51,10 @@ export function assembleRegistry(): SourceRegistry {
 
   const add = (entry: SourceRegistryEntry): void => {
     const key = normalizeUrl(entry.url);
-    if (!byUrl.has(key)) byUrl.set(key, entry);
+    if (!byUrl.has(key)) {
+      const vertical = REGISTRY_VERTICALS.find((candidate) => candidate.id === entry.verticalId);
+      byUrl.set(key, { ...entry, taxonomyTermIds: registryTaxonomyTermIds(entry), trust: entry.trust ?? defaultSourceTrust(entry), disciplines: entry.disciplines ?? vertical?.disciplines });
+    }
   };
 
   for (const entry of [
@@ -65,12 +69,13 @@ export function assembleRegistry(): SourceRegistry {
 
   const sources = [...byUrl.values()].sort((a, b) => a.verticalId.localeCompare(b.verticalId) || a.name.localeCompare(b.name));
 
-  return {
-    version: '1.0.0',
+  const registry = {
+    version: '1.1.0',
     generatedAt: new Date().toISOString(),
     verticals: REGISTRY_VERTICALS,
     sources,
   };
+  return { ...registry, coverage: buildRegistryCoverage(registry) };
 }
 
 export function getRegistry(): SourceRegistry {
@@ -107,6 +112,7 @@ export function registryStats(registry: SourceRegistry): RegistryStats {
   const byGroup: Record<string, number> = {};
   const byTier: Record<SourceTier, number> = { 0: 0, 1: 0, 2: 0, 3: 0 };
   const byKind: Record<string, number> = {};
+  const byTrustStatus: RegistryStats['byTrustStatus'] = { curated: 0, verified: 0, 'needs-review': 0, blocked: 0 };
 
   for (const s of registry.sources) {
     byVertical[s.verticalId] = (byVertical[s.verticalId] ?? 0) + 1;
@@ -114,6 +120,7 @@ export function registryStats(registry: SourceRegistry): RegistryStats {
     if (v) byGroup[v.group] = (byGroup[v.group] ?? 0) + 1;
     byTier[s.tier]++;
     byKind[s.kind] = (byKind[s.kind] ?? 0) + 1;
+    byTrustStatus[s.trust?.status ?? defaultSourceTrust(s).status]++;
   }
 
   return {
@@ -123,6 +130,8 @@ export function registryStats(registry: SourceRegistry): RegistryStats {
     byGroup,
     byTier,
     byKind,
+    trustedSources: registry.sources.filter((source) => trustedSource(source)).length,
+    byTrustStatus,
   };
 }
 
@@ -136,6 +145,7 @@ export function loadSourcesIntoEngine(
     registryGroup?: VerticalGroup;
     registryDisciplines?: string[];
     registryTaxonomyTermIds?: string[];
+    registryTrust?: SourceRegistryEntry['trust'];
     registryEligibilityLens?: string;
     registrySourceChannel?: string;
     registryGeography?: string[];
@@ -159,6 +169,7 @@ export function loadSourcesIntoEngine(
       registryGroup: getVertical(entry.verticalId)?.group,
       registryDisciplines: entry.disciplines ?? getVertical(entry.verticalId)?.disciplines,
       registryTaxonomyTermIds: entry.taxonomyTermIds ?? registryVerticalCompatibility(entry.verticalId).taxonomyTermIds,
+      registryTrust: entry.trust,
       registryEligibilityLens: entry.eligibilityLens ?? registryVerticalCompatibility(entry.verticalId).eligibilityLens,
       registrySourceChannel: entry.sourceChannel ?? registryVerticalCompatibility(entry.verticalId).sourceChannel,
       registryGeography: entry.geography,

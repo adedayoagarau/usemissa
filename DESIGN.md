@@ -5,6 +5,7 @@ status: "draft"
 description: "A white-canvas submission platform that combines calm, approachable discovery with precise, high-density operational workflows. Missa should feel editorial without looking like paper, capable without feeling enterprise-heavy, and trustworthy without relying on alarm colors."
 
 references:
+  color_direction: "docs/missa-color-direction.md"
   notion: "design-references/notion/DESIGN.md"
   linear: "design-references/linear/DESIGN.md"
   sanity: "design-references/sanity/DESIGN.md"
@@ -20,18 +21,22 @@ tokens:
       neutral-300: "#d4d3d0"
       neutral-500: "#74716d"
       neutral-700: "#45413d"
-      neutral-900: "#1c1815"
-      terracotta-50: "#faeeea"
-      terracotta-500: "#c6402a"
-      terracotta-600: "#a93521"
-      green-50: "#eaf2ed"
-      green-700: "#2e5b41"
-      amber-50: "#fff7e0"
-      amber-700: "#8a5a00"
+      neutral-900: "#171418"
+      aubergine-50: "#f8f6f9"
+      aubergine-100: "#f1edf3"
+      aubergine-300: "#c8b9d0"
+      aubergine-500: "#806195"
+      aubergine-600: "#5a3f68"
+      aubergine-700: "#473050"
+      lichen-50: "#eef1e8"
+      lichen-600: "#657547"
+      ochre-50: "#f5ecd9"
+      ochre-600: "#a8762a"
+      ochre-700: "#78551e"
       red-50: "#fceceb"
       red-700: "#b3261e"
-      blue-50: "#edf4fb"
-      blue-700: "#315c8a"
+      mineral-blue-50: "#e7eff2"
+      mineral-blue-600: "#426b7a"
     space:
       "0": "0"
       "0-5": "2px"
@@ -71,18 +76,18 @@ tokens:
       ink-muted: "{tokens.primitive.color.neutral-500}"
       border: "{tokens.primitive.color.neutral-200}"
       border-strong: "{tokens.primitive.color.neutral-300}"
-      primary: "{tokens.primitive.color.terracotta-500}"
-      primary-hover: "{tokens.primitive.color.terracotta-600}"
-      primary-subtle: "{tokens.primitive.color.terracotta-50}"
-      success: "{tokens.primitive.color.green-700}"
-      success-subtle: "{tokens.primitive.color.green-50}"
-      warning: "{tokens.primitive.color.amber-700}"
-      warning-subtle: "{tokens.primitive.color.amber-50}"
+      primary: "{tokens.primitive.color.aubergine-600}"
+      primary-hover: "{tokens.primitive.color.aubergine-700}"
+      primary-subtle: "{tokens.primitive.color.aubergine-100}"
+      success: "{tokens.primitive.color.lichen-600}"
+      success-subtle: "{tokens.primitive.color.lichen-50}"
+      warning: "{tokens.primitive.color.ochre-700}"
+      warning-subtle: "{tokens.primitive.color.ochre-50}"
       destructive: "{tokens.primitive.color.red-700}"
       destructive-subtle: "{tokens.primitive.color.red-50}"
-      information: "{tokens.primitive.color.blue-700}"
-      information-subtle: "{tokens.primitive.color.blue-50}"
-      focus: "{tokens.primitive.color.terracotta-500}"
+      information: "{tokens.primitive.color.mineral-blue-600}"
+      information-subtle: "{tokens.primitive.color.mineral-blue-50}"
+      focus: "{tokens.primitive.color.aubergine-600}"
       overlay: "rgba(28, 24, 21, 0.46)"
     shadow:
       none: "none"
@@ -130,6 +135,8 @@ tokens:
 
 This file is the visual source of truth for Missa. It governs new interface work and should be consulted before changing layout, type, color, component styling, interaction, or motion.
 
+For user-facing language, use [`docs/missa-content-style-guide.md`](./docs/missa-content-style-guide.md) as the voice and editorial source of truth and [`docs/missa-content-quick-reference.md`](./docs/missa-content-quick-reference.md) for daily drafting. Canonical product nouns remain governed by [`docs/missa-naming-decisions.md`](./docs/missa-naming-decisions.md). The current cross-surface findings and design priorities are recorded in [`docs/missa-content-and-design-audit-2026-08-07.md`](./docs/missa-content-and-design-audit-2026-08-07.md).
+
 The three installed systems are references, not themes to copy:
 
 - **Notion contributes approachability:** white surfaces, clear hierarchy, readable cards, restrained chrome, and progressive disclosure.
@@ -153,7 +160,7 @@ The desired character is:
 
 ### Foundation decision
 
-The primary canvas is **true white (`#ffffff`)**. Do not tint the page background cream, beige, parchment, or paper. Warmth should come from typography, imagery, writing, and the terracotta accent—not from the canvas.
+The primary canvas is **true white (`#ffffff`)**. Do not tint the page background cream, beige, parchment, or paper. Character should come from typography, imagery, writing, and the Aubergine accent—not from the canvas.
 
 Subtle neutral surfaces may be used to group controls or distinguish selected and hovered states, but a page should still read as white first.
 
@@ -161,21 +168,21 @@ Subtle neutral surfaces may be used to group controls or distinguish selected an
 
 ### Marketing
 
-Marketing is the most expressive register. Use generous white space, strong editorial composition, restrained motion, real product views, and occasional photographic or moving imagery. Fraunces may appear in major statements, but the page must still feel like a contemporary product—not a literary journal facsimile.
+Marketing is the most expressive register. Use generous white space, strong editorial composition, restrained motion, real product views, and occasional photographic or moving imagery. Ysabeau may carry major statements without turning the page into a literary journal facsimile.
 
-### Passport
+### Creator product
 
-Passport covers Opportunities, Inbox, Tracker, saved searches, following, calendar, and submitter-facing status views. It should feel calm and legible:
+The creator product covers Opportunities, Inbox, Tracker, saved searches, following, calendar, and creator-facing status views. It should feel calm and legible:
 
 - prefer cards, grouped lists, and progressive disclosure;
 - keep touch targets at least 44px;
 - show the reason behind every match, change, or status;
-- allow more white space than Workspace;
+- allow more white space than the organization product;
 - make mobile a first-class layout.
 
-### Workspace
+### Organization product
 
-Workspace covers organization setup, open calls, submissions, review, decisions, delivery, and insights. It should feel compact and operational:
+The organization product covers organization setup, open calls, submissions, review, decisions, delivery, and insights. It should feel compact and operational:
 
 - prefer tables when information is genuinely tabular;
 - support command search and keyboard navigation;
@@ -192,50 +199,51 @@ Workspace covers organization setup, open calls, submissions, review, decisions,
 - **White surface:** cards, tables, dialogs, popovers, and inputs.
 - **Subtle neutral surface:** hover, selection, secondary sections, skeletons, and grouped controls.
 - **Near-black ink:** primary text and high-emphasis icons.
-- **Terracotta:** the primary action, active navigation, focus, and selected emphasis. Use sparingly.
+- **Aubergine:** the primary action, active navigation, focus, and selected emphasis. Use sparingly.
 - **Green:** verified, accepted, completed, and other genuinely positive states.
 - **Amber:** deadlines, watchouts, and time-sensitive attention states.
 - **Red:** destructive actions, invalid input, or genuine failures only.
-- **Blue:** neutral information when terracotta would incorrectly imply an action or warning.
+- **Mineral blue:** neutral information when Aubergine would incorrectly imply an action or warning.
 
 ### Color rules
 
-1. A normal view should have at most one terracotta-filled primary action.
+1. A normal view should have at most one Aubergine-filled primary action.
 2. Never use semantic color without a text label or icon that conveys the same meaning.
 3. Declined, withdrawn, archived, and closed are neutral states unless action is required.
 4. Do not create rainbow dashboards. Semantic colors communicate meaning; they are not decoration.
 5. Prefer borders and spacing over tinted card backgrounds.
-6. Large terracotta or green background sections are off-brand.
+6. Large Aubergine or Lichen background sections are off-brand.
 
 ## 4. Typography
 
-Missa already owns three self-hosted typefaces. Do not add another family.
+Missa uses one primary family with a dedicated technical companion.
 
 ### Families
 
-- **Fraunces:** marketing display, page-level editorial statements, and rare major section headings.
-- **Instrument Sans:** navigation, UI, body copy, forms, buttons, cards, and tables.
+- **Ysabeau:** marketing display, page-level headings, opportunity titles, navigation, UI, body copy, forms, buttons, cards, and tables. Use the variable family across 100–900; display weights are intentionally strong.
+- **Ysabeau Office treatment:** UI, forms, deadlines, fees, and counts. Use `font-optical-sizing: auto` and tabular numerals for changing values.
+- **Ysabeau SC treatment:** small labels and category markers through small-caps OpenType styling.
 - **Fragment Mono:** dates, deadlines, IDs, counts, measurements, and compact system metadata.
 
 ### Type scale
 
 | Role | Family | Size | Weight | Line height | Tracking |
 |---|---|---:|---:|---:|---:|
-| Marketing display | Fraunces | 64px | 550 | 1.00 | -0.045em |
-| Page display | Fraunces | 48px | 550 | 1.05 | -0.035em |
-| App page title | Instrument Sans | 32px | 620 | 1.15 | -0.03em |
-| Section title | Instrument Sans | 24px | 600 | 1.20 | -0.025em |
-| Card title | Instrument Sans | 18px | 600 | 1.30 | -0.015em |
-| Body large | Instrument Sans | 18px | 400 | 1.55 | -0.01em |
-| Body | Instrument Sans | 16px | 400 | 1.50 | -0.005em |
-| UI text | Instrument Sans | 14px | 450 | 1.40 | 0 |
-| Caption | Instrument Sans | 12px | 500 | 1.40 | 0.01em |
+| Marketing display | Ysabeau | 64px | 850 | 0.92 | -0.045em |
+| Page display | Ysabeau | 48px | 700 | 1.05 | -0.035em |
+| App page title | Ysabeau Office | 32px | 650 | 1.15 | -0.03em |
+| Section title | Ysabeau Office | 24px | 650 | 1.20 | -0.025em |
+| Card title | Ysabeau | 18px | 650 | 1.30 | -0.015em |
+| Body large | Ysabeau Office | 18px | 400 | 1.55 | -0.01em |
+| Body | Ysabeau Office | 16px | 400 | 1.50 | -0.005em |
+| UI text | Ysabeau Office | 14px | 500 | 1.40 | 0 |
+| Caption | Ysabeau SC | 12px | 600 | 1.40 | 0.01em |
 | Data | Fragment Mono | 13px | 400 | 1.40 | 0 |
 
 ### Typography rules
 
-1. Fraunces is emphasis, not default app chrome.
-2. Never set full paragraphs or table content in Fraunces.
+1. Ysabeau display weights are for emphasis; use the Office treatment for dense product copy.
+2. Never set full paragraphs or table content at display weights.
 3. Use sentence case for buttons, navigation, table headings, and badges.
 4. Uppercase is reserved for very small taxonomy labels; never use it for primary navigation.
 5. Use tabular numerals for changing counts, dates, money, and scores.
@@ -248,16 +256,16 @@ The primary spacing rhythm is 8px. The 4px and 12px values exist for compact int
 ### Containers
 
 - Marketing maximum width: 1360px.
-- Passport content maximum width: 1120px.
-- Workspace content maximum width: 1440px or fluid within a sidebar shell.
+- Creator product content maximum width: 1120px.
+- Organization product content maximum width: 1440px or fluid within a sidebar shell.
 - Desktop page gutter: 32px.
 - Tablet page gutter: 24px.
 - Mobile page gutter: 16px.
 
 ### Density
 
-- Passport cards normally use 24px padding and 16–24px gaps.
-- Workspace panels normally use 16px padding and 8–16px gaps.
+- Creator product cards normally use 24px padding and 16–24px gaps.
+- Organization product panels normally use 16px padding and 8–16px gaps.
 - Table rows target 48px; use 56–64px only when a row contains explanation or multi-line identity.
 - Separate major sections with space before adding a box or background.
 - Do not wrap every block in a card.
@@ -280,7 +288,7 @@ Depth is mostly created by white surfaces, neutral surface changes, hairline bor
 
 ### Buttons
 
-**Primary** — terracotta fill, white text, 8px radius. One dominant primary action per view.
+**Primary** — Aubergine fill, white text, 8px radius. One dominant primary action per view.
 
 **Secondary** — white background, near-black text, neutral border. Used for supporting actions such as Edit, Copy link, or Preview.
 
@@ -292,18 +300,18 @@ All buttons need default, hover, active, focus-visible, loading, and disabled st
 
 ### Inputs
 
-- 44px default height; 36px compact Workspace variant.
+- 44px default height; 36px compact organization-product variant.
 - White background, strong neutral border, 8px radius.
-- Focus uses a 2px terracotta ring with sufficient separation from the border.
+- Focus uses a 2px Aubergine ring with sufficient separation from the border.
 - Validation appears inline beneath the field.
 - Validate on blur or submit, not on every keystroke.
 - Labels remain visible; placeholders never replace labels.
 
 ### Cards
 
-Passport cards use white, a hairline border, 12px radius, and 24px padding. Cards should lead with the object or action—not a decorative icon.
+Creator product cards use white, a hairline border, 12px radius, and 24px padding. Cards should lead with the object or action—not a decorative icon.
 
-Workspace uses cards only for summaries, grouped controls, review tasks, and non-tabular modules. Submission inventories, assignments, and decision queues belong in tables or structured lists.
+The organization product uses cards only for summaries, grouped controls, review tasks, and non-tabular modules. Submission inventories, assignments, and decision queues belong in tables or structured lists.
 
 ### Tables and structured lists
 
@@ -316,9 +324,9 @@ Workspace uses cards only for summaries, grouped controls, review tasks, and non
 
 ### Navigation
 
-Marketing navigation is light and spacious. Passport navigation prioritizes Opportunities, Inbox, and Tracker. Workspace navigation prioritizes Opportunities, Submissions, Reviews, Decisions, Messages, Delivery, Insights, and Settings.
+Marketing navigation is light and spacious. Creator navigation prioritizes Opportunities, Inbox, and Tracker. Organization navigation prioritizes Opportunities, Submissions, Reviews, Decisions, Messages, Delivery, Insights, and Settings.
 
-Active navigation uses terracotta text, icon, or a restrained indicator—not a large colored capsule. Workspace supports `Cmd/Ctrl + K`. Keyboard shortcuts must always have a visible non-keyboard equivalent.
+Active navigation uses Aubergine text, icon, or a restrained indicator—not a large colored capsule. Organization navigation supports `Cmd/Ctrl + K`. Keyboard shortcuts must always have a visible non-keyboard equivalent.
 
 ### Explained Score
 
@@ -362,12 +370,12 @@ Motion explains change and confirms response. It is not ambient decoration insid
 
 ## 9. Responsive Behaviour
 
-- Mobile: below 768px; single-column Passport, drawer navigation, labelled list rows.
+- Mobile: below 768px; single-column creator product, drawer navigation, labelled list rows.
 - Tablet: 768–1023px; two-column card layouts where appropriate.
-- Desktop: 1024px and above; Workspace tables and multi-panel views.
-- Wide desktop: 1280px and above; persistent Workspace navigation and optional detail panels.
+- Desktop: 1024px and above; organization product tables and multi-panel views.
+- Wide desktop: 1280px and above; persistent organization navigation and optional detail panels.
 
-Passport must be fully usable on mobile. Workspace mobile must remain functional, but dense administration may recommend desktop without blocking essential actions. Review tasks should remain straightforward on tablet and mobile because reviewers may be occasional users.
+The creator product must be fully usable on mobile. Organization mobile must remain functional, but dense administration may recommend desktop without blocking essential actions. Review tasks should remain straightforward on tablet and mobile because reviewers may be occasional users.
 
 ## 10. Accessibility
 
@@ -400,7 +408,7 @@ Use plain industry nouns and direct actions. Personality belongs in supportive m
 
 - Start every primary surface on white.
 - Preserve visible hierarchy with spacing, type, and hairline borders.
-- Use cards for Passport and tables for genuinely tabular Workspace data.
+- Use cards for creator flows and tables for genuinely tabular organization data.
 - Keep primary actions scarce and obvious.
 - Expose reasons behind recommendations and changes.
 - Show immediate feedback after every mutation.
@@ -413,8 +421,8 @@ Use plain industry nouns and direct actions. Personality belongs in supportive m
 - Do not copy Notion blue, Linear purple, or Sanity coral as Missa’s brand color.
 - Do not use gradients as a substitute for hierarchy.
 - Do not put every control in a pill or every block in a rounded card.
-- Do not make Workspace spacious at the expense of scanning speed.
-- Do not make Passport dense at the expense of calm comprehension.
+- Do not make organization workflows spacious at the expense of scanning speed.
+- Do not make creator workflows dense at the expense of calm comprehension.
 - Do not introduce new colors, fonts, radii, or spacing values inside a component.
 
 ## 13. Implementation Contract
@@ -431,9 +439,9 @@ Use plain industry nouns and direct actions. Personality belongs in supportive m
 
 The following remain intentionally provisional:
 
-- whether Fraunces appears in authenticated app page titles or remains marketing-only;
-- the final strength of terracotta in active navigation;
-- the exact Workspace navigation shell: top navigation, sidebar, or adaptive hybrid;
+- whether the same Ysabeau variable file should be split into separately named Office and SC font assets;
+- the final strength of Aubergine in active navigation;
+- the exact organization navigation shell: top navigation, sidebar, or adaptive hybrid;
 - whether dark mode becomes a supported product theme;
 - the final border contrast after reviewing real white-canvas screens.
 

@@ -141,7 +141,7 @@ Install shadcn/ui components incrementally, per-feature, rather than scaffolding
 
 ### Customization Strategy
 
-Theme shadcn's CSS variables to the existing token set from the landing page (`--ink`, `--ink-2`, `--ink-3`, `--border`, `--accent:#C6402A`, `--accent-deep:#A93521`, `--accent-tint:#FAEEEA`, `--green:#2E5B41`, `--bg:#FAFAF9`, `--surface:#FFFFFF`) documented in the handoff doc's SaaS redesign section — do not invent a new palette; this one was already designed and screenshotted for direction review.
+Theme shadcn's CSS variables to the existing token set from the landing page (`--ink`, `--ink-2`, `--ink-3`, `--border`, `--accent:#5A3F68`, `--accent-deep:#473050`, `--accent-tint:#F1EDF3`, `--green:#657547`, `--bg:#FFFFFF`, `--surface:#FFFFFF`) documented in the handoff doc's SaaS redesign section — do not invent a new palette; this one was already designed and screenshotted for direction review.
 
 ---
 
@@ -174,8 +174,8 @@ Status changes are always user-initiated or system-explained — never silent. E
 ### Color System
 
 Reuse the handoff doc's SaaS-redesign tokens verbatim (already screenshotted and partially direction-reviewed by the user):
-`--bg:#FAFAF9 --surface:#FFFFFF --ink:#1C1815 --ink-2:#6F6862 --ink-3:#A39C94 --border:#EAE7E1 --accent:#C6402A --accent-deep:#A93521 --accent-tint:#FAEEEA --green:#2E5B41`.
-Terracotta accent used sparingly (primary actions, active nav state); green reserved for positive/success states (accepted, verified); avoid red/alarm colors for anything that isn't genuinely time-sensitive (see Emotional Design Principles).
+`--bg:#FFFFFF --surface:#FFFFFF --ink:#171418 --ink-2:#6D6670 --ink-3:#9A929D --border:#E6E1E8 --accent:#5A3F68 --accent-deep:#473050 --accent-tint:#F1EDF3 --green:#657547`.
+Aubergine accent used sparingly (primary actions, active nav state); green reserved for positive/success states (accepted, verified); avoid red/alarm colors for anything that isn't genuinely time-sensitive (see Emotional Design Principles).
 
 ### Typography System
 
@@ -187,7 +187,7 @@ Fraunces for headlines only (marketing and major section headers), Instrument Sa
 
 ### Accessibility Considerations
 
-WCAG 2.1 AA baseline (per the PRD's NFRs): verify the terracotta accent (`#C6402A`) meets 4.5:1 contrast against both `--bg` and `--surface` for any text use (likely fine for large text/icons, needs verification for body-sized text — flag as a concrete pre-launch check, not assumed compliant).
+WCAG 2.1 AA baseline (per the PRD's NFRs): verify the Aubergine accent (`#5A3F68`) meets 4.5:1 contrast against both `--bg` and `--surface` for any text use (likely fine for large text/icons, needs verification for body-sized text — flag as a concrete pre-launch check, not assumed compliant).
 
 ---
 
@@ -307,7 +307,7 @@ Build Explained Score and Status Pipeline Board first — they're shared across 
 
 ### Button Hierarchy
 
-Primary (terracotta fill) — one per view, the single most important action (Track, Claim, Publish open call). Secondary (outline) — supporting actions (Edit, Copy link). Tertiary (text-only) — low-emphasis actions (Dismiss, Cancel).
+Primary (Aubergine fill) — one per view, the single most important action (Track, Claim, Publish open call). Secondary (outline) — supporting actions (Edit, Copy link). Tertiary (text-only) — low-emphasis actions (Dismiss, Cancel).
 
 ### Feedback Patterns
 

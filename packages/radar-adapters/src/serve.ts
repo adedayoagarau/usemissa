@@ -44,7 +44,7 @@ async function main(): Promise<void> {
   const boundPort = await server.start();
   const fetcherName = process.env.MISSA_USE_PLAYWRIGHT === '1' ? 'PlaywrightFetcher' : 'HttpFetcher';
   const extractorName = process.env.ANTHROPIC_API_KEY ? 'LlmExtractor' : 'DeterministicExtractor';
-  console.log(`Missa Radar (production wiring) serving at http://localhost:${boundPort}`);
+  console.log(`Missa source monitor (production wiring) serving at http://localhost:${boundPort}`);
   console.log(`  fetcher: ${fetcherName}, extractor: ${extractorName}, store: Postgres`);
 
   const shutdown = async () => {

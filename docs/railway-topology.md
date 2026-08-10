@@ -17,9 +17,9 @@ not a set of independently writable microservices.
 
 | Service | Responsibility | Cadence | Important variables |
 | --- | --- | --- | --- |
-| `research-agent` | Directory/feed fan-out. Fetches bounded source pages, extracts call links, and registers canonical URLs without publishing them. | Every 5 minutes, 100 directory pages/tick, up to 500 new URLs | `MISSA_WORKER_MODE=research`, `RADAR_DISCOVERY_INTERVAL_MINUTES`, `RADAR_DISCOVERY_BATCH_SIZE`, `RADAR_DISCOVERY_LINKS_PER_PAGE` |
+| `research-agent` | Directory/feed fan-out plus bounded source verification. It selects only Postgres sources explicitly marked to follow outbound links, checks candidate HTML, canonical links, robots policy, and explicit anti-automation terms before operator-approved source promotion; it never publishes opportunities. | Every 5 minutes, 100 directory pages/tick, up to 50 candidate checks/tick | `MISSA_WORKER_MODE=research`, `RADAR_DISCOVERY_INTERVAL_MINUTES`, `RADAR_DISCOVERY_BATCH_SIZE`, `RADAR_DISCOVERY_LINKS_PER_PAGE`, `MISSA_SOURCE_PROMOTION_MODE`, `MISSA_SOURCE_PROMOTION_BATCH_SIZE`, `MISSA_SOURCE_PROMOTION_CONCURRENCY`, `RADAR_DEFAULT_CHECK_INTERVAL_HOURS` |
 | `taxonomy-discovery-worker` | Executes canonical taxonomy coverage queries against the approved search provider and stores reviewable candidates. Never publishes directly. | Every 15 minutes, 8 taxonomy queries/tick, up to 25 results/query | `MISSA_WORKER_MODE=taxonomy-discovery`, `MISSA_TAXONOMY_DISCOVERY_ENDPOINT`, `MISSA_TAXONOMY_DISCOVERY_TOKEN`, `MISSA_TAXONOMY_DISCOVERY_BATCH_SIZE`, `MISSA_TAXONOMY_DISCOVERY_RESULT_LIMIT` |
-| `radar-worker` | Canonical tier-0 refresh, validation, deduplication, status changes, relational projection, and alert evaluation. | Every 5 minutes, 100 canonical sources/tick (bounded max 200) | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE`, `RADAR_MAX_TIER=0`, `RADAR_USE_ADVISORY_LOCK=0` |
+| `radar-worker` | Canonical refresh, validation, deduplication, status changes, relational projection, and alert evaluation. New sources are immediately due; canonical sources default to a 24-hour cadence. | Every 5 minutes, 100 sources/tick (bounded max 200) | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE`, `RADAR_DEFAULT_CHECK_INTERVAL_HOURS=24`, `RADAR_MAX_TIER=0`, `RADAR_USE_ADVISORY_LOCK=0` |
 | `enrichment-worker` | Fetches public opportunity pages for media, guideline, past-winner, and call-profile evidence. Writes provenance-tagged evidence and retries failures through a leased queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=enrichment`, `RADAR_ENRICHMENT_INTERVAL_MINUTES`, `RADAR_ENRICHMENT_BATCH_SIZE` |
 | `review-agent` | Scores reviewable opportunities, records explainable decisions, publishes only when strict evidence gates pass, and hands ambiguous records to a human-review queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=review`, `RADAR_REVIEW_INTERVAL_MINUTES`, `RADAR_REVIEW_BATCH_SIZE` |
 | `content-worker` *(implemented; provision after migration rehearsal)* | Builds source-linked Opportunity Intelligence briefs, persists them, then reviews the exact built content for provenance, bounded claims, and completeness. Approved content is exposed; the worker never mutates canonical opportunity facts. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=content`, `RADAR_CONTENT_INTERVAL_MINUTES`, `RADAR_CONTENT_BATCH_SIZE` |
@@ -30,6 +30,11 @@ Railway supervisor with `RADAR_USE_ADVISORY_LOCK=0` and relies on snapshot
 version conflict detection, so no pooled transaction remains open during
 network fetches. This prevents the directory fan-out lane from blocking
 canonical refreshes and avoids Neon pooler protocol errors.
+
+`RADAR_MAX_TIER` is an inclusive fence: `0` processes only tier 0, `2`
+processes tiers 0 through 2, and an unset or literal `null` value leaves all
+tiers eligible. Keep the production default at `0` until higher-tier source
+quality has been rehearsed and explicitly approved.
 Enrichment and review use independent row-level leases, so they can work from
 the same projection without becoming a second source of truth. The services
 are separate supervisors and can be restarted independently.
@@ -53,7 +58,7 @@ The lanes coordinate through the same Neon database rather than maintaining
 independent catalogues:
 
 ```text
-research -> discovery -> radar -> enrichment -> review -> publisher
+research -> discovery -> source-verification -> radar -> enrichment -> review -> publisher
               \\                   /       \\
                -> review ---------         human-review
 coverage -> taxonomy-discovery -> human-review
