@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 ENV PYTHONUNBUFFERED=1
 
-# Keep the always-on worker on the bounded HTTP path by default. Pass
-# --render deliberately for a source that needs browser execution.
-CMD ["gary-pw-worker", "--max-index-pages", "50", "--poll-seconds", "60"]
+# The same immutable image runs both Railway lanes. Crawler remains the safe
+# default for the existing service; the reviewer service sets
+# GARY_WORKER_MODE=reviewer.
+CMD ["sh", "-c", "if [ \"$GARY_WORKER_MODE\" = \"reviewer\" ]; then exec gary-review-worker --poll-seconds 60; else exec gary-pw-worker --max-index-pages 50 --poll-seconds 60; fi"]

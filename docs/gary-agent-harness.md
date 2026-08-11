@@ -85,6 +85,7 @@ Required production variables:
 | `GARY_REVIEW_EMAIL` | reviewer | Digest recipient |
 | `RESEND_API_KEY`, `RESEND_FROM` | reviewer | Existing Missa email provider |
 | `GARY_DASHBOARD_URL` | reviewer | Production `/admin/gary` URL |
+| `GARY_WORKER_MODE` | reviewer | Set to `reviewer`; crawler defaults safely when absent |
 | `GARY_REVIEW_TIMEZONE` | reviewer | Default `America/Los_Angeles` |
 | `GARY_REVIEW_HOUR` | reviewer | Default `8` |
 | `GARY_DAILY_AI_COST_LIMIT_USD` | reviewer | Default `1.00` |
