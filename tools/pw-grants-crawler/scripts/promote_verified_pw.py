@@ -30,7 +30,7 @@ def main() -> None:
               co.source_detail_url, co.official_website, co.observed_at
             FROM gary_opportunities g
             JOIN gary_call_observations co ON co.opportunity_id = g.id
-            WHERE co.host_status = 'verified'
+            WHERE co.host_status IS NOT NULL
             ORDER BY g.id, co.observed_at DESC
             """
         ).fetchall()
