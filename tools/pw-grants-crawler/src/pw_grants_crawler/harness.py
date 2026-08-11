@@ -443,7 +443,12 @@ class HarnessStore:
                   provider_message_id, error, sent_at
                 ) VALUES(%s, %s, %s, %s, %s, %s, %s, %s,
                          CASE WHEN %s = 'sent' THEN now() ELSE NULL END)
-                ON CONFLICT (digest_date, timezone, recipient_hash) DO NOTHING
+                ON CONFLICT (digest_date, timezone, recipient_hash) DO UPDATE SET
+                  status = excluded.status,
+                  summary_json = excluded.summary_json,
+                  provider_message_id = excluded.provider_message_id,
+                  error = excluded.error,
+                  sent_at = CASE WHEN excluded.status = 'sent' THEN now() ELSE NULL END
                 RETURNING id
                 """,
                 (digest_id, digest_date, timezone_name, recipient_hash, status, Jsonb(summary), provider_message_id, error, status),

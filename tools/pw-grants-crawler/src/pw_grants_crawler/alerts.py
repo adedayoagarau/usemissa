@@ -56,7 +56,9 @@ def send_daily_digest(
             },
             timeout=30,
         )
-        response.raise_for_status()
+        if response.is_error:
+            detail = response.text.strip().replace("\n", " ")[:500]
+            return AlertResult(status="failed", error=f"Resend HTTP {response.status_code}: {detail}")
         message_id = response.json().get("id")
         return AlertResult(status="sent", provider_message_id=str(message_id) if message_id else None)
     except Exception as error:
