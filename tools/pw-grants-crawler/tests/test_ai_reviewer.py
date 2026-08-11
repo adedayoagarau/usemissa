@@ -52,6 +52,11 @@ def test_morning_cycle_runs_once_after_configured_hour() -> None:
     assert should_run_morning(now, "America/Los_Angeles", 8, local_date)[0] is False
 
 
+def test_morning_cycle_stays_idle_after_restart_when_durable_date_is_today() -> None:
+    now = datetime(2026, 8, 11, 23, 30, tzinfo=timezone.utc)  # 16:30 America/Los_Angeles
+    assert should_run_morning(now, "America/Los_Angeles", 8, "2026-08-11")[0] is False
+
+
 def test_host_unavailability_is_not_a_publication_blocker() -> None:
     checks = deterministic_checks(candidate(host_status="unavailable"))
     assert deterministic_blockers(checks) == []
