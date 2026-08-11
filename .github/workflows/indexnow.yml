@@ -19,12 +19,13 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Submit canonical public surfaces
+      - name: Submit canonical and sitemap URLs
         env:
           INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
           INDEXNOW_HOST: www.usemissa.com
         run: >-
           node scripts/indexnow-submit.mjs
+          --sitemap
           https://www.usemissa.com/
           https://www.usemissa.com/sitemap.xml
           https://www.usemissa.com/llms.txt

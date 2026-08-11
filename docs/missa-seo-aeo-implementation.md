@@ -53,8 +53,10 @@ For ongoing search measurement, keep Google Search Console and Bing Webmaster To
 The repository includes an IndexNow ownership key at the public site root, a
 bounded submission script, and a release-branch workflow at
 `.github/workflows/indexnow.yml`. The repository secret `INDEXNOW_KEY` supplies
-the matching key to that workflow; it submits only canonical public surfaces
-after a release push. For a manual resubmission, use:
+the matching key to that workflow; it submits the canonical public surfaces
+and the current public sitemap inventory after a release push. Sitemap URLs
+are deduplicated and submitted in protocol-sized batches. For a manual
+resubmission of selected surfaces, use:
 
 ```bash
 INDEXNOW_KEY="$INDEXNOW_KEY" npm run seo:indexnow -- \
@@ -63,9 +65,11 @@ INDEXNOW_KEY="$INDEXNOW_KEY" npm run seo:indexnow -- \
   https://www.usemissa.com/methodology
 ```
 
-The script refuses non-HTTPS URLs, other hosts, credentials, and batches larger
-than the IndexNow protocol limit. A successful response means the URLs were
-received, not that Bing has already crawled, indexed, ranked, or cited them.
+The script refuses non-HTTPS URLs, other hosts, and credentials. It retries the
+canonical sitemap briefly while a new release becomes available, then splits
+large inventories into protocol-sized batches. A successful response means the
+URLs were received, not that Bing has already crawled, indexed, ranked, or
+cited them.
 
 ## Release gates
 
