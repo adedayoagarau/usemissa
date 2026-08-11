@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import os
+import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -99,6 +101,11 @@ def main(argv: list[str] | None = None) -> int:
             "max-profile-images must be non-negative; max-asset-bytes, freshness-hours, "
             "and max-retries must be positive/non-negative; request-delay must be non-negative"
         )
+    if args.detail_concurrency > 1 and args.request_delay > 0:
+        raise SystemExit(
+            "--detail-concurrency must stay at 1 when a PW request delay is configured; "
+            "the crawl delay is aggregate, not per worker"
+        )
     database_url = os.environ.get("DATABASE_URL")
     if args.neon and not database_url:
         raise SystemExit("--neon requires DATABASE_URL")
@@ -138,6 +145,7 @@ def main(argv: list[str] | None = None) -> int:
                     if args.detail_concurrency > 1
                     else None
                 ),
+                progress_callback=_progress_logger(args.output_root / f"{kind}-progress.jsonl"),
             )
             source_id = args.source_id or (
                 "pw.org.literary_magazines"
@@ -185,6 +193,18 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         fetcher.close()
     return 0
+
+
+def _progress_logger(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    def log(event: dict[str, object]) -> None:
+        event = {"timestamp": datetime.now(timezone.utc).isoformat(), **event}
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+        print("progress " + json.dumps(event, ensure_ascii=False), flush=True)
+
+    return log
 
 
 if __name__ == "__main__":

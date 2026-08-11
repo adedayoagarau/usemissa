@@ -15,6 +15,9 @@ class ProfileFetcher(Protocol):
     def fetch(self, url: str) -> PageSnapshot: ...
 
 
+ProgressCallback = Callable[[dict[str, object]], None]
+
+
 @dataclass(frozen=True, slots=True)
 class CrawledProfile:
     summary: ProfileSummary
@@ -40,6 +43,7 @@ def crawl_profiles(
     fetch_details: bool = True,
     detail_concurrency: int = 1,
     detail_fetcher_factory: Callable[[], ProfileFetcher] | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> ProfileCrawlResult:
     """Discover one PW profile directory in memory.
 
@@ -72,6 +76,14 @@ def crawl_profiles(
         seen_index_urls.add(normalized_index_url)
         page = fetcher.fetch(current_url)
         index_pages.append(page)
+        if progress_callback is not None:
+            progress_callback({
+                "event": "index_page",
+                "index_page": len(index_pages),
+                "index_url": current_url,
+                "profiles_discovered": len(summaries),
+                "error": page.error,
+            })
         if page.error:
             errors.append(f"{current_url}: {page.error}")
             break
@@ -104,7 +116,19 @@ def crawl_profiles(
             return CrawledProfile(summary, detail, detail_page), None
 
         if detail_concurrency == 1:
-            fetched = [fetch_detail(summary, fetcher) for summary in summaries]
+            fetched = []
+            for summary in summaries:
+                profile, error = fetch_detail(summary, fetcher)
+                fetched.append((profile, error))
+                if progress_callback is not None:
+                    progress_callback({
+                        "event": "detail",
+                        "details_fetched": len(fetched),
+                        "profiles_total": len(summaries),
+                        "profile_name": profile.summary.name,
+                        "profile_url": profile.summary.detail_url,
+                        "error": error,
+                    })
         else:
             detail_fetchers = [detail_fetcher_factory() for _ in range(detail_concurrency)]
             try:
@@ -127,6 +151,15 @@ def crawl_profiles(
             profiles.append(profile)
             if error:
                 errors.append(error)
+            if progress_callback is not None and detail_concurrency != 1:
+                progress_callback({
+                    "event": "detail",
+                    "details_fetched": len(profiles),
+                    "profiles_total": len(summaries),
+                    "profile_name": profile.summary.name,
+                    "profile_url": profile.summary.detail_url,
+                    "error": error,
+                })
 
     return ProfileCrawlResult(
         index_pages=index_pages,
