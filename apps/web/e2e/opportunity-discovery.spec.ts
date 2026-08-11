@@ -71,7 +71,7 @@ test('public crawl endpoints expose only the intended discovery surfaces', async
   expect(sitemapBody).toContain('/about');
   expect(sitemapBody).toContain('/methodology');
   expect(sitemapBody).toContain('/discover/contests');
-  expect(sitemapBody).toContain('<lastmod>2026-08-07T00:00:00.000Z</lastmod>');
+  expect(sitemapBody).toContain('<lastmod>2026-08-11T00:00:00.000Z</lastmod>');
   expect(sitemapBody).not.toContain('usemissa.com/opportunities/');
 
   const contests = await request.get('/discover/contests');
