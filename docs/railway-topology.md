@@ -15,6 +15,8 @@ not a set of independently writable microservices.
 
 ## Services
 
+Gary's crawler and AI reviewer are specified in [gary-agent-harness.md](./gary-agent-harness.md). They use the same Neon lease pattern as Radar but maintain a separate evidence and review state machine under `gary_*` tables.
+
 | Service | Responsibility | Cadence | Important variables |
 | --- | --- | --- | --- |
 | `research-agent` | Directory/feed fan-out plus bounded source verification. It selects only Postgres sources explicitly marked to follow outbound links, checks candidate HTML, canonical links, robots policy, and explicit anti-automation terms before operator-approved source promotion; it never publishes opportunities. | Every 5 minutes, 100 directory pages/tick, up to 50 candidate checks/tick | `MISSA_WORKER_MODE=research`, `RADAR_DISCOVERY_INTERVAL_MINUTES`, `RADAR_DISCOVERY_BATCH_SIZE`, `RADAR_DISCOVERY_LINKS_PER_PAGE`, `MISSA_SOURCE_PROMOTION_MODE`, `MISSA_SOURCE_PROMOTION_BATCH_SIZE`, `MISSA_SOURCE_PROMOTION_CONCURRENCY`, `RADAR_DEFAULT_CHECK_INTERVAL_HOURS` |

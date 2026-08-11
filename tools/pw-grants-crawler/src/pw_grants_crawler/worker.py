@@ -9,6 +9,8 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
+from .harness import HarnessStore, heartbeat_loop
+from .health import start_health_server
 from .neon import NeonStore
 from .runner import CrawlConfig, crawl_to_manifest
 from .source_schema import calendar_month_range
@@ -63,6 +65,8 @@ def run_once(
     *,
     owner: str | None = None,
     force_backfill: bool = False,
+    harness: HarnessStore | None = None,
+    release: str | None = None,
 ) -> str | None:
     owner = owner or str(uuid4())
     store.register_source(
@@ -101,20 +105,43 @@ def run_once(
         calendar_end_month=calendar_end_month,
     )
     try:
-        manifest_path = crawl_to_manifest(crawl_config, output_dir)
-        run_id = store.ingest_manifest(
-            manifest_path,
-            source_id=config.source_id,
-            mode=mode,
-            source_name=config.source_name,
-            adapter=config.adapter,
-            freshness_hours=config.freshness_hours,
-        )
+        heartbeat = heartbeat_loop(
+            harness, "crawler", owner, release=release, status="working"
+        ) if harness else None
+        if heartbeat:
+            with heartbeat:
+                manifest_path = crawl_to_manifest(crawl_config, output_dir)
+                run_id = store.ingest_manifest(
+                    manifest_path,
+                    source_id=config.source_id,
+                    mode=mode,
+                    source_name=config.source_name,
+                    adapter=config.adapter,
+                    freshness_hours=config.freshness_hours,
+                )
+        else:
+            manifest_path = crawl_to_manifest(crawl_config, output_dir)
+            run_id = store.ingest_manifest(
+                manifest_path,
+                source_id=config.source_id,
+                mode=mode,
+                source_name=config.source_name,
+                adapter=config.adapter,
+                freshness_hours=config.freshness_hours,
+            )
+        if harness:
+            enqueued = harness.enqueue_run(run_id)
+            harness.heartbeat(
+                "crawler", owner, "healthy", release=release,
+                current_run_id=run_id, progress={"review_jobs_enqueued": enqueued},
+            )
         store.release_source(config.source_id, owner)
         if not config.retain_output:
             shutil.rmtree(output_dir, ignore_errors=True)
         return run_id
     except Exception as error:
+        if harness:
+            harness.heartbeat("crawler", owner, "failed", release=release, error=str(error))
         store.fail_source(config.source_id, owner, str(error))
         raise
 
@@ -125,13 +152,22 @@ def run_worker(
     *,
     once: bool = False,
     force_backfill: bool = False,
+    harness: HarnessStore | None = None,
+    release: str | None = None,
 ) -> None:
     owner = str(uuid4())
+    if harness:
+        harness.heartbeat("crawler", owner, "starting", release=release)
     while True:
-        run_id = run_once(config, store, owner=owner, force_backfill=force_backfill)
+        run_id = run_once(
+            config, store, owner=owner, force_backfill=force_backfill,
+            harness=harness, release=release,
+        )
         force_backfill = False
         if run_id:
             print(f"[gary-worker] completed run={run_id}")
+        elif harness:
+            harness.heartbeat("crawler", owner, "idle", release=release)
         if once:
             return
         time.sleep(config.poll_seconds if run_id is None else min(config.poll_seconds, 5))
@@ -196,6 +232,9 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("limit, max-index-pages, freshness-hours, poll-seconds, and refresh-calendar-months must be positive")
     store = NeonStore(database_url)
     store.ensure_schema()
+    start_health_server()
+    harness = HarnessStore(database_url)
+    release = harness.register_release(os.environ.get("GARY_DEEPSEEK_MODEL", "deepseek-v4-flash"))
     config = WorkerConfig(
         source_id=args.source_id,
         index_url=args.index_url,
@@ -214,7 +253,10 @@ def main(argv: list[str] | None = None) -> int:
         backfill_calendar_end_month=args.calendar_end_month,
         refresh_calendar_months=args.refresh_calendar_months,
     )
-    run_worker(config, store, once=args.once, force_backfill=args.force_backfill)
+    run_worker(
+        config, store, once=args.once, force_backfill=args.force_backfill,
+        harness=harness, release=release,
+    )
     return 0
 
 
