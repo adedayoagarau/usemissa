@@ -18,6 +18,12 @@ function typeLabel(type: string): string {
   return type === 'open-call' ? 'Open call' : type.replaceAll('-', ' ');
 }
 
+function sourceCheckedLabel(value?: string): string | undefined {
+  if (!value) return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : new Intl.DateTimeFormat('en', { dateStyle: 'long' }).format(date);
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   try {
@@ -38,6 +44,7 @@ export default async function PublicOpportunityPage({ params }: { params: Promis
   const description = opportunityDescription(opportunity);
   const deadline = deadlineLabel(opportunity.deadline);
   const sourceStatus = opportunity.source.organizationConfirmed ? 'Organization confirmed' : opportunity.source.processingSucceededAt ? 'Source recently checked' : 'Source needs confirmation';
+  const sourceChecked = sourceCheckedLabel(opportunity.source.processingSucceededAt);
 
   return (
     <main className="min-h-screen bg-background">
@@ -50,7 +57,9 @@ export default async function PublicOpportunityPage({ params }: { params: Promis
         description,
         url: absoluteUrl(path),
         isPartOf: { '@type': 'WebSite', name: 'Missa', url: absoluteUrl('/') },
+        publisher: { '@type': 'Organization', name: 'Missa', url: absoluteUrl('/') },
         about: { '@type': 'Thing', name: opportunity.organizationName ? `${opportunity.title} from ${opportunity.organizationName}` : opportunity.title },
+        ...(opportunity.source.url ? { isBasedOn: opportunity.source.url, citation: opportunity.source.url } : {}),
         ...(opportunity.source.processingSucceededAt ? { dateModified: opportunity.source.processingSucceededAt } : {}),
       }} />
       <JsonLd data={breadcrumbJsonLd([
@@ -75,7 +84,7 @@ export default async function PublicOpportunityPage({ params }: { params: Promis
           <div><dt className="text-muted-foreground">Deadline</dt><dd className="mt-1 font-medium text-foreground">{deadline}</dd></div>
           <div><dt className="text-muted-foreground">Fee</dt><dd className="mt-1 font-medium text-foreground">{opportunity.fee.status === 'no-fee' ? 'No fee' : opportunity.fee.status === 'paid' ? 'Paid submission' : 'Fee not confirmed'}</dd></div>
           <div><dt className="text-muted-foreground">Location</dt><dd className="mt-1 font-medium text-foreground">{opportunity.location ?? 'Not specified'}</dd></div>
-          <div><dt className="text-muted-foreground">Evidence</dt><dd className="mt-1 font-medium text-foreground">{sourceStatus}</dd></div>
+          <div><dt className="text-muted-foreground">Evidence</dt><dd className="mt-1 font-medium text-foreground">{sourceStatus}{sourceChecked && <time className="mt-1 block text-xs font-normal text-muted-foreground" dateTime={opportunity.source.processingSucceededAt}>Last source check {sourceChecked}</time>}</dd></div>
         </dl>
 
         <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">

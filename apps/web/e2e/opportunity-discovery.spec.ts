@@ -98,6 +98,11 @@ test('public discovery APIs return bounded JSON without leaking an auth failure'
     const detailHtml = await detailPage.text();
     expect(detailHtml).toContain(firstOpportunity.title);
     expect(detailHtml).toContain('application/ld+json');
+    if (firstOpportunity.source?.url) {
+      expect(detailHtml).toContain('isBasedOn');
+      expect(detailHtml).toContain('citation');
+      expect(detailHtml).toContain(firstOpportunity.source.url);
+    }
   }
 
   const taxonomy = await request.get('/api/taxonomy');
