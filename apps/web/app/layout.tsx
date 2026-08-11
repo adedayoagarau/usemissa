@@ -49,8 +49,9 @@ export const metadata: Metadata = {
   openGraph: {
     siteName: SITE_NAME,
     type: 'website',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Missa — submission opportunities tailored for creators' }],
   },
-  twitter: { card: 'summary' },
+  twitter: { card: 'summary_large_image', images: ['/opengraph-image'] },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

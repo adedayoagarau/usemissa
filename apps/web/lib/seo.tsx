@@ -4,6 +4,12 @@ import { siteUrl } from '@/lib/siteUrl';
 
 export const SITE_NAME = 'Missa';
 export const DEFAULT_DESCRIPTION = 'Find submission opportunities that fit your work, prepare with context, and keep every deadline in view.';
+const SOCIAL_IMAGE = {
+  url: absoluteUrl('/opengraph-image'),
+  width: 1200,
+  height: 630,
+  alt: 'Missa — submission opportunities tailored for creators',
+};
 
 export function absoluteUrl(path = '/'): string {
   return new URL(path, `${siteUrl()}/`).toString();
@@ -27,11 +33,13 @@ export function pageMetadata(input: {
       url,
       siteName: SITE_NAME,
       type: 'website',
+      images: [SOCIAL_IMAGE],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: input.title,
       description: input.description,
+      images: [SOCIAL_IMAGE.url],
     },
   };
 }

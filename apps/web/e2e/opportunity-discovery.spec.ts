@@ -59,6 +59,10 @@ test('public crawl endpoints expose only the intended discovery surfaces', async
   expect(homeHtml).toContain('"@type":"Organization"');
   expect(homeHtml).toContain('"@type":"WebSite"');
 
+  const socialImage = await request.get('/opengraph-image');
+  expect(socialImage.status()).toBe(200);
+  expect(socialImage.headers()['content-type']).toContain('image/png');
+
   const sitemap = await request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   const sitemapBody = await sitemap.text();
