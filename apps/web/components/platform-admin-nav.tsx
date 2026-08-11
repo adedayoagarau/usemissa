@@ -42,6 +42,7 @@ type NavItem = {
 
 const operateLinks: NavItem[] = [
   { href: "/admin", label: "Control Room", icon: LayoutDashboard, exact: true },
+  { href: "/admin/gary", label: "Gary", icon: Bot },
   { href: "/admin/operations", label: "Operations", icon: ListChecks },
   { href: "/admin/agents", label: "Agents", icon: Bot },
   { href: "/admin/radar", label: "Opportunity sources", icon: Radar },

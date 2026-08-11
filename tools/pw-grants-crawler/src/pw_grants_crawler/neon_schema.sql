@@ -420,3 +420,151 @@ CREATE TABLE IF NOT EXISTS gary_profile_links (
 
 CREATE INDEX IF NOT EXISTS gary_profile_links_opportunity_idx
     ON gary_profile_links(opportunity_id, status);
+
+-- Gary's agent harness. These tables are the durable control plane shared by
+-- the crawler, AI reviewer, publication gate, email digest, and admin UI.
+CREATE TABLE IF NOT EXISTS gary_harness_releases (
+    id TEXT PRIMARY KEY,
+    git_sha TEXT NOT NULL,
+    artifact_version TEXT NOT NULL,
+    adapter_version TEXT NOT NULL,
+    parser_version TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    policy_version TEXT NOT NULL,
+    model TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'superseded', 'rolled_back')),
+    metadata_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS gary_harness_releases_active_idx
+    ON gary_harness_releases(status)
+    WHERE status = 'active';
+
+CREATE TABLE IF NOT EXISTS gary_worker_heartbeats (
+    worker_kind TEXT PRIMARY KEY CHECK (worker_kind IN ('crawler', 'reviewer')),
+    instance_id TEXT NOT NULL,
+    release_id TEXT REFERENCES gary_harness_releases(id) ON DELETE SET NULL,
+    status TEXT NOT NULL CHECK (status IN ('starting', 'idle', 'working', 'healthy', 'degraded', 'failed', 'stopped')),
+    current_run_id TEXT REFERENCES gary_crawl_runs(id) ON DELETE SET NULL,
+    current_job_id TEXT,
+    progress_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    last_error TEXT,
+    started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    heartbeat_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS gary_worker_heartbeats_freshness_idx
+    ON gary_worker_heartbeats(heartbeat_at DESC);
+
+CREATE TABLE IF NOT EXISTS gary_review_queue (
+    id TEXT PRIMARY KEY,
+    opportunity_id TEXT NOT NULL REFERENCES gary_opportunities(id) ON DELETE CASCADE,
+    observation_id TEXT NOT NULL REFERENCES gary_call_observations(id) ON DELETE CASCADE,
+    run_id TEXT NOT NULL REFERENCES gary_crawl_runs(id) ON DELETE CASCADE,
+    source_id TEXT NOT NULL REFERENCES gary_sources(id) ON DELETE RESTRICT,
+    observation_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN (
+        'queued', 'processing', 'recommended', 'published', 'needs_human',
+        'held', 'rejected', 'failed', 'superseded'
+    )),
+    priority INTEGER NOT NULL DEFAULT 0,
+    attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+    max_attempts INTEGER NOT NULL DEFAULT 4 CHECK (max_attempts BETWEEN 1 AND 20),
+    available_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    lease_owner TEXT,
+    lease_until TIMESTAMPTZ,
+    requested_action TEXT CHECK (requested_action IN ('review', 'publish', 'retry', 'hold', 'reject')),
+    requested_by TEXT,
+    operator_note TEXT,
+    recommendation TEXT CHECK (recommendation IN ('publish', 'needs_human', 'reject')),
+    confidence NUMERIC(4, 3) CHECK (confidence BETWEEN 0 AND 1),
+    decision_id TEXT,
+    published_opportunity_id TEXT,
+    reviewed_at TIMESTAMPTZ,
+    published_at TIMESTAMPTZ,
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (opportunity_id, observation_hash)
+);
+
+CREATE INDEX IF NOT EXISTS gary_review_queue_claim_idx
+    ON gary_review_queue(status, available_at, lease_until, priority DESC, created_at);
+
+CREATE INDEX IF NOT EXISTS gary_review_queue_dashboard_idx
+    ON gary_review_queue(updated_at DESC, status);
+
+CREATE TABLE IF NOT EXISTS gary_ai_review_decisions (
+    id TEXT PRIMARY KEY,
+    queue_id TEXT NOT NULL REFERENCES gary_review_queue(id) ON DELETE CASCADE,
+    opportunity_id TEXT NOT NULL REFERENCES gary_opportunities(id) ON DELETE CASCADE,
+    observation_id TEXT NOT NULL REFERENCES gary_call_observations(id) ON DELETE CASCADE,
+    release_id TEXT REFERENCES gary_harness_releases(id) ON DELETE SET NULL,
+    model TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    policy_version TEXT NOT NULL,
+    input_hash TEXT NOT NULL,
+    output_hash TEXT NOT NULL,
+    recommendation TEXT NOT NULL CHECK (recommendation IN ('publish', 'needs_human', 'reject')),
+    confidence NUMERIC(4, 3) NOT NULL CHECK (confidence BETWEEN 0 AND 1),
+    reasons_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+    checks_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    raw_output_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    input_tokens INTEGER CHECK (input_tokens IS NULL OR input_tokens >= 0),
+    output_tokens INTEGER CHECK (output_tokens IS NULL OR output_tokens >= 0),
+    estimated_cost_usd NUMERIC(12, 8) CHECK (estimated_cost_usd IS NULL OR estimated_cost_usd >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (queue_id, input_hash, model, prompt_version)
+);
+
+CREATE INDEX IF NOT EXISTS gary_ai_review_decisions_queue_idx
+    ON gary_ai_review_decisions(queue_id, created_at DESC);
+
+ALTER TABLE gary_review_queue
+    DROP CONSTRAINT IF EXISTS gary_review_queue_decision_id_fkey;
+ALTER TABLE gary_review_queue
+    ADD CONSTRAINT gary_review_queue_decision_id_fkey
+    FOREIGN KEY (decision_id) REFERENCES gary_ai_review_decisions(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS gary_daily_digests (
+    id TEXT PRIMARY KEY,
+    digest_date DATE NOT NULL,
+    timezone TEXT NOT NULL,
+    recipient_hash TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'sent', 'skipped', 'failed')),
+    summary_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    provider_message_id TEXT,
+    error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    sent_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (digest_date, timezone, recipient_hash)
+);
+
+CREATE INDEX IF NOT EXISTS gary_daily_digests_status_idx
+    ON gary_daily_digests(status, digest_date DESC);
+
+CREATE TABLE IF NOT EXISTS gary_harness_audit_events (
+    id TEXT PRIMARY KEY,
+    idempotency_key TEXT UNIQUE,
+    actor_type TEXT NOT NULL CHECK (actor_type IN ('crawler', 'reviewer', 'operator', 'system')),
+    actor_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    target_type TEXT NOT NULL,
+    target_id TEXT NOT NULL,
+    payload_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE gary_harness_audit_events
+    ADD COLUMN IF NOT EXISTS idempotency_key TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS gary_harness_audit_events_idempotency_idx
+    ON gary_harness_audit_events(idempotency_key)
+    WHERE idempotency_key IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS gary_harness_audit_events_target_idx
+    ON gary_harness_audit_events(target_type, target_id, created_at DESC);

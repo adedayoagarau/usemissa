@@ -24,6 +24,7 @@ dev = [
 pw-grants-crawl = "pw_grants_crawler.cli:main"
 pw-profile-discover = "pw_grants_crawler.profile_cli:main"
 gary-pw-worker = "pw_grants_crawler.worker:main"
+gary-review-worker = "pw_grants_crawler.review_worker:main"
 gary-review = "pw_grants_crawler.review:main"
 
 [tool.pytest.ini_options]

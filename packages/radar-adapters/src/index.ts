@@ -208,6 +208,16 @@ export {
   updatePlatformCrmTaskStatus,
 } from "./platformAdminFoundations.js";
 export { createWaitlistSignup } from "./waitlist.js";
+export {
+  GARY_QUEUE_ACTIONS,
+  mutateGaryQueue,
+  readGaryDashboard,
+  type GaryDashboardData,
+  type GaryHeartbeat,
+  type GaryQueueAction,
+  type GaryReviewRow,
+  type GarySourceHealth,
+} from "./garyAdmin.js";
 export { GoogleGmailProvider } from './email/gmail/google.js';
 export { MockGmailProvider } from './email/gmail/mock.js';
 export {
