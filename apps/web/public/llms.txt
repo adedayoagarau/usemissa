@@ -10,6 +10,7 @@
 - [How Missa verifies opportunities](https://www.usemissa.com/methodology): source, freshness, fee, deadline, and eligibility principles.
 - [About Missa](https://www.usemissa.com/about): what Missa is and how the public library is intended to be used.
 - [For organizations](https://www.usemissa.com/for-organizations): submission management for organizations running open calls.
+- [Public repository](https://github.com/adedayoagarau/usemissa): the public Missa application and discovery infrastructure.
 
 ## Evidence policy
 

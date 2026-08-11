@@ -148,6 +148,7 @@ export default async function HomePage() {
             url: absoluteUrl('/'),
             email: 'hello@usemissa.com',
             description: 'A source-first opportunity library for creators.',
+            sameAs: ['https://github.com/adedayoagarau/usemissa'],
           },
           {
             '@type': 'WebSite',
