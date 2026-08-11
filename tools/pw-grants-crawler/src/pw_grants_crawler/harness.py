@@ -455,6 +455,21 @@ class HarnessStore:
             ).fetchone()
         return row is not None
 
+    def last_digest_date(self, timezone_name: str, recipient_hash: str) -> str | None:
+        """Return the durable scheduler checkpoint for this alert destination."""
+        with psycopg.connect(self.database_url) as connection:
+            row = connection.execute(
+                """
+                SELECT digest_date::text
+                FROM gary_daily_digests
+                WHERE timezone = %s AND recipient_hash = %s
+                ORDER BY digest_date DESC
+                LIMIT 1
+                """,
+                (timezone_name, recipient_hash),
+            ).fetchone()
+        return str(row[0]) if row else None
+
     @staticmethod
     def _audit(connection: Any, actor_type: str, actor_id: str, action: str, target_type: str, target_id: str, payload: dict[str, Any]) -> None:
         connection.execute(

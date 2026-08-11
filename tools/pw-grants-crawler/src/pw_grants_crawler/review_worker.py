@@ -125,14 +125,15 @@ def main(argv: list[str] | None = None) -> int:
     release = store.register_release(args.model)
     reviewer = DeepSeekReviewer(api_key, model=args.model)
     owner = os.environ.get("RAILWAY_REPLICA_ID") or f"gary-reviewer-{uuid4().hex[:12]}"
-    last_date: str | None = None
+    recipient = os.environ.get("GARY_REVIEW_EMAIL")
+    recipient_key = recipient_hash(recipient or "unconfigured")
+    last_date = store.last_digest_date(args.timezone, recipient_key)
     store.heartbeat("reviewer", owner, "starting", release=release)
     while True:
         due, local_date = should_run_morning(datetime.now(timezone.utc), args.timezone, args.review_hour, last_date)
         if args.once or due:
             with heartbeat_loop(store, "reviewer", owner, release=release, status="working"):
                 summary = run_cycle(args, store, reviewer, owner, release)
-            recipient = os.environ.get("GARY_REVIEW_EMAIL")
             alert = send_daily_digest(
                 api_key=os.environ.get("RESEND_API_KEY"), sender=os.environ.get("RESEND_FROM"),
                 recipient=recipient, digest_date=datetime.now(ZoneInfo(args.timezone)).date(),
@@ -140,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             store.record_digest(
                 datetime.now(ZoneInfo(args.timezone)).date(), args.timezone,
-                recipient_hash(recipient or "unconfigured"), alert.status, summary,
+                recipient_key, alert.status, summary,
                 provider_message_id=alert.provider_message_id, error=alert.error,
             )
             print(f"[gary-reviewer] cycle={local_date} summary={summary} email={alert.status}")
