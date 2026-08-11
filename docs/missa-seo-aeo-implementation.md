@@ -50,10 +50,11 @@ For ongoing search measurement, keep Google Search Console and Bing Webmaster To
 
 ## Bing freshness lane
 
-The repository includes an IndexNow ownership key at the public site root and a
-bounded submission script. Store the matching key as the deployment secret
-`INDEXNOW_KEY`, then submit only canonical, published URLs after a meaningful
-content change:
+The repository includes an IndexNow ownership key at the public site root, a
+bounded submission script, and a release-branch workflow at
+`.github/workflows/indexnow.yml`. The repository secret `INDEXNOW_KEY` supplies
+the matching key to that workflow; it submits only canonical public surfaces
+after a release push. For a manual resubmission, use:
 
 ```bash
 INDEXNOW_KEY="$INDEXNOW_KEY" npm run seo:indexnow -- \

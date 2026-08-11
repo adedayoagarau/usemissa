@@ -1,0 +1,33 @@
+name: Submit public URLs to IndexNow
+
+on:
+  push:
+    branches:
+      - release/missa-opportunity-intelligence
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Submit canonical public surfaces
+        env:
+          INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+          INDEXNOW_HOST: www.usemissa.com
+        run: >-
+          node scripts/indexnow-submit.mjs
+          https://www.usemissa.com/
+          https://www.usemissa.com/sitemap.xml
+          https://www.usemissa.com/llms.txt
+          https://www.usemissa.com/guides
+          https://www.usemissa.com/methodology
+          https://www.usemissa.com/about
