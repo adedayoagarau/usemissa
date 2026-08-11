@@ -3,12 +3,12 @@ import type { ReactNode } from 'react';
 import { siteUrl } from '@/lib/siteUrl';
 
 export const SITE_NAME = 'Missa';
-export const DEFAULT_DESCRIPTION = 'Find submission opportunities that fit your work, prepare with context, and keep every deadline in view.';
+export const DEFAULT_DESCRIPTION = 'Find source-first grants, magazines, residencies, fellowships, contests, and awards with context and visible deadlines.';
 const SOCIAL_IMAGE = {
   url: absoluteUrl('/opengraph-image'),
   width: 1200,
   height: 630,
-  alt: 'Missa — submission opportunities tailored for creators',
+  alt: 'Missa — source-first opportunities for creators',
 };
 
 export function absoluteUrl(path = '/'): string {

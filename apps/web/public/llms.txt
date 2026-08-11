@@ -1,11 +1,12 @@
 # Missa
 
-> Missa is a source-first opportunity library for creators. It helps people find grants, magazines, residencies, fellowships, contests, awards, and other submission opportunities, then compare the source details before deciding where to spend their time.
+> Missa is a source-first opportunity library and submission workspace for creators and organizations. It helps people find grants, magazines, residencies, fellowships, contests, awards, and other submission opportunities, then compare the source details before deciding where to spend their time.
 
 ## Canonical public pages
 
 - [Missa](https://www.usemissa.com/): the creator-facing entry point.
 - [Browse opportunities](https://www.usemissa.com/opportunities-preview): the public browse surface.
+- [For creators](https://www.usemissa.com/for-creators): source-first guidance and category hubs for creators.
 - [Opportunity guides](https://www.usemissa.com/guides): answer-led guidance for finding and comparing calls.
 - [How Missa verifies opportunities](https://www.usemissa.com/methodology): source, freshness, fee, deadline, and eligibility principles.
 - [About Missa](https://www.usemissa.com/about): what Missa is and how the public library is intended to be used.

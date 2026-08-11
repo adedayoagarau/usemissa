@@ -24,10 +24,25 @@ import styles from './home.module.css';
 import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
 
 export const metadata = pageMetadata({
-  title: 'Missa — Submission opportunities for creators',
-  description: 'Find grants, magazines, residencies, fellowships, awards, and other submission opportunities with source context and visible deadlines.',
+  title: 'Missa — Source-first opportunities for creators',
+  description: 'Find grants, magazines, residencies, fellowships, contests, and awards with source context, visible deadlines, and clear next steps.',
   path: '/',
 });
+
+const homepageFaqs = [
+  {
+    question: 'What is Missa?',
+    answer: 'Missa is a source-first opportunity library and submission workspace for creators and organizations. It helps people find grants, magazines, residencies, fellowships, contests, awards, and other submission opportunities, then compare the source details before deciding where to spend their time.',
+  },
+  {
+    question: 'What kinds of opportunities can I find on Missa?',
+    answer: 'Missa publishes public opportunities such as contests, magazine submissions, poetry calls, grants, residencies, and fellowships when the source record is ready for discovery. Browse the category hubs or use the guides to compare deadlines, fees, eligibility, and required materials.',
+  },
+  {
+    question: 'Can I rely on Missa instead of the official opportunity source?',
+    answer: 'No. Missa keeps the official source visible and shows freshness or confirmation context, but deadlines and requirements can change. Open the organization or publication page and confirm the current instructions before applying.',
+  },
+];
 
 const opportunityImages = [
   '/media/home/opportunity-architecture.webp',
@@ -147,7 +162,7 @@ export default async function HomePage() {
             name: 'Missa',
             url: absoluteUrl('/'),
             email: 'hello@usemissa.com',
-            description: 'A source-first opportunity library for creators.',
+            description: 'A source-first opportunity library and submission workspace for creators and organizations.',
             sameAs: ['https://github.com/adedayoagarau/usemissa'],
           },
           {
@@ -155,13 +170,25 @@ export default async function HomePage() {
             '@id': absoluteUrl('/#website'),
             name: 'Missa',
             url: absoluteUrl('/'),
-            description: 'Submission opportunities tailored for creators.',
+            description: 'A source-first opportunity library and submission workspace for creators and organizations.',
             publisher: { '@id': absoluteUrl('/#organization') },
             potentialAction: {
               '@type': 'SearchAction',
               target: `${absoluteUrl('/opportunities-preview')}?q={search_term_string}`,
               'query-input': 'required name=search_term_string',
             },
+          },
+          {
+            '@type': 'FAQPage',
+            '@id': absoluteUrl('/#faq'),
+            name: 'Questions about Missa and public opportunities',
+            url: absoluteUrl('/'),
+            isPartOf: { '@id': absoluteUrl('/#website') },
+            mainEntity: homepageFaqs.map((faq) => ({
+              '@type': 'Question',
+              name: faq.question,
+              acceptedAnswer: { '@type': 'Answer', text: faq.answer },
+            })),
           },
         ],
       }} />
@@ -207,10 +234,10 @@ export default async function HomePage() {
 
       <section className={styles.hero} id="for-creators" aria-labelledby="hero-heading">
         <div className={styles.heroCopy}>
-          <h1 id="hero-heading">Submission opportunities tailored for you</h1>
+          <h1 id="hero-heading">Source-first opportunities for creators</h1>
           <p>
-            Your work is specific. Your opportunities should be too. Missa helps you find the calls
-            that fit, prepare with context, and keep every submission moving.
+            Find grants, magazines, residencies, fellowships, contests, and awards with the source
+            details in view before you decide where to spend your time.
           </p>
           <div className={styles.heroActions}>
             <Link className={styles.primaryButton} href={primaryHref}>
@@ -362,6 +389,26 @@ export default async function HomePage() {
               <span className={styles.discoveryCardTitle}>{label}<ArrowRight aria-hidden="true" size={15} /></span>
               <span className={styles.discoveryCardCopy}>{copy}</span>
             </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.discoverySection} id="faq" aria-labelledby="faq-heading">
+        <div className={styles.sectionHeading}>
+          <div>
+            <p className={styles.sectionEyebrow}>About Missa</p>
+            <h2 id="faq-heading">Clear answers before you apply.</h2>
+          </div>
+          <Link className={styles.inlineLink} href="/methodology">
+            How we verify <ArrowRight aria-hidden="true" size={15} strokeWidth={1.8} />
+          </Link>
+        </div>
+        <div className={styles.discoveryGrid}>
+          {homepageFaqs.map((faq) => (
+            <article className={styles.discoveryCard} key={faq.question}>
+              <h3 className={styles.discoveryCardTitle}>{faq.question}</h3>
+              <p className={styles.discoveryCardCopy}>{faq.answer}</p>
+            </article>
           ))}
         </div>
       </section>

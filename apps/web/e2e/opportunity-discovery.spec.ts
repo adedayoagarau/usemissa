@@ -58,6 +58,9 @@ test('public crawl endpoints expose only the intended discovery surfaces', async
   const homeHtml = await home.text();
   expect(homeHtml).toContain('"@type":"Organization"');
   expect(homeHtml).toContain('"@type":"WebSite"');
+  expect(homeHtml).toContain('"@type":"FAQPage"');
+  expect(homeHtml).toContain('Source-first opportunities for creators');
+  expect(homeHtml).toContain('What is Missa?');
 
   const socialImage = await request.get('/opengraph-image');
   expect(socialImage.status()).toBe(200);
@@ -67,6 +70,7 @@ test('public crawl endpoints expose only the intended discovery surfaces', async
   expect(sitemap.status()).toBe(200);
   const sitemapBody = await sitemap.text();
   expect(sitemapBody).toContain('/opportunities-preview');
+  expect(sitemapBody).toContain('/for-creators');
   expect(sitemapBody).toContain('/for-organizations');
   expect(sitemapBody).toContain('/about');
   expect(sitemapBody).toContain('/methodology');
@@ -86,6 +90,13 @@ test('public crawl endpoints expose only the intended discovery surfaces', async
   const guideHtml = await guide.text();
   expect(guideHtml).toContain('Questions creators ask');
   expect(guideHtml).toContain('FAQPage');
+
+  const creators = await request.get('/for-creators');
+  expect(creators.status()).toBe(200);
+  const creatorsHtml = await creators.text();
+  expect(creatorsHtml).toContain('Opportunities for creators');
+  expect(creatorsHtml).toContain('FAQPage');
+  expect(creatorsHtml).toContain('/discover/grants');
 
   for (const path of ['/about', '/methodology']) {
     const response = await request.get(path);
