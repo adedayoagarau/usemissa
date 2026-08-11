@@ -43,20 +43,26 @@ export default async function OpenCallDetailPage({
   const paths = workspaceEngine.submissionPathsForOpenCall(openCallId);
   const path = paths[0];
   const linkedOpportunity = openCall.radarOpportunityId ? await getOpportunityRepository().getById(openCall.radarOpportunityId).catch(() => null) : null;
+  const sourceChecked = linkedOpportunity?.source.processingSucceededAt
+    ? new Date(linkedOpportunity.source.processingSucceededAt)
+    : undefined;
+  const sourceCheckedLabel = sourceChecked && !Number.isNaN(sourceChecked.getTime())
+    ? new Intl.DateTimeFormat('en', { dateStyle: 'long' }).format(sourceChecked)
+    : undefined;
 
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
 
   return (
     <main className="mx-auto max-w-xl px-6 py-12">
-      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'WebPage', name: openCall.title, description: linkedOpportunity?.content?.summary ?? `Published open call from ${org.name}.`, url: absoluteUrl(`/org/${organizationId}/${openCallId}`), isPartOf: { '@type': 'WebSite', name: 'Missa', url: absoluteUrl('/') } }} />
+      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'WebPage', name: openCall.title, description: linkedOpportunity?.content?.summary ?? `Published open call from ${org.name}.`, url: absoluteUrl(`/org/${organizationId}/${openCallId}`), isPartOf: { '@type': 'WebSite', name: 'Missa', url: absoluteUrl('/') }, publisher: { '@type': 'Organization', name: 'Missa', url: absoluteUrl('/') }, about: { '@type': 'Organization', name: org.name, url: absoluteUrl(`/org/${organizationId}`) }, ...(linkedOpportunity?.source.url ? { isBasedOn: linkedOpportunity.source.url, citation: linkedOpportunity.source.url } : {}), ...(sourceCheckedLabel ? { dateModified: sourceChecked?.toISOString() } : {}) }} />
       <JsonLd data={breadcrumbJsonLd([{ name: 'Missa', path: '/' }, { name: org.name, path: `/org/${organizationId}` }, { name: openCall.title }])} />
       <Link href={`/org/${organizationId}`} className="text-sm text-muted-foreground hover:text-primary">
         ← {org.name}
       </Link>
       <h1 className="mt-2 font-heading text-3xl font-medium text-foreground">{openCall.title}</h1>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">Published by {org.name}. Read the official guidelines and confirm the current deadline before applying.</p>
-      {linkedOpportunity && <div className="mt-6 grid gap-3 rounded-lg border border-border p-4 text-sm sm:grid-cols-2"><div><p className="text-xs text-muted-foreground">Deadline</p><p className="mt-1">{linkedOpportunity.deadline.date ?? linkedOpportunity.deadline.raw ?? 'To be confirmed'}</p></div><div><p className="text-xs text-muted-foreground">Fee</p><p className="mt-1">{linkedOpportunity.fee.status === 'no-fee' ? 'No fee' : linkedOpportunity.fee.status === 'paid' ? 'Paid submission' : 'Fee not confirmed'}</p></div>{linkedOpportunity.source.url && <a href={linkedOpportunity.source.url} target="_blank" rel="noreferrer" className="inline-flex items-center text-primary underline-offset-2 hover:underline sm:col-span-2">Read official source</a>}</div>}
+      {linkedOpportunity && <div className="mt-6 grid gap-3 rounded-lg border border-border p-4 text-sm sm:grid-cols-2"><div><p className="text-xs text-muted-foreground">Deadline</p><p className="mt-1">{linkedOpportunity.deadline.date ?? linkedOpportunity.deadline.raw ?? 'To be confirmed'}</p></div><div><p className="text-xs text-muted-foreground">Fee</p><p className="mt-1">{linkedOpportunity.fee.status === 'no-fee' ? 'No fee' : linkedOpportunity.fee.status === 'paid' ? 'Paid submission' : 'Fee not confirmed'}</p></div>{sourceCheckedLabel && <p className="text-xs text-muted-foreground sm:col-span-2"><time dateTime={sourceChecked?.toISOString()}>Source checked {sourceCheckedLabel}</time></p>}{linkedOpportunity.source.url && <a href={linkedOpportunity.source.url} target="_blank" rel="noreferrer" className="inline-flex items-center text-primary underline-offset-2 hover:underline sm:col-span-2">Read official source</a>}</div>}
       {openCall.guidelineText && <section className="mt-8 rounded-lg border border-border p-5"><h2 className="text-sm font-semibold">Guidelines</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{openCall.guidelineText}</p></section>}
 
       {!path ? (

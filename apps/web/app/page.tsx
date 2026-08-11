@@ -140,15 +140,29 @@ export default async function HomePage() {
     <main className={styles.home} id="main-content">
       <JsonLd data={{
         '@context': 'https://schema.org',
-        '@type': 'WebSite',
-        name: 'Missa',
-        url: absoluteUrl('/'),
-        description: 'Submission opportunities tailored for creators.',
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: `${absoluteUrl('/opportunities-preview')}?q={search_term_string}`,
-          'query-input': 'required name=search_term_string',
-        },
+        '@graph': [
+          {
+            '@type': 'Organization',
+            '@id': absoluteUrl('/#organization'),
+            name: 'Missa',
+            url: absoluteUrl('/'),
+            email: 'hello@usemissa.com',
+            description: 'A source-first opportunity library for creators.',
+          },
+          {
+            '@type': 'WebSite',
+            '@id': absoluteUrl('/#website'),
+            name: 'Missa',
+            url: absoluteUrl('/'),
+            description: 'Submission opportunities tailored for creators.',
+            publisher: { '@id': absoluteUrl('/#organization') },
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: `${absoluteUrl('/opportunities-preview')}?q={search_term_string}`,
+              'query-input': 'required name=search_term_string',
+            },
+          },
+        ],
       }} />
       <a className={styles.skipLink} href="#open-opportunities">
         Skip to open opportunities

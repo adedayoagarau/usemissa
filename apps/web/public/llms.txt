@@ -1,0 +1,27 @@
+# Missa
+
+> Missa is a source-first opportunity library for creators. It helps people find grants, magazines, residencies, fellowships, contests, awards, and other submission opportunities, then compare the source details before deciding where to spend their time.
+
+## Canonical public pages
+
+- [Missa](https://www.usemissa.com/): the creator-facing entry point.
+- [Browse opportunities](https://www.usemissa.com/opportunities-preview): the public browse surface.
+- [Opportunity guides](https://www.usemissa.com/guides): answer-led guidance for finding and comparing calls.
+- [How Missa verifies opportunities](https://www.usemissa.com/methodology): source, freshness, fee, deadline, and eligibility principles.
+- [About Missa](https://www.usemissa.com/about): what Missa is and how the public library is intended to be used.
+- [For organizations](https://www.usemissa.com/for-organizations): submission management for organizations running open calls.
+
+## Evidence policy
+
+- The organization or publication's official page remains the authority.
+- Public opportunity pages keep the official source URL visible when one is available.
+- Deadline, fee, eligibility, materials, and location are shown as confirmed, unconfirmed, or source-linked facts; missing information is not silently inferred.
+- Public opportunity pages expose a source-check signal and structured source relationships when the underlying record supports them.
+- Readers should open the official source and confirm the current requirements before applying.
+
+## Machine-readable discovery surfaces
+
+- [Robots policy](https://www.usemissa.com/robots.txt)
+- [XML sitemap](https://www.usemissa.com/sitemap.xml)
+
+The public pages contain JSON-LD structured data for the Missa entity, website, breadcrumbs, guides, collections, organizations, and source-linked opportunity records where those facts are visibly supported. Private accounts, tracker data, submissions, reviews, and administrative routes are not public discovery surfaces.

@@ -47,6 +47,18 @@ test('public crawl endpoints expose only the intended discovery surfaces', async
   expect(await robots.text()).toContain('/sitemap.xml');
   expect(await robots.text()).toContain('/opportunities-preview');
 
+  const llms = await request.get('/llms.txt');
+  expect(llms.status()).toBe(200);
+  const llmsText = await llms.text();
+  expect(llmsText).toContain('source-first opportunity library');
+  expect(llmsText).toContain('https://www.usemissa.com/sitemap.xml');
+
+  const home = await request.get('/');
+  expect(home.status()).toBe(200);
+  const homeHtml = await home.text();
+  expect(homeHtml).toContain('"@type":"Organization"');
+  expect(homeHtml).toContain('"@type":"WebSite"');
+
   const sitemap = await request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   const sitemapBody = await sitemap.text();

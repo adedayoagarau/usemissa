@@ -11,6 +11,7 @@ This document records the public discovery lane added for the SEO/AEO rollout.
 - `/org/{organizationId}` and `/org/{organizationId}/{openCallId}` — published organization and Workspace call pages.
 - `/guides` and `/guides/{slug}` — answer-led, source-first guides backed by the same published opportunity repository.
 - `/about` and `/methodology` — trust, source, and verification context for creators and search systems.
+- `/llms.txt` — a curated, non-authoritative machine-readable summary of Missa and its public discovery surfaces.
 - `/robots.txt` and `/sitemap.xml` — crawler policy and bounded dynamic public URL inventory of up to 10,000 open opportunities, with meaningful `lastmod` values for public copy.
 
 ## Public answer contract

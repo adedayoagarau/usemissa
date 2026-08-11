@@ -4,7 +4,7 @@ import { getEngine } from '@/lib/engine';
 import { getWorkspaceEngine } from '@/lib/workspaceEngine';
 import type { Metadata } from 'next';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
-import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
+import { JsonLd, absoluteUrl, breadcrumbJsonLd, pageMetadata } from '@/lib/seo';
 
 /**
  * Story 6.4: public organization page -- no auth required. Only published
@@ -46,6 +46,8 @@ export default async function PublicOrgPage({ params }: { params: Promise<{ orga
     <main className="mx-auto max-w-2xl px-6 py-12">
       <JsonLd data={{ '@context': 'https://schema.org', '@type': 'Organization', name: org.name, url: absoluteUrl(`/org/${organizationId}`), subjectOf: { '@type': 'ItemList', itemListElement: openCalls.map((call, index) => ({ '@type': 'ListItem', position: index + 1, name: call.title, url: absoluteUrl(`/org/${organizationId}/${call.id}`) })) } }} />
       <JsonLd data={{ '@context': 'https://schema.org', '@type': 'ItemList', name: `${org.name} published opportunities`, numberOfItems: openCalls.length, itemListElement: openCalls.map((call, index) => ({ '@type': 'ListItem', position: index + 1, name: call.title, url: absoluteUrl(`/org/${organizationId}/${call.id}`) })) }} />
+      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'WebPage', name: `${org.name} opportunities`, url: absoluteUrl(`/org/${organizationId}`), isPartOf: { '@type': 'WebSite', name: 'Missa', url: absoluteUrl('/') }, mainEntity: { '@type': 'Organization', name: org.name, url: absoluteUrl(`/org/${organizationId}`) } }} />
+      <JsonLd data={breadcrumbJsonLd([{ name: 'Missa', path: '/' }, { name: `${org.name} opportunities` }])} />
       <h1 className="font-heading text-4xl font-medium text-foreground">{org.name}</h1>
       <p className="mt-3 text-sm leading-6 text-muted-foreground">Published calls from this organization. Read the official guidelines before applying.</p>
       <div className="mt-8 space-y-3">
