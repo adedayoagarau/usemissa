@@ -13,6 +13,7 @@ import {
   Tag,
 } from 'lucide-react';
 import type { OpportunityDetailProjection } from '@missa/radar-engine';
+import type { ProfileCard } from '@missa/radar-adapters';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SaveToTrackerButton } from '@/components/save-to-tracker-button';
@@ -95,11 +96,13 @@ export function OpportunityDetailView({
   signedIn,
   summary,
   practiceLabels,
+  relatedProfile,
 }: {
   opportunity: OpportunityDetailProjection;
   signedIn: boolean;
   summary: string;
   practiceLabels: string[];
+  relatedProfile?: ProfileCard;
 }) {
   const tracked = Boolean(opportunity.personal?.tracked);
   const canonicalPath = `/opportunities/${opportunity.slug}`;
@@ -128,6 +131,7 @@ export function OpportunityDetailView({
             <h1 id="opportunity-title">{opportunity.title}</h1>
             <p className={styles.organization}>{opportunity.organizationName ?? 'Organization not listed'}</p>
             <p className={styles.heroSummary}>{summary}</p>
+            {relatedProfile ? <p className={styles.organization}>Journal / press profile: <Link href={`/journals/${encodeURIComponent(relatedProfile.id)}`}>{relatedProfile.name}</Link></p> : null}
             <div className={styles.heroActions}>
               {signedIn ? (
                 tracked ? (
@@ -214,13 +218,13 @@ export function OpportunityDetailView({
 
             <section aria-labelledby="practices-title">
               <p className={styles.sectionNumber}>03 · Understand the call</p>
-              <h2 id="practices-title">Practices named in this call</h2>
+              <h2 id="practices-title">Fields named in this call</h2>
               {practiceLabels.length ? (
                 <div className={styles.practiceList}>{practiceLabels.map((practice) => <Badge key={practice} variant="secondary">{practice}</Badge>)}</div>
               ) : (
-                <p>Practice labels are not yet available for this record.</p>
+                <p>Field labels are not yet available for this record.</p>
               )}
-              <p className={styles.boundaryNote}>Practice labels describe the work. They remain separate from eligibility and geography.</p>
+              <p className={styles.boundaryNote}>Field labels describe the work. They remain separate from eligibility and geography.</p>
             </section>
 
             <section className={styles.sourceSection} aria-labelledby="source-title">

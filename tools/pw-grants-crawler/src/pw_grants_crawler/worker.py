@@ -10,6 +10,10 @@ from pathlib import Path
 from uuid import uuid4
 
 from .neon import NeonStore
+from .fetcher import HttpFetcher
+from .profile_crawler import crawl_profiles
+from .profile_output import write_profile_result
+from .profile_source import PwProfileSchema
 from .runner import CrawlConfig, crawl_to_manifest
 from .source_schema import calendar_month_range
 
@@ -38,6 +42,12 @@ class WorkerConfig:
     backfill_calendar_start_month: str | None = None
     backfill_calendar_end_month: str | None = None
     refresh_calendar_months: int = 2
+    include_profile_sources: bool = True
+    profile_kinds: tuple[str, ...] = ("literary_magazine", "small_press")
+    profile_max_index_pages: int = 100
+    profile_request_delay: float = 10.0
+    profile_freshness_hours: int = 168
+    max_profile_images: int = 1
 
 
 def calendar_bounds(
@@ -119,6 +129,89 @@ def run_once(
         raise
 
 
+def profile_source_id(kind: str) -> str:
+    if kind == "literary_magazine":
+        return "pw.org.literary_magazines"
+    if kind == "small_press":
+        return "pw.org.small_presses"
+    raise ValueError(f"unsupported profile kind: {kind}")
+
+
+def profile_source_name(kind: str) -> str:
+    if kind == "literary_magazine":
+        return "Poets & Writers Literary Magazines"
+    if kind == "small_press":
+        return "Poets & Writers Small Presses"
+    raise ValueError(f"unsupported profile kind: {kind}")
+
+
+def run_profile_once(
+    config: WorkerConfig,
+    store: NeonStore,
+    *,
+    kind: str,
+    owner: str | None = None,
+    force_backfill: bool = False,
+) -> str | None:
+    owner = owner or str(uuid4())
+    schema = PwProfileSchema(kind, max_pages=config.profile_max_index_pages)
+    source_id = profile_source_id(kind)
+    store.register_source(
+        source_id=source_id,
+        adapter="poets-writers-profiles",
+        name=profile_source_name(kind),
+        seed_url=schema.index_url(0),
+        freshness_hours=config.profile_freshness_hours,
+        config={"worker": "gary", "profile_kind": kind, "index_url": schema.index_url(0)},
+    )
+    if force_backfill:
+        store.request_backfill(source_id)
+    claim = store.claim_source(source_id, owner)
+    if claim is None:
+        return None
+    mode = run_mode(claim["backfill_status"])
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    output_dir = config.output_root / f"{source_id.replace('.', '-')}-{mode}-{timestamp}"
+    fetcher = HttpFetcher(
+        timeout=config.timeout,
+        max_bytes=config.max_asset_bytes,
+        min_request_interval=config.profile_request_delay,
+    )
+    try:
+        result = crawl_profiles(
+            schema,
+            fetcher,
+            fetch_details=True,
+            detail_concurrency=1,
+            max_index_pages=config.profile_max_index_pages,
+        )
+        manifest_path = write_profile_result(
+            result,
+            output_dir,
+            asset_fetcher=fetcher,
+            max_profile_images=config.max_profile_images,
+            max_asset_bytes=config.max_asset_bytes,
+        )
+        run_id = store.ingest_profile_manifest(
+            manifest_path,
+            source_id=source_id,
+            mode=mode,
+            source_name=profile_source_name(kind),
+            freshness_hours=config.profile_freshness_hours,
+            seed_url=schema.index_url(0),
+            backfill_complete=mode == "backfill" and not result.errors,
+        )
+        store.release_source(source_id, owner)
+        if not config.retain_output:
+            shutil.rmtree(output_dir, ignore_errors=True)
+        return run_id
+    except Exception as error:
+        store.fail_source(source_id, owner, str(error))
+        raise
+    finally:
+        fetcher.close()
+
+
 def run_worker(
     config: WorkerConfig,
     store: NeonStore,
@@ -129,12 +222,27 @@ def run_worker(
     owner = str(uuid4())
     while True:
         run_id = run_once(config, store, owner=owner, force_backfill=force_backfill)
+        profile_run_ids: list[str] = []
+        if config.include_profile_sources:
+            for kind in config.profile_kinds:
+                profile_run_id = run_profile_once(
+                    config,
+                    store,
+                    kind=kind,
+                    owner=owner,
+                    force_backfill=force_backfill,
+                )
+                if profile_run_id:
+                    profile_run_ids.append(profile_run_id)
         force_backfill = False
         if run_id:
             print(f"[gary-worker] completed run={run_id}")
+        for profile_run_id in profile_run_ids:
+            print(f"[gary-worker] completed profile_run={profile_run_id}")
         if once:
             return
-        time.sleep(config.poll_seconds if run_id is None else min(config.poll_seconds, 5))
+        did_work = bool(run_id or profile_run_ids)
+        time.sleep(config.poll_seconds if not did_work else min(config.poll_seconds, 5))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -172,6 +280,20 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=int(os.environ.get("GARY_REFRESH_CALENDAR_MONTHS", "2")),
     )
+    parser.add_argument(
+        "--disable-profile-sources",
+        action="store_true",
+        help="Run only the call/calendar source, leaving profile backfill/freshness to another process.",
+    )
+    parser.add_argument(
+        "--profile-kind",
+        choices=("literary_magazine", "small_press", "both"),
+        default=os.environ.get("GARY_PROFILE_KIND", "both"),
+    )
+    parser.add_argument("--profile-max-index-pages", type=int, default=int(os.environ.get("GARY_PROFILE_MAX_INDEX_PAGES", "100")))
+    parser.add_argument("--profile-request-delay", type=float, default=float(os.environ.get("GARY_PROFILE_REQUEST_DELAY", "10")))
+    parser.add_argument("--profile-freshness-hours", type=int, default=int(os.environ.get("GARY_PROFILE_FRESHNESS_HOURS", "168")))
+    parser.add_argument("--max-profile-images", type=int, default=int(os.environ.get("GARY_MAX_PROFILE_IMAGES", "1")))
     parser.add_argument("--once", action="store_true", help="Run one due backfill/refresh and exit.")
     parser.add_argument(
         "--force-backfill",
@@ -192,8 +314,20 @@ def main(argv: list[str] | None = None) -> int:
         or args.freshness_hours < 1
         or args.poll_seconds < 1
         or args.refresh_calendar_months < 1
+        or args.profile_max_index_pages < 1
+        or args.profile_request_delay < 0
+        or args.profile_freshness_hours < 1
+        or args.max_profile_images < 0
     ):
-        raise SystemExit("limit, max-index-pages, freshness-hours, poll-seconds, and refresh-calendar-months must be positive")
+        raise SystemExit(
+            "limits, freshness values, and poll seconds must be positive; profile request delay "
+            "and max profile images must be non-negative"
+        )
+    profile_kinds = (
+        ("literary_magazine", "small_press")
+        if args.profile_kind == "both"
+        else (args.profile_kind,)
+    )
     store = NeonStore(database_url)
     store.ensure_schema()
     config = WorkerConfig(
@@ -213,6 +347,12 @@ def main(argv: list[str] | None = None) -> int:
         backfill_calendar_start_month=args.calendar_start_month,
         backfill_calendar_end_month=args.calendar_end_month,
         refresh_calendar_months=args.refresh_calendar_months,
+        include_profile_sources=not args.disable_profile_sources,
+        profile_kinds=profile_kinds,
+        profile_max_index_pages=args.profile_max_index_pages,
+        profile_request_delay=args.profile_request_delay,
+        profile_freshness_hours=args.profile_freshness_hours,
+        max_profile_images=args.max_profile_images,
     )
     run_worker(config, store, once=args.once, force_backfill=args.force_backfill)
     return 0

@@ -131,6 +131,21 @@ def test_profile_schema_supports_resumable_pages_and_global_rank_offset():
     assert result.profiles[0].summary.name == "Resumed Journal"
 
 
+def test_crawl_profiles_reports_index_and_detail_progress():
+    page_url = "https://www.pw.org/literary_magazines"
+    detail_url = "https://www.pw.org/literary_magazines/progress"
+    pages = {
+        page_url: '<div class="view-content"><div class="views-row"><div class="views-field views-field-title"><h2><a href="/literary_magazines/progress">Progress Journal</a></h2></div></div></div>',
+        detail_url: '<article><h1 id="page-title">Progress Journal</h1></article>',
+    }
+    events: list[dict[str, object]] = []
+
+    crawl_profiles(PwProfileSchema("literary_magazine"), _FakeFetcher(pages), progress_callback=events.append)
+
+    assert [event["event"] for event in events] == ["index_page", "detail"]
+    assert events[-1]["details_fetched"] == 1
+
+
 def test_parse_profile_detail_supports_small_press_specific_fields():
     html = """
     <article>

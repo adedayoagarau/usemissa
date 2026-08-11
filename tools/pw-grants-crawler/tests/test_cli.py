@@ -77,3 +77,15 @@ def test_worker_can_enable_rendering_from_environment(monkeypatch):
     monkeypatch.setenv("GARY_RENDER", "true")
 
     assert build_parser().parse_args([]).render is True
+
+
+def test_worker_runs_profile_sources_by_default_and_can_disable_them():
+    from pw_grants_crawler.worker import build_parser
+
+    args = build_parser().parse_args([])
+    disabled = build_parser().parse_args(["--disable-profile-sources"])
+
+    assert args.profile_kind == "both"
+    assert args.profile_request_delay == 10
+    assert args.max_profile_images == 1
+    assert disabled.disable_profile_sources is True

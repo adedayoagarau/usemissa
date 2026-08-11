@@ -31,6 +31,17 @@ export {
 } from "./opportunityRepository.js";
 export { saveOpportunityProjectionToPostgres } from "./opportunityRelationalStore.js";
 export {
+  PostgresProfileRepository,
+  createPostgresProfileRepositoryFromUrl,
+  type ProfileBrowsePage,
+  type ProfileBrowseQuery,
+  type ProfileCard,
+  type ProfileDetail,
+  type ProfileKind,
+  type ProfileOpportunity,
+  type ProfileRepository,
+} from "./profileRepository.js";
+export {
   commitTrackerImportTransaction,
   consumeTrackerImportPreviewRateLimit,
   trackerImportCandidateHash,

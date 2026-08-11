@@ -1,6 +1,6 @@
 from psycopg.types.json import Jsonb
 
-from pw_grants_crawler.neon import NeonStore, _json, _text
+from pw_grants_crawler.neon import NeonStore, _json, _normalized_host_key, _text
 
 
 class RecordingConnection:
@@ -101,3 +101,61 @@ def test_neon_insert_profile_persists_profile_specific_fields():
     assert "website_url" in sql
     assert "reading_period" in sql
     assert "gary_profile_observations" in sql
+
+
+def test_profile_identity_uses_host_and_name_not_name_alone():
+    store = NeonStore("postgres://example.test/gary")
+    first = RecordingConnection()
+    second = RecordingConnection()
+    base_profile = {
+        "kind": "literary_magazine",
+        "name": "Sample Journal",
+        "summary": "A careful journal.",
+        "genres": ["Poetry"],
+        "subgenres": [],
+        "source": {
+            "index_url": "https://www.pw.org/literary_magazines",
+            "detail_url": "https://www.pw.org/literary_magazines/sample_journal",
+        },
+        "detail": {
+            "kind": "literary_magazine",
+            "name": "Sample Journal",
+            "detail_url": "https://www.pw.org/literary_magazines/sample_journal",
+            "website_url": "https://first.example",
+            "image_url": None,
+            "genres": ["Poetry"],
+            "representative_authors": None,
+            "book_types": [],
+            "formats": [],
+            "submission_guidelines_url": None,
+            "reading_period": None,
+            "response_time": None,
+            "reading_fee": None,
+            "unsolicited_submissions": None,
+            "simultaneous_submissions": None,
+            "payment": None,
+            "editorial_focus": None,
+            "editorial_tips": None,
+            "contact_name": None,
+            "contact_email": None,
+            "contact_details": None,
+            "issues_per_year": None,
+            "issue_price": None,
+            "subscription_price": None,
+            "circulation": None,
+            "titles_per_year": None,
+            "publishes_through_contests_only": None,
+            "last_updated": None,
+            "full_text": "Sample profile text.",
+        },
+    }
+    other_profile = {
+        **base_profile,
+        "detail": {**base_profile["detail"], "website_url": "https://second.example"},
+    }
+
+    first_profile_id, _ = store._insert_profile(first, "run_test", "pw.org.literary_magazines", base_profile)
+    second_profile_id, _ = store._insert_profile(second, "run_test", "pw.org.literary_magazines", other_profile)
+
+    assert first_profile_id != second_profile_id
+    assert _normalized_host_key("https://www.first.example/path") == "first.example"

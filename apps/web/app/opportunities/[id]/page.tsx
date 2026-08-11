@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
+import { getProfileRepository } from '@/lib/profileRepository';
 import { taxonomyLabelFor } from '@/lib/opportunityTaxonomy';
 import { MissaSiteHeader } from '@/components/missa-site-header';
 import { OpportunityDetailView } from '@/components/opportunity-detail-view';
@@ -53,6 +54,10 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   const path = `/opportunities/${opportunity.slug}`;
   const summary = opportunity.content?.summary ?? opportunityDescription(opportunity);
   const taxonomyLabels = (opportunity.taxonomy?.termIds ?? []).map(taxonomyLabelFor);
+  const profileRepository = getProfileRepository();
+  const profileMatch = opportunity.organizationName && profileRepository
+    ? (await profileRepository.browse({ query: opportunity.organizationName, limit: 1 })).items[0]
+    : undefined;
   const practiceLabels = Array.from(
     [...taxonomyLabels, ...opportunity.genres].reduce((labels, label) => {
       const normalized = label.trim().toLocaleLowerCase('en');
@@ -91,6 +96,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         signedIn={Boolean(session)}
         summary={summary}
         practiceLabels={practiceLabels}
+        relatedProfile={profileMatch}
       />
     </div>
   );
