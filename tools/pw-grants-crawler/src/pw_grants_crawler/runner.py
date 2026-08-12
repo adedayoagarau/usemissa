@@ -6,7 +6,7 @@ from .fetcher import HttpFetcher
 from .output import write_result
 from .renderer import PlaywrightFetcher
 from .source_schema import PwOrgSchema
-from .nyfa_source import NYFA_ARCHIVE_URL, crawl_nyfa_visual_arts
+from .nyfa_source import NYFA_ARCHIVE_URL, crawl_nyfa_visual_arts, nyfa_call_urls
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,8 +46,13 @@ def crawl_to_manifest(config: CrawlConfig, output_dir: Path) -> Path:
             ).calendar_urls(config.calendar_start_month, config.calendar_end_month)
         if config.adapter == "nyfa-visual-arts":
             archive = fetcher.fetch(config.index_url)
-            if archive.status_code in {403, 429} and renderer is not None:
+            if (
+                archive.status_code in {403, 429}
+                or not nyfa_call_urls(archive.html, archive.final_url or config.index_url)
+            ) and renderer is not None:
                 archive = renderer.fetch(config.index_url)
+            if not nyfa_call_urls(archive.html, archive.final_url or config.index_url):
+                raise RuntimeError("NYFA archive produced no canonical opportunity links")
             result = crawl_nyfa_visual_arts(
                 archive,
                 _FallbackFetcher(fetcher, renderer),
