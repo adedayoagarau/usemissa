@@ -80,6 +80,16 @@ function fakeAnthropicClient(toolInput: Record<string, unknown>): Anthropic {
   } as unknown as Anthropic;
 }
 
+function failingAnthropicClient(status = 503): Anthropic {
+  return {
+    messages: {
+      create: async () => {
+        throw Object.assign(new Error("provider unavailable"), { status });
+      },
+    },
+  } as unknown as Anthropic;
+}
+
 test("LlmExtractor: maps model output into a validated OpportunityCandidate", async () => {
   const clock = new ManualClock(new Date("2026-07-07T00:00:00Z"));
   const client = fakeAnthropicClient({
@@ -194,6 +204,39 @@ test("LlmExtractor: taxonomy IDs are bounded to the supplied candidate set", asy
     content: "A call for documentary filmmaking projects.",
   });
   assert.deepEqual(candidate.taxonomyAssignments?.map((assignment) => assignment.termId), [accepted]);
+});
+
+test("LlmExtractor: falls back to deterministic extraction when the provider fails", async () => {
+  const clock = new ManualClock(new Date("2026-07-07T00:00:00Z"));
+  const extractor = new LlmExtractor(clock, {
+    client: failingAnthropicClient(402),
+    apiKey: "unused",
+  });
+  const source: Source = {
+    id: "src_fallback",
+    name: "North River Poetry Prize",
+    url: "https://example.com/poetry-prize",
+    kind: "organization-website",
+    checkIntervalHours: 24,
+    active: true,
+    consecutiveFailures: 0,
+  };
+
+  const candidate = await extractor.extract(source, {
+    id: "snap_fallback",
+    sourceId: source.id,
+    url: source.url,
+    fetchedAt: clock.now().toISOString(),
+    status: "ok",
+    contentHash: "h",
+    content: "North River Poetry Prize\nCall for poetry. Deadline: September 30, 2026.",
+  });
+
+  assert.equal(candidate.title, "North River Poetry Prize");
+  assert.equal(candidate.type, "award");
+  assert.equal(candidate.deadline.kind, "exact");
+  assert.equal(candidate.deadline.date, "2026-09-30");
+  assert.ok(candidate.extractionConfidence > 0);
 });
 
 function fakePool(): { pool: Pool; tables: Map<string, unknown[]> } {
