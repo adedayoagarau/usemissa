@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   matchOpportunityToProfiles,
   normalizeHost,
+  profileLinkRetirementStatement,
   type OpportunityIdentityInput,
   type ProfileUrlEvidence,
 } from "../src/profileIdentityMatcher.js";
@@ -37,6 +38,13 @@ const NOW = new Date("2026-08-12T12:00:00.000Z");
 test("normalizes equivalent website hosts", () => {
   assert.equal(normalizeHost("https://WWW.Example.org/path"), "example.org");
   assert.equal(normalizeHost("example.org"), "example.org");
+});
+
+test("profile link retirement binds every SQL placeholder", () => {
+  const statement = profileLinkRetirementStatement("opp_1");
+  const placeholders = [...statement.text.matchAll(/\$(\d+)/g)].map((match) => Number(match[1]));
+  assert.equal(Math.max(...placeholders), statement.values.length);
+  assert.deepEqual(statement.values, ["opp_1", "profile-host-name-v2"]);
 });
 
 test("confirms an unambiguous exact-host plus name match", () => {

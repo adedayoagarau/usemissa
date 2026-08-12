@@ -214,14 +214,22 @@ function linkId(decision: ProfileIdentityDecision): string {
     .digest("hex");
 }
 
-async function persistDecisions(client: PoolClient, opportunityId: string, decisions: ProfileIdentityDecision[]): Promise<void> {
-  await client.query(
-    `update opportunity_profile_links
+export function profileLinkRetirementStatement(opportunityId: string): {
+  text: string;
+  values: [string, string];
+} {
+  return {
+    text: `update opportunity_profile_links
      set status = 'rejected', verified_at = now(), verified_until = null, updated_at = now(),
          evidence_json = evidence_json || jsonb_build_object('retiredBy', $2::text, 'retiredAt', now())
      where opportunity_id = $1 and evidence_json ->> 'matcherVersion' like 'profile-host-name-v%'`,
-    [opportunityId],
-  );
+    values: [opportunityId, PROFILE_IDENTITY_MATCHER_VERSION],
+  };
+}
+
+async function persistDecisions(client: PoolClient, opportunityId: string, decisions: ProfileIdentityDecision[]): Promise<void> {
+  const retirement = profileLinkRetirementStatement(opportunityId);
+  await client.query(retirement.text, retirement.values);
   for (const decision of decisions) {
     await client.query(
       `insert into opportunity_profile_links

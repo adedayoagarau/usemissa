@@ -46,6 +46,7 @@ export {
   matchOpportunityToProfiles,
   normalizeHost,
   profileNameEvidence,
+  profileLinkRetirementStatement,
   syncProfileOpportunityLinks,
   type OpportunityIdentityInput,
   type ProfileIdentityDecision,
