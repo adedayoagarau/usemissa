@@ -18,10 +18,9 @@ export interface ProfileCard {
   genres: string[];
   formats: string[];
   readingPeriod: string | null;
-  lastUpdated: string | null;
   sourceUrl: string | null;
   mediaUrl: string | null;
-  profileCheckedAt: string | null;
+  mediaAlt: string | null;
 }
 
 export interface ProfileOpportunity {
@@ -38,6 +37,7 @@ export interface ProfileDetail extends ProfileCard {
   submissionGuidelinesUrl: string | null;
   subgenres: string[];
   bookTypes: string[];
+  representativeAuthors: string | null;
   responseTime: string | null;
   readingFee: string | null;
   unsolicitedSubmissions: string | null;
@@ -48,6 +48,12 @@ export interface ProfileDetail extends ProfileCard {
   contactName: string | null;
   contactEmail: string | null;
   contactDetails: string | null;
+  issuesPerYear: string | null;
+  issuePrice: string | null;
+  subscriptionPrice: string | null;
+  circulation: string | null;
+  titlesPerYear: string | null;
+  publishesThroughContestsOnly: string | null;
   opportunities: ProfileOpportunity[];
 }
 
@@ -56,26 +62,41 @@ export interface ProfileBrowsePage {
   total: number;
 }
 
+export interface ProfileMedia {
+  payload: Buffer;
+  contentType: string;
+  byteSize: number;
+}
+
 export interface ProfileRepository {
   browse(query: ProfileBrowseQuery): Promise<ProfileBrowsePage>;
   getById(id: string): Promise<ProfileDetail | null>;
+  getMediaByProfileId(id: string): Promise<ProfileMedia | null>;
 }
 
 function jsonArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function nullableText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function card(row: Record<string, unknown>): ProfileCard {
   return {
-    id: String(row.id), kind: row.profile_kind as ProfileKind, name: String(row.name),
-    websiteUrl: (row.website_url as string | null) ?? null,
-    summary: (row.source_summary as string | null) ?? null,
-    genres: jsonArray(row.genres_json), formats: jsonArray(row.formats_json),
-    readingPeriod: (row.reading_period as string | null) ?? null,
-    lastUpdated: (row.last_updated as string | null) ?? null,
-    sourceUrl: (row.source_detail_url as string | null) ?? null,
-    mediaUrl: (row.media_url as string | null) ?? null,
-    profileCheckedAt: row.observed_at ? new Date(String(row.observed_at)).toISOString() : null,
+    id: String(row.id),
+    kind: row.profile_kind as ProfileKind,
+    name: String(row.name),
+    websiteUrl: nullableText(row.website_url),
+    summary: nullableText(row.source_summary),
+    genres: jsonArray(row.genres_json),
+    formats: jsonArray(row.formats_json),
+    readingPeriod: nullableText(row.reading_period),
+    sourceUrl: nullableText(row.source_detail_url),
+    mediaUrl: nullableText(row.media_url),
+    mediaAlt: nullableText(row.media_alt),
   };
 }
 
@@ -85,68 +106,144 @@ export class PostgresProfileRepository implements ProfileRepository {
   async browse(query: ProfileBrowseQuery): Promise<ProfileBrowsePage> {
     const values: unknown[] = [];
     const filters: string[] = [];
-    if (query.kind) { values.push(query.kind); filters.push(`p.profile_kind = $${values.length}`); }
+    if (query.kind) {
+      values.push(query.kind);
+      filters.push(`p.profile_kind = $${values.length}`);
+    }
     if (query.query?.trim()) {
       values.push(`%${query.query.trim()}%`);
-      filters.push(`(p.name ILIKE $${values.length} OR o.source_summary ILIKE $${values.length} OR o.editorial_focus ILIKE $${values.length})`);
+      filters.push(
+        `(p.name ILIKE $${values.length} OR o.source_summary ILIKE $${values.length} OR o.editorial_focus ILIKE $${values.length})`,
+      );
     }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
     values.push(Math.min(Math.max(query.limit ?? 24, 1), 100));
     const limit = values.length;
     values.push(Math.max(query.offset ?? 0, 0));
     const offset = values.length;
-    const result = await this.pool.query({ text: `
+    const result = await this.pool.query({
+      text: `
       WITH latest AS (
         SELECT DISTINCT ON (profile_id) * FROM gary_profile_observations
         ORDER BY profile_id, observed_at DESC
       ), media AS (
-        SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url
+        SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url, NULLIF(BTRIM(alt_text), '') AS media_alt
         FROM gary_profile_media_assets WHERE kind = 'image' AND error IS NULL
         ORDER BY profile_page_id, created_at
       )
       SELECT p.id, p.profile_kind, p.name, p.website_url,
         o.source_summary, o.genres_json, o.formats_json, o.reading_period,
-        o.last_updated, o.source_detail_url, o.observed_at, m.media_url, count(*) OVER() AS total_count
+        o.source_detail_url, m.media_url, m.media_alt, count(*) OVER() AS total_count
       FROM gary_profiles p JOIN latest o ON o.profile_id = p.id
       LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
       LEFT JOIN media m ON m.profile_page_id = pg.id
       ${where} ORDER BY p.name ASC LIMIT $${limit} OFFSET $${offset}`,
       values,
     });
-    return { items: result.rows.map(card), total: Number(result.rows[0]?.total_count ?? 0) };
+    return {
+      items: result.rows.map(card),
+      total: Number(result.rows[0]?.total_count ?? 0),
+    };
   }
 
   async getById(id: string): Promise<ProfileDetail | null> {
-    const result = await this.pool.query({ text: `
+    const result = await this.pool.query({
+      text: `
       WITH latest AS (SELECT DISTINCT ON (profile_id) * FROM gary_profile_observations ORDER BY profile_id, observed_at DESC),
-      media AS (SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url FROM gary_profile_media_assets WHERE kind='image' AND error IS NULL ORDER BY profile_page_id, created_at)
-      SELECT p.id, p.profile_kind, p.name, p.website_url, o.*, m.media_url
+      media AS (SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url, NULLIF(BTRIM(alt_text), '') AS media_alt FROM gary_profile_media_assets WHERE kind='image' AND error IS NULL ORDER BY profile_page_id, created_at)
+      SELECT p.id, p.profile_kind, p.name, p.website_url, o.*, m.media_url, m.media_alt
       FROM gary_profiles p JOIN latest o ON o.profile_id=p.id
       LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id=o.id AND pg.role='profile'
-      LEFT JOIN media m ON m.profile_page_id=pg.id WHERE p.id=$1`, values: [id] });
+      LEFT JOIN media m ON m.profile_page_id=pg.id WHERE p.id=$1`,
+      values: [id],
+    });
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
-    const base = card(row);
-    const links = await this.pool.query({ text: `
+    const base = card({ ...row, id });
+    const links = await this.pool.query({
+      text: `
       SELECT o.id, o.title, o.organizer, o.official_website, oco.deadline, oco.source_detail_url,
         CASE WHEN oco.deadline IS NULL THEN 'unknown' WHEN oco.deadline >= CURRENT_DATE THEN 'open' ELSE 'closed' END AS status
       FROM gary_profile_links l JOIN gary_opportunities o ON o.id=l.opportunity_id
       LEFT JOIN LATERAL (SELECT * FROM gary_call_observations WHERE opportunity_id=o.id ORDER BY observed_at DESC LIMIT 1) oco ON TRUE
-      WHERE l.profile_id=$1 AND l.status='confirmed' ORDER BY oco.deadline NULLS LAST, o.title`, values: [id] });
+      WHERE l.profile_id=$1 AND l.status='confirmed' ORDER BY oco.deadline NULLS LAST, o.title`,
+      values: [id],
+    });
     return {
-      ...base, submissionGuidelinesUrl: (row.submission_guidelines_url as string | null) ?? null,
-      subgenres: jsonArray(row.subgenres_json), bookTypes: jsonArray(row.book_types_json),
-      responseTime: (row.response_time as string | null) ?? null, readingFee: (row.reading_fee as string | null) ?? null,
-      unsolicitedSubmissions: (row.unsolicited_submissions as string | null) ?? null,
-      simultaneousSubmissions: (row.simultaneous_submissions as string | null) ?? null,
-      payment: (row.payment as string | null) ?? null, editorialFocus: (row.editorial_focus as string | null) ?? null,
-      editorialTips: (row.editorial_tips as string | null) ?? null, contactName: (row.contact_name as string | null) ?? null,
-      contactEmail: (row.contact_email as string | null) ?? null, contactDetails: (row.contact_details as string | null) ?? null,
-      opportunities: links.rows.map((item) => ({ id: item.id, title: item.title, organizer: item.organizer, deadline: item.deadline, detailUrl: item.source_detail_url, officialWebsite: item.official_website, status: item.status })),
+      ...base,
+      submissionGuidelinesUrl: nullableText(row.submission_guidelines_url),
+      subgenres: jsonArray(row.subgenres_json),
+      bookTypes: jsonArray(row.book_types_json),
+      representativeAuthors: nullableText(row.representative_authors),
+      responseTime: nullableText(row.response_time),
+      readingFee: nullableText(row.reading_fee),
+      unsolicitedSubmissions: nullableText(row.unsolicited_submissions),
+      simultaneousSubmissions: nullableText(row.simultaneous_submissions),
+      payment: nullableText(row.payment),
+      editorialFocus: nullableText(row.editorial_focus),
+      editorialTips: nullableText(row.editorial_tips),
+      contactName: nullableText(row.contact_name),
+      contactEmail: nullableText(row.contact_email),
+      contactDetails: nullableText(row.contact_details),
+      issuesPerYear: nullableText(row.issues_per_year),
+      issuePrice: nullableText(row.issue_price),
+      subscriptionPrice: nullableText(row.subscription_price),
+      circulation: nullableText(row.circulation),
+      titlesPerYear: nullableText(row.titles_per_year),
+      publishesThroughContestsOnly: nullableText(
+        row.publishes_through_contests_only,
+      ),
+      opportunities: links.rows.map((item) => ({
+        id: item.id,
+        title: item.title,
+        organizer: item.organizer,
+        deadline: item.deadline,
+        detailUrl: item.source_detail_url,
+        officialWebsite: item.official_website,
+        status: item.status,
+      })),
+    };
+  }
+
+  async getMediaByProfileId(id: string): Promise<ProfileMedia | null> {
+    const result = await this.pool.query({
+      text: `
+      WITH latest AS (
+        SELECT id
+        FROM gary_profile_observations
+        WHERE profile_id = $1
+        ORDER BY observed_at DESC
+        LIMIT 1
+      ), profile_media AS (
+        SELECT a.blob_id, a.content_type
+        FROM latest o
+        JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
+        JOIN gary_profile_media_assets a ON a.profile_page_id = pg.id
+        WHERE a.kind = 'image' AND a.error IS NULL AND a.blob_id IS NOT NULL
+        ORDER BY a.created_at DESC
+        LIMIT 1
+      )
+      SELECT b.payload,
+        COALESCE(NULLIF(pm.content_type, ''), b.content_type, 'application/octet-stream') AS content_type,
+        COALESCE(b.byte_size, OCTET_LENGTH(b.payload)) AS byte_size
+      FROM profile_media pm
+      JOIN gary_media_blobs b ON b.id = pm.blob_id
+      WHERE b.payload IS NOT NULL`,
+      values: [id],
+    });
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    const payload = row?.payload as Buffer | undefined;
+    if (!payload?.length) return null;
+    return {
+      payload,
+      contentType: String(row?.content_type ?? "application/octet-stream"),
+      byteSize: Number(row?.byte_size ?? payload.length),
     };
   }
 }
 
-export function createPostgresProfileRepositoryFromUrl(connectionString: string): ProfileRepository {
+export function createPostgresProfileRepositoryFromUrl(
+  connectionString: string,
+): ProfileRepository {
   return new PostgresProfileRepository(new Pool({ connectionString, max: 4 }));
 }

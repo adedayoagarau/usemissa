@@ -33,7 +33,9 @@ interface OpportunityRow extends QueryResultRow {
   type: OpportunityBrowseProjection["type"];
   discipline: string | null;
   genres: string[] | null;
-  deadline_kind: OpportunityRepositoryDeadline["kind"];
+  // Older canonical rows used `fixed`; normalize that compatibility value at
+  // the repository boundary before it reaches the public contract.
+  deadline_kind: string | null;
   deadline_date: string | null;
   deadline_time: Date | string | null;
   deadline_timezone: string | null;
@@ -62,7 +64,11 @@ interface OpportunityRow extends QueryResultRow {
   created_at: Date | string;
   call_profile: OpportunityCallProfile | null;
   content: OpportunityContent | null;
-  taxonomy: { schemeVersion: number; termIds: string[]; primaryTermIds: string[] } | null;
+  taxonomy: {
+    schemeVersion: number;
+    termIds: string[];
+    primaryTermIds: string[];
+  } | null;
 }
 
 interface EligibilityRow extends QueryResultRow {
@@ -105,7 +111,12 @@ const CATEGORY_TYPES: Record<string, string[]> = {
   contests: ["contest"],
 };
 
-const PUBLIC_STATUSES = ["opening-soon", "open", "closing-soon", "deadline-extended"];
+const PUBLIC_STATUSES = [
+  "opening-soon",
+  "open",
+  "closing-soon",
+  "deadline-extended",
+];
 
 // Values provisioned from stdin can carry a trailing newline in Vercel.
 // Normalize feature flags so a valid production configuration cannot silently
@@ -122,13 +133,17 @@ function stripJsonNulls<T>(value: T): T {
   if (Array.isArray(value)) return value.map(stripJsonNulls) as T;
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value).flatMap(([key, item]) => item === null ? [] : [[key, stripJsonNulls(item)]]),
+      Object.entries(value).flatMap(([key, item]) =>
+        item === null ? [] : [[key, stripJsonNulls(item)]],
+      ),
     ) as T;
   }
   return value;
 }
 
-function normalizeCallProfile(value: OpportunityCallProfile | null): OpportunityCallProfile | undefined {
+function normalizeCallProfile(
+  value: OpportunityCallProfile | null,
+): OpportunityCallProfile | undefined {
   if (!value) return undefined;
   const profile = stripJsonNulls(value) as unknown as Record<string, unknown>;
   if (profile.lastVerifiedAt !== undefined) {
@@ -146,8 +161,15 @@ function encodeCursor(cursor: Cursor): string {
 function decodeCursor(value: string | undefined): Cursor | undefined {
   if (!value) return undefined;
   try {
-    const decoded = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Cursor;
-    if (!decoded || typeof decoded.id !== "string" || typeof decoded.sort !== "string") return undefined;
+    const decoded = JSON.parse(
+      Buffer.from(value, "base64url").toString("utf8"),
+    ) as Cursor;
+    if (
+      !decoded ||
+      typeof decoded.id !== "string" ||
+      typeof decoded.sort !== "string"
+    )
+      return undefined;
     return decoded;
   } catch {
     return undefined;
@@ -156,24 +178,55 @@ function decodeCursor(value: string | undefined): Cursor | undefined {
 
 function asIso(value: Date | string | null | undefined): string | undefined {
   if (!value) return undefined;
-  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+  return value instanceof Date
+    ? value.toISOString()
+    : new Date(value).toISOString();
 }
 
-function browseSummary(value: string | null | undefined, max = 300): string | undefined {
+function normalizeDeadlineKind(
+  value: string | null | undefined,
+): OpportunityRepositoryDeadline["kind"] {
+  switch (value) {
+    case "fixed":
+      return "exact";
+    case "exact":
+    case "inferred":
+    case "rolling":
+    case "until-filled":
+    case "conflicting":
+    case "unknown":
+      return value;
+    default:
+      return "unknown";
+  }
+}
+
+function browseSummary(
+  value: string | null | undefined,
+  max = 300,
+): string | undefined {
   if (!value) return undefined;
   const normalized = value.trim();
   if (!normalized) return undefined;
-  return normalized.length <= max ? normalized : `${normalized.slice(0, max - 1).trimEnd()}…`;
+  return normalized.length <= max
+    ? normalized
+    : `${normalized.slice(0, max - 1).trimEnd()}…`;
 }
 
-function boundedSlug(value: string | null | undefined, fallback: string): string {
+function boundedSlug(
+  value: string | null | undefined,
+  fallback: string,
+): string {
   const normalized = value?.trim() ?? "";
   if (!normalized) return fallback;
   if (normalized.length <= 160) return normalized;
   return normalized.slice(0, 160).replace(/[-\s]+$/u, "") || fallback;
 }
 
-function baseSelect(context?: OpportunityRepositoryContext, taxonomyReads = taxonomyReadsEnabled()): string {
+function baseSelect(
+  context?: OpportunityRepositoryContext,
+  taxonomyReads = taxonomyReadsEnabled(),
+): string {
   const taxonomySelect = taxonomyReads
     ? `coalesce((select jsonb_build_object(
         'schemeVersion', coalesce((select max(version) from taxonomy_schemes where status in ('active', 'draft')), 1),
@@ -184,8 +237,9 @@ function baseSelect(context?: OpportunityRepositoryContext, taxonomyReads = taxo
   const contentSelect = contentReadsEnabled()
     ? `intelligence.content as content,`
     : `null::jsonb as content,`;
-  const tailoringSelect = taxonomyReads && context?.accountId
-    ? `coalesce((
+  const tailoringSelect =
+    taxonomyReads && context?.accountId
+      ? `coalesce((
         select jsonb_agg(reasons.reason order by reasons.priority, reasons.weight desc, reasons.label asc)
         from (
           select 0 as priority, preference.weight, preference_term.preferred_label as label,
@@ -240,7 +294,7 @@ function baseSelect(context?: OpportunityRepositoryContext, taxonomyReads = taxo
             )
         ) reasons
       ), '[]'::jsonb) as tailoring_reasons,`
-    : `'[]'::jsonb as tailoring_reasons,`;
+      : `'[]'::jsonb as tailoring_reasons,`;
   const personal = context?.accountId
     ? `
       exists (
@@ -374,13 +428,18 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
   `;
 }
 
-function addCondition(conditions: string[], values: unknown[], sql: string, value?: unknown): void {
+function addCondition(
+  conditions: string[],
+  values: unknown[],
+  sql: string,
+  value?: unknown,
+): void {
   conditions.push(sql.replace(/\$VALUE/g, `$${values.length + 1}`));
   if (value !== undefined) values.push(value);
 }
 
 function categoryTypes(category: string | undefined): string[] {
-  return category ? CATEGORY_TYPES[category] ?? [] : [];
+  return category ? (CATEGORY_TYPES[category] ?? []) : [];
 }
 
 function buildOrder(sort: OpportunityRepositoryQuery["sort"]): string {
@@ -436,7 +495,12 @@ function addCursorCondition(
       `(o.deadline_date > ${keyPlaceholder}::date or (o.deadline_date = ${keyPlaceholder}::date and o.id > ${idPlaceholder}) or o.deadline_date is null)`,
     );
   } else {
-    addCondition(conditions, values, "(o.deadline_date is null and o.id > $VALUE)", cursor.id);
+    addCondition(
+      conditions,
+      values,
+      "(o.deadline_date is null and o.id > $VALUE)",
+      cursor.id,
+    );
   }
 }
 
@@ -454,9 +518,24 @@ export function buildOpportunityBrowseQuery(
   if (query.openNow) values.push(PUBLIC_STATUSES);
 
   const types = [...(query.types ?? []), ...categoryTypes(query.category)];
-  if (types.length) addCondition(conditions, values, "o.type = any($VALUE::text[])", [...new Set(types)]);
-  if (query.disciplines?.length) addCondition(conditions, values, "o.discipline = any($VALUE::text[])", query.disciplines);
-  if (query.genres?.length) addCondition(conditions, values, "o.genres && $VALUE::text[]", query.genres);
+  if (types.length)
+    addCondition(conditions, values, "o.type = any($VALUE::text[])", [
+      ...new Set(types),
+    ]);
+  if (query.disciplines?.length)
+    addCondition(
+      conditions,
+      values,
+      "o.discipline = any($VALUE::text[])",
+      query.disciplines,
+    );
+  if (query.genres?.length)
+    addCondition(
+      conditions,
+      values,
+      "o.genres && $VALUE::text[]",
+      query.genres,
+    );
   if (query.taxonomyTermIds?.length) {
     if (taxonomyReads) {
       const taxonomyPredicate = query.taxonomyIncludeDescendants
@@ -483,14 +562,32 @@ export function buildOpportunityBrowseQuery(
               and taxonomy_filter.term_id = requested.term_id
               and taxonomy_filter.certainty <> 'rejected'
           )`;
-      addCondition(conditions, values, `not exists (${taxonomyPredicate})`, query.taxonomyTermIds);
+      addCondition(
+        conditions,
+        values,
+        `not exists (${taxonomyPredicate})`,
+        query.taxonomyTermIds,
+      );
     } else {
       conditions.push("false");
     }
   }
-  if (query.locations?.length) addCondition(conditions, values, "o.location = any($VALUE::text[])", query.locations);
-  if (query.feeStatus) addCondition(conditions, values, "o.fee_status = $VALUE", query.feeStatus);
-  if (query.maxFeeCents !== undefined) addCondition(conditions, values, "o.fee_cents <= $VALUE", query.maxFeeCents);
+  if (query.locations?.length)
+    addCondition(
+      conditions,
+      values,
+      "o.location = any($VALUE::text[])",
+      query.locations,
+    );
+  if (query.feeStatus)
+    addCondition(conditions, values, "o.fee_status = $VALUE", query.feeStatus);
+  if (query.maxFeeCents !== undefined)
+    addCondition(
+      conditions,
+      values,
+      "o.fee_cents <= $VALUE",
+      query.maxFeeCents,
+    );
   if (query.deadlineWithinDays !== undefined) {
     addCondition(
       conditions,
@@ -500,10 +597,17 @@ export function buildOpportunityBrowseQuery(
     );
   }
   if (query.simultaneousRequired !== undefined) {
-    addCondition(conditions, values, "o.simultaneous_allowed = $VALUE", query.simultaneousRequired);
+    addCondition(
+      conditions,
+      values,
+      "o.simultaneous_allowed = $VALUE",
+      query.simultaneousRequired,
+    );
   }
   if (query.verifiedOnly) {
-    conditions.push("evidence.verified_until is not null and evidence.verified_until > now()");
+    conditions.push(
+      "evidence.verified_until is not null and evidence.verified_until > now()",
+    );
   }
   if (query.query) {
     const searchValue = `%${query.query}%`;
@@ -523,7 +627,12 @@ export function buildOpportunityBrowseQuery(
             )
         )`
       : "";
-    addCondition(conditions, values, `(o.search_document ilike $VALUE${taxonomySearch})`, searchValue);
+    addCondition(
+      conditions,
+      values,
+      `(o.search_document ilike $VALUE${taxonomySearch})`,
+      searchValue,
+    );
   }
   addCursorCondition(conditions, values, query);
 
@@ -570,15 +679,24 @@ export function buildOpportunityBrowseQuery(
 function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
   const callProfile = normalizeCallProfile(row.call_profile);
   const tailoringReasons = Array.isArray(row.tailoring_reasons)
-    ? row.tailoring_reasons.flatMap((value) => {
-        if (!value || typeof value !== "object") return [];
-        const item = value as { code?: unknown; label?: unknown };
-        if (typeof item.label !== "string" || !item.label.trim()) return [];
-        return [{
-          code: item.code === "genre" ? "genre" as const : item.code === "work" ? "work" as const : "discipline" as const,
-          label: item.label.trim().slice(0, 160),
-        }];
-      }).slice(0, 4)
+    ? row.tailoring_reasons
+        .flatMap((value) => {
+          if (!value || typeof value !== "object") return [];
+          const item = value as { code?: unknown; label?: unknown };
+          if (typeof item.label !== "string" || !item.label.trim()) return [];
+          return [
+            {
+              code:
+                item.code === "genre"
+                  ? ("genre" as const)
+                  : item.code === "work"
+                    ? ("work" as const)
+                    : ("discipline" as const),
+              label: item.label.trim().slice(0, 160),
+            },
+          ];
+        })
+        .slice(0, 4)
     : [];
   return {
     id: row.id,
@@ -594,9 +712,13 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     type: row.type,
     discipline: row.discipline ?? undefined,
     genres: row.genres ?? [],
-    taxonomy: row.taxonomy ?? { schemeVersion: 1, termIds: [], primaryTermIds: [] },
+    taxonomy: row.taxonomy ?? {
+      schemeVersion: 1,
+      termIds: [],
+      primaryTermIds: [],
+    },
     deadline: {
-      kind: row.deadline_kind,
+      kind: normalizeDeadlineKind(row.deadline_kind),
       date: row.deadline_date ?? undefined,
       time: asIso(row.deadline_time),
       timezone: row.deadline_timezone ?? undefined,
@@ -611,7 +733,8 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     prize: browseSummary(row.prize),
     location: row.location ?? undefined,
     simultaneousAllowed: row.simultaneous_allowed ?? undefined,
-    submissionAvailable: row.submission_state === "available" && Boolean(row.submission_url),
+    submissionAvailable:
+      row.submission_state === "available" && Boolean(row.submission_url),
     source: {
       kind: row.source_kind,
       name: row.source_name,
@@ -631,12 +754,16 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
   };
 }
 
-function cursorFor(row: OpportunityBrowseProjection, sort: OpportunityRepositoryQuery["sort"]): string {
-  const key = sort === "recently-added"
-    ? row.createdAt ?? null
-    : sort === "recently-verified"
-      ? row.source.processingSucceededAt ?? null
-      : row.deadline.date ?? null;
+function cursorFor(
+  row: OpportunityBrowseProjection,
+  sort: OpportunityRepositoryQuery["sort"],
+): string {
+  const key =
+    sort === "recently-added"
+      ? (row.createdAt ?? null)
+      : sort === "recently-verified"
+        ? (row.source.processingSucceededAt ?? null)
+        : (row.deadline.date ?? null);
   return encodeCursor({ sort, key, id: row.id });
 }
 
@@ -654,7 +781,16 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
          from information_schema.tables
          where table_schema = current_schema()
            and table_name = any($1::text[])`,
-        [["taxonomy_schemes", "taxonomy_terms", "taxonomy_term_relations", "opportunity_taxonomy_terms", "account_taxonomy_preferences", "radar_library_works"]],
+        [
+          [
+            "taxonomy_schemes",
+            "taxonomy_terms",
+            "taxonomy_term_relations",
+            "opportunity_taxonomy_terms",
+            "account_taxonomy_preferences",
+            "radar_library_works",
+          ],
+        ],
       );
       this.taxonomyReadsReady = result.rows[0]?.ready === true;
     } catch {
@@ -663,21 +799,38 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     return this.taxonomyReadsReady;
   }
 
-  async browse(query: OpportunityRepositoryQuery, context?: OpportunityRepositoryContext): Promise<OpportunityBrowsePage> {
-    const built = buildOpportunityBrowseQuery(query, context, { taxonomyReads: await this.taxonomyReadsAvailable() });
-    const result = await this.pool.query<OpportunityRow>(built.text, built.values);
+  async browse(
+    query: OpportunityRepositoryQuery,
+    context?: OpportunityRepositoryContext,
+  ): Promise<OpportunityBrowsePage> {
+    const built = buildOpportunityBrowseQuery(query, context, {
+      taxonomyReads: await this.taxonomyReadsAvailable(),
+    });
+    const result = await this.pool.query<OpportunityRow>(
+      built.text,
+      built.values,
+    );
     const rows = result.rows;
     const hasNext = rows.length > query.limit;
     const visibleRows = hasNext ? rows.slice(0, query.limit) : rows;
     const items = visibleRows.map(mapRow);
     return {
       items,
-      nextCursor: hasNext && items.length ? cursorFor(items[items.length - 1], query.sort) : null,
-      total: rows[0]?.total_count == null ? items.length : Number(rows[0].total_count),
+      nextCursor:
+        hasNext && items.length
+          ? cursorFor(items[items.length - 1], query.sort)
+          : null,
+      total:
+        rows[0]?.total_count == null
+          ? items.length
+          : Number(rows[0].total_count),
     };
   }
 
-  async getById(opportunityId: string, context?: OpportunityRepositoryContext): Promise<OpportunityDetailProjection | null> {
+  async getById(
+    opportunityId: string,
+    context?: OpportunityRepositoryContext,
+  ): Promise<OpportunityDetailProjection | null> {
     const query: OpportunityRepositoryQuery = {
       sort: "soonest-deadline",
       limit: 1,
@@ -687,16 +840,19 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       genres: [],
       locations: [],
     };
-    const built = buildOpportunityBrowseQuery(query, context, { taxonomyReads: await this.taxonomyReadsAvailable() });
+    const built = buildOpportunityBrowseQuery(query, context, {
+      taxonomyReads: await this.taxonomyReadsAvailable(),
+    });
     // The browse query's final value is the page-size sentinel. Detail lookup
     // replaces that LIMIT with a literal, so do not send an unused parameter
     // to PostgreSQL (which rejects untyped, unused bind parameters).
     const detailValues = built.values.slice(0, -1);
     const idPlaceholder = `$${detailValues.length + 1}`;
     const mainWhereIndex = built.text.lastIndexOf("\n    where ");
-    const detailText = mainWhereIndex >= 0
-      ? `${built.text.slice(0, mainWhereIndex)}\n    where (o.id = ${idPlaceholder} or o.slug = ${idPlaceholder}) and ${built.text.slice(mainWhereIndex + "\n    where ".length)}`
-      : built.text;
+    const detailText =
+      mainWhereIndex >= 0
+        ? `${built.text.slice(0, mainWhereIndex)}\n    where (o.id = ${idPlaceholder} or o.slug = ${idPlaceholder}) and ${built.text.slice(mainWhereIndex + "\n    where ".length)}`
+        : built.text;
     const detailResult = await this.pool.query<OpportunityRow>(
       detailText.replace(/limit \$\d+/, "limit 1"),
       [...detailValues, opportunityId],
@@ -711,7 +867,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
         [canonicalId],
       ),
       this.pool.query<MaterialRow>(
-        "select label, description, required, \"limit\" from opportunity_required_materials where opportunity_id = $1 order by sort_order asc",
+        'select label, description, required, "limit" from opportunity_required_materials where opportunity_id = $1 order by sort_order asc',
         [canonicalId],
       ),
       this.pool.query<ChangeRow>(
@@ -720,7 +876,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       ),
       this.pool.query<RelatedRow>(
         "select id from opportunities where organization_id = $1 and id <> $2 and publication_state = 'published' and status in ('opening-soon', 'open', 'closing-soon', 'deadline-extended') order by deadline_date asc nulls last, id asc limit 24",
-      [row.organization_id, canonicalId],
+        [row.organization_id, canonicalId],
       ),
     ]);
 
@@ -753,7 +909,9 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
   }
 }
 
-export function createPostgresOpportunityRepository(pool: Pool): OpportunityRepository {
+export function createPostgresOpportunityRepository(
+  pool: Pool,
+): OpportunityRepository {
   return new PostgresOpportunityRepository(pool);
 }
 
@@ -761,6 +919,8 @@ export function createPostgresOpportunityRepository(pool: Pool): OpportunityRepo
  * Server-only convenience factory. Keeping Pool construction in the adapter
  * avoids leaking pg/require semantics into Next route modules.
  */
-export function createPostgresOpportunityRepositoryFromUrl(connectionString: string): OpportunityRepository {
+export function createPostgresOpportunityRepositoryFromUrl(
+  connectionString: string,
+): OpportunityRepository {
   return new PostgresOpportunityRepository(new Pool({ connectionString }));
 }

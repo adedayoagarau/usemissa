@@ -31,6 +31,16 @@ export {
 } from "./opportunityRepository.js";
 export { saveOpportunityProjectionToPostgres } from "./opportunityRelationalStore.js";
 export {
+  canonicalTrackerStatus,
+  listCanonicalTrackedOpportunities,
+  saveCanonicalOpportunityToTracker,
+  updateCanonicalTrackerStatus,
+  type CanonicalTrackerSave,
+  type CanonicalTrackerItem,
+  type CanonicalTrackerStatus,
+  type CanonicalTrackerStatusUpdate,
+} from "./canonicalTracker.js";
+export {
   PostgresProfileRepository,
   createPostgresProfileRepositoryFromUrl,
   type ProfileBrowsePage,
