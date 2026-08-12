@@ -51,6 +51,8 @@ const APPLICATION_ONLY_HOSTS = [
   "jotform.com",
   "slideroom.com",
   "grantplatform.com",
+  "drive.google.com",
+  "dropbox.com",
   "airtable.com",
   "typeform.com",
   "submittable.com",
@@ -202,6 +204,7 @@ function inArticleExternalLinks(
   html: string,
   finalUrl: string,
   limit = 3,
+  requirePositiveScore = false,
 ): DiscoveredSourceLink[] {
   const sourceHost = normalizedHost(finalUrl);
   const contextTitle = sourceContextTitle(source, html);
@@ -226,6 +229,7 @@ function inArticleExternalLinks(
     }
   }
   return [...byHost.values()]
+    .filter((value) => !requirePositiveScore || value.score > 0)
     .sort((left, right) => right.score - left.score || left.candidate.url.localeCompare(right.candidate.url))
     .map((value) => value.candidate)
     .slice(0, limit);
@@ -314,7 +318,7 @@ export function discoverSourceLinks(
     );
   }
   if (source.discoveryAdapterId === "transartists-detail")
-    return inArticleExternalLinks(source, html, finalUrl, 1);
+    return inArticleExternalLinks(source, html, finalUrl, 1, true);
   if (source.discoveryAdapterId === "resartis-index") {
     return detailIndex(
       source,
@@ -328,6 +332,6 @@ export function discoverSourceLinks(
     }));
   }
   if (source.discoveryAdapterId === "resartis-detail")
-    return inArticleExternalLinks(source, html, finalUrl, 1);
+    return inArticleExternalLinks(source, html, finalUrl, 1, true);
   return [];
 }
