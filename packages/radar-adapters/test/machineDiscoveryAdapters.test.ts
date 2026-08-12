@@ -71,7 +71,7 @@ test("Grants.gov records become canonical detail sources with lifecycle cadence"
     data: {
       hitCount: 2,
       oppHits: [
-        { id: "363271", title: "  Reel American  ", agency: "U.S. Mission to Jordan", oppStatus: "posted" },
+        { id: "363271", title: "  Reel American  ", agency: "U.S. Mission to Jordan", openDate: "07/22/2026", closeDate: "08/31/2026", oppStatus: "posted" },
         { id: 123, title: "Archived Arts Grant", oppStatus: "archived" },
       ],
     },
@@ -96,6 +96,14 @@ test("Grants.gov records become canonical detail sources with lifecycle cadence"
       reviewNote: "Canonical Grants.gov detail URL emitted by the official public API.",
     },
     checkIntervalHours: 24,
+    discoveryMachineRecord: {
+      title: "Reel American",
+      organizationName: "U.S. Mission to Jordan",
+      openDate: "2026-07-22",
+      deadlineDate: "2026-08-31",
+      applicationUrl: "https://www.grants.gov/search-results-detail/363271",
+      evidenceUrl: "https://api.grants.gov/v1/api/search2",
+    },
   });
   assert.equal(links[1]?.checkIntervalHours, 8_760);
 });

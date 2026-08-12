@@ -11,8 +11,11 @@ const LONG_TERM_CHECK_INTERVAL_HOURS = 8_760;
 
 type GrantsGovHit = {
   id?: string | number;
+  number?: string;
   title?: string;
   agency?: string;
+  openDate?: string;
+  closeDate?: string;
   oppStatus?: string;
 };
 
@@ -70,6 +73,14 @@ function isoDate(value: string | undefined): string | undefined {
   if (!value) return undefined;
   const date = new Date(value);
   return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 10) : undefined;
+}
+
+function usDate(value: string | undefined): string | undefined {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value?.trim() ?? "");
+  if (!match) return undefined;
+  const [, month, day, year] = match;
+  const normalized = `${year}-${month}-${day}`;
+  return isoDate(normalized) === normalized ? normalized : undefined;
 }
 
 function nextDeadline(values: string[] | undefined, now: Date): string | undefined {
@@ -207,6 +218,14 @@ export function grantsGovLinksFromResponse(
       checkIntervalHours: externalStatus === "posted" || externalStatus === "forecasted"
         ? 24
         : LONG_TERM_CHECK_INTERVAL_HOURS,
+      discoveryMachineRecord: {
+        title: title.slice(0, 240),
+        ...(agency ? { organizationName: agency.slice(0, 240) } : {}),
+        ...(usDate(hit.openDate) ? { openDate: usDate(hit.openDate) } : {}),
+        ...(usDate(hit.closeDate) ? { deadlineDate: usDate(hit.closeDate) } : {}),
+        applicationUrl: `${GRANTS_GOV_DETAIL_ROOT}/${id}`,
+        evidenceUrl: GRANTS_GOV_API_ENDPOINT,
+      },
     }];
   });
 }
