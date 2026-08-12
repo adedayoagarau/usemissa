@@ -420,9 +420,12 @@ export async function fetchMachineDiscoverySource(
   }
   if (source.discoveryAdapterId === "nyfa-visual-arts") {
     const response = await fetcher(source.url, { headers: { accept: "text/html", "user-agent": "MissaRadar/1.0 (+https://www.usemissa.com; official-source; evidence-only)" }, signal: AbortSignal.timeout(30_000) });
-    if (!response.ok) throw new Error(`NYFA visual arts archive HTTP ${response.status}`);
-    const rawContent = await response.text();
-    return { finalUrl: response.url || source.url, rawContent, links: nyfaVisualArtsLinksFromHtml(rawContent, source.id) };
+    if (response.ok) {
+      const rawContent = await response.text();
+      return { finalUrl: response.url || source.url, rawContent, links: nyfaVisualArtsLinksFromHtml(rawContent, source.id) };
+    }
+    if (response.status !== 403 && response.status !== 429) throw new Error(`NYFA visual arts archive HTTP ${response.status}`);
+    return fetchNyfaVisualArtsWithBrowser(source);
   }
   if (source.discoveryAdapterId === "sundance-deadlines") {
     const response = await fetcher(source.url, {
@@ -495,4 +498,26 @@ export async function fetchMachineDiscoverySource(
     rawContent,
     links: grantsGovLinksFromResponse(payload, source.id),
   };
+}
+
+/**
+ * NYFA is protected by a browser challenge on the Railway egress IPs. Keep
+ * this escape hatch source-specific and bounded; the normal HTTP path remains
+ * authoritative for all other machine adapters.
+ */
+async function fetchNyfaVisualArtsWithBrowser(source: Source): Promise<MachineDiscoveryResult> {
+  const { chromium } = await import("playwright");
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage({
+      userAgent: "Mozilla/5.0 (compatible; MissaRadar/1.0; +https://www.usemissa.com)",
+    });
+    const response = await page.goto(source.url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+    if (!response || !response.ok()) throw new Error(`NYFA visual arts browser HTTP ${response?.status() ?? "empty"}`);
+    await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => undefined);
+    const rawContent = await page.content();
+    return { finalUrl: page.url() || source.url, rawContent, links: nyfaVisualArtsLinksFromHtml(rawContent, source.id) };
+  } finally {
+    await browser.close();
+  }
 }
