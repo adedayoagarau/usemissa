@@ -118,8 +118,8 @@ test('machine feed records sharing one canonical page remain distinct calls', as
     },
   };
   const engine = new RadarEngine({ store: createStore(), fetcher, extractor, clock });
-  const first = engine.addSource({ name: 'Cultural Residencies', url: sharedUrl, kind: 'organization-website' });
-  const second = engine.addSource({ name: 'Artistic Debuts', url: sharedUrl, kind: 'organization-website' });
+  const first = engine.addSource({ name: 'Domestic Indemnity Program 1', url: sharedUrl, kind: 'organization-website' });
+  const second = engine.addSource({ name: 'Domestic Indemnity Program 2', url: sharedUrl, kind: 'organization-website' });
   first.discoveryExternalId = 'official:residencies';
   second.discoveryExternalId = 'official:debuts';
 
@@ -128,8 +128,8 @@ test('machine feed records sharing one canonical page remain distinct calls', as
   assert.equal(report.opportunitiesCreated.length, 2);
   assert.equal(engine.store.opportunities.size, 2);
   assert.deepEqual([...engine.store.opportunities.values()].map((opportunity) => opportunity.fields.title).sort(), [
-    'Artistic Debuts',
-    'Cultural Residencies',
+    'Domestic Indemnity Program 1',
+    'Domestic Indemnity Program 2',
   ]);
 });
 
