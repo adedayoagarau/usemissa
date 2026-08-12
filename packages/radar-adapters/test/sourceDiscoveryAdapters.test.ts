@@ -91,7 +91,7 @@ test("NewPages detail discovery resolves the official host and drops page furnit
   assert.deepEqual(discoverSourceLinks(detail, html, detail.url), [
     {
       url: "https://missourireview.com/submissions/contests/jeffrey-e-smith-editors-prize/",
-      title: "www.missourireview.com/contests/jeffrey-e-smith-editors-prize/",
+      title: "Jeffrey E. Smith Editors' Prize",
       kind: "organization-website",
       registryTier: 0,
       followsOutboundLinks: false,
@@ -158,12 +158,59 @@ test("Commonwealth detail discovery resolves the original host call", () => {
   assert.deepEqual(discoverSourceLinks(detail, html, detail.url), [
     {
       url: "https://thesimplescriptproject.com/home/",
-      title: "Continue Reading",
+      title: "The Simple Script Writers Project",
       kind: "organization-website",
       registryTier: 0,
       followsOutboundLinks: false,
       discoveredFromSourceId: "commonwealth-detail",
     },
+  ]);
+});
+
+test("detail discovery treats a linked archive as a discovery root, not a canonical call", () => {
+  const detail = source({
+    id: "headlight-detail",
+    name: "The Headlight Review Seeks Mighty Micros",
+    url: "https://www.newpages.com/guide-submission-opportunities/headlight-review-mighty-micros-call/",
+    discoveryAdapterId: "newpages-detail",
+  });
+  const html = `
+    <main>
+      <p>Submissions are open for Mighty Micros.</p>
+      <a href="https://www.theheadlightreview.com/issues/volume-3/mighty-micros">
+        Read the first volume here
+      </a>
+    </main>
+  `;
+
+  assert.deepEqual(discoverSourceLinks(detail, html, detail.url), [
+    {
+      url: "https://www.theheadlightreview.com/",
+      title: "The Headlight Review Seeks Mighty Micros",
+      kind: "directory",
+      registryTier: 1,
+      followsOutboundLinks: true,
+      discoveredFromSourceId: "headlight-detail",
+    },
+  ]);
+});
+
+test("detail discovery excludes community-chat destinations from canonical hosts", () => {
+  const detail = source({
+    id: "project-detail",
+    name: "Project Infinity Writing Contest",
+    url: "https://www.newpages.com/guide-submission-opportunities/project-infinity/",
+    discoveryAdapterId: "newpages-detail",
+  });
+  const html = `
+    <main>
+      <a href="https://projectinfinitybp.org/">Official site</a>
+      <a href="https://fluxer.gg/example">Community server</a>
+    </main>
+  `;
+
+  assert.deepEqual(discoverSourceLinks(detail, html, detail.url).map((link) => link.url), [
+    "https://projectinfinitybp.org/",
   ]);
 });
 
@@ -257,7 +304,7 @@ test("Music In Africa detail discovery keeps the in-article application host", (
   assert.deepEqual(discoverSourceLinks(detail, html, detail.url), [
     {
       url: "https://cart.sxsw.com/acceleratorapps/84235/edit",
-      title: "here",
+      title: "Open call: 2027 SXSW Pitch for global start-ups",
       kind: "organization-website",
       registryTier: 0,
       followsOutboundLinks: false,

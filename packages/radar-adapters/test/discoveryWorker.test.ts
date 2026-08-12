@@ -145,6 +145,29 @@ test("discovery self-heals an existing generic child with its site schema", () =
   assert.equal(existing.discoveredFromSourceId, "directory-source");
 });
 
+test("discovery replaces a hostname placeholder with the call context", () => {
+  const existing: Source = {
+    id: "existing-canonical",
+    name: "example.org",
+    url: "https://example.org/apply",
+    kind: "organization-website",
+    registryTier: 0,
+    followsOutboundLinks: false,
+    checkIntervalHours: 24,
+    active: true,
+    consecutiveFailures: 0,
+  };
+
+  assert.equal(mergeDiscoveredSourceMetadata(existing, {
+    url: existing.url,
+    title: "North River Poetry Prize",
+    kind: "organization-website",
+    registryTier: 0,
+    followsOutboundLinks: false,
+  }, "directory-source"), true);
+  assert.equal(existing.name, "North River Poetry Prize");
+});
+
 test("discovery sends persisted validators on freshness checks", () => {
   const headers = discoveryRequestHeaders({
     id: "source-with-validators",

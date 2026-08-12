@@ -332,7 +332,18 @@ export function mergeDiscoveredSourceMetadata(source: Source, link: DiscoveryLin
   assign("followsOutboundLinks", link.followsOutboundLinks);
   assign("discoveryAdapterId", link.discoveryAdapterId);
   assign("discoveredFromSourceId", link.discoveredFromSourceId ?? parentSourceId);
+  if (link.title && isGenericSourceName(source.name, source.url)) assign("name", link.title);
   return changed;
+}
+
+function isGenericSourceName(name: string, url: string): boolean {
+  const normalized = name.toLowerCase().replace(/^www\./, "").replace(/\/$/, "").trim();
+  if (["here", "continue reading", "read more", "official site", "website"].includes(normalized)) return true;
+  try {
+    return normalized === new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return false;
+  }
 }
 
 function sourceName(link: DiscoveryLink, parent: Source): string {

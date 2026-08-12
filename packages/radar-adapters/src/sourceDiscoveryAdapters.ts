@@ -33,7 +33,12 @@ const NON_CALL_HOSTS = [
   "pinterest.com",
   "tiktok.com",
   "siege.ai",
+  "fluxer.gg",
+  "discord.gg",
+  "discord.com",
 ];
+
+const ARCHIVE_LINK_WORDS = /(?:first|previous|past)\s+(?:volume|issue)|\barchive\b|\bsample\s+(?:issue|work)\b/i;
 
 function decodeHtmlText(value: string): string {
   return value
@@ -150,29 +155,45 @@ function linkSpecificity(link: HtmlLink): number {
   return callSignal + Math.min(pathSegments, 6);
 }
 
+function sourceContextTitle(source: Source, html: string): string {
+  const host = normalizedHost(source.url);
+  const normalizedName = source.name.toLowerCase().replace(/^www\./, "").trim();
+  if (normalizedName && normalizedName !== host && normalizedName !== `${host}/`) {
+    return decodeHtmlText(source.name).slice(0, 240);
+  }
+  const heading = mainContent(html).match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
+  const pageTitle = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+  return decodeHtmlText(heading ?? pageTitle ?? source.name).slice(0, 240);
+}
+
 function inArticleExternalLinks(
   source: Source,
   html: string,
   finalUrl: string,
 ): DiscoveredSourceLink[] {
   const sourceHost = normalizedHost(finalUrl);
-  const byHost = new Map<string, DiscoveredSourceLink>();
+  const contextTitle = sourceContextTitle(source, html);
+  const byHost = new Map<string, { candidate: DiscoveredSourceLink; score: number }>();
   for (const link of htmlLinks(mainContent(html), finalUrl)) {
     const host = normalizedHost(link.url);
     if (host === sourceHost || isNonCallHost(host)) continue;
+    const isArchiveLink = ARCHIVE_LINK_WORDS.test(link.title ?? "");
+    const candidateUrl = isArchiveLink ? `${new URL(link.url).origin}/` : link.url;
     const candidate: DiscoveredSourceLink = {
-      ...link,
-      kind: "organization-website",
-      registryTier: 0,
-      followsOutboundLinks: false,
+      url: candidateUrl,
+      title: contextTitle,
+      kind: isArchiveLink ? "directory" : "organization-website",
+      registryTier: isArchiveLink ? 1 : 0,
+      followsOutboundLinks: isArchiveLink,
       discoveredFromSourceId: source.id,
     };
+    const score = linkSpecificity(link) - (isArchiveLink ? 20 : 0);
     const existing = byHost.get(host);
-    if (!existing || linkSpecificity(link) > linkSpecificity(existing)) {
-      byHost.set(host, candidate);
+    if (!existing || score > existing.score) {
+      byHost.set(host, { candidate, score });
     }
   }
-  return [...byHost.values()].slice(0, 3);
+  return [...byHost.values()].map((value) => value.candidate).slice(0, 3);
 }
 
 /** Convert a source page into canonical follow-up sources using its explicit site schema. */
