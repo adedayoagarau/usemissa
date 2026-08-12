@@ -35,6 +35,7 @@ test("the registry opts Creative Europe into the official API connector", () => 
   );
   assert.equal(source?.discoveryAdapterId, "eu-funding-api");
   assert.equal(source?.checkIntervalHours, 24);
+  assert.equal(source?.followsOutboundLinks, true);
 });
 
 test("EU Funding records keep concurrent calls sharing one canonical page", () => {

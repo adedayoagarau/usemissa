@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "generatedAt": "2026-08-12T08:49:02.041Z",
+  "generatedAt": "2026-08-12T08:51:15.992Z",
   "verticals": [
     {
       "id": "literary-fiction",
@@ -8629,7 +8629,7 @@
       "checkIntervalHours": 24,
       "active": true,
       "organizationName": "Creative Europe",
-      "followsOutboundLinks": false,
+      "followsOutboundLinks": true,
       "discoveryAdapterId": "eu-funding-api",
       "taxonomyTermIds": [],
       "trust": {

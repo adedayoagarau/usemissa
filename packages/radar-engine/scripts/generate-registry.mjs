@@ -187,7 +187,7 @@ const INTL_GRANTS = [
   ['Pro Helvetia', 'https://prohelvetia.ch/en/funding', 'CH'],
   ['Flanders Arts Institute', 'https://www.flandersartsinstitute.be/en/opportunities', 'BE'],
   ['Mondriaan Fund', 'https://www.mondriaanfond.nl/en/apply', 'NL'],
-  ['Creative Europe', 'https://culture.ec.europa.eu/creative-europe', 'EU', { checkIntervalHours: 24, discoveryAdapterId: 'eu-funding-api' }],
+  ['Creative Europe', 'https://culture.ec.europa.eu/creative-europe', 'EU', { checkIntervalHours: 24, discoveryAdapterId: 'eu-funding-api', followsOutboundLinks: true }],
   ['On the Move', 'https://on-the-move.org/funding', 'EU'],
   ['TransArtists Open Calls', 'https://www.transartists.org/en/transartists-calls', 'EU', { tier: 2, checkIntervalHours: 24, discoveryAdapterId: 'transartists-index', followsOutboundLinks: true }],
   ['Prince Claus Fund', 'https://princeclausfund.org/', 'NL'],

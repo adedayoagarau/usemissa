@@ -2061,7 +2061,7 @@ export const BULK_SOURCES: SourceRegistryEntry[] = [
     "checkIntervalHours": 24,
     "active": true,
     "organizationName": "Creative Europe",
-    "followsOutboundLinks": false,
+    "followsOutboundLinks": true,
     "discoveryAdapterId": "eu-funding-api"
   },
   {
