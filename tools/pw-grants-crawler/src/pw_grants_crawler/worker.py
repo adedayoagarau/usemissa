@@ -18,6 +18,7 @@ from .profile_output import write_profile_result
 from .profile_source import PwProfileSchema
 from .runner import CrawlConfig, crawl_to_manifest
 from .source_schema import calendar_month_range
+from .radar_sync import RADAR_ADAPTERS, sync_radar_adapter
 
 
 def run_mode(backfill_status: str) -> str:
@@ -50,6 +51,8 @@ class WorkerConfig:
     profile_request_delay: float = 10.0
     profile_freshness_hours: int = 168
     max_profile_images: int = 1
+    radar_sync_adapters: tuple[str, ...] = ()
+    radar_sync_only: bool = False
 
 
 def calendar_bounds(
@@ -258,12 +261,14 @@ def run_worker(
     if harness:
         harness.heartbeat("crawler", owner, "starting", release=release)
     while True:
-        run_id = run_once(
-            config, store, owner=owner, force_backfill=force_backfill,
-            harness=harness, release=release,
-        )
+        run_id = None
+        if not config.radar_sync_only:
+            run_id = run_once(
+                config, store, owner=owner, force_backfill=force_backfill,
+                harness=harness, release=release,
+            )
         profile_run_ids: list[str] = []
-        if config.include_profile_sources:
+        if config.include_profile_sources and not config.radar_sync_only:
             for kind in config.profile_kinds:
                 profile_run_id = run_profile_once(
                     config,
@@ -274,16 +279,23 @@ def run_worker(
                 )
                 if profile_run_id:
                     profile_run_ids.append(profile_run_id)
+        radar_run_ids: list[str] = []
+        for adapter in config.radar_sync_adapters:
+            radar_run_id = sync_radar_adapter(store, adapter)
+            if radar_run_id:
+                radar_run_ids.append(radar_run_id)
         force_backfill = False
         if run_id:
             print(f"[gary-worker] completed run={run_id}")
         for profile_run_id in profile_run_ids:
             print(f"[gary-worker] completed profile_run={profile_run_id}")
-        if not run_id and not profile_run_ids and harness:
+        for radar_run_id in radar_run_ids:
+            print(f"[gary-worker] completed radar_sync_run={radar_run_id}")
+        if not run_id and not profile_run_ids and not radar_run_ids and harness:
             harness.heartbeat("crawler", owner, "idle", release=release)
         if once:
             return
-        did_work = bool(run_id or profile_run_ids)
+        did_work = bool(run_id or profile_run_ids or radar_run_ids)
         time.sleep(config.poll_seconds if not did_work else min(config.poll_seconds, 5))
 
 
@@ -337,6 +349,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--profile-request-delay", type=float, default=float(os.environ.get("GARY_PROFILE_REQUEST_DELAY", "10")))
     parser.add_argument("--profile-freshness-hours", type=int, default=int(os.environ.get("GARY_PROFILE_FRESHNESS_HOURS", "168")))
     parser.add_argument("--max-profile-images", type=int, default=int(os.environ.get("GARY_MAX_PROFILE_IMAGES", "1")))
+    parser.add_argument("--radar-sync-adapters", default=os.environ.get("GARY_RADAR_SYNC_ADAPTERS", ""))
+    parser.add_argument("--radar-sync-only", action="store_true", default=os.environ.get("GARY_RADAR_SYNC_ONLY", "").casefold() in {"1", "true", "yes", "on"})
     parser.add_argument("--once", action="store_true", help="Run one due backfill/refresh and exit.")
     parser.add_argument(
         "--force-backfill",
@@ -371,6 +385,10 @@ def main(argv: list[str] | None = None) -> int:
         if args.profile_kind == "both"
         else (args.profile_kind,)
     )
+    radar_sync_adapters = tuple(adapter.strip() for adapter in args.radar_sync_adapters.split(",") if adapter.strip())
+    unknown_adapters = sorted(set(radar_sync_adapters) - set(RADAR_ADAPTERS))
+    if unknown_adapters:
+        raise SystemExit(f"unsupported Gary Radar sync adapters: {', '.join(unknown_adapters)}")
     store = NeonStore(database_url)
     store.ensure_schema()
     start_health_server()
@@ -400,6 +418,8 @@ def main(argv: list[str] | None = None) -> int:
         profile_request_delay=args.profile_request_delay,
         profile_freshness_hours=args.profile_freshness_hours,
         max_profile_images=args.max_profile_images,
+        radar_sync_adapters=radar_sync_adapters,
+        radar_sync_only=args.radar_sync_only,
     )
     run_worker(
         config, store, once=args.once, force_backfill=args.force_backfill,
