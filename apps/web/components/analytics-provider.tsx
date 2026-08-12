@@ -42,6 +42,8 @@ export function browserAttributionProperties(): Record<string, string> {
     if (value) properties[parameter] = value.slice(0, 200);
   }
 
+  properties.device_class = window.innerWidth < 768 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop';
+
   if (document.referrer) {
     try {
       const referrerHost = new URL(document.referrer).hostname;
@@ -54,6 +56,22 @@ export function browserAttributionProperties(): Record<string, string> {
   }
 
   return properties;
+}
+
+export function recordPublicAnalyticsEvent(
+  eventName: `public.${string}`,
+  properties?: Record<string, unknown>,
+): void {
+  if (typeof window === 'undefined') return;
+
+  const payload = { ...browserAttributionProperties(), ...(properties ?? {}), path: window.location.pathname };
+  captureProductEvent(eventName, payload);
+  void fetch('/api/analytics/events', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ eventName, path: window.location.pathname, properties: payload }),
+    keepalive: true,
+  }).catch(() => undefined);
 }
 
 export function AnalyticsProvider({ children }: { children: ReactNode }) {

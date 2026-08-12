@@ -1,29 +1,41 @@
 'use client';
 
 import { ArrowRight, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { browserAttributionProperties, recordPublicAnalyticsEvent } from '@/components/analytics-provider';
 import styles from './waitlist.module.css';
 
 export function WaitlistForm() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const hasStarted = useRef(false);
+
+  function markFormStarted() {
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+    recordPublicAnalyticsEvent('public.waitlist_form_started');
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    markFormStarted();
+    recordPublicAnalyticsEvent('public.waitlist_submit_attempted');
     setStatus('pending');
     setMessage('');
 
     try {
+      const campaign = browserAttributionProperties();
       const response = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, website: '', source: '/waitlist' }),
+        body: JSON.stringify({ email, website: '', source: '/waitlist', campaign }),
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
         setStatus('error');
         setMessage(body.error ?? 'We could not save your place. Please try again.');
+        recordPublicAnalyticsEvent('public.waitlist_join_failed', { reason: response.status >= 500 ? 'unavailable' : response.status === 429 ? 'rate_limited' : 'rejected' });
         return;
       }
       setStatus('success');
@@ -31,6 +43,7 @@ export function WaitlistForm() {
     } catch {
       setStatus('error');
       setMessage('We could not save your place. Please try again.');
+      recordPublicAnalyticsEvent('public.waitlist_join_failed', { reason: 'network' });
     }
   }
 
@@ -57,9 +70,11 @@ export function WaitlistForm() {
         required
         maxLength={320}
         aria-describedby={status === 'error' ? 'waitlist-message' : undefined}
+        aria-invalid={status === 'error' || undefined}
+        onFocus={markFormStarted}
       />
       <input className={styles.honeypot} name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
-      <button type="submit" disabled={status === 'pending'}>
+      <button type="submit" disabled={status === 'pending'} onClick={() => recordPublicAnalyticsEvent('public.waitlist_cta_clicked')}>
         <span>{status === 'pending' ? 'Joining…' : 'Join the waitlist'}</span>
         <ArrowRight aria-hidden="true" size={18} strokeWidth={1.8} />
       </button>

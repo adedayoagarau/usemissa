@@ -1,0 +1,28 @@
+# Missa
+
+> Missa helps creators and organizations find, prepare for, and track creative opportunities. The public waitlist is currently open.
+
+## Public pages
+
+- [Join the Missa waitlist](https://www.usemissa.com/waitlist): sign up for an invitation when Missa is ready.
+- [Waitlist privacy](https://www.usemissa.com/privacy): how Missa handles information shared through the public waitlist.
+
+## What Missa helps with
+
+- Find grants, residencies, fellowships, contests, magazines, commissions, awards, and open calls that fit your work.
+- Compare deadlines, fees, eligibility, locations, required materials, opportunity types, and official sources.
+- Prepare application materials and submission notes.
+- Keep deadlines in view and receive reminders as they approach.
+- Follow the official source when an opportunity is hosted on another website.
+
+## Evidence and trust
+
+- Missa keeps the official source close to the opportunity.
+- Missa labels information that is unknown or conflicting.
+- Missa does not silently fill in missing facts.
+- The official host remains the authority for current requirements and applications.
+
+## Machine-readable discovery
+
+- [Robots policy](https://www.usemissa.com/robots.txt)
+- [XML sitemap](https://www.usemissa.com/sitemap.xml)
