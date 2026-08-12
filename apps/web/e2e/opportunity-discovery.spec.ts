@@ -42,42 +42,24 @@ test('legacy preview redirects to the canonical catalogue without dropping filte
   expect(response.headers().location).toBe('/opportunities?q=poetry&type=grant');
 });
 
-test('public crawl endpoints expose only the intended discovery surfaces', async ({ request }) => {
+test('public crawl endpoints expose only the waitlist acquisition surface', async ({ request }) => {
   const robots = await request.get('/robots.txt');
   expect(robots.status()).toBe(200);
-  expect(await robots.text()).toContain('/sitemap.xml');
-  expect(await robots.text()).toContain('/opportunities');
-  expect(await robots.text()).not.toContain('/opportunities-preview');
+  const robotsBody = await robots.text();
+  expect(robotsBody).toContain('/sitemap.xml');
+  expect(robotsBody).toContain('/waitlist');
+  expect(robotsBody).toContain('/privacy');
+  expect(robotsBody).toContain('/llms.txt');
+  expect(robotsBody).not.toContain('/opportunities');
+  expect(robotsBody).not.toContain('/opportunities-preview');
 
   const sitemap = await request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   const sitemapBody = await sitemap.text();
-  expect(sitemapBody).toContain('/opportunities');
+  expect(sitemapBody).toContain('/waitlist');
+  expect(sitemapBody).toContain('/privacy');
+  expect(sitemapBody).not.toContain('/opportunities');
   expect(sitemapBody).not.toContain('/opportunities-preview');
-  expect(sitemapBody).toContain('/for-organizations');
-  expect(sitemapBody).toContain('/about');
-  expect(sitemapBody).toContain('/methodology');
-  expect(sitemapBody).toContain('/discover/contests');
-  expect(sitemapBody).toContain('<lastmod>2026-08-07T00:00:00.000Z</lastmod>');
-
-  const contests = await request.get('/discover/contests');
-  expect(contests.status()).toBe(200);
-  const contestsHtml = await contests.text();
-  expect(contestsHtml).toContain('Contests for creators');
-  expect(contestsHtml).toContain('Compare these facts');
-  expect(contestsHtml).toContain('application/ld+json');
-
-  const guide = await request.get('/guides/verify-an-opportunity-before-applying');
-  expect(guide.status()).toBe(200);
-  const guideHtml = await guide.text();
-  expect(guideHtml).toContain('Questions creators ask');
-  expect(guideHtml).toContain('FAQPage');
-
-  for (const path of ['/about', '/methodology']) {
-    const response = await request.get(path);
-    expect(response.status()).toBe(200);
-    expect((await response.text())).toContain('application/ld+json');
-  }
 });
 
 test('public discovery APIs return bounded JSON without leaking an auth failure', async ({ request }) => {

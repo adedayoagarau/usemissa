@@ -35,11 +35,106 @@ test('For Organizations distinguishes available, limited, and planned capability
   await expect(page.locator('main')).not.toContainText(/132 submissions|emails queued|Northline Arts Foundation/iu);
 });
 
-test('retired waitlist preserves bounded campaign attribution and opens signup', async ({ page }) => {
+test('waitlist preserves bounded campaign attribution and keeps the public conversion path', async ({ page }) => {
   await page.goto('/waitlist?utm_source=bedside&utm_campaign=public-redesign&secret=drop-me');
-  await expect(page).toHaveURL(/\/signup\?utm_source=bedside&utm_campaign=public-redesign$/u);
-  await expect(page.getByRole('heading', { name: /Create|Sign up|Join/u })).toBeVisible();
+  await expect(page).toHaveURL(/\/waitlist\?utm_source=bedside&utm_campaign=public-redesign$/u);
+  await expect(page.getByRole('heading', { name: /There is a god in every door/u })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Join the waitlist', exact: true })).toBeVisible();
   expect(page.url()).not.toContain('secret=');
+});
+
+test('waitlist exposes answer-first content to crawlers and AI search', async ({ page }) => {
+  await page.goto('/waitlist');
+  await expect(page.locator('main')).toContainText('Missa helps creators find, prepare for, and track creative opportunities.');
+  await expect(page.locator('main')).toContainText('Missa earns trust by showing where its information comes from');
+
+  const jsonLd = await page.locator('script[type="application/ld+json"]').evaluateAll((nodes) =>
+    nodes.map((node) => JSON.parse(node.textContent ?? '{}') as {
+      '@type'?: string;
+      mainEntity?: Array<{ name?: string; acceptedAnswer?: { text?: string } }>;
+    }),
+  );
+  const faqSchema = jsonLd.find((item) => item['@type'] === 'FAQPage');
+  expect(faqSchema).toBeDefined();
+  expect(faqSchema?.mainEntity).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      name: 'Can I trust Missa?',
+      acceptedAnswer: expect.objectContaining({ text: expect.stringContaining('showing where its information comes from') }),
+    }),
+  ]));
+});
+
+test('waitlist includes its FAQ answers in the initial HTML response', async ({ request }) => {
+  const response = await request.get('/waitlist');
+  expect(response.ok()).toBeTruthy();
+  const html = await response.text();
+  expect(html).toContain('Missa earns trust by showing where its information comes from');
+  expect(html).toContain('FAQPage');
+});
+
+test('waitlist exposes its public crawler surface', async ({ request }) => {
+  const [robotsResponse, sitemapResponse, llmsResponse] = await Promise.all([
+    request.get('/robots.txt'),
+    request.get('/sitemap.xml'),
+    request.get('/llms.txt'),
+  ]);
+  expect(robotsResponse.ok()).toBeTruthy();
+  expect(sitemapResponse.ok()).toBeTruthy();
+  expect(llmsResponse.ok()).toBeTruthy();
+  const robots = await robotsResponse.text();
+  const sitemap = await sitemapResponse.text();
+  const llms = await llmsResponse.text();
+  expect(robots).toContain('User-Agent: OAI-SearchBot');
+  expect(robots).toContain('Allow: /waitlist');
+  expect(robots).toContain('Allow: /llms.txt');
+  expect(robots).toContain('Disallow: /');
+  expect(sitemap).toContain('/waitlist');
+  expect(llms).toContain('Missa helps creators and organizations find, prepare for, and track creative opportunities.');
+  expect(llms).toContain('official source');
+});
+
+test('waitlist form sends only approved campaign fields', async ({ page }) => {
+  await page.route('**/api/waitlist', async (route) => {
+    const request = route.request();
+    const body = request.postDataJSON() as Record<string, unknown>;
+    expect(body).toMatchObject({ source: '/waitlist', website: '' });
+    expect(body.campaign).toMatchObject({ utm_source: 'bedside', utm_campaign: 'public-redesign', device_class: 'desktop' });
+    expect(Object.keys(body.campaign as Record<string, unknown>).every((key) => ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'referrer_host', 'device_class'].includes(key))).toBeTruthy();
+    await route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ accepted: true }) });
+  });
+  await page.goto('/waitlist?utm_source=bedside&utm_campaign=public-redesign&secret=drop-me');
+  await page.getByLabel('Email address').fill('test@example.com');
+  await page.getByRole('button', { name: 'Join the waitlist', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('You’re on the list');
+});
+
+test('waitlist records the bounded acquisition funnel events', async ({ page }) => {
+  const eventNames: string[] = [];
+  await page.route('**/api/analytics/events', async (route) => {
+    const body = route.request().postDataJSON() as { eventName?: string };
+    if (body.eventName) eventNames.push(body.eventName);
+    await route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ accepted: true }) });
+  });
+  await page.route('**/api/waitlist', async (route) => {
+    await route.fulfill({ status: 202, contentType: 'application/json', body: JSON.stringify({ accepted: true }) });
+  });
+  await page.goto('/waitlist');
+  await page.getByLabel('Email address').fill('test@example.com');
+  await page.getByRole('button', { name: 'Join the waitlist', exact: true }).click();
+  await expect.poll(() => eventNames).toEqual(expect.arrayContaining([
+    'public.waitlist_form_started',
+    'public.waitlist_cta_clicked',
+    'public.waitlist_submit_attempted',
+  ]));
+});
+
+test('production public shell can be restricted to the waitlist surface', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, '__missaProductionGate', { value: true });
+  });
+  await page.goto('/waitlist');
+  await expect(page.getByRole('heading', { name: /There is a god in every door/u })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Privacy' })).toBeVisible();
 });
 
 test('public system reflows cleanly at phone width', async ({ page }) => {
