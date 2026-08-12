@@ -434,6 +434,7 @@ test("Res Artis detail discovery resolves one canonical official host", () => {
     <main>
       <p>Applications close in 2027.</p>
       <a href="https://www.banffcentre.ca/node/6970">Banff Centre campus</a>
+      <a href="https://www.banffcentre.ca/programs/musical-theatre-dancers-intensive-2027">Musical Theatre Dancers Intensive 2027</a>
       <a href="http://url.banffcentre.ca/bgmg6Y">Apply Online</a>
     </main>
     <footer><a href="https://www.facebook.com/resartis">Facebook</a></footer>
@@ -441,13 +442,49 @@ test("Res Artis detail discovery resolves one canonical official host", () => {
 
   assert.deepEqual(discoverSourceLinks(detail, html, detail.url), [
     {
-      url: "https://www.banffcentre.ca/node/6970",
+      url: "https://www.banffcentre.ca/programs/musical-theatre-dancers-intensive-2027",
       title: "Musical Theatre Dancers Intensive 2027",
       kind: "organization-website",
       registryTier: 0,
       followsOutboundLinks: false,
       discoveredFromSourceId: "resartis-detail",
     },
+  ]);
+});
+
+test("directory details reject related host pages that do not identify the call", () => {
+  const detail = source({
+    id: "resartis-related-pages",
+    name: "Fall 2027 Artist Residency in Morocco with Green Olive Arts",
+    url: "https://resartis.org/open-call/fall-2027-artist-residency-in-morocco/",
+    discoveryAdapterId: "resartis-detail",
+  });
+  const html = `
+    <main>
+      <a href="https://greenolivearts.example/art-residency/housing-options/">Housing options</a>
+      <a href="https://banff.example/node/6970">Banff Centre campus</a>
+      <a href="https://venue.example/the-exhibition-space-venice/">Exhibition space Venice</a>
+    </main>
+  `;
+
+  assert.deepEqual(discoverSourceLinks(detail, html, detail.url), []);
+});
+
+test("directory details accept a title-matched canonical programme page without application words", () => {
+  const detail = source({
+    id: "resartis-title-match",
+    name: "Group Residency, Orkney Islands: Wandering Rocks",
+    url: "https://resartis.org/open-call/group-residency-orkney-islands/",
+    discoveryAdapterId: "resartis-detail",
+  });
+  const html = `
+    <main>
+      <a href="https://organizer.example/programmes/group-residency-orkney/">Group Residency Programme Orkney</a>
+    </main>
+  `;
+
+  assert.deepEqual(discoverSourceLinks(detail, html, detail.url).map((link) => link.url), [
+    "https://organizer.example/programmes/group-residency-orkney/",
   ]);
 });
 
