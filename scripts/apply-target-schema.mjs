@@ -40,6 +40,7 @@ const migrationFiles = [
   '0015_admin_operations.sql',
   '0016_opportunity_intelligence.sql',
   '0017_chat_baseline.sql',
+  '0023_profile_opportunity_identity.sql',
 ];
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });

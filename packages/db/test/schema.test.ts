@@ -5,6 +5,8 @@ import {
   auditEvents,
   memberships,
   opportunityPreferences,
+  opportunityProfileLinks,
+  opportunityProfileIdentityChecks,
   opportunities,
   opportunitySourceEvidence,
   opportunitySources,
@@ -211,4 +213,14 @@ test("tracker import schema keeps replay receipts and distributed rate events du
   assert.ok(receipts.indexes.some((index) => index.config.name === "tracker_import_receipts_user_created_idx"));
   assert.ok(rateEvents.indexes.some((index) => index.config.name === "tracker_import_rate_events_scope_idx"));
   assert.ok(rateEvents.checks.some((constraint) => constraint.name === "tracker_import_rate_events_kind_check"));
+});
+
+test("profile identity schema requires durable host and name evidence", () => {
+  assert.deepEqual(opportunityProfileLinks.opportunityId.notNull, true);
+  assert.deepEqual(opportunityProfileLinks.profileId.notNull, true);
+  assert.deepEqual(opportunityProfileLinks.matchedHost.notNull, true);
+  assert.deepEqual(opportunityProfileLinks.nameScore.notNull, true);
+  assert.deepEqual(opportunityProfileLinks.evidence.notNull, true);
+  assert.deepEqual(opportunityProfileIdentityChecks.nextCheckAt.notNull, true);
+  assert.deepEqual(opportunityProfileIdentityChecks.evidence.notNull, true);
 });

@@ -5,6 +5,7 @@ import json
 from datetime import date
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlsplit
 import psycopg
 from psycopg.types.json import Jsonb
 
@@ -35,6 +36,15 @@ def stable_run_id(source_id: str, digest: str) -> str:
 def _stable_id(prefix: str, *parts: object) -> str:
     value = "\x1f".join(str(part) for part in parts)
     return f"{prefix}_" + hashlib.sha256(value.encode("utf-8")).hexdigest()[:32]
+
+
+def _normalized_host_key(url: str | None) -> str:
+    normalized = normalize_url(url)
+    if not normalized:
+        return ""
+    parsed = urlsplit(normalized)
+    host = parsed.netloc.removeprefix("www.")
+    return host or normalized
 
 
 def _text(value: object) -> object:
@@ -245,6 +255,38 @@ class NeonStore:
                     """,
                     (error[:500], retry_hours, source_id, owner),
                 )
+
+    def repair_crawl_run_to_partial(self, run_id: str, error: str) -> bool:
+        """Repair a wrongly completed crawl run whose manifest had recoverable errors."""
+
+        with self.connect_factory(self.database_url) as connection:
+            with connection.transaction():
+                row = connection.execute(
+                    """
+                    UPDATE gary_crawl_runs
+                    SET status = 'partial',
+                        error = %s,
+                        completed_at = COALESCE(completed_at, now())
+                    WHERE id = %s
+                      AND status = 'completed'
+                    RETURNING source_id
+                    """,
+                    (error[:500], run_id),
+                ).fetchone()
+                if row is None:
+                    return False
+                connection.execute(
+                    """
+                    UPDATE gary_sources
+                    SET backfill_status = 'pending',
+                        next_refresh_at = NULL,
+                        last_error = %s,
+                        updated_at = now()
+                    WHERE id = %s
+                    """,
+                    (error[:500], row[0]),
+                )
+                return True
 
     def ingest_manifest(
         self,
@@ -1004,11 +1046,15 @@ class NeonStore:
             raise ValueError(f"Unsupported profile kind: {profile_kind}")
         name = detail.get("name") or profile.get("name") or ""
         name_key = normalize_text(name)
-        canonical_key = f"profile:{profile_kind}:{name_key}"
-        identity_key_value = canonical_key
-        profile_id = _stable_id("profile", canonical_key)
         website_url = detail.get("website_url")
         normalized_website_url = normalize_url(website_url) or None
+        host_key = _normalized_host_key(website_url)
+        detail_url = source.get("detail_url") or detail.get("detail_url") or ""
+        if not host_key:
+            host_key = normalize_url(detail_url) or "unknown-host"
+        canonical_key = f"profile:{profile_kind}:{host_key}:{name_key}"
+        identity_key_value = canonical_key
+        profile_id = _stable_id("profile", canonical_key)
         connection.execute(
             """
             INSERT INTO gary_profiles(
@@ -1042,7 +1088,6 @@ class NeonStore:
             ),
         )
 
-        detail_url = source.get("detail_url") or detail.get("detail_url") or ""
         aliases = (
             ("detail", detail_url),
             ("official", website_url),
