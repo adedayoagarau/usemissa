@@ -354,13 +354,26 @@ export async function readSnapshotVersion(pool: Pool): Promise<number> {
 interface KeyedRow<T> { key: string; value: T }
 interface RowDelta<T> { upserts: Array<KeyedRow<T>>; deletes: string[] }
 
+function stableJson(value: unknown): string | undefined {
+  return JSON.stringify(value, (_key, nested: unknown) => {
+    if (!nested || typeof nested !== 'object' || Array.isArray(nested)) return nested;
+    return Object.fromEntries(
+      Object.entries(nested as Record<string, unknown>).sort(([left], [right]) => left.localeCompare(right)),
+    );
+  });
+}
+
+function jsonEqual(left: unknown, right: unknown): boolean {
+  return stableJson(left) === stableJson(right);
+}
+
 function rowDelta<T>(before: T[], after: T[], keyOf: (value: T) => string): RowDelta<T> {
   const beforeRows = new Map(before.map((value) => [keyOf(value), value]));
   const afterRows = new Map(after.map((value) => [keyOf(value), value]));
   const upserts: Array<KeyedRow<T>> = [];
   for (const [key, value] of afterRows) {
     const previous = beforeRows.get(key);
-    if (previous === undefined || JSON.stringify(previous) !== JSON.stringify(value)) upserts.push({ key, value });
+    if (previous === undefined || !jsonEqual(previous, value)) upserts.push({ key, value });
   }
   return { upserts, deletes: [...beforeRows.keys()].filter((key) => !afterRows.has(key)) };
 }
@@ -516,9 +529,9 @@ export async function saveRadarStoreDeltaToPostgres(
               || previousSource.url !== value.url
               || previousSource.registryTier !== value.registryTier
               || previousSource.followsOutboundLinks !== value.followsOutboundLinks
-              || JSON.stringify(previousSource.registryTaxonomyTermIds ?? []) !== JSON.stringify(value.registryTaxonomyTermIds ?? [])
-              || JSON.stringify(previousSource.registryGeography ?? []) !== JSON.stringify(value.registryGeography ?? [])
-              || JSON.stringify(previousSource.registryTrust ?? null) !== JSON.stringify(value.registryTrust ?? null);
+              || !jsonEqual(previousSource.registryTaxonomyTermIds ?? [], value.registryTaxonomyTermIds ?? [])
+              || !jsonEqual(previousSource.registryGeography ?? [], value.registryGeography ?? [])
+              || !jsonEqual(previousSource.registryTrust ?? null, value.registryTrust ?? null);
           })
           .map(({ key }) => key),
       );

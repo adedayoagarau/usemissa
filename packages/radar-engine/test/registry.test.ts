@@ -32,7 +32,10 @@ test('registry stats sum to total', () => {
   const stats = registryStats(reg);
   const tierSum = Object.values(stats.byTier).reduce((a, b) => a + b, 0);
   assert.equal(tierSum, stats.totalSources);
-  assert.equal(Object.values(stats.byTrustStatus).reduce((a, b) => a + b, 0), stats.totalSources);
+  assert.equal(
+    Object.values(stats.byTrustStatus).reduce((a, b) => a + b, 0),
+    stats.totalSources,
+  );
   assert.ok(stats.trustedSources > 900);
 });
 
@@ -54,4 +57,20 @@ test('trusted registry exposes explicit coverage for every selectable discipline
   assert.ok(reg.coverage.gapTerms > 0, 'unsupported terms must remain visible as gaps');
   assert.ok(reg.sources.every((source) => source.trust));
   assert.ok(reg.sources.some((source) => trustedSource(source)));
+});
+
+test('priority source families declare their site schema and correct source tier', () => {
+  const reg = assembleRegistry();
+  const byName = new Map(reg.sources.map((source) => [source.name, source]));
+
+  assert.equal(byName.get('NewPages Calls and Contests')?.discoveryAdapterId, 'newpages-index');
+  assert.equal(byName.get('Commonwealth Foundation Creative Opportunities')?.discoveryAdapterId, 'commonwealth-index');
+  assert.equal(byName.get('Music In Africa Opportunities')?.discoveryAdapterId, 'music-in-africa-index');
+  assert.equal(byName.get('African Culture Fund Calls')?.discoveryAdapterId, 'african-culture-fund-index');
+
+  for (const name of ['Annecy MIFA Pitches', 'Women in Animation Programs', 'Durban FilmMart Pitch and Finance Forum', 'Realness Institute Programmes']) {
+    const source = byName.get(name);
+    assert.equal(source?.tier, 0, `${name} must be a first-party canonical source`);
+    assert.equal(source?.followsOutboundLinks, false, `${name} must not fan out as an aggregator`);
+  }
 });

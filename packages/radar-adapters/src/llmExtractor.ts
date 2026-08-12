@@ -14,6 +14,7 @@ import type {
 import {
   CLOSED_SIGNALS,
   CLOSING_SIGNALS,
+  DeterministicExtractor,
   OPENING_SIGNALS,
   SUSPICIOUS_SIGNALS,
   findSignals,
@@ -102,16 +103,32 @@ export interface LlmExtractorOptions {
 export class LlmExtractor implements Extractor {
   private readonly client: Anthropic;
   private readonly model: string;
+  private readonly fallback: DeterministicExtractor;
+  private providerAvailable = true;
 
   constructor(private readonly clock: Clock, opts: LlmExtractorOptions = {}) {
     this.client = opts.client ?? new Anthropic({ apiKey: opts.apiKey });
-    this.model = opts.model ?? 'claude-sonnet-5';
+    this.model = opts.model ?? process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-5';
+    this.fallback = new DeterministicExtractor(clock);
   }
 
   async extract(source: Source, snapshot: PageSnapshot): Promise<OpportunityCandidate> {
+    if (!this.providerAvailable) return this.fallback.extract(source, snapshot);
     const now = this.clock.now();
     const candidateTerms = candidateTaxonomyTerms(source, snapshot.content);
-    const fields = await this.callModel(snapshot.content, candidateTerms);
+    let fields: ExtractionFields;
+    try {
+      fields = await this.callModel(snapshot.content, candidateTerms);
+    } catch (error) {
+      this.providerAvailable = false;
+      const status = typeof error === 'object' && error !== null && 'status' in error
+        ? String((error as { status?: unknown }).status ?? 'unknown')
+        : 'unknown';
+      console.warn(
+        `[missa-llm-extractor] provider request failed status=${status}; using deterministic fallback`,
+      );
+      return this.fallback.extract(source, snapshot);
+    }
     const text = snapshot.content;
 
     const deadline = deadlineFrom(fields, now);

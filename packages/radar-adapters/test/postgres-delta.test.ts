@@ -40,6 +40,37 @@ test('Radar delta persistence writes changed user rows without clearing the snap
   assert.ok(!calls.some((sql) => sql === 'delete from radar_tracked'));
 });
 
+test('Radar delta persistence ignores object key order', async () => {
+  const previous = createStore();
+  const current = createStore();
+  previous.sources.set('source_1', {
+    id: 'source_1',
+    name: 'Source',
+    url: 'https://example.org/calls',
+    kind: 'directory',
+    active: true,
+    checkIntervalHours: 24,
+    consecutiveFailures: 0,
+    registryTrust: { score: 50, status: 'needs-review', authorityKind: 'directory' },
+  });
+  current.sources.set('source_1', {
+    id: 'source_1',
+    name: 'Source',
+    url: 'https://example.org/calls',
+    kind: 'directory',
+    active: true,
+    checkIntervalHours: 24,
+    consecutiveFailures: 0,
+    registryTrust: { status: 'needs-review', authorityKind: 'directory', score: 50 },
+  });
+  const { pool, calls } = fakePool('3');
+
+  const nextVersion = await saveRadarStoreDeltaToPostgres(current, previous, pool, 3);
+
+  assert.equal(nextVersion, 3);
+  assert.deepEqual(calls, []);
+});
+
 test('Radar delta persistence dual-writes changed taxonomy exclusions', async () => {
   const previous = createStore();
   const current = createStore();

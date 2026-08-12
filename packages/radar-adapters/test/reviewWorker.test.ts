@@ -38,3 +38,9 @@ test("review suppresses unsafe destinations", () => {
   const result = reviewCandidate(candidate({ submissionState: "unsafe" }));
   assert.equal(result.decision, "suppress");
 });
+
+test("review never auto-publishes a placeholder opportunity identity", () => {
+  const result = reviewCandidate(candidate({ title: "example.org/submissions" }));
+  assert.equal(result.decision, "needs-human");
+  assert.match(result.reasons.join(" "), /identity/i);
+});

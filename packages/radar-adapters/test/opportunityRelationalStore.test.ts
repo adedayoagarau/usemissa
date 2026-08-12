@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createStore, type Opportunity } from '@missa/radar-engine';
 import { saveOpportunityProjectionToPostgres } from '../src/opportunityRelationalStore.js';
 
-test('relational projection writes source evidence and public opportunity fields', async () => {
+test('relational projection keeps extracted opportunities reviewable until evidence approval', async () => {
   const queries: Array<{ text: string; values?: unknown[] }> = [];
   const client = {
     async query(text: string, values?: unknown[]) {
@@ -61,5 +61,6 @@ test('relational projection writes source evidence and public opportunity fields
   assert.ok(queries.some(({ text }) => text.includes('insert into opportunities')));
   assert.ok(queries.some(({ text }) => text.includes('insert into opportunity_source_evidence')));
   const opportunityInsert = queries.find(({ text }) => text.includes('insert into opportunities'));
+  assert.equal(opportunityInsert?.values?.[6], 'reviewable');
   assert.equal(opportunityInsert?.values?.[23], 'available');
 });
