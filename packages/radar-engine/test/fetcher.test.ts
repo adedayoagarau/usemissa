@@ -81,3 +81,23 @@ test('official API evidence remains valid when an organization name contains per
   assert.equal(candidate.deadline.date, '2026-08-31');
   assert.deepEqual(candidate.issues, []);
 });
+
+test('official machine deadline wins over a rolling signal on the application page', () => {
+  const evidenceSource: Source = {
+    ...source,
+    discoveryMachineRecord: {
+      title: 'Graton Artist Opportunity',
+      organizationName: 'Sundance Institute',
+      deadlineDate: '2026-08-18',
+      applicationUrl: source.url,
+      evidenceUrl: 'https://www.sundance.org/deadlines/',
+    },
+  };
+  const content = machineEvidenceText(evidenceSource, 'Applications accepted on a rolling basis.');
+  const candidate = new DeterministicExtractor({ now: () => new Date('2026-08-12T00:00:00.000Z') }).extract(
+    evidenceSource,
+    { id: 'snapshot', sourceId: source.id, url: source.url, fetchedAt: '2026-08-12T00:00:00.000Z', status: 'ok', content, contentHash: 'hash' },
+  );
+  assert.equal(candidate.deadline.kind, 'exact');
+  assert.equal(candidate.deadline.date, '2026-08-18');
+});

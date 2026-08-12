@@ -133,6 +133,13 @@ export class DeterministicExtractor implements Extractor {
     const requiredMaterials = MATERIAL_VOCAB.filter(([re]) => re.test(text)).map(([, name]) => name);
     const submissionUrl = LABELED_URL_RE.exec(text)?.[1] ?? SUBMIT_URL_RE.exec(text)?.[0];
 
+    const extractedDeadline = extractDeadline(text, now);
+    const machineDeadline = source.discoveryMachineRecord?.deadlineDate;
+    const deadline = machineDeadline &&
+      (extractedDeadline.kind === 'unknown' || extractedDeadline.kind === 'rolling' || extractedDeadline.kind === 'until-filled')
+      ? { kind: 'exact' as const, date: machineDeadline, raw: `Official source deadline: ${machineDeadline}` }
+      : extractedDeadline;
+
     const candidate: OpportunityCandidate = {
       sourceId: source.id,
       discoveryExternalId: source.discoveryExternalId,
@@ -155,7 +162,7 @@ export class DeterministicExtractor implements Extractor {
         ].map((assignment) => ({ ...assignment, evidenceUrl: source.url, snapshotId: snapshot.id }));
       })(),
       openDate: extractOpenDate(text, now),
-      deadline: extractDeadline(text, now),
+      deadline,
       fee: extractFee(text),
       prize: extractPrize(text),
       eligibility,
