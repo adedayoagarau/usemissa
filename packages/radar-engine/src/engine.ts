@@ -359,6 +359,7 @@ export class RadarEngine {
     registryOrganizationName?: string;
     registryTier?: 0 | 1 | 2 | 3;
     followsOutboundLinks?: boolean;
+    discoveryAdapterId?: string;
     checkIntervalHours?: number;
   }): Source {
     const source: Source = {
@@ -379,6 +380,7 @@ export class RadarEngine {
       registryOrganizationName: input.registryOrganizationName,
       registryTier: input.registryTier,
       followsOutboundLinks: input.followsOutboundLinks,
+      discoveryAdapterId: input.discoveryAdapterId,
       checkIntervalHours: input.checkIntervalHours ?? 24,
       active: true,
       consecutiveFailures: 0,

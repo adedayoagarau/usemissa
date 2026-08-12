@@ -83,6 +83,8 @@ export interface SourceRegistryEntry {
   organizationName?: string;
   /** For tier-2 directories: enqueue linked org pages as tier-0 sources. */
   followsOutboundLinks?: boolean;
+  /** Explicit site schema used to turn this source into follow-up call URLs. */
+  discoveryAdapterId?: string;
   notes?: string;
   trust?: SourceTrust;
 }

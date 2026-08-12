@@ -13,6 +13,8 @@ import { DISCOVERY_INGESTION_LOCK, releaseAdvisoryLock, tryAdvisoryLock } from "
 import { Pool, type PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun, type RadarWorkerKind } from "./workerTelemetry.js";
+import { discoverSourceLinks, type DiscoveredSourceLink } from "./sourceDiscoveryAdapters.js";
+import { parseCrawlDelayForUserAgent, robotsAllowsPath } from "./sourcePolicy.js";
 
 const USER_AGENT = "MissaRadar/1.0 (+https://www.usemissa.com; discovery; evidence-only)";
 const DEFAULT_BATCH_SIZE = 100;
@@ -21,6 +23,11 @@ const DEFAULT_LINKS_PER_PAGE = 50;
 const MAX_LINKS_PER_PAGE = 100;
 const MAX_NEW_SOURCES_PER_TICK = 500;
 const MAX_HTML_BYTES = 2_000_000;
+const DEFAULT_HOST_DELAY_MS = 1_000;
+const MAX_HOST_DELAY_MS = 60_000;
+const robotsCache = new Map<string, Promise<string>>();
+const hostQueues = new Map<string, Promise<void>>();
+const hostNextAt = new Map<string, number>();
 
 function canonicalCheckIntervalHours(): number {
   const configured = Number(process.env.RADAR_DEFAULT_CHECK_INTERVAL_HOURS);
@@ -37,10 +44,7 @@ export interface DiscoveryWorkerOptions {
   workerKind?: RadarWorkerKind;
 }
 
-export interface DiscoveryLink {
-  url: string;
-  title?: string;
-}
+export type DiscoveryLink = DiscoveredSourceLink;
 
 export interface DiscoveryTickResult {
   status: "completed" | "skipped";
@@ -101,7 +105,12 @@ export function extractDiscoveryLinks(html: string, sourceUrl: string, limit = D
   const linkPattern = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   for (const match of html.matchAll(linkPattern)) {
     const url = absoluteHttpUrl(match[1]!, sourceUrl);
-    const title = match[2]!.replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim().slice(0, 240);
+    const title = match[2]!
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 240);
     if (!url || (!CALL_WORDS.test(url) && !CALL_WORDS.test(title))) continue;
     const key = normalizeUrl(url);
     if (seen.has(key)) continue;
@@ -112,19 +121,101 @@ export function extractDiscoveryLinks(html: string, sourceUrl: string, limit = D
   return results;
 }
 
-async function fetchHtml(sourceUrl: string): Promise<{ html: string; finalUrl: string }> {
-  const response = await fetch(sourceUrl, {
-    headers: { accept: "text/html,application/xhtml+xml", "user-agent": USER_AGENT },
-    redirect: "follow",
-    signal: AbortSignal.timeout(Number(process.env.RADAR_DISCOVERY_TIMEOUT_MS ?? 15_000)),
-  });
+export function discoveryRequestHeaders(source: Source): Record<string, string> {
+  return {
+    accept: "text/html,application/xhtml+xml",
+    "user-agent": USER_AGENT,
+    ...(source.discoveryEtag ? { "if-none-match": source.discoveryEtag } : {}),
+    ...(source.discoveryLastModified ? { "if-modified-since": source.discoveryLastModified } : {}),
+  };
+}
+
+function configuredHostDelayMs(): number {
+  const configured = Number(process.env.RADAR_DISCOVERY_HOST_DELAY_MS);
+  return Number.isFinite(configured) && configured >= 0 ? Math.min(configured, MAX_HOST_DELAY_MS) : DEFAULT_HOST_DELAY_MS;
+}
+
+export function discoveryPolicyFromRobots(robotsTxt: string, sourceUrl: string, defaultDelayMs = configuredHostDelayMs()): { allowed: boolean; delayMs: number } {
+  const path = new URL(sourceUrl).pathname;
+  const crawlDelaySeconds = parseCrawlDelayForUserAgent(robotsTxt, USER_AGENT);
+  const robotsDelayMs = crawlDelaySeconds === undefined ? 0 : crawlDelaySeconds * 1_000;
+  return {
+    allowed: robotsAllowsPath(robotsTxt, path, USER_AGENT),
+    delayMs: Math.min(MAX_HOST_DELAY_MS, Math.max(defaultDelayMs, robotsDelayMs)),
+  };
+}
+
+async function robotsText(sourceUrl: string): Promise<string> {
+  const origin = new URL(sourceUrl).origin;
+  let request = robotsCache.get(origin);
+  if (!request) {
+    request = fetch(`${origin}/robots.txt`, {
+      headers: { "user-agent": USER_AGENT },
+      signal: AbortSignal.timeout(5_000),
+    })
+      .then(async (response) => (response.ok ? response.text() : ""))
+      .catch(() => "");
+    robotsCache.set(origin, request);
+  }
+  return request;
+}
+
+async function withHostSchedule<T>(sourceUrl: string, delayMs: number, task: () => Promise<T>): Promise<T> {
+  const origin = new URL(sourceUrl).origin;
+  const previous = hostQueues.get(origin) ?? Promise.resolve();
+  const current = previous
+    .catch(() => undefined)
+    .then(async () => {
+      const waitMs = Math.max(0, (hostNextAt.get(origin) ?? 0) - Date.now());
+      if (waitMs > 0) await new Promise((resolve) => setTimeout(resolve, waitMs));
+      try {
+        return await task();
+      } finally {
+        hostNextAt.set(origin, Date.now() + delayMs);
+      }
+    });
+  hostQueues.set(
+    origin,
+    current.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return current;
+}
+
+async function fetchHtml(source: Source): Promise<{
+  html?: string;
+  finalUrl: string;
+  notModified: boolean;
+  etag?: string;
+  lastModified?: string;
+}> {
+  const policy = process.env.RADAR_DISCOVERY_RESPECT_ROBOTS === "0" ? { allowed: true, delayMs: configuredHostDelayMs() } : discoveryPolicyFromRobots(await robotsText(source.url), source.url);
+  if (!policy.allowed) throw new Error("robots-blocked");
+  const response = await withHostSchedule(source.url, policy.delayMs, () =>
+    fetch(source.url, {
+      headers: discoveryRequestHeaders(source),
+      redirect: "follow",
+      signal: AbortSignal.timeout(Number(process.env.RADAR_DISCOVERY_TIMEOUT_MS ?? 15_000)),
+    }),
+  );
+  if (response.status === 304) {
+    return { finalUrl: response.url || source.url, notModified: true };
+  }
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const contentType = response.headers.get("content-type") ?? "";
   if (contentType && !contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) {
     throw new Error(`unsupported content type: ${contentType}`);
   }
   const html = (await response.text()).slice(0, MAX_HTML_BYTES);
-  return { html, finalUrl: response.url || sourceUrl };
+  return {
+    html,
+    finalUrl: response.url || source.url,
+    notModified: false,
+    ...(response.headers.get("etag") ? { etag: response.headers.get("etag")! } : {}),
+    ...(response.headers.get("last-modified") ? { lastModified: response.headers.get("last-modified")! } : {}),
+  };
 }
 
 async function mapConcurrent<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -146,6 +237,9 @@ type FetchedDirectory = {
   html?: string;
   finalUrl?: string;
   links: DiscoveryLink[];
+  notModified?: boolean;
+  etag?: string;
+  lastModified?: string;
   error?: string;
 };
 
@@ -166,17 +260,67 @@ export function discoverySourceInsertPlaceholders(count: number): string[] {
 async function fetchDirectory(source: Source, linkLimit: number): Promise<FetchedDirectory> {
   const checkedAt = new Date().toISOString();
   try {
-    const result = await fetchHtml(source.url);
+    const result = await fetchHtml(source);
     return {
       source,
       checkedAt,
       html: result.html,
       finalUrl: result.finalUrl,
-      links: extractDiscoveryLinks(result.html, result.finalUrl, linkLimit),
+      notModified: result.notModified,
+      etag: result.etag,
+      lastModified: result.lastModified,
+      links: result.notModified ? [] : source.discoveryAdapterId ? discoverSourceLinks(source, result.html ?? "", result.finalUrl).slice(0, linkLimit) : extractDiscoveryLinks(result.html ?? "", result.finalUrl, linkLimit),
     };
   } catch (error) {
-    return { source, checkedAt, links: [], error: error instanceof Error ? error.message : "fetch failed" };
+    return {
+      source,
+      checkedAt,
+      links: [],
+      error: error instanceof Error ? error.message : "fetch failed",
+    };
   }
+}
+
+export function discoverySourceFromLink(parent: Source, link: DiscoveryLink, id: string = randomUUID(), checkIntervalHours = canonicalCheckIntervalHours()): Source {
+  return {
+    id,
+    name: sourceName(link, parent),
+    url: link.url,
+    kind: link.kind ?? "organization-website",
+    active: true,
+    checkIntervalHours,
+    consecutiveFailures: 0,
+    consecutiveProcessingFailures: 0,
+    registryVerticalId: parent.registryVerticalId,
+    registryGroup: parent.registryGroup,
+    registryDisciplines: parent.registryDisciplines,
+    registryTaxonomyTermIds: parent.registryTaxonomyTermIds,
+    registryTrust: parent.registryTrust,
+    registryEligibilityLens: parent.registryEligibilityLens,
+    registrySourceChannel: parent.registrySourceChannel,
+    registryGeography: parent.registryGeography,
+    registryOpportunityTypes: parent.registryOpportunityTypes,
+    registryTier: link.registryTier ?? 0,
+    followsOutboundLinks: link.followsOutboundLinks ?? false,
+    discoveryAdapterId: link.discoveryAdapterId,
+    discoveredFromSourceId: link.discoveredFromSourceId ?? parent.id,
+  };
+}
+
+/** Upgrade sources created by the old generic fan-out without replacing live fetch state. */
+export function mergeDiscoveredSourceMetadata(source: Source, link: DiscoveryLink, parentSourceId?: string): boolean {
+  let changed = false;
+  const assign = <K extends keyof Source>(key: K, value: Source[K] | undefined): void => {
+    if (value === undefined || source[key] === value) return;
+    source[key] = value;
+    changed = true;
+  };
+  assign("kind", link.kind);
+  assign("registryTier", link.registryTier);
+  assign("followsOutboundLinks", link.followsOutboundLinks);
+  assign("discoveryAdapterId", link.discoveryAdapterId);
+  assign("discoveredFromSourceId", link.discoveredFromSourceId ?? parentSourceId);
+  return changed;
 }
 
 function sourceName(link: DiscoveryLink, parent: Source): string {
@@ -188,11 +332,7 @@ function sourceName(link: DiscoveryLink, parent: Source): string {
   }
 }
 
-async function persistDiscoveryResults(
-  fetched: FetchedDirectory[],
-  maxNewSources: number,
-  logger: Pick<Console, "info" | "warn">,
-): Promise<{ linksFound: number; sourcesAdded: number }> {
+async function persistDiscoveryResults(fetched: FetchedDirectory[], maxNewSources: number, logger: Pick<Console, "info" | "warn">): Promise<{ linksFound: number; sourcesAdded: number }> {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   let lockClient: PoolClient | undefined;
   let locked = false;
@@ -207,6 +347,7 @@ async function persistDiscoveryResults(
     const linksFound = fetched.reduce((sum, item) => sum + item.links.length, 0);
     let sourcesAdded = 0;
     const newSources: Source[] = [];
+    const enrichedExisting = new Map<string, Source>();
 
     for (const item of fetched) {
       const source = currentRows.rows.find((row) => row.data.id === item.source.id)?.data;
@@ -216,22 +357,22 @@ async function persistDiscoveryResults(
           source.discoveryConsecutiveFailures = (source.discoveryConsecutiveFailures ?? 0) + 1;
         } else {
           source.discoveryConsecutiveFailures = 0;
+          if (item.etag) source.discoveryEtag = item.etag;
+          if (item.lastModified) source.discoveryLastModified = item.lastModified;
           if (item.html) source.lastFetchedContentHash = contentHash(item.html);
         }
       }
       for (const link of item.links) {
         if (sourcesAdded >= maxNewSources) break;
         const key = normalizeUrl(link.url);
-        if (existing.has(key)) continue;
-        const added: Source = {
-          id: randomUUID(), name: sourceName(link, item.source), url: link.url,
-          kind: "organization-website", active: true, checkIntervalHours: canonicalCheckIntervalHours(),
-          consecutiveFailures: 0, consecutiveProcessingFailures: 0,
-          registryVerticalId: item.source.registryVerticalId, registryGroup: item.source.registryGroup,
-          registryDisciplines: item.source.registryDisciplines, registryGeography: item.source.registryGeography,
-          registryOpportunityTypes: item.source.registryOpportunityTypes, registryTier: 0,
-          followsOutboundLinks: false,
-        };
+        if (existing.has(key)) {
+          const existingSource = currentByUrl.get(key);
+          if (existingSource && mergeDiscoveredSourceMetadata(existingSource, link, item.source.id)) {
+            enrichedExisting.set(existingSource.id, existingSource);
+          }
+          continue;
+        }
+        const added = discoverySourceFromLink(item.source, link);
         existing.add(key);
         newSources.push(added);
         sourcesAdded++;
@@ -243,9 +384,15 @@ async function persistDiscoveryResults(
     // Discovery only mutates source rows. Write those rows directly rather
     // than invoking the full Radar snapshot delta writer (which also dual
     // writes every affected projection and is intentionally heavier).
-    const updatedSources = fetched
-      .map((item) => currentRows.rows.find((row) => row.data.id === item.source.id)?.data)
-      .filter((source): source is Source => Boolean(source));
+    const updatedSources = [
+      ...new Map([
+        ...fetched
+          .map((item) => currentRows.rows.find((row) => row.data.id === item.source.id)?.data)
+          .filter((source): source is Source => Boolean(source))
+          .map((source) => [source.id, source] as const),
+        ...enrichedExisting.entries(),
+      ]).values(),
+    ];
     if (updatedSources.length) {
       const updateValues = updatedSources.flatMap((source) => [source.id, source.active, JSON.stringify(source)]);
       await lockClient.query(
@@ -268,7 +415,11 @@ async function persistDiscoveryResults(
     return { linksFound, sourcesAdded };
   } finally {
     if (locked && lockClient) {
-      try { await releaseAdvisoryLock(lockClient); } catch (error) { logger.warn("[missa-discovery-worker] failed to release advisory lock", error); }
+      try {
+        await releaseAdvisoryLock(lockClient);
+      } catch (error) {
+        logger.warn("[missa-discovery-worker] failed to release advisory lock", error);
+      }
     }
     lockClient?.release();
     await pool.end();
@@ -293,20 +444,34 @@ export async function runDiscoveryWorkerTick(options: Pick<DiscoveryWorkerOption
   const sourceRows = await pool.query<{ data: Source }>("select data from radar_sources");
   await pool.end();
   const now = new Date();
-  const candidates = sourceRows.rows.map((row) => row.data)
+  const candidates = sourceRows.rows
+    .map((row) => row.data)
     .filter((source) => isDiscoverySource(source) && isDiscoveryDue(source, now))
     .slice(0, maxSources);
   const fetched = await mapConcurrent(candidates, Number(process.env.RADAR_DISCOVERY_CONCURRENCY ?? 16), (source) => fetchDirectory(source, linkLimit));
   const failures = fetched.filter((item) => item.error).length;
   const persisted = await persistDiscoveryResults(fetched, maxNewSources, logger);
-  return { status: "completed", sourcesChecked: candidates.length, linksFound: persisted.linksFound, sourcesAdded: persisted.sourcesAdded, failures };
+  return {
+    status: "completed",
+    sourcesChecked: candidates.length,
+    linksFound: persisted.linksFound,
+    sourcesAdded: persisted.sourcesAdded,
+    failures,
+  };
 }
 
 function sleep(ms: number, signal?: AbortSignal): Promise<void> {
   if (signal?.aborted) return Promise.resolve();
   return new Promise((resolve) => {
     const timer = setTimeout(resolve, ms);
-    signal?.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true });
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
   });
 }
 
@@ -321,10 +486,15 @@ export async function runDiscoveryWorker(options: DiscoveryWorkerOptions = {}): 
       try {
         await heartbeatWorkerRun(telemetryPool!, workerRunId, workerKind);
         const result = await runDiscoveryWorkerTick(options);
-        await heartbeatWorkerRun(telemetryPool!, workerRunId, workerKind, { inputCount: result.sourcesChecked, outputCount: result.sourcesAdded });
+        await heartbeatWorkerRun(telemetryPool!, workerRunId, workerKind, {
+          inputCount: result.sourcesChecked,
+          outputCount: result.sourcesAdded,
+        });
         logger.info(`[missa-discovery-worker] checked=${result.sourcesChecked} failures=${result.failures} added=${result.sourcesAdded}`);
       } catch (error) {
-        await heartbeatWorkerRun(telemetryPool!, workerRunId, workerKind, { lastError: error instanceof Error ? error.message : String(error) });
+        await heartbeatWorkerRun(telemetryPool!, workerRunId, workerKind, {
+          lastError: error instanceof Error ? error.message : String(error),
+        });
         logger.error("[missa-discovery-worker] tick failed; retrying after interval", error);
       }
       await sleep(intervalMs, options.signal);

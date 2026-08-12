@@ -80,6 +80,10 @@ export function seedRegistryIfEmpty(
     const key = normalizeUrl(entry.url);
     const existing = existingByUrl.get(key);
     if (existing) {
+      const adapterChanged = existing.discoveryAdapterId !== entry.discoveryAdapterId;
+      existing.name = entry.name;
+      existing.kind = entry.kind;
+      existing.active = entry.active;
       existing.registryVerticalId = entry.verticalId;
       existing.registryGroup = registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.group;
       existing.registryDisciplines = entry.disciplines ?? registry.verticals.find((vertical) => vertical.id === entry.verticalId)?.disciplines;
@@ -90,7 +94,16 @@ export function seedRegistryIfEmpty(
       existing.registryOrganizationName = entry.organizationName;
       existing.registryTier = entry.tier;
       existing.followsOutboundLinks = entry.followsOutboundLinks;
+      existing.discoveryAdapterId = entry.discoveryAdapterId;
       existing.checkIntervalHours = checkIntervalForEntry(entry);
+      if (adapterChanged) {
+        // A different parser may discover a different graph from the same URL.
+        // Force one unconditional fetch instead of accepting an old adapter's
+        // validators/checkpoint as proof that the new schema has run.
+        delete existing.discoveryLastCheckedAt;
+        delete existing.discoveryEtag;
+        delete existing.discoveryLastModified;
+      }
       continue;
     }
     const added = engine.addSource({
@@ -108,6 +121,7 @@ export function seedRegistryIfEmpty(
       registryOrganizationName: entry.organizationName,
       registryTier: entry.tier,
       followsOutboundLinks: entry.followsOutboundLinks,
+      discoveryAdapterId: entry.discoveryAdapterId,
     });
     existingByUrl.set(key, added);
     loaded++;
@@ -164,16 +178,15 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
     ? new LlmExtractor(systemClock)
     : undefined;
 
+  // Keep the loaded database snapshot as the delta baseline. Registry
+  // hydration below is a real state migration: new sources, corrected source
+  // authority, and adapter changes must be durably written on the next tick.
+  let persistedStore = cloneStore(store);
   const engine = new RadarEngine({ store, fetcher, extractor, ids: uuidIds() });
   // Hydrate registry tier metadata for every persisted source in memory. The
-  // clone used for delta persistence is taken after this call, so this does
-  // not rewrite the full registry; it simply lets worker tier fences operate
-  // correctly on snapshots created before registryTier was added.
+  // persistence baseline remains the database snapshot, so only actual
+  // additions and metadata changes are written on the next persist.
   seedRegistryIfEmpty(engine, { maxTier: 3 });
-  // The persistence baseline must include the hydrated registry metadata.
-  // Taking it before hydration makes every seeded source look changed on the
-  // first tick and forces a large sequential relational rewrite.
-  let persistedStore = cloneStore(engine.store);
   let pendingPersist = Promise.resolve();
 
   return {

@@ -12,6 +12,7 @@ import {
   type Source,
 } from "@missa/radar-engine";
 import { parseDisallowForUserAgent } from "../src/playwrightFetcher.js";
+import { parseCrawlDelayForUserAgent } from "../src/sourcePolicy.js";
 import { LlmExtractor } from "../src/llmExtractor.js";
 import {
   loadStoreFromPostgres,
@@ -48,6 +49,18 @@ test("robots.txt parser: falls back to the wildcard group when no specific match
 
 test("robots.txt parser: no rules means nothing disallowed", () => {
   assert.deepEqual(parseDisallowForUserAgent("", "MissaRadar/0.1"), []);
+});
+
+test("robots.txt parser returns the selected group's crawl delay", () => {
+  const robots = `
+    User-agent: *
+    Crawl-delay: 2
+
+    User-agent: MissaRadar
+    Crawl-delay: 10
+  `;
+  assert.equal(parseCrawlDelayForUserAgent(robots, "MissaRadar/1.0"), 10);
+  assert.equal(parseCrawlDelayForUserAgent(robots, "OtherBot/1.0"), 2);
 });
 
 function fakeAnthropicClient(toolInput: Record<string, unknown>): Anthropic {
@@ -309,6 +322,29 @@ test("seedRegistryIfEmpty: self-heals a partial seed by adding only missing sour
     new Set(urls).size,
     "expected no duplicate source URLs",
   );
+});
+
+test("seedRegistryIfEmpty: refreshes site schema and authority on existing sources", () => {
+  const engine = new RadarEngine({ store: createStore(), fetcher: new FixtureFetcher() });
+  const existing = engine.addSource({
+    name: "NewPages Calls and Contests",
+    url: "https://www.newpages.com/classifieds-fee/all/",
+    kind: "organization-website",
+    checkIntervalHours: 24,
+  });
+  existing.discoveryLastCheckedAt = "2026-08-11T00:00:00.000Z";
+  existing.discoveryEtag = '"old-adapter"';
+  existing.discoveryLastModified = "Mon, 10 Aug 2026 00:00:00 GMT";
+
+  seedRegistryIfEmpty(engine, { maxTier: 3 });
+
+  assert.equal(existing.kind, "directory");
+  assert.equal(existing.registryTier, 2);
+  assert.equal(existing.followsOutboundLinks, true);
+  assert.equal(existing.discoveryAdapterId, "newpages-index");
+  assert.equal(existing.discoveryLastCheckedAt, undefined);
+  assert.equal(existing.discoveryEtag, undefined);
+  assert.equal(existing.discoveryLastModified, undefined);
 });
 
 test("postgresStore: save then load round-trips a RadarStore", async () => {

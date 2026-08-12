@@ -83,6 +83,10 @@ export interface Source {
   registryTier?: 0 | 1 | 2 | 3;
   /** Directory/feed sources may fan out to linked canonical call pages. */
   followsOutboundLinks?: boolean;
+  /** Named source schema used by the discovery worker instead of generic link matching. */
+  discoveryAdapterId?: string;
+  /** Registry/discovery source that produced this URL. Preserves the source graph. */
+  discoveredFromSourceId?: string;
   /** Polite per-source cadence. */
   checkIntervalHours: number;
   active: boolean;
@@ -104,6 +108,9 @@ export interface Source {
   /** Independent cursor for directory fan-out; never shares Radar's cadence. */
   discoveryLastCheckedAt?: IsoDateTime;
   discoveryConsecutiveFailures?: number;
+  /** HTTP validators persisted independently from canonical-page fetch state. */
+  discoveryEtag?: string;
+  discoveryLastModified?: string;
   /** Persisted scheduler target; absent means immediately due when never checked. */
   nextCheckAt?: IsoDateTime;
 }

@@ -75,9 +75,17 @@ export {
   runDiscoveryWorkerTick,
   extractDiscoveryLinks,
   discoveryBatchSize,
+  discoveryPolicyFromRobots,
+  discoveryRequestHeaders,
+  discoverySourceFromLink,
+  mergeDiscoveredSourceMetadata,
   type DiscoveryWorkerOptions,
   type DiscoveryTickResult,
 } from "./discoveryWorker.js";
+export {
+  discoverSourceLinks,
+  type DiscoveredSourceLink,
+} from "./sourceDiscoveryAdapters.js";
 export {
   runSourcePromotionWorker,
   runSourcePromotionWorkerTick,

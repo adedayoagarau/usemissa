@@ -39,6 +39,7 @@ function toRadarSource(entry: SourceRegistryEntry): Source {
     registryOrganizationName: entry.organizationName,
     registryTier: entry.tier,
     followsOutboundLinks: entry.followsOutboundLinks,
+    discoveryAdapterId: entry.discoveryAdapterId,
     checkIntervalHours: entry.checkIntervalHours,
     active: entry.active,
     consecutiveFailures: 0,
@@ -153,6 +154,7 @@ export function loadSourcesIntoEngine(
     registryOrganizationName?: string;
     registryTier?: SourceTier;
     followsOutboundLinks?: boolean;
+    discoveryAdapterId?: string;
   }) => Source,
   opts?: LoadRegistryOptions,
 ): { loaded: number; skipped: number; entries: SourceRegistryEntry[] } {
@@ -177,6 +179,7 @@ export function loadSourcesIntoEngine(
       registryOrganizationName: entry.organizationName,
       registryTier: entry.tier,
       followsOutboundLinks: entry.followsOutboundLinks,
+      discoveryAdapterId: entry.discoveryAdapterId,
     });
     loaded++;
   }
