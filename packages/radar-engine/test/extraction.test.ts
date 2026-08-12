@@ -115,3 +115,13 @@ test('placeholder link labels cannot become opportunity identities', () => {
   assert.equal(hasFatalIssues(c), true);
   assert.ok(c.issues.some((issue) => issue.includes('placeholder title')));
 });
+
+test('hostname labels cannot become opportunity identities', () => {
+  const extractor = new DeterministicExtractor({ now: () => REF });
+  const c = extractor.extract(
+    { ...SOURCE, name: 'example.org/submissions' },
+    snap('example.org/submissions\nSubmissions are open. Deadline: March 1, 2026.'),
+  );
+  assert.equal(hasFatalIssues(c), true);
+  assert.ok(c.issues.some((issue) => issue.includes('placeholder title')));
+});

@@ -26,7 +26,9 @@ function statusFor(status: OpportunityStatus): { status: string; publicationStat
     case 'deadline-extended':
     case 'closed':
     case 'archived':
-      return { status, publicationState: 'published' };
+      // Extraction is evidence collection, not publication approval. The
+      // review worker promotes only a fully evidenced active call.
+      return { status, publicationState: 'reviewable' };
     case 'duplicate':
       return { status: 'archived', publicationState: 'suppressed' };
     case 'discovered':

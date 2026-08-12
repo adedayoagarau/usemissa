@@ -127,6 +127,10 @@ export function reviewCandidate(candidate: ReviewCandidate): { decision: ReviewD
   const deadlineOrWindow = Boolean(candidate.deadlineDate || (candidate.readingPeriodKind && candidate.readingPeriodKind !== "unknown"));
   const active = ACTIVE_STATUSES.includes(candidate.status);
   const unsafe = candidate.submissionState === "unsafe";
+  const normalizedTitle = candidate.title.toLowerCase().trim();
+  const identityValid = ![
+    "here", "continue reading", "read more", "website", "official site", "apply here", "submit here",
+  ].includes(normalizedTitle) && !/^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/\S*)?$/.test(normalizedTitle);
 
   checks.sourcePresent = sourcePresent;
   checks.sourceProcessed = sourceProcessed;
@@ -135,6 +139,7 @@ export function reviewCandidate(candidate: ReviewCandidate): { decision: ReviewD
   checks.organizationConfirmed = candidate.organizationConfirmed;
   checks.active = active;
   checks.unsafe = unsafe;
+  checks.identityValid = identityValid;
   checks.evidenceCount = candidate.evidenceCount;
 
   if (sourcePresent) { score += 15; reasons.push("Canonical source URL is present."); } else reasons.push("Canonical source URL is missing.");
@@ -146,6 +151,7 @@ export function reviewCandidate(candidate: ReviewCandidate): { decision: ReviewD
   if (candidate.evidenceCount > 0) { score += 5; reasons.push("Supporting enrichment evidence exists."); }
 
   if (unsafe) return { decision: "suppress", score: Math.max(0, score - 30), reasons: ["Submission destination was marked unsafe.", ...reasons], checks };
+  if (!identityValid) return { decision: "needs-human", score, reasons: ["Opportunity identity is a placeholder and must be resolved.", ...reasons], checks };
   if (!active) return { decision: "needs-human", score, reasons, checks };
   // Fail closed: automatic publication requires a confirmed organization,
   // fresh processing, destination, and a concrete deadline/window.

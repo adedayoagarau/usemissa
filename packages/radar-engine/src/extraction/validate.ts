@@ -12,7 +12,9 @@ export function validateCandidate(candidate: OpportunityCandidate, now: Date): O
   let confidence = 0;
 
   const normalizedTitle = candidate.title?.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  const placeholderTitle = normalizedTitle !== undefined && new Set([
+  const rawTitle = candidate.title?.trim().toLowerCase();
+  const hostnameTitle = rawTitle !== undefined && /^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/\S*)?$/.test(rawTitle);
+  const placeholderTitle = hostnameTitle || (normalizedTitle !== undefined && new Set([
     'here',
     'continue reading',
     'read more',
@@ -20,7 +22,7 @@ export function validateCandidate(candidate: OpportunityCandidate, now: Date): O
     'official site',
     'apply here',
     'submit here',
-  ]).has(normalizedTitle);
+  ]).has(normalizedTitle));
   if (placeholderTitle) {
     issues.push('fatal: placeholder title cannot identify an opportunity');
   } else if (candidate.title && candidate.title.length >= 3) {
