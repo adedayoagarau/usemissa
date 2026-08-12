@@ -59,6 +59,12 @@ const APPLICATION_ONLY_HOSTS = [
 ];
 
 const ARCHIVE_LINK_WORDS = /(?:first|previous|past)\s+(?:volume|issue)|\barchive\b|\bsample\s+(?:issue|work)\b/i;
+const STRONG_CALL_WORDS =
+  /(?:apply|application|submit|submission|open[- ]?call|call[- ]?for|deadline|entry|fellowship|grant|award|contest|prize)/i;
+const CONTEXT_STOP_WORDS = new Set([
+  "and", "are", "artist", "artists", "call", "for", "from", "http", "https",
+  "open", "org", "the", "this", "with", "www", "writer", "writers",
+]);
 
 function decodeHtmlText(value: string): string {
   return value
@@ -188,6 +194,38 @@ function linkSpecificity(link: HtmlLink): number {
   return callSignal + Math.min(pathSegments, 6) - applicationOnly - attachment - redirectHost - insecure;
 }
 
+function contextTokens(value: string): Set<string> {
+  return new Set(
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .split(/\s+/)
+      .filter((token) =>
+        token.length >= 3 &&
+        !/^20\d{2}$/.test(token) &&
+        !CONTEXT_STOP_WORDS.has(token)
+      ),
+  );
+}
+
+/**
+ * A directory's outbound link must identify the call, not merely the host.
+ * Strong application language is sufficient; otherwise require at least two
+ * meaningful title/path tokens to agree with the directory call title.
+ */
+function hasCanonicalCallContext(sourceTitle: string, link: HtmlLink): boolean {
+  const url = new URL(link.url);
+  const targetContext = `${url.pathname} ${link.title ?? ""}`;
+  if (STRONG_CALL_WORDS.test(targetContext)) return true;
+  const sourceTokens = contextTokens(sourceTitle);
+  const targetTokens = contextTokens(targetContext);
+  let overlap = 0;
+  for (const token of targetTokens) {
+    if (sourceTokens.has(token) && ++overlap >= 2) return true;
+  }
+  return false;
+}
+
 function sourceContextTitle(source: Source, html: string): string {
   const host = normalizedHost(source.url);
   const normalizedName = source.name.toLowerCase().replace(/^www\./, "").trim();
@@ -212,6 +250,7 @@ function inArticleExternalLinks(
   for (const link of htmlLinks(mainContent(html), finalUrl)) {
     const host = normalizedHost(link.url);
     if (host === sourceHost || isNonCallHost(host)) continue;
+    if (requirePositiveScore && !hasCanonicalCallContext(contextTitle, link)) continue;
     const isArchiveLink = ARCHIVE_LINK_WORDS.test(link.title ?? "");
     const candidateUrl = isArchiveLink ? `${new URL(link.url).origin}/` : link.url;
     const candidate: DiscoveredSourceLink = {
