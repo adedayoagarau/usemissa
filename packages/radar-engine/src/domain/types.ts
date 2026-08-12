@@ -185,6 +185,8 @@ export interface DeadlineInfo {
 /** Structured extraction result for one page, before dedup/canonicalization. */
 export interface OpportunityCandidate {
   sourceId: string;
+  /** Stable record identity from an official machine feed, when available. */
+  discoveryExternalId?: string;
   snapshotId: string;
   url: string;
   extractedAt: IsoDateTime;

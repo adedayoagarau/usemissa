@@ -85,6 +85,70 @@ test('tick report exposes throughput metrics for ingestion logs', async () => {
   assert.equal(report.duplicatesMerged, 1);
 });
 
+test('machine feed records sharing one canonical page remain distinct calls', async () => {
+  const clock = new ManualClock(new Date('2026-08-12T00:00:00Z'));
+  const fetcher = new FixtureFetcher();
+  const sharedUrl = 'https://official.example/funding/calls';
+  fetcher.setPage(sharedUrl, 'Official funding call. Applications are open. Deadline: October 5, 2026.');
+  const extractor: Extractor = {
+    extract(source, snapshot) {
+      return {
+        sourceId: source.id,
+        discoveryExternalId: source.discoveryExternalId,
+        snapshotId: snapshot.id,
+        url: source.url,
+        extractedAt: clock.now().toISOString(),
+        title: source.name,
+        organizationName: 'Official Funder',
+        type: 'grant',
+        genres: [],
+        deadline: { kind: 'exact', date: '2026-10-05' },
+        fee: { disclosed: false },
+        eligibility: [],
+        requiredMaterials: [],
+        submissionUrl: sharedUrl,
+        contactEmailPresent: false,
+        openSignals: ['applications are open'],
+        closeSignals: ['deadline'],
+        closedSignals: [],
+        suspiciousSignals: [],
+        issues: [],
+        extractionConfidence: 95,
+      };
+    },
+  };
+  const engine = new RadarEngine({ store: createStore(), fetcher, extractor, clock });
+  const first = engine.addSource({ name: 'Domestic Indemnity Program 1', url: sharedUrl, kind: 'organization-website' });
+  const second = engine.addSource({ name: 'Domestic Indemnity Program 2', url: sharedUrl, kind: 'organization-website' });
+  first.discoveryExternalId = 'official:residencies';
+  second.discoveryExternalId = 'official:debuts';
+
+  const report = await engine.tick();
+
+  assert.equal(report.opportunitiesCreated.length, 2);
+  assert.equal(engine.store.opportunities.size, 2);
+  assert.deepEqual([...engine.store.opportunities.values()].map((opportunity) => opportunity.fields.title).sort(), [
+    'Domestic Indemnity Program 1',
+    'Domestic Indemnity Program 2',
+  ]);
+
+  // Repair legacy state where the second official record was collapsed into
+  // the first record's alternate sources before machine identity was carried
+  // into canonicalization.
+  const secondOpportunity = [...engine.store.opportunities.values()].find((opportunity) => opportunity.sourceId === second.id)!;
+  engine.store.opportunities.delete(secondOpportunity.id);
+  const firstOpportunity = [...engine.store.opportunities.values()][0]!;
+  firstOpportunity.alternateSourceIds.push(second.id);
+  delete second.lastContentHash;
+  second.nextCheckAt = '1970-01-01T00:00:00.000Z';
+
+  const repair = await engine.tick();
+
+  assert.equal(repair.opportunitiesCreated.length, 1);
+  assert.equal(engine.store.opportunities.size, 2);
+  assert.equal(firstOpportunity.alternateSourceIds.includes(second.id), false);
+});
+
 test('a processing failure does not poison the content hash or abort the source batch', async () => {
   const clock = new ManualClock(new Date('2026-07-07T00:00:00Z'));
   const fetcher = new FixtureFetcher();

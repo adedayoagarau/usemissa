@@ -2061,7 +2061,7 @@ export const BULK_SOURCES: SourceRegistryEntry[] = [
     "checkIntervalHours": 24,
     "active": true,
     "organizationName": "Creative Europe",
-    "followsOutboundLinks": false,
+    "followsOutboundLinks": true,
     "discoveryAdapterId": "eu-funding-api"
   },
   {
@@ -2084,12 +2084,12 @@ export const BULK_SOURCES: SourceRegistryEntry[] = [
     "followsOutboundLinks": false
   },
   {
-    "id": "src_grants-international_transartists_110",
-    "name": "TransArtists",
-    "url": "https://www.transartists.org/en/opportunities",
-    "kind": "organization-website",
+    "id": "src_grants-international_transartists_open_calls_110",
+    "name": "TransArtists Open Calls",
+    "url": "https://www.transartists.org/en/transartists-calls",
+    "kind": "directory",
     "verticalId": "grants-international",
-    "tier": 0,
+    "tier": 2,
     "opportunityTypes": [
       "grant",
       "fellowship"
@@ -2097,10 +2097,10 @@ export const BULK_SOURCES: SourceRegistryEntry[] = [
     "geography": [
       "EU"
     ],
-    "checkIntervalHours": 168,
+    "checkIntervalHours": 24,
     "active": true,
-    "organizationName": "TransArtists",
-    "followsOutboundLinks": false
+    "followsOutboundLinks": true,
+    "discoveryAdapterId": "transartists-index"
   },
   {
     "id": "src_grants-international_prince_claus_fund_111",
@@ -3829,6 +3829,25 @@ export const BULK_SOURCES: SourceRegistryEntry[] = [
     "checkIntervalHours": 168,
     "active": true,
     "organizationName": "Res Artis Network",
+    "followsOutboundLinks": false
+  },
+  {
+    "id": "src_visual-residency_transartists_residencies_207",
+    "name": "TransArtists Residencies",
+    "url": "https://www.transartists.org/en/opportunities",
+    "kind": "organization-website",
+    "verticalId": "visual-residency",
+    "tier": 0,
+    "opportunityTypes": [
+      "residency",
+      "fellowship"
+    ],
+    "geography": [
+      "global"
+    ],
+    "checkIntervalHours": 168,
+    "active": true,
+    "organizationName": "TransArtists Residencies",
     "followsOutboundLinks": false
   },
   {

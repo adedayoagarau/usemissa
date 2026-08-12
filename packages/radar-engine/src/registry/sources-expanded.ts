@@ -38,7 +38,7 @@ const SOURCES: CompactSource[] = [
   directory('MacDowell Fellowships', 'https://www.macdowell.org/apply', 'writing-residency', { disciplines: ['all-disciplines'], opportunityTypes: ['fellowship', 'residency'], geography: ['US', 'global'] }),
   directory('Artist Communities Alliance', 'https://artistcommunities.org/directory', 'visual-residency', { disciplines: ['all-disciplines'], opportunityTypes: ['residency', 'fellowship'], geography: ['US', 'global'] }),
   directory('Res Artis Opportunities', 'https://resartis.org/en/residencies/', 'platform-resartis', { disciplines: ['all-disciplines'], opportunityTypes: ['residency', 'fellowship'], geography: ['global'] }),
-  directory('TransArtists Residency Database', 'https://www.transartists.org/en/air', 'platform-transartists', { disciplines: ['all-disciplines'], opportunityTypes: ['residency', 'fellowship'], geography: ['global'] }),
+  directory('TransArtists Residency Database', 'https://www.transartists.org/en/map', 'platform-transartists', { disciplines: ['all-disciplines'], opportunityTypes: ['residency', 'fellowship'], geography: ['global'] }),
   directory('On the Move Funding Guides', 'https://on-the-move.org/resources/funding', 'grants-international', { disciplines: ['performing-arts', 'visual-arts', 'music'], opportunityTypes: ['grant', 'fellowship', 'residency'], geography: ['global', 'EU'] }),
   directory('ArtConnect Opportunities', 'https://www.artconnect.com/opportunities', 'grants-international', { disciplines: ['visual-arts', 'film', 'photography', 'design'], opportunityTypes: ['grant', 'residency', 'open-call'], geography: ['global'] }),
 

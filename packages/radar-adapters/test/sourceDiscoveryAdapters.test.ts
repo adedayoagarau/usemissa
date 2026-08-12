@@ -343,3 +343,30 @@ test("African Culture Fund discovery keeps live call pages and excludes results"
     },
   ]);
 });
+
+test("TransArtists discovery follows current call articles and resolves official hosts", () => {
+  const index: Source = {
+    id: "transartists", name: "TransArtists Open Calls", url: "https://www.transartists.org/en/transartists-calls",
+    kind: "directory", active: true, checkIntervalHours: 24, consecutiveFailures: 0,
+    discoveryAdapterId: "transartists-index",
+  };
+  const detail = discoverSourceLinks(index, `
+    <main>
+      <a href="/en/news/hong-kong-baptist-university-international-writers-workshop-2027">Hong Kong Baptist University: International Writers' Workshop 2027</a>
+      <a href="/en/transartists-database">About the database</a>
+    </main>
+  `, index.url);
+  assert.equal(detail.length, 1);
+  assert.equal(detail[0]?.discoveryAdapterId, "transartists-detail");
+  assert.equal(detail[0]?.registryTier, 2);
+
+  const official = discoverSourceLinks({ ...index, ...detail[0], id: "detail" }, `
+    <main><article>
+      <h1>Hong Kong Baptist University: International Writers' Workshop 2027</h1>
+      <a href="https://iww.hkbu.edu.hk/apply">Apply on the official programme website</a>
+    </article></main>
+  `, detail[0]!.url);
+  assert.equal(official.length, 1);
+  assert.equal(official[0]?.url, "https://iww.hkbu.edu.hk/apply");
+  assert.equal(official[0]?.registryTier, 0);
+});

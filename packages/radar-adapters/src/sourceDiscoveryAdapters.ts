@@ -275,5 +275,16 @@ export function discoverSourceLinks(
         discoveredFromSourceId: source.id,
       }));
   }
+  if (source.discoveryAdapterId === "transartists-index") {
+    return detailIndex(
+      source,
+      html,
+      finalUrl,
+      (url) => normalizedHost(url.href) === "transartists.org" && url.pathname.startsWith("/en/news/"),
+      "transartists-detail",
+    );
+  }
+  if (source.discoveryAdapterId === "transartists-detail")
+    return inArticleExternalLinks(source, html, finalUrl);
   return [];
 }

@@ -36,7 +36,16 @@ export function findCanonical(candidate: OpportunityCandidate, existing: Iterabl
   let best: { opportunity: Opportunity; similarity: number } | undefined;
   for (const opp of existing) {
     if (opp.duplicateOfId) continue;
-    if (opp.sourceUrl === candidate.url) return { kind: 'same-page', opportunity: opp };
+    if (opp.sourceId === candidate.sourceId) return { kind: 'same-page', opportunity: opp };
+    const distinctMachineRecord = Boolean(candidate.discoveryExternalId);
+    // A stable official-feed record is its own call identity. Different feed
+    // records can intentionally share a title, organization, application URL,
+    // or portal landing page; downstream evidence review may relate them, but
+    // ingestion must not erase one before that comparison can happen.
+    if (distinctMachineRecord) continue;
+    if (opp.sourceUrl === candidate.url) {
+      return { kind: 'same-page', opportunity: opp };
+    }
     if (
       candidate.submissionUrl &&
       opp.fields.submissionUrl &&

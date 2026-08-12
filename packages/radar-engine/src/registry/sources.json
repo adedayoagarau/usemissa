@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "generatedAt": "2026-08-12T08:25:44.043Z",
+  "generatedAt": "2026-08-12T08:51:15.992Z",
   "verticals": [
     {
       "id": "literary-fiction",
@@ -8629,7 +8629,7 @@
       "checkIntervalHours": 24,
       "active": true,
       "organizationName": "Creative Europe",
-      "followsOutboundLinks": false,
+      "followsOutboundLinks": true,
       "discoveryAdapterId": "eu-funding-api",
       "taxonomyTermIds": [],
       "trust": {
@@ -9760,12 +9760,12 @@
       ]
     },
     {
-      "id": "src_grants-international_transartists_110",
-      "name": "TransArtists",
-      "url": "https://www.transartists.org/en/opportunities",
-      "kind": "organization-website",
+      "id": "src_grants-international_transartists_open_calls_110",
+      "name": "TransArtists Open Calls",
+      "url": "https://www.transartists.org/en/transartists-calls",
+      "kind": "directory",
       "verticalId": "grants-international",
-      "tier": 0,
+      "tier": 2,
       "opportunityTypes": [
         "grant",
         "fellowship"
@@ -9773,15 +9773,15 @@
       "geography": [
         "EU"
       ],
-      "checkIntervalHours": 168,
+      "checkIntervalHours": 24,
       "active": true,
-      "organizationName": "TransArtists",
-      "followsOutboundLinks": false,
+      "followsOutboundLinks": true,
+      "discoveryAdapterId": "transartists-index",
       "taxonomyTermIds": [],
       "trust": {
-        "status": "curated",
-        "authorityKind": "official-source",
-        "score": 80
+        "status": "needs-review",
+        "authorityKind": "directory",
+        "score": 50
       },
       "disciplines": [
         "all-disciplines"
@@ -20683,7 +20683,7 @@
     {
       "id": "src_platform-transartists_transartists_residency_database_416",
       "name": "TransArtists Residency Database",
-      "url": "https://www.transartists.org/en/air",
+      "url": "https://www.transartists.org/en/map",
       "kind": "directory",
       "verticalId": "platform-transartists",
       "tier": 2,
@@ -32152,6 +32152,37 @@
       ]
     },
     {
+      "id": "src_visual-residency_transartists_residencies_207",
+      "name": "TransArtists Residencies",
+      "url": "https://www.transartists.org/en/opportunities",
+      "kind": "organization-website",
+      "verticalId": "visual-residency",
+      "tier": 0,
+      "opportunityTypes": [
+        "residency",
+        "fellowship"
+      ],
+      "geography": [
+        "global"
+      ],
+      "checkIntervalHours": 168,
+      "active": true,
+      "organizationName": "TransArtists Residencies",
+      "followsOutboundLinks": false,
+      "taxonomyTermIds": [
+        "taxterm_pf-visual-arts"
+      ],
+      "trust": {
+        "status": "curated",
+        "authorityKind": "official-source",
+        "score": 80
+      },
+      "disciplines": [
+        "visual-arts",
+        "interdisciplinary"
+      ]
+    },
+    {
       "id": "src_visual-residency_viafarini_242",
       "name": "Viafarini",
       "url": "https://www.viafarini.org/",
@@ -33138,9 +33169,9 @@
         "termId": "taxterm_pf-visual-arts",
         "facet": "practice-family",
         "label": "Visual arts",
-        "sourceCount": 133,
-        "canonicalSourceCount": 108,
-        "trustedSourceCount": 110,
+        "sourceCount": 134,
+        "canonicalSourceCount": 109,
+        "trustedSourceCount": 111,
         "status": "covered"
       },
       {
