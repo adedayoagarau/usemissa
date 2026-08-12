@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { HttpFetcher, isSafeTextPayload, type Source } from '../src/index.js';
+import { DeterministicExtractor, HttpFetcher, isSafeTextPayload, machineEvidenceText, type Source } from '../src/index.js';
 
 const source: Source = {
   id: 'source_fetcher',
@@ -39,4 +39,45 @@ test('rejects control characters even when a server mislabels binary content as 
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('prepends bounded official API evidence without replacing canonical page text', () => {
+  const content = machineEvidenceText({
+    ...source,
+    discoveryExternalId: 'eu-ft:call-1',
+    discoveryMachineRecord: {
+      title: 'Cultural Horizons: Residencies',
+      organizationName: 'Creative Europe',
+      openDate: '2026-06-30',
+      deadlineDate: '2026-09-30',
+      applicationUrl: 'https://ec.europa.eu/call/1',
+      evidenceUrl: 'https://api.tech.ec.europa.eu/search-api/',
+    },
+  }, 'Canonical host page text');
+  assert.match(content, /^Title: Cultural Horizons: Residencies/m);
+  assert.match(content, /Deadline: 2026-09-30/);
+  assert.match(content, /Canonical host page text$/);
+});
+
+test('official API evidence remains valid when an organization name contains periods', () => {
+  const evidenceSource: Source = {
+    ...source,
+    name: 'Reel American',
+    discoveryMachineRecord: {
+      title: 'Reel American: The Road to the Olympic Rings',
+      organizationName: 'U.S. Mission to Jordan',
+      openDate: '2026-07-22',
+      deadlineDate: '2026-08-31',
+      applicationUrl: source.url,
+      evidenceUrl: 'https://api.grants.gov/v1/api/search2',
+    },
+  };
+  const content = machineEvidenceText(evidenceSource, 'Canonical Grants.gov detail page');
+  const candidate = new DeterministicExtractor({ now: () => new Date('2026-08-12T00:00:00.000Z') }).extract(
+    evidenceSource,
+    { id: 'snapshot', sourceId: source.id, url: source.url, fetchedAt: '2026-08-12T00:00:00.000Z', status: 'ok', content, contentHash: 'hash' },
+  );
+  assert.equal(candidate.organizationName, 'U.S. Mission to Jordan');
+  assert.equal(candidate.deadline.date, '2026-08-31');
+  assert.deepEqual(candidate.issues, []);
 });

@@ -8,12 +8,47 @@ import {
   discoverySourceInsertPlaceholders,
   discoverySourceUpdatePlaceholders,
   extractDiscoveryLinks,
+  discoveryIdentityKey,
   isDiscoverySource,
   mergeDiscoveredSourceMetadata,
   reconcileMachineDiscoveredChildren,
   prioritizeDiscoverySources,
   reconcileDiscoveredChildren,
 } from "../src/discoveryWorker.js";
+
+test("machine records use external identity so one page can expose concurrent calls", () => {
+  assert.notEqual(
+    discoveryIdentityKey({ url: "https://ec.europa.eu/call/shared", discoveryExternalId: "eu-ft:one" }),
+    discoveryIdentityKey({ url: "https://ec.europa.eu/call/shared", discoveryExternalId: "eu-ft:two" }),
+  );
+});
+
+test("a machine record follows its official URL when the stable external ID moves", () => {
+  const source: Source = {
+    id: "machine-child", name: "Call", url: "https://example.eu/old", kind: "organization-website",
+    active: true, checkIntervalHours: 24, consecutiveFailures: 0, discoveryExternalId: "eu-ft:one",
+  };
+  assert.equal(mergeDiscoveredSourceMetadata(source, {
+    url: "https://example.eu/new", discoveryExternalId: "eu-ft:one", title: "Call",
+  }), true);
+  assert.equal(source.url, "https://example.eu/new");
+});
+
+test("new first-party API evidence makes an existing machine source immediately due", () => {
+  const source: Source = {
+    id: "machine-child", name: "Call", url: "https://example.eu/call", kind: "organization-website",
+    active: true, checkIntervalHours: 24, consecutiveFailures: 0, discoveryExternalId: "eu-ft:one",
+    nextCheckAt: "2026-08-13T00:00:00.000Z",
+  };
+  assert.equal(mergeDiscoveredSourceMetadata(source, {
+    url: source.url,
+    discoveryExternalId: source.discoveryExternalId,
+    discoveryMachineRecord: {
+      title: "Call", deadlineDate: "2026-09-01", evidenceUrl: "https://api.example.eu",
+    },
+  }), true);
+  assert.equal(source.nextCheckAt, undefined);
+});
 import type { Source } from "@missa/radar-engine";
 
 test("discovery reconciliation retires stale provenance children", () => {

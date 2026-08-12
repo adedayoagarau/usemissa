@@ -92,7 +92,9 @@ function extractTitle(text: string, source: Source): string | undefined {
 }
 
 function extractOrganization(text: string, source: Source): string | undefined {
-  const m = /(?:organization|run by|presented by|published by|hosted by)\s*[:\-]\s*([^\n.]+)/i.exec(text);
+  const labeled = /^\s*organization\s*:\s*(.+)$/im.exec(text);
+  if (labeled) return labeled[1].trim();
+  const m = /(?:run by|presented by|published by|hosted by)\s*[:\-]\s*([^\n.]+)/i.exec(text);
   if (m) return m[1].trim();
   return source.kind === 'organization-website' ? source.name : undefined;
 }

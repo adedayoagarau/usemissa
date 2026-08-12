@@ -39,6 +39,7 @@ function entry(name, url, verticalId, opts = {}) {
     active: true,
     organizationName: tier === 0 ? name : undefined,
     followsOutboundLinks: opts.followsOutboundLinks ?? tier === 2,
+    discoveryAdapterId: opts.discoveryAdapterId,
     notes: opts.notes,
   };
 }
@@ -186,7 +187,7 @@ const INTL_GRANTS = [
   ['Pro Helvetia', 'https://prohelvetia.ch/en/funding', 'CH'],
   ['Flanders Arts Institute', 'https://www.flandersartsinstitute.be/en/opportunities', 'BE'],
   ['Mondriaan Fund', 'https://www.mondriaanfond.nl/en/apply', 'NL'],
-  ['Creative Europe', 'https://culture.ec.europa.eu/creative-europe', 'EU'],
+  ['Creative Europe', 'https://culture.ec.europa.eu/creative-europe', 'EU', { checkIntervalHours: 24, discoveryAdapterId: 'eu-funding-api' }],
   ['On the Move', 'https://on-the-move.org/funding', 'EU'],
   ['TransArtists', 'https://www.transartists.org/en/opportunities', 'EU'],
   ['Prince Claus Fund', 'https://princeclausfund.org/', 'NL'],
@@ -215,10 +216,11 @@ const INTL_GRANTS = [
   ['Centre national des arts plastiques', 'https://www.cnap.fr/en', 'FR'],
 ];
 
-for (const [name, url, geo] of INTL_GRANTS) {
+for (const [name, url, geo, extra = {}] of INTL_GRANTS) {
   sources.push(org(name, url, 'grants-international', {
     opportunityTypes: ['grant', 'fellowship'],
     geography: geo === 'global' ? ['global'] : [geo],
+    ...extra,
   }));
 }
 
