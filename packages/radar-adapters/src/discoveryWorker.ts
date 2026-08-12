@@ -664,7 +664,6 @@ export async function runDiscoveryWorkerTick(options: Pick<DiscoveryWorkerOption
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const sourceRunId = await startSourceRun(pool, "directory-discovery", undefined, { intervalStart: new Date().toISOString(), metadata: { maxSources, linkLimit, maxNewSources } });
   const sourceRows = await pool.query<{ data: Source }>("select data from radar_sources");
-  await pool.end();
   const now = new Date();
   const candidates = prioritizeDiscoverySources(sourceRows.rows
     .map((row) => row.data)
