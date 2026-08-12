@@ -32,8 +32,14 @@ test("browse SQL is parameterized and keeps public publication boundaries", () =
   assert.match(built.text, /o\.publication_state = 'published'/);
   assert.match(built.text, /o\.status = any\(\$1::text\[\]\)/);
   assert.match(built.text, /o\.search_document ilike/);
-  assert.match(built.text, /coalesce\(evidence\.checked_at, o\.source_checked_at\)/);
-  assert.doesNotMatch(built.text, /coalesce\(evidence\.checked_at, source\.last_checked_at\)/);
+  assert.match(
+    built.text,
+    /coalesce\(evidence\.checked_at, o\.source_checked_at\)/,
+  );
+  assert.doesNotMatch(
+    built.text,
+    /coalesce\(evidence\.checked_at, source\.last_checked_at\)/,
+  );
   assert.match(built.text, /a\.rights_status in \('cleared', 'permitted'\)/);
   assert.doesNotMatch(built.text, /a\.rights_status in \([^)]*'unknown'/);
   assert.doesNotMatch(built.text, /poetry.*1=1/);
@@ -47,13 +53,19 @@ test("canonical taxonomy filters require every selected hierarchy root", () => {
   try {
     const built = buildOpportunityBrowseQuery({
       ...baseQuery,
-      taxonomyTermIds: ["taxterm_pf-writing-and-literature", "taxterm_disc-poetry"],
+      taxonomyTermIds: [
+        "taxterm_pf-writing-and-literature",
+        "taxterm_disc-poetry",
+      ],
       taxonomyIncludeDescendants: true,
     });
 
     assert.match(built.text, /with recursive requested\(term_id\)/);
     assert.match(built.text, /select 1 from expanded/);
-    assert.deepEqual(built.values[1], ["taxterm_pf-writing-and-literature", "taxterm_disc-poetry"]);
+    assert.deepEqual(built.values[1], [
+      "taxterm_pf-writing-and-literature",
+      "taxterm_disc-poetry",
+    ]);
   } finally {
     if (previous === undefined) delete process.env.MISSA_TAXONOMY_READS;
     else process.env.MISSA_TAXONOMY_READS = previous;
@@ -64,7 +76,9 @@ test("authenticated taxonomy reads explain matches from explicit profile prefere
   const previous = process.env.MISSA_TAXONOMY_READS;
   process.env.MISSA_TAXONOMY_READS = "1";
   try {
-    const built = buildOpportunityBrowseQuery(baseQuery, { accountId: "acct_0001" });
+    const built = buildOpportunityBrowseQuery(baseQuery, {
+      accountId: "acct_0001",
+    });
     assert.match(built.text, /account_taxonomy_preferences/);
     assert.match(built.text, /radar_library_works/);
     assert.match(built.text, /excluded_preference\.preference = 'exclude'/);
@@ -84,15 +98,19 @@ test("repository disables taxonomy SQL when the additive schema is not ready", a
     const pool = {
       async query(text: string) {
         calls.push(text);
-        if (text.includes("information_schema.tables")) return { rows: [{ ready: false }] };
+        if (text.includes("information_schema.tables"))
+          return { rows: [{ ready: false }] };
         return { rows: [] };
       },
     } as never;
     const repository = new PostgresOpportunityRepository(pool);
-    await repository.browse({
-      ...baseQuery,
-      taxonomyTermIds: ["taxterm_pf-writing-and-literature"],
-    }, { accountId: "acct_0001" });
+    await repository.browse(
+      {
+        ...baseQuery,
+        taxonomyTermIds: ["taxterm_pf-writing-and-literature"],
+      },
+      { accountId: "acct_0001" },
+    );
     assert.equal(calls.length, 2);
     assert.match(calls[1] ?? "", /false/);
     assert.doesNotMatch(calls[1] ?? "", /taxonomy_terms/);
@@ -116,7 +134,8 @@ test("opportunity content reads are fail-closed and expose approved content only
     assert.match(enabled.text, /c\.review_status = 'approved'/);
     assert.match(enabled.text, /intelligence\.content as content/);
   } finally {
-    if (previous === undefined) delete process.env.MISSA_OPPORTUNITY_CONTENT_READS;
+    if (previous === undefined)
+      delete process.env.MISSA_OPPORTUNITY_CONTENT_READS;
     else process.env.MISSA_OPPORTUNITY_CONTENT_READS = previous;
   }
 });
@@ -124,7 +143,11 @@ test("opportunity content reads are fail-closed and expose approved content only
 test("keyset cursor allocates independent key and id parameters", () => {
   const first = buildOpportunityBrowseQuery(baseQuery);
   const cursor = Buffer.from(
-    JSON.stringify({ sort: "soonest-deadline", key: "2026-08-01", id: "opp_0001" }),
+    JSON.stringify({
+      sort: "soonest-deadline",
+      key: "2026-08-01",
+      id: "opp_0001",
+    }),
     "utf8",
   ).toString("base64url");
   const next = buildOpportunityBrowseQuery({ ...baseQuery, cursor });
@@ -139,7 +162,7 @@ test("keyset cursor allocates independent key and id parameters", () => {
 test("repository maps rows and returns a continuation cursor", async () => {
   const rows = [
     {
-    id: "opp_0001",
+      id: "opp_0001",
       total_count: "2",
       slug: "a".repeat(240),
       title: "Poetry Call",
@@ -206,7 +229,18 @@ test("repository maps rows and returns a continuation cursor", async () => {
         confidence: "unknown",
         sourceUrl: "https://harbor.example/calls",
         lastVerifiedAt: null,
-        prizes: [{ rank: 1, title: null, amountCents: null, currency: null, description: null, judgeName: null, sourceUrl: "https://harbor.example/calls", confidence: "unknown" }],
+        prizes: [
+          {
+            rank: 1,
+            title: null,
+            amountCents: null,
+            currency: null,
+            description: null,
+            judgeName: null,
+            sourceUrl: "https://harbor.example/calls",
+            confidence: "unknown",
+          },
+        ],
         windows: [],
       },
       tailoring_reasons: [
@@ -216,7 +250,7 @@ test("repository maps rows and returns a continuation cursor", async () => {
       created_at: "2026-07-20T00:00:00.000Z",
     },
     {
-    id: "opp_0002",
+      id: "opp_0002",
       total_count: "2",
       slug: "fiction-call",
       title: "Fiction Call",
@@ -280,7 +314,13 @@ test("repository maps rows and returns a continuation cursor", async () => {
     paymentType: "none",
     confidence: "unknown",
     sourceUrl: "https://harbor.example/calls",
-    prizes: [{ rank: 1, sourceUrl: "https://harbor.example/calls", confidence: "unknown" }],
+    prizes: [
+      {
+        rank: 1,
+        sourceUrl: "https://harbor.example/calls",
+        confidence: "unknown",
+      },
+    ],
     windows: [],
   });
   assert.deepEqual(result.items[0]?.personal?.tailoringReasons, [
@@ -320,7 +360,7 @@ test("detail projection strips nullable call profile fields before contract vali
     discipline: "writing",
     genres: ["poetry"],
     taxonomy: { schemeVersion: 1, termIds: [], primaryTermIds: [] },
-    deadline_kind: "rolling",
+    deadline_kind: "fixed",
     deadline_date: null,
     deadline_time: null,
     deadline_timezone: null,
@@ -376,7 +416,18 @@ test("detail projection strips nullable call profile fields before contract vali
       confidence: "unknown",
       sourceUrl: "https://harbor.example/calls",
       lastVerifiedAt: "2026-07-30T00:00:00+00:00",
-      prizes: [{ rank: 1, title: null, amountCents: null, currency: null, description: null, judgeName: null, sourceUrl: "https://harbor.example/calls", confidence: "unknown" }],
+      prizes: [
+        {
+          rank: 1,
+          title: null,
+          amountCents: null,
+          currency: null,
+          description: null,
+          judgeName: null,
+          sourceUrl: "https://harbor.example/calls",
+          confidence: "unknown",
+        },
+      ],
       windows: [],
     },
   };
@@ -390,7 +441,10 @@ test("detail projection strips nullable call profile fields before contract vali
   const result = await repository.getById("opp_0001");
 
   assert.ok(result);
-  assert.doesNotThrow(() => opportunityDetailResponseSchema.parse({ ...result, createdAt: undefined }));
+  assert.equal(result.deadline.kind, "exact");
+  assert.doesNotThrow(() =>
+    opportunityDetailResponseSchema.parse({ ...result, createdAt: undefined }),
+  );
   assert.equal(result.callProfile?.readingPeriodLabel, undefined);
   assert.equal(result.callProfile?.lastVerifiedAt, "2026-07-30T00:00:00.000Z");
   assert.equal(result.callProfile?.prizes[0]?.title, undefined);
