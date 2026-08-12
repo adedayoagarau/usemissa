@@ -12,7 +12,7 @@ import { contentHash, type Source } from "@missa/radar-engine";
 import { DISCOVERY_INGESTION_LOCK, releaseAdvisoryLock, tryAdvisoryLock } from "./radarWorker.js";
 import { Pool, type PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
-import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun, type RadarWorkerKind } from "./workerTelemetry.js";
+import { finishSourceRun, finishWorkerRun, heartbeatWorkerRun, startSourceRun, startWorkerRun, type RadarWorkerKind } from "./workerTelemetry.js";
 import {
   canonicalPageMatchesDirectoryCall,
   discoverSourceLinks,
@@ -662,6 +662,7 @@ export async function runDiscoveryWorkerTick(options: Pick<DiscoveryWorkerOption
   const linkLimit = discoveryLinkLimit(options.maxLinksPerSource);
   const maxNewSources = bounded(options.maxNewSources, MAX_NEW_SOURCES_PER_TICK, MAX_NEW_SOURCES_PER_TICK);
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const sourceRunId = await startSourceRun(pool, "directory-discovery", undefined, { intervalStart: new Date().toISOString(), metadata: { maxSources, linkLimit, maxNewSources } });
   const sourceRows = await pool.query<{ data: Source }>("select data from radar_sources");
   await pool.end();
   const now = new Date();
@@ -672,6 +673,17 @@ export async function runDiscoveryWorkerTick(options: Pick<DiscoveryWorkerOption
   const fetched = await mapConcurrent(candidates, Number(process.env.RADAR_DISCOVERY_CONCURRENCY ?? 16), (source) => fetchDirectory(source, linkLimit));
   const failures = fetched.filter((item) => item.error).length;
   const persisted = await persistDiscoveryResults(fetched, maxNewSources, logger);
+  await finishSourceRun(pool, sourceRunId, {
+    intervalEnd: new Date().toISOString(),
+    sourcesSelected: candidates.length,
+    sourcesFetched: fetched.length,
+    successfulFetches: fetched.length - failures,
+    failedFetches: failures,
+    opportunitiesCreated: persisted.sourcesAdded,
+    retryCategories: Object.fromEntries(fetched.filter((item) => item.error).map((item) => [item.error ?? "unknown", 1])),
+    reconciliation: { linksFound: persisted.linksFound, sourcesAdded: persisted.sourcesAdded, maxNewSources },
+  });
+  await pool.end();
   return {
     status: "completed",
     sourcesChecked: candidates.length,

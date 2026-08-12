@@ -100,6 +100,35 @@ create table if not exists radar_review_decisions (
 );
 create index if not exists radar_review_decisions_opp_created_idx on radar_review_decisions (opportunity_id, created_at);
 create index if not exists radar_review_decisions_run_idx on radar_review_decisions (run_id);
+
+create table if not exists radar_source_runs (
+  id text primary key,
+  agent_run_id text references radar_agent_runs(id) on delete set null,
+  lane text not null,
+  source_id text,
+  started_at timestamptz not null default now(),
+  interval_start timestamptz,
+  interval_end timestamptz,
+  completed_at timestamptz,
+  status text not null default 'running',
+  sources_selected integer not null default 0,
+  sources_fetched integer not null default 0,
+  successful_fetches integer not null default 0,
+  failed_fetches integer not null default 0,
+  extraction_successes integer not null default 0,
+  extraction_failures integer not null default 0,
+  opportunities_created integer not null default 0,
+  opportunities_updated integer not null default 0,
+  duplicates_merged integer not null default 0,
+  retry_categories jsonb not null default '{}'::jsonb,
+  reconciliation jsonb not null default '{}'::jsonb,
+  metadata jsonb not null default '{}'::jsonb,
+  error text,
+  check (status in ('running', 'completed', 'failed', 'skipped')),
+  check (sources_selected >= 0 and sources_fetched >= 0 and successful_fetches >= 0 and failed_fetches >= 0)
+);
+create index if not exists radar_source_runs_lane_started_idx on radar_source_runs (lane, started_at desc);
+create index if not exists radar_source_runs_status_idx on radar_source_runs (status, started_at desc);
 `;
 
 export async function ensureAgentGraphSchema(pool: Pool): Promise<void> {

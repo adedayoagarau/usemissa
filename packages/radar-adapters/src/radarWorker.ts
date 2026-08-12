@@ -3,7 +3,7 @@ import { Pool } from "pg";
 import type { TickReport } from "@missa/radar-engine";
 import type { RadarEngine } from "@missa/radar-engine";
 import { createProductionEngine } from "./productionEngine.js";
-import { finishWorkerRun, heartbeatWorkerRun, readWorkerRunLifecycle, startWorkerRun } from "./workerTelemetry.js";
+import { finishSourceRun, finishWorkerRun, heartbeatWorkerRun, readWorkerRunLifecycle, startSourceRun, startWorkerRun } from "./workerTelemetry.js";
 import { processPlatformAgentControlRequests } from "./platformAdminFoundations.js";
 
 /**
@@ -107,6 +107,7 @@ export async function runRadarWorkerTick(
       }
     }
 
+    const sourceRunId = await startSourceRun(production.pool, "radar-ingestion", options.workerRunId, { intervalStart: new Date().toISOString(), metadata: { maxSources, minRegistryTier: options.minRegistryTier, maxRegistryTier: options.maxRegistryTier } });
     const report = await production.engine.tick({ maxSources, minRegistryTier: options.minRegistryTier, maxRegistryTier: options.maxRegistryTier });
     const afterTickLifecycle = await readWorkerRunLifecycle(production.pool, options.workerRunId);
     if (afterTickLifecycle === "paused" || afterTickLifecycle === "cancelled") {
@@ -115,6 +116,20 @@ export async function runRadarWorkerTick(
     }
     await options.afterTick?.(production.engine);
     await production.persist();
+    await finishSourceRun(production.pool, sourceRunId, {
+      intervalEnd: report.at,
+      sourcesSelected: report.sourcesSelected,
+      sourcesFetched: report.sourcesFetched,
+      successfulFetches: report.successfulFetches,
+      failedFetches: report.failedFetches,
+      extractionSuccesses: report.extractionSuccesses,
+      extractionFailures: report.extractionFailures,
+      opportunitiesCreated: report.opportunitiesCreated.length,
+      opportunitiesUpdated: report.opportunitiesUpdated.length,
+      duplicatesMerged: report.duplicatesMerged,
+      retryCategories: report.failedFetchesByReason,
+      reconciliation: { pagesUnchanged: report.pagesUnchanged, pagesChanged: report.pagesChanged, verificationTasksOpened: report.verificationTasksOpened.length },
+    });
     logger.info(JSON.stringify({
       event: 'radar.tick',
       sourcesSelected: report.sourcesSelected,

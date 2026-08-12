@@ -20,6 +20,45 @@ export interface WorkerRunProgress {
   lastError?: string;
 }
 
+export interface SourceRunProgress {
+  status?: "completed" | "failed" | "skipped";
+  intervalStart?: string;
+  intervalEnd?: string;
+  sourcesSelected?: number;
+  sourcesFetched?: number;
+  successfulFetches?: number;
+  failedFetches?: number;
+  extractionSuccesses?: number;
+  extractionFailures?: number;
+  opportunitiesCreated?: number;
+  opportunitiesUpdated?: number;
+  duplicatesMerged?: number;
+  retryCategories?: Record<string, number>;
+  reconciliation?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  error?: string;
+}
+
+export async function startSourceRun(pool: Pool, lane: string, agentRunId?: string, progress: Pick<SourceRunProgress, "intervalStart" | "metadata"> = {}): Promise<string | undefined> {
+  const id = randomUUID();
+  try {
+    await ensureAgentGraphSchema(pool);
+    await pool.query(`insert into radar_source_runs (id, agent_run_id, lane, interval_start, metadata) values ($1, $2, $3, $4, $5::jsonb)`, [id, agentRunId ?? null, lane, progress.intervalStart ?? new Date().toISOString(), JSON.stringify(progress.metadata ?? {})]);
+    return id;
+  } catch {
+    return undefined;
+  }
+}
+
+export async function finishSourceRun(pool: Pool, runId: string | undefined, progress: SourceRunProgress): Promise<void> {
+  if (!runId) return;
+  try {
+    await pool.query(`update radar_source_runs set status = $2, completed_at = now(), interval_end = $3, sources_selected = $4, sources_fetched = $5, successful_fetches = $6, failed_fetches = $7, extraction_successes = $8, extraction_failures = $9, opportunities_created = $10, opportunities_updated = $11, duplicates_merged = $12, retry_categories = $13::jsonb, reconciliation = $14::jsonb, metadata = metadata || $15::jsonb, error = $16 where id = $1`, [runId, progress.status ?? "completed", progress.intervalEnd ?? new Date().toISOString(), progress.sourcesSelected ?? 0, progress.sourcesFetched ?? 0, progress.successfulFetches ?? 0, progress.failedFetches ?? 0, progress.extractionSuccesses ?? 0, progress.extractionFailures ?? 0, progress.opportunitiesCreated ?? 0, progress.opportunitiesUpdated ?? 0, progress.duplicatesMerged ?? 0, JSON.stringify(progress.retryCategories ?? {}), JSON.stringify(progress.reconciliation ?? {}), JSON.stringify(progress.metadata ?? {}), progress.error?.slice(0, 1000) ?? null]);
+  } catch {
+    // Telemetry must never stop ingestion.
+  }
+}
+
 export type WorkerRunLifecycleStatus = "queued" | "running" | "paused" | "completed" | "failed" | "cancelled" | "missing";
 
 function instanceId(): string | undefined {

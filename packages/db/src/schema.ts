@@ -994,6 +994,39 @@ export const radarAgentRuns = pgTable(
   ],
 );
 
+export const radarSourceRuns = pgTable(
+  "radar_source_runs",
+  {
+    id: text("id").primaryKey(),
+    agentRunId: text("agent_run_id").references(() => radarAgentRuns.id, { onDelete: "set null" }),
+    lane: text("lane").notNull(),
+    sourceId: text("source_id"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    intervalStart: timestamp("interval_start", { withTimezone: true }),
+    intervalEnd: timestamp("interval_end", { withTimezone: true }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    status: text("status").notNull().default("running"),
+    sourcesSelected: integer("sources_selected").notNull().default(0),
+    sourcesFetched: integer("sources_fetched").notNull().default(0),
+    successfulFetches: integer("successful_fetches").notNull().default(0),
+    failedFetches: integer("failed_fetches").notNull().default(0),
+    extractionSuccesses: integer("extraction_successes").notNull().default(0),
+    extractionFailures: integer("extraction_failures").notNull().default(0),
+    opportunitiesCreated: integer("opportunities_created").notNull().default(0),
+    opportunitiesUpdated: integer("opportunities_updated").notNull().default(0),
+    duplicatesMerged: integer("duplicates_merged").notNull().default(0),
+    retryCategories: jsonb("retry_categories").notNull().default(sql`'{}'::jsonb`).$type<Record<string, number>>(),
+    reconciliation: jsonb("reconciliation").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    error: text("error"),
+  },
+  (table) => [
+    index("radar_source_runs_lane_started_idx").on(table.lane, table.startedAt),
+    index("radar_source_runs_status_idx").on(table.status, table.startedAt),
+    check("radar_source_runs_status_check", sql`${table.status} in ('running', 'completed', 'failed', 'skipped')`),
+  ],
+);
+
 export const radarAgentHandoffs = pgTable(
   "radar_agent_handoffs",
   {
