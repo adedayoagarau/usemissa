@@ -104,6 +104,7 @@ export class LlmExtractor implements Extractor {
   private readonly client: Anthropic;
   private readonly model: string;
   private readonly fallback: DeterministicExtractor;
+  private providerAvailable = true;
 
   constructor(private readonly clock: Clock, opts: LlmExtractorOptions = {}) {
     this.client = opts.client ?? new Anthropic({ apiKey: opts.apiKey });
@@ -112,12 +113,14 @@ export class LlmExtractor implements Extractor {
   }
 
   async extract(source: Source, snapshot: PageSnapshot): Promise<OpportunityCandidate> {
+    if (!this.providerAvailable) return this.fallback.extract(source, snapshot);
     const now = this.clock.now();
     const candidateTerms = candidateTaxonomyTerms(source, snapshot.content);
     let fields: ExtractionFields;
     try {
       fields = await this.callModel(snapshot.content, candidateTerms);
     } catch (error) {
+      this.providerAvailable = false;
       const status = typeof error === 'object' && error !== null && 'status' in error
         ? String((error as { status?: unknown }).status ?? 'unknown')
         : 'unknown';

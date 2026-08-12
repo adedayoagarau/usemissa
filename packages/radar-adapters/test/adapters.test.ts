@@ -239,6 +239,43 @@ test("LlmExtractor: falls back to deterministic extraction when the provider fai
   assert.ok(candidate.extractionConfidence > 0);
 });
 
+test("LlmExtractor: opens a provider circuit after the first failure in a batch", async () => {
+  const clock = new ManualClock(new Date("2026-07-07T00:00:00Z"));
+  let attempts = 0;
+  const client = {
+    messages: {
+      create: async () => {
+        attempts += 1;
+        throw Object.assign(new Error("provider unavailable"), { status: 402 });
+      },
+    },
+  } as unknown as Anthropic;
+  const extractor = new LlmExtractor(clock, { client, apiKey: "unused" });
+  const source: Source = {
+    id: "src_circuit",
+    name: "North River Poetry Prize",
+    url: "https://example.com/poetry-prize",
+    kind: "organization-website",
+    checkIntervalHours: 24,
+    active: true,
+    consecutiveFailures: 0,
+  };
+  const snapshot = {
+    id: "snap_circuit",
+    sourceId: source.id,
+    url: source.url,
+    fetchedAt: clock.now().toISOString(),
+    status: "ok" as const,
+    contentHash: "h",
+    content: "North River Poetry Prize\nCall for poetry. Deadline: September 30, 2026.",
+  };
+
+  await extractor.extract(source, snapshot);
+  await extractor.extract(source, { ...snapshot, id: "snap_circuit_2" });
+
+  assert.equal(attempts, 1);
+});
+
 function fakePool(): { pool: Pool; tables: Map<string, unknown[]> } {
   const tables = new Map<string, unknown[]>();
   const pool = {
