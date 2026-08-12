@@ -1,12 +1,45 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assembleRegistry } from "@missa/radar-engine";
+import { assembleRegistry, type Source } from "@missa/radar-engine";
 import {
   euFundingLinksFromResponse,
   euFundingSearchQuery,
+  fetchMachineDiscoverySource,
   grantsGovLinksFromResponse,
   grantsGovSearchRequest,
 } from "../src/machineDiscoveryAdapters.js";
+
+test("Sundance deadlines emits current official application cards", async () => {
+  const source: Source = {
+    id: "sundance-deadlines",
+    name: "Sundance Institute Artist Opportunities",
+    url: "https://www.sundance.org/deadlines/",
+    kind: "directory",
+    discoveryAdapterId: "sundance-deadlines",
+    checkIntervalHours: 24,
+    active: true,
+    consecutiveFailures: 0,
+  };
+  const html = `
+    <h2>Graton Artist Opportunity</h2>
+    <p>The opportunity supports emerging filmmakers.</p>
+    <p>Extended Deadline: August 18, 2026</p>
+    <a href="https://apply.sundance.org/prog/2026_graton_artist_opportunity/">Apply Now</a>
+    <h2>Expired Opportunity</h2>
+    <p>Deadline: January 1, 2020</p>
+    <a href="https://apply.sundance.org/prog/expired/">Apply Now</a>
+  `;
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => new Response(html, { status: 200, headers: { "content-type": "text/html" } });
+  try {
+    const result = await fetchMachineDiscoverySource(source);
+    assert.deepEqual(result.links.map((link) => link.title), ["Graton Artist Opportunity"]);
+    assert.equal(result.links[0]?.discoveryMachineRecord?.deadlineDate, "2026-08-18");
+    assert.equal(result.links[0]?.registryTrust?.status, "verified");
+  } finally {
+    globalThis.fetch = original;
+  }
+});
 
 test("Grants.gov request is bounded to the official Arts dataset", () => {
   assert.deepEqual(grantsGovSearchRequest(), {

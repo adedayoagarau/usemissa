@@ -8,6 +8,7 @@ const GRANTS_GOV_MAX_RESULTS = 1_000;
 const EU_CREATIVE_EUROPE_PROGRAMME = "43251814";
 const EU_MAX_RESULTS = 100;
 const LONG_TERM_CHECK_INTERVAL_HOURS = 8_760;
+const SUNDANCE_DEADLINES_URL = "https://www.sundance.org/deadlines/";
 
 type GrantsGovHit = {
   id?: string | number;
@@ -49,7 +50,69 @@ export interface MachineDiscoveryResult {
 }
 
 export function isMachineDiscoveryAdapter(adapterId: string | undefined): boolean {
-  return adapterId === "grants-gov-api" || adapterId === "eu-funding-api";
+  return adapterId === "grants-gov-api" || adapterId === "eu-funding-api" || adapterId === "sundance-deadlines";
+}
+
+function htmlText(value: string): string {
+  return value
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&#0*39;|&apos;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sundanceDeadlineLinks(
+  html: string,
+  parentSourceId: string,
+  now = new Date(),
+): DiscoveredSourceLink[] {
+  const links: DiscoveredSourceLink[] = [];
+  const seen = new Set<string>();
+  const cardPattern = /<h2\b[^>]*>([\s\S]*?)<\/h2>([\s\S]*?)(?=<h2\b|<\/main>|<\/body>)/gi;
+  for (const match of html.matchAll(cardPattern)) {
+    const title = htmlText(match[1]!).slice(0, 240);
+    const card = match[2]!;
+    const deadlineMatch = card.match(/(?:extended\s+)?deadline\s*:\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})/i);
+    const deadlineDate = isoDate(deadlineMatch?.[1]);
+    const applicationUrl = [...card.matchAll(/href=["']([^"']+)["']/gi)]
+      .map((item) => item[1]!)
+      .find((url) => /^(?:https:\/\/apply\.sundance\.org\/|https:\/\/filmfreeway\.com\/)/i.test(url));
+    if (!title || !deadlineDate || !applicationUrl || deadlineDate < now.toISOString().slice(0, 10)) continue;
+    const externalId = `sundance:${applicationUrl.toLowerCase()}`;
+    if (seen.has(externalId)) continue;
+    seen.add(externalId);
+    links.push({
+      url: applicationUrl,
+      title,
+      kind: "organization-website",
+      registryTier: 0,
+      followsOutboundLinks: false,
+      discoveredFromSourceId: parentSourceId,
+      discoveryExternalId: externalId,
+      discoveryExternalStatus: "posted",
+      registryOrganizationName: "Sundance Institute",
+      registryTrust: {
+        status: "verified",
+        authorityKind: "official-source",
+        score: 95,
+        evidenceUrl: SUNDANCE_DEADLINES_URL,
+        reviewNote: "Current opportunity emitted by Sundance Institute's official Artist Opportunities page.",
+      },
+      checkIntervalHours: 24,
+      discoveryMachineRecord: {
+        title,
+        organizationName: "Sundance Institute",
+        deadlineDate,
+        applicationUrl,
+        evidenceUrl: SUNDANCE_DEADLINES_URL,
+        description: htmlText(card).slice(0, 2_000),
+      },
+    });
+  }
+  return links;
 }
 
 export function euFundingSearchQuery(): Record<string, unknown> {
@@ -234,6 +297,22 @@ export async function fetchMachineDiscoverySource(
   source: Source,
   fetcher: typeof fetch = fetch,
 ): Promise<MachineDiscoveryResult> {
+  if (source.discoveryAdapterId === "sundance-deadlines") {
+    const response = await fetcher(source.url, {
+      headers: {
+        accept: "text/html,application/xhtml+xml",
+        "user-agent": "MissaRadar/1.0 (+https://www.usemissa.com; official-source; evidence-only)",
+      },
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) throw new Error(`Sundance deadlines HTTP ${response.status}`);
+    const rawContent = await response.text();
+    return {
+      finalUrl: response.url,
+      rawContent,
+      links: sundanceDeadlineLinks(rawContent, source.id),
+    };
+  }
   if (source.discoveryAdapterId === "eu-funding-api") {
     const form = new FormData();
     form.append("query", new Blob([JSON.stringify(euFundingSearchQuery())], { type: "application/json" }), "query.json");
