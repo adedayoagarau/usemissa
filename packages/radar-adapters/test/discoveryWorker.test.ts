@@ -10,6 +10,7 @@ import {
   extractDiscoveryLinks,
   isDiscoverySource,
   mergeDiscoveredSourceMetadata,
+  prioritizeDiscoverySources,
 } from "../src/discoveryWorker.js";
 import type { Source } from "@missa/radar-engine";
 
@@ -38,6 +39,37 @@ test("discovery selects only explicitly opted-in Postgres sources", () => {
   assert.equal(isDiscoverySource({ active: true, followsOutboundLinks: false }), false);
   assert.equal(isDiscoverySource({ active: true, followsOutboundLinks: undefined }), false);
   assert.equal(isDiscoverySource({ active: false, followsOutboundLinks: true }), false);
+});
+
+test("discovery prioritizes site adapters before the generic backlog", () => {
+  const source = (id: string, options: Partial<Source> = {}): Source => ({
+    id,
+    name: id,
+    url: `https://${id}.example/calls`,
+    kind: "directory",
+    checkIntervalHours: 48,
+    active: true,
+    consecutiveFailures: 0,
+    followsOutboundLinks: true,
+    ...options,
+  });
+
+  const ordered = prioritizeDiscoverySources([
+    source("generic-unchecked"),
+    source("adapter-recent", {
+      discoveryAdapterId: "source-detail",
+      discoveryLastCheckedAt: "2026-08-11T00:00:00.000Z",
+    }),
+    source("adapter-unchecked", { discoveryAdapterId: "source-index" }),
+    source("generic-old", { discoveryLastCheckedAt: "2026-08-01T00:00:00.000Z" }),
+  ]);
+
+  assert.deepEqual(ordered.map(({ id }) => id), [
+    "adapter-unchecked",
+    "adapter-recent",
+    "generic-unchecked",
+    "generic-old",
+  ]);
 });
 
 test("discovery persistence declares VALUES parameter types", () => {

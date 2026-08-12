@@ -72,6 +72,18 @@ export function isDiscoverySource(source: Pick<Source, "active" | "followsOutbou
   return source.active && source.followsOutboundLinks === true;
 }
 
+/** Keep explicit site schemas ahead of the generic research backlog. */
+export function prioritizeDiscoverySources(sources: Source[]): Source[] {
+  return [...sources].sort((left, right) => {
+    const adapterPriority = Number(!left.discoveryAdapterId) - Number(!right.discoveryAdapterId);
+    if (adapterPriority !== 0) return adapterPriority;
+    const leftCheckedAt = left.discoveryLastCheckedAt ? Date.parse(left.discoveryLastCheckedAt) : 0;
+    const rightCheckedAt = right.discoveryLastCheckedAt ? Date.parse(right.discoveryLastCheckedAt) : 0;
+    if (leftCheckedAt !== rightCheckedAt) return leftCheckedAt - rightCheckedAt;
+    return left.url.localeCompare(right.url);
+  });
+}
+
 function normalizeUrl(value: string): string {
   try {
     const url = new URL(value);
@@ -444,9 +456,9 @@ export async function runDiscoveryWorkerTick(options: Pick<DiscoveryWorkerOption
   const sourceRows = await pool.query<{ data: Source }>("select data from radar_sources");
   await pool.end();
   const now = new Date();
-  const candidates = sourceRows.rows
+  const candidates = prioritizeDiscoverySources(sourceRows.rows
     .map((row) => row.data)
-    .filter((source) => isDiscoverySource(source) && isDiscoveryDue(source, now))
+    .filter((source) => isDiscoverySource(source) && isDiscoveryDue(source, now)))
     .slice(0, maxSources);
   const fetched = await mapConcurrent(candidates, Number(process.env.RADAR_DISCOVERY_CONCURRENCY ?? 16), (source) => fetchDirectory(source, linkLimit));
   const failures = fetched.filter((item) => item.error).length;
