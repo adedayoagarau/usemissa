@@ -14,6 +14,7 @@ import { Pool, type PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun, type RadarWorkerKind } from "./workerTelemetry.js";
 import { discoverSourceLinks, type DiscoveredSourceLink } from "./sourceDiscoveryAdapters.js";
+import { fetchMachineDiscoverySource, isMachineDiscoveryAdapter } from "./machineDiscoveryAdapters.js";
 import { parseCrawlDelayForUserAgent, robotsAllowsPath } from "./sourcePolicy.js";
 
 const USER_AGENT = "MissaRadar/1.0 (+https://www.usemissa.com; discovery; evidence-only)";
@@ -21,7 +22,7 @@ const DEFAULT_BATCH_SIZE = 100;
 const MAX_BATCH_SIZE = 250;
 const DEFAULT_LINKS_PER_PAGE = 50;
 const MAX_LINKS_PER_PAGE = 100;
-const MAX_NEW_SOURCES_PER_TICK = 500;
+const MAX_NEW_SOURCES_PER_TICK = 1_000;
 const MAX_HTML_BYTES = 2_000_000;
 const DEFAULT_HOST_DELAY_MS = 1_000;
 const MAX_HOST_DELAY_MS = 60_000;
@@ -252,6 +253,7 @@ type FetchedDirectory = {
   notModified?: boolean;
   etag?: string;
   lastModified?: string;
+  reconcileChildren?: boolean;
   error?: string;
 };
 
@@ -272,6 +274,17 @@ export function discoverySourceInsertPlaceholders(count: number): string[] {
 async function fetchDirectory(source: Source, linkLimit: number): Promise<FetchedDirectory> {
   const checkedAt = new Date().toISOString();
   try {
+    if (isMachineDiscoveryAdapter(source.discoveryAdapterId)) {
+      const result = await fetchMachineDiscoverySource(source);
+      return {
+        source,
+        checkedAt,
+        html: result.rawContent,
+        finalUrl: result.finalUrl,
+        links: result.links,
+        reconcileChildren: true,
+      };
+    }
     const result = await fetchHtml(source);
     return {
       source,
@@ -300,28 +313,32 @@ export function discoverySourceFromLink(parent: Source, link: DiscoveryLink, id:
     url: link.url,
     kind: link.kind ?? "organization-website",
     active: true,
-    checkIntervalHours,
+    checkIntervalHours: link.checkIntervalHours ?? checkIntervalHours,
     consecutiveFailures: 0,
     consecutiveProcessingFailures: 0,
     registryVerticalId: parent.registryVerticalId,
     registryGroup: parent.registryGroup,
     registryDisciplines: parent.registryDisciplines,
     registryTaxonomyTermIds: parent.registryTaxonomyTermIds,
-    registryTrust: parent.registryTrust,
+    registryTrust: link.registryTrust ?? parent.registryTrust,
     registryEligibilityLens: parent.registryEligibilityLens,
     registrySourceChannel: parent.registrySourceChannel,
     registryGeography: parent.registryGeography,
     registryOpportunityTypes: parent.registryOpportunityTypes,
+    registryOrganizationName: link.registryOrganizationName ?? parent.registryOrganizationName,
     registryTier: link.registryTier ?? 0,
     followsOutboundLinks: link.followsOutboundLinks ?? false,
     discoveryAdapterId: link.discoveryAdapterId,
     discoveredFromSourceId: link.discoveredFromSourceId ?? parent.id,
+    discoveryExternalId: link.discoveryExternalId,
+    discoveryExternalStatus: link.discoveryExternalStatus,
   };
 }
 
 /** Upgrade sources created by the old generic fan-out without replacing live fetch state. */
 export function mergeDiscoveredSourceMetadata(source: Source, link: DiscoveryLink, parentSourceId?: string): boolean {
   let changed = false;
+  const previousExternalStatus = source.discoveryExternalStatus;
   const assign = <K extends keyof Source>(key: K, value: Source[K] | undefined): void => {
     if (value === undefined || source[key] === value) return;
     source[key] = value;
@@ -332,8 +349,48 @@ export function mergeDiscoveredSourceMetadata(source: Source, link: DiscoveryLin
   assign("followsOutboundLinks", link.followsOutboundLinks);
   assign("discoveryAdapterId", link.discoveryAdapterId);
   assign("discoveredFromSourceId", link.discoveredFromSourceId ?? parentSourceId);
+  assign("checkIntervalHours", link.checkIntervalHours);
+  assign("discoveryExternalId", link.discoveryExternalId);
+  assign("discoveryExternalStatus", link.discoveryExternalStatus);
+  assign("registryOrganizationName", link.registryOrganizationName);
+  assign("registryTrust", link.registryTrust);
   assign("active", true);
-  if (link.title && isGenericSourceName(source.name, source.url)) assign("name", link.title);
+  if (
+    link.discoveryExternalStatus &&
+    link.discoveryExternalStatus !== previousExternalStatus &&
+    (link.discoveryExternalStatus === "posted" || link.discoveryExternalStatus === "forecasted")
+  ) {
+    delete source.nextCheckAt;
+    changed = true;
+  }
+  if (link.title && (link.discoveryExternalId || isGenericSourceName(source.name, source.url))) {
+    assign("name", link.title);
+  }
+  return changed;
+}
+
+/** A call missing from a complete machine feed gets one final canonical-page check. */
+export function reconcileMachineDiscoveredChildren(
+  sources: Source[],
+  parentSourceId: string,
+  emittedLinks: DiscoveryLink[],
+): Source[] {
+  const emitted = new Set(emittedLinks.map((link) => normalizeUrl(link.url)));
+  const changed: Source[] = [];
+  for (const source of sources) {
+    if (
+      source.discoveredFromSourceId === parentSourceId &&
+      source.discoveryExternalId &&
+      source.active &&
+      !emitted.has(normalizeUrl(source.url)) &&
+      source.discoveryExternalStatus !== "retired"
+    ) {
+      source.discoveryExternalStatus = "retired";
+      source.checkIntervalHours = 8_760;
+      delete source.nextCheckAt;
+      changed.push(source);
+    }
+  }
   return changed;
 }
 
@@ -426,7 +483,15 @@ async function persistDiscoveryResults(fetched: FetchedDirectory[], maxNewSource
         // itself is fetched and reviewed by Radar before publication.
         void added;
       }
-      if (item.html !== undefined) {
+      if (item.reconcileChildren && isMachineDiscoveryAdapter(item.source.discoveryAdapterId)) {
+        for (const retired of reconcileMachineDiscoveredChildren(
+          currentRows.rows.map((row) => row.data),
+          item.source.id,
+          item.links,
+        )) {
+          enrichedExisting.set(retired.id, retired);
+        }
+      } else if (item.html !== undefined) {
         for (const retired of reconcileDiscoveredChildren(
           currentRows.rows.map((row) => row.data),
           item.source.id,
@@ -485,7 +550,11 @@ function isDiscoveryDue(source: Source, now: Date): boolean {
   if (!source.discoveryLastCheckedAt) return true;
   const failures = Math.max(0, source.discoveryConsecutiveFailures ?? 0);
   const backoff = Math.min(2 ** failures, 8);
-  const configuredHours = Number(process.env.RADAR_DISCOVERY_INTERVAL_HOURS ?? 48);
+  const configuredHours = Number(
+    isMachineDiscoveryAdapter(source.discoveryAdapterId)
+      ? source.checkIntervalHours
+      : process.env.RADAR_DISCOVERY_INTERVAL_HOURS ?? 48,
+  );
   const intervalHours = Number.isFinite(configuredHours) && configuredHours > 0 ? configuredHours : 48;
   return now.getTime() - Date.parse(source.discoveryLastCheckedAt) >= intervalHours * 60 * 60 * 1000 * backoff;
 }
