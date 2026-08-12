@@ -22,6 +22,17 @@ test("machine records use external identity so one page can expose concurrent ca
     discoveryIdentityKey({ url: "https://ec.europa.eu/call/shared", discoveryExternalId: "eu-ft:two" }),
   );
 });
+
+test("a machine record follows its official URL when the stable external ID moves", () => {
+  const source: Source = {
+    id: "machine-child", name: "Call", url: "https://example.eu/old", kind: "organization-website",
+    active: true, checkIntervalHours: 24, consecutiveFailures: 0, discoveryExternalId: "eu-ft:one",
+  };
+  assert.equal(mergeDiscoveredSourceMetadata(source, {
+    url: "https://example.eu/new", discoveryExternalId: "eu-ft:one", title: "Call",
+  }), true);
+  assert.equal(source.url, "https://example.eu/new");
+});
 import type { Source } from "@missa/radar-engine";
 
 test("discovery reconciliation retires stale provenance children", () => {

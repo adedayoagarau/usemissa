@@ -351,6 +351,9 @@ export function mergeDiscoveredSourceMetadata(source: Source, link: DiscoveryLin
     source[key] = value;
     changed = true;
   };
+  if (link.discoveryExternalId && source.discoveryExternalId === link.discoveryExternalId) {
+    assign("url", link.url);
+  }
   assign("kind", link.kind);
   assign("registryTier", link.registryTier);
   assign("followsOutboundLinks", link.followsOutboundLinks);
