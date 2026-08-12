@@ -179,8 +179,10 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
     process.env.MISSA_USE_PLAYWRIGHT === "1"
       ? new (await import("./playwrightFetcher.js")).PlaywrightFetcher()
       : new HttpFetcher();
-  const extractor = process.env.ANTHROPIC_API_KEY
-    ? new LlmExtractor(systemClock)
+  const extractor = process.env.DEEPSEEK_API_KEY
+    ? new LlmExtractor(systemClock, { provider: 'deepseek', apiKey: process.env.DEEPSEEK_API_KEY })
+    : process.env.ANTHROPIC_API_KEY
+      ? new LlmExtractor(systemClock, { provider: 'anthropic', apiKey: process.env.ANTHROPIC_API_KEY })
     : undefined;
 
   // Keep the loaded database snapshot as the delta baseline. Registry

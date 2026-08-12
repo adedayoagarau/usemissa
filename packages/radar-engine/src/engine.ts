@@ -782,6 +782,8 @@ export class RadarEngine {
       const result = fetchedResults[index]!;
 
       if (result.status === 'error') {
+        source.lastFetchStatus = 'error';
+        source.lastFetchFailureReason = result.failureReason ?? 'unknown';
         source.consecutiveFailures++;
         report.sourcesFailed++;
         report.fetchFailures++;
@@ -791,10 +793,11 @@ export class RadarEngine {
         source.nextCheckAt = nextCheckAt(source, now).toISOString();
         continue;
       }
-      report.successfulFetches++;
       source.consecutiveFailures = 0;
 
       if (result.status === 'gone') {
+        source.lastFetchStatus = 'gone';
+        source.lastFetchFailureReason = undefined;
         source.consecutiveProcessingFailures = 0;
         source.nextCheckAt = nextCheckAt(source, now).toISOString();
         report.pagesChanged++;
@@ -802,6 +805,9 @@ export class RadarEngine {
         continue;
       }
 
+      report.successfulFetches++;
+      source.lastFetchStatus = 'ok';
+      source.lastFetchFailureReason = undefined;
       source.firstVerifiedAt ??= now.toISOString();
       source.lastSuccessfulFetchAt = now.toISOString();
       const hash = contentHash(result.content);

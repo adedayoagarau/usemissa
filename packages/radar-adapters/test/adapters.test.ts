@@ -206,6 +206,31 @@ test("LlmExtractor: taxonomy IDs are bounded to the supplied candidate set", asy
   assert.deepEqual(candidate.taxonomyAssignments?.map((assignment) => assignment.termId), [accepted]);
 });
 
+test("LlmExtractor: uses the DeepSeek OpenAI-compatible tool response", async () => {
+  const clock = new ManualClock(new Date("2026-07-07T00:00:00Z"));
+  const originalFetch = globalThis.fetch;
+  let request: { url: string; body: Record<string, unknown>; authorization?: string } | undefined;
+  globalThis.fetch = (async (input, init) => {
+    request = {
+      url: String(input),
+      body: JSON.parse(String(init?.body)) as Record<string, unknown>,
+      authorization: new Headers(init?.headers).get("authorization") ?? undefined,
+    };
+    return new Response(JSON.stringify({ choices: [{ message: { tool_calls: [{ function: { arguments: JSON.stringify({ title: "Deep Call", type: "grant", genres: [], eligibility: [], requiredMaterials: [], contactEmailPresent: false }) } }] } }] }), { status: 200, headers: { "content-type": "application/json" } });
+  }) as typeof fetch;
+  try {
+    const extractor = new LlmExtractor(clock, { provider: "deepseek", apiKey: "test-key", model: "deepseek-chat", endpoint: "https://deepseek.test/chat" });
+    const source: Source = { id: "src_deepseek", name: "Deep Call", url: "https://example.com/deep", kind: "organization-website", checkIntervalHours: 24, active: true, consecutiveFailures: 0 };
+    const candidate = await extractor.extract(source, { id: "snap_deepseek", sourceId: source.id, url: source.url, fetchedAt: clock.now().toISOString(), status: "ok", contentHash: "h", content: "A grant call." });
+    assert.equal(candidate.title, "Deep Call");
+    assert.equal(request?.url, "https://deepseek.test/chat");
+    assert.equal(request?.authorization, "Bearer test-key");
+    assert.equal(request?.body.model, "deepseek-chat");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("LlmExtractor: falls back to deterministic extraction when the provider fails", async () => {
   const clock = new ManualClock(new Date("2026-07-07T00:00:00Z"));
   const extractor = new LlmExtractor(clock, {

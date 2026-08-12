@@ -109,6 +109,9 @@ export interface Source {
   active: boolean;
   /** Latest fetch attempt, including failures. Kept as the scheduler cursor. */
   lastCheckedAt?: IsoDateTime;
+  /** Last terminal fetch outcome; distinguishes gone pages from never-attempted sources. */
+  lastFetchStatus?: 'ok' | 'gone' | 'error';
+  lastFetchFailureReason?: string;
   /** First time the source passed verification or completed a usable fetch. */
   firstVerifiedAt?: IsoDateTime;
   /** Latest fetch that returned usable page content. */

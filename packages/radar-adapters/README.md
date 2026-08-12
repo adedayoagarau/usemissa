@@ -35,7 +35,9 @@ DATABASE_URL=postgres://user:pass@host:5432/db npm run serve -w @missa/radar-ada
 | `TICK_MINUTES` | no (default 15) | `0` disables the automatic tick. |
 | `MISSA_SESSION_SECRET` | strongly recommended | Without it, sessions don't survive a restart. |
 | `MISSA_USE_PLAYWRIGHT` | no | Set to `1` to fetch with a real browser instead of plain HTTP. Requires Chromium installed (`npx playwright install chromium` — not bundled). |
-| `ANTHROPIC_API_KEY` | no | When set, extraction uses `LlmExtractor` instead of the deterministic built-in. |
+| `DEEPSEEK_API_KEY` | no | Preferred when set; uses DeepSeek's OpenAI-compatible tool-call API for extraction. |
+| `DEEPSEEK_MODEL` | no | DeepSeek model; defaults to `deepseek-chat`. |
+| `ANTHROPIC_API_KEY` | no | Fallback provider when DeepSeek is not configured. |
 
 Every mutation (signup, claim, status change, ...) and every tick persists
 the whole store back to Postgres via `RadarServer`'s `onPersist` hook — the
@@ -171,4 +173,4 @@ await server.start();
 
 `PlaywrightFetcher` requires Chromium to be installed in the deploy
 environment (`npx playwright install chromium`) — it is not bundled.
-`LlmExtractor` requires `ANTHROPIC_API_KEY` (or an injected `client`).
+`LlmExtractor` requires `DEEPSEEK_API_KEY`, `ANTHROPIC_API_KEY`, or an injected test client. Provider selection is explicit in production: DeepSeek takes precedence when both keys exist.

@@ -43,7 +43,11 @@ async function main(): Promise<void> {
 
   const boundPort = await server.start();
   const fetcherName = process.env.MISSA_USE_PLAYWRIGHT === '1' ? 'PlaywrightFetcher' : 'HttpFetcher';
-  const extractorName = process.env.ANTHROPIC_API_KEY ? 'LlmExtractor' : 'DeterministicExtractor';
+  const extractorName = process.env.DEEPSEEK_API_KEY
+    ? `LlmExtractor(deepseek:${process.env.DEEPSEEK_MODEL ?? 'deepseek-chat'})`
+    : process.env.ANTHROPIC_API_KEY
+      ? `LlmExtractor(anthropic:${process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-20250514'})`
+      : 'DeterministicExtractor';
   console.log(`Missa source monitor (production wiring) serving at http://localhost:${boundPort}`);
   console.log(`  fetcher: ${fetcherName}, extractor: ${extractorName}, store: Postgres`);
 

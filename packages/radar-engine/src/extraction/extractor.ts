@@ -131,7 +131,12 @@ export class DeterministicExtractor implements Extractor {
       if (m) eligibility.push(build(m));
     }
     const requiredMaterials = MATERIAL_VOCAB.filter(([re]) => re.test(text)).map(([, name]) => name);
-    const submissionUrl = LABELED_URL_RE.exec(text)?.[1] ?? SUBMIT_URL_RE.exec(text)?.[0];
+    // Machine-discovered records already carry the official application path;
+    // keep it as the one-click workspace action when the detail page omits a
+    // visible submit link.
+    const submissionUrl = LABELED_URL_RE.exec(text)?.[1]
+      ?? SUBMIT_URL_RE.exec(text)?.[0]
+      ?? source.discoveryMachineRecord?.applicationUrl;
 
     const extractedDeadline = extractDeadline(text, now);
     const machineDeadline = source.discoveryMachineRecord?.deadlineDate;
