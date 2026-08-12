@@ -73,6 +73,12 @@ test('priority source families declare their site schema and correct source tier
   assert.equal(resArtis?.checkIntervalHours, 24);
   assert.equal(resArtis?.discoveryLinkLimit, 400);
   assert.equal(resArtis?.discoveryRequestProfile, 'browser-compatible');
+  const onTheMove = byName.get('On the Move Open Calls');
+  assert.equal(onTheMove?.url, 'https://on-the-move.org/news/deadlines');
+  assert.equal(onTheMove?.discoveryAdapterId, 'on-the-move-index');
+  assert.equal(onTheMove?.tier, 2);
+  assert.equal(onTheMove?.checkIntervalHours, 24);
+  assert.equal(onTheMove?.discoveryLinkLimit, 100);
 
   for (const name of ['Annecy MIFA Pitches', 'Women in Animation Programs', 'Durban FilmMart Pitch and Finance Forum', 'Realness Institute Programmes']) {
     const source = byName.get(name);
