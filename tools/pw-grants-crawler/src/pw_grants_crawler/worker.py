@@ -48,6 +48,7 @@ class WorkerConfig:
     profile_request_delay: float = 10.0
     profile_freshness_hours: int = 168
     max_profile_images: int = 1
+    profile_only: bool = False
 
 
 def calendar_bounds(
@@ -221,7 +222,7 @@ def run_worker(
 ) -> None:
     owner = str(uuid4())
     while True:
-        run_id = run_once(config, store, owner=owner, force_backfill=force_backfill)
+        run_id = None if config.profile_only else run_once(config, store, owner=owner, force_backfill=force_backfill)
         profile_run_ids: list[str] = []
         if config.include_profile_sources:
             for kind in config.profile_kinds:
@@ -284,6 +285,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--disable-profile-sources",
         action="store_true",
         help="Run only the call/calendar source, leaving profile backfill/freshness to another process.",
+    )
+    parser.add_argument(
+        "--profile-only",
+        action="store_true",
+        default=os.environ.get("GARY_PROFILE_ONLY", "").casefold() in {"1", "true", "yes", "on"},
+        help="Run only the profile backfill/freshness lane; do not claim the call/calendar source.",
     )
     parser.add_argument(
         "--profile-kind",
@@ -353,6 +360,7 @@ def main(argv: list[str] | None = None) -> int:
         profile_request_delay=args.profile_request_delay,
         profile_freshness_hours=args.profile_freshness_hours,
         max_profile_images=args.max_profile_images,
+        profile_only=args.profile_only,
     )
     run_worker(config, store, once=args.once, force_backfill=args.force_backfill)
     return 0
