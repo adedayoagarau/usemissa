@@ -189,7 +189,7 @@ const INTL_GRANTS = [
   ['Mondriaan Fund', 'https://www.mondriaanfond.nl/en/apply', 'NL'],
   ['Creative Europe', 'https://culture.ec.europa.eu/creative-europe', 'EU', { checkIntervalHours: 24, discoveryAdapterId: 'eu-funding-api' }],
   ['On the Move', 'https://on-the-move.org/funding', 'EU'],
-  ['TransArtists', 'https://www.transartists.org/en/opportunities', 'EU'],
+  ['TransArtists Open Calls', 'https://www.transartists.org/en/transartists-calls', 'EU', { tier: 2, checkIntervalHours: 24, discoveryAdapterId: 'transartists-index', followsOutboundLinks: true }],
   ['Prince Claus Fund', 'https://princeclausfund.org/', 'NL'],
   ['European Cultural Foundation', 'https://culturalfoundation.eu/grants/', 'EU'],
   ['Sida Creative Force', 'https://www.sida.se/en/for-partners/creative-force', 'SE'],
