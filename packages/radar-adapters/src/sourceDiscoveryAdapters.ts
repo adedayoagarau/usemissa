@@ -135,40 +135,19 @@ function isNonCallHost(host: string): boolean {
   );
 }
 
-function externalCanonicalLinks(
-  source: Source,
-  html: string,
-  finalUrl: string,
-): DiscoveredSourceLink[] {
-  const sourceHost = normalizedHost(finalUrl);
-  const byHost = new Map<string, DiscoveredSourceLink>();
-  for (const link of htmlLinks(html, finalUrl)) {
-    const host = normalizedHost(link.url);
-    if (
-      host === sourceHost ||
-      isNonCallHost(host) ||
-      !CALL_WORDS.test(`${link.url} ${link.title ?? ""}`)
-    )
-      continue;
-    if (!byHost.has(host)) {
-      byHost.set(host, {
-        ...link,
-        kind: "organization-website",
-        registryTier: 0,
-        followsOutboundLinks: false,
-        discoveredFromSourceId: source.id,
-      });
-    }
-  }
-  return [...byHost.values()].slice(0, 3);
-}
-
 function mainContent(html: string): string {
   return (
     html.match(/<main\b[\s\S]*?<\/main>/i)?.[0] ??
     html.match(/<article\b[\s\S]*?<\/article>/i)?.[0] ??
     html
   );
+}
+
+function linkSpecificity(link: HtmlLink): number {
+  const url = new URL(link.url);
+  const pathSegments = url.pathname.split("/").filter(Boolean).length;
+  const callSignal = CALL_WORDS.test(`${link.url} ${link.title ?? ""}`) ? 10 : 0;
+  return callSignal + Math.min(pathSegments, 6);
 }
 
 function inArticleExternalLinks(
@@ -180,15 +159,18 @@ function inArticleExternalLinks(
   const byHost = new Map<string, DiscoveredSourceLink>();
   for (const link of htmlLinks(mainContent(html), finalUrl)) {
     const host = normalizedHost(link.url);
-    if (host === sourceHost || isNonCallHost(host) || byHost.has(host))
-      continue;
-    byHost.set(host, {
+    if (host === sourceHost || isNonCallHost(host)) continue;
+    const candidate: DiscoveredSourceLink = {
       ...link,
       kind: "organization-website",
       registryTier: 0,
       followsOutboundLinks: false,
       discoveredFromSourceId: source.id,
-    });
+    };
+    const existing = byHost.get(host);
+    if (!existing || linkSpecificity(link) > linkSpecificity(existing)) {
+      byHost.set(host, candidate);
+    }
   }
   return [...byHost.values()].slice(0, 3);
 }
@@ -202,7 +184,7 @@ export function discoverSourceLinks(
   if (source.discoveryAdapterId === "newpages-index")
     return newPagesIndex(source, html, finalUrl);
   if (source.discoveryAdapterId === "newpages-detail")
-    return externalCanonicalLinks(source, html, finalUrl);
+    return inArticleExternalLinks(source, html, finalUrl);
   if (source.discoveryAdapterId === "commonwealth-index") {
     return detailIndex(
       source,
@@ -213,7 +195,7 @@ export function discoverSourceLinks(
     );
   }
   if (source.discoveryAdapterId === "commonwealth-detail")
-    return externalCanonicalLinks(source, html, finalUrl);
+    return inArticleExternalLinks(source, html, finalUrl);
   if (source.discoveryAdapterId === "music-in-africa-index") {
     return htmlLinks(html, finalUrl).flatMap((link): DiscoveredSourceLink[] => {
       const path = new URL(link.url).pathname;

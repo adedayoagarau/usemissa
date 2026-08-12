@@ -78,6 +78,7 @@ test("NewPages detail discovery resolves the official host and drops page furnit
     </header>
     <main>
       <p>Enter the Jeffrey E. Smith Editors' Prize by October 1.</p>
+      <a href="https://missourireview.com/">The Missouri Review</a>
       <a href="https://missourireview.com/submissions/contests/jeffrey-e-smith-editors-prize/">
         www.missourireview.com/contests/jeffrey-e-smith-editors-prize/
       </a>
@@ -139,16 +140,16 @@ test("Commonwealth discovery follows only opportunity detail pages", () => {
 test("Commonwealth detail discovery resolves the original host call", () => {
   const detail = source({
     id: "commonwealth-detail",
-    name: "Climate Playwriting Prize",
-    url: "https://commonwealthfoundation.com/opportunity/climate-playwriting-prize/",
+    name: "The Simple Script Writers Project",
+    url: "https://commonwealthfoundation.com/opportunity/the-simple-script-writers-project/",
     discoveryAdapterId: "commonwealth-detail",
     discoveredFromSourceId: "source-commonwealth",
   });
   const html = `
     <main>
       <p>Applications close on 1 September 2026.</p>
-      <a href="https://www.shakespearesglobe.com/jobs-and-opportunities/climate-playwriting-prize-2026/">
-        Continue reading and apply
+      <a href="https://thesimplescriptproject.com/home/">
+        Continue Reading
       </a>
     </main>
     <a href="https://twitter.com/commonwealthorg">Twitter</a>
@@ -156,8 +157,8 @@ test("Commonwealth detail discovery resolves the original host call", () => {
 
   assert.deepEqual(discoverSourceLinks(detail, html, detail.url), [
     {
-      url: "https://www.shakespearesglobe.com/jobs-and-opportunities/climate-playwriting-prize-2026/",
-      title: "Continue reading and apply",
+      url: "https://thesimplescriptproject.com/home/",
+      title: "Continue Reading",
       kind: "organization-website",
       registryTier: 0,
       followsOutboundLinks: false,
