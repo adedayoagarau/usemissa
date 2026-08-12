@@ -633,3 +633,20 @@ test("Film Independent section discovery keeps only specific program pages", () 
     ],
   );
 });
+
+test("Film Independent replaces generic card labels with the canonical page title", () => {
+  const section = source({
+    id: "film-independent-section",
+    name: "Film Independent Artist Development",
+    url: "https://www.filmindependent.org/programs/artist-development/",
+    discoveryAdapterId: "film-independent-detail",
+  });
+
+  const [link] = discoverSourceLinks(section, `
+    <a href="/programs/artist-development/documentary-lab/">More Information</a>
+  `, section.url);
+
+  assert.equal(link?.title, "Documentary Lab");
+  assert.equal(link?.registryTier, 0);
+  assert.equal(link?.followsOutboundLinks, false);
+});
