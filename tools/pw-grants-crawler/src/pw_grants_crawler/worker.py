@@ -118,6 +118,7 @@ def run_once(
         render=config.render,
         calendar_start_month=calendar_start_month,
         calendar_end_month=calendar_end_month,
+        adapter=config.adapter,
     )
     try:
         heartbeat = heartbeat_loop(
