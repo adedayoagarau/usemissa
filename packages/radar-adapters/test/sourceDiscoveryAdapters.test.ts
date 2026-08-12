@@ -526,6 +526,9 @@ test("On the Move discovery uses the complete deadlines index and excludes navig
       <a href="/news/deadlines">Deadlines</a>
       <a href="/news/countries">Open Calls by Country</a>
       <a href="/news/?f%5B0%5D=region%3A219">Nigeria</a>
+      <a href="/news/culture-moves-europe-follow-up-survey">
+        Culture Moves Europe: Follow-up Survey. Deadline: 30 Sep 2026
+      </a>
       <a href="/news/airvine-residence-kyoto" class="link-block">
         AiRViNe Residence Exchange Programme 2026. Deadline: 16 Aug 2026
       </a>
@@ -559,12 +562,12 @@ test("On the Move detail discovery proposes only the strongest official call pag
       <h1>AiRViNe Residence Exchange Programme 2026</h1>
       <p>Applications close on 16 August 2026.</p>
       <a href="https://airvine.info/about/">About AiRViNe</a>
-      <a href="https://airvine.info/2026/07/26/open-call-residence-exchange-programme/">More info and apply</a>
+      <a href="https://airvine.info/2026/07/26/open-call-residence-exchange-programme/?view=programme&amp;cid=352">More info and apply</a>
       <a href="https://docs.google.com/forms/d/example/viewform">Application form</a>
     </article></main>
   `;
 
   assert.deepEqual(discoverSourceLinks(detail, html, detail.url).map((link) => link.url), [
-    "https://airvine.info/2026/07/26/open-call-residence-exchange-programme/",
+    "https://airvine.info/2026/07/26/open-call-residence-exchange-programme/?view=programme&cid=352",
   ]);
 });
