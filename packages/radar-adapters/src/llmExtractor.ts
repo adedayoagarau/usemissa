@@ -134,6 +134,7 @@ export class LlmExtractor implements Extractor {
     const deadline = deadlineFrom(fields, now);
     const candidate: OpportunityCandidate = {
       sourceId: source.id,
+      discoveryExternalId: source.discoveryExternalId,
       snapshotId: snapshot.id,
       url: source.url,
       extractedAt: now.toISOString(),

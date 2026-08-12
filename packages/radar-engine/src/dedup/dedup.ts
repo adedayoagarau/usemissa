@@ -36,8 +36,13 @@ export function findCanonical(candidate: OpportunityCandidate, existing: Iterabl
   let best: { opportunity: Opportunity; similarity: number } | undefined;
   for (const opp of existing) {
     if (opp.duplicateOfId) continue;
-    if (opp.sourceUrl === candidate.url) return { kind: 'same-page', opportunity: opp };
+    if (opp.sourceId === candidate.sourceId) return { kind: 'same-page', opportunity: opp };
+    const distinctMachineRecord = Boolean(candidate.discoveryExternalId);
+    if (!distinctMachineRecord && opp.sourceUrl === candidate.url) {
+      return { kind: 'same-page', opportunity: opp };
+    }
     if (
+      !distinctMachineRecord &&
       candidate.submissionUrl &&
       opp.fields.submissionUrl &&
       candidate.submissionUrl === opp.fields.submissionUrl

@@ -135,6 +135,7 @@ export class DeterministicExtractor implements Extractor {
 
     const candidate: OpportunityCandidate = {
       sourceId: source.id,
+      discoveryExternalId: source.discoveryExternalId,
       snapshotId: snapshot.id,
       url: source.url,
       extractedAt: now.toISOString(),
