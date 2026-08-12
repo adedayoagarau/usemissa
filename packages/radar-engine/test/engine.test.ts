@@ -139,6 +139,16 @@ test('machine feed records sharing one canonical page remain distinct calls', as
   engine.store.opportunities.delete(secondOpportunity.id);
   const firstOpportunity = [...engine.store.opportunities.values()][0]!;
   firstOpportunity.alternateSourceIds.push(second.id);
+  firstOpportunity.fields.deadline.kind = 'conflicting';
+  firstOpportunity.conflicts.push(`deadline: ${first.url} says 2026-10-05, ${second.url} says 2026-10-06`);
+  engine.store.verificationTasks.set('vtask_legacy_machine_conflict', {
+    id: 'vtask_legacy_machine_conflict',
+    opportunityId: firstOpportunity.id,
+    reason: 'conflicting-data',
+    details: `Conflicting data: ${second.url} says 2026-10-06`,
+    createdAt: clock.now().toISOString(),
+    status: 'open',
+  });
   delete second.lastContentHash;
   second.nextCheckAt = '1970-01-01T00:00:00.000Z';
 
@@ -147,6 +157,11 @@ test('machine feed records sharing one canonical page remain distinct calls', as
   assert.equal(repair.opportunitiesCreated.length, 1);
   assert.equal(engine.store.opportunities.size, 2);
   assert.equal(firstOpportunity.alternateSourceIds.includes(second.id), false);
+  assert.deepEqual(firstOpportunity.conflicts, []);
+  assert.equal(firstOpportunity.fields.deadline.kind, 'exact');
+  const repairedTask = engine.store.verificationTasks.get('vtask_legacy_machine_conflict');
+  assert.equal(repairedTask?.status, 'resolved');
+  assert.equal(repairedTask?.resolvedBy, 'system:machine-record-identity-repair');
 });
 
 test('a processing failure does not poison the content hash or abort the source batch', async () => {

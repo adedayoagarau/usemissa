@@ -40,6 +40,8 @@ function toRadarSource(entry: SourceRegistryEntry): Source {
     registryTier: entry.tier,
     followsOutboundLinks: entry.followsOutboundLinks,
     discoveryAdapterId: entry.discoveryAdapterId,
+    discoveryLinkLimit: entry.discoveryLinkLimit,
+    discoveryRequestProfile: entry.discoveryRequestProfile,
     checkIntervalHours: entry.checkIntervalHours,
     active: entry.active,
     consecutiveFailures: 0,
@@ -155,6 +157,8 @@ export function loadSourcesIntoEngine(
     registryTier?: SourceTier;
     followsOutboundLinks?: boolean;
     discoveryAdapterId?: string;
+    discoveryLinkLimit?: number;
+    discoveryRequestProfile?: 'browser-compatible';
   }) => Source,
   opts?: LoadRegistryOptions,
 ): { loaded: number; skipped: number; entries: SourceRegistryEntry[] } {
@@ -180,6 +184,8 @@ export function loadSourcesIntoEngine(
       registryTier: entry.tier,
       followsOutboundLinks: entry.followsOutboundLinks,
       discoveryAdapterId: entry.discoveryAdapterId,
+      discoveryLinkLimit: entry.discoveryLinkLimit,
+      discoveryRequestProfile: entry.discoveryRequestProfile,
     });
     loaded++;
   }

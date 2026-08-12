@@ -22,6 +22,7 @@ const DEFAULT_BATCH_SIZE = 100;
 const MAX_BATCH_SIZE = 250;
 const DEFAULT_LINKS_PER_PAGE = 50;
 const MAX_LINKS_PER_PAGE = 100;
+const MAX_SOURCE_LINKS_PER_PAGE = 1_000;
 const MAX_NEW_SOURCES_PER_TICK = 1_000;
 const MAX_HTML_BYTES = 2_000_000;
 const DEFAULT_HOST_DELAY_MS = 1_000;
@@ -66,6 +67,10 @@ export function discoveryBatchSize(value: string | number | undefined = process.
 
 export function discoveryLinkLimit(value: string | number | undefined = process.env.RADAR_DISCOVERY_LINKS_PER_PAGE): number {
   return bounded(value, DEFAULT_LINKS_PER_PAGE, MAX_LINKS_PER_PAGE);
+}
+
+export function sourceDiscoveryLinkLimit(source: Pick<Source, "discoveryLinkLimit">, fallback: number): number {
+  return bounded(source.discoveryLinkLimit, fallback, MAX_SOURCE_LINKS_PER_PAGE);
 }
 
 /** Only explicit Postgres source metadata may opt a page into outbound fan-out. */
@@ -141,9 +146,13 @@ export function extractDiscoveryLinks(html: string, sourceUrl: string, limit = D
 }
 
 export function discoveryRequestHeaders(source: Source): Record<string, string> {
+  const userAgent = source.discoveryRequestProfile === "browser-compatible"
+    ? "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36; MissaRadar/1.0 (+https://www.usemissa.com)"
+    : USER_AGENT;
   return {
     accept: "text/html,application/xhtml+xml",
-    "user-agent": USER_AGENT,
+    "user-agent": userAgent,
+    from: "radar@usemissa.com",
     ...(source.discoveryEtag ? { "if-none-match": source.discoveryEtag } : {}),
     ...(source.discoveryLastModified ? { "if-modified-since": source.discoveryLastModified } : {}),
   };
@@ -154,27 +163,33 @@ function configuredHostDelayMs(): number {
   return Number.isFinite(configured) && configured >= 0 ? Math.min(configured, MAX_HOST_DELAY_MS) : DEFAULT_HOST_DELAY_MS;
 }
 
-export function discoveryPolicyFromRobots(robotsTxt: string, sourceUrl: string, defaultDelayMs = configuredHostDelayMs()): { allowed: boolean; delayMs: number } {
+export function discoveryPolicyFromRobots(
+  robotsTxt: string,
+  sourceUrl: string,
+  defaultDelayMs = configuredHostDelayMs(),
+  userAgent = USER_AGENT,
+): { allowed: boolean; delayMs: number } {
   const path = new URL(sourceUrl).pathname;
-  const crawlDelaySeconds = parseCrawlDelayForUserAgent(robotsTxt, USER_AGENT);
+  const crawlDelaySeconds = parseCrawlDelayForUserAgent(robotsTxt, userAgent);
   const robotsDelayMs = crawlDelaySeconds === undefined ? 0 : crawlDelaySeconds * 1_000;
   return {
-    allowed: robotsAllowsPath(robotsTxt, path, USER_AGENT),
+    allowed: robotsAllowsPath(robotsTxt, path, userAgent),
     delayMs: Math.min(MAX_HOST_DELAY_MS, Math.max(defaultDelayMs, robotsDelayMs)),
   };
 }
 
-async function robotsText(sourceUrl: string): Promise<string> {
-  const origin = new URL(sourceUrl).origin;
-  let request = robotsCache.get(origin);
+async function robotsText(source: Source): Promise<string> {
+  const origin = new URL(source.url).origin;
+  const cacheKey = `${origin}:${source.discoveryRequestProfile ?? "standard"}`;
+  let request = robotsCache.get(cacheKey);
   if (!request) {
     request = fetch(`${origin}/robots.txt`, {
-      headers: { "user-agent": USER_AGENT },
+      headers: discoveryRequestHeaders(source),
       signal: AbortSignal.timeout(5_000),
     })
       .then(async (response) => (response.ok ? response.text() : ""))
       .catch(() => "");
-    robotsCache.set(origin, request);
+    robotsCache.set(cacheKey, request);
   }
   return request;
 }
@@ -210,7 +225,14 @@ async function fetchHtml(source: Source): Promise<{
   etag?: string;
   lastModified?: string;
 }> {
-  const policy = process.env.RADAR_DISCOVERY_RESPECT_ROBOTS === "0" ? { allowed: true, delayMs: configuredHostDelayMs() } : discoveryPolicyFromRobots(await robotsText(source.url), source.url);
+  const policy = process.env.RADAR_DISCOVERY_RESPECT_ROBOTS === "0"
+    ? { allowed: true, delayMs: configuredHostDelayMs() }
+    : discoveryPolicyFromRobots(
+        await robotsText(source),
+        source.url,
+        configuredHostDelayMs(),
+        discoveryRequestHeaders(source)["user-agent"],
+      );
   if (!policy.allowed) throw new Error("robots-blocked");
   const response = await withHostSchedule(source.url, policy.delayMs, () =>
     fetch(source.url, {
@@ -279,6 +301,7 @@ export function discoverySourceInsertPlaceholders(count: number): string[] {
 
 async function fetchDirectory(source: Source, linkLimit: number): Promise<FetchedDirectory> {
   const checkedAt = new Date().toISOString();
+  const effectiveLinkLimit = sourceDiscoveryLinkLimit(source, linkLimit);
   try {
     if (isMachineDiscoveryAdapter(source.discoveryAdapterId)) {
       const result = await fetchMachineDiscoverySource(source);
@@ -300,7 +323,7 @@ async function fetchDirectory(source: Source, linkLimit: number): Promise<Fetche
       notModified: result.notModified,
       etag: result.etag,
       lastModified: result.lastModified,
-      links: result.notModified ? [] : source.discoveryAdapterId ? discoverSourceLinks(source, result.html ?? "", result.finalUrl).slice(0, linkLimit) : extractDiscoveryLinks(result.html ?? "", result.finalUrl, linkLimit),
+      links: result.notModified ? [] : source.discoveryAdapterId ? discoverSourceLinks(source, result.html ?? "", result.finalUrl).slice(0, effectiveLinkLimit) : extractDiscoveryLinks(result.html ?? "", result.finalUrl, effectiveLinkLimit),
     };
   } catch (error) {
     return {
@@ -335,6 +358,7 @@ export function discoverySourceFromLink(parent: Source, link: DiscoveryLink, id:
     registryTier: link.registryTier ?? 0,
     followsOutboundLinks: link.followsOutboundLinks ?? false,
     discoveryAdapterId: link.discoveryAdapterId,
+    discoveryRequestProfile: link.discoveryRequestProfile,
     discoveredFromSourceId: link.discoveredFromSourceId ?? parent.id,
     discoveryExternalId: link.discoveryExternalId,
     discoveryExternalStatus: link.discoveryExternalStatus,
@@ -359,6 +383,7 @@ export function mergeDiscoveredSourceMetadata(source: Source, link: DiscoveryLin
   assign("registryTier", link.registryTier);
   assign("followsOutboundLinks", link.followsOutboundLinks);
   assign("discoveryAdapterId", link.discoveryAdapterId);
+  assign("discoveryRequestProfile", link.discoveryRequestProfile);
   assign("discoveredFromSourceId", link.discoveredFromSourceId ?? parentSourceId);
   assign("checkIntervalHours", link.checkIntervalHours);
   assign("discoveryExternalId", link.discoveryExternalId);
@@ -562,16 +587,23 @@ async function persistDiscoveryResults(fetched: FetchedDirectory[], maxNewSource
   }
 }
 
+export function discoveryIntervalHoursForSource(
+  source: Pick<Source, "checkIntervalHours" | "discoveryAdapterId">,
+  genericInterval: string | number | undefined = process.env.RADAR_DISCOVERY_INTERVAL_HOURS,
+): number {
+  const configured = Number(
+    source.discoveryAdapterId
+      ? source.checkIntervalHours
+      : genericInterval ?? 48,
+  );
+  return Number.isFinite(configured) && configured > 0 ? configured : 48;
+}
+
 function isDiscoveryDue(source: Source, now: Date): boolean {
   if (!source.discoveryLastCheckedAt) return true;
   const failures = Math.max(0, source.discoveryConsecutiveFailures ?? 0);
   const backoff = Math.min(2 ** failures, 8);
-  const configuredHours = Number(
-    isMachineDiscoveryAdapter(source.discoveryAdapterId)
-      ? source.checkIntervalHours
-      : process.env.RADAR_DISCOVERY_INTERVAL_HOURS ?? 48,
-  );
-  const intervalHours = Number.isFinite(configuredHours) && configuredHours > 0 ? configuredHours : 48;
+  const intervalHours = discoveryIntervalHoursForSource(source);
   return now.getTime() - Date.parse(source.discoveryLastCheckedAt) >= intervalHours * 60 * 60 * 1000 * backoff;
 }
 

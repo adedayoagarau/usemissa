@@ -85,6 +85,10 @@ export interface SourceRegistryEntry {
   followsOutboundLinks?: boolean;
   /** Explicit site schema used to turn this source into follow-up call URLs. */
   discoveryAdapterId?: string;
+  /** Per-directory bound for large, finite indexes. Hard-capped by the worker. */
+  discoveryLinkLimit?: number;
+  /** Explicit request profile for sources that reject plain crawler-shaped HTTP. */
+  discoveryRequestProfile?: 'browser-compatible';
   notes?: string;
   trust?: SourceTrust;
 }

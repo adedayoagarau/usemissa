@@ -2,8 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   discoveryBatchSize,
+  discoveryIntervalHoursForSource,
   discoveryPolicyFromRobots,
   discoveryRequestHeaders,
+  sourceDiscoveryLinkLimit,
   discoverySourceFromLink,
   discoverySourceInsertPlaceholders,
   discoverySourceUpdatePlaceholders,
@@ -126,6 +128,17 @@ test("discovery extracts bounded call links and drops assets", () => {
 test("discovery batch is bounded for hosted workers", () => {
   assert.equal(discoveryBatchSize("1000"), 250);
   assert.equal(discoveryBatchSize("not-a-number"), 100);
+});
+
+test("large finite directories may raise their own limit within the hard ceiling", () => {
+  assert.equal(sourceDiscoveryLinkLimit({ discoveryLinkLimit: 400 }, 50), 400);
+  assert.equal(sourceDiscoveryLinkLimit({ discoveryLinkLimit: 5_000 }, 50), 1_000);
+  assert.equal(sourceDiscoveryLinkLimit({}, 50), 50);
+});
+
+test("named site schemas honor their source freshness cadence", () => {
+  assert.equal(discoveryIntervalHoursForSource({ checkIntervalHours: 24, discoveryAdapterId: "resartis-index" }, 48), 24);
+  assert.equal(discoveryIntervalHoursForSource({ checkIntervalHours: 24 }, 48), 48);
 });
 
 test("discovery selects only explicitly opted-in Postgres sources", () => {
@@ -277,6 +290,45 @@ test("discovery sends persisted validators on freshness checks", () => {
 
   assert.equal(headers["if-none-match"], '\"abc123\"');
   assert.equal(headers["if-modified-since"], "Mon, 10 Aug 2026 10:00:00 GMT");
+});
+
+test("browser-compatible discovery requests remain explicitly identified as Missa", () => {
+  const headers = discoveryRequestHeaders({
+    id: "browser-compatible-source",
+    name: "Directory",
+    url: "https://directory.example/calls",
+    kind: "directory",
+    checkIntervalHours: 24,
+    active: true,
+    consecutiveFailures: 0,
+    discoveryRequestProfile: "browser-compatible",
+  });
+
+  assert.match(headers["user-agent"] ?? "", /MissaRadar\/1\.0/);
+  assert.match(headers["user-agent"] ?? "", /usemissa\.com/);
+  assert.equal(headers.from, "radar@usemissa.com");
+});
+
+test("robots policy evaluates the actual browser-compatible user agent", () => {
+  const robots = `
+    User-agent: *
+    Disallow: /admin/
+
+    User-agent: Disco
+    Disallow: /
+  `;
+  const browserCompatibleAgent = discoveryRequestHeaders({
+    id: "browser-compatible-source",
+    name: "Directory",
+    url: "https://directory.example/open-calls/",
+    kind: "directory",
+    checkIntervalHours: 24,
+    active: true,
+    consecutiveFailures: 0,
+    discoveryRequestProfile: "browser-compatible",
+  })["user-agent"];
+
+  assert.equal(discoveryPolicyFromRobots(robots, "https://directory.example/open-calls/", 1_000, browserCompatibleAgent).allowed, true);
 });
 
 test("discovery honors robots exclusions and crawl delay", () => {

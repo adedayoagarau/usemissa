@@ -7,6 +7,7 @@ export interface DiscoveredSourceLink {
   registryTier?: 0 | 1 | 2 | 3;
   followsOutboundLinks?: boolean;
   discoveryAdapterId?: string;
+  discoveryRequestProfile?: Source['discoveryRequestProfile'];
   discoveredFromSourceId?: string;
   checkIntervalHours?: number;
   discoveryExternalId?: string;
@@ -44,6 +45,17 @@ const NON_CALL_HOSTS = [
   "discord.com",
 ];
 
+const APPLICATION_ONLY_HOSTS = [
+  "docs.google.com",
+  "forms.gle",
+  "jotform.com",
+  "slideroom.com",
+  "grantplatform.com",
+  "airtable.com",
+  "typeform.com",
+  "submittable.com",
+];
+
 const ARCHIVE_LINK_WORDS = /(?:first|previous|past)\s+(?:volume|issue)|\barchive\b|\bsample\s+(?:issue|work)\b/i;
 
 function decodeHtmlText(value: string): string {
@@ -76,20 +88,26 @@ function absoluteHttpUrl(value: string, base: string): string | undefined {
 
 function htmlLinks(html: string, sourceUrl: string): HtmlLink[] {
   const links: HtmlLink[] = [];
-  const seen = new Set<string>();
+  const byUrl = new Map<string, HtmlLink>();
   const pattern = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
   for (const match of html.matchAll(pattern)) {
     const attributes = match[1]!;
     const href = attributes.match(/\bhref=["']([^"']+)["']/i)?.[1];
     if (!href) continue;
     const url = absoluteHttpUrl(href, sourceUrl);
-    if (!url || seen.has(url)) continue;
-    seen.add(url);
+    if (!url) continue;
     const accessibleLabel =
       attributes.match(/\baria-label=["']([^"']+)["']/i)?.[1] ??
       attributes.match(/\btitle=["']([^"']+)["']/i)?.[1];
     const title = decodeHtmlText(accessibleLabel ?? match[2]!);
-    links.push({ url, ...(title ? { title: title.slice(0, 240) } : {}) });
+    const existing = byUrl.get(url);
+    if (existing) {
+      if (!existing.title && title) existing.title = title.slice(0, 240);
+      continue;
+    }
+    const link = { url, ...(title ? { title: title.slice(0, 240) } : {}) };
+    byUrl.set(url, link);
+    links.push(link);
   }
   return links;
 }
@@ -156,9 +174,16 @@ function mainContent(html: string): string {
 
 function linkSpecificity(link: HtmlLink): number {
   const url = new URL(link.url);
+  const host = normalizedHost(link.url);
   const pathSegments = url.pathname.split("/").filter(Boolean).length;
   const callSignal = CALL_WORDS.test(`${link.url} ${link.title ?? ""}`) ? 10 : 0;
-  return callSignal + Math.min(pathSegments, 6);
+  const applicationOnly = APPLICATION_ONLY_HOSTS.some(
+    (blocked) => host === blocked || host.endsWith(`.${blocked}`),
+  ) ? 30 : 0;
+  const attachment = /\.(?:pdf|docx?|xlsx?)(?:$|[?#])/i.test(link.url) ? 25 : 0;
+  const redirectHost = /^(?:url|click|links?)\./i.test(new URL(link.url).hostname) ? 20 : 0;
+  const insecure = url.protocol === "http:" ? 5 : 0;
+  return callSignal + Math.min(pathSegments, 6) - applicationOnly - attachment - redirectHost - insecure;
 }
 
 function sourceContextTitle(source: Source, html: string): string {
@@ -176,6 +201,7 @@ function inArticleExternalLinks(
   source: Source,
   html: string,
   finalUrl: string,
+  limit = 3,
 ): DiscoveredSourceLink[] {
   const sourceHost = normalizedHost(finalUrl);
   const contextTitle = sourceContextTitle(source, html);
@@ -199,7 +225,10 @@ function inArticleExternalLinks(
       byHost.set(host, { candidate, score });
     }
   }
-  return [...byHost.values()].map((value) => value.candidate).slice(0, 3);
+  return [...byHost.values()]
+    .sort((left, right) => right.score - left.score || left.candidate.url.localeCompare(right.candidate.url))
+    .map((value) => value.candidate)
+    .slice(0, limit);
 }
 
 /** Convert a source page into canonical follow-up sources using its explicit site schema. */
@@ -285,6 +314,20 @@ export function discoverSourceLinks(
     );
   }
   if (source.discoveryAdapterId === "transartists-detail")
-    return inArticleExternalLinks(source, html, finalUrl);
+    return inArticleExternalLinks(source, html, finalUrl, 1);
+  if (source.discoveryAdapterId === "resartis-index") {
+    return detailIndex(
+      source,
+      html,
+      finalUrl,
+      (url) => normalizedHost(url.href) === "resartis.org" && url.pathname.startsWith("/open-call/"),
+      "resartis-detail",
+    ).map((link) => ({
+      ...link,
+      discoveryRequestProfile: "browser-compatible" as const,
+    }));
+  }
+  if (source.discoveryAdapterId === "resartis-detail")
+    return inArticleExternalLinks(source, html, finalUrl, 1);
   return [];
 }

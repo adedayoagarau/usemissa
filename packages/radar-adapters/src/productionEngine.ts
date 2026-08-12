@@ -81,6 +81,7 @@ export function seedRegistryIfEmpty(
     const existing = existingByUrl.get(key);
     if (existing) {
       const adapterChanged = existing.discoveryAdapterId !== entry.discoveryAdapterId;
+      const requestProfileChanged = existing.discoveryRequestProfile !== entry.discoveryRequestProfile;
       existing.name = entry.name;
       existing.kind = entry.kind;
       existing.active = entry.active;
@@ -95,8 +96,10 @@ export function seedRegistryIfEmpty(
       existing.registryTier = entry.tier;
       existing.followsOutboundLinks = entry.followsOutboundLinks;
       existing.discoveryAdapterId = entry.discoveryAdapterId;
+      existing.discoveryLinkLimit = entry.discoveryLinkLimit;
+      existing.discoveryRequestProfile = entry.discoveryRequestProfile;
       existing.checkIntervalHours = checkIntervalForEntry(entry);
-      if (adapterChanged) {
+      if (adapterChanged || requestProfileChanged) {
         // A different parser may discover a different graph from the same URL.
         // Force one unconditional fetch instead of accepting an old adapter's
         // validators/checkpoint as proof that the new schema has run.
@@ -122,6 +125,8 @@ export function seedRegistryIfEmpty(
       registryTier: entry.tier,
       followsOutboundLinks: entry.followsOutboundLinks,
       discoveryAdapterId: entry.discoveryAdapterId,
+      discoveryLinkLimit: entry.discoveryLinkLimit,
+      discoveryRequestProfile: entry.discoveryRequestProfile,
     });
     existingByUrl.set(key, added);
     loaded++;

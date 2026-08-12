@@ -40,6 +40,8 @@ function entry(name, url, verticalId, opts = {}) {
     organizationName: tier === 0 ? name : undefined,
     followsOutboundLinks: opts.followsOutboundLinks ?? tier === 2,
     discoveryAdapterId: opts.discoveryAdapterId,
+    discoveryLinkLimit: opts.discoveryLinkLimit,
+    discoveryRequestProfile: opts.discoveryRequestProfile,
     notes: opts.notes,
   };
 }
@@ -297,7 +299,16 @@ const VISUAL_RESIDENCIES = [
   ['SOMA Mexico', 'https://somamexico.org/residencies/', 'MX'],
   ['Casa Wabi', 'https://www.casawabi.org/residencies/', 'MX'],
   ['Beta San Pablo', 'https://betasanpablo.mx/', 'MX'],
-  ['Res Artis Network', 'https://resartis.org/open-calls/', 'global'],
+  ['Res Artis Open Calls', 'https://resartis.org/open-calls/', 'global', {
+    verticalId: 'platform-resartis',
+    tier: 2,
+    opportunityTypes: ['residency', 'open-call'],
+    disciplines: ['visual-arts', 'interdisciplinary'],
+    checkIntervalHours: 24,
+    discoveryAdapterId: 'resartis-index',
+    discoveryLinkLimit: 400,
+    discoveryRequestProfile: 'browser-compatible',
+  }],
   ['TransArtists Residencies', 'https://www.transartists.org/en/opportunities', 'global'],
   ['Artist Communities Alliance', 'https://artistcommunities.org/directory', 'US'],
   ['Alliance of Artist Communities', 'https://artistcommunities.org/', 'US'],
@@ -337,10 +348,12 @@ const VISUAL_RESIDENCIES = [
   ['Fondazione Morra Greco', 'https://www.fondazionemorragreco.it/', 'IT'],
 ];
 
-for (const [name, url, geo] of VISUAL_RESIDENCIES) {
-  sources.push(org(name, url, 'visual-residency', {
+for (const [name, url, geo, extra = {}] of VISUAL_RESIDENCIES) {
+  const { verticalId = 'visual-residency', ...sourceOptions } = extra;
+  sources.push(org(name, url, verticalId, {
     opportunityTypes: ['residency', 'fellowship'],
     geography: geo === 'global' ? ['global'] : [geo],
+    ...sourceOptions,
   }));
 }
 
@@ -534,6 +547,11 @@ const PLATFORMS = [
   directory('Res Artis Open Calls', 'https://resartis.org/open-calls/', 'platform-resartis', {
     opportunityTypes: ['residency', 'open-call'],
     disciplines: ['visual-arts', 'interdisciplinary'],
+    geography: ['global'],
+    checkIntervalHours: 24,
+    discoveryAdapterId: 'resartis-index',
+    discoveryLinkLimit: 400,
+    discoveryRequestProfile: 'browser-compatible',
   }),
   directory('Res Artis Residency Listings', 'https://resartis.org/listings/', 'platform-resartis', {
     opportunityTypes: ['residency'],
