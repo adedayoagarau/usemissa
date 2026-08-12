@@ -6,6 +6,7 @@ from .fetcher import HttpFetcher
 from .output import write_result
 from .renderer import PlaywrightFetcher
 from .source_schema import PwOrgSchema
+from .nyfa_source import NYFA_ARCHIVE_URL, crawl_nyfa_visual_arts
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +24,7 @@ class CrawlConfig:
     calendar_start_month: str | None = None
     calendar_end_month: str | None = None
     calendar_url_template: str = "https://www.pw.org/submission_calendar/{month}"
+    adapter: str = "poets-writers"
 
 
 def crawl_to_manifest(config: CrawlConfig, output_dir: Path) -> Path:
@@ -42,16 +44,26 @@ def crawl_to_manifest(config: CrawlConfig, output_dir: Path) -> Path:
                 grants_max_pages=config.max_index_pages,
                 calendar_url_template=config.calendar_url_template,
             ).calendar_urls(config.calendar_start_month, config.calendar_end_month)
-        result = crawl_calls(
-            config.index_url,
-            limit=config.limit,
-            fetcher=fetcher,
-            follow_official_sites=config.follow_official_sites,
-            renderer=renderer,
-            max_site_pages=config.max_site_pages,
-            max_index_pages=config.max_index_pages,
-            calendar_urls=calendar_urls,
-        )
+        if config.adapter == "nyfa-visual-arts":
+            archive = fetcher.fetch(config.index_url)
+            if archive.status_code in {403, 429} and renderer is not None:
+                archive = renderer.fetch(config.index_url)
+            result = crawl_nyfa_visual_arts(
+                archive,
+                _FallbackFetcher(fetcher, renderer),
+                limit=config.limit,
+            )
+        else:
+            result = crawl_calls(
+                config.index_url,
+                limit=config.limit,
+                fetcher=fetcher,
+                follow_official_sites=config.follow_official_sites,
+                renderer=renderer,
+                max_site_pages=config.max_site_pages,
+                max_index_pages=config.max_index_pages,
+                calendar_urls=calendar_urls,
+            )
         failed_index_pages = [page for page in result.index_pages if page.error]
         if failed_index_pages:
             raise RuntimeError(
@@ -69,3 +81,15 @@ def crawl_to_manifest(config: CrawlConfig, output_dir: Path) -> Path:
         fetcher.close()
         if renderer is not None:
             renderer.close()
+
+
+class _FallbackFetcher:
+    def __init__(self, http_fetcher, renderer):
+        self.http_fetcher = http_fetcher
+        self.renderer = renderer
+
+    def fetch(self, url: str):
+        page = self.http_fetcher.fetch(url)
+        if page.status_code in {403, 429} and self.renderer is not None:
+            return self.renderer.fetch(url)
+        return page

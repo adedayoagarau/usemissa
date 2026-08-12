@@ -79,10 +79,15 @@ def run_once(
     release: str | None = None,
 ) -> str | None:
     owner = owner or str(uuid4())
+    source_name = (
+        "New York Foundation for the Arts Visual Arts Opportunities"
+        if config.adapter == "nyfa-visual-arts"
+        else config.source_name
+    )
     store.register_source(
         source_id=config.source_id,
         adapter=config.adapter,
-        name=config.source_name,
+        name=source_name,
         seed_url=config.index_url,
         freshness_hours=config.freshness_hours,
         config={"worker": "gary", "index_url": config.index_url},
@@ -125,7 +130,7 @@ def run_once(
                     manifest_path,
                     source_id=config.source_id,
                     mode=mode,
-                    source_name=config.source_name,
+                    source_name=source_name,
                     adapter=config.adapter,
                     freshness_hours=config.freshness_hours,
                 )
@@ -135,7 +140,7 @@ def run_once(
                 manifest_path,
                 source_id=config.source_id,
                 mode=mode,
-                source_name=config.source_name,
+                source_name=source_name,
                 adapter=config.adapter,
                 freshness_hours=config.freshness_hours,
             )
@@ -284,7 +289,8 @@ def run_worker(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run Gary continuously against Neon.")
     parser.add_argument("--source-id", default="pw.org")
-    parser.add_argument("--index-url", default="https://www.pw.org/grants")
+    parser.add_argument("--index-url", default=os.environ.get("GARY_INDEX_URL", "https://www.pw.org/grants"))
+    parser.add_argument("--adapter", choices=("poets-writers", "nyfa-visual-arts"), default=os.environ.get("GARY_ADAPTER", "poets-writers"))
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--output-root", type=Path, default=Path("outputs/gary-worker"))
     parser.add_argument("--timeout", type=float, default=30.0)
@@ -371,6 +377,7 @@ def main(argv: list[str] | None = None) -> int:
     release = harness.register_release(os.environ.get("GARY_DEEPSEEK_MODEL", "deepseek-v4-flash"))
     config = WorkerConfig(
         source_id=args.source_id,
+        adapter=args.adapter,
         index_url=args.index_url,
         limit=args.limit,
         output_root=args.output_root,
