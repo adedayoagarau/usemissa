@@ -85,6 +85,10 @@ export interface Source {
   followsOutboundLinks?: boolean;
   /** Named source schema used by the discovery worker instead of generic link matching. */
   discoveryAdapterId?: string;
+  /** Per-directory bound for large, finite indexes. Hard-capped by the worker. */
+  discoveryLinkLimit?: number;
+  /** Some permitted sources require browser-compatible request headers. */
+  discoveryRequestProfile?: 'browser-compatible';
   /** Registry/discovery source that produced this URL. Preserves the source graph. */
   discoveredFromSourceId?: string;
   /** Stable identifier and lifecycle reported by a machine-readable parent feed. */

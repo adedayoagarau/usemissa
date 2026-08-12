@@ -23,6 +23,8 @@ export interface CompactSource {
   checkIntervalHours?: number;
   followsOutboundLinks?: boolean;
   discoveryAdapterId?: string;
+  discoveryLinkLimit?: number;
+  discoveryRequestProfile?: 'browser-compatible';
   notes?: string;
 }
 
@@ -61,6 +63,8 @@ export function expandSource(
     organizationName: tier === 0 ? input.name : undefined,
     followsOutboundLinks: input.followsOutboundLinks ?? tier === 2,
     discoveryAdapterId: input.discoveryAdapterId,
+    discoveryLinkLimit: input.discoveryLinkLimit,
+    discoveryRequestProfile: input.discoveryRequestProfile,
     notes: input.notes,
   };
 }

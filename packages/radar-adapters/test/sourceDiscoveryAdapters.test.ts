@@ -370,3 +370,60 @@ test("TransArtists discovery follows current call articles and resolves official
   assert.equal(official[0]?.url, "https://iww.hkbu.edu.hk/apply");
   assert.equal(official[0]?.registryTier, 0);
 });
+
+test("Res Artis discovery keeps only open-call detail pages and preserves its request profile", () => {
+  const resArtis = source({
+    id: "source-resartis",
+    name: "Res Artis Open Calls",
+    url: "https://resartis.org/open-calls/",
+    discoveryAdapterId: "resartis-index",
+    discoveryRequestProfile: "browser-compatible",
+  });
+  const html = `
+    <nav><a href="/open-calls/">Open Calls</a><a href="/listings/">Residencies</a></nav>
+    <main>
+      <a href="/open-call/musical-theatre-dancers-intensive-2027/"><img src="call.jpg" alt="" /></a>
+      <a href="/open-call/musical-theatre-dancers-intensive-2027/">Musical Theatre Dancers Intensive 2027</a>
+      <a href="https://resartis.org/open-call/audio-recording-engineer-indigenous-music-2027/">Audio Recording Engineer</a>
+      <a href="https://example.org/open-call/not-a-res-artis-page/">External navigation</a>
+    </main>
+  `;
+
+  const links = discoverSourceLinks(resArtis, html, resArtis.url);
+  assert.deepEqual(links.map((link) => link.url), [
+    "https://resartis.org/open-call/musical-theatre-dancers-intensive-2027/",
+    "https://resartis.org/open-call/audio-recording-engineer-indigenous-music-2027/",
+  ]);
+  assert.ok(links.every((link) => link.discoveryAdapterId === "resartis-detail"));
+  assert.ok(links.every((link) => link.discoveryRequestProfile === "browser-compatible"));
+  assert.equal(links[0]?.title, "Musical Theatre Dancers Intensive 2027");
+});
+
+test("Res Artis detail discovery resolves one canonical official host", () => {
+  const detail = source({
+    id: "resartis-detail",
+    name: "Musical Theatre Dancers Intensive 2027",
+    url: "https://resartis.org/open-call/musical-theatre-dancers-intensive-2027/",
+    discoveryAdapterId: "resartis-detail",
+    discoveryRequestProfile: "browser-compatible",
+  });
+  const html = `
+    <main>
+      <p>Applications close in 2027.</p>
+      <a href="https://www.banffcentre.ca/node/6970">Banff Centre campus</a>
+      <a href="http://url.banffcentre.ca/bgmg6Y">Apply Online</a>
+    </main>
+    <footer><a href="https://www.facebook.com/resartis">Facebook</a></footer>
+  `;
+
+  assert.deepEqual(discoverSourceLinks(detail, html, detail.url), [
+    {
+      url: "https://www.banffcentre.ca/node/6970",
+      title: "Musical Theatre Dancers Intensive 2027",
+      kind: "organization-website",
+      registryTier: 0,
+      followsOutboundLinks: false,
+      discoveredFromSourceId: "resartis-detail",
+    },
+  ]);
+});

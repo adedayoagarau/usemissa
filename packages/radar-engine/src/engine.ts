@@ -360,6 +360,8 @@ export class RadarEngine {
     registryTier?: 0 | 1 | 2 | 3;
     followsOutboundLinks?: boolean;
     discoveryAdapterId?: string;
+    discoveryLinkLimit?: number;
+    discoveryRequestProfile?: 'browser-compatible';
     checkIntervalHours?: number;
   }): Source {
     const source: Source = {
@@ -381,6 +383,8 @@ export class RadarEngine {
       registryTier: input.registryTier,
       followsOutboundLinks: input.followsOutboundLinks,
       discoveryAdapterId: input.discoveryAdapterId,
+      discoveryLinkLimit: input.discoveryLinkLimit,
+      discoveryRequestProfile: input.discoveryRequestProfile,
       checkIntervalHours: input.checkIntervalHours ?? 24,
       active: true,
       consecutiveFailures: 0,

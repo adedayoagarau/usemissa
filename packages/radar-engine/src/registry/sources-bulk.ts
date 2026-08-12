@@ -3813,23 +3813,29 @@ export const BULK_SOURCES: SourceRegistryEntry[] = [
     "followsOutboundLinks": false
   },
   {
-    "id": "src_visual-residency_res_artis_network_206",
-    "name": "Res Artis Network",
+    "id": "src_platform-resartis_res_artis_open_calls_206",
+    "name": "Res Artis Open Calls",
     "url": "https://resartis.org/open-calls/",
-    "kind": "organization-website",
-    "verticalId": "visual-residency",
-    "tier": 0,
+    "kind": "directory",
+    "verticalId": "platform-resartis",
+    "tier": 2,
     "opportunityTypes": [
       "residency",
-      "fellowship"
+      "open-call"
+    ],
+    "disciplines": [
+      "visual-arts",
+      "interdisciplinary"
     ],
     "geography": [
       "global"
     ],
-    "checkIntervalHours": 168,
+    "checkIntervalHours": 24,
     "active": true,
-    "organizationName": "Res Artis Network",
-    "followsOutboundLinks": false
+    "followsOutboundLinks": true,
+    "discoveryAdapterId": "resartis-index",
+    "discoveryLinkLimit": 400,
+    "discoveryRequestProfile": "browser-compatible"
   },
   {
     "id": "src_visual-residency_transartists_residencies_207",
