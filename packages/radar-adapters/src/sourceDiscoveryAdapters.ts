@@ -202,28 +202,43 @@ function contextTokens(value: string): Set<string> {
       .split(/\s+/)
       .filter((token) =>
         token.length >= 3 &&
-        !/^20\d{2}$/.test(token) &&
+        !/^\d+$/.test(token) &&
         !CONTEXT_STOP_WORDS.has(token)
       ),
   );
 }
 
-/**
- * A directory's outbound link must identify the call, not merely the host.
- * Strong application language is sufficient; otherwise require at least two
- * meaningful title/path tokens to agree with the directory call title.
- */
-function hasCanonicalCallContext(sourceTitle: string, link: HtmlLink): boolean {
-  const url = new URL(link.url);
-  const targetContext = `${url.pathname} ${link.title ?? ""}`;
-  if (STRONG_CALL_WORDS.test(targetContext)) return true;
+/** Confirm the proposed host by inspecting the host page itself. */
+export function canonicalPageMatchesDirectoryCall(
+  sourceTitle: string,
+  sourceHtml: string,
+  targetHtml: string,
+  targetUrl: string,
+): boolean {
+  const sourceContext = `${sourceTitle} ${decodeHtmlText(mainContent(sourceHtml))}`;
+  const targetMain = decodeHtmlText(mainContent(targetHtml));
+  if (!CALL_WORDS.test(targetMain) || !STRONG_CALL_WORDS.test(targetMain)) return false;
+
+  const sourceYears = new Set(sourceContext.match(/\b20(?:2\d|3\d)\b/g) ?? []);
+  const targetYears = new Set(targetMain.match(/\b20(?:2\d|3\d)\b/g) ?? []);
+  if (sourceYears.size && targetYears.size && ![...sourceYears].some((year) => targetYears.has(year))) {
+    return false;
+  }
+
+  const targetHeading = decodeHtmlText(
+    mainContent(targetHtml).match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ??
+      targetHtml.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1] ??
+      "",
+  );
+  const url = new URL(targetUrl);
   const sourceTokens = contextTokens(sourceTitle);
-  const targetTokens = contextTokens(targetContext);
+  const targetTokens = contextTokens(`${targetHeading} ${url.hostname} ${url.pathname}`);
   let overlap = 0;
   for (const token of targetTokens) {
     if (sourceTokens.has(token) && ++overlap >= 2) return true;
   }
-  return false;
+  const hostTokens = contextTokens(url.hostname);
+  return [...hostTokens].some((token) => sourceTokens.has(token));
 }
 
 function sourceContextTitle(source: Source, html: string): string {
@@ -250,7 +265,6 @@ function inArticleExternalLinks(
   for (const link of htmlLinks(mainContent(html), finalUrl)) {
     const host = normalizedHost(link.url);
     if (host === sourceHost || isNonCallHost(host)) continue;
-    if (requirePositiveScore && !hasCanonicalCallContext(contextTitle, link)) continue;
     const isArchiveLink = ARCHIVE_LINK_WORDS.test(link.title ?? "");
     const candidateUrl = isArchiveLink ? `${new URL(link.url).origin}/` : link.url;
     const candidate: DiscoveredSourceLink = {
