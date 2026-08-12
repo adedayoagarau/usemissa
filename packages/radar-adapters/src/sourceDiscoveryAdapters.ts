@@ -7,6 +7,7 @@ export interface DiscoveredSourceLink {
   registryTier?: 0 | 1 | 2 | 3;
   followsOutboundLinks?: boolean;
   discoveryAdapterId?: string;
+  discoveryRequestProfile?: Source['discoveryRequestProfile'];
   discoveredFromSourceId?: string;
   checkIntervalHours?: number;
   discoveryExternalId?: string;
@@ -76,20 +77,26 @@ function absoluteHttpUrl(value: string, base: string): string | undefined {
 
 function htmlLinks(html: string, sourceUrl: string): HtmlLink[] {
   const links: HtmlLink[] = [];
-  const seen = new Set<string>();
+  const byUrl = new Map<string, HtmlLink>();
   const pattern = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
   for (const match of html.matchAll(pattern)) {
     const attributes = match[1]!;
     const href = attributes.match(/\bhref=["']([^"']+)["']/i)?.[1];
     if (!href) continue;
     const url = absoluteHttpUrl(href, sourceUrl);
-    if (!url || seen.has(url)) continue;
-    seen.add(url);
+    if (!url) continue;
     const accessibleLabel =
       attributes.match(/\baria-label=["']([^"']+)["']/i)?.[1] ??
       attributes.match(/\btitle=["']([^"']+)["']/i)?.[1];
     const title = decodeHtmlText(accessibleLabel ?? match[2]!);
-    links.push({ url, ...(title ? { title: title.slice(0, 240) } : {}) });
+    const existing = byUrl.get(url);
+    if (existing) {
+      if (!existing.title && title) existing.title = title.slice(0, 240);
+      continue;
+    }
+    const link = { url, ...(title ? { title: title.slice(0, 240) } : {}) };
+    byUrl.set(url, link);
+    links.push(link);
   }
   return links;
 }
@@ -286,5 +293,19 @@ export function discoverSourceLinks(
   }
   if (source.discoveryAdapterId === "transartists-detail")
     return inArticleExternalLinks(source, html, finalUrl);
+  if (source.discoveryAdapterId === "resartis-index") {
+    return detailIndex(
+      source,
+      html,
+      finalUrl,
+      (url) => normalizedHost(url.href) === "resartis.org" && url.pathname.startsWith("/open-call/"),
+      "resartis-detail",
+    ).map((link) => ({
+      ...link,
+      discoveryRequestProfile: "browser-compatible" as const,
+    }));
+  }
+  if (source.discoveryAdapterId === "resartis-detail")
+    return inArticleExternalLinks(source, html, finalUrl).slice(0, 1);
   return [];
 }

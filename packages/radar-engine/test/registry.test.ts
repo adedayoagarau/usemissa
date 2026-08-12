@@ -67,6 +67,12 @@ test('priority source families declare their site schema and correct source tier
   assert.equal(byName.get('Commonwealth Foundation Creative Opportunities')?.discoveryAdapterId, 'commonwealth-index');
   assert.equal(byName.get('Music In Africa Opportunities')?.discoveryAdapterId, 'music-in-africa-index');
   assert.equal(byName.get('African Culture Fund Calls')?.discoveryAdapterId, 'african-culture-fund-index');
+  const resArtis = byName.get('Res Artis Open Calls');
+  assert.equal(resArtis?.discoveryAdapterId, 'resartis-index');
+  assert.equal(resArtis?.tier, 2);
+  assert.equal(resArtis?.checkIntervalHours, 24);
+  assert.equal(resArtis?.discoveryLinkLimit, 400);
+  assert.equal(resArtis?.discoveryRequestProfile, 'browser-compatible');
 
   for (const name of ['Annecy MIFA Pitches', 'Women in Animation Programs', 'Durban FilmMart Pitch and Finance Forum', 'Realness Institute Programmes']) {
     const source = byName.get(name);
