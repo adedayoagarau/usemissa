@@ -471,6 +471,7 @@ export function reconcileDiscoveredChildren(
 ): Source[] {
   const emitted = new Set(emittedLinks.map((link) => normalizeUrl(link.url)));
   const retired: Source[] = [];
+  const retiredIds = new Set<string>();
   for (const source of sources) {
     if (
       source.discoveredFromSourceId === parentSourceId &&
@@ -479,6 +480,26 @@ export function reconcileDiscoveredChildren(
     ) {
       source.active = false;
       retired.push(source);
+      retiredIds.add(source.id);
+    }
+  }
+  // Provenance is a graph (index -> detail -> verified host). Once an
+  // authoritative parent no longer emits a detail, its descendants must not
+  // remain independently active and outlive the call that introduced them.
+  let foundDescendant = true;
+  while (foundDescendant) {
+    foundDescendant = false;
+    for (const source of sources) {
+      if (
+        source.active &&
+        source.discoveredFromSourceId &&
+        retiredIds.has(source.discoveredFromSourceId)
+      ) {
+        source.active = false;
+        retired.push(source);
+        retiredIds.add(source.id);
+        foundDescendant = true;
+      }
     }
   }
   return retired;

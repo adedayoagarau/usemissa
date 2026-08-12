@@ -85,7 +85,17 @@ function decodeHtmlText(value: string): string {
 
 function absoluteHttpUrl(value: string, base: string): string | undefined {
   try {
-    const url = new URL(value, base);
+    const decodedValue = value
+      .replace(/&amp;/gi, "&")
+      .replace(/&#0*39;|&apos;/gi, "'")
+      .replace(/&quot;/gi, '"')
+      .replace(/&#(\d+);/g, (_match, code: string) =>
+        String.fromCodePoint(Number(code)),
+      )
+      .replace(/&#x([0-9a-f]+);/gi, (_match, code: string) =>
+        String.fromCodePoint(Number.parseInt(code, 16)),
+      );
+    const url = new URL(decodedValue, base);
     if (url.protocol !== "https:" && url.protocol !== "http:") return undefined;
     url.hash = "";
     return url.href;
@@ -183,11 +193,13 @@ function onTheMoveIndex(
       url.search === "" &&
       !ON_THE_MOVE_NON_CALL_PATHS.has(url.pathname.replace(/\/$/, "")),
     "on-the-move-detail",
-  ).map((link) => ({
-    ...link,
-    title: link.title?.replace(/\.?\s*Deadline:\s*[\s\S]*$/i, "").trim(),
-    checkIntervalHours: 24,
-  }));
+  )
+    .map((link) => ({
+      ...link,
+      title: link.title?.replace(/\.?\s*Deadline:\s*[\s\S]*$/i, "").trim(),
+      checkIntervalHours: 24,
+    }))
+    .filter((link) => !/\bsurvey\b/i.test(link.title ?? ""));
 }
 
 function normalizedHost(url: string): string {

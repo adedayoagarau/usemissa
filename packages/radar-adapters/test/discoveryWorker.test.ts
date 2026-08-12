@@ -75,16 +75,27 @@ test("discovery reconciliation retires stale provenance children", () => {
       consecutiveFailures: 0,
       discoveredFromSourceId: "parent-source",
     },
+    {
+      id: "stale-grandchild",
+      name: "Old canonical host",
+      url: "https://official.example/old-call",
+      kind: "organization-website",
+      active: true,
+      checkIntervalHours: 24,
+      consecutiveFailures: 0,
+      discoveredFromSourceId: "stale-child",
+    },
   ];
 
   assert.deepEqual(
     reconcileDiscoveredChildren(current, "parent-source", [
       { url: "https://host.example/current-call", title: "Current call" },
     ]).map((source) => source.id),
-    ["stale-child"],
+    ["stale-child", "stale-grandchild"],
   );
   assert.equal(current[0]?.active, true);
   assert.equal(current[1]?.active, false);
+  assert.equal(current[2]?.active, false);
 });
 
 test("machine-feed reconciliation schedules one final check without deleting history", () => {
