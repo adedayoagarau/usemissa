@@ -8,6 +8,11 @@ export interface DiscoveredSourceLink {
   followsOutboundLinks?: boolean;
   discoveryAdapterId?: string;
   discoveredFromSourceId?: string;
+  checkIntervalHours?: number;
+  discoveryExternalId?: string;
+  discoveryExternalStatus?: string;
+  registryOrganizationName?: string;
+  registryTrust?: Source["registryTrust"];
 }
 
 interface HtmlLink {

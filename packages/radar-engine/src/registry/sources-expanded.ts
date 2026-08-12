@@ -22,7 +22,7 @@ const SOURCES: CompactSource[] = [
 
   // Grants, fellowships and public funding.
   directory('National Endowment for the Arts Grants', 'https://www.arts.gov/grants', 'grants-us-national', { disciplines: ['all-disciplines'], opportunityTypes: ['grant', 'fellowship'], geography: ['US'] }),
-  directory('Grants.gov Arts Funding', 'https://www.grants.gov/search-results.html?group=arts', 'grants-us-national', { disciplines: ['all-disciplines'], opportunityTypes: ['grant'], geography: ['US'] }),
+  directory('Grants.gov Arts Funding', 'https://www.grants.gov/search-results.html?group=arts', 'grants-us-national', { disciplines: ['all-disciplines'], opportunityTypes: ['grant'], geography: ['US'], checkIntervalHours: 24, discoveryAdapterId: 'grants-gov-api' }),
   directory('Creative Capital Awards', 'https://creative-capital.org/opportunities/', 'grants-us-national', { disciplines: ['visual-arts', 'performing-arts', 'film', 'literature'], opportunityTypes: ['grant', 'fellowship'], geography: ['US'] }),
   directory('New York Foundation for the Arts', 'https://www.nyfa.org/awards-grants/', 'grants-us-national', { disciplines: ['visual-arts', 'literature', 'film', 'performing-arts'], opportunityTypes: ['grant', 'fellowship', 'award'], geography: ['US', 'global'] }),
   directory('Foundation for Contemporary Arts', 'https://www.foundationforcontemporaryarts.org/grants-awards/', 'grants-us-national', { disciplines: ['visual-arts', 'performing-arts', 'music'], opportunityTypes: ['grant', 'award'], geography: ['US'] }),

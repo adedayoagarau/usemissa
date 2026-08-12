@@ -92,12 +92,21 @@ export { RADAR_AGENT_GRAPH, agentGraphSnapshot, type RadarAgentKind } from "./ag
 export { runReviewTick, reviewCandidate, type ReviewCandidate } from "./reviewWorker.js";
 export { runContentReviewTick } from "./contentWorker.js";
 export {
+  GRANTS_GOV_API_ENDPOINT,
+  fetchMachineDiscoverySource,
+  grantsGovLinksFromResponse,
+  grantsGovSearchRequest,
+  isMachineDiscoveryAdapter,
+  type MachineDiscoveryResult,
+} from "./machineDiscoveryAdapters.js";
+export {
   runDiscoveryWorker,
   runDiscoveryWorkerTick,
   extractDiscoveryLinks,
   discoveryBatchSize,
   discoveryPolicyFromRobots,
   discoveryRequestHeaders,
+  reconcileMachineDiscoveredChildren,
   discoverySourceFromLink,
   mergeDiscoveredSourceMetadata,
   type DiscoveryWorkerOptions,

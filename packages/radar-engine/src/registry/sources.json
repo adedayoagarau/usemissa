@@ -10242,9 +10242,10 @@
       "geography": [
         "US"
       ],
-      "checkIntervalHours": 48,
+      "checkIntervalHours": 24,
       "active": true,
       "followsOutboundLinks": true,
+      "discoveryAdapterId": "grants-gov-api",
       "taxonomyTermIds": [],
       "trust": {
         "status": "needs-review",

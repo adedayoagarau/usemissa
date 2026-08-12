@@ -10,6 +10,7 @@ import {
   extractDiscoveryLinks,
   isDiscoverySource,
   mergeDiscoveredSourceMetadata,
+  reconcileMachineDiscoveredChildren,
   prioritizeDiscoverySources,
   reconcileDiscoveredChildren,
 } from "../src/discoveryWorker.js";
@@ -47,6 +48,29 @@ test("discovery reconciliation retires stale provenance children", () => {
   );
   assert.equal(current[0]?.active, true);
   assert.equal(current[1]?.active, false);
+});
+
+test("machine-feed reconciliation schedules one final check without deleting history", () => {
+  const current: Source[] = [{
+    id: "grant-child",
+    name: "An arts grant",
+    url: "https://www.grants.gov/search-results-detail/123",
+    kind: "organization-website",
+    active: true,
+    checkIntervalHours: 24,
+    consecutiveFailures: 0,
+    discoveredFromSourceId: "grants-parent",
+    discoveryExternalId: "grants.gov:123",
+    discoveryExternalStatus: "posted",
+    nextCheckAt: "2026-08-20T00:00:00.000Z",
+  }];
+
+  assert.deepEqual(reconcileMachineDiscoveredChildren(current, "grants-parent", []), [current[0]]);
+  assert.equal(current[0]?.active, true);
+  assert.equal(current[0]?.discoveryExternalStatus, "retired");
+  assert.equal(current[0]?.checkIntervalHours, 8_760);
+  assert.equal(current[0]?.nextCheckAt, undefined);
+  assert.deepEqual(reconcileMachineDiscoveredChildren(current, "grants-parent", []), []);
 });
 
 test("discovery extracts bounded call links and drops assets", () => {

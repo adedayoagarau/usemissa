@@ -87,6 +87,9 @@ export interface Source {
   discoveryAdapterId?: string;
   /** Registry/discovery source that produced this URL. Preserves the source graph. */
   discoveredFromSourceId?: string;
+  /** Stable identifier and lifecycle reported by a machine-readable parent feed. */
+  discoveryExternalId?: string;
+  discoveryExternalStatus?: string;
   /** Polite per-source cadence. */
   checkIntervalHours: number;
   active: boolean;
