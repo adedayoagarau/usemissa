@@ -13,7 +13,11 @@ import { DISCOVERY_INGESTION_LOCK, releaseAdvisoryLock, tryAdvisoryLock } from "
 import { Pool, type PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun, type RadarWorkerKind } from "./workerTelemetry.js";
-import { discoverSourceLinks, type DiscoveredSourceLink } from "./sourceDiscoveryAdapters.js";
+import {
+  canonicalPageMatchesDirectoryCall,
+  discoverSourceLinks,
+  type DiscoveredSourceLink,
+} from "./sourceDiscoveryAdapters.js";
 import { fetchMachineDiscoverySource, isMachineDiscoveryAdapter } from "./machineDiscoveryAdapters.js";
 import { parseCrawlDelayForUserAgent, robotsAllowsPath } from "./sourcePolicy.js";
 
@@ -315,6 +319,28 @@ async function fetchDirectory(source: Source, linkLimit: number): Promise<Fetche
       };
     }
     const result = await fetchHtml(source);
+    const discovered = result.notModified
+      ? []
+      : source.discoveryAdapterId
+        ? discoverSourceLinks(source, result.html ?? "", result.finalUrl).slice(0, effectiveLinkLimit)
+        : extractDiscoveryLinks(result.html ?? "", result.finalUrl, effectiveLinkLimit);
+    const links = source.discoveryAdapterId === "resartis-detail" || source.discoveryAdapterId === "transartists-detail"
+      ? (await mapConcurrent(discovered, 2, async (link) => {
+          try {
+            const targetResult = await fetchHtml(discoverySourceFromLink(source, link));
+            return !targetResult.notModified && targetResult.html && canonicalPageMatchesDirectoryCall(
+              source.name,
+              result.html ?? "",
+              targetResult.html,
+              targetResult.finalUrl,
+            )
+              ? { ...link, url: targetResult.finalUrl }
+              : undefined;
+          } catch {
+            return undefined;
+          }
+        })).filter((link): link is DiscoveryLink => Boolean(link))
+      : discovered;
     return {
       source,
       checkedAt,
@@ -323,7 +349,7 @@ async function fetchDirectory(source: Source, linkLimit: number): Promise<Fetche
       notModified: result.notModified,
       etag: result.etag,
       lastModified: result.lastModified,
-      links: result.notModified ? [] : source.discoveryAdapterId ? discoverSourceLinks(source, result.html ?? "", result.finalUrl).slice(0, effectiveLinkLimit) : extractDiscoveryLinks(result.html ?? "", result.finalUrl, effectiveLinkLimit),
+      links,
     };
   } catch (error) {
     return {

@@ -1,7 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { Source } from "@missa/radar-engine";
-import { discoverSourceLinks } from "../src/sourceDiscoveryAdapters.js";
+import {
+  canonicalPageMatchesDirectoryCall,
+  discoverSourceLinks,
+} from "../src/sourceDiscoveryAdapters.js";
 
 function source(overrides: Partial<Source> = {}): Source {
   return {
@@ -422,7 +425,7 @@ test("Res Artis discovery keeps only open-call detail pages and preserves its re
   assert.equal(links[0]?.title, "Musical Theatre Dancers Intensive 2027");
 });
 
-test("Res Artis detail discovery resolves one canonical official host", () => {
+test("Res Artis detail discovery proposes one official-host candidate for verification", () => {
   const detail = source({
     id: "resartis-detail",
     name: "Musical Theatre Dancers Intensive 2027",
@@ -442,7 +445,7 @@ test("Res Artis detail discovery resolves one canonical official host", () => {
 
   assert.deepEqual(discoverSourceLinks(detail, html, detail.url), [
     {
-      url: "https://www.banffcentre.ca/programs/musical-theatre-dancers-intensive-2027",
+      url: "https://www.banffcentre.ca/node/6970",
       title: "Musical Theatre Dancers Intensive 2027",
       kind: "organization-website",
       registryTier: 0,
@@ -452,40 +455,43 @@ test("Res Artis detail discovery resolves one canonical official host", () => {
   ]);
 });
 
-test("directory details reject related host pages that do not identify the call", () => {
+test("canonical host verification rejects related pages without call evidence", () => {
   const detail = source({
     id: "resartis-related-pages",
     name: "Fall 2027 Artist Residency in Morocco with Green Olive Arts",
     url: "https://resartis.org/open-call/fall-2027-artist-residency-in-morocco/",
     discoveryAdapterId: "resartis-detail",
   });
-  const html = `
-    <main>
-      <a href="https://greenolivearts.example/art-residency/housing-options/">Housing options</a>
-      <a href="https://banff.example/node/6970">Banff Centre campus</a>
-      <a href="https://venue.example/the-exhibition-space-venice/">Exhibition space Venice</a>
-    </main>
-  `;
-
-  assert.deepEqual(discoverSourceLinks(detail, html, detail.url), []);
+  assert.equal(canonicalPageMatchesDirectoryCall(
+    detail.name,
+    `<main><p>Applications close in 2027.</p></main>`,
+    `<main><h1>Housing options</h1><p>Accommodation and studio amenities for artists.</p></main>`,
+    "https://greenolivearts.example/art-residency/housing-options/",
+  ), false);
 });
 
-test("directory details accept a title-matched canonical programme page without application words", () => {
+test("canonical host verification accepts a matching official call page", () => {
   const detail = source({
     id: "resartis-title-match",
     name: "Group Residency, Orkney Islands: Wandering Rocks",
     url: "https://resartis.org/open-call/group-residency-orkney-islands/",
     discoveryAdapterId: "resartis-detail",
   });
-  const html = `
-    <main>
-      <a href="https://organizer.example/programmes/group-residency-orkney/">Group Residency Programme Orkney</a>
-    </main>
-  `;
-
-  assert.deepEqual(discoverSourceLinks(detail, html, detail.url).map((link) => link.url), [
+  assert.equal(canonicalPageMatchesDirectoryCall(
+    detail.name,
+    `<main><p>Applications close in 2027.</p></main>`,
+    `<main><h1>Group Residency Programme Orkney</h1><p>Open call. Apply by 1 March 2027.</p></main>`,
     "https://organizer.example/programmes/group-residency-orkney/",
-  ]);
+  ), true);
+});
+
+test("canonical host verification rejects a conflicting call year", () => {
+  assert.equal(canonicalPageMatchesDirectoryCall(
+    "Musical Theatre Dancers Intensive 2027",
+    `<main><p>Applications close in 2027.</p></main>`,
+    `<main><h1>Musical Theatre Dancers Intensive 2025</h1><p>Applications are open for 2025.</p></main>`,
+    "https://banff.example/programs/musical-theatre-dancers-intensive-2025",
+  ), false);
 });
 
 test("directory details fail closed when they expose only forms, files, redirects, or bare homepages", () => {
