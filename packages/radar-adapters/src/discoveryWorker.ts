@@ -332,8 +332,30 @@ export function mergeDiscoveredSourceMetadata(source: Source, link: DiscoveryLin
   assign("followsOutboundLinks", link.followsOutboundLinks);
   assign("discoveryAdapterId", link.discoveryAdapterId);
   assign("discoveredFromSourceId", link.discoveredFromSourceId ?? parentSourceId);
+  assign("active", true);
   if (link.title && isGenericSourceName(source.name, source.url)) assign("name", link.title);
   return changed;
+}
+
+/** A successful parent refresh is authoritative for its own provenance edge. */
+export function reconcileDiscoveredChildren(
+  sources: Source[],
+  parentSourceId: string,
+  emittedLinks: DiscoveryLink[],
+): Source[] {
+  const emitted = new Set(emittedLinks.map((link) => normalizeUrl(link.url)));
+  const retired: Source[] = [];
+  for (const source of sources) {
+    if (
+      source.discoveredFromSourceId === parentSourceId &&
+      source.active &&
+      !emitted.has(normalizeUrl(source.url))
+    ) {
+      source.active = false;
+      retired.push(source);
+    }
+  }
+  return retired;
 }
 
 function isGenericSourceName(name: string, url: string): boolean {
@@ -402,6 +424,15 @@ async function persistDiscoveryResults(fetched: FetchedDirectory[], maxNewSource
         // Keep the provenance link in the source name only; the canonical page
         // itself is fetched and reviewed by Radar before publication.
         void added;
+      }
+      if (item.html !== undefined) {
+        for (const retired of reconcileDiscoveredChildren(
+          currentRows.rows.map((row) => row.data),
+          item.source.id,
+          item.links,
+        )) {
+          enrichedExisting.set(retired.id, retired);
+        }
       }
     }
     // Discovery only mutates source rows. Write those rows directly rather

@@ -11,8 +11,43 @@ import {
   isDiscoverySource,
   mergeDiscoveredSourceMetadata,
   prioritizeDiscoverySources,
+  reconcileDiscoveredChildren,
 } from "../src/discoveryWorker.js";
 import type { Source } from "@missa/radar-engine";
+
+test("discovery reconciliation retires stale provenance children", () => {
+  const current: Source[] = [
+    {
+      id: "current-child",
+      name: "Current call",
+      url: "https://host.example/current-call",
+      kind: "organization-website",
+      active: true,
+      checkIntervalHours: 24,
+      consecutiveFailures: 0,
+      discoveredFromSourceId: "parent-source",
+    },
+    {
+      id: "stale-child",
+      name: "Old archive",
+      url: "https://host.example/issues/old",
+      kind: "organization-website",
+      active: true,
+      checkIntervalHours: 24,
+      consecutiveFailures: 0,
+      discoveredFromSourceId: "parent-source",
+    },
+  ];
+
+  assert.deepEqual(
+    reconcileDiscoveredChildren(current, "parent-source", [
+      { url: "https://host.example/current-call", title: "Current call" },
+    ]).map((source) => source.id),
+    ["stale-child"],
+  );
+  assert.equal(current[0]?.active, true);
+  assert.equal(current[1]?.active, false);
+});
 
 test("discovery extracts bounded call links and drops assets", () => {
   const html = `
