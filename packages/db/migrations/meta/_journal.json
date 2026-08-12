@@ -99,6 +99,13 @@
       "when": 1786150000000,
       "tag": "0021_tracker_import_transactions",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786496000000,
+      "tag": "0022_resend_webhook_events",
+      "breakpoints": true
     }
   ]
 }

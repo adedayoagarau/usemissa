@@ -168,6 +168,8 @@ export {
 export {
   beginPlatformMessageEffect,
   completePlatformMessageEffect,
+  providerEventEffectStatus,
+  recordPlatformMessageProviderEvent,
   createPlatformCrmContact,
   createPlatformCrmNote,
   createPlatformCrmTask,

@@ -2198,6 +2198,9 @@ export const platformMessageEffects = pgTable(
     idempotencyKey: text("idempotency_key").notNull(),
     status: text("status").notNull().default("pending"),
     providerMessageId: text("provider_message_id"),
+    providerStatus: text("provider_status"),
+    providerEventId: text("provider_event_id"),
+    providerEventAt: timestamp("provider_event_at", { withTimezone: true }),
     attemptCount: integer("attempt_count").notNull().default(0),
     lastError: text("last_error"),
     requestedAt: timestamp("requested_at", { withTimezone: true })
@@ -2223,6 +2226,9 @@ export const platformMessageEffects = pgTable(
       table.accountId,
       table.createdAt,
     ),
+    index("platform_message_effects_provider_message_idx")
+      .on(table.provider, table.providerMessageId)
+      .where(sql`${table.providerMessageId} is not null`),
     check(
       "platform_message_effects_status_check",
       sql`${table.status} in ('pending', 'sending', 'sent', 'failed', 'suppressed')`,
@@ -2271,6 +2277,47 @@ export const platformMessageAttempts = pgTable(
     check(
       "platform_message_attempts_number_check",
       sql`${table.attemptNumber} >= 1`,
+    ),
+  ],
+);
+
+export const platformMessageProviderEvents = pgTable(
+  "platform_message_provider_events",
+  {
+    id: text("id").primaryKey(),
+    provider: text("provider").notNull(),
+    providerEventId: text("provider_event_id").notNull(),
+    eventType: text("event_type").notNull(),
+    providerMessageId: text("provider_message_id"),
+    effectId: text("effect_id").references(() => platformMessageEffects.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("received"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    metadata: jsonb("metadata")
+      .notNull()
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("platform_message_provider_events_provider_id_idx").on(
+      table.provider,
+      table.providerEventId,
+    ),
+    index("platform_message_provider_events_message_idx").on(
+      table.provider,
+      table.providerMessageId,
+      table.occurredAt,
+    ),
+    index("platform_message_provider_events_status_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+    check(
+      "platform_message_provider_events_status_check",
+      sql`${table.status} in ('received', 'matched', 'unmatched', 'ignored')`,
     ),
   ],
 );
