@@ -572,7 +572,7 @@ test("On the Move detail discovery proposes only the strongest official call pag
   ]);
 });
 
-test("Film Independent discovery follows only canonical program opportunity pages", () => {
+test("Film Independent discovery follows program sections, not generic opportunity records", () => {
   const index = source({
     id: "film-independent-index",
     name: "Film Independent Programs",
@@ -593,18 +593,43 @@ test("Film Independent discovery follows only canonical program opportunity page
     {
       url: "https://www.filmindependent.org/programs/applications/",
       title: "Applications",
-      kind: "organization-website",
-      registryTier: 0,
-      followsOutboundLinks: false,
+      kind: "directory",
+      registryTier: 2,
+      followsOutboundLinks: true,
+      discoveryAdapterId: "film-independent-detail",
       discoveredFromSourceId: "film-independent-index",
     },
     {
       url: "https://www.filmindependent.org/programs/grants-and-awards/",
       title: "Grants & Awards",
-      kind: "organization-website",
-      registryTier: 0,
-      followsOutboundLinks: false,
+      kind: "directory",
+      registryTier: 2,
+      followsOutboundLinks: true,
+      discoveryAdapterId: "film-independent-detail",
       discoveredFromSourceId: "film-independent-index",
     },
   ]);
+});
+
+test("Film Independent section discovery keeps only specific program pages", () => {
+  const section = source({
+    id: "film-independent-section",
+    name: "Film Independent Artist Development",
+    url: "https://www.filmindependent.org/programs/artist-development/",
+    discoveryAdapterId: "film-independent-detail",
+  });
+
+  assert.deepEqual(
+    discoverSourceLinks(section, `
+      <a href="/programs/artist-development/screenwriting-lab/">Screenwriting Lab</a>
+      <a href="/programs/artist-development/documentary-lab/">Documentary Lab</a>
+      <a href="/programs/artist-development/">Artist Development</a>
+      <a href="/programs/education-events-classes/">Events</a>
+      <a href="https://www.instagram.com/filmindependent/">Instagram</a>
+    `, section.url).map((link) => link.url),
+    [
+      "https://www.filmindependent.org/programs/artist-development/screenwriting-lab/",
+      "https://www.filmindependent.org/programs/artist-development/documentary-lab/",
+    ],
+  );
 });

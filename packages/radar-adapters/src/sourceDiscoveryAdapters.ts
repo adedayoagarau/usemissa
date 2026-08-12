@@ -201,6 +201,29 @@ function filmIndependentIndex(
     })
     .map((link) => ({
       ...link,
+      kind: "directory" as const,
+      registryTier: 2 as const,
+      followsOutboundLinks: true,
+      discoveryAdapterId: "film-independent-detail",
+      discoveredFromSourceId: source.id,
+    }));
+}
+
+function filmIndependentDetail(
+  source: Source,
+  html: string,
+  finalUrl: string,
+): DiscoveredSourceLink[] {
+  return htmlLinks(html, finalUrl)
+    .filter((link) => {
+      const url = new URL(link.url);
+      return (
+        normalizedHost(url.href) === "filmindependent.org" &&
+        /^\/programs\/(?:artist-development|grants-and-awards)\/[^/]+\/$/.test(url.pathname)
+      );
+    })
+    .map((link) => ({
+      ...link,
       kind: "organization-website" as const,
       registryTier: 0 as const,
       followsOutboundLinks: false,
@@ -463,5 +486,7 @@ export function discoverSourceLinks(
     return inArticleExternalLinks(source, html, finalUrl, 1, true);
   if (source.discoveryAdapterId === "film-independent-index")
     return filmIndependentIndex(source, html, finalUrl);
+  if (source.discoveryAdapterId === "film-independent-detail")
+    return filmIndependentDetail(source, html, finalUrl);
   return [];
 }
