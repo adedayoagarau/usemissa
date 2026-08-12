@@ -131,6 +131,22 @@ test('machine feed records sharing one canonical page remain distinct calls', as
     'Domestic Indemnity Program 1',
     'Domestic Indemnity Program 2',
   ]);
+
+  // Repair legacy state where the second official record was collapsed into
+  // the first record's alternate sources before machine identity was carried
+  // into canonicalization.
+  const secondOpportunity = [...engine.store.opportunities.values()].find((opportunity) => opportunity.sourceId === second.id)!;
+  engine.store.opportunities.delete(secondOpportunity.id);
+  const firstOpportunity = [...engine.store.opportunities.values()][0]!;
+  firstOpportunity.alternateSourceIds.push(second.id);
+  delete second.lastContentHash;
+  second.nextCheckAt = '1970-01-01T00:00:00.000Z';
+
+  const repair = await engine.tick();
+
+  assert.equal(repair.opportunitiesCreated.length, 1);
+  assert.equal(engine.store.opportunities.size, 2);
+  assert.equal(firstOpportunity.alternateSourceIds.includes(second.id), false);
 });
 
 test('a processing failure does not poison the content hash or abort the source batch', async () => {

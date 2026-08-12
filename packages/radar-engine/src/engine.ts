@@ -835,6 +835,18 @@ export class RadarEngine {
           continue;
         }
 
+        if (candidate.discoveryExternalId) {
+          // Older URL/title deduplication could attach a distinct official
+          // feed record as an alternate source. Detach that stale relation
+          // before canonical matching so a replay restores the lost call.
+          for (const opportunity of this.store.opportunities.values()) {
+            if (opportunity.sourceId === candidate.sourceId) continue;
+            opportunity.alternateSourceIds = opportunity.alternateSourceIds.filter(
+              (sourceId) => sourceId !== candidate.sourceId,
+            );
+          }
+        }
+
         const match = findCanonical(candidate, this.store.opportunities.values());
         if (match.kind === 'same-page') {
           const changes = this.applyUpdate(match.opportunity, candidate, now);
