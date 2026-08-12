@@ -288,7 +288,7 @@ def run_worker(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run Gary continuously against Neon.")
-    parser.add_argument("--source-id", default="pw.org")
+    parser.add_argument("--source-id", default=os.environ.get("GARY_SOURCE_ID", "pw.org"))
     parser.add_argument("--index-url", default=os.environ.get("GARY_INDEX_URL", "https://www.pw.org/grants"))
     parser.add_argument("--adapter", choices=("poets-writers", "nyfa-visual-arts"), default=os.environ.get("GARY_ADAPTER", "poets-writers"))
     parser.add_argument("--limit", type=int, default=None)
