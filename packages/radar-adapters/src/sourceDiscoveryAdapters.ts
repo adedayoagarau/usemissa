@@ -162,6 +162,34 @@ function detailIndex(
     }));
 }
 
+const ON_THE_MOVE_NON_CALL_PATHS = new Set([
+  "/news/countries",
+  "/news/deadlines",
+]);
+
+function onTheMoveIndex(
+  source: Source,
+  html: string,
+  finalUrl: string,
+): DiscoveredSourceLink[] {
+  return detailIndex(
+    source,
+    html,
+    finalUrl,
+    (url) =>
+      normalizedHost(url.href) === "on-the-move.org" &&
+      url.pathname.startsWith("/news/") &&
+      url.pathname !== "/news/" &&
+      url.search === "" &&
+      !ON_THE_MOVE_NON_CALL_PATHS.has(url.pathname.replace(/\/$/, "")),
+    "on-the-move-detail",
+  ).map((link) => ({
+    ...link,
+    title: link.title?.replace(/\.?\s*Deadline:\s*[\s\S]*$/i, "").trim(),
+    checkIntervalHours: 24,
+  }));
+}
+
 function normalizedHost(url: string): string {
   return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
 }
@@ -385,6 +413,10 @@ export function discoverSourceLinks(
     }));
   }
   if (source.discoveryAdapterId === "resartis-detail")
+    return inArticleExternalLinks(source, html, finalUrl, 1, true);
+  if (source.discoveryAdapterId === "on-the-move-index")
+    return onTheMoveIndex(source, html, finalUrl);
+  if (source.discoveryAdapterId === "on-the-move-detail")
     return inArticleExternalLinks(source, html, finalUrl, 1, true);
   return [];
 }

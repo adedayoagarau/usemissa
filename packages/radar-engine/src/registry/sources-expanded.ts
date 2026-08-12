@@ -39,6 +39,7 @@ const SOURCES: CompactSource[] = [
   directory('Artist Communities Alliance', 'https://artistcommunities.org/directory', 'visual-residency', { disciplines: ['all-disciplines'], opportunityTypes: ['residency', 'fellowship'], geography: ['US', 'global'] }),
   directory('TransArtists Residency Database', 'https://www.transartists.org/en/map', 'platform-transartists', { disciplines: ['all-disciplines'], opportunityTypes: ['residency', 'fellowship'], geography: ['global'] }),
   directory('On the Move Funding Guides', 'https://on-the-move.org/resources/funding', 'grants-international', { disciplines: ['performing-arts', 'visual-arts', 'music'], opportunityTypes: ['grant', 'fellowship', 'residency'], geography: ['global', 'EU'] }),
+  directory('On the Move Open Calls', 'https://on-the-move.org/news/deadlines', 'grants-international', { disciplines: ['performing-arts', 'visual-arts', 'music', 'literature', 'film'], opportunityTypes: ['grant', 'fellowship', 'residency', 'open-call', 'award'], geography: ['global', 'EU'], checkIntervalHours: 24, discoveryAdapterId: 'on-the-move-index', discoveryLinkLimit: 100 }),
   directory('ArtConnect Opportunities', 'https://www.artconnect.com/opportunities', 'grants-international', { disciplines: ['visual-arts', 'film', 'photography', 'design'], opportunityTypes: ['grant', 'residency', 'open-call'], geography: ['global'] }),
 
   // Visual art, photography, public art, craft and curatorial calls.

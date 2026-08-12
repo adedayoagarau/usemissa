@@ -324,7 +324,9 @@ async function fetchDirectory(source: Source, linkLimit: number): Promise<Fetche
       : source.discoveryAdapterId
         ? discoverSourceLinks(source, result.html ?? "", result.finalUrl).slice(0, effectiveLinkLimit)
         : extractDiscoveryLinks(result.html ?? "", result.finalUrl, effectiveLinkLimit);
-    const links = source.discoveryAdapterId === "resartis-detail" || source.discoveryAdapterId === "transartists-detail"
+    const links = source.discoveryAdapterId === "resartis-detail" ||
+      source.discoveryAdapterId === "transartists-detail" ||
+      source.discoveryAdapterId === "on-the-move-detail"
       ? (await mapConcurrent(discovered, 2, async (link) => {
           try {
             const targetResult = await fetchHtml(discoverySourceFromLink(source, link));

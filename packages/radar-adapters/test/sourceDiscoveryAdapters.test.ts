@@ -513,3 +513,58 @@ test("directory details fail closed when they expose only forms, files, redirect
 
   assert.deepEqual(discoverSourceLinks(detail, html, detail.url), []);
 });
+
+test("On the Move discovery uses the complete deadlines index and excludes navigation", () => {
+  const index = source({
+    id: "on-the-move-index",
+    name: "On the Move Open Calls",
+    url: "https://on-the-move.org/news/deadlines",
+    discoveryAdapterId: "on-the-move-index",
+  });
+  const html = `
+    <main>
+      <a href="/news/deadlines">Deadlines</a>
+      <a href="/news/countries">Open Calls by Country</a>
+      <a href="/news/?f%5B0%5D=region%3A219">Nigeria</a>
+      <a href="/news/airvine-residence-kyoto" class="link-block">
+        AiRViNe Residence Exchange Programme 2026. Deadline: 16 Aug 2026
+      </a>
+      <a href="https://example.org/not-an-on-the-move-detail">External article</a>
+    </main>
+  `;
+
+  assert.deepEqual(discoverSourceLinks(index, html, index.url), [
+    {
+      url: "https://on-the-move.org/news/airvine-residence-kyoto",
+      title: "AiRViNe Residence Exchange Programme 2026",
+      kind: "directory",
+      registryTier: 2,
+      followsOutboundLinks: true,
+      discoveryAdapterId: "on-the-move-detail",
+      discoveredFromSourceId: "on-the-move-index",
+      checkIntervalHours: 24,
+    },
+  ]);
+});
+
+test("On the Move detail discovery proposes only the strongest official call page", () => {
+  const detail = source({
+    id: "on-the-move-detail",
+    name: "AiRViNe Residence Exchange Programme 2026",
+    url: "https://on-the-move.org/news/airvine-residence-kyoto",
+    discoveryAdapterId: "on-the-move-detail",
+  });
+  const html = `
+    <main><article>
+      <h1>AiRViNe Residence Exchange Programme 2026</h1>
+      <p>Applications close on 16 August 2026.</p>
+      <a href="https://airvine.info/about/">About AiRViNe</a>
+      <a href="https://airvine.info/2026/07/26/open-call-residence-exchange-programme/">More info and apply</a>
+      <a href="https://docs.google.com/forms/d/example/viewform">Application form</a>
+    </article></main>
+  `;
+
+  assert.deepEqual(discoverSourceLinks(detail, html, detail.url).map((link) => link.url), [
+    "https://airvine.info/2026/07/26/open-call-residence-exchange-programme/",
+  ]);
+});
