@@ -177,6 +177,37 @@ const ON_THE_MOVE_NON_CALL_PATHS = new Set([
   "/news/deadlines",
 ]);
 
+const FILM_INDEPENDENT_PROGRAM_PATHS = new Set([
+  "/programs/applications/",
+  "/programs/artist-development/",
+  "/programs/grants-and-awards/",
+  "/programs/project-involve/",
+  "/programs/residencies-programs/",
+  "/programs/works-in-progress-series/",
+]);
+
+function filmIndependentIndex(
+  source: Source,
+  html: string,
+  finalUrl: string,
+): DiscoveredSourceLink[] {
+  return htmlLinks(html, finalUrl)
+    .filter((link) => {
+      const url = new URL(link.url);
+      return (
+        normalizedHost(url.href) === "filmindependent.org" &&
+        FILM_INDEPENDENT_PROGRAM_PATHS.has(url.pathname)
+      );
+    })
+    .map((link) => ({
+      ...link,
+      kind: "organization-website" as const,
+      registryTier: 0 as const,
+      followsOutboundLinks: false,
+      discoveredFromSourceId: source.id,
+    }));
+}
+
 function onTheMoveIndex(
   source: Source,
   html: string,
@@ -430,5 +461,7 @@ export function discoverSourceLinks(
     return onTheMoveIndex(source, html, finalUrl);
   if (source.discoveryAdapterId === "on-the-move-detail")
     return inArticleExternalLinks(source, html, finalUrl, 1, true);
+  if (source.discoveryAdapterId === "film-independent-index")
+    return filmIndependentIndex(source, html, finalUrl);
   return [];
 }

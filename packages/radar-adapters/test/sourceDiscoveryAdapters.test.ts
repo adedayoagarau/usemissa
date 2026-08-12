@@ -571,3 +571,40 @@ test("On the Move detail discovery proposes only the strongest official call pag
     "https://airvine.info/2026/07/26/open-call-residence-exchange-programme/?view=programme&cid=352",
   ]);
 });
+
+test("Film Independent discovery follows only canonical program opportunity pages", () => {
+  const index = source({
+    id: "film-independent-index",
+    name: "Film Independent Programs",
+    url: "https://www.filmindependent.org/programs/",
+    discoveryAdapterId: "film-independent-index",
+  });
+  const html = `
+    <nav>
+      <a href="/programs/">Programs</a>
+      <a href="/programs/applications/">Applications</a>
+      <a href="/programs/grants-and-awards/">Grants &amp; Awards</a>
+      <a href="/programs/education-events-classes/">Events &amp; Classes</a>
+      <a href="https://www.instagram.com/filmindependent/">Instagram</a>
+    </nav>
+  `;
+
+  assert.deepEqual(discoverSourceLinks(index, html, index.url), [
+    {
+      url: "https://www.filmindependent.org/programs/applications/",
+      title: "Applications",
+      kind: "organization-website",
+      registryTier: 0,
+      followsOutboundLinks: false,
+      discoveredFromSourceId: "film-independent-index",
+    },
+    {
+      url: "https://www.filmindependent.org/programs/grants-and-awards/",
+      title: "Grants & Awards",
+      kind: "organization-website",
+      registryTier: 0,
+      followsOutboundLinks: false,
+      discoveredFromSourceId: "film-independent-index",
+    },
+  ]);
+});
