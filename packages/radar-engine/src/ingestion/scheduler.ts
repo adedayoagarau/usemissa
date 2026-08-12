@@ -36,5 +36,15 @@ export function isDue(source: Source, now: Date): boolean {
 }
 
 export function dueSources(sources: Iterable<Source>, now: Date): Source[] {
-  return [...sources].filter((s) => isDue(s, now));
+  return [...sources].filter((s) => isDue(s, now)).sort((left, right) => {
+    const leftTier = left.registryTier ?? 0;
+    const rightTier = right.registryTier ?? 0;
+    const leftPriority = leftTier === 0 && left.discoveredFromSourceId ? 0 : leftTier + 1;
+    const rightPriority = rightTier === 0 && right.discoveredFromSourceId ? 0 : rightTier + 1;
+    if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+    const leftCheckedAt = left.lastCheckedAt ? Date.parse(left.lastCheckedAt) : 0;
+    const rightCheckedAt = right.lastCheckedAt ? Date.parse(right.lastCheckedAt) : 0;
+    if (leftCheckedAt !== rightCheckedAt) return leftCheckedAt - rightCheckedAt;
+    return left.url.localeCompare(right.url);
+  });
 }
