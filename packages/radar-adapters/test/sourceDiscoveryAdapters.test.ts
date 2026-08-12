@@ -363,12 +363,35 @@ test("TransArtists discovery follows current call articles and resolves official
   const official = discoverSourceLinks({ ...index, ...detail[0], id: "detail" }, `
     <main><article>
       <h1>Hong Kong Baptist University: International Writers' Workshop 2027</h1>
+      <a href="https://docs.google.com/forms/d/example/viewform">Apply now</a>
+      <a href="https://sponsor.example/">Presented with Sponsor</a>
       <a href="https://iww.hkbu.edu.hk/apply">Apply on the official programme website</a>
     </article></main>
   `, detail[0]!.url);
   assert.equal(official.length, 1);
   assert.equal(official[0]?.url, "https://iww.hkbu.edu.hk/apply");
   assert.equal(official[0]?.registryTier, 0);
+});
+
+test("TransArtists keeps one organizer call page ahead of forms, attachments, and sponsors", () => {
+  const detail = source({
+    id: "transartists-detail",
+    name: "Skopje Dance Theater New Production",
+    url: "https://www.transartists.org/en/news/skopje-dance-theater-new-production",
+    discoveryAdapterId: "transartists-detail",
+  });
+  const official = discoverSourceLinks(detail, `
+    <main><article>
+      <a href="https://sponsor.example/">Sponsor</a>
+      <a href="https://ec.europa.eu/guidance/programme.pdf">Funding guidance</a>
+      <a href="https://docs.google.com/forms/d/e/example/viewform">Apply now</a>
+      <a href="https://interart.example/open-call/dance-residency-2027/">Official open call</a>
+    </article></main>
+  `, detail.url);
+
+  assert.deepEqual(official.map((link) => link.url), [
+    "https://interart.example/open-call/dance-residency-2027/",
+  ]);
 });
 
 test("Res Artis discovery keeps only open-call detail pages and preserves its request profile", () => {
