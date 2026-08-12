@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   matchOpportunityToProfiles,
   normalizeHost,
+  profileLinkRetirementStatement,
   type OpportunityIdentityInput,
   type ProfileUrlEvidence,
 } from "../src/profileIdentityMatcher.js";
@@ -39,6 +40,13 @@ test("normalizes equivalent website hosts", () => {
   assert.equal(normalizeHost("example.org"), "example.org");
 });
 
+test("profile link retirement binds every SQL placeholder", () => {
+  const statement = profileLinkRetirementStatement("opp_1");
+  const placeholders = [...statement.text.matchAll(/\$(\d+)/g)].map((match) => Number(match[1]));
+  assert.equal(Math.max(...placeholders), statement.values.length);
+  assert.deepEqual(statement.values, ["opp_1", "profile-host-name-v3"]);
+});
+
 test("confirms an unambiguous exact-host plus name match", () => {
   const decisions = matchOpportunityToProfiles(opportunity(), [profile()], NOW);
   assert.equal(decisions.length, 1);
@@ -73,6 +81,38 @@ test("does not treat an aggregator host brand as the call identity", () => {
     NOW,
   );
   assert.equal(decisions[0]?.status, "pending");
+});
+
+test("does not confirm aggregator navigation, feed, tag, or bare-host records", () => {
+  const openArts = profile({ profileName: "Open Arts Forum", url: "https://openartsforum.com/" });
+  const cases: Array<Partial<OpportunityIdentityInput>> = [
+    { title: "Open Arts Forum Literary Opportunities", sourceUrl: "https://openartsforum.com/opportunities/" },
+    { title: "RSS Feed", sourceUrl: "https://openartsforum.com/?feed=oaf-opportunities" },
+    { title: "arts 1", sourceUrl: "https://openartsforum.com/opportunities/?tag=arts" },
+    { title: "openartsforum.com", sourceUrl: "https://openartsforum.com/opportunity/the-rush-magazine-call-for-submissions-45/" },
+    { title: "Submissions", sourceUrl: "https://openartsforum.com/submit/" },
+  ];
+  for (const candidate of cases) {
+    const decisions = matchOpportunityToProfiles(
+      opportunity({ organizationName: null, guidelinesUrl: null, submissionUrl: null, ...candidate }),
+      [openArts],
+      NOW,
+    );
+    assert.ok(decisions.every((decision) => decision.status === "pending"), candidate.title);
+  }
+});
+
+test("retains a distinctive one-token publication identity", () => {
+  const decisions = matchOpportunityToProfiles(
+    opportunity({
+      title: "StoryBottle summer fiction call",
+      organizationName: null,
+      sourceUrl: "https://storybottle.co/submit",
+    }),
+    [profile({ profileName: "StoryBottle Co", url: "https://storybottle.co" })],
+    NOW,
+  );
+  assert.equal(decisions[0]?.status, "confirmed");
 });
 
 test("accepts a dedicated official URL when the call title omits the publication name", () => {

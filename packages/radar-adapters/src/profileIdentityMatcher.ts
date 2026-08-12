@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 
-export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v2";
+export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v3";
 
 const NAME_STOP_WORDS = new Set([
   "a", "an", "and", "award", "awards", "call", "contest", "for", "from",
@@ -107,9 +107,36 @@ function normalizedIdentityUrl(value: string): string | null {
     const url = new URL(value.includes("://") ? value : `https://${value}`);
     const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/\.$/, "");
     const pathname = url.pathname.replace(/\/+$/, "") || "/";
-    return `${host}${pathname}`;
+    const search = new URLSearchParams(url.search);
+    for (const key of [...search.keys()]) {
+      if (/^(utm_|fbclid$|gclid$)/i.test(key)) search.delete(key);
+    }
+    search.sort();
+    const query = search.toString();
+    return `${host}${pathname}${query ? `?${query}` : ""}`;
   } catch {
     return null;
+  }
+}
+
+function isStrongCallNameEvidence(evidence: NameEvidence): boolean {
+  return evidence.score >= 0.35 && (
+    evidence.matchedTokens.length >= 2 ||
+    evidence.matchedTokens.some((token) => token.length >= 6)
+  );
+}
+
+function isNavigationOrListingRecord(title: string, value: string): boolean {
+  const normalizedTitle = title.trim().toLowerCase();
+  if (/^(rss\s+feed|submissions?|opportunities?)$/.test(normalizedTitle)) return true;
+  if (/^[a-z][a-z\s-]*\s+\d+$/.test(normalizedTitle)) return true;
+  if (/^(?:https?:\/\/)?(?:www\.)?[a-z0-9.-]+\.[a-z]{2,}\/?$/i.test(title.trim())) return true;
+  try {
+    const url = new URL(value.includes("://") ? value : `https://${value}`);
+    if (url.searchParams.has("feed") || url.searchParams.has("tag")) return true;
+    return /^\/(?:opportunities?|feed)\/?$/i.test(url.pathname);
+  } catch {
+    return true;
   }
 }
 
@@ -155,14 +182,16 @@ export function matchOpportunityToProfiles(
       const callName = profileNameEvidence(profile.profileName, context, host, false);
       const hostName = profileNameEvidence(profile.profileName, [], host, true);
       const exactUrl = normalizedIdentityUrl(candidateUrl.url) === normalizedIdentityUrl(profile.url);
+      const strongCallName = isStrongCallNameEvidence(callName);
+      const isNavigationRecord = isNavigationOrListingRecord(opportunity.title, candidateUrl.url);
       const identityBasis: ProfileIdentityDecision["identityBasis"] =
-        callName.score >= 0.35 ? "call-name" : "exact-url";
+        strongCallName ? "call-name" : "exact-url";
       return {
         profile,
         score: Math.max(callName.score, exactUrl ? hostName.score : 0),
-        matchedTokens: callName.score >= 0.35 ? callName.matchedTokens : hostName.matchedTokens,
+        matchedTokens: strongCallName ? callName.matchedTokens : hostName.matchedTokens,
         identityBasis,
-        hasCompatibleIdentity: callName.score >= 0.35 || (exactUrl && hostName.score >= 0.75),
+        hasCompatibleIdentity: !isNavigationRecord && (strongCallName || (exactUrl && hostName.score >= 0.75)),
       };
     });
     const bestByProfile = new Map<string, (typeof scored)[number]>();
@@ -214,14 +243,22 @@ function linkId(decision: ProfileIdentityDecision): string {
     .digest("hex");
 }
 
-async function persistDecisions(client: PoolClient, opportunityId: string, decisions: ProfileIdentityDecision[]): Promise<void> {
-  await client.query(
-    `update opportunity_profile_links
+export function profileLinkRetirementStatement(opportunityId: string): {
+  text: string;
+  values: [string, string];
+} {
+  return {
+    text: `update opportunity_profile_links
      set status = 'rejected', verified_at = now(), verified_until = null, updated_at = now(),
          evidence_json = evidence_json || jsonb_build_object('retiredBy', $2::text, 'retiredAt', now())
      where opportunity_id = $1 and evidence_json ->> 'matcherVersion' like 'profile-host-name-v%'`,
-    [opportunityId],
-  );
+    values: [opportunityId, PROFILE_IDENTITY_MATCHER_VERSION],
+  };
+}
+
+async function persistDecisions(client: PoolClient, opportunityId: string, decisions: ProfileIdentityDecision[]): Promise<void> {
+  const retirement = profileLinkRetirementStatement(opportunityId);
+  await client.query(retirement.text, retirement.values);
   for (const decision of decisions) {
     await client.query(
       `insert into opportunity_profile_links
