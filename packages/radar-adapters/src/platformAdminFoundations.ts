@@ -51,10 +51,16 @@ create table if not exists platform_message_effects (
   check (status in ('pending', 'sending', 'sent', 'failed', 'suppressed')),
   check (attempt_count >= 0)
 );
+alter table platform_message_effects add column if not exists provider_status text;
+alter table platform_message_effects add column if not exists provider_event_id text;
+alter table platform_message_effects add column if not exists provider_event_at timestamptz;
 create index if not exists platform_message_effects_status_idx
   on platform_message_effects (status, updated_at);
 create index if not exists platform_message_effects_account_idx
   on platform_message_effects (account_id, created_at);
+create index if not exists platform_message_effects_provider_message_idx
+  on platform_message_effects (provider, provider_message_id)
+  where provider_message_id is not null;
 
 create table if not exists platform_message_attempts (
   id text primary key,
@@ -73,6 +79,26 @@ create table if not exists platform_message_attempts (
 );
 create index if not exists platform_message_attempts_status_idx
   on platform_message_attempts (status, started_at);
+
+create table if not exists platform_message_provider_events (
+  id text primary key,
+  provider text not null,
+  provider_event_id text not null,
+  event_type text not null,
+  provider_message_id text,
+  effect_id text references platform_message_effects(id) on delete set null,
+  status text not null default 'received',
+  occurred_at timestamptz not null,
+  processed_at timestamptz,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  unique (provider, provider_event_id),
+  check (status in ('received', 'matched', 'unmatched', 'ignored'))
+);
+create index if not exists platform_message_provider_events_message_idx
+  on platform_message_provider_events (provider, provider_message_id, occurred_at);
+create index if not exists platform_message_provider_events_status_idx
+  on platform_message_provider_events (status, created_at);
 
 create table if not exists platform_crm_timeline_events (
   id text primary key,
@@ -230,6 +256,7 @@ create index if not exists platform_analytics_events_org_time_idx
 const FOUNDATION_TABLES = [
   "platform_message_effects",
   "platform_message_attempts",
+  "platform_message_provider_events",
   "platform_crm_timeline_events",
   "platform_billing_ledger",
   "platform_agent_control_requests",
@@ -329,6 +356,14 @@ export async function ensurePlatformAdminFoundationsSchema(connectionString: str
 }
 
 export type PlatformMessageEffectStatus = "pending" | "sending" | "sent" | "failed" | "suppressed";
+export type PlatformMessageProviderEffectStatus = "sent" | "failed" | "suppressed";
+
+export function providerEventEffectStatus(eventType: string): PlatformMessageProviderEffectStatus | undefined {
+  if (["email.bounced", "email.complained", "email.suppressed"].includes(eventType)) return "suppressed";
+  if (eventType === "email.failed") return "failed";
+  if (["email.sent", "email.delivered", "email.delivery_delayed", "email.opened", "email.clicked"].includes(eventType)) return "sent";
+  return undefined;
+}
 
 export interface PlatformMessageEffect {
   id: string;
@@ -598,8 +633,8 @@ export async function completePlatformMessageEffect(input: {
     const client = await pool.connect();
     try {
       await client.query("begin");
-      const current = await client.query<{ organization_id?: string | null; account_id?: string | null }>(
-        "select organization_id, account_id from platform_message_effects where id = $1 for update",
+      const current = await client.query<{ organization_id?: string | null; account_id?: string | null; provider: string }>(
+        "select organization_id, account_id, provider from platform_message_effects where id = $1 for update",
         [input.effectId],
       );
       if (!current.rows[0]) throw new Error("Message effect not found");
@@ -618,6 +653,9 @@ export async function completePlatformMessageEffect(input: {
           where id = $1`,
         [input.effectId, input.status, input.providerMessageId ?? null, errorText ?? null],
       );
+      if (input.providerMessageId) {
+        await reconcileProviderMessageEvents(client, input.effectId, current.rows[0].provider, input.providerMessageId);
+      }
       await client.query(
         `update outbox_events set status = $2, attempts = greatest(attempts, $3),
                 processed_at = case when $2 = 'processed' then now() else processed_at end,
@@ -635,6 +673,139 @@ export async function completePlatformMessageEffect(input: {
         detail: { attemptNumber: input.attemptNumber, providerMessageIdPresent: Boolean(input.providerMessageId), ...(errorText ? { error: errorText } : {}) },
       });
       await client.query("commit");
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  } finally {
+    await pool.end();
+  }
+}
+
+async function reconcileProviderMessageEvents(
+  client: PoolClient,
+  effectId: string,
+  provider: string,
+  providerMessageId: string,
+): Promise<boolean> {
+  const latest = await client.query<{ provider_event_id: string; event_type: string; occurred_at: unknown; metadata: JsonRecord }>(
+    `select provider_event_id, event_type, occurred_at, metadata
+       from platform_message_provider_events
+      where provider = $1 and provider_message_id = $2
+      order by occurred_at desc, created_at desc
+      limit 1`,
+    [provider, providerMessageId],
+  );
+  const event = latest.rows[0];
+  if (!event) return false;
+  const effectStatus = providerEventEffectStatus(event.event_type);
+  const errorText = safeError(event.metadata?.reason);
+  await client.query(
+    `update platform_message_effects
+        set provider_status = $2,
+            provider_event_id = $3,
+            provider_event_at = $4::timestamptz,
+            status = case
+              when $5 = 'suppressed' then 'suppressed'
+              when $5 = 'failed' and status <> 'suppressed' then 'failed'
+              when $5 = 'sent' and status not in ('failed', 'suppressed') then 'sent'
+              else status
+            end,
+            last_error = case when $5 in ('failed', 'suppressed') then coalesce($6, last_error) else last_error end,
+            updated_at = now()
+      where id = $1
+        and (provider_event_at is null or provider_event_at <= $4::timestamptz)`,
+    [effectId, event.event_type, event.provider_event_id, event.occurred_at, effectStatus ?? null, errorText ?? null],
+  );
+  if (effectStatus) {
+    await client.query(
+      `update platform_message_attempts
+          set status = case
+                when $4 in ('failed', 'suppressed') then 'failed'
+                when $4 = 'sent' and status <> 'failed' then 'sent'
+                else status
+              end,
+              error = case when $4 in ('failed', 'suppressed') then coalesce($5, error) else error end,
+              completed_at = coalesce(completed_at, now())
+        where effect_id = $1 and provider = $2 and provider_message_id = $3`,
+      [effectId, provider, providerMessageId, effectStatus, errorText ?? null],
+    );
+  }
+  await client.query(
+    `update platform_message_provider_events
+        set effect_id = $3, status = 'matched', processed_at = coalesce(processed_at, now())
+      where provider = $1 and provider_message_id = $2`,
+    [provider, providerMessageId, effectId],
+  );
+  return true;
+}
+
+export interface RecordPlatformMessageProviderEventInput {
+  provider: string;
+  providerEventId: string;
+  eventType: string;
+  providerMessageId?: string;
+  occurredAt: string;
+  metadata?: JsonRecord;
+}
+
+export interface RecordPlatformMessageProviderEventResult {
+  duplicate: boolean;
+  matched: boolean;
+}
+
+/** Persist one verified provider event without recipient, subject, body, IP, or
+ * click URL data. The provider event id is the idempotency boundary. */
+export async function recordPlatformMessageProviderEvent(
+  connectionString: string,
+  input: RecordPlatformMessageProviderEventInput,
+): Promise<RecordPlatformMessageProviderEventResult> {
+  assertIdentifier(input.provider, "message provider");
+  assertIdentifier(input.eventType, "provider event type");
+  if (!input.providerEventId || input.providerEventId.length > 240) throw new Error("Invalid provider event id");
+  if (input.providerMessageId) assertIdentifier(input.providerMessageId, "provider message id");
+  const occurredAt = new Date(input.occurredAt);
+  if (!Number.isFinite(occurredAt.getTime())) throw new Error("Invalid provider event timestamp");
+  await ensurePlatformAdminFoundationsSchema(connectionString);
+  const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const inserted = await client.query<{ id: string }>(
+        `insert into platform_message_provider_events
+           (id, provider, provider_event_id, event_type, provider_message_id, occurred_at, metadata)
+         values ($1, $2, $3, $4, $5, $6, $7::jsonb)
+         on conflict (provider, provider_event_id) do nothing
+         returning id`,
+        [`provider_event_${randomUUID()}`, input.provider, input.providerEventId, input.eventType, input.providerMessageId ?? null, occurredAt.toISOString(), json(input.metadata)],
+      );
+      if (!inserted.rows[0]) {
+        await client.query("commit");
+        return { duplicate: true, matched: false };
+      }
+      let matched = false;
+      if (input.providerMessageId) {
+        const effect = await client.query<{ id: string }>(
+          `select id from platform_message_effects
+            where provider = $1 and provider_message_id = $2
+            order by updated_at desc limit 1 for update`,
+          [input.provider, input.providerMessageId],
+        );
+        if (effect.rows[0]) matched = await reconcileProviderMessageEvents(client, effect.rows[0].id, input.provider, input.providerMessageId);
+      }
+      if (!matched) {
+        await client.query(
+          `update platform_message_provider_events
+              set status = $2, processed_at = now()
+            where provider = $1 and provider_event_id = $3`,
+          [input.provider, input.providerMessageId ? "unmatched" : "ignored", input.providerEventId],
+        );
+      }
+      await client.query("commit");
+      return { duplicate: false, matched };
     } catch (error) {
       await client.query("rollback").catch(() => undefined);
       throw error;
