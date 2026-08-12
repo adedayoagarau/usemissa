@@ -10,6 +10,7 @@ const EU_MAX_RESULTS = 100;
 const LONG_TERM_CHECK_INTERVAL_HOURS = 8_760;
 const SUNDANCE_DEADLINES_URL = "https://www.sundance.org/deadlines/";
 const IDA_GRANTS_DIRECTORY_URL = "https://www.documentary.org/grants-directory";
+const NYFA_VISUAL_ARTS_URL = "https://www.nyfa.org/grant-discipline/visual-arts/";
 
 type GrantsGovHit = {
   id?: string | number;
@@ -51,7 +52,7 @@ export interface MachineDiscoveryResult {
 }
 
 export function isMachineDiscoveryAdapter(adapterId: string | undefined): boolean {
-  return adapterId === "grants-gov-api" || adapterId === "eu-funding-api" || adapterId === "sundance-deadlines" || adapterId === "ida-grants-directory";
+  return adapterId === "grants-gov-api" || adapterId === "eu-funding-api" || adapterId === "sundance-deadlines" || adapterId === "ida-grants-directory" || adapterId === "nyfa-visual-arts";
 }
 
 function htmlText(value: string): string {
@@ -63,6 +64,46 @@ function htmlText(value: string): string {
     .replace(/&quot;/gi, '"')
     .replace(/\s+/g, " ")
     .trim();
+}
+
+export function nyfaVisualArtsLinksFromHtml(html: string, parentSourceId: string): DiscoveredSourceLink[] {
+  const links: DiscoveredSourceLink[] = [];
+  const seen = new Set<string>();
+  const anchorPattern = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  for (const match of html.matchAll(anchorPattern)) {
+    const href = match[1]!.replaceAll("&amp;", "&").trim();
+    const title = htmlText(match[2]!).slice(0, 240);
+    if (!/^https:\/\/www\.nyfa\.org\/awards-grants\/[a-z0-9-]+\/?$/i.test(href) || !title) continue;
+    const externalId = `nyfa:${href.toLowerCase().replace(/\/$/, "")}`;
+    if (seen.has(externalId)) continue;
+    seen.add(externalId);
+    links.push({
+      url: href,
+      title,
+      kind: "organization-website",
+      registryTier: 0,
+      followsOutboundLinks: false,
+      discoveredFromSourceId: parentSourceId,
+      discoveryExternalId: externalId,
+      discoveryExternalStatus: "posted",
+      registryOrganizationName: "New York Foundation for the Arts",
+      registryTrust: {
+        status: "verified",
+        authorityKind: "official-source",
+        score: 95,
+        evidenceUrl: NYFA_VISUAL_ARTS_URL,
+        reviewNote: "Opportunity emitted by NYFA's official Visual Arts archive.",
+      },
+      checkIntervalHours: 24,
+      discoveryMachineRecord: {
+        title,
+        organizationName: "New York Foundation for the Arts",
+        applicationUrl: href,
+        evidenceUrl: NYFA_VISUAL_ARTS_URL,
+      },
+    });
+  }
+  return links;
 }
 
 function sundanceDeadlineLinks(
@@ -376,6 +417,12 @@ export async function fetchMachineDiscoverySource(
     const rawContent = await response.text();
     const result = await idaGrantLinks(rawContent, source.id, fetcher);
     return { finalUrl: response.url, rawContent: `${result.evidence}\n\n${rawContent}`, links: result.links };
+  }
+  if (source.discoveryAdapterId === "nyfa-visual-arts") {
+    const response = await fetcher(source.url, { headers: { accept: "text/html", "user-agent": "MissaRadar/1.0 (+https://www.usemissa.com; official-source; evidence-only)" }, signal: AbortSignal.timeout(30_000) });
+    if (!response.ok) throw new Error(`NYFA visual arts archive HTTP ${response.status}`);
+    const rawContent = await response.text();
+    return { finalUrl: response.url || source.url, rawContent, links: nyfaVisualArtsLinksFromHtml(rawContent, source.id) };
   }
   if (source.discoveryAdapterId === "sundance-deadlines") {
     const response = await fetcher(source.url, {

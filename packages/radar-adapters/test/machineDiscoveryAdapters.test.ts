@@ -7,7 +7,20 @@ import {
   fetchMachineDiscoverySource,
   grantsGovLinksFromResponse,
   grantsGovSearchRequest,
+  nyfaVisualArtsLinksFromHtml,
 } from "../src/machineDiscoveryAdapters.js";
+
+test("NYFA visual arts archive emits distinct official opportunity pages", () => {
+  const links = nyfaVisualArtsLinksFromHtml(`
+    <a href="https://www.nyfa.org/awards-grants/rauschenberg-medical-emergency-grants/">Rauschenberg Medical Emergency Grants</a>
+    <a href="https://www.nyfa.org/awards-grants/queens-arts-fund-new-work-grant/">Queens Arts Fund: New Work Grant</a>
+    <a href="https://www.nyfa.org/awards-grants/">All Awards &amp; Grants</a>
+    <a href="https://example.com/not-nyfa">Noise</a>
+  `, "nyfa-parent");
+  assert.deepEqual(links.map((link) => link.title), ["Rauschenberg Medical Emergency Grants", "Queens Arts Fund: New Work Grant"]);
+  assert.equal(links[0]?.discoveryExternalId, "nyfa:https://www.nyfa.org/awards-grants/rauschenberg-medical-emergency-grants");
+  assert.equal(links[0]?.discoveryMachineRecord?.evidenceUrl, "https://www.nyfa.org/grant-discipline/visual-arts/");
+});
 
 test("Sundance deadlines emits current official application cards", async () => {
   const source: Source = {
