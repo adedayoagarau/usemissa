@@ -222,13 +222,21 @@ function filmIndependentDetail(
         /^\/programs\/(?:artist-development|grants-and-awards)\/[^/]+\/$/.test(url.pathname)
       );
     })
-    .map((link) => ({
-      ...link,
-      kind: "organization-website" as const,
-      registryTier: 0 as const,
-      followsOutboundLinks: false,
-      discoveredFromSourceId: source.id,
-    }));
+    .map((link) => {
+      const url = new URL(link.url);
+      const slug = url.pathname.split("/").filter(Boolean).at(-1) ?? "";
+      const title = /^more information$/i.test(link.title ?? "")
+        ? slug.replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+        : link.title;
+      return {
+        ...link,
+        ...(title ? { title } : {}),
+        kind: "organization-website" as const,
+        registryTier: 0 as const,
+        followsOutboundLinks: false,
+        discoveredFromSourceId: source.id,
+      };
+    });
 }
 
 function onTheMoveIndex(
