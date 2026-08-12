@@ -17,6 +17,8 @@ const SOURCES: CompactSource[] = [
   platform('Submittable Discover', 'https://discover.submittable.com/', 'platform-submittable', { disciplines: ['all-disciplines'], opportunityTypes: ['open-call', 'grant', 'contest', 'magazine'], geography: ['global'] }),
   directory('Literary Hub Opportunities', 'https://lithub.com/category/lit-magazines/', 'creative-nonfiction', { disciplines: ['fiction', 'poetry', 'nonfiction'], opportunityTypes: ['magazine', 'contest'], geography: ['global'] }),
   directory('The Poetry Society Opportunities', 'https://poetrysociety.org.uk/competitions/', 'poetry', { disciplines: ['poetry'], opportunityTypes: ['contest', 'award', 'fellowship'], geography: ['GB'] }),
+  directory('NewPages Calls and Contests', 'https://www.newpages.com/classifieds-fee/all/', 'literary-fiction', { disciplines: ['fiction', 'poetry', 'nonfiction', 'translation'], opportunityTypes: ['magazine', 'contest', 'open-call'], geography: ['US', 'global'] }),
+  directory('Commonwealth Foundation Creative Opportunities', 'https://commonwealthfoundation.com/opportunities/', 'literary-fiction', { disciplines: ['fiction', 'poetry', 'nonfiction', 'translation'], opportunityTypes: ['contest', 'fellowship', 'open-call'], geography: ['global'] }),
 
   // Grants, fellowships and public funding.
   directory('National Endowment for the Arts Grants', 'https://www.arts.gov/grants', 'grants-us-national', { disciplines: ['all-disciplines'], opportunityTypes: ['grant', 'fellowship'], geography: ['US'] }),
@@ -63,6 +65,10 @@ const SOURCES: CompactSource[] = [
   directory('The Gotham Artists and Filmmakers', 'https://thegotham.org/programs/', 'film-festival', { disciplines: ['film', 'documentary', 'screenwriting'], opportunityTypes: ['grant', 'fellowship', 'award'], geography: ['US', 'global'] }),
   directory('International Documentary Association', 'https://www.documentary.org/grants', 'documentary', { disciplines: ['documentary', 'film'], opportunityTypes: ['grant', 'fellowship'], geography: ['US', 'global'] }),
   directory('Animation World Network Jobs and Calls', 'https://www.awn.com/animation-world-network', 'animation-new-media', { disciplines: ['animation', 'new-media'], opportunityTypes: ['open-call', 'award', 'fellowship'], geography: ['global'] }),
+  directory('Annecy MIFA Pitches', 'https://www.annecyfestival.com/le-mifa/mifa-business/pitchs-mifa/presentation-pitchs-mifa', 'animation-new-media', { disciplines: ['animation', 'film'], opportunityTypes: ['pitch', 'festival', 'open-call'], geography: ['global'] }),
+  directory('Women in Animation Programs', 'https://wearewia.org/mentorship/', 'animation-new-media', { disciplines: ['animation', 'film', 'new-media'], opportunityTypes: ['fellowship', 'open-call'], geography: ['global'] }),
+  directory('Durban FilmMart Pitch and Finance Forum', 'https://durbanfilmmart.co.za/dfm-pitch-and-finance-forum/', 'documentary', { disciplines: ['film', 'documentary', 'animation', 'screenwriting'], opportunityTypes: ['pitch', 'fellowship', 'open-call'], geography: ['Africa', 'global'] }),
+  directory('Realness Institute Programmes', 'https://www.realness.institute/', 'documentary', { disciplines: ['film', 'documentary', 'screenwriting', 'television'], opportunityTypes: ['fellowship', 'residency', 'open-call'], geography: ['Africa', 'global'] }),
 
   // Music and sound.
   platform('Sonicbids', 'https://www.sonicbids.com/find-gigs/', 'music-composition', { disciplines: ['music', 'bands', 'songwriting'], opportunityTypes: ['festival', 'open-call', 'contest'], geography: ['global'] }),
@@ -72,6 +78,7 @@ const SOURCES: CompactSource[] = [
   directory('PRS Foundation Funding', 'https://prsfoundation.com/funding-support/', 'music-composition', { disciplines: ['music', 'composition', 'songwriting'], opportunityTypes: ['grant', 'fellowship'], geography: ['GB', 'global'] }),
   directory('Help Musicians Funding', 'https://www.helpmusicians.org.uk/get-support', 'music-composition', { disciplines: ['music', 'performance', 'composition'], opportunityTypes: ['grant', 'fellowship'], geography: ['GB'] }),
   directory('Music Finland Opportunities', 'https://musicfinland.com/en/funding', 'music-composition', { disciplines: ['music', 'composition'], opportunityTypes: ['grant', 'fellowship', 'festival'], geography: ['FI', 'global'] }),
+  directory('Music In Africa Opportunities', 'https://www.musicinafrica.net/', 'music-composition', { disciplines: ['music', 'composition', 'performance'], opportunityTypes: ['grant', 'festival', 'open-call'], geography: ['Africa', 'global'] }),
 
   // Dance, theatre, performance and live work.
   directory('Dance/NYC Opportunities', 'https://www.dance.nyc/for-artists/resource-pages/opportunities', 'dance-choreography', { disciplines: ['dance', 'choreography', 'performance'], opportunityTypes: ['grant', 'residency', 'open-call'], geography: ['US'] }),
@@ -96,6 +103,7 @@ const SOURCES: CompactSource[] = [
   directory('Goethe-Institut Calls and Funding', 'https://www.goethe.de/en/kul/foe.html', 'grants-international', { disciplines: ['all-disciplines'], opportunityTypes: ['grant', 'fellowship', 'residency'], geography: ['global', 'EU'] }),
   directory('British Council Arts Opportunities', 'https://www.britishcouncil.org/arts/opportunities', 'grants-international', { disciplines: ['all-disciplines'], opportunityTypes: ['grant', 'fellowship', 'residency'], geography: ['global'] }),
   directory('African Artists Foundation', 'https://www.aaf-net.org/opportunities', 'bipoc-focused', { disciplines: ['visual-arts', 'photography', 'film'], opportunityTypes: ['grant', 'residency', 'award'], geography: ['NG', 'Africa', 'global'] }),
+  directory('African Culture Fund Calls', 'https://www.africanculturefund.net/en/', 'bipoc-focused', { disciplines: ['all-disciplines'], opportunityTypes: ['grant', 'fellowship', 'open-call'], geography: ['Africa'] }),
   directory('National Arts Council Nigeria', 'https://www.nac.gov.ng/', 'grants-international', { disciplines: ['all-disciplines'], opportunityTypes: ['grant', 'fellowship', 'award'], geography: ['NG'] }),
   directory('Queer|Art Opportunities', 'https://www.queer-art.org/opportunities', 'lgbtq-focused', { disciplines: ['visual-arts', 'film', 'performance', 'writing'], opportunityTypes: ['grant', 'fellowship', 'residency'], geography: ['US', 'global'] }),
   directory('Disability Arts Online Opportunities', 'https://disabilityarts.online/opportunities/', 'disability-arts', { disciplines: ['disability-arts', 'visual-arts', 'performance', 'writing'], opportunityTypes: ['grant', 'open-call', 'residency'], geography: ['GB', 'global'] }),
