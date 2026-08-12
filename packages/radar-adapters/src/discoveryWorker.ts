@@ -361,6 +361,7 @@ export function reconcileDiscoveredChildren(
 function isGenericSourceName(name: string, url: string): boolean {
   const normalized = name.toLowerCase().replace(/^www\./, "").replace(/\/$/, "").trim();
   if (["here", "continue reading", "read more", "official site", "website"].includes(normalized)) return true;
+  if (/^[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/\S*)?$/.test(normalized)) return true;
   try {
     return normalized === new URL(url).hostname.toLowerCase().replace(/^www\./, "");
   } catch {

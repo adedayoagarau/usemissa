@@ -183,7 +183,7 @@ test("discovery self-heals an existing generic child with its site schema", () =
 test("discovery replaces a hostname placeholder with the call context", () => {
   const existing: Source = {
     id: "existing-canonical",
-    name: "example.org",
+    name: "example.org/apply",
     url: "https://example.org/apply",
     kind: "organization-website",
     registryTier: 0,
