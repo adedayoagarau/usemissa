@@ -450,3 +450,23 @@ test("Res Artis detail discovery resolves one canonical official host", () => {
     },
   ]);
 });
+
+test("directory details fail closed when they expose only forms, files, redirects, or bare homepages", () => {
+  const detail = source({
+    id: "resartis-no-canonical-host",
+    name: "Residency listing",
+    url: "https://resartis.org/open-call/residency-listing/",
+    discoveryAdapterId: "resartis-detail",
+  });
+  const html = `
+    <main>
+      <a href="https://forms.gle/example">Apply</a>
+      <a href="https://drive.google.com/file/d/example/view">Application PDF</a>
+      <a href="https://www.dropbox.com/s/example/application.pdf">Download</a>
+      <a href="http://url.organizer.example/track">Apply now</a>
+      <a href="https://organizer.example/">Organizer home</a>
+    </main>
+  `;
+
+  assert.deepEqual(discoverSourceLinks(detail, html, detail.url), []);
+});
