@@ -351,7 +351,7 @@ class NeonStore:
                     """
                     UPDATE gary_sources
                     SET backfill_status = CASE WHEN %s = 'backfill' THEN 'complete' ELSE backfill_status END,
-                        last_successful_at = CASE WHEN %s = 'completed' THEN now() ELSE last_successful_at END,
+                        last_successful_at = now(),
                         last_started_at = now(),
                         consecutive_failures = 0, last_error = NULL,
                         next_refresh_at = now() + make_interval(hours => freshness_hours),

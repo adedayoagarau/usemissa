@@ -11,6 +11,7 @@ function opportunity(overrides: Partial<OpportunityIdentityInput> = {}): Opportu
   return {
     opportunityId: "opp_1",
     title: "Willow Springs Surrealist Poetry Prize",
+    organizationName: "Willow Springs",
     sourceName: "Willow Springs",
     sourceCheckedAt: "2026-08-12T00:00:00.000Z",
     sourceUrl: "https://willowspringsmagazine.org/submit",
@@ -53,10 +54,41 @@ test("never links a name-only match", () => {
 
 test("keeps exact-host evidence pending when the name is incompatible", () => {
   const decisions = matchOpportunityToProfiles(
-    opportunity({ title: "Thorn and Bloom", sourceName: "redrosethorns" }),
+    opportunity({ title: "Thorn and Bloom", organizationName: "Red Rose Thorns", sourceName: "redrosethorns" }),
     [profile({ profileName: "Completely Different Review" })], NOW,
   );
   assert.equal(decisions[0]?.status, "pending");
+});
+
+test("does not treat an aggregator host brand as the call identity", () => {
+  const decisions = matchOpportunityToProfiles(
+    opportunity({
+      title: "Narrative Magazine",
+      organizationName: "Narrative Magazine",
+      sourceName: "Narrative Magazine",
+      sourceUrl: "https://openartsforum.com/opportunity/narrative-magazine-20/",
+      guidelinesUrl: "https://openartsforum.com/opportunity/narrative-magazine-20/",
+    }),
+    [profile({ profileName: "Open Arts Forum", url: "https://openartsforum.com/" })],
+    NOW,
+  );
+  assert.equal(decisions[0]?.status, "pending");
+});
+
+test("accepts a dedicated official URL when the call title omits the publication name", () => {
+  const decisions = matchOpportunityToProfiles(
+    opportunity({
+      title: "Narrative Poetry Contest",
+      organizationName: null,
+      sourceName: "Poets & Writers Contests",
+      sourceUrl: "https://www.pw.org/grants",
+      guidelinesUrl: "https://naugatuckriverreview.org",
+    }),
+    [profile({ profileName: "Naugatuck River Review", url: "https://naugatuckriverreview.org" })],
+    NOW,
+  );
+  assert.equal(decisions[0]?.status, "confirmed");
+  assert.equal(decisions[0]?.identityBasis, "exact-url");
 });
 
 test("keeps shared submission hosts pending when two profiles are equally plausible", () => {

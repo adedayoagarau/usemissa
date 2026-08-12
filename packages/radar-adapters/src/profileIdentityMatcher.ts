@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 
-export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v1";
+export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v2";
 
 const NAME_STOP_WORDS = new Set([
   "a", "an", "and", "award", "awards", "call", "contest", "for", "from",
@@ -20,6 +20,7 @@ export type ProfileUrlEvidence = {
 export type OpportunityIdentityInput = {
   opportunityId: string;
   title: string;
+  organizationName: string | null;
   sourceName: string | null;
   sourceCheckedAt: string | null;
   sourceUrl: string | null;
@@ -38,6 +39,7 @@ export type ProfileIdentityDecision = {
   profileUrl: string;
   nameScore: number;
   matchedNameTokens: string[];
+  identityBasis: "call-name" | "exact-url";
   profileCheckedAt: string | null;
   opportunityCheckedAt: string | null;
 };
@@ -73,7 +75,12 @@ function compact(value: string): string {
     .replace(/[^a-z0-9]+/g, "");
 }
 
-export function profileNameEvidence(profileName: string, context: string[], host: string): NameEvidence {
+export function profileNameEvidence(
+  profileName: string,
+  context: string[],
+  host: string,
+  allowHostBrand = true,
+): NameEvidence {
   const profileTokens = [...new Set(tokens(profileName))];
   const contextText = context.filter(Boolean).join(" ");
   const contextTokens = new Set(tokens(contextText));
@@ -85,6 +92,7 @@ export function profileNameEvidence(profileName: string, context: string[], host
   let score = profileTokens.length ? matchedTokens.length / profileTokens.length : 0;
   if (profileCompact.length >= 4 && contextCompact.includes(profileCompact)) score = 1;
   if (
+    allowHostBrand &&
     profileCompact.length >= 4 && hostBrand.length >= 4 &&
     (hostBrand.includes(profileCompact) || profileCompact.includes(hostBrand))
   ) {
@@ -92,6 +100,17 @@ export function profileNameEvidence(profileName: string, context: string[], host
     if (!matchedTokens.length) matchedTokens.push(hostBrand);
   }
   return { score: Math.min(1, Number(score.toFixed(3))), matchedTokens: [...new Set(matchedTokens)] };
+}
+
+function normalizedIdentityUrl(value: string): string | null {
+  try {
+    const url = new URL(value.includes("://") ? value : `https://${value}`);
+    const host = url.hostname.toLowerCase().replace(/^www\./, "").replace(/\.$/, "");
+    const pathname = url.pathname.replace(/\/+$/, "") || "/";
+    return `${host}${pathname}`;
+  } catch {
+    return null;
+  }
 }
 
 function opportunityUrls(input: OpportunityIdentityInput): Array<{ url: string; relation: "host" | "submission" }> {
@@ -124,18 +143,28 @@ export function matchOpportunityToProfiles(
     byHost.set(host, bucket);
   }
 
-  const context = [
-    opportunity.title,
-    opportunity.sourceName ?? "",
-    ...opportunityUrls(opportunity).map(({ url }) => normalizeHost(url)?.split(".")[0] ?? ""),
-  ];
+  // Source names often describe an aggregator page rather than the call owner.
+  // Only the call title and extracted organizer identity are safe name evidence.
+  const context = [opportunity.title, opportunity.organizationName ?? ""];
   const decisions = new Map<string, ProfileIdentityDecision>();
 
   for (const candidateUrl of opportunityUrls(opportunity)) {
     const host = normalizeHost(candidateUrl.url);
     if (!host) continue;
-    const scored = (byHost.get(host) ?? [])
-      .map((profile) => ({ profile, ...profileNameEvidence(profile.profileName, context, host) }));
+    const scored = (byHost.get(host) ?? []).map((profile) => {
+      const callName = profileNameEvidence(profile.profileName, context, host, false);
+      const hostName = profileNameEvidence(profile.profileName, [], host, true);
+      const exactUrl = normalizedIdentityUrl(candidateUrl.url) === normalizedIdentityUrl(profile.url);
+      const identityBasis: ProfileIdentityDecision["identityBasis"] =
+        callName.score >= 0.35 ? "call-name" : "exact-url";
+      return {
+        profile,
+        score: Math.max(callName.score, exactUrl ? hostName.score : 0),
+        matchedTokens: callName.score >= 0.35 ? callName.matchedTokens : hostName.matchedTokens,
+        identityBasis,
+        hasCompatibleIdentity: callName.score >= 0.35 || (exactUrl && hostName.score >= 0.75),
+      };
+    });
     const bestByProfile = new Map<string, (typeof scored)[number]>();
     for (const candidate of scored) {
       const current = bestByProfile.get(candidate.profile.profileId);
@@ -147,7 +176,7 @@ export function matchOpportunityToProfiles(
     for (const candidate of unique) {
       const freshOpportunity = isFresh(opportunity.sourceCheckedAt, 3, now);
       const freshProfile = isFresh(candidate.profile.profileCheckedAt, 14, now);
-      const isUnambiguousBest = candidate === best && candidate.score >= 0.35 &&
+      const isUnambiguousBest = candidate === best && candidate.hasCompatibleIdentity &&
         (!runnerUp || candidate.score - runnerUp.score >= 0.15) && freshOpportunity && freshProfile;
       const key = `${candidate.profile.profileId}:${candidateUrl.relation}`;
       const decision: ProfileIdentityDecision = {
@@ -161,6 +190,7 @@ export function matchOpportunityToProfiles(
         profileUrl: candidate.profile.url,
         nameScore: candidate.score,
         matchedNameTokens: candidate.matchedTokens,
+        identityBasis: candidate.identityBasis,
         profileCheckedAt: candidate.profile.profileCheckedAt,
         opportunityCheckedAt: opportunity.sourceCheckedAt,
       };
@@ -189,8 +219,8 @@ async function persistDecisions(client: PoolClient, opportunityId: string, decis
     `update opportunity_profile_links
      set status = 'rejected', verified_at = now(), verified_until = null, updated_at = now(),
          evidence_json = evidence_json || jsonb_build_object('retiredBy', $2::text, 'retiredAt', now())
-     where opportunity_id = $1 and evidence_json ->> 'matcherVersion' = $2`,
-    [opportunityId, PROFILE_IDENTITY_MATCHER_VERSION],
+     where opportunity_id = $1 and evidence_json ->> 'matcherVersion' like 'profile-host-name-v%'`,
+    [opportunityId],
   );
   for (const decision of decisions) {
     await client.query(
@@ -199,8 +229,9 @@ async function persistDecisions(client: PoolClient, opportunityId: string, decis
           opportunity_url, profile_url, name_score, matched_name_tokens, evidence_json,
           profile_checked_at, opportunity_checked_at, verified_at, verified_until)
        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-         jsonb_build_object('matcherVersion', $12::text, 'rule', 'exact-host-plus-name'),
-         $13, $14, now(), now() + interval '7 days')
+         jsonb_build_object('matcherVersion', $12::text, 'rule', 'exact-host-plus-call-identity',
+           'identityBasis', $13::text),
+         $14, $15, now(), now() + interval '7 days')
        on conflict (profile_id, opportunity_id, relation) do update set
          status = excluded.status, confidence = excluded.confidence,
          matched_host = excluded.matched_host, opportunity_url = excluded.opportunity_url,
@@ -214,7 +245,8 @@ async function persistDecisions(client: PoolClient, opportunityId: string, decis
         linkId(decision), decision.opportunityId, decision.profileId, decision.relation,
         decision.status, decision.confidence, decision.matchedHost, decision.opportunityUrl,
         decision.profileUrl, decision.nameScore, decision.matchedNameTokens,
-        PROFILE_IDENTITY_MATCHER_VERSION, decision.profileCheckedAt, decision.opportunityCheckedAt,
+        PROFILE_IDENTITY_MATCHER_VERSION, decision.identityBasis,
+        decision.profileCheckedAt, decision.opportunityCheckedAt,
       ],
     );
   }
@@ -226,7 +258,7 @@ async function persistDecisions(client: PoolClient, opportunityId: string, decis
         checked_at, next_check_at, evidence_json)
      values ($1, $2, $3, $4, $5, now(),
        now() + case when $3 = 'confirmed' then interval '7 days' else interval '1 day' end,
-       jsonb_build_object('rule', 'exact-host-plus-name'))
+       jsonb_build_object('rule', 'exact-host-plus-call-identity'))
      on conflict (opportunity_id) do update set
        matcher_version = excluded.matcher_version, status = excluded.status,
        candidate_count = excluded.candidate_count, confirmed_count = excluded.confirmed_count,
@@ -242,10 +274,16 @@ export async function syncProfileOpportunityLinks(
 ): Promise<{ opportunities: number; decisions: number; confirmed: number; pending: number }> {
   const [opportunityResult, profileResult] = await Promise.all([
     pool.query<OpportunityIdentityInput>(
-      `select o.id as "opportunityId", o.title, s.name as "sourceName",
+      `select o.id as "opportunityId", o.title,
+         latest_version.fields ->> 'organizationName' as "organizationName",
+         s.name as "sourceName",
          o.source_checked_at as "sourceCheckedAt", s.url as "sourceUrl",
          o.guidelines_url as "guidelinesUrl", o.submission_url as "submissionUrl"
        from opportunities o join opportunity_sources s on s.id = o.source_id
+       left join lateral (
+         select fields from opportunity_versions
+         where opportunity_id = o.id order by created_at desc limit 1
+       ) latest_version on true
        left join opportunity_profile_identity_checks identity_check on identity_check.opportunity_id = o.id
        where o.publication_state in ('reviewable', 'published')
          and (s.url is not null or o.guidelines_url is not null or o.submission_url is not null)

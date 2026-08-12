@@ -11,6 +11,29 @@ class RecordingConnection:
         self.statements.append((query, params))
 
 
+class Result:
+    def __init__(self, row=None):
+        self.row = row
+
+    def fetchone(self):
+        return self.row
+
+
+class TransactionalRecordingConnection(RecordingConnection):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return None
+
+    def transaction(self):
+        return self
+
+    def execute(self, query, params=None):
+        self.statements.append((query, params))
+        return Result()
+
+
 def test_json_payload_removes_postgres_unsupported_nul_characters():
     payload = _json({"description": "before\x00after", "nested": ["ok\x00"]})
 
@@ -21,6 +44,31 @@ def test_json_payload_removes_postgres_unsupported_nul_characters():
 def test_text_payload_removes_postgres_unsupported_nul_characters():
     assert _text("before\x00after") == "beforeafter"
     assert _text(None) is None
+
+
+def test_completed_call_ingest_updates_source_with_matching_parameters(tmp_path, monkeypatch):
+    connection = TransactionalRecordingConnection()
+    store = NeonStore(
+        "postgres://example.test/gary",
+        connect_factory=lambda _database_url: connection,
+    )
+    monkeypatch.setattr(store, "_ingest_manifest", lambda *_args: None)
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(
+        '{"index":{"requested_url":"https://www.pw.org/grants"}}',
+        encoding="utf-8",
+    )
+
+    store.ingest_manifest(manifest_path, mode="refresh")
+
+    source_update = next(
+        (query, params)
+        for query, params in connection.statements
+        if "SET backfill_status" in query and "last_successful_at = now()" in query
+    )
+    query, params = source_update
+    assert query.count("%s") == len(params)
+    assert params == ("refresh", "pw.org")
 
 
 def test_neon_upsert_refreshes_stale_canonical_identity_labels(monkeypatch):
