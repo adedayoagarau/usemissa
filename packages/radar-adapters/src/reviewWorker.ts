@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { ensureAgentGraphSchema } from "./agentGraphSchema.js";
+import { syncProfileOpportunityLinks } from "./profileIdentityMatcher.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
 
 type ReviewDecision = "publish" | "needs-human" | "suppress" | "error";
@@ -94,7 +95,7 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
        o.deadline_date::text as "deadlineDate", o.submission_url as "submissionUrl",
        o.guidelines_url as "guidelinesUrl", s.url as "sourceUrl",
        evidence.checked_at as "sourceCheckedAt", evidence.processing_succeeded_at as "processingSucceededAt",
-       coalesce(evidence.organization_confirmed, false) as "organizationConfirmed",
+       (coalesce(evidence.organization_confirmed, false) or profile_identity.confirmed) as "organizationConfirmed",
        (profile.opportunity_id is not null) as "callProfilePresent",
        profile.reading_period_kind as "readingPeriodKind",
        coalesce(enrichment.evidence_count, 0)::int as "evidenceCount"
@@ -105,6 +106,13 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
        from opportunity_source_evidence
        where opportunity_id = o.id order by checked_at desc limit 1
      ) evidence on true
+     left join lateral (
+       select exists (
+         select 1 from opportunity_profile_links link
+         where link.opportunity_id = o.id and link.status = 'confirmed'
+           and link.verified_until > now()
+       ) as confirmed
+     ) profile_identity on true
      left join opportunity_call_profiles profile on profile.opportunity_id = o.id
      left join lateral (
        select count(*) as evidence_count
@@ -210,6 +218,9 @@ async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<Re
 
 export async function runReviewTick(pool: Pool, limit = batchSize()): Promise<{ claimed: number; decisions: Record<ReviewDecision, number> }> {
   await ensureAgentGraphSchema(pool);
+  // Refresh durable profile identity evidence before review. This is bounded,
+  // idempotent, and fails closed if matching cannot be completed.
+  await syncProfileOpportunityLinks(pool, Math.max(limit * 5, 100));
   await seedReviewJobs(pool);
   const runId = await startRun(pool);
   const jobs = await claimJobs(pool, limit);

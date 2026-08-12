@@ -42,6 +42,16 @@ export {
   type ProfileRepository,
 } from "./profileRepository.js";
 export {
+  PROFILE_IDENTITY_MATCHER_VERSION,
+  matchOpportunityToProfiles,
+  normalizeHost,
+  profileNameEvidence,
+  syncProfileOpportunityLinks,
+  type OpportunityIdentityInput,
+  type ProfileIdentityDecision,
+  type ProfileUrlEvidence,
+} from "./profileIdentityMatcher.js";
+export {
   commitTrackerImportTransaction,
   consumeTrackerImportPreviewRateLimit,
   trackerImportCandidateHash,

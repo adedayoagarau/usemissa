@@ -59,6 +59,7 @@ export interface ProfileBrowsePage {
 export interface ProfileRepository {
   browse(query: ProfileBrowseQuery): Promise<ProfileBrowsePage>;
   getById(id: string): Promise<ProfileDetail | null>;
+  getForOpportunity(opportunityId: string): Promise<ProfileCard | null>;
 }
 
 function jsonArray(value: unknown): string[] {
@@ -128,11 +129,25 @@ export class PostgresProfileRepository implements ProfileRepository {
     if (!row) return null;
     const base = card(row);
     const links = await this.pool.query({ text: `
-      SELECT o.id, o.title, o.organizer, o.official_website, oco.deadline, oco.source_detail_url,
-        CASE WHEN oco.deadline IS NULL THEN 'unknown' WHEN oco.deadline >= CURRENT_DATE THEN 'open' ELSE 'closed' END AS status
-      FROM gary_profile_links l JOIN gary_opportunities o ON o.id=l.opportunity_id
-      LEFT JOIN LATERAL (SELECT * FROM gary_call_observations WHERE opportunity_id=o.id ORDER BY observed_at DESC LIMIT 1) oco ON TRUE
-      WHERE l.profile_id=$1 AND l.status='confirmed' ORDER BY oco.deadline NULLS LAST, o.title`, values: [id] });
+      SELECT * FROM (
+        SELECT o.id, o.title, o.organizer, o.official_website, oco.deadline, oco.source_detail_url,
+          CASE WHEN oco.deadline IS NULL THEN 'unknown' WHEN oco.deadline >= CURRENT_DATE THEN 'open' ELSE 'closed' END AS status
+        FROM gary_profile_links l JOIN gary_opportunities o ON o.id=l.opportunity_id
+        LEFT JOIN LATERAL (SELECT * FROM gary_call_observations WHERE opportunity_id=o.id ORDER BY observed_at DESC LIMIT 1) oco ON TRUE
+        WHERE l.profile_id=$1 AND l.status='confirmed'
+        UNION ALL
+        SELECT o.id, o.title, p.name AS organizer,
+          COALESCE(o.guidelines_url, s.url) AS official_website,
+          o.deadline_date AS deadline, s.url AS source_detail_url,
+          CASE WHEN o.status IN ('open', 'opening-soon', 'closing-soon', 'deadline-extended') THEN 'open'
+               WHEN o.status IN ('closed', 'archived') THEN 'closed' ELSE 'unknown' END AS status
+        FROM opportunity_profile_links l
+        JOIN opportunities o ON o.id=l.opportunity_id
+        JOIN opportunity_sources s ON s.id=o.source_id
+        JOIN gary_profiles p ON p.id=l.profile_id
+        WHERE l.profile_id=$1 AND l.status='confirmed' AND l.verified_until > now()
+          AND o.publication_state='published'
+      ) linked ORDER BY deadline NULLS LAST, title`, values: [id] });
     return {
       ...base, submissionGuidelinesUrl: (row.submission_guidelines_url as string | null) ?? null,
       subgenres: jsonArray(row.subgenres_json), bookTypes: jsonArray(row.book_types_json),
@@ -144,6 +159,30 @@ export class PostgresProfileRepository implements ProfileRepository {
       contactEmail: (row.contact_email as string | null) ?? null, contactDetails: (row.contact_details as string | null) ?? null,
       opportunities: links.rows.map((item) => ({ id: item.id, title: item.title, organizer: item.organizer, deadline: item.deadline, detailUrl: item.source_detail_url, officialWebsite: item.official_website, status: item.status })),
     };
+  }
+
+  async getForOpportunity(opportunityId: string): Promise<ProfileCard | null> {
+    const result = await this.pool.query({ text: `
+      WITH latest AS (
+        SELECT DISTINCT ON (profile_id) * FROM gary_profile_observations
+        ORDER BY profile_id, observed_at DESC
+      ), media AS (
+        SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url
+        FROM gary_profile_media_assets WHERE kind = 'image' AND error IS NULL
+        ORDER BY profile_page_id, created_at
+      )
+      SELECT p.id, p.profile_kind, p.name, p.website_url,
+        o.source_summary, o.genres_json, o.formats_json, o.reading_period,
+        o.last_updated, o.source_detail_url, o.observed_at, m.media_url
+      FROM opportunity_profile_links l
+      JOIN gary_profiles p ON p.id=l.profile_id
+      JOIN latest o ON o.profile_id=p.id
+      LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id=o.id AND pg.role='profile'
+      LEFT JOIN media m ON m.profile_page_id=pg.id
+      WHERE l.opportunity_id=$1 AND l.status='confirmed' AND l.verified_until > now()
+      ORDER BY l.confidence DESC, p.name ASC LIMIT 1`, values: [opportunityId] });
+    const row = result.rows[0] as Record<string, unknown> | undefined;
+    return row ? card(row) : null;
   }
 }
 

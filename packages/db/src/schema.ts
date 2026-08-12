@@ -6,6 +6,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgTable,
   primaryKey,
   text,
@@ -676,6 +677,141 @@ export const opportunitySourceEvidence = pgTable(
       table.checkedAt,
     ),
     index("opportunity_evidence_verified_idx").on(table.verifiedUntil),
+  ],
+);
+
+/**
+ * Shared publication identities originally hydrated by Gary. These core rows
+ * live in the relational schema so Radar can attach canonical Opportunities
+ * without copying profile data or weakening Gary's provenance tables.
+ */
+export const garySources = pgTable(
+  "gary_sources",
+  {
+    id: text("id").primaryKey(),
+    adapter: text("adapter").notNull(),
+    name: text("name").notNull(),
+    seedUrl: text("seed_url").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    freshnessHours: integer("freshness_hours").notNull().default(24),
+    backfillStatus: text("backfill_status").notNull().default("pending"),
+    nextRefreshAt: timestamp("next_refresh_at", { withTimezone: true }),
+    lastStartedAt: timestamp("last_started_at", { withTimezone: true }),
+    lastSuccessfulAt: timestamp("last_successful_at", { withTimezone: true }),
+    leaseOwner: text("lease_owner"),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+    lastError: text("last_error"),
+    config: jsonb("config_json").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    check("gary_sources_freshness_check", sql`${table.freshnessHours} between 1 and 8760`),
+    check("gary_sources_backfill_status_check", sql`${table.backfillStatus} in ('pending', 'running', 'complete', 'blocked')`),
+    check("gary_sources_failures_check", sql`${table.consecutiveFailures} >= 0`),
+  ],
+);
+
+export const garyProfiles = pgTable(
+  "gary_profiles",
+  {
+    id: text("id").primaryKey(),
+    identityKey: text("identity_key").notNull(),
+    canonicalKey: text("canonical_key").notNull(),
+    profileKind: text("profile_kind").notNull(),
+    nameKey: text("name_key").notNull(),
+    name: text("name").notNull(),
+    websiteUrl: text("website_url"),
+    normalizedWebsiteUrl: text("normalized_website_url"),
+    identityStatus: text("identity_status").notNull().default("confirmed"),
+    identityConfidence: numeric("identity_confidence", { precision: 4, scale: 3 }).notNull().default("0.5"),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("gary_profiles_canonical_key_idx").on(table.canonicalKey),
+    index("gary_profiles_kind_name_idx").on(table.profileKind, table.nameKey),
+    index("gary_profiles_website_idx").on(table.normalizedWebsiteUrl),
+    check("gary_profiles_kind_check", sql`${table.profileKind} in ('literary_magazine', 'small_press')`),
+    check("gary_profiles_identity_status_check", sql`${table.identityStatus} in ('confirmed', 'needs-review')`),
+    check("gary_profiles_identity_confidence_check", sql`${table.identityConfidence} between 0 and 1`),
+  ],
+);
+
+export const garyProfileAliases = pgTable(
+  "gary_profile_aliases",
+  {
+    id: text("id").primaryKey(),
+    profileId: text("profile_id").notNull().references(() => garyProfiles.id, { onDelete: "cascade" }),
+    sourceId: text("source_id").notNull().references(() => garySources.id, { onDelete: "restrict" }),
+    aliasKind: text("alias_kind").notNull(),
+    url: text("url").notNull(),
+    normalizedUrl: text("normalized_url").notNull(),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("gary_profile_aliases_profile_url_idx").on(table.profileId, table.normalizedUrl),
+    index("gary_profile_aliases_profile_idx").on(table.profileId),
+    index("gary_profile_aliases_url_idx").on(table.normalizedUrl),
+    check("gary_profile_aliases_kind_check", sql`${table.aliasKind} in ('detail', 'official', 'submission', 'alternate')`),
+  ],
+);
+
+export const opportunityProfileLinks = pgTable(
+  "opportunity_profile_links",
+  {
+    id: text("id").primaryKey(),
+    opportunityId: text("opportunity_id").notNull().references(() => opportunities.id, { onDelete: "cascade" }),
+    profileId: text("profile_id").notNull().references(() => garyProfiles.id, { onDelete: "cascade" }),
+    relation: text("relation").notNull(),
+    status: text("status").notNull().default("pending"),
+    confidence: numeric("confidence", { precision: 4, scale: 3 }).notNull().default("0"),
+    matchedHost: text("matched_host").notNull(),
+    opportunityUrl: text("opportunity_url").notNull(),
+    profileUrl: text("profile_url").notNull(),
+    nameScore: numeric("name_score", { precision: 4, scale: 3 }).notNull().default("0"),
+    matchedNameTokens: text("matched_name_tokens").array().notNull().default(sql`ARRAY[]::text[]`),
+    evidence: jsonb("evidence_json").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    profileCheckedAt: timestamp("profile_checked_at", { withTimezone: true }),
+    opportunityCheckedAt: timestamp("opportunity_checked_at", { withTimezone: true }),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    verifiedUntil: timestamp("verified_until", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("opportunity_profile_links_identity_idx").on(table.profileId, table.opportunityId, table.relation),
+    index("opportunity_profile_links_opportunity_idx").on(table.opportunityId, table.status),
+    index("opportunity_profile_links_profile_idx").on(table.profileId, table.status),
+    index("opportunity_profile_links_freshness_idx").on(table.status, table.verifiedUntil),
+    check("opportunity_profile_links_relation_check", sql`${table.relation} in ('organizer', 'host', 'submission')`),
+    check("opportunity_profile_links_status_check", sql`${table.status} in ('pending', 'confirmed', 'rejected')`),
+    check("opportunity_profile_links_confidence_check", sql`${table.confidence} between 0 and 1`),
+    check("opportunity_profile_links_name_score_check", sql`${table.nameScore} between 0 and 1`),
+  ],
+);
+
+export const opportunityProfileIdentityChecks = pgTable(
+  "opportunity_profile_identity_checks",
+  {
+    opportunityId: text("opportunity_id").primaryKey().references(() => opportunities.id, { onDelete: "cascade" }),
+    matcherVersion: text("matcher_version").notNull(),
+    status: text("status").notNull(),
+    candidateCount: integer("candidate_count").notNull().default(0),
+    confirmedCount: integer("confirmed_count").notNull().default(0),
+    checkedAt: timestamp("checked_at", { withTimezone: true }).notNull(),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }).notNull(),
+    evidence: jsonb("evidence_json").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("opportunity_profile_identity_checks_due_idx").on(table.nextCheckAt, table.status),
+    check("opportunity_profile_identity_checks_status_check", sql`${table.status} in ('no-match', 'pending', 'confirmed')`),
+    check("opportunity_profile_identity_checks_counts_check", sql`${table.candidateCount} >= 0 and ${table.confirmedCount} >= 0 and ${table.confirmedCount} <= ${table.candidateCount}`),
   ],
 );
 

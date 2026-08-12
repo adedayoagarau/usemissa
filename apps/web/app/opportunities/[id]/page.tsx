@@ -55,9 +55,9 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   const summary = opportunity.content?.summary ?? opportunityDescription(opportunity);
   const taxonomyLabels = (opportunity.taxonomy?.termIds ?? []).map(taxonomyLabelFor);
   const profileRepository = getProfileRepository();
-  const profileMatch = opportunity.organizationName && profileRepository
-    ? (await profileRepository.browse({ query: opportunity.organizationName, limit: 1 })).items[0]
-    : undefined;
+  const profileMatch = profileRepository
+    ? await profileRepository.getForOpportunity(opportunity.id)
+    : null;
   const practiceLabels = Array.from(
     [...taxonomyLabels, ...opportunity.genres].reduce((labels, label) => {
       const normalized = label.trim().toLocaleLowerCase('en');
@@ -96,7 +96,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         signedIn={Boolean(session)}
         summary={summary}
         practiceLabels={practiceLabels}
-        relatedProfile={profileMatch}
+        relatedProfile={profileMatch ?? undefined}
       />
     </div>
   );

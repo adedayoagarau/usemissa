@@ -288,8 +288,8 @@ function baseSelect(context?: OpportunityRepositoryContext, taxonomyReads = taxo
     -- failed extraction must leave the previous checked timestamp visible.
     coalesce(evidence.checked_at, o.source_checked_at) as source_checked_at,
     coalesce(evidence.processing_succeeded_at, o.processing_succeeded_at) as processing_succeeded_at,
-    coalesce(evidence.organization_confirmed, false) as organization_confirmed,
-    evidence.verified_until,
+    (coalesce(evidence.organization_confirmed, false) or profile_identity.confirmed) as organization_confirmed,
+    greatest(evidence.verified_until, profile_identity.verified_until) as verified_until,
     ${personal}
     o.open_date::text as open_date,
     o.simultaneous_allowed,
@@ -332,6 +332,13 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
       order by e.checked_at desc
       limit 1
     ) evidence on true
+    left join lateral (
+      select true as confirmed, max(link.verified_until) as verified_until
+      from opportunity_profile_links link
+      where link.opportunity_id = o.id and link.status = 'confirmed'
+        and link.verified_until > now()
+      having count(*) > 0
+    ) profile_identity on true
     left join lateral (
       select jsonb_build_object(
         'callKind', p.call_kind,
