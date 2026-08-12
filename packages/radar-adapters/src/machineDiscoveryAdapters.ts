@@ -9,6 +9,7 @@ const EU_CREATIVE_EUROPE_PROGRAMME = "43251814";
 const EU_MAX_RESULTS = 100;
 const LONG_TERM_CHECK_INTERVAL_HOURS = 8_760;
 const SUNDANCE_DEADLINES_URL = "https://www.sundance.org/deadlines/";
+const IDA_GRANTS_DIRECTORY_URL = "https://www.documentary.org/grants-directory";
 
 type GrantsGovHit = {
   id?: string | number;
@@ -50,7 +51,7 @@ export interface MachineDiscoveryResult {
 }
 
 export function isMachineDiscoveryAdapter(adapterId: string | undefined): boolean {
-  return adapterId === "grants-gov-api" || adapterId === "eu-funding-api" || adapterId === "sundance-deadlines";
+  return adapterId === "grants-gov-api" || adapterId === "eu-funding-api" || adapterId === "sundance-deadlines" || adapterId === "ida-grants-directory";
 }
 
 function htmlText(value: string): string {
@@ -113,6 +114,78 @@ function sundanceDeadlineLinks(
     });
   }
   return links;
+}
+
+function unescapeAirtableUrl(value: string): string {
+  return value.replaceAll("\\u002F", "/").replaceAll("\\u0026", "&").replaceAll("\\u003D", "=");
+}
+
+async function idaGrantLinks(
+  html: string,
+  parentSourceId: string,
+  fetcher: typeof fetch,
+): Promise<{ links: DiscoveredSourceLink[]; evidence: string }> {
+  const iframe = html.match(/<iframe\b[^>]+src=["']([^"']*airtable\.com\/embed\/[^"']+)["']/i)?.[1];
+  if (!iframe) throw new Error("IDA grants directory Airtable embed not found");
+  const embedResponse = await fetcher(iframe, { headers: { accept: "text/html" }, signal: AbortSignal.timeout(30_000) });
+  if (!embedResponse.ok) throw new Error(`IDA Airtable embed HTTP ${embedResponse.status}`);
+  const embedHtml = await embedResponse.text();
+  const rawUrl = embedHtml.match(/urlWithParams:\s*"([^"]+)/)?.[1];
+  if (!rawUrl) throw new Error("IDA Airtable data endpoint not found");
+  const endpoint = unescapeAirtableUrl(rawUrl);
+  const applicationId = embedHtml.match(/"applicationId":"([^"]+)/)?.[1];
+  const pageLoadId = embedHtml.match(/"pageLoadId":"([^"]+)/)?.[1];
+  const csrfToken = embedHtml.match(/"csrfToken":"([^"]+)/)?.[1];
+  const dataResponse = await fetcher(`https://airtable.com${endpoint}`, {
+    headers: {
+      accept: "application/json",
+      "x-requested-with": "XMLHttpRequest",
+      "x-airtable-inter-service-client": "webClient",
+      "x-airtable-application-id": applicationId ?? "",
+      "x-airtable-page-load-id": pageLoadId ?? "",
+      "x-time-zone": "UTC",
+      "x-csrf-token": csrfToken ?? "",
+    },
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!dataResponse.ok) throw new Error(`IDA Airtable data HTTP ${dataResponse.status}`);
+  const payload = await dataResponse.json() as { data?: { table?: { columns?: Array<{ id: string; name: string }>; rows?: Array<{ id: string; cellValuesByColumnId?: Record<string, unknown> }> } } };
+  const table = payload.data?.table;
+  if (!table?.columns || !table.rows) throw new Error("IDA Airtable response missing table rows");
+  const columnIds = new Map(table.columns.map((column) => [column.name.toLowerCase(), column.id]));
+  const value = (row: { cellValuesByColumnId?: Record<string, unknown> }, name: string): string => {
+    const raw = row.cellValuesByColumnId?.[columnIds.get(name.toLowerCase()) ?? ""];
+    if (typeof raw === "string") return htmlText(raw);
+    if (Array.isArray(raw)) return raw.map((item) => typeof item === "string" ? item : (item as { foreignRowDisplayName?: string }).foreignRowDisplayName ?? "").join(", ");
+    if (raw && typeof raw === "object" && "documentValue" in raw) return htmlText(JSON.stringify(raw));
+    return "";
+  };
+  const seen = new Set<string>();
+  const links = table.rows.flatMap((row) => {
+    const title = value(row, "Grant Name");
+    const url = value(row, "Link");
+    const status = value(row, "Status");
+    // IDA's public view is already filtered to active listings. The status
+    // field is a multi-select ID rather than the display label in Airtable's
+    // public JSON, so presence is the reliable public-view signal.
+    if (!row.id || !title || !/^https?:\/\//i.test(url) || !status || seen.has(row.id)) return [];
+    seen.add(row.id);
+    return [{
+      url,
+      title,
+      kind: "organization-website" as const,
+      registryTier: 0 as const,
+      followsOutboundLinks: false,
+      discoveredFromSourceId: parentSourceId,
+      discoveryExternalId: `ida:${row.id}`,
+      discoveryExternalStatus: "active",
+      registryOrganizationName: "International Documentary Association",
+      registryTrust: { status: "verified" as const, authorityKind: "official-source" as const, score: 95, evidenceUrl: IDA_GRANTS_DIRECTORY_URL, reviewNote: "Active listing from IDA's public grants directory." },
+      checkIntervalHours: 168,
+      discoveryMachineRecord: { title, organizationName: "International Documentary Association", description: value(row, "Description"), applicationUrl: url, evidenceUrl: IDA_GRANTS_DIRECTORY_URL },
+    }];
+  });
+  return { links, evidence: `IDA public grants directory rows: ${links.length}` };
 }
 
 export function euFundingSearchQuery(): Record<string, unknown> {
@@ -297,6 +370,13 @@ export async function fetchMachineDiscoverySource(
   source: Source,
   fetcher: typeof fetch = fetch,
 ): Promise<MachineDiscoveryResult> {
+  if (source.discoveryAdapterId === "ida-grants-directory") {
+    const response = await fetcher(source.url, { headers: { accept: "text/html", "user-agent": "MissaRadar/1.0 (+https://www.usemissa.com; official-source; evidence-only)" }, signal: AbortSignal.timeout(30_000) });
+    if (!response.ok) throw new Error(`IDA grants directory HTTP ${response.status}`);
+    const rawContent = await response.text();
+    const result = await idaGrantLinks(rawContent, source.id, fetcher);
+    return { finalUrl: response.url, rawContent: `${result.evidence}\n\n${rawContent}`, links: result.links };
+  }
   if (source.discoveryAdapterId === "sundance-deadlines") {
     const response = await fetcher(source.url, {
       headers: {
