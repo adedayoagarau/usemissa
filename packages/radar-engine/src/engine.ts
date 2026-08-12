@@ -843,11 +843,34 @@ export class RadarEngine {
           // Older URL/title deduplication could attach a distinct official
           // feed record as an alternate source. Detach that stale relation
           // before canonical matching so a replay restores the lost call.
+          // Retire conflict evidence created by that exact stale attachment;
+          // otherwise the canonical record stays in Needs Verification after
+          // the official records have already been separated.
           for (const opportunity of this.store.opportunities.values()) {
             if (opportunity.sourceId === candidate.sourceId) continue;
+            if (!opportunity.alternateSourceIds.includes(candidate.sourceId)) continue;
             opportunity.alternateSourceIds = opportunity.alternateSourceIds.filter(
               (sourceId) => sourceId !== candidate.sourceId,
             );
+            opportunity.conflicts = opportunity.conflicts.filter(
+              (conflict) => !conflict.includes(candidate.url),
+            );
+            if (opportunity.conflicts.length === 0) {
+              if (opportunity.fields.deadline.kind === 'conflicting') {
+                opportunity.fields.deadline.kind = opportunity.fields.deadline.date ? 'exact' : 'unknown';
+              }
+              for (const task of this.store.verificationTasks.values()) {
+                if (
+                  task.opportunityId === opportunity.id &&
+                  task.reason === 'conflicting-data' &&
+                  task.status === 'open'
+                ) {
+                  task.status = 'resolved';
+                  task.resolvedAt = now.toISOString();
+                  task.resolvedBy = 'system:machine-record-identity-repair';
+                }
+              }
+            }
           }
         }
 
