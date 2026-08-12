@@ -13,6 +13,9 @@ import {
   assembleRegistry,
   filterSources,
   cloneStore,
+  type Fetcher,
+  type FetchResult,
+  type Source,
 } from "@missa/radar-engine";
 import {
   ensurePostgresSchema,
@@ -31,6 +34,29 @@ import {
 
 function normalizeUrl(url: string): string {
   return url.replace(/\/$/, "").toLowerCase();
+}
+
+class SourceAwareProductionFetcher implements Fetcher {
+  private browserFetcher?: Fetcher & { close?: () => Promise<void> };
+  private readonly httpFetcher = new HttpFetcher();
+
+  async fetch(source: Source): Promise<FetchResult> {
+    if (new URL(source.url).hostname.endsWith("nyfa.org")) {
+      if (!this.browserFetcher) {
+        const { PlaywrightFetcher } = await import("./playwrightFetcher.js");
+        this.browserFetcher = new PlaywrightFetcher({
+          userAgent: "Mozilla/5.0 (compatible; MissaRadar/1.0; +https://www.usemissa.com)",
+          timeoutMs: 30_000,
+        });
+      }
+      return this.browserFetcher.fetch(source);
+    }
+    return this.httpFetcher.fetch(source);
+  }
+
+  async close(): Promise<void> {
+    await this.browserFetcher?.close?.();
+  }
 }
 
 export function defaultCanonicalCheckIntervalHours(value: string | number | undefined = process.env.RADAR_DEFAULT_CHECK_INTERVAL_HOURS): number {
@@ -178,7 +204,7 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
   const fetcher =
     process.env.MISSA_USE_PLAYWRIGHT === "1"
       ? new (await import("./playwrightFetcher.js")).PlaywrightFetcher()
-      : new HttpFetcher();
+      : new SourceAwareProductionFetcher();
   const extractor = process.env.DEEPSEEK_API_KEY
     ? new LlmExtractor(systemClock, { provider: 'deepseek', apiKey: process.env.DEEPSEEK_API_KEY })
     : process.env.ANTHROPIC_API_KEY
@@ -238,6 +264,9 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
       return output!;
     },
     consumeTrackerImportPreview: (accountId) => consumeTrackerImportPreviewRateLimit(pool, { accountId, limit: 5, windowMs: 10 * 60_000 }),
-    close: () => pool.end(),
+    close: async () => {
+      await (fetcher as { close?: () => Promise<void> }).close?.();
+      await pool.end();
+    },
   };
 }
