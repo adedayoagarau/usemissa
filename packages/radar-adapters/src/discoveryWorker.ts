@@ -346,6 +346,7 @@ export function discoverySourceFromLink(parent: Source, link: DiscoveryLink, id:
 export function mergeDiscoveredSourceMetadata(source: Source, link: DiscoveryLink, parentSourceId?: string): boolean {
   let changed = false;
   const previousExternalStatus = source.discoveryExternalStatus;
+  const previousMachineRecord = JSON.stringify(source.discoveryMachineRecord ?? null);
   const assign = <K extends keyof Source>(key: K, value: Source[K] | undefined): void => {
     if (value === undefined || source[key] === value) return;
     source[key] = value;
@@ -363,6 +364,10 @@ export function mergeDiscoveredSourceMetadata(source: Source, link: DiscoveryLin
   assign("discoveryExternalId", link.discoveryExternalId);
   assign("discoveryExternalStatus", link.discoveryExternalStatus);
   assign("discoveryMachineRecord", link.discoveryMachineRecord);
+  if (JSON.stringify(source.discoveryMachineRecord ?? null) !== previousMachineRecord) {
+    delete source.nextCheckAt;
+    changed = true;
+  }
   assign("registryOrganizationName", link.registryOrganizationName);
   assign("registryTrust", link.registryTrust);
   assign("active", true);

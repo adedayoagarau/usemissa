@@ -33,6 +33,22 @@ test("a machine record follows its official URL when the stable external ID move
   }), true);
   assert.equal(source.url, "https://example.eu/new");
 });
+
+test("new first-party API evidence makes an existing machine source immediately due", () => {
+  const source: Source = {
+    id: "machine-child", name: "Call", url: "https://example.eu/call", kind: "organization-website",
+    active: true, checkIntervalHours: 24, consecutiveFailures: 0, discoveryExternalId: "eu-ft:one",
+    nextCheckAt: "2026-08-13T00:00:00.000Z",
+  };
+  assert.equal(mergeDiscoveredSourceMetadata(source, {
+    url: source.url,
+    discoveryExternalId: source.discoveryExternalId,
+    discoveryMachineRecord: {
+      title: "Call", deadlineDate: "2026-09-01", evidenceUrl: "https://api.example.eu",
+    },
+  }), true);
+  assert.equal(source.nextCheckAt, undefined);
+});
 import type { Source } from "@missa/radar-engine";
 
 test("discovery reconciliation retires stale provenance children", () => {
