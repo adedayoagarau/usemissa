@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { HttpFetcher, isSafeTextPayload, type Source } from '../src/index.js';
+import { HttpFetcher, isSafeTextPayload, machineEvidenceText, type Source } from '../src/index.js';
 
 const source: Source = {
   id: 'source_fetcher',
@@ -39,4 +39,22 @@ test('rejects control characters even when a server mislabels binary content as 
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('prepends bounded official API evidence without replacing canonical page text', () => {
+  const content = machineEvidenceText({
+    ...source,
+    discoveryExternalId: 'eu-ft:call-1',
+    discoveryMachineRecord: {
+      title: 'Cultural Horizons: Residencies',
+      organizationName: 'Creative Europe',
+      openDate: '2026-06-30',
+      deadlineDate: '2026-09-30',
+      applicationUrl: 'https://ec.europa.eu/call/1',
+      evidenceUrl: 'https://api.tech.ec.europa.eu/search-api/',
+    },
+  }, 'Canonical host page text');
+  assert.match(content, /^Title: Cultural Horizons: Residencies/m);
+  assert.match(content, /Deadline: 2026-09-30/);
+  assert.match(content, /Canonical host page text$/);
 });

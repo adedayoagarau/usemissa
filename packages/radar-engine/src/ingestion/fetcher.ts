@@ -53,12 +53,27 @@ export class HttpFetcher implements Fetcher {
       if (contentType && !isTextualContentType(contentType)) return { status: 'error', content: '', failureReason: 'unsupported-content-type' };
       const raw = await res.text();
       if (!isSafeTextPayload(raw)) return { status: 'error', content: '', failureReason: 'unsafe-payload' };
-      return { status: 'ok', content: stripHtml(raw) };
+      return { status: 'ok', content: machineEvidenceText(source, stripHtml(raw)) };
     } catch (error) {
       const message = error instanceof Error ? error.message.toLowerCase() : '';
       return { status: 'error', content: '', failureReason: message.includes('timeout') ? 'timeout' : 'network' };
     }
   }
+}
+
+export function machineEvidenceText(source: Source, pageText: string): string {
+  const record = source.discoveryMachineRecord;
+  if (!record) return pageText;
+  const evidence = [
+    `Title: ${record.title}`,
+    record.organizationName ? `Organization: ${record.organizationName}` : undefined,
+    record.openDate ? `Applications open on: ${record.openDate}` : undefined,
+    record.deadlineDate ? `Deadline: ${record.deadlineDate}` : undefined,
+    record.applicationUrl ? `Apply at: ${record.applicationUrl}` : undefined,
+    record.description ? `Description: ${record.description}` : undefined,
+    `Official API evidence: ${record.evidenceUrl}`,
+  ].filter((value): value is string => Boolean(value));
+  return `${evidence.join('\n')}\n\n${pageText}`;
 }
 
 const DEFAULT_FETCH_TIMEOUT_MS = 20_000;

@@ -11,6 +11,7 @@ export interface DiscoveredSourceLink {
   checkIntervalHours?: number;
   discoveryExternalId?: string;
   discoveryExternalStatus?: string;
+  discoveryMachineRecord?: Source["discoveryMachineRecord"];
   registryOrganizationName?: string;
   registryTrust?: Source["registryTrust"];
 }

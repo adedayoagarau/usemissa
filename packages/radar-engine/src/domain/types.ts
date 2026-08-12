@@ -90,6 +90,16 @@ export interface Source {
   /** Stable identifier and lifecycle reported by a machine-readable parent feed. */
   discoveryExternalId?: string;
   discoveryExternalStatus?: string;
+  /** Structured first-party API evidence attached to a canonical call page. */
+  discoveryMachineRecord?: {
+    title: string;
+    organizationName?: string;
+    description?: string;
+    openDate?: string;
+    deadlineDate?: string;
+    applicationUrl?: string;
+    evidenceUrl: string;
+  };
   /** Polite per-source cadence. */
   checkIntervalHours: number;
   active: boolean;

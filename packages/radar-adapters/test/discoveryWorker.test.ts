@@ -8,12 +8,20 @@ import {
   discoverySourceInsertPlaceholders,
   discoverySourceUpdatePlaceholders,
   extractDiscoveryLinks,
+  discoveryIdentityKey,
   isDiscoverySource,
   mergeDiscoveredSourceMetadata,
   reconcileMachineDiscoveredChildren,
   prioritizeDiscoverySources,
   reconcileDiscoveredChildren,
 } from "../src/discoveryWorker.js";
+
+test("machine records use external identity so one page can expose concurrent calls", () => {
+  assert.notEqual(
+    discoveryIdentityKey({ url: "https://ec.europa.eu/call/shared", discoveryExternalId: "eu-ft:one" }),
+    discoveryIdentityKey({ url: "https://ec.europa.eu/call/shared", discoveryExternalId: "eu-ft:two" }),
+  );
+});
 import type { Source } from "@missa/radar-engine";
 
 test("discovery reconciliation retires stale provenance children", () => {

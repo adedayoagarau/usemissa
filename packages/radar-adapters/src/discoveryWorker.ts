@@ -95,6 +95,12 @@ function normalizeUrl(value: string): string {
   }
 }
 
+export function discoveryIdentityKey(value: Pick<Source, "url" | "discoveryExternalId">): string {
+  return value.discoveryExternalId
+    ? `external:${value.discoveryExternalId.toLowerCase()}`
+    : `url:${normalizeUrl(value.url)}`;
+}
+
 function absoluteHttpUrl(value: string, base: string): string | undefined {
   try {
     const url = new URL(value, base);
@@ -332,6 +338,7 @@ export function discoverySourceFromLink(parent: Source, link: DiscoveryLink, id:
     discoveredFromSourceId: link.discoveredFromSourceId ?? parent.id,
     discoveryExternalId: link.discoveryExternalId,
     discoveryExternalStatus: link.discoveryExternalStatus,
+    discoveryMachineRecord: link.discoveryMachineRecord,
   };
 }
 
@@ -352,6 +359,7 @@ export function mergeDiscoveredSourceMetadata(source: Source, link: DiscoveryLin
   assign("checkIntervalHours", link.checkIntervalHours);
   assign("discoveryExternalId", link.discoveryExternalId);
   assign("discoveryExternalStatus", link.discoveryExternalStatus);
+  assign("discoveryMachineRecord", link.discoveryMachineRecord);
   assign("registryOrganizationName", link.registryOrganizationName);
   assign("registryTrust", link.registryTrust);
   assign("active", true);
@@ -375,14 +383,14 @@ export function reconcileMachineDiscoveredChildren(
   parentSourceId: string,
   emittedLinks: DiscoveryLink[],
 ): Source[] {
-  const emitted = new Set(emittedLinks.map((link) => normalizeUrl(link.url)));
+  const emitted = new Set(emittedLinks.map((link) => discoveryIdentityKey(link)));
   const changed: Source[] = [];
   for (const source of sources) {
     if (
       source.discoveredFromSourceId === parentSourceId &&
       source.discoveryExternalId &&
       source.active &&
-      !emitted.has(normalizeUrl(source.url)) &&
+      !emitted.has(discoveryIdentityKey(source)) &&
       source.discoveryExternalStatus !== "retired"
     ) {
       source.discoveryExternalStatus = "retired";
@@ -445,8 +453,8 @@ async function persistDiscoveryResults(fetched: FetchedDirectory[], maxNewSource
     if (!locked) return { linksFound: 0, sourcesAdded: 0 };
 
     const currentRows = await lockClient.query<{ data: Source }>("select data from radar_sources");
-    const currentByUrl = new Map(currentRows.rows.map((row) => [normalizeUrl(row.data.url), row.data] as const));
-    const existing = new Set(currentByUrl.keys());
+    const currentByIdentity = new Map(currentRows.rows.map((row) => [discoveryIdentityKey(row.data), row.data] as const));
+    const existing = new Set(currentByIdentity.keys());
     const linksFound = fetched.reduce((sum, item) => sum + item.links.length, 0);
     let sourcesAdded = 0;
     const newSources: Source[] = [];
@@ -467,9 +475,9 @@ async function persistDiscoveryResults(fetched: FetchedDirectory[], maxNewSource
       }
       for (const link of item.links) {
         if (sourcesAdded >= maxNewSources) break;
-        const key = normalizeUrl(link.url);
+        const key = discoveryIdentityKey(link);
         if (existing.has(key)) {
-          const existingSource = currentByUrl.get(key);
+          const existingSource = currentByIdentity.get(key);
           if (existingSource && mergeDiscoveredSourceMetadata(existingSource, link, item.source.id)) {
             enrichedExisting.set(existingSource.id, existingSource);
           }

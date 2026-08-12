@@ -1,6 +1,6 @@
 {
   "version": "1.1.0",
-  "generatedAt": "2026-08-07T07:10:45.056Z",
+  "generatedAt": "2026-08-12T08:25:44.043Z",
   "verticals": [
     {
       "id": "literary-fiction",
@@ -735,7 +735,7 @@
   ],
   "sources": [
     {
-      "id": "src_animation-new-media_animation_world_network_jobs_and_calls_436",
+      "id": "src_animation-new-media_animation_world_network_jobs_and_calls_438",
       "name": "Animation World Network Jobs and Calls",
       "url": "https://www.awn.com/animation-world-network",
       "kind": "directory",
@@ -764,6 +764,39 @@
         "status": "needs-review",
         "authorityKind": "directory",
         "score": 50
+      }
+    },
+    {
+      "id": "src_animation-new-media_annecy_mifa_pitches_439",
+      "name": "Annecy MIFA Pitches",
+      "url": "https://www.annecyfestival.com/le-mifa/mifa-business/pitchs-mifa/presentation-pitchs-mifa",
+      "kind": "organization-website",
+      "verticalId": "animation-new-media",
+      "tier": 0,
+      "opportunityTypes": [
+        "pitch",
+        "festival",
+        "open-call"
+      ],
+      "disciplines": [
+        "animation",
+        "film"
+      ],
+      "geography": [
+        "global"
+      ],
+      "checkIntervalHours": 168,
+      "active": true,
+      "organizationName": "Annecy MIFA Pitches",
+      "followsOutboundLinks": false,
+      "taxonomyTermIds": [
+        "taxterm_disc-animation",
+        "taxterm_pf-digital-interactive-and-immersive-arts"
+      ],
+      "trust": {
+        "status": "curated",
+        "authorityKind": "official-source",
+        "score": 80
       }
     },
     {
@@ -916,6 +949,39 @@
       ]
     },
     {
+      "id": "src_animation-new-media_women_in_animation_programs_440",
+      "name": "Women in Animation Programs",
+      "url": "https://wearewia.org/mentorship/",
+      "kind": "organization-website",
+      "verticalId": "animation-new-media",
+      "tier": 0,
+      "opportunityTypes": [
+        "fellowship",
+        "open-call"
+      ],
+      "disciplines": [
+        "animation",
+        "film",
+        "new-media"
+      ],
+      "geography": [
+        "global"
+      ],
+      "checkIntervalHours": 168,
+      "active": true,
+      "organizationName": "Women in Animation Programs",
+      "followsOutboundLinks": false,
+      "taxonomyTermIds": [
+        "taxterm_disc-animation",
+        "taxterm_pf-digital-interactive-and-immersive-arts"
+      ],
+      "trust": {
+        "status": "curated",
+        "authorityKind": "official-source",
+        "score": 80
+      }
+    },
+    {
       "id": "src_architecture-built_aia_architecture_awards_519",
       "name": "AIA Architecture Awards",
       "url": "https://www.aia.org/",
@@ -945,7 +1011,7 @@
       ]
     },
     {
-      "id": "src_architecture-built_archdaily_competitions_453",
+      "id": "src_architecture-built_archdaily_competitions_460",
       "name": "ArchDaily Competitions",
       "url": "https://www.archdaily.com/competitions",
       "kind": "directory",
@@ -1067,7 +1133,7 @@
       ]
     },
     {
-      "id": "src_architecture-built_dezeen_competitions_452",
+      "id": "src_architecture-built_dezeen_competitions_459",
       "name": "Dezeen Competitions",
       "url": "https://www.dezeen.com/competitions/",
       "kind": "directory",
@@ -1220,7 +1286,7 @@
       ]
     },
     {
-      "id": "src_architecture-built_world_architecture_community_454",
+      "id": "src_architecture-built_world_architecture_community_461",
       "name": "World Architecture Community",
       "url": "https://worldarchitecture.org/architecture-competitions/",
       "kind": "directory",
@@ -1944,7 +2010,7 @@
       ]
     },
     {
-      "id": "src_bipoc-focused_african_artists_foundation_461",
+      "id": "src_bipoc-focused_african_artists_foundation_468",
       "name": "African Artists Foundation",
       "url": "https://www.aaf-net.org/opportunities",
       "kind": "directory",
@@ -1971,6 +2037,35 @@
       "taxonomyTermIds": [
         "taxterm_pf-visual-arts"
       ],
+      "trust": {
+        "status": "needs-review",
+        "authorityKind": "directory",
+        "score": 50
+      }
+    },
+    {
+      "id": "src_bipoc-focused_african_culture_fund_calls_469",
+      "name": "African Culture Fund Calls",
+      "url": "https://www.africanculturefund.net/en/",
+      "kind": "directory",
+      "verticalId": "bipoc-focused",
+      "tier": 2,
+      "opportunityTypes": [
+        "grant",
+        "fellowship",
+        "open-call"
+      ],
+      "disciplines": [
+        "all-disciplines"
+      ],
+      "geography": [
+        "Africa"
+      ],
+      "checkIntervalHours": 48,
+      "active": true,
+      "followsOutboundLinks": true,
+      "discoveryAdapterId": "african-culture-fund-index",
+      "taxonomyTermIds": [],
       "trust": {
         "status": "needs-review",
         "authorityKind": "directory",
@@ -2129,7 +2224,7 @@
       ]
     },
     {
-      "id": "src_comics-illustration_comics_beat_opportunities_456",
+      "id": "src_comics-illustration_comics_beat_opportunities_463",
       "name": "Comics Beat Opportunities",
       "url": "https://www.comicsbeat.com/category/comics-industry/",
       "kind": "directory",
@@ -2449,7 +2544,7 @@
       ]
     },
     {
-      "id": "src_craft-design_aicad_opportunities_428",
+      "id": "src_craft-design_aicad_opportunities_430",
       "name": "AICAD Opportunities",
       "url": "https://www.aicad.org/opportunities/",
       "kind": "directory",
@@ -2483,7 +2578,7 @@
       }
     },
     {
-      "id": "src_craft-design_aiga_design_opportunities_450",
+      "id": "src_craft-design_aiga_design_opportunities_457",
       "name": "AIGA Design Opportunities",
       "url": "https://www.aiga.org/professional-development/opportunities",
       "kind": "directory",
@@ -2613,7 +2708,7 @@
       ]
     },
     {
-      "id": "src_craft-design_designboom_competitions_451",
+      "id": "src_craft-design_designboom_competitions_458",
       "name": "Designboom Competitions",
       "url": "https://www.designboom.com/competitions/",
       "kind": "directory",
@@ -2883,7 +2978,7 @@
       ]
     },
     {
-      "id": "src_craft-design_society_of_graphic_designers_canada_455",
+      "id": "src_craft-design_society_of_graphic_designers_canada_462",
       "name": "Society of Graphic Designers Canada",
       "url": "https://gdc.net/awards",
       "kind": "directory",
@@ -3568,7 +3663,7 @@
       ]
     },
     {
-      "id": "src_curatorial_curatorspace_open_calls_422",
+      "id": "src_curatorial_curatorspace_open_calls_424",
       "name": "CuratorSpace Open Calls",
       "url": "https://www.curatorspace.com/opportunities",
       "kind": "directory",
@@ -3938,7 +4033,7 @@
       ]
     },
     {
-      "id": "src_dance-choreography_dance_informa_opportunities_445",
+      "id": "src_dance-choreography_dance_informa_opportunities_452",
       "name": "Dance Informa Opportunities",
       "url": "https://danceinforma.us/opportunities/",
       "kind": "directory",
@@ -4028,7 +4123,7 @@
       ]
     },
     {
-      "id": "src_dance-choreography_dance_nyc_opportunities_444",
+      "id": "src_dance-choreography_dance_nyc_opportunities_451",
       "name": "Dance/NYC Opportunities",
       "url": "https://www.dance.nyc/for-artists/resource-pages/opportunities",
       "kind": "directory",
@@ -4143,7 +4238,7 @@
       ]
     },
     {
-      "id": "src_disability-arts_disability_arts_online_opportunities_464",
+      "id": "src_disability-arts_disability_arts_online_opportunities_472",
       "name": "Disability Arts Online Opportunities",
       "url": "https://disabilityarts.online/opportunities/",
       "kind": "directory",
@@ -4284,6 +4379,44 @@
       ]
     },
     {
+      "id": "src_documentary_durban_filmmart_pitch_and_finance_forum_441",
+      "name": "Durban FilmMart Pitch and Finance Forum",
+      "url": "https://durbanfilmmart.co.za/dfm-pitch-and-finance-forum/",
+      "kind": "organization-website",
+      "verticalId": "documentary",
+      "tier": 0,
+      "opportunityTypes": [
+        "pitch",
+        "fellowship",
+        "open-call"
+      ],
+      "disciplines": [
+        "film",
+        "documentary",
+        "animation",
+        "screenwriting"
+      ],
+      "geography": [
+        "Africa",
+        "global"
+      ],
+      "checkIntervalHours": 168,
+      "active": true,
+      "organizationName": "Durban FilmMart Pitch and Finance Forum",
+      "followsOutboundLinks": false,
+      "taxonomyTermIds": [
+        "taxterm_disc-documentary-filmmaking",
+        "taxterm_mode-documentary",
+        "taxterm_disc-animation",
+        "taxterm_disc-screenwriting"
+      ],
+      "trust": {
+        "status": "curated",
+        "authorityKind": "official-source",
+        "score": 80
+      }
+    },
+    {
       "id": "src_documentary_ford_foundation_justfilms_542",
       "name": "Ford Foundation JustFilms",
       "url": "https://www.fordfoundation.org/",
@@ -4339,7 +4472,7 @@
       ]
     },
     {
-      "id": "src_documentary_international_documentary_association_435",
+      "id": "src_documentary_international_documentary_association_437",
       "name": "International Documentary Association",
       "url": "https://www.documentary.org/grants",
       "kind": "directory",
@@ -4399,6 +4532,44 @@
       ]
     },
     {
+      "id": "src_documentary_realness_institute_programmes_442",
+      "name": "Realness Institute Programmes",
+      "url": "https://www.realness.institute/",
+      "kind": "organization-website",
+      "verticalId": "documentary",
+      "tier": 0,
+      "opportunityTypes": [
+        "fellowship",
+        "residency",
+        "open-call"
+      ],
+      "disciplines": [
+        "film",
+        "documentary",
+        "screenwriting",
+        "television"
+      ],
+      "geography": [
+        "Africa",
+        "global"
+      ],
+      "checkIntervalHours": 168,
+      "active": true,
+      "organizationName": "Realness Institute Programmes",
+      "followsOutboundLinks": false,
+      "taxonomyTermIds": [
+        "taxterm_disc-documentary-filmmaking",
+        "taxterm_mode-documentary",
+        "taxterm_disc-screenwriting",
+        "taxterm_disc-television"
+      ],
+      "trust": {
+        "status": "curated",
+        "authorityKind": "official-source",
+        "score": 80
+      }
+    },
+    {
       "id": "src_documentary_sundance_documentary_fund_538",
       "name": "Sundance Documentary Fund",
       "url": "https://www.sundance.org/programs/documentary-fund",
@@ -4426,7 +4597,7 @@
       ]
     },
     {
-      "id": "src_documentary_sundance_institute_labs_and_grants_433",
+      "id": "src_documentary_sundance_institute_labs_and_grants_435",
       "name": "Sundance Institute Labs and Grants",
       "url": "https://www.sundance.org/programs/",
       "kind": "directory",
@@ -4877,7 +5048,7 @@
       ]
     },
     {
-      "id": "src_fellowships_pen_america_literary_grants_408",
+      "id": "src_fellowships_pen_america_literary_grants_410",
       "name": "PEN America Literary Grants",
       "url": "https://pen.org/literary-grants/",
       "kind": "directory",
@@ -5036,7 +5207,7 @@
       ]
     },
     {
-      "id": "src_fellowships_whiting_foundation_awards_410",
+      "id": "src_fellowships_whiting_foundation_awards_412",
       "name": "Whiting Foundation Awards",
       "url": "https://www.whiting.org/writers/awards",
       "kind": "directory",
@@ -5997,7 +6168,7 @@
       }
     },
     {
-      "id": "src_film-festival_film_festival_life_431",
+      "id": "src_film-festival_film_festival_life_433",
       "name": "Film Festival Life",
       "url": "https://filmfestivallife.com/Film-Festival-Deadlines",
       "kind": "directory",
@@ -6056,7 +6227,7 @@
       }
     },
     {
-      "id": "src_film-festival_filmfestivals_com_432",
+      "id": "src_film-festival_filmfestivals_com_434",
       "name": "FilmFestivals.com",
       "url": "https://filmfestivals.com/",
       "kind": "directory",
@@ -7312,7 +7483,7 @@
       }
     },
     {
-      "id": "src_film-festival_shortfilmdepot_430",
+      "id": "src_film-festival_shortfilmdepot_432",
       "name": "Shortfilmdepot",
       "url": "https://www.shortfilmdepot.com/",
       "kind": "partner-feed",
@@ -7502,7 +7673,7 @@
       }
     },
     {
-      "id": "src_film-festival_the_gotham_artists_and_filmmakers_434",
+      "id": "src_film-festival_the_gotham_artists_and_filmmakers_436",
       "name": "The Gotham Artists and Filmmakers",
       "url": "https://thegotham.org/programs/",
       "kind": "directory",
@@ -7994,7 +8165,7 @@
       ]
     },
     {
-      "id": "src_grants-international_artconnect_opportunities_416",
+      "id": "src_grants-international_artconnect_opportunities_418",
       "name": "ArtConnect Opportunities",
       "url": "https://www.artconnect.com/opportunities",
       "kind": "directory",
@@ -8056,7 +8227,7 @@
       ]
     },
     {
-      "id": "src_grants-international_arts_council_england_funding_457",
+      "id": "src_grants-international_arts_council_england_funding_464",
       "name": "Arts Council England Funding",
       "url": "https://www.artscouncil.org.uk/creative-people-and-artists/funding",
       "kind": "directory",
@@ -8333,7 +8504,7 @@
       ]
     },
     {
-      "id": "src_grants-international_candid_grant_search_407",
+      "id": "src_grants-international_candid_grant_search_409",
       "name": "Candid Grant Search",
       "url": "https://candid.org/find-us",
       "kind": "directory",
@@ -8455,10 +8626,11 @@
       "geography": [
         "EU"
       ],
-      "checkIntervalHours": 168,
+      "checkIntervalHours": 24,
       "active": true,
       "organizationName": "Creative Europe",
       "followsOutboundLinks": false,
+      "discoveryAdapterId": "eu-funding-api",
       "taxonomyTermIds": [],
       "trust": {
         "status": "curated",
@@ -8694,7 +8866,7 @@
       ]
     },
     {
-      "id": "src_grants-international_goethe_institut_calls_and_funding_459",
+      "id": "src_grants-international_goethe_institut_calls_and_funding_466",
       "name": "Goethe-Institut Calls and Funding",
       "url": "https://www.goethe.de/en/kul/foe.html",
       "kind": "directory",
@@ -8723,7 +8895,7 @@
       }
     },
     {
-      "id": "src_grants-international_grantmakers_in_the_arts_406",
+      "id": "src_grants-international_grantmakers_in_the_arts_408",
       "name": "Grantmakers in the Arts",
       "url": "https://www.giarts.org/funding-opportunities",
       "kind": "directory",
@@ -9058,7 +9230,7 @@
       ]
     },
     {
-      "id": "src_grants-international_national_arts_council_nigeria_462",
+      "id": "src_grants-international_national_arts_council_nigeria_470",
       "name": "National Arts Council Nigeria",
       "url": "https://www.nac.gov.ng/",
       "kind": "directory",
@@ -9252,7 +9424,7 @@
       ]
     },
     {
-      "id": "src_grants-international_on_the_move_funding_guides_415",
+      "id": "src_grants-international_on_the_move_funding_guides_417",
       "name": "On the Move Funding Guides",
       "url": "https://on-the-move.org/resources/funding",
       "kind": "directory",
@@ -9535,7 +9707,7 @@
       ]
     },
     {
-      "id": "src_grants-international_the_awesome_foundation_405",
+      "id": "src_grants-international_the_awesome_foundation_407",
       "name": "The Awesome Foundation",
       "url": "https://www.awesomefoundation.org/en",
       "kind": "directory",
@@ -9933,7 +10105,7 @@
       ]
     },
     {
-      "id": "src_grants-us-national_creative_capital_awards_399",
+      "id": "src_grants-us-national_creative_capital_awards_401",
       "name": "Creative Capital Awards",
       "url": "https://creative-capital.org/opportunities/",
       "kind": "directory",
@@ -10092,7 +10264,7 @@
       ]
     },
     {
-      "id": "src_grants-us-national_foundation_for_contemporary_arts_401",
+      "id": "src_grants-us-national_foundation_for_contemporary_arts_403",
       "name": "Foundation for Contemporary Arts",
       "url": "https://www.foundationforcontemporaryarts.org/grants-awards/",
       "kind": "directory",
@@ -10227,7 +10399,7 @@
       ]
     },
     {
-      "id": "src_grants-us-national_grants_gov_arts_funding_398",
+      "id": "src_grants-us-national_grants_gov_arts_funding_400",
       "name": "Grants.gov Arts Funding",
       "url": "https://www.grants.gov/search-results.html?group=arts",
       "kind": "directory",
@@ -10709,7 +10881,7 @@
       ]
     },
     {
-      "id": "src_grants-us-national_new_york_foundation_for_the_arts_400",
+      "id": "src_grants-us-national_new_york_foundation_for_the_arts_402",
       "name": "New York Foundation for the Arts",
       "url": "https://www.nyfa.org/awards-grants/",
       "kind": "directory",
@@ -12588,7 +12760,7 @@
       ]
     },
     {
-      "id": "src_indigenous-arts_native_arts_and_cultures_foundation_465",
+      "id": "src_indigenous-arts_native_arts_and_cultures_foundation_473",
       "name": "Native Arts and Cultures Foundation",
       "url": "https://www.nativeartsandcultures.org/grants",
       "kind": "directory",
@@ -12623,7 +12795,7 @@
       }
     },
     {
-      "id": "src_lgbtq-focused_queer_art_opportunities_463",
+      "id": "src_lgbtq-focused_queer_art_opportunities_471",
       "name": "Queer|Art Opportunities",
       "url": "https://www.queer-art.org/opportunities",
       "kind": "directory",
@@ -13426,6 +13598,42 @@
         "status": "curated",
         "authorityKind": "official-source",
         "score": 80
+      }
+    },
+    {
+      "id": "src_literary-fiction_commonwealth_foundation_creative_opportunities_398",
+      "name": "Commonwealth Foundation Creative Opportunities",
+      "url": "https://commonwealthfoundation.com/opportunities/",
+      "kind": "directory",
+      "verticalId": "literary-fiction",
+      "tier": 2,
+      "opportunityTypes": [
+        "contest",
+        "fellowship",
+        "open-call"
+      ],
+      "disciplines": [
+        "fiction",
+        "poetry",
+        "nonfiction",
+        "translation"
+      ],
+      "geography": [
+        "global"
+      ],
+      "checkIntervalHours": 48,
+      "active": true,
+      "followsOutboundLinks": true,
+      "discoveryAdapterId": "commonwealth-index",
+      "taxonomyTermIds": [
+        "taxterm_disc-fiction",
+        "taxterm_genre-literary-fiction",
+        "taxterm_disc-poetry"
+      ],
+      "trust": {
+        "status": "needs-review",
+        "authorityKind": "directory",
+        "score": 50
       }
     },
     {
@@ -14868,6 +15076,43 @@
         "status": "curated",
         "authorityKind": "official-source",
         "score": 80
+      }
+    },
+    {
+      "id": "src_literary-fiction_newpages_calls_and_contests_397",
+      "name": "NewPages Calls and Contests",
+      "url": "https://www.newpages.com/classifieds-fee/all/",
+      "kind": "directory",
+      "verticalId": "literary-fiction",
+      "tier": 2,
+      "opportunityTypes": [
+        "magazine",
+        "contest",
+        "open-call"
+      ],
+      "disciplines": [
+        "fiction",
+        "poetry",
+        "nonfiction",
+        "translation"
+      ],
+      "geography": [
+        "US",
+        "global"
+      ],
+      "checkIntervalHours": 48,
+      "active": true,
+      "followsOutboundLinks": true,
+      "discoveryAdapterId": "newpages-index",
+      "taxonomyTermIds": [
+        "taxterm_disc-fiction",
+        "taxterm_genre-literary-fiction",
+        "taxterm_disc-poetry"
+      ],
+      "trust": {
+        "status": "needs-review",
+        "authorityKind": "directory",
+        "score": 50
       }
     },
     {
@@ -17734,7 +17979,7 @@
       ]
     },
     {
-      "id": "src_music-composition_groover_opportunities_439",
+      "id": "src_music-composition_groover_opportunities_445",
       "name": "Groover Opportunities",
       "url": "https://groover.co/en/opportunities/",
       "kind": "partner-feed",
@@ -17768,7 +18013,7 @@
       }
     },
     {
-      "id": "src_music-composition_help_musicians_funding_442",
+      "id": "src_music-composition_help_musicians_funding_448",
       "name": "Help Musicians Funding",
       "url": "https://www.helpmusicians.org.uk/get-support",
       "kind": "directory",
@@ -17831,7 +18076,7 @@
       ]
     },
     {
-      "id": "src_music-composition_music_finland_opportunities_443",
+      "id": "src_music-composition_music_finland_opportunities_449",
       "name": "Music Finland Opportunities",
       "url": "https://musicfinland.com/en/funding",
       "kind": "directory",
@@ -17853,6 +18098,42 @@
       "checkIntervalHours": 48,
       "active": true,
       "followsOutboundLinks": true,
+      "taxonomyTermIds": [
+        "taxterm_pf-music-and-sound",
+        "taxterm_disc-composition",
+        "taxterm_disc-sound-art"
+      ],
+      "trust": {
+        "status": "needs-review",
+        "authorityKind": "directory",
+        "score": 50
+      }
+    },
+    {
+      "id": "src_music-composition_music_in_africa_opportunities_450",
+      "name": "Music In Africa Opportunities",
+      "url": "https://www.musicinafrica.net/",
+      "kind": "directory",
+      "verticalId": "music-composition",
+      "tier": 2,
+      "opportunityTypes": [
+        "grant",
+        "festival",
+        "open-call"
+      ],
+      "disciplines": [
+        "music",
+        "composition",
+        "performance"
+      ],
+      "geography": [
+        "Africa",
+        "global"
+      ],
+      "checkIntervalHours": 48,
+      "active": true,
+      "followsOutboundLinks": true,
+      "discoveryAdapterId": "music-in-africa-index",
       "taxonomyTermIds": [
         "taxterm_pf-music-and-sound",
         "taxterm_disc-composition",
@@ -17895,7 +18176,7 @@
       ]
     },
     {
-      "id": "src_music-composition_new_music_usa_grants_440",
+      "id": "src_music-composition_new_music_usa_grants_446",
       "name": "New Music USA Grants",
       "url": "https://newmusicusa.org/programs/grants/",
       "kind": "directory",
@@ -17958,7 +18239,7 @@
       ]
     },
     {
-      "id": "src_music-composition_prs_foundation_funding_441",
+      "id": "src_music-composition_prs_foundation_funding_447",
       "name": "PRS Foundation Funding",
       "url": "https://prsfoundation.com/funding-support/",
       "kind": "directory",
@@ -18054,7 +18335,7 @@
       ]
     },
     {
-      "id": "src_music-composition_sonicbids_437",
+      "id": "src_music-composition_sonicbids_443",
       "name": "Sonicbids",
       "url": "https://www.sonicbids.com/find-gigs/",
       "kind": "partner-feed",
@@ -18089,7 +18370,7 @@
       }
     },
     {
-      "id": "src_music-composition_submithub_438",
+      "id": "src_music-composition_submithub_444",
       "name": "SubmitHub",
       "url": "https://www.submithub.com/opportunities",
       "kind": "partner-feed",
@@ -18377,7 +18658,7 @@
       ]
     },
     {
-      "id": "src_performance-art_on_the_boards_opportunities_448",
+      "id": "src_performance-art_on_the_boards_opportunities_455",
       "name": "On the Boards Opportunities",
       "url": "https://www.ontheboards.org/about/opportunities",
       "kind": "directory",
@@ -19051,7 +19332,7 @@
       ]
     },
     {
-      "id": "src_photography_lensculture_photography_awards_425",
+      "id": "src_photography_lensculture_photography_awards_427",
       "name": "LensCulture Photography Awards",
       "url": "https://www.lensculture.com/competitions",
       "kind": "directory",
@@ -19715,7 +19996,7 @@
       ]
     },
     {
-      "id": "src_photography_women_photograph_grants_424",
+      "id": "src_photography_women_photograph_grants_426",
       "name": "Women Photograph Grants",
       "url": "https://www.womenphotograph.com/grants",
       "kind": "directory",
@@ -19747,7 +20028,7 @@
       }
     },
     {
-      "id": "src_photography_world_photography_organisation_426",
+      "id": "src_photography_world_photography_organisation_428",
       "name": "World Photography Organisation",
       "url": "https://www.worldphoto.org/competitions",
       "kind": "directory",
@@ -20041,7 +20322,7 @@
       ]
     },
     {
-      "id": "src_platform-filmfreeway_festhome_429",
+      "id": "src_platform-filmfreeway_festhome_431",
       "name": "Festhome",
       "url": "https://festhome.com/",
       "kind": "partner-feed",
@@ -20288,7 +20569,7 @@
       }
     },
     {
-      "id": "src_platform-resartis_res_artis_opportunities_413",
+      "id": "src_platform-resartis_res_artis_opportunities_415",
       "name": "Res Artis Opportunities",
       "url": "https://resartis.org/en/residencies/",
       "kind": "directory",
@@ -20400,7 +20681,7 @@
       }
     },
     {
-      "id": "src_platform-transartists_transartists_residency_database_414",
+      "id": "src_platform-transartists_transartists_residency_database_416",
       "name": "TransArtists Residency Database",
       "url": "https://www.transartists.org/en/air",
       "kind": "directory",
@@ -23703,7 +23984,7 @@
       ]
     },
     {
-      "id": "src_public-art_public_art_opportunities_427",
+      "id": "src_public-art_public_art_opportunities_429",
       "name": "Public Art Opportunities",
       "url": "https://www.publicartopportunities.com/",
       "kind": "directory",
@@ -26462,7 +26743,7 @@
       ]
     },
     {
-      "id": "src_theater-playwriting_howlround_theatre_commons_447",
+      "id": "src_theater-playwriting_howlround_theatre_commons_454",
       "name": "HowlRound Theatre Commons",
       "url": "https://howlround.com/opportunities",
       "kind": "directory",
@@ -26875,7 +27156,7 @@
       ]
     },
     {
-      "id": "src_theater-playwriting_playbill_jobs_and_calls_449",
+      "id": "src_theater-playwriting_playbill_jobs_and_calls_456",
       "name": "Playbill Jobs and Calls",
       "url": "https://www.playbill.com/jobs",
       "kind": "directory",
@@ -27365,7 +27646,7 @@
       ]
     },
     {
-      "id": "src_theater-playwriting_theatre_communications_group_446",
+      "id": "src_theater-playwriting_theatre_communications_group_453",
       "name": "Theatre Communications Group",
       "url": "https://www.tcg.org/Default.aspx?TabID=1575",
       "kind": "directory",
@@ -27843,7 +28124,7 @@
       ]
     },
     {
-      "id": "src_visual-open-call_artadia_awards_404",
+      "id": "src_visual-open-call_artadia_awards_406",
       "name": "Artadia Awards",
       "url": "https://artadia.org/awards/",
       "kind": "directory",
@@ -27940,7 +28221,7 @@
       ]
     },
     {
-      "id": "src_visual-open-call_artinfoland_opportunities_417",
+      "id": "src_visual-open-call_artinfoland_opportunities_419",
       "name": "Artinfoland Opportunities",
       "url": "https://artinfoland.com/",
       "kind": "directory",
@@ -28239,7 +28520,7 @@
       ]
     },
     {
-      "id": "src_visual-open-call_harpo_foundation_grants_403",
+      "id": "src_visual-open-call_harpo_foundation_grants_405",
       "name": "Harpo Foundation Grants",
       "url": "https://www.harpofoundation.org/grants/",
       "kind": "directory",
@@ -28573,7 +28854,7 @@
       ]
     },
     {
-      "id": "src_visual-open-call_open_call_radar_418",
+      "id": "src_visual-open-call_open_call_radar_420",
       "name": "Open Call Radar",
       "url": "https://www.opencallradar.com/",
       "kind": "directory",
@@ -28612,7 +28893,7 @@
       }
     },
     {
-      "id": "src_visual-open-call_opportuning_artist_opportunities_419",
+      "id": "src_visual-open-call_opportuning_artist_opportunities_421",
       "name": "Opportuning Artist Opportunities",
       "url": "https://opportuning.art/",
       "kind": "directory",
@@ -28652,7 +28933,7 @@
       }
     },
     {
-      "id": "src_visual-open-call_pollock_krasner_foundation_402",
+      "id": "src_visual-open-call_pollock_krasner_foundation_404",
       "name": "Pollock-Krasner Foundation",
       "url": "https://www.pkf.org/grants",
       "kind": "directory",
@@ -28883,7 +29164,7 @@
       ]
     },
     {
-      "id": "src_visual-open-call_xhbt_open_calls_420",
+      "id": "src_visual-open-call_xhbt_open_calls_422",
       "name": "XHBT Open Calls",
       "url": "https://www.xhbt.org/open-calls",
       "kind": "directory",
@@ -32291,7 +32572,7 @@
       ]
     },
     {
-      "id": "src_writing-residency_literary_arts_fellowships_409",
+      "id": "src_writing-residency_literary_arts_fellowships_411",
       "name": "Literary Arts Fellowships",
       "url": "https://literary-arts.org/fellowships/",
       "kind": "directory",
@@ -32884,7 +33165,7 @@
         "termId": "taxterm_pf-music-and-sound",
         "facet": "practice-family",
         "label": "Music & sound",
-        "sourceCount": 22,
+        "sourceCount": 23,
         "canonicalSourceCount": 9,
         "trustedSourceCount": 12,
         "status": "covered"
@@ -32965,9 +33246,9 @@
         "termId": "taxterm_pf-digital-interactive-and-immersive-arts",
         "facet": "practice-family",
         "label": "Digital, interactive & immersive arts",
-        "sourceCount": 6,
-        "canonicalSourceCount": 5,
-        "trustedSourceCount": 5,
+        "sourceCount": 8,
+        "canonicalSourceCount": 7,
+        "trustedSourceCount": 7,
         "status": "covered"
       },
       {
@@ -33019,7 +33300,7 @@
         "termId": "taxterm_disc-poetry",
         "facet": "discipline",
         "label": "Poetry",
-        "sourceCount": 118,
+        "sourceCount": 120,
         "canonicalSourceCount": 101,
         "trustedSourceCount": 102,
         "status": "covered"
@@ -33028,7 +33309,7 @@
         "termId": "taxterm_disc-fiction",
         "facet": "discipline",
         "label": "Fiction",
-        "sourceCount": 177,
+        "sourceCount": 179,
         "canonicalSourceCount": 161,
         "trustedSourceCount": 162,
         "status": "covered"
@@ -33442,9 +33723,9 @@
         "termId": "taxterm_disc-documentary-filmmaking",
         "facet": "discipline",
         "label": "Documentary filmmaking",
-        "sourceCount": 8,
-        "canonicalSourceCount": 6,
-        "trustedSourceCount": 6,
+        "sourceCount": 10,
+        "canonicalSourceCount": 8,
+        "trustedSourceCount": 8,
         "status": "covered"
       },
       {
@@ -33469,18 +33750,18 @@
         "termId": "taxterm_disc-animation",
         "facet": "discipline",
         "label": "Animation",
-        "sourceCount": 9,
-        "canonicalSourceCount": 5,
-        "trustedSourceCount": 7,
+        "sourceCount": 12,
+        "canonicalSourceCount": 8,
+        "trustedSourceCount": 10,
         "status": "covered"
       },
       {
         "termId": "taxterm_disc-television",
         "facet": "discipline",
         "label": "Television",
-        "sourceCount": 7,
-        "canonicalSourceCount": 7,
-        "trustedSourceCount": 7,
+        "sourceCount": 8,
+        "canonicalSourceCount": 8,
+        "trustedSourceCount": 8,
         "status": "covered"
       },
       {
@@ -33586,9 +33867,9 @@
         "termId": "taxterm_disc-screenwriting",
         "facet": "discipline",
         "label": "Screenwriting",
-        "sourceCount": 44,
-        "canonicalSourceCount": 40,
-        "trustedSourceCount": 41,
+        "sourceCount": 46,
+        "canonicalSourceCount": 42,
+        "trustedSourceCount": 43,
         "status": "covered"
       },
       {
@@ -33613,7 +33894,7 @@
         "termId": "taxterm_disc-composition",
         "facet": "discipline",
         "label": "Composition",
-        "sourceCount": 16,
+        "sourceCount": 17,
         "canonicalSourceCount": 9,
         "trustedSourceCount": 12,
         "status": "covered"
@@ -33694,7 +33975,7 @@
         "termId": "taxterm_disc-sound-art",
         "facet": "discipline",
         "label": "Sound art",
-        "sourceCount": 16,
+        "sourceCount": 17,
         "canonicalSourceCount": 9,
         "trustedSourceCount": 12,
         "status": "covered"
@@ -37501,7 +37782,7 @@
         "termId": "taxterm_genre-literary-fiction",
         "facet": "genre",
         "label": "Literary fiction",
-        "sourceCount": 160,
+        "sourceCount": 162,
         "canonicalSourceCount": 156,
         "trustedSourceCount": 156,
         "status": "covered"
@@ -40795,9 +41076,9 @@
         "termId": "taxterm_mode-documentary",
         "facet": "mode",
         "label": "Documentary",
-        "sourceCount": 16,
-        "canonicalSourceCount": 9,
-        "trustedSourceCount": 11,
+        "sourceCount": 18,
+        "canonicalSourceCount": 11,
+        "trustedSourceCount": 13,
         "status": "covered"
       },
       {

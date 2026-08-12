@@ -2058,10 +2058,11 @@ export const BULK_SOURCES: SourceRegistryEntry[] = [
     "geography": [
       "EU"
     ],
-    "checkIntervalHours": 168,
+    "checkIntervalHours": 24,
     "active": true,
     "organizationName": "Creative Europe",
-    "followsOutboundLinks": false
+    "followsOutboundLinks": false,
+    "discoveryAdapterId": "eu-funding-api"
   },
   {
     "id": "src_grants-international_on_the_move_109",
