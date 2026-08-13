@@ -21,6 +21,7 @@ RADAR_ADAPTERS = (
     "ida-grants-directory",
     "music-in-africa-detail",
     "newpages-detail",
+    "newpages-detail",
     "on-the-move-detail",
     "resartis-detail",
     "sundance-deadlines",
