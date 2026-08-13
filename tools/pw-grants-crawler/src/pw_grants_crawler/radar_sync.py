@@ -98,6 +98,23 @@ def _call(source: dict[str, Any], opportunity: dict[str, Any], snapshot: dict[st
 
 def sync_radar_adapter(store: NeonStore, adapter: str, *, freshness_hours: int = 1) -> str | None:
     """Import current Radar opportunities into Gary without inventing source facts."""
+    source_key = f"radar.{adapter}"
+    source_name = f"Radar canonical sync: {adapter}"
+    store.register_source(
+        source_id=source_key,
+        adapter=f"radar-sync:{adapter}",
+        name=source_name,
+        seed_url=f"radar://{adapter}",
+        freshness_hours=freshness_hours,
+        config={"worker": "gary", "upstream": "radar", "adapter": adapter},
+    )
+    with store.connect_factory(store.database_url) as connection:
+        due = connection.execute(
+            "SELECT next_refresh_at FROM gary_sources WHERE id = %s",
+            (source_key,),
+        ).fetchone()
+    if due and due[0] is not None and due[0] > datetime.now(timezone.utc):
+        return None
     rows: list[tuple[Any, ...]] = []
     with store.connect_factory(store.database_url) as connection:
         rows = connection.execute(
@@ -121,8 +138,6 @@ def sync_radar_adapter(store: NeonStore, adapter: str, *, freshness_hours: int =
         ).fetchall()
     if not rows:
         return None
-    source_key = f"radar.{adapter}"
-    source_name = f"Radar canonical sync: {adapter}"
     with tempfile.TemporaryDirectory(prefix="gary-radar-sync-") as directory:
         root = Path(directory)
         calls = []
@@ -141,20 +156,12 @@ def sync_radar_adapter(store: NeonStore, adapter: str, *, freshness_hours: int =
         }
         manifest_path = root / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
-        store.register_source(
-            source_id=source_key,
-            adapter=f"radar-sync:{adapter}",
-            name=source_name,
-            seed_url=f"radar://{adapter}",
-            freshness_hours=freshness_hours,
-            config={"worker": "gary", "upstream": "radar", "adapter": adapter},
-        )
-        store.request_backfill(source_key)
-        return store.ingest_manifest(
+        run_id = store.ingest_manifest(
             manifest_path,
             source_id=source_key,
-            mode="refresh",
+            mode="backfill",
             source_name=source_name,
             adapter=f"radar-sync:{adapter}",
             freshness_hours=freshness_hours,
         )
+        return run_id
