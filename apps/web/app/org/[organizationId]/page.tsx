@@ -66,7 +66,7 @@ export default async function PublicOrganizationPage({ params }: { params: Promi
       </section>
       <div className={styles.supporting}>
         <section><p className={styles.eyebrow}>About</p><h2>Organization information</h2><p>This Organization has not added an allowlisted public biography, official website, location, language, contact policy, logo, or public Program description yet.</p><small>Private domains are not converted into a public website link.</small></section>
-        <section><p className={styles.eyebrow}>Derived from Opportunities shown</p><h2>Opportunities have included</h2>{practiceLabels.length ? <ul className={styles.labels}>{practiceLabels.map((label) => <li key={label}>{label}</li>)}</ul> : <p>No canonical practice labels are available for the published Opportunities shown.</p>}<small>These labels describe the Opportunities above. They do not define, rate, or endorse the Organization.</small></section>
+        <section><p className={styles.eyebrow}>Derived from Opportunities shown</p><h2>Opportunities have included</h2>{practiceLabels.length ? <ul className={styles.labels}>{practiceLabels.map((label) => <li key={label}>{label}</li>)}</ul> : <p>No canonical field labels are available for the published Opportunities shown.</p>}<small>These labels describe the Opportunities above. They do not define, rate, or endorse the Organization.</small></section>
       </div>
       <footer className={styles.footer}><p>Public Organization profile · Confirm application details before submitting.</p><Link href="/opportunities">Browse Opportunities</Link></footer>
     </main>

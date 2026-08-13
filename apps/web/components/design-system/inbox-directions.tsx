@@ -26,6 +26,7 @@ import { useMemo, useState } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './inbox-directions.module.css'
 
 type Direction = 'queue' | 'briefing' | 'review'
@@ -96,7 +97,7 @@ const filterMap: Record<InboxFilter, ItemKind[]> = {
 function AppHeader() {
   return (
     <header className={styles.appHeader}>
-      <a href='#inbox-content' className={styles.wordmark}>Missa</a>
+      <MissaWordmark href='#inbox-content' size='app' className={styles.wordmark} />
       <nav aria-label='Primary navigation'><a href='#'>Opportunities</a><a href='#'>Tracker</a><a href='#'>Library</a></nav>
       <div className={styles.headerActions}><Button type='button' variant='ghost' size='icon' aria-label='Open Inbox'><Inbox aria-hidden='true' /></Button><Button type='button' variant='ghost' size='icon' className={styles.mobileMenu} aria-label='Open navigation'><Menu aria-hidden='true' /></Button><button type='button' className={styles.avatar} aria-label='Open Profile'>A</button></div>
     </header>

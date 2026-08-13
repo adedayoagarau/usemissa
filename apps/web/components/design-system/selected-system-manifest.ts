@@ -25,7 +25,7 @@ export const selectedSystemGroups: readonly SelectedSystemGroup[] = [
     items: [
       {
         title: 'Shared shell',
-        objective: 'Keep the active product, person, Organization, role, and next destination legible at every width.',
+        objective: 'Keep the canonical Missa wordmark, active product, person, Organization, role, and next destination legible at every width.',
         selectedPath: '/design-system/shell',
         comparisonPath: '/design-system/shell-directions',
         selection: '02 · Product switcher',
@@ -66,7 +66,7 @@ export const selectedSystemGroups: readonly SelectedSystemGroup[] = [
       },
       {
         title: 'Profile',
-        objective: 'Separate public identity, private preferences, practice taxonomy, and integration state.',
+        objective: 'Separate public identity, private preferences, field taxonomy, and integration state.',
         selectedPath: '/design-system/profile',
         comparisonPath: '/design-system/profile-directions',
         selection: '02 · Profile ledger',
@@ -93,7 +93,7 @@ export const selectedSystemGroups: readonly SelectedSystemGroup[] = [
       },
       {
         title: 'Library and Work',
-        objective: 'Retrieve reusable Work across visual, text, sound, performance, and mixed practices.',
+        objective: 'Retrieve reusable Work across visual, text, sound, performance, and interdisciplinary work.',
         selectedPath: '/design-system/library-work',
         selection: '02 · Working archive',
         surface: 'creator',

@@ -48,6 +48,7 @@ export {
   type ProfileCard,
   type ProfileDetail,
   type ProfileKind,
+  type ProfileMedia,
   type ProfileOpportunity,
   type ProfileRepository,
 } from "./profileRepository.js";
@@ -258,7 +259,17 @@ export {
   type PlatformMessageEffectStatus,
   updatePlatformCrmTaskStatus,
 } from "./platformAdminFoundations.js";
-export { createWaitlistSignup } from "./waitlist.js";
+export {
+  createWaitlistSignup,
+  readWaitlistAnalytics,
+  readWaitlistSignups,
+  type WaitlistAnalyticsDailyRow,
+  type WaitlistAnalyticsDimension,
+  type WaitlistAnalyticsReadModel,
+  type WaitlistAnalyticsRow,
+  type WaitlistSignupRow,
+  type WaitlistSignupReadModel,
+} from "./waitlist.js";
 export {
   GARY_QUEUE_ACTIONS,
   mutateGaryQueue,

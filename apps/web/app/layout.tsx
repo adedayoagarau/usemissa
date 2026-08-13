@@ -45,7 +45,11 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     type: 'website',
   },
-  twitter: { card: 'summary' },
+  twitter: { card: 'summary_large_image' },
+  icons: {
+    icon: [{ url: '/brand/missa-wordmark-80.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/brand/missa-wordmark-240.svg', type: 'image/svg+xml' }],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

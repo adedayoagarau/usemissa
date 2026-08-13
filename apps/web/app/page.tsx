@@ -75,7 +75,7 @@ export default async function HomePage() {
         <section className={styles.path} aria-labelledby="missa-path-heading">
           <header><p className={styles.eyebrow}>One connected path</p><h2 id="missa-path-heading">Decide, prepare, and remember</h2></header>
           <ol>
-            <li><span>01</span><strong>Read the independent facts</strong><p>Practice, eligibility, geography, fee, deadline, and Opportunity type remain separate.</p></li>
+            <li><span>01</span><strong>Read the independent facts</strong><p>Field, eligibility, geography, fee, deadline, and Opportunity type remain separate.</p></li>
             <li><span>02</span><strong>Save your decision</strong><p>Keep the Opportunity and your private next action in Tracker.</p></li>
             <li><span>03</span><strong>Prepare from the requirements</strong><p>Use the official call to decide which Work and materials belong.</p></li>
             <li><span>04</span><strong>Keep the record</strong><p>Submission receipts, decisions, and obligations stay attached to the right Work.</p></li>

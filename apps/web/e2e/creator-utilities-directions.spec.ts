@@ -64,7 +64,7 @@ test('Ask keeps parsed facts and official-source evidence without operational me
   await page.getByLabel('Creator utility', { exact: true }).selectOption('ask')
   await page.getByLabel('Creator utility edge state').selectOption('ask-results')
   await expect(page.getByText('Type · Fellowship')).toBeVisible()
-  await expect(page.getByText('Practice · Writing')).toBeVisible()
+  await expect(page.getByText('Field · Writing')).toBeVisible()
   await expect(page.getByText('Fee · No fee')).toBeVisible()
   await expect(page.getByText('Deadline · Closing soon')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Official source' }).first()).toBeVisible()

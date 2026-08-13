@@ -297,7 +297,7 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
       <div className={styles.toolbar}>
         <label className={styles.search}>
           <span>Search {view === 'answers' ? 'Saved Answers' : view}</span>
-          <span><Search aria-hidden="true" /><Input type="search" value={query} onChange={(event) => { const next = event.target.value; setQuery(next); writeUrl({ q: next }); }} placeholder={view === 'works' ? 'Title, file, or practice term' : view === 'files' ? 'Filename' : 'Saved Answer name'} /></span>
+          <span><Search aria-hidden="true" /><Input type="search" value={query} onChange={(event) => { const next = event.target.value; setQuery(next); writeUrl({ q: next }); }} placeholder={view === 'works' ? 'Title, file, or field term' : view === 'files' ? 'Filename' : 'Saved Answer name'} /></span>
         </label>
         <label className={styles.sort}>
           <span>Sort</span>
@@ -312,10 +312,10 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
           <article key={work.id} className={styles.workRow}>
             <span className={styles.workMark} aria-hidden="true">{work.title.slice(0, 1).toLocaleUpperCase()}</span>
             <div className={styles.identity}>
-              <p>{work.terms.slice(0, 2).map((term) => term.label).join(' · ') || 'Practice not described yet'}</p>
+              <p>{work.terms.slice(0, 2).map((term) => term.label).join(' · ') || 'Field not described yet'}</p>
               <h2>{work.title}</h2>
               {work.description ? <p>{excerpt(work.description)}</p> : <p className={styles.quiet}>No description yet.</p>}
-              {work.terms.length ? <div className={styles.terms} aria-label={`Practice terms for ${work.title}`}>{work.terms.slice(0, 4).map((term) => <span key={term.termId}>{term.label}</span>)}</div> : null}
+              {work.terms.length ? <div className={styles.terms} aria-label={`Field terms for ${work.title}`}>{work.terms.slice(0, 4).map((term) => <span key={term.termId}>{term.label}</span>)}</div> : null}
             </div>
             <dl className={styles.facts}>
               <div><dt>Current file</dt><dd>{work.file?.filename ?? 'No file linked'}</dd></div>
@@ -324,7 +324,7 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
             </dl>
             <Link href={workHref(work.id)} className={buttonVariants({ variant: 'outline' })}>Open Work</Link>
           </article>
-        ))}</div> : <EmptyState icon={<FolderOpen aria-hidden="true" />} title={query.trim() ? `No Works match “${query.trim()}”` : 'Begin with a Work, not a folder'} body={query.trim() ? 'Clear search or try a title, filename, or practice term.' : 'A Work keeps its current file, practice terms, and preparation connections together.'} action={query.trim() ? <Button type="button" variant="outline" onClick={() => setQuery('')}>Clear search</Button> : <Button type="button" onClick={() => setCreateOpen(true)}><Plus aria-hidden="true" />Create your first Work</Button>} />
+        ))}</div> : <EmptyState icon={<FolderOpen aria-hidden="true" />} title={query.trim() ? `No Works match “${query.trim()}”` : 'Begin with a Work, not a folder'} body={query.trim() ? 'Clear search or try a title, filename, or field term.' : 'A Work keeps its current file, field terms, and preparation connections together.'} action={query.trim() ? <Button type="button" variant="outline" onClick={() => setQuery('')}>Clear search</Button> : <Button type="button" onClick={() => setCreateOpen(true)}><Plus aria-hidden="true" />Create your first Work</Button>} />
       ) : null}
 
       {view === 'files' ? (
@@ -359,14 +359,14 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
           <form onSubmit={submitCreate}>
             <DialogHeader>
               <DialogTitle>{createLabel}</DialogTitle>
-              <DialogDescription>{view === 'works' ? 'Create one private creative object. Files and practice terms can be changed later without changing a submitted receipt.' : view === 'files' ? 'Upload one private file up to 100 MiB.' : 'Save reusable text privately. Reusing it later creates a separate submission answer.'}</DialogDescription>
+              <DialogDescription>{view === 'works' ? 'Create one private creative object. Files and field terms can be changed later without changing a submitted receipt.' : view === 'files' ? 'Upload one private file up to 100 MiB.' : 'Save reusable text privately. Reusing it later creates a separate submission answer.'}</DialogDescription>
             </DialogHeader>
             <div className={styles.formBody}>
               {view === 'works' ? <>
                 <div><Label htmlFor="new-work-title">Work title</Label><Input id="new-work-title" value={workTitle} onChange={(event) => setWorkTitle(event.target.value)} maxLength={200} required /><p>{workTitle.length}/200 characters</p></div>
                 <div><Label htmlFor="new-work-description">Description <span>Optional</span></Label><Textarea id="new-work-description" value={workDescription} onChange={(event) => setWorkDescription(event.target.value)} maxLength={4000} rows={4} /><p>{workDescription.length}/4,000 characters</p></div>
                 <div><Label htmlFor="new-work-file">Current file <span>Optional</span></Label><select id="new-work-file" value={workFileId} onChange={(event) => setWorkFileId(event.target.value)}><option value="">No file yet</option>{files.map((file) => <option key={file.id} value={file.id}>{file.filename}</option>)}</select><p>Only the current file is linked today. Submitted files remain in their receipts.</p></div>
-                <fieldset><legend>Practice terms <span>Optional · up to 32</span></legend><TaxonomyBrowsePicker idPrefix="create-library-work" selectedTermIds={workTermIds} onSelectedTermIdsChange={setWorkTermIds} description="Describe the Work across independent facets. These terms stay private and do not determine eligibility or quality." /></fieldset>
+                <fieldset><legend>Field terms <span>Optional · up to 32</span></legend><TaxonomyBrowsePicker idPrefix="create-library-work" selectedTermIds={workTermIds} onSelectedTermIdsChange={setWorkTermIds} description="Describe the Work across independent facets. These terms stay private and do not determine eligibility or quality." /></fieldset>
               </> : null}
               {view === 'files' ? <div><Label htmlFor="library-file">Choose file</Label><Input id="library-file" type="file" disabled={!storageReady || busy} onChange={(event) => setUploadFile(event.target.files?.[0])} required /><p>{storageReady ? '1 byte to 100 MiB. Preview support depends on file type.' : 'Private file storage is unavailable in this environment.'}</p></div> : null}
               {view === 'answers' ? <><div><Label htmlFor="answer-name">Saved Answer name</Label><Input id="answer-name" value={answerName} onChange={(event) => setAnswerName(event.target.value)} maxLength={120} required /><p>{answerName.length}/120 characters</p></div><div><Label htmlFor="answer-body">Answer</Label><Textarea id="answer-body" value={answerBody} onChange={(event) => setAnswerBody(event.target.value)} maxLength={20000} rows={9} required /><p>{answerBody.length}/20,000 characters · {words(answerBody)} words</p></div></> : null}

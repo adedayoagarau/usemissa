@@ -28,6 +28,7 @@ import { useId, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './shell-directions.module.css'
 
 type Direction = 'masthead' | 'switcher' | 'rail'
@@ -153,7 +154,7 @@ function DirectionIntro({ direction, selectedOnly }: { direction: Direction; sel
 
 function ProductIdentity({ shell, fixture, compact = false }: { shell: Shell; fixture: Fixture; compact?: boolean }) {
   const name = shell === 'organization' ? organizationName(fixture) : shellLabels[shell]
-  return <div className={styles.productIdentity} data-compact={compact}><strong>Missa</strong>{shell === 'public' ? null : <><span aria-hidden='true'>/</span><em dir='auto'>{name}</em></>}</div>
+  return <div className={styles.productIdentity} data-compact={compact}><MissaWordmark href={null} size={compact ? 'compact' : 'app'} />{shell === 'public' ? null : <><span aria-hidden='true'>/</span><em dir='auto'>{name}</em></>}</div>
 }
 
 function ProductSwitch({ shell, fixture }: { shell: Shell; fixture: Fixture }) {

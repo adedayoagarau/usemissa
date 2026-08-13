@@ -148,7 +148,7 @@ export default function BadgeDesignReviewPage() {
           </div>
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Rule title="Status first">Use text plus semantic color. Never rely on color alone.</Rule>
-            <Rule title="Taxonomy second">Practice terms stay neutral and should not look like workflow states.</Rule>
+            <Rule title="Taxonomy second">Field terms stay neutral and should not look like workflow states.</Rule>
             <Rule title="Organization density">Small badges are for compact tables, queues, and summaries—not tiny body copy.</Rule>
             <Rule title="Marketing boundary">Gradient and expressive treatments stay outside routine creator and organization work.</Rule>
           </div>

@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useState } from 'react';
-import { Menu, Search, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import styles from './missa-site-header.module.css';
+import Link from "next/link";
+import { useState } from "react";
+import { Menu, Search, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MissaWordmark } from "@/components/missa-wordmark";
+import styles from "./missa-site-header.module.css";
 
 export type HeaderSession = {
   email: string;
@@ -12,34 +13,52 @@ export type HeaderSession = {
 } | null;
 
 const signedInLinks = [
-  { href: '/opportunities', label: 'Opportunities' },
-  { href: '/tracker', label: 'Tracker' },
-  { href: '/library', label: 'Library' },
-  { href: '/guides', label: 'Guides' },
+  { href: "/opportunities", label: "Opportunities" },
+  { href: "/journals", label: "Journals & presses" },
+  { href: "/tracker", label: "Tracker" },
+  { href: "/library", label: "Library" },
+  { href: "/guides", label: "Guides" },
 ] as const;
 
 const publicLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/opportunities', label: 'Opportunities' },
-  { href: '/guides', label: 'Guides' },
-  { href: '/for-organizations', label: 'For organizations' },
+  { href: "/", label: "Home" },
+  { href: "/opportunities", label: "Opportunities" },
+  { href: "/journals", label: "Journals & presses" },
+  { href: "/guides", label: "Guides" },
+  { href: "/for-organizations", label: "For organizations" },
 ] as const;
 
-export function MissaSiteHeader({ session, current = 'Opportunities' }: { session: HeaderSession; current?: string }) {
+export function MissaSiteHeader({
+  session,
+  current = "Opportunities",
+}: {
+  session: HeaderSession;
+  current?: string;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const links = session ? signedInLinks : publicLinks;
-  const visibleLinks = session?.hasOrganization ? [...links, { href: '/workspace', label: 'Organization' }] : links;
+  const visibleLinks = session?.hasOrganization
+    ? [...links, { href: "/workspace", label: "Organization" }]
+    : links;
 
   return (
     <header className={styles.header}>
-      <a className={styles.skipLink} href="#main-content">Skip to content</a>
+      <a className={styles.skipLink} href="#main-content">
+        Skip to content
+      </a>
       <div className={styles.inner}>
-        <Link href={session ? '/home' : '/'} className="missa-wordmark missa-wordmark--app" aria-label="Missa home">
-          Missa
-        </Link>
+        <MissaWordmark
+          href={session ? "/home" : "/"}
+          size="app"
+          className={styles.brandLink}
+        />
         <nav className={styles.desktopNav} aria-label="Primary navigation">
           {visibleLinks.map((link) => (
-            <Link key={link.href} href={link.href} aria-current={link.label === current ? 'page' : undefined}>
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={link.label === current ? "page" : undefined}
+            >
               {link.label}
             </Link>
           ))}
@@ -47,17 +66,32 @@ export function MissaSiteHeader({ session, current = 'Opportunities' }: { sessio
         <div className={styles.actions}>
           {session ? (
             <>
-              <Button nativeButton={false} render={<Link href="/opportunities" />} variant="ghost" size="icon" aria-label="Search Missa">
+              <Button
+                nativeButton={false}
+                render={<Link href="/opportunities" />}
+                variant="ghost"
+                size="icon"
+                aria-label="Search Missa"
+              >
                 <Search aria-hidden="true" />
               </Button>
-              <Link href="/profile" className={styles.avatar} aria-label="Open Profile">
+              <Link
+                href="/profile"
+                className={styles.avatar}
+                aria-label="Open Profile"
+              >
                 {session.email.slice(0, 1).toUpperCase()}
               </Link>
             </>
           ) : (
             <div className={styles.authActions}>
               <Link href="/login?next=%2Fopportunities">Log in</Link>
-              <Button nativeButton={false} render={<Link href="/signup?next=%2Fopportunities" />} size="sm" className={styles.createButton}>
+              <Button
+                nativeButton={false}
+                render={<Link href="/signup?next=%2Fopportunities" />}
+                size="sm"
+                className={styles.createButton}
+              >
                 Create account
               </Button>
             </div>
@@ -67,25 +101,44 @@ export function MissaSiteHeader({ session, current = 'Opportunities' }: { sessio
             variant="outline"
             size="icon"
             className={styles.mobileButton}
-            aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
+            aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((open) => !open)}
           >
-            {mobileOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+            {mobileOpen ? (
+              <X aria-hidden="true" />
+            ) : (
+              <Menu aria-hidden="true" />
+            )}
           </Button>
         </div>
       </div>
       {mobileOpen ? (
         <nav className={styles.mobileNav} aria-label="Mobile navigation">
           {visibleLinks.map((link) => (
-            <Link key={link.href} href={link.href} aria-current={link.label === current ? 'page' : undefined} onClick={() => setMobileOpen(false)}>
+            <Link
+              key={link.href}
+              href={link.href}
+              aria-current={link.label === current ? "page" : undefined}
+              onClick={() => setMobileOpen(false)}
+            >
               {link.label}
             </Link>
           ))}
           {!session ? (
             <>
-              <Link href="/login?next=%2Fopportunities" onClick={() => setMobileOpen(false)}>Log in</Link>
-              <Link href="/signup?next=%2Fopportunities" onClick={() => setMobileOpen(false)}>Create account</Link>
+              <Link
+                href="/login?next=%2Fopportunities"
+                onClick={() => setMobileOpen(false)}
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signup?next=%2Fopportunities"
+                onClick={() => setMobileOpen(false)}
+              >
+                Create account
+              </Link>
             </>
           ) : null}
         </nav>

@@ -30,6 +30,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { MissaWordmark } from "@/components/missa-wordmark";
 
 type NavItem = {
   href: string;
@@ -46,6 +47,7 @@ const operateLinks: NavItem[] = [
   { href: "/admin/operations", label: "Operations", icon: ListChecks },
   { href: "/admin/agents", label: "Agents", icon: Bot },
   { href: "/admin/radar", label: "Opportunity sources", icon: Radar },
+  { href: "/admin/ingestion-v2", label: "Ingestion v2", icon: Activity },
   { href: "/admin/system", label: "System", icon: Settings2 },
 ];
 
@@ -60,6 +62,7 @@ const serveLinks: NavItem[] = [
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/organizations", label: "Organizations", icon: Building2 },
   { href: "/admin/crm", label: "CRM", icon: Users },
+  { href: "/admin/waitlist", label: "Waitlist", icon: Mail },
   { href: "/admin/support", label: "Support", icon: LifeBuoy },
   { href: "/admin/messaging", label: "Messaging", icon: Mail },
 ];
@@ -133,9 +136,7 @@ function Navigation({
           href="/admin"
           className="block focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
         >
-          <span className="block font-heading text-xl font-semibold tracking-tight text-foreground">
-            Missa
-          </span>
+          <MissaWordmark href={null} size="compact" className="text-foreground" />
           <span className="mt-0.5 block text-xs text-muted-foreground">
             Platform Admin
           </span>
@@ -200,9 +201,7 @@ export function AdminShellNav({ email }: { email: string }) {
           href="/admin"
           className="focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
         >
-          <span className="font-heading text-lg font-semibold tracking-tight text-foreground">
-            Missa
-          </span>
+          <MissaWordmark href={null} size="compact" className="text-foreground" />
           <span className="ml-2 text-xs text-muted-foreground">
             Platform Admin
           </span>

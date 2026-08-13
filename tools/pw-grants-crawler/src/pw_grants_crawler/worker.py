@@ -51,6 +51,7 @@ class WorkerConfig:
     profile_request_delay: float = 10.0
     profile_freshness_hours: int = 168
     max_profile_images: int = 1
+    profile_only: bool = False
     radar_sync_adapters: tuple[str, ...] = ()
     radar_sync_only: bool = False
 
@@ -262,7 +263,7 @@ def run_worker(
         harness.heartbeat("crawler", owner, "starting", release=release)
     while True:
         run_id = None
-        if not config.radar_sync_only:
+        if not config.profile_only and not config.radar_sync_only:
             run_id = run_once(
                 config, store, owner=owner, force_backfill=force_backfill,
                 harness=harness, release=release,
@@ -344,6 +345,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run only the call/calendar source, leaving profile backfill/freshness to another process.",
     )
     parser.add_argument(
+        "--profile-only",
+        action="store_true",
+        default=os.environ.get("GARY_PROFILE_ONLY", "").casefold() in {"1", "true", "yes", "on"},
+        help="Run only the profile backfill/freshness lane; do not claim the call/calendar source.",
+    )
+    parser.add_argument(
         "--profile-kind",
         choices=("literary_magazine", "small_press", "both"),
         default=os.environ.get("GARY_PROFILE_KIND", "both"),
@@ -421,6 +428,7 @@ def main(argv: list[str] | None = None) -> int:
         profile_request_delay=args.profile_request_delay,
         profile_freshness_hours=args.profile_freshness_hours,
         max_profile_images=args.max_profile_images,
+        profile_only=args.profile_only,
         radar_sync_adapters=radar_sync_adapters,
         radar_sync_only=args.radar_sync_only,
     )

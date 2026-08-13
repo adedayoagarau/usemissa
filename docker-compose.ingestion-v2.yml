@@ -1,0 +1,11 @@
+services:
+  ingestion-v2-redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - ingestion-v2-redis:/data
+
+volumes:
+  ingestion-v2-redis:

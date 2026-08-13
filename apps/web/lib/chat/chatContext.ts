@@ -189,7 +189,7 @@ export function buildOpportunityAssistantPayload(plan: OpportunitySearchPlan, pa
     const options = clarification.options.map((option) => `${option.label} (${option.facet.replaceAll('-', ' ')})`).join(' or ');
     return {
       intent: 'opportunity-search',
-      answer: `“${clarification.phrase}” can mean more than one practice category in Missa. Do you mean ${options}?`,
+      answer: `“${clarification.phrase}” can mean more than one field category in Missa. Do you mean ${options}?`,
       search: {
         ...(plan.query ? { query: plan.query } : {}),
         types: plan.types,
@@ -205,7 +205,7 @@ export function buildOpportunityAssistantPayload(plan: OpportunitySearchPlan, pa
   const results = page.items.map(resultFor);
   const evidence = results.map((result) => result.source);
   const searchLabel = plan.query || (plan.types.length ? plan.types.join(', ') : 'published opportunities');
-  const answer = results.length > 0 ? `I found ${page.total} published ${searchLabel} record${page.total === 1 ? '' : 's'}. The first ${results.length} are below with their official-source links. Review consequential details on the source before acting. ${results.slice(0, 3).map(resultSummary).join(' ')}` : `I could not find a published Opportunity matching “${searchLabel}” in Missa’s current collection. Try a broader practice, Opportunity type, or fee description.`;
+  const answer = results.length > 0 ? `I found ${page.total} published ${searchLabel} record${page.total === 1 ? '' : 's'}. The first ${results.length} are below with their official-source links. Review consequential details on the source before acting. ${results.slice(0, 3).map(resultSummary).join(' ')}` : `I could not find a published Opportunity matching “${searchLabel}” in Missa’s current collection. Try a broader field, Opportunity type, or fee description.`;
 
   return {
     intent: 'opportunity-search',

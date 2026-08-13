@@ -60,9 +60,9 @@ test('Profile field failures and preference conflicts remain associated and dura
   await expect(page.getByRole('status')).toContainText('Identity could not be saved')
 
   await page.getByLabel('Edge state').selectOption('preference-conflict')
-  await expect(page.getByText('Two practice choices conflict')).toBeVisible()
+  await expect(page.getByText('Two field choices conflict')).toBeVisible()
   await page.getByRole('button', { name: 'Save preferences' }).click()
-  await expect(page.getByRole('status')).toContainText('Resolve the practice conflict before saving')
+  await expect(page.getByRole('status')).toContainText('Resolve the field conflict before saving')
 })
 
 test('selected Profile has no detectable WCAG A or AA violations in core sections', async ({ page }) => {

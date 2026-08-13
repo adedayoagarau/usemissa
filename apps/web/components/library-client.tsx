@@ -156,12 +156,12 @@ export function LibraryClient() {
 
     {tab === 'works' && <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
       <Card className="bg-white">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Plus className="size-4" aria-hidden="true" />Add a Work</CardTitle><p className="text-sm text-muted-foreground">Keep a work’s title, context, and canonical practice terms ready for future submissions.</p></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Plus className="size-4" aria-hidden="true" />Add a Work</CardTitle><p className="text-sm text-muted-foreground">Keep a work’s title, context, and canonical field terms ready for future submissions.</p></CardHeader>
         <CardContent>
           <form className="space-y-3" onSubmit={addWork}>
             <Input aria-label="Work title" placeholder="Work title" value={workTitle} onChange={(event) => setWorkTitle(event.target.value)} className="min-h-11" />
             <Textarea aria-label="Work description" placeholder="Short description (optional)" value={workDescription} onChange={(event) => setWorkDescription(event.target.value)} />
-            <fieldset className="space-y-2 rounded-lg border border-border p-3"><legend className="px-1 text-sm font-medium text-foreground">Work practice terms</legend><TaxonomyBrowsePicker idPrefix="new-work-taxonomy" selectedTermIds={workTaxonomyTermIds} onSelectedTermIdsChange={setWorkTaxonomyTermIds} description="These private terms help Missa explain why an opportunity may fit this Work." /></fieldset>
+            <fieldset className="space-y-2 rounded-lg border border-border p-3"><legend className="px-1 text-sm font-medium text-foreground">Work field terms</legend><TaxonomyBrowsePicker idPrefix="new-work-taxonomy" selectedTermIds={workTaxonomyTermIds} onSelectedTermIdsChange={setWorkTaxonomyTermIds} description="These private terms help Missa explain why an opportunity may fit this Work." /></fieldset>
             <Button className={buttonClass} disabled={busy || !workTitle.trim()}>Save Work</Button>
           </form>
         </CardContent>

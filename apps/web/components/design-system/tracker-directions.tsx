@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './tracker-directions.module.css'
 
 type Direction = 'attention' | 'board' | 'works'
@@ -134,7 +135,7 @@ function ReviewBar({ direction, setDirection, fixture, setFixture }: {
 function AppHeader() {
   return (
     <header className={styles.appHeader}>
-      <a href='#tracker-content' className={styles.wordmark}>Missa</a>
+      <MissaWordmark href='#tracker-content' size='app' className={styles.wordmark} />
       <nav aria-label='Primary navigation'>
         <a href='#'>Opportunities</a>
         <a href='#' aria-current='page'>Tracker</a>

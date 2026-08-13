@@ -8,6 +8,7 @@ import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuL
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Menu, X } from 'lucide-react';
+import { MissaWordmark } from '@/components/missa-wordmark';
 
 /** Shared authenticated identity shell. Tracker owns Submissions and Calendar;
  * Inbox and Profile remain utilities rather than competing primary products. */
@@ -84,9 +85,7 @@ export function AppNav({ email, userId, isAdmin = false, organizations = [] }: {
 
   return (
     <header className="relative z-50 flex min-w-0 items-center gap-3 border-b border-border bg-white px-4 py-3 sm:px-6">
-      <Link href="/" className="shrink-0 font-heading text-xl font-semibold text-foreground">
-        Missa
-      </Link>
+      <MissaWordmark size="app" className="shrink-0 text-foreground" />
 
       <NavigationMenu className="hidden lg:block">
         <NavigationMenuList className="gap-4">

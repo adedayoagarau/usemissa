@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './organization-insights-directions.module.css'
 
 type Direction = 'brief' | 'program' | 'analysis'
@@ -153,7 +154,7 @@ const fixtures: Array<{ value: Fixture; label: string }> = [
   { value: 'timezone', label: 'Organization timezone missing' },
   { value: 'incomparable', label: 'Previous period not comparable' },
   { value: 'large', label: 'Large portfolio' },
-  { value: 'multi-taxonomy', label: 'Works with multiple practice terms' },
+  { value: 'multi-taxonomy', label: 'Works with multiple field terms' },
   { value: 'deprecated-taxonomy', label: 'Deprecated taxonomy term' },
   { value: 'small-sensitive', label: 'Sensitive slice below threshold' },
   { value: 'reviewer', label: 'Reviewer projection' },
@@ -323,7 +324,7 @@ function fixtureData(fixture: Fixture): InsightData {
     return { ...base, taxonomy: [{ id: 'fiction', label: 'Fiction', works: 180 }, { id: 'poetry', label: 'Poetry', works: 141 }, { id: 'essay', label: 'Essay', works: 92 }], note: 'A Work can appear in more than one term row, so these counts do not add to the total number of Works.' }
   }
   if (fixture === 'deprecated-taxonomy') {
-    return { ...base, taxonomy: [...baseTaxonomy, { id: 'legacy-intermedia', label: 'Intermedia', works: 7, deprecated: true }], note: 'Historical Works keep their recorded term. New classification uses the current practice taxonomy.' }
+    return { ...base, taxonomy: [...baseTaxonomy, { id: 'legacy-intermedia', label: 'Intermedia', works: 7, deprecated: true }], note: 'Historical Works keep their recorded term. New classification uses the current field taxonomy.' }
   }
   if (fixture === 'small-sensitive') {
     return { ...base, suppressedSensitive: true, note: 'This sensitive slice contains fewer than 10 records. Its values and complementary cells are withheld.' }
@@ -590,14 +591,14 @@ function TaxonomyPanel({ data }: { data: InsightData }) {
     <Card className={styles.panel}>
       <CardHeader className={styles.panelHeader}>
         <div>
-          <CardTitle>Practice lens</CardTitle>
+          <CardTitle>Field lens</CardTitle>
           <CardDescription>One independent facet at a time. A Work may appear in more than one row.</CardDescription>
         </div>
         <label className={styles.compactControl}>
           <span>Facet</span>
           <Select defaultValue="practice">
-            <SelectTrigger aria-label="Practice facet"><SelectValue>{(value: string) => ({ practice: 'Practice', form: 'Form', discipline: 'Discipline' })[value] ?? value}</SelectValue></SelectTrigger>
-            <SelectContent><SelectItem value="practice">Practice</SelectItem><SelectItem value="form">Form</SelectItem><SelectItem value="discipline">Discipline</SelectItem></SelectContent>
+            <SelectTrigger aria-label="Field facet"><SelectValue>{(value: string) => ({ practice: 'Field', form: 'Form', discipline: 'Discipline' })[value] ?? value}</SelectValue></SelectTrigger>
+            <SelectContent><SelectItem value="practice">Field</SelectItem><SelectItem value="form">Form</SelectItem><SelectItem value="discipline">Discipline</SelectItem></SelectContent>
           </Select>
         </label>
       </CardHeader>
@@ -608,8 +609,8 @@ function TaxonomyPanel({ data }: { data: InsightData }) {
           <div className={styles.taxonomyList}>
             {data.taxonomy.map((row) => <div key={row.id}><span><b>{row.label}</b>{row.deprecated ? <Badge variant="outline">Historical term</Badge> : null}</span><p>{formatNumber(row.works)} <small>Works tagged</small></p></div>)}
           </div>
-        ) : <p className={styles.panelEmpty}>No practice terms are recorded in this scope.</p>}
-        <p className={styles.nonAdditive}><Info aria-hidden="true" />These rows are non-additive. Practice does not determine eligibility, geography, outcome, or quality.</p>
+        ) : <p className={styles.panelEmpty}>No field terms are recorded in this scope.</p>}
+        <p className={styles.nonAdditive}><Info aria-hidden="true" />These rows are non-additive. Field does not determine eligibility, geography, outcome, or quality.</p>
       </CardContent>
     </Card>
   )
@@ -737,7 +738,7 @@ function OrganizationInsightsExperience({ selectedOnly }: { selectedOnly: boolea
 
       <section className={styles.screen} aria-label={`${activeDirection.name} preview`}>
         <nav className={styles.topbar} aria-label="Organization navigation">
-          <a href="#insights" className={styles.wordmark}>MISSA</a>
+          <MissaWordmark href="#insights" size="app" className={styles.wordmark} />
           <div className={styles.organizationIdentity}><span>Organization</span><b>{data.organization}</b></div>
           <div className={styles.topLinks}><a href="#opportunities">Opportunities</a><a href="#submissions">Submissions</a><a href="#reviews">Reviews</a><a href="#insights" aria-current="page">Insights</a></div>
           <Button variant="ghost" size="icon" className={styles.menuButton} aria-label="Open Organization navigation"><Menu aria-hidden="true" /></Button>

@@ -89,35 +89,49 @@ body {
   font-optical-sizing: auto;
 }
 
-/* Canonical brand mark: uppercase MISSA with generous tracking. */
+/* Canonical custom Missa wordmark. Each size uses its optically spaced SVG. */
 .missa-wordmark {
+  --missa-wordmark-art: url('/brand/missa-wordmark-120.svg');
+
   display: inline-flex;
-  width: fit-content;
+  width: 7.5rem;
   align-items: center;
   color: currentColor;
-  font-family: var(--font-sans), system-ui, sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.28em;
-  line-height: 1;
   text-decoration: none;
-  text-transform: uppercase;
-  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.missa-wordmark__art {
+  display: block;
+  width: 100%;
+  aspect-ratio: 131 / 29;
+  background: currentColor;
+  mask: var(--missa-wordmark-art) center / contain no-repeat;
+  -webkit-mask: var(--missa-wordmark-art) center / contain no-repeat;
 }
 
 .missa-wordmark--marketing {
-  font-size: 1.2rem;
-  letter-spacing: 0.34em;
+  --missa-wordmark-art: url('/brand/missa-wordmark-240.svg');
+
+  width: 10rem;
+}
+
+.missa-wordmark--marketing .missa-wordmark__art {
+  aspect-ratio: 265 / 57;
 }
 
 .missa-wordmark--app {
-  font-size: 1rem;
-  font-weight: 600;
+  width: 7.5rem;
 }
 
 .missa-wordmark--compact {
-  font-size: 0.74rem;
-  font-weight: 600;
-  letter-spacing: 0.24em;
+  --missa-wordmark-art: url('/brand/missa-wordmark-80.svg');
+
+  width: 5rem;
+}
+
+.missa-wordmark--compact .missa-wordmark__art {
+  aspect-ratio: 89 / 18;
 }
 
 .missa-wordmark--inverse {

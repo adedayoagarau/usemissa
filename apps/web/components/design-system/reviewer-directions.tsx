@@ -42,6 +42,7 @@ import { Button } from '@/components/ui/button'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './reviewer-directions.module.css'
 
 type Direction = 'focused' | 'desk' | 'packet'
@@ -107,7 +108,7 @@ function isFixture(value: string): value is Fixture {
 }
 
 function Header() {
-  return <header className={styles.header}><a href='#reviewer-main' className={styles.wordmark}>Missa</a><nav aria-label='Reviewer navigation'><a href='#reviewer-main' aria-current='page'>Reviews</a><a href='#help'>Help</a></nav><div><Button type='button' size='icon' variant='ghost' aria-label='Open Inbox'><Inbox aria-hidden='true' /></Button><Button type='button' size='icon' variant='ghost' className={styles.menuButton} aria-label='Open navigation'><Menu aria-hidden='true' /></Button><button type='button' className={styles.avatar} aria-label='Open Profile'>AO</button></div></header>
+  return <header className={styles.header}><MissaWordmark href='#reviewer-main' size='app' className={styles.wordmark} /><nav aria-label='Reviewer navigation'><a href='#reviewer-main' aria-current='page'>Reviews</a><a href='#help'>Help</a></nav><div><Button type='button' size='icon' variant='ghost' aria-label='Open Inbox'><Inbox aria-hidden='true' /></Button><Button type='button' size='icon' variant='ghost' className={styles.menuButton} aria-label='Open navigation'><Menu aria-hidden='true' /></Button><button type='button' className={styles.avatar} aria-label='Open Profile'>AO</button></div></header>
 }
 
 function ReviewControls({ direction, fixture, selectedOnly, onDirection, onFixture }: { direction: Direction; fixture: Fixture; selectedOnly: boolean; onDirection: (value: Direction) => void; onFixture: (value: Fixture) => void }) {

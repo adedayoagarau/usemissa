@@ -7,7 +7,7 @@ import styles from './org.module.css';
 export const metadata = pageMetadata({ title: 'Run creative Opportunities with Missa', description: 'Publish clear calls, receive multi-Work Submissions, assign review, record per-Work decisions, and keep communication attached to the right record.', path: '/for-organizations' });
 
 const capabilities = [
-  { title: 'Publish a clear Opportunity', state: 'Available', copy: 'Keep Opportunity type, practice, eligibility, geography, dates, fee, guidelines, and form as separate facts.' },
+  { title: 'Publish a clear Opportunity', state: 'Available', copy: 'Keep Opportunity type, field, eligibility, geography, dates, fee, guidelines, and form as separate facts.' },
   { title: 'Receive multi-Work Submissions', state: 'Available', copy: 'One Submission can contain several Works without flattening their evidence or outcomes into one record.' },
   { title: 'Assign focused reviews', state: 'Limited', copy: 'Review assignments and evidence exist, while complete assignment-only access and every recovery path remain under active product review.' },
   { title: 'Record per-Work decisions', state: 'Available', copy: 'Each Work keeps its own decision. A Submission summary is derived from those outcomes.' },

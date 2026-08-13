@@ -155,7 +155,7 @@ function FitExplanation() {
         </div>
       </CardHeader>
       <CardContent className='space-y-2 text-sm leading-6 text-muted-foreground'>
-        <p><span className='font-medium text-foreground'>Your practice:</span> poetry and visual writing.</p>
+        <p><span className='font-medium text-foreground'>Your field:</span> poetry and visual writing.</p>
         <p><span className='font-medium text-foreground'>Their requirement:</span> short-form literary work.</p>
         <p className='border-l-2 border-ochre pl-3 text-ochre-deep'>Confirm the location requirement before preparing your work.</p>
       </CardContent>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Building2, ChevronDown, Menu, Search, UserRound, X } from 'lucide-react';
 import type { OrganizationDestination } from '@/lib/organizationProduct';
+import { MissaWordmark } from '@/components/missa-wordmark';
 import styles from './organization-product-shell.module.css';
 
 type OrganizationOption = { id: string; name: string; roleLabel: string };
@@ -41,7 +42,7 @@ export function OrganizationProductShell({ children, organization, organizations
   return <div className={styles.product}>
     <a href="#organization-main" className={styles.skip}>Skip to Organization content</a>
     <header className={styles.topbar}>
-      <Link href="/" className={styles.wordmark}>Missa</Link>
+      <MissaWordmark size="app" className={styles.wordmark} />
       <div className={styles.productSwitch}><Link href="/profile"><UserRound aria-hidden="true" />Profile</Link><span aria-current="page"><Building2 aria-hidden="true" />Organization</span></div>
       <button ref={commandButtonRef} type="button" className={styles.commandButton} onClick={() => setCommandOpen(true)}><Search aria-hidden="true" />Search Organization</button>
       <Link href="/profile" className={styles.avatar} aria-label="Open Profile">P</Link>

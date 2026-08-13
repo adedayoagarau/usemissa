@@ -73,7 +73,7 @@ Account: **Log in · Create account** or **Open Missa** when signed in.
 
 Rules:
 
-- the wordmark returns to public Home;
+- the canonical custom wordmark returns to public Home and is rendered through `MissaWordmark`, never reconstructed as text;
 - the current section is marked semantically and visually;
 - Create account remains visible in the mobile navigation;
 - public Opportunity browse/detail share the same shell whether signed in or out;

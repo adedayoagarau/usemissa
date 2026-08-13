@@ -15,7 +15,7 @@ test('public deadline and fee labels never invent missing facts', () => {
   assert.equal(publicFeeLabel({ fee: { status: 'no-fee' } } as never), 'No application fee');
 });
 
-test('practice labels derive only from supported canonical facets and remain bounded', () => {
+test('field labels derive only from supported canonical facets and remain bounded', () => {
   const labels = publicPracticeLabels([{ taxonomy: { schemeVersion: 1, termIds: ['taxterm_pf-writing-and-literature', 'taxterm_role-editor', 'taxterm_language-english'], primaryTermIds: [] } } as never], 2);
   assert.equal(labels.length, 2);
   assert.ok(labels.every((label) => label !== 'Editor'));

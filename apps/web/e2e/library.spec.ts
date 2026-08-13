@@ -41,7 +41,7 @@ test('Working Archive keeps URL state and opens a canonical private Work detail'
   await expect(page.getByText(/cannot yet prove which Library revision was sent/i)).toBeVisible();
   await page.screenshot({ path: 'outputs/work-detail-product-desktop.png', fullPage: true });
 
-  await page.getByRole('button', { name: 'Practice', exact: true }).click();
+  await page.getByRole('button', { name: 'Field', exact: true }).click();
   await expect(page).toHaveURL(/section=practice/);
   await expect(page.getByRole('heading', { name: 'Describe the Work, not its eligibility' })).toBeVisible();
 

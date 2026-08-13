@@ -47,6 +47,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './organization-messages-delivery-directions.module.css'
 
 type Direction = 'ledger' | 'outcome' | 'runbook'
@@ -304,7 +305,7 @@ function AppHeader() {
   return (
     <header className={styles.appHeader}>
       <a href='#main-content' className={styles.skipLink}>Skip to content</a>
-      <a href='#' className={`${styles.wordmark} missa-wordmark missa-wordmark--app`}>Missa</a>
+      <MissaWordmark href='#' size='app' className={styles.wordmark} />
       <nav aria-label='Product navigation'><a href='#'>Profile</a><a href='#' aria-current='page'>Organization</a></nav>
       <div className={styles.headerActions}>
         <Button type='button' variant='outline' size='sm'><Search aria-hidden='true' />Search <span>⌘K</span></Button>

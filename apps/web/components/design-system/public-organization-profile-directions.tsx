@@ -39,6 +39,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './public-organization-profile-directions.module.css'
 
 type Direction = 'editorial' | 'opportunity' | 'program'
@@ -299,7 +300,7 @@ function OpportunityCard({ item, feature = false }: { item: Opportunity; feature
           <div><dt><CalendarDays />Deadline</dt><dd className={item.deadlineTone === 'danger' ? styles.dangerText : item.deadlineTone === 'warning' ? styles.warningText : undefined}>{item.deadline}</dd></div>
           <div><dt><CircleDollarSign />Fee</dt><dd>{item.fee}</dd></div>
         </dl>
-        {item.labels.length > 0 && <div className={styles.labelRow} aria-label="Practices included">{item.labels.slice(0, 4).map((label) => <Badge key={label} variant="outline">{label}</Badge>)}</div>}
+        {item.labels.length > 0 && <div className={styles.labelRow} aria-label="Fields included">{item.labels.slice(0, 4).map((label) => <Badge key={label} variant="outline">{label}</Badge>)}</div>}
         <Button className={styles.openButton}>Open Opportunity <ArrowRight /></Button>
       </div>
     </article>
@@ -312,7 +313,7 @@ function OpportunityCollection({ scenario, featured = false }: { scenario: Scena
   if (scenario.opportunities.length === 0) return <div className={styles.emptyState}><Radio /><h2>No active Opportunities</h2><p>This Organization has not published an active Opportunity. Following is the simplest way to return when one appears.</p></div>
   return (
     <section className={styles.opportunitySection} aria-labelledby="active-opportunities-heading">
-      <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Current choices</p><h2 id="active-opportunities-heading">Active Opportunities</h2><p>{scenario.opportunities.length} published {scenario.opportunities.length === 1 ? 'Opportunity' : 'Opportunities'}</p></div>{scenario.opportunities.length > 8 && <label className={styles.searchField}><span>Search this Organization’s Opportunities</span><div><Search /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, Program, or practice" /></div></label>}</div>
+      <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Current choices</p><h2 id="active-opportunities-heading">Active Opportunities</h2><p>{scenario.opportunities.length} published {scenario.opportunities.length === 1 ? 'Opportunity' : 'Opportunities'}</p></div>{scenario.opportunities.length > 8 && <label className={styles.searchField}><span>Search this Organization’s Opportunities</span><div><Search /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search title, Program, or field" /></div></label>}</div>
       <div className={`${styles.opportunityGrid} ${featured ? styles.featuredGrid : ''}`}>{visible.map((item, index) => <OpportunityCard key={item.id} item={item} feature={featured && index === 0} />)}</div>
       {scenario.opportunities.length > visible.length && <div className={styles.paginationNote}><span>Showing {visible.length} of {scenario.opportunities.length}</span><Button variant="outline">View all Opportunities <ChevronRight /></Button></div>}
     </section>
@@ -323,7 +324,7 @@ function SupportingProfile({ scenario }: { scenario: Scenario }) {
   return (
     <div className={styles.supportingGrid}>
       <section aria-labelledby="about-heading"><p className={styles.eyebrow}>Organization</p><h2 id="about-heading">About</h2><p>{scenario.about ?? 'This Organization has not added a public description yet.'}</p><dl className={styles.publicFacts}>{scenario.website && <div><dt><Globe2 />Website</dt><dd>{scenario.website}</dd></div>}{scenario.location && <div><dt><MapPin />Location</dt><dd>{scenario.location}</dd></div>}{scenario.languages && <div><dt><Languages />Languages</dt><dd>{scenario.languages}</dd></div>}</dl></section>
-      <section aria-labelledby="practice-heading"><p className={styles.eyebrow}>Derived from Opportunities shown</p><h2 id="practice-heading">Opportunities have included</h2>{scenario.practiceLabels.length ? <div className={styles.practiceCloud}>{scenario.practiceLabels.map((label) => <Badge variant="outline" key={label}>{label}</Badge>)}</div> : <p>No practice labels are available for the Opportunities shown.</p>}<small>These labels describe published Opportunities. They do not rate or define the Organization.</small></section>
+      <section aria-labelledby="practice-heading"><p className={styles.eyebrow}>Derived from Opportunities shown</p><h2 id="practice-heading">Opportunities have included</h2>{scenario.practiceLabels.length ? <div className={styles.practiceCloud}>{scenario.practiceLabels.map((label) => <Badge variant="outline" key={label}>{label}</Badge>)}</div> : <p>No field labels are available for the Opportunities shown.</p>}<small>These labels describe published Opportunities. They do not rate or define the Organization.</small></section>
     </div>
   )
 }
@@ -381,7 +382,7 @@ function PublicOrganizationProfileExperience({ selectedOnly }: { selectedOnly: b
       <header className={styles.reviewHeader}><div><p className={styles.eyebrow}>Local component library · product untouched</p><h1>{selectedOnly ? 'Public Organization · Opportunity-first profile' : 'Public Organization profile'}</h1><p>{selectedOnly ? 'The selected creator-first composition, retained locally for page-by-page review.' : 'Three premium-component directions designed around a creator’s decision, optional media, narrow identity evidence, published Opportunities, and restrained taxonomy.'}</p></div><Badge variant="outline">Option 02 selected</Badge></header>
       <section className={styles.directionChooser} aria-labelledby="direction-heading"><div className={styles.chooserHeading}><div><p className={styles.eyebrow}>{selectedOnly ? 'Selected composition' : 'Visual direction'}</p><h2 id="direction-heading">{selectedOnly ? '02 · Opportunity-first profile' : 'Compare the same public contract'}</h2></div><label className={styles.fixtureControl}>Edge-case fixture<select value={fixture} onChange={(event) => setFixture(event.target.value as Fixture)}>{fixtureOptions.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></label></div>{selectedOnly ? null : <div className={styles.directionOptions}>{directions.map((option) => <button type="button" key={option.id} className={styles.directionOption} data-selected={activeDirection === option.id} aria-pressed={activeDirection === option.id} onClick={() => { setDirection(option.id); window.setTimeout(() => screenRef.current?.focus(), 0) }}><span>{option.number}</span><div><b>{option.name}</b><p>{option.description}</p></div>{activeDirection === option.id && <Check />}</button>)}</div>}</section>
       <div className={styles.screen} ref={screenRef} tabIndex={-1}>
-        <header className={styles.productBar}><a href="#public-organization" className={styles.wordmark}>MISSA</a><nav aria-label="Main"><a href="#opportunities">Opportunities</a><a href="#about">About</a><a href="#organizations" aria-current="page">Organizations</a></nav><div><Button variant="ghost">Log in</Button><Button>Join Missa</Button></div></header>
+        <header className={styles.productBar}><MissaWordmark href="#public-organization" size="app" className={styles.wordmark} /><nav aria-label="Main"><a href="#opportunities">Opportunities</a><a href="#about">About</a><a href="#organizations" aria-current="page">Organizations</a></nav><div><Button variant="ghost">Log in</Button><Button>Join Missa</Button></div></header>
         <div id="public-organization">{scenario.loading ? <LoadingState /> : scenario.error ? <div className={styles.errorState}><AlertCircle /><h2>Organization profile unavailable</h2><p>Try again. You can still browse other public Opportunities.</p><Button>Try again</Button></div> : scenario.merged ? <div className={styles.mergedState}><Notice notice={scenario.notice} /><h2>{scenario.name}</h2><p>This page is retained so saved links continue to work.</p><Button>Open Aurora Arts Collaborative <ArrowRight /></Button></div> : activeDirection === 'editorial' ? <EditorialProfile key={fixture} scenario={scenario} /> : activeDirection === 'program' ? <ProgramDirectory key={fixture} scenario={scenario} /> : <OpportunityFirst key={fixture} scenario={scenario} />}</div>
       </div>
     </div>

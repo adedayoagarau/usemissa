@@ -17,11 +17,9 @@
 }
 
 .wordmark {
+  min-height: 44px;
+  border-radius: 8px;
   color: var(--foreground);
-  font-family: var(--font-heading), Georgia, serif;
-  font-size: 1.45rem;
-  font-weight: 650;
-  text-decoration: none;
 }
 
 .footer p {
@@ -42,6 +40,7 @@
 .footer nav a {
   display: inline-flex;
   min-height: 44px;
+  min-width: 44px;
   align-items: center;
   color: var(--muted-foreground);
   font-size: 0.82rem;

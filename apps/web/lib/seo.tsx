@@ -11,6 +11,13 @@ export function absoluteUrl(path = '/'): string {
 
 export function pageMetadata(input: { title: string; description: string; path: string; noIndex?: boolean }): Metadata {
   const url = absoluteUrl(input.path);
+  const socialImage = {
+    url: absoluteUrl('/brand/missa-social-share.png'),
+    width: 1200,
+    height: 630,
+    type: 'image/png',
+    alt: 'Missa, creative opportunities with their source and limits kept visible.',
+  };
   return {
     title: input.title,
     description: input.description,
@@ -22,11 +29,13 @@ export function pageMetadata(input: { title: string; description: string; path: 
       url,
       siteName: SITE_NAME,
       type: 'website',
+      images: [socialImage],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: input.title,
       description: input.description,
+      images: [socialImage.url],
     },
   };
 }

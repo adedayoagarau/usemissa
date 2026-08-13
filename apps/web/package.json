@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "npm run build --workspace=@missa/contracts --prefix ../.. && npm run build --workspace=@missa/taxonomy --prefix ../.. && npm run build --workspace=@missa/radar-engine --prefix ../.. && npm run build --workspace=@missa/radar-adapters --prefix ../.. && npm run build --workspace=@missa/workspace-engine --prefix ../.. && next build",
+    "build": "npm run build --workspace=@missa/contracts --prefix ../.. && npm run build --workspace=@missa/taxonomy --prefix ../.. && npm run build --workspace=@missa/radar-engine --prefix ../.. && npm run build --workspace=@missa/radar-adapters --prefix ../.. && npm run build --workspace=@missa/ingestion-v2 --prefix ../.. && npm run build --workspace=@missa/workspace-engine --prefix ../.. && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit --incremental false",
@@ -19,6 +19,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^5.5.7",
     "@missa/contracts": "^0.1.0",
+    "@missa/ingestion-v2": "^0.1.0",
     "@missa/radar-adapters": "^0.1.0",
     "@missa/radar-engine": "^0.1.0",
     "@missa/taxonomy": "0.1.0",

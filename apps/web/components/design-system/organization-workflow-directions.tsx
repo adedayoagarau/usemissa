@@ -47,6 +47,7 @@ import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Textarea } from '@/components/ui/textarea'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './organization-workflow-directions.module.css'
 
 type Direction = 'queue' | 'ledger' | 'desk'
@@ -127,7 +128,7 @@ const fixtures: Array<{ value: Fixture; label: string; surface: Surface }> = [
   { value: 'missing-file', label: 'Missing required file', surface: 'submissions' },
   { value: 'payment-problem', label: 'Payment dispute', surface: 'submissions' },
   { value: 'withdrawn-work', label: 'One Work withdrawn', surface: 'submissions' },
-  { value: 'taxonomy-conflict', label: 'Practice-rule conflict', surface: 'submissions' },
+  { value: 'taxonomy-conflict', label: 'Field-rule conflict', surface: 'submissions' },
   { value: 'import-integrity', label: 'Imported status conflict', surface: 'submissions' },
   { value: 'blind', label: 'Blind review', surface: 'reviews' },
   { value: 'duplicate-assignment', label: 'Duplicate assignment', surface: 'reviews' },
@@ -220,7 +221,7 @@ function AppHeader() {
   return (
     <header className={styles.appHeader}>
       <a href='#workflow-content' className={styles.skipLink}>Skip to content</a>
-      <a href='#' className={`${styles.wordmark} missa-wordmark missa-wordmark--app`}>Missa</a>
+      <MissaWordmark href='#' size='app' className={styles.wordmark} />
       <nav aria-label='Product navigation'><a href='#'>Profile</a><a href='#' aria-current='page'>Organization</a></nav>
       <div className={styles.headerActions}>
         <Button type='button' variant='outline' size='sm'><Search aria-hidden='true' />Search <span>⌘K</span></Button>
@@ -338,7 +339,7 @@ function SubmissionDossier({ row, fixture, role }: { row?: SubmissionRow; fixtur
     <aside className={styles.dossier} aria-label='Selected Submission'>
       <header><div><p className={styles.eyebrow}>Selected Submission</p><h2>{identityVisible ? row.submitter : 'Identity withheld'}</h2><p>{row.opportunity}</p></div><Button type='button' variant='ghost' size='icon' aria-label='Close selected Submission'><ArrowRight aria-hidden='true' /></Button></header>
       {fixture === 'import-integrity' ? <Alert variant='destructive'><ShieldAlert aria-hidden='true' /><AlertTitle>Imported outcome needs repair</AlertTitle><AlertDescription>This packet says Accepted but has no per-Work decisions. Review the original import before any message or delivery action.</AlertDescription></Alert> : null}
-      {fixture === 'taxonomy-conflict' ? <Alert><Flag aria-hidden='true' /><AlertTitle>Practice context needs review</AlertTitle><AlertDescription>The submitted term and Opportunity rule conflict. This does not determine eligibility or the creative decision.</AlertDescription></Alert> : null}
+      {fixture === 'taxonomy-conflict' ? <Alert><Flag aria-hidden='true' /><AlertTitle>Field context needs review</AlertTitle><AlertDescription>The submitted term and Opportunity rule conflict. This does not determine eligibility or the creative decision.</AlertDescription></Alert> : null}
       <dl className={styles.factList}><div><dt>Receipt</dt><dd>{row.receipt}</dd></div><div><dt>Review</dt><dd>{row.review}</dd></div><div><dt>Decision summary</dt><dd>{row.decision}</dd></div><div><dt>Payment</dt><dd>{row.payment}</dd></div><div><dt>Category</dt><dd>{row.category}</dd></div></dl>
       <section className={styles.workList}><header><h3>Works</h3><span>{row.works.length}</span></header>{row.works.map((work, index) => <article key={work}><div className={styles.fileIcon}><FileText aria-hidden='true' /></div><div><strong>{work}</strong><p>{index === 0 ? 'PDF · 14 pages · Available' : fixture === 'missing-file' ? 'Required file missing' : 'PDF · 9 pages · Available'}</p></div><Button type='button' variant='ghost' size='icon' aria-label={`Open ${work}`}><ChevronRight aria-hidden='true' /></Button></article>)}</section>
       <footer><div><strong>{row.next}</strong><span>{row.due}</span></div><Button type='button' variant='outline'>Open full dossier</Button></footer>

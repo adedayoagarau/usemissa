@@ -9,8 +9,8 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace=@missa/contracts && npm run build --workspace=@missa/taxonomy && npm run build --workspace=@missa/db && npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && npm run build --workspace=@missa/workspace-engine && npm run build --workspace=@missa/web",
-    "test": "npm test --workspace=@missa/contracts && npm test --workspace=@missa/taxonomy && npm test --workspace=@missa/db && npm test --workspace=@missa/radar-engine && npm test --workspace=@missa/radar-adapters && npm test --workspace=@missa/workspace-engine",
+    "build": "npm run build --workspace=@missa/contracts && npm run build --workspace=@missa/taxonomy && npm run build --workspace=@missa/db && npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && npm run build --workspace=@missa/ingestion-v2 && npm run build --workspace=@missa/workspace-engine && npm run build --workspace=@missa/web",
+    "test": "npm test --workspace=@missa/contracts && npm test --workspace=@missa/taxonomy && npm test --workspace=@missa/db && npm test --workspace=@missa/radar-engine && npm test --workspace=@missa/radar-adapters && npm test --workspace=@missa/ingestion-v2 && npm test --workspace=@missa/workspace-engine",
     "lint": "npm run lint --workspace=@missa/web",
     "typecheck": "npm run typecheck --workspace=@missa/web",
     "format": "prettier --write .",
@@ -18,12 +18,16 @@
     "test:e2e": "npm run test:e2e --workspace=@missa/web",
     "db:generate": "npm run db:generate --workspace=@missa/db",
     "db:seed-taxonomy": "npm run db:seed-taxonomy --workspace=@missa/db",
-    "seo:indexnow": "node scripts/indexnow-submit.mjs"
+    "seo:indexnow": "node scripts/indexnow-submit.mjs",
+    "waitlist:check": "node scripts/check-waitlist-release.mjs"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.10",
     "eslint-config-prettier": "10.1.8",
     "prettier": "3.9.6",
     "prettier-plugin-tailwindcss": "0.8.1"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.38.2"
   }
 }

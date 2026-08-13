@@ -82,7 +82,7 @@ const FIELDS: Array<[ImportField, string, boolean]> = [
   ['submittedAt', 'Submitted date', false],
   ['responseAt', 'Response date', false],
   ['work', 'Work title', false],
-  ['genre', 'Legacy practice or genre', false],
+  ['genre', 'Legacy field or genre', false],
   ['fee', 'Fee', false],
   ['notes', 'Private notes', false],
   ['sourceUrl', 'Official source URL', false],
@@ -97,7 +97,7 @@ const stateLabels: Record<PreviewRow['state'], string> = {
 };
 
 const facetLabels: Record<string, string> = {
-  'practice-family': 'Practice family', discipline: 'Discipline', form: 'Form', genre: 'Genre', subgenre: 'Subgenre', medium: 'Medium', technique: 'Technique or process', mode: 'Mode or approach', role: 'Role', theme: 'Theme or subject', audience: 'Audience', language: 'Language',
+  'practice-family': 'Field', discipline: 'Discipline', form: 'Form', genre: 'Genre', subgenre: 'Subgenre', medium: 'Medium', technique: 'Technique or process', mode: 'Mode or approach', role: 'Role', theme: 'Theme or subject', audience: 'Audience', language: 'Language',
 };
 
 function warningText(warning: string): string | undefined {
@@ -109,7 +109,7 @@ function warningText(warning: string): string | undefined {
 }
 
 function downloadTemplate() {
-  const blob = new Blob(['Title,Organization,Status,Deadline,Submitted Date,Work,Legacy Practice,Fee,Notes,URL\r\nExample call,Example organization,Saved,2026-12-31,,,,,,\r\n'], { type: 'text/csv;charset=utf-8' });
+  const blob = new Blob(['Title,Organization,Status,Deadline,Submitted Date,Work,Legacy Field,Fee,Notes,URL\r\nExample call,Example organization,Saved,2026-12-31,,,,,,\r\n'], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -318,7 +318,7 @@ export function TrackerImportStepper() {
           <Link href="/tracker"><ArrowLeft aria-hidden="true" />Back to Tracker</Link>
           <p>Private Tracker utility</p>
           <h1>Import your tracker</h1>
-          <span>Review every match, conflict, and practice value before anything changes.</span>
+          <span>Review every match, conflict, and field value before anything changes.</span>
         </header>
         <ImportSteps step={step} />
         {error ? <div ref={errorRef} tabIndex={-1}><Alert variant="destructive"><AlertTriangle aria-hidden="true" /><AlertTitle>Import needs attention</AlertTitle><AlertDescription>{error}</AlertDescription></Alert></div> : null}
@@ -336,7 +336,7 @@ export function TrackerImportStepper() {
         {step === 'mapping' && preview && mapping ? <section className={styles.panel} aria-labelledby="mapping-heading">
           <header><p>Step 2</p><h2 id="mapping-heading">Map columns</h2><span>Source columns remain visible. Opportunity, Organization, and Tracker status are required.</span></header>
           <div className={styles.mapping}>{FIELDS.map(([field, label, required]) => <label key={field} htmlFor={`mapping-${field}`}><span><strong>{label}</strong><small>{required ? 'Required' : 'Optional'}</small></span><select id={`mapping-${field}`} value={mapping[field] ?? ''} onChange={(event) => setMapping({ ...mapping, [field]: event.target.value || null })}><option value="">Not mapped</option>{preview.columns.map((column) => <option key={column} value={column}>{column}</option>)}</select></label>)}</div>
-          <Alert><Tags aria-hidden="true" /><AlertTitle>Legacy practice values receive their own review</AlertTitle><AlertDescription>A Genre or Practice column never silently becomes Missa taxonomy. You will confirm a facet and term—or keep the value explicitly unresolved.</AlertDescription></Alert>
+          <Alert><Tags aria-hidden="true" /><AlertTitle>Legacy field values receive their own review</AlertTitle><AlertDescription>A Genre or legacy Field column never silently becomes Missa taxonomy. You will confirm a facet and term—or keep the value explicitly unresolved.</AlertDescription></Alert>
           <div className={styles.actions}><Button type="button" variant="outline" onClick={() => setStep('upload')}>Back</Button><Button type="button" disabled={busy} onClick={startReview}>{busy ? 'Refreshing…' : <>Review rows <ArrowRight aria-hidden="true" /></>}</Button></div>
         </section> : null}
 
@@ -354,7 +354,7 @@ export function TrackerImportStepper() {
               {row.errors.length ? <Alert variant="destructive"><AlertTriangle aria-hidden="true" /><AlertTitle>This row cannot be imported as written</AlertTitle><AlertDescription>{row.errors.join(' ')}</AlertDescription></Alert> : null}
               {row.warnings.map(warningText).filter(Boolean).map((message) => <Alert key={message}><FileText aria-hidden="true" /><AlertTitle>Review imported text</AlertTitle><AlertDescription>{message}</AlertDescription></Alert>)}
               {row.warnings.includes('ambiguousDate') ? <section className={styles.dateReview}><div><strong>How should Missa read the imported date?</strong><span>{row.values.deadline || row.values.submittedAt || row.values.responseAt}</span></div><div><Button type="button" variant={decisionDateLocale(decision) === 'mdy' ? 'secondary' : 'outline'} disabled={!action && row.state === 'possible-match'} onClick={() => updateDateLocale(row, 'mdy')}>Month / day / year</Button><Button type="button" variant={decisionDateLocale(decision) === 'dmy' ? 'secondary' : 'outline'} disabled={!action && row.state === 'possible-match'} onClick={() => updateDateLocale(row, 'dmy')}>Day / month / year</Button></div>{!action && row.state === 'possible-match' ? <small>Choose a candidate or manual Tracker item first.</small> : null}</section> : null}
-              {row.taxonomy ? <section className={styles.taxonomy}><div><Tags aria-hidden="true" /><span><strong>Review “{row.taxonomy.sourcePhrase}”</strong><small>{row.taxonomy.status === 'resolved' ? 'A canonical term is available, but you must confirm it.' : row.taxonomy.status === 'ambiguous' ? 'This phrase can mean more than one facet.' : 'No canonical term is confirmed.'}</small></span></div>{row.taxonomy.options.length ? <div className={styles.taxonomyOptions}>{row.taxonomy.options.map((option) => <button key={option.termId} type="button" aria-pressed={selectedTaxonomyTermId(decision) === option.termId} onClick={() => updateTaxonomy(row, { action: 'use-term', termId: option.termId })}><small>{facetLabels[option.facet] ?? option.facet}</small><strong>{option.label}</strong></button>)}</div> : null}<div className={styles.taxonomyActions}>{action && action !== 'create-manual' ? <Button type="button" variant={decisionTaxonomy(decision)?.action === 'use-opportunity' ? 'secondary' : 'outline'} onClick={() => updateTaxonomy(row, { action: 'use-opportunity' })}>Use published Opportunity practice</Button> : null}<Button type="button" variant={decisionTaxonomy(decision)?.action === 'keep-unresolved' ? 'secondary' : 'ghost'} onClick={() => updateTaxonomy(row, { action: 'keep-unresolved' })}>Keep unresolved</Button></div></section> : null}
+              {row.taxonomy ? <section className={styles.taxonomy}><div><Tags aria-hidden="true" /><span><strong>Review “{row.taxonomy.sourcePhrase}”</strong><small>{row.taxonomy.status === 'resolved' ? 'A canonical term is available, but you must confirm it.' : row.taxonomy.status === 'ambiguous' ? 'This phrase can mean more than one facet.' : 'No canonical term is confirmed.'}</small></span></div>{row.taxonomy.options.length ? <div className={styles.taxonomyOptions}>{row.taxonomy.options.map((option) => <button key={option.termId} type="button" aria-pressed={selectedTaxonomyTermId(decision) === option.termId} onClick={() => updateTaxonomy(row, { action: 'use-term', termId: option.termId })}><small>{facetLabels[option.facet] ?? option.facet}</small><strong>{option.label}</strong></button>)}</div> : null}<div className={styles.taxonomyActions}>{action && action !== 'create-manual' ? <Button type="button" variant={decisionTaxonomy(decision)?.action === 'use-opportunity' ? 'secondary' : 'outline'} onClick={() => updateTaxonomy(row, { action: 'use-opportunity' })}>Use published Opportunity field</Button> : null}<Button type="button" variant={decisionTaxonomy(decision)?.action === 'keep-unresolved' ? 'secondary' : 'ghost'} onClick={() => updateTaxonomy(row, { action: 'keep-unresolved' })}>Keep unresolved</Button></div></section> : null}
               <div className={styles.rowActions}><Button type="button" variant={action === 'create-manual' ? 'secondary' : 'outline'} disabled={row.state === 'needs-correction'} onClick={() => updateDecision(row, { action: 'create-manual', ...(decisionTaxonomy(decision)?.action !== 'use-opportunity' && decisionTaxonomy(decision) ? { taxonomy: decisionTaxonomy(decision) } : {}), ...(decisionDateLocale(decision) ? { dateLocale: decisionDateLocale(decision) } : {}) })}>Create manual Tracker item</Button>{row.conflict && row.candidates[0] ? <><Button type="button" variant={action === 'keep-current' ? 'secondary' : 'outline'} onClick={() => updateDecision(row, { action: 'keep-current', opportunityId: selectedOpportunityId ?? row.candidates[0]!.opportunityId, ...retainedDecisionContext(decision) })}>Keep current status</Button><Button type="button" variant={action === 'use-imported' ? 'secondary' : 'outline'} onClick={() => updateDecision(row, { action: 'use-imported', opportunityId: selectedOpportunityId ?? row.candidates[0]!.opportunityId, ...retainedDecisionContext(decision) })}>Use imported status</Button></> : null}<Button type="button" variant={action === 'skip' ? 'secondary' : 'ghost'} onClick={() => updateDecision(row, 'skip')}>Skip row</Button></div>
             </article>;
           })}{visibleRows.length === 0 ? <p className={styles.noRows}>No rows in this view.</p> : null}</div>
@@ -363,14 +363,14 @@ export function TrackerImportStepper() {
 
         {step === 'confirm' && preview ? <section className={styles.panel} aria-labelledby="confirm-heading">
           <header><p>Step 4</p><h2 id="confirm-heading">Confirm exact changes</h2><span>No write has happened yet. Confirming uses this file, mapping, candidate set, and every row decision.</span></header>
-          <dl className={styles.counts}><div><dt>Add or update matched items</dt><dd>{counts.match}</dd></div><div><dt>Create manual Tracker items</dt><dd>{counts.manual}</dd></div><div><dt>Skip rows</dt><dd>{counts.skip}</dd></div><div><dt>Keep unresolved practice text</dt><dd>{counts.unresolvedTaxonomy}</dd></div></dl>
+          <dl className={styles.counts}><div><dt>Add or update matched items</dt><dd>{counts.match}</dd></div><div><dt>Create manual Tracker items</dt><dd>{counts.manual}</dd></div><div><dt>Skip rows</dt><dd>{counts.skip}</dd></div><div><dt>Keep unresolved field text</dt><dd>{counts.unresolvedTaxonomy}</dd></div></dl>
           <Alert><ShieldCheck aria-hidden="true" /><AlertTitle>Private Tracker only</AlertTitle><AlertDescription>No Organization, Submission, Work snapshot, or application is changed or notified.</AlertDescription></Alert>
           <div className={styles.actions}><Button type="button" variant="outline" onClick={() => setStep('review')}>Back to row review</Button><Button type="button" disabled={busy} onClick={commit}>{busy ? <><LoaderCircle className={styles.spinner} aria-hidden="true" />Importing…</> : counts.match + counts.manual === 0 ? 'Finish review with no changes' : `Import ${counts.match + counts.manual} reviewed rows`}</Button></div>
         </section> : null}
 
         {step === 'result' && result ? <section className={`${styles.panel} ${styles.receipt}`} aria-labelledby="receipt-heading">
           <CheckCircle2 aria-hidden="true" /><header><p>Import receipt · {result.importId}</p><h2 id="receipt-heading">{result.imported > 0 ? 'Import complete' : 'Review complete — no changes'}</h2><span>{result.imported > 0 ? `${result.imported} reviewed rows changed your private Tracker.` : 'Every row was skipped, so your Tracker stayed exactly as it was.'} Nothing was shared with Organizations.</span></header>
-          <dl className={styles.counts}><div><dt>Matched</dt><dd>{result.matched}</dd></div><div><dt>Manual items</dt><dd>{result.createdManual}</dd></div><div><dt>Skipped</dt><dd>{result.skipped}</dd></div><div><dt>Unresolved practice text</dt><dd>{result.unresolvedTaxonomy}</dd></div></dl>
+          <dl className={styles.counts}><div><dt>Matched</dt><dd>{result.matched}</dd></div><div><dt>Manual items</dt><dd>{result.createdManual}</dd></div><div><dt>Skipped</dt><dd>{result.skipped}</dd></div><div><dt>Unresolved field text</dt><dd>{result.unresolvedTaxonomy}</dd></div></dl>
           <div className={styles.actions}>{result.imported > 0 ? <Button render={<Link href={`/tracker?import=${encodeURIComponent(result.importId)}`} />}>Review imported rows <ArrowRight aria-hidden="true" /></Button> : null}<Button variant="outline" render={<Link href="/tracker" />}>Back to Tracker</Button></div>
         </section> : null}
       </div>

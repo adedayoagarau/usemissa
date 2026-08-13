@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './opportunity-detail-directions.module.css'
 
 type Direction = 'brief' | 'ledger' | 'guided'
@@ -140,7 +141,7 @@ function ReviewBar({ direction, onDirection, state, onState }: {
 function AppHeader() {
   return (
     <header className={styles.appHeader}>
-      <a href='#main-content' className={styles.wordmark}>Missa</a>
+      <MissaWordmark href='#main-content' size='app' className={styles.wordmark} />
       <nav aria-label='Primary navigation'>
         <a href='#'>Opportunities</a>
         <a href='#'>Tracker</a>
@@ -270,7 +271,7 @@ function EditorialSections({ state }: { state: ReviewState }) {
         </div>
       </section>
       <section>
-        <h2>Practices named in this call</h2>
+        <h2>Fields named in this call</h2>
         <div className={styles.practiceList}>{practices.map((practice) => <Badge key={practice} variant='secondary'>{practice}</Badge>)}</div>
       </section>
     </div>
@@ -360,9 +361,9 @@ function EvidenceLedger({ state, saved, onSave }: { state: ReviewState; saved: b
             <SourceActions />
           </Card>
           <Card className={styles.taxonomyCard}>
-            <p className={styles.kicker}>Named practices</p>
+            <p className={styles.kicker}>Named fields</p>
             <div className={styles.practiceList}>{practices.map((practice) => <Badge key={practice} variant='outline'>{practice}</Badge>)}</div>
-            <p>Practice labels describe the work. They do not imply eligibility.</p>
+            <p>Field labels describe the work. They do not imply eligibility.</p>
           </Card>
         </aside>
       </div>

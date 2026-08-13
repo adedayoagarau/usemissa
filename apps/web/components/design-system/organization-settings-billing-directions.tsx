@@ -60,6 +60,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './organization-settings-billing-directions.module.css'
 
 type Direction = 'index' | 'control' | 'ledger'
@@ -568,7 +569,7 @@ function OrganizationSettingsBillingExperience({ selectedOnly }: { selectedOnly:
       </section>
       <div className={styles.screen} ref={screenRef} tabIndex={-1}>
         <header className={styles.productBar}>
-          <a href="#settings-content" className={styles.wordmark}>MISSA</a>
+          <MissaWordmark href="#settings-content" size="app" className={styles.wordmark} />
           <div className={styles.organizationIdentity}><span>Organization</span><b>{scenario.organizationName}</b></div>
           <nav aria-label="Organization"><a href="#opportunities">Opportunities</a><a href="#submissions">Submissions</a><a href="#reviews">Reviews</a><a href="#people">People</a><a href="#settings-content" aria-current="page">Settings</a></nav>
           <button type="button" className={styles.avatarButton} aria-label={`Account menu for ${scenario.role}`}>AA</button>

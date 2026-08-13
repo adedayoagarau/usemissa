@@ -95,7 +95,7 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
               </DialogHeader>
               <div className="flex flex-col gap-4">
                 <Field>
-                  <FieldLabel>Practices</FieldLabel>
+                  <FieldLabel>Fields</FieldLabel>
                   <TaxonomyBrowsePicker
                     idPrefix="saved-search-practice"
                     selectedTermIds={taxonomyTermIds}
