@@ -287,6 +287,21 @@ test("ArtConnect discovery follows opportunity cards and preserves separate call
   );
 });
 
+test("ArtConnect discovery advances past a self-referencing paginator", () => {
+  const artConnect = source({
+    id: "source-artconnect-page-2",
+    name: "ArtConnect Opportunities",
+    url: "https://www.artconnect.com/opportunities?fees=FREE&sortBy=-deadline&page=2",
+    discoveryAdapterId: "artconnect-index",
+  });
+  const links = discoverSourceLinks(
+    artConnect,
+    '<a href="/opportunity/three">Third call</a><a rel="next" href="/opportunities?fees=FREE&amp;sortBy=-deadline&amp;page=2">Next</a>',
+    artConnect.url,
+  );
+  assert.ok(links.some((link) => link.url.endsWith("page=3") && link.discoveryAdapterId === "artconnect-index"));
+});
+
 test("Music In Africa homepage discovery follows its dedicated opportunities index", () => {
   const musicInAfrica = source({
     id: "source-music-in-africa",

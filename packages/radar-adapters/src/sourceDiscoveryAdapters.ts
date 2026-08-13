@@ -173,7 +173,7 @@ function detailIndex(
 }
 
 function artConnectIndex(source: Source, html: string, finalUrl: string): DiscoveredSourceLink[] {
-  return htmlLinks(html, finalUrl)
+  const links = htmlLinks(html, finalUrl)
     .filter((link) => {
       const url = new URL(link.url);
       return (
@@ -192,6 +192,30 @@ function artConnectIndex(source: Source, html: string, finalUrl: string): Discov
         : "artconnect-index",
       discoveredFromSourceId: source.id,
     }));
+
+  // ArtConnect's server-rendered paginator sometimes points page 2 back to
+  // itself. Continue numerically while the page still contains opportunity
+  // cards; an empty page naturally terminates the fan-out.
+  const pageUrl = new URL(finalUrl);
+  const currentPage = Number(pageUrl.searchParams.get("page") ?? "1");
+  const hasCards = links.some((link) => link.discoveryAdapterId === "artconnect-detail");
+  if (hasCards && currentPage < 200) {
+    const nextUrl = new URL(pageUrl);
+    nextUrl.searchParams.set("page", String(currentPage + 1));
+    const next = nextUrl.toString();
+    if (!links.some((link) => link.url === next)) {
+      links.push({
+        url: next,
+        title: `ArtConnect page ${currentPage + 1}`,
+        kind: "directory",
+        registryTier: 2,
+        followsOutboundLinks: true,
+        discoveryAdapterId: "artconnect-index",
+        discoveredFromSourceId: source.id,
+      });
+    }
+  }
+  return links;
 }
 
 const ON_THE_MOVE_NON_CALL_PATHS = new Set([
