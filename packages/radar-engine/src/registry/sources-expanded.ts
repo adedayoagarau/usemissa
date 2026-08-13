@@ -79,7 +79,7 @@ const SOURCES: CompactSource[] = [
   directory('PRS Foundation Funding', 'https://prsfoundation.com/funding-support/', 'music-composition', { disciplines: ['music', 'composition', 'songwriting'], opportunityTypes: ['grant', 'fellowship'], geography: ['GB', 'global'] }),
   directory('Help Musicians Funding', 'https://www.helpmusicians.org.uk/get-support', 'music-composition', { disciplines: ['music', 'performance', 'composition'], opportunityTypes: ['grant', 'fellowship'], geography: ['GB'] }),
   directory('Music Finland Opportunities', 'https://musicfinland.com/en/funding', 'music-composition', { disciplines: ['music', 'composition'], opportunityTypes: ['grant', 'fellowship', 'festival'], geography: ['FI', 'global'] }),
-  directory('Music In Africa Opportunities', 'https://www.musicinafrica.net/', 'music-composition', { disciplines: ['music', 'composition', 'performance'], opportunityTypes: ['grant', 'festival', 'open-call'], geography: ['Africa', 'global'], discoveryAdapterId: 'music-in-africa-index' }),
+  directory('Music In Africa Opportunities', 'https://musicinafrica.net/tag/opportunities/', 'music-composition', { disciplines: ['music', 'composition', 'performance'], opportunityTypes: ['grant', 'festival', 'open-call'], geography: ['Africa', 'global'], discoveryAdapterId: 'music-in-africa-index' }),
 
   // Dance, theatre, performance and live work.
   directory('Dance/NYC Opportunities', 'https://www.dance.nyc/for-artists/resource-pages/opportunities', 'dance-choreography', { disciplines: ['dance', 'choreography', 'performance'], opportunityTypes: ['grant', 'residency', 'open-call'], geography: ['US'] }),
