@@ -11,7 +11,7 @@ from .harness import DEFAULT_MODEL, POLICY_VERSION, PROMPT_VERSION, ReviewCandid
 
 
 SYSTEM_PROMPT = """You are Gary's evidence reviewer for creative opportunities.
-Poets & Writers is the discovery source. The official host website is canonical when it clearly describes the same call.
+The recorded discovery source is not necessarily canonical. The official host website is canonical when it clearly describes the same call.
 Calls are the same when organizer/title, description, and deadline materially agree; minor wording or formatting differences are not conflicts.
 One journal may have several concurrent calls. Never merge calls only because their organizer is the same.
 Return JSON only with: recommendation (publish|needs_human|reject), confidence (0..1), reasons (short array), checks (object).

@@ -290,6 +290,9 @@ def run_worker(
         for profile_run_id in profile_run_ids:
             print(f"[gary-worker] completed profile_run={profile_run_id}")
         for radar_run_id in radar_run_ids:
+            if harness:
+                enqueued = harness.enqueue_run(radar_run_id)
+                print(f"[gary-worker] enqueued radar_review_jobs={enqueued} run={radar_run_id}")
             print(f"[gary-worker] completed radar_sync_run={radar_run_id}")
         if not run_id and not profile_run_ids and not radar_run_ids and harness:
             harness.heartbeat("crawler", owner, "idle", release=release)

@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import tempfile
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .fetcher import HttpFetcher
+from .media import MediaCollector
 from .neon import NeonStore
 
 RADAR_ADAPTERS = (
@@ -32,7 +35,7 @@ def _text(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
-def _call(source: dict[str, Any], opportunity: dict[str, Any], snapshot: dict[str, Any] | None, rank: int) -> dict[str, Any]:
+def _call(source: dict[str, Any], opportunity: dict[str, Any], snapshot: dict[str, Any] | None, rank: int, *, fetcher: HttpFetcher | None = None, asset_root: Path | None = None) -> dict[str, Any]:
     fields = opportunity.get("fields") or {}
     deadline = (fields.get("deadline") or {}).get("date")
     title = _text(fields.get("title") or source.get("name") or opportunity.get("id"))[:500]
@@ -44,6 +47,18 @@ def _call(source: dict[str, Any], opportunity: dict[str, Any], snapshot: dict[st
     page_text = content or json.dumps({"status": opportunity.get("status"), "fields": fields}, ensure_ascii=False)
     html = f"<html><body><main><h1>{title}</h1><p>{description}</p></main></body></html>"
     path = f"pages/{rank:05d}-{opportunity.get('id', 'opportunity')}.html"
+    media_assets: list[dict[str, Any]] = []
+    if fetcher is not None and asset_root is not None and url.startswith(("http://", "https://")):
+        page = fetcher.fetch(url)
+        if page.error is None:
+            selected = MediaCollector(fetcher, max_assets_per_page=1, max_asset_bytes=2_000_000).collect_call_images(
+                [page], asset_root, scope=f"radar-{rank:05d}",
+                preferred_terms=(title, _text(source.get("name"))), max_images=1,
+            )
+            media_assets = [asdict(asset) for _, asset in selected if asset.error is None]
+            if selected:
+                html = page.html
+                page_text = page.text or page_text
     return {
         "rank": rank,
         "organizer": _text(source.get("registryOrganizationName") or source.get("name") or "Unknown source"),
@@ -72,7 +87,7 @@ def _call(source: dict[str, Any], opportunity: dict[str, Any], snapshot: dict[st
                 "error": None,
                 "rendered": False,
                 "resource_urls": [],
-                "media_assets": [],
+                "media_assets": media_assets,
                 "html_path": path,
             },
             "official_site_page": None,
@@ -92,7 +107,7 @@ def _call(source: dict[str, Any], opportunity: dict[str, Any], snapshot: dict[st
             "selected_page": None,
             "pages": [],
         },
-        "media_assets": [],
+        "media_assets": media_assets,
     }
 
 
@@ -136,13 +151,15 @@ def sync_radar_adapter(store: NeonStore, adapter: str, *, freshness_hours: int =
             """,
             (adapter,),
         ).fetchall()
-    if not rows:
-        return None
     with tempfile.TemporaryDirectory(prefix="gary-radar-sync-") as directory:
         root = Path(directory)
         calls = []
-        for rank, (source_data, opportunity_data, snapshot_data) in enumerate(rows, start=1):
-            calls.append(_call(source_data, opportunity_data, snapshot_data, rank))
+        fetcher = HttpFetcher(timeout=20, max_bytes=2_000_000, min_request_interval=0.2, max_retries=1)
+        try:
+            for rank, (source_data, opportunity_data, snapshot_data) in enumerate(rows, start=1):
+                calls.append(_call(source_data, opportunity_data, snapshot_data, rank, fetcher=fetcher, asset_root=root))
+        finally:
+            fetcher.close()
         manifest = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "index": {
