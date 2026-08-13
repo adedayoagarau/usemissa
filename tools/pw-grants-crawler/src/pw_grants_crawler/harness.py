@@ -306,7 +306,13 @@ class HarnessStore:
         release: str,
     ) -> str:
         decision_id = stable_id("decision", job.id, input_hash, model, PROMPT_VERSION)
-        next_status = "recommended" if recommendation == "publish" else recommendation
+        next_status = (
+            "recommended"
+            if recommendation == "publish"
+            else "rejected"
+            if recommendation == "reject"
+            else "needs_human"
+        )
         with psycopg.connect(self.database_url) as connection:
             with connection.transaction():
                 connection.execute(
