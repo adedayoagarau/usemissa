@@ -13,6 +13,7 @@ from .neon import NeonStore
 
 RADAR_ADAPTERS = (
     "african-culture-fund-index",
+    "artconnect-detail",
     "commonwealth-detail",
     "eu-funding-api",
     "film-independent-detail",
