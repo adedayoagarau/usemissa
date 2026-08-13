@@ -129,6 +129,11 @@ jobs:
         env:
           DATABASE_URL: postgres://missa:missa@localhost:5432/missa_test
 
+      - name: Test ingestion v2 durable shadow store against Postgres
+        run: npm test --workspace=@missa/ingestion-v2
+        env:
+          DATABASE_URL: postgres://missa:missa@localhost:5432/missa_test
+
       - name: Test against a real Postgres connection (workspace-engine)
         run: npm test --workspace=@missa/workspace-engine
         env:

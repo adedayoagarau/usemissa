@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 
 import styles from './opportunity-journey-review.module.css'
+import { MissaWordmark } from '@/components/missa-wordmark'
 
 const journey = [
   {
@@ -64,7 +65,7 @@ export function OpportunityJourneyReview() {
       <a className={styles.skipLink} href='#journey'>Skip to journey</a>
 
       <header className={styles.header}>
-        <Link className={styles.wordmark} href='/design-system'>Missa</Link>
+        <MissaWordmark href='/design-system' size='app' className={styles.wordmark} />
         <span className={styles.localBadge}><LockKeyhole aria-hidden='true' /> Local review only</span>
       </header>
 

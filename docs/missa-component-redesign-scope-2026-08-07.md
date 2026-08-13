@@ -100,7 +100,7 @@ These are the 53 existing shadcn/Base UI primitives. The first pass should align
 
 | Component | File | Priority | Scope |
 |---|---|---:|---|
-| Missa wordmark | `components/missa-wordmark.tsx` | P2 | Marketing/app sizes, inverse treatment, focus state |
+| Missa wordmark | `components/missa-wordmark.tsx` | P0 | Canonical 80/120/240 optical SVG variants, compact/app/marketing sizes, inverse treatment, accessible home label, and visible focus state |
 | Public/app navigation | `components/app-nav.tsx` | P1/P2 | Shared responsive header, auth state, active section, organization switcher |
 | Organization shell navigation | `components/workspace-shell-nav.tsx` | P1 | Organization information architecture, density, mobile drawer |
 | Platform admin navigation | `components/platform-admin-nav.tsx` | P3 | Admin shell, active state, grouped operations, responsive collapse |

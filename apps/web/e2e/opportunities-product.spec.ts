@@ -20,7 +20,7 @@ test.describe('canonical Opportunities browse', () => {
     await page.goto('/opportunities');
     await expect(page.getByRole('heading', { level: 2, name: 'Search filters' })).toBeVisible();
     await expect(page.getByRole('group', { name: 'Opportunity type' })).toBeVisible();
-    await expect(page.getByRole('group', { name: 'Practice family' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Field' })).toBeVisible();
     await expect(page.getByLabel('Sort by')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
   });
@@ -32,7 +32,7 @@ test.describe('canonical Opportunities browse', () => {
     await page.getByRole('button', { name: /^Filters/ }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Filter opportunities' })).toBeVisible();
-    await expect(page.getByRole('dialog').getByText('More creative-practice filters')).toBeVisible();
+    await expect(page.getByRole('dialog').getByText('More field filters')).toBeVisible();
     await page.waitForTimeout(250);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
 

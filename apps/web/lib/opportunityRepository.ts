@@ -87,7 +87,7 @@ function project(engine: Awaited<ReturnType<typeof getEngine>>, opp: Opportunity
     const label = taxonomyLabelFor(preference.termId);
     return [{
       code: 'discipline' as const,
-      label: preference.preference === 'prefer' ? `Matches your preferred practice: ${label}` : `Matches your practice: ${label}`,
+      label: preference.preference === 'prefer' ? `Matches your preferred field: ${label}` : `Matches your field: ${label}`,
     }];
   });
   const workReasons = engine.library(userId ?? '').works.flatMap((work) =>

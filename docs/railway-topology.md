@@ -23,6 +23,7 @@ not a set of independently writable microservices.
 | `enrichment-worker` | Fetches public opportunity pages for media, guideline, past-winner, and call-profile evidence. Writes provenance-tagged evidence and retries failures through a leased queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=enrichment`, `RADAR_ENRICHMENT_INTERVAL_MINUTES`, `RADAR_ENRICHMENT_BATCH_SIZE` |
 | `review-agent` | Scores reviewable opportunities, records explainable decisions, publishes only when strict evidence gates pass, and hands ambiguous records to a human-review queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=review`, `RADAR_REVIEW_INTERVAL_MINUTES`, `RADAR_REVIEW_BATCH_SIZE` |
 | `content-worker` *(implemented; provision after migration rehearsal)* | Builds source-linked Opportunity Intelligence briefs, persists them, then reviews the exact built content for provenance, bounded claims, and completeness. Approved content is exposed; the worker never mutates canonical opportunity facts. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=content`, `RADAR_CONTENT_INTERVAL_MINUTES`, `RADAR_CONTENT_BATCH_SIZE` |
+| `ingestion-v2-worker` *(shadow; provision against staging only)* | Runs the BullMQ-backed Gary/Radar replacement benchmark. It stores source snapshots, extraction candidates, failures, and comparison artifacts in additive v2 tables; it never publishes to Radar. | Operator-triggered during benchmark | `INGESTION_V2_DATABASE_ROLE=staging`, staging `DATABASE_URL`, Upstash `REDIS_URL`, optional `DEEPSEEK_API_KEY` |
 
 The research and radar services receive the same Neon URL. Discovery uses a
 short transaction-scoped lock (`1984/728`); canonical Radar runs as one
@@ -123,6 +124,9 @@ railway up --service review-agent --environment production --detach --ci
 # Provision only after the content migration has been rehearsed on an isolated Neon branch.
 railway up --service content-worker --environment production --detach --ci
 railway up --service taxonomy-discovery-worker --environment production --detach --ci
+# The v2 service uses the shared image with an isolated worker mode. Set its
+# staging-only DATABASE_URL, Upstash REDIS_URL, and DEEPSEEK_API_KEY first.
+railway up --service ingestion-v2-worker --environment production --detach --ci
 ```
 
 Never place `DATABASE_URL` in the repository or in build logs. Set it as a
@@ -138,14 +142,39 @@ railway service status -s content-worker -e production --json
 railway service status -s taxonomy-discovery-worker -e production --json
 ```
 
+## Ingestion v2 deployment boundary
+
+Ingestion v2 is intentionally a separate Railway service and must not reuse the
+production Gary worker's database credentials. Deploy the image defined at
+`docker/ingestion-v2/Dockerfile` only after a dedicated Neon staging branch and
+Upstash Redis database exist. The Railway service must explicitly point its
+Dockerfile path at `/docker/ingestion-v2/Dockerfile`; the repository-root
+Dockerfile builds the broader Radar/web worker image and is not the ingestion
+v2 production boundary. The dedicated image installs only the ingestion
+runtime's BullMQ, Redis, and Postgres dependencies. The worker selects the
+DeepSeek shadow adapter
+when `DEEPSEEK_API_KEY` is present; without it, the deterministic adapter still
+runs the benchmark.
+
+The first hosted setup uses Upstash Redis. Local development uses a disposable
+Redis server. Both use the same BullMQ contract and isolated queue prefix;
+Upstash is the hosted choice because it removes Redis process and persistence
+operations from the first benchmark. Move to a dedicated managed Redis service
+only if observed queue latency, connection limits, or retention needs justify
+it.
+
+Do not set the v2 worker's `DATABASE_URL` to the production Neon URL. The
+operator must explicitly run the additive v2 schema bootstrap against staging
+before queueing a job.
+
 ## Boundaries we are not creating yet
 
 - **Object storage and PDF extraction:** the enrichment worker is live for
   HTML evidence. Add S3-compatible storage and a PDF extraction step only when
   the media retention and rights policy is approved.
-- **Redis/queue service:** not required while Radar writes are serialized by
-  Postgres advisory locks. Introduce it with the enrichment worker when work
-  needs independent retries and concurrency.
+- **Production Redis/queue service:** not required for the existing Radar
+  lanes, which remain serialized by Postgres advisory locks. Ingestion v2 has
+  its own staging-only BullMQ/Upstash queue for the shadow benchmark.
 - **Second Postgres instance:** not needed. Neon is the source of truth.
 - **Always-on staging workers:** not enabled. Vercel preview plus an isolated
   Neon branch is safer than two unattended workers writing to production.

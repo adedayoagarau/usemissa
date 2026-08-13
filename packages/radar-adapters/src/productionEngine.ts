@@ -160,8 +160,10 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
     process.env.MISSA_USE_PLAYWRIGHT === "1"
       ? new (await import("./playwrightFetcher.js")).PlaywrightFetcher()
       : new HttpFetcher();
-  const extractor = process.env.ANTHROPIC_API_KEY
-    ? new LlmExtractor(systemClock)
+  const extractor = process.env.DEEPSEEK_API_KEY || process.env.ANTHROPIC_API_KEY
+    ? new LlmExtractor(systemClock, process.env.DEEPSEEK_API_KEY
+      ? { provider: 'deepseek', apiKey: process.env.DEEPSEEK_API_KEY, model: process.env.DEEPSEEK_MODEL ?? 'deepseek-chat' }
+      : { provider: 'anthropic', apiKey: process.env.ANTHROPIC_API_KEY, model: process.env.ANTHROPIC_MODEL ?? 'claude-sonnet-4-20250514' })
     : undefined;
 
   const engine = new RadarEngine({ store, fetcher, extractor, ids: uuidIds() });

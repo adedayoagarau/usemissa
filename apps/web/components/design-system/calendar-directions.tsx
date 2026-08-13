@@ -23,6 +23,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './calendar-directions.module.css'
 
 type Direction = 'agenda' | 'month' | 'lanes'
@@ -80,7 +81,7 @@ const filterKinds: Record<EventFilter, EventKind[]> = { all: ['deadline', 'estim
 const monthDays = Array.from({ length: 42 }, (_, index) => index - 4)
 
 function AppHeader() {
-  return <header className={styles.appHeader}><a href='#calendar-content' className={styles.wordmark}>Missa</a><nav aria-label='Primary navigation'><a href='#'>Opportunities</a><a href='#' aria-current='page'>Tracker</a><a href='#'>Library</a></nav><div className={styles.headerActions}><Button type='button' variant='ghost' size='icon' aria-label='Open Inbox'><Inbox aria-hidden='true' /></Button><Button type='button' variant='ghost' size='icon' className={styles.mobileMenu} aria-label='Open navigation'><Menu aria-hidden='true' /></Button><button type='button' className={styles.avatar} aria-label='Open Profile'>A</button></div></header>
+  return <header className={styles.appHeader}><MissaWordmark href='#calendar-content' size='app' className={styles.wordmark} /><nav aria-label='Primary navigation'><a href='#'>Opportunities</a><a href='#' aria-current='page'>Tracker</a><a href='#'>Library</a></nav><div className={styles.headerActions}><Button type='button' variant='ghost' size='icon' aria-label='Open Inbox'><Inbox aria-hidden='true' /></Button><Button type='button' variant='ghost' size='icon' className={styles.mobileMenu} aria-label='Open navigation'><Menu aria-hidden='true' /></Button><button type='button' className={styles.avatar} aria-label='Open Profile'>A</button></div></header>
 }
 
 function ReviewBar({ direction, setDirection, fixture, setFixture }: { direction: Direction; setDirection: (direction: Direction) => void; fixture: Fixture; setFixture: (fixture: Fixture) => void }) {

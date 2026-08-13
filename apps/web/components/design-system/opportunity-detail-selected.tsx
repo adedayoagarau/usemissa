@@ -32,6 +32,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from '../opportunity-detail.module.css'
 
 type RecordFixture =
@@ -202,7 +203,7 @@ function ReviewToolbar({
 function AppHeader() {
   return (
     <header className={styles.appHeader}>
-      <a href='#main-content' className={styles.wordmark}>Missa</a>
+      <MissaWordmark href='#main-content' size='app' className={styles.wordmark} />
       <nav aria-label='Primary navigation'>
         <a href='#' aria-current='page'>Opportunities</a>
         <a href='#'>Tracker</a>
@@ -473,9 +474,9 @@ export function OpportunityDetailSelected() {
 
               <section aria-labelledby='practices-title'>
                 <p className={styles.sectionNumber}>03 · Understand the call</p>
-                <h2 id='practices-title'>Practices named in this call</h2>
+                <h2 id='practices-title'>Fields named in this call</h2>
                 <div className={styles.practiceList}>{practices.map((practice) => <Badge key={practice} variant='secondary'>{practice}</Badge>)}</div>
-                <p className={styles.boundaryNote}>Practice labels describe the work. They do not decide eligibility.</p>
+                <p className={styles.boundaryNote}>Field labels describe the work. They do not decide eligibility.</p>
               </section>
 
               <section id='official-source' className={styles.sourceSection} aria-labelledby='source-title'>

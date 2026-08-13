@@ -48,6 +48,7 @@ export {
   type ProfileCard,
   type ProfileDetail,
   type ProfileKind,
+  type ProfileMedia,
   type ProfileOpportunity,
   type ProfileRepository,
 } from "./profileRepository.js";
@@ -61,10 +62,19 @@ export {
   type DurableTrackerImportInput,
   type DurableTrackerImportResult,
   type TrackerImportPersistenceErrorCode,
-} from './trackerImportPersistence.js';
-export { ensureEnrichmentSchema, enrichmentSchema } from "./enrichmentSchema.js";
-export { ensureAgentGraphSchema, agentGraphSchema } from "./agentGraphSchema.js";
-export { ensureContentReviewSchema, contentReviewSchema } from "./contentReviewSchema.js";
+} from "./trackerImportPersistence.js";
+export {
+  ensureEnrichmentSchema,
+  enrichmentSchema,
+} from "./enrichmentSchema.js";
+export {
+  ensureAgentGraphSchema,
+  agentGraphSchema,
+} from "./agentGraphSchema.js";
+export {
+  ensureContentReviewSchema,
+  contentReviewSchema,
+} from "./contentReviewSchema.js";
 export {
   CHAT_BASELINE_GRAPH_VERSION,
   PostgresChatStore,
@@ -88,8 +98,16 @@ export {
   type ContentReviewQueueRow,
   type HumanContentReviewDecision,
 } from "./contentReviewAdmin.js";
-export { RADAR_AGENT_GRAPH, agentGraphSnapshot, type RadarAgentKind } from "./agentGraph.js";
-export { runReviewTick, reviewCandidate, type ReviewCandidate } from "./reviewWorker.js";
+export {
+  RADAR_AGENT_GRAPH,
+  agentGraphSnapshot,
+  type RadarAgentKind,
+} from "./agentGraph.js";
+export {
+  runReviewTick,
+  reviewCandidate,
+  type ReviewCandidate,
+} from "./reviewWorker.js";
 export { runContentReviewTick } from "./contentWorker.js";
 export {
   runDiscoveryWorker,
@@ -228,9 +246,19 @@ export {
   type PlatformMessageEffectStatus,
   updatePlatformCrmTaskStatus,
 } from "./platformAdminFoundations.js";
-export { createWaitlistSignup } from "./waitlist.js";
-export { GoogleGmailProvider } from './email/gmail/google.js';
-export { MockGmailProvider } from './email/gmail/mock.js';
+export {
+  createWaitlistSignup,
+  readWaitlistAnalytics,
+  readWaitlistSignups,
+  type WaitlistAnalyticsDailyRow,
+  type WaitlistAnalyticsDimension,
+  type WaitlistAnalyticsReadModel,
+  type WaitlistAnalyticsRow,
+  type WaitlistSignupRow,
+  type WaitlistSignupReadModel,
+} from "./waitlist.js";
+export { GoogleGmailProvider } from "./email/gmail/google.js";
+export { MockGmailProvider } from "./email/gmail/mock.js";
 export {
   RADAR_INGESTION_LOCK,
   DISCOVERY_INGESTION_LOCK,

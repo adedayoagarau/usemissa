@@ -33,6 +33,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './library-work-selected.module.css'
 
 type LibraryView = 'works' | 'files' | 'answers'
@@ -146,7 +147,7 @@ const files: LibraryFile[] = [
 
 const answers: SavedAnswer[] = [
   { id: 'bio', name: 'Short biography · 100 words', excerpt: 'Adedayo Agarau is a poet and multidisciplinary artist whose work considers memory, migration, and place…', count: '94 words', used: 'Used in 8 submissions', updated: '5 Aug 2026' },
-  { id: 'practice', name: 'Practice statement · general', excerpt: 'My practice moves between writing, image, sound, and collaborative forms. I begin with the archive as a living…', count: '286 words', used: 'Used in 4 submissions', updated: '22 Jul 2026' },
+  { id: 'practice', name: 'Artist statement · general', excerpt: 'My work moves between writing, image, sound, and collaborative forms. I begin with the archive as a living…', count: '286 words', used: 'Used in 4 submissions', updated: '22 Jul 2026' },
   { id: 'access', name: 'Access requirements', excerpt: 'For in-person programmes I need step-free access, a quiet workspace, and advance notice of travel changes…', count: '63 words', used: 'Used in 2 submissions', updated: '11 Jul 2026' },
 ]
 
@@ -164,7 +165,7 @@ const fixtureLabels: Record<Fixture, string> = {
 function AppHeader() {
   return (
     <header className={styles.appHeader}>
-      <a href='#library-content' className={styles.wordmark}>Missa</a>
+      <MissaWordmark href='#library-content' size='app' className={styles.wordmark} />
       <nav aria-label='Primary navigation'>
         <a href='#'>Opportunities</a>
         <a href='#'>Tracker</a>
@@ -208,7 +209,7 @@ function StateNotice({ fixture }: { fixture: Fixture }) {
     return (
       <Alert className={styles.notice}>
         <Tags aria-hidden='true' />
-        <AlertTitle>One practice term has been updated</AlertTitle>
+        <AlertTitle>One field term has been updated</AlertTitle>
         <AlertDescription>“Documentary arts” remains on a submitted version. Review the suggested current term before changing the active Work.</AlertDescription>
       </Alert>
     )
@@ -249,7 +250,7 @@ function EmptyLibrary({ onCreate }: { onCreate: () => void }) {
       <FolderOpen aria-hidden='true' />
       <p className={styles.eyebrow}>Private by default</p>
       <h2 id='empty-title'>Begin with a Work, not a folder</h2>
-      <p>A Work keeps the files, versions, practice terms, and submission history for one creative project together.</p>
+      <p>A Work keeps the files, versions, field terms, and submission history for one creative project together.</p>
       <div>
         <Button type='button' onClick={onCreate}><Plus aria-hidden='true' />Create your first Work</Button>
         <Button type='button' variant='outline'><Upload aria-hidden='true' />Upload files first</Button>
@@ -268,7 +269,7 @@ function WorkRow({ work, selected, onOpen }: { work: Work; selected: boolean; on
         <p>{work.medium}</p>
         <h2>{work.title}</h2>
         <p>{work.description}</p>
-        <div className={styles.termList} aria-label={`Practice terms for ${work.title}`}>
+        <div className={styles.termList} aria-label={`Field terms for ${work.title}`}>
           {work.terms.slice(0, 3).map((term) => <Badge key={term} variant='secondary'>{term}</Badge>)}
         </div>
       </div>
@@ -366,7 +367,7 @@ function WorkDetail({ work, fixture, detailView, setDetailView, onClose, onStatu
             <div><p className={styles.eyebrow}>Submission history</p><strong>{work.submitted} submitted uses</strong><p>Each record keeps the exact Work version that was sent.</p><Button type='button' variant='link'>View history <ArrowRight aria-hidden='true' /></Button></div>
           </section>
           <section>
-            <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Practice</p><h3>Canonical terms by facet</h3></div><Button type='button' variant='outline'>Edit terms</Button></div>
+            <div className={styles.sectionHeading}><div><p className={styles.eyebrow}>Field</p><h3>Canonical terms by facet</h3></div><Button type='button' variant='outline'>Edit terms</Button></div>
             <dl className={styles.taxonomyList}>
               <div><dt>Discipline</dt><dd>Literature</dd></div>
               <div><dt>Form</dt><dd>Essay · Memoir</dd></div>
@@ -472,7 +473,7 @@ export function LibraryWorkSelected() {
                 {view === 'works' ? filteredWorks.map((work) => <WorkRow key={work.id} work={work} selected={selectedWork?.id === work.id} onOpen={(next) => { setSelectedWork(next); setDetailView('overview') }} />) : null}
                 {view === 'files' ? filteredFiles.map((file) => <FileRow key={file.id} file={fixture === 'missing' && file.id === 'cover' ? { ...file, state: 'missing' } : file} onOpen={setStatus} />) : null}
                 {view === 'answers' ? filteredAnswers.map((answer) => <AnswerRow key={answer.id} answer={answer} onCopy={(item) => setStatus(`${item.name} copied.`)} />) : null}
-                {!visibleItems.length && query ? <div className={styles.noResults}><Search aria-hidden='true' /><h2>No {viewLabel} match “{query}”</h2><p>Clear search or try a title, file name, medium, or practice term.</p><Button type='button' variant='outline' onClick={() => setQuery('')}>Clear search</Button></div> : null}
+                {!visibleItems.length && query ? <div className={styles.noResults}><Search aria-hidden='true' /><h2>No {viewLabel} match “{query}”</h2><p>Clear search or try a title, file name, medium, or field term.</p><Button type='button' variant='outline' onClick={() => setQuery('')}>Clear search</Button></div> : null}
               </div>
               {fixture === 'large' ? <div className={styles.pagination}><Button type='button' variant='outline' disabled>Previous</Button><span>Page 1 of 6</span><Button type='button' variant='outline'>Next</Button></div> : null}
             </section>

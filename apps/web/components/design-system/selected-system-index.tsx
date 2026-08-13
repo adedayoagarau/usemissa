@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowRight, Check, GitCompareArrows, LockKeyhole, MonitorSmartphone } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
+import { MissaWordmark } from '@/components/missa-wordmark'
 
 import { selectedSystemGroups, selectedSystemItems } from './selected-system-manifest'
 import styles from './selected-system-index.module.css'
@@ -14,7 +15,7 @@ export function SelectedSystemIndex() {
       <a className={styles.skipLink} href='#selected-system'>Skip to selected system</a>
 
       <header className={styles.header}>
-        <Link className={styles.wordmark} href='/design-system'>Missa</Link>
+        <MissaWordmark href='/design-system' size='app' className={styles.wordmark} />
         <Badge variant='outline'>Local review only</Badge>
       </header>
 
@@ -89,4 +90,3 @@ export function SelectedSystemIndex() {
     </main>
   )
 }
-

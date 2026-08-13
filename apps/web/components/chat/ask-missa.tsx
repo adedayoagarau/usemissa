@@ -47,7 +47,7 @@ const suggestions = [
 ];
 
 const facetLabels: Record<string, string> = {
-  'practice-family': 'Practice family',
+  'practice-family': 'Field',
   discipline: 'Discipline',
   form: 'Form',
   genre: 'Genre',
@@ -107,7 +107,7 @@ function EvidenceList({ payload }: { payload: ChatAssistantPayload }) {
           <dl>
             <div><CalendarDays aria-hidden="true" /><dt>Deadline</dt><dd>{result.deadline.date ?? result.deadline.raw ?? 'Needs confirmation'}</dd></div>
             <div><CircleDollarSign aria-hidden="true" /><dt>Fee</dt><dd>{feeLabel(result)}</dd></div>
-            {result.taxonomy.length ? <div><Shapes aria-hidden="true" /><dt>Practice</dt><dd>{result.taxonomy.slice(0, 4).map((term) => term.label).join(' · ')}</dd></div> : null}
+            {result.taxonomy.length ? <div><Shapes aria-hidden="true" /><dt>Field</dt><dd>{result.taxonomy.slice(0, 4).map((term) => term.label).join(' · ')}</dd></div> : null}
           </dl>
           <footer>
             <Link href={`/opportunities/${encodeURIComponent(result.id)}`}>Open Opportunity <ArrowUpRight aria-hidden="true" /></Link>
@@ -299,7 +299,7 @@ export function AskMissa() {
             <section className={styles.empty}>
               <Search aria-hidden="true" />
               <h3>What published Opportunity are you looking for?</h3>
-              <p>Use an Opportunity type, any of the 12 practice facets, a fee preference, geography, or deadline. Missa searches its published collection only.</p>
+              <p>Use an Opportunity type, any of the 12 field facets, a fee preference, geography, or deadline. Missa searches its published collection only.</p>
               <div>{suggestions.map((suggestion) => <button key={suggestion} type="button" onClick={() => { setInput(suggestion); inputRef.current?.focus(); }}>{suggestion}</button>)}</div>
             </section>
           ) : null}

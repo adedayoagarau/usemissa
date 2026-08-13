@@ -8,7 +8,7 @@ import { WaitlistFaq } from './waitlist-faq';
 import { waitlistFaqs } from './waitlist-faq-content';
 import styles from './waitlist.module.css';
 
-const waitlistDescription = 'Missa helps you find the calls that fit your work, prepare what you need, and stay on top of every deadline—with the original source close at hand.';
+const waitlistDescription = 'Missa brings clarity to creative opportunities around the world, so you can spend less time searching, and more time making.';
 
 export const metadata = pageMetadata({
   title: 'Join the Missa waitlist | Creative opportunities',
@@ -33,7 +33,7 @@ export default async function WaitlistPage({ searchParams }: { searchParams?: Pr
   return (
     <div className={styles.page}>
       <JsonLd data={{ '@context': 'https://schema.org', '@type': 'WebPage', name: 'Join the Missa waitlist', description: waitlistDescription, url: absoluteUrl('/waitlist') }} />
-      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'Organization', name: 'Missa', url: absoluteUrl('/waitlist'), logo: absoluteUrl('/brand/missa-wordmark-240.svg'), image: absoluteUrl('/waitlist/opengraph-image') }} />
+      <JsonLd data={{ '@context': 'https://schema.org', '@type': 'Organization', name: 'Missa', url: absoluteUrl('/waitlist'), logo: absoluteUrl('/brand/missa-wordmark-240.svg'), image: absoluteUrl('/brand/missa-social-share.png') }} />
       <JsonLd data={{
         '@context': 'https://schema.org',
         '@type': 'FAQPage',

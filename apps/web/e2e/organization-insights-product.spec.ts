@@ -32,7 +32,7 @@ test('Program lens keeps grains, formulas, and unavailable analysis explicit on 
   await expect(page.getByText('Date-range comparison and monthly trend stay unavailable until the Organization has a timezone.')).toBeVisible();
   await expect(page.getByRole('heading', { name: fixture.opportunityTitle })).toBeVisible();
   await expect(page.locator('body')).not.toContainText(/conversion|freshness|confidence|worker|provider/iu);
-  await expect(page.getByLabel('Practice facet').locator('option')).toHaveCount(12);
+  await expect(page.getByLabel('Field facet').locator('option')).toHaveCount(12);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);

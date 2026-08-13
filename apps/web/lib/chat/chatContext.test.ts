@@ -45,7 +45,7 @@ test("an ambiguous practice phrase asks the customer instead of silently collaps
   assert.ok(new Set(plan.clarifications[0]?.options.map((option) => option.facet)).size > 1);
 });
 
-test("the customer-safe parser recognises all twelve independent practice facets", () => {
+test("the customer-safe parser recognises all twelve independent field facets", () => {
   assert.deepEqual(TAXONOMY_FACET_KEYS, [
     "practice-family",
     "discipline",

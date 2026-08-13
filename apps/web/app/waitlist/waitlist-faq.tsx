@@ -11,10 +11,10 @@ export function WaitlistFaq() {
     <section className={styles.faqSection} aria-labelledby="waitlist-faq-heading">
       <div className={styles.faqIntro}>
         <p className={styles.faqLead}>
-          Missa helps you find the calls that fit your work, prepare what you need, and stay on top of every deadline—with the original source close at hand.
+          Missa helps you find personalized opportunities, helps you prepare for submission, and keeps you on top of every deadline.
         </p>
         <p className={styles.faqSupporting}>
-          Find grants, residencies, fellowships, contests, magazines, commissions, and open calls. See the deadline, requirements, fee, eligibility, and original source before you decide.
+          Find grants, residencies, fellowships, contests, magazines, commissions, and open calls. See the deadline, requirements, fee, eligibility, and other important information.
         </p>
         <h2 id="waitlist-faq-heading">How Missa helps you move from search to submission.</h2>
       </div>

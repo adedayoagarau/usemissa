@@ -78,7 +78,7 @@ test('Profile ledger keeps section URLs and exposes the full facet model progres
   await expect(page.getByText('12-facet model')).toBeVisible();
   const facet = page.getByLabel('Facet');
   await expect(facet.locator('option')).toHaveCount(12);
-  await expect(facet.locator('option')).toContainText(['Practice family', 'Discipline', 'Form', 'Genre', 'Subgenre', 'Medium', 'Technique or process', 'Mode or approach', 'Role', 'Theme or subject', 'Audience', 'Language']);
+  await expect(facet.locator('option')).toContainText(['Field', 'Discipline', 'Form', 'Genre', 'Subgenre', 'Medium', 'Technique or process', 'Mode or approach', 'Role', 'Theme or subject', 'Audience', 'Language']);
   await expect(page.getByText(/scheme\s+\d/i)).toHaveCount(0);
   await expect(page.getByText(/profile completeness|tracked opportunities|fit score|eligibility score/i)).toHaveCount(0);
   await expect(page.getByText('Request for proposals', { exact: true })).toBeVisible();

@@ -111,12 +111,12 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
       <Input className="mt-2" type="number" min="0" step="0.01" placeholder="Application fee in USD (optional)" value={feeCents} onChange={(e) => setFeeCents(e.target.value)} />
       <div className="mt-3 rounded-md border border-border bg-muted/20 p-3">
         <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Who this form is for</p>
-        <p className="mt-1 text-xs text-muted-foreground">Use canonical practice terms so applicants see the right form and your team can route submissions consistently.</p>
+        <p className="mt-1 text-xs text-muted-foreground">Use canonical field terms so applicants see the right form and your team can route submissions consistently.</p>
         <div className="mt-2 space-y-2">
           {taxonomyAssignments.map((assignment, index) => (
             <div key={`${assignment.termId}-${assignment.rule}-${index}`} className="flex flex-wrap items-center gap-2">
               <select aria-label="Taxonomy term" className="h-9 min-w-48 flex-1 rounded-md border border-border bg-background px-2 text-sm" value={assignment.termId} onChange={(event) => setTaxonomyAssignments((current) => current.map((item, itemIndex) => (itemIndex === index ? { ...item, termId: event.target.value } : item)))}>
-                <option value="">Choose a practice term</option>
+                <option value="">Choose a field term</option>
                 {SUBMISSION_TAXONOMY_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label} · {option.facet}
@@ -167,7 +167,7 @@ export function FormBuilder({ organizationId, openCallId, existingPath }: { orga
             ])
           }
         >
-          Add practice rule
+          Add field rule
         </Button>
         {taxonomyAssignments.length > 0 && (
           <p className="mt-2 text-xs text-muted-foreground">

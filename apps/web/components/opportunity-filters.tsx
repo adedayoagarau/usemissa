@@ -104,7 +104,7 @@ export function OpportunityFilters({ locations, activeFilterCount, saveSearch }:
   return (
     <div className={styles.filterRow}>
       <div className="flex flex-wrap items-center gap-2">
-        {control('Practice family', <Palette className="size-4 text-muted-foreground" />, practiceFamilyId, practiceOptions.map((term) => ({ id: term.id, label: term.preferredLabel })), 'practice-family')}
+        {control('Field', <Palette className="size-4 text-muted-foreground" />, practiceFamilyId, practiceOptions.map((term) => ({ id: term.id, label: term.preferredLabel })), 'practice-family')}
         {control('Discipline', <Tag className="size-4 text-muted-foreground" />, disciplineId, disciplineOptions.map((term) => ({ id: term.id, label: term.preferredLabel })), 'discipline', !practiceFamilyId)}
         {control('Genre', <Tag className="size-4 text-muted-foreground" />, genreId, genreOptions.map((term) => ({ id: term.id, label: term.preferredLabel })), 'genre', !disciplineId)}
         <label className={styles.filterSelect}><MapPin className="size-4 text-muted-foreground" /><span className="sr-only">Location</span><select aria-label="Location" value={searchParams.get('location') ?? ''} onChange={(event) => update('location', event.target.value)}><option value="">Location</option>{locations.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><ChevronDown className="size-3.5 text-muted-foreground" aria-hidden="true" /></label>
@@ -118,7 +118,7 @@ export function OpportunityFilters({ locations, activeFilterCount, saveSearch }:
         </div>
       </div>
       <div className="mt-2 flex min-h-5 items-center justify-between gap-3" aria-live="polite">
-        <p className="text-[11px] text-muted-foreground">{practiceFamilyId ? `Showing ${optionLabel(practiceFamilyId)}${disciplineId ? ` · ${optionLabel(disciplineId)}` : ''}${genreId ? ` · ${optionLabel(genreId)}` : ''}` : 'Start with a practice family to narrow the field.'}</p>
+        <p className="text-[11px] text-muted-foreground">{practiceFamilyId ? `Showing ${optionLabel(practiceFamilyId)}${disciplineId ? ` · ${optionLabel(disciplineId)}` : ''}${genreId ? ` · ${optionLabel(genreId)}` : ''}` : 'Start with a field to narrow the list.'}</p>
         {pending && <p className="inline-flex items-center gap-1.5 text-xs font-medium text-primary"><RefreshCw className="size-3.5 animate-spin" />Updating results…</p>}
         {!pending && (practiceFamilyId || disciplineId || genreId) && <p className="inline-flex items-center gap-1 text-[11px] text-green"><Check className="size-3.5" />Results refreshed</p>}
       </div>

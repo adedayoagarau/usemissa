@@ -119,7 +119,7 @@ export function TaxonomyBrowsePicker({
                   >
                     <option value="include">Show me opportunities like this</option>
                     <option value="prefer">Especially interested</option>
-                    <option value="exclude">Do not show this practice</option>
+                    <option value="exclude">Do not show this field</option>
                   </select>
                 )}
                 <button type="button" aria-label={`Remove ${taxonomyLabelFor(termId)}`} onClick={() => removeTerm(termId)} className="rounded px-1 text-muted-foreground hover:bg-muted hover:text-foreground">×</button>

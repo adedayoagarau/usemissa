@@ -11,7 +11,7 @@ export default function AskPage() {
       <header className={styles.heading}>
         <p>Bounded, source-linked search</p>
         <h1>Ask Missa</h1>
-        <span>Search Missa’s published Opportunities in plain language. Practice filters stay separate across all 12 facets, and every result keeps its official-source link.</span>
+        <span>Search Missa’s published Opportunities in plain language. Field filters stay separate across all 12 facets, and every result keeps its official-source link.</span>
       </header>
       <AskMissa />
     </main>

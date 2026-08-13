@@ -4,6 +4,7 @@ dist/
 *.tsbuildinfo
 .radar-data/
 .vercel
+.neon
 .next/
 apps/web/next-env.d.ts
 .env*.local

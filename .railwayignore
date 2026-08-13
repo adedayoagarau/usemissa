@@ -1,0 +1,19 @@
+# Keep Railway source uploads small and reproducible. The Dockerfile installs
+# dependencies inside the build image.
+# The ingestion-v2 service should use docker/ingestion-v2/Dockerfile so its
+# image does not include unrelated web and Radar dependencies.
+node_modules/
+.codex-source-ingestion-node_modules/
+.expo-map/
+.git/
+.next/
+dist/
+outputs/
+apps/web/outputs/
+apps/web/.next/
+apps/web/playwright-report/
+apps/web/test-results/
+test-results/
+*.log
+*.tsbuildinfo
+.DS_Store

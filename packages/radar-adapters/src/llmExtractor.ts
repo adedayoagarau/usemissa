@@ -88,6 +88,8 @@ export interface LlmExtractorOptions {
   apiKey?: string;
   model?: string;
   client?: Anthropic;
+  provider?: 'anthropic' | 'deepseek';
+  endpoint?: string;
 }
 
 /**
@@ -100,12 +102,18 @@ export interface LlmExtractorOptions {
  * the validators dispose.
  */
 export class LlmExtractor implements Extractor {
-  private readonly client: Anthropic;
+  private readonly client?: Anthropic;
   private readonly model: string;
+  private readonly provider: 'anthropic' | 'deepseek';
+  private readonly apiKey: string;
+  private readonly endpoint: string;
 
   constructor(private readonly clock: Clock, opts: LlmExtractorOptions = {}) {
-    this.client = opts.client ?? new Anthropic({ apiKey: opts.apiKey });
+    this.provider = opts.provider ?? 'anthropic';
+    this.apiKey = opts.apiKey ?? '';
+    this.client = this.provider === 'anthropic' ? (opts.client ?? new Anthropic({ apiKey: opts.apiKey })) : undefined;
     this.model = opts.model ?? 'claude-sonnet-5';
+    this.endpoint = opts.endpoint ?? 'https://api.deepseek.com/chat/completions';
   }
 
   async extract(source: Source, snapshot: PageSnapshot): Promise<OpportunityCandidate> {
@@ -161,6 +169,9 @@ export class LlmExtractor implements Extractor {
 
   private async callModel(pageText: string, candidateTerms: CandidateTaxonomyTerm[]): Promise<ExtractionFields> {
     const candidateList = candidateTerms.map((term) => `${term.id} — ${term.label} (${term.facet})`).join('\n');
+    const prompt = `Extract the opportunity listing fields from this page text. For taxonomy, choose only IDs from this candidate list; if none apply, return an empty taxonomyTermIds array. Do not invent IDs and do not infer from file formats.\n\nCandidate taxonomy terms:\n${candidateList || '(none)'}\n\nPage text:\n${pageText.slice(0, 12_000)}`;
+    if (this.provider === 'deepseek') return this.callDeepSeek(prompt);
+    if (!this.client) throw new Error('Anthropic client is not configured');
     const message = await this.client.messages.create({
       model: this.model,
       max_tokens: 1024,
@@ -169,12 +180,32 @@ export class LlmExtractor implements Extractor {
       messages: [
         {
           role: 'user',
-          content: `Extract the opportunity listing fields from this page text. For taxonomy, choose only IDs from this candidate list; if none apply, return an empty taxonomyTermIds array. Do not invent IDs and do not infer from file formats.\n\nCandidate taxonomy terms:\n${candidateList || '(none)'}\n\nPage text:\n${pageText.slice(0, 12_000)}`,
+          content: prompt,
         },
       ],
     });
     const toolUse = message.content.find((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use');
     return (toolUse?.input as ExtractionFields) ?? {};
+  }
+
+  private async callDeepSeek(prompt: string): Promise<ExtractionFields> {
+    if (!this.apiKey) throw new Error('DeepSeek API key is not configured');
+    const response = await fetch(this.endpoint, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${this.apiKey}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: this.model,
+        temperature: 0,
+        messages: [{ role: 'user', content: prompt }],
+        tools: [{ type: 'function', function: { name: EXTRACTION_TOOL.name, description: EXTRACTION_TOOL.description, parameters: EXTRACTION_TOOL.input_schema } }],
+        tool_choice: { type: 'function', function: { name: EXTRACTION_TOOL.name } },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!response.ok) throw new Error(`DeepSeek extraction HTTP ${response.status}`);
+    const payload = await response.json() as { choices?: Array<{ message?: { tool_calls?: Array<{ function?: { arguments?: string } }> } }> };
+    const args = payload.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    return args ? JSON.parse(args) as ExtractionFields : {};
   }
 }
 

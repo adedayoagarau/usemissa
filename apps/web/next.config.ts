@@ -6,7 +6,18 @@ const nextConfig: NextConfig = {
   // standalone app -- tell Next.js where the real project root is so it
   // doesn't warn about / mis-trace the "additional lockfile" at ../../..
   outputFileTracingRoot: path.join(import.meta.dirname, '../../'),
-  allowedDevOrigins: ['127.0.0.1'],
+  allowedDevOrigins: ['127.0.0.1', '10.0.0.119'],
+  async headers() {
+    return [{
+      source: '/(.*)',
+      headers: [
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+      ],
+    }];
+  },
 };
 
 export default nextConfig;

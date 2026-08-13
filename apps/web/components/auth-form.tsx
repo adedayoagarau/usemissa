@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { serializeAuthIntent, type AuthIntent } from '@/lib/authRedirect';
+import { MissaWordmark } from '@/components/missa-wordmark';
 import styles from '@/app/auth.module.css';
 
 type AuthMode = 'login' | 'signup';
@@ -88,15 +89,12 @@ export function AuthForm({
     <div className={styles.page}>
       <section className={styles.story} aria-label="About Missa">
         <div className={styles.storyContent}>
-          <Link href="/" className={styles.mark}>
-            <span className={styles.markDot} />
-            Missa
-          </Link>
+          <MissaWordmark size="marketing" className={styles.mark} />
           <div className={styles.storyCopy}>
             <h1 className={styles.storyTitle}>A clearer way to send your work out into the world.</h1>
             <p className={styles.storyBody}>Missa brings the right opportunities, requirements, and next steps into one place.</p>
             <div className={styles.promiseList}>
-              <p className={styles.promise}>Opportunities tailored to your practice</p>
+              <p className={styles.promise}>Opportunities based on your field</p>
               <p className={styles.promise}>Requirements visible before you commit</p>
               <p className={styles.promise}>One place to track what happens next</p>
             </div>
@@ -106,7 +104,7 @@ export function AuthForm({
 
       <section className={styles.formPane} aria-label={mode === 'login' ? 'Log in' : 'Create an account'}>
         <div className={styles.formCard}>
-          <p className={styles.formKicker}>Missa</p>
+          <MissaWordmark href={null} size="compact" className={styles.formKicker} />
           <h2 className={styles.formTitle}>{mode === 'login' ? 'Welcome back.' : 'Create your account.'}</h2>
           <p className={styles.formDescription}>{mode === 'login' ? 'Pick up where you left off.' : 'Find source-linked opportunities, understand what they ask, and track what happens next.'}</p>
 

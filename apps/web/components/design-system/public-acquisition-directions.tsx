@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './public-acquisition-directions.module.css'
 
 type Direction = 'utility' | 'editorial' | 'pathways'
@@ -185,7 +186,7 @@ function PublicHeader({ surface, fixture }: { surface: Surface; fixture: Fixture
   return (
     <header className={styles.publicHeader}>
       <a href='#public-main' className={styles.skipLink}>Skip to content</a>
-      <a href='#home' className={styles.wordmark}>Missa</a>
+      <MissaWordmark href='#home' size='app' className={styles.wordmark} />
       <nav aria-label='Main navigation'>
         <a href='#home' aria-current={surface === 'home' ? 'page' : undefined}>Home</a>
         <a href='#opportunities'>Opportunities</a>
@@ -249,7 +250,7 @@ function AboutPage() {
 
 function OrganizationsPage() {
   const capabilities = [
-    ['Publish a clear Opportunity', 'Available', 'Type, practice, eligibility, geography, dates, fee, and form remain separate.'],
+    ['Publish a clear Opportunity', 'Available', 'Type, field, eligibility, geography, dates, fee, and form remain separate.'],
     ['Receive multi-Work Submissions', 'Available', 'One packet can contain several independently reviewable Works.'],
     ['Assign scoped reviews', 'Limited', 'Assignment-only access is represented; complete typed capability projection remains a promotion gate.'],
     ['Record per-Work decisions', 'Available', 'Submission summaries are derived rather than manually flattened.'],
@@ -270,13 +271,13 @@ function GuidesPage() {
 }
 
 function ArticlePage() {
-  return <main id='public-main' className={styles.articleLayout}><article><p className={styles.eyebrow}>Guide · Before you apply</p><h2>How to read an Opportunity before you commit your time</h2><p className={styles.lede}>A clear first pass separates what the Organization states, what remains unknown, and what you need to decide for yourself.</p><h3>Begin with the official source</h3><p>Confirm the deadline, fee, route, required Works, eligibility, and any terms that could change the cost of applying. Missa can organize those facts, but the official call remains authoritative.</p><h3>Keep different questions separate</h3><p>Creative practice, Opportunity type, geography, career stage, identity eligibility, fee, and deadline are different facts. One familiar label does not answer the others.</p><h3>Record your own decision</h3><p>Save why you are interested, what you need to confirm, and the next action. That private context belongs in your Profile and Tracker—not on the public record.</p><footer><span>Guide updated 8 August 2026</span><a href='#source'>Editorial sources <ExternalLink /></a></footer></article><aside><h3>Related Opportunities</h3><p>Missa has no matching published records in this collection right now. That does not mean no such Opportunities exist.</p><Button variant='outline'>Browse all Opportunities</Button></aside></main>
+  return <main id='public-main' className={styles.articleLayout}><article><p className={styles.eyebrow}>Guide · Before you apply</p><h2>How to read an Opportunity before you commit your time</h2><p className={styles.lede}>A clear first pass separates what the Organization states, what remains unknown, and what you need to decide for yourself.</p><h3>Begin with the official source</h3><p>Confirm the deadline, fee, route, required Works, eligibility, and any terms that could change the cost of applying. Missa can organize those facts, but the official call remains authoritative.</p><h3>Keep different questions separate</h3><p>Field, Opportunity type, geography, career stage, identity eligibility, fee, and deadline are different facts. One familiar label does not answer the others.</p><h3>Record your own decision</h3><p>Save why you are interested, what you need to confirm, and the next action. That private context belongs in your Profile and Tracker—not on the public record.</p><footer><span>Guide updated 8 August 2026</span><a href='#source'>Editorial sources <ExternalLink /></a></footer></article><aside><h3>Related Opportunities</h3><p>Missa has no matching published records in this collection right now. That does not mean no such Opportunities exist.</p><Button variant='outline'>Browse all Opportunities</Button></aside></main>
 }
 
 function MethodologyPage() {
   const steps = [
     ['Collect the public claim', 'Missa records what a public Organization or source actually states.'],
-    ['Separate facts and sources', 'Deadline, fee, type, geography, eligibility, and practice remain independent.'],
+    ['Separate facts and sources', 'Deadline, fee, type, geography, eligibility, and field remain independent.'],
     ['Preserve unknowns and conflicts', 'Missing or contradictory information remains visible instead of being resolved by guesswork.'],
     ['Publish a customer-safe record', 'Only facts that meet the public evidence contract appear; internal operations stay in Platform Admin.'],
   ]
@@ -286,7 +287,7 @@ function MethodologyPage() {
 function CollectionPage({ fixture }: { fixture: Fixture }) {
   if (fixture === 'collection-stale') return <main id='public-main' className={styles.pageContent}><Alert className={styles.statePanel}><Library /><AlertTitle>This collection has moved</AlertTitle><AlertDescription>The previous term now maps to Writing residencies. Continue to the canonical collection or browse all Opportunities.</AlertDescription><Button>Open Writing residencies</Button></Alert></main>
   const count = fixture === 'collection-active' ? 3 : fixture === 'collection-thin' ? 1 : 0
-  return <main id='public-main' className={styles.pageContent}><section className={styles.pageHeading}><div><p className={styles.eyebrow}>Curated collection</p><h2>Writing residencies</h2><p>Published residencies whose stated creative-practice requirements include writing. Geography, eligibility, fee, and deadline are not part of this inclusion rule.</p></div><Badge variant='outline'>{count} published {count === 1 ? 'record' : 'records'}</Badge></section>{fixture === 'collection-thin' ? <Alert className={styles.boundaryAlert}><BookOpen /><AlertTitle>This is a small collection</AlertTitle><AlertDescription>Only one published record currently meets this collection’s inclusion rule. It is not a claim about the wider field.</AlertDescription></Alert> : null}{count === 0 ? <EmptySection /> : <div className={styles.opportunityGrid}>{opportunities.slice(0, count).map((item) => <OpportunityCard key={item.title} item={item} />)}</div>}</main>
+  return <main id='public-main' className={styles.pageContent}><section className={styles.pageHeading}><div><p className={styles.eyebrow}>Curated collection</p><h2>Writing residencies</h2><p>Published residencies whose stated field requirements include writing. Geography, eligibility, fee, and deadline are not part of this inclusion rule.</p></div><Badge variant='outline'>{count} published {count === 1 ? 'record' : 'records'}</Badge></section>{fixture === 'collection-thin' ? <Alert className={styles.boundaryAlert}><BookOpen /><AlertTitle>This is a small collection</AlertTitle><AlertDescription>Only one published record currently meets this collection’s inclusion rule. It is not a claim about the wider field.</AlertDescription></Alert> : null}{count === 0 ? <EmptySection /> : <div className={styles.opportunityGrid}>{opportunities.slice(0, count).map((item) => <OpportunityCard key={item.title} item={item} />)}</div>}</main>
 }
 
 function ProfilePage({ fixture }: { fixture: Fixture }) {
@@ -308,7 +309,7 @@ function PublicSurface({ direction, surface, fixture }: { direction: Direction; 
     <div className={styles.preview} data-direction={direction} data-surface={surface}>
       <PublicHeader surface={surface} fixture={fixture} />
       <div className={styles.previewBody}>{direction === 'pathways' ? <PathRail surface={surface} /> : null}{surface === 'home' ? <HomePage direction={direction} fixture={fixture} /> : surface === 'about' ? <AboutPage /> : surface === 'organizations' ? <OrganizationsPage /> : surface === 'guides' ? <GuidesPage /> : surface === 'article' ? <ArticlePage /> : surface === 'methodology' ? <MethodologyPage /> : surface === 'collection' ? <CollectionPage fixture={fixture} /> : surface === 'profile' ? <ProfilePage fixture={fixture} /> : <AccessPage fixture={fixture} />}</div>
-      <footer className={styles.publicFooter}><strong>Missa</strong><p>Opportunities for creative work, with the source and limits kept visible.</p><nav aria-label='Footer'><a href='#about'>About</a><a href='#methodology'>Methodology</a><a href='#privacy'>Privacy</a><a href='#contact'>Contact</a></nav></footer>
+      <footer className={styles.publicFooter}><MissaWordmark href={null} size='compact' /><p>Opportunities for creative work, with the source and limits kept visible.</p><nav aria-label='Footer'><a href='#about'>About</a><a href='#methodology'>Methodology</a><a href='#privacy'>Privacy</a><a href='#contact'>Contact</a></nav></footer>
     </div>
   )
 }

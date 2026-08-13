@@ -12,6 +12,9 @@
   z-index: 60;
   top: 10px;
   left: 12px;
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   padding: 11px 14px;
   border-radius: 8px;
   background: var(--foreground);
@@ -36,6 +39,11 @@
   gap: 40px;
 }
 
+.brandLink {
+  min-height: 44px;
+  border-radius: 8px;
+}
+
 .desktopNav {
   display: flex;
   min-height: 72px;
@@ -58,18 +66,18 @@
 
 .desktopNav a:hover,
 .desktopNav a:focus-visible,
-.desktopNav a[aria-current='page'] {
+.desktopNav a[aria-current="page"] {
   color: var(--foreground);
 }
 
-.desktopNav a[aria-current='page']::after {
+.desktopNav a[aria-current="page"]::after {
   position: absolute;
   right: 12px;
   bottom: -1px;
   left: 12px;
   height: 3px;
   background: var(--primary);
-  content: '';
+  content: "";
 }
 
 .actions,
@@ -94,6 +102,7 @@
 }
 
 .authActions > .createButton {
+  min-height: 44px;
   border-color: #5a3f68;
   background: #5a3f68;
   color: #fff;
@@ -106,8 +115,8 @@
 
 .avatar {
   display: inline-grid;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   border-radius: 999px;
   background: var(--accent-deep);
@@ -137,6 +146,8 @@
 
   .mobileButton {
     display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .mobileNav {
@@ -159,7 +170,7 @@
   }
 
   .mobileNav a:hover,
-  .mobileNav a[aria-current='page'] {
+  .mobileNav a[aria-current="page"] {
     background: var(--accent-tint);
     color: var(--accent-deep);
   }

@@ -136,7 +136,7 @@ function FilterPanel({
       </fieldset>
 
       <fieldset className={styles.group}>
-        <legend>Practice family</legend>
+        <legend>Field</legend>
         <div className={styles.checkList}>
           {practiceFamilies.map((term) => (
             <label key={term.id} className={styles.checkRow}>
@@ -177,7 +177,7 @@ function FilterPanel({
 
       <details className={styles.more}>
         <summary>
-          <span><strong>More creative-practice filters</strong><small>Keep each facet separate.</small></span>
+          <span><strong>More field filters</strong><small>Keep each facet separate.</small></span>
           <ChevronDown aria-hidden="true" />
         </summary>
         <div className={styles.moreFields}>

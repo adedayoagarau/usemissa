@@ -61,7 +61,7 @@ Missa uses ordinary nouns for user-facing products and tasks. Name what a person
 
 | Use this | For | Do not use in user-facing copy |
 | :-- | :-- | :-- |
-| **Profile** | Creator identity, practice, eligibility, and preferences | Passport |
+| **Profile** | Creator identity, field, eligibility, and preferences | Passport |
 | **Opportunities** | Public opportunity discovery and listings | Discover, Radar |
 | **Tracker** | Submission history, deadlines, and outcomes | Pipeline View, intelligence features |
 | **Library** | Works, files, and saved answers | Wallet |
@@ -257,7 +257,7 @@ Use **deadline**, not **time-sensitive consideration**. Use **review**, not **ev
 
 **Not**
 
-> Move your creative practice forward with confidence.
+> Move your work forward with confidence.
 
 ### 5.10 Stop when the task is complete
 
@@ -294,7 +294,7 @@ Reject these patterns in product and marketing copy.
 
 > No clutter. Just the opportunities that matter.
 
-> Not another platform. A home for your practice.
+> Not another platform. A home for your field.
 
 ### Balanced slogan pairs
 
@@ -429,7 +429,7 @@ Lead with the thing the page enables.
 
 > Find opportunities that fit your work.
 
-> Use your practice, location, and preferences to narrow the list. See why each opportunity appears.
+> Use your field, location, and preferences to narrow the list. See why each opportunity appears.
 
 **For organizations**
 
@@ -897,7 +897,7 @@ Do not lead with **AI-powered**, **intelligent**, **smart**, or **automated**.
 
 Lead with the result:
 
-> See opportunities that match your practice, location, and preferences.
+> See opportunities that match your field, location, and preferences.
 
 ### 15.2 Product disclosure
 
@@ -912,7 +912,7 @@ Use this order:
 
 > Missa summarized these requirements from the official guidelines checked on 7 August. Read the source before applying.
 
-> This recommendation uses your practice, location, and fee preferences. Update your profile or hide this opportunity.
+> This recommendation uses your field, location, and fee preferences. Update your profile or hide this opportunity.
 
 ### 15.3 Allowed verbs
 
@@ -950,6 +950,7 @@ Use ordinary nouns consistently.
 | Use | Meaning | Avoid |
 | :-- | :-- | :-- |
 | Opportunity | Umbrella term for grants, residencies, fellowships, commissions, awards, and open calls | listing object, opportunity item |
+| Field | The public umbrella for the kind of work an opportunity accepts or a person makes, such as poetry, film, visual art, or sound | practice, practice family, creative field |
 | Open call | A public invitation to submit or apply | use as the name for every opportunity |
 | Submission | Work and information sent for one opportunity | submission package |
 | Work | A poem, manuscript, image, film, project, proposal, or other creative work | asset, content item |
@@ -969,6 +970,7 @@ Use **people** rather than **users** in public copy. **User** is acceptable in t
 
 - Use sentence case for headings, buttons, labels, and email subjects.
 - Write **Missa**, not **MISSA**, unless the wordmark styling is purely visual.
+- Render brand identity with the canonical `MissaWordmark` component and supplied SVG artwork. Do not imitate the wordmark with typed letters, tracking, or a substitute font.
 - Capitalize official product names only.
 - Do not use all caps in source text.
 
@@ -1022,7 +1024,7 @@ Do not use **Click here**.
 | Find the calls that fit your work, all in one calmer place. | Find your next opportunity. |
 | Your work is specific. Your opportunities should be too. | Find opportunities that fit your work. |
 | No password yet. Just a note when Missa is ready for you. | We’ll send you an invite when Missa is ready. |
-| Unlock personalized opportunities powered by AI. | See opportunities based on your practice, location, and preferences. |
+| Unlock personalized opportunities powered by AI. | See opportunities based on your field, location, and preferences. |
 | Never miss another deadline. | Add deadlines to your calendar. |
 | This is a perfect match. | This may fit because the call accepts poetry and is open to writers in Nigeria. |
 | Your work is out in the world. | Submission sent. |

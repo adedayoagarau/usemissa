@@ -48,6 +48,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Textarea } from '@/components/ui/textarea'
 
+import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './hosted-application-directions.module.css'
 
 type Direction = 'guided' | 'desk' | 'packet'
@@ -154,10 +155,10 @@ const fixtureOptions: Array<{ value: Fixture; label: string }> = [
   { value: 'field-error', label: 'Question validation errors' },
   { value: 'long-form', label: 'Long application form' },
   { value: 'no-questions', label: 'No Organization questions' },
-  { value: 'required-practice', label: 'Required practice rule' },
-  { value: 'preferred-practice', label: 'Preferred practice rule' },
-  { value: 'excluded-practice', label: 'Excluded practice rule' },
-  { value: 'taxonomy-unresolved', label: 'Practice label unresolved' },
+  { value: 'required-practice', label: 'Required field rule' },
+  { value: 'preferred-practice', label: 'Preferred field rule' },
+  { value: 'excluded-practice', label: 'Excluded field rule' },
+  { value: 'taxonomy-unresolved', label: 'Field label unresolved' },
   { value: 'duplicate-submit', label: 'Duplicate submit protected' },
   { value: 'ambiguous-submit', label: 'Submission result being checked' },
   { value: 'submitted', label: 'Successful receipt' },
@@ -177,7 +178,7 @@ function scenarioFor(fixture: Fixture): Scenario {
     questionCount: 4,
     draftLabel: 'Saved to Missa · just now',
     draftTone: 'saved',
-    practiceRule: { kind: 'accepted', label: 'Visual arts and installation', detail: 'Accepted practices for this Opportunity.' },
+    practiceRule: { kind: 'accepted', label: 'Visual arts and installation', detail: 'Accepted fields for this Opportunity.' },
     upload: 'ready',
   }
   if (fixture === 'signed-out') return { ...base, signedIn: false, draftLabel: 'Sign in to begin', draftTone: 'attention', notice: { tone: 'info', title: 'Your place will be preserved', body: 'After signing in, you will return to this Opportunity. A private draft starts only when you begin.' } }
@@ -205,15 +206,15 @@ function scenarioFor(fixture: Fixture): Scenario {
   if (fixture === 'field-error') return { ...base, notice: { tone: 'danger', title: 'Two answers need attention', body: 'Use the links in Review to return to each question.' } }
   if (fixture === 'long-form') return { ...base, questionCount: 18 }
   if (fixture === 'no-questions') return { ...base, questionCount: 0 }
-  if (fixture === 'required-practice') return { ...base, practiceRule: { kind: 'required', label: 'Installation', detail: 'At least one submitted Work must use this practice.' } }
-  if (fixture === 'preferred-practice') return { ...base, practiceRule: { kind: 'preferred', label: 'Public practice', detail: 'Preferred, but not required for eligibility.' } }
-  if (fixture === 'excluded-practice') return { ...base, practiceRule: { kind: 'excluded', label: 'Commercial advertising', detail: 'The Organization says this program cannot support commercial advertising projects.' }, notice: { tone: 'warning', title: 'Review an excluded practice', body: 'Missa will not decide eligibility for you. Read the Organization explanation and confirm your submission does not rely on the excluded practice.' } }
-  if (fixture === 'taxonomy-unresolved') return { ...base, practiceRule: { kind: 'unresolved', label: 'Organization label not mapped', detail: 'Read the original wording in the guidelines; Missa has not silently assigned a practice.' } }
+  if (fixture === 'required-practice') return { ...base, practiceRule: { kind: 'required', label: 'Installation', detail: 'At least one submitted Work must use this field.' } }
+  if (fixture === 'preferred-practice') return { ...base, practiceRule: { kind: 'preferred', label: 'Public work', detail: 'Preferred, but not required for eligibility.' } }
+  if (fixture === 'excluded-practice') return { ...base, practiceRule: { kind: 'excluded', label: 'Commercial advertising', detail: 'The Organization says this program cannot support commercial advertising projects.' }, notice: { tone: 'warning', title: 'Review an excluded field', body: 'Missa will not decide eligibility for you. Read the Organization explanation and confirm your submission does not rely on the excluded field.' } }
+  if (fixture === 'taxonomy-unresolved') return { ...base, practiceRule: { kind: 'unresolved', label: 'Organization label not mapped', detail: 'Read the original wording in the guidelines; Missa has not silently assigned a field.' } }
   if (fixture === 'duplicate-submit') return { ...base, draftLabel: 'Submission already received', draftTone: 'saved', notice: { tone: 'info', title: 'We already received this application', body: 'The repeated action was safely ignored. Open the existing receipt in Tracker.' } }
   if (fixture === 'ambiguous-submit') return { ...base, draftLabel: 'Checking submission', draftTone: 'attention', notice: { tone: 'info', title: 'Checking whether your submission was received', body: 'Do not submit or pay again. This page will open the receipt when confirmation arrives.' } }
   if (fixture === 'submitted') return { ...base, submitted: true, draftLabel: 'Submitted', draftTone: 'saved' }
   if (fixture === 'load-error') return { ...base, loadError: true }
-  if (fixture === 'unicode') return { ...base, title: 'Àjọṣe Studio Fellowship — برنامج الفنانين 2027', organization: 'Àjọṣe Arts · مؤسسة الفنون المشتركة', practiceRule: { kind: 'accepted', label: 'Ìṣẹ̀dá àwòrán · الفنون البصرية', detail: 'Accepted practices for this Opportunity.' } }
+  if (fixture === 'unicode') return { ...base, title: 'Àjọṣe Studio Fellowship — برنامج الفنانين 2027', organization: 'Àjọṣe Arts · مؤسسة الفنون المشتركة', practiceRule: { kind: 'accepted', label: 'Ìṣẹ̀dá àwòrán · الفنون البصرية', detail: 'Accepted fields for this Opportunity.' } }
   return base
 }
 
@@ -370,7 +371,7 @@ function HostedApplicationExperience({ selectedOnly }: { selectedOnly: boolean }
 
       <div ref={screenRef} className={`${styles.screen} ${styles[activeDirection]}`} tabIndex={-1}>
         <div className={styles.productBar}>
-          <a className={styles.wordmark} href='#missa'>MISSA</a>
+          <MissaWordmark href='#missa' size='app' className={styles.wordmark} />
           <nav aria-label='Primary'><a href='#opportunities'>Opportunities</a><a href='#tracker'>Tracker</a><a href='#library'>Library</a></nav>
           <Button variant='outline' size='sm'>Profile</Button>
         </div>
@@ -445,7 +446,7 @@ function HostedApplicationExperience({ selectedOnly }: { selectedOnly: boolean }
                         <div><Clock3 /><span>Route<strong>Hosted on Missa</strong></span></div>
                       </div>
                       <Card className={styles.requirementCard}>
-                        <CardHeader><CardTitle>Practice requirement</CardTitle><CardDescription>Creative-practice rules are separate from geography, career stage, and fee.</CardDescription></CardHeader>
+                        <CardHeader><CardTitle>Field requirement</CardTitle><CardDescription>Field rules are separate from geography, career stage, and fee.</CardDescription></CardHeader>
                         <CardContent>
                           <div className={`${styles.practiceRule} ${styles[scenario.practiceRule.kind]}`}>
                             <Badge variant='outline'>{scenario.practiceRule.kind}</Badge>
@@ -509,7 +510,7 @@ function HostedApplicationExperience({ selectedOnly }: { selectedOnly: boolean }
                           </div>
                           <fieldset className={styles.radioField}>
                             <legend>Career stage <span>Required</span></legend>
-                            <p>Choose the description that best reflects your current practice.</p>
+                            <p>Choose the description that best reflects your current field.</p>
                             <label><input type='radio' name='career-stage' defaultChecked /> Emerging</label>
                             <label><input type='radio' name='career-stage' /> Mid-career</label>
                             <label><input type='radio' name='career-stage' /> Established</label>
