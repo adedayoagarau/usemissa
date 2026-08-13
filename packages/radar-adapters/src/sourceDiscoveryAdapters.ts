@@ -172,6 +172,28 @@ function detailIndex(
     }));
 }
 
+function artConnectIndex(source: Source, html: string, finalUrl: string): DiscoveredSourceLink[] {
+  return htmlLinks(html, finalUrl)
+    .filter((link) => {
+      const url = new URL(link.url);
+      return (
+        url.hostname === "www.artconnect.com" &&
+        (url.pathname.startsWith("/opportunity/") ||
+          (url.pathname === "/opportunities" && url.searchParams.has("page")))
+      );
+    })
+    .map((link) => ({
+      ...link,
+      kind: "directory" as const,
+      registryTier: 2 as const,
+      followsOutboundLinks: true,
+      discoveryAdapterId: new URL(link.url).pathname.startsWith("/opportunity/")
+        ? "artconnect-detail"
+        : "artconnect-index",
+      discoveredFromSourceId: source.id,
+    }));
+}
+
 const ON_THE_MOVE_NON_CALL_PATHS = new Set([
   "/news/countries",
   "/news/deadlines",
@@ -411,6 +433,10 @@ export function discoverSourceLinks(
   }
   if (source.discoveryAdapterId === "commonwealth-detail")
     return inArticleExternalLinks(source, html, finalUrl);
+  if (source.discoveryAdapterId === "artconnect-index")
+    return artConnectIndex(source, html, finalUrl);
+  if (source.discoveryAdapterId === "artconnect-detail")
+    return inArticleExternalLinks(source, html, finalUrl, 1, true);
   if (source.discoveryAdapterId === "music-in-africa-index") {
     return htmlLinks(html, finalUrl).flatMap((link): DiscoveredSourceLink[] => {
       const path = new URL(link.url).pathname;

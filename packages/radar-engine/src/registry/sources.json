@@ -753,7 +753,6 @@
       "geography": [
         "global"
       ],
-      "checkIntervalHours": 48,
       "active": true,
       "followsOutboundLinks": true,
       "taxonomyTermIds": [
@@ -8167,7 +8166,7 @@
     {
       "id": "src_grants-international_artconnect_opportunities_418",
       "name": "ArtConnect Opportunities",
-      "url": "https://www.artconnect.com/opportunities",
+      "url": "https://www.artconnect.com/opportunities?fees=FREE&sortBy=-deadline",
       "kind": "directory",
       "verticalId": "grants-international",
       "tier": 2,
@@ -8187,6 +8186,8 @@
       ],
       "checkIntervalHours": 48,
       "active": true,
+      "checkIntervalHours": 24,
+      "discoveryAdapterId": "artconnect-index",
       "followsOutboundLinks": true,
       "taxonomyTermIds": [
         "taxterm_pf-visual-arts",

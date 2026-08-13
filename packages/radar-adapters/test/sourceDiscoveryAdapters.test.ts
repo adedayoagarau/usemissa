@@ -259,6 +259,34 @@ test("Music In Africa discovery keeps open-call articles and excludes awards new
   );
 });
 
+test("ArtConnect discovery follows opportunity cards and preserves separate calls", () => {
+  const artConnect = source({
+    id: "source-artconnect",
+    name: "ArtConnect Opportunities",
+    url: "https://www.artconnect.com/opportunities?fees=FREE&sortBy=-deadline",
+    discoveryAdapterId: "artconnect-index",
+  });
+  const html = `
+    <a href="/opportunity/one">First residency</a>
+    <a href="/opportunity/two">Second grant</a>
+    <a href="/opportunities?fees=FREE&amp;sortBy=-deadline&amp;page=2">Next</a>
+    <a href="/opportunities/new">Add opportunity</a>
+  `;
+
+  assert.deepEqual(
+    discoverSourceLinks(artConnect, html, artConnect.url).map((link) => ({
+      url: link.url,
+      adapter: link.discoveryAdapterId,
+      from: link.discoveredFromSourceId,
+    })),
+    [
+      { url: "https://www.artconnect.com/opportunity/one", adapter: "artconnect-detail", from: "source-artconnect" },
+      { url: "https://www.artconnect.com/opportunity/two", adapter: "artconnect-detail", from: "source-artconnect" },
+      { url: "https://www.artconnect.com/opportunities?fees=FREE&sortBy=-deadline&page=2", adapter: "artconnect-index", from: "source-artconnect" },
+    ],
+  );
+});
+
 test("Music In Africa homepage discovery follows its dedicated opportunities index", () => {
   const musicInAfrica = source({
     id: "source-music-in-africa",
