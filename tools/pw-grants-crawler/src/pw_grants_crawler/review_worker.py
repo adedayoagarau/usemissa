@@ -105,6 +105,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--enqueue-limit", type=int, default=int(os.environ.get("GARY_REVIEW_ENQUEUE_LIMIT", "1000")))
     parser.add_argument("--publish-threshold", type=float, default=float(os.environ.get("GARY_PUBLISH_THRESHOLD", "0.85")))
     parser.add_argument("--daily-cost-limit-usd", type=float, default=float(os.environ.get("GARY_DAILY_AI_COST_LIMIT_USD", "1.00")))
+    parser.add_argument(
+        "--continuous",
+        action="store_true",
+        default=os.environ.get("GARY_REVIEW_CONTINUOUS", "").casefold() in {"1", "true", "yes", "on"},
+        help="Process queued review jobs on every poll instead of waiting for the morning cycle.",
+    )
     parser.add_argument("--once", action="store_true", help="Run immediately once, regardless of the morning schedule.")
     return parser
 
@@ -131,21 +137,24 @@ def main(argv: list[str] | None = None) -> int:
     store.heartbeat("reviewer", owner, "starting", release=release)
     while True:
         due, local_date = should_run_morning(datetime.now(timezone.utc), args.timezone, args.review_hour, last_date)
-        if args.once or due:
+        if args.once or due or args.continuous:
             with heartbeat_loop(store, "reviewer", owner, release=release, status="working"):
                 summary = run_cycle(args, store, reviewer, owner, release)
-            alert = send_daily_digest(
-                api_key=os.environ.get("RESEND_API_KEY"), sender=os.environ.get("RESEND_FROM"),
-                recipient=recipient, digest_date=datetime.now(ZoneInfo(args.timezone)).date(),
-                summary=summary, dashboard_url=os.environ.get("GARY_DASHBOARD_URL"),
-            )
-            store.record_digest(
-                datetime.now(ZoneInfo(args.timezone)).date(), args.timezone,
-                recipient_key, alert.status, summary,
-                provider_message_id=alert.provider_message_id, error=alert.error,
-            )
-            print(f"[gary-reviewer] cycle={local_date} summary={summary} email={alert.status}")
-            last_date = local_date
+            if due or args.once:
+                alert = send_daily_digest(
+                    api_key=os.environ.get("RESEND_API_KEY"), sender=os.environ.get("RESEND_FROM"),
+                    recipient=recipient, digest_date=datetime.now(ZoneInfo(args.timezone)).date(),
+                    summary=summary, dashboard_url=os.environ.get("GARY_DASHBOARD_URL"),
+                )
+                store.record_digest(
+                    datetime.now(ZoneInfo(args.timezone)).date(), args.timezone,
+                    recipient_key, alert.status, summary,
+                    provider_message_id=alert.provider_message_id, error=alert.error,
+                )
+                print(f"[gary-reviewer] cycle={local_date} summary={summary} email={alert.status}")
+                last_date = local_date
+            else:
+                print(f"[gary-reviewer] continuous summary={summary}")
             store.heartbeat("reviewer", owner, "healthy", release=release, progress=summary)
             if args.once:
                 return 0
