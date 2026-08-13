@@ -3,11 +3,12 @@ import { createBenchmarkSources, GenericHtmlAdapter } from "./adapters/html.js";
 import { DeepSeekHtmlAdapter } from "./adapters/deepseek.js";
 import { FeedAdapter } from "./adapters/feed.js";
 import { JsonApiAdapter } from "./adapters/json.js";
-import { createIngestionV2Pool, ensureIngestionV2Schema, PostgresShadowRunStore } from "./persistence.js";
+import { claimDueIngestionV2Schedules, createIngestionV2Pool, ensureIngestionV2Schema, PostgresShadowRunStore, syncIngestionV2Schedules } from "./persistence.js";
 import { createPipelineWorker } from "./execution.js";
 import { createQueueBundle, V2_QUEUE_PREFIX } from "./queues.js";
 import { assertIngestionV2DatabaseRole } from "./safety.js";
 import { createWorkerSources } from "./catalog.js";
+import { startRun } from "./runs.js";
 
 assertIngestionV2DatabaseRole();
 const pool = createIngestionV2Pool();
@@ -18,7 +19,27 @@ const registry = new AdapterRegistry().register(new GenericHtmlAdapter()).regist
 const store = new PostgresShadowRunStore(pool);
 const adapterId = useDeepSeek ? "deepseek-html-v2" : "generic-html-v2";
 const workerSources = [...createWorkerSources(adapterId), ...createBenchmarkSources(adapterId)];
+await syncIngestionV2Schedules(pool, workerSources);
 const worker = createPipelineWorker(queues, registry, workerSources, store);
+
+const sourceById = new Map(workerSources.map((source) => [source.id, source]));
+let scheduling = false;
+async function scheduleDueSources(): Promise<void> {
+  if (scheduling) return;
+  scheduling = true;
+  try {
+    const dueIds = await claimDueIngestionV2Schedules(pool, 25);
+    for (const sourceId of dueIds) {
+      const source = sourceById.get(sourceId);
+      if (source) await startRun(queues, source, { trigger: "scheduled", mode: "shadow" });
+    }
+    if (dueIds.length) console.log(`[missa-ingestion-v2] scheduled ${dueIds.length} source runs`);
+  } finally {
+    scheduling = false;
+  }
+}
+await scheduleDueSources();
+const scheduleTimer = setInterval(() => void scheduleDueSources().catch((error) => console.error("[missa-ingestion-v2] scheduler error", error)), 5 * 60 * 1000);
 
 worker.worker.on("error", (error) => console.error("[missa-ingestion-v2] worker error", error));
 queues.events.on("error", (error) => console.error("[missa-ingestion-v2] queue events error", error));
@@ -31,6 +52,7 @@ console.log(`missa-ingestion-v2 worker listening in shadow mode; adapter=${adapt
 async function shutdown(signal: string): Promise<void> {
   console.log(`missa-ingestion-v2 received ${signal}; shutting down`);
   await worker.close();
+  clearInterval(scheduleTimer);
   await queues.close();
   await pool.end();
   process.exit(0);

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createIngestionCatalog, createRun, createSnapshotId, evaluatePromotionGate, executeShadowPipeline, redisOptionsFromUrl, robotsAllowsPath, sanitizeSourceText, scoreBenchmarkCase, shadowJob, summarizeBenchmarkScorecards } from "../src/index.js";
+import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createIngestionCatalog, createRun, createSnapshotId, evaluatePromotionGate, executeShadowPipeline, redisOptionsFromUrl, robotsAllowsPath, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards } from "../src/index.js";
 
 test("creates shadow runs without publishing mode", () => {
   const source = createBenchmarkSources()[0]!;
@@ -16,6 +16,21 @@ test("catalog exposes the registered source portfolio with fail-closed eligibili
   assert.ok(catalog.some((source) => source.eligible));
   assert.ok(catalog.some((source) => !source.eligible));
   assert.ok(catalog.filter((source) => source.eligible).every((source) => source.active));
+});
+
+test("classifies stable sources into durable lanes and keeps single-run sources out of automation", () => {
+  const catalog = createIngestionCatalog();
+  assert.ok(catalog.some((source) => source.schedule.lane === "core-daily"));
+  assert.ok(catalog.some((source) => source.schedule.lane === "scheduled"));
+  const single = createBenchmarkSources()[0]!;
+  assert.equal(single.schedule.lane, "single-run");
+  assert.equal(sourceIsDue(single, null), false);
+});
+
+test("honors explicit opening windows before a scheduled source becomes due", () => {
+  const source = { ...createBenchmarkSources()[0]!, schedule: { lane: "scheduled" as const, cadenceHours: 24, openFrom: "2099-01-01T00:00:00Z", openUntil: "2099-02-01T00:00:00Z" } };
+  assert.equal(sourceIsOpen(source.schedule, new Date("2098-12-31T23:59:00Z")), false);
+  assert.equal(sourceIsDue(source, null, new Date("2099-01-02T00:00:00Z")), true);
 });
 
 test("registry rejects duplicate adapter ids", () => {

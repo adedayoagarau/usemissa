@@ -7,7 +7,7 @@ import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 export const runtime = 'nodejs';
 
 function catalogView() {
-  return createIngestionCatalog().map(({ id, name, kind, adapterId, registryTier, trustStatus, trustScore, eligible, skipReason }) => ({ id, name, kind, adapterId, registryTier, trustStatus, trustScore, eligible, skipReason }));
+  return createIngestionCatalog().map(({ id, name, kind, adapterId, registryTier, trustStatus, trustScore, eligible, skipReason, schedule }) => ({ id, name, kind, adapterId, registryTier, trustStatus, trustScore, eligible, skipReason, schedule }));
 }
 
 export async function GET(request: Request) {
@@ -48,14 +48,19 @@ export async function POST(request: Request) {
   if (!auth.ok) return denied!;
   if (!process.env.DATABASE_URL || !process.env.REDIS_URL) return NextResponse.json({ error: 'V2 requires both a staging DATABASE_URL and REDIS_URL.' }, { status: 503 });
 
-  const body = await request.json().catch(() => null) as { sourceId?: unknown; scope?: unknown; limit?: unknown } | null;
-  const scope = body?.scope === 'eligible' ? 'eligible' : 'single';
+  const body = await request.json().catch(() => null) as { sourceId?: unknown; scope?: unknown; lane?: unknown; limit?: unknown } | null;
+  const lane = body?.lane === 'core-daily' || body?.lane === 'scheduled' || body?.lane === 'single-run' ? body.lane : null;
+  const scope = body?.scope === 'eligible' ? 'eligible' : lane ? 'lane' : 'single';
   const sourceId = typeof body?.sourceId === 'string' ? body.sourceId : 'benchmark-pw-grants';
   const allSources = [...createIngestionCatalog(), ...createBenchmarkSources()];
   const singleSource = allSources.find((candidate) => candidate.id === sourceId);
   if (scope === 'single' && !singleSource) return NextResponse.json({ error: 'Unknown v2 source.' }, { status: 400 });
   const limit = Math.min(Math.max(typeof body?.limit === 'number' ? Math.trunc(body.limit) : 1000, 1), 1000);
-  const selectedSources = scope === 'eligible' ? createIngestionCatalog().filter((candidate) => candidate.eligible).slice(0, limit) : singleSource ? [singleSource] : [];
+  const selectedSources = scope === 'eligible'
+    ? createIngestionCatalog().filter((candidate) => candidate.eligible).slice(0, limit)
+    : scope === 'lane'
+      ? createIngestionCatalog().filter((candidate) => candidate.eligible && candidate.schedule.lane === lane).slice(0, limit)
+      : singleSource ? [singleSource] : [];
   if (selectedSources.length === 0) return NextResponse.json({ error: 'No eligible v2 sources are available to queue.' }, { status: 400 });
 
   const queues = createQueueBundle(process.env.REDIS_URL);

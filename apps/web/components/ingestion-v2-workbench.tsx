@@ -22,7 +22,7 @@ type Run = {
   qualityScore: number;
 };
 
-type Source = { id: string; name: string; kind: string; adapterId: string; registryTier?: number; trustStatus?: string; trustScore?: number; eligible?: boolean; skipReason?: string };
+type Source = { id: string; name: string; kind: string; adapterId: string; registryTier?: number; trustStatus?: string; trustScore?: number; eligible?: boolean; skipReason?: string; schedule?: { lane: string; cadenceHours: number; openFrom?: string; openUntil?: string } };
 type Detail = {
   run: Pick<Run, "id" | "sourceId" | "trigger" | "mode" | "status" | "createdAt">;
   source: { id: string; name: string; kind?: string; adapterId?: string };
@@ -127,19 +127,19 @@ export default function IngestionV2Workbench() {
     }
   }
 
-  async function requestEligibleBatch() {
+  async function requestLaneBatch(lane: "core-daily" | "scheduled" | "single-run") {
     setBatchRequesting(true);
     setMessage("");
     try {
-      const response = await fetch("/api/admin/ingestion-v2", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ scope: "eligible", limit: 1000 }) });
+      const response = await fetch("/api/admin/ingestion-v2", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ scope: "lane", lane, limit: 1000 }) });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "The source batch could not be queued");
-      setMessage(`Accepted batch ${payload.batchId}: ${payload.queuedCount} eligible sources queued. Workers will process them under the shared shadow boundary.`);
-      captureProductEvent("ingestion_shadow_batch_requested", { scope: "eligible", queued_count: payload.queuedCount, request_result: "accepted" });
+      setMessage(`Accepted ${payload.batchId}: ${payload.queuedCount} ${lane} sources queued. The worker will continue on each source cadence.`);
+      captureProductEvent("ingestion_shadow_batch_requested", { scope: "lane", lane, queued_count: payload.queuedCount, request_result: "accepted" });
       await loadRuns();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The source batch could not be queued");
-      captureProductEvent("ingestion_workbench_error", { surface: "shadow-batch-request", error_code: "request-failed" });
+      captureProductEvent("ingestion_workbench_error", { surface: "shadow-lane-request", error_code: "request-failed" });
     } finally {
       setBatchRequesting(false);
     }
@@ -174,7 +174,7 @@ export default function IngestionV2Workbench() {
     </section>
 
     <section className="border border-primary/20 bg-accent-tint/30 p-4" aria-labelledby="ingestion-contract-title">
-      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-medium uppercase tracking-[0.14em] text-primary">Shadow boundary</p><h2 id="ingestion-contract-title" className="mt-1 text-sm font-semibold">Fetched → extracted → reviewed → published</h2><p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">This workbench observes v2 and queues bounded shadow passes. Nothing here publishes an opportunity or replaces source evidence.</p><p className="mt-2 text-xs text-muted-foreground">{sources.filter((source) => source.eligible !== false).length} eligible catalog sources · {sources.filter((source) => source.eligible === false).length} held for review or blocked</p></div><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={() => void requestEligibleBatch()} disabled={batchRequesting || sources.length === 0} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-primary bg-white px-3 text-xs font-medium text-primary hover:bg-accent-tint disabled:cursor-wait disabled:opacity-60"><Play className="size-3.5" aria-hidden="true" />{batchRequesting ? "Queuing batch…" : "Queue all eligible"}</button><form onSubmit={requestRun} className="flex flex-wrap items-center gap-2"><label htmlFor="shadow-source" className="sr-only">Source for shadow pass</label><select id="shadow-source" value={sourceId === "all" ? sources.find((source) => source.eligible !== false)?.id ?? "" : sourceId} onChange={(event) => setSourceId(event.target.value)} className="min-h-9 max-w-[230px] rounded-md border border-border bg-white px-2 text-xs text-foreground"><option value="">No source available</option>{sources.filter((source) => source.eligible !== false).map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}</select><button type="submit" disabled={requesting || sources.length === 0} className="inline-flex min-h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-white hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60"><Play className="size-3.5" aria-hidden="true" />{requesting ? "Queuing…" : "Run one"}</button></form></div></div>
+      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-medium uppercase tracking-[0.14em] text-primary">Shadow boundary</p><h2 id="ingestion-contract-title" className="mt-1 text-sm font-semibold">Fetched → extracted → reviewed → published</h2><p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">Nothing here publishes an opportunity or replaces source evidence. Stable sources run automatically; seasonal windows stay dormant until open.</p><p className="mt-2 text-xs text-muted-foreground">{sources.filter((source) => source.eligible !== false).length} eligible · {sources.filter((source) => source.schedule?.lane === "core-daily").length} daily core · {sources.filter((source) => source.schedule?.lane === "scheduled").length} scheduled · {sources.filter((source) => source.schedule?.lane === "single-run").length} single-run · {sources.filter((source) => source.eligible === false).length} held</p></div><div className="flex flex-wrap items-center gap-2"><button type="button" onClick={() => void requestLaneBatch("core-daily")} disabled={batchRequesting || sources.length === 0} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-primary bg-white px-3 text-xs font-medium text-primary hover:bg-accent-tint disabled:cursor-wait disabled:opacity-60"><Play className="size-3.5" aria-hidden="true" />Daily core</button><button type="button" onClick={() => void requestLaneBatch("scheduled")} disabled={batchRequesting || sources.length === 0} className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border bg-white px-3 text-xs font-medium text-foreground hover:bg-muted disabled:cursor-wait disabled:opacity-60">Scheduled</button><form onSubmit={requestRun} className="flex flex-wrap items-center gap-2"><label htmlFor="shadow-source" className="sr-only">Source for shadow pass</label><select id="shadow-source" value={sourceId === "all" ? sources.find((source) => source.eligible !== false)?.id ?? "" : sourceId} onChange={(event) => setSourceId(event.target.value)} className="min-h-9 max-w-[230px] rounded-md border border-border bg-white px-2 text-xs text-foreground"><option value="">No source available</option>{sources.filter((source) => source.eligible !== false).map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}</select><button type="submit" disabled={requesting || sources.length === 0} className="inline-flex min-h-9 items-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-white hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60"><Play className="size-3.5" aria-hidden="true" />Run one</button></form></div></div>
       {message && <p className="mt-3 text-xs text-muted-foreground" role="status" aria-live="polite">{message}</p>}
     </section>
 

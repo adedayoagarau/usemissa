@@ -1,5 +1,5 @@
 import { getRegistry, trustedSource, type SourceRegistryEntry } from "@missa/radar-engine";
-import type { SourceDefinition } from "./contracts.js";
+import type { SourceDefinition, SourceLane, SourceSchedule } from "./contracts.js";
 
 export type IngestionCatalogEntry = SourceDefinition & {
   registryTier: SourceRegistryEntry["tier"];
@@ -8,7 +8,25 @@ export type IngestionCatalogEntry = SourceDefinition & {
   active: boolean;
   eligible: boolean;
   skipReason?: "inactive" | "blocked" | "needs-review";
+  schedule: SourceSchedule;
 };
+
+type RegistryScheduleHints = { openFrom?: string; openUntil?: string; timezone?: string; lane?: SourceLane };
+
+function scheduleForRegistry(entry: SourceRegistryEntry, eligible: boolean): SourceSchedule {
+  const hints = entry as SourceRegistryEntry & RegistryScheduleHints;
+  const cadenceHours = Number.isFinite(entry.checkIntervalHours) && entry.checkIntervalHours > 0 ? entry.checkIntervalHours : 24;
+  const lane: SourceLane = !eligible || !entry.active
+    ? "held"
+    : hints.lane ?? (entry.tier <= 1 && cadenceHours <= 24 ? "core-daily" : cadenceHours <= 24 * 14 ? "scheduled" : "single-run");
+  return {
+    lane,
+    cadenceHours,
+    ...(hints.openFrom ? { openFrom: hints.openFrom } : {}),
+    ...(hints.openUntil ? { openUntil: hints.openUntil } : {}),
+    ...(hints.timezone ? { timezone: hints.timezone } : {}),
+  };
+}
 
 function sourceKind(entry: SourceRegistryEntry): SourceDefinition["kind"] {
   if (entry.kind === "directory") return "directory";
@@ -18,6 +36,7 @@ function sourceKind(entry: SourceRegistryEntry): SourceDefinition["kind"] {
 
 export function sourceDefinitionFromRegistry(entry: SourceRegistryEntry, adapterId = "generic-html-v2"): SourceDefinition {
   const kind = sourceKind(entry);
+  const schedule = scheduleForRegistry(entry, Boolean(entry.active && trustedSource(entry)));
   return {
     id: `registry-${entry.id}`,
     name: entry.name,
@@ -26,6 +45,7 @@ export function sourceDefinitionFromRegistry(entry: SourceRegistryEntry, adapter
     kind,
     geography: entry.geography ?? ["global"],
     opportunityTypes: entry.opportunityTypes,
+    schedule,
     config: {
       destination: { pageRole: entry.tier === 0 ? "detail" : "landing", detailLimit: 5 },
       registrySourceId: entry.id,
@@ -33,6 +53,7 @@ export function sourceDefinitionFromRegistry(entry: SourceRegistryEntry, adapter
       registryVerticalId: entry.verticalId,
       trust: entry.trust,
       followsOutboundLinks: entry.followsOutboundLinks,
+      schedule,
     },
   };
 }

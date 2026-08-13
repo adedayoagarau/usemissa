@@ -7,6 +7,15 @@ export type IngestionTrigger = "manual" | "scheduled" | "backfill" | "shadow";
 export type IngestionMode = "shadow" | "review" | "promote";
 export type IngestionRunStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
 export type IngestionFailureCode = "robots-disallowed" | "blocked" | "not-found" | "timeout" | "invalid-content" | "model-error" | "database-error" | "unknown";
+export type SourceLane = "core-daily" | "scheduled" | "single-run" | "held";
+
+export interface SourceSchedule {
+  lane: SourceLane;
+  cadenceHours: number;
+  openFrom?: string;
+  openUntil?: string;
+  timezone?: string;
+}
 
 export interface SourceDefinition {
   id: string;
@@ -17,6 +26,7 @@ export interface SourceDefinition {
   geography: string[];
   opportunityTypes: string[];
   config: Record<string, unknown>;
+  schedule: SourceSchedule;
 }
 
 export interface IngestionRun {

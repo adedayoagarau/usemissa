@@ -1,5 +1,5 @@
 import pg, { type Pool as PgPool, type PoolClient } from "pg";
-import { classifyIngestionFailure, type ExtractionResult, type IngestionFailureCode, type IngestionRun, type PageSnapshot } from "./contracts.js";
+import { classifyIngestionFailure, type ExtractionResult, type IngestionFailureCode, type IngestionRun, type PageSnapshot, type SourceDefinition } from "./contracts.js";
 import type { ShadowArtifact, ShadowRunStore } from "./execution.js";
 
 const { Pool } = pg;
@@ -54,10 +54,60 @@ create table if not exists missa_ingestion_v2_artifacts (
 alter table missa_ingestion_v2_artifacts add column if not exists quality jsonb not null default '{"decision":"reject","score":0,"reasons":["quality not assessed"]}'::jsonb;
 alter table missa_ingestion_v2_runs add column if not exists failure_code text;
 alter table missa_ingestion_v2_snapshots add column if not exists is_root boolean not null default false;
+create table if not exists missa_ingestion_v2_source_schedules (
+  source_id text primary key,
+  lane text not null check (lane in ('core-daily', 'scheduled', 'single-run', 'held')),
+  cadence_hours integer not null check (cadence_hours > 0),
+  open_from timestamptz,
+  open_until timestamptz,
+  timezone text,
+  next_run_at timestamptz,
+  last_enqueued_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+create index if not exists missa_ingestion_v2_source_schedules_due_idx on missa_ingestion_v2_source_schedules(lane, next_run_at);
 `;
 
 export async function ensureIngestionV2Schema(pool: PgPool): Promise<void> {
   await pool.query(ingestionV2Schema);
+}
+
+export async function syncIngestionV2Schedules(pool: PgPool, sources: SourceDefinition[]): Promise<void> {
+  for (const source of sources) {
+    const schedule = source.schedule;
+    await pool.query(
+      `insert into missa_ingestion_v2_source_schedules (source_id, lane, cadence_hours, open_from, open_until, timezone, next_run_at)
+       values ($1,$2,$3,$4,$5,$6,case when $2 in ('core-daily','scheduled') then now() else null end)
+       on conflict (source_id) do update set lane=excluded.lane, cadence_hours=excluded.cadence_hours,
+       open_from=excluded.open_from, open_until=excluded.open_until, timezone=excluded.timezone, updated_at=now()`,
+      [source.id, schedule.lane, Math.max(1, Math.trunc(schedule.cadenceHours)), schedule.openFrom ?? null, schedule.openUntil ?? null, schedule.timezone ?? null],
+    );
+  }
+}
+
+export async function claimDueIngestionV2Schedules(pool: PgPool, limit = 25): Promise<string[]> {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const rows = await client.query<{ source_id: string }>(
+      `select source_id from missa_ingestion_v2_source_schedules
+       where lane in ('core-daily','scheduled') and (next_run_at is null or next_run_at <= now())
+       and (open_from is null or open_from <= now()) and (open_until is null or open_until >= now())
+       order by next_run_at nulls first, source_id limit $1 for update skip locked`, [Math.min(Math.max(limit, 1), 100)]);
+    for (const row of rows.rows) {
+      await client.query(
+        `update missa_ingestion_v2_source_schedules set last_enqueued_at=now(), next_run_at=now() + (cadence_hours || ' hours')::interval, updated_at=now() where source_id=$1`,
+        [row.source_id],
+      );
+    }
+    await client.query("commit");
+    return rows.rows.map((row) => row.source_id);
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 function json(value: unknown): string {
