@@ -3,6 +3,7 @@ import { classifyIngestionFailure, type ExtractionResult, type IngestionFailureC
 import type { PublisherReview } from "./publisher.js";
 import type { ShadowArtifact, ShadowRunStore } from "./execution.js";
 import { InlineSnapshotBodyStore, type SnapshotBodyStore } from "./snapshotStore.js";
+import { modelCacheSchema } from "./modelCache.js";
 
 const { Pool } = pg;
 
@@ -74,6 +75,7 @@ create table if not exists missa_ingestion_v2_source_schedules (
   updated_at timestamptz not null default now()
 );
 create index if not exists missa_ingestion_v2_source_schedules_due_idx on missa_ingestion_v2_source_schedules(lane, next_run_at);
+${modelCacheSchema}
 `;
 
 export async function ensureIngestionV2Schema(pool: PgPool): Promise<void> {

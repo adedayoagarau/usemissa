@@ -6,6 +6,7 @@ import { JsonApiAdapter } from "./adapters/json.js";
 import { claimDueIngestionV2Schedules, createIngestionV2Pool, ensureIngestionV2Schema, PostgresShadowRunStore, syncIngestionV2Schedules } from "./persistence.js";
 import { createSnapshotBodyStore } from "./snapshotStore.js";
 import { createRenderClient } from "./render.js";
+import { PostgresModelResponseCache } from "./modelCache.js";
 import { createPipelineWorker } from "./execution.js";
 import { createQueueBundle, V2_QUEUE_PREFIX } from "./queues.js";
 import { assertIngestionV2DatabaseRole } from "./safety.js";
@@ -17,7 +18,8 @@ const pool = createIngestionV2Pool();
 await ensureIngestionV2Schema(pool);
 const queues = createQueueBundle();
 const useDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY);
-const registry = new AdapterRegistry().register(new GenericHtmlAdapter()).register(new DeepSeekHtmlAdapter()).register(new FeedAdapter()).register(new JsonApiAdapter());
+const modelCache = new PostgresModelResponseCache(pool);
+const registry = new AdapterRegistry().register(new GenericHtmlAdapter()).register(new DeepSeekHtmlAdapter({ cache: modelCache })).register(new FeedAdapter()).register(new JsonApiAdapter());
 const bodies = createSnapshotBodyStore();
 const store = new PostgresShadowRunStore(pool, bodies);
 const adapterId = useDeepSeek ? "deepseek-html-v2" : "generic-html-v2";
@@ -41,7 +43,7 @@ async function scheduleDueSources(): Promise<void> {
       const source = sourceById.get(sourceId);
       if (source) await startRun(queues, source, { trigger: "scheduled", mode: process.env.MISSA_INGESTION_V2_PROMOTE_APPROVED === "1" ? "promote" : "shadow" });
     }
-    if (dueIds.length) console.log(`[missa-ingestion-v2] scheduled ${dueIds.length} source runs`);
+    if (dueIds.length) console.log(`[missa-ingestion-v2] scheduled ${dueIds.length} source runs; model cache ${JSON.stringify(modelCache.stats())}`);
   } finally {
     scheduling = false;
   }
@@ -55,7 +57,7 @@ queues.connection.on("error", (error) => console.error("[missa-ingestion-v2] red
 queues.events.on("completed", ({ jobId }) => console.log(`[missa-ingestion-v2] shadow run ${jobId} completed`));
 queues.events.on("failed", ({ jobId, failedReason }) => console.error(`[missa-ingestion-v2] shadow run ${jobId} failed: ${failedReason}`));
 
-console.log(`missa-ingestion-v2 worker listening in shadow mode; adapter=${adapterId}; sources=${workerSources.length}; model-sources=${modelSourceCount}; queue=${V2_QUEUE_PREFIX}; bodies=${bodies.id}; render=${renderClient ? "on" : "off"}`);
+console.log(`missa-ingestion-v2 worker listening in shadow mode; adapter=${adapterId}; sources=${workerSources.length}; model-sources=${modelSourceCount}; queue=${V2_QUEUE_PREFIX}; bodies=${bodies.id}; render=${renderClient ? "on" : "off"}; model-cache=${modelCache.id}`);
 
 async function shutdown(signal: string): Promise<void> {
   console.log(`missa-ingestion-v2 received ${signal}; shutting down`);

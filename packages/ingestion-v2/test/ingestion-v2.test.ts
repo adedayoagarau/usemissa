@@ -479,3 +479,63 @@ test("identity comparison reports how a match was reached", async () => {
   assert.deepEqual(compareOpportunityIdentityDetailed(a, b), { decision: "same", basis: "title-and-organization" });
 });
 
+
+test("an unchanged page reuses the model answer instead of paying for it again", async () => {
+  const { DeepSeekHtmlAdapter } = await import("../src/adapters/deepseek.js");
+  const { MemoryModelResponseCache } = await import("../src/modelCache.js");
+
+  let modelCalls = 0;
+  const fetchImpl = (async () => {
+    modelCalls += 1;
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ title: "Multidisciplinary Residency", organization: "Casa na Ilha", opportunityType: "residency" }) } }] }), { status: 200 });
+  }) as unknown as typeof fetch;
+
+  const cache = new MemoryModelResponseCache();
+  const adapter = new DeepSeekHtmlAdapter({ apiKey: "k", fetchImpl, cache });
+  const source = { id: "s", name: "Casa na Ilha", url: "https://casanailha.org/program", adapterId: "deepseek-html-v2", kind: "organization-website" as const, geography: ["BR"], opportunityTypes: ["residency"], config: {}, schedule: { lane: "scheduled" as const, cadenceHours: 168 } };
+  const snapshotFor = (id: string) => ({ id, runId: id, sourceId: "s", url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "identical-hash", html: "<h1>Residency</h1><p>Applications open.</p>", rendered: false });
+  const run = { id: "r", sourceId: "s", trigger: "scheduled" as const, mode: "shadow" as const, status: "running" as const, createdAt: new Date().toISOString() };
+
+  const first = await adapter.extract({ run, source, snapshot: snapshotFor("snap_1") }, snapshotFor("snap_1"));
+  assert.equal(modelCalls, 1);
+  assert.ok(first.fields.some((field) => field.fieldName === "organization"));
+
+  const second = await adapter.extract({ run, source, snapshot: snapshotFor("snap_2") }, snapshotFor("snap_2"));
+  assert.equal(modelCalls, 1, "an identical page must not call the model twice");
+  assert.equal(cache.size(), 1);
+  assert.ok(second.warnings.some((warning) => /reused from an unchanged page/.test(warning)));
+
+  const reusedOrganization = second.fields.find((field) => field.fieldName === "organization");
+  assert.equal(reusedOrganization?.provenance.snapshotId, "snap_2", "a reused answer carries this run's provenance");
+});
+
+test("a changed page misses the cache and is re-extracted", async () => {
+  const { DeepSeekHtmlAdapter } = await import("../src/adapters/deepseek.js");
+  const { MemoryModelResponseCache, modelCacheKey } = await import("../src/modelCache.js");
+
+  let modelCalls = 0;
+  const fetchImpl = (async () => {
+    modelCalls += 1;
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ title: `Call ${modelCalls}` }) } }] }), { status: 200 });
+  }) as unknown as typeof fetch;
+
+  const adapter = new DeepSeekHtmlAdapter({ apiKey: "k", fetchImpl, cache: new MemoryModelResponseCache() });
+  const source = { id: "s", name: "Host", url: "https://host.example/call", adapterId: "deepseek-html-v2", kind: "organization-website" as const, geography: ["global"], opportunityTypes: ["grant"], config: {}, schedule: { lane: "scheduled" as const, cadenceHours: 168 } };
+  const snapshotFor = (hash: string) => ({ id: `snap_${hash}`, runId: "r", sourceId: "s", url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: hash, html: `<h1>${hash}</h1><p>Body</p>`, rendered: false });
+  const run = { id: "r", sourceId: "s", trigger: "scheduled" as const, mode: "shadow" as const, status: "running" as const, createdAt: new Date().toISOString() };
+
+  await adapter.extract({ run, source, snapshot: snapshotFor("hash-one") }, snapshotFor("hash-one"));
+  await adapter.extract({ run, source, snapshot: snapshotFor("hash-two") }, snapshotFor("hash-two"));
+  assert.equal(modelCalls, 2, "changed content must not serve a stale answer");
+
+  assert.notEqual(
+    modelCacheKey({ contentHash: "h", model: "m", promptVersion: "v1" }),
+    modelCacheKey({ contentHash: "h", model: "m", promptVersion: "v2" }),
+    "a prompt change must invalidate stored answers",
+  );
+  assert.notEqual(
+    modelCacheKey({ contentHash: "h", model: "model-a", promptVersion: "v1" }),
+    modelCacheKey({ contentHash: "h", model: "model-b", promptVersion: "v1" }),
+    "a model change must invalidate stored answers",
+  );
+});

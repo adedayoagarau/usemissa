@@ -1,9 +1,13 @@
 import { GenericHtmlAdapter } from "./html.js";
 import { type AdapterContext, type ExtractionResult, type PageSnapshot, type SourceAdapter } from "../contracts.js";
 import { destinationConfig } from "../destinations.js";
+import { modelCacheKey, type ModelResponseCache } from "../modelCache.js";
 
 const OPPORTUNITY_TYPES = new Set(["open-call", "magazine", "grant", "award", "fellowship", "residency", "festival", "scholarship", "conference", "rfp", "contest", "pitch", "other"]);
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Bump when the extraction prompt changes: a stored answer is only valid for the prompt that produced it. */
+const PROMPT_VERSION = "deepseek-extract-v1";
 
 interface DeepSeekFields {
   title?: unknown;
@@ -24,6 +28,7 @@ export interface DeepSeekHtmlAdapterOptions {
   model?: string;
   base?: SourceAdapter;
   fetchImpl?: typeof fetch;
+  cache?: ModelResponseCache;
 }
 
 /** DeepSeek proposes fields; v2 keeps the page snapshot and never publishes the model output directly. */
@@ -34,6 +39,7 @@ export class DeepSeekHtmlAdapter implements SourceAdapter {
   private readonly endpoint: string;
   private readonly model: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly cache?: ModelResponseCache;
 
   constructor(options: DeepSeekHtmlAdapterOptions = {}) {
     this.base = options.base ?? new GenericHtmlAdapter();
@@ -41,6 +47,7 @@ export class DeepSeekHtmlAdapter implements SourceAdapter {
     this.endpoint = options.endpoint ?? `${process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com"}/chat/completions`;
     this.model = options.model ?? process.env.DEEPSEEK_MODEL ?? "deepseek-v4-flash";
     this.fetchImpl = options.fetchImpl ?? fetch;
+    this.cache = options.cache;
   }
 
   canHandle(source: AdapterContext["source"]): boolean {
@@ -55,19 +62,28 @@ export class DeepSeekHtmlAdapter implements SourceAdapter {
     const deterministic = await this.base.extract(context, snapshot);
     if (!this.apiKey) return { ...deterministic, warnings: [...deterministic.warnings, "DeepSeek API key is not configured; deterministic extraction used"] };
     if (destinationConfig(context.source).pageRole === "landing") return { ...deterministic, warnings: [...deterministic.warnings, "DeepSeek deferred: landing-page fields are not opportunity authority; detail destinations must be fetched"] };
+    const cacheKey = modelCacheKey({ contentHash: snapshot.contentHash, model: this.model, promptVersion: PROMPT_VERSION });
+    const cached = this.cache ? await this.cache.get(cacheKey) : undefined;
     let fields: DeepSeekFields;
-    try {
-      fields = await this.callModel(snapshot);
-    } catch (error) {
-      const message = error instanceof Error ? error.message.slice(0, 160) : "unknown DeepSeek error";
-      return { ...deterministic, warnings: [...deterministic.warnings, `DeepSeek extraction failed; deterministic extraction retained (${message})`] };
+    if (cached !== undefined && cached !== null) {
+      fields = cached as DeepSeekFields;
+    } else {
+      try {
+        fields = await this.callModel(snapshot);
+      } catch (error) {
+        const message = error instanceof Error ? error.message.slice(0, 160) : "unknown DeepSeek error";
+        return { ...deterministic, warnings: [...deterministic.warnings, `DeepSeek extraction failed; deterministic extraction retained (${message})`] };
+      }
+      await this.cache?.set(cacheKey, fields, { contentHash: snapshot.contentHash, model: this.model, promptVersion: PROMPT_VERSION });
     }
+    // Normalization runs against the current snapshot, so a reused answer still
+    // carries this run's provenance rather than the run that first paid for it.
     const modelFields = normalizeFields(fields, snapshot);
     const deterministicNames = new Set(deterministic.fields.map((field) => field.fieldName));
     return {
       fields: [...deterministic.fields, ...modelFields.filter((field) => !deterministicNames.has(field.fieldName))],
       candidateLinks: deterministic.candidateLinks,
-      warnings: [...deterministic.warnings, "DeepSeek output is shadow evidence and requires deterministic validation/review"],
+      warnings: [...deterministic.warnings, "DeepSeek output is shadow evidence and requires deterministic validation/review", ...(cached !== undefined && cached !== null ? ["DeepSeek extraction reused from an unchanged page; no model call was made"] : [])],
     };
   }
 
