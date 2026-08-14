@@ -9,7 +9,8 @@
     "missa-radar": "dist/src/cli.js"
   },
   "dependencies": {
-    "@missa/taxonomy": "0.1.0"
+    "@missa/taxonomy": "0.1.0",
+    "tldts": "^7.4.10"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

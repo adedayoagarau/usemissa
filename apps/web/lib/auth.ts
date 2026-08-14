@@ -1,5 +1,6 @@
 import { verifySessionToken, createSessionToken, membershipsFor, type Account } from '@missa/radar-engine';
 import { getEngine } from './engine';
+import { getNeonSessionAccount } from './neon-auth/account';
 
 export const SESSION_COOKIE = 'missa_session';
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 3_600;
@@ -37,13 +38,13 @@ export interface SessionAccount {
  * undefined if there's no valid session -- callers decide how to respond
  * (redirect, 401 JSON, etc.), this helper never throws for "not logged in". */
 export async function getSessionAccount(cookieHeader: string | null): Promise<SessionAccount | undefined> {
-  if (!cookieHeader) return undefined;
+  if (!cookieHeader) return getNeonSessionAccount();
   try {
     const token = parseCookie(cookieHeader, SESSION_COOKIE);
-    return getSessionAccountFromToken(token);
+    return (await getSessionAccountFromToken(token)) ?? getNeonSessionAccount();
   } catch {
     // Malformed cookies and missing verification configuration fail closed.
-    return undefined;
+    return getNeonSessionAccount();
   }
 }
 
@@ -51,21 +52,21 @@ export async function getSessionAccount(cookieHeader: string | null): Promise<Se
  * directly -- for callers that already have it via next/headers' cookies()
  * (which exposes .get(name).value, not a raw Cookie header string). */
 export async function getSessionAccountFromToken(token: string | undefined): Promise<SessionAccount | undefined> {
-  if (!token) return undefined;
+  if (!token) return getNeonSessionAccount();
   try {
     const payload = verifySessionToken(token, sessionSecret(), new Date());
-    if (!payload) return undefined;
+    if (!payload) return getNeonSessionAccount();
 
     const engine = await getEngine();
     const account = engine.store.accounts.get(payload.accountId);
-    if (!account || account.active === false) return undefined;
+    if (!account || account.active === false) return getNeonSessionAccount();
 
     return { account, memberships: membershipsFor(engine.store, account.id) };
   } catch {
     // Session verification is an authorization boundary. Do not turn a bad
     // token or unavailable verification configuration into an authenticated
     // request or an information-bearing error response.
-    return undefined;
+    return getNeonSessionAccount();
   }
 }
 

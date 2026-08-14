@@ -73,12 +73,28 @@ export {
   type DurableTrackerImportInput,
   type DurableTrackerImportResult,
   type TrackerImportPersistenceErrorCode,
-} from './trackerImportPersistence.js';
-export { ensureEnrichmentSchema, enrichmentSchema } from "./enrichmentSchema.js";
-export { ensureAgentGraphSchema, agentGraphSchema } from "./agentGraphSchema.js";
-export { ensureContentReviewSchema, contentReviewSchema } from "./contentReviewSchema.js";
-export { ensurePublicationRubricSchema, publicationRubricSchema } from "./publicationRubricSchema.js";
-export { evaluatePublicationRubric, type PublicationRubricCandidate, type PublicationRubricResult } from "./publicationRubric.js";
+} from "./trackerImportPersistence.js";
+export {
+  ensureEnrichmentSchema,
+  enrichmentSchema,
+} from "./enrichmentSchema.js";
+export {
+  ensureAgentGraphSchema,
+  agentGraphSchema,
+} from "./agentGraphSchema.js";
+export {
+  ensureContentReviewSchema,
+  contentReviewSchema,
+} from "./contentReviewSchema.js";
+export {
+  ensurePublicationRubricSchema,
+  publicationRubricSchema,
+} from "./publicationRubricSchema.js";
+export {
+  evaluatePublicationRubric,
+  type PublicationRubricCandidate,
+  type PublicationRubricResult,
+} from "./publicationRubric.js";
 export {
   CHAT_BASELINE_GRAPH_VERSION,
   PostgresChatStore,
@@ -102,8 +118,59 @@ export {
   type ContentReviewQueueRow,
   type HumanContentReviewDecision,
 } from "./contentReviewAdmin.js";
-export { RADAR_AGENT_GRAPH, agentGraphSnapshot, type RadarAgentKind } from "./agentGraph.js";
-export { runReviewTick, reviewCandidate, type ReviewCandidate } from "./reviewWorker.js";
+export {
+  RADAR_AGENT_GRAPH,
+  agentGraphSnapshot,
+  type RadarAgentKind,
+} from "./agentGraph.js";
+export {
+  FREE_MAIL_DOMAINS,
+  generateInviteToken,
+  hashInviteToken,
+  isFreeMailDomain,
+  orderWaitlistSignups,
+  prepareWaitlistInvites,
+  previewWaitlistInviteCandidates,
+  readWaitlistPublicationMatchReport,
+  redeemWaitlistInvite,
+  revokeWaitlistInvite,
+  sendWaitlistInvites,
+  waitlistClaimAccess,
+  type InviteRedemptionResult,
+  type InviteRedemptionState,
+  type PreparedWaitlistInvite,
+  type WaitlistInviteDeliveryResult,
+  type WaitlistInviteSignup,
+  type WaitlistPublicationMatch,
+  type WaitlistPublicationMatchReport,
+} from "./waitlistInvites.js";
+export {
+  HANDLE_CLAIM_WINDOW_MESSAGE,
+  HANDLE_RENAME_TOO_SOON_MESSAGE,
+  HANDLE_UNAVAILABLE_MESSAGE,
+  PUBLICATION_CLAIM_HOLD_MESSAGE,
+  applyDeletedUserHandlePolicy,
+  claimUserHandle,
+  handleNamespaceAvailable,
+  handleClaimAccessMode,
+  normalizeUserHandleInput,
+  readUserHandle,
+  renameUserHandle,
+  resolveHandle,
+  HandleNamespaceUnavailableError,
+  type HandleClaimResult,
+  type HandleClaimState,
+  type HandleRenameResult,
+  type HandleRenameState,
+  type DeletedUserHandlePolicyState,
+  type ResolvedHandle,
+  type UserHandle,
+} from "./handleNamespace.js";
+export {
+  runReviewTick,
+  reviewCandidate,
+  type ReviewCandidate,
+} from "./reviewWorker.js";
 export { runContentReviewTick } from "./contentWorker.js";
 export {
   GRANTS_GOV_API_ENDPOINT,
@@ -297,8 +364,8 @@ export {
   type GaryReviewRow,
   type GarySourceHealth,
 } from "./garyAdmin.js";
-export { GoogleGmailProvider } from './email/gmail/google.js';
-export { MockGmailProvider } from './email/gmail/mock.js';
+export { GoogleGmailProvider } from "./email/gmail/google.js";
+export { MockGmailProvider } from "./email/gmail/mock.js";
 export {
   RADAR_INGESTION_LOCK,
   DISCOVERY_INGESTION_LOCK,

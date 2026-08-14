@@ -1,5 +1,5 @@
-import type { TaxonomyFacetKey } from '@missa/taxonomy';
-import type { SourceTrust } from '../registry/types.js';
+import type { TaxonomyFacetKey } from "@missa/taxonomy";
+import type { SourceTrust } from "../registry/types.js";
 
 /**
  * Missa Radar domain model.
@@ -14,52 +14,47 @@ export type IsoDateTime = string; // e.g. "2026-07-07T12:00:00.000Z"
 export type IsoDate = string; // e.g. "2026-07-07"
 
 export type OpportunityType =
-  | 'open-call'
-  | 'magazine'
-  | 'grant'
-  | 'award'
-  | 'fellowship'
-  | 'residency'
-  | 'festival'
-  | 'scholarship'
-  | 'conference'
-  | 'rfp'
-  | 'contest'
-  | 'pitch'
-  | 'exhibition'
-  | 'commission'
-  | 'other';
+  | "open-call"
+  | "magazine"
+  | "grant"
+  | "award"
+  | "fellowship"
+  | "residency"
+  | "festival"
+  | "scholarship"
+  | "conference"
+  | "rfp"
+  | "contest"
+  | "pitch"
+  | "exhibition"
+  | "commission"
+  | "other";
 
 /** Statuses exactly as enumerated in the strategy doc. "Claimed by Organization"
  * is modeled as the orthogonal `claimedByOrganizationId` flag on Opportunity so a
  * claimed call can still be Open / Closing Soon; `displayStatus()` surfaces it. */
 export type OpportunityStatus =
-  | 'discovered'
-  | 'needs-verification'
-  | 'opening-soon'
-  | 'open'
-  | 'closing-soon'
-  | 'deadline-extended'
-  | 'closed'
-  | 'archived'
-  | 'uncertain'
-  | 'duplicate';
+  | "discovered"
+  | "needs-verification"
+  | "opening-soon"
+  | "open"
+  | "closing-soon"
+  | "deadline-extended"
+  | "closed"
+  | "archived"
+  | "uncertain"
+  | "duplicate";
 
 export type DeadlineKind =
-  | 'exact'
-  | 'inferred'
-  | 'rolling'
-  | 'until-filled'
-  | 'conflicting'
-  | 'unknown';
+  "exact" | "inferred" | "rolling" | "until-filled" | "conflicting" | "unknown";
 
 export type SourceKind =
-  | 'organization-website'
-  | 'directory'
-  | 'feed'
-  | 'newsletter'
-  | 'user-suggested'
-  | 'partner-feed';
+  | "organization-website"
+  | "directory"
+  | "feed"
+  | "newsletter"
+  | "user-suggested"
+  | "partner-feed";
 
 export interface Source {
   id: string;
@@ -88,7 +83,7 @@ export interface Source {
   /** Per-directory bound for large, finite indexes. Hard-capped by the worker. */
   discoveryLinkLimit?: number;
   /** Some permitted sources require browser-compatible request headers. */
-  discoveryRequestProfile?: 'browser-compatible';
+  discoveryRequestProfile?: "browser-compatible";
   /** Registry/discovery source that produced this URL. Preserves the source graph. */
   discoveredFromSourceId?: string;
   /** Stable identifier and lifecycle reported by a machine-readable parent feed. */
@@ -110,7 +105,7 @@ export interface Source {
   /** Latest fetch attempt, including failures. Kept as the scheduler cursor. */
   lastCheckedAt?: IsoDateTime;
   /** Last terminal fetch outcome; distinguishes gone pages from never-attempted sources. */
-  lastFetchStatus?: 'ok' | 'gone' | 'error';
+  lastFetchStatus?: "ok" | "gone" | "error";
   lastFetchFailureReason?: string;
   /** First time the source passed verification or completed a usable fetch. */
   firstVerifiedAt?: IsoDateTime;
@@ -135,7 +130,7 @@ export interface Source {
   nextCheckAt?: IsoDateTime;
 }
 
-export type FetchStatus = 'ok' | 'error' | 'gone';
+export type FetchStatus = "ok" | "error" | "gone";
 
 export interface PageSnapshot {
   id: string;
@@ -172,11 +167,18 @@ export interface TaxonomyAssignmentProposal {
   normalizedPhrase: string;
   candidateTermIds: string[];
   termId?: string;
-  mapping: 'exact' | 'close' | 'broad' | 'narrow' | 'legacy';
+  mapping: "exact" | "close" | "broad" | "narrow" | "legacy";
   confidence: number;
-  certainty: 'confirmed' | 'probable' | 'inferred' | 'unknown' | 'rejected';
+  certainty: "confirmed" | "probable" | "inferred" | "unknown" | "rejected";
   reason: string;
-  assignmentOrigin?: 'extractor' | 'registry' | 'backfill' | 'organization' | 'reviewer' | 'user' | 'import';
+  assignmentOrigin?:
+    | "extractor"
+    | "registry"
+    | "backfill"
+    | "organization"
+    | "reviewer"
+    | "user"
+    | "import";
   /** Evidence coordinates are carried from the source snapshot into review
    * and relational persistence; they are never inferred from the label. */
   evidenceUrl?: string;
@@ -267,16 +269,16 @@ export interface OpportunityFields {
 }
 
 export type ChangeKind =
-  | 'deadline-changed'
-  | 'deadline-extended'
-  | 'fee-changed'
-  | 'genres-changed'
-  | 'eligibility-changed'
-  | 'submission-url-changed'
-  | 'call-closed'
-  | 'call-reopened'
-  | 'guidelines-updated'
-  | 'page-gone';
+  | "deadline-changed"
+  | "deadline-extended"
+  | "fee-changed"
+  | "genres-changed"
+  | "eligibility-changed"
+  | "submission-url-changed"
+  | "call-closed"
+  | "call-reopened"
+  | "guidelines-updated"
+  | "page-gone";
 
 export interface OpportunityChange {
   id: string;
@@ -298,7 +300,7 @@ export interface OpportunityCycle {
 export interface OpeningPrediction {
   expectedOpenStart: IsoDate;
   expectedOpenEnd: IsoDate;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: "high" | "medium" | "low";
   basedOnCycles: number;
 }
 
@@ -349,13 +351,15 @@ export interface Organization {
   billingSubscriptionId?: string;
   billingCancelAtPeriodEnd?: boolean;
   stripeConnectAccountId?: string;
-  stripeConnectStatus?: 'not-connected' | 'pending' | 'connected';
+  stripeConnectStatus?: "not-connected" | "pending" | "connected";
 }
 
-export type OrganizationBillingTier = 'free' | 'indie' | 'pro' | 'program' | 'enterprise';
-export type OrganizationBillingStatus = 'inactive' | 'trialing' | 'active' | 'past_due' | 'canceled';
+export type OrganizationBillingTier =
+  "free" | "indie" | "pro" | "program" | "enterprise";
+export type OrganizationBillingStatus =
+  "inactive" | "trialing" | "active" | "past_due" | "canceled";
 
-export type ClaimStatus = 'pending' | 'approved' | 'rejected';
+export type ClaimStatus = "pending" | "approved" | "rejected";
 
 export interface ClaimRequest {
   id: string;
@@ -372,13 +376,13 @@ export interface ClaimRequest {
 }
 
 export type VerificationReason =
-  | 'low-confidence'
-  | 'conflicting-data'
-  | 'suspected-duplicate'
-  | 'suspicious-language'
-  | 'claim-review'
-  | 'stale-listing'
-  | 'page-gone';
+  | "low-confidence"
+  | "conflicting-data"
+  | "suspected-duplicate"
+  | "suspicious-language"
+  | "claim-review"
+  | "stale-listing"
+  | "page-gone";
 
 export interface VerificationTask {
   id: string;
@@ -387,7 +391,7 @@ export interface VerificationTask {
   reason: VerificationReason;
   details: string;
   createdAt: IsoDateTime;
-  status: 'open' | 'resolved' | 'dismissed';
+  status: "open" | "resolved" | "dismissed";
   resolvedAt?: IsoDateTime;
   resolvedBy?: string;
 }
@@ -430,7 +434,9 @@ export interface OpportunityPreferences {
   simultaneousRequired: boolean;
 }
 
-export type OpportunityPreferencesPatch = Partial<Omit<OpportunityPreferences, 'types'>> & { types?: string[] };
+export type OpportunityPreferencesPatch = Partial<
+  Omit<OpportunityPreferences, "types">
+> & { types?: string[] };
 
 /** Attributes checked against EligibilityRules for the Fit Score. */
 export interface UserAttributes {
@@ -450,11 +456,15 @@ export interface UserProfile {
   taxonomyPreferences?: TaxonomyPreference[];
   /** Private opportunity search configuration; absent means not configured yet. */
   opportunityPreferences?: OpportunityPreferences;
+  /** The creator explicitly published the public Profile at this time. */
+  publicProfilePublishedAt?: IsoDateTime;
+  /** Durable dismissal for the optional first-Profile handle prompt. */
+  handlePromptDismissedAt?: IsoDateTime;
 }
 
 export interface TaxonomyPreference {
   termId: string;
-  preference: 'include' | 'prefer' | 'exclude';
+  preference: "include" | "prefer" | "exclude";
   weight: number;
 }
 
@@ -462,7 +472,8 @@ export interface TaxonomyPreference {
 export interface LibraryWorkTaxonomyAssignment {
   termId: string;
   primary: boolean;
-  assignmentOrigin: 'user' | 'import' | 'extractor' | 'organization' | 'reviewer';
+  assignmentOrigin:
+    "user" | "import" | "extractor" | "organization" | "reviewer";
 }
 
 export interface LibraryWork {
@@ -520,10 +531,12 @@ export interface CustomListMembership {
 }
 
 /** A private, opportunity-specific preparation state for one tracked call. */
-export type ChecklistItemState = 'missing' | 'ready' | 'complete' | 'not-applicable';
+export type ChecklistItemState =
+  "missing" | "ready" | "complete" | "not-applicable";
 
-export type ChecklistItemSource = 'opportunity-required-material' | 'user-added';
-export type ChecklistSourceConfidence = 'high' | 'possible' | 'unknown';
+export type ChecklistItemSource =
+  "opportunity-required-material" | "user-added";
+export type ChecklistSourceConfidence = "high" | "possible" | "unknown";
 
 export interface OpportunityChecklist {
   id: string;
@@ -555,7 +568,7 @@ export interface ChecklistItem {
   updatedAt: IsoDateTime;
 }
 
-export type ProfileVisibility = 'public' | 'private';
+export type ProfileVisibility = "public" | "private";
 
 export interface ProfilePrivacySettings {
   displayName: ProfileVisibility;
@@ -596,6 +609,9 @@ export interface Account {
   email: string;
   /** "<salt-hex>:<hash-hex>" — see auth/crypto.ts. */
   passwordHash: string;
+  /** Stable identity from the managed authentication provider, when linked. */
+  authUserId?: string;
+  authProvider?: 'neon-auth';
   /** The individual tracker this account owns, if any. */
   userId?: string;
   /** Platform admin — can see the verification queue and claim reviews. */
@@ -604,11 +620,26 @@ export interface Account {
   /** Enterprise provisioning identifiers; private and never in public projections. */
   externalId?: string;
   displayName?: string;
+  /**
+   * Set only by a future domain-verification flow. Never infer this from
+   * Account.email; an email address is contact data, not organizational proof.
+   */
+  verifiedEmailDomain?: string;
   active?: boolean;
 }
 
 /** Organization roles. `member` remains the compatibility role for existing workspaces. */
-export type OrgRole = 'member' | 'admin' | 'owner' | 'team-admin' | 'program-manager' | 'reviewer' | 'finance' | 'legal' | 'viewer' | 'guest';
+export type OrgRole =
+  | "member"
+  | "admin"
+  | "owner"
+  | "team-admin"
+  | "program-manager"
+  | "reviewer"
+  | "finance"
+  | "legal"
+  | "viewer"
+  | "guest";
 
 /** Which accounts can act for which organization, and with what role. */
 export interface OrgMembership {
@@ -641,42 +672,42 @@ export interface OrganizationFollow {
  * tracker section lists it.
  */
 export type MyStatus =
-  | 'interested'
-  | 'saved'
-  | 'preparing'
-  | 'draft-started'
-  | 'ready-to-submit'
-  | 'submitted'
-  | 'received'
-  | 'in-review'
-  | 'longlisted'
-  | 'shortlisted'
-  | 'finalist'
-  | 'accepted'
-  | 'declined'
-  | 'waitlisted'
-  | 'revision-requested'
-  | 'withdrawn'
-  | 'partially-withdrawn'
-  | 'delivered'
-  | 'archived';
+  | "interested"
+  | "saved"
+  | "preparing"
+  | "draft-started"
+  | "ready-to-submit"
+  | "submitted"
+  | "received"
+  | "in-review"
+  | "longlisted"
+  | "shortlisted"
+  | "finalist"
+  | "accepted"
+  | "declined"
+  | "waitlisted"
+  | "revision-requested"
+  | "withdrawn"
+  | "partially-withdrawn"
+  | "delivered"
+  | "archived";
 
 /** My Statuses before the work has been sent — these get deadline reminders. */
 export const PRE_SUBMISSION_STATUSES: readonly MyStatus[] = [
-  'interested',
-  'saved',
-  'preparing',
-  'draft-started',
-  'ready-to-submit',
+  "interested",
+  "saved",
+  "preparing",
+  "draft-started",
+  "ready-to-submit",
 ];
 
 /** Terminal outcomes for personal stats. */
 export const OUTCOME_STATUSES: readonly MyStatus[] = [
-  'accepted',
-  'declined',
-  'withdrawn',
-  'partially-withdrawn',
-  'delivered',
+  "accepted",
+  "declined",
+  "withdrawn",
+  "partially-withdrawn",
+  "delivered",
 ];
 
 /** Status Event Model (strategy § 26): every My Status transition is recorded. */
@@ -685,9 +716,9 @@ export interface StatusEvent {
   from?: MyStatus;
   to: MyStatus;
   /** 'user' = manual update; 'radar' = detected automatically. */
-  source: 'user' | 'radar' | 'email';
+  source: "user" | "radar" | "email";
   note?: string;
-  confidence?: 'high' | 'possible' | 'unknown';
+  confidence?: "high" | "possible" | "unknown";
   candidateId?: string;
 }
 
@@ -730,7 +761,7 @@ export interface ManualTrackerEntry {
   feeRaw?: string;
   notes?: string;
   sourceUrl?: string;
-  sourceKind: 'csv' | 'email';
+  sourceKind: "csv" | "email";
   sourceRow: number;
   importedAt: IsoDateTime;
   /** Internal idempotency marker; never shown in public projections. */
@@ -740,7 +771,7 @@ export interface ManualTrackerEntry {
   events?: StatusEvent[];
 }
 
-export type ForwardingAddressStatus = 'active' | 'paused' | 'revoked';
+export type ForwardingAddressStatus = "active" | "paused" | "revoked";
 
 export interface ForwardingAddress {
   id: string;
@@ -771,13 +802,29 @@ export interface InboundEmailEnvelope {
   htmlBody?: string;
   messageIdHeader?: string;
   headers: Record<string, string>;
-  attachments: Array<{ filename: string; contentType: string; byteLength: number; sha256?: string }>;
-  authResults?: { spf?: 'pass' | 'fail' | 'neutral' | 'unknown'; dkim?: 'pass' | 'fail' | 'neutral' | 'unknown'; dmarc?: 'pass' | 'fail' | 'neutral' | 'unknown' };
+  attachments: Array<{
+    filename: string;
+    contentType: string;
+    byteLength: number;
+    sha256?: string;
+  }>;
+  authResults?: {
+    spf?: "pass" | "fail" | "neutral" | "unknown";
+    dkim?: "pass" | "fail" | "neutral" | "unknown";
+    dmarc?: "pass" | "fail" | "neutral" | "unknown";
+  };
 }
 
-export type EmailCandidateState = 'pending' | 'confirmed' | 'ignored' | 'deleted' | 'duplicate' | 'expired';
-export type EmailCandidateClass = 'matched' | 'ambiguous' | 'unmatched' | 'duplicate' | 'unsupported-content' | 'needs-review';
-export type EmailConfidence = 'high' | 'possible' | 'unknown';
+export type EmailCandidateState =
+  "pending" | "confirmed" | "ignored" | "deleted" | "duplicate" | "expired";
+export type EmailCandidateClass =
+  | "matched"
+  | "ambiguous"
+  | "unmatched"
+  | "duplicate"
+  | "unsupported-content"
+  | "needs-review";
+export type EmailConfidence = "high" | "possible" | "unknown";
 
 export interface EmailReviewCandidate {
   id: string;
@@ -791,11 +838,23 @@ export interface EmailReviewCandidate {
   subject: string;
   bodyExcerpt: string;
   bodyHash: string;
-  attachmentMetadata: Array<{ filename: string; contentType: string; byteLength: number; sha256?: string; unsafe: boolean }>;
+  attachmentMetadata: Array<{
+    filename: string;
+    contentType: string;
+    byteLength: number;
+    sha256?: string;
+    unsafe: boolean;
+  }>;
   classification: EmailCandidateClass;
   state: EmailCandidateState;
   matchedOpportunityId?: string;
-  candidates: Array<{ opportunityId: string; title: string; organizationName?: string; confidence: 'high' | 'possible'; reasons: string[] }>;
+  candidates: Array<{
+    opportunityId: string;
+    title: string;
+    organizationName?: string;
+    confidence: "high" | "possible";
+    reasons: string[];
+  }>;
   proposedStatus?: MyStatus;
   proposedSubmittedAt?: IsoDateTime;
   proposedResponseAt?: IsoDateTime;
@@ -809,16 +868,21 @@ export interface EmailReviewCandidate {
   reviewedAt?: IsoDateTime;
   reviewIdempotencyKey?: string;
   /** Private review replay result; never returned to other users. */
-  reviewResult?: { trackerUpdated: boolean; manualEntryId?: string; statusEventId?: string };
-  sourceMode?: 'forwarding' | 'gmail-sync' | 'autopilot';
+  reviewResult?: {
+    trackerUpdated: boolean;
+    manualEntryId?: string;
+    statusEventId?: string;
+  };
+  sourceMode?: "forwarding" | "gmail-sync" | "autopilot";
   gmailConnectionId?: string;
   gmailMessageId?: string;
   gmailThreadId?: string;
   gmailHistoryId?: string;
 }
 
-export type GmailMode = 'review' | 'autopilot';
-export type GmailConnectionStatus = 'active' | 'syncing' | 'error' | 'revoked' | 'disconnected';
+export type GmailMode = "review" | "autopilot";
+export type GmailConnectionStatus =
+  "active" | "syncing" | "error" | "revoked" | "disconnected";
 export interface GmailConnection {
   id: string;
   userId: string;
@@ -843,8 +907,10 @@ export interface GmailConnection {
   disconnectedAt?: IsoDateTime;
   lastModeMutationKey?: string;
 }
-export type GmailSyncTrigger = 'initial' | 'manual' | 'cron' | 'pubsub' | 'watch-renewal' | 'history-reset';
-export type GmailSyncJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+export type GmailSyncTrigger =
+  "initial" | "manual" | "cron" | "pubsub" | "watch-renewal" | "history-reset";
+export type GmailSyncJobStatus =
+  "queued" | "running" | "succeeded" | "failed" | "cancelled";
 export interface GmailSyncJob {
   id: string;
   connectionId: string;
@@ -857,7 +923,12 @@ export interface GmailSyncJob {
   startHistoryId?: string;
   targetHistoryId?: string;
   dedupeKey: string;
-  result?: { inspected: number; candidates: number; ignored: number; duplicates: number };
+  result?: {
+    inspected: number;
+    candidates: number;
+    ignored: number;
+    duplicates: number;
+  };
   errorCode?: string;
   nextAttemptAt?: IsoDateTime;
   completedAt?: IsoDateTime;
@@ -886,19 +957,20 @@ export interface TrackerExportRow {
   deadline?: IsoDate;
   deadlineKind?: DeadlineKind;
   sourceUrl?: string;
-  dataState: 'available' | 'unavailable';
+  dataState: "available" | "unavailable";
   statusEvents: StatusEvent[];
 }
 
 export interface TrackerExportV1 {
   exportVersion: 1;
   generatedAt: IsoDateTime;
-  included: ['tracker'];
-  omitted: Array<'library'>;
+  included: ["tracker"];
+  omitted: Array<"library">;
   tracker: TrackerExportRow[];
 }
 
-export type FitLevel = 'strong' | 'possible' | 'weak' | 'not-eligible' | 'unknown';
+export type FitLevel =
+  "strong" | "possible" | "weak" | "not-eligible" | "unknown";
 
 export interface FitScore {
   level: FitLevel;
@@ -907,31 +979,31 @@ export interface FitScore {
   disqualifiers: string[]; // ✕
 }
 
-export type AlertAudience = 'user' | 'organization' | 'admin';
+export type AlertAudience = "user" | "organization" | "admin";
 
 export type AlertKind =
   // user
-  | 'new-match'
-  | 'opening-soon'
-  | 'closing-soon'
-  | 'deadline-extended'
-  | 'deadline-changed'
-  | 'fee-changed'
-  | 'eligibility-changed'
-  | 'call-reopened'
-  | 'call-closed'
-  | 'page-gone'
-  | 'expected-reopen'
-  | 'deadline-reminder'
-  | 'response-overdue'
-  | 'withdrawal-suggested'
-  | 'followed-org-new-call'
-  | 'submission-receipt'
-  | 'submission-decision'
+  | "new-match"
+  | "opening-soon"
+  | "closing-soon"
+  | "deadline-extended"
+  | "deadline-changed"
+  | "fee-changed"
+  | "eligibility-changed"
+  | "call-reopened"
+  | "call-closed"
+  | "page-gone"
+  | "expected-reopen"
+  | "deadline-reminder"
+  | "response-overdue"
+  | "withdrawal-suggested"
+  | "followed-org-new-call"
+  | "submission-receipt"
+  | "submission-decision"
   // organization
-  | 'claim-invite'
+  | "claim-invite"
   // admin
-  | 'verification-needed';
+  | "verification-needed";
 
 export interface Alert {
   id: string;
