@@ -9,6 +9,14 @@ It is deliberately a separate Railway service. Chromium's memory cost is
 isolated here, the ingestion worker image stays small, and rendering scales on
 its own axis.
 
+## Version pinning
+
+The npm `playwright` dependency and the Docker base image ship browser binaries
+separately, and they must name the exact same version — a caret range on the
+npm side let them drift silently in production (`1.49.0-noble` base image,
+`^1.49.0` resolving to `1.62.0`), which fails every render with "Executable
+doesn't exist". Both are pinned to an exact version; bump them together.
+
 ## Contract
 
 ```http

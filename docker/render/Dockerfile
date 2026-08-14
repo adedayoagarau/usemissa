@@ -2,7 +2,7 @@
 # matched to the Playwright version, which is the whole reason this service is
 # separate from the ingestion worker: the worker image stays small and the
 # browser's memory cost is isolated to one scalable service.
-FROM mcr.microsoft.com/playwright:v1.49.0-noble AS build
+FROM mcr.microsoft.com/playwright:v1.62.0-noble AS build
 
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -12,7 +12,7 @@ COPY apps ./apps
 RUN npm ci --ignore-scripts \
   && npm run build --workspace=@missa/render-service
 
-FROM mcr.microsoft.com/playwright:v1.49.0-noble
+FROM mcr.microsoft.com/playwright:v1.62.0-noble
 
 WORKDIR /app
 ENV NODE_ENV=production
