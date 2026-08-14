@@ -6,8 +6,34 @@ import { createRateLimiter, createRedisRateLimitStore, readUpstashRestCredential
  * image builds radar-adapters, so importing the client from that package would
  * make the serverless-only dependency part of every worker image.
  */
+function readWebRedisCredentials(): { url: string; token: string } | undefined {
+  const explicit = readUpstashRestCredentials();
+  if (explicit) return explicit;
+
+  // The existing Vercel/Neon integration exposes the shared Upstash database
+  // as REDIS_URL. Derive the REST endpoint only for Upstash native URLs; do
+  // not guess at arbitrary Redis providers or silently reinterpret their
+  // credentials.
+  const nativeValue = process.env.REDIS_URL?.trim();
+  if (!nativeValue) return undefined;
+  try {
+    const native = new URL(nativeValue);
+    if (
+      (native.protocol !== 'redis:' && native.protocol !== 'rediss:') ||
+      !native.hostname.endsWith('.upstash.io') ||
+      !native.password
+    ) return undefined;
+    return {
+      url: `https://${native.hostname}`,
+      token: decodeURIComponent(native.password),
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 async function createRedisRateLimitStoreFromEnv(): Promise<ReturnType<typeof createRedisRateLimitStore> | undefined> {
-  const credentials = readUpstashRestCredentials();
+  const credentials = readWebRedisCredentials();
   if (!credentials) return undefined;
   const { Redis } = await import('@upstash/redis');
   return createRedisRateLimitStore(new Redis(credentials) as unknown as RateLimitRedis);
