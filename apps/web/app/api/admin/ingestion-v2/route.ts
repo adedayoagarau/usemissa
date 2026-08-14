@@ -30,6 +30,7 @@ export async function GET(request: Request) {
         candidateLinks: artifact.extraction.candidateLinks,
         warnings: artifact.extraction.warnings,
         quality: artifact.quality,
+        publisher: artifact.publisher ?? null,
         published: artifact.published,
       }, { headers: { 'cache-control': 'private, no-store' } });
     }

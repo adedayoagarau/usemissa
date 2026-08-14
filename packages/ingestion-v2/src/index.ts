@@ -7,6 +7,7 @@ export * from "./execution.js";
 export * from "./persistence.js";
 export * from "./safety.js";
 export * from "./scheduling.js";
+export * from "./publisher.js";
 export * from "./destinations.js";
 export * from "./quality.js";
 export * from "./evaluation.js";

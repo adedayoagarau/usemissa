@@ -5,6 +5,7 @@ import { classifyIngestionFailure, createRunId, type IngestionMode, type Ingesti
 import type { PipelineJobData, QueueBundle } from "./queues.js";
 import { destinationConfig } from "./destinations.js";
 import { assessEvidenceQuality, type EvidenceQuality } from "./quality.js";
+import { reviewForPublication, type PublisherReview } from "./publisher.js";
 
 export interface ShadowArtifact {
   run: IngestionRun;
@@ -12,6 +13,7 @@ export interface ShadowArtifact {
   relatedSnapshots?: PageSnapshot[];
   extraction: ExtractionResult;
   quality?: EvidenceQuality;
+  publisher?: PublisherReview;
   published: false;
 }
 
@@ -75,7 +77,8 @@ export async function executeShadowPipeline(
   logger.info(`[missa-ingestion-v2] shadow run ${run.id} fetching ${source.url}`);
   try {
     const snapshot = await adapter.fetch({ run, source });
-    const extraction = await adapter.extract({ run, source, snapshot }, snapshot);
+    const sourceExtraction = await adapter.extract({ run, source, snapshot }, snapshot);
+    const extraction: ExtractionResult = { fields: [...sourceExtraction.fields], candidateLinks: [...sourceExtraction.candidateLinks], warnings: [...sourceExtraction.warnings] };
     const relatedSnapshots: PageSnapshot[] = [];
     const detailLimit = Math.min(destinationConfig(source).detailLimit ?? 5, 5);
     const details = extraction.candidateLinks.filter((candidate) => candidate.role === "detail").slice(0, detailLimit);
@@ -92,7 +95,8 @@ export async function executeShadowPipeline(
       }
     }
     if (details.length) extraction.warnings.push(`Fetched ${relatedSnapshots.length} of ${details.length} classified detail destinations; destination evidence remains shadow-only`);
-    const artifact: ShadowArtifact = { run: { ...run, status: "completed" }, snapshot, relatedSnapshots, extraction, quality: assessEvidenceQuality(snapshot, extraction), published: false };
+    const publisher = await reviewForPublication({ source, sourceSnapshot: snapshot, sourceExtraction, relatedSnapshots, relatedFields: extraction.fields });
+    const artifact: ShadowArtifact = { run: { ...run, status: "completed" }, snapshot, relatedSnapshots, extraction, quality: assessEvidenceQuality(snapshot, extraction), publisher, published: false };
     await store.save(artifact);
     return artifact;
   } catch (error) {

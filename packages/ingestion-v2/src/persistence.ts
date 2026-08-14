@@ -1,5 +1,6 @@
 import pg, { type Pool as PgPool, type PoolClient } from "pg";
 import { classifyIngestionFailure, type ExtractionResult, type IngestionFailureCode, type IngestionRun, type PageSnapshot, type SourceDefinition } from "./contracts.js";
+import type { PublisherReview } from "./publisher.js";
 import type { ShadowArtifact, ShadowRunStore } from "./execution.js";
 
 const { Pool } = pg;
@@ -49,9 +50,11 @@ create table if not exists missa_ingestion_v2_artifacts (
   warnings jsonb not null default '[]'::jsonb,
   published boolean not null default false,
   quality jsonb not null default '{"decision":"reject","score":0,"reasons":["quality not assessed"]}'::jsonb,
+  publisher jsonb,
   created_at timestamptz not null default now()
 );
 alter table missa_ingestion_v2_artifacts add column if not exists quality jsonb not null default '{"decision":"reject","score":0,"reasons":["quality not assessed"]}'::jsonb;
+alter table missa_ingestion_v2_artifacts add column if not exists publisher jsonb;
 alter table missa_ingestion_v2_runs add column if not exists failure_code text;
 alter table missa_ingestion_v2_snapshots add column if not exists is_root boolean not null default false;
 create table if not exists missa_ingestion_v2_source_schedules (
@@ -140,10 +143,10 @@ export class PostgresShadowRunStore implements ShadowRunStore {
         );
       }
       await client.query(
-        `insert into missa_ingestion_v2_artifacts (run_id, candidate_links, warnings, published, quality)
-         values ($1,$2,$3,$4,$5)
-         on conflict (run_id) do update set candidate_links=excluded.candidate_links, warnings=excluded.warnings, published=excluded.published, quality=excluded.quality`,
-        [artifact.run.id, json(artifact.extraction.candidateLinks), json(artifact.extraction.warnings), artifact.published, json(artifact.quality)],
+         `insert into missa_ingestion_v2_artifacts (run_id, candidate_links, warnings, published, quality, publisher)
+         values ($1,$2,$3,$4,$5,$6)
+         on conflict (run_id) do update set candidate_links=excluded.candidate_links, warnings=excluded.warnings, published=excluded.published, quality=excluded.quality, publisher=excluded.publisher`,
+        [artifact.run.id, json(artifact.extraction.candidateLinks), json(artifact.extraction.warnings), artifact.published, json(artifact.quality), json(artifact.publisher)],
       );
       await client.query("commit");
     } catch (error) {
@@ -166,8 +169,8 @@ export class PostgresShadowRunStore implements ShadowRunStore {
   async get(runId: string): Promise<ShadowArtifact | undefined> {
     const result = await this.pool.query<{
       id: string; source_id: string; trigger: IngestionRun["trigger"]; mode: IngestionRun["mode"]; status: IngestionRun["status"]; created_at: Date;
-      candidate_links: ExtractionResult["candidateLinks"]; warnings: string[]; published: boolean; quality: ShadowArtifact["quality"];
-    }>(`select r.id, r.source_id, r.trigger, r.mode, r.status, r.created_at, a.candidate_links, a.warnings, a.published, a.quality
+      candidate_links: ExtractionResult["candidateLinks"]; warnings: string[]; published: boolean; quality: ShadowArtifact["quality"]; publisher: PublisherReview | null;
+    }>(`select r.id, r.source_id, r.trigger, r.mode, r.status, r.created_at, a.candidate_links, a.warnings, a.published, a.quality, a.publisher
         from missa_ingestion_v2_runs r join missa_ingestion_v2_artifacts a on a.run_id = r.id where r.id = $1`, [runId]);
     const row = result.rows[0];
     if (!row) return undefined;
@@ -188,6 +191,7 @@ export class PostgresShadowRunStore implements ShadowRunStore {
       relatedSnapshots: snapshots.slice(1),
       extraction: { fields: fields.rows, candidateLinks: row.candidate_links, warnings: row.warnings },
       quality: row.quality,
+      publisher: row.publisher ?? undefined,
       published: row.published as false,
     };
   }

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createIngestionCatalog, createRun, createSnapshotId, evaluatePromotionGate, executeShadowPipeline, redisOptionsFromUrl, robotsAllowsPath, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards } from "../src/index.js";
+import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createIngestionCatalog, createRun, createSnapshotId, evaluatePromotionGate, executeShadowPipeline, redisOptionsFromUrl, robotsAllowsPath, reviewForPublication, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards } from "../src/index.js";
 
 test("creates shadow runs without publishing mode", () => {
   const source = createBenchmarkSources()[0]!;
@@ -31,6 +31,19 @@ test("honors explicit opening windows before a scheduled source becomes due", ()
   const source = { ...createBenchmarkSources()[0]!, schedule: { lane: "scheduled" as const, cadenceHours: 24, openFrom: "2099-01-01T00:00:00Z", openUntil: "2099-02-01T00:00:00Z" } };
   assert.equal(sourceIsOpen(source.schedule, new Date("2098-12-31T23:59:00Z")), false);
   assert.equal(sourceIsDue(source, null, new Date("2099-01-02T00:00:00Z")), true);
+});
+
+test("publisher requires the fetched destination to reconcile to the source record", async () => {
+  const source = { ...createBenchmarkSources()[0]!, config: { destination: { pageRole: "landing" as const, rules: [{ role: "detail" as const, patterns: ["/detail/"], authority: "destination" as const }] } } };
+  const sourceSnapshot = { id: "snap_source", runId: "ingv2_publisher", sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "source", html: "<h1>Example Prize</h1>", rendered: false };
+  const fields = (snapshotId: string) => [
+    { fieldName: "title", rawValue: "Example Prize", normalizedValue: "Example Prize", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: "https://example.test/detail/prize", snapshotId } },
+    { fieldName: "organization", rawValue: "Example Foundation", normalizedValue: "Example Foundation", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: "https://example.test/detail/prize", snapshotId } },
+  ];
+  const review = await reviewForPublication({ source, sourceSnapshot, sourceExtraction: { fields: fields("snap_source"), candidateLinks: [{ url: "https://example.test/detail/prize", role: "detail", authority: "destination" }], warnings: [] }, relatedSnapshots: [{ ...sourceSnapshot, id: "snap_detail", url: "https://example.test/detail/prize", finalUrl: "https://example.test/detail/prize", html: "<h1>Example Prize</h1>" }], relatedFields: fields("snap_detail") }, { apiKey: "" });
+  assert.equal(review.decision, "review");
+  assert.equal(review.reconciliation.decision, "pass");
+  assert.equal(review.publicWrite, false);
 });
 
 test("registry rejects duplicate adapter ids", () => {
