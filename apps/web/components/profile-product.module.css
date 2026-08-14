@@ -116,6 +116,20 @@
 .publicSummary dl > div:last-child { border-bottom: 0; padding-bottom: 0; }
 .publicSummary dt { color: var(--muted-foreground); font-size: .72rem; font-weight: 650; letter-spacing: .09em; text-transform: uppercase; }
 .publicSummary dd { margin: .35rem 0 0; font-size: .85rem; line-height: 1.5; }
+.handleCard {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: clamp(1.15rem, 3vw, 1.5rem);
+  background: var(--accent-tint);
+}
+.cardKicker { margin: 0 0 .35rem; color: var(--muted-foreground); font-size: .72rem; font-weight: 650; letter-spacing: .13em; text-transform: uppercase; }
+.handleCard h3 { margin: 0; font-size: 1.2rem; font-weight: 680; }
+.handleCard > div > p:last-child { margin: .35rem 0 0; color: var(--muted-foreground); font-size: .84rem; line-height: 1.55; }
+.handleForm { display: grid; gap: .45rem; }
+.handleForm label { font-size: .78rem; font-weight: 650; }
+.handleForm > p:not([role]) { margin: 0; color: var(--muted-foreground); font-size: .76rem; line-height: 1.5; }
 .sectionRows { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-xl); background: #fff; }
 .sectionRows > header { padding: 1.25rem 1.35rem; }
 .sectionRows h3,

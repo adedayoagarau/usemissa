@@ -750,6 +750,63 @@ export const garyProfiles = pgTable(
   ],
 );
 
+export const handles = pgTable(
+  "handles",
+  {
+    handleKey: text("handle_key").primaryKey(),
+    displayHandle: text("display_handle").notNull(),
+    subjectType: text("subject_type").notNull(),
+    subjectId: text("subject_id").notNull(),
+    state: text("state").notNull(),
+    derivation: text("derivation").notNull(),
+    reservedFromProfileId: text("reserved_from_profile_id").references(
+      () => garyProfiles.id,
+      { onDelete: "set null" },
+    ),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("handles_subject_active_idx")
+      .on(table.subjectType, table.subjectId)
+      .where(sql`${table.state} <> 'blocked'`),
+    index("handles_subject_idx").on(table.subjectType, table.subjectId),
+    index("handles_reserved_profile_idx").on(table.reservedFromProfileId),
+    check(
+      "handles_subject_type_check",
+      sql`${table.subjectType} in ('user', 'organization', 'directory_profile')`,
+    ),
+    check(
+      "handles_state_check",
+      sql`${table.state} in ('claimed', 'reserved', 'blocked')`,
+    ),
+    check(
+      "handles_derivation_check",
+      sql`${table.derivation} in ('user-chosen', 'name', 'domain', 'both', 'manual')`,
+    ),
+  ],
+);
+
+export const handleAliases = pgTable(
+  "handle_aliases",
+  {
+    aliasKey: text("alias_key").primaryKey(),
+    handleKey: text("handle_key")
+      .notNull()
+      .references(() => handles.handleKey, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    createdAt,
+  },
+  (table) => [
+    index("handle_aliases_handle_idx").on(table.handleKey),
+    check(
+      "handle_aliases_reason_check",
+      sql`${table.reason} in ('article-variant', 'rename', 'domain-variant', 'manual')`,
+    ),
+  ],
+);
+
 export const garyProfileAliases = pgTable(
   "gary_profile_aliases",
   {
@@ -2975,4 +3032,32 @@ export const waitlistSignups = pgTable(
     createdAt,
   },
   (table) => [uniqueIndex("waitlist_signups_email_idx").on(table.email)],
+);
+
+export const waitlistInvites = pgTable(
+  "waitlist_invites",
+  {
+    id: text("id").primaryKey(),
+    waitlistSignupId: text("waitlist_signup_id")
+      .notNull()
+      .references(() => waitlistSignups.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    state: text("state").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    redeemedByAccountId: text("redeemed_by_account_id").references(
+      () => accounts.id,
+      { onDelete: "set null" },
+    ),
+  },
+  (table) => [
+    uniqueIndex("waitlist_invites_token_hash_idx").on(table.tokenHash),
+    index("waitlist_invites_signup_idx").on(table.waitlistSignupId),
+    index("waitlist_invites_redeemed_account_idx").on(table.redeemedByAccountId),
+    check(
+      "waitlist_invites_state_check",
+      sql`${table.state} in ('sent', 'redeemed', 'expired', 'revoked')`,
+    ),
+  ],
 );

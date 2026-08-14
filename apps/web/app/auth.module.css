@@ -1,31 +1,213 @@
-.page { display: grid; min-height: 100svh; grid-template-columns: minmax(0, 1.05fr) minmax(25rem, 0.95fr); background: var(--surface); }
-.story { position: relative; display: flex; min-height: 100%; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); background: var(--surface); padding: clamp(2rem, 6vw, 6rem); color: var(--ink); }
-.story::before { position: absolute; right: -12rem; top: -12rem; width: 34rem; height: 34rem; border: 1px solid color-mix(in oklab, var(--brand-accent) 35%, var(--border)); border-radius: 999px; content: ''; }
-.story::after { position: absolute; right: 3rem; top: 4rem; width: 16rem; height: 16rem; border: 1px solid color-mix(in oklab, var(--brand-accent) 24%, transparent); border-radius: 999px; content: ''; }
-.storyContent { position: relative; z-index: 1; display: flex; min-height: 100%; max-width: 32rem; flex-direction: column; }
-.mark { color: var(--ink); }
-.storyCopy { margin-top: auto; padding-top: 8rem; }
-.storyTitle { max-width: 30rem; font-size: clamp(2.5rem, 5vw, 5.3rem); font-weight: 650; letter-spacing: -0.065em; line-height: 0.98; }
-.storyBody { max-width: 27rem; margin-top: 1.5rem; color: var(--ink-2); font-size: 1rem; line-height: 1.65; }
-.promiseList { display: grid; gap: 0.85rem; margin-top: 2.25rem; color: var(--ink-2); font-size: 0.86rem; }
-.promise { display: flex; align-items: center; gap: 0.7rem; }
-.promise::before { width: 0.45rem; height: 0.45rem; border-radius: 999px; background: var(--brand-accent); content: ''; }
-.formPane { display: flex; align-items: center; justify-content: center; padding: 2rem; background: var(--surface); }
-.formCard { width: min(100%, 27rem); }
-.formKicker { color: var(--brand-accent); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
-.formTitle { margin-top: 0.8rem; font-size: 2.15rem; font-weight: 650; letter-spacing: -0.05em; line-height: 1.05; }
-.formDescription { margin-top: 0.7rem; color: var(--ink-2); font-size: 0.9rem; line-height: 1.55; }
-.form { display: grid; gap: 1rem; margin-top: 2rem; }
-.field { display: grid; gap: 0.45rem; }
-.label { color: var(--ink); font-size: 0.78rem; font-weight: 600; }
-.passwordWrap { position: relative; }
-.passwordWrap input { padding-right: 2.8rem; }
-.passwordToggle { position: absolute; right: 0.6rem; top: 50%; display: inline-flex; transform: translateY(-50%); color: var(--ink-2); }
-.passwordToggle:hover { color: var(--ink); }
-.error { border-radius: 0.5rem; background: color-mix(in oklab, var(--destructive) 8%, var(--surface)); padding: 0.7rem 0.8rem; color: var(--destructive); font-size: 0.78rem; line-height: 1.45; }
-.finePrint { color: var(--ink-2); font-size: 0.72rem; line-height: 1.5; }
-.switchMode { margin-top: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.25rem; text-align: center; color: var(--ink-2); font-size: 0.82rem; }
-.switchMode a { color: var(--brand-accent); font-weight: 600; }
-.backLink { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 1.5rem; color: var(--ink-2); font-size: 0.78rem; }
-.backLink:hover { color: var(--ink); }
-@media (max-width: 800px) { .page { display: block; } .story { min-height: 16rem; border-right: 0; border-bottom: 1px solid var(--border); padding: 1.5rem; } .storyCopy { margin-top: 3.5rem; padding-top: 0; } .storyTitle { max-width: 25rem; font-size: 2.65rem; } .storyBody, .promiseList { display: none; } .formPane { align-items: flex-start; padding: 2rem 1.5rem 3rem; } }
+.page {
+  display: grid;
+  min-height: 100svh;
+  grid-template-columns: minmax(0, 1.05fr) minmax(25rem, 0.95fr);
+  background: var(--surface);
+}
+.story {
+  position: relative;
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: clamp(2rem, 6vw, 6rem);
+  color: var(--ink);
+}
+.story::before {
+  position: absolute;
+  right: -12rem;
+  top: -12rem;
+  width: 34rem;
+  height: 34rem;
+  border: 1px solid color-mix(in oklab, var(--brand-accent) 35%, var(--border));
+  border-radius: 999px;
+  content: "";
+}
+.story::after {
+  position: absolute;
+  right: 3rem;
+  top: 4rem;
+  width: 16rem;
+  height: 16rem;
+  border: 1px solid color-mix(in oklab, var(--brand-accent) 24%, transparent);
+  border-radius: 999px;
+  content: "";
+}
+.storyContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 100%;
+  max-width: 32rem;
+  flex-direction: column;
+}
+.mark {
+  color: var(--ink);
+}
+.storyCopy {
+  margin-top: auto;
+  padding-top: 8rem;
+}
+.storyTitle {
+  max-width: 30rem;
+  font-size: clamp(2.5rem, 5vw, 5.3rem);
+  font-weight: 650;
+  letter-spacing: -0.065em;
+  line-height: 0.98;
+}
+.storyBody {
+  max-width: 27rem;
+  margin-top: 1.5rem;
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+.promiseList {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 2.25rem;
+  color: var(--ink-2);
+  font-size: 0.86rem;
+}
+.promise {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.promise::before {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--brand-accent);
+  content: "";
+}
+.formPane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--surface);
+}
+.formCard {
+  width: min(100%, 27rem);
+}
+.formKicker {
+  color: var(--brand-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.formTitle {
+  margin-top: 0.8rem;
+  font-size: 2.15rem;
+  font-weight: 650;
+  letter-spacing: -0.05em;
+  line-height: 1.05;
+}
+.formDescription {
+  margin-top: 0.7rem;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+.label {
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.optional {
+  color: var(--ink-2);
+  font-weight: 400;
+}
+.passwordWrap {
+  position: relative;
+}
+.passwordWrap input {
+  padding-right: 2.8rem;
+}
+.passwordToggle {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  display: inline-flex;
+  transform: translateY(-50%);
+  color: var(--ink-2);
+}
+.passwordToggle:hover {
+  color: var(--ink);
+}
+.error {
+  border-radius: 0.5rem;
+  background: color-mix(in oklab, var(--destructive) 8%, var(--surface));
+  padding: 0.7rem 0.8rem;
+  color: var(--destructive);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.finePrint {
+  color: var(--ink-2);
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+.switchMode {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 0.82rem;
+}
+.switchMode a {
+  color: var(--brand-accent);
+  font-weight: 600;
+}
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1.5rem;
+  color: var(--ink-2);
+  font-size: 0.78rem;
+}
+.backLink:hover {
+  color: var(--ink);
+}
+@media (max-width: 800px) {
+  .page {
+    display: block;
+  }
+  .story {
+    min-height: 16rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 1.5rem;
+  }
+  .storyCopy {
+    margin-top: 3.5rem;
+    padding-top: 0;
+  }
+  .storyTitle {
+    max-width: 25rem;
+    font-size: 2.65rem;
+  }
+  .storyBody,
+  .promiseList {
+    display: none;
+  }
+  .formPane {
+    align-items: flex-start;
+    padding: 2rem 1.5rem 3rem;
+  }
+}
