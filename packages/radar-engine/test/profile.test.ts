@@ -90,3 +90,13 @@ test('legacy tracked-count visibility never exposes private Tracker activity', (
   engine.store.tracked.push({ userId: user.id, opportunityId: 'opp-a', trackedAt: 'now', notify: true, myStatus: 'saved', events: [] });
   assert.deepEqual(engine.publicUserProfile(user.id), { isPrivate: true });
 });
+
+test('profile consequence motion events are durable and once-only', () => {
+  const { engine, user } = engineWithUser();
+  const first = engine.markProfileMotion(user.id, 'first-sample-published', '2026-08-14T12:00:00.000Z');
+  const repeat = engine.markProfileMotion(user.id, 'first-sample-published', '2026-08-15T12:00:00.000Z');
+  assert.equal(first.recorded, true);
+  assert.equal(repeat.recorded, false);
+  assert.equal(repeat.occurredAt, '2026-08-14T12:00:00.000Z');
+  assert.deepEqual(user.profileMotion, { 'first-sample-published': '2026-08-14T12:00:00.000Z' });
+});

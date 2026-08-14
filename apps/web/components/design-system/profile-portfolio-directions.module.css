@@ -711,6 +711,96 @@
     transform 180ms ease;
 }
 
+.consequenceGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.consequenceCard {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.consequenceCard h3,
+.consequenceCard p {
+  margin: 0;
+}
+.consequenceCard h3 {
+  font-family: var(--font-heading);
+  font-size: 1.35rem;
+  font-weight: 400;
+}
+.consequenceCard > p {
+  color: var(--profile-muted);
+  line-height: 1.45;
+}
+.motionTier {
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.motionSample {
+  min-height: 16px;
+}
+.motionSample .textSample {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.motionPublished .textSample {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 280ms ease,
+    transform 280ms ease;
+}
+.motionPublished .sampleCaption {
+  transition-delay: 80ms;
+}
+.motionCaption {
+  color: var(--profile-muted);
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+}
+.evidenceDraw {
+  position: relative;
+  width: fit-content;
+  overflow: hidden;
+}
+.evidenceDraw::after {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--primary);
+  content: "";
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.evidenceDrawn::after {
+  transform: scaleX(1);
+  transition: transform 240ms ease;
+}
+.thresholdNotice {
+  opacity: 0;
+  transform: translateY(4px);
+}
+.thresholdNotice.thresholdVisible {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 280ms ease,
+    transform 280ms ease;
+}
+.claimedHandle {
+  min-height: 1.4em;
+  color: var(--ink);
+  font-family: var(--font-mono);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page *,
   .page *::before,
@@ -719,6 +809,12 @@
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+@media (max-width: 1000px) {
+  .consequenceGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -777,5 +873,8 @@
   }
   .identity h2 {
     font-size: 3.5rem;
+  }
+  .consequenceGrid {
+    grid-template-columns: 1fr;
   }
 }

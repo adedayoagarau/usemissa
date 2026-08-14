@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { ArrowUpRight, Mail, Music2, Play, Quote } from "lucide-react";
@@ -106,10 +106,16 @@ const fixtures = [
   ],
 ] as const;
 
-function EvidenceLabel({ tier }: { tier: EvidenceTier }) {
+function EvidenceLabel({
+  tier,
+  className = "",
+}: {
+  tier: EvidenceTier;
+  className?: string;
+}) {
   return (
     <span
-      className={`${styles.evidence} ${tier === "recorded" || tier === "platform" ? styles.strongEvidence : ""}`}
+      className={`${styles.evidence} ${tier === "recorded" || tier === "platform" ? styles.strongEvidence : ""} ${className}`}
     >
       {evidenceLabels[tier]}
     </span>
@@ -326,6 +332,97 @@ function EmptyFixture({
         <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
     </Empty>
+  );
+}
+
+function ConsequenceMotionReview() {
+  const [samplePublished, setSamplePublished] = useState(false);
+  const [recorded, setRecorded] = useState(false);
+  const [threshold, setThreshold] = useState(false);
+  const [claimed, setClaimed] = useState(false);
+  const [visibleHandle, setVisibleHandle] = useState("");
+
+  useEffect(() => {
+    if (!claimed) {
+      setVisibleHandle("");
+      return;
+    }
+    const handle = "@amaka";
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setVisibleHandle(handle);
+      return;
+    }
+    let index = 0;
+    const timer = window.setInterval(() => {
+      index += 1;
+      setVisibleHandle(handle.slice(0, index));
+      if (index === handle.length) window.clearInterval(timer);
+    }, 40);
+    return () => window.clearInterval(timer);
+  }, [claimed]);
+
+  return (
+    <div className={styles.consequenceGrid}>
+      <article className={styles.consequenceCard}>
+        <span className={styles.motionTier}>Tier 2 · consequence</span>
+        <h3>First sample published</h3>
+        <p>The page becomes a portfolio.</p>
+        {!samplePublished && (
+          <Button type="button" onClick={() => setSamplePublished(true)}>
+            Publish sample
+          </Button>
+        )}
+        <div
+          className={`${styles.motionSample} ${samplePublished ? styles.motionPublished : ""}`}
+          aria-live="polite"
+        >
+          {samplePublished && (
+            <>
+              <Sample kind="text" />
+              <p className={styles.motionCaption}>The sample is now public.</p>
+            </>
+          )}
+        </div>
+      </article>
+      <article className={styles.consequenceCard}>
+        <span className={styles.motionTier}>Tier 2 · consequence</span>
+        <h3>Recorded credit</h3>
+        <p>A submission record becomes public evidence.</p>
+        <Button type="button" onClick={() => setRecorded(true)}>
+          Record credit
+        </Button>
+        <div
+          className={`${styles.evidenceDraw} ${recorded ? styles.evidenceDrawn : ""}`}
+        >
+          <EvidenceLabel tier="recorded" />
+        </div>
+      </article>
+      <article className={styles.consequenceCard}>
+        <span className={styles.motionTier}>Tier 2 · consequence</span>
+        <h3>Search visibility</h3>
+        <p>The Profile crosses its indexability threshold.</p>
+        <Button type="button" onClick={() => setThreshold(true)}>
+          Cross threshold
+        </Button>
+        <p
+          className={`${styles.thresholdNotice} ${threshold ? styles.thresholdVisible : ""}`}
+          role="status"
+        >
+          Your Profile is now visible to search.
+        </p>
+      </article>
+      <article className={styles.consequenceCard}>
+        <span className={styles.motionTier}>Tier 2 · consequence</span>
+        <h3>Handle claimed</h3>
+        <p>A public name becomes yours.</p>
+        <Button type="button" onClick={() => setClaimed(true)}>
+          Claim handle
+        </Button>
+        <p className={styles.claimedHandle} aria-live="polite">
+          {visibleHandle || "@"}
+        </p>
+      </article>
+    </div>
   );
 }
 
@@ -726,10 +823,26 @@ export function ProfilePortfolioDirections() {
         </section>
         <section
           className={styles.reviewSection}
-          aria-labelledby="fixture-title"
+          aria-labelledby="motion-title"
         >
           <div className={styles.sectionHeader}>
             <span>04</span>
+            <div>
+              <h2 id="motion-title">Consequence motion</h2>
+              <p>
+                These four moments have an effect outside the interface and fire
+                once per account.
+              </p>
+            </div>
+          </div>
+          <ConsequenceMotionReview />
+        </section>
+        <section
+          className={styles.reviewSection}
+          aria-labelledby="fixture-title"
+        >
+          <div className={styles.sectionHeader}>
+            <span>05</span>
             <div>
               <h2 id="fixture-title">Fixture coverage</h2>
               <p>
@@ -758,7 +871,7 @@ export function ProfilePortfolioDirections() {
         </section>
         <section className={styles.reviewSection} aria-labelledby="rules-title">
           <div className={styles.sectionHeader}>
-            <span>05</span>
+            <span>06</span>
             <div>
               <h2 id="rules-title">Build rules</h2>
               <p>

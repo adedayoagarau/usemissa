@@ -450,7 +450,15 @@ export interface UserProfile {
   taxonomyPreferences?: TaxonomyPreference[];
   /** Private opportunity search configuration; absent means not configured yet. */
   opportunityPreferences?: OpportunityPreferences;
+  /** Durable once-per-account consequence motion events for public Profile. */
+  profileMotion?: Partial<Record<ProfileMotionEvent, IsoDateTime>>;
 }
+
+export type ProfileMotionEvent =
+  | 'first-sample-published'
+  | 'recorded-credit'
+  | 'indexability-threshold'
+  | 'handle-claimed';
 
 export interface TaxonomyPreference {
   termId: string;

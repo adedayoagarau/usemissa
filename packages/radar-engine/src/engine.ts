@@ -39,6 +39,8 @@ import type {
   ChecklistItem,
   CustomList,
   CustomListMembership,
+  ProfileMotionEvent,
+  IsoDateTime,
 } from './domain/types.js';
 import type { Clock, Extractor, Fetcher, FetchResult, IdGenerator } from './ports.js';
 import { sequentialIds, systemClock } from './ports.js';
@@ -415,6 +417,20 @@ export class RadarEngine {
     if (values.taxonomyPreferences !== undefined) user.taxonomyPreferences = values.taxonomyPreferences;
     if (values.opportunityPreferences !== undefined) user.opportunityPreferences = values.opportunityPreferences;
     return user;
+  }
+
+  /** Record a public Profile consequence once; repeated calls are no-ops. */
+  markProfileMotion(
+    userId: string,
+    event: ProfileMotionEvent,
+    at: IsoDateTime = new Date().toISOString(),
+  ): { user: UserProfile; recorded: boolean; occurredAt: IsoDateTime } {
+    const user = this.store.users.get(userId);
+    if (!user) throw new Error(`Unknown user: ${userId}`);
+    const existing = user.profileMotion?.[event];
+    if (existing) return { user, recorded: false, occurredAt: existing };
+    user.profileMotion = { ...user.profileMotion, [event]: at };
+    return { user, recorded: true, occurredAt: at };
   }
 
   /** Return only fields explicitly safe for an unauthenticated visitor. */
