@@ -20,6 +20,9 @@
     "test:e2e": "npm run test:e2e --workspace=@missa/web",
     "db:generate": "npm run db:generate --workspace=@missa/db",
     "db:seed-taxonomy": "npm run db:seed-taxonomy --workspace=@missa/db",
+    "handles:plan": "npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && node packages/radar-adapters/dist/src/handlesPlan.js",
+    "waitlist:publication-match": "npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && node scripts/waitlist-publication-match.mjs",
+    "waitlist:send-invites": "npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && node scripts/send-waitlist-invites.mjs",
     "seo:indexnow": "node scripts/indexnow-submit.mjs",
     "waitlist:check": "node scripts/check-waitlist-release.mjs"
   },

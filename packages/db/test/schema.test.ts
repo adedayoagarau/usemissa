@@ -38,6 +38,9 @@ import {
   chatRunEvents,
   trackerImportReceipts,
   trackerImportRateEvents,
+  handles,
+  handleAliases,
+  waitlistInvites,
 } from "../src/schema.js";
 
 test("platform schema carries tenant, audit, outbox, and reviewer indexes", () => {
@@ -223,4 +226,85 @@ test("profile identity schema requires durable host and name evidence", () => {
   assert.deepEqual(opportunityProfileLinks.evidence.notNull, true);
   assert.deepEqual(opportunityProfileIdentityChecks.nextCheckAt.notNull, true);
   assert.deepEqual(opportunityProfileIdentityChecks.evidence.notNull, true);
+});
+
+test("handle namespace keeps active subjects unique and aliases permanent", () => {
+  const handleConfig = getTableConfig(handles);
+  const aliasConfig = getTableConfig(handleAliases);
+
+  assert.equal(
+    handleConfig.columns.find((column) => column.name === "handle_key")?.primary,
+    true,
+  );
+  assert.ok(
+    handleConfig.indexes.some(
+      (index) => index.config.name === "handles_subject_active_idx" && index.config.unique,
+    ),
+  );
+  assert.ok(
+    handleConfig.checks.some(
+      (constraint) => constraint.name === "handles_subject_type_check",
+    ),
+  );
+  assert.ok(
+    handleConfig.checks.some(
+      (constraint) => constraint.name === "handles_state_check",
+    ),
+  );
+  assert.ok(
+    handleConfig.checks.some(
+      (constraint) => constraint.name === "handles_derivation_check",
+    ),
+  );
+  assert.equal(
+    handleConfig.foreignKeys.some(
+      (foreignKey) => foreignKey.onDelete === "set null",
+    ),
+    true,
+  );
+  assert.equal(
+    aliasConfig.columns.find((column) => column.name === "alias_key")?.primary,
+    true,
+  );
+  assert.ok(
+    aliasConfig.checks.some(
+      (constraint) => constraint.name === "handle_aliases_reason_check",
+    ),
+  );
+  assert.equal(
+    aliasConfig.foreignKeys.some(
+      (foreignKey) => foreignKey.onDelete === "cascade",
+    ),
+    true,
+  );
+});
+
+test("waitlist invites keep hashed tokens unique and link to accounts safely", () => {
+  const config = getTableConfig(waitlistInvites);
+  assert.equal(
+    config.columns.find((column) => column.name === "token_hash")?.notNull,
+    true,
+  );
+  assert.ok(
+    config.indexes.some(
+      (index) => index.config.name === "waitlist_invites_token_hash_idx" && index.config.unique,
+    ),
+  );
+  assert.ok(
+    config.checks.some(
+      (constraint) => constraint.name === "waitlist_invites_state_check",
+    ),
+  );
+  assert.equal(
+    config.foreignKeys.some(
+      (foreignKey) => foreignKey.onDelete === "cascade",
+    ),
+    true,
+  );
+  assert.equal(
+    config.foreignKeys.some(
+      (foreignKey) => foreignKey.onDelete === "set null",
+    ),
+    true,
+  );
 });
