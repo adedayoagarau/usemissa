@@ -1,4 +1,5 @@
 import { LockKeyhole } from 'lucide-react';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
 import { MissaWordmark } from '@/components/missa-wordmark';
@@ -67,7 +68,7 @@ export default async function WaitlistPage({ searchParams }: { searchParams?: Pr
       <footer className={styles.footer}>
         <span>© Missa</span>
         <span>Opportunities for creative work, with the source and limits kept visible.</span>
-        <a href="/privacy">Privacy</a>
+        <Link href="/privacy">Privacy</Link>
       </footer>
     </div>
   );
