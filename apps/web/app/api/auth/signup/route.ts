@@ -1,13 +1,10 @@
-import { NextResponse } from "next/server";
-import { AuthError } from "@missa/radar-engine";
-import { redeemWaitlistInvite } from "@missa/radar-adapters";
-import { getEngine, persistRadar } from "@/lib/engine";
-import {
-  issueSessionToken,
-  sessionCookieOptions,
-  SESSION_COOKIE,
-} from "@/lib/auth";
-import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
+import { NextResponse } from 'next/server';
+import { AuthError } from '@missa/radar-engine';
+import { redeemWaitlistInvite } from '@missa/radar-adapters';
+import { getEngine, persistRadar } from '@/lib/engine';
+import { issueSessionToken, sessionCookieOptions, SESSION_COOKIE } from '@/lib/auth';
+import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
+import { getRateLimiter, readClientIp, SIGNUP_IP_LIMIT, tooManyRequests } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -50,6 +47,16 @@ export async function POST(request: Request) {
       { error: "Use a password between 8 and 200 characters." },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
+  }
+
+  /**
+   * Charged only once the payload is well formed, so malformed noise stays cheap
+   * to reject and cannot spend a real visitor's window on their behalf.
+   */
+  const limiter = await getRateLimiter();
+  const decision = await limiter.consume(SIGNUP_IP_LIMIT, readClientIp(request));
+  if (!decision.allowed) {
+    return tooManyRequests(decision, 'Too many sign up attempts. Please wait before trying again.');
   }
 
   const engine = await getEngine();

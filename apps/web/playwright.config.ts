@@ -26,6 +26,12 @@ export default defineConfig({
         env: {
           DATABASE_URL: "",
           MISSA_SESSION_SECRET: "missa-e2e-session-secret",
+          // The suite provisions an account per test and drives deliberate bad
+          // logins, all from one address. Only the two per-IP windows are
+          // raised; every other limit stays at its shipped value, and
+          // rate-limit.spec.ts asserts the limiter is still enforcing.
+          MISSA_RATE_LIMIT_SIGNUP_IP: "100000",
+          MISSA_RATE_LIMIT_LOGIN_IP: "100000",
         },
         url: "http://127.0.0.1:3100",
         reuseExistingServer: false,

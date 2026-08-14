@@ -329,6 +329,21 @@ export {
   updatePlatformCrmTaskStatus,
 } from "./platformAdminFoundations.js";
 export {
+  createMemoryRateLimitStore,
+  createRateLimiter,
+  createRedisRateLimitStore,
+  createRedisRateLimitStoreFromEnv,
+  readUpstashRestCredentials,
+  type RateLimitDecision,
+  type RateLimitRedis,
+  type RateLimitRule,
+  type RateLimitStore,
+  type RateLimitStoreKind,
+  type RateLimiter,
+  type RateLimiterOptions,
+  type UpstashRestCredentials,
+} from "./rateLimit.js";
+export {
   createWaitlistSignup,
   readWaitlistAnalytics,
   readWaitlistSignups,
