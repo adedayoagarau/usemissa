@@ -539,3 +539,92 @@ test("a changed page misses the cache and is re-extracted", async () => {
     "a model change must invalidate stored answers",
   );
 });
+
+test("the publication rubric publishes only when all five gates pass", async () => {
+  const { evaluatePublicationRubric } = await import("../src/publicationRubric.js");
+  const ready = {
+    opportunityId: "opp_v2_1", title: "Multidisciplinary Residency Program", status: "open", submissionState: "available",
+    deadlineDate: "2026-10-01", submissionUrl: "https://casanailha.org/apply", guidelinesUrl: "https://casanailha.org/program",
+    sourceUrl: "https://resartis.org/open-calls/", processingSucceededAt: new Date().toISOString(),
+    organizationConfirmed: true, destinationReconciled: true, contentApproved: true, readingPeriodKind: null,
+  };
+  const pass = evaluatePublicationRubric(ready);
+  assert.equal(pass.decision, "publish");
+  assert.equal(pass.score, 100);
+
+  for (const [label, patch] of [
+    ["unreconciled destination", { destinationReconciled: false }],
+    ["unconfirmed organization", { organizationConfirmed: false }],
+    ["unreviewed content", { contentApproved: false }],
+    ["unknown deadline", { deadlineDate: null }],
+    ["closed status", { status: "closed" }],
+    ["missing destination", { submissionUrl: null, guidelinesUrl: null }],
+  ] as const) {
+    assert.equal(evaluatePublicationRubric({ ...ready, ...patch }).decision, "needs-human", `${label} must not publish`);
+  }
+
+  const unsafe = evaluatePublicationRubric({ ...ready, submissionState: "unsafe" });
+  assert.equal(unsafe.decision, "suppress", "an unsafe destination is suppressed, not queued");
+});
+
+test("placeholder titles never reach publication", async () => {
+  const { evaluatePublicationRubric } = await import("../src/publicationRubric.js");
+  const base = {
+    opportunityId: "opp_v2_2", status: "open", submissionState: "available", deadlineDate: "2026-10-01",
+    submissionUrl: "https://host.example/apply", guidelinesUrl: "https://host.example/call",
+    sourceUrl: "https://directory.example/", processingSucceededAt: new Date().toISOString(),
+    organizationConfirmed: true, destinationReconciled: true, contentApproved: true, readingPeriodKind: null,
+  };
+  for (const title of ["Read more", "here", "apply now", "www.example.org", "example.org/call", ""]) {
+    assert.equal(evaluatePublicationRubric({ ...base, title }).decision, "needs-human", `"${title}" is not an identity`);
+  }
+  assert.equal(evaluatePublicationRubric({ ...base, title: "Casa na Ilha Residency" }).decision, "publish");
+});
+
+test("content is cited to the first-party destination, not the directory", async () => {
+  const { contentCitationUrl } = await import("../src/publication.js");
+  assert.equal(
+    contentCitationUrl({ guidelines_url: "https://casanailha.org/program", submission_url: "https://casanailha.org/apply", source_url: "https://resartis.org/" }),
+    "https://casanailha.org/program",
+    "the host page is the citation, never the aggregator that led us there",
+  );
+  assert.equal(contentCitationUrl({ guidelines_url: null, submission_url: "https://host.example/apply", source_url: "https://directory.example/" }), "https://host.example/apply");
+  assert.equal(contentCitationUrl({ guidelines_url: null, submission_url: null, source_url: "https://host.example/" }), "https://host.example/");
+});
+
+test("publishing is opt-in and off by default", async () => {
+  const { publicationApplyEnabled, V2_OPPORTUNITY_PREFIX } = await import("../src/publication.js");
+  assert.equal(publicationApplyEnabled({} as NodeJS.ProcessEnv), false);
+  assert.equal(publicationApplyEnabled({ MISSA_INGESTION_V2_PUBLISH: "0" } as NodeJS.ProcessEnv), false);
+  assert.equal(publicationApplyEnabled({ MISSA_INGESTION_V2_PUBLISH: "true" } as NodeJS.ProcessEnv), false, "only an explicit 1 enables writes");
+  assert.equal(publicationApplyEnabled({ MISSA_INGESTION_V2_PUBLISH: "1" } as NodeJS.ProcessEnv), true);
+  assert.equal(V2_OPPORTUNITY_PREFIX, "opp_v2_", "v2 must only ever transition records it wrote");
+});
+
+test("a dry run does not persist a content review status", async () => {
+  const { runPublicationTick } = await import("../src/publication.js");
+  const statements: string[] = [];
+  const client = {
+    query: async (text: string) => {
+      statements.push(String(text).replace(/\s+/g, " ").trim());
+      return { rows: [], rowCount: 0 };
+    },
+    release: () => undefined,
+  };
+  const row = {
+    opportunity_id: "opp_v2_dry", title: "Residency", status: "open", submission_state: "available",
+    deadline_date: "2026-10-01", submission_url: "https://host.example/apply", guidelines_url: "https://host.example/call",
+    source_url: "https://directory.example/", processing_succeeded_at: new Date(), organization_confirmed: true,
+    destination_reconciled: true, content_review_status: "pending", reading_period_kind: null,
+    content: { builderVersion: "v", summary: "x".repeat(80), highlights: [], preparation: ["a"], unknowns: [], nextAction: "Apply", sourceUrl: "https://host.example/call", generatedAt: new Date().toISOString(), review: { status: "pending", score: 0, reasons: [], checks: {} } },
+  };
+  const pool = {
+    query: async () => ({ rows: [row], rowCount: 1 }),
+    connect: async () => client,
+  } as unknown as import("pg").Pool;
+
+  await runPublicationTick(pool, { apply: false, logger: { info: () => undefined, warn: () => undefined } });
+  assert.equal(statements.some((sql) => /update opportunity_contents/i.test(sql)), false, "a dry run must not write content review status");
+  assert.equal(statements.some((sql) => /update opportunities set publication_state/i.test(sql)), false, "a dry run must not change publication state");
+  assert.equal(statements.some((sql) => /insert into missa_ingestion_v2_publication_decisions/i.test(sql)), true, "the decision is still recorded for review");
+});
