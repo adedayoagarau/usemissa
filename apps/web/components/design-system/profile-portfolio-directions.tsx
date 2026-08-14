@@ -1,13 +1,8 @@
-import {
-  ArrowUpRight,
-  Check,
-  ChevronRight,
-  Mail,
-  Music2,
-  Play,
-  Quote,
-  X,
-} from "lucide-react";
+"use client";
+
+import { useRef, useState } from "react";
+
+import { ArrowUpRight, Mail, Music2, Play, Quote } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -16,10 +11,16 @@ import styles from "./profile-portfolio-directions.module.css";
 
 type EvidenceTier = "recorded" | "platform" | "linked" | "listed";
 type SampleKind = "text" | "audio" | "video" | "image";
+type Credit = {
+  year: string;
+  title: string;
+  venue: string;
+  evidence?: EvidenceTier;
+};
 
 const evidenceLabels: Record<EvidenceTier, string> = {
   recorded: "recorded in Missa",
-  platform: "confirmed on YouTube",
+  platform: "confirmed on Spotify",
   linked: "link checked 3 days ago",
   listed: "listed by the writer",
 };
@@ -45,33 +46,35 @@ const credits = [
   },
 ];
 
+const volumeCredits = Array.from({ length: 40 }, (_, index) => ({
+  year: String(2026 - Math.floor(index / 4)),
+  title: `Published piece ${index + 1}`,
+  venue: index % 2 ? "The Republic" : "Granta",
+}));
+
 const fixtures = [
   ["01", "Text · established", "Excerpt, credits, and all evidence labels."],
-  ["02", "Audio", "Native player, track list, and no autoplay."],
-  ["03", "Moving image", "Poster frame, duration, and caption slot."],
-  ["04", "Still image", "Contained artwork with required alternative text."],
+  ["02", "Audio", "Native audio with a custom control surface."],
+  ["03", "Moving image", "Native video with custom play controls."],
+  ["04", "Still image", "Contained artwork with alternative text."],
   ["05", "New", "One credit, no sample, and no index signal."],
   ["06", "Empty", "Name and handle only."],
-  ["07", "Private", "One clear privacy message and no identity leak."],
-  ["08", "No sample", "The page keeps its rule and removes the empty slot."],
+  ["07", "Fully private", "A privacy message with no identity leak."],
+  ["08", "No image", "Identity remains deliberate without an image or sample."],
   [
     "09",
     "Sample unpublished",
     "The public sample is absent; Library content remains separate.",
   ],
-  ["10", "Hidden credit", "The credit is absent from the public page."],
-  [
-    "11",
-    "Dead link",
-    "The credit is shown as listed and the owner is notified.",
-  ],
-  ["12", "Revoked connection", "The credit falls back to a checked link."],
+  ["10", "Hidden credit", "The real credit row remains visible to the owner."],
+  ["11", "Dead link", "The credit demotes to listed and the owner is told."],
+  ["12", "Revoked connection", "The credit demotes to a checked link."],
   ["13", "Long values", "Long names and venues wrap without clipping."],
-  ["14", "Many credits", "Forty credits stay readable as a year-led list."],
-  ["15", "Save error", "The edit remains in place and the error is direct."],
+  ["14", "Forty credits", "A high-volume year-led list remains readable."],
+  ["15", "Mutation failure", "The edit stays in place with a direct error."],
   [
     "16",
-    "Unclaimed handle",
+    "Handle not claimed",
     "The owner view works before a public page exists.",
   ],
 ] as const;
@@ -86,6 +89,83 @@ function EvidenceLabel({ tier }: { tier: EvidenceTier }) {
   );
 }
 
+function CustomAudio() {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+
+  function toggleAudio() {
+    if (!audioRef.current) return;
+    if (playing) {
+      audioRef.current.pause();
+      setPlaying(false);
+      return;
+    }
+    void audioRef.current.play().catch(() => setPlaying(false));
+    setPlaying(true);
+  }
+
+  return (
+    <div className={styles.customMediaControls}>
+      <audio
+        ref={audioRef}
+        preload="none"
+        aria-label="Coastline Suite audio sample"
+      />
+      <button
+        type="button"
+        className={styles.mediaButton}
+        onClick={toggleAudio}
+        aria-label={playing ? "Pause Coastline Suite" : "Play Coastline Suite"}
+      >
+        {playing ? "Pause" : "Play"}
+      </button>
+      <span className={styles.waveform} aria-hidden="true">
+        ▂▅▃▇▅▂▆▃▅▇▂
+      </span>
+      <span className={styles.mediaMeta}>0:00 / 6:12</span>
+    </div>
+  );
+}
+
+function CustomVideo() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+
+  function toggleVideo() {
+    if (!videoRef.current) return;
+    if (playing) {
+      videoRef.current.pause();
+      setPlaying(false);
+      return;
+    }
+    void videoRef.current.play().catch(() => setPlaying(false));
+    setPlaying(true);
+  }
+
+  return (
+    <div className={styles.videoFrame}>
+      <video
+        ref={videoRef}
+        preload="none"
+        aria-label="The Dry Season Crossing video sample"
+      />
+      <button
+        type="button"
+        className={styles.playButton}
+        onClick={toggleVideo}
+        aria-label={
+          playing
+            ? "Pause The Dry Season Crossing"
+            : "Play The Dry Season Crossing"
+        }
+      >
+        <Play aria-hidden="true" fill="currentColor" />
+      </button>
+      <span>2:40 excerpt</span>
+    </div>
+  );
+}
+
 function Sample({ kind }: { kind: SampleKind }) {
   if (kind === "audio") {
     return (
@@ -97,13 +177,7 @@ function Sample({ kind }: { kind: SampleKind }) {
             <span>Kelele Records · 2026</span>
           </div>
         </div>
-        <audio
-          controls
-          preload="none"
-          aria-label="Coastline Suite audio sample"
-        >
-          <track kind="captions" />
-        </audio>
+        <CustomAudio />
         <ol className={styles.trackList}>
           <li>
             <span>1</span>
@@ -124,19 +198,10 @@ function Sample({ kind }: { kind: SampleKind }) {
   if (kind === "video") {
     return (
       <div className={styles.videoSample}>
-        <div className={styles.videoFrame}>
-          <button
-            type="button"
-            className={styles.playButton}
-            aria-label="Play The Dry Season Crossing"
-          >
-            <Play aria-hidden="true" fill="currentColor" />
-          </button>
-          <span>2:40 excerpt</span>
-        </div>
+        <CustomVideo />
         <div className={styles.sampleCaption}>
           <strong>The Dry Season Crossing</strong>
-          <span>26-minute film</span>
+          <span>26-minute film · 2026</span>
           <EvidenceLabel tier="platform" />
         </div>
       </div>
@@ -155,7 +220,7 @@ function Sample({ kind }: { kind: SampleKind }) {
         </div>
         <div className={styles.sampleCaption}>
           <strong>Room with the Generator Off</strong>
-          <span>Oil on linen · 150 × 120 cm</span>
+          <span>Oil on linen · 150 × 120 cm · 2026</span>
           <EvidenceLabel tier="listed" />
         </div>
       </div>
@@ -171,18 +236,23 @@ function Sample({ kind }: { kind: SampleKind }) {
       </p>
       <div className={styles.sampleCaption}>
         <strong>The Harmattan Year</strong>
-        <span>Excerpt · 380 words</span>
+        <span>Granta · 2026 · excerpt · 380 words</span>
+        <EvidenceLabel tier="recorded" />
       </div>
     </div>
   );
 }
 
-function CreditList({ compact = false }: { compact?: boolean }) {
+function CreditList({
+  items = credits,
+  hidden = false,
+}: {
+  items?: Credit[];
+  hidden?: boolean;
+}) {
   return (
-    <div
-      className={`${styles.credits} ${compact ? styles.compactCredits : ""}`}
-    >
-      {credits.map((credit) => (
+    <div className={`${styles.credits} ${hidden ? styles.hiddenCredits : ""}`}>
+      {items.map((credit) => (
         <article
           className={styles.credit}
           key={`${credit.year}-${credit.title}`}
@@ -191,7 +261,7 @@ function CreditList({ compact = false }: { compact?: boolean }) {
           <div>
             <strong>{credit.title}</strong>
             <span>{credit.venue}</span>
-            <EvidenceLabel tier={credit.evidence} />
+            {credit.evidence && <EvidenceLabel tier={credit.evidence} />}
           </div>
         </article>
       ))}
@@ -204,7 +274,6 @@ function PublicProfile({ kind = "text" }: { kind?: SampleKind }) {
     <article className={styles.publicProfile}>
       <header className={styles.identity}>
         <div>
-          <p className={styles.kicker}>Public Profile</p>
           <h2>Amaka Obi</h2>
           <p className={styles.handle}>@amaka</p>
           <p className={styles.roleLine}>Essayist · Screenwriter · Lagos</p>
@@ -212,25 +281,17 @@ function PublicProfile({ kind = "text" }: { kind?: SampleKind }) {
             Writing essays and scripts about ordinary life.
           </p>
         </div>
-        <a className={styles.externalLink} href="#contact">
-          Share Profile <ArrowUpRight aria-hidden="true" />
-        </a>
       </header>
       <Separator />
       <section className={styles.sampleRegion} aria-labelledby="sample-title">
         <div className={styles.sectionLabel}>
           <span id="sample-title">Selected Work</span>
-          <span>Public</span>
         </div>
         <Sample kind={kind} />
-        <p className={styles.sampleSource}>
-          From the writer’s Library · published sample
-        </p>
       </section>
       <section className={styles.creditRegion} aria-labelledby="credits-title">
         <div className={styles.sectionLabel}>
           <span id="credits-title">Credits</span>
-          <span>3 public</span>
         </div>
         <CreditList />
       </section>
@@ -261,7 +322,6 @@ function OwnerProfile() {
   return (
     <article className={`${styles.publicProfile} ${styles.ownerProfile}`}>
       <div className={styles.ownerNotice}>
-        <Check aria-hidden="true" />
         <span>
           You are editing your public Profile. Save to publish changes.
         </span>
@@ -276,10 +336,26 @@ function OwnerProfile() {
       </div>
       <header className={styles.identity}>
         <div>
-          <p className={styles.kicker}>Your public Profile</p>
-          <h2>Amaka Obi</h2>
-          <p className={styles.handle}>@amaka</p>
-          <p className={styles.roleLine}>Essayist · Screenwriter · Lagos</p>
+          <label className={styles.inlineLabel} htmlFor="profile-name">
+            Name
+          </label>
+          <input id="profile-name" defaultValue="Amaka Obi" />
+          <label className={styles.inlineLabel} htmlFor="profile-handle">
+            Handle
+          </label>
+          <input
+            id="profile-handle"
+            className={styles.metadataInput}
+            defaultValue="@amaka"
+          />
+          <label className={styles.inlineLabel} htmlFor="profile-label">
+            Creator label
+          </label>
+          <input
+            id="profile-label"
+            className={styles.metadataInput}
+            defaultValue="Essayist · Screenwriter · Lagos"
+          />
           <label className={styles.inlineLabel} htmlFor="profile-one-line">
             One line · 42 / 100 characters
           </label>
@@ -293,12 +369,12 @@ function OwnerProfile() {
       <section className={styles.sampleRegion}>
         <div className={styles.sectionLabel}>
           <span>Selected Work</span>
-          <span>Public · from Library</span>
+          <span>Public</span>
         </div>
         <Sample kind="text" />
         <div className={styles.inlineActions}>
           <Button type="button" variant="outline">
-            Change Work
+            Change passage
           </Button>
           <Button type="button" variant="ghost">
             Unpublish
@@ -311,19 +387,25 @@ function OwnerProfile() {
           <span>3 public · 1 hidden</span>
         </div>
         <CreditList />
-        <div className={styles.hiddenCredit}>
-          <X aria-hidden="true" />
-          <span>Hidden — only you can see this</span>
+        <article className={`${styles.credit} ${styles.hiddenCredit}`}>
+          <time>2024</time>
+          <div>
+            <strong>Ordinary Weather</strong>
+            <span>The Republic</span>
+            <span className={styles.hiddenLabel}>
+              Hidden — only you can see this
+            </span>
+          </div>
           <Button type="button" variant="ghost">
             Show
           </Button>
-        </div>
+        </article>
         <Button type="button" variant="outline">
-          <ChevronRight aria-hidden="true" />
-          Add a credit
+          ＋ Add a credit — or pull one from Tracker, where 3 acceptances are
+          recorded.
         </Button>
       </section>
-      <div className={styles.saveBar}>
+      <div className={styles.saveBar} role="status">
         <span>2 unsaved changes</span>
         <div>
           <Button type="button" variant="ghost">
@@ -334,6 +416,123 @@ function OwnerProfile() {
       </div>
     </article>
   );
+}
+
+function FixturePreview({ number }: { number: string }) {
+  if (number === "07")
+    return <div className={styles.privateState}>This profile is private.</div>;
+  if (number === "10")
+    return (
+      <CreditList
+        items={[
+          {
+            year: "2024",
+            title: "Ordinary Weather",
+            venue: "The Republic",
+            evidence: "listed" as EvidenceTier,
+          },
+        ]}
+        hidden
+      />
+    );
+  if (number === "11")
+    return (
+      <CreditList
+        items={[
+          {
+            year: "2024",
+            title: "A House Near the Water",
+            venue: "The Republic",
+            evidence: "listed" as EvidenceTier,
+          },
+        ]}
+      />
+    );
+  if (number === "12")
+    return (
+      <CreditList
+        items={[
+          {
+            year: "2024",
+            title: "Coastline Suite",
+            venue: "Kelele Records",
+            evidence: "linked" as EvidenceTier,
+          },
+        ]}
+      />
+    );
+  if (number === "13")
+    return (
+      <div className={styles.miniProfile}>
+        <h3>Amaka Obi-Williams, Jr.</h3>
+        <p>amaka-obi-williams-long-handle</p>
+        <CreditList
+          items={[
+            {
+              year: "2026",
+              title:
+                "A very long title that wraps across the available content column",
+              venue: "The Journal with a Very Long Name for Demonstration",
+              evidence: "listed" as EvidenceTier,
+            },
+          ]}
+        />
+      </div>
+    );
+  if (number === "14")
+    return (
+      <div className={styles.volumePreview}>
+        <CreditList items={volumeCredits} />
+        <span className={styles.volumeCount}>40 credits</span>
+      </div>
+    );
+  if (number === "15")
+    return (
+      <div className={styles.errorPreview}>
+        <label htmlFor="fixture-error">One line</label>
+        <input
+          id="fixture-error"
+          defaultValue="Writing essays and scripts about ordinary life."
+        />
+        <p role="alert">Could not save this change. Your edit is still here.</p>
+      </div>
+    );
+  if (number === "16")
+    return (
+      <div className={styles.miniProfile}>
+        <h3>Amaka Obi</h3>
+        <p>@amaka</p>
+        <p className={styles.ownerOnly}>
+          Handle not claimed · public page unavailable
+        </p>
+      </div>
+    );
+  if (["05", "06", "08", "09"].includes(number))
+    return (
+      <div className={styles.miniProfile}>
+        <h3>{number === "06" ? "Amaka Obi" : "Tomiwa Ade"}</h3>
+        <p>{number === "06" ? "@amaka" : "@tomiwa"}</p>
+        {number === "05" && (
+          <CreditList
+            items={[
+              {
+                year: "2025",
+                title: "Two poems",
+                venue: "",
+                evidence: "listed" as EvidenceTier,
+              },
+            ]}
+          />
+        )}
+        {number === "09" && (
+          <p className={styles.mutedState}>No selected work is published.</p>
+        )}
+      </div>
+    );
+  if (number === "02") return <Sample kind="audio" />;
+  if (number === "03") return <Sample kind="video" />;
+  if (number === "04") return <Sample kind="image" />;
+  return <Sample kind="text" />;
 }
 
 export function ProfilePortfolioDirections() {
@@ -416,8 +615,7 @@ export function ProfilePortfolioDirections() {
             <div>
               <h2 id="fixture-title">Fixture coverage</h2>
               <p>
-                All states are present in the review surface before promotion
-                work begins.
+                Every contract state renders here before promotion work begins.
               </p>
             </div>
           </div>
@@ -428,11 +626,14 @@ export function ProfilePortfolioDirections() {
                 key={number}
                 data-fixture={number}
               >
-                <span>{number}</span>
-                <div>
-                  <h3>{title}</h3>
-                  <p>{description}</p>
+                <div className={styles.fixtureHeading}>
+                  <span>{number}</span>
+                  <div>
+                    <h3>{title}</h3>
+                    <p>{description}</p>
+                  </div>
                 </div>
+                <FixturePreview number={number} />
               </article>
             ))}
           </div>
@@ -460,12 +661,12 @@ export function ProfilePortfolioDirections() {
               <Music2 aria-hidden="true" />
               <strong>Media</strong>
               <p>
-                Use native audio and video controls. Do not autoplay or decorate
-                an empty sample slot.
+                Use the native audio or video element with a custom control
+                surface built from Missa tokens. No autoplay.
               </p>
             </div>
             <div>
-              <Check aria-hidden="true" />
+              <Quote aria-hidden="true" />
               <strong>Evidence</strong>
               <p>
                 Use plain labels for how a credit was recorded. Do not imply

@@ -6,7 +6,7 @@
   min-height: 100vh;
   background: var(--background);
   color: var(--ink);
-  padding: 24px clamp(16px, 4vw, 64px) 80px;
+  padding: 24px clamp(16px, 4vw, 64px) 132px;
 }
 .skipLink {
   position: absolute;
@@ -179,10 +179,8 @@
   display: grid;
   gap: 4px;
   margin-top: 22px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-family: var(--font-heading);
+  font-size: 1rem;
 }
 .sampleCaption span {
   color: var(--profile-muted);
@@ -292,7 +290,41 @@
   font-size: 13px;
 }
 .audioSample audio {
-  width: 100%;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.customMediaControls {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-block: 1px solid var(--border);
+}
+.mediaButton {
+  min-width: 64px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--primary);
+  background: transparent;
+  color: var(--primary);
+  font-family: var(--font-heading);
+  cursor: pointer;
+}
+.waveform {
+  overflow: hidden;
+  color: var(--primary);
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.mediaMeta {
+  color: var(--profile-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 .trackList {
   display: grid;
@@ -326,6 +358,12 @@
   position: relative;
   background: linear-gradient(135deg, #24202a, #8d6555 55%, #d0ae85);
   color: white;
+}
+.videoFrame video {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
 }
 .videoFrame > span {
   position: absolute;
@@ -369,8 +407,8 @@
   padding: 12px 16px;
   background: var(--profile-accent-tint);
   color: var(--primary);
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-family: var(--font-heading);
+  font-size: 1rem;
 }
 .ownerNotice > svg {
   flex: 0 0 auto;
@@ -395,6 +433,9 @@
   background: var(--surface);
   color: var(--ink);
 }
+.metadataInput {
+  font-family: var(--font-mono);
+}
 .inlineActions,
 .saveBar,
 .hiddenCredit {
@@ -403,23 +444,32 @@
   gap: 10px;
 }
 .hiddenCredit {
-  padding: 12px;
+  opacity: 0.55;
   background: var(--profile-subtle);
-  color: var(--profile-muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
 }
 .hiddenCredit button {
-  margin-left: auto;
+  align-self: center;
+  justify-self: end;
+}
+.hiddenLabel {
+  color: var(--profile-muted);
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
 }
 .saveBar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
   justify-content: space-between;
-  margin: 32px -72px -72px;
-  padding: 14px 16px;
+  margin: 0;
+  padding: 14px max(16px, calc((100vw - 880px) / 2));
   border-top: 1px solid var(--border);
   background: var(--surface);
-  font-family: var(--font-mono);
-  font-size: 11px;
+  box-shadow: 0 -10px 30px rgb(45 31 50 / 8%);
+  font-family: var(--font-heading);
+  font-size: 1rem;
 }
 .saveBar > div {
   display: flex;
@@ -439,6 +489,111 @@
   min-height: 110px;
   padding: 16px;
   background: var(--surface);
+}
+.fixtureHeading {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+}
+.fixturePreview {
+  min-width: 0;
+}
+.fixture > .textSample,
+.fixture > .audioSample,
+.fixture > .videoSample,
+.fixture > .imageSample,
+.fixture > .miniProfile,
+.fixture > .volumePreview,
+.fixture > .errorPreview,
+.fixture > .privateState {
+  margin-top: 14px;
+}
+.privateState,
+.mutedState,
+.ownerOnly {
+  color: var(--profile-muted);
+}
+.miniProfile {
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.miniProfile h3 {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+.miniProfile > p {
+  margin: 4px 0 12px;
+  color: var(--profile-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.miniProfile .credits .credit {
+  grid-template-columns: 42px 1fr;
+  gap: 8px;
+  padding: 10px 0;
+}
+.miniProfile .credit strong {
+  font-size: 1rem;
+}
+.volumePreview {
+  position: relative;
+  max-height: 300px;
+  overflow: hidden;
+}
+.volumePreview::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 60px;
+  background: linear-gradient(transparent, var(--surface));
+  content: "";
+  pointer-events: none;
+}
+.volumePreview .credit {
+  grid-template-columns: 42px 1fr;
+  gap: 8px;
+  padding: 8px 0;
+}
+.volumePreview .credit strong {
+  font-size: 0.95rem;
+}
+.volumeCount {
+  position: absolute;
+  right: 0;
+  bottom: 4px;
+  z-index: 1;
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.errorPreview {
+  display: grid;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.errorPreview label {
+  color: var(--profile-muted);
+  font-family: var(--font-heading);
+}
+.errorPreview input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px;
+  border: 1px solid var(--profile-border-strong);
+  background: var(--surface);
+  color: var(--ink);
+}
+.errorPreview p {
+  margin: 0;
+  color: var(--primary);
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
 }
 .fixture > span {
   color: var(--primary);
@@ -514,11 +669,11 @@
     margin: 10px 0 0 -8px;
   }
   .saveBar {
-    display: block;
-    margin: 32px -24px -24px;
+    display: flex;
+    margin: 0;
   }
   .saveBar > div {
-    margin-top: 10px;
+    margin-top: 0;
   }
 }
 
