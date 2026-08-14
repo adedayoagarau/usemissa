@@ -29,6 +29,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Check customer-facing Missa language
+        run: npm run check:language
+
       - name: Test
         run: npm test
 

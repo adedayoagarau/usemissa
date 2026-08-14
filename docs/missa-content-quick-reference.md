@@ -94,6 +94,14 @@ Do not add an eyebrow unless it gives information.
 
 > We could not save your profile. Your previous version is still available. Try again.
 
+## Taxonomy language
+
+Use **What do you make?** or the specific value a person selected. Do not use **practice**, **practice family**, **creative practice**, **creative field**, or **field** as a label for the kind of work someone makes. Do not expose **facet**, **taxonomy**, **term ID**, or **matching input** in product copy.
+
+**Field** is still allowed for ordinary form language: **email field**, **required field**, and **field error**.
+
+Public Profile headings use **About**, **Selected Works**, **Works**, **Publications**, and **Links**. Private controls use **Preferences**, **Notifications**, **Integrations**, **Privacy**, **Security**, and **Account**.
+
 ## Matching and evidence
 
 Use observable fit reasons:
@@ -122,7 +130,7 @@ No consolation, jokes, or motivational follow-up.
 
 Do not lead marketing with AI. Explain it when Missa ranks, summarizes, drafts, changes, or acts on information the person needs to understand.
 
-> This recommendation uses your practice, location, and fee preferences. Update your profile or hide this opportunity.
+> This recommendation uses your selections, location, and fee preferences. Update your Profile or hide this Opportunity.
 
 Use **matched, suggested, summarized, extracted, grouped, drafted, flagged, checked**.
 
@@ -148,6 +156,6 @@ Put the answer, state, or action first. Add another sentence only for a
 necessary fact, consequence, reason, source, next action, or recovery step.
 Do not add warmth, reassurance, hope, celebration, metaphors, or brand
 language. Do not infer feelings. Keep unknown information unknown. Use ordinary
-field terms. Return one best draft and stop.
+ordinary terms. Return one best draft and stop.
 ```
 Text to speech button
