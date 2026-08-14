@@ -1,4 +1,5 @@
 import { buildOpportunityIdentity, compareOpportunityIdentity, type OpportunityIdentity } from "./identity.js";
+import { isPotentialDestination } from "./destinations.js";
 import type { ExtractionResult, PageSnapshot, SourceDefinition } from "./contracts.js";
 
 export type PublisherDecision = "approve" | "review" | "reject";
@@ -33,7 +34,7 @@ function fieldsForSnapshot(fields: ExtractionResult["fields"], snapshotId: strin
 
 function deterministicReconciliation(input: PublisherInput): DestinationReconciliation {
   const sourceIdentity = buildOpportunityIdentity(input.sourceExtraction);
-  const candidates = input.sourceExtraction.candidateLinks.filter((candidate) => (candidate.role === "detail" || candidate.role === "apply") && candidate.authority === "destination");
+  const candidates = input.sourceExtraction.candidateLinks.filter((candidate) => isPotentialDestination(input.source, candidate));
   if (!candidates.length) return { decision: "reject", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["No authoritative detail or application link was classified from the source page."] };
 
   for (const candidate of candidates) {
@@ -41,7 +42,8 @@ function deterministicReconciliation(input: PublisherInput): DestinationReconcil
     if (!destination || destination.statusCode < 200 || destination.statusCode >= 300) continue;
     const destinationExtraction: ExtractionResult = { fields: fieldsForSnapshot(input.relatedFields, destination.id), candidateLinks: [], warnings: [] };
     const destinationIdentity = buildOpportunityIdentity(destinationExtraction, destination.finalUrl || destination.url);
-    const identityDecision = compareOpportunityIdentity(sourceIdentity, destinationIdentity);
+    const sourceIdentityForCandidate = buildOpportunityIdentity(input.sourceExtraction, candidate.url);
+    const identityDecision = compareOpportunityIdentity(sourceIdentityForCandidate.key === "unidentifiable" ? sourceIdentity : sourceIdentityForCandidate, destinationIdentity);
     if (identityDecision === "same") return { decision: "pass", authoritativeUrl: destination.finalUrl || destination.url, sourceIdentity, destinationIdentity, reasons: ["The source record reconciles to the fetched authoritative destination by canonical URL or title and organization."] };
     if (identityDecision === "review") return { decision: "review", authoritativeUrl: destination.finalUrl || destination.url, sourceIdentity, destinationIdentity, reasons: ["The linked destination was fetched, but its identity is ambiguous against the source record."] };
   }

@@ -3,7 +3,7 @@ import type { AdapterRegistry } from "./registry.js";
 import type { IngestionRun, PageSnapshot, ExtractionResult, SourceDefinition, IngestionFailureCode } from "./contracts.js";
 import { classifyIngestionFailure, createRunId, type IngestionMode, type IngestionTrigger } from "./contracts.js";
 import type { PipelineJobData, QueueBundle } from "./queues.js";
-import { destinationConfig } from "./destinations.js";
+import { destinationConfig, isPotentialDestination } from "./destinations.js";
 import { assessEvidenceQuality, type EvidenceQuality } from "./quality.js";
 import { reviewForPublication, type PublisherReview } from "./publisher.js";
 import { promoteApprovedArtifact } from "./canonicalWriter.js";
@@ -84,7 +84,7 @@ export async function executeShadowPipeline(
     const extraction: ExtractionResult = { fields: [...sourceExtraction.fields], candidateLinks: [...sourceExtraction.candidateLinks], warnings: [...sourceExtraction.warnings] };
     const relatedSnapshots: PageSnapshot[] = [];
     const detailLimit = Math.min(destinationConfig(source).detailLimit ?? 5, 5);
-    const details = extraction.candidateLinks.filter((candidate) => candidate.role === "detail").slice(0, detailLimit);
+    const details = extraction.candidateLinks.filter((candidate) => isPotentialDestination(source, candidate)).slice(0, detailLimit);
     for (const candidate of details) {
       try {
       const destinationSource = { ...source, id: `${source.id}:destination:${candidate.url}`, url: candidate.url, config: { ...source.config, ...(candidate.request ? { request: candidate.request } : {}), destination: { ...destinationConfig(source), pageRole: "detail" as const } } };

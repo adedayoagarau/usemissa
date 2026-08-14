@@ -16,6 +16,7 @@ interface DeepSeekFields {
   description?: unknown;
   eligibility?: unknown;
   submissionUrl?: unknown;
+  officialUrl?: unknown;
 }
 
 export interface DeepSeekHtmlAdapterOptions {
@@ -82,8 +83,8 @@ export class DeepSeekHtmlAdapter implements SourceAdapter {
         thinking: { type: "disabled" },
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: "Return JSON only. Extract only facts explicitly stated on the source page. Use null for unknown values. Dates must be exact ISO dates only; never infer a year. Example JSON: {\"title\":null,\"organization\":null,\"opportunityType\":null,\"deadlineDate\":null,\"deadlineKind\":\"unknown\",\"fee\":null,\"prize\":null,\"description\":null,\"eligibility\":null,\"submissionUrl\":null}" },
-          { role: "user", content: `Return JSON with these keys: title, organization, opportunityType, deadlineDate, deadlineKind, fee, prize, description, eligibility, submissionUrl. opportunityType must be one of open-call, magazine, grant, award, fellowship, residency, festival, scholarship, conference, rfp, contest, pitch, other or null. deadlineKind must be exact, rolling, until-filled, conflicting, or unknown. Page URL: ${snapshot.finalUrl}\n\nPage text:\n${stripHtml(snapshot.html).slice(0, 12_000)}` },
+          { role: "system", content: "Return JSON only. Extract only facts explicitly stated on the source page. Use null for unknown values. Dates must be exact ISO dates only; never infer a year. A directory or repost is evidence, not the opportunity owner: organization must name the host, and officialUrl must be the host's first-party program or application page. Never return the directory URL as officialUrl when a first-party page is present. Classify a residency program as residency even if the page uses generic contest language. Example JSON: {\"title\":null,\"organization\":null,\"opportunityType\":null,\"deadlineDate\":null,\"deadlineKind\":\"unknown\",\"fee\":null,\"prize\":null,\"description\":null,\"eligibility\":null,\"submissionUrl\":null,\"officialUrl\":null}" },
+          { role: "user", content: `Return JSON with these keys: title, organization, opportunityType, deadlineDate, deadlineKind, fee, prize, description, eligibility, submissionUrl, officialUrl. opportunityType must be one of open-call, magazine, grant, award, fellowship, residency, festival, scholarship, conference, rfp, contest, pitch, other or null. deadlineKind must be exact, rolling, until-filled, conflicting, or unknown. Page URL: ${snapshot.finalUrl}\n\nPage text:\n${stripHtml(snapshot.html).slice(0, 12_000)}` },
         ],
       }),
       signal: AbortSignal.timeout(30_000),
@@ -125,6 +126,10 @@ function normalizeFields(fields: DeepSeekFields, snapshot: PageSnapshot): Extrac
   const submissionUrl = text(fields.submissionUrl);
   if (submissionUrl) {
     try { if (["http:", "https:"].includes(new URL(submissionUrl).protocol)) add("submissionUrl", submissionUrl); } catch { /* invalid model URL is discarded */ }
+  }
+  const officialUrl = text(fields.officialUrl);
+  if (officialUrl) {
+    try { if (["http:", "https:"].includes(new URL(officialUrl).protocol)) add("officialUrl", officialUrl); } catch { /* invalid model URL is discarded */ }
   }
   return output;
 }
