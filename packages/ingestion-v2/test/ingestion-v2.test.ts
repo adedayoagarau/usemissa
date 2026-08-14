@@ -583,15 +583,21 @@ test("placeholder titles never reach publication", async () => {
   assert.equal(evaluatePublicationRubric({ ...base, title: "Casa na Ilha Residency" }).decision, "publish");
 });
 
-test("content is cited to the first-party destination, not the directory", async () => {
+test("a brief may cite any URL the record has evidence for", async () => {
   const { contentCitationUrl } = await import("../src/publication.js");
-  assert.equal(
-    contentCitationUrl({ guidelines_url: "https://casanailha.org/program", submission_url: "https://casanailha.org/apply", source_url: "https://resartis.org/" }),
-    "https://casanailha.org/program",
-    "the host page is the citation, never the aggregator that led us there",
-  );
-  assert.equal(contentCitationUrl({ guidelines_url: null, submission_url: "https://host.example/apply", source_url: "https://directory.example/" }), "https://host.example/apply");
-  assert.equal(contentCitationUrl({ guidelines_url: null, submission_url: null, source_url: "https://host.example/" }), "https://host.example/");
+  const row = { guidelines_url: "https://host.example/call", submission_url: "https://host.example/apply", source_url: "https://directory.example/index" };
+
+  // The two writers disagree about which URL a brief cites. Both are evidenced,
+  // so both must review against the page the brief actually names.
+  assert.equal(contentCitationUrl(row, "https://directory.example/index"), "https://directory.example/index", "Radar-authored briefs cite the discovery source");
+  assert.equal(contentCitationUrl(row, "https://host.example/call"), "https://host.example/call", "v2-authored briefs cite the destination");
+  assert.equal(contentCitationUrl(row, "https://host.example/apply"), "https://host.example/apply");
+
+  // A citation to a page this record has no evidence for is unverifiable, so it
+  // is reviewed against the preferred destination and fails.
+  assert.equal(contentCitationUrl(row, "https://elsewhere.example/invented"), "https://host.example/call");
+  assert.equal(contentCitationUrl(row, null), "https://host.example/call");
+  assert.equal(contentCitationUrl({ guidelines_url: null, submission_url: null, source_url: "https://only.example/" }, undefined), "https://only.example/");
 });
 
 test("publishing is opt-in and off by default", async () => {

@@ -97,12 +97,27 @@ async function candidates(pool: Pool, limit: number): Promise<CandidateRow[]> {
 }
 
 /**
- * Content facts are cited to the first-party destination, not to the directory
- * that led us there. Reviewing against the discovery source would block every
- * record whose facts came from the host page — which is all of them.
+ * Content review checks that every fact traces to a page we actually fetched. It
+ * does that by comparing the brief's own `sourceUrl` against one supplied url,
+ * so the caller decides which page counts as the citation.
+ *
+ * Two writers disagree about that. The Radar content builder cites the
+ * discovery source; the v2 writer cites the authoritative destination. Picking
+ * either one blocks the other writer's briefs wholesale — not because the facts
+ * are wrong, but because the two halves were built to different conventions.
+ *
+ * So the rule is the guarantee itself rather than a preference: a brief may cite
+ * any URL this record has evidence for. Anything else is unverifiable and is
+ * reviewed against the preferred destination so it fails.
  */
-export function contentCitationUrl(row: Pick<CandidateRow, "guidelines_url" | "submission_url" | "source_url">): string {
-  return row.guidelines_url ?? row.submission_url ?? row.source_url ?? "";
+export function contentCitationUrl(
+  row: Pick<CandidateRow, "guidelines_url" | "submission_url" | "source_url">,
+  contentSourceUrl?: string | null,
+): string {
+  const preferred = row.guidelines_url ?? row.submission_url ?? row.source_url ?? "";
+  if (!contentSourceUrl) return preferred;
+  const evidenced = [row.guidelines_url, row.submission_url, row.source_url].filter((url): url is string => Boolean(url));
+  return evidenced.includes(contentSourceUrl) ? contentSourceUrl : preferred;
 }
 
 /**
@@ -117,7 +132,7 @@ export function contentCitationUrl(row: Pick<CandidateRow, "guidelines_url" | "s
 async function reviewContent(client: PoolClient, row: CandidateRow, persist: boolean): Promise<string | null> {
   if (!row.content) return null;
   const result = reviewOpportunityContent(row.content, {
-    sourceUrl: contentCitationUrl(row),
+    sourceUrl: contentCitationUrl(row, row.content.sourceUrl),
     ...(row.processing_succeeded_at ? { sourceProcessedAt: new Date(row.processing_succeeded_at).toISOString() } : {}),
     organizationConfirmed: row.organization_confirmed,
     submissionState: row.submission_state,
