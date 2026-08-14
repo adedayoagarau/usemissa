@@ -332,7 +332,6 @@ export {
   createMemoryRateLimitStore,
   createRateLimiter,
   createRedisRateLimitStore,
-  createRedisRateLimitStoreFromEnv,
   readUpstashRestCredentials,
   type RateLimitDecision,
   type RateLimitRedis,

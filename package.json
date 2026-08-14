@@ -31,8 +31,5 @@
     "eslint-config-prettier": "10.1.8",
     "prettier": "3.9.6",
     "prettier-plugin-tailwindcss": "0.8.1"
-  },
-  "dependencies": {
-    "@upstash/redis": "^1.38.2"
   }
 }

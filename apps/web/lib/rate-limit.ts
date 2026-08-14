@@ -1,5 +1,17 @@
 import { NextResponse } from 'next/server';
-import { createRateLimiter, createRedisRateLimitStoreFromEnv, type RateLimitDecision, type RateLimitRule, type RateLimiter } from '@missa/radar-adapters';
+import { createRateLimiter, createRedisRateLimitStore, readUpstashRestCredentials, type RateLimitDecision, type RateLimitRule, type RateLimitRedis, type RateLimiter } from '@missa/radar-adapters';
+
+/**
+ * Keep the Upstash client in the web deployment boundary. The Railway worker
+ * image builds radar-adapters, so importing the client from that package would
+ * make the serverless-only dependency part of every worker image.
+ */
+async function createRedisRateLimitStoreFromEnv(): Promise<ReturnType<typeof createRedisRateLimitStore> | undefined> {
+  const credentials = readUpstashRestCredentials();
+  if (!credentials) return undefined;
+  const { Redis } = await import('@upstash/redis');
+  return createRedisRateLimitStore(new Redis(credentials) as unknown as RateLimitRedis);
+}
 
 /**
  * Request throttles for the public edges of the product.

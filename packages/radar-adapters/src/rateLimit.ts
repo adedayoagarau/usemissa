@@ -237,19 +237,6 @@ export function readUpstashRestCredentials(env: NodeJS.ProcessEnv = process.env)
   return url && token ? { url, token } : undefined;
 }
 
-/**
- * Loaded lazily so deployments without REST credentials -- local development,
- * the Railway workers -- never pull the client into their bundle.
- */
-export async function createRedisRateLimitStoreFromEnv(
-  env: NodeJS.ProcessEnv = process.env,
-): Promise<RateLimitStore | undefined> {
-  const credentials = readUpstashRestCredentials(env);
-  if (!credentials) return undefined;
-  const { Redis } = await import("@upstash/redis");
-  return createRedisRateLimitStore(new Redis(credentials) as unknown as RateLimitRedis);
-}
-
 /* ----------------------------------------------------------------- limiter */
 
 export interface RateLimiterOptions {
