@@ -522,7 +522,12 @@ export function buildOpportunityBrowseQuery(
     "o.publication_state = 'published'",
     query.openNow ? `o.status = any($${values.length + 1}::text[])` : "true",
   ];
-  if (query.openNow) values.push(PUBLIC_STATUSES);
+  if (query.openNow) {
+    values.push(PUBLIC_STATUSES);
+    // A stale status must not make an expired exact-deadline call look open.
+    // Rolling and until-filled calls have no exact deadline and remain eligible.
+    conditions.push("(o.deadline_date is null or o.deadline_date >= current_date)");
+  }
 
   const types = [...(query.types ?? []), ...categoryTypes(query.category)];
   if (types.length)

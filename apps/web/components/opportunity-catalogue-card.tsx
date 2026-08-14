@@ -50,6 +50,7 @@ export function OpportunityCatalogueCard({
       <Link href={detailHref} className={styles.openLink} aria-label={`View ${item.title}`}>
         <OpportunityIdentityMedia item={item} />
         <span className={styles.body}>
+          {item.status === 'closed' || item.status === 'archived' ? <span className={styles.closedBadge}>Closed</span> : null}
           <span className={styles.type}>{typeLabel(item.type)}</span>
           <span className={styles.title}>{item.title}</span>
           <span className={styles.organization}>{item.organizationName ?? 'Organization not listed'}</span>
