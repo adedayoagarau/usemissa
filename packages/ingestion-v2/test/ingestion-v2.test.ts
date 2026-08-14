@@ -97,7 +97,9 @@ test("requires an explicit local or staging database role", () => {
   assert.equal(assertIngestionV2DatabaseRole("production"), "production");
   if (previous === undefined) delete process.env.MISSA_INGESTION_V2_PROMOTE_APPROVED;
   else process.env.MISSA_INGESTION_V2_PROMOTE_APPROVED = previous;
-  assert.throws(() => assertIngestionV2DatabaseRole("production"), /requires INGESTION_V2_DATABASE_ROLE/);
+  // Behaviour is unchanged: a production write without the approval flag throws.
+  // The assertion matches the flag rather than the prose so wording can improve.
+  assert.throws(() => assertIngestionV2DatabaseRole("production"), /MISSA_INGESTION_V2_PROMOTE_APPROVED=1/);
 });
 
 test("fails robots checks for disallowed paths", () => {
