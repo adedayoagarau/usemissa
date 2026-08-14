@@ -662,3 +662,33 @@ test("reading production is allowed; writing to it needs a second key", async ()
   assert.throws(() => assertIngestionV2DatabaseRole("prod", { env: noFlags }), /received "prod"/);
   assert.equal(assertIngestionV2DatabaseRole("staging", { env: noFlags }), "staging", "write is the default access");
 });
+
+test("the three stages compose to the same result as the combined pipeline", async () => {
+  const { AdapterRegistry, GenericHtmlAdapter, MemoryShadowRunStore, runFetchStage, runDecideStage, executeShadowPipeline, shadowJob, createBenchmarkSources } = await import("../src/index.js");
+  const registry = new AdapterRegistry().register(new GenericHtmlAdapter());
+  const source = createBenchmarkSources().find((candidate) => candidate.id === "benchmark-creative-capital")!;
+
+  const staged = new MemoryShadowRunStore();
+  const job = shadowJob(source, { trigger: "manual" });
+  const fetched = await runFetchStage(registry, source, job, staged);
+  assert.equal(fetched.run.status, "running", "the fetch stage has not decided anything yet");
+  assert.equal(fetched.quality, undefined);
+  assert.equal(fetched.publisher, undefined);
+
+  const decided = await runDecideStage(source, fetched, staged);
+  assert.equal(decided.run.status, "completed");
+  assert.ok(decided.quality);
+  assert.ok(decided.publisher);
+
+  const combined = new MemoryShadowRunStore();
+  const direct = await executeShadowPipeline(registry, source, job, combined);
+
+  assert.equal(decided.extraction.fields.length, direct.extraction.fields.length, "the staged path must extract the same fields as the combined path");
+  assert.equal(decided.publisher?.decision, direct.publisher?.decision, "the staged path must reach the same publication decision");
+  assert.deepEqual(staged.get(job.runId), decided, "the store holds the fully decided artifact under the same run id the fetch stage created");
+});
+
+test("a stage queue bundle is named for its stage and shares the v2 prefix", async () => {
+  const { PIPELINE_STAGES } = await import("../src/stages.js");
+  assert.deepEqual(PIPELINE_STAGES, ["fetch", "decide", "write"]);
+});

@@ -10,6 +10,8 @@ export * from "./render.js";
 export * from "./modelCache.js";
 export * from "./publicationRubric.js";
 export * from "./publication.js";
+export * from "./stages.js";
+export * from "./stageWorkers.js";
 export * from "./safety.js";
 export * from "./scheduling.js";
 export * from "./publisher.js";

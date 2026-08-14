@@ -85,8 +85,13 @@ function runFromJob(job: PipelineJobData, now: Date): IngestionRun {
   return { id: job.runId, sourceId: job.sourceId, trigger: job.trigger, mode: job.mode, status: "running", createdAt: now.toISOString() };
 }
 
-/** Execute v2's first shadow slice without touching Gary/Radar public records. */
-export async function executeShadowPipeline(
+/**
+ * Stage 1: fetch the source page, escalate to a render when needed, follow
+ * classified destination links. Produces evidence with no decision made yet —
+ * the artifact is saved with `quality` and `publisher` absent so a staged
+ * deployment can hand it to the decide stage over the run id alone.
+ */
+export async function runFetchStage(
   registry: AdapterRegistry,
   source: SourceDefinition,
   job: PipelineJobData,
@@ -117,8 +122,7 @@ export async function executeShadowPipeline(
       }
     }
     if (details.length) extraction.warnings.push(`Fetched ${relatedSnapshots.length} of ${details.length} classified detail destinations; destination evidence remains shadow-only`);
-    const publisher = await reviewForPublication({ source, sourceSnapshot: snapshot, sourceExtraction, relatedSnapshots, relatedFields: extraction.fields });
-    const artifact: ShadowArtifact = { run: { ...run, status: "completed" }, snapshot, relatedSnapshots, extraction, quality: assessEvidenceQuality(snapshot, extraction), publisher, published: false };
+    const artifact: ShadowArtifact = { run: { ...run, status: "running" }, snapshot, relatedSnapshots, extraction, published: false };
     await store.save(artifact);
     return artifact;
   } catch (error) {
@@ -126,6 +130,39 @@ export async function executeShadowPipeline(
     await store.saveFailure?.({ ...run, status: "failed" }, message, classifyIngestionFailure(error));
     throw error;
   }
+}
+
+/**
+ * Stage 2: assess evidence quality and run publisher reconciliation against
+ * fetched evidence. This is the stage bounded by model spend rather than
+ * network I/O, so it scales on a different axis from fetching.
+ */
+export async function runDecideStage(source: SourceDefinition, fetched: ShadowArtifact, store: ShadowRunStore): Promise<ShadowArtifact> {
+  const publisher = await reviewForPublication({ source, sourceSnapshot: fetched.snapshot, sourceExtraction: fetched.extraction, relatedSnapshots: fetched.relatedSnapshots ?? [], relatedFields: fetched.extraction.fields });
+  const artifact: ShadowArtifact = { ...fetched, run: { ...fetched.run, status: "completed" }, quality: assessEvidenceQuality(fetched.snapshot, fetched.extraction), publisher };
+  await store.save(artifact);
+  return artifact;
+}
+
+/** Stage 3: the canonical write. A thin name for `promoteApprovedArtifact` so the three stages read as one sequence. */
+export async function runWriteStage(pool: Pool, source: SourceDefinition, artifact: ShadowArtifact): Promise<ReturnType<typeof promoteApprovedArtifact>> {
+  return promoteApprovedArtifact(pool, source, artifact);
+}
+
+/**
+ * Runs all three stages in one call. This is what the combined worker uses —
+ * unchanged behaviour and unchanged callers — while a staged deployment runs
+ * the same three functions from separate BullMQ workers instead.
+ */
+export async function executeShadowPipeline(
+  registry: AdapterRegistry,
+  source: SourceDefinition,
+  job: PipelineJobData,
+  store: ShadowRunStore,
+  options: PipelineExecutionOptions = {},
+): Promise<ShadowArtifact> {
+  const fetched = await runFetchStage(registry, source, job, store, options);
+  return runDecideStage(source, fetched, store);
 }
 
 export interface PipelineWorkerHandle {

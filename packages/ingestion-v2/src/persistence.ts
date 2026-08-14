@@ -58,6 +58,8 @@ create table if not exists missa_ingestion_v2_artifacts (
 );
 alter table missa_ingestion_v2_artifacts add column if not exists quality jsonb not null default '{"decision":"reject","score":0,"reasons":["quality not assessed"]}'::jsonb;
 alter table missa_ingestion_v2_artifacts add column if not exists publisher jsonb;
+alter table missa_ingestion_v2_artifacts alter column quality drop not null;
+alter table missa_ingestion_v2_artifacts alter column quality drop default;
 alter table missa_ingestion_v2_runs add column if not exists failure_code text;
 alter table missa_ingestion_v2_snapshots add column if not exists is_root boolean not null default false;
 alter table missa_ingestion_v2_snapshots add column if not exists body_store text not null default 'inline';
