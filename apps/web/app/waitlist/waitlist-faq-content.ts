@@ -5,7 +5,7 @@ export const waitlistFaqs = [
   },
   {
     question: 'How does Missa find opportunities that fit me?',
-    answer: 'Missa uses your practice, interests, location, eligibility, and materials to surface opportunities that may fit your work. Missa also explains why an opportunity appears. It does not promise acceptance.',
+    answer: 'Missa uses what you make, your interests, location, eligibility, and materials to surface opportunities that may fit your work. Missa also explains why an opportunity appears. It does not promise acceptance.',
   },
   {
     question: 'Can I trust Missa?',

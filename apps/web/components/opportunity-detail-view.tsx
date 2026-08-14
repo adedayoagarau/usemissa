@@ -216,15 +216,15 @@ export function OpportunityDetailView({
               <PrepareChecklist opportunityId={opportunity.id} enabled={signedIn && tracked} />
             </section>
 
-            <section aria-labelledby="practices-title">
+            <section aria-labelledby="categories-title">
               <p className={styles.sectionNumber}>03 · Understand the call</p>
-              <h2 id="practices-title">Fields named in this call</h2>
+              <h2 id="categories-title">Categories named in this call</h2>
               {practiceLabels.length ? (
                 <div className={styles.practiceList}>{practiceLabels.map((practice) => <Badge key={practice} variant="secondary">{practice}</Badge>)}</div>
               ) : (
-                <p>Field labels are not yet available for this record.</p>
+                <p>Categories are not yet listed for this record.</p>
               )}
-              <p className={styles.boundaryNote}>Field labels describe the work. They remain separate from eligibility and geography.</p>
+              <p className={styles.boundaryNote}>Categories describe the work. They remain separate from eligibility and geography.</p>
             </section>
 
             <section className={styles.sourceSection} aria-labelledby="source-title">

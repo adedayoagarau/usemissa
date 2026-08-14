@@ -61,7 +61,7 @@ Missa uses ordinary nouns for user-facing products and tasks. Name what a person
 
 | Use this | For | Do not use in user-facing copy |
 | :-- | :-- | :-- |
-| **Profile** | Creator identity, field, eligibility, and preferences | Passport |
+| **Profile** | Public identity and selected Works, with private information managed separately | Passport, Radar, Workspace |
 | **Opportunities** | Public opportunity discovery and listings | Discover, Radar |
 | **Tracker** | Submission history, deadlines, and outcomes | Pipeline View, intelligence features |
 | **Library** | Works, files, and saved answers | Wallet |
@@ -945,20 +945,45 @@ AI may help organize or summarize an application. It must not score artistic wor
 
 ## 16. Terminology
 
-Use ordinary nouns consistently.
+Use ordinary nouns consistently. Do not expose Missa's taxonomy architecture as a product concept.
 
 | Use | Meaning | Avoid |
 | :-- | :-- | :-- |
 | Opportunity | Umbrella term for grants, residencies, fellowships, commissions, awards, and open calls | listing object, opportunity item |
-| Field | The public umbrella for the kind of work an opportunity accepts or a person makes, such as poetry, film, visual art, or sound | practice, practice family, creative field |
+| Work | A poem, manuscript, image, film, project, proposal, or other creative work | asset, content item |
+| Works | A collection of the person's public or private Works | practice, portfolio inventory |
+| About | The person's own short introduction on a public Profile | creator context layer |
+| Selected Works | Works chosen for the public Profile | featured assets |
+| Publications | Published Works and the publication details the person chooses to show | credits database |
+| Links | Websites and other destinations the person chooses to share | web references |
 | Open call | A public invitation to submit or apply | use as the name for every opportunity |
 | Submission | Work and information sent for one opportunity | submission package |
-| Work | A poem, manuscript, image, film, project, proposal, or other creative work | asset, content item |
 | Application | Use when the organization asks people to apply | submission when the source says application |
-| Profile | Information used to shape recommendations and represent the person | creator context layer |
+| Profile | The public page a person chooses to share, plus the private information used by Missa separately | Passport, Radar, Workspace |
+| Preferences | Private choices that shape recommendations | practice preferences, matching inputs |
+| Settings | Controls for preferences, notifications, integrations, privacy, security, and account data | control plane |
 | Source | The official page or document supporting a record | evidence artifact |
 | Organization | The group running an opportunity | enterprise, entity |
 | Reviewer | The person assessing an application | evaluator, judge unless the program uses it |
+
+### 16.1 Sunset taxonomy language
+
+Do not use these words as customer-facing labels, headings, explanations, filters, or onboarding questions:
+
+- **practice**, **practice family**, **creative practice**, and **practice taxonomy**;
+- **field** when it means the kind of work a person makes or an Opportunity accepts;
+- **creative field** and **creator context layer**;
+- **facet**, **taxonomy**, **term ID**, **matching input**, or other implementation language.
+
+When a classification is needed, use the specific term in context: **poetry**, **film**, **photography**, **fiction**, **sound**, **editor**, or another approved value. If the product is asking for the person's own description, ask **What do you make?** Do not add a new umbrella label until the taxonomy and IA have an approved name.
+
+The word **field** remains allowed for ordinary form language, such as **email field**, **required field**, and **field error**. It is not allowed as the public taxonomy label.
+
+Taxonomy values, stable IDs, facet keys, and legacy names may remain in code, schema, migrations, and internal documentation when required for compatibility. They must not render in customer-facing product copy.
+
+### 16.2 Public and private boundaries
+
+Public Profile language is authored presentation: **About**, **Selected Works**, **Works**, **Publications**, and **Links**. Private product language is operational: **Preferences**, **Notifications**, **Integrations**, **Privacy**, **Security**, and **Account**. Do not put private preferences, eligibility information, Tracker activity, submissions, or Library drafts on a public Profile.
 
 Address the person as **you** in product copy. Use **artist**, **writer**, **filmmaker**, or another specific role when known. Use **artists** as a broad marketing term when the audience includes several disciplines. Avoid **creatives** as a default noun.
 
