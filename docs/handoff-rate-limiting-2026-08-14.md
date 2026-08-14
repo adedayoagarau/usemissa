@@ -101,11 +101,25 @@ Everything I could not get from Playwright, I got by curl against a production b
 - with the override set, 40 signups from one IP all succeed while the waitlist window still throttles
 - a malformed override (`MISSA_RATE_LIMIT_SIGNUP_IP=not-a-number`) yields exactly the shipped default of 30
 
+## Two defects found after the handoff was written
+
+Both came out of checking the change against the deployment topology and against `main` as it moved. Neither is fixed.
+
+**1. `@upstash/redis` now installs into every Railway Radar worker image.** I added it to `packages/radar-adapters/package.json`. The repository-root `Dockerfile` — the container for all eight `MISSA_WORKER_MODE` variants per `docs/railway-topology.md` — runs `npm ci` and builds `@missa/radar-adapters`, so the dependency lands in images that never use it. It is inert at runtime because the client sits behind a dynamic import, so this is image weight and supply-chain surface, not a fault.
+
+The clean fix is small and does not cost test coverage: `rateLimit.ts` only touches the client inside `createRedisRateLimitStoreFromEnv`. Move that one function into `apps/web/lib/rate-limit.ts`, drop the dependency from `radar-adapters`, and the store port plus all 18 tests stay exactly where they are. `docker/ingestion-v2/Dockerfile` is unaffected — it deliberately does not build `radar-adapters`, consistent with the isolation the topology doc describes.
+
+**2. Neon Auth can bypass the sign-in limiter.** `main` has since added `apps/web/app/api/auth/[...path]/route.ts`, a catch-all that proxies to Neon Auth's own handler. Next.js routing gives the specific `/api/auth/login/route.ts` precedence over the catch-all, so the limiter still covers that path today — I verified the merge preserved it. But any sign-in that moves onto a Neon Auth endpoint goes through the catch-all with no throttle at all, which is the state this PR set out to fix.
+
+This needs a decision as Neon Auth turns on, not a code change right now: either keep password sign-in on `/api/auth/login`, or apply the same `check` / `record` / `reset` pattern to the bridge. Whoever flips `NEXT_PUBLIC_NEON_AUTH_ENABLED` to `1` should own that call.
+
 ## To finish
 
-1. Re-trigger CI on `4a35a4d` and get `build-and-test` green. This is the only open work item in the code.
-2. Decide the two judgement calls above, or accept them.
-3. Set the Upstash REST credentials on the web deployment.
-4. Mark #69 ready for review and merge.
+1. Get `build-and-test` green. CI was re-triggered in `c612ce9` and `main` was merged in `0a21e54`, so the run to watch is the one on the merge commit, not the old failure on `c931316`.
+2. Drop the `@upstash/redis` dependency from `radar-adapters` per defect 1 above.
+3. Decide what happens to sign-in throttling when Neon Auth turns on, per defect 2.
+4. Decide the two judgement calls above, or accept them.
+5. Set the Upstash REST credentials on the web deployment.
+6. Mark #69 ready for review and merge.
 
 I have unsubscribed from the PR, so nothing is watching it from my side.
