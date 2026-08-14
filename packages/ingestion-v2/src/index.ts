@@ -5,6 +5,8 @@ export * from "./runs.js";
 export * from "./comparison.js";
 export * from "./execution.js";
 export * from "./persistence.js";
+export * from "./snapshotStore.js";
+export * from "./render.js";
 export * from "./safety.js";
 export * from "./scheduling.js";
 export * from "./publisher.js";

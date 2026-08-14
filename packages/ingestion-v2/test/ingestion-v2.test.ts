@@ -353,3 +353,129 @@ test("records a failed shadow run without publishing", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("memory body store deduplicates identical content hashes", async () => {
+  const { MemorySnapshotBodyStore } = await import("../src/snapshotStore.js");
+  const store = new MemorySnapshotBodyStore();
+  assert.equal(await store.put("hash-a", "<html>one</html>"), true);
+  assert.equal(await store.put("hash-a", "<html>one</html>"), false, "an unchanged page must not be stored twice");
+  assert.equal(await store.put("hash-b", "<html>two</html>"), true);
+  assert.equal(store.size(), 2);
+  assert.equal(await store.get("hash-a"), "<html>one</html>");
+  assert.equal(await store.has("hash-missing"), false);
+});
+
+test("r2 body store fans keys out by hash prefix", async () => {
+  const { R2SnapshotBodyStore } = await import("../src/snapshotStore.js");
+  const store = new R2SnapshotBodyStore({ accountId: "acct", bucket: "snaps", accessKeyId: "key", secretAccessKey: "secret" });
+  assert.equal(store.key("abcdef0123"), "snapshots/ab/cd/abcdef0123");
+});
+
+test("r2 body store signs requests and skips writes for existing hashes", async () => {
+  const { R2SnapshotBodyStore } = await import("../src/snapshotStore.js");
+  const calls: Array<{ method: string; url: string; authorization: string }> = [];
+  const fetchImpl = (async (url: string | URL, init?: RequestInit) => {
+    const method = init?.method ?? "GET";
+    const headers = new Headers(init?.headers);
+    calls.push({ method, url: String(url), authorization: headers.get("authorization") ?? "" });
+    if (method === "HEAD") return new Response(null, { status: calls.length === 1 ? 404 : 200 });
+    return new Response("ok", { status: 200 });
+  }) as unknown as typeof fetch;
+
+  const store = new R2SnapshotBodyStore({ accountId: "acct", bucket: "snaps", accessKeyId: "key", secretAccessKey: "secret", fetchImpl });
+  assert.equal(await store.put("abcdef", "<html>body</html>"), true, "a new hash is written");
+  assert.equal(await store.put("abcdef", "<html>body</html>"), false, "an existing hash is not rewritten");
+
+  assert.deepEqual(calls.map((call) => call.method), ["HEAD", "PUT", "HEAD"]);
+  assert.match(calls[0]!.url, /acct\.r2\.cloudflarestorage\.com\/snaps\/snapshots\/ab\/cd\/abcdef$/);
+  assert.match(calls[1]!.authorization, /^AWS4-HMAC-SHA256 Credential=key\/\d{8}\/auto\/s3\/aws4_request, SignedHeaders=[a-z0-9;-]+, Signature=[0-9a-f]{64}$/);
+});
+
+test("snapshot body store configuration is all-or-nothing", async () => {
+  const { createSnapshotBodyStore } = await import("../src/snapshotStore.js");
+  assert.equal(createSnapshotBodyStore({} as NodeJS.ProcessEnv).id, "inline", "no configuration keeps bodies in Postgres");
+  assert.equal(
+    createSnapshotBodyStore({ R2_ACCOUNT_ID: "a", R2_SNAPSHOT_BUCKET: "b", R2_ACCESS_KEY_ID: "c", R2_SECRET_ACCESS_KEY: "d" } as NodeJS.ProcessEnv).id,
+    "r2",
+  );
+  assert.throws(
+    () => createSnapshotBodyStore({ R2_ACCOUNT_ID: "a", R2_SNAPSHOT_BUCKET: "b" } as NodeJS.ProcessEnv),
+    /partially configured/,
+    "a half-configured bucket must fail loudly rather than silently writing large rows",
+  );
+});
+
+test("rendering escalates only when the static response cannot answer", async () => {
+  const { shouldRender } = await import("../src/render.js");
+  const readable = { html: `<html><body><h1>Residency</h1><p>${"Applications open in October. ".repeat(30)}</p></body></html>`, contentType: "text/html" };
+  assert.equal(shouldRender(readable, 3).render, false, "a readable static page must not pay for a browser");
+
+  assert.equal(shouldRender({ html: '<html><body><div id="root"></div><script src="/app.js"></script></body></html>', contentType: "text/html" }, 0).render, true);
+  assert.equal(shouldRender({ html: "<html><body><noscript>You must enable JavaScript to view this site.</noscript></body></html>", contentType: "text/html" }, 0).render, true);
+  assert.equal(shouldRender({ html: "<html><body>Checking your browser before accessing.</body></html>", contentType: "text/html" }, 0).render, true);
+  assert.equal(shouldRender({ html: '{"items":[]}', contentType: "application/json" }, 0).render, false, "non-markup responses are never rendered");
+});
+
+test("a failing renderer degrades coverage instead of failing the run", async () => {
+  const { renderIfNeeded, RenderClient } = await import("../src/render.js");
+  const snapshot = {
+    id: "snap_1", runId: "run_1", sourceId: "src_1", url: "https://example.org/call", finalUrl: "https://example.org/call",
+    fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash",
+    html: '<html><body><div id="root"></div></body></html>', rendered: false,
+  };
+  const failing = new RenderClient({ endpoint: "https://render.invalid/render", token: "t", fetchImpl: (async () => new Response("no", { status: 500 })) as unknown as typeof fetch });
+  const result = await renderIfNeeded(snapshot, failing, 0, { warn: () => undefined });
+  assert.equal(result.rendered, false);
+  assert.equal(result.snapshot.html, snapshot.html, "the static document survives a render failure");
+
+  const missing = await renderIfNeeded(snapshot, undefined, 0, { warn: () => undefined });
+  assert.equal(missing.rendered, false);
+  assert.match(missing.reason, /no render service is configured/);
+});
+
+test("a successful render replaces the document and marks the snapshot rendered", async () => {
+  const { renderIfNeeded, RenderClient } = await import("../src/render.js");
+  const snapshot = {
+    id: "snap_2", runId: "run_2", sourceId: "src_2", url: "https://example.org/a", finalUrl: "https://example.org/a",
+    fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash",
+    html: '<html><body><div id="__next"></div></body></html>', rendered: false,
+  };
+  const client = new RenderClient({
+    endpoint: "https://render.example/render", token: "t",
+    fetchImpl: (async () => new Response(JSON.stringify({ finalUrl: "https://example.org/a", statusCode: 200, contentType: "text/html", html: "<html><body><h1>Open call</h1></body></html>" }), { status: 200 })) as unknown as typeof fetch,
+  });
+  const result = await renderIfNeeded(snapshot, client, 0, { warn: () => undefined });
+  assert.equal(result.rendered, true);
+  assert.equal(result.snapshot.rendered, true);
+  assert.match(result.snapshot.html, /Open call/);
+});
+
+test("render client configuration is all-or-nothing", async () => {
+  const { createRenderClient } = await import("../src/render.js");
+  assert.equal(createRenderClient({} as NodeJS.ProcessEnv), undefined);
+  assert.throws(() => createRenderClient({ RENDER_SERVICE_URL: "https://r.example" } as NodeJS.ProcessEnv), /together/);
+  assert.ok(createRenderClient({ RENDER_SERVICE_URL: "https://r.example", RENDER_SERVICE_TOKEN: "t" } as NodeJS.ProcessEnv));
+});
+
+test("directory pages are parsed deterministically and never spend a model call", async () => {
+  const { adapterForSource } = await import("../src/catalog.js");
+  assert.equal(adapterForSource("directory", "deepseek-html-v2"), "generic-html-v2", "a link index needs no model");
+  assert.equal(adapterForSource("feed", "deepseek-html-v2"), "feed-v2");
+  assert.equal(adapterForSource("organization-website", "deepseek-html-v2"), "deepseek-html-v2", "host prose is where the model earns its cost");
+  assert.equal(adapterForSource("profile", "deepseek-html-v2"), "deepseek-html-v2");
+  assert.equal(adapterForSource("organization-website", "generic-html-v2"), "generic-html-v2", "without a key everything stays deterministic");
+});
+
+test("identity comparison reports how a match was reached", async () => {
+  const { buildOpportunityIdentity, compareOpportunityIdentityDetailed } = await import("../src/identity.js");
+  const field = (name: string, value: string) => ({ fieldName: name, rawValue: value, normalizedValue: value, confidence: 0.9, provenance: { adapterId: "t", method: "t", sourceUrl: "https://example.org", snapshotId: "s" } });
+
+  const left = buildOpportunityIdentity({ fields: [field("title", "Residency")], candidateLinks: [], warnings: [] }, "https://casanailha.org/program");
+  const right = buildOpportunityIdentity({ fields: [field("title", "Something else")], candidateLinks: [], warnings: [] }, "https://casanailha.org/program");
+  assert.deepEqual(compareOpportunityIdentityDetailed(left, right), { decision: "same", basis: "canonical-url" });
+
+  const a = buildOpportunityIdentity({ fields: [field("title", "Residency"), field("organization", "Casa na Ilha")], candidateLinks: [], warnings: [] }, "https://a.example/x");
+  const b = buildOpportunityIdentity({ fields: [field("title", "Residency"), field("organization", "Casa na Ilha")], candidateLinks: [], warnings: [] }, "https://b.example/y");
+  assert.deepEqual(compareOpportunityIdentityDetailed(a, b), { decision: "same", basis: "title-and-organization" });
+});
+
