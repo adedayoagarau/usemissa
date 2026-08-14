@@ -16,16 +16,42 @@ export const WAITLIST_IP_LIMIT: RateLimitRule = { name: 'waitlist-ip', limit: 5,
 export const WAITLIST_EMAIL_LIMIT: RateLimitRule = { name: 'waitlist-email', limit: 3, windowMs: 60 * 60_000 };
 
 /**
+ * Automated environments provision accounts far faster than any person, from a
+ * single egress address. Rather than loosen the shipped limits to accommodate
+ * them, the two IP windows can be raised by environment. They default to the
+ * production values, so an unset or malformed variable is always the safe case.
+ * Never set these on a real deployment.
+ */
+function limitFromEnv(variable: string, fallback: number): number {
+  const parsed = Number(process.env[variable]?.trim());
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+/**
  * Sign in counts failures only, so someone typing a password wrong twice and
  * then getting it right never walks toward a lockout. The per-email window is
- * what stops credential stuffing against one account; the per-IP window is what
- * stops one client spraying many accounts.
+ * what stops credential stuffing against one account; the per-IP window is a
+ * looser backstop against one client spraying many accounts.
  */
 export const LOGIN_EMAIL_LIMIT: RateLimitRule = { name: 'auth-login-email', limit: 5, windowMs: 15 * 60_000 };
-export const LOGIN_IP_LIMIT: RateLimitRule = { name: 'auth-login-ip', limit: 20, windowMs: 15 * 60_000 };
+export const LOGIN_IP_LIMIT: RateLimitRule = {
+  name: 'auth-login-ip',
+  limit: limitFromEnv('MISSA_RATE_LIMIT_LOGIN_IP', 50),
+  windowMs: 15 * 60_000,
+};
 
-/** Sign up counts every attempt: there is no account yet to lock out. */
-export const SIGNUP_IP_LIMIT: RateLimitRule = { name: 'auth-signup-ip', limit: 5, windowMs: 60 * 60_000 };
+/**
+ * Sign up counts every attempt: there is no account yet to lock out. The window
+ * is sized for a shared egress address rather than for one person, because a
+ * workshop, a campus, a co-working space, and most mobile carriers put many
+ * genuine sign ups behind a single IP. It is here to stop scripted bulk account
+ * creation, which looks nothing like thirty people in a room.
+ */
+export const SIGNUP_IP_LIMIT: RateLimitRule = {
+  name: 'auth-signup-ip',
+  limit: limitFromEnv('MISSA_RATE_LIMIT_SIGNUP_IP', 30),
+  windowMs: 60 * 60_000,
+};
 
 /** Email Sync address lifecycle changes, keyed by account. */
 export const EMAIL_LIFECYCLE_LIMIT: RateLimitRule = { name: 'email-lifecycle', limit: 3, windowMs: 60 * 60_000 };

@@ -62,11 +62,15 @@ Enforced windows:
 | Action | Limit | Window | Keyed by |
 | --- | --- | --- | --- |
 | Sign in | 5 failures | 15 min | email |
-| Sign in | 20 failures | 15 min | client IP |
-| Sign up | 5 attempts | 1 hour | client IP |
+| Sign in | 50 failures | 15 min | client IP |
+| Sign up | 30 attempts | 1 hour | client IP |
 | Waitlist join | 5 attempts | 1 hour | client IP |
 | Waitlist join | 3 attempts | 1 hour | email |
 | Email Sync lifecycle | 3 attempts | 1 hour | account |
+
+The two per-IP windows are deliberately loose. A workshop, a campus, a co-working space, and most mobile carriers put many genuine people behind one address, so a window sized for one person would lock out a room. They exist to stop scripted bulk activity, which looks nothing like thirty people signing up together. The tight windows are the ones keyed by email or account, where a single subject really is a single person.
+
+For that reason `MISSA_RATE_LIMIT_SIGNUP_IP` and `MISSA_RATE_LIMIT_LOGIN_IP` can raise those two windows in automated test environments, which provision accounts far faster than any person. They default to the values above, so unset or malformed means the shipped limit. Do not set them on a real deployment.
 
 Sign in counts failures only and clears the email window on success, so a person who mistypes a password and then gets it right never carries those failures forward.
 
