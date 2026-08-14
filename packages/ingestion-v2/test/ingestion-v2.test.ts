@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createIngestionCatalog, createRun, createSnapshotId, evaluatePromotionGate, executeShadowPipeline, redisOptionsFromUrl, robotsAllowsPath, reviewForPublication, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards } from "../src/index.js";
+import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createIngestionCatalog, createRun, createSnapshotId, evaluatePromotionGate, executeShadowPipeline, redisOptionsFromUrl, robotsAllowsPath, reviewForPublication, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards, writeWithDeepSeek } from "../src/index.js";
 
 test("creates shadow runs without publishing mode", () => {
   const source = createBenchmarkSources()[0]!;
@@ -8,6 +8,18 @@ test("creates shadow runs without publishing mode", () => {
   assert.equal(run.mode, "shadow");
   assert.equal(run.status, "queued");
   assert.match(run.id, /^ingv2_/);
+});
+
+test("DeepSeek writer returns a bounded source-linked page draft", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ summary: "A verified opportunity with a clearly stated deadline and official application path.", highlights: [{ label: "Deadline", value: "15 August 2026", certainty: "confirmed" }, { label: "Application path", value: "Official application page available", certainty: "confirmed" }], preparation: ["Read the official guidelines before applying."], unknowns: ["Eligibility details require confirmation."], nextAction: "Read the official application page and confirm eligibility." }) } }] }), { status: 200 })) as typeof fetch;
+  try {
+    const content = await writeWithDeepSeek({ title: "Example opportunity", organization: "Example organization", type: "grant", deadline: "2026-08-15", authoritativeUrl: "https://example.test/apply", fields: [{ fieldName: "title", rawValue: "Example opportunity", normalizedValue: "Example opportunity", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: "https://example.test/apply", snapshotId: "snap_test" } }] }, { apiKey: "test-key" });
+    assert.equal(content.builderVersion, "deepseek-writer-v1");
+    assert.equal(content.sourceUrl, "https://example.test/apply");
+    assert.equal(content.highlights.length, 2);
+    assert.equal(content.review.status, "pending");
+  } finally { globalThis.fetch = originalFetch; }
 });
 
 test("catalog exposes the registered source portfolio with fail-closed eligibility", () => {

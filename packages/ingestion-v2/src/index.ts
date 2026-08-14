@@ -14,6 +14,7 @@ export * from "./evaluation.js";
 export * from "./identity.js";
 export * from "./promotion.js";
 export * from "./canonicalWriter.js";
+export * from "./deepseekWriter.js";
 export * from "./catalog.js";
 export * from "./adapters/feed.js";
 export * from "./adapters/json.js";

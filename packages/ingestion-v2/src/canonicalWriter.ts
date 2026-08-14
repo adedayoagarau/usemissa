@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
-import { buildOpportunityContent } from "@missa/radar-engine";
 import type { ExtractionResult, SourceDefinition } from "./contracts.js";
 import type { PublisherReview } from "./publisher.js";
 import type { ShadowArtifact } from "./execution.js";
+import { writeWithDeepSeek } from "./deepseekWriter.js";
 
 function field(fields: ExtractionResult["fields"], name: string): string | undefined {
   const item = [...fields].reverse().find((candidate) => candidate.fieldName === name);
@@ -46,7 +46,7 @@ export async function promoteApprovedArtifact(pool: Pool, source: SourceDefiniti
        on conflict (id) do update set checked_at=now(),processing_succeeded_at=now(),organization_confirmed=excluded.organization_confirmed,destination_reconciled=true,destination_reconciliation=excluded.destination_reconciliation`,
       [`${opportunityId}:evidence:${canonicalSourceId}`, opportunityId, canonicalSourceId, source.kind, source.name, source.url, organizationConfirmed, JSON.stringify(review.reconciliation)],
     );
-    const content = buildOpportunityContent({ title, type, status: "open", organizationName: organization, genres: [], deadline: { kind: deadline ? "exact" : "unknown", ...(deadline ? { date: deadline } : {}) }, fee: { status: "unknown" }, submissionUrl: url, guidelinesUrl: url, submissionState: "available", requiredMaterials: [], sourceUrl: url, sourceProcessedAt: new Date().toISOString(), organizationConfirmed, generatedAt: new Date().toISOString() });
+    const content = await writeWithDeepSeek({ title, organization, type, deadline, authoritativeUrl: url, fields: artifact.extraction.fields });
     await client.query(
       `insert into opportunity_contents (opportunity_id,input_version,builder_version,content,review_status,review_score,review_reasons,review_checks,generated_at,updated_at)
        values ($1,$2,$3,$4::jsonb,'pending',0,'[]'::jsonb,'{}'::jsonb,$5,now())
