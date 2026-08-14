@@ -8,7 +8,8 @@ if (!source) throw new Error(`Unknown V2_SOURCE_ID: ${sourceId}`);
 
 const queues = createQueueBundle();
 try {
-  const run = await startRun(queues, source, { trigger: "manual", mode: "shadow" });
+  const mode = process.env.V2_MODE === "promote" ? "promote" : "shadow";
+  const run = await startRun(queues, source, { trigger: "manual", mode });
   console.log(JSON.stringify({ runId: run.id, sourceId: run.sourceId, mode: run.mode, status: run.status }));
 } finally {
   await queues.close();
