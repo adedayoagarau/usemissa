@@ -486,7 +486,9 @@ export const opportunities = pgTable(
       .notNull()
       .references(() => opportunitySources.id, { onDelete: "restrict" }),
     status: text("status").notNull(),
-    publicationState: text("publication_state").notNull().default("published"),
+    // New ingestion is never public by default. Publication is an explicit,
+    // gated transition performed by the review worker.
+    publicationState: text("publication_state").notNull().default("reviewable"),
     type: text("type").notNull(),
     discipline: text("discipline"),
     genres: text("genres")
@@ -668,6 +670,13 @@ export const opportunitySourceEvidence = pgTable(
     organizationConfirmed: boolean("organization_confirmed")
       .notNull()
       .default(false),
+    destinationReconciled: boolean("destination_reconciled")
+      .notNull()
+      .default(false),
+    destinationReconciliation: jsonb("destination_reconciliation")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     verifiedUntil: timestamp("verified_until", { withTimezone: true }),
     createdAt,
   },

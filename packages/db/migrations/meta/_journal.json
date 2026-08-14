@@ -113,6 +113,13 @@
       "when": 1786500000000,
       "tag": "0023_profile_opportunity_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1786579200000,
+      "tag": "0025_publication_gate_defaults",
+      "breakpoints": true
     }
   ]
 }

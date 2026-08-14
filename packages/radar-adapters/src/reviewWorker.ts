@@ -3,6 +3,9 @@
 import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { ensureAgentGraphSchema } from "./agentGraphSchema.js";
+import { ensureContentReviewSchema } from "./contentReviewSchema.js";
+import { ensurePublicationRubricSchema } from "./publicationRubricSchema.js";
+import { evaluatePublicationRubric, type PublicationRubricCandidate } from "./publicationRubric.js";
 import { syncProfileOpportunityLinks } from "./profileIdentityMatcher.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
 
@@ -72,7 +75,7 @@ async function claimJobs(pool: Pool, limit: number): Promise<ReviewJob[]> {
   return result.rows;
 }
 
-export type ReviewCandidate = {
+export type ReviewCandidate = PublicationRubricCandidate & {
   opportunityId: string;
   title: string;
   status: string;
@@ -81,12 +84,7 @@ export type ReviewCandidate = {
   submissionUrl: string | null;
   guidelinesUrl: string | null;
   sourceUrl: string | null;
-  sourceCheckedAt: string | null;
-  processingSucceededAt: string | null;
-  organizationConfirmed: boolean;
   callProfilePresent: boolean;
-  readingPeriodKind: string | null;
-  evidenceCount: number;
 };
 
 async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandidate | null> {
@@ -94,18 +92,24 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
     `select o.id as "opportunityId", o.title, o.status, o.submission_state as "submissionState",
        o.deadline_date::text as "deadlineDate", o.submission_url as "submissionUrl",
        o.guidelines_url as "guidelinesUrl", s.url as "sourceUrl",
-       evidence.checked_at as "sourceCheckedAt", evidence.processing_succeeded_at as "processingSucceededAt",
+       evidence.processing_succeeded_at as "processingSucceededAt",
        (coalesce(evidence.organization_confirmed, false) or profile_identity.confirmed) as "organizationConfirmed",
+       coalesce(evidence.destination_reconciled, false) as "destinationReconciled",
+       coalesce(content.review_status = 'approved', false) as "contentApproved",
        (profile.opportunity_id is not null) as "callProfilePresent",
        profile.reading_period_kind as "readingPeriodKind",
        coalesce(enrichment.evidence_count, 0)::int as "evidenceCount"
      from opportunities o
      left join opportunity_sources s on s.id = o.source_id
      left join lateral (
-       select checked_at, processing_succeeded_at, organization_confirmed
+       select checked_at, processing_succeeded_at, organization_confirmed, destination_reconciled
        from opportunity_source_evidence
        where opportunity_id = o.id order by checked_at desc limit 1
      ) evidence on true
+       left join lateral (
+       select review_status from opportunity_contents
+       where opportunity_id = o.id order by updated_at desc limit 1
+     ) content on true
      left join lateral (
        select exists (
          select 1 from opportunity_profile_links link
@@ -126,47 +130,7 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
 }
 
 export function reviewCandidate(candidate: ReviewCandidate): { decision: ReviewDecision; score: number; reasons: string[]; checks: Record<string, unknown> } {
-  const reasons: string[] = [];
-  const checks: Record<string, unknown> = {};
-  let score = 0;
-  const sourcePresent = Boolean(candidate.sourceUrl);
-  const sourceProcessed = Boolean(candidate.processingSucceededAt);
-  const destinationPresent = Boolean(candidate.submissionUrl || candidate.guidelinesUrl);
-  const deadlineOrWindow = Boolean(candidate.deadlineDate || (candidate.readingPeriodKind && candidate.readingPeriodKind !== "unknown"));
-  const active = ACTIVE_STATUSES.includes(candidate.status);
-  const unsafe = candidate.submissionState === "unsafe";
-  const normalizedTitle = candidate.title.toLowerCase().trim();
-  const identityValid = ![
-    "here", "continue reading", "read more", "website", "official site", "apply here", "submit here",
-  ].includes(normalizedTitle) && !/^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/\S*)?$/.test(normalizedTitle);
-
-  checks.sourcePresent = sourcePresent;
-  checks.sourceProcessed = sourceProcessed;
-  checks.destinationPresent = destinationPresent;
-  checks.deadlineOrWindow = deadlineOrWindow;
-  checks.organizationConfirmed = candidate.organizationConfirmed;
-  checks.active = active;
-  checks.unsafe = unsafe;
-  checks.identityValid = identityValid;
-  checks.evidenceCount = candidate.evidenceCount;
-
-  if (sourcePresent) { score += 15; reasons.push("Canonical source URL is present."); } else reasons.push("Canonical source URL is missing.");
-  if (sourceProcessed) { score += 20; reasons.push("Source has a successful processing pass."); } else reasons.push("Source has not completed a successful processing pass.");
-  if (destinationPresent) { score += 20; reasons.push("Guidelines or submission destination is present."); } else reasons.push("Submission destination is missing.");
-  if (deadlineOrWindow) { score += 15; reasons.push("A deadline or reading window is known."); } else reasons.push("Deadline or reading window is unknown.");
-  if (candidate.organizationConfirmed) { score += 15; reasons.push("Organization is confirmed by source evidence."); } else reasons.push("Organization confirmation is still required.");
-  if (active) { score += 10; } else reasons.push("Opportunity is not currently active.");
-  if (candidate.evidenceCount > 0) { score += 5; reasons.push("Supporting enrichment evidence exists."); }
-
-  if (unsafe) return { decision: "suppress", score: Math.max(0, score - 30), reasons: ["Submission destination was marked unsafe.", ...reasons], checks };
-  if (!identityValid) return { decision: "needs-human", score, reasons: ["Opportunity identity is a placeholder and must be resolved.", ...reasons], checks };
-  if (!active) return { decision: "needs-human", score, reasons, checks };
-  // Fail closed: automatic publication requires a confirmed organization,
-  // fresh processing, destination, and a concrete deadline/window.
-  if (score >= 85 && sourceProcessed && destinationPresent && deadlineOrWindow && candidate.organizationConfirmed) {
-    return { decision: "publish", score, reasons, checks };
-  }
-  return { decision: "needs-human", score, reasons, checks };
+  return evaluatePublicationRubric(candidate);
 }
 
 async function writeHandoff(client: PoolClient, runId: string, opportunityId: string, toAgent: string, kind: string, status: string, payload: Record<string, unknown>): Promise<void> {
@@ -218,6 +182,8 @@ async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<Re
 
 export async function runReviewTick(pool: Pool, limit = batchSize()): Promise<{ claimed: number; decisions: Record<ReviewDecision, number> }> {
   await ensureAgentGraphSchema(pool);
+  await ensureContentReviewSchema(pool);
+  await ensurePublicationRubricSchema(pool);
   // Refresh durable profile identity evidence before review. This is bounded,
   // idempotent, and fails closed if matching cannot be completed.
   await syncProfileOpportunityLinks(pool, Math.max(limit * 5, 100));

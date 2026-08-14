@@ -77,6 +77,8 @@ export {
 export { ensureEnrichmentSchema, enrichmentSchema } from "./enrichmentSchema.js";
 export { ensureAgentGraphSchema, agentGraphSchema } from "./agentGraphSchema.js";
 export { ensureContentReviewSchema, contentReviewSchema } from "./contentReviewSchema.js";
+export { ensurePublicationRubricSchema, publicationRubricSchema } from "./publicationRubricSchema.js";
+export { evaluatePublicationRubric, type PublicationRubricCandidate, type PublicationRubricResult } from "./publicationRubric.js";
 export {
   CHAT_BASELINE_GRAPH_VERSION,
   PostgresChatStore,

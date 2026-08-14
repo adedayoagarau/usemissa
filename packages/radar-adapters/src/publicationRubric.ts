@@ -1,0 +1,86 @@
+export type PublicationGate = "pass" | "fail" | "review";
+export type PublicationDecision = "publish" | "needs-human" | "suppress";
+
+export type PublicationRubricCandidate = {
+  title: string;
+  status: string;
+  submissionState: string;
+  deadlineDate: string | null;
+  submissionUrl: string | null;
+  guidelinesUrl: string | null;
+  sourceUrl: string | null;
+  processingSucceededAt: string | null;
+  organizationConfirmed: boolean;
+  readingPeriodKind: string | null;
+  evidenceCount: number;
+  destinationReconciled: boolean;
+  contentApproved: boolean;
+};
+
+export type PublicationRubricResult = {
+  decision: PublicationDecision;
+  score: number;
+  reasons: string[];
+  checks: Record<string, unknown>;
+};
+
+const ACTIVE_STATUSES = new Set(["opening-soon", "open", "closing-soon", "deadline-extended"]);
+
+function identityValid(title: string): boolean {
+  const normalized = title.toLowerCase().trim();
+  return ![
+    "here", "continue reading", "read more", "website", "official site", "apply here", "submit here",
+  ].includes(normalized) && !/^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/\S*)?$/.test(normalized);
+}
+
+/** One fail-closed decision used by every canonical publication transition. */
+export function evaluatePublicationRubric(candidate: PublicationRubricCandidate): PublicationRubricResult {
+  const reasons: string[] = [];
+  const sourcePresent = Boolean(candidate.sourceUrl);
+  const sourceProcessed = Boolean(candidate.processingSucceededAt);
+  const destinationPresent = Boolean(candidate.submissionUrl || candidate.guidelinesUrl);
+  const active = ACTIVE_STATUSES.has(candidate.status);
+  const deadlineOrWindow = Boolean(candidate.deadlineDate || (candidate.readingPeriodKind && candidate.readingPeriodKind !== "unknown"));
+  const unsafe = candidate.submissionState === "unsafe";
+  const validIdentity = identityValid(candidate.title);
+
+  const gates = {
+    authorityDestination: sourcePresent && sourceProcessed && destinationPresent && candidate.destinationReconciled ? "pass" : "review" as PublicationGate,
+    identity: validIdentity && candidate.organizationConfirmed ? "pass" : "review" as PublicationGate,
+    freshness: active && deadlineOrWindow ? "pass" : "review" as PublicationGate,
+    completeness: candidate.contentApproved ? "pass" : "review" as PublicationGate,
+    safety: unsafe ? "fail" : "pass" as PublicationGate,
+  } satisfies Record<string, PublicationGate>;
+
+  const checks = {
+    gates,
+    sourcePresent,
+    sourceProcessed,
+    destinationPresent,
+    destinationReconciled: candidate.destinationReconciled,
+    deadlineOrWindow,
+    organizationConfirmed: candidate.organizationConfirmed,
+    active,
+    unsafe,
+    identityValid: validIdentity,
+    contentApproved: candidate.contentApproved,
+    evidenceCount: candidate.evidenceCount,
+  };
+
+  if (unsafe) return { decision: "suppress", score: 0, reasons: ["Submission destination was marked unsafe."], checks };
+  if (!sourcePresent) reasons.push("Canonical source URL is missing.");
+  if (!sourceProcessed) reasons.push("Source has not completed a successful processing pass.");
+  if (!destinationPresent) reasons.push("Submission or guidelines destination is missing.");
+  if (!candidate.destinationReconciled) reasons.push("Source-to-destination reconciliation is not confirmed.");
+  if (!validIdentity) reasons.push("Opportunity identity is a placeholder and must be resolved.");
+  if (!candidate.organizationConfirmed) reasons.push("Organization confirmation is still required.");
+  if (!active) reasons.push("Opportunity is not currently active.");
+  if (!deadlineOrWindow) reasons.push("Deadline or reading window is unknown.");
+  if (!candidate.contentApproved) reasons.push("The opportunity page content has not passed content review.");
+
+  const passed = Object.values(gates).filter((gate) => gate === "pass").length;
+  const score = Math.round((passed / 5) * 100);
+  return Object.values(gates).every((gate) => gate === "pass")
+    ? { decision: "publish", score: 100, reasons: ["All five publication gates passed."], checks }
+    : { decision: "needs-human", score, reasons, checks };
+}

@@ -12,12 +12,13 @@ function candidate(overrides: Partial<ReviewCandidate> = {}): ReviewCandidate {
     submissionUrl: "https://example.com/submit",
     guidelinesUrl: "https://example.com/guidelines",
     sourceUrl: "https://example.com/call",
-    sourceCheckedAt: "2026-08-04T00:00:00.000Z",
     processingSucceededAt: "2026-08-04T00:00:00.000Z",
     organizationConfirmed: true,
     callProfilePresent: true,
     readingPeriodKind: "exact",
     evidenceCount: 2,
+    destinationReconciled: true,
+    contentApproved: true,
     ...overrides,
   };
 }
@@ -43,4 +44,14 @@ test("review never auto-publishes a placeholder opportunity identity", () => {
   const result = reviewCandidate(candidate({ title: "example.org/submissions" }));
   assert.equal(result.decision, "needs-human");
   assert.match(result.reasons.join(" "), /identity/i);
+});
+
+test("review requires explicit destination reconciliation and approved content", () => {
+  const result = reviewCandidate(candidate({ destinationReconciled: false, contentApproved: false }));
+  assert.equal(result.decision, "needs-human");
+  assert.equal(result.score, 60);
+  assert.match(result.reasons.join(" "), /reconciliation/i);
+  assert.match(result.reasons.join(" "), /content review/i);
+  assert.equal((result.checks.gates as Record<string, string>).authorityDestination, "review");
+  assert.equal((result.checks.gates as Record<string, string>).completeness, "review");
 });
