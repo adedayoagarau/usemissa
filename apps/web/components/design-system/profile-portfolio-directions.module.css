@@ -282,22 +282,8 @@
   font-size: 1.2rem;
   font-weight: 400;
 }
-.credit span:not(.evidence) {
+.credit span {
   color: var(--profile-muted);
-}
-.evidence {
-  width: fit-content;
-  padding: 4px 6px;
-  border: 1px solid var(--border);
-  color: var(--profile-muted);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-}
-.strongEvidence {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--profile-accent-tint);
 }
 .rail {
   display: grid;
@@ -730,7 +716,6 @@
 
 .sampleRegion,
 .creditRegion,
-.evidence,
 .ownerNotice,
 .inlineActions,
 .privateState,
@@ -795,23 +780,6 @@
   color: var(--profile-muted);
   font-family: var(--font-heading);
   font-size: 0.9rem;
-}
-.evidenceDraw {
-  position: relative;
-  width: fit-content;
-  overflow: hidden;
-}
-.evidenceDraw::after {
-  position: absolute;
-  inset: 0;
-  border: 1px solid var(--primary);
-  content: "";
-  transform: scaleX(0);
-  transform-origin: left;
-}
-.evidenceDrawn::after {
-  transform: scaleX(1);
-  transition: transform 240ms ease;
 }
 .thresholdNotice {
   opacity: 0;
