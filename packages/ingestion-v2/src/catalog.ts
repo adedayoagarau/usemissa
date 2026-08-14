@@ -34,6 +34,18 @@ function sourceKind(entry: SourceRegistryEntry): SourceDefinition["kind"] {
   return "organization-website";
 }
 
+/**
+ * A directory page is a structured list of links. Deterministic parsing reads it
+ * completely, so spending a model call there buys nothing — and directories are
+ * the highest-volume source kind we have. The model is reserved for host pages,
+ * where prose has to be understood rather than enumerated.
+ */
+export function adapterForSource(kind: SourceDefinition["kind"], modelAdapterId: string): string {
+  if (kind === "feed") return "feed-v2";
+  if (kind === "directory") return "generic-html-v2";
+  return modelAdapterId;
+}
+
 export function sourceDefinitionFromRegistry(entry: SourceRegistryEntry, adapterId = "generic-html-v2"): SourceDefinition {
   const kind = sourceKind(entry);
   const schedule = scheduleForRegistry(entry, Boolean(entry.active && trustedSource(entry)));
@@ -41,7 +53,7 @@ export function sourceDefinitionFromRegistry(entry: SourceRegistryEntry, adapter
     id: `registry-${entry.id}`,
     name: entry.name,
     url: entry.url,
-    adapterId: kind === "feed" ? "feed-v2" : adapterId,
+    adapterId: adapterForSource(kind, adapterId),
     kind,
     geography: entry.geography ?? ["global"],
     opportunityTypes: entry.opportunityTypes,

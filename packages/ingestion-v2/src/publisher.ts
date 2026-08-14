@@ -1,10 +1,14 @@
-import { buildOpportunityIdentity, compareOpportunityIdentity, type OpportunityIdentity } from "./identity.js";
+import { buildOpportunityIdentity, compareOpportunityIdentityDetailed, type IdentityMatchBasis, type OpportunityIdentity } from "./identity.js";
 import type { ExtractionResult, PageSnapshot, SourceDefinition } from "./contracts.js";
 
 export type PublisherDecision = "approve" | "review" | "reject";
 
 export interface DestinationReconciliation {
   decision: "pass" | "review" | "reject";
+  /** Records how the match was reached. Telemetry for resolution scoring; it must not
+   * be used to skip review: the destination URL is the link we followed, so a
+   * canonical-URL match is tautological rather than independent corroboration. */
+  basis: IdentityMatchBasis;
   authoritativeUrl: string | null;
   sourceIdentity: OpportunityIdentity;
   destinationIdentity: OpportunityIdentity | null;
@@ -34,18 +38,18 @@ function fieldsForSnapshot(fields: ExtractionResult["fields"], snapshotId: strin
 function deterministicReconciliation(input: PublisherInput): DestinationReconciliation {
   const sourceIdentity = buildOpportunityIdentity(input.sourceExtraction);
   const candidates = input.sourceExtraction.candidateLinks.filter((candidate) => (candidate.role === "detail" || candidate.role === "apply") && candidate.authority === "destination");
-  if (!candidates.length) return { decision: "reject", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["No authoritative detail or application link was classified from the source page."] };
+  if (!candidates.length) return { decision: "reject", basis: "none", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["No authoritative detail or application link was classified from the source page."] };
 
   for (const candidate of candidates) {
     const destination = input.relatedSnapshots.find((snapshot) => snapshot.url === candidate.url || snapshot.finalUrl === candidate.url);
     if (!destination || destination.statusCode < 200 || destination.statusCode >= 300) continue;
     const destinationExtraction: ExtractionResult = { fields: fieldsForSnapshot(input.relatedFields, destination.id), candidateLinks: [], warnings: [] };
     const destinationIdentity = buildOpportunityIdentity(destinationExtraction, destination.finalUrl || destination.url);
-    const identityDecision = compareOpportunityIdentity(sourceIdentity, destinationIdentity);
-    if (identityDecision === "same") return { decision: "pass", authoritativeUrl: destination.finalUrl || destination.url, sourceIdentity, destinationIdentity, reasons: ["The source record reconciles to the fetched authoritative destination by canonical URL or title and organization."] };
-    if (identityDecision === "review") return { decision: "review", authoritativeUrl: destination.finalUrl || destination.url, sourceIdentity, destinationIdentity, reasons: ["The linked destination was fetched, but its identity is ambiguous against the source record."] };
+    const identity = compareOpportunityIdentityDetailed(sourceIdentity, destinationIdentity);
+    if (identity.decision === "same") return { decision: "pass", basis: identity.basis, authoritativeUrl: destination.finalUrl || destination.url, sourceIdentity, destinationIdentity, reasons: ["The source record reconciles to the fetched authoritative destination by canonical URL or title and organization."] };
+    if (identity.decision === "review") return { decision: "review", basis: identity.basis, authoritativeUrl: destination.finalUrl || destination.url, sourceIdentity, destinationIdentity, reasons: ["The linked destination was fetched, but its identity is ambiguous against the source record."] };
   }
-  return { decision: "reject", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["No fetched authoritative destination reconciled to the source record."] };
+  return { decision: "reject", basis: "none", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["No fetched authoritative destination reconciled to the source record."] };
 }
 
 function promptFor(input: PublisherInput, reconciliation: DestinationReconciliation): string {
