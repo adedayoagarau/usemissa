@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { Bookmark, CalendarDays, MapPin, Tag } from 'lucide-react';
 import type { OpportunityBrowseProjection } from '@missa/radar-engine';
@@ -68,7 +70,7 @@ export function OpportunityCatalogueCard({
         <span className={styles.body}>
           <span className={styles.type}>{typeLabel(item.type)}</span>
           <span className={styles.title}>{item.title}</span>
-          <span className={styles.organization}>{item.organizationName ?? 'Organization not listed'}</span>
+          <span className={styles.organization}>{item.organizationName ?? 'Organization not confirmed'}</span>
           {practices.length ? <span className={styles.practices}>{practices.join(' · ')}</span> : null}
           <span className={styles.facts}>
             <span><CalendarDays aria-hidden="true" />{deadlineLabel(item.deadline)}</span>

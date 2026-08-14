@@ -191,7 +191,15 @@ export class LlmExtractor implements Extractor {
 
   private async callModel(pageText: string, candidateTerms: CandidateTaxonomyTerm[]): Promise<ExtractionFields> {
     const candidateList = candidateTerms.map((term) => `${term.id} — ${term.label} (${term.facet})`).join('\n');
-    const prompt = `Extract the opportunity listing fields from this page text. For taxonomy, choose only IDs from this candidate list; if none apply, return an empty taxonomyTermIds array. Do not invent IDs and do not infer from file formats.\n\nCandidate taxonomy terms:\n${candidateList || '(none)'}\n\nPage text:\n${pageText.slice(0, 12_000)}`;
+    const prompt = `Extract the opportunity listing fields from this page text. For taxonomy, choose only IDs from this candidate list; if none apply, return an empty taxonomyTermIds array. Do not invent IDs and do not infer from file formats.
+
+Organization resolution: organizationName must be the named organization, residency, program, or host that actually runs the opportunity. Look in the page title, introductory copy, sidebar, author/byline, organizer labels, and linked organization listing. Directory names such as Res Artis are sources, not the organizer, unless the page explicitly says they run the call. If the page says “Casa na Ilha is a retreat space…” return “Casa na Ilha”. Do not return “Organization not listed”, the directory name, or a guessed entity.
+
+Candidate taxonomy terms:
+${candidateList || '(none)'}
+
+Page text:
+${pageText.slice(0, 12_000)}`;
     if (this.provider === 'deepseek') return this.callDeepSeek(prompt);
     const message = await this.client!.messages.create({
       model: this.model, max_tokens: 1024, tools: [EXTRACTION_TOOL],

@@ -1,15 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { ChevronDown, Sparkles, X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
 import { parseOpportunityBrowseQuery } from '@/lib/opportunityQuery';
 import { LOCATION_OPTIONS, taxonomyLabelFor } from '@/lib/opportunityTaxonomy';
 import { MissaSiteHeader } from '@/components/missa-site-header';
-import { OpportunityCatalogueCard } from '@/components/opportunity-catalogue-card';
 import { OpportunityCatalogueFilters } from '@/components/opportunity-catalogue-filters';
 import { OpportunityResultsRefresh } from '@/components/opportunity-results-refresh';
+import { OpportunityResults } from '@/components/opportunity-results';
 import { OpportunitySearch } from '@/components/opportunity-search';
 import { OpportunitySort } from '@/components/opportunity-sort';
 import { SaveSearchButton } from '@/components/save-search-button';
@@ -85,6 +85,8 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
   const rawParams = searchParams ? await searchParams : {};
   const urlParams = toUrlSearchParams(rawParams);
   const query = parseOpportunityBrowseQuery(urlParams);
+  const baseQueryParams = new URLSearchParams(urlParams);
+  baseQueryParams.delete('cursor');
   const result = await getOpportunityRepository().browse(
     query,
     session?.account.id ? { accountId: session.account.id } : undefined,
@@ -192,11 +194,12 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
 
             <OpportunityResultsRefresh queryKey={urlParams.toString()}>
               {result.items.length ? (
-                <div className={styles.grid}>
-                  {result.items.map((item) => (
-                    <OpportunityCatalogueCard key={item.id} item={item} signedIn={Boolean(session)} />
-                  ))}
-                </div>
+                <OpportunityResults
+                  initialItems={result.items}
+                  initialNextCursor={result.nextCursor}
+                  baseQuery={baseQueryParams.toString()}
+                  signedIn={Boolean(session)}
+                />
               ) : (
                 <div className={styles.empty}>
                   <span><Sparkles aria-hidden="true" /></span>
@@ -207,13 +210,6 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
               )}
             </OpportunityResultsRefresh>
 
-            {result.nextCursor ? (
-              <div className={styles.loadMore}>
-                <Button nativeButton={false} render={<Link href={hrefWith(urlParams, { cursor: result.nextCursor })} />} variant="outline">
-                  Load more <ChevronDown aria-hidden="true" />
-                </Button>
-              </div>
-            ) : null}
           </section>
         </div>
       </main>
