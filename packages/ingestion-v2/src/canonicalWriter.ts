@@ -31,6 +31,7 @@ export async function promoteApprovedArtifact(pool: Pool, source: SourceDefiniti
   const organizationConfirmed = Boolean(review.reconciliation.sourceIdentity.organization || review.reconciliation.destinationIdentity?.organization);
   const client = await pool.connect();
   try {
+    await ensurePromotionSchema(client);
     await client.query("begin");
     await upsertSource(client, source, canonicalSourceId);
     const existing = await client.query("select id from opportunities where id = $1", [opportunityId]);
@@ -56,6 +57,11 @@ export async function promoteApprovedArtifact(pool: Pool, source: SourceDefiniti
     await client.query("commit");
     return { opportunityId, created: !existing.rows[0], publicationState: "reviewable" };
   } catch (error) { await client.query("rollback"); throw error; } finally { client.release(); }
+}
+
+async function ensurePromotionSchema(client: PoolClient): Promise<void> {
+  await client.query("alter table opportunity_source_evidence add column if not exists destination_reconciled boolean not null default false");
+  await client.query("alter table opportunity_source_evidence add column if not exists destination_reconciliation jsonb not null default '{}'::jsonb");
 }
 
 async function upsertSource(client: PoolClient, source: SourceDefinition, id: string): Promise<void> {

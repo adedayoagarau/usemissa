@@ -14,6 +14,8 @@ export function OpportunitySort({ className }: { className?: string }) {
     <label className={className}>
       <span>Sort by</span>
       <select
+        aria-label="Sort opportunities"
+        data-testid="opportunity-sort"
         value={value}
         disabled={pending}
         onChange={(event) => {
@@ -27,6 +29,7 @@ export function OpportunitySort({ className }: { className?: string }) {
         <option value="recently-added">Recently added</option>
         <option value="recommended">Recommended for you</option>
       </select>
+      {pending ? <span role="status" aria-live="polite">Updating…</span> : null}
     </label>
   );
 }

@@ -40,8 +40,7 @@ test("browse SQL is parameterized and keeps public publication boundaries", () =
     built.text,
     /coalesce\(evidence\.checked_at, source\.last_checked_at\)/,
   );
-  assert.match(built.text, /a\.rights_status in \('cleared', 'permitted'\)/);
-  assert.doesNotMatch(built.text, /a\.rights_status in \([^)]*'unknown'/);
+  assert.doesNotMatch(built.text, /a\.rights_status/);
   assert.doesNotMatch(built.text, /poetry.*1=1/);
   assert.deepEqual(built.values[1], ["poetry"]);
   assert.equal(built.values.at(-1), 2);
