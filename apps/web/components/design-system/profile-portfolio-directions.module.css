@@ -112,26 +112,42 @@
 }
 .identity {
   display: flex;
-  justify-content: space-between;
-  gap: 32px;
-  align-items: end;
+  align-items: flex-start;
+  gap: 24px;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
 }
 .profilePhoto {
-  width: 96px;
-  height: 96px;
+  width: 70px;
+  height: 88px;
+  border-radius: 0 !important;
   border: 1px solid var(--border-strong);
 }
 .profilePhoto [data-slot="avatar-image"] {
   object-position: center 28%;
 }
-.ownerProfile .identity > div {
+.profileMedia {
+  display: grid;
+  flex: 0 0 70px;
+  align-content: start;
+  gap: 10px;
+  min-width: 70px;
+  padding: 0;
+}
+.profileMedia button {
+  width: 70px;
+  min-height: 36px;
+  padding: 6px 4px;
+  white-space: normal;
+}
+.identity [data-slot="item-content"] {
   display: grid;
   flex: 1;
   gap: 12px;
-  max-width: 520px;
   min-width: 0;
-  width: 100%;
+  max-width: none;
 }
 .ownerProfile [data-slot="field"] {
   gap: 5px;
@@ -305,12 +321,16 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
+  align-items: start;
 }
 .modeCard {
   display: grid;
+  align-content: start;
   gap: 14px;
+  min-width: 0;
   padding: 18px;
   border: 1px solid var(--border);
+  overflow: hidden;
 }
 .modeHeading {
   display: flex;
@@ -320,6 +340,7 @@
 .audioSample {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 .audioIntro {
   display: flex;
@@ -397,6 +418,7 @@
 .imageSample {
   display: grid;
   gap: 14px;
+  min-width: 0;
 }
 .videoFrame {
   aspect-ratio: 16 / 9;
@@ -404,6 +426,9 @@
   align-items: center;
   justify-content: center;
   position: relative;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
   background: linear-gradient(135deg, #24202a, #8d6555 55%, #d0ae85);
   color: white;
 }
@@ -823,8 +848,7 @@
 }
 
 @media (max-width: 800px) {
-  .reviewHeader,
-  .identity {
+  .reviewHeader {
     display: block;
   }
   .reviewBadge {

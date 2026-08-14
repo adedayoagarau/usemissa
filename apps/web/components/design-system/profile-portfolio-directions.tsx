@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { ArrowUpRight, Mail, Music2, Play, Quote } from "lucide-react";
+import { ArrowUpRight, Music2, Play, Quote } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
@@ -38,18 +38,26 @@ import styles from "./profile-portfolio-directions.module.css";
 
 type EvidenceTier = "recorded" | "platform" | "linked" | "listed";
 type SampleKind = "text" | "audio" | "video" | "image";
+type PlatformProvider = "Spotify" | "YouTube";
 type Credit = {
   year: string;
   title: string;
   venue: string;
   evidence?: EvidenceTier;
+  visibility?: "hidden";
 };
 
-const evidenceLabels: Record<EvidenceTier, string> = {
+const evidenceLabels: Record<Exclude<EvidenceTier, "platform">, string> = {
   recorded: "recorded in Missa",
-  platform: "confirmed on Spotify",
   linked: "link checked 3 days ago",
   listed: "listed by the writer",
+};
+
+const platformConnections: Record<SampleKind, PlatformProvider | undefined> = {
+  text: undefined,
+  audio: "Spotify",
+  video: "YouTube",
+  image: undefined,
 };
 
 const credits = [
@@ -109,17 +117,27 @@ const fixtures = [
 function EvidenceLabel({
   tier,
   className = "",
+  provider,
 }: {
   tier: EvidenceTier;
   className?: string;
+  provider?: PlatformProvider;
 }) {
+  if (tier === "platform" && !provider)
+    throw new Error("Platform evidence requires a connection provider.");
   return (
     <span
       className={`${styles.evidence} ${tier === "recorded" || tier === "platform" ? styles.strongEvidence : ""} ${className}`}
     >
-      {evidenceLabels[tier]}
+      {tier === "platform" ? `confirmed on ${provider}` : evidenceLabels[tier]}
     </span>
   );
+}
+
+function PlatformEvidence({ kind }: { kind: "audio" | "video" }) {
+  const provider = platformConnections[kind];
+  if (!provider) throw new Error(`No platform connection for ${kind} sample.`);
+  return <EvidenceLabel tier="platform" provider={provider} />;
 }
 
 function CustomAudio() {
@@ -223,7 +241,7 @@ function Sample({ kind }: { kind: SampleKind }) {
             <time>4:48</time>
           </li>
         </ol>
-        <EvidenceLabel tier="platform" />
+        <PlatformEvidence kind="audio" />
       </div>
     );
   }
@@ -235,7 +253,7 @@ function Sample({ kind }: { kind: SampleKind }) {
         <div className={styles.sampleCaption}>
           <strong>The Dry Season Crossing</strong>
           <span>26-minute film · 2026</span>
-          <EvidenceLabel tier="platform" />
+          <PlatformEvidence kind="video" />
         </div>
       </div>
     );
@@ -249,9 +267,7 @@ function Sample({ kind }: { kind: SampleKind }) {
           className={styles.artwork}
           role="img"
           aria-label="Abstract painting in warm brown, blue, and cream tones"
-        >
-          <span>ROOM / GENERATOR / OFF</span>
-        </AspectRatio>
+        ></AspectRatio>
         <div className={styles.sampleCaption}>
           <strong>Room with the Generator Off</strong>
           <span>Oil on linen · 150 × 120 cm · 2026</span>
@@ -280,9 +296,11 @@ function Sample({ kind }: { kind: SampleKind }) {
 function CreditList({
   items = credits,
   hidden = false,
+  onHiddenToggle,
 }: {
   items?: Credit[];
   hidden?: boolean;
+  onHiddenToggle?: (credit: Credit) => void;
 }) {
   return (
     <ItemGroup
@@ -290,7 +308,9 @@ function CreditList({
     >
       {items.map((credit, index) => (
         <div key={`${credit.year}-${credit.title}`}>
-          <Item className={styles.credit}>
+          <Item
+            className={`${styles.credit} ${hidden || credit.visibility === "hidden" ? styles.hiddenCredit : ""}`}
+          >
             <ItemMedia className={styles.creditYear}>
               <time>{credit.year}</time>
             </ItemMedia>
@@ -299,8 +319,25 @@ function CreditList({
               <ItemDescription>
                 {credit.venue || "Venue not listed"}
               </ItemDescription>
-              {credit.evidence && <EvidenceLabel tier={credit.evidence} />}
+              {credit.visibility === "hidden" ? (
+                <span className={styles.hiddenLabel}>
+                  Hidden — only you can see this
+                </span>
+              ) : (
+                credit.evidence && <EvidenceLabel tier={credit.evidence} />
+              )}
             </ItemContent>
+            {credit.visibility === "hidden" && onHiddenToggle && (
+              <ItemActions>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => onHiddenToggle(credit)}
+                >
+                  Show
+                </Button>
+              </ItemActions>
+            )}
           </Item>
           {index < items.length - 1 && <ItemSeparator />}
         </div>
@@ -315,6 +352,24 @@ function ProfilePhoto() {
       <AvatarImage src="/media/home/artist-at-work.webp" alt="Profile photo" />
       <AvatarFallback>AO</AvatarFallback>
     </Avatar>
+  );
+}
+
+function PublicIdentity() {
+  return (
+    <Item className={styles.identity}>
+      <ItemMedia className={styles.profileMedia}>
+        <ProfilePhoto />
+      </ItemMedia>
+      <ItemContent>
+        <h2>Amaka Obi</h2>
+        <p className={styles.handle}>@amaka</p>
+        <p className={styles.roleLine}>Essayist · Screenwriter · Lagos</p>
+        <p className={styles.oneLine}>
+          Writing essays and scripts about ordinary life.
+        </p>
+      </ItemContent>
+    </Item>
   );
 }
 
@@ -430,17 +485,7 @@ function PublicProfile({ kind = "text" }: { kind?: SampleKind }) {
   return (
     <Card className={styles.publicProfile}>
       <CardContent>
-        <header className={styles.identity}>
-          <ProfilePhoto />
-          <div>
-            <h2>Amaka Obi</h2>
-            <p className={styles.handle}>@amaka</p>
-            <p className={styles.roleLine}>Essayist · Screenwriter · Lagos</p>
-            <p className={styles.oneLine}>
-              Writing essays and scripts about ordinary life.
-            </p>
-          </div>
-        </header>
+        <PublicIdentity />
         <Separator />
         <section className={styles.sampleRegion} aria-labelledby="sample-title">
           <div className={styles.sectionLabel}>
@@ -473,7 +518,7 @@ function PublicProfile({ kind = "text" }: { kind?: SampleKind }) {
             </a>
           </div>
           <Button type="button">
-            <Mail aria-hidden="true" /> Contact Amaka
+            Contact Amaka
           </Button>
         </section>
       </CardContent>
@@ -484,6 +529,17 @@ function PublicProfile({ kind = "text" }: { kind?: SampleKind }) {
 function OwnerProfile() {
   const [hidden, setHidden] = useState(true);
   const [saved, setSaved] = useState(false);
+  const ownerCredits: Credit[] = [
+    credits[0],
+    credits[1],
+    {
+      year: "2024",
+      title: "Ordinary Weather",
+      venue: "The Republic",
+      ...(hidden ? { visibility: "hidden" as const } : {}),
+    },
+    credits[2],
+  ];
 
   return (
     <Card className={`${styles.publicProfile} ${styles.ownerProfile}`}>
@@ -501,9 +557,14 @@ function OwnerProfile() {
             </Button>
           </div>
         </div>
-        <header className={styles.identity}>
-          <ProfilePhoto />
-          <div>
+        <Item className={styles.identity}>
+          <ItemMedia className={styles.profileMedia}>
+            <ProfilePhoto />
+            <Button type="button" variant="outline">
+              Change photo
+            </Button>
+          </ItemMedia>
+          <ItemContent>
             <Field>
               <FieldLabel htmlFor="profile-name">Name</FieldLabel>
               <FieldContent>
@@ -540,11 +601,8 @@ function OwnerProfile() {
                 <FieldDescription>42 / 100 characters</FieldDescription>
               </FieldContent>
             </Field>
-            <Button type="button" variant="outline">
-              Change photo
-            </Button>
-          </div>
-        </header>
+          </ItemContent>
+        </Item>
         <Separator />
         <section className={styles.sampleRegion}>
           <div className={styles.sectionLabel}>
@@ -566,30 +624,10 @@ function OwnerProfile() {
             <span>Credits</span>
             <span>3 public · 1 hidden</span>
           </div>
-          <CreditList />
-          <Item
-            className={`${styles.credit} ${hidden ? styles.hiddenCredit : styles.shownCredit}`}
-          >
-            <ItemMedia className={styles.creditYear}>
-              <time>2024</time>
-            </ItemMedia>
-            <ItemContent>
-              <ItemTitle>Ordinary Weather</ItemTitle>
-              <ItemDescription>The Republic</ItemDescription>
-              <span className={styles.hiddenLabel}>
-                {hidden ? "Hidden — only you can see this" : "Public"}
-              </span>
-            </ItemContent>
-            <ItemActions>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setHidden((value) => !value)}
-              >
-                {hidden ? "Show" : "Hide"}
-              </Button>
-            </ItemActions>
-          </Item>
+          <CreditList
+            items={ownerCredits}
+            onHiddenToggle={() => setHidden((value) => !value)}
+          />
           <Button type="button" variant="outline">
             ＋ Add a credit — or pull one from Tracker, where 3 acceptances are
             recorded.
