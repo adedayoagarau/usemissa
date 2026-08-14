@@ -44,4 +44,36 @@ Do not use a real public email to test production persistence. The endpoint’s 
 
 Only after the migration and preview checks pass, promote the reviewed deployment to the Missa production domains. Recheck `/waitlist`, `/api/health/readiness`, and the response security headers immediately afterward. Confirm the old `/waitlist -> /signup` redirect is gone.
 
-The in-process waitlist throttle is a best-effort first-line control for serverless instances. If the campaign is expected to receive sustained or adversarial traffic, add a shared rate-limit provider before scaling promotion.
+## Shared request throttling
+
+The waitlist throttle is no longer in-process. Sign in, sign up, the waitlist, and Email Sync lifecycle changes all decide against one sliding window in Redis, so the published limits hold however many serverless instances are warm.
+
+Set both halves of the Upstash REST credential on the web deployment before promotion:
+
+```
+UPSTASH_REDIS_REST_URL
+UPSTASH_REDIS_REST_TOKEN
+```
+
+They address the same Upstash database the ingestion workers reach over the native `REDIS_URL`; the REST endpoint is used here because serverless instances are too short-lived to amortize a TCP connection. When the pair is absent the limiter falls back to a per-instance window and logs a warning at boot — acceptable for local development and previews, not for a campaign.
+
+Enforced windows:
+
+| Action | Limit | Window | Keyed by |
+| --- | --- | --- | --- |
+| Sign in | 5 failures | 15 min | email |
+| Sign in | 20 failures | 15 min | client IP |
+| Sign up | 5 attempts | 1 hour | client IP |
+| Waitlist join | 5 attempts | 1 hour | client IP |
+| Waitlist join | 3 attempts | 1 hour | email |
+| Email Sync lifecycle | 3 attempts | 1 hour | account |
+
+Sign in counts failures only and clears the email window on success, so a person who mistypes a password and then gets it right never carries those failures forward.
+
+The per-account window has a known, accepted cost: someone who knows an email address can deliberately spend its five failures and hold that account out for the remainder of the 15 minutes, from any IP. The window is deliberately short for that reason. Removing it would leave credential stuffing against a single known account bounded only by the much looser per-IP window, which a distributed client evades outright. If account-lockout abuse shows up in practice, the next step is a second factor on the account rather than a longer window.
+
+Tracker imports are unaffected: they were already rate-limited durably in Postgres inside the import transaction, so they were never part of this gap.
+
+If the shared store becomes unreachable the limiter degrades to the local window rather than refusing sign in, and records the degradation. That trades enforcement strength for availability; watch for `Shared rate limit store unavailable` in the logs.
+
+Subjects are hashed before they are used as Redis keys, so no email address or IP is readable at rest in the throttle store.

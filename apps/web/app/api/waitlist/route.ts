@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createWaitlistSignup } from '@missa/radar-adapters';
 import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 import { deliverWaitlistConfirmationEmail } from '@/lib/waitlist-email';
-import { consumeWaitlistRateLimit } from './waitlist-rate-limit';
+import { getRateLimiter, readClientIp, tooManyRequests, WAITLIST_EMAIL_LIMIT, WAITLIST_IP_LIMIT } from '@/lib/rate-limit';
 
 const emailPattern = /^\S+@\S+\.\S+$/;
 
@@ -22,9 +22,11 @@ export async function POST(request: Request) {
   if (email.length > 320 || !emailPattern.test(email)) {
     return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
   }
-  const retryAfter = consumeWaitlistRateLimit({ ip: readClientIp(request), email });
-  if (retryAfter) {
-    return NextResponse.json({ error: 'You have tried a few times. Please wait before trying again.' }, { status: 429, headers: { 'Retry-After': String(retryAfter), 'Cache-Control': 'no-store' } });
+  const limiter = await getRateLimiter();
+  const byIp = await limiter.consume(WAITLIST_IP_LIMIT, readClientIp(request));
+  const decision = byIp.allowed ? await limiter.consume(WAITLIST_EMAIL_LIMIT, email) : byIp;
+  if (!decision.allowed) {
+    return tooManyRequests(decision, 'You have tried a few times. Please wait before trying again.');
   }
   if (!process.env.DATABASE_URL) {
     return NextResponse.json({ error: 'The waitlist is temporarily unavailable. Please try again soon.' }, { status: 503 });
@@ -55,11 +57,6 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: 'The waitlist is temporarily unavailable. Please try again soon.' }, { status: 503 });
   }
-}
-
-function readClientIp(request: Request): string {
-  const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-  return forwarded || request.headers.get('x-real-ip')?.trim() || 'unknown';
 }
 
 function readCampaign(value: unknown): Record<string, string> {
