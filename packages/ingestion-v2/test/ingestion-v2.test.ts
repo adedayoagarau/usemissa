@@ -628,3 +628,29 @@ test("a dry run does not persist a content review status", async () => {
   assert.equal(statements.some((sql) => /update opportunities set publication_state/i.test(sql)), false, "a dry run must not change publication state");
   assert.equal(statements.some((sql) => /insert into missa_ingestion_v2_publication_decisions/i.test(sql)), true, "the decision is still recorded for review");
 });
+
+test("reading production is allowed; writing to it needs a second key", async () => {
+  const { assertIngestionV2DatabaseRole } = await import("../src/safety.js");
+  const noFlags = {} as NodeJS.ProcessEnv;
+
+  assert.equal(assertIngestionV2DatabaseRole("staging", { access: "write", env: noFlags }), "staging");
+  assert.equal(assertIngestionV2DatabaseRole("local", { access: "write", env: noFlags }), "local");
+
+  assert.equal(
+    assertIngestionV2DatabaseRole("production", { access: "read", env: noFlags }),
+    "production",
+    "inspecting production must not require arming the writer",
+  );
+  assert.throws(
+    () => assertIngestionV2DatabaseRole("production", { access: "write", env: noFlags }),
+    /MISSA_INGESTION_V2_PROMOTE_APPROVED=1/,
+  );
+  assert.equal(
+    assertIngestionV2DatabaseRole("production", { access: "write", env: { MISSA_INGESTION_V2_PROMOTE_APPROVED: "1" } as NodeJS.ProcessEnv }),
+    "production",
+  );
+
+  assert.throws(() => assertIngestionV2DatabaseRole(undefined, { env: noFlags }), /received nothing/, "the error must name what to set");
+  assert.throws(() => assertIngestionV2DatabaseRole("prod", { env: noFlags }), /received "prod"/);
+  assert.equal(assertIngestionV2DatabaseRole("staging", { env: noFlags }), "staging", "write is the default access");
+});

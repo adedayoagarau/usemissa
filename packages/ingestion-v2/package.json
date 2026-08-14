@@ -23,7 +23,7 @@
     "test": "npm run build && node --test dist/test/*.test.js",
     "schema:ensure": "npm run build && missa-ingestion-v2-schema",
     "worker": "node dist/src/worker.js",
-    "publish": "node dist/src/publish-cli.js"
+    "publication": "node dist/src/publish-cli.js"
   },
   "dependencies": {
     "@missa/radar-engine": "^0.1.0",
