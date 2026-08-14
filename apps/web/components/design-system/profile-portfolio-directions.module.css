@@ -220,23 +220,31 @@
   font-size: 11px;
 }
 .credits {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 .credit {
-  display: grid;
-  grid-template-columns: 72px 1fr;
+  display: flex;
+  min-height: 72px;
+  align-items: flex-start;
   gap: 18px;
   padding: 16px 0;
-  border-bottom: 1px solid var(--border);
+  border: 0;
+  border-radius: 0;
+  transition: opacity 180ms ease;
 }
 .creditYear {
+  width: 72px;
+  justify-content: flex-start;
   align-self: start;
   color: var(--profile-muted);
   font-family: var(--font-mono);
   font-size: 13px;
 }
-.credit:first-child {
-  border-top: 1px solid var(--border);
+.credits [data-slot="item-separator"] {
+  margin: 0;
+  background: var(--border);
 }
 .credit time {
   color: var(--profile-muted);
@@ -481,6 +489,17 @@
   opacity: 0.55;
   background: var(--profile-subtle);
 }
+.shownCredit {
+  opacity: 1;
+  background: transparent;
+}
+.fixtureEmpty {
+  min-height: 110px;
+  margin-top: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 0;
+  transition: opacity 180ms ease;
+}
 .hiddenCredit button {
   align-self: center;
   justify-self: end;
@@ -504,10 +523,18 @@
   box-shadow: 0 -10px 30px rgb(45 31 50 / 8%);
   font-family: var(--font-heading);
   font-size: 1rem;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
 }
 .saveBar > div {
   display: flex;
   gap: 8px;
+}
+.saveBar[data-saved="true"] {
+  opacity: 0;
+  transform: translateY(100%);
+  pointer-events: none;
 }
 .fixtureGrid {
   display: grid;
@@ -670,6 +697,29 @@
   margin: 0;
   color: var(--profile-muted);
   line-height: 1.5;
+}
+
+.sampleRegion,
+.creditRegion,
+.evidence,
+.ownerNotice,
+.inlineActions,
+.privateState,
+.mutedState {
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 @media (max-width: 800px) {

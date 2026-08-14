@@ -1,12 +1,20 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { ArrowUpRight, Mail, Music2, Play, Quote } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import {
   Field,
   FieldContent,
@@ -16,9 +24,12 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   Item,
+  ItemActions,
   ItemContent,
   ItemDescription,
+  ItemGroup,
   ItemMedia,
+  ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
@@ -159,7 +170,7 @@ function CustomVideo() {
   }
 
   return (
-    <div className={styles.videoFrame}>
+    <AspectRatio ratio={16 / 9} className={styles.videoFrame}>
       <video
         ref={videoRef}
         preload="none"
@@ -178,7 +189,7 @@ function CustomVideo() {
         <Play aria-hidden="true" fill="currentColor" />
       </button>
       <span>2:40 excerpt</span>
-    </div>
+    </AspectRatio>
   );
 }
 
@@ -227,13 +238,14 @@ function Sample({ kind }: { kind: SampleKind }) {
   if (kind === "image") {
     return (
       <div className={styles.imageSample}>
-        <div
+        <AspectRatio
+          ratio={4 / 5}
           className={styles.artwork}
           role="img"
           aria-label="Abstract painting in warm brown, blue, and cream tones"
         >
           <span>ROOM / GENERATOR / OFF</span>
-        </div>
+        </AspectRatio>
         <div className={styles.sampleCaption}>
           <strong>Room with the Generator Off</strong>
           <span>Oil on linen · 150 × 120 cm · 2026</span>
@@ -267,22 +279,27 @@ function CreditList({
   hidden?: boolean;
 }) {
   return (
-    <div className={`${styles.credits} ${hidden ? styles.hiddenCredits : ""}`}>
-      {items.map((credit) => (
-        <Item className={styles.credit} key={`${credit.year}-${credit.title}`}>
-          <ItemMedia className={styles.creditYear}>
-            <time>{credit.year}</time>
-          </ItemMedia>
-          <ItemContent>
-            <ItemTitle>{credit.title}</ItemTitle>
-            <ItemDescription>
-              {credit.venue || "Venue not listed"}
-            </ItemDescription>
-            {credit.evidence && <EvidenceLabel tier={credit.evidence} />}
-          </ItemContent>
-        </Item>
+    <ItemGroup
+      className={`${styles.credits} ${hidden ? styles.hiddenCredits : ""}`}
+    >
+      {items.map((credit, index) => (
+        <div key={`${credit.year}-${credit.title}`}>
+          <Item className={styles.credit}>
+            <ItemMedia className={styles.creditYear}>
+              <time>{credit.year}</time>
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>{credit.title}</ItemTitle>
+              <ItemDescription>
+                {credit.venue || "Venue not listed"}
+              </ItemDescription>
+              {credit.evidence && <EvidenceLabel tier={credit.evidence} />}
+            </ItemContent>
+          </Item>
+          {index < items.length - 1 && <ItemSeparator />}
+        </div>
       ))}
-    </div>
+    </ItemGroup>
   );
 }
 
@@ -292,6 +309,23 @@ function ProfilePhoto() {
       <AvatarImage src="/media/home/artist-at-work.webp" alt="Profile photo" />
       <AvatarFallback>AO</AvatarFallback>
     </Avatar>
+  );
+}
+
+function EmptyFixture({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <Empty className={styles.fixtureEmpty}>
+      <EmptyHeader>
+        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   );
 }
 
@@ -351,6 +385,9 @@ function PublicProfile({ kind = "text" }: { kind?: SampleKind }) {
 }
 
 function OwnerProfile() {
+  const [hidden, setHidden] = useState(true);
+  const [saved, setSaved] = useState(false);
+
   return (
     <Card className={`${styles.publicProfile} ${styles.ownerProfile}`}>
       <CardContent>
@@ -433,31 +470,49 @@ function OwnerProfile() {
             <span>3 public · 1 hidden</span>
           </div>
           <CreditList />
-          <article className={`${styles.credit} ${styles.hiddenCredit}`}>
-            <time>2024</time>
-            <div>
-              <strong>Ordinary Weather</strong>
-              <span>The Republic</span>
+          <Item
+            className={`${styles.credit} ${hidden ? styles.hiddenCredit : styles.shownCredit}`}
+          >
+            <ItemMedia className={styles.creditYear}>
+              <time>2024</time>
+            </ItemMedia>
+            <ItemContent>
+              <ItemTitle>Ordinary Weather</ItemTitle>
+              <ItemDescription>The Republic</ItemDescription>
               <span className={styles.hiddenLabel}>
-                Hidden — only you can see this
+                {hidden ? "Hidden — only you can see this" : "Public"}
               </span>
-            </div>
-            <Button type="button" variant="ghost">
-              Show
-            </Button>
-          </article>
+            </ItemContent>
+            <ItemActions>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setHidden((value) => !value)}
+              >
+                {hidden ? "Show" : "Hide"}
+              </Button>
+            </ItemActions>
+          </Item>
           <Button type="button" variant="outline">
             ＋ Add a credit — or pull one from Tracker, where 3 acceptances are
             recorded.
           </Button>
         </section>
-        <div className={styles.saveBar} role="status">
+        <div className={styles.saveBar} data-saved={saved} role="status">
           <span>2 unsaved changes</span>
           <div>
             <Button type="button" variant="ghost">
               Discard
             </Button>
-            <Button type="button">Save and publish</Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setSaved(true);
+                toast("Profile published.");
+              }}
+            >
+              Save and publish
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -467,7 +522,12 @@ function OwnerProfile() {
 
 function FixturePreview({ number }: { number: string }) {
   if (number === "07")
-    return <div className={styles.privateState}>This profile is private.</div>;
+    return (
+      <EmptyFixture
+        title="This profile is private."
+        description="Nothing on this page is available to visitors."
+      />
+    );
   if (number === "10")
     return (
       <CreditList
@@ -554,7 +614,21 @@ function FixturePreview({ number }: { number: string }) {
         </p>
       </div>
     );
-  if (["05", "06", "08", "09"].includes(number))
+  if (number === "08")
+    return (
+      <EmptyFixture
+        title="No profile photo or selected work"
+        description="The page remains intentionally quiet until the creator publishes something."
+      />
+    );
+  if (number === "09")
+    return (
+      <EmptyFixture
+        title="No selected work is published"
+        description="The private Library remains unchanged."
+      />
+    );
+  if (["05", "06"].includes(number))
     return (
       <div className={styles.miniProfile}>
         <h3>{number === "06" ? "Amaka Obi" : "Tomiwa Ade"}</h3>
@@ -570,9 +644,6 @@ function FixturePreview({ number }: { number: string }) {
               },
             ]}
           />
-        )}
-        {number === "09" && (
-          <p className={styles.mutedState}>No selected work is published.</p>
         )}
       </div>
     );
