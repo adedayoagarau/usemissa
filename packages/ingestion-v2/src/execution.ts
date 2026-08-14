@@ -1,12 +1,13 @@
 import { Worker, type Job } from "bullmq";
 import type { AdapterRegistry } from "./registry.js";
-import type { IngestionRun, PageSnapshot, ExtractionResult, SourceDefinition, IngestionFailureCode } from "./contracts.js";
+import type { AdapterContext, IngestionRun, PageSnapshot, ExtractionResult, SourceDefinition, IngestionFailureCode } from "./contracts.js";
 import { classifyIngestionFailure, createRunId, type IngestionMode, type IngestionTrigger } from "./contracts.js";
 import type { PipelineJobData, QueueBundle } from "./queues.js";
 import { destinationConfig } from "./destinations.js";
 import { assessEvidenceQuality, type EvidenceQuality } from "./quality.js";
 import { reviewForPublication, type PublisherReview } from "./publisher.js";
 import { promoteApprovedArtifact } from "./canonicalWriter.js";
+import { renderIfNeeded, type RenderClient } from "./render.js";
 import type { Pool } from "pg";
 
 export interface ShadowArtifact {
@@ -58,6 +59,26 @@ export interface PipelineExecutionOptions {
   now?: () => Date;
   logger?: Pick<Console, "info" | "warn">;
   promotionPool?: Pool;
+  renderClient?: RenderClient;
+}
+
+/**
+ * Fetch, then escalate to a rendered document only when the static response
+ * cannot answer the question. Re-extraction runs against whichever document won.
+ */
+async function fetchAndExtract(
+  adapter: { fetch: (context: AdapterContext) => Promise<PageSnapshot>; extract: (context: AdapterContext, snapshot: PageSnapshot) => Promise<ExtractionResult> },
+  context: { run: IngestionRun; source: SourceDefinition },
+  options: PipelineExecutionOptions,
+): Promise<{ snapshot: PageSnapshot; extraction: ExtractionResult }> {
+  const logger = options.logger ?? console;
+  const staticSnapshot = await adapter.fetch(context);
+  const staticExtraction = await adapter.extract({ ...context, snapshot: staticSnapshot }, staticSnapshot);
+  const escalation = await renderIfNeeded(staticSnapshot, options.renderClient, staticExtraction.fields.length, logger);
+  if (!escalation.rendered) return { snapshot: staticSnapshot, extraction: staticExtraction };
+  logger.info(`[missa-ingestion-v2] rendered ${staticSnapshot.url}: ${escalation.reason}`);
+  const rendered = await adapter.extract({ ...context, snapshot: escalation.snapshot }, escalation.snapshot);
+  return { snapshot: escalation.snapshot, extraction: rendered };
 }
 
 function runFromJob(job: PipelineJobData, now: Date): IngestionRun {
@@ -79,8 +100,7 @@ export async function executeShadowPipeline(
   if (!adapter.canHandle(source)) throw new Error(`Adapter ${source.adapterId} cannot handle source ${source.id}`);
   logger.info(`[missa-ingestion-v2] shadow run ${run.id} fetching ${source.url}`);
   try {
-    const snapshot = await adapter.fetch({ run, source });
-    const sourceExtraction = await adapter.extract({ run, source, snapshot }, snapshot);
+    const { snapshot, extraction: sourceExtraction } = await fetchAndExtract(adapter, { run, source }, options);
     const extraction: ExtractionResult = { fields: [...sourceExtraction.fields], candidateLinks: [...sourceExtraction.candidateLinks], warnings: [...sourceExtraction.warnings] };
     const relatedSnapshots: PageSnapshot[] = [];
     const detailLimit = Math.min(destinationConfig(source).detailLimit ?? 5, 5);
@@ -88,8 +108,7 @@ export async function executeShadowPipeline(
     for (const candidate of details) {
       try {
       const destinationSource = { ...source, id: `${source.id}:destination:${candidate.url}`, url: candidate.url, config: { ...source.config, ...(candidate.request ? { request: candidate.request } : {}), destination: { ...destinationConfig(source), pageRole: "detail" as const } } };
-        const destinationSnapshot = await adapter.fetch({ run, source: destinationSource });
-        const destinationExtraction = await adapter.extract({ run, source: destinationSource, snapshot: destinationSnapshot }, destinationSnapshot);
+        const { snapshot: destinationSnapshot, extraction: destinationExtraction } = await fetchAndExtract(adapter, { run, source: destinationSource }, options);
         relatedSnapshots.push(destinationSnapshot);
         extraction.fields.push(...destinationExtraction.fields);
         extraction.warnings.push(...destinationExtraction.warnings.map((warning) => `Destination ${candidate.url}: ${warning}`));

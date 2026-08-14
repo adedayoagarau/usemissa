@@ -40,10 +40,22 @@ export function buildOpportunityIdentity(result: ExtractionResult, canonicalUrl?
   return { key: identity || "unidentifiable", canonicalUrl: url, title, organization, deadline };
 }
 
+export type IdentityMatchBasis = "canonical-url" | "title-and-organization" | "weak" | "none";
+
+export interface IdentityComparison {
+  decision: "same" | "different" | "review";
+  /** How the decision was reached. A canonical-URL match needs no further judgement. */
+  basis: IdentityMatchBasis;
+}
+
+export function compareOpportunityIdentityDetailed(left: OpportunityIdentity, right: OpportunityIdentity): IdentityComparison {
+  if (left.key === "unidentifiable" || right.key === "unidentifiable") return { decision: "review", basis: "none" };
+  if (left.canonicalUrl && right.canonicalUrl && left.canonicalUrl === right.canonicalUrl) return { decision: "same", basis: "canonical-url" };
+  if (keyPart(left.title) && keyPart(left.title) === keyPart(right.title) && keyPart(left.organization) === keyPart(right.organization)) return { decision: "same", basis: "title-and-organization" };
+  if (keyPart(left.title) === keyPart(right.title) || (left.deadline && left.deadline === right.deadline)) return { decision: "review", basis: "weak" };
+  return { decision: "different", basis: "none" };
+}
+
 export function compareOpportunityIdentity(left: OpportunityIdentity, right: OpportunityIdentity): "same" | "different" | "review" {
-  if (left.key === "unidentifiable" || right.key === "unidentifiable") return "review";
-  if (left.canonicalUrl && right.canonicalUrl && left.canonicalUrl === right.canonicalUrl) return "same";
-  if (keyPart(left.title) && keyPart(left.title) === keyPart(right.title) && keyPart(left.organization) === keyPart(right.organization)) return "same";
-  if (keyPart(left.title) === keyPart(right.title) || (left.deadline && left.deadline === right.deadline)) return "review";
-  return "different";
+  return compareOpportunityIdentityDetailed(left, right).decision;
 }
