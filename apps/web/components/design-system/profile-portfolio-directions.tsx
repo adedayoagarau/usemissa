@@ -4,7 +4,23 @@ import { useRef, useState } from "react";
 
 import { ArrowUpRight, Mail, Music2, Play, Quote } from "lucide-react";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
 
 import styles from "./profile-portfolio-directions.module.css";
@@ -253,168 +269,199 @@ function CreditList({
   return (
     <div className={`${styles.credits} ${hidden ? styles.hiddenCredits : ""}`}>
       {items.map((credit) => (
-        <article
-          className={styles.credit}
-          key={`${credit.year}-${credit.title}`}
-        >
-          <time>{credit.year}</time>
-          <div>
-            <strong>{credit.title}</strong>
-            <span>{credit.venue}</span>
+        <Item className={styles.credit} key={`${credit.year}-${credit.title}`}>
+          <ItemMedia className={styles.creditYear}>
+            <time>{credit.year}</time>
+          </ItemMedia>
+          <ItemContent>
+            <ItemTitle>{credit.title}</ItemTitle>
+            <ItemDescription>
+              {credit.venue || "Venue not listed"}
+            </ItemDescription>
             {credit.evidence && <EvidenceLabel tier={credit.evidence} />}
-          </div>
-        </article>
+          </ItemContent>
+        </Item>
       ))}
     </div>
   );
 }
 
+function ProfilePhoto() {
+  return (
+    <Avatar size="lg" className={styles.profilePhoto}>
+      <AvatarImage src="/media/home/artist-at-work.webp" alt="Profile photo" />
+      <AvatarFallback>AO</AvatarFallback>
+    </Avatar>
+  );
+}
+
 function PublicProfile({ kind = "text" }: { kind?: SampleKind }) {
   return (
-    <article className={styles.publicProfile}>
-      <header className={styles.identity}>
-        <div>
-          <h2>Amaka Obi</h2>
-          <p className={styles.handle}>@amaka</p>
-          <p className={styles.roleLine}>Essayist · Screenwriter · Lagos</p>
-          <p className={styles.oneLine}>
-            Writing essays and scripts about ordinary life.
-          </p>
-        </div>
-      </header>
-      <Separator />
-      <section className={styles.sampleRegion} aria-labelledby="sample-title">
-        <div className={styles.sectionLabel}>
-          <span id="sample-title">Selected Work</span>
-        </div>
-        <Sample kind={kind} />
-      </section>
-      <section className={styles.creditRegion} aria-labelledby="credits-title">
-        <div className={styles.sectionLabel}>
-          <span id="credits-title">Credits</span>
-        </div>
-        <CreditList />
-      </section>
-      <section
-        className={styles.rail}
-        id="contact"
-        aria-label="Profile contact details"
-      >
-        <div>
-          <span className={styles.railLabel}>Open to</span>
-          <p>Commissions, residencies, essay assignments.</p>
-        </div>
-        <div>
-          <span className={styles.railLabel}>Elsewhere</span>
-          <a href="#elsewhere">
-            amakaobi.com <ArrowUpRight aria-hidden="true" />
-          </a>
-        </div>
-        <Button type="button">
-          <Mail aria-hidden="true" /> Contact Amaka
-        </Button>
-      </section>
-    </article>
+    <Card className={styles.publicProfile}>
+      <CardContent>
+        <header className={styles.identity}>
+          <ProfilePhoto />
+          <div>
+            <h2>Amaka Obi</h2>
+            <p className={styles.handle}>@amaka</p>
+            <p className={styles.roleLine}>Essayist · Screenwriter · Lagos</p>
+            <p className={styles.oneLine}>
+              Writing essays and scripts about ordinary life.
+            </p>
+          </div>
+        </header>
+        <Separator />
+        <section className={styles.sampleRegion} aria-labelledby="sample-title">
+          <div className={styles.sectionLabel}>
+            <span id="sample-title">Selected Work</span>
+          </div>
+          <Sample kind={kind} />
+        </section>
+        <section
+          className={styles.creditRegion}
+          aria-labelledby="credits-title"
+        >
+          <div className={styles.sectionLabel}>
+            <span id="credits-title">Credits</span>
+          </div>
+          <CreditList />
+        </section>
+        <section
+          className={styles.rail}
+          id="contact"
+          aria-label="Profile contact details"
+        >
+          <div>
+            <span className={styles.railLabel}>Open to</span>
+            <p>Commissions, residencies, essay assignments.</p>
+          </div>
+          <div>
+            <span className={styles.railLabel}>Elsewhere</span>
+            <a href="#elsewhere">
+              amakaobi.com <ArrowUpRight aria-hidden="true" />
+            </a>
+          </div>
+          <Button type="button">
+            <Mail aria-hidden="true" /> Contact Amaka
+          </Button>
+        </section>
+      </CardContent>
+    </Card>
   );
 }
 
 function OwnerProfile() {
   return (
-    <article className={`${styles.publicProfile} ${styles.ownerProfile}`}>
-      <div className={styles.ownerNotice}>
-        <span>
-          You are editing your public Profile. Save to publish changes.
-        </span>
-        <div>
-          <Button type="button" variant="ghost">
-            View as visitor
-          </Button>
-          <Button type="button" variant="ghost">
-            Copy link
-          </Button>
-        </div>
-      </div>
-      <header className={styles.identity}>
-        <div>
-          <label className={styles.inlineLabel} htmlFor="profile-name">
-            Name
-          </label>
-          <input id="profile-name" defaultValue="Amaka Obi" />
-          <label className={styles.inlineLabel} htmlFor="profile-handle">
-            Handle
-          </label>
-          <input
-            id="profile-handle"
-            className={styles.metadataInput}
-            defaultValue="@amaka"
-          />
-          <label className={styles.inlineLabel} htmlFor="profile-label">
-            Creator label
-          </label>
-          <input
-            id="profile-label"
-            className={styles.metadataInput}
-            defaultValue="Essayist · Screenwriter · Lagos"
-          />
-          <label className={styles.inlineLabel} htmlFor="profile-one-line">
-            One line · 42 / 100 characters
-          </label>
-          <input
-            id="profile-one-line"
-            defaultValue="Writing essays and scripts about ordinary life."
-          />
-        </div>
-      </header>
-      <Separator />
-      <section className={styles.sampleRegion}>
-        <div className={styles.sectionLabel}>
-          <span>Selected Work</span>
-          <span>Public</span>
-        </div>
-        <Sample kind="text" />
-        <div className={styles.inlineActions}>
-          <Button type="button" variant="outline">
-            Change passage
-          </Button>
-          <Button type="button" variant="ghost">
-            Unpublish
-          </Button>
-        </div>
-      </section>
-      <section className={styles.creditRegion}>
-        <div className={styles.sectionLabel}>
-          <span>Credits</span>
-          <span>3 public · 1 hidden</span>
-        </div>
-        <CreditList />
-        <article className={`${styles.credit} ${styles.hiddenCredit}`}>
-          <time>2024</time>
+    <Card className={`${styles.publicProfile} ${styles.ownerProfile}`}>
+      <CardContent>
+        <div className={styles.ownerNotice}>
+          <span>
+            You are editing your public Profile. Save to publish changes.
+          </span>
           <div>
-            <strong>Ordinary Weather</strong>
-            <span>The Republic</span>
-            <span className={styles.hiddenLabel}>
-              Hidden — only you can see this
-            </span>
+            <Button type="button" variant="ghost">
+              View as visitor
+            </Button>
+            <Button type="button" variant="ghost">
+              Copy link
+            </Button>
           </div>
-          <Button type="button" variant="ghost">
-            Show
-          </Button>
-        </article>
-        <Button type="button" variant="outline">
-          ＋ Add a credit — or pull one from Tracker, where 3 acceptances are
-          recorded.
-        </Button>
-      </section>
-      <div className={styles.saveBar} role="status">
-        <span>2 unsaved changes</span>
-        <div>
-          <Button type="button" variant="ghost">
-            Discard
-          </Button>
-          <Button type="button">Save and publish</Button>
         </div>
-      </div>
-    </article>
+        <header className={styles.identity}>
+          <ProfilePhoto />
+          <div>
+            <Field>
+              <FieldLabel htmlFor="profile-name">Name</FieldLabel>
+              <FieldContent>
+                <Input id="profile-name" defaultValue="Amaka Obi" />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="profile-handle">Handle</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="profile-handle"
+                  className={styles.metadataInput}
+                  defaultValue="@amaka"
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="profile-label">Creator label</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="profile-label"
+                  className={styles.metadataInput}
+                  defaultValue="Essayist · Screenwriter · Lagos"
+                />
+              </FieldContent>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="profile-one-line">One line</FieldLabel>
+              <FieldContent>
+                <Input
+                  id="profile-one-line"
+                  defaultValue="Writing essays and scripts about ordinary life."
+                />
+                <FieldDescription>42 / 100 characters</FieldDescription>
+              </FieldContent>
+            </Field>
+            <Button type="button" variant="outline">
+              Change photo
+            </Button>
+          </div>
+        </header>
+        <Separator />
+        <section className={styles.sampleRegion}>
+          <div className={styles.sectionLabel}>
+            <span>Selected Work</span>
+            <span>Public</span>
+          </div>
+          <Sample kind="text" />
+          <div className={styles.inlineActions}>
+            <Button type="button" variant="outline">
+              Change passage
+            </Button>
+            <Button type="button" variant="ghost">
+              Unpublish
+            </Button>
+          </div>
+        </section>
+        <section className={styles.creditRegion}>
+          <div className={styles.sectionLabel}>
+            <span>Credits</span>
+            <span>3 public · 1 hidden</span>
+          </div>
+          <CreditList />
+          <article className={`${styles.credit} ${styles.hiddenCredit}`}>
+            <time>2024</time>
+            <div>
+              <strong>Ordinary Weather</strong>
+              <span>The Republic</span>
+              <span className={styles.hiddenLabel}>
+                Hidden — only you can see this
+              </span>
+            </div>
+            <Button type="button" variant="ghost">
+              Show
+            </Button>
+          </article>
+          <Button type="button" variant="outline">
+            ＋ Add a credit — or pull one from Tracker, where 3 acceptances are
+            recorded.
+          </Button>
+        </section>
+        <div className={styles.saveBar} role="status">
+          <span>2 unsaved changes</span>
+          <div>
+            <Button type="button" variant="ghost">
+              Discard
+            </Button>
+            <Button type="button">Save and publish</Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

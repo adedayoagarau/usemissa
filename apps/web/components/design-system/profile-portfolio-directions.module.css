@@ -104,11 +104,39 @@
   background: var(--surface);
   box-shadow: 0 18px 50px rgb(45 31 50 / 8%);
 }
+.publicProfile > [data-slot="card-content"] {
+  padding: 0;
+}
 .identity {
   display: flex;
   justify-content: space-between;
   gap: 32px;
   align-items: end;
+}
+.profilePhoto {
+  width: 96px;
+  height: 96px;
+  border: 1px solid var(--border-strong);
+}
+.profilePhoto [data-slot="avatar-image"] {
+  object-position: center 28%;
+}
+.ownerProfile .identity > div {
+  display: grid;
+  flex: 1;
+  gap: 12px;
+  max-width: 520px;
+}
+.ownerProfile [data-slot="field"] {
+  gap: 5px;
+}
+.ownerProfile [data-slot="field-label"] {
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+}
+.ownerProfile [data-slot="field-description"] {
+  font-family: var(--font-mono);
+  font-size: 11px;
 }
 .identity h2 {
   margin: 8px 0 0;
@@ -200,6 +228,12 @@
   gap: 18px;
   padding: 16px 0;
   border-bottom: 1px solid var(--border);
+}
+.creditYear {
+  align-self: start;
+  color: var(--profile-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
 }
 .credit:first-child {
   border-top: 1px solid var(--border);
