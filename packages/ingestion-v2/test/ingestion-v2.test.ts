@@ -80,6 +80,11 @@ test("parses local and Upstash Redis URLs for BullMQ", () => {
 test("requires an explicit local or staging database role", () => {
   assert.equal(assertIngestionV2DatabaseRole("local"), "local");
   assert.equal(assertIngestionV2DatabaseRole("staging"), "staging");
+  const previous = process.env.MISSA_INGESTION_V2_PROMOTE_APPROVED;
+  process.env.MISSA_INGESTION_V2_PROMOTE_APPROVED = "1";
+  assert.equal(assertIngestionV2DatabaseRole("production"), "production");
+  if (previous === undefined) delete process.env.MISSA_INGESTION_V2_PROMOTE_APPROVED;
+  else process.env.MISSA_INGESTION_V2_PROMOTE_APPROVED = previous;
   assert.throws(() => assertIngestionV2DatabaseRole("production"), /requires INGESTION_V2_DATABASE_ROLE/);
 });
 

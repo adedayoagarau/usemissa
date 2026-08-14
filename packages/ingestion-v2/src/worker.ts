@@ -20,7 +20,7 @@ const store = new PostgresShadowRunStore(pool);
 const adapterId = useDeepSeek ? "deepseek-html-v2" : "generic-html-v2";
 const workerSources = [...createWorkerSources(adapterId), ...createBenchmarkSources(adapterId)];
 await syncIngestionV2Schedules(pool, workerSources);
-const worker = createPipelineWorker(queues, registry, workerSources, store);
+const worker = createPipelineWorker(queues, registry, workerSources, store, { promotionPool: pool });
 
 const sourceById = new Map(workerSources.map((source) => [source.id, source]));
 let scheduling = false;
@@ -31,7 +31,7 @@ async function scheduleDueSources(): Promise<void> {
     const dueIds = await claimDueIngestionV2Schedules(pool, 25);
     for (const sourceId of dueIds) {
       const source = sourceById.get(sourceId);
-      if (source) await startRun(queues, source, { trigger: "scheduled", mode: "shadow" });
+      if (source) await startRun(queues, source, { trigger: "scheduled", mode: process.env.MISSA_INGESTION_V2_PROMOTE_APPROVED === "1" ? "promote" : "shadow" });
     }
     if (dueIds.length) console.log(`[missa-ingestion-v2] scheduled ${dueIds.length} source runs`);
   } finally {

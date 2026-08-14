@@ -6,6 +6,8 @@ import type { PipelineJobData, QueueBundle } from "./queues.js";
 import { destinationConfig } from "./destinations.js";
 import { assessEvidenceQuality, type EvidenceQuality } from "./quality.js";
 import { reviewForPublication, type PublisherReview } from "./publisher.js";
+import { promoteApprovedArtifact } from "./canonicalWriter.js";
+import type { Pool } from "pg";
 
 export interface ShadowArtifact {
   run: IngestionRun;
@@ -55,6 +57,7 @@ export class MemoryShadowRunStore implements ShadowRunStore {
 export interface PipelineExecutionOptions {
   now?: () => Date;
   logger?: Pick<Console, "info" | "warn">;
+  promotionPool?: Pool;
 }
 
 function runFromJob(job: PipelineJobData, now: Date): IngestionRun {
@@ -124,8 +127,10 @@ export function createPipelineWorker(
     async (job: Job<PipelineJobData>) => {
       const source = byId.get(job.data.sourceId);
       if (!source) throw new Error(`Unknown v2 source: ${job.data.sourceId}`);
-      if (job.data.mode !== "shadow") throw new Error("v2 currently supports shadow mode only; promotion is intentionally not implemented");
-      return executeShadowPipeline(registry, source, job.data, store, options);
+      if (job.data.mode !== "shadow" && !options.promotionPool) throw new Error("v2 promotion requires a canonical database pool");
+      const artifact = await executeShadowPipeline(registry, source, job.data, store, options);
+      if (job.data.mode === "promote") await promoteApprovedArtifact(options.promotionPool!, source, artifact);
+      return artifact;
     },
     { connection: queues.connection, prefix: "missa-ingestion-v2", concurrency: 1 },
   );
