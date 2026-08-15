@@ -25,7 +25,7 @@ export const repairDecisionSchema = `
 create table if not exists missa_ingestion_v2_repair_decisions (
   id bigserial primary key,
   opportunity_id text not null,
-  decision text not null check (decision in ('repaired', 'unresolved', 'error')),
+  decision text not null check (decision in ('repaired', 'needs-review', 'unresolved', 'error')),
   candidate_count integer not null default 0,
   authoritative_url text,
   basis text,
@@ -74,7 +74,7 @@ async function findCandidates(pool: Pool, limit: number): Promise<RepairCandidat
 
 export interface RepairResult {
   opportunityId: string;
-  decision: "repaired" | "unresolved" | "error";
+  decision: "repaired" | "needs-review" | "unresolved" | "error";
   candidateCount: number;
   authoritativeUrl: string | null;
   basis: string | null;
@@ -183,6 +183,17 @@ async function repairOne(row: RepairCandidateRow, adapter: GenericHtmlAdapter, r
     if (identity.decision === "same") {
       return { opportunityId: row.opportunity_id, decision: "repaired", candidateCount: candidates.length, authoritativeUrl: destinationSnapshot.finalUrl || destinationSnapshot.url, basis: identity.basis, reasons: [`Reconciled to ${destinationIdentity.title ?? "the destination page"} via ${identity.basis}.`] };
     }
+    // A "review" verdict is not nothing: the source page specifically named
+    // this URL (as a link or as labeled text) as the destination for this
+    // exact opportunity. That is real corroboration even when the
+    // destination's own title doesn't restate it — many organizer sites
+    // title their apply page generically ("SIM Residency | APPLY") rather
+    // than repeating the directory's descriptive title. Recording it
+    // separately from "no candidate at all" preserves that signal instead
+    // of discarding it, which is the point of building a labelled set.
+    if (identity.decision === "review") {
+      return { opportunityId: row.opportunity_id, decision: "needs-review", candidateCount: candidates.length, authoritativeUrl: destinationSnapshot.finalUrl || destinationSnapshot.url, basis: identity.basis, reasons: [`A plausible but unconfirmed destination was found: ${destinationIdentity.title ?? destinationSnapshot.url}. ${identity.basis === "weak" ? "Weak title overlap only; no organization corroboration." : ""}`] };
+    }
   }
   return { opportunityId: row.opportunity_id, decision: "unresolved", candidateCount: candidates.length, authoritativeUrl: null, basis: null, reasons: [`${candidates.length} candidate destination(s) fetched; none reconciled to "${row.title}".`] };
 }
@@ -213,6 +224,7 @@ export interface RepairTickResult {
   considered: number;
   applied: boolean;
   repaired: number;
+  "needs-review": number;
   unresolved: number;
   error: number;
 }
@@ -224,7 +236,7 @@ export async function runRepairTick(pool: Pool, options: RepairTickOptions = {})
   const adapter = new GenericHtmlAdapter();
   const renderClient = options.renderClient ?? createRenderClient();
   const rows = await findCandidates(pool, options.limit ?? 25);
-  const counts = { repaired: 0, unresolved: 0, error: 0 };
+  const counts = { repaired: 0, "needs-review": 0, unresolved: 0, error: 0 };
 
   for (const row of rows) {
     const outcome = await repairOne(row, adapter, renderClient, logger);

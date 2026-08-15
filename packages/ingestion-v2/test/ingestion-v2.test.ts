@@ -244,7 +244,7 @@ test("does not classify nested opportunity URLs inside social-share query string
 test("uses DeepSeek JSON output as shadow evidence", async () => {
   const source = { ...createBenchmarkSources()[0]!, url: "https://example.test/opportunity", adapterId: "deepseek-html-v2", config: { destination: { pageRole: "detail" as const } } };
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = (async (input) => {
+  globalThis.fetch = (async (input: string | URL) => {
     const url = String(input);
     if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nAllow: /", { status: 200 });
     if (url === source.url) return new Response("<html><h1>Example grant</h1></html>", { status: 200, headers: { "content-type": "text/html" } });
@@ -861,6 +861,48 @@ test("a plain-text organizer URL is found when no href candidate exists", async 
   try {
     const result = await runRepairTick(pool, { apply: false, limit: 5, logger: { info: () => undefined, warn: () => undefined } });
     assert.equal(result.repaired, 1, "the plain-text destination must be found and reconciled by exact title match");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("a plausible-but-unconfirmed destination is recorded as needs-review, not lumped in with no-candidate-found", async () => {
+  // Live verification against a real quarantined record turned up a related
+  // but distinct case from the plain-text-URL test above: sim-residency.info
+  // titles its apply page generically ("SIM Residency | APPLY") rather than
+  // restating the directory's descriptive title, AND the directory's title
+  // carries an accented "SÍM" that never matches unaccented "SIM" under
+  // keyPart's normalization — so that exact real page actually lands at
+  // weak/no overlap, not a review-band match. This test proves the
+  // DIFFERENT, genuine review-band case: real, meaningful title overlap that
+  // still falls short of organization corroboration, which the earlier
+  // "weak title overlap" identity test already showed lands on "review".
+  const { runRepairTick } = await import("../src/repair.js");
+  const html = `<html><body><h1>Emerging Photographers Grant Program</h1>
+    <p>Website: https://www.example-foundation.org/opportunities</p></body></html>`;
+  const destinationHtml = `<html><body><h1>Emerging Photographers Award</h1><p>Applications open now.</p></body></html>`;
+  const responses = new Map([
+    ["https://resartis.org/open-call/sim-residency-reykjavik-open-call-2027-2/", html],
+    ["https://www.example-foundation.org/opportunities", destinationHtml],
+  ]);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("", { status: 404 });
+    const body = responses.get(url);
+    return body ? new Response(body, { status: 200, headers: { "content-type": "text/html" } }) : new Response("not found", { status: 404 });
+  });
+
+  const row = { opportunity_id: "opp_sim2", title: "Emerging Photographers Grant Program", organization_name: null, source_url: "https://resartis.org/open-call/sim-residency-reykjavik-open-call-2027-2/", source_kind: "directory" };
+  const pool = {
+    query: async (text: string) => (/select o\.id as opportunity_id/.test(text) ? { rows: [row], rowCount: 1 } : { rows: [], rowCount: 0 }),
+    connect: async () => ({ query: async () => ({ rows: [], rowCount: 0 }), release: () => undefined }),
+  } as unknown as import("pg").Pool;
+  try {
+    const result = await runRepairTick(pool, { apply: false, limit: 5, logger: { info: () => undefined, warn: () => undefined } });
+    assert.equal(result.repaired, 0, "a generic apply-page title must not auto-confirm");
+    assert.equal(result["needs-review"], 1, "the source-linked candidate must be preserved as a review signal, not discarded");
+    assert.equal(result.unresolved, 0);
   } finally {
     globalThis.fetch = originalFetch;
   }
