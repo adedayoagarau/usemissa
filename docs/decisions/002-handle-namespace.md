@@ -2,8 +2,9 @@
 
 ## Status
 
-Phase 0 and Phase 1 dry-run implementation. Directory reservations remain
-unwritten until the Phase 1 review gate is approved.
+Phase 0 and Phase 1 implementation. The approved, conflict-free subset of the
+final recommendation review has been reserved; remaining recommendations stay
+in the human review queue.
 
 ## Decision
 
@@ -38,8 +39,9 @@ The first claimant wins a collision. There is no queue or dispute process.
 - A changed website does not re-derive, rename, or release an existing
   reservation.
 
-The pure merge planner and schema foreign-key policy are covered by tests. The
-database mutation and public redirect paths are intentionally later phases.
+The pure merge planner, schema foreign-key policy, and reservation selection are
+covered by tests. The reservation command is an explicit, atomic operation;
+the public redirect path is connected through the application proxy.
 
 Deleted creator handles are held for at least 90 days. A trailing-90-day total
 of 100 or more public handle page views is the explicit meaningful-traffic
@@ -62,3 +64,24 @@ The initial planning constant is `0.8`. `npm run handles:plan` prints the exact
 observed confidence distribution and a conservative proposed threshold equal to
 the observed minimum when that minimum is above the configured floor. A human
 must review that proposal at Gate 1 before any directory row is written.
+
+## Directory reservation application
+
+The final recommendation CSV is not applied wholesale. The reservation command
+selects only rows with `suggestionConfidence` of `high` or `medium`,
+`suggestionHumanReview=false`, an existing candidate source, exact membership in
+the pipe-delimited candidate cell, a valid shared normalization result, and no
+duplicate or conflict signal. It verifies every profile and namespace key in a
+single transaction and aborts rather than overwriting an existing handle or
+alias.
+
+Run it with:
+
+```sh
+npm run handles:reserve -- --input /path/to/handles-plan-final-handle-suggestions.csv --apply
+```
+
+The existing application proxy resolves a reserved handle with a live
+`reserved_from_profile_id` to the existing `/journals/[id]` page using a
+permanent redirect. It does not publish new profile content. Rows that remain
+in the review queue are not reserved by this command.

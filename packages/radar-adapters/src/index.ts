@@ -167,6 +167,20 @@ export {
   type UserHandle,
 } from "./handleNamespace.js";
 export {
+  DIRECTORY_HANDLE_RECOMMENDATION_COLUMNS,
+  DirectoryHandleRecommendationError,
+  DirectoryHandleReservationConflictError,
+  parseDirectoryHandleRecommendationsCsv,
+  reserveDirectoryHandleCandidates,
+  selectDirectoryHandleReservations,
+  type DirectoryHandleRecommendationExclusion,
+  type DirectoryHandleRecommendationRow,
+  type DirectoryHandleRecommendationSelection,
+  type DirectoryHandleReservationApplyResult,
+  type DirectoryHandleReservationCandidate,
+  type DirectoryHandleReservationDerivation,
+} from "./directoryHandleReservations.js";
+export {
   runReviewTick,
   reviewCandidate,
   type ReviewCandidate,
