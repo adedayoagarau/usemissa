@@ -39,6 +39,14 @@ create index if not exists missa_ingestion_v2_repair_decisions_opportunity_idx
 
 export async function ensureRepairSchema(pool: Pool): Promise<void> {
   await pool.query(repairDecisionSchema);
+  // "create table if not exists" never revisits an existing table's
+  // constraints. Caught live: the table was created by an earlier run before
+  // 'needs-review' existed, so every subsequent needs-review decision failed
+  // its check constraint and was silently dropped rather than recorded.
+  await pool.query(`
+    alter table missa_ingestion_v2_repair_decisions drop constraint if exists missa_ingestion_v2_repair_decisions_decision_check;
+    alter table missa_ingestion_v2_repair_decisions add constraint missa_ingestion_v2_repair_decisions_decision_check check (decision in ('repaired', 'needs-review', 'unresolved', 'error'));
+  `);
 }
 
 export interface RepairCandidateRow {
