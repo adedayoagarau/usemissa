@@ -769,3 +769,15 @@ test("unrelated organizations and unrelated titles are different, not merely unr
   const right = { key: "b", canonicalUrl: null, title: "Documentary Film Fellowship", organization: "National Film Board", deadline: null };
   assert.equal(compareOpportunityIdentityDetailed(left, right).decision, "different");
 });
+
+test("startStagedRun enqueues to the fetch stage queue, not the combined pipeline", async () => {
+  const { startStagedRun } = await import("../src/runs.js");
+  const enqueued: unknown[] = [];
+  const fakeQueue = { stage: "fetch" as const, queue: { add: async (name: string, data: unknown) => { enqueued.push(data); return { id: "job-1" }; } } };
+  const source = { id: "s", name: "Test", url: "https://example.org", adapterId: "generic-html-v2", kind: "organization-website" as const, geography: ["global"], opportunityTypes: ["grant"], config: {}, schedule: { lane: "scheduled" as const, cadenceHours: 24 } };
+  const run = await startStagedRun(fakeQueue as never, source, { trigger: "scheduled", mode: "shadow" });
+  assert.equal(enqueued.length, 1);
+  assert.equal((enqueued[0] as { sourceId: string }).sourceId, "s");
+  assert.equal(run.trigger, "scheduled");
+  assert.equal(run.mode, "shadow");
+});
