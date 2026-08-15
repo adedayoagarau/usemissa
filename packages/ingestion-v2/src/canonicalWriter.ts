@@ -10,7 +10,9 @@ function field(fields: ExtractionResult["fields"], name: string): string | undef
   const item = [...fields].reverse().find((candidate) => candidate.fieldName === name);
   return typeof item?.normalizedValue === "string" && item.normalizedValue.trim() ? item.normalizedValue.trim() : item?.rawValue?.trim() || undefined;
 }
-function canonicalId(url: string): string { return `opp_v2_${createHash("sha256").update(url).digest("hex").slice(0, 32)}`; }
+// Resource IDs have one separator underscore: `prefix_value`. Keep the v2
+// ownership marker in the prefix without introducing a second underscore.
+export function canonicalId(url: string): string { return `opp-v2_${createHash("sha256").update(url).digest("hex").slice(0, 32)}`; }
 function sourceId(source: SourceDefinition): string { return `v2_source_${createHash("sha256").update(source.url).digest("hex").slice(0, 24)}`; }
 /**
  * Adapters emit deadlines as whatever the page said — "January 15, 2027",

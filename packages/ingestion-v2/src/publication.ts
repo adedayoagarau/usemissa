@@ -29,7 +29,8 @@ create index if not exists missa_ingestion_v2_publication_decisions_opportunity_
 `;
 
 /** v2 writes opportunity ids with this prefix; it is the ownership boundary. */
-export const V2_OPPORTUNITY_PREFIX = "opp_v2_";
+export const V2_OPPORTUNITY_PREFIX = "opp-v2_";
+export const V2_OPPORTUNITY_PREFIXES = ["opp-v2_", "opp_v2_"] as const;
 
 export interface PublicationTickOptions {
   limit?: number;
@@ -88,10 +89,10 @@ async function candidates(pool: Pool, limit: number): Promise<CandidateRow[]> {
        where opportunity_id = o.id order by updated_at desc limit 1
      ) content on true
      left join opportunity_call_profiles profile on profile.opportunity_id = o.id
-     where o.publication_state = 'reviewable' and o.id like $1
+     where o.publication_state = 'reviewable' and o.id like any($1::text[])
      order by o.deadline_date asc nulls last, o.id
      limit $2`,
-    [`${V2_OPPORTUNITY_PREFIX}%`, Math.min(Math.max(limit, 1), 200)],
+    [V2_OPPORTUNITY_PREFIXES.map((prefix) => `${prefix}%`), Math.min(Math.max(limit, 1), 200)],
   );
   return result.rows;
 }

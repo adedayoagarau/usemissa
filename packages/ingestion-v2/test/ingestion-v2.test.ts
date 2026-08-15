@@ -606,7 +606,7 @@ test("publishing is opt-in and off by default", async () => {
   assert.equal(publicationApplyEnabled({ MISSA_INGESTION_V2_PUBLISH: "0" } as NodeJS.ProcessEnv), false);
   assert.equal(publicationApplyEnabled({ MISSA_INGESTION_V2_PUBLISH: "true" } as NodeJS.ProcessEnv), false, "only an explicit 1 enables writes");
   assert.equal(publicationApplyEnabled({ MISSA_INGESTION_V2_PUBLISH: "1" } as NodeJS.ProcessEnv), true);
-  assert.equal(V2_OPPORTUNITY_PREFIX, "opp_v2_", "v2 must only ever transition records it wrote");
+  assert.equal(V2_OPPORTUNITY_PREFIX, "opp-v2_", "v2 must only ever transition records it wrote");
 });
 
 test("a dry run does not persist a content review status", async () => {
