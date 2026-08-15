@@ -64,6 +64,7 @@ const ELIGIBILITY_PATTERNS: Array<[RegExp, (m: RegExpExecArray) => EligibilityRu
 const EMAIL_RE = /\b[\w.+-]+@[\w-]+\.[\w.]+\b/;
 const SUBMIT_URL_RE = /https?:\/\/[^\s"')]*(?:submit|apply|form|submittable)[^\s"')]*/i;
 const LABELED_URL_RE = /(?:submit (?:at|online|here)|apply at)[:\s]+(https?:\/\/[^\s"')]+)/i;
+const OFFICIAL_URL_LABELED_RE = /(?:official (?:site|website)|link to more information|more information|learn more(?: at)?|visit(?: the)? (?:site|website)?|program (?:page|site))[:\s]+(https?:\/\/[^\s"')]+)/i;
 
 function extractDeadline(text: string, reference: Date): DeadlineInfo {
   if (/\buntil filled\b/i.test(text)) return { kind: 'until-filled', raw: 'until filled' };
@@ -102,6 +103,30 @@ function extractOrganization(text: string, source: Source): string | undefined {
   const intro = /^\s*([A-Z][A-Za-z0-9&'’.,()\- ]{2,100}?)\s+is\s+(?:a|an|the)\s+(?:retreat|residency|residence|foundation|organization|institution|program|space)\b/m.exec(text);
   if (intro) return intro[1].trim().replace(/[.,]+$/u, '');
   return source.kind === 'organization-website' ? source.name : undefined;
+}
+
+/**
+ * The first-party page for the organization running the opportunity, distinct
+ * from `submissionUrl` (the apply/submit link, which may live on a third-party
+ * platform). Conservative by construction: only an explicitly labeled URL is
+ * accepted, and it is discarded if it resolves to the SOURCE's own host — a
+ * directory mentioning itself is not evidence of a first-party destination,
+ * it is the directory. An organization-website source is already first-party,
+ * so it defaults to its own URL rather than requiring the page to link to
+ * itself.
+ */
+function extractOfficialUrl(text: string, source: Source): string | undefined {
+  const labeled = OFFICIAL_URL_LABELED_RE.exec(text)?.[1];
+  if (labeled) {
+    try {
+      const url = new URL(labeled);
+      const sourceHost = new URL(source.url).hostname.replace(/^www\./, '');
+      if (url.hostname.replace(/^www\./, '') !== sourceHost) return url.href;
+    } catch {
+      // An unparseable labeled URL is not usable evidence.
+    }
+  }
+  return source.kind === 'organization-website' ? source.url : undefined;
 }
 
 function extractPrize(text: string): string | undefined {
@@ -158,6 +183,7 @@ export class DeterministicExtractor implements Extractor {
       extractedAt: now.toISOString(),
       title: extractTitle(text, source),
       organizationName: extractOrganization(text, source),
+      officialUrl: extractOfficialUrl(text, source),
       type,
       genres,
       taxonomyAssignments: (() => {
