@@ -781,3 +781,45 @@ test("startStagedRun enqueues to the fetch stage queue, not the combined pipelin
   assert.equal(run.trigger, "scheduled");
   assert.equal(run.mode, "shadow");
 });
+
+test("repair is opt-in and off by default", async () => {
+  const { repairApplyEnabled } = await import("../src/repair.js");
+  assert.equal(repairApplyEnabled({} as NodeJS.ProcessEnv), false);
+  assert.equal(repairApplyEnabled({ MISSA_INGESTION_V2_REPAIR_APPLY: "yes" } as NodeJS.ProcessEnv), false, "only an explicit 1 enables writes");
+  assert.equal(repairApplyEnabled({ MISSA_INGESTION_V2_REPAIR_APPLY: "1" } as NodeJS.ProcessEnv), true);
+});
+
+test("a dry run does not write a repaired destination or evidence row", async () => {
+  const { runRepairTick } = await import("../src/repair.js");
+  const statements: string[] = [];
+  const client = { query: async (text: string) => { statements.push(String(text).replace(/\s+/g, " ").trim()); return { rows: [], rowCount: 0 }; }, release: () => undefined };
+  const row = { opportunity_id: "opp_1", title: "Poetry Chapbook Award", organization_name: "Small Press Collective", source_url: "https://directory.example/list", source_kind: "directory" };
+  const pool = {
+    query: async (text: string) => {
+      statements.push(String(text).replace(/\s+/g, " ").trim());
+      if (/select o\.id as opportunity_id/.test(text)) return { rows: [row], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    },
+    connect: async () => client,
+  } as unknown as import("pg").Pool;
+
+  const result = await runRepairTick(pool, { apply: false, limit: 5, logger: { info: () => undefined, warn: () => undefined } });
+  assert.equal(result.considered, 1);
+  assert.equal(result.applied, false);
+  assert.equal(statements.some((sql) => /update opportunities set guidelines_url/i.test(sql)), false, "a dry run must not write a repaired destination");
+  assert.equal(statements.some((sql) => /insert into opportunity_source_evidence/i.test(sql)), false, "a dry run must not write reconciliation evidence");
+  assert.equal(statements.some((sql) => /insert into missa_ingestion_v2_repair_decisions/i.test(sql)), true, "the attempt is still recorded for review and for tuning");
+});
+
+test("repair candidates are scoped to directory-sourced, unreconciled reviewable records", async () => {
+  const { runRepairTick } = await import("../src/repair.js");
+  let queryText = "";
+  const pool = {
+    query: async (text: string) => { queryText = String(text); return { rows: [], rowCount: 0 }; },
+    connect: async () => ({ query: async () => ({ rows: [], rowCount: 0 }), release: () => undefined }),
+  } as unknown as import("pg").Pool;
+  await runRepairTick(pool, { apply: false, limit: 5, logger: { info: () => undefined, warn: () => undefined } });
+  assert.match(queryText, /publication_state = 'reviewable'/);
+  assert.match(queryText, /s\.kind = 'directory'/);
+  assert.match(queryText, /destination_reconciled, false\) = false/);
+});

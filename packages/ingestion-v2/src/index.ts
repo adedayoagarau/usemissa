@@ -12,6 +12,7 @@ export * from "./publicationRubric.js";
 export * from "./publication.js";
 export * from "./stages.js";
 export * from "./stageWorkers.js";
+export * from "./repair.js";
 export * from "./safety.js";
 export * from "./scheduling.js";
 export * from "./publisher.js";
