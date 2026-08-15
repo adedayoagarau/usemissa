@@ -3,6 +3,7 @@ import { GenericHtmlAdapter } from "./adapters/html.js";
 import { isPotentialDestination } from "./destinations.js";
 import { buildOpportunityIdentity, compareOpportunityIdentityDetailed } from "./identity.js";
 import { createRunId } from "./contracts.js";
+import { createRenderClient, renderIfNeeded, type RenderClient } from "./render.js";
 import type { SourceDefinition } from "./contracts.js";
 
 /**
@@ -87,6 +88,26 @@ export interface RepairResult {
  * the live pipeline. The repair job is not crawling a registry source, so
  * most fields are placeholders; only `url` and `kind` affect the check.
  */
+const TEXT_URL_LABEL_RE = /(?:official (?:site|website)|website|link to more information|more information|learn more(?: at)?|visit(?: the)? (?:site|website)?|program (?:page|site)|apply(?: at)?)[:\s]+(https?:\/\/[^\s"'<>)]+)/gi;
+
+function stripToText(html: string): string {
+  return html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/&(?:nbsp|amp);/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function extractLabeledTextUrl(html: string, sourceUrl: string): string | undefined {
+  const text = stripToText(html);
+  const sourceHost = new URL(sourceUrl).hostname.replace(/^www\./, "");
+  for (const match of text.matchAll(TEXT_URL_LABEL_RE)) {
+    try {
+      const url = new URL(match[1]!.replace(/[.,;]+$/, ""));
+      if (url.hostname.replace(/^www\./, "") !== sourceHost) return url.href;
+    } catch {
+      continue;
+    }
+  }
+  return undefined;
+}
+
 function syntheticSource(row: RepairCandidateRow): SourceDefinition {
   return {
     id: `repair:${row.opportunity_id}`,
@@ -101,20 +122,46 @@ function syntheticSource(row: RepairCandidateRow): SourceDefinition {
   };
 }
 
-async function repairOne(row: RepairCandidateRow, adapter: GenericHtmlAdapter, logger: Pick<Console, "warn">): Promise<Omit<RepairResult, "applied">> {
+async function fetchAndExtract(adapter: GenericHtmlAdapter, run: { id: string; sourceId: string; trigger: "manual"; mode: "shadow"; status: "running"; createdAt: string }, source: SourceDefinition, renderClient: RenderClient | undefined, logger: Pick<Console, "warn">) {
+  const staticSnapshot = await adapter.fetch({ run, source });
+  const staticExtraction = await adapter.extract({ run, source, snapshot: staticSnapshot }, staticSnapshot);
+  // Many organization and directory sites lazy-load their outbound "learn
+  // more" link client-side (confirmed against a live resartis.org page: zero
+  // genuine outbound links in the static HTML, only theme/CDN boilerplate).
+  // Without this escalation the repair job would systematically fail on
+  // exactly the JS-rendered sites it most needs to reach.
+  const escalation = await renderIfNeeded(staticSnapshot, renderClient, staticExtraction.fields.length, logger);
+  if (!escalation.rendered) return { snapshot: staticSnapshot, extraction: staticExtraction };
+  const rendered = await adapter.extract({ run, source, snapshot: escalation.snapshot }, escalation.snapshot);
+  return { snapshot: escalation.snapshot, extraction: rendered };
+}
+
+async function repairOne(row: RepairCandidateRow, adapter: GenericHtmlAdapter, renderClient: RenderClient | undefined, logger: Pick<Console, "warn">): Promise<Omit<RepairResult, "applied">> {
   const source = syntheticSource(row);
   const runId = createRunId(row.opportunity_id);
   const run = { id: runId, sourceId: source.id, trigger: "manual" as const, mode: "shadow" as const, status: "running" as const, createdAt: new Date().toISOString() };
 
-  let snapshot;
+  let fetched;
   try {
-    snapshot = await adapter.fetch({ run, source });
+    fetched = await fetchAndExtract(adapter, run, source, renderClient, logger);
   } catch (error) {
     return { opportunityId: row.opportunity_id, decision: "error", candidateCount: 0, authoritativeUrl: null, basis: null, reasons: [`Source fetch failed: ${error instanceof Error ? error.message : String(error)}`] };
   }
-  const extraction = await adapter.extract({ run, source, snapshot }, snapshot);
-  const candidates = extraction.candidateLinks.filter((candidate) => isPotentialDestination(source, candidate)).slice(0, 5);
-  if (!candidates.length) return { opportunityId: row.opportunity_id, decision: "unresolved", candidateCount: 0, authoritativeUrl: null, basis: null, reasons: ["No first-party destination candidate was found on the source page."] };
+  const { extraction, snapshot } = fetched;
+  let candidates = extraction.candidateLinks.filter((candidate) => isPotentialDestination(source, candidate)).slice(0, 5);
+  // Confirmed live against a real quarantined record: some organizer sites
+  // (a WordPress/Pixelgrade directory theme, in the case tested) print their
+  // own URL as plain text next to "website"/"apply"/"more information" —
+  // never as an <a href>. Candidate-link extraction only ever scans anchor
+  // tags, so this is invisible to it regardless of rendering. Only used when
+  // no hyperlinked candidate exists, and only a labeled, off-host mention
+  // counts — an unguarded bare-URL scan would just as happily grab a footer
+  // badge or a social-share link.
+  if (!candidates.length) {
+    const textUrl = extractLabeledTextUrl(snapshot.html, source.url);
+    if (textUrl) candidates = [{ url: textUrl, role: "detail", authority: "destination" }];
+  }
+  if (!candidates.length) return { opportunityId: row.opportunity_id, decision: "unresolved", candidateCount: 0, authoritativeUrl: null, basis: null, reasons: ["No first-party destination candidate was found on the source page, as a link or as labeled text."] };
 
   // The opportunity's own stored title/organization are the identity to
   // reconcile against — more authoritative than anything re-extracted from
@@ -123,15 +170,15 @@ async function repairOne(row: RepairCandidateRow, adapter: GenericHtmlAdapter, l
   const opportunityIdentity = { key: "opportunity", canonicalUrl: null, title: row.title, organization: row.organization_name, deadline: null };
 
   for (const candidate of candidates) {
-    let destinationSnapshot;
+    let destinationFetched;
     try {
-      destinationSnapshot = await adapter.fetch({ run, source: { ...source, id: `${source.id}:destination`, url: candidate.url } });
+      destinationFetched = await fetchAndExtract(adapter, run, { ...source, id: `${source.id}:destination`, url: candidate.url }, renderClient, logger);
     } catch (error) {
       logger.warn(`[missa-ingestion-v2] repair destination fetch failed for ${row.opportunity_id} -> ${candidate.url}: ${error instanceof Error ? error.message : String(error)}`);
       continue;
     }
-    const destinationExtraction = await adapter.extract({ run, source, snapshot: destinationSnapshot }, destinationSnapshot);
-    const destinationIdentity = buildOpportunityIdentity(destinationExtraction, destinationSnapshot.finalUrl || destinationSnapshot.url);
+    const destinationSnapshot = destinationFetched.snapshot;
+    const destinationIdentity = buildOpportunityIdentity(destinationFetched.extraction, destinationSnapshot.finalUrl || destinationSnapshot.url);
     const identity = compareOpportunityIdentityDetailed(opportunityIdentity, destinationIdentity);
     if (identity.decision === "same") {
       return { opportunityId: row.opportunity_id, decision: "repaired", candidateCount: candidates.length, authoritativeUrl: destinationSnapshot.finalUrl || destinationSnapshot.url, basis: identity.basis, reasons: [`Reconciled to ${destinationIdentity.title ?? "the destination page"} via ${identity.basis}.`] };
@@ -159,6 +206,7 @@ export interface RepairTickOptions {
   limit?: number;
   apply?: boolean;
   logger?: Pick<Console, "info" | "warn">;
+  renderClient?: RenderClient;
 }
 
 export interface RepairTickResult {
@@ -174,11 +222,12 @@ export async function runRepairTick(pool: Pool, options: RepairTickOptions = {})
   const apply = options.apply ?? false;
   await ensureRepairSchema(pool);
   const adapter = new GenericHtmlAdapter();
+  const renderClient = options.renderClient ?? createRenderClient();
   const rows = await findCandidates(pool, options.limit ?? 25);
   const counts = { repaired: 0, unresolved: 0, error: 0 };
 
   for (const row of rows) {
-    const outcome = await repairOne(row, adapter, logger);
+    const outcome = await repairOne(row, adapter, renderClient, logger);
     counts[outcome.decision] += 1;
     let applied = false;
     if (apply && outcome.decision === "repaired" && outcome.authoritativeUrl) {

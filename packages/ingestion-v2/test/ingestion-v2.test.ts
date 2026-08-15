@@ -823,3 +823,45 @@ test("repair candidates are scoped to directory-sourced, unreconciled reviewable
   assert.match(queryText, /s\.kind = 'directory'/);
   assert.match(queryText, /destination_reconciled, false\) = false/);
 });
+
+test("a plain-text organizer URL is found when no href candidate exists", async () => {
+  // Reproduces the live finding against a real quarantined record: the
+  // organizer's URL sat as plain text next to "website:" on a resartis.org
+  // page with zero genuine outbound hyperlinks — only theme/CDN boilerplate.
+  const { runRepairTick } = await import("../src/repair.js");
+  const html = `<html><body><h1>SÍM Residency Reykjavík Open Call 2027</h1>
+    <p>The SÍM Residency invites artists to apply for its programme.</p>
+    <p>Website: https://www.sim-residency.info/apply</p>
+    <footer><a href="https://fonts.gstatic.com">fonts</a><a href="https://wordpress.org/">wp</a></footer>
+    </body></html>`;
+  const destinationHtml = `<html><body><h1>SÍM Residency Reykjavík Open Call 2027</h1><p>Applications open now.</p></body></html>`;
+
+  const responses = new Map([
+    ["https://resartis.org/open-call/sim-residency-reykjavik-open-call-2027-2/", html],
+    ["https://www.sim-residency.info/apply", destinationHtml],
+  ]);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("", { status: 404 });
+    const body = responses.get(url);
+    if (body) return new Response(body, { status: 200, headers: { "content-type": "text/html" } });
+    return new Response("not found", { status: 404 });
+  }) as unknown as typeof fetch;
+
+  const row = { opportunity_id: "opp_sim", title: "SÍM Residency Reykjavík Open Call 2027", organization_name: null, source_url: "https://resartis.org/open-call/sim-residency-reykjavik-open-call-2027-2/", source_kind: "directory" };
+  const pool = {
+    query: async (text: string) => {
+      if (/select o\.id as opportunity_id/.test(text)) return { rows: [row], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    },
+    connect: async () => ({ query: async () => ({ rows: [], rowCount: 0 }), release: () => undefined }),
+  } as unknown as import("pg").Pool;
+
+  try {
+    const result = await runRepairTick(pool, { apply: false, limit: 5, logger: { info: () => undefined, warn: () => undefined } });
+    assert.equal(result.repaired, 1, "the plain-text destination must be found and reconciled by exact title match");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
