@@ -30,12 +30,34 @@ function keyPart(value: string | null): string {
   return (value ?? "").toLowerCase().normalize("NFKC").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
-/** Stable, source-independent identity used for dedupe review; it never publishes by itself. */
+/**
+ * Stable, source-independent identity used for dedupe review; it never
+ * publishes by itself.
+ *
+ * `canonicalUrl` must be the URL of the page this extraction came FROM, never
+ * a URL the page merely links to. `result.candidateLinks` holds outbound
+ * links — pages the page is pointing at, not claiming to be. A prior version
+ * fell back to the first outbound detail/apply link when no canonicalUrl was
+ * given, which made a page's "identity" quietly equal to a destination it had
+ * not been verified against yet. Verified live: a directory listing titled
+ * "Creative Professionals Talent Recruitment Initiative" reconciled as the
+ * SAME opportunity as a destination titled "Pollock-Krasner Foundation
+ * Grants" purely because that destination was the very link the fallback had
+ * borrowed as the source's own canonical URL — a comparison against itself,
+ * not against independent evidence.
+ *
+ * There is no safe fallback for a self-referential URL: an extraction result
+ * has no built-in notion of "the URL I was fetched from." Callers must pass
+ * canonicalUrl explicitly from the snapshot that produced the extraction.
+ * Omitting it is not an error — many extractions (e.g. a destination fetched
+ * before its own URL is known) legitimately have none — but it must never be
+ * silently invented from an outbound link.
+ */
 export function buildOpportunityIdentity(result: ExtractionResult, canonicalUrl?: string | null): OpportunityIdentity {
   const title = value(result, "title");
   const organization = value(result, "organization");
   const deadline = value(result, "deadline") ?? value(result, "deadlineDate");
-  const url = canonicalizeOpportunityUrl(canonicalUrl ?? result.candidateLinks.find((candidate) => candidate.role === "detail" || candidate.role === "apply")?.url);
+  const url = canonicalizeOpportunityUrl(canonicalUrl ?? null);
   const identity = [keyPart(title), keyPart(organization), keyPart(deadline), keyPart(url)].filter(Boolean).join("|");
   return { key: identity || "unidentifiable", canonicalUrl: url, title, organization, deadline };
 }

@@ -36,7 +36,7 @@ function fieldsForSnapshot(fields: ExtractionResult["fields"], snapshotId: strin
 }
 
 function deterministicReconciliation(input: PublisherInput): DestinationReconciliation {
-  const sourceIdentity = buildOpportunityIdentity(input.sourceExtraction);
+  const sourceIdentity = buildOpportunityIdentity(input.sourceExtraction, input.sourceSnapshot.finalUrl || input.sourceSnapshot.url);
   const candidates = input.sourceExtraction.candidateLinks.filter((candidate) => (candidate.role === "detail" || candidate.role === "apply") && candidate.authority === "destination");
   if (!candidates.length) return { decision: "reject", basis: "none", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["No authoritative detail or application link was classified from the source page."] };
 

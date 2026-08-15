@@ -692,3 +692,44 @@ test("a stage queue bundle is named for its stage and shares the v2 prefix", asy
   const { PIPELINE_STAGES } = await import("../src/stages.js");
   assert.deepEqual(PIPELINE_STAGES, ["fetch", "decide", "write"]);
 });
+
+test("a source's identity cannot be borrowed from a link it merely points to", async () => {
+  const { buildOpportunityIdentity } = await import("../src/identity.js");
+  const listing = { fields: [{ fieldName: "title", rawValue: "Directory Listing", normalizedValue: "Directory Listing", confidence: 1, provenance: { adapterId: "t", method: "t", sourceUrl: "https://directory.example", snapshotId: "s" } }], candidateLinks: [{ url: "https://host.example/grant", role: "detail" as const, authority: "destination" as const }], warnings: [] };
+
+  // No canonicalUrl is supplied. A page has no built-in notion of "the URL I
+  // came from" — it must never be invented from an outbound link.
+  const identity = buildOpportunityIdentity(listing);
+  assert.equal(identity.canonicalUrl, null, "an extraction with no explicit source URL must not borrow one of its own outbound links");
+});
+
+test("reconciliation cannot pass by comparing a source's borrowed identity against itself", async () => {
+  // Reproduces the exact failure observed against production: a directory
+  // listing ("Creative Professionals Talent Recruitment Initiative") and an
+  // unrelated destination ("Pollock-Krasner Foundation Grants") reconciled as
+  // the SAME opportunity, decision=pass basis=canonical-url, purely because
+  // the source's identity had silently borrowed the destination's own URL.
+  const { reviewForPublication } = await import("../src/publisher.js");
+  const url = "https://creative-capital.org/opportunities/pollock-krasner-foundation-grants/";
+  const snapshot = (id: string, pageUrl: string) => ({
+    id, runId: "run", sourceId: "src", url: pageUrl, finalUrl: pageUrl, fetchedAt: new Date().toISOString(),
+    statusCode: 200, contentType: "text/html", contentHash: id, html: "<html></html>", rendered: false,
+  });
+  const field = (snapshotId: string, name: string, value: string, sourceUrl: string) => ({ fieldName: name, rawValue: value, normalizedValue: value, confidence: 0.9, provenance: { adapterId: "t", method: "t", sourceUrl, snapshotId } });
+
+  const review = await reviewForPublication({
+    source: { id: "s", name: "Creative Capital", url: "https://creative-capital.org/artist-resources/artist-opportunities/", adapterId: "generic-html-v2", kind: "directory", geography: ["global"], opportunityTypes: ["grant"], config: {}, schedule: { lane: "scheduled", cadenceHours: 168 } },
+    sourceSnapshot: snapshot("root", "https://creative-capital.org/artist-resources/artist-opportunities/"),
+    sourceExtraction: {
+      fields: [field("root", "title", "Creative Professionals Talent Recruitment Initiative — gener8tor", "https://creative-capital.org/artist-resources/artist-opportunities/")],
+      candidateLinks: [{ url, role: "detail", authority: "destination" }],
+      warnings: [],
+    },
+    relatedSnapshots: [snapshot("dest", url)],
+    relatedFields: [field("dest", "title", "Pollock-Krasner Foundation Grants", url)],
+  }, { apiKey: "" });
+
+  assert.notEqual(review.reconciliation.basis, "canonical-url", "two different grants must not reconcile via a source URL that was never independently stated");
+  assert.notEqual(review.decision, "approve", "mismatched titles must not auto-approve");
+  assert.equal(review.reconciliation.sourceIdentity.canonicalUrl, "https://creative-capital.org/artist-resources/artist-opportunities", "the source's identity is its own fetched page, not the link it points to");
+});
