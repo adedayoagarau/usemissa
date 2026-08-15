@@ -974,3 +974,19 @@ test("deadlines normalize from the formats pages actually use", async () => {
   assert.equal(normalizeOpportunityDeadline(undefined, now), null);
   assert.equal(normalizeOpportunityDeadline("June 31, 2027", now), null, "an impossible date is rejected, not coerced");
 });
+
+test("navigation words and section headings are not opportunity identities", async () => {
+  // Seen live: a page whose extracted heading was "SUBMIT" passed the identity
+  // gate and was held only by the deadline gate. Chrome must fail identity.
+  const { evaluatePublicationRubric } = await import("../src/publicationRubric.js");
+  const base = {
+    opportunityId: "opp_v2_x", status: "open", submissionState: "available", deadlineDate: "2026-10-01",
+    submissionUrl: "https://host.example/apply", guidelinesUrl: "https://host.example/call",
+    sourceUrl: "https://host.example/", processingSucceededAt: new Date().toISOString(),
+    organizationConfirmed: true, destinationReconciled: true, contentApproved: true, readingPeriodKind: null,
+  };
+  for (const title of ["SUBMIT", "Submissions", "Recent Books", "Open Call", "Grants", "About Us"]) {
+    assert.equal(evaluatePublicationRubric({ ...base, title }).decision, "needs-human", `"${title}" is page chrome, not an identity`);
+  }
+  assert.equal(evaluatePublicationRubric({ ...base, title: "Other Futures Award" }).decision, "publish", "a real name still publishes");
+});

@@ -41,7 +41,17 @@ const ACTIVE_STATUSES = new Set(["opening-soon", "open", "closing-soon", "deadli
 function identityValid(title: string): boolean {
   const normalized = title.toLowerCase().trim();
   if (!normalized) return false;
-  const placeholders = ["here", "continue reading", "read more", "website", "official site", "apply here", "submit here", "learn more", "more info", "apply now", "view details"];
+  // Seen in production: a submission page whose only extracted heading was
+  // "SUBMIT" reached the rubric and was held only by the deadline gate — the
+  // identity gate should have caught it. Single navigation words and generic
+  // section headings are page chrome, not opportunity identities.
+  const placeholders = [
+    "here", "continue reading", "read more", "website", "official site", "apply here", "submit here",
+    "learn more", "more info", "apply now", "view details",
+    "submit", "submissions", "apply", "subscribe", "donate", "about", "about us", "home", "news",
+    "blog", "events", "contact", "grants", "awards", "opportunities", "open call", "open calls",
+    "recent books", "guidelines", "faq",
+  ];
   return !placeholders.includes(normalized) && !/^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/\S*)?$/.test(normalized);
 }
 
