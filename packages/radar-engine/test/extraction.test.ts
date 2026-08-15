@@ -88,6 +88,26 @@ editors@example.org`),
   assert.ok(c.extractionConfidence >= 80, `confidence was ${c.extractionConfidence}`);
 });
 
+test('directory evidence resolves a residency host and first-party destination', () => {
+  const extractor = new DeterministicExtractor({ now: () => REF });
+  const c = extractor.extract(
+    {
+      ...SOURCE,
+      name: 'Multidisciplinary residence listing',
+      url: 'https://resartis.org/open-call/example',
+      kind: 'directory',
+    },
+    snap(`Multidisciplinary residency program
+Casa na Ilha is a retreat space for artists.
+Residency applications are open. Deadline: August 25, 2026.
+Link to more information: https://www.casanailha.org/the-multidisciplinary-residency-program/`),
+  );
+  assert.equal(c.type, 'residency');
+  assert.equal(c.organizationName, 'Casa na Ilha');
+  assert.equal(c.officialUrl, 'https://www.casanailha.org/the-multidisciplinary-residency-program/');
+  assert.notEqual(c.officialUrl, c.url);
+});
+
 test('extractor flags rolling deadlines and suspicious language', () => {
   const extractor = new DeterministicExtractor({ now: () => REF });
   const c = extractor.extract(

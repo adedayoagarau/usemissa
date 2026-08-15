@@ -96,6 +96,11 @@ function extractOrganization(text: string, source: Source): string | undefined {
   if (labeled) return labeled[1].trim();
   const m = /(?:run by|presented by|published by|hosted by)\s*[:\-]\s*([^\n.]+)/i.exec(text);
   if (m) return m[1].trim();
+  // Many directory pages introduce the host in the first sentence rather
+  // than using an Organization label. Keep this conservative: only accept a
+  // named entity immediately before an explicit host description.
+  const intro = /^\s*([A-Z][A-Za-z0-9&'’.,()\- ]{2,100}?)\s+is\s+(?:a|an|the)\s+(?:retreat|residency|residence|foundation|organization|institution|program|space)\b/m.exec(text);
+  if (intro) return intro[1].trim().replace(/[.,]+$/u, '');
   return source.kind === 'organization-website' ? source.name : undefined;
 }
 

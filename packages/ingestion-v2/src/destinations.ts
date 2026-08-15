@@ -22,6 +22,23 @@ export interface DestinationCandidate {
   request?: DestinationRequest;
 }
 
+/** Directory pages are evidence indexes. External opportunity/application
+ * links are potential first-party destinations even when a source registry
+ * did not provide a bespoke pattern for that directory. */
+export function isPotentialDestination(source: SourceDefinition, candidate: DestinationCandidate): boolean {
+  if (!candidate.url || candidate.role === 'feed') return false;
+  if (candidate.authority === 'destination' && (candidate.role === 'detail' || candidate.role === 'apply')) return true;
+  if (source.kind !== 'directory') return false;
+  try {
+    const sourceHost = new URL(source.url).hostname.replace(/^www\./, '');
+    const candidateHost = new URL(candidate.url).hostname.replace(/^www\./, '');
+    if (sourceHost === candidateHost) return false;
+  } catch {
+    return false;
+  }
+  return /apply|application|submit|opportunit|grant|award|contest|residen|fellowship|open[- ]?call|program|call/i.test(`${candidate.url} ${candidate.title ?? ''}`);
+}
+
 export interface DestinationConfig {
   pageRole?: "landing" | "detail";
   rules?: DestinationRule[];

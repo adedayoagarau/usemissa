@@ -36,6 +36,7 @@ const EXTRACTION_TOOL: Anthropic.Tool = {
     properties: {
       title: { type: 'string' },
       organizationName: { type: 'string' },
+      officialUrl: { type: 'string', description: 'First-party program or application URL. Never return a directory URL when it only reposts the opportunity.' },
       type: { type: 'string', enum: OPPORTUNITY_TYPES },
       genres: { type: 'array', items: { type: 'string' } },
       taxonomyTermIds: { type: 'array', items: { type: 'string', maxLength: 80 }, description: 'Only IDs from the candidate taxonomy term list in the prompt. Never invent an ID.' },
@@ -67,6 +68,7 @@ const EXTRACTION_TOOL: Anthropic.Tool = {
 interface ExtractionFields {
   title?: string;
   organizationName?: string;
+  officialUrl?: string;
   type?: string;
   genres?: string[];
   taxonomyTermIds?: string[];
@@ -152,6 +154,7 @@ export class LlmExtractor implements Extractor {
       extractedAt: now.toISOString(),
       title: fields.title ?? source.name,
       organizationName: fields.organizationName,
+      officialUrl: fields.officialUrl ?? (source.kind === 'organization-website' ? source.url : undefined),
       type: isOpportunityType(fields.type) ? fields.type : 'open-call',
       genres: fields.genres ?? [],
       taxonomyAssignments: (() => {
@@ -191,7 +194,15 @@ export class LlmExtractor implements Extractor {
 
   private async callModel(pageText: string, candidateTerms: CandidateTaxonomyTerm[]): Promise<ExtractionFields> {
     const candidateList = candidateTerms.map((term) => `${term.id} — ${term.label} (${term.facet})`).join('\n');
-    const prompt = `Extract the opportunity listing fields from this page text. For taxonomy, choose only IDs from this candidate list; if none apply, return an empty taxonomyTermIds array. Do not invent IDs and do not infer from file formats.\n\nCandidate taxonomy terms:\n${candidateList || '(none)'}\n\nPage text:\n${pageText.slice(0, 12_000)}`;
+    const prompt = `Extract the opportunity listing fields from this page text. For taxonomy, choose only IDs from this candidate list; if none apply, return an empty taxonomyTermIds array. Do not invent IDs and do not infer from file formats.
+
+Organization and destination resolution: organizationName must be the named organization, residency, program, or host that actually runs the opportunity. Look in the page title, introductory copy, sidebar, author/byline, organizer labels, and linked organization listing. Directory names such as Res Artis are sources, not the organizer, unless the page explicitly says they run the call. If the page says “Casa na Ilha is a retreat space…” return “Casa na Ilha”. Do not return “Organization not listed”, the directory name, or a guessed entity. officialUrl must be the first-party program or application URL. A directory or repost URL is evidence only and must never be returned as officialUrl when the page links to the host’s own site.
+
+Candidate taxonomy terms:
+${candidateList || '(none)'}
+
+Page text:
+${pageText.slice(0, 12_000)}`;
     if (this.provider === 'deepseek') return this.callDeepSeek(prompt);
     const message = await this.client!.messages.create({
       model: this.model, max_tokens: 1024, tools: [EXTRACTION_TOOL],

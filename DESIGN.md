@@ -216,14 +216,17 @@ The organization product covers organization setup, open calls, submissions, rev
 
 ## 4. Typography
 
-Missa uses one primary family with a dedicated technical companion.
+Missa uses one primary family with a dedicated technical companion. The
+typography loaded by `apps/web/app/layout.tsx` is authoritative: Ysabeau carries
+display and product UI, while Fragment Mono is reserved for technical and
+tabular metadata.
 
 ### Families
 
-- **Ysabeau:** marketing display, page-level headings, opportunity titles, navigation, UI, body copy, forms, buttons, cards, and tables. Use the variable family across 100–900; display weights are intentionally strong.
+- **Ysabeau:** marketing display, page-level headings, opportunity titles, navigation, UI, body copy, forms, buttons, cards, tables, sentences, and actions. Use the variable family across 100–900; display weights are intentionally strong.
 - **Ysabeau Office treatment:** UI, forms, deadlines, fees, and counts. Use `font-optical-sizing: auto` and tabular numerals for changing values.
 - **Ysabeau SC treatment:** small labels and category markers through small-caps OpenType styling.
-- **Fragment Mono:** dates, deadlines, IDs, counts, measurements, and compact system metadata.
+- **Fragment Mono:** dates, deadlines, IDs, counts, measurements, handles, durations, and compact technical or tabular metadata. Do not use it for sentences, button labels, or actions.
 
 ### Type scale
 
@@ -270,7 +273,115 @@ The primary spacing rhythm is 8px. The 4px and 12px values exist for compact int
 - Separate major sections with space before adding a box or background.
 - Do not wrap every block in a card.
 
-## 6. Shape, Borders, and Depth
+## 6. Spacing System
+
+Spacing is a system, not a per-region judgement call. Every spacing decision
+names one of four types, follows the two laws below, and uses the assigned
+density mode for the surface family.
+
+### Spacing types
+
+| Type | What it is | Example |
+|---|---|---|
+| **Inset** | Padding inside a container | Card padding, page gutter |
+| **Stack** | Vertical space between stacked elements | Row to row, group to group, section to section |
+| **Inline** | Horizontal space between adjacent elements | Button to button, label to control |
+| **Gap** | Space between grid or flex children | Card grid, sample-mode columns |
+
+Name the type in code comments and review discussion.
+
+### Spacing laws
+
+**Law 1 — Internal is tighter than external.** A component's inset is smaller
+than the stack between that component and its neighbour. When they are equal,
+the interface stops signalling what is a group.
+
+**Law 2 — Between-group is at least twice within-group.** If rows inside a
+group sit at 12, groups sit at 24 or more, and sections at 48 or more. This is
+arithmetic, not taste; a reviewer checks it by doubling.
+
+### Density modes
+
+Each mode is a doubling ladder anchored at a different base. Every value already
+exists in the scale above.
+
+| Mode | Base | Row | Group | Section | Inset | Gap |
+|---|---:|---:|---:|---:|---:|---:|
+| **Compact** | 8 | 8 | 16 | 32 | 16 | 16 |
+| **Comfortable** | 12 | 12 | 24 | 48 | 24 | 24 |
+| **Spacious** | 16 | 16 | 32 | 64 | 32 | 32 |
+
+Spacious may use **96** for a major break between top-level page sections on
+marketing surfaces. This is the only permitted value outside the ladder, and
+it is a Stack value only.
+
+Borderless grid children use the next step up for Gap, because space is the
+only boundary. Bordered or filled children use the ladder value.
+
+### Surface family assignment
+
+| Family | Mode | Routes |
+|---|---|---|
+| Public / marketing | Spacious | `/`, `/guides`, `/guides/*`, `/about`, `/methodology`, `/discover/*` |
+| Public record | Comfortable | `/opportunities`, `/opportunities/*`, `/journals/*`, `/@handle`, `/profile/*` |
+| Creator product | Comfortable | `/profile`, `/settings/*`, `/tracker`, `/library/*`, `/inbox`, `/calendar` |
+| Organization | Compact | Organization workspace, builder, submissions, reviews, decisions, messages, delivery, insights, people, settings |
+| Reviewer | Compact | Reviewer queue and work surfaces |
+| Platform Admin | Compact | All admin routes |
+
+A surface does not mix modes. A dense table inside a Comfortable surface may
+keep Comfortable stacks around it and use Compact internally only within the
+table itself; declare that explicitly.
+
+### Fixed relationship tokens
+
+These concern hit targets and attachment, not reading rhythm, so they do not
+vary by mode.
+
+| Relationship | Value |
+|---|---:|
+| Label to its control | 8 |
+| Helper text to the thing it qualifies | 8 |
+| Adjacent bordered or filled controls | 12 |
+| Adjacent borderless controls | 24 |
+| Unrelated control groups | 24 minimum, and at least 2× the intra-group inline gap |
+| Minimum control height and hit target | 44 (Profile/public), 36 (Compact surfaces), never below 44 on touch |
+
+### Page gutters
+
+| Mode | < 640 | 640–1024 | > 1024 |
+|---|---:|---:|---:|
+| Compact | 16 | 24 | 24 |
+| Comfortable | 24 | 32 | 48 |
+| Spacious | 24 | 40 | 64 |
+
+Every top-level section on a page shares one gutter. A section that sets its
+own horizontal inset is a bug.
+
+### Alignment and responsive rules
+
+- Use one shared leading edge per column. Pick a small set of anchors and reuse them.
+- A title above a card takes the card's content inset, not its outer edge. Store the inset once and read it from both.
+- Use one indent step per level of nesting: the mode's Group value.
+- Numbers right-align with tabular figures; text left-aligns.
+- Use logical properties only: `ms-*`, `pe-*`, `text-start`, and `border-e`. Never `ml-*`, `pr-*`, `text-left`, or `border-r`.
+- Use container queries for components and viewport queries for the page shell only.
+- Break where content stops fitting, not at device widths.
+- Test the smallest and largest supported sizes first.
+- Use `scrollbar-gutter: stable` on the scroll container.
+- Add safe-area insets to fixed or sticky controls, with `viewport-fit=cover` on the viewport meta.
+
+### Failure modes
+
+| Failure | What it looks like | Missa example |
+|---|---|---|
+| Sloppy spacing | Repeated relationships use different gaps | ~150px void above an audio player from grid stretch |
+| Border bloat | Every group gets another outline | Credits boxed instead of hairline-separated |
+| Broken continuity | The eye bounces; content sits off the obvious path | Profile name detached from the body column |
+| Content cramming | The layout uses every pixel | Video still overflowing its card |
+| Overlap | Absolute positioning without a container guard | Fixture labels printed on top of fixtures at 390px |
+
+## 7. Shape, Borders, and Depth
 
 Missa uses sober rectangular geometry:
 
@@ -284,7 +395,7 @@ Primary buttons are not pills. Cards are not floating bubbles.
 
 Depth is mostly created by white surfaces, neutral surface changes, hairline borders, and clear spacing. Use the subtle shadow only where a white object would otherwise disappear. Reserve the overlay shadow for dialogs, popovers, command menus, and sheets.
 
-## 7. Core Components
+## 8. Core Components
 
 ### Buttons
 
@@ -356,7 +467,7 @@ Show “was” and “now” explicitly. Use muted text and typographic emphasis
 - Dialog: consequential confirmation, not routine feedback.
 - Skeleton: loading structure for lists and cards; avoid layout shift.
 
-## 8. Interaction and Motion
+## 9. Interaction and Motion
 
 Motion explains change and confirms response. It is not ambient decoration inside the product.
 
@@ -368,7 +479,7 @@ Motion explains change and confirms response. It is not ambient decoration insid
 - Respect `prefers-reduced-motion`.
 - Avoid springy cards, parallax in app views, looping gradients, and celebratory motion for routine actions.
 
-## 9. Responsive Behaviour
+## 10. Responsive Behaviour
 
 - Mobile: below 768px; single-column creator product, drawer navigation, labelled list rows.
 - Tablet: 768–1023px; two-column card layouts where appropriate.
@@ -377,7 +488,7 @@ Motion explains change and confirms response. It is not ambient decoration insid
 
 The creator product must be fully usable on mobile. Organization mobile must remain functional, but dense administration may recommend desktop without blocking essential actions. Review tasks should remain straightforward on tablet and mobile because reviewers may be occasional users.
 
-## 10. Accessibility
+## 11. Accessibility
 
 WCAG 2.1 AA is the minimum.
 
@@ -392,7 +503,7 @@ WCAG 2.1 AA is the minimum.
 9. Motion honors reduced-motion preferences.
 10. Error copy explains how to recover.
 
-## 11. Content and Interface Voice
+## 12. Content and Interface Voice
 
 Use plain industry nouns and direct actions. Personality belongs in supportive microcopy, onboarding, and empty states—not in navigation labels or critical instructions.
 
@@ -402,7 +513,7 @@ Use plain industry nouns and direct actions. Personality belongs in supportive m
 - Say what changed and why.
 - Avoid robotic confidence language, unexplained scores, punitive rejection language, and generic “No data” empty states.
 
-## 12. Do and Do Not
+## 13. Do and Do Not
 
 ### Do
 
@@ -425,7 +536,7 @@ Use plain industry nouns and direct actions. Personality belongs in supportive m
 - Do not make creator workflows dense at the expense of calm comprehension.
 - Do not introduce new colors, fonts, radii, or spacing values inside a component.
 
-## 13. Implementation Contract
+## 14. Implementation Contract
 
 1. Use the existing shadcn/ui primitives as the base component layer.
 2. Map implementation variables to the semantic tokens in this file.
@@ -435,7 +546,7 @@ Use plain industry nouns and direct actions. Personality belongs in supportive m
 6. Validate desktop, 390px mobile, keyboard navigation, focus order, loading, empty, error, and populated states.
 7. Treat this file as a living draft until the major representative screens have been reviewed together.
 
-## 14. Open Decisions
+## 15. Open Decisions
 
 The following remain intentionally provisional:
 

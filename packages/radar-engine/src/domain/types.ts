@@ -201,6 +201,8 @@ export interface OpportunityCandidate {
   extractedAt: IsoDateTime;
   title?: string;
   organizationName?: string;
+  /** First-party destination extracted from the listing or linked evidence. */
+  officialUrl?: string;
   type: OpportunityType;
   genres: string[];
   /** Canonical proposals emitted beside legacy genre strings during cutover. */

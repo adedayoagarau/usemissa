@@ -74,7 +74,7 @@ export function AuthForm({
       if (usingNeonAuth && neonAuthClient) {
         try {
           const result =
-            mode === 'login'
+            mode === "login"
               ? await neonAuthClient.signIn.email({ email, password })
               : await neonAuthClient.signUp.email({
                   email,
@@ -85,19 +85,19 @@ export function AuthForm({
             setError(neonAuthErrorMessage(result.error, mode));
             return;
           }
-          response = await fetch('/api/auth/missa-session', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
+          response = await fetch("/api/auth/missa-session", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
             body: JSON.stringify({ mode }),
           });
         } catch {
-          setError('Authentication is temporarily unavailable. Try again.');
+          setError("Authentication is temporarily unavailable. Try again.");
           return;
         }
       } else {
         response = await fetch(`/api/auth/${mode}`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          method: "POST",
+          headers: { "content-type": "application/json" },
           body: JSON.stringify(
             mode === "login"
               ? { email, password }

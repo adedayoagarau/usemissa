@@ -1,4 +1,5 @@
 import { buildOpportunityIdentity, compareOpportunityIdentityDetailed, type IdentityMatchBasis, type OpportunityIdentity } from "./identity.js";
+import { isPotentialDestination } from "./destinations.js";
 import type { ExtractionResult, PageSnapshot, SourceDefinition } from "./contracts.js";
 
 export type PublisherDecision = "approve" | "review" | "reject";
@@ -36,8 +37,12 @@ function fieldsForSnapshot(fields: ExtractionResult["fields"], snapshotId: strin
 }
 
 function deterministicReconciliation(input: PublisherInput): DestinationReconciliation {
+  // The source's own identity comes from the page it was fetched from, never
+  // from a link it points to (see identity.ts) — isPotentialDestination widens
+  // which outbound links count as candidates, but must not touch how the
+  // source's own identity is built.
   const sourceIdentity = buildOpportunityIdentity(input.sourceExtraction, input.sourceSnapshot.finalUrl || input.sourceSnapshot.url);
-  const candidates = input.sourceExtraction.candidateLinks.filter((candidate) => (candidate.role === "detail" || candidate.role === "apply") && candidate.authority === "destination");
+  const candidates = input.sourceExtraction.candidateLinks.filter((candidate) => isPotentialDestination(input.source, candidate));
   if (!candidates.length) return { decision: "reject", basis: "none", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["No authoritative detail or application link was classified from the source page."] };
 
   for (const candidate of candidates) {

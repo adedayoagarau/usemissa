@@ -129,7 +129,7 @@ export function OpportunityDetailView({
           <div className={styles.heroCopy}>
             <Badge variant="outline">{typeLabel(opportunity.type)}</Badge>
             <h1 id="opportunity-title">{opportunity.title}</h1>
-            <p className={styles.organization}>{opportunity.organizationName ?? 'Organization not listed'}</p>
+            <p className={styles.organization}>{opportunity.organizationName ?? 'Organization not confirmed'}</p>
             <p className={styles.heroSummary}>{summary}</p>
             {relatedProfile ? <p className={styles.organization}>Journal / press profile: <Link href={`/journals/${encodeURIComponent(relatedProfile.id)}`}>{relatedProfile.name}</Link></p> : null}
             <div className={styles.heroActions}>
