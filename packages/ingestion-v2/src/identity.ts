@@ -31,6 +31,68 @@ function keyPart(value: string | null): string {
 }
 
 /**
+ * Short-label similarity: edit distance, with a substring bonus for the
+ * "Casa na Ilha" / "Casa Na Ilha Residency" shape (one name embedded in a
+ * longer variant of itself). This is the same technique @missa/taxonomy's
+ * resolver uses to match a source phrase against a controlled vocabulary
+ * label — reused here because organization names have the same shape
+ * problem: short, mostly-exact strings with minor suffix/prefix variation.
+ * It is deliberately not reused for TITLE matching below; taxonomy labels
+ * and organization names are short, but opportunity titles are sentence-like
+ * and structured differently across a directory and a host page (dates and
+ * location on one side, none on the other), so edit distance on the full
+ * string is the wrong tool there.
+ */
+function editDistance(a: string, b: string): number {
+  const row = Array.from({ length: b.length + 1 }, (_, index) => index);
+  for (let i = 1; i <= a.length; i += 1) {
+    let diagonal = row[0];
+    row[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const above = row[j];
+      row[j] = a[i - 1] === b[j - 1] ? diagonal : Math.min(diagonal + 1, row[j] + 1, row[j - 1] + 1);
+      diagonal = above;
+    }
+  }
+  return row[b.length];
+}
+
+function labelSimilarity(a: string, b: string): number {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  if (b.length >= 5 && (a.includes(b) || b.includes(a))) return 0.88;
+  const distance = editDistance(a, b);
+  return 1 - distance / Math.max(a.length, b.length, 1);
+}
+
+const STOPWORDS = new Set(["the", "a", "an", "and", "or", "of", "for", "in", "at", "to", "on", "by", "with", "from"]);
+
+/**
+ * Titles are sentence-like and vary in structure across a directory and a
+ * host page, so they are compared by significant-word overlap rather than
+ * edit distance. This is intentionally coarse: it is only ever used to
+ * strengthen an organization match that has already passed, never to
+ * establish identity by itself (see the "review" band below).
+ */
+/** A crude 6-character-prefix stem, so "residence"/"residency" and "grant"/"grants" count as the same word without a real stemmer. */
+function significantWords(value: string): Set<string> {
+  return new Set(
+    value.split(/\s+/)
+      .filter((word) => word.length > 2 && !STOPWORDS.has(word))
+      .map((word) => word.slice(0, Math.min(word.length, 6))),
+  );
+}
+
+function titleOverlap(a: string, b: string): number {
+  const left = significantWords(a);
+  const right = significantWords(b);
+  if (!left.size || !right.size) return 0;
+  let shared = 0;
+  for (const word of left) if (right.has(word)) shared += 1;
+  return shared / Math.min(left.size, right.size);
+}
+
+/**
  * Stable, source-independent identity used for dedupe review; it never
  * publishes by itself.
  *
@@ -70,11 +132,40 @@ export interface IdentityComparison {
   basis: IdentityMatchBasis;
 }
 
+/**
+ * Follows Gary's documented organization-matching bands
+ * (tools/pw-grants-crawler/PROFILE_SCHEMA.md): an exact host/name match
+ * attaches directly; a similar name creates a review candidate, never an
+ * automatic merge; a single shared, weak signal never merges by itself.
+ *
+ * "Title and organization" now accepts fuzzy agreement, not only exact
+ * strings — a directory's phrasing rarely matches a host page's verbatim
+ * ("Multidisciplinary Residence Oct/Nov/Dec 26 — Ilhabela Island, Brazil" vs
+ * "The Multidisciplinary Residency Program"). But per Gary's rule, a strong
+ * organization match by itself still only earns "review": it is corroboration
+ * for a title match, not a title substitute. Two records with the same
+ * organization can legitimately be two different opportunities.
+ */
 export function compareOpportunityIdentityDetailed(left: OpportunityIdentity, right: OpportunityIdentity): IdentityComparison {
   if (left.key === "unidentifiable" || right.key === "unidentifiable") return { decision: "review", basis: "none" };
   if (left.canonicalUrl && right.canonicalUrl && left.canonicalUrl === right.canonicalUrl) return { decision: "same", basis: "canonical-url" };
-  if (keyPart(left.title) && keyPart(left.title) === keyPart(right.title) && keyPart(left.organization) === keyPart(right.organization)) return { decision: "same", basis: "title-and-organization" };
-  if (keyPart(left.title) === keyPart(right.title) || (left.deadline && left.deadline === right.deadline)) return { decision: "review", basis: "weak" };
+
+  const leftTitle = keyPart(left.title);
+  const rightTitle = keyPart(right.title);
+  const leftOrg = keyPart(left.organization);
+  const rightOrg = keyPart(right.organization);
+  if (leftTitle && leftTitle === rightTitle && leftOrg === rightOrg) return { decision: "same", basis: "title-and-organization" };
+
+  const orgSimilarity = leftOrg && rightOrg ? labelSimilarity(leftOrg, rightOrg) : 0;
+  // 0.85, not 0.9: the substring-containment case ("Casa na Ilha" inside "Casa Na
+  // Ilha Residency") is scored at a flat 0.88 by labelSimilarity, and that is
+  // the single most common real-world variant. A 0.9 floor would exclude it.
+  const strongOrgMatch = orgSimilarity >= 0.85;
+  const overlap = leftTitle && rightTitle ? titleOverlap(leftTitle, rightTitle) : 0;
+  if (strongOrgMatch && overlap >= 0.6) return { decision: "same", basis: "title-and-organization" };
+  if (strongOrgMatch || overlap >= 0.6 || (leftTitle && leftTitle === rightTitle) || (left.deadline && left.deadline === right.deadline)) {
+    return { decision: "review", basis: "weak" };
+  }
   return { decision: "different", basis: "none" };
 }
 

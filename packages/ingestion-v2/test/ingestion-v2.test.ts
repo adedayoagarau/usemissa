@@ -733,3 +733,39 @@ test("reconciliation cannot pass by comparing a source's borrowed identity again
   assert.notEqual(review.decision, "approve", "mismatched titles must not auto-approve");
   assert.equal(review.reconciliation.sourceIdentity.canonicalUrl, "https://creative-capital.org/artist-resources/artist-opportunities", "the source's identity is its own fetched page, not the link it points to");
 });
+
+test("a directory's phrasing and a host's phrasing reconcile via organization plus title overlap", async () => {
+  const { compareOpportunityIdentityDetailed } = await import("../src/identity.js");
+  // The exact shape that motivated this: a directory listing's title carries
+  // dates and a location the host page's title does not.
+  const directory = { key: "x", canonicalUrl: "https://resartis.org/open-call/multidisciplinary-residence-oct-nov-dec26-ilhabela-island-brazil/", title: "Multidisciplinary Residence Oct/Nov/Dec 26 — Ilhabela Island, Brazil", organization: "Casa na Ilha", deadline: null };
+  const host = { key: "y", canonicalUrl: "https://www.casanailha.org/the-multidisciplinary-residency-program/", title: "The Multidisciplinary Residency Program", organization: "Casa Na Ilha Residency", deadline: null };
+  const result = compareOpportunityIdentityDetailed(directory, host);
+  assert.equal(result.decision, "same");
+  assert.equal(result.basis, "title-and-organization");
+});
+
+test("Gary's rule 5: a shared organization alone never merges two different opportunities", async () => {
+  const { compareOpportunityIdentityDetailed } = await import("../src/identity.js");
+  const grant = { key: "a", canonicalUrl: null, title: "Emergency Medical Grant", organization: "Foundation for Contemporary Arts", deadline: null };
+  const fellowship = { key: "b", canonicalUrl: null, title: "Visual Arts Fellowship", organization: "Foundation for Contemporary Arts", deadline: null };
+  const result = compareOpportunityIdentityDetailed(grant, fellowship);
+  assert.notEqual(result.decision, "same", "the same organization running two unrelated opportunities must not auto-merge");
+  assert.equal(result.decision, "review", "a strong organization match alone is corroboration, not proof — it is a review candidate per Gary's rule 4");
+});
+
+test("weak title overlap alone, with no organization signal, stays a review candidate", async () => {
+  const { compareOpportunityIdentityDetailed } = await import("../src/identity.js");
+  const left = { key: "a", canonicalUrl: null, title: "Emerging Photographers Grant Program", organization: null, deadline: null };
+  const right = { key: "b", canonicalUrl: null, title: "Emerging Photographers Award", organization: null, deadline: null };
+  const result = compareOpportunityIdentityDetailed(left, right);
+  assert.equal(result.decision, "review");
+  assert.equal(result.basis, "weak");
+});
+
+test("unrelated organizations and unrelated titles are different, not merely unreviewed", async () => {
+  const { compareOpportunityIdentityDetailed } = await import("../src/identity.js");
+  const left = { key: "a", canonicalUrl: null, title: "Poetry Chapbook Contest", organization: "Small Press Collective", deadline: null };
+  const right = { key: "b", canonicalUrl: null, title: "Documentary Film Fellowship", organization: "National Film Board", deadline: null };
+  assert.equal(compareOpportunityIdentityDetailed(left, right).decision, "different");
+});
