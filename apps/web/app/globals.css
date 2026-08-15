@@ -48,6 +48,17 @@
   --s11: 88px;
   --s12: 96px;
 
+  /* Fixed Inline relationships from DESIGN.md §6.5. These do not change
+     with surface density. */
+  --space-label-control: 8px;
+  --space-helper: 8px;
+  --space-control-inline-bordered: 12px;
+  --space-control-inline-borderless: 24px;
+  --space-control-group: 24px;
+  --control-height-public: 44px;
+  --control-height-compact: 36px;
+  --touch-target-min: 44px;
+
   /* shadcn semantic tokens, remapped to the Missa palette */
   --background: var(--bg);
   --foreground: var(--ink);
@@ -81,6 +92,68 @@
   --sidebar-accent-foreground: var(--accent-deep);
   --sidebar-border: #e6e1e8;
   --sidebar-ring: var(--brand-accent);
+}
+
+/*
+ * Semantic spacing modes from DESIGN.md §6. The surface shells select one
+ * mode in Phase 2; components consume these inherited names rather than
+ * knowing which surface family contains them. Row, Group, and Section are
+ * Stack values; Inset and Gap retain their named types.
+ */
+[data-density='compact'] {
+  --space-row: 8px;
+  --space-group: 16px;
+  --space-section: 32px;
+  --space-inset: 16px;
+  --space-gap: 16px;
+  --space-gutter: 16px;
+}
+
+[data-density='comfortable'] {
+  --space-row: 12px;
+  --space-group: 24px;
+  --space-section: 48px;
+  --space-inset: 24px;
+  --space-gap: 24px;
+  --space-gutter: 24px;
+}
+
+[data-density='spacious'] {
+  --space-row: 16px;
+  --space-group: 32px;
+  --space-section: 64px;
+  --space-inset: 32px;
+  --space-gap: 32px;
+  --space-gutter: 24px;
+  --space-section-major: 96px;
+}
+
+@media (min-width: 640px) {
+  [data-density='compact'] {
+    --space-gutter: 24px;
+  }
+
+  [data-density='comfortable'] {
+    --space-gutter: 32px;
+  }
+
+  [data-density='spacious'] {
+    --space-gutter: 40px;
+  }
+}
+
+@media (min-width: 1025px) {
+  [data-density='compact'] {
+    --space-gutter: 24px;
+  }
+
+  [data-density='comfortable'] {
+    --space-gutter: 48px;
+  }
+
+  [data-density='spacious'] {
+    --space-gutter: 64px;
+  }
 }
 
 body {
@@ -149,6 +222,19 @@ body {
   --font-heading: var(--font-heading), Georgia, serif;
   --font-sans: var(--font-sans), system-ui, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, monospace;
+  /* Semantic spacing utilities: gap-group, space-y-row, p-inset, etc. */
+  --spacing-row: var(--space-row);
+  --spacing-group: var(--space-group);
+  --spacing-section: var(--space-section);
+  --spacing-inset: var(--space-inset);
+  --spacing-gap: var(--space-gap);
+  --spacing-gutter: var(--space-gutter);
+  --spacing-section-major: var(--space-section-major);
+  --spacing-label-control: var(--space-label-control);
+  --spacing-helper: var(--space-helper);
+  --spacing-control-inline-bordered: var(--space-control-inline-bordered);
+  --spacing-control-inline-borderless: var(--space-control-inline-borderless);
+  --spacing-control-group: var(--space-control-group);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
