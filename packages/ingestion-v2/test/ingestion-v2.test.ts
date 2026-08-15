@@ -907,3 +907,70 @@ test("a plausible-but-unconfirmed destination is recorded as needs-review, not l
     globalThis.fetch = originalFetch;
   }
 });
+
+test("an organization's own page is its own first-party destination", async () => {
+  // Measured against production before this branch existed: 98% of the
+  // registry is organization-website sources with no destination rules, so no
+  // outbound link ever qualified and the publisher rejected 586 of 589
+  // completed runs in a day. An org's own page must not be asked to link
+  // outward to prove it is first-party.
+  const { reviewForPublication } = await import("../src/publisher.js");
+  const url = "https://www.casanailha.org/the-multidisciplinary-residency-program/";
+  const review = await reviewForPublication({
+    source: { id: "s", name: "Casa na Ilha", url, adapterId: "generic-html-v2", kind: "organization-website", geography: ["BR"], opportunityTypes: ["residency"], config: {}, schedule: { lane: "scheduled", cadenceHours: 168 } },
+    sourceSnapshot: { id: "root", runId: "r", sourceId: "s", url, finalUrl: url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "h", html: "<html></html>", rendered: false },
+    sourceExtraction: { fields: [{ fieldName: "title", rawValue: "The Multidisciplinary Residency Program", normalizedValue: "The Multidisciplinary Residency Program", confidence: 0.9, provenance: { adapterId: "t", method: "t", sourceUrl: url, snapshotId: "root" } }], candidateLinks: [], warnings: [] },
+    relatedSnapshots: [],
+    relatedFields: [],
+  }, { apiKey: "" });
+  assert.equal(review.reconciliation.decision, "pass");
+  assert.equal(review.reconciliation.basis, "first-party-source");
+  assert.equal(review.reconciliation.authoritativeUrl, url, "the page itself is the destination");
+  assert.notEqual(review.decision, "reject");
+});
+
+test("the first-party branch never rescues a directory", async () => {
+  // The named risk of this change: re-opening the door the 357-quarantine
+  // closed. A directory with no reconcilable first-party destination must
+  // reject exactly as before.
+  const { reviewForPublication } = await import("../src/publisher.js");
+  const url = "https://resartis.org/open-calls/";
+  const review = await reviewForPublication({
+    source: { id: "d", name: "Res Artis", url, adapterId: "generic-html-v2", kind: "directory", geography: ["global"], opportunityTypes: ["residency"], config: {}, schedule: { lane: "scheduled", cadenceHours: 48 } },
+    sourceSnapshot: { id: "root", runId: "r", sourceId: "d", url, finalUrl: url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "h", html: "<html></html>", rendered: false },
+    sourceExtraction: { fields: [{ fieldName: "title", rawValue: "Open Calls", normalizedValue: "Open Calls", confidence: 0.9, provenance: { adapterId: "t", method: "t", sourceUrl: url, snapshotId: "root" } }], candidateLinks: [], warnings: [] },
+    relatedSnapshots: [],
+    relatedFields: [],
+  }, { apiKey: "" });
+  assert.equal(review.decision, "reject", "a directory without a reconciled first-party destination stays rejected");
+  assert.equal(review.reconciliation.basis, "none");
+});
+
+test("a first-party page without a usable title does not pass", async () => {
+  const { reviewForPublication } = await import("../src/publisher.js");
+  const url = "https://example-org.org/";
+  const review = await reviewForPublication({
+    source: { id: "s", name: "Example Org", url, adapterId: "generic-html-v2", kind: "organization-website", geography: ["global"], opportunityTypes: ["grant"], config: {}, schedule: { lane: "scheduled", cadenceHours: 168 } },
+    sourceSnapshot: { id: "root", runId: "r", sourceId: "s", url, finalUrl: url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "h", html: "<html></html>", rendered: false },
+    sourceExtraction: { fields: [], candidateLinks: [], warnings: [] },
+    relatedSnapshots: [],
+    relatedFields: [],
+  }, { apiKey: "" });
+  assert.equal(review.decision, "reject", "no extracted identity means nothing to publish");
+});
+
+test("deadlines normalize from the formats pages actually use", async () => {
+  const { normalizeOpportunityDeadline } = await import("../src/canonicalWriter.js");
+  const now = new Date("2026-08-15T12:00:00Z");
+  assert.deepEqual(normalizeOpportunityDeadline("January 15, 2027", now), { date: "2027-01-15", inferred: false });
+  assert.deepEqual(normalizeOpportunityDeadline("2026-10-01", now), { date: "2026-10-01", inferred: false });
+  assert.deepEqual(normalizeOpportunityDeadline("1 March 2027", now), { date: "2027-03-01", inferred: false });
+  const inferred = normalizeOpportunityDeadline("Deadline: March 1", now);
+  assert.equal(inferred?.date, "2027-03-01", "a missing year is inferred forward, never backward");
+  assert.equal(inferred?.inferred, true);
+  const soon = normalizeOpportunityDeadline("September 30", now);
+  assert.equal(soon?.date, "2026-09-30", "a date still ahead this year stays this year");
+  assert.equal(normalizeOpportunityDeadline("rolling admissions, no deadline", now), null);
+  assert.equal(normalizeOpportunityDeadline(undefined, now), null);
+  assert.equal(normalizeOpportunityDeadline("June 31, 2027", now), null, "an impossible date is rejected, not coerced");
+});
