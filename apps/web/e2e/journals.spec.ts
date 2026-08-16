@@ -21,7 +21,6 @@ type DirectoryResponse = {
 type LinkedOpportunity = {
   id: string;
   title: string;
-  detailUrl: string | null;
   officialWebsite: string | null;
 };
 
@@ -45,7 +44,7 @@ async function directory(
   return (await response.json()) as DirectoryResponse;
 }
 
-test("publishes both profile kinds, keeps filters/search real, and opens linked source details", async ({
+test("publishes both profile kinds, keeps filters/search real, and opens linked opportunities", async ({
   page,
   request,
 }) => {
@@ -102,9 +101,7 @@ test("publishes both profile kinds, keeps filters/search real, and opens linked 
     })();
   expect(profileWithOpportunity).not.toBeNull();
   const opportunity = profileWithOpportunity!.opportunity;
-  expect(opportunity.detailUrl ?? opportunity.officialWebsite).toMatch(
-    /^https?:\/\//,
-  );
+  expect(opportunity.id).toBeTruthy();
 
   for (const profileCase of [
     {
@@ -160,6 +157,9 @@ test("publishes both profile kinds, keeps filters/search real, and opens linked 
         () => document.documentElement.scrollWidth <= window.innerWidth + 1,
       ),
     ).toBeTruthy();
+    await expect(
+      page.getByText(/Original profile|Open source details/),
+    ).toHaveCount(0);
     const detailInteractiveSizes = await page
       .locator("a, button:not(#next-logo), input, select")
       .evaluateAll((elements) =>
@@ -211,22 +211,9 @@ test("publishes both profile kinds, keeps filters/search real, and opens linked 
       name: new RegExp(`Sign in to save ${opportunity.title} to Tracker`),
     }),
   ).toHaveAttribute("href", /\/login\?next=.*intent=save/);
-  if (opportunity.detailUrl ?? opportunity.officialWebsite) {
-    const sourceOpportunityLink = page
-      .locator('a[href^="http"]')
-      .filter({ hasText: /source details|organization website/i })
-      .first();
-    await expect(sourceOpportunityLink).toHaveAttribute("target", "_blank");
-    await expect(sourceOpportunityLink).toContainText("opens in a new site");
-    await expect(sourceOpportunityLink).toHaveAttribute(
-      "href",
-      opportunity.detailUrl ?? opportunity.officialWebsite!,
-    );
-    const linkedResponse = await request.get(
-      opportunity.detailUrl ?? opportunity.officialWebsite!,
-    );
-    expect(linkedResponse.status()).toBe(200);
-  }
+  await expect(
+    page.getByText(/Original profile|Open source details/),
+  ).toHaveCount(0);
   if (profileWithOpportunity!.canonicalAvailable) {
     await missaOpportunityLink.click();
     await expect(page).toHaveURL(

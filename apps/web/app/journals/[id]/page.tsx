@@ -2,7 +2,7 @@ import type { ProfileDetail } from "@missa/radar-adapters";
 import { Bookmark } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
@@ -67,6 +67,9 @@ export default async function JournalDetailPage({
   const { id } = await params;
   const profile = await repository.getById(id);
   if (!profile) notFound();
+  if (profile.id !== id) {
+    permanentRedirect(`/journals/${encodeURIComponent(profile.id)}`);
+  }
 
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(
@@ -167,19 +170,6 @@ export default async function JournalDetailPage({
                   Official website: {UNKNOWN}
                 </span>
               )}
-              {profile.sourceUrl ? (
-                <a
-                  className="inline-flex min-h-11 items-center rounded-lg text-sm font-medium text-primary underline decoration-accent-tint underline-offset-4 hover:text-accent-deep focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                  href={profile.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Original profile (opens in a new site){" "}
-                  <span aria-hidden="true" className="ml-1">
-                    ↗
-                  </span>
-                </a>
-              ) : null}
             </div>
           </div>
         </header>
@@ -319,19 +309,7 @@ export default async function JournalDetailPage({
                               Tracker save unavailable for this linked record
                             </span>
                           )}
-                          {opportunity.detailUrl ? (
-                            <a
-                              href={opportunity.detailUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex min-h-11 items-center rounded-lg text-sm font-medium text-primary underline decoration-accent-tint underline-offset-4 hover:text-accent-deep focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                            >
-                              Open source details (opens in a new site){" "}
-                              <span aria-hidden="true" className="ml-1">
-                                ↗
-                              </span>
-                            </a>
-                          ) : opportunity.officialWebsite ? (
+                          {opportunity.officialWebsite ? (
                             <a
                               href={opportunity.officialWebsite}
                               target="_blank"
