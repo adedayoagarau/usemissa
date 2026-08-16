@@ -48,6 +48,7 @@ eligibility information.
 - Links;
 - private contact relay;
 - Share menu;
+- Profile-specific social preview image;
 - report control.
 
 Only explicitly published information appears. A missing value is omitted; the
@@ -134,6 +135,12 @@ internal processing language.
   organization records. Drafts, Profile, Library, personal Tracker data,
   connections, and creator-owned files are removed.
 - Deletion runs through a durable retry queue before the session is cleared.
+- If Neon Auth removes the sign-in identity before the queue records that
+  stage, the worker resumes only after Neon’s auth tables show that the
+  identity is gone.
+- Public `/@handle` visits enter the first-party page-view ledger. Deleted
+  handles remain held for 90 days; handles with meaningful traffic or
+  permanent aliases remain unavailable.
 
 ## 6. Component authority
 
