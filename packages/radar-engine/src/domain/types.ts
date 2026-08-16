@@ -462,8 +462,19 @@ export interface UserProfile {
   publicProfilePublishedAt?: IsoDateTime;
   /** Durable dismissal for the optional first-Profile handle prompt. */
   handlePromptDismissedAt?: IsoDateTime;
+  /** Private rotation key for the owner-controlled calendar subscription. */
+  calendarFeedKey?: string;
+  calendarFeedConnectedAt?: IsoDateTime;
+  /** Private delivery defaults. Inbox alerts remain available when email is off. */
+  notificationSettings?: ProfileNotificationSettings;
   /** Content explicitly saved to the public portfolio surface. */
   publicPortfolio?: PublicPortfolio;
+}
+
+export interface ProfileNotificationSettings {
+  emailAlerts: boolean;
+  deadlineReminderDays: Array<1 | 3 | 7>;
+  timezone: string;
 }
 
 export type ProfileSocialService =
@@ -708,6 +719,10 @@ export interface Account {
    */
   verifiedEmailDomain?: string;
   active?: boolean;
+  /** Incrementing this invalidates previously issued Missa session cookies. */
+  sessionVersion?: number;
+  /** Account lifecycle tombstone. The original email and auth identity are removed. */
+  deletedAt?: IsoDateTime;
 }
 
 /** Organization roles. `member` remains the compatibility role for existing workspaces. */
@@ -1102,4 +1117,6 @@ export interface Alert {
   read: boolean;
   /** Set only after the alert has been successfully included in an outbound digest. */
   emailSentAt?: IsoDateTime;
+  /** Set when the owner had email delivery turned off for this alert. */
+  emailSuppressedAt?: IsoDateTime;
 }

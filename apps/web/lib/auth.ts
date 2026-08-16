@@ -60,6 +60,7 @@ export async function getSessionAccountFromToken(token: string | undefined): Pro
     const engine = await getEngine();
     const account = engine.store.accounts.get(payload.accountId);
     if (!account || account.active === false) return getNeonSessionAccount();
+    if ((payload.sessionVersion ?? 0) !== (account.sessionVersion ?? 0)) return getNeonSessionAccount();
 
     return { account, memberships: membershipsFor(engine.store, account.id) };
   } catch {
@@ -73,8 +74,8 @@ export async function getSessionAccountFromToken(token: string | undefined): Pro
 /** Issues a new signed session token for an account -- used by the (minimal,
  * pre-Story-2.1) login route so Epic 3's pages have something real to log
  * into and test against. */
-export function issueSessionToken(accountId: string): string {
-  return createSessionToken(accountId, sessionSecret(), new Date());
+export function issueSessionToken(accountId: string, sessionVersion = 0): string {
+  return createSessionToken(accountId, sessionSecret(), new Date(), SESSION_MAX_AGE_SECONDS * 1_000, sessionVersion);
 }
 
 /** Mirrors RadarServer's requireAccount + requireSelf (packages/radar-engine/

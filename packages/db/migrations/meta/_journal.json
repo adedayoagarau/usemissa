@@ -141,6 +141,13 @@
       "when": 1786911000000,
       "tag": "0028_profile_issue_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1786914000000,
+      "tag": "0029_account_deletion_requests",
+      "breakpoints": true
     }
   ]
 }

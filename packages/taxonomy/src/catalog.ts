@@ -100,8 +100,8 @@ export const TAXONOMY_FACETS: TaxonomySeedFacet[] = [
   {
     id: "taxfacet_practice-family",
     key: "practice-family",
-    label: "Practice family",
-    description: "The broad creative or knowledge world a practice belongs to.",
+    label: "Creative area",
+    description: "The broad area the work belongs to.",
     selectionMode: "hierarchical",
     userVisible: true,
     sortOrder: 10,
@@ -110,7 +110,7 @@ export const TAXONOMY_FACETS: TaxonomySeedFacet[] = [
     id: "taxfacet_discipline",
     key: "discipline",
     label: "Discipline",
-    description: "A recognised field a person practises.",
+    description: "A recognised branch of creative work.",
     selectionMode: "hierarchical",
     userVisible: true,
     sortOrder: 20,
@@ -226,12 +226,22 @@ const practiceFamilies = [
   { label: "Craft & material arts", aliases: ["craft", "applied craft"] },
   "Design",
   {
-    label: "Architecture, spatial practice & public realm",
-    aliases: ["architecture and spatial practice", "built environment"],
+    label: "Architecture, space & public realm",
+    slug: "architecture-spatial-practice-and-public-realm",
+    aliases: [
+      "architecture, spatial practice & public realm",
+      "architecture and spatial practice",
+      "built environment",
+    ],
   },
   {
-    label: "Fashion, costume & wearable practice",
-    aliases: ["fashion and costume", "wearable art"],
+    label: "Fashion, costume & wearables",
+    slug: "fashion-costume-and-wearable-practice",
+    aliases: [
+      "fashion, costume & wearable practice",
+      "fashion and costume",
+      "wearable art",
+    ],
   },
   {
     label: "Digital, interactive & immersive arts",
@@ -239,20 +249,35 @@ const practiceFamilies = [
   },
   { label: "Games & playful media", aliases: ["games", "game arts"] },
   {
-    label: "Curatorial, cultural & publishing practice",
-    aliases: ["curatorial practice", "cultural practice"],
+    label: "Curating, culture & publishing",
+    slug: "curatorial-cultural-and-publishing-practice",
+    aliases: [
+      "curatorial, cultural & publishing practice",
+      "curatorial practice",
+      "cultural practice",
+    ],
   },
   {
-    label: "Social, community & participatory practice",
-    aliases: ["community arts", "social practice"],
+    label: "Social, community & participatory work",
+    slug: "social-community-and-participatory-practice",
+    aliases: [
+      "social, community & participatory practice",
+      "community arts",
+      "social practice",
+    ],
   },
   {
     label: "Research & knowledge production",
     aliases: ["research", "knowledge production"],
   },
   {
-    label: "Interdisciplinary, hybrid & emerging practice",
-    aliases: ["interdisciplinary", "multidisciplinary"],
+    label: "Interdisciplinary, hybrid & emerging work",
+    slug: "interdisciplinary-hybrid-and-emerging-practice",
+    aliases: [
+      "interdisciplinary, hybrid & emerging practice",
+      "interdisciplinary",
+      "multidisciplinary",
+    ],
   },
 ].map((input) => makeTerm("practice-family", input));
 

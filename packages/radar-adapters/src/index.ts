@@ -391,6 +391,7 @@ export {
 } from "./garyAdmin.js";
 export { GoogleGmailProvider } from "./email/gmail/google.js";
 export { MockGmailProvider } from "./email/gmail/mock.js";
+export * from "./accountDeletionQueue.js";
 export {
   RADAR_INGESTION_LOCK,
   DISCOVERY_INGESTION_LOCK,

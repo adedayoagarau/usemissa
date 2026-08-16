@@ -2,6 +2,11 @@ export * from "./domain/types.js";
 export { WorkspaceEngine, type WorkspaceEngineOptions } from "./engine.js";
 export { createStore, cloneStore, type WorkspaceStore } from "./store/store.js";
 export {
+  eraseWorkspaceAccountData,
+  workspaceAccountDraftAssetUrls,
+  type WorkspaceAccountErasureResult,
+} from "./accountDeletion.js";
+export {
   sequentialWorkspaceIds,
   uuidWorkspaceIds,
   type WorkspaceIdGenerator,

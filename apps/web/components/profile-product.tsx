@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   BookOpen,
+  BellRing,
   CircleUserRound,
   Database,
   Eye,
@@ -25,6 +26,7 @@ import type { RadarProfile } from "@missa/radar-engine";
 import type { UserHandle } from "@missa/radar-adapters";
 
 import { EmailForwardingCard } from "@/components/email-forwarding-card";
+import { CalendarFeedCard } from "@/components/calendar-feed-card";
 import { FollowingList } from "@/components/following-list";
 import { GmailSyncCard } from "@/components/gmail-sync-card";
 import { HandleClaimCard } from "@/components/handle-claim-card";
@@ -58,6 +60,7 @@ export const PROFILE_SECTIONS = [
   "identity",
   "preferences",
   "privacy",
+  "notifications",
   "integrations",
   "searches",
   "following",
@@ -80,12 +83,17 @@ type OpportunityPreferences = {
   deadlineWithinDays?: number;
   simultaneousRequired: boolean;
 };
+type NotificationSettings = {
+  emailAlerts: boolean;
+  deadlineReminderDays: Array<1 | 3 | 7>;
+  timezone: string;
+};
 
 export type ProfileProductData = {
   id: string;
   displayName: string;
   bio?: string;
-  publicUrl: string;
+  publicUrl?: string;
   handle: {
     namespaceAvailable: boolean;
     current: UserHandle | null;
@@ -96,6 +104,14 @@ export type ProfileProductData = {
   privacy: PrivacySettings;
   taxonomyPreferences: TaxonomyPreferenceSelection[];
   opportunityPreferences: OpportunityPreferences;
+  accountDeletion: {
+    passwordRequired: boolean;
+    blockers: string[];
+  };
+  integrations: {
+    calendarConnected: boolean;
+  };
+  notifications: NotificationSettings;
 };
 
 type Following = {
@@ -158,9 +174,15 @@ const SECTION_DEFINITIONS = [
     icon: Shield,
   },
   {
+    id: "notifications",
+    label: "Notifications",
+    copy: "Email, reminders, and timezone",
+    icon: BellRing,
+  },
+  {
     id: "integrations",
-    label: "Integrations",
-    copy: "Email connections and permissions",
+    label: "Connections",
+    copy: "Email and calendar permissions",
     icon: Link2,
   },
   {
@@ -177,8 +199,8 @@ const SECTION_DEFINITIONS = [
   },
   {
     id: "data",
-    label: "Data",
-    copy: "Private export and import",
+    label: "Data and account",
+    copy: "Export, import, password, and deletion",
     icon: Database,
   },
 ] as const;
@@ -278,17 +300,17 @@ function FacetRefinement({
     <div className={styles.refinement}>
       <div className={styles.refinementIntro}>
         <div>
-          <h3>Refine by facet</h3>
+          <h3>Refine your choices</h3>
           <p>
-            Use this only when a broad choice is not enough. Each facet remains
-            independent.
+            Use this only when a broad choice is not enough. Each category is
+            separate.
           </p>
         </div>
-        <Badge variant="outline">12-facet model</Badge>
+        <Badge variant="outline">12 categories</Badge>
       </div>
       <div className={styles.refinementControls}>
         <div>
-          <Label htmlFor="profile-facet">Facet</Label>
+          <Label htmlFor="profile-facet">Category</Label>
           <select
             id="profile-facet"
             value={facet}
@@ -331,8 +353,8 @@ function FacetRefinement({
         ) : (
           <p>
             {query
-              ? "No matching selectable terms in this facet."
-              : "Type a known term to see matching choices in this facet."}
+              ? "No matching choices in this category."
+              : "Type a known term to see matching choices in this category."}
           </p>
         )}
       </div>
@@ -367,23 +389,64 @@ export function ProfileProduct({
   });
   const [privacy, setPrivacy] = useState(initialProfile.privacy);
   const [savedPrivacy, setSavedPrivacy] = useState(initialProfile.privacy);
+  const [notifications, setNotifications] = useState(
+    initialProfile.notifications,
+  );
+  const [savedNotifications, setSavedNotifications] = useState(
+    initialProfile.notifications,
+  );
   const [pendingSection, setPendingSection] = useState<ProfileSection>();
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
   const [confirmedExclusions, setConfirmedExclusions] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string>();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordStatus, setPasswordStatus] = useState<string>();
   const [isPending, startTransition] = useTransition();
+  const timezones = useMemo(() => {
+    const fallback = [
+      "UTC",
+      "Africa/Lagos",
+      "Africa/Accra",
+      "Europe/London",
+      "America/New_York",
+      "America/Los_Angeles",
+      "Asia/Kolkata",
+      "Asia/Tokyo",
+      "Australia/Sydney",
+    ];
+    try {
+      return Array.from(
+        new Set([
+          notifications.timezone,
+          "UTC",
+          ...Intl.supportedValuesOf("timeZone"),
+        ]),
+      );
+    } catch {
+      return Array.from(new Set([notifications.timezone, ...fallback]));
+    }
+  }, [notifications.timezone]);
 
   const preferencesDirty = !same(
     { taxonomyPreferences, opportunityPreferences },
     savedPreferences,
   );
   const privacyDirty = !same(privacy, savedPrivacy);
+  const notificationsDirty = !same(notifications, savedNotifications);
   const currentDirty =
     active === "preferences"
       ? preferencesDirty
       : active === "privacy"
         ? privacyDirty
-        : false;
+        : active === "notifications"
+          ? notificationsDirty
+          : false;
   const exclusions = taxonomyPreferences.filter(
     (item) => item.preference === "exclude",
   );
@@ -398,7 +461,9 @@ export function ProfileProduct({
   });
 
   function destination(section: ProfileSection) {
-    return section === "overview" ? "/settings" : `/settings?section=${section}`;
+    return section === "overview"
+      ? "/settings"
+      : `/settings?section=${section}`;
   }
   function commitNavigation(section: ProfileSection) {
     setActive(section);
@@ -426,6 +491,7 @@ export function ProfileProduct({
       setConfirmedExclusions(false);
     }
     if (active === "privacy") setPrivacy(savedPrivacy);
+    if (active === "notifications") setNotifications(savedNotifications);
     if (pendingSection) commitNavigation(pendingSection);
   }
   function updateTaxonomy(next: TaxonomyPreferenceSelection[]) {
@@ -520,6 +586,102 @@ export function ProfileProduct({
     });
   }
 
+  function saveNotifications(event: React.FormEvent) {
+    event.preventDefault();
+    setMessage(undefined);
+    setError(undefined);
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/me/profile/notifications", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(notifications),
+        });
+        const body = (await response.json().catch(() => ({}))) as
+          NotificationSettings | { error?: string };
+        if (!response.ok || !("emailAlerts" in body))
+          throw new Error(
+            "error" in body && body.error
+              ? body.error
+              : "We could not save your notification settings.",
+          );
+        setNotifications(body);
+        setSavedNotifications(body);
+        setMessage("Notification settings saved");
+      } catch (cause) {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "We could not save your notification settings.",
+        );
+      }
+    });
+  }
+
+  function deleteAccount(event: React.FormEvent) {
+    event.preventDefault();
+    setDeleteError(undefined);
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/me/account", {
+          method: "DELETE",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            confirmation: deleteConfirmation,
+            ...(profile.accountDeletion.passwordRequired
+              ? { password: deletePassword }
+              : {}),
+          }),
+        });
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        if (!response.ok)
+          throw new Error(body.error ?? "We could not delete your account.");
+        window.location.assign("/");
+      } catch (cause) {
+        setDeleteError(
+          cause instanceof Error
+            ? cause.message
+            : "We could not delete your account.",
+        );
+      }
+    });
+  }
+
+  function changePassword(event: React.FormEvent) {
+    event.preventDefault();
+    setPasswordStatus(undefined);
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus("New passwords do not match.");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/me/account/password", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ currentPassword, newPassword }),
+        });
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        if (!response.ok)
+          throw new Error(body.error ?? "We could not change your password.");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        setPasswordStatus("Password changed.");
+      } catch (cause) {
+        setPasswordStatus(
+          cause instanceof Error
+            ? cause.message
+            : "We could not change your password.",
+        );
+      }
+    });
+  }
+
   const publicFields = [
     profile.privacy.displayName === "public" && profile.displayName
       ? "Name"
@@ -538,7 +700,7 @@ export function ProfileProduct({
         ? {
             section: "preferences",
             title: "Set private opportunity preferences",
-            copy: "Start broad, then refine only the facets that matter to your work.",
+            copy: "Start broad, then refine only the categories that matter to your work.",
           }
         : publicFields.length === 0
           ? {
@@ -561,6 +723,8 @@ export function ProfileProduct({
         : "Not set";
     if (section === "privacy")
       return publicFields.length ? "Public identity" : "Everything private";
+    if (section === "notifications")
+      return notifications.emailAlerts ? "Email on" : "Inbox only";
     if (section === "integrations") return "Manage";
     if (section === "searches") return `${savedSearches.length} saved`;
     if (section === "following") return `${following.length} following`;
@@ -586,15 +750,23 @@ export function ProfileProduct({
           </div>
         </div>
         <Link
-          href={profile.publicUrl}
-          aria-label="Preview public Profile"
+          href={profile.publicUrl ?? "/profile"}
+          aria-label={
+            profile.publicUrl
+              ? "Preview public Profile"
+              : "Set up public Profile"
+          }
           className={cn(
             buttonVariants({ variant: "outline" }),
             styles.previewLink,
           )}
         >
           <Eye aria-hidden="true" />
-          <span>Preview public Profile</span>
+          <span>
+            {profile.publicUrl
+              ? "Preview public Profile"
+              : "Set up public Profile"}
+          </span>
         </Link>
       </header>
 
@@ -742,7 +914,11 @@ export function ProfileProduct({
                 <p>
                   {profile.bio || "No public introduction has been added yet."}
                 </p>
-                <Button nativeButton={false} render={<Link href="/profile" />} variant="outline">
+                <Button
+                  nativeButton={false}
+                  render={<Link href="/profile" />}
+                  variant="outline"
+                >
                   Edit public Profile
                 </Button>
               </div>
@@ -753,7 +929,7 @@ export function ProfileProduct({
             <form className={styles.form} onSubmit={savePreferences} noValidate>
               <Alert>
                 <Shield aria-hidden="true" />
-                <AlertTitle>Private matching inputs</AlertTitle>
+                <AlertTitle>Your preferences are private</AlertTitle>
                 <AlertDescription>
                   These choices can explain why Missa shows an Opportunity. They
                   do not prove eligibility, artistic fit, or selection
@@ -764,15 +940,16 @@ export function ProfileProduct({
                 <div>
                   <h3>Creative work, format, and role</h3>
                   <p>
-                    Start with a broad branch. Refine other facets only when
-                    they help describe what you want to find.
+                    Start with the broad kinds of creative work you want to
+                    see. Add details only when they make your results more
+                    useful.
                   </p>
                 </div>
                 <TaxonomyBrowsePicker
                   idPrefix="profile-practice"
                   preferences={taxonomyPreferences}
                   onPreferencesChange={updateTaxonomy}
-                  description="Choose ordinary-language preferences. Labels may change while your canonical selection remains stable."
+                  description="Choose the words that best describe what you want to find. If our labels change later, your choices will stay the same."
                 />
                 <FacetRefinement
                   preferences={taxonomyPreferences}
@@ -807,8 +984,8 @@ export function ProfileProduct({
                 <div>
                   <h3>Opportunity types</h3>
                   <p>
-                    Opportunity type stays separate from creative work, role, eligibility, and
-                    geography.
+                    Opportunity type stays separate from creative work, role,
+                    eligibility, and geography.
                   </p>
                 </div>
                 <div className={styles.checkboxGrid}>
@@ -1027,9 +1204,9 @@ export function ProfileProduct({
                 <div>
                   <h3>Public identity</h3>
                   <p>
-                    Choose each detail explicitly. Making a detail private removes
-                    it from the public projection without deleting the private
-                    value.
+                    Choose each detail explicitly. Making a detail private
+                    removes it from the public projection without deleting the
+                    private value.
                   </p>
                 </div>
                 <SwitchRow
@@ -1062,7 +1239,11 @@ export function ProfileProduct({
                   Add or remove public Work in the Profile editor. Library does
                   not publish anything automatically.
                 </p>
-                <Button nativeButton={false} render={<Link href="/profile" />} variant="outline">
+                <Button
+                  nativeButton={false}
+                  render={<Link href="/profile" />}
+                  variant="outline"
+                >
                   Edit public Profile
                 </Button>
               </section>
@@ -1094,10 +1275,12 @@ export function ProfileProduct({
                   </Button>
                 ) : null}
                 <Link
-                  href={profile.publicUrl}
+                  href={profile.publicUrl ?? "/profile"}
                   className={buttonVariants({ variant: "outline" })}
                 >
-                  Preview public Profile
+                  {profile.publicUrl
+                    ? "Preview public Profile"
+                    : "Set up public Profile"}
                 </Link>
               </div>
             </div>
@@ -1116,7 +1299,118 @@ export function ProfileProduct({
               </Alert>
               <GmailSyncCard />
               <EmailForwardingCard />
+              <CalendarFeedCard
+                initialConnected={profile.integrations.calendarConnected}
+              />
             </div>
+          ) : null}
+          {active === "notifications" ? (
+            <form className={styles.form} onSubmit={saveNotifications}>
+              <Alert>
+                <BellRing aria-hidden="true" />
+                <AlertTitle>Inbox stays available</AlertTitle>
+                <AlertDescription>
+                  Turning off email does not remove updates from your private
+                  Missa Inbox.
+                </AlertDescription>
+              </Alert>
+              <section className={styles.preferenceGroup}>
+                <div>
+                  <h3>Delivery</h3>
+                  <p>
+                    Choose whether Missa may send Opportunity updates by email.
+                  </p>
+                </div>
+                <label className={styles.inlineCheck}>
+                  <Checkbox
+                    checked={notifications.emailAlerts}
+                    onCheckedChange={(value) =>
+                      setNotifications((current) => ({
+                        ...current,
+                        emailAlerts: value === true,
+                      }))
+                    }
+                  />
+                  Send Opportunity updates by email
+                </label>
+              </section>
+              <section className={styles.preferenceGroup}>
+                <div>
+                  <h3>Deadline reminders</h3>
+                  <p>
+                    Choose when a tracked Opportunity should appear as a
+                    reminder.
+                  </p>
+                </div>
+                <div className={styles.checkboxGrid}>
+                  {([7, 3, 1] as const).map((day) => (
+                    <label key={day}>
+                      <Checkbox
+                        checked={notifications.deadlineReminderDays.includes(
+                          day,
+                        )}
+                        onCheckedChange={(checked) =>
+                          setNotifications((current) => ({
+                            ...current,
+                            deadlineReminderDays:
+                              checked === true
+                                ? [...current.deadlineReminderDays, day]
+                                : current.deadlineReminderDays.filter(
+                                    (value) => value !== day,
+                                  ),
+                          }))
+                        }
+                      />
+                      {day} day{day === 1 ? "" : "s"} before
+                    </label>
+                  ))}
+                </div>
+              </section>
+              <section className={styles.preferenceGroup}>
+                <div>
+                  <h3>Timezone</h3>
+                  <p>Date-only deadlines stay on their stated date.</p>
+                </div>
+                <div className={styles.twoColumns}>
+                  <div>
+                    <Label htmlFor="profile-timezone">Your timezone</Label>
+                    <select
+                      id="profile-timezone"
+                      value={notifications.timezone}
+                      onChange={(event) =>
+                        setNotifications((current) => ({
+                          ...current,
+                          timezone: event.target.value,
+                        }))
+                      }
+                    >
+                      {timezones.map((timezone) => (
+                        <option key={timezone} value={timezone}>
+                          {timezone.replaceAll("_", " ")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </section>
+              <div className={styles.formActions}>
+                <Button
+                  type="submit"
+                  disabled={isPending || !notificationsDirty}
+                >
+                  {isPending ? "Saving…" : "Save notifications"}
+                </Button>
+                {notificationsDirty ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setNotifications(savedNotifications)}
+                  >
+                    Restore saved settings
+                  </Button>
+                ) : null}
+              </div>
+            </form>
           ) : null}
           {active === "searches" ? (
             <div className={styles.embedded}>
@@ -1133,8 +1427,8 @@ export function ProfileProduct({
               <div className={styles.unavailable}>
                 <h3>Owner-scoped exports</h3>
                 <p>
-                  Downloads include only the signed-in owner’s data. Export
-                  scope cannot be changed by supplying another account ID.
+                  Each download contains only data from the account you are
+                  signed in to.
                 </p>
               </div>
               <ExportButtons />
@@ -1152,6 +1446,92 @@ export function ProfileProduct({
                 >
                   Open Tracker import
                 </Link>
+              </div>
+              <form className={styles.accountForm} onSubmit={changePassword}>
+                <div>
+                  <h3>Change password</h3>
+                  <p>
+                    Changing your password signs out Missa on your other
+                    devices.
+                  </p>
+                </div>
+                <div className={styles.deleteFields}>
+                  <div>
+                    <Label htmlFor="current-password">Current password</Label>
+                    <Input
+                      id="current-password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={currentPassword}
+                      onChange={(event) =>
+                        setCurrentPassword(event.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-password">New password</Label>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      autoComplete="new-password"
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="confirm-new-password">
+                      Confirm new password
+                    </Label>
+                    <Input
+                      id="confirm-new-password"
+                      type="password"
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(event) =>
+                        setConfirmPassword(event.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+                <div className={styles.formActions}>
+                  <Button
+                    type="submit"
+                    disabled={
+                      isPending ||
+                      !currentPassword ||
+                      !newPassword ||
+                      !confirmPassword
+                    }
+                  >
+                    {isPending ? "Changing…" : "Change password"}
+                  </Button>
+                  {passwordStatus ? (
+                    <p role="status">{passwordStatus}</p>
+                  ) : null}
+                </div>
+              </form>
+              <div className={styles.deleteAccount}>
+                <div>
+                  <h3>Delete your account</h3>
+                  <p>
+                    Remove your Profile and private creator data. Applications
+                    you submitted and reviews you completed stay with the
+                    receiving Organization.
+                  </p>
+                  {profile.accountDeletion.blockers.map((blocker) => (
+                    <p key={blocker} className={styles.blocker}>
+                      {blocker}
+                    </p>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={Boolean(profile.accountDeletion.blockers.length)}
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  Delete account
+                </Button>
               </div>
             </div>
           ) : null}
@@ -1179,6 +1559,66 @@ export function ProfileProduct({
               Discard and continue
             </AlertDialogAction>
           </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <form onSubmit={deleteAccount}>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Your public Profile, Library, Tracker, saved searches,
+                connections, and drafts will be removed. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className={styles.deleteFields}>
+              <div>
+                <Label htmlFor="delete-confirmation">
+                  Type DELETE MY ACCOUNT
+                </Label>
+                <Input
+                  id="delete-confirmation"
+                  autoComplete="off"
+                  value={deleteConfirmation}
+                  onChange={(event) =>
+                    setDeleteConfirmation(event.target.value)
+                  }
+                />
+              </div>
+              {profile.accountDeletion.passwordRequired ? (
+                <div>
+                  <Label htmlFor="delete-password">Current password</Label>
+                  <Input
+                    id="delete-password"
+                    type="password"
+                    autoComplete="current-password"
+                    value={deletePassword}
+                    onChange={(event) => setDeletePassword(event.target.value)}
+                  />
+                </div>
+              ) : null}
+              {deleteError ? (
+                <p className={styles.error} role="alert">
+                  {deleteError}
+                </p>
+              ) : null}
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button">Keep account</AlertDialogCancel>
+              <Button
+                type="submit"
+                variant="destructive"
+                disabled={
+                  isPending ||
+                  deleteConfirmation !== "DELETE MY ACCOUNT" ||
+                  (profile.accountDeletion.passwordRequired && !deletePassword)
+                }
+              >
+                {isPending ? "Deleting…" : "Delete account"}
+              </Button>
+            </AlertDialogFooter>
+          </form>
         </AlertDialogContent>
       </AlertDialog>
     </div>

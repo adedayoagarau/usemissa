@@ -24,9 +24,14 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       failed: 0,
       reason: 'RESEND_API_KEY/RESEND_FROM not configured',
     };
-  const pending = [...engine.store.alerts.values()].filter((alert) => alert.audience === 'user' && alert.userId && !alert.emailSentAt);
-  const byUser = new Map<string, typeof pending>();
-  for (const alert of pending) {
+  const pending = [...engine.store.alerts.values()].filter((alert) => alert.audience === 'user' && alert.userId && !alert.emailSentAt && !alert.emailSuppressedAt);
+  const deliverable = pending.filter((alert) => {
+    if (engine.store.users.get(alert.userId!)?.notificationSettings?.emailAlerts !== false) return true;
+    alert.emailSuppressedAt = now.toISOString();
+    return false;
+  });
+  const byUser = new Map<string, typeof deliverable>();
+  for (const alert of deliverable) {
     const rows = byUser.get(alert.userId!);
     if (rows) rows.push(alert);
     else byUser.set(alert.userId!, [alert]);
