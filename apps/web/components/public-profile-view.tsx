@@ -6,6 +6,7 @@ import type {
 } from "@missa/radar-engine";
 
 import { ProfileShareActions } from "@/components/profile-share-actions";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Empty,
   EmptyDescription,
@@ -52,24 +53,20 @@ function initials(name: string): string {
 }
 
 function ProfilePortrait({ profile }: { profile: PublicUserProfile }) {
-  if (profile.profileImageUrl) {
-    return (
-      // Creator-supplied remote images cannot be restricted to one Next image host.
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        className={styles.portrait}
-        src={profile.profileImageUrl}
-        alt=""
-        width="96"
-        height="120"
-        referrerPolicy="no-referrer"
-      />
-    );
-  }
   return (
-    <span className={styles.portraitFallback} aria-hidden="true">
-      {initials(profile.displayName ?? "Profile")}
-    </span>
+    <Avatar className={styles.portrait}>
+      {profile.profileImageUrl ? (
+        <AvatarImage
+          className={styles.portraitImage}
+          src={profile.profileImageUrl}
+          alt=""
+          referrerPolicy="no-referrer"
+        />
+      ) : null}
+      <AvatarFallback className={styles.portraitFallback} aria-hidden="true">
+        {initials(profile.displayName ?? "Profile")}
+      </AvatarFallback>
+    </Avatar>
   );
 }
 
@@ -217,7 +214,7 @@ export function PublicProfileView({
             </h2>
             <ItemGroup className={styles.workList}>
               {otherWorks.map((work, index) => (
-                <div key={work.id}>
+                <div key={work.id} role="listitem">
                   <WorkRow work={work} />
                   {index < otherWorks.length - 1 ? (
                     <ItemSeparator className={styles.separator} />
@@ -252,7 +249,7 @@ export function PublicProfileView({
               </h2>
               <ItemGroup className={styles.socialList}>
                 {socialLinks.map((link, index) => (
-                  <div key={link.id}>
+                  <div key={link.id} role="listitem">
                     <Item className={styles.socialRow}>
                       <a
                         href={link.url}

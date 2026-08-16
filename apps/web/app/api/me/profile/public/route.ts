@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { del } from "@vercel/blob";
 import {
   PublicPortfolioValidationError,
   type PublicPortfolioPublishInput,
@@ -9,6 +10,20 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine, persistRadar } from "@/lib/engine";
 
 const headers = { "Cache-Control": "no-store" };
+
+function missaPhotoUrl(value: string | undefined, userId: string) {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    if (!url.hostname.endsWith(".public.blob.vercel-storage.com"))
+      return undefined;
+    if (!url.pathname.startsWith(`/missa/profiles/${userId}/`))
+      return undefined;
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
 
 function error(message: string, status: 400 | 401 | 404 | 500) {
   return NextResponse.json({ error: message }, { status, headers });
@@ -34,6 +49,11 @@ export async function PATCH(request: Request) {
   if (!engine.store.users.has(session.account.userId))
     return error("Profile not found", 404);
   try {
+    const previousPhotoUrl = missaPhotoUrl(
+      engine.store.users.get(session.account.userId)?.publicPortfolio
+        ?.profileImageUrl,
+      session.account.userId,
+    );
     const saved = engine.publishUserPortfolio(
       session.account.userId,
       body as PublicPortfolioPublishInput,
@@ -46,6 +66,20 @@ export async function PATCH(request: Request) {
       "Published fields: displayName, bio, profileImageUrl, headline, oneLine, openTo, socialLinks, selectedWorks",
     );
     await persistRadar();
+    if (
+      previousPhotoUrl &&
+      previousPhotoUrl !== saved.publicPortfolio?.profileImageUrl
+    ) {
+      try {
+        await del(previousPhotoUrl, {
+          ...(process.env.BLOB_READ_WRITE_TOKEN
+            ? { token: process.env.BLOB_READ_WRITE_TOKEN }
+            : {}),
+        });
+      } catch (cleanupCause) {
+        console.error("Previous Profile photo cleanup failed", cleanupCause);
+      }
+    }
     return NextResponse.json(
       {
         profile: engine.publicUserProfile(saved.id),

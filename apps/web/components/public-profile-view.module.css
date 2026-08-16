@@ -22,22 +22,25 @@
   padding: 0;
 }
 
-.portrait,
-.portraitFallback {
+.portrait {
   width: 96px;
   height: 120px;
   flex: 0 0 96px;
   border-radius: var(--radius-md);
 }
 
-.portrait {
-  display: block;
+.portrait::after,
+.portraitImage,
+.portraitFallback {
+  border-radius: var(--radius-md);
+}
+
+.portraitImage {
+  aspect-ratio: auto;
   object-fit: cover;
 }
 
 .portraitFallback {
-  display: grid;
-  place-items: center;
   background: var(--surface-subtle);
   color: var(--ink-muted);
   font-family: var(--font-heading);
@@ -251,8 +254,7 @@
     gap: var(--space-row);
   }
 
-  .portrait,
-  .portraitFallback {
+  .portrait {
     width: 70px;
     height: 88px;
     flex-basis: 70px;

@@ -1,18 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Copy, Share2, Smartphone } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function ProfileShareActions({
   displayName,
@@ -21,8 +19,10 @@ export function ProfileShareActions({
   displayName: string;
   url: string;
 }) {
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">(
-    "idle",
+  const canShareFromDevice = useSyncExternalStore(
+    () => () => undefined,
+    () => Boolean((navigator as Navigator & { share?: unknown }).share),
+    () => false,
   );
   const text = `${displayName} on Missa`;
   const encodedUrl = encodeURIComponent(url);
@@ -31,9 +31,9 @@ export function ProfileShareActions({
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(url);
-      setCopyState("copied");
+      toast("Link copied.");
     } catch {
-      setCopyState("failed");
+      toast("Copy failed. Select the address from your browser.");
     }
   }
 
@@ -47,117 +47,80 @@ export function ProfileShareActions({
   }
 
   return (
-    <div className="flex flex-col items-start gap-row sm:items-end">
-      <ButtonGroup aria-label="Profile sharing">
-        <Dialog>
-          <DialogTrigger render={<Button type="button" variant="outline" />}>
-            <Share2 aria-hidden="true" />
-            Share Profile
-          </DialogTrigger>
-          <DialogContent className="[&_[data-slot=dialog-close]]:min-h-[44px] [&_[data-slot=dialog-close]]:min-w-[44px]">
-            <DialogHeader>
-              <DialogTitle>Share this Profile</DialogTitle>
-              <DialogDescription>
-                Send the public page without changing what appears on it.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-row">
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-[44px] justify-start"
-                onClick={copyLink}
-              >
-                <Copy aria-hidden="true" />
-                Copy link
-              </Button>
-              <Button
-                nativeButton={false}
-                render={
-                  <a
-                    href={`https://wa.me/?text=${encodedText}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-                variant="outline"
-                className="min-h-[44px] justify-start"
-              >
-                WhatsApp
-              </Button>
-              <Button
-                nativeButton={false}
-                render={
-                  <a
-                    href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-                variant="outline"
-                className="min-h-[44px] justify-start"
-              >
-                LinkedIn
-              </Button>
-              <Button
-                nativeButton={false}
-                render={
-                  <a
-                    href={`https://bsky.app/intent/compose?text=${encodedText}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-                variant="outline"
-                className="min-h-[44px] justify-start"
-              >
-                Bluesky
-              </Button>
-              <Button
-                nativeButton={false}
-                render={
-                  <a
-                    href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />
-                }
-                variant="outline"
-                className="min-h-[44px] justify-start"
-              >
-                Facebook
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="min-h-[44px] justify-start"
-                onClick={shareFromDevice}
-              >
-                <Smartphone aria-hidden="true" />
-                More options
-              </Button>
-            </div>
-            <p className="min-h-5 text-sm text-muted-foreground" role="status">
-              {copyState === "copied"
-                ? "Link copied."
-                : copyState === "failed"
-                  ? "Copy failed. Select the address from your browser."
-                  : ""}
-            </p>
-          </DialogContent>
-        </Dialog>
-        <Button type="button" variant="outline" onClick={copyLink}>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button type="button" variant="outline" />}
+        className="min-h-[44px]"
+      >
+        <Share2 aria-hidden="true" />
+        Share
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-52">
+        <DropdownMenuItem
+          className="min-h-[44px]"
+          onClick={() => void copyLink()}
+        >
           <Copy aria-hidden="true" />
           Copy link
-        </Button>
-      </ButtonGroup>
-      <p className="min-h-5 text-sm text-muted-foreground" role="status">
-        {copyState === "copied"
-          ? "Link copied."
-          : copyState === "failed"
-            ? "Copy failed. Select the address from your browser."
-            : ""}
-      </p>
-    </div>
+        </DropdownMenuItem>
+        {canShareFromDevice ? (
+          <DropdownMenuItem
+            className="min-h-[44px]"
+            onClick={() => void shareFromDevice()}
+          >
+            <Smartphone aria-hidden="true" />
+            More options
+          </DropdownMenuItem>
+        ) : null}
+        <DropdownMenuItem
+          className="min-h-[44px]"
+          render={
+            <a
+              href={`https://wa.me/?text=${encodedText}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            />
+          }
+        >
+          WhatsApp
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="min-h-[44px]"
+          render={
+            <a
+              href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            />
+          }
+        >
+          LinkedIn
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="min-h-[44px]"
+          render={
+            <a
+              href={`https://bsky.app/intent/compose?text=${encodedText}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            />
+          }
+        >
+          Bluesky
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="min-h-[44px]"
+          render={
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            />
+          }
+        >
+          Facebook
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
