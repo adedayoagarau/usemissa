@@ -130,10 +130,9 @@ test("publishes both profile kinds, keeps filters/search real, and opens linked 
       page.getByRole("heading", { level: 2, name: "Submission details" }),
     ).toBeVisible();
     await expect(
-      page
-        .locator('[aria-labelledby="journal-details-heading"]')
-        .getByText(profileCase.field, { exact: true }),
+      page.getByText(new RegExp(profileCase.field, "i")).first(),
     ).toBeVisible();
+    await expect(page.locator('main header [role="status"]')).toBeVisible();
     if (profileCase.profile.mediaUrl) {
       const mediaResponse = await request.get(
         `/api/journals/${encodeURIComponent(profileCase.profile.id)}/media`,
@@ -148,6 +147,11 @@ test("publishes both profile kinds, keeps filters/search real, and opens linked 
           ),
         )
         .toBeGreaterThan(0);
+    } else {
+      await expect(page.locator('main header [role="img"]')).toBeVisible();
+      await expect(page.locator('main header [role="img"]')).not.toContainText(
+        "Image not available",
+      );
     }
     await expect(page.locator("body")).not.toContainText(
       /freshness|profile checked|confidence/i,

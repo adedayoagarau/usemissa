@@ -1,6 +1,7 @@
 import type { ProfileCard, ProfileKind } from "@missa/radar-adapters";
 import Link from "next/link";
 import { getProfileRepository } from "@/lib/profileRepository";
+import { monogramFor } from "@/lib/journalPresentation";
 import { PublicSiteShell } from "@/components/public-site-shell";
 
 export const dynamic = "force-dynamic";
@@ -139,44 +140,49 @@ export default async function JournalsPage({
               Directory profiles
             </h2>
             <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {result.items.map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/journals/${encodeURIComponent(item.id)}`}
-                  className="group block min-h-11 min-w-0 rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/60 hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                >
-                  <div className="flex min-w-0 items-start gap-4">
-                    {item.mediaUrl ? (
-                      <img
-                        src={mediaSrc(item.id)}
-                        alt={imageAlt(item)}
-                        loading="lazy"
-                        decoding="async"
-                        className="size-14 shrink-0 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <span
-                        aria-hidden="true"
-                        className="size-14 shrink-0 rounded-lg bg-muted"
-                      />
-                    )}
-                    <div className="min-w-0">
-                      <h3 className="font-semibold break-words text-foreground">
-                        {item.name}
-                      </h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {item.kind === "small_press"
-                          ? "Small press"
-                          : "Literary journal"}
-                      </p>
+              {result.items.map((item) => {
+                const monogram = monogramFor(item.name);
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/journals/${encodeURIComponent(item.id)}`}
+                    className="group block min-h-11 min-w-0 rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/60 hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
+                  >
+                    <div className="flex min-w-0 items-start gap-4">
+                      {item.mediaUrl ? (
+                        <img
+                          src={mediaSrc(item.id)}
+                          alt={imageAlt(item)}
+                          loading="lazy"
+                          decoding="async"
+                          className="size-14 shrink-0 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <span
+                          aria-hidden="true"
+                          className={`flex size-14 shrink-0 items-center justify-center rounded-lg border font-heading text-lg font-semibold tracking-tight ${monogram.tone}`}
+                        >
+                          {monogram.letters}
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <h3 className="font-semibold break-words text-foreground">
+                          {item.name}
+                        </h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {item.kind === "small_press"
+                            ? "Small press"
+                            : "Literary journal"}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <p className="mt-4 line-clamp-3 text-sm leading-6 break-words text-muted-foreground">
-                    {item.summary?.trim() ||
-                      "Unknown — no description is available in the published profile."}
-                  </p>
-                </Link>
-              ))}
+                    <p className="mt-4 line-clamp-3 text-sm leading-6 break-words text-muted-foreground">
+                      {item.summary?.trim() ||
+                        "Unknown — no description is available in the published profile."}
+                    </p>
+                  </Link>
+                );
+              })}
             </div>
           </section>
         ) : (
