@@ -50,12 +50,18 @@ export function renameAllowed(input: {
 export function handleReleaseDecision(input: {
   deletedAt: Date | string;
   now?: Date;
-  publicPageViews: number;
+  publicPageViews?: number;
   holdDays?: number;
   meaningfulTrafficPageviews?: number;
 }): "hold" | "never-release" | "eligible" {
   const deletedAt = new Date(input.deletedAt);
   if (Number.isNaN(deletedAt.getTime())) return "hold";
+  if (
+    input.publicPageViews === undefined ||
+    !Number.isFinite(input.publicPageViews) ||
+    input.publicPageViews < 0
+  )
+    return "hold";
   if (
     input.publicPageViews >=
     (input.meaningfulTrafficPageviews ?? HANDLE_MEANINGFUL_TRAFFIC_PAGEVIEWS)

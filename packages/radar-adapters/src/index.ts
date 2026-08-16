@@ -165,6 +165,7 @@ export {
   claimUserHandle,
   handleNamespaceAvailable,
   handleClaimAccessMode,
+  maintainDeletedUserHandlePolicy,
   normalizeUserHandleInput,
   readUserHandle,
   renameUserHandle,

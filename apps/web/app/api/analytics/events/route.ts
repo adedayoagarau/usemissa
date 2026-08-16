@@ -41,5 +41,9 @@ export async function POST(request: Request) {
 }
 
 function isPublicPath(path: string): boolean {
-  return path === '/' || ['/about', '/methodology', '/waitlist', '/for-organizations', '/opportunities', '/guides', '/discover/', '/org/', '/profile/', '/login', '/signup'].some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+  const handle = path.startsWith('/@') ? path.slice(2) : '';
+  const publicProfile = handle.length >= 3
+    && handle.length <= 30
+    && /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u.test(handle);
+  return publicProfile || path === '/' || ['/about', '/methodology', '/waitlist', '/for-organizations', '/opportunities', '/guides', '/discover/', '/org/', '/profile/', '/login', '/signup'].some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }

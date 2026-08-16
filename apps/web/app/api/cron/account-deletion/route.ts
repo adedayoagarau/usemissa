@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { maintainDeletedUserHandlePolicy } from "@missa/radar-adapters";
 
 import { resumeAccountDeletion } from "@/lib/account-deletion";
 import { getAccountDeletionQueue } from "@/lib/account-deletion-queue";
@@ -23,8 +24,18 @@ async function run(request: Request) {
       { error: "Account deletion queue is not available" },
       { status: 503, headers },
     );
-  const deletion = await queue.claimNext();
-  if (!deletion) return NextResponse.json({ status: "idle" }, { headers });
+  const deletion =
+    (await queue.claimNext()) ??
+    (await queue.recoverPreparedAfterNeonAuthRemoval());
+  if (!deletion) {
+    const handle = await maintainDeletedUserHandlePolicy({
+      connectionString: process.env.DATABASE_URL!,
+    });
+    return NextResponse.json(
+      { status: "idle", handleMaintenance: handle.state },
+      { headers },
+    );
+  }
   if (deletion.stage === "prepared") {
     await queue.fail(
       deletion.id,

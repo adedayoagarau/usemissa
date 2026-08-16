@@ -156,6 +156,76 @@ export class PostgresAccountDeletionQueue {
     return result.rows[0] ? requestFromRow(result.rows[0]) : undefined;
   }
 
+  /**
+   * Recover the only cross-service gap in deletion: Neon Auth removed the
+   * identity, but persisting `auth-erased` failed. Auth tables live in the
+   * same Neon branch, so absence there is the authoritative retry signal.
+   * A live identity is never advanced by this path.
+   */
+  async recoverPreparedAfterNeonAuthRemoval(): Promise<
+    AccountDeletionRequest | undefined
+  > {
+    const candidate = await this.pool.query<RequestRow>(
+      `select ${SELECT_COLUMNS}
+         from account_deletion_requests
+        where stage = 'prepared'
+          and auth_provider = 'neon-auth'
+          and auth_user_id is not null
+          and (status = 'failed'
+            or (status = 'processing' and updated_at < now() - interval '10 minutes'))
+        order by requested_at asc
+        limit 1`,
+    );
+    const request = candidate.rows[0];
+    if (!request?.auth_user_id) return undefined;
+
+    const authTables = await this.pool.query<{
+      auth_users: string | null;
+      users_sync: string | null;
+    }>(
+      `select to_regclass('neon_auth."user"')::text as auth_users,
+              to_regclass('neon_auth.users_sync')::text as users_sync`,
+    );
+    const tables = authTables.rows[0];
+    let active: boolean;
+    if (tables?.auth_users) {
+      const result = await this.pool.query<{ active: boolean }>(
+        `select exists(
+           select 1 from neon_auth."user" where id = $1
+         ) as active`,
+        [request.auth_user_id],
+      );
+      active = Boolean(result.rows[0]?.active);
+    } else if (tables?.users_sync) {
+      const result = await this.pool.query<{ active: boolean }>(
+        `select exists(
+           select 1 from neon_auth.users_sync
+            where id = $1 and deleted_at is null
+         ) as active`,
+        [request.auth_user_id],
+      );
+      active = Boolean(result.rows[0]?.active);
+    } else {
+      return undefined;
+    }
+    if (active) return undefined;
+
+    const recovered = await this.pool.query<RequestRow>(
+      `update account_deletion_requests
+          set status = 'processing', stage = 'auth-erased',
+              attempt_count = attempt_count + 1,
+              last_error = null, updated_at = now()
+        where id = $1 and stage = 'prepared'
+          and (status = 'failed'
+            or (status = 'processing' and updated_at < now() - interval '10 minutes'))
+       returning ${SELECT_COLUMNS}`,
+      [request.id],
+    );
+    return recovered.rows[0]
+      ? requestFromRow(recovered.rows[0])
+      : undefined;
+  }
+
   async advance(
     id: string,
     stage: AccountDeletionStage,

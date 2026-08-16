@@ -3,6 +3,7 @@ import {
   HANDLE_CLAIM_ACCESS_MODE,
   handleReleaseDecision,
   HANDLE_RENAME_INTERVAL_DAYS,
+  HANDLE_TRAFFIC_WINDOW_DAYS,
   normalizeHandle,
   registrableDomainLabel,
   renameAllowed,
@@ -596,22 +597,68 @@ export async function renameUserHandle(input: {
 export type DeletedUserHandlePolicyState =
   "held" | "never-release" | "released" | "not-found";
 
+export async function readPublicProfilePageViews(
+  pool: Pick<Pool, "query">,
+  handleKey: string,
+  deletedAt: Date,
+): Promise<number | undefined> {
+  if (Number.isNaN(deletedAt.getTime())) return undefined;
+  const table = await pool.query<{ present: string | null }>(
+    "select to_regclass('public.platform_analytics_events')::text as present",
+  );
+  if (!table.rows[0]?.present) return undefined;
+  const result = await pool.query<{ views: number }>(
+    `select count(*)::int as views
+       from platform_analytics_events
+      where event_name = 'page_view' and path = $1
+        and occurred_at > $2::timestamptz - ($3::int * interval '1 day')
+        and occurred_at <= $2::timestamptz`,
+    [`/@${handleKey}`, deletedAt, HANDLE_TRAFFIC_WINDOW_DAYS],
+  );
+  const views = result.rows[0]?.views;
+  return Number.isInteger(views) && views >= 0 ? views : undefined;
+}
+
+export async function readNextDeletedUserHandle(
+  pool: Pick<Pool, "query">,
+): Promise<
+  | { handleKey: string; userId: string; deletedAt: Date }
+  | undefined
+> {
+  const result = await pool.query<{
+    handle_key: string;
+    user_id: string;
+    requested_at: Date | string;
+  }>(
+    `select h.handle_key, request.user_id, request.requested_at
+       from handles h
+       join account_deletion_requests request
+         on request.user_id = h.subject_id
+      where h.subject_type = 'user' and h.state = 'blocked'
+        and request.status = 'completed' and request.user_id is not null
+      order by request.requested_at asc
+      limit 1`,
+  );
+  const row = result.rows[0];
+  if (!row) return undefined;
+  return {
+    handleKey: row.handle_key,
+    userId: row.user_id,
+    deletedAt: new Date(row.requested_at),
+  };
+}
+
 /** Apply the explicit deletion hold/traffic policy from the handle contract. */
 export async function applyDeletedUserHandlePolicy(input: {
   connectionString: string;
   userId: string;
   deletedAt: Date | string;
-  publicPageViews: number;
+  publicPageViews?: number;
   now?: Date;
 }): Promise<{
   state: DeletedUserHandlePolicyState;
   decision: "hold" | "never-release" | "eligible";
 }> {
-  const decision = handleReleaseDecision({
-    deletedAt: input.deletedAt,
-    publicPageViews: input.publicPageViews,
-    now: input.now,
-  });
   const pool = createPool(input.connectionString);
   const now = input.now ?? new Date();
   try {
@@ -624,8 +671,27 @@ export async function applyDeletedUserHandlePolicy(input: {
       [input.userId],
     );
     const current = result.rows[0];
-    if (!current) return { state: "not-found", decision };
+    if (!current)
+      return {
+        state: "not-found",
+        decision: handleReleaseDecision({
+          deletedAt: input.deletedAt,
+          publicPageViews: input.publicPageViews,
+          now: input.now,
+        }),
+      };
 
+    const deletedAt = new Date(input.deletedAt);
+    const publicPageViews =
+      input.publicPageViews ??
+      (await readPublicProfilePageViews(pool, current.handle_key, deletedAt));
+    const decision = handleReleaseDecision({
+      deletedAt,
+      publicPageViews,
+      now: input.now,
+    });
+
+    let permanent = decision === "never-release";
     if (decision === "eligible") {
       const aliases = await pool.query<{ count: string }>(
         `select count(*)::text as count from handle_aliases where handle_key = $1`,
@@ -639,18 +705,52 @@ export async function applyDeletedUserHandlePolicy(input: {
         ]);
         return { state: "released", decision };
       }
+      permanent = true;
     }
     await pool.query(
-      `update handles set state = 'blocked', updated_at = $2 where handle_key = $1`,
-      [current.handle_key, now],
+      `update handles
+          set state = 'blocked',
+              subject_id = case when $3::boolean
+                then 'blocked:deleted:' || handle_key else subject_id end,
+              updated_at = $2
+        where handle_key = $1`,
+      [current.handle_key, now, permanent],
     );
     return {
-      state: decision === "never-release" ? "never-release" : "held",
+      state: permanent ? "never-release" : "held",
       decision,
     };
   } finally {
     await pool.end();
   }
+}
+
+export async function maintainDeletedUserHandlePolicy(input: {
+  connectionString: string;
+  now?: Date;
+}): Promise<
+  | { state: "idle" }
+  | {
+      state: DeletedUserHandlePolicyState;
+      decision: "hold" | "never-release" | "eligible";
+    }
+> {
+  const pool = createPool(input.connectionString);
+  let candidate:
+    | { handleKey: string; userId: string; deletedAt: Date }
+    | undefined;
+  try {
+    candidate = await readNextDeletedUserHandle(pool);
+  } finally {
+    await pool.end();
+  }
+  if (!candidate) return { state: "idle" };
+  return applyDeletedUserHandlePolicy({
+    connectionString: input.connectionString,
+    userId: candidate.userId,
+    deletedAt: candidate.deletedAt,
+    now: input.now,
+  });
 }
 
 export function handleClaimAccessMode(): HandleClaimAccessMode {

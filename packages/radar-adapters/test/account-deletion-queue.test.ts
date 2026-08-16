@@ -67,3 +67,71 @@ test("account deletion queue claims stale work for an idempotent retry", async (
   assert.match(calls[0]!, /interval '10 minutes'/u);
   assert.match(calls[0]!, /stage <> 'prepared'/u);
 });
+
+test("account deletion queue recovers a prepared request after Neon Auth removed the user", async () => {
+  const calls: string[] = [];
+  const prepared = { ...row, status: "failed", last_error: "connection lost" };
+  const recovered = {
+    ...prepared,
+    status: "processing",
+    stage: "auth-erased",
+    attempt_count: 1,
+    last_error: null,
+  };
+  const pool = {
+    query: async (sql: string) => {
+      calls.push(sql);
+      if (sql.includes("from account_deletion_requests"))
+        return { rows: [prepared], rowCount: 1 } as unknown as QueryResult;
+      if (sql.includes("to_regclass"))
+        return {
+          rows: [{ auth_users: 'neon_auth."user"', users_sync: null }],
+          rowCount: 1,
+        } as unknown as QueryResult;
+      if (sql.includes("from neon_auth.\"user\""))
+        return {
+          rows: [{ active: false }],
+          rowCount: 1,
+        } as unknown as QueryResult;
+      return { rows: [recovered], rowCount: 1 } as unknown as QueryResult;
+    },
+  } as unknown as Pool;
+
+  const request =
+    await new PostgresAccountDeletionQueue(
+      pool,
+    ).recoverPreparedAfterNeonAuthRemoval();
+
+  assert.equal(request?.stage, "auth-erased");
+  assert.equal(request?.status, "processing");
+  assert.match(calls.at(-1)!, /stage = 'auth-erased'/u);
+});
+
+test("account deletion queue never advances a prepared request while the Neon Auth user is active", async () => {
+  const prepared = { ...row, status: "failed", last_error: "connection lost" };
+  const calls: string[] = [];
+  const pool = {
+    query: async (sql: string) => {
+      calls.push(sql);
+      if (sql.includes("from account_deletion_requests"))
+        return { rows: [prepared], rowCount: 1 } as unknown as QueryResult;
+      if (sql.includes("to_regclass"))
+        return {
+          rows: [{ auth_users: 'neon_auth."user"', users_sync: null }],
+          rowCount: 1,
+        } as unknown as QueryResult;
+      return {
+        rows: [{ active: true }],
+        rowCount: 1,
+      } as unknown as QueryResult;
+    },
+  } as unknown as Pool;
+
+  const request =
+    await new PostgresAccountDeletionQueue(
+      pool,
+    ).recoverPreparedAfterNeonAuthRemoval();
+
+  assert.equal(request, undefined);
+  assert.equal(calls.some((sql) => sql.includes("stage = 'auth-erased'")), false);
+});

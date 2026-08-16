@@ -144,7 +144,6 @@ export async function resumeAccountDeletion(
           connectionString: process.env.DATABASE_URL,
           userId: request.userId,
           deletedAt: new Date(),
-          publicPageViews: 0,
         });
       }
       await queue?.advance(request.id, "radar-erased");
