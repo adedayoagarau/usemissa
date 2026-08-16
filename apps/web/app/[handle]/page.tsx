@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { isPublicProfileIndexable } from "@missa/radar-engine";
 
 import { PublicProfileView } from "@/components/public-profile-view";
@@ -44,6 +44,7 @@ export default async function PublicHandlePage({
   const rawHandle = (await params).handle;
   const result = await publicProfileForHandle(rawHandle);
   if (!result) notFound();
+  if (result.redirectTo) permanentRedirect(result.redirectTo);
   const name = result.profile.displayName ?? `@${result.handle}`;
   const personJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
