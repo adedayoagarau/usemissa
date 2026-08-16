@@ -133,7 +133,9 @@ export function PublicProfileView({
       >
         <Empty>
           <EmptyHeader>
-            <EmptyTitle>This Profile is private.</EmptyTitle>
+            <EmptyTitle role="heading" aria-level={1}>
+              This Profile is private.
+            </EmptyTitle>
             <EmptyDescription>
               Nothing from this Profile is available to visitors.
             </EmptyDescription>

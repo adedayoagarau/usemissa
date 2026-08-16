@@ -21,7 +21,7 @@ async function trackFirstOpportunity(page: Page, userId: string) {
 test('profile data export downloads tracker JSON and enforces an account cooldown', async ({ page }) => {
   const profile = await createAccount(page);
   await trackFirstOpportunity(page, profile.id);
-  await page.goto('/profile?section=data');
+  await page.goto('/settings?section=data');
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download JSON' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Download CSV' })).toBeVisible();
