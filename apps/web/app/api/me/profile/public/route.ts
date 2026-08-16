@@ -20,6 +20,7 @@ function missaPhotoUrl(value: string | undefined, userId: string) {
   if (!value) return undefined;
   try {
     const url = new URL(value);
+    if (url.protocol !== "https:") return undefined;
     if (!url.hostname.endsWith(".public.blob.vercel-storage.com"))
       return undefined;
     if (!url.pathname.startsWith(`/missa/profiles/${userId}/`))
@@ -49,6 +50,20 @@ export async function PATCH(request: Request) {
   }
   if (!body || typeof body !== "object" || Array.isArray(body))
     return error("Profile details must be an object.", 400);
+  const profileInput = body as Record<string, unknown>;
+  if (
+    profileInput.profileImageUrl !== undefined &&
+    profileInput.profileImageUrl !== "" &&
+    (typeof profileInput.profileImageUrl !== "string" ||
+      !missaPhotoUrl(profileInput.profileImageUrl, session.account.userId))
+  )
+    return NextResponse.json(
+      {
+        error: "Choose a photo uploaded through Profile.",
+        field: "profileImageUrl",
+      },
+      { status: 400, headers },
+    );
 
   const engine = await getEngine();
   if (!engine.store.users.has(session.account.userId))
@@ -77,7 +92,7 @@ export async function PATCH(request: Request) {
       session.account.userId,
     );
     const materialized = await materializeProfileSamples({
-      body: body as Record<string, unknown>,
+      body: profileInput,
       userId: session.account.userId,
       engine,
       now: new Date(),

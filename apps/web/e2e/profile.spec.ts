@@ -102,6 +102,25 @@ test("profile validation preserves recovery and owner route redirects without a 
   expect(profile.id).toMatch(/^user_/);
 });
 
+test("public Profile accepts photos only from the owner upload path", async ({
+  page,
+}) => {
+  await createAccount(page, "Profile Photo Boundary");
+  const response = await page.request.patch("/api/me/profile/public", {
+    data: {
+      displayName: "Profile Photo Boundary",
+      profileImageUrl: "https://images.example/profile.jpg",
+      socialLinks: [],
+      selectedWorks: [],
+    },
+  });
+
+  expect(response.status()).toBe(400);
+  await expect(response.json()).resolves.toMatchObject({
+    field: "profileImageUrl",
+  });
+});
+
 test("a Library Work can publish a passage and whole-Profile unpublish removes the public projection", async ({
   page,
 }) => {

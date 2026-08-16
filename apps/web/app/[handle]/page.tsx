@@ -1,37 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { resolveHandle } from "@missa/radar-adapters";
 import { isPublicProfileIndexable } from "@missa/radar-engine";
 
 import { PublicProfileView } from "@/components/public-profile-view";
 import { PublicSiteShell } from "@/components/public-site-shell";
-import { getEngine } from "@/lib/engine";
+import { publicProfileForHandle } from "@/lib/public-profile-for-handle";
 import { absoluteUrl, JsonLd, pageMetadata } from "@/lib/seo";
-
-async function profileForHandle(rawHandle: string) {
-  if (!rawHandle.startsWith("@") || !process.env.DATABASE_URL) return null;
-  const resolved = await resolveHandle(
-    process.env.DATABASE_URL,
-    rawHandle.slice(1),
-  ).catch(() => null);
-  if (
-    !resolved ||
-    resolved.resolution !== "canonical" ||
-    resolved.state !== "claimed" ||
-    resolved.subjectType !== "user"
-  )
-    return null;
-  const engine = await getEngine();
-  const user = engine.store.users.get(resolved.subjectId);
-  if (!user?.publicProfilePublishedAt) return null;
-  const profile = engine.publicUserProfile(user.id);
-  if (!profile || profile.isPrivate) return null;
-  return {
-    handle: rawHandle.slice(1),
-    path: `/@${rawHandle.slice(1)}`,
-    profile,
-  };
-}
 
 export async function generateMetadata({
   params,
@@ -39,7 +13,7 @@ export async function generateMetadata({
   params: Promise<{ handle: string }>;
 }): Promise<Metadata> {
   const rawHandle = (await params).handle;
-  const result = await profileForHandle(rawHandle);
+  const result = await publicProfileForHandle(rawHandle);
   if (!result)
     return pageMetadata({
       title: "Profile not found",
@@ -57,6 +31,8 @@ export async function generateMetadata({
     description,
     path: result.path,
     noIndex: !indexable,
+    socialImagePath: `${result.path}/opengraph-image`,
+    socialImageAlt: `${result.profile.displayName ?? `@${result.handle}`}, @${result.handle} on Missa.`,
   });
 }
 
@@ -66,7 +42,7 @@ export default async function PublicHandlePage({
   params: Promise<{ handle: string }>;
 }) {
   const rawHandle = (await params).handle;
-  const result = await profileForHandle(rawHandle);
+  const result = await publicProfileForHandle(rawHandle);
   if (!result) notFound();
   const name = result.profile.displayName ?? `@${result.handle}`;
   const personJsonLd: Record<string, unknown> = {

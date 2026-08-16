@@ -8,7 +8,7 @@
     "build": "npm run build --workspace=@missa/contracts --prefix ../.. && npm run build --workspace=@missa/taxonomy --prefix ../.. && npm run build --workspace=@missa/radar-engine --prefix ../.. && npm run build --workspace=@missa/radar-adapters --prefix ../.. && npm run build --workspace=@missa/ingestion-v2 --prefix ../.. && npm run build --workspace=@missa/workspace-engine --prefix ../.. && next build",
     "start": "next start",
     "lint": "eslint .",
-    "test:unit": "node --import tsx --test lib/journalPresentation.test.ts",
+    "test:unit": "node --conditions=react-server --import tsx --test app/api/analytics/events/route.test.ts lib/journalPresentation.test.ts lib/profile-social-card.test.ts",
     "typecheck": "tsc --noEmit --incremental false",
     "test:e2e": "playwright test"
   },
