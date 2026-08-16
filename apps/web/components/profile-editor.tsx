@@ -152,6 +152,20 @@ function useMobileEditor(): boolean {
   return mobile;
 }
 
+async function deleteProfileDraftPhoto(url: string) {
+  if (!url) return;
+  try {
+    await fetch("/api/me/profile/photo", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+      keepalive: true,
+    });
+  } catch {
+    // Draft cleanup is best effort. Publishing never depends on this request.
+  }
+}
+
 function WorkEditorRow({
   work,
   sourceWork,
@@ -521,6 +535,7 @@ export function ProfileEditor({
   nav: React.ComponentProps<typeof AppNav>;
 }) {
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const uploadedDraftPhotoRef = useRef("");
   const mobileEditor = useMobileEditor();
   const initial = useMemo(
     () => ({
@@ -561,7 +576,6 @@ export function ProfileEditor({
   const [savedValues, setSavedValues] = useState(initial);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [uploadedDraftPhoto, setUploadedDraftPhoto] = useState("");
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isSavingHandle, setIsSavingHandle] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -579,6 +593,14 @@ export function ProfileEditor({
   const dirty = JSON.stringify(current) !== JSON.stringify(savedValues);
   const normalizedHandle = handle.trim().replace(/^@/u, "");
   const handleDirty = normalizedHandle !== savedHandle;
+
+  useEffect(() => {
+    return () => {
+      const draftPhoto = uploadedDraftPhotoRef.current;
+      uploadedDraftPhotoRef.current = "";
+      if (draftPhoto) void deleteProfileDraftPhoto(draftPhoto);
+    };
+  }, []);
 
   function updateWork(id: string, patch: Partial<ProfileWorkDraft>) {
     setSelectedWorks((items) =>
@@ -610,19 +632,6 @@ export function ProfileEditor({
     );
   }
 
-  async function deleteDraftPhoto(url: string) {
-    if (!url) return;
-    try {
-      await fetch("/api/me/profile/photo", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      });
-    } catch {
-      // Draft cleanup is best effort. Publishing never depends on this request.
-    }
-  }
-
   async function uploadPhoto(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -646,9 +655,10 @@ export function ProfileEditor({
         setError(body.error ?? "We could not upload that photo.");
         return;
       }
-      if (uploadedDraftPhoto && uploadedDraftPhoto !== body.url)
-        void deleteDraftPhoto(uploadedDraftPhoto);
-      setUploadedDraftPhoto(body.url);
+      const previousDraftPhoto = uploadedDraftPhotoRef.current;
+      if (previousDraftPhoto && previousDraftPhoto !== body.url)
+        void deleteProfileDraftPhoto(previousDraftPhoto);
+      uploadedDraftPhotoRef.current = body.url;
       setProfileImageUrl(body.url);
       setMessage("Photo added to this draft.");
     } catch {
@@ -659,9 +669,10 @@ export function ProfileEditor({
   }
 
   function removePhoto() {
-    if (uploadedDraftPhoto && profileImageUrl === uploadedDraftPhoto) {
-      void deleteDraftPhoto(uploadedDraftPhoto);
-      setUploadedDraftPhoto("");
+    const draftPhoto = uploadedDraftPhotoRef.current;
+    if (draftPhoto && profileImageUrl === draftPhoto) {
+      uploadedDraftPhotoRef.current = "";
+      void deleteProfileDraftPhoto(draftPhoto);
     }
     setProfileImageUrl("");
     setMessage("Photo removed from this draft.");
@@ -734,7 +745,7 @@ export function ProfileEditor({
       setSelectedWorks(savedCurrent.selectedWorks);
       setSavedValues(savedCurrent);
       setPublished(true);
-      setUploadedDraftPhoto("");
+      uploadedDraftPhotoRef.current = "";
       setMessage("Your public Profile is updated.");
       toast("Profile published.");
     });
@@ -768,7 +779,9 @@ export function ProfileEditor({
       setProfileImageUrl("");
       setSelectedWorks(privateWorks);
       setSavedValues(unpublishedValues);
-      setUploadedDraftPhoto("");
+      const draftPhoto = uploadedDraftPhotoRef.current;
+      uploadedDraftPhotoRef.current = "";
+      if (draftPhoto) void deleteProfileDraftPhoto(draftPhoto);
       setPublished(false);
       setMessage("Your Profile is no longer public.");
       toast("Profile unpublished.");
@@ -776,7 +789,9 @@ export function ProfileEditor({
   }
 
   function discard() {
-    if (uploadedDraftPhoto) void deleteDraftPhoto(uploadedDraftPhoto);
+    const draftPhoto = uploadedDraftPhotoRef.current;
+    uploadedDraftPhotoRef.current = "";
+    if (draftPhoto) void deleteProfileDraftPhoto(draftPhoto);
     setDisplayName(savedValues.displayName);
     setBio(savedValues.bio);
     setProfileImageUrl(savedValues.profileImageUrl);
@@ -786,7 +801,6 @@ export function ProfileEditor({
     setContactEnabled(savedValues.contactEnabled);
     setSocialLinks(savedValues.socialLinks);
     setSelectedWorks(savedValues.selectedWorks);
-    setUploadedDraftPhoto("");
     setError("");
     setMessage("");
   }

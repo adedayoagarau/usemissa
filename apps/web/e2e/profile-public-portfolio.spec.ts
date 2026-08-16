@@ -236,6 +236,47 @@ test("owner Profile keeps all Work editors open on desktop", async ({
   ).toHaveCount(2);
 });
 
+test("leaving the owner editor removes an unpublished draft photo", async ({
+  page,
+}) => {
+  const draftPhotoUrl =
+    "https://example.public.blob.vercel-storage.com/missa/profiles/profile-amaka/draft-photo.webp";
+  let deletedPhotoUrl: string | undefined;
+
+  await page.route("**/api/me/profile/photo", async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ url: draftPhotoUrl }),
+      });
+      return;
+    }
+    if (route.request().method() === "DELETE") {
+      deletedPhotoUrl = (route.request().postDataJSON() as { url?: string })
+        .url;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ removed: true }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.goto("/design-system/profile-owner");
+  await page.getByLabel("Profile photo").setInputFiles({
+    name: "profile-photo.webp",
+    mimeType: "image/webp",
+    buffer: Buffer.from("profile-photo"),
+  });
+  await expect(page.getByText("Photo added to this draft.")).toBeVisible();
+
+  await page.getByRole("link", { name: "Settings" }).click();
+  await expect.poll(() => deletedPhotoUrl).toBe(draftPhotoUrl);
+});
+
 test("owner claims a handle in place before first publish", async ({
   page,
 }) => {
