@@ -27,8 +27,11 @@ export function OpportunityResults({
   baseQuery: string;
   signedIn: boolean;
 }) {
-  const first = useRef<Snapshot>({ items: initialItems, nextCursor: initialNextCursor });
-  const snapshots = useRef(new Map<string, Snapshot>([['first', first.current]]));
+  const snapshots = useRef(
+    new Map<string, Snapshot>([
+      ['first', { items: initialItems, nextCursor: initialNextCursor }],
+    ]),
+  );
   const [items, setItems] = useState(initialItems);
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
   const [loading, setLoading] = useState(false);
