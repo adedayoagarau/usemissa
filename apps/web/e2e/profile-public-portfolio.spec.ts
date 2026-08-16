@@ -2,6 +2,58 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
 for (const width of [390, 1280]) {
+  test(`portfolio review renders all sixteen contract fixtures at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/design-system/profile-portfolio");
+
+    const fixtures = page.locator("[data-fixture]");
+    await expect(fixtures).toHaveCount(16);
+    expect(
+      await fixtures.evaluateAll((elements) =>
+        elements.map((element) => element.getAttribute("data-fixture")),
+      ),
+    ).toEqual(
+      Array.from({ length: 16 }, (_, index) =>
+        String(index + 1).padStart(2, "0"),
+      ),
+    );
+
+    for (const fixture of await fixtures.all()) {
+      await expect(fixture).toBeVisible();
+      const box = await fixture.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box?.width ?? 0).toBeGreaterThan(0);
+      expect(box?.height ?? 0).toBeGreaterThan(0);
+
+      const directChildren = fixture.locator(":scope > *");
+      await expect(directChildren).toHaveCount(2);
+      const headingBox = await directChildren.nth(0).boundingBox();
+      const previewBox = await directChildren.nth(1).boundingBox();
+      expect(headingBox).not.toBeNull();
+      expect(previewBox).not.toBeNull();
+      expect(
+        (headingBox?.y ?? 0) + (headingBox?.height ?? 0),
+      ).toBeLessThanOrEqual((previewBox?.y ?? 0) + 1);
+    }
+
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(0);
+
+    const accessibility = await new AxeBuilder({ page }).analyze();
+    expect(
+      accessibility.violations.filter((violation) =>
+        ["critical", "serious"].includes(violation.impact ?? ""),
+      ),
+    ).toEqual([]);
+  });
+
   test(`public Profile keeps its reading path and Share menu at ${width}px`, async ({
     page,
   }) => {
@@ -108,13 +160,17 @@ test("owner Profile uses safe mobile Work and photo controls", async ({
   await expect(
     page.getByRole("button", { name: "Change photo" }),
   ).toBeVisible();
-  const ownerPortrait = await page.locator('[data-slot="avatar"]').boundingBox();
+  const ownerPortrait = await page
+    .locator('[data-slot="avatar"]')
+    .boundingBox();
   const photoAction = await page
     .getByRole("button", { name: "Change photo" })
     .boundingBox();
   expect(ownerPortrait).not.toBeNull();
   expect(photoAction).not.toBeNull();
-  expect(Math.abs((ownerPortrait?.y ?? 0) - (photoAction?.y ?? 0))).toBeLessThanOrEqual(4);
+  expect(
+    Math.abs((ownerPortrait?.y ?? 0) - (photoAction?.y ?? 0)),
+  ).toBeLessThanOrEqual(4);
   await expect(page.getByLabel("Photo link")).toHaveCount(0);
   await expect(page.getByText("Featured", { exact: true })).toHaveCount(1);
   await expect(

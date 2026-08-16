@@ -258,11 +258,9 @@ function CreditList({
   onHiddenToggle?: (credit: Credit) => void;
 }) {
   return (
-    <ItemGroup
-      className={`${styles.credits} ${hidden ? styles.hiddenCredits : ""}`}
-    >
+    <ItemGroup className={styles.credits}>
       {items.map((credit, index) => (
-        <div key={`${credit.year}-${credit.title}`}>
+        <div key={`${credit.year}-${credit.title}`} role="listitem">
           <Item
             className={`${styles.credit} ${hidden || credit.visibility === "hidden" ? styles.hiddenCredit : ""}`}
           >

@@ -910,7 +910,7 @@ export function ProfileEditor({
               <div className={styles.sectionHeader}>
                 <div>
                   <h1 id="identity-title">Public identity</h1>
-                  <p>Name the work clearly and keep the introduction yours.</p>
+                  <p>Keep the introduction clear and in your own words.</p>
                 </div>
               </div>
               <div className={styles.fieldGrid}>
@@ -1033,7 +1033,7 @@ export function ProfileEditor({
           <section className={styles.section} aria-labelledby="work-title">
             <header className={styles.sectionHeader}>
               <div>
-                <h2 id="work-title">Selected Work</h2>
+                <h2 id="work-title">Selected Works</h2>
                 <p>
                   Add public work people can read, watch, view, or listen to.
                 </p>
@@ -1171,7 +1171,7 @@ export function ProfileEditor({
           <section className={styles.section} aria-labelledby="links-title">
             <header className={styles.sectionHeader}>
               <div>
-                <h2 id="links-title">Elsewhere</h2>
+                <h2 id="links-title">Links</h2>
                 <p>Add the places where people can find more of your work.</p>
               </div>
               <Button

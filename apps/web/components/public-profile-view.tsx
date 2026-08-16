@@ -292,10 +292,10 @@ export function PublicProfileView({
           {socialLinks.length ? (
             <section
               className={styles.railSection}
-              aria-labelledby="elsewhere-title"
+              aria-labelledby="links-title"
             >
-              <h2 id="elsewhere-title" className={styles.sectionLabel}>
-                Elsewhere
+              <h2 id="links-title" className={styles.sectionLabel}>
+                Links
               </h2>
               <ItemGroup className={styles.socialList}>
                 {socialLinks.map((link, index) => (
