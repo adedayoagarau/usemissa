@@ -9,6 +9,7 @@ selected_review_routes:
   - /design-system/profile-public
   - /design-system/profile-owner
   - /design-system/profile-portfolio
+  - /design-system/profile-social-card
 product_routes:
   - /@handle
   - /profile

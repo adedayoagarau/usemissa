@@ -41,6 +41,46 @@ for (const width of [390, 1280]) {
   });
 }
 
+test("Profile social preview uses the production image renderer", async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/design-system/profile-social-card");
+
+  await expect(
+    page.getByRole("heading", {
+      name: "What appears when a Profile is shared",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("img", {
+      name: "Social preview for Amaka Obi's public Profile.",
+    }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth -
+        document.documentElement.clientWidth,
+    ),
+  ).toBe(0);
+
+  const image = await request.get(
+    "/design-system/profile-social-card/opengraph-image",
+  );
+  expect(image.status()).toBe(200);
+  expect(image.headers()["content-type"]).toBe("image/png");
+  expect((await image.body()).byteLength).toBeGreaterThan(10_000);
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(
+    accessibility.violations.filter((violation) =>
+      ["critical", "serious"].includes(violation.impact ?? ""),
+    ),
+  ).toEqual([]);
+});
+
 test("owner Profile uses safe mobile Work and photo controls", async ({
   page,
 }) => {

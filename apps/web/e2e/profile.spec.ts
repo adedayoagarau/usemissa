@@ -368,7 +368,9 @@ test("notification settings remain private and control email and deadline defaul
     page.getByRole("heading", { name: "Notifications", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByLabel("Send Opportunity updates by email"),
+    page.getByRole("checkbox", {
+      name: "Send Opportunity updates by email",
+    }),
   ).not.toBeChecked();
   await expect(page.getByLabel("Your timezone")).toHaveValue("Africa/Lagos");
 });
