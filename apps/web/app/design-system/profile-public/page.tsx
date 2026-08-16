@@ -20,6 +20,7 @@ const profile: PublicUserProfile = {
   bio: "Amaka Obi writes essays, fiction, and screenplays about family, work, and the quiet decisions that shape ordinary life.",
   openTo:
     "Commissions, residencies, essay assignments, and thoughtful collaborations.",
+  contactEnabled: true,
   selectedWorks: [
     {
       id: "harmattan-year",

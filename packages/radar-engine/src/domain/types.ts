@@ -504,6 +504,8 @@ export interface PublicPortfolio {
   headline?: string;
   oneLine?: string;
   openTo?: string;
+  /** Explicit opt-in to the Missa contact relay. The account email stays private. */
+  contactEnabled?: boolean;
   socialLinks: ProfileSocialLink[];
   selectedWorks: ProfileSelectedWork[];
 }
@@ -642,6 +644,7 @@ export interface PublicUserProfile {
   headline?: string;
   oneLine?: string;
   openTo?: string;
+  contactEnabled?: true;
   socialLinks?: ProfileSocialLink[];
   selectedWorks?: ProfileSelectedWork[];
   publishedAt?: IsoDateTime;

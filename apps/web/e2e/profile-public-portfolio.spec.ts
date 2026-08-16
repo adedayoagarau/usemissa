@@ -9,6 +9,9 @@ for (const width of [390, 1280]) {
     await page.goto("/design-system/profile-public");
 
     await expect(page.locator("h1")).toHaveCount(1);
+    await expect(
+      page.getByRole("button", { name: "Get in touch" }),
+    ).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Share" })).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Copy link" })).toHaveCount(
       0,
@@ -70,6 +73,11 @@ test("owner Profile uses safe mobile Work and photo controls", async ({
   await page.getByRole("button", { name: "Keep editing" }).click();
   await expect(page.getByRole("alertdialog")).toHaveCount(0);
   await expect(page.getByLabel("Name")).toHaveValue("Amaka Obi refined");
+  await expect(
+    page.getByRole("switch", {
+      name: "Allow messages through your Profile",
+    }),
+  ).toBeChecked();
 
   expect(
     await page.evaluate(
@@ -94,4 +102,41 @@ test("owner Profile keeps all Work editors open on desktop", async ({
   await expect(
     page.locator('[data-slot="collapsible-content"]:visible'),
   ).toHaveCount(2);
+});
+
+test("public Profile contact keeps the creator email private", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  let submitted: Record<string, unknown> | undefined;
+  await page.route("**/api/profile/profile-amaka/contact", async (route) => {
+    submitted = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 202,
+      contentType: "application/json",
+      body: JSON.stringify({ accepted: true }),
+    });
+  });
+
+  await page.goto("/design-system/profile-public");
+  await page.getByRole("button", { name: "Get in touch" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Get in touch with Amaka Obi" }),
+  ).toBeVisible();
+  await page.getByLabel("Your name").fill("Tomi Adeyemi");
+  await page.getByLabel("Your email").fill("tomi@example.com");
+  await page
+    .getByLabel("Message")
+    .fill("I would like to discuss an essay commission with you.");
+  await page.getByRole("button", { name: "Send message" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Message sent." }),
+  ).toBeVisible();
+
+  expect(submitted).toMatchObject({
+    senderName: "Tomi Adeyemi",
+    senderEmail: "tomi@example.com",
+  });
+  expect(String(submitted?.idempotencyKey)).toHaveLength(36);
+  expect(JSON.stringify(submitted)).not.toContain("amaka@example.com");
 });

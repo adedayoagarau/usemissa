@@ -26,6 +26,7 @@ export default function ProfileOwnerReviewPage() {
             oneLine: "Writing essays and scripts about ordinary life.",
             openTo:
               "Commissions, residencies, essay assignments, and thoughtful collaborations.",
+            contactEnabled: true,
             selectedWorks: [
               {
                 id: "harmattan-year",

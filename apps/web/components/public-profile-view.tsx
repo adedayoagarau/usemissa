@@ -5,6 +5,7 @@ import type {
   PublicUserProfile,
 } from "@missa/radar-engine";
 
+import { ProfileContactDialog } from "@/components/profile-contact-dialog";
 import { ProfileShareActions } from "@/components/profile-share-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -168,7 +169,15 @@ export function PublicProfileView({
             ) : null}
           </ItemContent>
         </Item>
-        <ProfileShareActions displayName={displayName} url={shareUrl} />
+        <div className={styles.profileActions}>
+          {profile.contactEnabled && profile.id ? (
+            <ProfileContactDialog
+              displayName={displayName}
+              userId={profile.id}
+            />
+          ) : null}
+          <ProfileShareActions displayName={displayName} url={shareUrl} />
+        </div>
       </header>
 
       <div className={styles.content}>

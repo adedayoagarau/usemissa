@@ -25,6 +25,7 @@ test('owner can complete a profile and visitors only see the public projection',
     data: {
       displayName: 'Rowan Example',
       bio: 'A writer working across poetry and criticism.',
+      contactEnabled: true,
       socialLinks: [],
       selectedWorks: [],
     },
@@ -43,7 +44,7 @@ test('owner can complete a profile and visitors only see the public projection',
   expect(publicResponse.ok()).toBeTruthy();
   expect(publicResponse.headers()['cache-control']).toBe('no-store');
   const publicBody = await publicResponse.json();
-  expect(publicBody).toMatchObject({ id: profile.id, displayName: 'Rowan Example', bio: 'A writer working across poetry and criticism.' });
+  expect(publicBody).toMatchObject({ id: profile.id, displayName: 'Rowan Example', bio: 'A writer working across poetry and criticism.', contactEnabled: true });
   expect(publicBody.publishedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   expect(JSON.stringify(publicBody)).not.toContain(email);
   expect(publicBody).not.toHaveProperty('attributes');
@@ -54,6 +55,7 @@ test('owner can complete a profile and visitors only see the public projection',
   await expect(page.getByRole('heading', { name: 'Rowan Example' })).toBeVisible();
   await expect(page.getByText('A writer working across poetry and criticism.')).toBeVisible();
   await expect(page.locator('body')).not.toContainText(email);
+  await expect(page.getByRole('button', { name: 'Get in touch' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Share' })).toBeVisible();
 });
 

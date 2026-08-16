@@ -13,6 +13,13 @@
   border-block-end: 1px solid var(--border);
 }
 
+.profileActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: var(--space-control-inline-filled);
+}
+
 .identity {
   display: flex;
   min-width: 0;
@@ -248,6 +255,10 @@
 @media (max-width: 760px) {
   .profileHeader {
     grid-template-columns: 1fr;
+  }
+
+  .profileActions {
+    justify-content: start;
   }
 
   .identity {

@@ -253,6 +253,23 @@
   margin: 0;
 }
 
+.contactOption {
+  min-height: 64px;
+  padding: var(--space-row) 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.contactOption [data-slot="item-actions"] {
+  gap: var(--space-control-inline-filled);
+}
+
+.contactState {
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
 .status {
   min-height: 24px;
   color: var(--ink-muted);

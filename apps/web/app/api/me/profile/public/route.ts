@@ -63,7 +63,7 @@ export async function PATCH(request: Request) {
       "profile.published",
       "user_profile",
       saved.id,
-      "Published fields: displayName, bio, profileImageUrl, headline, oneLine, openTo, socialLinks, selectedWorks",
+      "Published fields: displayName, bio, profileImageUrl, headline, oneLine, openTo, contactEnabled, socialLinks, selectedWorks",
     );
     await persistRadar();
     if (

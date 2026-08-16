@@ -16,6 +16,7 @@ export type PublicPortfolioField =
   | "headline"
   | "oneLine"
   | "openTo"
+  | "contactEnabled"
   | "socialLinks"
   | "selectedWorks";
 
@@ -254,6 +255,14 @@ export function normalizePublicPortfolioPublishInput(
       "displayName",
       "Add your public name.",
     );
+  if (
+    value.contactEnabled !== undefined &&
+    typeof value.contactEnabled !== "boolean"
+  )
+    throw new PublicPortfolioValidationError(
+      "contactEnabled",
+      "Contact preference must be on or off.",
+    );
   return {
     displayName,
     ...(text("bio", value.bio, 1_000)
@@ -271,6 +280,7 @@ export function normalizePublicPortfolioPublishInput(
     ...(text("openTo", value.openTo, 240)
       ? { openTo: text("openTo", value.openTo, 240) }
       : {}),
+    ...(value.contactEnabled === true ? { contactEnabled: true } : {}),
     socialLinks: socialLinks(value.socialLinks),
     selectedWorks: selectedWorks(value.selectedWorks),
   };
@@ -289,6 +299,7 @@ export function publishPortfolio(
     ...(normalized.headline ? { headline: normalized.headline } : {}),
     ...(normalized.oneLine ? { oneLine: normalized.oneLine } : {}),
     ...(normalized.openTo ? { openTo: normalized.openTo } : {}),
+    ...(normalized.contactEnabled ? { contactEnabled: true } : {}),
     socialLinks: normalized.socialLinks,
     selectedWorks: normalized.selectedWorks,
   };
@@ -320,6 +331,7 @@ export function publicPortfolioProjection(
     ...(portfolio?.headline ? { headline: portfolio.headline } : {}),
     ...(portfolio?.oneLine ? { oneLine: portfolio.oneLine } : {}),
     ...(portfolio?.openTo ? { openTo: portfolio.openTo } : {}),
+    ...(portfolio?.contactEnabled ? { contactEnabled: true as const } : {}),
     ...(portfolio?.socialLinks.length
       ? { socialLinks: portfolio.socialLinks.map((link) => ({ ...link })) }
       : {}),

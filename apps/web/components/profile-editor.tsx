@@ -39,7 +39,16 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Item, ItemGroup, ItemSeparator } from "@/components/ui/item";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemSeparator,
+  ItemTitle,
+} from "@/components/ui/item";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import styles from "./profile-editor.module.css";
 
@@ -263,6 +272,7 @@ export function ProfileEditor({
       headline: initialProfile.publicPortfolio?.headline ?? "",
       oneLine: initialProfile.publicPortfolio?.oneLine ?? "",
       openTo: initialProfile.publicPortfolio?.openTo ?? "",
+      contactEnabled: initialProfile.publicPortfolio?.contactEnabled ?? false,
       socialLinks: initialProfile.publicPortfolio?.socialLinks ?? [],
       selectedWorks: initialProfile.publicPortfolio?.selectedWorks ?? [],
     }),
@@ -276,6 +286,7 @@ export function ProfileEditor({
   const [headline, setHeadline] = useState(initial.headline);
   const [oneLine, setOneLine] = useState(initial.oneLine);
   const [openTo, setOpenTo] = useState(initial.openTo);
+  const [contactEnabled, setContactEnabled] = useState(initial.contactEnabled);
   const [socialLinks, setSocialLinks] = useState<ProfileSocialLink[]>(
     initial.socialLinks,
   );
@@ -295,6 +306,7 @@ export function ProfileEditor({
     headline,
     oneLine,
     openTo,
+    contactEnabled,
     socialLinks,
     selectedWorks,
   };
@@ -402,6 +414,7 @@ export function ProfileEditor({
     setHeadline(savedValues.headline);
     setOneLine(savedValues.oneLine);
     setOpenTo(savedValues.openTo);
+    setContactEnabled(savedValues.contactEnabled);
     setSocialLinks(savedValues.socialLinks);
     setSelectedWorks(savedValues.selectedWorks);
     setUploadedDraftPhoto("");
@@ -720,6 +733,36 @@ export function ProfileEditor({
             ) : (
               <p className={styles.helper}>No links are public yet.</p>
             )}
+          </section>
+
+          <section className={styles.section} aria-labelledby="contact-title">
+            <header className={styles.sectionHeader}>
+              <div>
+                <h2 id="contact-title">Contact</h2>
+                <p>
+                  Choose whether visitors can send you a message through Missa.
+                </p>
+              </div>
+            </header>
+            <Item className={styles.contactOption}>
+              <ItemContent>
+                <ItemTitle>Get in touch</ItemTitle>
+                <ItemDescription>
+                  Your email address stays private. Messages are sent to the
+                  email connected to your Missa account.
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <span className={styles.contactState}>
+                  {contactEnabled ? "Shown on your Profile" : "Not shown"}
+                </span>
+                <Switch
+                  checked={contactEnabled}
+                  onCheckedChange={setContactEnabled}
+                  aria-label="Allow messages through your Profile"
+                />
+              </ItemActions>
+            </Item>
           </section>
 
           <p

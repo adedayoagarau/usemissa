@@ -100,6 +100,7 @@ test('publishing a portfolio exposes only creator-authored public fields', () =>
     headline: '  Writer · Lagos  ',
     oneLine: '  Writing about home, work, and memory.  ',
     openTo: '  Essays and commissions.  ',
+    contactEnabled: true,
     socialLinks: [
       { id: 'website', service: 'website', url: 'https://ada.example.com' },
       { id: 'instagram', service: 'instagram', url: 'https://www.instagram.com/ada/' },
@@ -126,6 +127,7 @@ test('publishing a portfolio exposes only creator-authored public fields', () =>
     headline: 'Writer · Lagos',
     oneLine: 'Writing about home, work, and memory.',
     openTo: 'Essays and commissions.',
+    contactEnabled: true,
     socialLinks: [
       { id: 'website', service: 'website', url: 'https://ada.example.com/' },
       { id: 'instagram', service: 'instagram', url: 'https://www.instagram.com/ada/' },
@@ -167,6 +169,15 @@ test('public portfolio validation rejects mismatched and unsafe links without mu
     PublicPortfolioValidationError,
   );
   assert.equal(user.publicProfilePublishedAt, undefined);
+  assert.throws(
+    () => engine.publishUserPortfolio(user.id, {
+      displayName: 'Ada',
+      contactEnabled: 'yes' as never,
+      socialLinks: [],
+      selectedWorks: [],
+    }),
+    (error: unknown) => error instanceof PublicPortfolioValidationError && error.field === 'contactEnabled',
+  );
 });
 
 test('public portfolio keeps social links and selected Works bounded and stable', () => {
