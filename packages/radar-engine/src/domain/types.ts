@@ -667,6 +667,9 @@ export interface Account {
   email: string;
   /** "<salt-hex>:<hash-hex>" — see auth/crypto.ts. */
   passwordHash: string;
+  /** Stable identity from the managed authentication provider, when linked. */
+  authUserId?: string;
+  authProvider?: 'neon-auth';
   /** The individual tracker this account owns, if any. */
   userId?: string;
   /** Platform admin — can see the verification queue and claim reviews. */

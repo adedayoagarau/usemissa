@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { AuthError } from "@missa/radar-engine";
 import { redeemWaitlistInvite } from "@missa/radar-adapters";
 import { getEngine, persistRadar } from "@/lib/engine";
 import {
@@ -8,6 +7,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/auth";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
+import { getRateLimiter, readClientIp, SIGNUP_IP_LIMIT, tooManyRequests } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -38,6 +38,12 @@ export async function POST(request: Request) {
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
+  if (email.length > 320) {
+    return NextResponse.json(
+      { error: "Use an email address up to 320 characters." },
+      { status: 400, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   const normalizedName = displayName.trim();
   if (!normalizedName || normalizedName.length > 120) {
     return NextResponse.json(
@@ -52,14 +58,23 @@ export async function POST(request: Request) {
     );
   }
 
+  /**
+   * Charged only once the payload is well formed, so malformed noise stays cheap
+   * to reject and cannot spend a real visitor's window on their behalf.
+   */
+  const limiter = await getRateLimiter();
+  const decision = await limiter.consume(SIGNUP_IP_LIMIT, readClientIp(request));
+  if (!decision.allowed) {
+    return tooManyRequests(decision, "Too many sign up attempts. Please wait before trying again.");
+  }
+
   const engine = await getEngine();
   let account;
   try {
     ({ account } = engine.signUp(email, password, normalizedName));
-  } catch (err) {
-    const message = err instanceof AuthError ? err.message : "Sign up failed";
+  } catch {
     return NextResponse.json(
-      { error: message },
+      { error: "We could not create your account. Check your details and try again." },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }

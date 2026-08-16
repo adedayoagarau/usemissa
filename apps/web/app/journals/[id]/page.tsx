@@ -2,12 +2,18 @@ import type { ProfileDetail } from "@missa/radar-adapters";
 import { Bookmark } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import { getProfileRepository } from "@/lib/profileRepository";
+import {
+  monogramFor,
+  submissionWindowStatus,
+  type SubmissionWindowStatus,
+} from "@/lib/journalPresentation";
 import { PublicSiteShell } from "@/components/public-site-shell";
 
 export const dynamic = "force-dynamic";
@@ -20,12 +26,10 @@ const PUBLIC_OPPORTUNITY_STATUSES = new Set([
   "deadline-extended",
 ]);
 
+type ChipTone = "positive" | "accent" | "neutral";
+
 function displayValue(value: string | null | undefined): string {
   return value?.trim() || UNKNOWN;
-}
-
-function displayList(values: string[]): string {
-  return values.length ? values.join(", ") : UNKNOWN;
 }
 
 function profileLabel(profile: Pick<ProfileDetail, "kind">): string {
@@ -40,6 +44,112 @@ function mediaSrc(id: string): string {
   return `/api/journals/${encodeURIComponent(id)}/media`;
 }
 
+function compactFactText(label: string, value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (
+    label === "Reading fee" &&
+    /^(no|none|free|0(?:\.0+)?)$/.test(normalized)
+  ) {
+    return "No reading fee";
+  }
+  if (label === "Payment" && /cash/.test(normalized)) {
+    return "Pays cash";
+  }
+  if (
+    label === "Simultaneous submissions" &&
+    /^(yes|allowed|accepted|okay|ok)/.test(normalized)
+  ) {
+    return "Simultaneous submissions OK";
+  }
+  if (
+    label === "Unsolicited submissions" &&
+    /^(yes|allowed|accepted|okay|ok)/.test(normalized)
+  ) {
+    return "Unsolicited submissions accepted";
+  }
+  if (label === "Issues per year") return `${value} issues/year`;
+  return `${label}: ${value}`;
+}
+
+function compactFactTone(label: string, value: string): ChipTone {
+  const normalized = value.trim().toLowerCase();
+  if (
+    (label === "Reading fee" &&
+      /^(no|none|free|0(?:\.0+)?)$/.test(normalized)) ||
+    (label === "Payment" && /cash|paid|yes/.test(normalized)) ||
+    ((label === "Simultaneous submissions" ||
+      label === "Unsolicited submissions") &&
+      /^(yes|allowed|accepted|okay|ok)/.test(normalized))
+  ) {
+    return "positive";
+  }
+  return "accent";
+}
+
+function FactChip({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: ChipTone;
+}) {
+  const toneClasses = {
+    positive: "border-green/20 bg-lichen-tint text-green",
+    accent: "border-primary/20 bg-accent-tint text-accent-deep",
+    neutral: "border-border bg-muted text-foreground",
+  } satisfies Record<ChipTone, string>;
+
+  return (
+    <span
+      className={`inline-flex min-h-8 items-center rounded-full border px-3 py-1 text-xs leading-5 font-medium ${toneClasses[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function TagGroup({ label, values }: { label: string; values: string[] }) {
+  if (!values.length) return null;
+  return (
+    <div>
+      <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+        {label}
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {values.map((value) => (
+          <FactChip key={`${label}:${value}`} tone="accent">
+            {value}
+          </FactChip>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SubmissionStatus({ status }: { status: SubmissionWindowStatus }) {
+  const toneClasses = {
+    open: "border-green/20 bg-lichen-tint text-green",
+    closed: "border-border bg-muted text-foreground",
+    unknown: "border-mineral-blue/20 bg-mineral-blue-tint text-mineral-blue",
+  } satisfies Record<SubmissionWindowStatus["kind"], string>;
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1" role="status">
+      <span
+        className={`inline-flex min-h-8 items-center gap-2 rounded-full border px-3 py-1 text-sm font-semibold ${toneClasses[status.kind]}`}
+      >
+        <span aria-hidden="true" className="text-[0.7rem]">
+          ●
+        </span>
+        {status.label}
+      </span>
+      {status.detail ? (
+        <span className="text-sm text-muted-foreground">{status.detail}</span>
+      ) : null}
+    </div>
+  );
+}
+
 function emailAddress(value: string | null): string | null {
   return value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
     ? value.trim()
@@ -49,7 +159,7 @@ function emailAddress(value: string | null): string | null {
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 border-b border-border pb-3 last:border-b-0 last:pb-0">
-      <dt className="text-sm text-muted-foreground">{label}</dt>
+      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
       <dd className="mt-1 text-sm leading-6 break-words text-foreground">
         {value}
       </dd>
@@ -67,6 +177,9 @@ export default async function JournalDetailPage({
   const { id } = await params;
   const profile = await repository.getById(id);
   if (!profile) notFound();
+  if (profile.id !== id) {
+    permanentRedirect(`/journals/${encodeURIComponent(profile.id)}`);
+  }
 
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(
@@ -111,12 +224,41 @@ export default async function JournalDetailPage({
     : profile.subgenres;
   const contactEmail = emailAddress(profile.contactEmail);
   const profilePath = `/journals/${encodeURIComponent(id)}`;
+  const monogram = monogramFor(profile.name);
+  const submissionStatus = submissionWindowStatus(profile.readingPeriod);
+  const keySubmissionFields: Array<readonly [string, string | null]> =
+    isSmallPress
+      ? [
+          ["Titles per year", profile.titlesPerYear],
+          [
+            "Publishes through contests only",
+            profile.publishesThroughContestsOnly,
+          ],
+        ]
+      : [
+          ["Reading fee", profile.readingFee],
+          ["Unsolicited submissions", profile.unsolicitedSubmissions],
+          ["Simultaneous submissions", profile.simultaneousSubmissions],
+          ["Payment", profile.payment],
+          ["Issues per year", profile.issuesPerYear],
+        ];
+  const keySubmissionFacts = keySubmissionFields.flatMap(([label, value]) => {
+    const trimmedValue = typeof value === "string" ? value.trim() : "";
+    if (!trimmedValue) return [];
+    return [
+      {
+        label,
+        text: compactFactText(label, trimmedValue),
+        tone: compactFactTone(label, trimmedValue),
+      },
+    ];
+  });
 
   return (
     <PublicSiteShell current="Journals & presses">
       <main
         id="main-content"
-        className="mx-auto min-h-screen max-w-5xl min-w-0 px-4 py-12 sm:px-6 sm:py-16"
+        className="mx-auto min-h-screen max-w-5xl min-w-0 bg-background px-4 py-12 sm:px-6 sm:py-16"
       >
         <Link
           href="/journals"
@@ -125,7 +267,7 @@ export default async function JournalDetailPage({
           ← Journals & small presses
         </Link>
 
-        <header className="mt-8 flex min-w-0 flex-wrap items-start gap-4 sm:gap-6">
+        <header className="mt-8 flex min-w-0 flex-wrap items-start gap-4 border-b border-border pb-8 sm:gap-6">
           {profile.mediaUrl ? (
             <img
               src={mediaSrc(profile.id)}
@@ -136,50 +278,50 @@ export default async function JournalDetailPage({
           ) : (
             <span
               role="img"
-              aria-label="Image not available"
-              className="flex size-20 shrink-0 items-center justify-center rounded-xl bg-muted px-2 text-center text-xs text-muted-foreground sm:size-28"
+              aria-label={`${profile.name} monogram`}
+              className={`flex size-20 shrink-0 items-center justify-center rounded-xl border px-2 text-center font-heading text-2xl font-semibold tracking-tight sm:size-28 sm:text-4xl ${monogram.tone}`}
             >
-              Image not available
+              {monogram.letters}
             </span>
           )}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">
               {profileLabel(profile)}
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight break-words sm:text-4xl">
+            <h1 className="mt-2 font-heading text-4xl font-semibold tracking-tight break-words sm:text-5xl">
               {profile.name}
             </h1>
-            <div className="mt-3 flex min-w-0 flex-wrap gap-x-4 gap-y-2">
+            <div className="mt-4">
+              <SubmissionStatus status={submissionStatus} />
+            </div>
+            {profile.genres.length ? (
+              <div className="mt-4">
+                <TagGroup label="Genres" values={profile.genres} />
+              </div>
+            ) : null}
+            <div className="mt-5 flex min-w-0 flex-wrap items-center gap-3">
               {profile.websiteUrl ? (
-                <a
-                  className="inline-flex min-h-11 items-center rounded-lg text-sm font-medium text-primary underline decoration-accent-tint underline-offset-4 hover:text-accent-deep focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                  href={profile.websiteUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Button
+                  nativeButton={false}
+                  render={
+                    <a
+                      href={profile.websiteUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  }
+                  variant="outline"
                 >
-                  Official website (opens in a new site){" "}
+                  Official website
                   <span aria-hidden="true" className="ml-1">
                     ↗
                   </span>
-                </a>
+                </Button>
               ) : (
                 <span className="inline-flex min-h-11 items-center text-sm text-muted-foreground">
                   Official website: {UNKNOWN}
                 </span>
               )}
-              {profile.sourceUrl ? (
-                <a
-                  className="inline-flex min-h-11 items-center rounded-lg text-sm font-medium text-primary underline decoration-accent-tint underline-offset-4 hover:text-accent-deep focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                  href={profile.sourceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Original profile (opens in a new site){" "}
-                  <span aria-hidden="true" className="ml-1">
-                    ↗
-                  </span>
-                </a>
-              ) : null}
             </div>
           </div>
         </header>
@@ -189,11 +331,11 @@ export default async function JournalDetailPage({
             <section aria-labelledby="journal-about-heading">
               <h2
                 id="journal-about-heading"
-                className="text-2xl font-semibold tracking-tight"
+                className="font-heading text-2xl font-semibold tracking-tight"
               >
                 About
               </h2>
-              <p className="mt-3 leading-7 break-words whitespace-pre-line text-muted-foreground">
+              <p className="mt-3 leading-7 break-words whitespace-pre-line text-foreground/80">
                 {displayValue(profile.editorialFocus || profile.summary)}
               </p>
             </section>
@@ -202,11 +344,11 @@ export default async function JournalDetailPage({
               <section className="mt-10" aria-labelledby="journal-tips-heading">
                 <h2
                   id="journal-tips-heading"
-                  className="text-2xl font-semibold tracking-tight"
+                  className="font-heading text-2xl font-semibold tracking-tight"
                 >
                   Editorial tips
                 </h2>
-                <p className="mt-3 leading-7 break-words whitespace-pre-line text-muted-foreground">
+                <p className="mt-3 leading-7 break-words whitespace-pre-line text-foreground/80">
                   {profile.editorialTips}
                 </p>
               </section>
@@ -218,17 +360,22 @@ export default async function JournalDetailPage({
             >
               <h2
                 id="journal-publishing-heading"
-                className="text-2xl font-semibold tracking-tight"
+                className="font-heading text-2xl font-semibold tracking-tight"
               >
                 What they publish
               </h2>
-              <dl className="mt-4 grid min-w-0 gap-3 sm:grid-cols-2">
-                <Fact label="Genres" value={displayList(profile.genres)} />
+              <div className="mt-5 space-y-5">
                 {isSmallPress ? (
-                  <Fact label="Book types" value={displayList(bookTypes)} />
+                  <TagGroup label="Book types" values={bookTypes} />
                 ) : null}
-                <Fact label="Formats" value={displayList(profile.formats)} />
-              </dl>
+                <TagGroup label="Formats" values={profile.formats} />
+                {!profile.formats.length &&
+                (!isSmallPress || !bookTypes.length) ? (
+                  <p className="text-sm text-muted-foreground">
+                    Formats: {UNKNOWN}
+                  </p>
+                ) : null}
+              </div>
             </section>
 
             <section
@@ -237,7 +384,7 @@ export default async function JournalDetailPage({
             >
               <h2
                 id="journal-opportunities-heading"
-                className="text-2xl font-semibold tracking-tight"
+                className="font-heading text-2xl font-semibold tracking-tight"
               >
                 Open calls and related opportunities
               </h2>
@@ -251,13 +398,13 @@ export default async function JournalDetailPage({
                             <h3 className="font-semibold break-words text-foreground">
                               {opportunity.title}
                             </h3>
-                            <p className="mt-1 text-sm break-words text-muted-foreground">
+                            <p className="mt-1 text-sm break-words text-foreground/70">
                               {opportunity.deadline
                                 ? `Deadline ${opportunity.deadline}`
                                 : "Deadline: Unknown"}
                             </p>
                           </div>
-                          <span className="shrink-0 text-sm text-muted-foreground">
+                          <span className="shrink-0 text-sm font-medium text-muted-foreground">
                             {opportunity.status === "unknown"
                               ? "Status: Unknown"
                               : opportunity.status === "open"
@@ -319,19 +466,7 @@ export default async function JournalDetailPage({
                               Tracker save unavailable for this linked record
                             </span>
                           )}
-                          {opportunity.detailUrl ? (
-                            <a
-                              href={opportunity.detailUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex min-h-11 items-center rounded-lg text-sm font-medium text-primary underline decoration-accent-tint underline-offset-4 hover:text-accent-deep focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none"
-                            >
-                              Open source details (opens in a new site){" "}
-                              <span aria-hidden="true" className="ml-1">
-                                ↗
-                              </span>
-                            </a>
-                          ) : opportunity.officialWebsite ? (
+                          {opportunity.officialWebsite ? (
                             <a
                               href={opportunity.officialWebsite}
                               target="_blank"
@@ -369,11 +504,11 @@ export default async function JournalDetailPage({
               >
                 <h2
                   id="journal-contact-heading"
-                  className="text-2xl font-semibold tracking-tight"
+                  className="font-heading text-2xl font-semibold tracking-tight"
                 >
                   Contact
                 </h2>
-                <div className="mt-3 space-y-1 leading-7 text-muted-foreground">
+                <div className="mt-3 space-y-1 leading-7 text-foreground/80">
                   {profile.contactName ? <p>{profile.contactName}</p> : null}
                   {contactEmail ? (
                     <p>
@@ -398,32 +533,37 @@ export default async function JournalDetailPage({
           </div>
 
           <aside
-            className="h-fit min-w-0 rounded-xl border border-border bg-card p-5"
+            className="h-fit min-w-0 rounded-xl border border-primary/15 bg-card p-5"
             aria-labelledby="journal-details-heading"
           >
             <h2
               id="journal-details-heading"
-              className="text-xl font-semibold tracking-tight"
+              className="font-heading text-xl font-semibold tracking-tight"
             >
               Submission details
             </h2>
+            <div
+              className="mt-5 flex min-w-0 flex-wrap gap-2"
+              aria-label="Key submission facts"
+            >
+              {keySubmissionFacts.length ? (
+                keySubmissionFacts.map((fact) => (
+                  <FactChip key={fact.label} tone={fact.tone}>
+                    {fact.text}
+                  </FactChip>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Submission details: {UNKNOWN}
+                </p>
+              )}
+            </div>
             <dl className="mt-5 space-y-3">
               {isSmallPress ? (
                 <>
-                  <Fact label="Genres" value={displayList(profile.genres)} />
-                  <Fact label="Book types" value={displayList(bookTypes)} />
-                  <Fact label="Formats" value={displayList(profile.formats)} />
                   <Fact
                     label="Representative authors"
                     value={displayValue(profile.representativeAuthors)}
-                  />
-                  <Fact
-                    label="Titles per year"
-                    value={displayValue(profile.titlesPerYear)}
-                  />
-                  <Fact
-                    label="Publishes through contests only"
-                    value={displayValue(profile.publishesThroughContestsOnly)}
                   />
                   <Fact
                     label="Reading period"
@@ -436,8 +576,6 @@ export default async function JournalDetailPage({
                 </>
               ) : (
                 <>
-                  <Fact label="Genres" value={displayList(profile.genres)} />
-                  <Fact label="Formats" value={displayList(profile.formats)} />
                   <Fact
                     label="Reading period"
                     value={displayValue(profile.readingPeriod)}
@@ -445,23 +583,6 @@ export default async function JournalDetailPage({
                   <Fact
                     label="Response time"
                     value={displayValue(profile.responseTime)}
-                  />
-                  <Fact
-                    label="Reading fee"
-                    value={displayValue(profile.readingFee)}
-                  />
-                  <Fact
-                    label="Unsolicited submissions"
-                    value={displayValue(profile.unsolicitedSubmissions)}
-                  />
-                  <Fact
-                    label="Simultaneous submissions"
-                    value={displayValue(profile.simultaneousSubmissions)}
-                  />
-                  <Fact label="Payment" value={displayValue(profile.payment)} />
-                  <Fact
-                    label="Issues per year"
-                    value={displayValue(profile.issuesPerYear)}
                   />
                   <Fact
                     label="Issue price"

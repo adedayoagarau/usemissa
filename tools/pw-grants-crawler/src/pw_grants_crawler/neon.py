@@ -1054,7 +1054,27 @@ class NeonStore:
             host_key = normalize_url(detail_url) or "unknown-host"
         canonical_key = f"profile:{profile_kind}:{host_key}:{name_key}"
         identity_key_value = canonical_key
+        canonical_key_value = canonical_key
         profile_id = _stable_id("profile", canonical_key)
+        if normalized_website_url:
+            existing_profile = connection.execute(
+                """
+                SELECT id, identity_key, canonical_key
+                FROM gary_profiles
+                WHERE normalized_website_url = %s
+                  AND name_key = %s
+                ORDER BY
+                  (identity_status = 'confirmed') DESC,
+                  identity_confidence DESC,
+                  last_seen_at DESC,
+                  updated_at DESC,
+                  id ASC
+                LIMIT 1
+                """,
+                (normalized_website_url, name_key),
+            ).fetchone()
+            if existing_profile:
+                profile_id, identity_key_value, canonical_key_value = existing_profile
         connection.execute(
             """
             INSERT INTO gary_profiles(
@@ -1078,7 +1098,7 @@ class NeonStore:
             (
                 profile_id,
                 identity_key_value,
-                canonical_key,
+                canonical_key_value,
                 profile_kind,
                 name_key,
                 name,

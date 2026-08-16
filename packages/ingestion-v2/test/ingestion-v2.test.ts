@@ -97,7 +97,9 @@ test("requires an explicit local or staging database role", () => {
   assert.equal(assertIngestionV2DatabaseRole("production"), "production");
   if (previous === undefined) delete process.env.MISSA_INGESTION_V2_PROMOTE_APPROVED;
   else process.env.MISSA_INGESTION_V2_PROMOTE_APPROVED = previous;
-  assert.throws(() => assertIngestionV2DatabaseRole("production"), /requires INGESTION_V2_DATABASE_ROLE/);
+  // Behaviour is unchanged: a production write without the approval flag throws.
+  // The assertion matches the flag rather than the prose so wording can improve.
+  assert.throws(() => assertIngestionV2DatabaseRole("production"), /MISSA_INGESTION_V2_PROMOTE_APPROVED=1/);
 });
 
 test("fails robots checks for disallowed paths", () => {
@@ -242,7 +244,7 @@ test("does not classify nested opportunity URLs inside social-share query string
 test("uses DeepSeek JSON output as shadow evidence", async () => {
   const source = { ...createBenchmarkSources()[0]!, url: "https://example.test/opportunity", adapterId: "deepseek-html-v2", config: { destination: { pageRole: "detail" as const } } };
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = (async (input) => {
+  globalThis.fetch = (async (input: string | URL) => {
     const url = String(input);
     if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nAllow: /", { status: 200 });
     if (url === source.url) return new Response("<html><h1>Example grant</h1></html>", { status: 200, headers: { "content-type": "text/html" } });
@@ -352,4 +354,639 @@ test("records a failed shadow run without publishing", async () => {
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("memory body store deduplicates identical content hashes", async () => {
+  const { MemorySnapshotBodyStore } = await import("../src/snapshotStore.js");
+  const store = new MemorySnapshotBodyStore();
+  assert.equal(await store.put("hash-a", "<html>one</html>"), true);
+  assert.equal(await store.put("hash-a", "<html>one</html>"), false, "an unchanged page must not be stored twice");
+  assert.equal(await store.put("hash-b", "<html>two</html>"), true);
+  assert.equal(store.size(), 2);
+  assert.equal(await store.get("hash-a"), "<html>one</html>");
+  assert.equal(await store.has("hash-missing"), false);
+});
+
+test("r2 body store fans keys out by hash prefix", async () => {
+  const { R2SnapshotBodyStore } = await import("../src/snapshotStore.js");
+  const store = new R2SnapshotBodyStore({ accountId: "acct", bucket: "snaps", accessKeyId: "key", secretAccessKey: "secret" });
+  assert.equal(store.key("abcdef0123"), "snapshots/ab/cd/abcdef0123");
+});
+
+test("r2 body store signs requests and skips writes for existing hashes", async () => {
+  const { R2SnapshotBodyStore } = await import("../src/snapshotStore.js");
+  const calls: Array<{ method: string; url: string; authorization: string }> = [];
+  const fetchImpl = (async (url: string | URL, init?: RequestInit) => {
+    const method = init?.method ?? "GET";
+    const headers = new Headers(init?.headers);
+    calls.push({ method, url: String(url), authorization: headers.get("authorization") ?? "" });
+    if (method === "HEAD") return new Response(null, { status: calls.length === 1 ? 404 : 200 });
+    return new Response("ok", { status: 200 });
+  }) as unknown as typeof fetch;
+
+  const store = new R2SnapshotBodyStore({ accountId: "acct", bucket: "snaps", accessKeyId: "key", secretAccessKey: "secret", fetchImpl });
+  assert.equal(await store.put("abcdef", "<html>body</html>"), true, "a new hash is written");
+  assert.equal(await store.put("abcdef", "<html>body</html>"), false, "an existing hash is not rewritten");
+
+  assert.deepEqual(calls.map((call) => call.method), ["HEAD", "PUT", "HEAD"]);
+  assert.match(calls[0]!.url, /acct\.r2\.cloudflarestorage\.com\/snaps\/snapshots\/ab\/cd\/abcdef$/);
+  assert.match(calls[1]!.authorization, /^AWS4-HMAC-SHA256 Credential=key\/\d{8}\/auto\/s3\/aws4_request, SignedHeaders=[a-z0-9;-]+, Signature=[0-9a-f]{64}$/);
+});
+
+test("snapshot body store configuration is all-or-nothing", async () => {
+  const { createSnapshotBodyStore } = await import("../src/snapshotStore.js");
+  assert.equal(createSnapshotBodyStore({} as NodeJS.ProcessEnv).id, "inline", "no configuration keeps bodies in Postgres");
+  assert.equal(
+    createSnapshotBodyStore({ R2_ACCOUNT_ID: "a", R2_SNAPSHOT_BUCKET: "b", R2_ACCESS_KEY_ID: "c", R2_SECRET_ACCESS_KEY: "d" } as NodeJS.ProcessEnv).id,
+    "r2",
+  );
+  assert.throws(
+    () => createSnapshotBodyStore({ R2_ACCOUNT_ID: "a", R2_SNAPSHOT_BUCKET: "b" } as NodeJS.ProcessEnv),
+    /partially configured/,
+    "a half-configured bucket must fail loudly rather than silently writing large rows",
+  );
+});
+
+test("rendering escalates only when the static response cannot answer", async () => {
+  const { shouldRender } = await import("../src/render.js");
+  const readable = { html: `<html><body><h1>Residency</h1><p>${"Applications open in October. ".repeat(30)}</p></body></html>`, contentType: "text/html" };
+  assert.equal(shouldRender(readable, 3).render, false, "a readable static page must not pay for a browser");
+
+  assert.equal(shouldRender({ html: '<html><body><div id="root"></div><script src="/app.js"></script></body></html>', contentType: "text/html" }, 0).render, true);
+  assert.equal(shouldRender({ html: "<html><body><noscript>You must enable JavaScript to view this site.</noscript></body></html>", contentType: "text/html" }, 0).render, true);
+  assert.equal(shouldRender({ html: "<html><body>Checking your browser before accessing.</body></html>", contentType: "text/html" }, 0).render, true);
+  assert.equal(shouldRender({ html: '{"items":[]}', contentType: "application/json" }, 0).render, false, "non-markup responses are never rendered");
+});
+
+test("a failing renderer degrades coverage instead of failing the run", async () => {
+  const { renderIfNeeded, RenderClient } = await import("../src/render.js");
+  const snapshot = {
+    id: "snap_1", runId: "run_1", sourceId: "src_1", url: "https://example.org/call", finalUrl: "https://example.org/call",
+    fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash",
+    html: '<html><body><div id="root"></div></body></html>', rendered: false,
+  };
+  const failing = new RenderClient({ endpoint: "https://render.invalid/render", token: "t", fetchImpl: (async () => new Response("no", { status: 500 })) as unknown as typeof fetch });
+  const result = await renderIfNeeded(snapshot, failing, 0, { warn: () => undefined });
+  assert.equal(result.rendered, false);
+  assert.equal(result.snapshot.html, snapshot.html, "the static document survives a render failure");
+
+  const missing = await renderIfNeeded(snapshot, undefined, 0, { warn: () => undefined });
+  assert.equal(missing.rendered, false);
+  assert.match(missing.reason, /no render service is configured/);
+});
+
+test("a successful render replaces the document and marks the snapshot rendered", async () => {
+  const { renderIfNeeded, RenderClient } = await import("../src/render.js");
+  const snapshot = {
+    id: "snap_2", runId: "run_2", sourceId: "src_2", url: "https://example.org/a", finalUrl: "https://example.org/a",
+    fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash",
+    html: '<html><body><div id="__next"></div></body></html>', rendered: false,
+  };
+  const client = new RenderClient({
+    endpoint: "https://render.example/render", token: "t",
+    fetchImpl: (async () => new Response(JSON.stringify({ finalUrl: "https://example.org/a", statusCode: 200, contentType: "text/html", html: "<html><body><h1>Open call</h1></body></html>" }), { status: 200 })) as unknown as typeof fetch,
+  });
+  const result = await renderIfNeeded(snapshot, client, 0, { warn: () => undefined });
+  assert.equal(result.rendered, true);
+  assert.equal(result.snapshot.rendered, true);
+  assert.match(result.snapshot.html, /Open call/);
+});
+
+test("render client configuration is all-or-nothing", async () => {
+  const { createRenderClient } = await import("../src/render.js");
+  assert.equal(createRenderClient({} as NodeJS.ProcessEnv), undefined);
+  assert.throws(() => createRenderClient({ RENDER_SERVICE_URL: "https://r.example" } as NodeJS.ProcessEnv), /together/);
+  assert.ok(createRenderClient({ RENDER_SERVICE_URL: "https://r.example", RENDER_SERVICE_TOKEN: "t" } as NodeJS.ProcessEnv));
+});
+
+test("directory pages are parsed deterministically and never spend a model call", async () => {
+  const { adapterForSource } = await import("../src/catalog.js");
+  assert.equal(adapterForSource("directory", "deepseek-html-v2"), "generic-html-v2", "a link index needs no model");
+  assert.equal(adapterForSource("feed", "deepseek-html-v2"), "feed-v2");
+  assert.equal(adapterForSource("organization-website", "deepseek-html-v2"), "deepseek-html-v2", "host prose is where the model earns its cost");
+  assert.equal(adapterForSource("profile", "deepseek-html-v2"), "deepseek-html-v2");
+  assert.equal(adapterForSource("organization-website", "generic-html-v2"), "generic-html-v2", "without a key everything stays deterministic");
+});
+
+test("identity comparison reports how a match was reached", async () => {
+  const { buildOpportunityIdentity, compareOpportunityIdentityDetailed } = await import("../src/identity.js");
+  const field = (name: string, value: string) => ({ fieldName: name, rawValue: value, normalizedValue: value, confidence: 0.9, provenance: { adapterId: "t", method: "t", sourceUrl: "https://example.org", snapshotId: "s" } });
+
+  const left = buildOpportunityIdentity({ fields: [field("title", "Residency")], candidateLinks: [], warnings: [] }, "https://casanailha.org/program");
+  const right = buildOpportunityIdentity({ fields: [field("title", "Something else")], candidateLinks: [], warnings: [] }, "https://casanailha.org/program");
+  assert.deepEqual(compareOpportunityIdentityDetailed(left, right), { decision: "same", basis: "canonical-url" });
+
+  const a = buildOpportunityIdentity({ fields: [field("title", "Residency"), field("organization", "Casa na Ilha")], candidateLinks: [], warnings: [] }, "https://a.example/x");
+  const b = buildOpportunityIdentity({ fields: [field("title", "Residency"), field("organization", "Casa na Ilha")], candidateLinks: [], warnings: [] }, "https://b.example/y");
+  assert.deepEqual(compareOpportunityIdentityDetailed(a, b), { decision: "same", basis: "title-and-organization" });
+});
+
+
+test("an unchanged page reuses the model answer instead of paying for it again", async () => {
+  const { DeepSeekHtmlAdapter } = await import("../src/adapters/deepseek.js");
+  const { MemoryModelResponseCache } = await import("../src/modelCache.js");
+
+  let modelCalls = 0;
+  const fetchImpl = (async () => {
+    modelCalls += 1;
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ title: "Multidisciplinary Residency", organization: "Casa na Ilha", opportunityType: "residency" }) } }] }), { status: 200 });
+  }) as unknown as typeof fetch;
+
+  const cache = new MemoryModelResponseCache();
+  const adapter = new DeepSeekHtmlAdapter({ apiKey: "k", fetchImpl, cache });
+  const source = { id: "s", name: "Casa na Ilha", url: "https://casanailha.org/program", adapterId: "deepseek-html-v2", kind: "organization-website" as const, geography: ["BR"], opportunityTypes: ["residency"], config: {}, schedule: { lane: "scheduled" as const, cadenceHours: 168 } };
+  const snapshotFor = (id: string) => ({ id, runId: id, sourceId: "s", url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "identical-hash", html: "<h1>Residency</h1><p>Applications open.</p>", rendered: false });
+  const run = { id: "r", sourceId: "s", trigger: "scheduled" as const, mode: "shadow" as const, status: "running" as const, createdAt: new Date().toISOString() };
+
+  const first = await adapter.extract({ run, source, snapshot: snapshotFor("snap_1") }, snapshotFor("snap_1"));
+  assert.equal(modelCalls, 1);
+  assert.ok(first.fields.some((field) => field.fieldName === "organization"));
+
+  const second = await adapter.extract({ run, source, snapshot: snapshotFor("snap_2") }, snapshotFor("snap_2"));
+  assert.equal(modelCalls, 1, "an identical page must not call the model twice");
+  assert.equal(cache.size(), 1);
+  assert.ok(second.warnings.some((warning) => /reused from an unchanged page/.test(warning)));
+
+  const reusedOrganization = second.fields.find((field) => field.fieldName === "organization");
+  assert.equal(reusedOrganization?.provenance.snapshotId, "snap_2", "a reused answer carries this run's provenance");
+});
+
+test("a changed page misses the cache and is re-extracted", async () => {
+  const { DeepSeekHtmlAdapter } = await import("../src/adapters/deepseek.js");
+  const { MemoryModelResponseCache, modelCacheKey } = await import("../src/modelCache.js");
+
+  let modelCalls = 0;
+  const fetchImpl = (async () => {
+    modelCalls += 1;
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ title: `Call ${modelCalls}` }) } }] }), { status: 200 });
+  }) as unknown as typeof fetch;
+
+  const adapter = new DeepSeekHtmlAdapter({ apiKey: "k", fetchImpl, cache: new MemoryModelResponseCache() });
+  const source = { id: "s", name: "Host", url: "https://host.example/call", adapterId: "deepseek-html-v2", kind: "organization-website" as const, geography: ["global"], opportunityTypes: ["grant"], config: {}, schedule: { lane: "scheduled" as const, cadenceHours: 168 } };
+  const snapshotFor = (hash: string) => ({ id: `snap_${hash}`, runId: "r", sourceId: "s", url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: hash, html: `<h1>${hash}</h1><p>Body</p>`, rendered: false });
+  const run = { id: "r", sourceId: "s", trigger: "scheduled" as const, mode: "shadow" as const, status: "running" as const, createdAt: new Date().toISOString() };
+
+  await adapter.extract({ run, source, snapshot: snapshotFor("hash-one") }, snapshotFor("hash-one"));
+  await adapter.extract({ run, source, snapshot: snapshotFor("hash-two") }, snapshotFor("hash-two"));
+  assert.equal(modelCalls, 2, "changed content must not serve a stale answer");
+
+  assert.notEqual(
+    modelCacheKey({ contentHash: "h", model: "m", promptVersion: "v1" }),
+    modelCacheKey({ contentHash: "h", model: "m", promptVersion: "v2" }),
+    "a prompt change must invalidate stored answers",
+  );
+  assert.notEqual(
+    modelCacheKey({ contentHash: "h", model: "model-a", promptVersion: "v1" }),
+    modelCacheKey({ contentHash: "h", model: "model-b", promptVersion: "v1" }),
+    "a model change must invalidate stored answers",
+  );
+});
+
+test("the publication rubric publishes only when all five gates pass", async () => {
+  const { evaluatePublicationRubric } = await import("../src/publicationRubric.js");
+  const ready = {
+    opportunityId: "opp_v2_1", title: "Multidisciplinary Residency Program", status: "open", submissionState: "available",
+    deadlineDate: "2026-10-01", submissionUrl: "https://casanailha.org/apply", guidelinesUrl: "https://casanailha.org/program",
+    sourceUrl: "https://resartis.org/open-calls/", processingSucceededAt: new Date().toISOString(),
+    organizationConfirmed: true, destinationReconciled: true, contentApproved: true, readingPeriodKind: null,
+  };
+  const pass = evaluatePublicationRubric(ready);
+  assert.equal(pass.decision, "publish");
+  assert.equal(pass.score, 100);
+
+  for (const [label, patch] of [
+    ["unreconciled destination", { destinationReconciled: false }],
+    ["unconfirmed organization", { organizationConfirmed: false }],
+    ["unreviewed content", { contentApproved: false }],
+    ["unknown deadline", { deadlineDate: null }],
+    ["closed status", { status: "closed" }],
+    ["missing destination", { submissionUrl: null, guidelinesUrl: null }],
+  ] as const) {
+    assert.equal(evaluatePublicationRubric({ ...ready, ...patch }).decision, "needs-human", `${label} must not publish`);
+  }
+
+  const unsafe = evaluatePublicationRubric({ ...ready, submissionState: "unsafe" });
+  assert.equal(unsafe.decision, "suppress", "an unsafe destination is suppressed, not queued");
+});
+
+test("placeholder titles never reach publication", async () => {
+  const { evaluatePublicationRubric } = await import("../src/publicationRubric.js");
+  const base = {
+    opportunityId: "opp_v2_2", status: "open", submissionState: "available", deadlineDate: "2026-10-01",
+    submissionUrl: "https://host.example/apply", guidelinesUrl: "https://host.example/call",
+    sourceUrl: "https://directory.example/", processingSucceededAt: new Date().toISOString(),
+    organizationConfirmed: true, destinationReconciled: true, contentApproved: true, readingPeriodKind: null,
+  };
+  for (const title of ["Read more", "here", "apply now", "www.example.org", "example.org/call", ""]) {
+    assert.equal(evaluatePublicationRubric({ ...base, title }).decision, "needs-human", `"${title}" is not an identity`);
+  }
+  assert.equal(evaluatePublicationRubric({ ...base, title: "Casa na Ilha Residency" }).decision, "publish");
+});
+
+test("a brief may cite any URL the record has evidence for", async () => {
+  const { contentCitationUrl } = await import("../src/publication.js");
+  const row = { guidelines_url: "https://host.example/call", submission_url: "https://host.example/apply", source_url: "https://directory.example/index" };
+
+  // The two writers disagree about which URL a brief cites. Both are evidenced,
+  // so both must review against the page the brief actually names.
+  assert.equal(contentCitationUrl(row, "https://directory.example/index"), "https://directory.example/index", "Radar-authored briefs cite the discovery source");
+  assert.equal(contentCitationUrl(row, "https://host.example/call"), "https://host.example/call", "v2-authored briefs cite the destination");
+  assert.equal(contentCitationUrl(row, "https://host.example/apply"), "https://host.example/apply");
+
+  // A citation to a page this record has no evidence for is unverifiable, so it
+  // is reviewed against the preferred destination and fails.
+  assert.equal(contentCitationUrl(row, "https://elsewhere.example/invented"), "https://host.example/call");
+  assert.equal(contentCitationUrl(row, null), "https://host.example/call");
+  assert.equal(contentCitationUrl({ guidelines_url: null, submission_url: null, source_url: "https://only.example/" }, undefined), "https://only.example/");
+});
+
+test("publishing is opt-in and off by default", async () => {
+  const { publicationApplyEnabled, V2_OPPORTUNITY_PREFIX } = await import("../src/publication.js");
+  assert.equal(publicationApplyEnabled({} as NodeJS.ProcessEnv), false);
+  assert.equal(publicationApplyEnabled({ MISSA_INGESTION_V2_PUBLISH: "0" } as NodeJS.ProcessEnv), false);
+  assert.equal(publicationApplyEnabled({ MISSA_INGESTION_V2_PUBLISH: "true" } as NodeJS.ProcessEnv), false, "only an explicit 1 enables writes");
+  assert.equal(publicationApplyEnabled({ MISSA_INGESTION_V2_PUBLISH: "1" } as NodeJS.ProcessEnv), true);
+  assert.equal(V2_OPPORTUNITY_PREFIX, "opp-v2_", "v2 must only ever transition records it wrote");
+});
+
+test("a dry run does not persist a content review status", async () => {
+  const { runPublicationTick } = await import("../src/publication.js");
+  const statements: string[] = [];
+  const client = {
+    query: async (text: string) => {
+      statements.push(String(text).replace(/\s+/g, " ").trim());
+      return { rows: [], rowCount: 0 };
+    },
+    release: () => undefined,
+  };
+  const row = {
+    opportunity_id: "opp_v2_dry", title: "Residency", status: "open", submission_state: "available",
+    deadline_date: "2026-10-01", submission_url: "https://host.example/apply", guidelines_url: "https://host.example/call",
+    source_url: "https://directory.example/", processing_succeeded_at: new Date(), organization_confirmed: true,
+    destination_reconciled: true, content_review_status: "pending", reading_period_kind: null,
+    content: { builderVersion: "v", summary: "x".repeat(80), highlights: [], preparation: ["a"], unknowns: [], nextAction: "Apply", sourceUrl: "https://host.example/call", generatedAt: new Date().toISOString(), review: { status: "pending", score: 0, reasons: [], checks: {} } },
+  };
+  const pool = {
+    query: async () => ({ rows: [row], rowCount: 1 }),
+    connect: async () => client,
+  } as unknown as import("pg").Pool;
+
+  await runPublicationTick(pool, { apply: false, logger: { info: () => undefined, warn: () => undefined } });
+  assert.equal(statements.some((sql) => /update opportunity_contents/i.test(sql)), false, "a dry run must not write content review status");
+  assert.equal(statements.some((sql) => /update opportunities set publication_state/i.test(sql)), false, "a dry run must not change publication state");
+  assert.equal(statements.some((sql) => /insert into missa_ingestion_v2_publication_decisions/i.test(sql)), true, "the decision is still recorded for review");
+});
+
+test("reading production is allowed; writing to it needs a second key", async () => {
+  const { assertIngestionV2DatabaseRole } = await import("../src/safety.js");
+  const noFlags = {} as NodeJS.ProcessEnv;
+
+  assert.equal(assertIngestionV2DatabaseRole("staging", { access: "write", env: noFlags }), "staging");
+  assert.equal(assertIngestionV2DatabaseRole("local", { access: "write", env: noFlags }), "local");
+
+  assert.equal(
+    assertIngestionV2DatabaseRole("production", { access: "read", env: noFlags }),
+    "production",
+    "inspecting production must not require arming the writer",
+  );
+  assert.throws(
+    () => assertIngestionV2DatabaseRole("production", { access: "write", env: noFlags }),
+    /MISSA_INGESTION_V2_PROMOTE_APPROVED=1/,
+  );
+  assert.equal(
+    assertIngestionV2DatabaseRole("production", { access: "write", env: { MISSA_INGESTION_V2_PROMOTE_APPROVED: "1" } as NodeJS.ProcessEnv }),
+    "production",
+  );
+
+  assert.throws(() => assertIngestionV2DatabaseRole(undefined, { env: noFlags }), /received nothing/, "the error must name what to set");
+  assert.throws(() => assertIngestionV2DatabaseRole("prod", { env: noFlags }), /received "prod"/);
+  assert.equal(assertIngestionV2DatabaseRole("staging", { env: noFlags }), "staging", "write is the default access");
+});
+
+test("the three stages compose to the same result as the combined pipeline", async () => {
+  const { AdapterRegistry, GenericHtmlAdapter, MemoryShadowRunStore, runFetchStage, runDecideStage, executeShadowPipeline, shadowJob, createBenchmarkSources } = await import("../src/index.js");
+  const registry = new AdapterRegistry().register(new GenericHtmlAdapter());
+  const source = createBenchmarkSources().find((candidate) => candidate.id === "benchmark-creative-capital")!;
+
+  const staged = new MemoryShadowRunStore();
+  const job = shadowJob(source, { trigger: "manual" });
+  const fetched = await runFetchStage(registry, source, job, staged);
+  assert.equal(fetched.run.status, "running", "the fetch stage has not decided anything yet");
+  assert.equal(fetched.quality, undefined);
+  assert.equal(fetched.publisher, undefined);
+
+  const decided = await runDecideStage(source, fetched, staged);
+  assert.equal(decided.run.status, "completed");
+  assert.ok(decided.quality);
+  assert.ok(decided.publisher);
+
+  const combined = new MemoryShadowRunStore();
+  const direct = await executeShadowPipeline(registry, source, job, combined);
+
+  assert.equal(decided.extraction.fields.length, direct.extraction.fields.length, "the staged path must extract the same fields as the combined path");
+  assert.equal(decided.publisher?.decision, direct.publisher?.decision, "the staged path must reach the same publication decision");
+  assert.deepEqual(staged.get(job.runId), decided, "the store holds the fully decided artifact under the same run id the fetch stage created");
+});
+
+test("a stage queue bundle is named for its stage and shares the v2 prefix", async () => {
+  const { PIPELINE_STAGES } = await import("../src/stages.js");
+  assert.deepEqual(PIPELINE_STAGES, ["fetch", "decide", "write"]);
+});
+
+test("a source's identity cannot be borrowed from a link it merely points to", async () => {
+  const { buildOpportunityIdentity } = await import("../src/identity.js");
+  const listing = { fields: [{ fieldName: "title", rawValue: "Directory Listing", normalizedValue: "Directory Listing", confidence: 1, provenance: { adapterId: "t", method: "t", sourceUrl: "https://directory.example", snapshotId: "s" } }], candidateLinks: [{ url: "https://host.example/grant", role: "detail" as const, authority: "destination" as const }], warnings: [] };
+
+  // No canonicalUrl is supplied. A page has no built-in notion of "the URL I
+  // came from" — it must never be invented from an outbound link.
+  const identity = buildOpportunityIdentity(listing);
+  assert.equal(identity.canonicalUrl, null, "an extraction with no explicit source URL must not borrow one of its own outbound links");
+});
+
+test("reconciliation cannot pass by comparing a source's borrowed identity against itself", async () => {
+  // Reproduces the exact failure observed against production: a directory
+  // listing ("Creative Professionals Talent Recruitment Initiative") and an
+  // unrelated destination ("Pollock-Krasner Foundation Grants") reconciled as
+  // the SAME opportunity, decision=pass basis=canonical-url, purely because
+  // the source's identity had silently borrowed the destination's own URL.
+  const { reviewForPublication } = await import("../src/publisher.js");
+  const url = "https://creative-capital.org/opportunities/pollock-krasner-foundation-grants/";
+  const snapshot = (id: string, pageUrl: string) => ({
+    id, runId: "run", sourceId: "src", url: pageUrl, finalUrl: pageUrl, fetchedAt: new Date().toISOString(),
+    statusCode: 200, contentType: "text/html", contentHash: id, html: "<html></html>", rendered: false,
+  });
+  const field = (snapshotId: string, name: string, value: string, sourceUrl: string) => ({ fieldName: name, rawValue: value, normalizedValue: value, confidence: 0.9, provenance: { adapterId: "t", method: "t", sourceUrl, snapshotId } });
+
+  const review = await reviewForPublication({
+    source: { id: "s", name: "Creative Capital", url: "https://creative-capital.org/artist-resources/artist-opportunities/", adapterId: "generic-html-v2", kind: "directory", geography: ["global"], opportunityTypes: ["grant"], config: {}, schedule: { lane: "scheduled", cadenceHours: 168 } },
+    sourceSnapshot: snapshot("root", "https://creative-capital.org/artist-resources/artist-opportunities/"),
+    sourceExtraction: {
+      fields: [field("root", "title", "Creative Professionals Talent Recruitment Initiative — gener8tor", "https://creative-capital.org/artist-resources/artist-opportunities/")],
+      candidateLinks: [{ url, role: "detail", authority: "destination" }],
+      warnings: [],
+    },
+    relatedSnapshots: [snapshot("dest", url)],
+    relatedFields: [field("dest", "title", "Pollock-Krasner Foundation Grants", url)],
+  }, { apiKey: "" });
+
+  assert.notEqual(review.reconciliation.basis, "canonical-url", "two different grants must not reconcile via a source URL that was never independently stated");
+  assert.notEqual(review.decision, "approve", "mismatched titles must not auto-approve");
+  assert.equal(review.reconciliation.sourceIdentity.canonicalUrl, "https://creative-capital.org/artist-resources/artist-opportunities", "the source's identity is its own fetched page, not the link it points to");
+});
+
+test("a directory's phrasing and a host's phrasing reconcile via organization plus title overlap", async () => {
+  const { compareOpportunityIdentityDetailed } = await import("../src/identity.js");
+  // The exact shape that motivated this: a directory listing's title carries
+  // dates and a location the host page's title does not.
+  const directory = { key: "x", canonicalUrl: "https://resartis.org/open-call/multidisciplinary-residence-oct-nov-dec26-ilhabela-island-brazil/", title: "Multidisciplinary Residence Oct/Nov/Dec 26 — Ilhabela Island, Brazil", organization: "Casa na Ilha", deadline: null };
+  const host = { key: "y", canonicalUrl: "https://www.casanailha.org/the-multidisciplinary-residency-program/", title: "The Multidisciplinary Residency Program", organization: "Casa Na Ilha Residency", deadline: null };
+  const result = compareOpportunityIdentityDetailed(directory, host);
+  assert.equal(result.decision, "same");
+  assert.equal(result.basis, "title-and-organization");
+});
+
+test("Gary's rule 5: a shared organization alone never merges two different opportunities", async () => {
+  const { compareOpportunityIdentityDetailed } = await import("../src/identity.js");
+  const grant = { key: "a", canonicalUrl: null, title: "Emergency Medical Grant", organization: "Foundation for Contemporary Arts", deadline: null };
+  const fellowship = { key: "b", canonicalUrl: null, title: "Visual Arts Fellowship", organization: "Foundation for Contemporary Arts", deadline: null };
+  const result = compareOpportunityIdentityDetailed(grant, fellowship);
+  assert.notEqual(result.decision, "same", "the same organization running two unrelated opportunities must not auto-merge");
+  assert.equal(result.decision, "review", "a strong organization match alone is corroboration, not proof — it is a review candidate per Gary's rule 4");
+});
+
+test("weak title overlap alone, with no organization signal, stays a review candidate", async () => {
+  const { compareOpportunityIdentityDetailed } = await import("../src/identity.js");
+  const left = { key: "a", canonicalUrl: null, title: "Emerging Photographers Grant Program", organization: null, deadline: null };
+  const right = { key: "b", canonicalUrl: null, title: "Emerging Photographers Award", organization: null, deadline: null };
+  const result = compareOpportunityIdentityDetailed(left, right);
+  assert.equal(result.decision, "review");
+  assert.equal(result.basis, "weak");
+});
+
+test("unrelated organizations and unrelated titles are different, not merely unreviewed", async () => {
+  const { compareOpportunityIdentityDetailed } = await import("../src/identity.js");
+  const left = { key: "a", canonicalUrl: null, title: "Poetry Chapbook Contest", organization: "Small Press Collective", deadline: null };
+  const right = { key: "b", canonicalUrl: null, title: "Documentary Film Fellowship", organization: "National Film Board", deadline: null };
+  assert.equal(compareOpportunityIdentityDetailed(left, right).decision, "different");
+});
+
+test("startStagedRun enqueues to the fetch stage queue, not the combined pipeline", async () => {
+  const { startStagedRun } = await import("../src/runs.js");
+  const enqueued: unknown[] = [];
+  const fakeQueue = { stage: "fetch" as const, queue: { add: async (name: string, data: unknown) => { enqueued.push(data); return { id: "job-1" }; } } };
+  const source = { id: "s", name: "Test", url: "https://example.org", adapterId: "generic-html-v2", kind: "organization-website" as const, geography: ["global"], opportunityTypes: ["grant"], config: {}, schedule: { lane: "scheduled" as const, cadenceHours: 24 } };
+  const run = await startStagedRun(fakeQueue as never, source, { trigger: "scheduled", mode: "shadow" });
+  assert.equal(enqueued.length, 1);
+  assert.equal((enqueued[0] as { sourceId: string }).sourceId, "s");
+  assert.equal(run.trigger, "scheduled");
+  assert.equal(run.mode, "shadow");
+});
+
+test("repair is opt-in and off by default", async () => {
+  const { repairApplyEnabled } = await import("../src/repair.js");
+  assert.equal(repairApplyEnabled({} as NodeJS.ProcessEnv), false);
+  assert.equal(repairApplyEnabled({ MISSA_INGESTION_V2_REPAIR_APPLY: "yes" } as NodeJS.ProcessEnv), false, "only an explicit 1 enables writes");
+  assert.equal(repairApplyEnabled({ MISSA_INGESTION_V2_REPAIR_APPLY: "1" } as NodeJS.ProcessEnv), true);
+});
+
+test("a dry run does not write a repaired destination or evidence row", async () => {
+  const { runRepairTick } = await import("../src/repair.js");
+  const statements: string[] = [];
+  const client = { query: async (text: string) => { statements.push(String(text).replace(/\s+/g, " ").trim()); return { rows: [], rowCount: 0 }; }, release: () => undefined };
+  const row = { opportunity_id: "opp_1", title: "Poetry Chapbook Award", organization_name: "Small Press Collective", source_url: "https://directory.example/list", source_kind: "directory" };
+  const pool = {
+    query: async (text: string) => {
+      statements.push(String(text).replace(/\s+/g, " ").trim());
+      if (/select o\.id as opportunity_id/.test(text)) return { rows: [row], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    },
+    connect: async () => client,
+  } as unknown as import("pg").Pool;
+
+  const result = await runRepairTick(pool, { apply: false, limit: 5, logger: { info: () => undefined, warn: () => undefined } });
+  assert.equal(result.considered, 1);
+  assert.equal(result.applied, false);
+  assert.equal(statements.some((sql) => /update opportunities set guidelines_url/i.test(sql)), false, "a dry run must not write a repaired destination");
+  assert.equal(statements.some((sql) => /insert into opportunity_source_evidence/i.test(sql)), false, "a dry run must not write reconciliation evidence");
+  assert.equal(statements.some((sql) => /insert into missa_ingestion_v2_repair_decisions/i.test(sql)), true, "the attempt is still recorded for review and for tuning");
+});
+
+test("repair candidates are scoped to directory-sourced, unreconciled reviewable records", async () => {
+  const { runRepairTick } = await import("../src/repair.js");
+  let queryText = "";
+  const pool = {
+    query: async (text: string) => { queryText = String(text); return { rows: [], rowCount: 0 }; },
+    connect: async () => ({ query: async () => ({ rows: [], rowCount: 0 }), release: () => undefined }),
+  } as unknown as import("pg").Pool;
+  await runRepairTick(pool, { apply: false, limit: 5, logger: { info: () => undefined, warn: () => undefined } });
+  assert.match(queryText, /publication_state = 'reviewable'/);
+  assert.match(queryText, /s\.kind = 'directory'/);
+  assert.match(queryText, /destination_reconciled, false\) = false/);
+});
+
+test("a plain-text organizer URL is found when no href candidate exists", async () => {
+  // Reproduces the live finding against a real quarantined record: the
+  // organizer's URL sat as plain text next to "website:" on a resartis.org
+  // page with zero genuine outbound hyperlinks — only theme/CDN boilerplate.
+  const { runRepairTick } = await import("../src/repair.js");
+  const html = `<html><body><h1>SÍM Residency Reykjavík Open Call 2027</h1>
+    <p>The SÍM Residency invites artists to apply for its programme.</p>
+    <p>Website: https://www.sim-residency.info/apply</p>
+    <footer><a href="https://fonts.gstatic.com">fonts</a><a href="https://wordpress.org/">wp</a></footer>
+    </body></html>`;
+  const destinationHtml = `<html><body><h1>SÍM Residency Reykjavík Open Call 2027</h1><p>Applications open now.</p></body></html>`;
+
+  const responses = new Map([
+    ["https://resartis.org/open-call/sim-residency-reykjavik-open-call-2027-2/", html],
+    ["https://www.sim-residency.info/apply", destinationHtml],
+  ]);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: string | URL) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("", { status: 404 });
+    const body = responses.get(url);
+    if (body) return new Response(body, { status: 200, headers: { "content-type": "text/html" } });
+    return new Response("not found", { status: 404 });
+  }) as unknown as typeof fetch;
+
+  const row = { opportunity_id: "opp_sim", title: "SÍM Residency Reykjavík Open Call 2027", organization_name: null, source_url: "https://resartis.org/open-call/sim-residency-reykjavik-open-call-2027-2/", source_kind: "directory" };
+  const pool = {
+    query: async (text: string) => {
+      if (/select o\.id as opportunity_id/.test(text)) return { rows: [row], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    },
+    connect: async () => ({ query: async () => ({ rows: [], rowCount: 0 }), release: () => undefined }),
+  } as unknown as import("pg").Pool;
+
+  try {
+    const result = await runRepairTick(pool, { apply: false, limit: 5, logger: { info: () => undefined, warn: () => undefined } });
+    assert.equal(result.repaired, 1, "the plain-text destination must be found and reconciled by exact title match");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("a plausible-but-unconfirmed destination is recorded as needs-review, not lumped in with no-candidate-found", async () => {
+  // Live verification against a real quarantined record turned up a related
+  // but distinct case from the plain-text-URL test above: sim-residency.info
+  // titles its apply page generically ("SIM Residency | APPLY") rather than
+  // restating the directory's descriptive title, AND the directory's title
+  // carries an accented "SÍM" that never matches unaccented "SIM" under
+  // keyPart's normalization — so that exact real page actually lands at
+  // weak/no overlap, not a review-band match. This test proves the
+  // DIFFERENT, genuine review-band case: real, meaningful title overlap that
+  // still falls short of organization corroboration, which the earlier
+  // "weak title overlap" identity test already showed lands on "review".
+  const { runRepairTick } = await import("../src/repair.js");
+  const html = `<html><body><h1>Emerging Photographers Grant Program</h1>
+    <p>Website: https://www.example-foundation.org/opportunities</p></body></html>`;
+  const destinationHtml = `<html><body><h1>Emerging Photographers Award</h1><p>Applications open now.</p></body></html>`;
+  const responses = new Map([
+    ["https://resartis.org/open-call/sim-residency-reykjavik-open-call-2027-2/", html],
+    ["https://www.example-foundation.org/opportunities", destinationHtml],
+  ]);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("", { status: 404 });
+    const body = responses.get(url);
+    return body ? new Response(body, { status: 200, headers: { "content-type": "text/html" } }) : new Response("not found", { status: 404 });
+  });
+
+  const row = { opportunity_id: "opp_sim2", title: "Emerging Photographers Grant Program", organization_name: null, source_url: "https://resartis.org/open-call/sim-residency-reykjavik-open-call-2027-2/", source_kind: "directory" };
+  const pool = {
+    query: async (text: string) => (/select o\.id as opportunity_id/.test(text) ? { rows: [row], rowCount: 1 } : { rows: [], rowCount: 0 }),
+    connect: async () => ({ query: async () => ({ rows: [], rowCount: 0 }), release: () => undefined }),
+  } as unknown as import("pg").Pool;
+  try {
+    const result = await runRepairTick(pool, { apply: false, limit: 5, logger: { info: () => undefined, warn: () => undefined } });
+    assert.equal(result.repaired, 0, "a generic apply-page title must not auto-confirm");
+    assert.equal(result["needs-review"], 1, "the source-linked candidate must be preserved as a review signal, not discarded");
+    assert.equal(result.unresolved, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("an organization's own page is its own first-party destination", async () => {
+  // Measured against production before this branch existed: 98% of the
+  // registry is organization-website sources with no destination rules, so no
+  // outbound link ever qualified and the publisher rejected 586 of 589
+  // completed runs in a day. An org's own page must not be asked to link
+  // outward to prove it is first-party.
+  const { reviewForPublication } = await import("../src/publisher.js");
+  const url = "https://www.casanailha.org/the-multidisciplinary-residency-program/";
+  const review = await reviewForPublication({
+    source: { id: "s", name: "Casa na Ilha", url, adapterId: "generic-html-v2", kind: "organization-website", geography: ["BR"], opportunityTypes: ["residency"], config: {}, schedule: { lane: "scheduled", cadenceHours: 168 } },
+    sourceSnapshot: { id: "root", runId: "r", sourceId: "s", url, finalUrl: url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "h", html: "<html></html>", rendered: false },
+    sourceExtraction: { fields: [{ fieldName: "title", rawValue: "The Multidisciplinary Residency Program", normalizedValue: "The Multidisciplinary Residency Program", confidence: 0.9, provenance: { adapterId: "t", method: "t", sourceUrl: url, snapshotId: "root" } }], candidateLinks: [], warnings: [] },
+    relatedSnapshots: [],
+    relatedFields: [],
+  }, { apiKey: "" });
+  assert.equal(review.reconciliation.decision, "pass");
+  assert.equal(review.reconciliation.basis, "first-party-source");
+  assert.equal(review.reconciliation.authoritativeUrl, url, "the page itself is the destination");
+  assert.notEqual(review.decision, "reject");
+});
+
+test("the first-party branch never rescues a directory", async () => {
+  // The named risk of this change: re-opening the door the 357-quarantine
+  // closed. A directory with no reconcilable first-party destination must
+  // reject exactly as before.
+  const { reviewForPublication } = await import("../src/publisher.js");
+  const url = "https://resartis.org/open-calls/";
+  const review = await reviewForPublication({
+    source: { id: "d", name: "Res Artis", url, adapterId: "generic-html-v2", kind: "directory", geography: ["global"], opportunityTypes: ["residency"], config: {}, schedule: { lane: "scheduled", cadenceHours: 48 } },
+    sourceSnapshot: { id: "root", runId: "r", sourceId: "d", url, finalUrl: url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "h", html: "<html></html>", rendered: false },
+    sourceExtraction: { fields: [{ fieldName: "title", rawValue: "Open Calls", normalizedValue: "Open Calls", confidence: 0.9, provenance: { adapterId: "t", method: "t", sourceUrl: url, snapshotId: "root" } }], candidateLinks: [], warnings: [] },
+    relatedSnapshots: [],
+    relatedFields: [],
+  }, { apiKey: "" });
+  assert.equal(review.decision, "reject", "a directory without a reconciled first-party destination stays rejected");
+  assert.equal(review.reconciliation.basis, "none");
+});
+
+test("a first-party page without a usable title does not pass", async () => {
+  const { reviewForPublication } = await import("../src/publisher.js");
+  const url = "https://example-org.org/";
+  const review = await reviewForPublication({
+    source: { id: "s", name: "Example Org", url, adapterId: "generic-html-v2", kind: "organization-website", geography: ["global"], opportunityTypes: ["grant"], config: {}, schedule: { lane: "scheduled", cadenceHours: 168 } },
+    sourceSnapshot: { id: "root", runId: "r", sourceId: "s", url, finalUrl: url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "h", html: "<html></html>", rendered: false },
+    sourceExtraction: { fields: [], candidateLinks: [], warnings: [] },
+    relatedSnapshots: [],
+    relatedFields: [],
+  }, { apiKey: "" });
+  assert.equal(review.decision, "reject", "no extracted identity means nothing to publish");
+});
+
+test("deadlines normalize from the formats pages actually use", async () => {
+  const { normalizeOpportunityDeadline } = await import("../src/canonicalWriter.js");
+  const now = new Date("2026-08-15T12:00:00Z");
+  assert.deepEqual(normalizeOpportunityDeadline("January 15, 2027", now), { date: "2027-01-15", inferred: false });
+  assert.deepEqual(normalizeOpportunityDeadline("2026-10-01", now), { date: "2026-10-01", inferred: false });
+  assert.deepEqual(normalizeOpportunityDeadline("1 March 2027", now), { date: "2027-03-01", inferred: false });
+  const inferred = normalizeOpportunityDeadline("Deadline: March 1", now);
+  assert.equal(inferred?.date, "2027-03-01", "a missing year is inferred forward, never backward");
+  assert.equal(inferred?.inferred, true);
+  const soon = normalizeOpportunityDeadline("September 30", now);
+  assert.equal(soon?.date, "2026-09-30", "a date still ahead this year stays this year");
+  assert.equal(normalizeOpportunityDeadline("rolling admissions, no deadline", now), null);
+  assert.equal(normalizeOpportunityDeadline(undefined, now), null);
+  assert.equal(normalizeOpportunityDeadline("June 31, 2027", now), null, "an impossible date is rejected, not coerced");
+});
+
+test("navigation words and section headings are not opportunity identities", async () => {
+  // Seen live: a page whose extracted heading was "SUBMIT" passed the identity
+  // gate and was held only by the deadline gate. Chrome must fail identity.
+  const { evaluatePublicationRubric } = await import("../src/publicationRubric.js");
+  const base = {
+    opportunityId: "opp_v2_x", status: "open", submissionState: "available", deadlineDate: "2026-10-01",
+    submissionUrl: "https://host.example/apply", guidelinesUrl: "https://host.example/call",
+    sourceUrl: "https://host.example/", processingSucceededAt: new Date().toISOString(),
+    organizationConfirmed: true, destinationReconciled: true, contentApproved: true, readingPeriodKind: null,
+  };
+  for (const title of ["SUBMIT", "Submissions", "Recent Books", "Open Call", "Grants", "About Us"]) {
+    assert.equal(evaluatePublicationRubric({ ...base, title }).decision, "needs-human", `"${title}" is page chrome, not an identity`);
+  }
+  assert.equal(evaluatePublicationRubric({ ...base, title: "Other Futures Award" }).decision, "publish", "a real name still publishes");
 });

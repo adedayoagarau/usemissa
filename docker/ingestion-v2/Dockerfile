@@ -24,4 +24,4 @@ COPY --from=build /app/packages/radar-engine/dist ./packages/radar-engine/dist
 COPY --from=build /app/packages/ingestion-v2/package.json ./packages/ingestion-v2/package.json
 COPY --from=build /app/packages/ingestion-v2/dist ./packages/ingestion-v2/dist
 
-CMD ["node", "packages/ingestion-v2/dist/src/worker.js"]
+CMD ["sh", "-c", "if [ \"$MISSA_INGESTION_V2_STAGE\" = \"fetch\" ] || [ \"$MISSA_INGESTION_V2_STAGE\" = \"decide\" ] || [ \"$MISSA_INGESTION_V2_STAGE\" = \"write\" ]; then node packages/ingestion-v2/dist/src/stage-worker.js; elif [ \"$MISSA_WORKER_MODE\" = \"ingestion-v2-publish\" ]; then node packages/ingestion-v2/dist/src/publish-cli.js; else node packages/ingestion-v2/dist/src/worker.js; fi"]

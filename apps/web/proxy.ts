@@ -7,12 +7,40 @@ const REQUEST_PATH_HEADER = "x-missa-request-path";
  * return people to the exact page and view they originally requested.
  */
 export async function proxy(request: NextRequest) {
+  const previewToken = process.env.MISSA_PRODUCTION_PREVIEW_TOKEN?.trim();
+  const requestedPreviewToken = request.nextUrl.searchParams.get("preview");
+  const existingPreviewToken = request.cookies.get(
+    "missa_production_preview",
+  )?.value;
+  const previewAuthorized = Boolean(
+    previewToken &&
+      (requestedPreviewToken === previewToken ||
+        existingPreviewToken === previewToken),
+  );
+
+  if (
+    process.env.VERCEL_ENV === "production" &&
+    request.nextUrl.pathname === "/opportunities-preview" &&
+    previewAuthorized
+  ) {
+    const response = NextResponse.redirect(new URL("/opportunities", request.url));
+    response.cookies.set("missa_production_preview", previewToken!, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 12,
+      path: "/",
+    });
+    return response;
+  }
+
   const handleRedirect = await resolveHandleRedirect(request);
   if (handleRedirect) return handleRedirect;
 
   if (
     process.env.VERCEL_ENV === "production" &&
-    shouldRedirectToWaitlist(request)
+    shouldRedirectToWaitlist(request) &&
+    !previewAuthorized
   ) {
     return NextResponse.redirect(new URL("/waitlist", request.url));
   }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ArrowRight, Check, CircleCheck, FileText, Mail, MoreHorizontal, Star } from 'lucide-react';
+import Link from 'next/link';
 import styles from './org.module.css';
 
 const modes = [
@@ -169,9 +170,9 @@ export function OrgProductShowcase() {
             </div>
             <div className={styles.workspaceFooter}>
               <span>Showing 1–4 of 132</span>
-              <a href="/signup?next=%2Fworkspace">
+              <Link href="/signup?next=%2Fworkspace">
                 Open organization area <ArrowRight aria-hidden="true" size={14} />
-              </a>
+              </Link>
             </div>
           </div>
         </div>

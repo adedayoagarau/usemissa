@@ -2,6 +2,8 @@ import pg, { type Pool as PgPool, type PoolClient } from "pg";
 import { classifyIngestionFailure, type ExtractionResult, type IngestionFailureCode, type IngestionRun, type PageSnapshot, type SourceDefinition } from "./contracts.js";
 import type { PublisherReview } from "./publisher.js";
 import type { ShadowArtifact, ShadowRunStore } from "./execution.js";
+import { InlineSnapshotBodyStore, type SnapshotBodyStore } from "./snapshotStore.js";
+import { modelCacheSchema } from "./modelCache.js";
 
 const { Pool } = pg;
 
@@ -29,9 +31,10 @@ create table if not exists missa_ingestion_v2_snapshots (
   status_code integer not null,
   content_type text,
   content_hash text not null,
-  html text not null,
+  html text,
   rendered boolean not null default false,
-  is_root boolean not null default false
+  is_root boolean not null default false,
+  body_store text not null default 'inline'
 );
 create index if not exists missa_ingestion_v2_snapshots_run_idx on missa_ingestion_v2_snapshots(run_id);
 create table if not exists missa_ingestion_v2_extractions (
@@ -55,8 +58,13 @@ create table if not exists missa_ingestion_v2_artifacts (
 );
 alter table missa_ingestion_v2_artifacts add column if not exists quality jsonb not null default '{"decision":"reject","score":0,"reasons":["quality not assessed"]}'::jsonb;
 alter table missa_ingestion_v2_artifacts add column if not exists publisher jsonb;
+alter table missa_ingestion_v2_artifacts alter column quality drop not null;
+alter table missa_ingestion_v2_artifacts alter column quality drop default;
 alter table missa_ingestion_v2_runs add column if not exists failure_code text;
 alter table missa_ingestion_v2_snapshots add column if not exists is_root boolean not null default false;
+alter table missa_ingestion_v2_snapshots add column if not exists body_store text not null default 'inline';
+alter table missa_ingestion_v2_snapshots alter column html drop not null;
+create index if not exists missa_ingestion_v2_snapshots_hash_idx on missa_ingestion_v2_snapshots(content_hash);
 create table if not exists missa_ingestion_v2_source_schedules (
   source_id text primary key,
   lane text not null check (lane in ('core-daily', 'scheduled', 'single-run', 'held')),
@@ -69,6 +77,7 @@ create table if not exists missa_ingestion_v2_source_schedules (
   updated_at timestamptz not null default now()
 );
 create index if not exists missa_ingestion_v2_source_schedules_due_idx on missa_ingestion_v2_source_schedules(lane, next_run_at);
+${modelCacheSchema}
 `;
 
 export async function ensureIngestionV2Schema(pool: PgPool): Promise<void> {
@@ -118,19 +127,31 @@ function json(value: unknown): string {
 }
 
 export class PostgresShadowRunStore implements ShadowRunStore {
-  constructor(private readonly pool: PgPool) {}
+  constructor(private readonly pool: PgPool, private readonly bodies: SnapshotBodyStore = new InlineSnapshotBodyStore()) {}
 
   async save(artifact: ShadowArtifact): Promise<void> {
     const client = await this.pool.connect();
     try {
+      // Bodies are offloaded before the transaction opens. A network call between
+      // begin and commit would hold a pooled Neon connection open for its duration.
+      const snapshots = [artifact.snapshot, ...(artifact.relatedSnapshots ?? [])];
+      const offloaded = new Map<string, boolean>();
+      if (this.bodies.id !== "inline") {
+        for (const snapshot of snapshots) {
+          if (offloaded.has(snapshot.contentHash)) continue;
+          await this.bodies.put(snapshot.contentHash, snapshot.html, snapshot.contentType);
+          offloaded.set(snapshot.contentHash, true);
+        }
+      }
+      const bodyStore = this.bodies.id;
       await client.query("begin");
       await this.saveRun(client, artifact.run);
-      for (const [index, snapshot] of [artifact.snapshot, ...(artifact.relatedSnapshots ?? [])].entries()) {
+      for (const [index, snapshot] of snapshots.entries()) {
         await client.query(
-        `insert into missa_ingestion_v2_snapshots (id, run_id, source_id, url, final_url, fetched_at, status_code, content_type, content_hash, html, rendered, is_root)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-         on conflict (id) do update set final_url=excluded.final_url, fetched_at=excluded.fetched_at, status_code=excluded.status_code, content_type=excluded.content_type, content_hash=excluded.content_hash, html=excluded.html, rendered=excluded.rendered, is_root=excluded.is_root`,
-        [snapshot.id, snapshot.runId, snapshot.sourceId, snapshot.url, snapshot.finalUrl, snapshot.fetchedAt, snapshot.statusCode, snapshot.contentType, snapshot.contentHash, snapshot.html, snapshot.rendered, index === 0],
+        `insert into missa_ingestion_v2_snapshots (id, run_id, source_id, url, final_url, fetched_at, status_code, content_type, content_hash, html, rendered, is_root, body_store)
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+         on conflict (id) do update set final_url=excluded.final_url, fetched_at=excluded.fetched_at, status_code=excluded.status_code, content_type=excluded.content_type, content_hash=excluded.content_hash, html=excluded.html, rendered=excluded.rendered, is_root=excluded.is_root, body_store=excluded.body_store`,
+        [snapshot.id, snapshot.runId, snapshot.sourceId, snapshot.url, snapshot.finalUrl, snapshot.fetchedAt, snapshot.statusCode, snapshot.contentType, snapshot.contentHash, bodyStore === "inline" ? snapshot.html : null, snapshot.rendered, index === 0, bodyStore],
         );
       }
       for (const [index, field] of artifact.extraction.fields.entries()) {
@@ -175,10 +196,17 @@ export class PostgresShadowRunStore implements ShadowRunStore {
     const row = result.rows[0];
     if (!row) return undefined;
     const snapshotsResult = await this.pool.query<{
-      id: string; run_id: string; source_id: string; url: string; final_url: string; fetched_at: Date; status_code: number; content_type: string | null; content_hash: string; html: string; rendered: boolean; is_root: boolean;
-    }>(`select id, run_id, source_id, url, final_url, fetched_at, status_code, content_type, content_hash, html, rendered, is_root
+      id: string; run_id: string; source_id: string; url: string; final_url: string; fetched_at: Date; status_code: number; content_type: string | null; content_hash: string; html: string | null; rendered: boolean; is_root: boolean; body_store: string;
+    }>(`select id, run_id, source_id, url, final_url, fetched_at, status_code, content_type, content_hash, html, rendered, is_root, body_store
         from missa_ingestion_v2_snapshots where run_id = $1 order by is_root desc, fetched_at asc, id`, [runId]);
-    const snapshots = snapshotsResult.rows.map((snapshot) => ({ id: snapshot.id, runId: snapshot.run_id, sourceId: snapshot.source_id, url: snapshot.url, finalUrl: snapshot.final_url, fetchedAt: snapshot.fetched_at.toISOString(), statusCode: snapshot.status_code, contentType: snapshot.content_type, contentHash: snapshot.content_hash, html: snapshot.html, rendered: snapshot.rendered }));
+    const snapshots = await Promise.all(snapshotsResult.rows.map(async (snapshot) => ({
+      id: snapshot.id, runId: snapshot.run_id, sourceId: snapshot.source_id, url: snapshot.url, finalUrl: snapshot.final_url,
+      fetchedAt: snapshot.fetched_at.toISOString(), statusCode: snapshot.status_code, contentType: snapshot.content_type,
+      contentHash: snapshot.content_hash, rendered: snapshot.rendered,
+      // An offloaded body that cannot be read back is reported as empty rather than
+      // throwing: run history stays inspectable even when object storage is down.
+      html: snapshot.html ?? (snapshot.body_store === "inline" ? "" : (await this.bodies.get(snapshot.content_hash).catch(() => undefined)) ?? ""),
+    })));
     const root = snapshots[0];
     if (!root) return undefined;
     const fields = await this.pool.query<ExtractionResult["fields"][number]>(

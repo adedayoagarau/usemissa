@@ -4,16 +4,8 @@ import Link from 'next/link';
 import { Bookmark, CalendarDays, MapPin, Tag } from 'lucide-react';
 import type { OpportunityBrowseProjection } from '@missa/radar-engine';
 import { SaveToTrackerButton } from '@/components/save-to-tracker-button';
+import { OpportunityIdentityMedia } from '@/components/opportunity-identity-media';
 import styles from './opportunity-catalogue-card.module.css';
-
-function initials(item: OpportunityBrowseProjection): string {
-  return (item.organizationName ?? item.title)
-    .split(/\s+/u)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase())
-    .join('') || 'M';
-}
 
 function typeLabel(type: OpportunityBrowseProjection['type']): string {
   if (type === 'open-call') return 'Open call';
@@ -58,16 +50,9 @@ export function OpportunityCatalogueCard({
   return (
     <article className={styles.card}>
       <Link href={detailHref} className={styles.openLink} aria-label={`View ${item.title}`}>
-        <span className={styles.media}>
-          {item.identityAssetUrl ? (
-            // Only rights-cleared/permitted identity assets reach this projection.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.identityAssetUrl} alt={item.identityAssetAlt ?? ''} />
-          ) : (
-            <span className={styles.fallback} aria-hidden="true">{initials(item)}</span>
-          )}
-        </span>
+        <OpportunityIdentityMedia item={item} />
         <span className={styles.body}>
+          {item.status === 'closed' || item.status === 'archived' ? <span className={styles.closedBadge}>Closed</span> : null}
           <span className={styles.type}>{typeLabel(item.type)}</span>
           <span className={styles.title}>{item.title}</span>
           <span className={styles.organization}>{item.organizationName ?? 'Organization not confirmed'}</span>

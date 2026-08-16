@@ -9,7 +9,11 @@
     "missa-ingestion-v2-schema": "dist/src/cli.js",
     "missa-ingestion-v2-worker": "dist/src/worker.js",
     "missa-ingestion-v2-run": "dist/src/run-cli.js",
-    "missa-ingestion-v2-compare": "dist/src/compare-cli.js"
+    "missa-ingestion-v2-compare": "dist/src/compare-cli.js",
+    "missa-ingestion-v2-publish": "dist/src/publish-cli.js",
+    "missa-ingestion-v2-stage-worker": "dist/src/stage-worker.js",
+    "missa-ingestion-v2-stage-run": "dist/src/stage-run-cli.js",
+    "missa-ingestion-v2-repair": "dist/src/repair-cli.js"
   },
   "exports": {
     ".": {
@@ -21,7 +25,11 @@
     "build": "tsc -p tsconfig.json",
     "test": "npm run build && node --test dist/test/*.test.js",
     "schema:ensure": "npm run build && missa-ingestion-v2-schema",
-    "worker": "node dist/src/worker.js"
+    "worker": "node dist/src/worker.js",
+    "publication": "node dist/src/publish-cli.js",
+    "stage-worker": "node dist/src/stage-worker.js",
+    "stage-run": "node dist/src/stage-run-cli.js",
+    "repair": "node dist/src/repair-cli.js"
   },
   "dependencies": {
     "@missa/radar-engine": "^0.1.0",

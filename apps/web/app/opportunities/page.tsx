@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/button';
 import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
 import styles from './opportunities.module.css';
 
+export const dynamic = 'force-dynamic';
+
 type SearchParams = Record<string, string | string[] | undefined>;
 
 const typeLabels: Record<string, string> = {

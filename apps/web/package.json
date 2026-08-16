@@ -8,6 +8,7 @@
     "build": "npm run build --workspace=@missa/contracts --prefix ../.. && npm run build --workspace=@missa/taxonomy --prefix ../.. && npm run build --workspace=@missa/radar-engine --prefix ../.. && npm run build --workspace=@missa/radar-adapters --prefix ../.. && npm run build --workspace=@missa/ingestion-v2 --prefix ../.. && npm run build --workspace=@missa/workspace-engine --prefix ../.. && next build",
     "start": "next start",
     "lint": "eslint .",
+    "test:unit": "node --import tsx --test lib/journalPresentation.test.ts",
     "typecheck": "tsc --noEmit --incremental false",
     "test:e2e": "playwright test"
   },
@@ -24,6 +25,8 @@
     "@missa/radar-engine": "^0.1.0",
     "@missa/taxonomy": "0.1.0",
     "@missa/workspace-engine": "^0.1.0",
+    "@neondatabase/auth": "^0.5.0-beta",
+    "@upstash/redis": "^1.38.2",
     "@sentry/nextjs": "^10.69.0",
     "@stepperize/react": "^6.1.0",
     "@tanstack/react-table": "^8.21.3",
