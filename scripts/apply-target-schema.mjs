@@ -40,7 +40,18 @@ const migrationFiles = [
   '0015_admin_operations.sql',
   '0016_opportunity_intelligence.sql',
   '0017_chat_baseline.sql',
+  '0018_trusted_source_registry.sql',
+  '0019_radar_ingestion_reliability.sql',
+  '0020_waitlist_signups.sql',
+  '0021_tracker_import_transactions.sql',
+  '0022_resend_webhook_events.sql',
   '0023_profile_opportunity_identity.sql',
+  '0024_radar_source_runs.sql',
+  '0025_publication_gate_defaults.sql',
+  '0026_handle_namespace.sql',
+  '0027_waitlist_invites.sql',
+  '0028_profile_issue_reports.sql',
+  '0029_account_deletion_requests.sql',
 ];
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });

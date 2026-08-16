@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import {
@@ -42,6 +43,34 @@ import {
   handleAliases,
   waitlistInvites,
 } from "../src/schema.js";
+
+test("target-schema rehearsal includes the complete Profile migration chain", async () => {
+  const script = await readFile(
+    new URL("../../../../scripts/apply-target-schema.mjs", import.meta.url),
+    "utf8",
+  );
+  const requiredMigrations = [
+    "0018_trusted_source_registry.sql",
+    "0019_radar_ingestion_reliability.sql",
+    "0020_waitlist_signups.sql",
+    "0021_tracker_import_transactions.sql",
+    "0022_resend_webhook_events.sql",
+    "0023_profile_opportunity_identity.sql",
+    "0024_radar_source_runs.sql",
+    "0025_publication_gate_defaults.sql",
+    "0026_handle_namespace.sql",
+    "0027_waitlist_invites.sql",
+    "0028_profile_issue_reports.sql",
+    "0029_account_deletion_requests.sql",
+  ];
+
+  let previousIndex = -1;
+  for (const migration of requiredMigrations) {
+    const index = script.indexOf(`'${migration}'`);
+    assert.ok(index > previousIndex, `${migration} is missing or out of order`);
+    previousIndex = index;
+  }
+});
 
 test("platform schema carries tenant, audit, outbox, and reviewer indexes", () => {
   const membershipConfig = getTableConfig(memberships);
