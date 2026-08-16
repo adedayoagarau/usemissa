@@ -9,6 +9,7 @@ class RecordingConnection:
 
     def execute(self, query, params=None):
         self.statements.append((query, params))
+        return Result()
 
 
 class Result:
@@ -207,3 +208,41 @@ def test_profile_identity_uses_host_and_name_not_name_alone():
 
     assert first_profile_id != second_profile_id
     assert _normalized_host_key("https://www.first.example/path") == "first.example"
+
+
+def test_profile_identity_reuses_existing_website_and_name_row():
+    store = NeonStore("postgres://example.test/gary")
+
+    class ExistingProfileConnection(RecordingConnection):
+        def execute(self, query, params=None):
+            if "FROM gary_profiles" in query:
+                return Result(("profile_existing", "identity_existing", "canonical_existing"))
+            return super().execute(query, params)
+
+    connection = ExistingProfileConnection()
+    profile = {
+        "kind": "literary_magazine",
+        "name": "Sample Journal",
+        "source": {"detail_url": "https://www.pw.org/literary_magazines/sample_journal"},
+        "detail": {
+            "kind": "literary_magazine",
+            "name": "Sample Journal",
+            "detail_url": "https://www.pw.org/literary_magazines/sample_journal",
+            "website_url": "https://sample.test",
+            "genres": [],
+            "book_types": [],
+            "formats": [],
+        },
+    }
+
+    profile_id, _ = store._insert_profile(
+        connection, "run_test", "pw.org.literary_magazines", profile
+    )
+
+    assert profile_id == "profile_existing"
+    profile_insert = next(
+        (params for query, params in connection.statements if "INSERT INTO gary_profiles" in query),
+        None,
+    )
+    assert profile_insert is not None
+    assert profile_insert[1:3] == ("identity_existing", "canonical_existing")

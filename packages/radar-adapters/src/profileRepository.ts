@@ -18,7 +18,6 @@ export interface ProfileCard {
   genres: string[];
   formats: string[];
   readingPeriod: string | null;
-  sourceUrl: string | null;
   mediaUrl: string | null;
   mediaAlt: string | null;
 }
@@ -28,7 +27,6 @@ export interface ProfileOpportunity {
   title: string;
   organizer: string;
   deadline: string | null;
-  detailUrl: string | null;
   officialWebsite: string | null;
   status: "open" | "closed" | "unknown";
 }
@@ -75,6 +73,33 @@ export interface ProfileRepository {
   getMediaByProfileId(id: string): Promise<ProfileMedia | null>;
 }
 
+/**
+ * Gary may have more than one row for the same publication when a later
+ * observation gains the official website that an earlier observation lacked.
+ * Public identity is therefore the normalized official URL plus normalized
+ * name, not the ingestion row id or the source-detail URL.
+ *
+ * Rows without an official URL remain distinct. A shared name alone is not
+ * enough evidence to merge two publications.
+ */
+const PUBLIC_PROFILE_IDENTITY_KEY_SQL = `
+  CASE
+    WHEN p.normalized_website_url IS NOT NULL
+      AND btrim(p.normalized_website_url) <> ''
+      THEN 'website:' || p.normalized_website_url || '|name:' || p.name_key
+    ELSE 'profile:' || p.id
+  END`;
+
+const PUBLIC_PROFILE_CANONICAL_ORDER_SQL = `
+  (p.identity_status = 'confirmed') DESC,
+  p.identity_confidence DESC,
+  (p.normalized_website_url IS NOT NULL
+    AND btrim(p.normalized_website_url) <> '') DESC,
+  o.observed_at DESC NULLS LAST,
+  p.last_seen_at DESC,
+  p.updated_at DESC,
+  p.id ASC`;
+
 function jsonArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
@@ -95,7 +120,6 @@ function card(row: Record<string, unknown>): ProfileCard {
     genres: jsonArray(row.genres_json),
     formats: jsonArray(row.formats_json),
     readingPeriod: nullableText(row.reading_period),
-    sourceUrl: nullableText(row.source_detail_url),
     mediaUrl: nullableText(row.media_url),
     mediaAlt: nullableText(row.media_alt),
   };
@@ -109,12 +133,12 @@ export class PostgresProfileRepository implements ProfileRepository {
     const filters: string[] = [];
     if (query.kind) {
       values.push(query.kind);
-      filters.push(`p.profile_kind = $${values.length}`);
+      filters.push(`c.profile_kind = $${values.length}`);
     }
     if (query.query?.trim()) {
       values.push(`%${query.query.trim()}%`);
       filters.push(
-        `(p.name ILIKE $${values.length} OR o.source_summary ILIKE $${values.length} OR o.editorial_focus ILIKE $${values.length})`,
+        `(c.name ILIKE $${values.length} OR c.source_summary ILIKE $${values.length} OR c.editorial_focus ILIKE $${values.length})`,
       );
     }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
@@ -131,14 +155,23 @@ export class PostgresProfileRepository implements ProfileRepository {
         SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url, NULLIF(BTRIM(alt_text), '') AS media_alt
         FROM gary_profile_media_assets WHERE kind = 'image' AND error IS NULL
         ORDER BY profile_page_id, created_at
+      ), canonical AS (
+        SELECT DISTINCT ON (${PUBLIC_PROFILE_IDENTITY_KEY_SQL})
+          p.id, p.profile_kind, p.name, p.website_url,
+          o.source_summary, o.genres_json, o.formats_json, o.reading_period,
+          o.source_detail_url, o.editorial_focus, m.media_url, m.media_alt
+        FROM gary_profiles p JOIN latest o ON o.profile_id = p.id
+        LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
+        LEFT JOIN media m ON m.profile_page_id = pg.id
+        ORDER BY ${PUBLIC_PROFILE_IDENTITY_KEY_SQL}, ${PUBLIC_PROFILE_CANONICAL_ORDER_SQL}
       )
-      SELECT p.id, p.profile_kind, p.name, p.website_url,
-        o.source_summary, o.genres_json, o.formats_json, o.reading_period,
-        o.source_detail_url, m.media_url, m.media_alt, count(*) OVER() AS total_count
-      FROM gary_profiles p JOIN latest o ON o.profile_id = p.id
-      LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
-      LEFT JOIN media m ON m.profile_page_id = pg.id
-      ${where} ORDER BY p.name ASC LIMIT $${limit} OFFSET $${offset}`,
+      SELECT c.id, c.profile_kind, c.name, c.website_url,
+        c.source_summary, c.genres_json, c.formats_json, c.reading_period,
+        c.source_detail_url, c.media_url, c.media_alt,
+        count(*) OVER() AS total_count
+      FROM canonical c
+      ${where}
+      ORDER BY c.name ASC LIMIT $${limit} OFFSET $${offset}`,
       values,
     });
     return {
@@ -148,39 +181,62 @@ export class PostgresProfileRepository implements ProfileRepository {
   }
 
   async getById(id: string): Promise<ProfileDetail | null> {
+    const identityResult = await this.pool.query<{
+      public_identity_key: string;
+    }>({
+      text: `
+      SELECT ${PUBLIC_PROFILE_IDENTITY_KEY_SQL} AS public_identity_key
+      FROM gary_profiles p
+      WHERE p.id = $1`,
+      values: [id],
+    });
+    const publicIdentityKey = identityResult.rows[0]?.public_identity_key;
+    if (!publicIdentityKey) return null;
+
     const result = await this.pool.query({
       text: `
       WITH latest AS (SELECT DISTINCT ON (profile_id) * FROM gary_profile_observations ORDER BY profile_id, observed_at DESC),
       media AS (SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url, NULLIF(BTRIM(alt_text), '') AS media_alt FROM gary_profile_media_assets WHERE kind='image' AND error IS NULL ORDER BY profile_page_id, created_at)
-      SELECT p.id, p.profile_kind, p.name, p.website_url, o.*, m.media_url, m.media_alt
+      SELECT o.*, p.id AS id, p.profile_kind AS profile_kind,
+        p.name AS name, p.website_url AS website_url, m.media_url, m.media_alt
       FROM gary_profiles p JOIN latest o ON o.profile_id=p.id
       LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id=o.id AND pg.role='profile'
-      LEFT JOIN media m ON m.profile_page_id=pg.id WHERE p.id=$1`,
-      values: [id],
+      LEFT JOIN media m ON m.profile_page_id=pg.id
+      WHERE ${PUBLIC_PROFILE_IDENTITY_KEY_SQL} = $1
+      ORDER BY ${PUBLIC_PROFILE_CANONICAL_ORDER_SQL}
+      LIMIT 1`,
+      values: [publicIdentityKey],
     });
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
     const base = card(row);
-    const links = await this.pool.query({ text: `
+    const links = await this.pool.query({
+      text: `
+      WITH profile_ids AS (
+        SELECT p.id
+        FROM gary_profiles p
+        WHERE ${PUBLIC_PROFILE_IDENTITY_KEY_SQL} = $1
+      )
       SELECT * FROM (
         SELECT o.id, o.title, o.organizer, o.official_website, oco.deadline, oco.source_detail_url,
           CASE WHEN oco.deadline IS NULL THEN 'unknown' WHEN oco.deadline >= CURRENT_DATE THEN 'open' ELSE 'closed' END AS status
         FROM gary_profile_links l JOIN gary_opportunities o ON o.id=l.opportunity_id
         LEFT JOIN LATERAL (SELECT * FROM gary_call_observations WHERE opportunity_id=o.id ORDER BY observed_at DESC LIMIT 1) oco ON TRUE
-        WHERE l.profile_id=$1 AND l.status='confirmed'
+        WHERE l.profile_id IN (SELECT id FROM profile_ids) AND l.status='confirmed'
         UNION ALL
         SELECT o.id, o.title, p.name AS organizer,
-          COALESCE(o.guidelines_url, s.url) AS official_website,
-          o.deadline_date AS deadline, s.url AS source_detail_url,
+          o.guidelines_url AS official_website,
+          o.deadline_date AS deadline,
           CASE WHEN o.status IN ('open', 'opening-soon', 'closing-soon', 'deadline-extended') THEN 'open'
                WHEN o.status IN ('closed', 'archived') THEN 'closed' ELSE 'unknown' END AS status
         FROM opportunity_profile_links l
         JOIN opportunities o ON o.id=l.opportunity_id
-        JOIN opportunity_sources s ON s.id=o.source_id
         JOIN gary_profiles p ON p.id=l.profile_id
-        WHERE l.profile_id=$1 AND l.status='confirmed' AND l.verified_until > now()
+        WHERE l.profile_id IN (SELECT id FROM profile_ids) AND l.status='confirmed' AND l.verified_until > now()
           AND o.publication_state='published'
-      ) linked ORDER BY deadline NULLS LAST, title`, values: [id] });
+      ) linked ORDER BY deadline NULLS LAST, title`,
+      values: [publicIdentityKey],
+    });
     return {
       ...base,
       submissionGuidelinesUrl: nullableText(row.submission_guidelines_url),
@@ -210,7 +266,6 @@ export class PostgresProfileRepository implements ProfileRepository {
         title: item.title,
         organizer: item.organizer,
         deadline: item.deadline,
-        detailUrl: item.source_detail_url,
         officialWebsite: item.official_website,
         status: item.status,
       })),
@@ -254,7 +309,8 @@ export class PostgresProfileRepository implements ProfileRepository {
   }
 
   async getForOpportunity(opportunityId: string): Promise<ProfileCard | null> {
-    const result = await this.pool.query({ text: `
+    const result = await this.pool.query({
+      text: `
       WITH latest AS (
         SELECT DISTINCT ON (profile_id) * FROM gary_profile_observations
         ORDER BY profile_id, observed_at DESC
@@ -272,7 +328,9 @@ export class PostgresProfileRepository implements ProfileRepository {
       LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id=o.id AND pg.role='profile'
       LEFT JOIN media m ON m.profile_page_id=pg.id
       WHERE l.opportunity_id=$1 AND l.status='confirmed' AND l.verified_until > now()
-      ORDER BY l.confidence DESC, p.name ASC LIMIT 1`, values: [opportunityId] });
+      ORDER BY l.confidence DESC, p.name ASC LIMIT 1`,
+      values: [opportunityId],
+    });
     const row = result.rows[0] as Record<string, unknown> | undefined;
     return row ? card(row) : null;
   }
