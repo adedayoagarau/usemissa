@@ -2,13 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowUpRight, ChevronDown, Plus, Trash2, Upload } from "lucide-react";
+import {
+  ArrowUpRight,
+  ChevronDown,
+  GripVertical,
+  Plus,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 import type {
+  ProfileSampleKind,
   ProfileSelectedWork,
   ProfileSocialLink,
   ProfileSocialService,
   PublicPortfolio,
+  PublicUserProfile,
 } from "@missa/radar-engine";
 
 import { AppNav } from "@/components/app-nav";
@@ -33,6 +42,21 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import {
   Field,
   FieldContent,
   FieldDescription,
@@ -49,6 +73,11 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Switch } from "@/components/ui/switch";
+import {
+  Sortable,
+  SortableItem,
+  SortableItemHandle,
+} from "@/components/ui/sortable";
 import { Textarea } from "@/components/ui/textarea";
 import styles from "./profile-editor.module.css";
 
@@ -64,6 +93,32 @@ export interface ProfileEditorData {
   publicUrl: string;
   published: boolean;
   publicPortfolio?: PublicPortfolio;
+  libraryWorks: ProfileLibraryWork[];
+}
+
+export interface ProfileLibraryWork {
+  id: string;
+  title: string;
+  description?: string;
+  sampleKind?: ProfileSampleKind;
+  file?: { id: string; filename: string; contentType: string };
+}
+
+interface ProfileSampleDraft {
+  kind: ProfileSampleKind;
+  excerpt?: string;
+  publicAssetUrl?: string;
+  contentType?: string;
+  accessibilityText?: string;
+  transcript?: string;
+  rightsConfirmedAt?: string;
+  rightsConfirmed?: boolean;
+}
+
+interface ProfileWorkDraft extends Omit<ProfileSelectedWork, "sample"> {
+  sample?: ProfileSampleDraft;
+  /** Owner-only handoff to the publish route. Never persisted or made public. */
+  sampleSourceFileId?: string;
 }
 
 function newId(prefix: string): string {
@@ -95,15 +150,17 @@ function useMobileEditor(): boolean {
 
 function WorkEditorRow({
   work,
+  sourceWork,
   featured,
   mobile,
   onChange,
   onRemove,
 }: {
-  work: ProfileSelectedWork;
+  work: ProfileWorkDraft;
+  sourceWork?: ProfileLibraryWork;
   featured: boolean;
   mobile: boolean;
-  onChange: (patch: Partial<ProfileSelectedWork>) => void;
+  onChange: (patch: Partial<ProfileWorkDraft>) => void;
   onRemove: () => void;
 }) {
   const [open, setOpen] = useState(() => !mobile || featured);
@@ -115,6 +172,14 @@ function WorkEditorRow({
     <Collapsible open={open} onOpenChange={setOpen}>
       <Item className={styles.editRow}>
         <div className={styles.workSummary}>
+          <SortableItemHandle
+            className={styles.dragHandle}
+            role="button"
+            tabIndex={0}
+            aria-label={`Move ${title}`}
+          >
+            <GripVertical aria-hidden="true" />
+          </SortableItemHandle>
           <CollapsibleTrigger className={styles.workTrigger}>
             <span className={styles.workSummaryText}>
               <span className={styles.workSummaryTitle}>{title}</span>
@@ -177,8 +242,14 @@ function WorkEditorRow({
                   id={`work-title-${work.id}`}
                   value={work.title}
                   maxLength={160}
+                  readOnly={Boolean(work.workId)}
                   onChange={(event) => onChange({ title: event.target.value })}
                 />
+                {work.workId ? (
+                  <FieldDescription>
+                    This title comes from Library.
+                  </FieldDescription>
+                ) : null}
               </FieldContent>
             </Field>
             <Field>
@@ -242,13 +313,196 @@ function WorkEditorRow({
                   value={work.description ?? ""}
                   maxLength={500}
                   rows={3}
+                  readOnly={Boolean(work.workId)}
                   onChange={(event) =>
                     onChange({ description: event.target.value || undefined })
                   }
                 />
+                {work.workId ? (
+                  <FieldDescription>
+                    This description comes from Library.
+                  </FieldDescription>
+                ) : null}
               </FieldContent>
             </Field>
           </div>
+          {featured ? (
+            <div className={styles.sampleEditor}>
+              <div className={styles.sampleHeader}>
+                <div>
+                  <h3>Featured sample</h3>
+                  <p>
+                    Let visitors experience one part of this Work without
+                    leaving your Profile.
+                  </p>
+                </div>
+                {work.sample ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() =>
+                      onChange({
+                        sample: undefined,
+                        sampleSourceFileId: undefined,
+                      })
+                    }
+                  >
+                    Unpublish sample
+                  </Button>
+                ) : null}
+              </div>
+              {!work.sample ? (
+                <div className={styles.sampleActions}>
+                  {sourceWork?.sampleKind &&
+                  sourceWork.sampleKind !== "text" &&
+                  sourceWork.file ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        onChange({
+                          sample: {
+                            kind: sourceWork.sampleKind!,
+                            contentType: sourceWork.file!.contentType,
+                          },
+                          sampleSourceFileId: sourceWork.file!.id,
+                        })
+                      }
+                    >
+                      Use {sourceWork.file.filename}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() =>
+                        onChange({ sample: { kind: "text", excerpt: "" } })
+                      }
+                    >
+                      Add a passage
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className={styles.sampleFields}>
+                  {work.sample.kind === "text" ? (
+                    <Field>
+                      <FieldLabel htmlFor={`sample-excerpt-${work.id}`}>
+                        Passage
+                      </FieldLabel>
+                      <FieldContent>
+                        <Textarea
+                          id={`sample-excerpt-${work.id}`}
+                          value={work.sample.excerpt ?? ""}
+                          maxLength={12000}
+                          rows={10}
+                          onChange={(event) =>
+                            onChange({
+                              sample: {
+                                ...work.sample!,
+                                excerpt: event.target.value,
+                              },
+                            })
+                          }
+                        />
+                        <FieldDescription>
+                          Up to 800 words. Only this passage becomes public.
+                        </FieldDescription>
+                      </FieldContent>
+                    </Field>
+                  ) : null}
+                  {work.sample.kind === "image" ||
+                  work.sample.kind === "video" ? (
+                    <Field>
+                      <FieldLabel htmlFor={`sample-description-${work.id}`}>
+                        {work.sample.kind === "image"
+                          ? "Image description"
+                          : "Video description"}
+                      </FieldLabel>
+                      <FieldContent>
+                        <Textarea
+                          id={`sample-description-${work.id}`}
+                          value={work.sample.accessibilityText ?? ""}
+                          maxLength={2000}
+                          rows={4}
+                          onChange={(event) =>
+                            onChange({
+                              sample: {
+                                ...work.sample!,
+                                accessibilityText: event.target.value,
+                              },
+                            })
+                          }
+                        />
+                        <FieldDescription>
+                          Describe what the sample shows for people who cannot
+                          see it.
+                        </FieldDescription>
+                      </FieldContent>
+                    </Field>
+                  ) : null}
+                  {work.sample.kind === "audio" ||
+                  work.sample.kind === "video" ? (
+                    <Field>
+                      <FieldLabel htmlFor={`sample-transcript-${work.id}`}>
+                        {work.sample.kind === "video"
+                          ? "Captions or transcript"
+                          : "Transcript, if the audio includes speech"}
+                      </FieldLabel>
+                      <FieldContent>
+                        <Textarea
+                          id={`sample-transcript-${work.id}`}
+                          value={work.sample.transcript ?? ""}
+                          maxLength={20000}
+                          rows={6}
+                          onChange={(event) =>
+                            onChange({
+                              sample: {
+                                ...work.sample!,
+                                transcript: event.target.value,
+                              },
+                            })
+                          }
+                        />
+                      </FieldContent>
+                    </Field>
+                  ) : null}
+                  <Item className={styles.rightsOption}>
+                    <ItemContent>
+                      <ItemTitle>I can publish this sample</ItemTitle>
+                      <ItemDescription>
+                        I created it or have permission to share it publicly.
+                      </ItemDescription>
+                    </ItemContent>
+                    <ItemActions>
+                      <span className={styles.contactState}>
+                        {work.sample.rightsConfirmedAt ||
+                        work.sample.rightsConfirmed
+                          ? "Confirmed"
+                          : "Not confirmed"}
+                      </span>
+                      <Switch
+                        aria-label="Confirm permission to publish this sample"
+                        checked={Boolean(
+                          work.sample.rightsConfirmedAt ||
+                          work.sample.rightsConfirmed,
+                        )}
+                        disabled={Boolean(work.sample.rightsConfirmedAt)}
+                        onCheckedChange={(checked) =>
+                          onChange({
+                            sample: {
+                              ...work.sample!,
+                              rightsConfirmed: checked,
+                            },
+                          })
+                        }
+                      />
+                    </ItemActions>
+                  </Item>
+                </div>
+              )}
+            </div>
+          ) : null}
         </CollapsibleContent>
       </Item>
     </Collapsible>
@@ -274,7 +528,9 @@ export function ProfileEditor({
       openTo: initialProfile.publicPortfolio?.openTo ?? "",
       contactEnabled: initialProfile.publicPortfolio?.contactEnabled ?? false,
       socialLinks: initialProfile.publicPortfolio?.socialLinks ?? [],
-      selectedWorks: initialProfile.publicPortfolio?.selectedWorks ?? [],
+      selectedWorks: (initialProfile.publicPortfolio?.selectedWorks ?? []).map(
+        (work) => ({ ...work }),
+      ) as ProfileWorkDraft[],
     }),
     [initialProfile],
   );
@@ -290,9 +546,11 @@ export function ProfileEditor({
   const [socialLinks, setSocialLinks] = useState<ProfileSocialLink[]>(
     initial.socialLinks,
   );
-  const [selectedWorks, setSelectedWorks] = useState<ProfileSelectedWork[]>(
+  const [selectedWorks, setSelectedWorks] = useState<ProfileWorkDraft[]>(
     initial.selectedWorks,
   );
+  const [workPickerOpen, setWorkPickerOpen] = useState(false);
+  const [published, setPublished] = useState(initialProfile.published);
   const [savedValues, setSavedValues] = useState(initial);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -312,10 +570,28 @@ export function ProfileEditor({
   };
   const dirty = JSON.stringify(current) !== JSON.stringify(savedValues);
 
-  function updateWork(id: string, patch: Partial<ProfileSelectedWork>) {
+  function updateWork(id: string, patch: Partial<ProfileWorkDraft>) {
     setSelectedWorks((items) =>
       items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
     );
+  }
+
+  function addLibraryWork(work: ProfileLibraryWork) {
+    setSelectedWorks((items) => [
+      ...items,
+      {
+        id: newId("work"),
+        workId: work.id,
+        title: work.title,
+        ...(work.description ? { description: work.description } : {}),
+      },
+    ]);
+    setWorkPickerOpen(false);
+  }
+
+  function addExternalWork() {
+    setSelectedWorks((items) => [...items, { id: newId("work"), title: "" }]);
+    setWorkPickerOpen(false);
   }
 
   function updateLink(id: string, patch: Partial<ProfileSocialLink>) {
@@ -394,15 +670,58 @@ export function ProfileEditor({
       });
       const body = (await response.json().catch(() => ({}))) as {
         error?: string;
+        profile?: PublicUserProfile;
       };
       if (!response.ok) {
         setError(body.error ?? "We could not publish your Profile.");
         return;
       }
-      setSavedValues(current);
+      const savedCurrent = {
+        ...current,
+        selectedWorks: (body.profile?.selectedWorks ??
+          current.selectedWorks) as ProfileWorkDraft[],
+      };
+      setSelectedWorks(savedCurrent.selectedWorks);
+      setSavedValues(savedCurrent);
+      setPublished(true);
       setUploadedDraftPhoto("");
       setMessage("Your public Profile is updated.");
       toast("Profile published.");
+    });
+  }
+
+  async function unpublish() {
+    setError("");
+    setMessage("");
+    startTransition(async () => {
+      const response = await fetch("/api/me/profile/public", {
+        method: "DELETE",
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!response.ok) {
+        setError(body.error ?? "We could not unpublish your Profile.");
+        return;
+      }
+      const privateWorks = selectedWorks.map((work) => {
+        const next = { ...work };
+        delete next.sample;
+        delete next.sampleSourceFileId;
+        return next;
+      });
+      const unpublishedValues = {
+        ...current,
+        profileImageUrl: "",
+        selectedWorks: privateWorks,
+      };
+      setProfileImageUrl("");
+      setSelectedWorks(privateWorks);
+      setSavedValues(unpublishedValues);
+      setUploadedDraftPhoto("");
+      setPublished(false);
+      setMessage("Your Profile is no longer public.");
+      toast("Profile unpublished.");
     });
   }
 
@@ -427,15 +746,21 @@ export function ProfileEditor({
       <AppNav {...nav} />
       <main id="main-content" className={styles.main}>
         <div className={styles.ownerRibbon}>
-          <p>You are editing your public Profile. Save to publish changes.</p>
+          <p>
+            {published
+              ? "You are editing your public Profile. Save to publish changes."
+              : "Your Profile is private. Save when you are ready to publish."}
+          </p>
           <nav aria-label="Profile actions">
-            <Button
-              nativeButton={false}
-              render={<Link href={initialProfile.publicUrl} target="_blank" />}
-              variant="ghost"
-            >
-              View as visitor <ArrowUpRight aria-hidden="true" />
-            </Button>
+            {published ? (
+              <Button
+                nativeButton={false}
+                render={<Link href={initialProfile.publicUrl} target="_blank" />}
+                variant="ghost"
+              >
+                View as visitor <ArrowUpRight aria-hidden="true" />
+              </Button>
+            ) : null}
             <Button
               nativeButton={false}
               render={<Link href="/settings" />}
@@ -443,6 +768,40 @@ export function ProfileEditor({
             >
               Settings
             </Button>
+            {published ? (
+              <AlertDialog>
+                <AlertDialogTrigger
+                  render={<Button type="button" variant="ghost" />}
+                >
+                  Unpublish Profile
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      Unpublish your Profile?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Visitors will no longer be able to open it. Public media
+                      copies and your Profile photo will be removed. Your text
+                      and Work list will stay in this private editor.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="min-h-[44px]">
+                      Keep Profile public
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      type="button"
+                      variant="destructive"
+                      className="min-h-[44px]"
+                      onClick={unpublish}
+                    >
+                      Unpublish Profile
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : null}
           </nav>
         </div>
 
@@ -605,25 +964,32 @@ export function ProfileEditor({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() =>
-                  setSelectedWorks((items) => [
-                    ...items,
-                    { id: newId("work"), title: "" },
-                  ])
-                }
+                onClick={() => setWorkPickerOpen(true)}
               >
                 <Plus aria-hidden="true" /> Add Work
               </Button>
             </header>
             {selectedWorks.length ? (
-              <ItemGroup className={styles.list}>
+              <Sortable
+                dndContextId="profile-work-order"
+                className={styles.list}
+                value={selectedWorks}
+                onValueChange={setSelectedWorks}
+                getItemValue={(work) => work.id}
+                strategy="vertical"
+                role="list"
+              >
                 {selectedWorks.map((work, index) => (
-                  <div
+                  <SortableItem
                     key={`${work.id}-${mobileEditor ? "mobile" : "desktop"}`}
+                    value={work.id}
                     role="listitem"
                   >
                     <WorkEditorRow
                       work={work}
+                      sourceWork={initialProfile.libraryWorks.find(
+                        (candidate) => candidate.id === work.workId,
+                      )}
                       featured={index === 0}
                       mobile={mobileEditor}
                       onChange={(patch) => updateWork(work.id, patch)}
@@ -636,12 +1002,93 @@ export function ProfileEditor({
                     {index < selectedWorks.length - 1 ? (
                       <ItemSeparator className={styles.separator} />
                     ) : null}
-                  </div>
+                  </SortableItem>
                 ))}
-              </ItemGroup>
+              </Sortable>
             ) : (
-              <p className={styles.helper}>No Work is public yet.</p>
+              <Empty className={styles.emptyState}>
+                <EmptyHeader>
+                  <EmptyTitle>No Work is public yet</EmptyTitle>
+                  <EmptyDescription>
+                    Choose a Work from Library or add a public link.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             )}
+            <Dialog open={workPickerOpen} onOpenChange={setWorkPickerOpen}>
+              <DialogContent className={styles.workPicker}>
+                <DialogHeader>
+                  <DialogTitle>Add Work to your Profile</DialogTitle>
+                  <DialogDescription>
+                    Choose from Library. Missa publishes a separate copy of the
+                    details you save here.
+                  </DialogDescription>
+                </DialogHeader>
+                {initialProfile.libraryWorks.length ? (
+                  <ItemGroup className={styles.workPickerList}>
+                    {initialProfile.libraryWorks.map((work, index) => {
+                      const alreadyAdded = selectedWorks.some(
+                        (item) => item.workId === work.id,
+                      );
+                      return (
+                        <div key={work.id} role="listitem">
+                          <Item className={styles.workPickerItem}>
+                            <ItemContent>
+                              <ItemTitle>{work.title}</ItemTitle>
+                              <ItemDescription>
+                                {work.file?.filename ??
+                                  work.description ??
+                                  "Saved in Library"}
+                              </ItemDescription>
+                            </ItemContent>
+                            <ItemActions>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                disabled={alreadyAdded}
+                                onClick={() => addLibraryWork(work)}
+                              >
+                                {alreadyAdded ? "Added" : "Choose"}
+                              </Button>
+                            </ItemActions>
+                          </Item>
+                          {index < initialProfile.libraryWorks.length - 1 ? (
+                            <ItemSeparator className={styles.separator} />
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </ItemGroup>
+                ) : (
+                  <Empty className={styles.emptyState}>
+                    <EmptyHeader>
+                      <EmptyTitle>Your Library has no Work yet</EmptyTitle>
+                      <EmptyDescription>
+                        Add a Work in Library, or add an external Work here.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                      <Button
+                        nativeButton={false}
+                        render={<Link href="/library" />}
+                        variant="outline"
+                      >
+                        Go to Library
+                      </Button>
+                    </EmptyContent>
+                  </Empty>
+                )}
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={addExternalWork}
+                  >
+                    Add an external Work
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </section>
 
           <section className={styles.section} aria-labelledby="links-title">

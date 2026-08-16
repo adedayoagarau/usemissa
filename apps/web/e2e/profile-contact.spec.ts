@@ -18,7 +18,7 @@ async function createAccount(page: Page) {
 function message(overrides: Record<string, unknown> = {}) {
   return {
     senderName: "A Reader",
-    senderEmail: "reader@example.com",
+    senderEmail: `reader-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`,
     message: "I would like to discuss a commission for your writing.",
     idempotencyKey: `contact-${Date.now()}-reader`,
     ...overrides,
@@ -30,8 +30,11 @@ test("Profile contact is opt-in, validated, and fails closed without delivery", 
 }) => {
   const profile = await createAccount(page);
   const endpoint = `/api/profile/${profile.id}/contact`;
+  const headers = {
+    "x-forwarded-for": `198.51.100.${Math.floor(Math.random() * 200) + 1}`,
+  };
 
-  const disabled = await page.request.post(endpoint, { data: message() });
+  const disabled = await page.request.post(endpoint, { headers, data: message() });
   expect(disabled.status()).toBe(404);
   expect(await disabled.json()).toEqual({
     error: "Contact is unavailable for this Profile.",
@@ -48,6 +51,7 @@ test("Profile contact is opt-in, validated, and fails closed without delivery", 
   expect(published.ok()).toBeTruthy();
 
   const invalid = await page.request.post(endpoint, {
+    headers,
     data: message({ senderEmail: "not-an-email" }),
   });
   expect(invalid.status()).toBe(400);
@@ -56,13 +60,14 @@ test("Profile contact is opt-in, validated, and fails closed without delivery", 
     field: "senderEmail",
   });
 
-  const unavailable = await page.request.post(endpoint, { data: message() });
+  const unavailable = await page.request.post(endpoint, { headers, data: message() });
   expect(unavailable.status()).toBe(503);
   expect(await unavailable.json()).toEqual({
     error: "We could not send your message. Try again.",
   });
 
   const honeypot = await page.request.post(endpoint, {
+    headers,
     data: message({ website: "https://spam.example" }),
   });
   expect(honeypot.status()).toBe(202);

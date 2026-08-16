@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { readUserHandle } from "@missa/radar-adapters";
+import { profileSampleKindForWork } from "@missa/radar-engine";
 
 import {
   ProfileEditor,
@@ -35,6 +36,28 @@ export default async function ProfilePage() {
     publicUrl,
     published: Boolean(user.publicProfilePublishedAt),
     ...(user.publicPortfolio ? { publicPortfolio: user.publicPortfolio } : {}),
+    libraryWorks: engine.library(user.id).works.map((work) => {
+      const file = work.fileId
+        ? engine.store.libraryFiles.get(work.fileId)
+        : undefined;
+      return {
+        id: work.id,
+        title: work.title,
+        ...(work.description ? { description: work.description } : {}),
+        ...(profileSampleKindForWork(work, file)
+          ? { sampleKind: profileSampleKindForWork(work, file) }
+          : {}),
+        ...(file && file.userId === user.id
+          ? {
+              file: {
+                id: file.id,
+                filename: file.filename,
+                contentType: file.contentType,
+              },
+            }
+          : {}),
+      };
+    }),
   };
   const organizations = session.memberships.map((membership) => ({
     id: membership.organizationId,

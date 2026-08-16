@@ -1704,6 +1704,37 @@ export const opportunityIssueReports = pgTable(
   ],
 );
 
+export const profileIssueReports = pgTable(
+  "profile_issue_reports",
+  {
+    id: text("id").primaryKey(),
+    profileUserId: text("profile_user_id").notNull(),
+    reporterAccountId: text("reporter_account_id").references(
+      () => accounts.id,
+      { onDelete: "set null" },
+    ),
+    reason: text("reason").notNull(),
+    note: text("note"),
+    status: text("status").notNull().default("open"),
+    idempotencyKey: uuid("idempotency_key").notNull(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("profile_issue_reports_idempotency_idx").on(
+      table.idempotencyKey,
+    ),
+    index("profile_issue_reports_profile_idx").on(
+      table.profileUserId,
+      table.createdAt,
+    ),
+    index("profile_issue_reports_status_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+  ],
+);
+
 /**
  * Canonical, versioned taxonomy graph. A term belongs to one facet but can
  * have multiple broader/related terms, including terms in another facet.

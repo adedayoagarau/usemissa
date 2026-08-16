@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { resolveHandle } from "@missa/radar-adapters";
+import { isPublicProfileIndexable } from "@missa/radar-engine";
 
 import { PublicProfileView } from "@/components/public-profile-view";
 import { PublicSiteShell } from "@/components/public-site-shell";
@@ -50,9 +51,7 @@ export async function generateMetadata({
     result.profile.oneLine ??
     result.profile.bio ??
     `${result.profile.displayName ?? "A creator"} on Missa.`;
-  const indexable = Boolean(
-    result.profile.oneLine && result.profile.selectedWorks?.length,
-  );
+  const indexable = isPublicProfileIndexable(result.profile);
   return pageMetadata({
     title: result.profile.displayName ?? `@${result.handle}`,
     description,

@@ -6,14 +6,11 @@ import type {
 } from "@missa/radar-engine";
 
 import { ProfileContactDialog } from "@/components/profile-contact-dialog";
+import { ProfileMediaSample } from "@/components/profile-media-sample";
+import { ProfileReportDialog } from "@/components/profile-report-dialog";
 import { ProfileShareActions } from "@/components/profile-share-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@/components/ui/empty";
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import {
   Item,
   ItemActions,
@@ -116,6 +113,50 @@ function WorkRow({ work }: { work: ProfileSelectedWork }) {
   );
 }
 
+function FeaturedSample({ work }: { work: ProfileSelectedWork }) {
+  const sample = work.sample;
+  if (!sample) return null;
+  if (sample.kind === "text" && sample.excerpt) {
+    return (
+      <blockquote className={styles.textSample}>
+        {sample.excerpt.split(/\n{2,}/u).map((paragraph) => (
+          <p key={paragraph}>{paragraph}</p>
+        ))}
+      </blockquote>
+    );
+  }
+  if (sample.kind === "image" && sample.publicAssetUrl) {
+    return (
+      <figure className={styles.imageSample}>
+        {/* Creator-supplied public media can have arbitrary dimensions. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={sample.publicAssetUrl} alt={sample.accessibilityText ?? ""} />
+      </figure>
+    );
+  }
+  if (
+    (sample.kind === "audio" || sample.kind === "video") &&
+    sample.publicAssetUrl
+  )
+    return <ProfileMediaSample sample={sample} title={work.title} />;
+  return null;
+}
+
+function workAction(work: ProfileSelectedWork): string {
+  switch (work.sample?.kind) {
+    case "text":
+      return "Read this Work";
+    case "audio":
+      return "Listen to this Work";
+    case "video":
+      return "Watch this Work";
+    case "image":
+      return "View this Work";
+    default:
+      return "Open this Work";
+  }
+}
+
 export function PublicProfileView({
   profile,
   handle,
@@ -137,9 +178,6 @@ export function PublicProfileView({
             <EmptyTitle role="heading" aria-level={1}>
               This Profile is private.
             </EmptyTitle>
-            <EmptyDescription>
-              Nothing from this Profile is available to visitors.
-            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       </main>
@@ -192,6 +230,7 @@ export function PublicProfileView({
               {workMeta(featuredWork) ? (
                 <p className={styles.workMeta}>{workMeta(featuredWork)}</p>
               ) : null}
+              <FeaturedSample work={featuredWork} />
               {featuredWork.description ? (
                 <p>{featuredWork.description}</p>
               ) : null}
@@ -202,7 +241,7 @@ export function PublicProfileView({
                   target="_blank"
                   rel="nofollow ugc noopener noreferrer"
                 >
-                  Read or view this Work <ArrowUpRight aria-hidden="true" />
+                  {workAction(featuredWork)} <ArrowUpRight aria-hidden="true" />
                 </a>
               ) : null}
             </article>
@@ -280,6 +319,11 @@ export function PublicProfileView({
             </section>
           ) : null}
         </div>
+      ) : null}
+      {profile.id ? (
+        <footer className={styles.profileFooter}>
+          <ProfileReportDialog userId={profile.id} />
+        </footer>
       ) : null}
     </main>
   );

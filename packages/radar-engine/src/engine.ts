@@ -41,7 +41,7 @@ import type {
   CustomList,
   CustomListMembership,
 } from './domain/types.js';
-import { publicPortfolioProjection, publishPortfolio } from './profile/publicPortfolio.js';
+import { publicPortfolioProjection, publishPortfolio, unpublishPortfolio } from './profile/publicPortfolio.js';
 import type { Clock, Extractor, Fetcher, FetchResult, IdGenerator } from './ports.js';
 import { sequentialIds, systemClock } from './ports.js';
 import { createStore, type RadarStore, changesFor } from './store/store.js';
@@ -438,9 +438,13 @@ export class RadarEngine {
 
   /** Publish only creator-authored Profile fields; private product state is untouched. */
   publishUserPortfolio(userId: string, input: PublicPortfolioPublishInput): UserProfile {
+    return publishPortfolio(this.store, userId, input, this.clock.now().toISOString());
+  }
+
+  unpublishUserPortfolio(userId: string): UserProfile {
     const user = this.store.users.get(userId);
     if (!user) throw new Error(`Unknown user: ${userId}`);
-    return publishPortfolio(user, input, this.clock.now().toISOString());
+    return unpublishPortfolio(user);
   }
 
   profilePrivacy(userId: string): ProfilePrivacySettings | undefined {

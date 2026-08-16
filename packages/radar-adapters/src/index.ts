@@ -9,6 +9,18 @@
  */
 export { LlmExtractor, type LlmExtractorOptions } from "./llmExtractor.js";
 export {
+  createProfileIssueReport,
+  readProfileIssueReportQueue,
+  updateProfileIssueReport,
+  PROFILE_ISSUE_REASONS,
+  type CreateProfileIssueReportInput,
+  type CreateProfileIssueReportResult,
+  type ProfileIssueReason,
+  type ProfileIssueReportCase,
+  type ProfileIssueReportQueue,
+  type UpdateProfileIssueReportInput,
+} from "./profileIssueReports.js";
+export {
   ensurePostgresSchema,
   saveStoreToPostgres,
   loadStoreFromPostgres,

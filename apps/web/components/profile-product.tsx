@@ -49,7 +49,6 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { ExportButtons } from "@/app/profile/export-buttons";
 import styles from "./profile-product.module.css";
@@ -142,8 +141,8 @@ const SECTION_DEFINITIONS = [
   },
   {
     id: "identity",
-    label: "Identity",
-    copy: "Your public name and biography",
+    label: "Public Profile",
+    copy: "Name, Work, links, contact, and visibility",
     icon: BookOpen,
   },
   {
@@ -155,7 +154,7 @@ const SECTION_DEFINITIONS = [
   {
     id: "privacy",
     label: "Privacy",
-    copy: "Control public identity fields",
+    copy: "Control public identity details",
     icon: Shield,
   },
   {
@@ -281,7 +280,7 @@ function FacetRefinement({
         <div>
           <h3>Refine by facet</h3>
           <p>
-            Use this only when a broad field is not enough. Each facet remains
+            Use this only when a broad choice is not enough. Each facet remains
             independent.
           </p>
         </div>
@@ -355,12 +354,6 @@ export function ProfileProduct({
   const router = useRouter();
   const [active, setActive] = useState(initialSection);
   const [profile, setProfile] = useState(initialProfile);
-  const [displayName, setDisplayName] = useState(initialProfile.displayName);
-  const [bio, setBio] = useState(initialProfile.bio ?? "");
-  const [savedIdentity, setSavedIdentity] = useState({
-    displayName: initialProfile.displayName,
-    bio: initialProfile.bio ?? "",
-  });
   const [taxonomyPreferences, setTaxonomyPreferences] = useState(
     initialProfile.taxonomyPreferences,
   );
@@ -380,20 +373,17 @@ export function ProfileProduct({
   const [confirmedExclusions, setConfirmedExclusions] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const identityDirty = !same({ displayName, bio }, savedIdentity);
   const preferencesDirty = !same(
     { taxonomyPreferences, opportunityPreferences },
     savedPreferences,
   );
   const privacyDirty = !same(privacy, savedPrivacy);
   const currentDirty =
-    active === "identity"
-      ? identityDirty
-      : active === "preferences"
-        ? preferencesDirty
-        : active === "privacy"
-          ? privacyDirty
-          : false;
+    active === "preferences"
+      ? preferencesDirty
+      : active === "privacy"
+        ? privacyDirty
+        : false;
   const exclusions = taxonomyPreferences.filter(
     (item) => item.preference === "exclude",
   );
@@ -430,10 +420,6 @@ export function ProfileProduct({
     commitNavigation(section);
   }
   function discardCurrent() {
-    if (active === "identity") {
-      setDisplayName(savedIdentity.displayName);
-      setBio(savedIdentity.bio);
-    }
     if (active === "preferences") {
       setTaxonomyPreferences(savedPreferences.taxonomyPreferences);
       setOpportunityPreferences(savedPreferences.opportunityPreferences);
@@ -449,56 +435,6 @@ export function ProfileProduct({
     setError(undefined);
   }
 
-  function saveIdentity(event: React.FormEvent) {
-    event.preventDefault();
-    setMessage(undefined);
-    setError(undefined);
-    const name = displayName.trim();
-    const cleanBio = bio.trim();
-    if (!name || name.length > 120) {
-      setError("Display name must be between 1 and 120 characters.");
-      return;
-    }
-    if (cleanBio.length > 1_000) {
-      setError("Bio must be 1,000 characters or fewer.");
-      return;
-    }
-    startTransition(async () => {
-      try {
-        const response = await fetch("/api/me/profile", {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ displayName: name, bio: cleanBio }),
-        });
-        const body = (await response
-          .json()
-          .catch(() => ({}))) as Partial<ProfileProductData> & {
-          error?: string;
-        };
-        if (!response.ok || typeof body.displayName !== "string")
-          throw new Error(body.error ?? "We could not save your identity.");
-        setDisplayName(body.displayName);
-        setBio(body.bio ?? "");
-        setSavedIdentity({
-          displayName: body.displayName,
-          bio: body.bio ?? "",
-        });
-        setProfile((current) => ({
-          ...current,
-          displayName: body.displayName!,
-          bio: body.bio,
-        }));
-        setMessage("Identity saved");
-      } catch (cause) {
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "We could not save your identity.",
-        );
-      }
-    });
-  }
-
   function savePreferences(event: React.FormEvent) {
     event.preventDefault();
     setMessage(undefined);
@@ -510,7 +446,7 @@ export function ProfileProduct({
       return;
     }
     if (exclusions.length && !confirmedExclusions) {
-      setError("Confirm the effect of excluded fields before saving.");
+      setError("Confirm the effect of excluded choices before saving.");
       return;
     }
     startTransition(async () => {
@@ -595,7 +531,7 @@ export function ProfileProduct({
       ? {
           section: "identity",
           title: "Add a short public biography",
-          copy: "Describe your field and work in your own words. You can keep it private until you are ready.",
+          copy: "Describe your work in your own words. You can keep it private until you are ready.",
         }
       : taxonomyPreferences.length === 0 &&
           opportunityPreferences.types.length === 0
@@ -608,7 +544,7 @@ export function ProfileProduct({
           ? {
               section: "privacy",
               title: "Review your public Profile",
-              copy: "Nothing is public. That is valid; review the field-level choices when you want to publish.",
+              copy: "Nothing is public. That is valid; review your choices when you want to publish.",
             }
           : {
               section: "searches",
@@ -748,7 +684,7 @@ export function ProfileProduct({
                 </div>
                 <dl>
                   <div>
-                    <dt>Public fields</dt>
+                    <dt>Public details</dt>
                     <dd>{publicFields.join(" · ") || "None"}</dd>
                   </div>
                   <div>
@@ -790,92 +726,27 @@ export function ProfileProduct({
           ) : null}
 
           {active === "identity" ? (
-            <form className={styles.form} onSubmit={saveIdentity} noValidate>
+            <div className={styles.form}>
               <div className={styles.visibilityNote}>
-                <span>{initials(displayName)}</span>
+                <span>{initials(profile.displayName)}</span>
                 <div>
-                  <h3>Public identity</h3>
+                  <h3>Your public page</h3>
                   <p>
-                    Only fields marked public in Privacy appear to visitors.
-                    Organizations do not receive private Profile fields through
-                    this form.
+                    Edit your name, introduction, photo, Work, links, and
+                    contact option on the page where visitors will see them.
                   </p>
                 </div>
               </div>
-              <div>
-                <Label htmlFor="display-name">Display name</Label>
-                <Input
-                  id="display-name"
-                  value={displayName}
-                  onChange={(event) => {
-                    setDisplayName(event.target.value);
-                    setError(undefined);
-                    setMessage(undefined);
-                  }}
-                  aria-describedby="display-name-help"
-                />
-                <p id="display-name-help">
-                  Up to 120 characters. Current visibility:{" "}
-                  {privacy.displayName}.
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="bio">Short bio</Label>
-                <Textarea
-                  id="bio"
-                  value={bio}
-                  onChange={(event) => {
-                    setBio(event.target.value);
-                    setError(undefined);
-                    setMessage(undefined);
-                  }}
-                  rows={8}
-                  aria-describedby="bio-help"
-                />
-                <p id="bio-help">
-                  Write in your own words. {bio.length}/1,000 · Current
-                  visibility: {privacy.bio}.
-                </p>
-              </div>
               <div className={styles.unavailable}>
-                <h3>Public Profile</h3>
+                <h3>{profile.displayName}</h3>
                 <p>
-                  Add your photo, selected Work, and public links on the Profile
-                  page. Private Library content stays private until you add a
-                  separate public link.
+                  {profile.bio || "No public introduction has been added yet."}
                 </p>
                 <Button nativeButton={false} render={<Link href="/profile" />} variant="outline">
                   Edit public Profile
                 </Button>
               </div>
-              {error ? (
-                <p role="alert" className={styles.error}>
-                  {error}
-                </p>
-              ) : null}
-              {message ? (
-                <p role="status" className={styles.success}>
-                  {message}
-                </p>
-              ) : null}
-              <div className={styles.formActions}>
-                <Button type="submit" disabled={isPending || !identityDirty}>
-                  {isPending ? "Saving…" : "Save changes"}
-                </Button>
-                {identityDirty ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      setDisplayName(savedIdentity.displayName);
-                      setBio(savedIdentity.bio);
-                    }}
-                  >
-                    Discard changes
-                  </Button>
-                ) : null}
-              </div>
-            </form>
+            </div>
           ) : null}
 
           {active === "preferences" ? (
@@ -891,7 +762,7 @@ export function ProfileProduct({
               </Alert>
               <section className={styles.preferenceGroup}>
                 <div>
-                  <h3>Field, form, and role</h3>
+                  <h3>Creative work, format, and role</h3>
                   <p>
                     Start with a broad branch. Refine other facets only when
                     they help describe what you want to find.
@@ -926,7 +797,7 @@ export function ProfileProduct({
                       }
                     />
                     <span>
-                      I understand that “Do not show this field” suppresses that
+                      I understand that “Do not show this area” suppresses that
                       branch and its narrower terms from my results.
                     </span>
                   </label>
@@ -936,7 +807,7 @@ export function ProfileProduct({
                 <div>
                   <h3>Opportunity types</h3>
                   <p>
-                    Type stays separate from field, role, eligibility, and
+                    Opportunity type stays separate from creative work, role, eligibility, and
                     geography.
                   </p>
                 </div>
@@ -1149,14 +1020,14 @@ export function ProfileProduct({
                 <AlertDescription>
                   Preferences, eligibility information, Tracker activity,
                   Library drafts, Saved Answers, following, integrations, and
-                  account data are never public Profile fields.
+                  account data are never public Profile details.
                 </AlertDescription>
               </Alert>
               <section className={styles.preferenceGroup}>
                 <div>
-                  <h3>Publishable identity</h3>
+                  <h3>Public identity</h3>
                   <p>
-                    Choose each field explicitly. Making a field private removes
+                    Choose each detail explicitly. Making a detail private removes
                     it from the public projection without deleting the private
                     value.
                   </p>
@@ -1186,12 +1057,14 @@ export function ProfileProduct({
                 />
               </section>
               <section className={styles.unavailable}>
-                <h3>Public Works</h3>
+                <h3>Public Work</h3>
                 <p>
-                  Library content remains private until an explicit Work
-                  publication model exists. Privacy settings cannot publish a
-                  Work by inference.
+                  Add or remove public Work in the Profile editor. Library does
+                  not publish anything automatically.
                 </p>
+                <Button nativeButton={false} render={<Link href="/profile" />} variant="outline">
+                  Edit public Profile
+                </Button>
               </section>
               {error ? (
                 <p role="alert" className={styles.error}>

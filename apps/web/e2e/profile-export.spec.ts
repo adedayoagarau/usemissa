@@ -23,9 +23,9 @@ test('profile data export downloads tracker JSON and enforces an account cooldow
   await trackFirstOpportunity(page, profile.id);
   await page.goto('/settings?section=data');
   await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Download JSON' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Download CSV' })).toBeVisible();
-  await expect(page.getByText(/Works, Files, and Saved Answers/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download all data' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download Tracker CSV' })).toBeVisible();
+  await expect(page.getByText(/Profile, Tracker, Works, Files, and Saved Answers/)).toBeVisible();
 
   const json = await page.request.get('/api/me/export?format=json&scope=tracker');
   expect(json.status()).toBe(200);
@@ -72,6 +72,8 @@ test('export is session-owned and rejects unauthenticated or user-selected scope
   expect(own.status()).toBe(200);
   const ownBody = await own.json();
   expect(ownBody.tracker).toEqual([]);
+  expect(ownBody.included).toEqual(['profile', 'tracker', 'library']);
+  expect(ownBody.profile).toMatchObject({ id: second.id, displayName: 'Second Export User' });
   const selected = await page.request.get(`/api/me/export?userId=${encodeURIComponent(first.id)}`);
   expect(selected.status()).toBe(400);
   expect(second.id).not.toBe(first.id);

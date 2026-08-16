@@ -1,13 +1,14 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { del } from "@vercel/blob";
-import {
-  PublicPortfolioValidationError,
-  type PublicPortfolioPublishInput,
-} from "@missa/radar-engine";
+import { copy, del } from "@vercel/blob";
+import { PublicPortfolioValidationError } from "@missa/radar-engine";
 
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine, persistRadar } from "@/lib/engine";
+import {
+  materializeProfileSamples,
+  profileSampleAssetUrls,
+} from "@/lib/profile-sample-publication";
 
 const headers = { "Cache-Control": "no-store" };
 
@@ -49,15 +50,38 @@ export async function PATCH(request: Request) {
   if (!engine.store.users.has(session.account.userId))
     return error("Profile not found", 404);
   try {
+    const previousSampleUrls = profileSampleAssetUrls(
+      engine.store.users.get(session.account.userId)?.publicPortfolio,
+      session.account.userId,
+    );
     const previousPhotoUrl = missaPhotoUrl(
       engine.store.users.get(session.account.userId)?.publicPortfolio
         ?.profileImageUrl,
       session.account.userId,
     );
-    const saved = engine.publishUserPortfolio(
-      session.account.userId,
-      body as PublicPortfolioPublishInput,
-    );
+    const materialized = await materializeProfileSamples({
+      body: body as Record<string, unknown>,
+      userId: session.account.userId,
+      engine,
+      now: new Date(),
+      copyBlob: copy,
+    });
+    let saved;
+    try {
+      saved = engine.publishUserPortfolio(
+        session.account.userId,
+        materialized.input,
+      );
+      await persistRadar();
+    } catch (publishCause) {
+      if (materialized.createdAssetUrls.length)
+        await del(materialized.createdAssetUrls, {
+          ...(process.env.BLOB_READ_WRITE_TOKEN
+            ? { token: process.env.BLOB_READ_WRITE_TOKEN }
+            : {}),
+        }).catch(() => undefined);
+      throw publishCause;
+    }
     engine.recordAudit(
       session.account.id,
       "profile.published",
@@ -65,7 +89,20 @@ export async function PATCH(request: Request) {
       saved.id,
       "Published fields: displayName, bio, profileImageUrl, headline, oneLine, openTo, contactEnabled, socialLinks, selectedWorks",
     );
-    await persistRadar();
+    const nextSampleUrls = new Set(
+      profileSampleAssetUrls(saved.publicPortfolio, session.account.userId),
+    );
+    const retiredSampleUrls = previousSampleUrls.filter(
+      (url) => !nextSampleUrls.has(url),
+    );
+    if (retiredSampleUrls.length)
+      await del(retiredSampleUrls, {
+        ...(process.env.BLOB_READ_WRITE_TOKEN
+          ? { token: process.env.BLOB_READ_WRITE_TOKEN }
+          : {}),
+      }).catch((cleanupCause) =>
+        console.error("Previous Profile sample cleanup failed", cleanupCause),
+      );
     if (
       previousPhotoUrl &&
       previousPhotoUrl !== saved.publicPortfolio?.profileImageUrl
@@ -88,9 +125,18 @@ export async function PATCH(request: Request) {
       { headers },
     );
   } catch (cause) {
-    if (cause instanceof PublicPortfolioValidationError)
+    if (
+      cause instanceof PublicPortfolioValidationError ||
+      (cause instanceof Error && cause.name === "PublicPortfolioValidationError")
+    )
       return NextResponse.json(
-        { error: cause.message, field: cause.field },
+        {
+          error: cause.message,
+          field:
+            "field" in cause && typeof cause.field === "string"
+              ? cause.field
+              : "selectedWorks",
+        },
         { status: 400, headers },
       );
     console.error("Public Profile publish failed", cause);
@@ -98,5 +144,57 @@ export async function PATCH(request: Request) {
       "We could not publish your Profile. Check your connection and try again.",
       500,
     );
+  }
+}
+
+export async function DELETE() {
+  const cookieStore = await cookies();
+  const session = await getSessionAccountFromToken(
+    cookieStore.get(SESSION_COOKIE)?.value,
+  );
+  if (!session?.account.userId) return error("Not authenticated", 401);
+
+  const engine = await getEngine();
+  const user = engine.store.users.get(session.account.userId);
+  if (!user) return error("Profile not found", 404);
+  if (!user.publicProfilePublishedAt)
+    return NextResponse.json(
+      { unpublished: true, alreadyUnpublished: true },
+      { headers },
+    );
+
+  const assetUrls = [
+    ...(missaPhotoUrl(
+      user.publicPortfolio?.profileImageUrl,
+      session.account.userId,
+    )
+      ? [user.publicPortfolio!.profileImageUrl!]
+      : []),
+    ...profileSampleAssetUrls(
+      user.publicPortfolio,
+      session.account.userId,
+    ),
+  ];
+  try {
+    engine.unpublishUserPortfolio(session.account.userId);
+    engine.recordAudit(
+      session.account.id,
+      "profile.unpublished",
+      "user_profile",
+      user.id,
+    );
+    await persistRadar();
+    if (assetUrls.length)
+      await del(assetUrls, {
+        ...(process.env.BLOB_READ_WRITE_TOKEN
+          ? { token: process.env.BLOB_READ_WRITE_TOKEN }
+          : {}),
+      }).catch((cleanupCause) =>
+        console.error("Profile asset cleanup failed", cleanupCause),
+      );
+    return NextResponse.json({ unpublished: true }, { headers });
+  } catch (cause) {
+    console.error("Public Profile unpublish failed", cause);
+    return error("We could not unpublish your Profile. Try again.", 500);
   }
 }

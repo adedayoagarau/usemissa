@@ -55,3 +55,14 @@ test('Library deletion blocks silent orphan references', () => {
   assert.equal(engine.library('user_1').files.length, 0);
   assert.equal(engine.library('user_1').works.find((item) => item.id === work.id)?.fileId, undefined);
 });
+
+test('Library deletion requires a public Profile Work to be unpublished first', () => {
+  const engine = engineFor();
+  const work = engine.createLibraryWork('user_1', { title: 'Night River' });
+  engine.publishUserPortfolio('user_1', { displayName: 'Creator', socialLinks: [], selectedWorks: [{ id: 'profile-work', workId: work.id, title: work.title }] });
+  assert.throws(() => engine.deleteLibraryWork('user_1', work.id), /still linked to 1 public Profile Work/);
+  engine.publishUserPortfolio('user_1', { displayName: 'Creator', socialLinks: [], selectedWorks: [] });
+  engine.deleteLibraryWork('user_1', work.id);
+  assert.equal(engine.library('user_1').works.length, 0);
+  assert.equal(engine.store.users.get('user_1')?.publicPortfolio?.selectedWorks[0]?.workId, undefined);
+});

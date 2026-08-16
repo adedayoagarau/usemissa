@@ -9,6 +9,12 @@
   padding: var(--space-group) var(--space-gutter) var(--space-section);
 }
 
+.main button,
+.editor input:not([type="file"]),
+.editor select {
+  min-height: 44px;
+}
+
 .ownerRibbon {
   display: flex;
   align-items: center;
@@ -159,9 +165,23 @@
 
 .workSummary {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-group);
+}
+
+.dragHandle {
+  display: grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
+  color: var(--ink-muted);
+}
+
+.dragHandle:focus-visible {
+  border-radius: var(--radius-md);
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
 }
 
 .workTrigger {
@@ -227,6 +247,52 @@
   grid-column: 1 / -1;
 }
 
+.sampleEditor {
+  display: grid;
+  gap: var(--space-group);
+  margin-block-start: var(--space-group);
+  padding-block-start: var(--space-group);
+  border-block-start: 1px solid var(--border);
+}
+
+.sampleHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-group);
+}
+
+.sampleHeader > div,
+.sampleFields {
+  display: grid;
+  gap: var(--space-row);
+}
+
+.sampleHeader h3 {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.sampleHeader p {
+  max-width: 56ch;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+.sampleActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-control-inline-filled);
+}
+
+.rightsOption {
+  min-height: 64px;
+  padding: var(--space-row) 0;
+  border: 0;
+  border-radius: 0;
+}
+
 .linkFields {
   display: grid;
   grid-template-columns: minmax(144px, 0.7fr) minmax(0, 2fr);
@@ -251,6 +317,28 @@
 
 .separator {
   margin: 0;
+}
+
+.emptyState {
+  min-height: 160px;
+  border: 1px dashed var(--border);
+}
+
+.workPicker {
+  max-height: min(720px, calc(100dvh - var(--space-group)));
+  max-width: 560px;
+  overflow-y: auto;
+}
+
+.workPickerList {
+  gap: 0;
+}
+
+.workPickerItem {
+  align-items: center;
+  border: 0;
+  border-radius: 0;
+  padding: var(--space-row) 0;
 }
 
 .contactOption {
@@ -309,6 +397,7 @@
 @media (max-width: 760px) {
   .ownerRibbon,
   .sectionHeader,
+  .sampleHeader,
   .saveBar {
     align-items: stretch;
     flex-direction: column;
@@ -317,6 +406,10 @@
   .ownerRibbon nav,
   .saveBar div {
     width: 100%;
+  }
+
+  .ownerRibbon nav {
+    flex-wrap: wrap;
   }
 
   .ownerRibbon nav > *,

@@ -44,7 +44,7 @@ export function libraryWorkReferences(store: RadarStore, userId: string, workId:
   return {
     tracker: store.tracked.filter((item) => item.userId === userId && item.workId === workId).length,
     checklists: [...store.checklistItems.values()].filter((item) => checklistIds.has(item.checklistId) && item.libraryWorkId === workId).length,
-    works: 0,
+    works: store.users.get(userId)?.publicProfilePublishedAt ? store.users.get(userId)?.publicPortfolio?.selectedWorks.filter((work) => work.workId === workId).length ?? 0 : 0,
   };
 }
 
@@ -117,8 +117,12 @@ export function updateLibraryWork(store: RadarStore, userId: string, workId: str
 export function deleteLibraryWork(store: RadarStore, userId: string, workId: string): void {
   const work = store.libraryWorks.get(workId); if (!work || work.userId !== userId) throw new LibraryValidationError('Work not found.');
   const references = libraryWorkReferences(store, userId, workId);
-  const linked = [references.tracker ? referenceLabel(references.tracker, 'Tracker item') : '', references.checklists ? referenceLabel(references.checklists, 'checklist item') : ''].filter(Boolean);
+  const linked = [references.tracker ? referenceLabel(references.tracker, 'Tracker item') : '', references.checklists ? referenceLabel(references.checklists, 'checklist item') : '', references.works ? referenceLabel(references.works, 'public Profile Work') : ''].filter(Boolean);
   if (linked.length) throw new LibraryConflictError(`This Work is still linked to ${linked.join(' and ')}. Remove those links before deleting it.`);
+  const user = store.users.get(userId);
+  if (!user?.publicProfilePublishedAt && user?.publicPortfolio) {
+    user.publicPortfolio.selectedWorks = user.publicPortfolio.selectedWorks.map((selectedWork) => selectedWork.workId === workId ? { ...selectedWork, workId: undefined } : selectedWork);
+  }
   store.libraryWorks.delete(workId);
 }
 
