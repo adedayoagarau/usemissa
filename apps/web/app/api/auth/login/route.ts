@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   if (typeof email !== 'string' || typeof password !== 'string') {
     return NextResponse.json({ error: 'Email and password are required.' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
   }
-  if (!email.trim() || password.length > 200) {
+  if (!email.trim() || email.length > 320 || password.length > 200) {
     return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
   }
 
@@ -43,9 +43,9 @@ export async function POST(request: Request) {
   let account;
   try {
     account = engine.logIn(email, password);
-  } catch (err) {
+  } catch {
     await Promise.all([limiter.record(LOGIN_EMAIL_LIMIT, subject), limiter.record(LOGIN_IP_LIMIT, ip)]);
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Invalid email or password.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401, headers: { 'Cache-Control': 'no-store' } });
   }
   await limiter.reset(LOGIN_EMAIL_LIMIT, subject);
 

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { AuthError } from "@missa/radar-engine";
 import { redeemWaitlistInvite } from "@missa/radar-adapters";
 import { getEngine, persistRadar } from "@/lib/engine";
 import {
@@ -39,6 +38,12 @@ export async function POST(request: Request) {
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
+  if (email.length > 320) {
+    return NextResponse.json(
+      { error: "Use an email address up to 320 characters." },
+      { status: 400, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   const normalizedName = displayName.trim();
   if (!normalizedName || normalizedName.length > 120) {
     return NextResponse.json(
@@ -67,10 +72,9 @@ export async function POST(request: Request) {
   let account;
   try {
     ({ account } = engine.signUp(email, password, normalizedName));
-  } catch (err) {
-    const message = err instanceof AuthError ? err.message : "Sign up failed";
+  } catch {
     return NextResponse.json(
-      { error: message },
+      { error: "We could not create your account. Check your details and try again." },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
