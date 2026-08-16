@@ -103,7 +103,7 @@ export function AgentGraphTable({ graph }: { graph: PlatformAdminOperationsData[
 }
 
 export function DurableTableList({ data }: { data: PlatformAdminSystemData }) {
-  if (data.durableTables.length === 0) return <EmptyState title="No optional durable table probe" detail="The demo runtime does not query target-schema queues." />;
+  if (data.durableTables.length === 0) return <EmptyState title="No durable table probe" detail="The runtime did not return Profile or queue schema readiness." />;
   return <ul className="divide-y divide-border rounded-xl border border-border bg-white text-sm">{data.durableTables.map((table) => <li key={table.name} className="flex items-center justify-between gap-3 px-4 py-3"><span className="font-mono text-xs text-foreground">{table.name}</span><MaturityBadge maturity={table.status === 'deployed' ? 'target-schema' : 'unavailable'} /></li>)}</ul>;
 }
 

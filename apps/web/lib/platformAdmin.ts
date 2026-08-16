@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import {
   agentGraphSnapshot,
+  PLATFORM_ADMIN_DURABLE_TABLES,
   readPlatformAdminDurableSummary,
   type DurableQueueMetric,
   type PlatformAdminDurableSummary,
@@ -487,9 +488,9 @@ export function emptyPlatformAdminDurableSummary(generatedAt = new Date().toISOS
   return {
     available: false,
     generatedAt,
-    source: 'optional-durable-tables',
-    tables: [],
-    warnings: ['DATABASE_URL is not configured; optional durable queues are unavailable.'],
+    source: 'durable-table-probes',
+    tables: PLATFORM_ADMIN_DURABLE_TABLES.map((name) => ({ name, available: false })),
+    warnings: ['DATABASE_URL is not configured; Profile and durable table readiness is unavailable.'],
     agentRuns: unavailable(),
     agentHandoffs: unavailable(),
     reviewJobs: unavailable(),
@@ -1148,7 +1149,7 @@ export function buildPlatformAdminReadModel(input: BuildPlatformAdminReadModelIn
       warnings: workspaceAvailable ? [] : ['Organization records could not be read; these zero counts are unavailable, not a healthy empty state.'],
     },
     operations: {
-      provenance: { maturity: durable.available ? durable.warnings.length ? 'partial' : 'durable' : databaseConfigured ? 'partial' : 'latest-run-only', source: durable.available ? 'Optional durable agent/enrichment/review tables plus compatibility stores' : 'Compatibility queues and optional durable tables', freshness: `read at ${generatedAt}` },
+      provenance: { maturity: durable.available ? durable.warnings.length ? 'partial' : 'durable' : databaseConfigured ? 'partial' : 'latest-run-only', source: durable.available ? 'Profile dependencies and durable queues plus compatibility stores' : 'Compatibility queues and durable table probes', freshness: `read at ${generatedAt}` },
       data: operationsData,
       warnings: durable.warnings,
     },

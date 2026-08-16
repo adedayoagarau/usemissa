@@ -268,6 +268,8 @@ export {
   type TaxonomyReviewStatus,
 } from "./taxonomyAdmin.js";
 export {
+  PLATFORM_ADMIN_DURABLE_TABLES,
+  PLATFORM_ADMIN_PROFILE_TABLES,
   readPlatformAdminDurableSummary,
   type DurableAgentRunRow,
   type DurableAuditRow,
