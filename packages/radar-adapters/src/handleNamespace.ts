@@ -420,6 +420,13 @@ export async function claimUserHandle(input: {
        values ($1, $2, 'user', $3, 'claimed', 'user-chosen', $4, $4, $4)`,
       [handleKey, displayHandle, input.userId, now],
     );
+    await client.query(
+      `insert into audit_events
+         (account_id, action, target_type, target_id, detail, created_at)
+       values ($1, 'profile.handle_claimed', 'user_profile', $2,
+               jsonb_build_object('field', 'handle'), $3)`,
+      [input.accountId, input.userId, now],
+    );
     await client.query("commit");
     return {
       state: "claimed",
@@ -553,6 +560,13 @@ export async function renameUserHandle(input: {
     await client.query(`delete from handles where handle_key = $1`, [
       current.handle_key,
     ]);
+    await client.query(
+      `insert into audit_events
+         (account_id, action, target_type, target_id, detail, created_at)
+       values ($1, 'profile.handle_renamed', 'user_profile', $2,
+               jsonb_build_object('field', 'handle'), $3)`,
+      [input.accountId, input.userId, now],
+    );
     await client.query("commit");
     return {
       state: "renamed",

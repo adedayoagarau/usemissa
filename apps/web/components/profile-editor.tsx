@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
@@ -69,6 +69,7 @@ import {
   ItemContent,
   ItemDescription,
   ItemGroup,
+  ItemMedia,
   ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item";
@@ -79,6 +80,7 @@ import {
   SortableItemHandle,
 } from "@/components/ui/sortable";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import styles from "./profile-editor.module.css";
 
 const SOCIAL_SERVICES = Object.keys(
@@ -90,7 +92,9 @@ export interface ProfileEditorData {
   displayName: string;
   bio?: string;
   handle?: string;
-  publicUrl: string;
+  publicUrl?: string;
+  handleNamespaceAvailable: boolean;
+  handleClaimingOpen: boolean;
   published: boolean;
   publicPortfolio?: PublicPortfolio;
   libraryWorks: ProfileLibraryWork[];
@@ -536,6 +540,9 @@ export function ProfileEditor({
   );
   const [displayName, setDisplayName] = useState(initial.displayName);
   const [bio, setBio] = useState(initial.bio);
+  const [handle, setHandle] = useState(initialProfile.handle ?? "");
+  const [savedHandle, setSavedHandle] = useState(initialProfile.handle ?? "");
+  const [publicUrl, setPublicUrl] = useState(initialProfile.publicUrl);
   const [profileImageUrl, setProfileImageUrl] = useState(
     initial.profileImageUrl,
   );
@@ -556,6 +563,7 @@ export function ProfileEditor({
   const [error, setError] = useState("");
   const [uploadedDraftPhoto, setUploadedDraftPhoto] = useState("");
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isSavingHandle, setIsSavingHandle] = useState(false);
   const [isPending, startTransition] = useTransition();
   const current = {
     displayName,
@@ -569,6 +577,8 @@ export function ProfileEditor({
     selectedWorks,
   };
   const dirty = JSON.stringify(current) !== JSON.stringify(savedValues);
+  const normalizedHandle = handle.trim().replace(/^@/u, "");
+  const handleDirty = normalizedHandle !== savedHandle;
 
   function updateWork(id: string, patch: Partial<ProfileWorkDraft>) {
     setSelectedWorks((items) =>
@@ -658,10 +668,50 @@ export function ProfileEditor({
     setError("");
   }
 
+  async function saveHandle() {
+    if (!initialProfile.handleNamespaceAvailable) return;
+    if (!normalizedHandle) {
+      setError("Enter a handle before saving.");
+      setMessage("");
+      return;
+    }
+    setError("");
+    setMessage("");
+    setIsSavingHandle(true);
+    try {
+      const response = await fetch("/api/me/handles", {
+        method: savedHandle ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ handle: normalizedHandle }),
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        handle?: { handleKey: string; displayHandle: string };
+      };
+      if (!response.ok || !body.handle) {
+        setError(body.error ?? "We could not save this handle.");
+        return;
+      }
+      const nextHandle = body.handle.displayHandle.replace(/^@/u, "");
+      setHandle(nextHandle);
+      setSavedHandle(nextHandle);
+      setPublicUrl(`/@${body.handle.handleKey}`);
+      setMessage(`Your Profile is now at @${nextHandle}.`);
+    } catch {
+      setError("We could not save this handle.");
+    } finally {
+      setIsSavingHandle(false);
+    }
+  }
+
   async function publish(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setMessage("");
+    if (initialProfile.handleNamespaceAvailable && !savedHandle) {
+      setError("Claim a handle before publishing your Profile.");
+      return;
+    }
     startTransition(async () => {
       const response = await fetch("/api/me/profile/public", {
         method: "PATCH",
@@ -752,22 +802,21 @@ export function ProfileEditor({
               : "Your Profile is private. Save when you are ready to publish."}
           </p>
           <nav aria-label="Profile actions">
-            {published ? (
-              <Button
-                nativeButton={false}
-                render={<Link href={initialProfile.publicUrl} target="_blank" />}
-                variant="ghost"
+            {published && publicUrl ? (
+              <Link
+                href={publicUrl}
+                target="_blank"
+                className={cn(buttonVariants({ variant: "ghost" }))}
               >
                 View as visitor <ArrowUpRight aria-hidden="true" />
-              </Button>
+              </Link>
             ) : null}
-            <Button
-              nativeButton={false}
-              render={<Link href="/settings" />}
-              variant="ghost"
+            <Link
+              href="/settings"
+              className={cn(buttonVariants({ variant: "ghost" }))}
             >
               Settings
-            </Button>
+            </Link>
             {published ? (
               <AlertDialog>
                 <AlertDialogTrigger
@@ -777,9 +826,7 @@ export function ProfileEditor({
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      Unpublish your Profile?
-                    </AlertDialogTitle>
+                    <AlertDialogTitle>Unpublish your Profile?</AlertDialogTitle>
                     <AlertDialogDescription>
                       Visitors will no longer be able to open it. Public media
                       copies and your Profile photo will be removed. Your text
@@ -806,8 +853,11 @@ export function ProfileEditor({
         </div>
 
         <form className={styles.editor} onSubmit={publish} noValidate>
-          <section className={styles.identity} aria-labelledby="identity-title">
-            <div className={styles.photoEditor}>
+          <Item
+            render={<section aria-labelledby="identity-title" />}
+            className={styles.identity}
+          >
+            <ItemMedia className={styles.photoEditor}>
               <Avatar className={styles.photo}>
                 {profileImageUrl ? (
                   <AvatarImage
@@ -854,9 +904,9 @@ export function ProfileEditor({
                 ) : null}
                 <p>JPEG, PNG, WebP, or AVIF. Up to 5 MB.</p>
               </div>
-            </div>
+            </ItemMedia>
 
-            <div className={styles.identityFields}>
+            <ItemContent className={styles.identityFields}>
               <div className={styles.sectionHeader}>
                 <div>
                   <h1 id="identity-title">Public identity</h1>
@@ -878,17 +928,44 @@ export function ProfileEditor({
                 <Field>
                   <FieldLabel htmlFor="profile-handle">Handle</FieldLabel>
                   <FieldContent>
-                    <Input
-                      id="profile-handle"
-                      value={
-                        initialProfile.handle
-                          ? `@${initialProfile.handle}`
-                          : "Not claimed"
-                      }
-                      readOnly
-                    />
+                    <div className={styles.handleField}>
+                      <Input
+                        id="profile-handle"
+                        value={handle}
+                        placeholder="your-name"
+                        autoComplete="off"
+                        readOnly={
+                          !initialProfile.handleNamespaceAvailable ||
+                          (!savedHandle && !initialProfile.handleClaimingOpen)
+                        }
+                        onChange={(event) => setHandle(event.target.value)}
+                      />
+                      {initialProfile.handleNamespaceAvailable &&
+                      (savedHandle || initialProfile.handleClaimingOpen) ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={
+                            isSavingHandle || !normalizedHandle || !handleDirty
+                          }
+                          onClick={saveHandle}
+                        >
+                          {isSavingHandle
+                            ? "Saving…"
+                            : savedHandle
+                              ? "Rename handle"
+                              : "Claim handle"}
+                        </Button>
+                      ) : null}
+                    </div>
                     <FieldDescription>
-                      Manage your handle in Settings.
+                      {!initialProfile.handleNamespaceAvailable
+                        ? "Handle claiming is not available here."
+                        : !savedHandle && !initialProfile.handleClaimingOpen
+                          ? "Handle claiming is not open for this account yet."
+                          : savedHandle
+                            ? "Renames are limited to once every 30 days. Your old address will redirect."
+                            : "Use 3–30 letters, numbers, or hyphens."}
                     </FieldDescription>
                   </FieldContent>
                 </Field>
@@ -950,8 +1027,8 @@ export function ProfileEditor({
                   />
                 </FieldContent>
               </Field>
-            </div>
-          </section>
+            </ItemContent>
+          </Item>
 
           <section className={styles.section} aria-labelledby="work-title">
             <header className={styles.sectionHeader}>

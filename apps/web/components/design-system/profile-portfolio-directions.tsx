@@ -83,8 +83,12 @@ const fixtures = [
     "The public sample is absent; Library content remains separate.",
   ],
   ["10", "Hidden credit", "The real credit row remains visible to the owner."],
-  ["11", "Dead link", "The credit demotes to listed and the owner is told."],
-  ["12", "Revoked connection", "The credit demotes to a checked link."],
+  ["11", "Dead link", "The Work stays listed without a broken destination."],
+  [
+    "12",
+    "Disconnected account",
+    "The Work stays listed without the disconnected service.",
+  ],
   ["13", "Long values", "Long names and venues wrap without clipping."],
   ["14", "Forty credits", "A high-volume year-led list remains readable."],
   ["15", "Mutation failure", "The edit stays in place with a direct error."],
@@ -341,7 +345,6 @@ function EmptyFixture({
 
 function ConsequenceMotionReview() {
   const [samplePublished, setSamplePublished] = useState(false);
-  const [recorded, setRecorded] = useState(false);
   const [threshold, setThreshold] = useState(false);
   const [claimed, setClaimed] = useState(false);
   const [visibleHandle, setVisibleHandle] = useState("");
@@ -384,17 +387,6 @@ function ConsequenceMotionReview() {
             </>
           )}
         </div>
-      </article>
-      <article className={styles.consequenceCard}>
-        <span className={styles.motionTier}>Tier 2 · consequence</span>
-        <h3>Recorded credit</h3>
-        <p>A tracked credit appears on the page.</p>
-        <Button type="button" onClick={() => setRecorded(true)}>
-          Record credit
-        </Button>
-        <p className={styles.motionCaption} role="status">
-          {recorded ? "Credit added to your public list." : null}
-        </p>
       </article>
       <article className={styles.consequenceCard}>
         <span className={styles.motionTier}>Tier 2 · consequence</span>
@@ -461,9 +453,7 @@ function PublicProfile({ kind = "text" }: { kind?: SampleKind }) {
               amakaobi.com <ArrowUpRight aria-hidden="true" />
             </a>
           </div>
-          <Button type="button">
-            Contact Amaka
-          </Button>
+          <Button type="button">Contact Amaka</Button>
         </section>
       </CardContent>
     </Card>
@@ -810,8 +800,8 @@ export function ProfilePortfolioDirections() {
             <div>
               <h2 id="motion-title">Consequence motion</h2>
               <p>
-                These four moments have an effect outside the interface and fire
-                once per account.
+                These moments have an effect outside the interface and fire once
+                per account.
               </p>
             </div>
           </div>

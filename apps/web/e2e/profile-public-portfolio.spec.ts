@@ -45,11 +45,36 @@ test("owner Profile uses safe mobile Work and photo controls", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
+  let requestedHandle: Record<string, unknown> | undefined;
+  await page.route("**/api/me/handles", async (route) => {
+    if (route.request().method() !== "PATCH") return route.continue();
+    requestedHandle = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        state: "renamed",
+        handle: {
+          handleKey: "amaka-obi",
+          displayHandle: "amaka-obi",
+          state: "claimed",
+          claimedAt: "2026-08-15T00:00:00.000Z",
+        },
+      }),
+    });
+  });
   await page.goto("/design-system/profile-owner");
 
   await expect(
     page.getByRole("button", { name: "Change photo" }),
   ).toBeVisible();
+  const ownerPortrait = await page.locator('[data-slot="avatar"]').boundingBox();
+  const photoAction = await page
+    .getByRole("button", { name: "Change photo" })
+    .boundingBox();
+  expect(ownerPortrait).not.toBeNull();
+  expect(photoAction).not.toBeNull();
+  expect(Math.abs((ownerPortrait?.y ?? 0) - (photoAction?.y ?? 0))).toBeLessThanOrEqual(4);
   await expect(page.getByLabel("Photo link")).toHaveCount(0);
   await expect(page.getByText("Featured", { exact: true })).toHaveCount(1);
   await expect(
@@ -79,6 +104,17 @@ test("owner Profile uses safe mobile Work and photo controls", async ({
     }),
   ).toBeChecked();
 
+  await expect(page.getByLabel("Handle")).toBeEditable();
+  await page.getByLabel("Handle").fill("amaka-obi");
+  await page.getByRole("button", { name: "Rename handle" }).click();
+  await expect(
+    page.getByText("Your Profile is now at @amaka-obi.", { exact: true }),
+  ).toBeVisible();
+  expect(requestedHandle).toEqual({ handle: "amaka-obi" });
+  await expect(
+    page.getByRole("link", { name: /View as visitor/u }),
+  ).toHaveAttribute("href", "/@amaka-obi");
+
   expect(
     await page.evaluate(
       () =>
@@ -102,6 +138,45 @@ test("owner Profile keeps all Work editors open on desktop", async ({
   await expect(
     page.locator('[data-slot="collapsible-content"]:visible'),
   ).toHaveCount(2);
+});
+
+test("owner claims a handle in place before first publish", async ({
+  page,
+}) => {
+  let requestedHandle: Record<string, unknown> | undefined;
+  await page.route("**/api/me/handles", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    requestedHandle = route.request().postDataJSON() as Record<string, unknown>;
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        state: "claimed",
+        handle: {
+          handleKey: "amaka-first",
+          displayHandle: "amaka-first",
+          state: "claimed",
+          claimedAt: "2026-08-15T00:00:00.000Z",
+        },
+      }),
+    });
+  });
+
+  await page.goto("/design-system/profile-owner?handle=none");
+  await page.getByLabel("Name").fill("Amaka Obi first");
+  await page.getByRole("button", { name: "Save and publish" }).click();
+  await expect(
+    page.getByText("Claim a handle before publishing your Profile.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+
+  await page.getByLabel("Handle").fill("amaka-first");
+  await page.getByRole("button", { name: "Claim handle" }).click();
+  await expect(
+    page.getByText("Your Profile is now at @amaka-first.", { exact: true }),
+  ).toBeVisible();
+  expect(requestedHandle).toEqual({ handle: "amaka-first" });
 });
 
 test("public Profile contact keeps the creator email private", async ({

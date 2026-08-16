@@ -2,6 +2,10 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { copy, del } from "@vercel/blob";
 import { PublicPortfolioValidationError } from "@missa/radar-engine";
+import {
+  handleNamespaceAvailable,
+  readUserHandle,
+} from "@missa/radar-adapters";
 
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine, persistRadar } from "@/lib/engine";
@@ -26,7 +30,7 @@ function missaPhotoUrl(value: string | undefined, userId: string) {
   }
 }
 
-function error(message: string, status: 400 | 401 | 404 | 500) {
+function error(message: string, status: 400 | 401 | 404 | 409 | 500 | 503) {
   return NextResponse.json({ error: message }, { status, headers });
 }
 
@@ -49,6 +53,19 @@ export async function PATCH(request: Request) {
   const engine = await getEngine();
   if (!engine.store.users.has(session.account.userId))
     return error("Profile not found", 404);
+  if (process.env.DATABASE_URL) {
+    const namespaceReady = await handleNamespaceAvailable(
+      process.env.DATABASE_URL,
+    ).catch(() => false);
+    if (!namespaceReady)
+      return error("Profile publishing is not available yet.", 503);
+    const handle = await readUserHandle(
+      process.env.DATABASE_URL,
+      session.account.userId,
+    ).catch(() => null);
+    if (!handle)
+      return error("Claim a handle before publishing your Profile.", 409);
+  }
   try {
     const previousSampleUrls = profileSampleAssetUrls(
       engine.store.users.get(session.account.userId)?.publicPortfolio,
@@ -127,7 +144,8 @@ export async function PATCH(request: Request) {
   } catch (cause) {
     if (
       cause instanceof PublicPortfolioValidationError ||
-      (cause instanceof Error && cause.name === "PublicPortfolioValidationError")
+      (cause instanceof Error &&
+        cause.name === "PublicPortfolioValidationError")
     )
       return NextResponse.json(
         {
@@ -170,10 +188,7 @@ export async function DELETE() {
     )
       ? [user.publicPortfolio!.profileImageUrl!]
       : []),
-    ...profileSampleAssetUrls(
-      user.publicPortfolio,
-      session.account.userId,
-    ),
+    ...profileSampleAssetUrls(user.publicPortfolio, session.account.userId),
   ];
   try {
     engine.unpublishUserPortfolio(session.account.userId);

@@ -9,7 +9,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function ProfileOwnerReviewPage() {
+export default async function ProfileOwnerReviewPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ handle?: string }>;
+}) {
+  const withoutHandle = (await searchParams)?.handle === "none";
   return (
     <Suspense fallback={<div className="min-h-screen bg-white" />}>
       <ProfileEditor
@@ -17,9 +22,13 @@ export default function ProfileOwnerReviewPage() {
           id: "profile-amaka",
           displayName: "Amaka Obi",
           bio: "Amaka Obi writes essays, fiction, and screenplays about family, work, and the quiet decisions that shape ordinary life.",
-          handle: "amaka",
-          publicUrl: "/design-system/profile-public",
-          published: true,
+          ...(withoutHandle ? {} : { handle: "amaka" }),
+          ...(withoutHandle
+            ? {}
+            : { publicUrl: "/design-system/profile-public" }),
+          handleNamespaceAvailable: true,
+          handleClaimingOpen: true,
+          published: !withoutHandle,
           publicPortfolio: {
             profileImageUrl: "/media/home/artist-at-work.webp",
             headline: "Essayist · Screenwriter · Lagos",
