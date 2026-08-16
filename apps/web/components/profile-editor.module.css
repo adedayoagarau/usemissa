@@ -1,0 +1,345 @@
+.shell {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.main {
+  width: min(100%, 960px);
+  margin-inline: auto;
+  padding: var(--space-group) var(--space-gutter) var(--space-section);
+}
+
+.ownerRibbon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-group);
+  margin-block-end: var(--space-section);
+  padding: var(--space-row) var(--space-inset);
+  border-radius: var(--radius-md);
+  background: var(--accent-tint);
+}
+
+.ownerRibbon p {
+  line-height: 1.45;
+}
+
+.ownerRibbon nav {
+  display: flex;
+  flex: none;
+  gap: var(--space-control-inline-borderless);
+}
+
+.editor {
+  display: grid;
+  gap: var(--space-section);
+}
+
+.identity {
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-group);
+}
+
+.photoEditor {
+  display: grid;
+  gap: var(--space-row);
+}
+
+.photo {
+  width: 96px;
+  height: 120px;
+  border-radius: var(--radius-md);
+}
+
+.photo::after,
+.photoImage,
+.photoFallback {
+  border-radius: var(--radius-md);
+}
+
+.photoImage {
+  aspect-ratio: auto;
+  object-fit: cover;
+}
+
+.photoFallback {
+  background: var(--surface-subtle);
+  color: var(--ink-muted);
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+}
+
+.photoControls {
+  display: grid;
+  gap: var(--space-helper);
+}
+
+.photoControls button {
+  width: 100%;
+}
+
+.photoControls p {
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.identityFields,
+.section,
+.fieldGrid {
+  display: grid;
+  gap: var(--space-group);
+}
+
+.fieldGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.section {
+  padding-block-start: var(--space-section);
+  border-block-start: 1px solid var(--border);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-group);
+}
+
+.sectionHeader div {
+  display: grid;
+  gap: var(--space-helper);
+}
+
+.sectionHeader h1,
+.sectionHeader h2 {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.sectionHeader p,
+.helper {
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+.list {
+  gap: 0;
+}
+
+.editRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-group);
+  padding: var(--space-group) 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.workSummary,
+.workPanel {
+  grid-column: 1 / -1;
+}
+
+.workSummary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-group);
+}
+
+.workTrigger {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  gap: var(--space-row);
+  color: var(--ink);
+  text-align: start;
+}
+
+.workTrigger:focus-visible {
+  border-radius: var(--radius-md);
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.workSummaryText {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: var(--space-helper);
+}
+
+.workSummaryTitle {
+  overflow: hidden;
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workSummaryMeta {
+  overflow: hidden;
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workChevron {
+  flex: none;
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.workChevron[data-open="true"] {
+  transform: rotate(180deg);
+}
+
+.workPanel {
+  padding-block-start: var(--space-group);
+}
+
+.workFields {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 96px;
+  gap: var(--space-row);
+}
+
+.workFields .wide {
+  grid-column: 1 / -1;
+}
+
+.linkFields {
+  display: grid;
+  grid-template-columns: minmax(144px, 0.7fr) minmax(0, 2fr);
+  gap: var(--space-row);
+}
+
+.select {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  padding-inline: var(--space-row);
+  color: var(--ink);
+  font: inherit;
+}
+
+.select:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.separator {
+  margin: 0;
+}
+
+.status {
+  min-height: 24px;
+  color: var(--ink-muted);
+}
+
+.error {
+  color: var(--destructive);
+}
+
+.saveBar {
+  position: sticky;
+  z-index: 20;
+  inset-block-end: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-group);
+  margin-inline: calc(-1 * var(--space-gutter));
+  padding: var(--space-row) var(--space-gutter)
+    max(var(--space-row), env(safe-area-inset-bottom));
+  border-block-start: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 94%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.saveBar div {
+  display: flex;
+  gap: var(--space-control-inline-bordered);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workChevron {
+    transition: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .ownerRibbon,
+  .sectionHeader,
+  .saveBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ownerRibbon nav,
+  .saveBar div {
+    width: 100%;
+  }
+
+  .ownerRibbon nav > *,
+  .saveBar div > * {
+    flex: 1;
+  }
+
+  .identity {
+    grid-template-columns: 1fr;
+  }
+
+  .photoEditor {
+    grid-template-columns: 70px minmax(0, 1fr);
+    align-items: end;
+  }
+
+  .photo {
+    width: 70px;
+    height: 88px;
+  }
+
+  .fieldGrid,
+  .workFields,
+  .linkFields {
+    grid-template-columns: 1fr;
+  }
+
+  .workFields .wide {
+    grid-column: auto;
+  }
+
+  .editRow {
+    grid-template-columns: 1fr;
+  }
+
+  .workSummary {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .editRow > button {
+    justify-self: start;
+  }
+}

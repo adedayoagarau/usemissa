@@ -1,4 +1,5 @@
 export * from './domain/types.js';
+export { PROFILE_SOCIAL_SERVICES, PublicPortfolioValidationError, normalizePublicPortfolioPublishInput, type PublicPortfolioField } from './profile/publicPortfolio.js';
 export * from './ports.js';
 export * from './opportunityPorts.js';
 export * from './content/opportunityContent.js';

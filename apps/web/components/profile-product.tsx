@@ -408,7 +408,7 @@ export function ProfileProduct({
   });
 
   function destination(section: ProfileSection) {
-    return section === "overview" ? "/profile" : `/profile?section=${section}`;
+    return section === "overview" ? "/settings" : `/settings?section=${section}`;
   }
   function commitNavigation(section: ProfileSection) {
     setActive(section);
@@ -838,12 +838,15 @@ export function ProfileProduct({
                 </p>
               </div>
               <div className={styles.unavailable}>
-                <h3>Images, links, and public Works</h3>
+                <h3>Public Profile</h3>
                 <p>
-                  These are not published from Profile yet. Missa will not
-                  present a private Library Work or an unverified link as public
-                  content.
+                  Add your photo, selected Work, and public links on the Profile
+                  page. Private Library content stays private until you add a
+                  separate public link.
                 </p>
+                <Button nativeButton={false} render={<Link href="/profile" />} variant="outline">
+                  Edit public Profile
+                </Button>
               </div>
               {error ? (
                 <p role="alert" className={styles.error}>

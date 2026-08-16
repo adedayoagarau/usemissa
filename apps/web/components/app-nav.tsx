@@ -118,17 +118,18 @@ export function AppNav({ email, userId, isAdmin = false, organizations = [] }: {
         {organizationPicker('ml-1')}
       </div>
 
-      <button type="button" className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted lg:hidden" aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}>
+      <button type="button" className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted lg:hidden" aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}>
         {mobileNavOpen ? <X className="size-4" /> : <Menu className="size-4" />}
       </button>
 
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />} className="ml-auto shrink-0 gap-2 text-sm text-muted-foreground">
+        <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />} className="ml-auto min-h-[44px] shrink-0 gap-2 text-sm text-muted-foreground">
           <span className="flex size-7 items-center justify-center rounded-full bg-[var(--ink)] text-xs font-semibold text-white">{email.slice(0, 1).toUpperCase()}</span>
           <span className="hidden sm:inline">{email.split('@')[0]}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {userId && <DropdownMenuItem render={<Link href="/profile" />}>Profile</DropdownMenuItem>}
+          {userId && <DropdownMenuItem render={<Link href="/settings" />}>Settings</DropdownMenuItem>}
           {userId && <DropdownMenuItem render={<Link href={scopedHref('/workspace')} />}>Organization</DropdownMenuItem>}
           {userId && <DropdownMenuItem render={<Link href={scopedHref('/submissions')} />}>Submission inbox</DropdownMenuItem>}
           {userId && <DropdownMenuItem render={<Link href="/reviews" />}>Reviews</DropdownMenuItem>}
@@ -167,6 +168,11 @@ export function AppNav({ email, userId, isAdmin = false, organizations = [] }: {
             {userId && (
               <Link href="/profile" onClick={() => setMobileNavOpen(false)} aria-current={pathname === '/profile' ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname === '/profile' ? 'bg-accent-tint font-medium text-accent-deep' : 'text-foreground hover:bg-muted'}`}>
                 Profile
+              </Link>
+            )}
+            {userId && (
+              <Link href="/settings" onClick={() => setMobileNavOpen(false)} aria-current={pathname === '/settings' ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname === '/settings' ? 'bg-accent-tint font-medium text-accent-deep' : 'text-foreground hover:bg-muted'}`}>
+                Settings
               </Link>
             )}
             {organizations.length > 0 && (

@@ -13,13 +13,23 @@ async function createAccount(page: Page, name = 'Profile Test User') {
 test('owner can complete a profile and visitors only see the public projection', async ({ page }) => {
   const { email, profile } = await createAccount(page);
 
-  await page.goto('/profile');
+  await page.goto('/settings');
   await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Identity', exact: true }).click();
   await page.getByLabel('Display name').fill('  Rowan Example  ');
   await page.getByLabel('Short bio').fill('A writer working across poetry and criticism.');
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByRole('status')).toHaveText('Identity saved');
+
+  const published = await page.request.patch('/api/me/profile/public', {
+    data: {
+      displayName: 'Rowan Example',
+      bio: 'A writer working across poetry and criticism.',
+      socialLinks: [],
+      selectedWorks: [],
+    },
+  });
+  expect(published.ok()).toBeTruthy();
 
   const saved = await page.request.get('/api/me/profile');
   expect(saved.ok()).toBeTruthy();
@@ -33,7 +43,8 @@ test('owner can complete a profile and visitors only see the public projection',
   expect(publicResponse.ok()).toBeTruthy();
   expect(publicResponse.headers()['cache-control']).toBe('no-store');
   const publicBody = await publicResponse.json();
-  expect(publicBody).toEqual({ id: profile.id, displayName: 'Rowan Example', bio: 'A writer working across poetry and criticism.' });
+  expect(publicBody).toMatchObject({ id: profile.id, displayName: 'Rowan Example', bio: 'A writer working across poetry and criticism.' });
+  expect(publicBody.publishedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   expect(JSON.stringify(publicBody)).not.toContain(email);
   expect(publicBody).not.toHaveProperty('attributes');
   expect(publicBody).not.toHaveProperty('genres');
@@ -43,12 +54,12 @@ test('owner can complete a profile and visitors only see the public projection',
   await expect(page.getByRole('heading', { name: 'Rowan Example' })).toBeVisible();
   await expect(page.getByText('A writer working across poetry and criticism.')).toBeVisible();
   await expect(page.locator('body')).not.toContainText(email);
-  await expect(page.getByRole('link', { name: 'Explore Opportunities' }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Share' })).toBeVisible();
 });
 
 test('profile validation preserves recovery and owner route redirects without a session', async ({ page }) => {
   const { profile } = await createAccount(page);
-  await page.goto('/profile?section=identity');
+  await page.goto('/settings?section=identity');
   await page.getByLabel('Display name').fill('');
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.locator('p[role="alert"]')).toHaveText('Display name must be between 1 and 120 characters.');
@@ -71,14 +82,14 @@ test('profile validation preserves recovery and owner route redirects without a 
 
 test('Profile ledger keeps section URLs and exposes the full facet model progressively', async ({ page }) => {
   await createAccount(page, 'Cross-disciplinary Creator');
-  await page.goto('/profile?section=preferences');
+  await page.goto('/settings?section=preferences');
 
   await expect(page.getByRole('heading', { name: 'Preferences', exact: true })).toBeVisible();
   expect(new URL(page.url()).searchParams.get('section')).toBe('preferences');
   await expect(page.getByText('12-facet model')).toBeVisible();
   const facet = page.getByLabel('Facet');
   await expect(facet.locator('option')).toHaveCount(12);
-  await expect(facet.locator('option')).toContainText(['Field', 'Discipline', 'Form', 'Genre', 'Subgenre', 'Medium', 'Technique or process', 'Mode or approach', 'Role', 'Theme or subject', 'Audience', 'Language']);
+  await expect(facet.locator('option')).toContainText(['Practice family', 'Discipline', 'Form', 'Genre', 'Subgenre', 'Medium', 'Technique or process', 'Mode or approach', 'Role', 'Theme or subject', 'Audience', 'Language']);
   await expect(page.getByText(/scheme\s+\d/i)).toHaveCount(0);
   await expect(page.getByText(/profile completeness|tracked opportunities|fit score|eligibility score/i)).toHaveCount(0);
   await expect(page.getByText('Request for proposals', { exact: true })).toBeVisible();
@@ -101,7 +112,7 @@ test.describe('mobile profile', () => {
 
   test('stays within the viewport and keeps form controls reachable', async ({ page }) => {
     await createAccount(page, 'Mobile Profile User');
-    await page.goto('/profile?section=identity');
+    await page.goto('/settings?section=identity');
     await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
     expect(await page.locator('body').evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     const inputBox = await page.getByLabel('Display name').boundingBox();

@@ -440,7 +440,7 @@ export function LibraryWorkSelected() {
   }
 
   return (
-    <div className={styles.pageShell}>
+    <div className={styles.pageShell} data-density='comfortable'>
       <ReviewBar fixture={fixture} setFixture={chooseFixture} />
       <AppHeader />
       <main id='library-content' className={styles.main}>

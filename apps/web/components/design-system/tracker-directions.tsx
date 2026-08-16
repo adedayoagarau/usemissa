@@ -397,7 +397,7 @@ export function TrackerDirections() {
   const [direction, setDirection] = useState<Direction>('attention')
   const [fixture, setFixture] = useState<Fixture>('active')
   return (
-    <div className={styles.pageShell}>
+    <div className={styles.pageShell} data-density='comfortable'>
       <ReviewBar direction={direction} setDirection={setDirection} fixture={fixture} setFixture={setFixture} />
       <AppHeader />
       <DirectionIntro direction={direction} />
@@ -518,7 +518,7 @@ export function TrackerSelected() {
   }
 
   return (
-    <div className={styles.pageShell}>
+    <div className={styles.pageShell} data-density='comfortable'>
       <SelectedReviewBar fixture={fixture} setFixture={(nextFixture) => { setFixture(nextFixture); setAnnouncement('') }} />
       <AppHeader />
       <main id='tracker-content' className={styles.main}>

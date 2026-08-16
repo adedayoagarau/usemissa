@@ -27,6 +27,7 @@ import type {
   UserProfile,
   TaxonomyPreference,
   PublicUserProfile,
+  PublicPortfolioPublishInput,
   ProfilePrivacyPatch,
   ProfilePrivacySettings,
   ProfileVisibility,
@@ -40,6 +41,7 @@ import type {
   CustomList,
   CustomListMembership,
 } from './domain/types.js';
+import { publicPortfolioProjection, publishPortfolio } from './profile/publicPortfolio.js';
 import type { Clock, Extractor, Fetcher, FetchResult, IdGenerator } from './ports.js';
 import { sequentialIds, systemClock } from './ports.js';
 import { createStore, type RadarStore, changesFor } from './store/store.js';
@@ -424,13 +426,21 @@ export class RadarEngine {
     const settings = normalizedPrivacy(user.privacy);
     const bio = user.bio?.trim() || undefined;
     const displayName = user.displayName.trim();
-    const publicProfile: PublicUserProfile = { id: user.id };
-    if (settings.displayName === 'public' && displayName) publicProfile.displayName = displayName;
-    if (settings.bio === 'public' && bio) publicProfile.bio = bio;
+    const publicProfile = publicPortfolioProjection(
+      user,
+      settings.displayName === 'public' && displayName ? displayName : undefined,
+      settings.bio === 'public' ? bio : undefined,
+    );
     // Legacy rows may still carry trackedOpportunityCount visibility. Tracker
     // activity is private product state and is never part of the public Profile.
-    if (!publicProfile.displayName && !publicProfile.bio) return { isPrivate: true };
     return publicProfile;
+  }
+
+  /** Publish only creator-authored Profile fields; private product state is untouched. */
+  publishUserPortfolio(userId: string, input: PublicPortfolioPublishInput): UserProfile {
+    const user = this.store.users.get(userId);
+    if (!user) throw new Error(`Unknown user: ${userId}`);
+    return publishPortfolio(user, input, this.clock.now().toISOString());
   }
 
   profilePrivacy(userId: string): ProfilePrivacySettings | undefined {

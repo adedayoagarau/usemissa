@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createStore, FixtureFetcher, ProfilePrivacyValidationError, ProfileValidationError, RadarEngine } from '../src/index.js';
+import { createStore, FixtureFetcher, ProfilePrivacyValidationError, ProfileValidationError, PublicPortfolioValidationError, RadarEngine } from '../src/index.js';
 
 function engineWithUser() {
   const engine = new RadarEngine({ store: createStore(), fetcher: new FixtureFetcher() });
@@ -89,4 +89,109 @@ test('legacy tracked-count visibility never exposes private Tracker activity', (
   user.privacy = { displayName: 'private', bio: 'private', trackedOpportunityCount: 'public' };
   engine.store.tracked.push({ userId: user.id, opportunityId: 'opp-a', trackedAt: 'now', notify: true, myStatus: 'saved', events: [] });
   assert.deepEqual(engine.publicUserProfile(user.id), { isPrivate: true });
+});
+
+test('publishing a portfolio exposes only creator-authored public fields', () => {
+  const { engine, user } = engineWithUser();
+  const published = engine.publishUserPortfolio(user.id, {
+    displayName: '  Ada Okafor  ',
+    bio: '  Essays and fiction.  ',
+    profileImageUrl: 'https://images.example.com/ada.jpg',
+    headline: '  Writer · Lagos  ',
+    oneLine: '  Writing about home, work, and memory.  ',
+    openTo: '  Essays and commissions.  ',
+    socialLinks: [
+      { id: 'website', service: 'website', url: 'https://ada.example.com' },
+      { id: 'instagram', service: 'instagram', url: 'https://www.instagram.com/ada/' },
+    ],
+    selectedWorks: [
+      {
+        id: 'harmattan-year',
+        title: '  The Harmattan Year  ',
+        publication: '  Granta  ',
+        year: 2026,
+        url: 'https://example.com/harmattan-year',
+        description: '  An essay about dust and inheritance.  ',
+      },
+    ],
+  });
+
+  assert.equal(published.displayName, 'Ada Okafor');
+  assert.equal(typeof published.publicProfilePublishedAt, 'string');
+  assert.deepEqual(engine.publicUserProfile(user.id), {
+    id: user.id,
+    displayName: 'Ada Okafor',
+    bio: 'Essays and fiction.',
+    profileImageUrl: 'https://images.example.com/ada.jpg',
+    headline: 'Writer · Lagos',
+    oneLine: 'Writing about home, work, and memory.',
+    openTo: 'Essays and commissions.',
+    socialLinks: [
+      { id: 'website', service: 'website', url: 'https://ada.example.com/' },
+      { id: 'instagram', service: 'instagram', url: 'https://www.instagram.com/ada/' },
+    ],
+    selectedWorks: [
+      {
+        id: 'harmattan-year',
+        title: 'The Harmattan Year',
+        publication: 'Granta',
+        year: 2026,
+        url: 'https://example.com/harmattan-year',
+        description: 'An essay about dust and inheritance.',
+      },
+    ],
+    publishedAt: published.publicProfilePublishedAt,
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(engine.publicUserProfile(user.id), 'attributes'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(engine.publicUserProfile(user.id), 'opportunityPreferences'), false);
+});
+
+test('public portfolio validation rejects mismatched and unsafe links without mutation', () => {
+  const { engine, user } = engineWithUser();
+  assert.throws(
+    () => engine.publishUserPortfolio(user.id, {
+      displayName: 'Ada',
+      socialLinks: [{ id: 'instagram', service: 'instagram', url: 'https://youtube.com/@ada' }],
+      selectedWorks: [],
+    }),
+    (error: unknown) => error instanceof PublicPortfolioValidationError && error.field === 'socialLinks',
+  );
+  assert.equal(user.publicPortfolio, undefined);
+  assert.throws(
+    () => engine.publishUserPortfolio(user.id, {
+      displayName: 'Ada',
+      profileImageUrl: 'javascript:alert(1)',
+      socialLinks: [],
+      selectedWorks: [],
+    }),
+    PublicPortfolioValidationError,
+  );
+  assert.equal(user.publicProfilePublishedAt, undefined);
+});
+
+test('public portfolio keeps social links and selected Works bounded and stable', () => {
+  const { engine, user } = engineWithUser();
+  assert.throws(
+    () => engine.publishUserPortfolio(user.id, {
+      displayName: 'Ada',
+      socialLinks: Array.from({ length: 13 }, (_, index) => ({
+        id: `link-${index}`,
+        service: 'other' as const,
+        url: `https://example.com/${index}`,
+      })),
+      selectedWorks: [],
+    }),
+    PublicPortfolioValidationError,
+  );
+  assert.throws(
+    () => engine.publishUserPortfolio(user.id, {
+      displayName: 'Ada',
+      socialLinks: [],
+      selectedWorks: [
+        { id: 'same', title: 'First' },
+        { id: 'same', title: 'Second' },
+      ],
+    }),
+    PublicPortfolioValidationError,
+  );
 });

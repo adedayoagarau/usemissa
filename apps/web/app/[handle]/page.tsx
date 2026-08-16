@@ -1,18 +1,14 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { resolveHandle } from "@missa/radar-adapters";
+
+import { PublicProfileView } from "@/components/public-profile-view";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { getEngine } from "@/lib/engine";
-import styles from "../public-editorial.module.css";
+import { absoluteUrl, JsonLd, pageMetadata } from "@/lib/seo";
 
-export default async function PublicHandlePage({
-  params,
-}: {
-  params: Promise<{ handle: string }>;
-}) {
-  const rawHandle = (await params).handle;
-  if (!rawHandle.startsWith("@") || !process.env.DATABASE_URL) notFound();
+async function profileForHandle(rawHandle: string) {
+  if (!rawHandle.startsWith("@") || !process.env.DATABASE_URL) return null;
   const resolved = await resolveHandle(
     process.env.DATABASE_URL,
     rawHandle.slice(1),
@@ -23,44 +19,87 @@ export default async function PublicHandlePage({
     resolved.state !== "claimed" ||
     resolved.subjectType !== "user"
   )
-    notFound();
+    return null;
   const engine = await getEngine();
   const user = engine.store.users.get(resolved.subjectId);
-  const profile = user ? engine.publicUserProfile(user.id) : undefined;
-  if (!user?.publicProfilePublishedAt || !profile || profile.isPrivate)
-    notFound();
+  if (!user?.publicProfilePublishedAt) return null;
+  const profile = engine.publicUserProfile(user.id);
+  if (!profile || profile.isPrivate) return null;
+  return {
+    handle: rawHandle.slice(1),
+    path: `/@${rawHandle.slice(1)}`,
+    profile,
+  };
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ handle: string }>;
+}): Promise<Metadata> {
+  const rawHandle = (await params).handle;
+  const result = await profileForHandle(rawHandle);
+  if (!result)
+    return pageMetadata({
+      title: "Profile not found",
+      description: "This Profile is not available.",
+      path: "/profiles",
+      noIndex: true,
+    });
+  const description =
+    result.profile.oneLine ??
+    result.profile.bio ??
+    `${result.profile.displayName ?? "A creator"} on Missa.`;
+  const indexable = Boolean(
+    result.profile.oneLine && result.profile.selectedWorks?.length,
+  );
+  return pageMetadata({
+    title: result.profile.displayName ?? `@${result.handle}`,
+    description,
+    path: result.path,
+    noIndex: !indexable,
+  });
+}
+
+export default async function PublicHandlePage({
+  params,
+}: {
+  params: Promise<{ handle: string }>;
+}) {
+  const rawHandle = (await params).handle;
+  const result = await profileForHandle(rawHandle);
+  if (!result) notFound();
+  const name = result.profile.displayName ?? `@${result.handle}`;
+  const personJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name,
+    url: absoluteUrl(result.path),
+    ...(result.profile.oneLine ? { description: result.profile.oneLine } : {}),
+    ...(result.profile.profileImageUrl
+      ? { image: result.profile.profileImageUrl }
+      : {}),
+    ...(result.profile.selectedWorks?.length
+      ? {
+          hasPart: result.profile.selectedWorks.map((work) => ({
+            "@type": "CreativeWork",
+            name: work.title,
+            ...(work.description ? { description: work.description } : {}),
+            ...(work.url ? { url: work.url } : {}),
+            ...(work.year ? { datePublished: String(work.year) } : {}),
+          })),
+        }
+      : {}),
+  };
 
   return (
-    <PublicSiteShell>
-      <main id="main-content" className={styles.main}>
-        <header className={styles.hero}>
-          <p className={styles.eyebrow}>Public Profile</p>
-          <h1>{profile.displayName ?? "Creator Profile"}</h1>
-          <p>{profile.bio || "This creator has not published a biography."}</p>
-        </header>
-        <section className={styles.section} aria-labelledby="published-content">
-          <header className={styles.sectionHeader}>
-            <p className={styles.eyebrow}>Published by the creator</p>
-            <h2 id="published-content">Profile information</h2>
-            <p>
-              Only information this creator has chosen to make public belongs on
-              this page. Private Tracker activity and matching preferences are
-              not part of the public Profile.
-            </p>
-          </header>
-        </section>
-        <nav
-          className={styles.actions}
-          aria-label="Continue from public Profile"
-        >
-          <Link href="/opportunities">
-            Explore Opportunities <ArrowRight aria-hidden="true" />
-          </Link>
-          <Link href="/signup">
-            Create your Profile <ArrowRight aria-hidden="true" />
-          </Link>
-        </nav>
-      </main>
+    <PublicSiteShell current="profile">
+      <JsonLd data={personJsonLd} />
+      <PublicProfileView
+        profile={result.profile}
+        handle={result.handle}
+        shareUrl={absoluteUrl(result.path)}
+      />
     </PublicSiteShell>
   );
 }
