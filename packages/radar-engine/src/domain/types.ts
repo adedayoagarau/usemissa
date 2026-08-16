@@ -462,6 +462,55 @@ export interface UserProfile {
   publicProfilePublishedAt?: IsoDateTime;
   /** Durable dismissal for the optional first-Profile handle prompt. */
   handlePromptDismissedAt?: IsoDateTime;
+  /** Content explicitly saved to the public portfolio surface. */
+  publicPortfolio?: PublicPortfolio;
+}
+
+export type ProfileSocialService =
+  | "website"
+  | "instagram"
+  | "linkedin"
+  | "youtube"
+  | "tiktok"
+  | "bluesky"
+  | "x"
+  | "mastodon"
+  | "substack"
+  | "medium"
+  | "behance"
+  | "vimeo"
+  | "soundcloud"
+  | "bandcamp"
+  | "other";
+
+export interface ProfileSocialLink {
+  id: string;
+  service: ProfileSocialService;
+  url: string;
+}
+
+export interface ProfileSelectedWork {
+  id: string;
+  title: string;
+  publication?: string;
+  year?: number;
+  url?: string;
+  description?: string;
+}
+
+/** A creator-authored public snapshot. Presence here is an explicit publish act. */
+export interface PublicPortfolio {
+  profileImageUrl?: string;
+  headline?: string;
+  oneLine?: string;
+  openTo?: string;
+  socialLinks: ProfileSocialLink[];
+  selectedWorks: ProfileSelectedWork[];
+}
+
+export interface PublicPortfolioPublishInput extends PublicPortfolio {
+  displayName: string;
+  bio?: string;
 }
 
 export interface TaxonomyPreference {
@@ -589,6 +638,13 @@ export interface PublicUserProfile {
   id?: string;
   displayName?: string;
   bio?: string;
+  profileImageUrl?: string;
+  headline?: string;
+  oneLine?: string;
+  openTo?: string;
+  socialLinks?: ProfileSocialLink[];
+  selectedWorks?: ProfileSelectedWork[];
+  publishedAt?: IsoDateTime;
   isPrivate?: true;
 }
 
