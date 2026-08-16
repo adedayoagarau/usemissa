@@ -1209,7 +1209,7 @@ export function ProfileEditor({
                       <div className={styles.linkFields}>
                         <Field>
                           <FieldLabel htmlFor={`link-service-${link.id}`}>
-                            Service
+                            Link type
                           </FieldLabel>
                           <FieldContent>
                             <select
@@ -1233,7 +1233,7 @@ export function ProfileEditor({
                         </Field>
                         <Field>
                           <FieldLabel htmlFor={`link-url-${link.id}`}>
-                            Public link
+                            URL
                           </FieldLabel>
                           <FieldContent>
                             <Input

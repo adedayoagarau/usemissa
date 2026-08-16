@@ -200,13 +200,11 @@
   text-underline-offset: 4px;
 }
 
-.workList,
-.socialList {
+.workList {
   gap: 0;
 }
 
-.workRow,
-.socialRow {
+.workRow {
   padding: var(--space-row) 0;
   border: 0;
   border-radius: 0;
@@ -264,24 +262,22 @@
   line-height: 1.55;
 }
 
-.socialRow {
-  min-height: 44px;
+.socialList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-control-inline-bordered);
 }
 
-.socialRow a {
-  display: flex;
-  width: 100%;
+.socialLink {
   min-height: 44px;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-group);
   color: var(--ink);
+  font-family: var(--font-sans);
   text-decoration: none;
 }
 
-.socialRow a:hover,
-.socialRow a:focus-visible {
-  color: var(--primary);
+.socialIcon {
+  width: 1rem;
+  height: 1rem;
 }
 
 .privateState {

@@ -6,10 +6,12 @@ import type {
 } from "@missa/radar-engine";
 
 import { ProfileContactDialog } from "@/components/profile-contact-dialog";
+import { ProfileLinkIcon } from "@/components/profile-link-icon";
 import { ProfileMediaSample } from "@/components/profile-media-sample";
 import { ProfileReportDialog } from "@/components/profile-report-dialog";
 import { ProfileShareActions } from "@/components/profile-share-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import {
   Item,
@@ -21,6 +23,7 @@ import {
   ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item";
+import { cn } from "@/lib/utils";
 import styles from "./public-profile-view.module.css";
 
 export const PROFILE_SOCIAL_LABELS: Record<ProfileSocialService, string> = {
@@ -297,25 +300,27 @@ export function PublicProfileView({
               <h2 id="links-title" className={styles.sectionLabel}>
                 Links
               </h2>
-              <ItemGroup className={styles.socialList}>
-                {socialLinks.map((link, index) => (
-                  <div key={link.id} role="listitem">
-                    <Item className={styles.socialRow}>
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="nofollow ugc noopener noreferrer"
-                      >
-                        <span>{PROFILE_SOCIAL_LABELS[link.service]}</span>
-                        <ArrowUpRight aria-hidden="true" />
-                      </a>
-                    </Item>
-                    {index < socialLinks.length - 1 ? (
-                      <ItemSeparator className={styles.separator} />
-                    ) : null}
-                  </div>
+              <div className={styles.socialList} role="list">
+                {socialLinks.map((link) => (
+                  <span key={link.id} role="listitem">
+                    <a
+                      className={cn(
+                        buttonVariants({ variant: "outline" }),
+                        styles.socialLink,
+                      )}
+                      href={link.url}
+                      target="_blank"
+                      rel="nofollow ugc noopener noreferrer"
+                    >
+                      <ProfileLinkIcon
+                        className={styles.socialIcon}
+                        service={link.service}
+                      />
+                      <span>{PROFILE_SOCIAL_LABELS[link.service]}</span>
+                    </a>
+                  </span>
                 ))}
-              </ItemGroup>
+              </div>
             </section>
           ) : null}
         </div>

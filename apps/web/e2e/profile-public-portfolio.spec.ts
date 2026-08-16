@@ -65,6 +65,35 @@ for (const width of [390, 1280]) {
       page.getByRole("button", { name: "Get in touch" }),
     ).toHaveCount(1);
     await expect(page.getByRole("button", { name: "Share" })).toHaveCount(1);
+    await expect(
+      page.getByRole("heading", { name: "Links", exact: true }),
+    ).toBeVisible();
+    const websiteLink = page.getByRole("link", { name: "Website", exact: true });
+    const instagramLink = page.getByRole("link", {
+      name: "Instagram",
+      exact: true,
+    });
+    const linkedinLink = page.getByRole("link", {
+      name: "LinkedIn",
+      exact: true,
+    });
+    await expect(websiteLink).toBeVisible();
+    await expect(instagramLink).toBeVisible();
+    await expect(linkedinLink).toBeVisible();
+    await expect(websiteLink).toHaveAttribute(
+      "rel",
+      "nofollow ugc noopener noreferrer",
+    );
+    const [websiteBox, instagramBox] = await Promise.all([
+      websiteLink.boundingBox(),
+      instagramLink.boundingBox(),
+    ]);
+    expect(websiteBox).not.toBeNull();
+    expect(instagramBox).not.toBeNull();
+    expect(Math.abs((websiteBox?.y ?? 0) - (instagramBox?.y ?? 0))).toBeLessThan(
+      4,
+    );
+    expect(websiteBox?.width ?? Infinity).toBeLessThan(180);
     await expect(page.getByRole("button", { name: "Copy link" })).toHaveCount(
       0,
     );
@@ -172,6 +201,8 @@ test("owner Profile uses safe mobile Work and photo controls", async ({
     Math.abs((ownerPortrait?.y ?? 0) - (photoAction?.y ?? 0)),
   ).toBeLessThanOrEqual(4);
   await expect(page.getByLabel("Photo link")).toHaveCount(0);
+  await expect(page.getByLabel("Link type").first()).toBeVisible();
+  await expect(page.getByLabel("URL").first()).toBeVisible();
   await expect(page.getByText("Featured", { exact: true })).toHaveCount(1);
   await expect(
     page.locator('[data-slot="collapsible-content"]:visible'),
