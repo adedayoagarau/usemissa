@@ -8,6 +8,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/auth";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
+import { clientAddress, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -45,10 +46,27 @@ export async function POST(request: Request) {
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
-  if (password.length < 8 || password.length > 200) {
+  if (email.length > 320 || password.length < 8 || password.length > 200) {
     return NextResponse.json(
       { error: "Use a password between 8 and 200 characters." },
       { status: 400, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
+  const retryAfter = await consumeAuthRateLimit({
+    ip: clientAddress(request),
+    email,
+  });
+  if (retryAfter !== undefined) {
+    return NextResponse.json(
+      { error: "Too many account attempts. Try again later." },
+      {
+        status: 429,
+        headers: {
+          "Cache-Control": "no-store",
+          "Retry-After": String(retryAfter),
+        },
+      },
     );
   }
 
@@ -57,7 +75,11 @@ export async function POST(request: Request) {
   try {
     ({ account } = engine.signUp(email, password, normalizedName));
   } catch (err) {
-    const message = err instanceof AuthError ? err.message : "Sign up failed";
+    const message =
+      err instanceof AuthError &&
+      !err.message.toLowerCase().includes("already exists")
+        ? err.message
+        : "We could not create your account. Check your details and try again.";
     return NextResponse.json(
       { error: message },
       { status: 400, headers: { "Cache-Control": "no-store" } },

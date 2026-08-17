@@ -10,6 +10,7 @@ import {
   renameUserHandle,
 } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
+import { getEngine, persistRadar } from "@/lib/engine";
 
 export async function GET(request: Request) {
   const session = await getSessionAccount(request.headers.get("cookie"));
@@ -56,8 +57,36 @@ export async function POST(request: Request) {
     userId: session.account.userId,
     requestedHandle,
   });
-  if (result.state === "claimed")
+  if (result.state === "claimed") {
+    const claimedHandle = result.handle;
+    if (!claimedHandle)
+      return NextResponse.json(
+        { error: "Handle claim completed without a claim timestamp." },
+        { status: 500 },
+      );
+    if (!claimedHandle.claimedAt)
+      return NextResponse.json(
+        { error: "Handle claim completed without a claim timestamp." },
+        { status: 500 },
+      );
+    const engine = await getEngine();
+    const motion = engine.markProfileMotion(
+      session.account.userId,
+      "handle-claimed",
+      claimedHandle.claimedAt,
+    );
+    if (motion.recorded) {
+      engine.recordAudit(
+        session.account.id,
+        "profile.motion_recorded",
+        "user_profile",
+        session.account.userId,
+        JSON.stringify({ event: "handle-claimed" }),
+      );
+      await persistRadar();
+    }
     return NextResponse.json(result, { status: 201 });
+  }
   if (result.state === "already-claimed")
     return NextResponse.json(result, { status: 200 });
   if (result.state === "invalid")

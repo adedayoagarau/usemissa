@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { serializeAuthIntent, type AuthIntent } from "@/lib/authRedirect";
+import {
+  isNeonAuthClientConfigured,
+  neonAuthClient,
+} from "@/lib/neon-auth/client";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import styles from "@/app/auth.module.css";
 
@@ -65,21 +69,48 @@ export function AuthForm({
       return setError("The passwords do not match.");
 
     startTransition(async () => {
-      const response = await fetch(`/api/auth/${mode}`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(
-          mode === "login"
-            ? { email, password }
-            : {
-                email,
-                password,
-                displayName,
-                inviteToken,
-                waitlistEmail: waitlistEmail || undefined,
-              },
-        ),
-      });
+      const usingNeonAuth = isNeonAuthClientConfigured && neonAuthClient !== null;
+      let response: Response;
+      if (usingNeonAuth && neonAuthClient) {
+        try {
+          const result =
+            mode === "login"
+              ? await neonAuthClient.signIn.email({ email, password })
+              : await neonAuthClient.signUp.email({
+                  email,
+                  password,
+                  name: displayName,
+                });
+          if (result.error) {
+            setError(neonAuthErrorMessage(result.error, mode));
+            return;
+          }
+          response = await fetch("/api/auth/missa-session", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ mode }),
+          });
+        } catch {
+          setError("Authentication is temporarily unavailable. Try again.");
+          return;
+        }
+      } else {
+        response = await fetch(`/api/auth/${mode}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(
+            mode === "login"
+              ? { email, password }
+              : {
+                  email,
+                  password,
+                  displayName,
+                  inviteToken,
+                  waitlistEmail: waitlistEmail || undefined,
+                },
+          ),
+        });
+      }
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         setError(
@@ -90,11 +121,17 @@ export function AuthForm({
         );
         return;
       }
-      if (mode === "login" && inviteToken) {
+      // The legacy signup endpoint redeems its invite as part of account
+      // creation. Neon Auth needs the authenticated follow-up request because
+      // its account creation happens outside Missa's compatibility engine.
+      if ((usingNeonAuth || mode === "login") && (inviteToken || waitlistEmail)) {
         const redemption = await fetch("/api/waitlist/invite/redeem", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ token: inviteToken }),
+          body: JSON.stringify({
+            token: inviteToken,
+            waitlistEmail: waitlistEmail || undefined,
+          }),
         });
         const redemptionBody = (await redemption.json().catch(() => ({}))) as {
           redeemed?: boolean;
@@ -128,6 +165,24 @@ export function AuthForm({
       router.push(redirectTo);
       router.refresh();
     });
+  }
+
+  function neonAuthErrorMessage(
+    authError: { message?: string } | null | undefined,
+    authMode: AuthMode,
+  ): string {
+    const message = authError?.message?.trim();
+    if (message && /invalid|credential|password/i.test(message)) {
+      return authMode === "login"
+        ? "Invalid email or password"
+        : "We could not create your account. Check your details and try again.";
+    }
+    return (
+      message ||
+      (authMode === "login"
+        ? "We could not log you in. Check your details and try again."
+        : "We could not create your account. Check your details and try again.")
+    );
   }
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
