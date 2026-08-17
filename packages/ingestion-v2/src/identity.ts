@@ -47,3 +47,14 @@ export function compareOpportunityIdentity(left: OpportunityIdentity, right: Opp
   if (keyPart(left.title) === keyPart(right.title) || (left.deadline && left.deadline === right.deadline)) return "review";
   return "different";
 }
+
+/** Aggregator indexes are discovery evidence, never a single opportunity. */
+export function isAggregateOpportunityPage(result: ExtractionResult, canonicalUrl?: string | null): boolean {
+  const title = value(result, "title")?.toLowerCase() ?? "";
+  const url = canonicalizeOpportunityUrl(canonicalUrl)?.toLowerCase() ?? "";
+  const explicitDirectory = /\b(?:directory|round[ -]?up|list of)\b/.test(title);
+  const rankedCollection = /\b(?:best|top)\b/.test(title) && /\b(?:magazines?|journals?|contests?|places|opportunities|markets?)\b/.test(title);
+  const countedCollection = /\b\d{2,}\+?\s+(?:places|magazines?|journals?|contests?|opportunities|markets?)\b/.test(title);
+  const collectionUrl = /\/(?:resources\/literary-magazines|director(?:y|ies))(?:\/|$)/.test(url);
+  return explicitDirectory || rankedCollection || countedCollection || collectionUrl;
+}

@@ -2,6 +2,7 @@ import { GenericHtmlAdapter } from "./adapters/html.js";
 import { DeepSeekHtmlAdapter } from "./adapters/deepseek.js";
 import { FeedAdapter } from "./adapters/feed.js";
 import { JsonApiAdapter } from "./adapters/json.js";
+import { ChillSubsNextAdapter } from "./adapters/chillSubs.js";
 import { createFirstTrancheSources } from "./catalog.js";
 import {
   assertIngestionV2SchemaReady,
@@ -20,7 +21,7 @@ import {
 import { AdapterRegistry } from "./registry.js";
 import { assertIngestionV2DatabaseRole } from "./safety.js";
 import { evaluateCandidateReplayGate } from "./candidateGate.js";
-import { handoffApprovedCandidate } from "./canonicalWriter.js";
+import { backfillV2SourceTaxonomy, closeExpiredPublishedV2Opportunities, closeExpiredReviewableV2Opportunities, handoffApprovedCandidate } from "./canonicalWriter.js";
 
 assertIngestionV2DatabaseRole(undefined, {
   productionPromotionApproved: false,
@@ -34,7 +35,8 @@ const registry = new AdapterRegistry()
   .register(new GenericHtmlAdapter())
   .register(new DeepSeekHtmlAdapter())
   .register(new FeedAdapter())
-  .register(new JsonApiAdapter());
+  .register(new JsonApiAdapter())
+  .register(new ChillSubsNextAdapter());
 const sources = createFirstTrancheSources(adapterId);
 const runStore = new PostgresShadowRunStore(pool);
 
@@ -101,22 +103,40 @@ async function runDueBatch(): Promise<void> {
         const latest = history.at(-1);
         if (!latest?.publisher?.candidateReviews?.length) return;
         const canonicalHandoffs = [];
+        const canonicalHandoffFailures = [];
         for (const candidate of latest.publisher.candidateReviews) {
-          const handoff = await handoffApprovedCandidate(pool, source, latest, candidate);
-          canonicalHandoffs.push({
-            candidateKey: candidate.candidate.stableId ?? candidate.candidate.canonicalUrl ?? candidate.candidate.url,
-            ...handoff,
-          });
+          const candidateKey = candidate.candidate.stableId ?? candidate.candidate.canonicalUrl ?? candidate.candidate.url;
+          try {
+            const handoff = await handoffApprovedCandidate(pool, source, latest, candidate);
+            canonicalHandoffs.push({ candidateKey, ...handoff });
+          } catch (error) {
+            canonicalHandoffFailures.push({
+              candidateKey,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
         }
         latest.publisher.canonicalHandoffs = canonicalHandoffs;
+        latest.publisher.canonicalHandoffFailures = canonicalHandoffFailures;
         await runStore.save(latest);
-        console.log(`[missa-ingestion-v2] review handoff source=${source.id} results=${JSON.stringify(canonicalHandoffs)}`);
+        console.log(`[missa-ingestion-v2] review handoff source=${source.id} results=${JSON.stringify(canonicalHandoffs)} failures=${JSON.stringify(canonicalHandoffFailures)}`);
       },
     });
     if (result.claimed)
       console.log(
         `[missa-ingestion-v2] postgres batch claimed=${result.claimed} completed=${result.completed} unchanged=${result.unchanged} failed=${result.failed} skipped=${result.skipped}`,
       );
+    try {
+      let taxonomyRepairs = 0;
+      for (const source of sources) taxonomyRepairs += await backfillV2SourceTaxonomy(pool, source);
+      if (taxonomyRepairs) console.log(`[missa-ingestion-v2] repaired v2 taxonomy assignments=${taxonomyRepairs}`);
+      const closedReviewable = await closeExpiredReviewableV2Opportunities(pool);
+      if (closedReviewable.length) console.log(`[missa-ingestion-v2] closed expired reviewable v2 opportunities=${JSON.stringify(closedReviewable)}`);
+      const closedExpired = await closeExpiredPublishedV2Opportunities(pool);
+      if (closedExpired.length) console.log(`[missa-ingestion-v2] closed expired published v2 opportunities=${JSON.stringify(closedExpired)}`);
+    } catch (error) {
+      console.warn(`[missa-ingestion-v2] canonical maintenance sweep failed closed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   } finally {
     running = false;
   }

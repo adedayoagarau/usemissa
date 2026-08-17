@@ -36,6 +36,10 @@ export interface PublisherReview {
     status: "created-reviewable" | "updated-reviewable" | "duplicate-existing";
     publicationState: "published" | "reviewable" | "suppressed";
   }>;
+  canonicalHandoffFailures?: Array<{
+    candidateKey: string;
+    error: string;
+  }>;
 }
 
 export interface CandidatePublisherReview {
@@ -108,6 +112,30 @@ export async function reviewForPublication(input: PublisherInput, options: { api
   if (reconciliation.decision !== "pass") return { decision: reconciliation.decision === "reject" ? "reject" : "review", model: "deterministic", publicWrite: false, rationale: reconciliation.reasons, reconciliation, pipelineVersion: INGESTION_V2_VERSION };
   const apiKey = options.apiKey ?? process.env.DEEPSEEK_API_KEY;
   if (!apiKey) return { decision: "review", model: "deterministic", publicWrite: false, rationale: ["DeepSeek publisher review is not configured; no automatic publication decision was made."], reconciliation, pipelineVersion: INGESTION_V2_VERSION };
+  try {
+    const model = await deepSeekDecision(input, reconciliation, apiKey);
+    return { decision: model.decision, model: "deepseek", publicWrite: false, rationale: [model.reason], reconciliation, pipelineVersion: INGESTION_V2_VERSION };
+  } catch (error) {
+    return { decision: "review", model: "deepseek", publicWrite: false, rationale: [`DeepSeek publisher review failed closed: ${error instanceof Error ? error.message : String(error)}`], reconciliation, pipelineVersion: INGESTION_V2_VERSION };
+  }
+}
+
+/** A configured official publisher may authoritatively describe an opportunity
+ * on its own source card even when the linked application platform returns a
+ * crawler block. This remains review-only and still uses the model gate when
+ * configured. */
+export async function reviewOfficialSourceCard(input: PublisherInput, options: { apiKey?: string } = {}): Promise<PublisherReview> {
+  const manifest = input.source.config.sourceManifest as { role?: string } | undefined;
+  const candidateUrl = input.candidate?.canonicalUrl ?? input.candidate?.url;
+  const sourceIdentity = buildOpportunityIdentity(input.sourceExtraction, candidateUrl);
+  const authoritativeRole = manifest?.role === "official-publisher" || manifest?.role === "structured-authority";
+  if (!authoritativeRole || !candidateUrl || !candidateUrl.startsWith("https://") || !sourceIdentity.title || !sourceIdentity.organization) {
+    const reconciliation: DestinationReconciliation = { decision: "reject", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["Authoritative-record review requires a configured official publisher or structured authority with complete source identity."] };
+    return { decision: "reject", model: "deterministic", publicWrite: false, rationale: reconciliation.reasons, reconciliation, pipelineVersion: INGESTION_V2_VERSION };
+  }
+  const reconciliation: DestinationReconciliation = { decision: "pass", authoritativeUrl: candidateUrl, sourceIdentity, destinationIdentity: null, reasons: [manifest?.role === "structured-authority" ? "The official structured record provides the opportunity identity and canonical destination URL." : "The official publisher source card provides the opportunity identity and explicitly links this application destination."] };
+  const apiKey = options.apiKey ?? process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) return { decision: "review", model: "deterministic", publicWrite: false, rationale: ["DeepSeek publisher review is not configured; no automatic review handoff was approved."], reconciliation, pipelineVersion: INGESTION_V2_VERSION };
   try {
     const model = await deepSeekDecision(input, reconciliation, apiKey);
     return { decision: model.decision, model: "deepseek", publicWrite: false, rationale: [model.reason], reconciliation, pipelineVersion: INGESTION_V2_VERSION };

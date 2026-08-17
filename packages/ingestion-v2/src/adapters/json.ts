@@ -1,7 +1,11 @@
 import { createSnapshotId, IngestionFailure, sanitizeSourceText, sha256, type AdapterContext, type ExtractionResult, type PageSnapshot, type SourceAdapter } from "../contracts.js";
 import { classifyDestination, destinationConfig, type DestinationRequest } from "../destinations.js";
 
-function stringValue(value: unknown): string | undefined { return typeof value === "string" && value.trim() ? value.trim() : undefined; }
+function stringValues(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(stringValues);
+  return typeof value === "string" && value.trim() ? [value.trim()] : [];
+}
+function stringValue(value: unknown): string | undefined { return stringValues(value)[0]; }
 function readPath(value: unknown, path: string): unknown {
   return path.split(".").reduce<unknown>((current, key) => current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined, value);
 }
@@ -29,7 +33,7 @@ function requestFor(source: AdapterContext["source"]): DestinationRequest {
   const configured = source.config.request;
   if (!configured || typeof configured !== "object") return { method: "GET" };
   const request = configured as Partial<DestinationRequest>;
-  return { method: request.method === "POST" ? "POST" : "GET", ...(request.body === undefined ? {} : { body: request.body }), ...(request.headers ? { headers: request.headers } : {}) };
+  return { method: request.method === "POST" ? "POST" : "GET", ...(request.body === undefined ? {} : { body: request.body }), ...(request.multipart ? { multipart: request.multipart } : {}), ...(request.headers ? { headers: request.headers } : {}) };
 }
 
 function mappedValue(item: Record<string, unknown>, fieldName: string, fallbackPaths: string[]): string | undefined {
@@ -37,7 +41,13 @@ function mappedValue(item: Record<string, unknown>, fieldName: string, fallbackP
   const configured = fieldMap?.[fieldName];
   const paths = configured ? (Array.isArray(configured) ? configured : [configured]) : fallbackPaths;
   for (const path of paths) {
-    const value = stringValue(readPath(item, path));
+    const values = stringValues(readPath(item, path));
+    const value = fieldName === "deadline"
+      ? values
+          .map((entry) => ({ entry, timestamp: Date.parse(entry) }))
+          .filter(({ timestamp }) => Number.isFinite(timestamp) && timestamp >= Date.now())
+          .sort((left, right) => left.timestamp - right.timestamp)[0]?.entry
+      : values[0];
     if (value) return value;
   }
   return undefined;
@@ -50,14 +60,36 @@ function resolveTemplate(value: unknown, id: string): unknown {
   return value;
 }
 
+function recordPassesFilter(item: Record<string, unknown>, configured: unknown, now = new Date()): boolean {
+  if (!configured || typeof configured !== "object") return true;
+  const filter = configured as { requiredPaths?: string[]; datePath?: string; maximumDaysAhead?: number };
+  if (filter.requiredPaths?.some((path) => !stringValue(readPath(item, path)))) return false;
+  if (!filter.datePath) return true;
+  const timestamps = stringValues(readPath(item, filter.datePath)).map(Date.parse).filter(Number.isFinite).sort((left, right) => left - right);
+  const timestamp = timestamps.find((value) => value >= now.getTime());
+  if (timestamp === undefined) return false;
+  if (filter.maximumDaysAhead !== undefined && timestamp > now.getTime() + Math.max(1, filter.maximumDaysAhead) * 86_400_000) return false;
+  return true;
+}
+
+function multipartBody(fields: NonNullable<DestinationRequest["multipart"]>): FormData {
+  const form = new FormData();
+  for (const [name, value] of Object.entries(fields)) {
+    if (typeof value === "string") form.append(name, value);
+    else form.append(name, new Blob([JSON.stringify(value.json)], { type: value.contentType ?? "application/json" }), value.filename ?? `${name}.json`);
+  }
+  return form;
+}
+
 /** Handles common JSON listing/API envelopes without inventing a provider-specific schema. */
 export class JsonApiAdapter implements SourceAdapter {
   readonly id = "json-api-v2";
   canHandle(source: { kind: string; config: Record<string, unknown> }): boolean { return source.kind === "api" || source.config.transport === "json"; }
   async fetch(context: AdapterContext): Promise<PageSnapshot> {
     const request = requestFor(context.source);
-    const headers = { accept: "application/json", "user-agent": "MissaIngestionV2/0.1", ...(request.body === undefined ? {} : { "content-type": "application/json" }), ...(request.headers ?? {}) };
-    const response = await fetch(context.source.url, { method: request.method, ...(request.body === undefined ? {} : { body: JSON.stringify(request.body) }), headers, redirect: "follow", signal: AbortSignal.timeout(20_000) });
+    const headers = { accept: "application/json", "user-agent": "MissaIngestionV2/0.1", ...(request.body === undefined || request.multipart ? {} : { "content-type": "application/json" }), ...(request.headers ?? {}) };
+    const requestBody = request.multipart ? multipartBody(request.multipart) : request.body === undefined ? undefined : JSON.stringify(request.body);
+    const response = await fetch(context.source.url, { method: request.method, ...(requestBody === undefined ? {} : { body: requestBody }), headers, redirect: "follow", signal: AbortSignal.timeout(20_000) });
     const body = sanitizeSourceText(await response.text());
     if (!response.ok) throw new IngestionFailure(response.status === 403 || response.status === 429 ? "blocked" : response.status === 404 ? "not-found" : "invalid-content", `JSON source HTTP ${response.status}`);
     return { id: createSnapshotId(context.run.id, context.source.url, JSON.stringify(request)), runId: context.run.id, sourceId: context.source.id, url: context.source.url, finalUrl: response.url || context.source.url, fetchedAt: new Date().toISOString(), statusCode: response.status, contentType: response.headers.get("content-type"), contentHash: sha256(body), html: body, rendered: false };
@@ -68,6 +100,11 @@ export class JsonApiAdapter implements SourceAdapter {
     const fields: ExtractionResult["fields"] = [];
     const candidateLinks: ExtractionResult["candidateLinks"] = [];
     const config = context.source.config;
+    const responseBound = config.responseBound as { countPath?: string; maximum?: number } | undefined;
+    if (responseBound?.countPath && responseBound.maximum !== undefined) {
+      const count = Number(readPath(parsed, responseBound.countPath));
+      if (!Number.isFinite(count) || count > responseBound.maximum) throw new IngestionFailure("invalid-content", `JSON response count ${String(count)} exceeds bounded maximum ${responseBound.maximum}`);
+    }
     const configuredDetail = config.detailRequest;
     const detailRequest = configuredDetail && typeof configuredDetail === "object" ? configuredDetail as {
       url?: string;
@@ -91,7 +128,7 @@ export class JsonApiAdapter implements SourceAdapter {
         ? config.recordPath
         : undefined;
     const configuredCanonicalUrl = stringValue(config.canonicalUrl);
-    for (const rawItem of records(parsed, recordPath)) {
+    for (const rawItem of records(parsed, recordPath).filter((item) => recordPassesFilter(item, isDetail ? undefined : config.recordFilter))) {
       const item = fieldMap ? { ...rawItem, __fieldMap: fieldMap } : rawItem;
       const itemId = mappedValue(item, "id", ["id", "opportunityId", "opportunityNumber"]);
       const fetchUrl = mappedValue(item, "url", ["url", "link", "applicationUrl", "applyUrl"]) ?? (detailRequest?.url && itemId ? detailRequest.url : undefined);
@@ -104,7 +141,8 @@ export class JsonApiAdapter implements SourceAdapter {
         const request = detailRequest && itemId ? { method: detailRequest.method === "GET" ? "GET" as const : "POST" as const, body: detailRequest.bodyTemplate === undefined ? (detailRequest.bodyField ? { [detailRequest.bodyField]: itemId } : { opportunityId: itemId }) : resolveTemplate(detailRequest.bodyTemplate, itemId), ...(detailRequest.headers ? { headers: detailRequest.headers } : {}) } : undefined;
         candidateLinks.push({ ...destination, role: destination.role === "unknown" ? "detail" : destination.role, authority: "destination", ...(itemId ? { stableId: itemId } : {}), ...(canonicalUrl ? { canonicalUrl } : {}), ...(request ? { request } : {}) });
       }
-      for (const [name, value] of [["title", title], ["organization", mappedValue(item, "organization", ["organization", "organizer", "agency", "agencyName"])], ["description", mappedValue(item, "description", ["description", "summary", "synopsis"])], ["deadline", mappedValue(item, "deadline", ["deadline", "deadlineDate", "closeDate", "originalDueDate"])], ["openDate", mappedValue(item, "openDate", ["openDate"])] ] as const) {
+      const constantFields = config.constantFields && typeof config.constantFields === "object" ? config.constantFields as Record<string, string> : {};
+      for (const [name, value] of [["title", title], ["organization", mappedValue(item, "organization", ["organization", "organizer", "agency", "agencyName"]) ?? stringValue(constantFields.organization)], ["description", mappedValue(item, "description", ["description", "summary", "synopsis"])], ["deadline", mappedValue(item, "deadline", ["deadline", "deadlineDate", "closeDate", "originalDueDate"])], ["openDate", mappedValue(item, "openDate", ["openDate"])] ] as const) {
         if (value) fields.push({ fieldName: name, rawValue: value, normalizedValue: value, confidence: 0.8, provenance: { adapterId: this.id, method: `json-${name}`, sourceUrl: evidenceUrl, snapshotId: snapshot.id, ...(itemId ? { recordId: itemId } : {}) } });
       }
     }

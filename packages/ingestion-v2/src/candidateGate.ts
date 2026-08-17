@@ -1,7 +1,8 @@
 import { INGESTION_V2_VERSION, sha256 } from "./contracts.js";
 import type { ShadowArtifact } from "./execution.js";
 import type { CandidatePublisherReview } from "./publisher.js";
-import { resolveCurrentDeadline } from "./deadline.js";
+import { hasCurrentDeadlineOrWindow } from "./deadline.js";
+import { isAggregateOpportunityPage } from "./identity.js";
 
 export interface CandidateReplaySourceResult {
   sourceId: string;
@@ -81,8 +82,7 @@ function normalizeUrl(value: string): string {
 }
 
 function candidateHasCurrentDeadline(candidate: CandidatePublisherReview, now: Date): boolean {
-  const resolved = resolveCurrentDeadline(candidate.extraction.fields, candidate.review.reconciliation.authoritativeUrl, now);
-  return Boolean(resolved.date && !resolved.conflict);
+  return hasCurrentDeadlineOrWindow(candidate.extraction.fields, candidate.review.reconciliation.authoritativeUrl, now);
 }
 
 const CRITICAL_WARNING = /failed|invalid|disallow|blocked|http 40[134]|timeout/i;
@@ -128,6 +128,7 @@ export function evaluateCandidateReplayGate(
       return Boolean(coverage && coverage.completed !== coverage.target);
     })) reasons.push("bounded candidate quota was not completed");
     if (candidateReviews.some((candidate) => candidate.review.decision !== "approve" || candidate.review.reconciliation.decision !== "pass")) reasons.push("not every candidate passed deterministic and model review");
+    if (candidateReviews.some((candidate) => isAggregateOpportunityPage(candidate.extraction, candidate.review.reconciliation.authoritativeUrl))) reasons.push("a candidate is a directory or roundup rather than one opportunity");
     const deadlineCount = candidateReviews.filter((candidate) => candidateHasCurrentDeadline(candidate, now)).length;
     const deadlineCoverage = candidateReviews.length ? deadlineCount / candidateReviews.length : 0;
     if (deadlineCoverage !== 1) reasons.push("not every candidate has a current parseable deadline");

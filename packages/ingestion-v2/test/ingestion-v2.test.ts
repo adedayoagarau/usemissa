@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, INGESTION_V2_VERSION, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createIngestionCatalog, createRun, createSnapshotId, evaluateCandidateReplayGate, evaluatePromotionGate, executeShadowPipeline, handoffApprovedCandidate, redisOptionsFromUrl, robotsAllowsPath, reviewForPublication, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards, writeWithDeepSeek } from "../src/index.js";
+import { AdapterRegistry, ChillSubsNextAdapter, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, INGESTION_V2_VERSION, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, closeExpiredPublishedV2Opportunities, closeExpiredReviewableV2Opportunities, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createFirstTrancheSources, createIngestionCatalog, createRun, createSnapshotId, evaluateCandidateReplayGate, evaluatePromotionGate, executeShadowPipeline, findCanonicalDuplicateMatches, handoffApprovedCandidate, hasCurrentDeadlineOrWindow, isAggregateOpportunityPage, opportunityTaxonomyTermIds, redisOptionsFromUrl, resolveCurrentDeadline, robotsAllowsPath, reviewForPublication, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards, writeWithDeepSeek } from "../src/index.js";
 
 test("creates shadow runs without publishing mode", () => {
   const source = createBenchmarkSources()[0]!;
@@ -105,6 +105,49 @@ test("fails robots checks for disallowed paths", () => {
   assert.equal(robotsAllowsPath("User-agent: *\nDisallow: /private", "/public/opportunity"), true);
 });
 
+test("retries one transient HTML fetch without broadening the source budget", async () => {
+  const source = { ...createBenchmarkSources()[0]!, url: "https://retry.test/opportunity" };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const originalFetch = globalThis.fetch;
+  let pageAttempts = 0;
+  globalThis.fetch = (async (input) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nAllow: /", { status: 200 });
+    pageAttempts += 1;
+    if (pageAttempts === 1) throw new Error("transient timeout");
+    return new Response("<h1>Recovered opportunity</h1>", { status: 200, headers: { "content-type": "text/html" } });
+  }) as typeof fetch;
+  try {
+    const snapshot = await adapter.fetch(context);
+    assert.equal(snapshot.statusCode, 200);
+    assert.equal(pageAttempts, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("retries one transient HTML 403 before classifying the source as blocked", async () => {
+  const source = { ...createBenchmarkSources()[0]!, url: "https://retry.test/opportunity" };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const originalFetch = globalThis.fetch;
+  let pageAttempts = 0;
+  globalThis.fetch = (async (input) => {
+    if (String(input).endsWith("/robots.txt")) return new Response("User-agent: *\nAllow: /", { status: 200 });
+    pageAttempts += 1;
+    return pageAttempts === 1
+      ? new Response("temporary challenge", { status: 403 })
+      : new Response("<h1>Recovered opportunity</h1>", { status: 200, headers: { "content-type": "text/html" } });
+  }) as typeof fetch;
+  try {
+    assert.equal((await adapter.fetch(context)).statusCode, 200);
+    assert.equal(pageAttempts, 2);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("extracts RSS entries as destination-backed opportunities", async () => {
   const source = { ...createBenchmarkSources()[0]!, kind: "feed" as const, adapterId: "feed-v2", config: { transport: "rss" } };
   const adapter = new FeedAdapter();
@@ -126,6 +169,120 @@ test("extracts JSON listing envelopes and applies a quality gate", async () => {
   assert.equal(quality.decision, "review");
 });
 
+test("joins Chill Subs call ids to organizer submission URLs and collapses genre variants", async () => {
+  const adapter = new ChillSubsNextAdapter();
+  const source = {
+    id: "chill-subs-test",
+    name: "Chill Subs Contests",
+    url: "https://www.chillsubs.com/browse/contests",
+    adapterId: adapter.id,
+    kind: "directory" as const,
+    geography: ["global"],
+    opportunityTypes: ["contest"],
+    config: { transport: "chill-subs-next" },
+    schedule: { lane: "core-daily" as const, cadenceHours: 24 },
+  };
+  const run = createRun(source);
+  const rootPayload = {
+    props: {
+      pageProps: {
+        browseData: [
+          {
+            id: "call-poetry",
+            title: "Example Writing Contest",
+            name: "Example Review",
+            key: "example-review",
+            entityType: "magazine",
+            entityStatus: "active",
+            status: "open",
+            description: "A contest represented once for each accepted genre.",
+            readingPeriod: { subWindows: [{ closeDate: "2099-08-18T03:59:59.000Z" }] },
+          },
+          {
+            id: "call-fiction",
+            title: "Example Writing Contest",
+            name: "Example Review",
+            key: "example-review",
+            entityType: "magazine",
+            entityStatus: "active",
+            status: "open",
+            readingPeriod: { subWindows: [{ closeDate: "2099-08-18T03:59:59.000Z" }] },
+          },
+          {
+            id: "call-closed",
+            title: "Closed Contest",
+            name: "Example Review",
+            key: "example-review",
+            entityType: "magazine",
+            entityStatus: "active",
+            status: "closed",
+            readingPeriod: { subWindows: [{ closeDate: "2099-08-19T03:59:59.000Z" }] },
+          },
+        ],
+      },
+    },
+  };
+  const rootSnapshot = {
+    id: "snap_chill_root",
+    runId: run.id,
+    sourceId: source.id,
+    url: source.url,
+    finalUrl: source.url,
+    fetchedAt: new Date().toISOString(),
+    statusCode: 200,
+    contentType: "text/html",
+    contentHash: "root",
+    html: `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(rootPayload)}</script>`,
+    rendered: false,
+  };
+  const root = await adapter.extract({ run, source }, rootSnapshot);
+  assert.equal(root.candidateLinks.length, 1);
+  assert.equal(root.candidateLinks[0]?.stableId, "call-poetry");
+  assert.equal(
+    root.candidateLinks[0]?.url,
+    "https://www.chillsubs.com/magazine/example-review?call=call-poetry",
+  );
+
+  const profileUrl = root.candidateLinks[0]!.url;
+  const profilePayload = {
+    props: {
+      pageProps: {
+        listing: {
+          name: "Example Review",
+          subCalls: [
+            {
+              id: "call-poetry",
+              title: "Example Writing Contest",
+              status: "open",
+              link: "https://example-review.test/submit/contest",
+              description: "Official contest guidelines.",
+              readingPeriod: { subWindows: [{ closeDate: "2099-08-18T03:59:59.000Z" }] },
+            },
+          ],
+        },
+      },
+    },
+  };
+  const profileSnapshot = {
+    ...rootSnapshot,
+    id: "snap_chill_profile",
+    url: profileUrl,
+    finalUrl: profileUrl,
+    contentHash: "profile",
+    html: `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(profilePayload)}</script>`,
+  };
+  const profile = await adapter.extract(
+    { run, source: { ...source, url: profileUrl } },
+    profileSnapshot,
+  );
+  assert.equal(profile.candidateLinks[0]?.url, "https://example-review.test/submit/contest");
+  assert.equal(profile.candidateLinks[0]?.role, "apply");
+  assert.equal(
+    profile.fields.find((entry) => entry.fieldName === "deadline")?.normalizedValue,
+    "2099-08-18T03:59:59.000Z",
+  );
+});
+
 test("extracts Grants.gov nested API records and preserves POST detail requests", async () => {
   const source = createBenchmarkSources().find((candidate) => candidate.id === "benchmark-grants-gov-arts")!;
   const adapter = new JsonApiAdapter();
@@ -137,6 +294,20 @@ test("extracts Grants.gov nested API records and preserves POST detail requests"
   assert.equal(result.candidateLinks[0]?.stableId, "ABC123");
   assert.equal(result.candidateLinks[0]?.canonicalUrl, "https://www.grants.gov/search-results-detail/ABC123");
   assert.equal(result.fields[0]?.provenance.recordId, "ABC123");
+});
+
+test("filters stale and placeholder API records before applying the bounded detail quota", async () => {
+  const root = createBenchmarkSources().find((candidate) => candidate.id === "benchmark-grants-gov-arts")!;
+  const source = { ...root, config: { ...root.config, recordFilter: { requiredPaths: ["closeDate"], datePath: "closeDate", maximumDaysAhead: 1095 } } };
+  const adapter = new JsonApiAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = { id: "snap_filtered_api", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "application/json", contentHash: "hash", html: JSON.stringify({ data: { oppHits: [
+    { id: "stale", title: "Old grant", closeDate: "2020-01-01" },
+    { id: "placeholder", title: "Placeholder grant", closeDate: "2099-01-01" },
+    { id: "current", title: "Current grant", closeDate: "2026-12-31" },
+  ] } }), rendered: false };
+  const result = await adapter.extract({ ...context, snapshot }, snapshot);
+  assert.deepEqual(result.candidateLinks.map((candidate) => candidate.stableId), ["current"]);
 });
 
 test("extracts a Grants.gov detail response against the detail schema", async () => {
@@ -204,6 +375,38 @@ test("supports source-defined detail request templates", async () => {
   const snapshot = { id: "snap_template", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "application/json", contentHash: "hash", html: JSON.stringify({ data: { oppHits: [{ id: "ABC123", title: "Arts grant" }] } }), rendered: false };
   const result = await adapter.extract({ ...context, snapshot }, snapshot);
   assert.deepEqual(result.candidateLinks[0]?.request, { method: "POST", body: { ids: ["ABC123"], mode: "full" }, headers: { authorization: "Bearer configured-by-source" } });
+});
+
+test("posts bounded multipart API queries and selects the next deadline", async () => {
+  const source = {
+    ...createBenchmarkSources().find((candidate) => candidate.id === "benchmark-grants-gov-arts")!,
+    url: "https://api.example.test/search",
+    config: {
+      transport: "json",
+      request: { method: "POST" as const, multipart: { query: { json: { programme: "creative" }, filename: "query.json" }, pageSize: "100" } },
+      responseBound: { countPath: "totalResults", maximum: 100 },
+      recordPath: "results",
+      fieldMap: { id: "reference", url: "url", title: "summary", deadline: "metadata.deadlineDate" },
+      constantFields: { organization: "Creative Europe" },
+      destination: { pageRole: "landing" as const, rules: [{ role: "detail" as const, patterns: ["/topic-details/"], authority: "destination" as const }] },
+    },
+  };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (_input, init) => {
+    assert.equal(init?.body instanceof FormData, true);
+    assert.equal((init?.body as FormData).get("pageSize"), "100");
+    return new Response(JSON.stringify({ totalResults: 1, results: [{ reference: "call-1", summary: "Creative call", url: "https://ec.europa.eu/topic-details/call-1", metadata: { deadlineDate: ["2020-07-01", "2099-09-30"] } }] }), { status: 200, headers: { "content-type": "application/json" } });
+  }) as typeof fetch;
+  try {
+    const adapter = new JsonApiAdapter();
+    const context = { run: createRun(source), source };
+    const snapshot = await adapter.fetch(context);
+    const result = await adapter.extract({ ...context, snapshot }, snapshot);
+    assert.equal(result.fields.find((field) => field.fieldName === "organization")?.rawValue, "Creative Europe");
+    assert.equal(result.fields.find((field) => field.fieldName === "deadline")?.rawValue, "2099-09-30");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("sanitizes source NUL bytes before persistence", () => {
@@ -318,6 +521,9 @@ test("candidate handoff reports an exact canonical duplicate without rewriting i
     { fieldName: "title", rawValue: "Existing Prize", normalizedValue: "Existing Prize", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: url, snapshotId: "snap" } },
     { fieldName: "organization", rawValue: "Example Arts", normalizedValue: "Example Arts", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: url, snapshotId: "snap" } },
     { fieldName: "deadline", rawValue: "2026-12-31", normalizedValue: "2026-12-31", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: url, snapshotId: "snap" } },
+    // A fetched organizer page can legitimately have no usable heading. The
+    // earlier non-empty directory title must remain the canonical fallback.
+    { fieldName: "title", rawValue: "", normalizedValue: "", confidence: 0.1, provenance: { adapterId: "test", method: "empty-destination-heading", sourceUrl: "https://organizer.test/apply", snapshotId: "snap_destination" } },
   ];
   const queries: string[] = [];
   const queryValues: unknown[][] = [];
@@ -342,7 +548,54 @@ test("candidate handoff reports an exact canonical duplicate without rewriting i
   const duplicateQueryValues = queryValues[queries.findIndex((query) => query.includes("select o.id, o.publication_state"))]!;
   assert.deepEqual(duplicateQueryValues[2], ["existingprize"]);
   assert.deepEqual(duplicateQueryValues[4], ["examplearts"]);
+  assert.deepEqual(duplicateQueryValues[5], []);
   assert.equal(queries.some((query) => query.includes("pg_advisory_xact_lock")), true);
+});
+
+test("deduplicates distinctive exact titles and deadlines across directory URLs without organizer metadata", async () => {
+  const fields = [
+    { fieldName: "title", rawValue: "International Emerging Writers Prize", normalizedValue: "International Emerging Writers Prize", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: "https://newpages.test/listing", snapshotId: "snap" } },
+  ];
+  let values: unknown[] = [];
+  const db = {
+    query: async (_text: string, queryValues: unknown[]) => {
+      values = queryValues;
+      return { rows: [{ id: "opp_from_poets_writers", publication_state: "reviewable" }] };
+    },
+  };
+
+  const matches = await findCanonicalDuplicateMatches(db as never, { fields, candidateLinks: [], warnings: [] }, "https://newpages.test/listing", "2026-12-31");
+
+  assert.equal(matches[0]?.id, "opp_from_poets_writers");
+  assert.deepEqual(values[5], ["internationalemergingwritersprize"]);
+  assert.deepEqual(values[4], []);
+});
+
+test("closes only expired published v2 opportunities while preserving their public archive state", async () => {
+  let query = "";
+  const db = {
+    query: async (text: string) => {
+      query = text;
+      return { rows: [{ id: "opp_v2_expired" }] };
+    },
+  };
+
+  const closed = await closeExpiredPublishedV2Opportunities(db as never);
+
+  assert.deepEqual(closed, ["opp_v2_expired"]);
+  assert.match(query, /publication_state = 'published'/);
+  assert.match(query, /deadline_date < current_date/);
+  assert.match(query, /set status = 'closed'/);
+});
+
+test("closes expired exact reviewable v2 evidence without publishing or deleting it", async () => {
+  let query = "";
+  const db = { query: async (text: string) => { query = text; return { rows: [{ id: "opp_v2_expired_review" }] }; } };
+  const closed = await closeExpiredReviewableV2Opportunities(db as never);
+  assert.deepEqual(closed, ["opp_v2_expired_review"]);
+  assert.match(query, /publication_state = 'reviewable'/);
+  assert.match(query, /deadline_kind = 'exact'/);
+  assert.match(query, /set status = 'closed'/);
 });
 
 test("treats Poets & Writers as a landing page and classifies detail destinations", async () => {
@@ -387,6 +640,179 @@ test("classifies numeric detail routes only through an anchored source rule", as
   const result = await adapter.extract({ ...context, snapshot }, snapshot);
   assert.deepEqual(result.candidateLinks.map((candidate) => candidate.url), ["https://directory.test/1182267/tramod-awards-2026"]);
   assert.equal(result.candidateLinks[0]?.authority, "destination");
+});
+
+test("normalizes unambiguous day-first deadlines and prefers deterministic page evidence", async () => {
+  const source = { ...createBenchmarkSources()[0]!, url: "https://directory.test/opportunity", config: { destination: { pageRole: "detail" as const } } };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = { id: "snap_day_first", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: "<h1>Icons of Life</h1><p>Deadline: 19/08/2026</p>", rendered: false };
+  const extraction = await adapter.extract({ ...context, snapshot }, snapshot);
+  extraction.fields.push({ fieldName: "deadline", rawValue: "July 19, 2026", normalizedValue: "July 19, 2026", confidence: 0.65, provenance: { adapterId: "deepseek-html-v2", method: "deepseek-json-shadow", sourceUrl: source.url, snapshotId: snapshot.id } });
+
+  assert.equal(extraction.fields[1]?.normalizedValue, "2026-08-19");
+  assert.deepEqual(resolveCurrentDeadline(extraction.fields, source.url, new Date("2026-08-17T00:00:00.000Z")), { date: "2026-08-19", conflict: false, values: ["2026-07-19", "2026-08-19"], kind: "exact" });
+
+  const modelOnly = extraction.fields.filter((field) => field.provenance.method === "deepseek-json-shadow");
+  modelOnly.push({ ...modelOnly[0]!, rawValue: "September 19, 2026", normalizedValue: "September 19, 2026" });
+  assert.deepEqual(resolveCurrentDeadline(modelOnly, source.url, new Date("2026-08-17T00:00:00.000Z")), { date: null, conflict: true, values: ["2026-07-19", "2026-09-19"], kind: "unknown" });
+});
+
+test("prefers the first-party destination deadline over a conflicting directory date", () => {
+  const fields = [
+    { fieldName: "deadline", rawValue: "October 16, 2026", normalizedValue: "October 16, 2026", confidence: 0.8, provenance: { adapterId: "generic-html-v2", method: "html-deadline-label", sourceUrl: "https://directory.test/competition", snapshotId: "snap_directory" } },
+    { fieldName: "deadline", rawValue: "1 October 2026", normalizedValue: "1 October 2026", confidence: 0.8, provenance: { adapterId: "generic-html-v2", method: "html-deadline-label", sourceUrl: "https://official.test/competition?utm_source=directory", snapshotId: "snap_official" } },
+  ];
+
+  assert.deepEqual(resolveCurrentDeadline(fields, "https://official.test/competition", new Date("2026-08-17T00:00:00.000Z")), {
+    date: "2026-10-01",
+    conflict: false,
+    values: ["2026-10-01", "2026-10-16"],
+    kind: "exact",
+  });
+});
+
+test("accepts explicit rolling windows and resolves phased deadlines to the next current phase", async () => {
+  const source = { ...createBenchmarkSources()[0]!, url: "https://official.test/call", config: { destination: { pageRole: "detail" as const } } };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const rollingSnapshot = { id: "snap_rolling", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "rolling", html: "<h1>Submissions</h1><p>Submissions are accepted on a rolling basis.</p>", rendered: false };
+  const rolling = await adapter.extract({ ...context, snapshot: rollingSnapshot }, rollingSnapshot);
+  assert.equal(hasCurrentDeadlineOrWindow(rolling.fields, source.url, new Date("2026-08-17T00:00:00.000Z")), true);
+  assert.equal(resolveCurrentDeadline(rolling.fields, source.url).kind, "rolling");
+
+  const phasedSnapshot = { ...rollingSnapshot, id: "snap_phased", contentHash: "phased", html: "<h1>Pitch</h1><p>Early bird deadline: September 13, 2026. Final deadline: November 13, 2026.</p>" };
+  const phased = await adapter.extract({ ...context, snapshot: phasedSnapshot }, phasedSnapshot);
+  assert.deepEqual(resolveCurrentDeadline(phased.fields, source.url, new Date("2026-08-17T00:00:00.000Z")), { date: "2026-09-13", conflict: false, values: ["2026-09-13", "2026-11-13"], kind: "exact" });
+});
+
+test("rejects roundup identities as aggregate evidence rather than one opportunity", () => {
+  const extraction = { fields: [{ fieldName: "title", rawValue: "Best Literary Magazines: 100+ Places to Submit in 2026", normalizedValue: "Best Literary Magazines: 100+ Places to Submit in 2026", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: "https://reedsy.test/resources/literary-magazines", snapshotId: "snap" } }], candidateLinks: [], warnings: [] };
+  assert.equal(isAggregateOpportunityPage(extraction, "https://reedsy.test/resources/literary-magazines"), true);
+});
+
+test("keeps source coverage separate from each Chill Subs opportunity art form", () => {
+  const chill = createFirstTrancheSources().find((source) => (source.config.sourceManifest as { id?: string } | undefined)?.id === "chill-subs-contests");
+  assert.ok(chill);
+  const extraction = (title: string) => ({ fields: [{ fieldName: "title", rawValue: title, normalizedValue: title, confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: chill.url, snapshotId: "snap" } }], candidateLinks: [], warnings: [] });
+  assert.deepEqual(opportunityTaxonomyTermIds(chill, extraction("Resonance Issue One — Cover Art Submissions")), []);
+  const poetry = opportunityTaxonomyTermIds(chill, extraction("Sublingua Prize for Poetry"));
+  assert.ok(poetry.includes("taxterm_pf-writing-and-literature"));
+  assert.ok(poetry.length > 1);
+  assert.ok(opportunityTaxonomyTermIds(chill, extraction("Flash Creative Nonfiction Contest")).length > 1);
+  assert.ok(opportunityTaxonomyTermIds(chill, extraction("Flash Fiction Contest")).length > 1);
+});
+
+test("prefers an explicit source-card extension over a stale application deadline", () => {
+  const fields = [
+    { fieldName: "deadline", rawValue: "August 18, 2026", normalizedValue: "August 18, 2026", confidence: 0.9, provenance: { adapterId: "generic-html-v2", method: "html-link-context-deadline", sourceUrl: "https://publisher.test/deadlines", snapshotId: "snap_publisher" } },
+    { fieldName: "deadline", rawValue: "July 31, 2026", normalizedValue: "July 31, 2026", confidence: 0.8, provenance: { adapterId: "generic-html-v2", method: "html-deadline-label", sourceUrl: "https://apply.test/program", snapshotId: "snap_apply" } },
+  ];
+  assert.equal(resolveCurrentDeadline(fields, "https://apply.test/program", new Date("2026-08-17T00:00:00.000Z")).date, "2026-08-18");
+});
+
+test("extracts explicit day-month-name deadlines used by international sources", async () => {
+  const source = { ...createBenchmarkSources()[0]!, url: "https://directory.test/opportunity", config: { destination: { pageRole: "detail" as const } } };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = { id: "snap_day_month_name", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: "<h1>International Call</h1><p>Deadline: 14 September 2026</p>", rendered: false };
+  const extraction = await adapter.extract({ ...context, snapshot }, snapshot);
+  assert.equal(extraction.fields.find((field) => field.fieldName === "deadline")?.normalizedValue, "14 September 2026");
+  assert.equal(resolveCurrentDeadline(extraction.fields, source.url, new Date("2026-08-17T00:00:00.000Z")).date, "2026-09-14");
+});
+
+test("extracts explicit dates after descriptive deadline wording", async () => {
+  const source = { ...createBenchmarkSources()[0]!, url: "https://directory.test/opportunity", config: { destination: { pageRole: "detail" as const } } };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = { id: "snap_deadline_phrase", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: "<h1>Board Call</h1><p>The deadline for submitting nominations is 05 October 2026.</p>", rendered: false };
+  const extraction = await adapter.extract({ ...context, snapshot }, snapshot);
+  assert.equal(resolveCurrentDeadline(extraction.fields, source.url, new Date("2026-08-17T00:00:00.000Z")).date, "2026-10-05");
+});
+
+test("extracts a platform final deadline when the date precedes its label", async () => {
+  const source = { ...createBenchmarkSources()[0]!, url: "https://festivals.test/festival/1", config: { destination: { pageRole: "detail" as const } } };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = { id: "snap_reverse_deadline", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: "<h1>Example Festival</h1><p>22 Jul 2026 Call for entries</p><p>24 Aug 2026 Final deadline</p><p>10 Sep 2026 Notification date</p>", rendered: false };
+  const extraction = await adapter.extract({ ...context, snapshot }, snapshot);
+  assert.equal(extraction.fields.find((field) => field.fieldName === "deadline")?.normalizedValue, "24 Aug 2026");
+});
+
+test("stabilizes dynamic directory cards by configured canonical URL order", async () => {
+  const source = { ...createBenchmarkSources()[0]!, url: "https://directory.test/", config: { destination: { pageRole: "landing" as const, candidateOrder: "url" as const, rules: [{ role: "detail" as const, patterns: ["/opportunity/"], authority: "destination" as const }] } } };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = { id: "snap_ordered_cards", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: '<a href="/opportunity/20">Second</a><a href="/opportunity/10">First</a>', rendered: false };
+  const extraction = await adapter.extract({ ...context, snapshot }, snapshot);
+  assert.deepEqual(extraction.candidateLinks.map((candidate) => candidate.url), ["https://directory.test/opportunity/10", "https://directory.test/opportunity/20"]);
+});
+
+test("unwraps Google outbound redirect links before destination classification", async () => {
+  const source = { ...createBenchmarkSources()[0]!, url: "https://directory.test/opportunity", config: { destination: { pageRole: "landing" as const } } };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const target = "https://official.test/open-call";
+  const snapshot = { id: "snap_google_redirect", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: `<a href="https://www.google.com/url?sa=D&amp;q=${encodeURIComponent(target)}">Apply for the open call</a>`, rendered: false };
+  const extraction = await adapter.extract({ ...context, snapshot }, snapshot);
+  assert.equal(extraction.candidateLinks[0]?.url, target);
+});
+
+test("scopes official publisher card fields to its external application link", async () => {
+  const source = {
+    ...createBenchmarkSources()[0]!,
+    url: "https://publisher.test/deadlines",
+    config: { destination: { pageRole: "landing" as const, allowedHosts: ["apply.test"], rules: [{ role: "apply" as const, patterns: ["/program/"], authority: "destination" as const }], sourceCard: { organization: "Official Publisher" } } },
+  };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = { id: "snap_source_cards", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: '<nav><a href="/apply">Apply</a></nav><main><h2>First Fellowship</h2><p>Deadline: August 25, 2026</p><a href="https://apply.test/program/first">Apply Now</a><h2>Second Fellowship</h2><p>Deadline: September 30, 2026</p><a href="https://apply.test/program/second">Apply Now</a></main>', rendered: false };
+  const result = await adapter.extract({ ...context, snapshot }, snapshot);
+  assert.deepEqual(result.candidateLinks.map((candidate) => candidate.url), ["https://apply.test/program/first", "https://apply.test/program/second"]);
+  assert.deepEqual(result.fields.filter((field) => field.provenance.recordId === "https://apply.test/program/second").map((field) => [field.fieldName, field.normalizedValue]), [["title", "Second Fellowship"], ["organization", "Official Publisher"], ["deadline", "September 30, 2026"]]);
+});
+
+test("filters dated call listings and normalizes short US deadlines from link cards", async () => {
+  const source = {
+    ...createBenchmarkSources()[0]!,
+    url: "https://jobs.test/listings",
+    config: { destination: { pageRole: "landing" as const, requiredLinkRegex: "(?:deadline\\s*:?\\s*)?\\b(?:0?[1-9]|1[0-2])[.\\/-](?:0?[1-9]|[12]\\d|3[01])[.\\/-]\\d{2}\\b", rules: [{ role: "detail" as const, patterns: ["/job/"], authority: "destination" as const }], sourceCard: { titleClassName: "tile-title", deadlineFromLinkLabel: "mdy-short" as const } } },
+  };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = { id: "snap_dated_calls", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: '<a href="/job/general-manager"><div class="tile-title">General Manager</div></a><a href="/job/actors-deadline-09-06-26"><div class="tile-title">Actors - Submission (Deadline: 09.06.26)</div></a>', rendered: false };
+  const result = await adapter.extract({ ...context, snapshot }, snapshot);
+  assert.deepEqual(result.candidateLinks.map((candidate) => candidate.url), ["https://jobs.test/job/actors-deadline-09-06-26"]);
+  assert.deepEqual(result.fields.map((field) => [field.fieldName, field.normalizedValue]), [["title", "Actors - Submission (Deadline: 09.06.26)"], ["deadline", "2026-09-06"]]);
+});
+
+test("extracts current first-party records from configured embedded JSON", async () => {
+  const source = {
+    ...createBenchmarkSources()[0]!,
+    url: "https://directory.test/opportunities",
+    config: {
+      embeddedJson: {
+        scriptId: "__NEXT_DATA__",
+        recordPath: "props.pageProps.opportunities.data",
+        fieldMap: { id: "id", url: ["contact.url", "apply.onlineForm"], title: "title", organization: "profile.organizationName", deadline: "deadline" },
+        requiredEquals: { "attributes.isPublished": true, "attributes.isPending": false },
+        datePath: "deadline",
+        maximumDaysAhead: 1095,
+      },
+      destination: { pageRole: "landing" as const, detailLimit: 5 },
+    },
+  };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const payload = { props: { pageProps: { opportunities: { data: [
+    { id: "current", title: "Current Residency", profile: { organizationName: "Host Arts" }, deadline: "2026-12-31T23:00:00Z", contact: { url: "https://host.test/current" }, attributes: { isPublished: true, isPending: false } },
+    { id: "pending", title: "Pending Call", deadline: "2026-12-31T23:00:00Z", contact: { url: "https://host.test/pending" }, attributes: { isPublished: false, isPending: true } },
+    { id: "expired", title: "Expired Call", deadline: "2020-01-01T00:00:00Z", contact: { url: "https://host.test/expired" }, attributes: { isPublished: true, isPending: false } },
+  ] } } } };
+  const snapshot = { id: "snap_embedded_json", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(payload)}</script>`, rendered: false };
+  const result = await adapter.extract({ ...context, snapshot }, snapshot);
+  assert.deepEqual(result.candidateLinks.map((candidate) => candidate.url), ["https://host.test/current"]);
+  assert.deepEqual(result.fields.filter((field) => field.provenance.recordId === "current").map((field) => field.fieldName), ["title", "organization", "deadline"]);
 });
 
 test("uses DeepSeek JSON output as shadow evidence", async () => {
@@ -490,6 +916,23 @@ test("follows a bounded directory listing to the organizer first-party page", as
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test("classifies an unquoted first-party application link from submitted directory HTML", async () => {
+  const source = {
+    ...createBenchmarkSources()[0]!,
+    url: "https://directory.test/open-calls/",
+    config: { destination: { pageRole: "detail" as const, firstPartyHop: { articleOnly: true, limit: 1, excludedHosts: ["pixelgrade.com"] } } },
+  };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = { id: "snap_unquoted_application", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: '<main><h1>Residency</h1><p>Application deadline 2026-10-01</p><h5>Link to more information</h5><span><a href=https://forms.example/apply target="_blank">Apply</span></main>', rendered: false };
+
+  const result = await adapter.extract({ ...context, snapshot }, snapshot);
+
+  assert.equal(result.candidateLinks[0]?.url, "https://forms.example/apply");
+  assert.equal(result.candidateLinks[0]?.authority, "destination");
+  assert.match(result.candidateLinks[0]?.title ?? "", /Link to more information/i);
 });
 
 test("keeps multi-opportunity publisher decisions scoped to each destination", async () => {

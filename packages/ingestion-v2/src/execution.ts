@@ -5,8 +5,9 @@ import { classifyIngestionFailure, createRunId, INGESTION_V2_VERSION, type Inges
 import type { PipelineJobData, QueueBundle } from "./queues.js";
 import { destinationConfig, isPotentialDestination } from "./destinations.js";
 import { assessEvidenceQuality, type EvidenceQuality } from "./quality.js";
-import { reviewForPublication, type CandidatePublisherReview, type PublisherReview } from "./publisher.js";
+import { reviewForPublication, reviewOfficialSourceCard, type CandidatePublisherReview, type PublisherReview } from "./publisher.js";
 import { promoteApprovedArtifact } from "./canonicalWriter.js";
+import { hasCurrentDeadlineOrWindow } from "./deadline.js";
 import type { Pool } from "pg";
 
 export const UNCHANGED_ROOT_WARNING = "Source root unchanged; extraction and child destination fetches skipped";
@@ -121,6 +122,11 @@ export async function executeShadowPipeline(
     for (const candidate of details) {
       if (candidateReviews.length >= candidateTarget) break;
       attemptedDetails += 1;
+      const candidateRecordId = candidate.stableId ?? candidate.canonicalUrl ?? candidate.url;
+      const scopedSourceFields = sourceExtraction.fields.filter((field) =>
+        field.provenance.recordId === candidateRecordId ||
+        (!field.provenance.recordId && (field.provenance.sourceUrl === candidate.url || field.provenance.sourceUrl === candidate.canonicalUrl))
+      );
       try {
         const destinationSource = {
           ...source,
@@ -133,16 +139,14 @@ export async function executeShadowPipeline(
             destination: { ...destinationConfig(source), pageRole: "detail" as const },
           },
         };
-        const destinationSnapshot = await adapter.fetch({ run, source: destinationSource });
-        const destinationExtraction = await adapter.extract({ run, source: destinationSource, snapshot: destinationSnapshot }, destinationSnapshot);
+        const destinationAdapter = destination.destinationAdapterId
+          ? registry.get(destination.destinationAdapterId)
+          : adapter;
+        const destinationSnapshot = await destinationAdapter.fetch({ run, source: destinationSource });
+        const destinationExtraction = await destinationAdapter.extract({ run, source: destinationSource, snapshot: destinationSnapshot }, destinationSnapshot);
         relatedSnapshots.push(destinationSnapshot);
         extraction.fields.push(...destinationExtraction.fields);
         extraction.warnings.push(...destinationExtraction.warnings.map((warning) => `Destination ${candidate.url}: ${warning}`));
-        const scopedSourceFields = sourceExtraction.fields.filter((field) =>
-          candidate.stableId
-            ? field.provenance.recordId === candidate.stableId
-            : field.provenance.sourceUrl === candidate.url || field.provenance.sourceUrl === candidate.canonicalUrl
-        );
         const firstPartyHop = destinationConfig(source).firstPartyHop;
         if (firstPartyHop && sameHost(source.url, candidate.url)) {
           const firstPartyCandidate = destinationExtraction.candidateLinks.find((outbound) => !sameHost(destinationSnapshot.finalUrl, outbound.url));
@@ -160,8 +164,8 @@ export async function executeShadowPipeline(
               destination: { ...destinationConfig(source), pageRole: "detail" as const, firstPartyHop: undefined },
             },
           };
-          const firstPartySnapshot = await adapter.fetch({ run, source: firstPartySource });
-          const firstPartyExtraction = await adapter.extract({ run, source: firstPartySource, snapshot: firstPartySnapshot }, firstPartySnapshot);
+          const firstPartySnapshot = await destinationAdapter.fetch({ run, source: firstPartySource });
+          const firstPartyExtraction = await destinationAdapter.extract({ run, source: firstPartySource, snapshot: firstPartySnapshot }, firstPartySnapshot);
           relatedSnapshots.push(firstPartySnapshot);
           extraction.fields.push(...firstPartyExtraction.fields);
           extraction.warnings.push(...firstPartyExtraction.warnings.map((warning) => `First-party destination ${firstPartyCandidate.url}: ${warning}`));
@@ -170,6 +174,11 @@ export async function executeShadowPipeline(
             candidateLinks: [firstPartyCandidate],
             warnings: [...destinationExtraction.warnings, ...firstPartyExtraction.warnings],
           };
+          if (destination.requireCurrentDeadlineBeforeReview && !hasCurrentDeadlineOrWindow(candidateExtraction.fields, firstPartyCandidate.url)) {
+            extraction.warnings.push(`Destination ${candidate.url} skipped because its bounded chain has no current deadline or declared rolling window`);
+            failedDetails += 1;
+            continue;
+          }
           const review = await reviewForPublication({
             source,
             sourceSnapshot: destinationSnapshot,
@@ -193,7 +202,12 @@ export async function executeShadowPipeline(
           candidateLinks: [candidate],
           warnings: [...destinationExtraction.warnings],
         };
-        const review = await reviewForPublication({
+        if (destination.requireCurrentDeadlineBeforeReview && !hasCurrentDeadlineOrWindow(candidateExtraction.fields, candidate.canonicalUrl ?? candidate.url)) {
+          extraction.warnings.push(`Destination ${candidate.url} skipped because its bounded chain has no current deadline or declared rolling window`);
+          failedDetails += 1;
+          continue;
+        }
+        const publisherInput = {
           source,
           sourceSnapshot: snapshot,
           sourceExtraction: { fields: scopedSourceFields, candidateLinks: [candidate], warnings: [] },
@@ -201,7 +215,10 @@ export async function executeShadowPipeline(
           relatedFields: destinationExtraction.fields,
           candidate,
           candidateSnapshot: destinationSnapshot,
-        });
+        };
+        const review = destination.structuredRecordAuthority
+          ? await reviewOfficialSourceCard(publisherInput)
+          : await reviewForPublication(publisherInput);
         candidateReviews.push({
           candidate,
           snapshotId: destinationSnapshot.id,
@@ -210,6 +227,14 @@ export async function executeShadowPipeline(
           review,
         });
       } catch (error) {
+        const sourceCard = destinationConfig(source).sourceCard;
+        if (sourceCard?.allowBlockedDestination && scopedSourceFields.length) {
+          const candidateExtraction: ExtractionResult = { fields: scopedSourceFields, candidateLinks: [candidate], warnings: ["External application destination was unavailable; configured official source-card evidence was retained"] };
+          const review = await reviewOfficialSourceCard({ source, sourceSnapshot: snapshot, sourceExtraction: candidateExtraction, relatedSnapshots: [], relatedFields: [], candidate });
+          candidateReviews.push({ candidate, snapshotId: snapshot.id, extraction: candidateExtraction, quality: assessEvidenceQuality(snapshot, candidateExtraction), review });
+          extraction.warnings.push(`Destination ${candidate.url} unavailable; configured official source-card evidence was used for review`);
+          continue;
+        }
         failedDetails += 1;
         extraction.warnings.push(`Destination ${candidate.url} failed: ${error instanceof Error ? error.message : String(error)}`);
       }

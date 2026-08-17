@@ -90,11 +90,13 @@ export type ReviewCandidate = PublicationRubricCandidate & {
 async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandidate | null> {
   const result = await pool.query<ReviewCandidate>(
     `select o.id as "opportunityId", o.title, o.status, o.submission_state as "submissionState",
-       o.deadline_date::text as "deadlineDate", o.submission_url as "submissionUrl",
+       o.deadline_date::text as "deadlineDate", o.deadline_kind as "deadlineKind", o.submission_url as "submissionUrl",
        o.guidelines_url as "guidelinesUrl", s.url as "sourceUrl",
        evidence.processing_succeeded_at as "processingSucceededAt",
        (coalesce(evidence.organization_confirmed, false) or profile_identity.confirmed) as "organizationConfirmed",
        coalesce(evidence.destination_reconciled, false) as "destinationReconciled",
+       (coalesce((evidence.destination_reconciliation->>'v2ReviewOnly')::boolean, false)
+         or (o.id like 'opp_v2_%' and o.source_id like 'v2_source_%')) as "reviewOnly",
        coalesce(content.review_status = 'approved', false) as "contentApproved",
        (profile.opportunity_id is not null) as "callProfilePresent",
        profile.reading_period_kind as "readingPeriodKind",
@@ -102,7 +104,7 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
      from opportunities o
      left join opportunity_sources s on s.id = o.source_id
      left join lateral (
-       select checked_at, processing_succeeded_at, organization_confirmed, destination_reconciled
+       select checked_at, processing_succeeded_at, organization_confirmed, destination_reconciled, destination_reconciliation
        from opportunity_source_evidence
        where opportunity_id = o.id order by checked_at desc limit 1
      ) evidence on true

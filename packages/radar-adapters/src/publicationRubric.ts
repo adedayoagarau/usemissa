@@ -6,11 +6,13 @@ export type PublicationRubricCandidate = {
   status: string;
   submissionState: string;
   deadlineDate: string | null;
+  deadlineKind?: string | null;
   submissionUrl: string | null;
   guidelinesUrl: string | null;
   sourceUrl: string | null;
   processingSucceededAt: string | null;
   organizationConfirmed: boolean;
+  reviewOnly?: boolean;
   readingPeriodKind: string | null;
   evidenceCount: number;
   destinationReconciled: boolean;
@@ -33,6 +35,13 @@ function identityValid(title: string): boolean {
   ].includes(normalized) && !/^(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:\/\S*)?$/.test(normalized);
 }
 
+function aggregateIdentity(title: string): boolean {
+  const normalized = title.toLowerCase().trim();
+  return /\b(?:directory|round[ -]?up|list of)\b/.test(normalized) ||
+    (/\b(?:best|top)\b/.test(normalized) && /\b(?:magazines?|journals?|contests?|places|opportunities|markets?)\b/.test(normalized)) ||
+    /\b\d{2,}\+?\s+(?:places|magazines?|journals?|contests?|opportunities|markets?)\b/.test(normalized);
+}
+
 /** One fail-closed decision used by every canonical publication transition. */
 export function evaluatePublicationRubric(candidate: PublicationRubricCandidate): PublicationRubricResult {
   const reasons: string[] = [];
@@ -40,12 +49,18 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
   const sourceProcessed = Boolean(candidate.processingSucceededAt);
   const destinationPresent = Boolean(candidate.submissionUrl || candidate.guidelinesUrl);
   const active = ACTIVE_STATUSES.has(candidate.status);
-  const deadlineOrWindow = Boolean(candidate.deadlineDate || (candidate.readingPeriodKind && candidate.readingPeriodKind !== "unknown"));
+  const deadlineOrWindow = Boolean(
+    candidate.deadlineDate ||
+    candidate.deadlineKind === "rolling" ||
+    candidate.deadlineKind === "until-filled" ||
+    (candidate.readingPeriodKind && candidate.readingPeriodKind !== "unknown"),
+  );
   const unsafe = candidate.submissionState === "unsafe";
   const validIdentity = identityValid(candidate.title);
+  const aggregate = aggregateIdentity(candidate.title);
 
   const gates = {
-    authorityDestination: sourcePresent && sourceProcessed && destinationPresent && candidate.destinationReconciled ? "pass" : "review" as PublicationGate,
+    authorityDestination: sourcePresent && sourceProcessed && destinationPresent && candidate.destinationReconciled && !candidate.reviewOnly ? "pass" : "review" as PublicationGate,
     identity: validIdentity && candidate.organizationConfirmed ? "pass" : "review" as PublicationGate,
     freshness: active && deadlineOrWindow ? "pass" : "review" as PublicationGate,
     completeness: candidate.contentApproved ? "pass" : "review" as PublicationGate,
@@ -60,18 +75,22 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
     destinationReconciled: candidate.destinationReconciled,
     deadlineOrWindow,
     organizationConfirmed: candidate.organizationConfirmed,
+    reviewOnly: Boolean(candidate.reviewOnly),
     active,
     unsafe,
     identityValid: validIdentity,
+    aggregateIdentity: aggregate,
     contentApproved: candidate.contentApproved,
     evidenceCount: candidate.evidenceCount,
   };
 
   if (unsafe) return { decision: "suppress", score: 0, reasons: ["Submission destination was marked unsafe."], checks };
+  if (aggregate) return { decision: "suppress", score: 0, reasons: ["This record is a directory or roundup, not one opportunity."], checks };
   if (!sourcePresent) reasons.push("Canonical source URL is missing.");
   if (!sourceProcessed) reasons.push("Source has not completed a successful processing pass.");
   if (!destinationPresent) reasons.push("Submission or guidelines destination is missing.");
   if (!candidate.destinationReconciled) reasons.push("Source-to-destination reconciliation is not confirmed.");
+  if (candidate.reviewOnly) reasons.push("This ingestion record is explicitly held for human review.");
   if (!validIdentity) reasons.push("Opportunity identity is a placeholder and must be resolved.");
   if (!candidate.organizationConfirmed) reasons.push("Organization confirmation is still required.");
   if (!active) reasons.push("Opportunity is not currently active.");

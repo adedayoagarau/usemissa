@@ -90,7 +90,8 @@ function applyManifest(entry: SourceManifestEntry, registryEntry: SourceRegistry
     ...base,
     name: entry.name,
     url: entry.urlOverride ?? base.url,
-    adapterId: entry.adapterId ?? base.adapterId,
+    adapterId: entry.adapterId ?? (entry.kindOverride ? adapterId : base.adapterId),
+    kind: entry.kindOverride ?? base.kind,
     schedule: { ...base.schedule, lane: "core-daily", cadenceHours: entry.refresh.baseCadenceHours },
     config: { ...base.config, ...entry.configOverride, sourceManifest },
   };

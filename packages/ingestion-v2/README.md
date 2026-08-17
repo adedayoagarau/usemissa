@@ -27,7 +27,7 @@ comparison artifact without publishing.
 - source-aware navigation filtering and duplicate-link suppression;
 - soft-404 and anti-bot challenge detection;
 - stable opportunity identity, typed failure categories, and a fail-closed promotion gate.
-- a bounded twelve-source operating manifest grouped by practitioner source desk;
+- a bounded seventeen-source operating manifest grouped by practitioner source desk;
 - a first-tranche worker default with zero publication authority;
 - adaptive cadence policy and unchanged-root child-fetch suppression.
 - durable unchanged/failure streaks, fast transient-failure retries, and deadline-aware cadence.
@@ -115,11 +115,12 @@ destination, at least 0.8 benchmark recall and agreement, no duplicate or
 ambiguous identity, and no critical warning. The gate never performs a public
 write.
 
-The worker defaults to the bounded `first-tranche` manifest. One EU API entry
-is documented but non-runnable until its provider-specific form query has a
-dedicated adapter, so eleven manifest sources currently schedule. Every entry
-has `publicationAuthority: none`. The historical all-registry set is available
-only through an explicit diagnostic override:
+The worker defaults to the bounded `first-tranche` manifest. Seventeen entries
+are runnable and schedule in the `core-daily` lane. Production may
+execute runnable sources in explicit human-review mode, but every entry still
+has `publicationAuthority: none`; a source run never grants public publication.
+The historical all-registry set is available only through an explicit
+diagnostic override:
 
 ```bash
 MISSA_INGESTION_V2_SOURCE_SET=all-registry
@@ -134,6 +135,9 @@ failures retry at the minimum cadence, three consecutive failures cool down,
 seven unchanged runs back off, and extracted deadlines inside 14 days or 72
 hours tighten refreshes. Deadline interpretation still remains evidence-bound
 and does not turn an aggregator into publication authority.
+Each scheduler tick also closes active published `opp_v2_` records whose exact
+deadline is before the current date. The record remains published as an archive;
+the transition does not alter its source, destination, deadline, or safety facts.
 
 In another process, enqueue one shadow run:
 

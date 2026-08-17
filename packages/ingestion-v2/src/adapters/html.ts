@@ -4,6 +4,7 @@ import { classifyDestination, destinationConfig, type DestinationCandidate } fro
 const TITLE = /<title[^>]*>([\s\S]*?)<\/title>/i;
 const H1 = /<h1[^>]*>([\s\S]*?)<\/h1>/i;
 const LINK = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+const OPENING_LINK = /<a\b[^>]*href\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))[^>]*>/gi;
 const META = /<meta\b([^>]*)>/gi;
 const HEADING = /<(h[1-6])\b([^>]*)>([\s\S]*?)<\/\1>/gi;
 const USER_AGENT = "MissaIngestionV2/0.1";
@@ -39,8 +40,117 @@ function descriptionMeta(html: string): string | undefined {
 
 function deadlineFromHtml(html: string): string | undefined {
   const visible = text(html);
-  const match = /deadline\s*:?\s*((?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:,?\s+\d{4})?|\d{4}-\d{2}-\d{2})/i.exec(visible);
-  return match?.[1];
+  const monthPattern = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
+  const datePattern = `${monthPattern}\\s+\\d{1,2}(?:,?\\s+\\d{4})?|\\d{1,2}\\s+${monthPattern}\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[/. -]\\d{1,2}[/. -]\\d{4}`;
+  const deadlineKind = "(?:final|submission|submissions|application)";
+  const match =
+    new RegExp(`(${datePattern})\\s+${deadlineKind}\\s+deadline`, "i").exec(visible) ??
+    new RegExp(`${deadlineKind}\\s+deadline\\s*:?\\s*(${datePattern})`, "i").exec(visible) ??
+    new RegExp(`deadline\\s*:?\\s*(${datePattern})`, "i").exec(visible) ??
+    new RegExp(`deadline[^.!?]{0,100}?\\b(${datePattern})`, "i").exec(visible);
+  const value = match?.[1];
+  if (!value) return undefined;
+  const numeric = /^(\d{1,2})[/. -](\d{1,2})[/. -](\d{4})$/.exec(value);
+  if (!numeric) return value;
+  const first = Number(numeric[1]);
+  const second = Number(numeric[2]);
+  if (first <= 12 || second > 12) return undefined;
+  return `${numeric[3]}-${String(second).padStart(2, "0")}-${String(first).padStart(2, "0")}`;
+}
+
+function deadlineValuesFromHtml(html: string): string[] {
+  const visible = text(html);
+  const month = "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|sept(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)";
+  const date = `${month}\\s+\\d{1,2}(?:,?\\s+\\d{4})?|\\d{1,2}\\s+${month}\\s+\\d{4}|\\d{4}-\\d{2}-\\d{2}`;
+  const phase = "(?:early(?: bird)?|regular|standard|final|submission|submissions|application)?";
+  const values = [deadlineFromHtml(html)].filter((value): value is string => Boolean(value));
+  for (const pattern of [
+    new RegExp(`${phase}\\s*deadline\\s*:?\\s*(${date})`, "gi"),
+    new RegExp(`(${date})\\s+${phase}\\s*deadline`, "gi"),
+  ]) {
+    for (const match of visible.matchAll(pattern)) if (match[1]) values.push(match[1]);
+  }
+  return [...new Set(values)];
+}
+
+function deadlineKindFromHtml(html: string): "rolling" | "until-filled" | undefined {
+  const visible = text(html).toLowerCase();
+  if (/\b(?:rolling (?:deadline|basis|submissions?|applications?)|submissions? (?:are )?accepted (?:on a )?rolling basis)\b/.test(visible)) return "rolling";
+  if (/\b(?:open until filled|until (?:the position is )?filled)\b/.test(visible)) return "until-filled";
+  return undefined;
+}
+
+function nearestHeading(html: string): string | undefined {
+  return [...html.matchAll(HEADING)].map((match) => text(match[3] ?? "")).filter(Boolean).at(-1);
+}
+
+function classText(html: string, className: string): string | undefined {
+  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text(new RegExp(`<([a-z][\\w:-]*)[^>]*class=["'][^"']*\\b${escaped}\\b[^"']*["'][^>]*>([\\s\\S]*?)<\\/\\1>`, "i").exec(html)?.[2] ?? "") || undefined;
+}
+
+function shortMdyDeadline(value: string): string | undefined {
+  const match = /(?:deadline\s*:?\s*)?\b(0?[1-9]|1[0-2])[.\/-](0?[1-9]|[12]\d|3[01])[.\/-](\d{2})\b/i.exec(value);
+  if (!match) return undefined;
+  return `20${match[3]}-${String(Number(match[1])).padStart(2, "0")}-${String(Number(match[2])).padStart(2, "0")}`;
+}
+
+function readJsonPath(value: unknown, path: string): unknown {
+  return path.split(".").reduce<unknown>((current, key) => current && typeof current === "object" ? (current as Record<string, unknown>)[key] : undefined, value);
+}
+
+function embeddedJsonExtraction(source: AdapterContext["source"], snapshot: PageSnapshot): ExtractionResult | undefined {
+  const configured = source.config.embeddedJson;
+  if (!configured || typeof configured !== "object") return undefined;
+  const config = configured as {
+    scriptId?: string;
+    recordPath?: string;
+    fieldMap?: Record<string, string | string[]>;
+    requiredEquals?: Record<string, unknown>;
+    datePath?: string;
+    maximumDaysAhead?: number;
+  };
+  if (!config.scriptId || !config.recordPath || !config.fieldMap) return undefined;
+  const escapedId = config.scriptId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const script = new RegExp(`<script\\b[^>]*id=["']${escapedId}["'][^>]*>([\\s\\S]*?)<\\/script>`, "i").exec(snapshot.html)?.[1];
+  if (!script) return { fields: [], candidateLinks: [], warnings: [`Embedded JSON script ${config.scriptId} was not found`] };
+  let parsed: unknown;
+  try { parsed = JSON.parse(script); } catch { return { fields: [], candidateLinks: [], warnings: [`Embedded JSON script ${config.scriptId} was invalid`] }; }
+  const selected = readJsonPath(parsed, config.recordPath);
+  if (!Array.isArray(selected)) return { fields: [], candidateLinks: [], warnings: [`Embedded JSON record path ${config.recordPath} was not an array`] };
+  const fields: ExtractionResult["fields"] = [];
+  const candidateLinks: ExtractionResult["candidateLinks"] = [];
+  const now = Date.now();
+  const values = (record: Record<string, unknown>, name: string): string[] => {
+    const configuredPaths = config.fieldMap?.[name];
+    const paths = Array.isArray(configuredPaths) ? configuredPaths : configuredPaths ? [configuredPaths] : [];
+    return paths.flatMap((path) => {
+      const value = readJsonPath(record, path);
+      return typeof value === "string" && value.trim() ? [value.trim()] : [];
+    });
+  };
+  for (const raw of selected) {
+    if (!raw || typeof raw !== "object") continue;
+    const record = raw as Record<string, unknown>;
+    if (Object.entries(config.requiredEquals ?? {}).some(([path, expected]) => readJsonPath(record, path) !== expected)) continue;
+    const deadlineValue = config.datePath ? readJsonPath(record, config.datePath) : undefined;
+    if (config.datePath) {
+      const timestamp = typeof deadlineValue === "string" ? Date.parse(deadlineValue) : Number.NaN;
+      if (!Number.isFinite(timestamp) || timestamp < now) continue;
+      if (config.maximumDaysAhead !== undefined && timestamp > now + Math.max(1, config.maximumDaysAhead) * 86_400_000) continue;
+    }
+    const id = values(record, "id")[0];
+    const url = values(record, "url")[0];
+    if (!id || !url) continue;
+    try { if (new URL(url).protocol !== "https:") continue; } catch { continue; }
+    const title = values(record, "title")[0];
+    candidateLinks.push({ url, stableId: id, canonicalUrl: url, ...(title ? { title } : {}), role: "detail", authority: "destination" });
+    for (const fieldName of ["title", "organization", "description", "deadline", "opportunityType"] as const) {
+      const value = values(record, fieldName)[0];
+      if (value) fields.push({ fieldName, rawValue: value, normalizedValue: value, confidence: 0.9, provenance: { adapterId: "generic-html-v2", method: `embedded-json-${fieldName}`, sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id, recordId: id } });
+    }
+  }
+  return { fields, candidateLinks, warnings: candidateLinks.length ? [] : ["Embedded JSON contained no current eligible opportunity records"] };
 }
 
 function labeledValue(html: string, labelPattern: RegExp): string | undefined {
@@ -56,8 +166,12 @@ function bodyDescription(html: string): string | undefined {
 
 function absoluteUrl(value: string, base: string): string | undefined {
   try {
-    const url = new URL(value, base);
+    const url = new URL(value.replace(/&amp;/gi, "&"), base);
     if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+    if ((url.hostname === "google.com" || url.hostname === "www.google.com") && url.pathname === "/url") {
+      const target = url.searchParams.get("q") ?? url.searchParams.get("url");
+      if (target) return absoluteUrl(target, base);
+    }
     url.hash = "";
     return url.href;
   } catch {
@@ -86,12 +200,15 @@ function firstPartyLinks(snapshot: PageSnapshot, config: ReturnType<typeof desti
   const excludedHosts = new Set((hop.excludedHosts ?? []).map((host) => host.toLowerCase().replace(/^www\./, "")));
   const byHost = new Map<string, { candidate: DestinationCandidate; score: number }>();
   const html = hop.articleOnly === false ? snapshot.html : mainContent(snapshot.html);
-  for (const match of html.matchAll(LINK)) {
-    const url = absoluteUrl(match[1]!, snapshot.finalUrl);
+  for (const match of html.matchAll(OPENING_LINK)) {
+    const href = match[1] ?? match[2] ?? match[3];
+    const url = href ? absoluteUrl(href, snapshot.finalUrl) : undefined;
     if (!url) continue;
     const host = normalizedHost(url);
     if (!host || host === sourceHost || [...excludedHosts].some((excluded) => host === excluded || host.endsWith(`.${excluded}`))) continue;
-    const title = text(match[2] ?? "");
+    const start = match.index ?? 0;
+    const context = `${html.slice(Math.max(0, start - 180), start)} ${html.slice(start + match[0].length, start + match[0].length + 180)}`;
+    const title = text(context).slice(0, 240);
     const parsed = new URL(url);
     if (/\.(?:pdf|docx?|xlsx?)(?:$|[?#])/i.test(parsed.pathname)) continue;
     const score = (FIRST_PARTY_SIGNAL.test(`${url} ${title}`) ? 10 : 0) + Math.min(parsed.pathname.split("/").filter(Boolean).length, 6) - (parsed.protocol === "http:" ? 5 : 0);
@@ -149,11 +266,23 @@ export class GenericHtmlAdapter implements SourceAdapter {
 
   async fetch(context: AdapterContext): Promise<PageSnapshot> {
     await assertRobotsAllowed(context.source.url);
-    const response = await fetch(context.source.url, {
-      headers: { accept: "text/html,application/xhtml+xml", "user-agent": `${USER_AGENT} (+https://www.usemissa.com)` },
-      redirect: "follow",
-      signal: AbortSignal.timeout(20_000),
-    });
+    let response: Response | undefined;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const candidate = await fetch(context.source.url, {
+          headers: { accept: "text/html,application/xhtml+xml", "user-agent": `${USER_AGENT} (+https://www.usemissa.com)` },
+          redirect: "follow",
+          signal: AbortSignal.timeout(20_000),
+        });
+        if ((candidate.status === 403 || candidate.status === 429 || candidate.status >= 500) && attempt === 0) continue;
+        response = candidate;
+        break;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    if (!response) throw lastError instanceof Error ? lastError : new Error("HTML source fetch failed after bounded retry");
     const html = sanitizeSourceText(await response.text());
     if (!response.ok) throw new IngestionFailure(response.status === 403 || response.status === 429 ? "blocked" : response.status === 404 ? "not-found" : "invalid-content", `HTML source HTTP ${response.status}`);
     return {
@@ -177,8 +306,9 @@ export class GenericHtmlAdapter implements SourceAdapter {
       const description = descriptionMeta(snapshot.html);
       const fullDescription = bodyDescription(snapshot.html) ?? description;
       if (fullDescription) fields.push({ fieldName: "description", rawValue: fullDescription, normalizedValue: fullDescription, confidence: bodyDescription(snapshot.html) ? 0.86 : 0.68, provenance: { adapterId: this.id, method: bodyDescription(snapshot.html) ? "html-body-field" : "html-meta-description", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
-      const deadline = deadlineFromHtml(snapshot.html);
-      if (deadline) fields.push({ fieldName: "deadline", rawValue: deadline, normalizedValue: deadline, confidence: 0.58, provenance: { adapterId: this.id, method: "html-deadline-label", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
+      for (const deadline of deadlineValuesFromHtml(snapshot.html)) fields.push({ fieldName: "deadline", rawValue: deadline, normalizedValue: deadline, confidence: 0.58, provenance: { adapterId: this.id, method: "html-deadline-label", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
+      const deadlineKind = deadlineKindFromHtml(snapshot.html);
+      if (deadlineKind) fields.push({ fieldName: "deadlineKind", rawValue: deadlineKind, normalizedValue: deadlineKind, confidence: 0.9, provenance: { adapterId: this.id, method: "html-deadline-kind", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
       const entryFee = labeledValue(snapshot.html, /entry\s+fee/i);
       if (entryFee) fields.push({ fieldName: "entry_fee", rawValue: entryFee, normalizedValue: entryFee, confidence: 0.84, provenance: { adapterId: this.id, method: "html-labeled-field", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
       const cashPrize = labeledValue(snapshot.html, /cash\s+prize|prize/i);
@@ -188,6 +318,8 @@ export class GenericHtmlAdapter implements SourceAdapter {
       const officialWebsite = labeledValue(snapshot.html, /website|official\s+site/i);
       if (officialWebsite) fields.push({ fieldName: "official_website", rawValue: officialWebsite, normalizedValue: officialWebsite, confidence: 0.84, provenance: { adapterId: this.id, method: "html-labeled-field", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
     }
+    const embedded = embeddedJsonExtraction(context.source, snapshot);
+    if (embedded) return embedded;
     const configuredFirstPartyLinks = firstPartyLinks(snapshot, config);
     if (configuredFirstPartyLinks.length || (config.pageRole === "detail" && config.firstPartyHop)) {
       const warnings = antiBotChallenge ? ["Content indicates an anti-bot or JavaScript challenge"] : softNotFound ? ["Content indicates page not found despite a successful HTTP response"] : fields.length ? [] : ["No title-like heading found"];
@@ -196,13 +328,17 @@ export class GenericHtmlAdapter implements SourceAdapter {
     }
     const candidateLinks = [];
     const seenUrls = new Set<string>();
+    let previousAcceptedLinkEnd = 0;
     for (const match of snapshot.html.matchAll(LINK)) {
       const url = absoluteUrl(match[1]!, snapshot.finalUrl);
       const label = text(match[2] ?? "");
       if (!url || url === snapshot.finalUrl || url === context.source.url) continue;
       if ((match[1] ?? "").includes("&#")) continue;
+      const candidateHost = normalizedHost(url);
+      if (config.allowedHosts?.length && !config.allowedHosts.some((host) => candidateHost === host.toLowerCase().replace(/^www\./, ""))) continue;
       const exclusionHaystack = `${new URL(url).pathname} ${label}`.toLowerCase();
       if (config.excludedPatterns?.some((pattern) => exclusionHaystack.includes(pattern.toLowerCase()))) continue;
+      if (config.requiredLinkRegex && !new RegExp(config.requiredLinkRegex, "i").test(exclusionHaystack)) continue;
       const configuredPathDetail = config.detailPathRegex && new RegExp(config.detailPathRegex, "i").test(new URL(url).pathname);
       const candidate = configuredPathDetail
         ? { url, ...(label ? { title: label.slice(0, 240) } : {}), role: "detail" as const, authority: "destination" as const }
@@ -215,8 +351,27 @@ export class GenericHtmlAdapter implements SourceAdapter {
       if (explicitDestination || heuristicDestination) {
         seenUrls.add(url);
         candidateLinks.push(candidate);
+        if (config.sourceCard && config.pageRole === "landing") {
+          const linkStart = match.index ?? 0;
+          const beforeChars = Math.min(Math.max(config.sourceCard.beforeChars ?? 8_000, 500), 20_000);
+          const contextStart = Math.max(previousAcceptedLinkEnd, linkStart - beforeChars);
+          const contextHtml = snapshot.html.slice(contextStart, linkStart);
+          const recordId = candidate.stableId ?? candidate.canonicalUrl ?? candidate.url;
+          const addContextField = (fieldName: string, value: string | undefined, confidence: number) => {
+            if (!value) return;
+            fields.push({ fieldName, rawValue: value, normalizedValue: value, confidence, provenance: { adapterId: this.id, method: `html-link-context-${fieldName}`, sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id, recordId } });
+          };
+          const linkedTitle = config.sourceCard.titleClassName ? classText(match[2] ?? "", config.sourceCard.titleClassName) : undefined;
+          addContextField("title", linkedTitle ?? (config.sourceCard.titleFromLinkLabel ? label : nearestHeading(contextHtml)), 0.9);
+          addContextField("organization", config.sourceCard.organization, 1);
+          addContextField("deadline", config.sourceCard.deadlineFromLinkLabel === "mdy-short" ? shortMdyDeadline(label) : deadlineFromHtml(contextHtml), 0.9);
+          previousAcceptedLinkEnd = linkStart + match[0].length;
+        }
       }
       if (candidateLinks.length >= (config.scanLimit ?? config.detailLimit ?? 100)) break;
+    }
+    if (config.candidateOrder === "url") {
+      candidateLinks.sort((left, right) => left.url.localeCompare(right.url));
     }
     const warnings = antiBotChallenge ? ["Content indicates an anti-bot or JavaScript challenge"] : softNotFound ? ["Content indicates page not found despite a successful HTTP response"] : fields.length ? [] : [config.pageRole === "landing" ? "Landing page is not an opportunity; detail destinations must be fetched" : "No title-like heading found"];
     return { fields, candidateLinks, warnings };
