@@ -45,7 +45,6 @@ const CarouselThumbnails = () => {
 
   React.useEffect(() => {
     if (!mainApi) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     onSelect()
     mainApi.on('select', onSelect)
     mainApi.on('reInit', onSelect)

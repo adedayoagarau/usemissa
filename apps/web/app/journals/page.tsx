@@ -147,6 +147,8 @@ export default async function JournalsPage({
                 >
                   <div className="flex min-w-0 items-start gap-4">
                     {item.mediaUrl ? (
+                      // Directory media is served through Missa's source-preserving media route.
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={mediaSrc(item.id)}
                         alt={imageAlt(item)}

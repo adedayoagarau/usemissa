@@ -44,7 +44,6 @@ const CarouselScale = () => {
       return
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrent(api.selectedScrollSnap() + 1)
 
     api.on('select', () => {

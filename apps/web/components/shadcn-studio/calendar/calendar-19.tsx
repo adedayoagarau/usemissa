@@ -44,7 +44,6 @@ const CalendarWithDateInput = () => {
 
   useEffect(() => {
     // Initialize the premium date-input demo with today's value.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInputValue(format(today, 'yyyy-MM-dd'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

@@ -127,6 +127,8 @@ export default async function JournalDetailPage({
 
         <header className="mt-8 flex min-w-0 flex-wrap items-start gap-4 sm:gap-6">
           {profile.mediaUrl ? (
+            // Directory media is served through Missa's source-preserving media route.
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={mediaSrc(profile.id)}
               alt={imageAlt(profile)}

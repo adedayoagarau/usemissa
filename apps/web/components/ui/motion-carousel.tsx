@@ -113,6 +113,8 @@ function MotionCarousel(props: PropType) {
                   transition={transition}
                 >
                   {images?.[index] ? (
+                    // This review component accepts runtime image URLs rather than Next image metadata.
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={images[index]} alt={`Slide ${index + 1}`} className='size-full object-cover' />
                   ) : (
                     index + 1

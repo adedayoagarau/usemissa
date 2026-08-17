@@ -132,17 +132,13 @@ const AutocompleteWithAsync = () => {
   useEffect(() => {
     if (!searchValue) {
       // Keep the generated async search state synchronized with an empty query.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearchResults([])
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoading(false)
 
       return undefined
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(null)
 
     let ignore = false
@@ -152,18 +148,15 @@ const AutocompleteWithAsync = () => {
         const results = await searchMembers(searchValue, contains)
 
         if (!ignore) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setSearchResults(results)
         }
       } catch {
         if (!ignore) {
           setError('Failed to fetch members. Please try again.')
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setSearchResults([])
         }
       } finally {
         if (!ignore) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect
           setIsLoading(false)
         }
       }

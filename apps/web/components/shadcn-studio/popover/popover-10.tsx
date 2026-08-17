@@ -53,10 +53,8 @@ const PopoverSearchDemo = () => {
   useEffect(() => {
     if (inputValue) {
       // Keep the premium search affordance responsive while filtering.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoading(true)
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoading(false)
     }
   }, [inputValue])
@@ -64,18 +62,14 @@ const PopoverSearchDemo = () => {
   // Apply filtering after debounce and update loading state
   useEffect(() => {
     if (debouncedSearch.trim() === '') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFilteredUsers(users)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoading(false)
     } else {
       const searchTerm = debouncedSearch.toLowerCase()
 
       const filtered = users.filter(user => user.name.toLowerCase().includes(searchTerm))
 
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFilteredUsers(filtered)
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoading(false)
     }
   }, [debouncedSearch])
