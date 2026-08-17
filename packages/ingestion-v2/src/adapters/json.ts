@@ -68,22 +68,46 @@ export class JsonApiAdapter implements SourceAdapter {
     const fields: ExtractionResult["fields"] = [];
     const candidateLinks: ExtractionResult["candidateLinks"] = [];
     const config = context.source.config;
-    const fieldMap = config.fieldMap && typeof config.fieldMap === "object" ? config.fieldMap as Record<string, string | string[]> : undefined;
-    for (const rawItem of records(parsed, typeof config.recordPath === "string" ? config.recordPath : undefined)) {
+    const configuredDetail = config.detailRequest;
+    const detailRequest = configuredDetail && typeof configuredDetail === "object" ? configuredDetail as {
+      url?: string;
+      method?: "GET" | "POST";
+      bodyField?: string;
+      bodyTemplate?: unknown;
+      headers?: Record<string, string>;
+      canonicalUrlTemplate?: string;
+      detailRecordPath?: string;
+      detailFieldMap?: Record<string, string | string[]>;
+    } : undefined;
+    const isDetail = destinationConfig(context.source).pageRole === "detail";
+    const fieldMap = isDetail && detailRequest?.detailFieldMap
+      ? detailRequest.detailFieldMap
+      : config.fieldMap && typeof config.fieldMap === "object"
+        ? config.fieldMap as Record<string, string | string[]>
+        : undefined;
+    const recordPath = isDetail && detailRequest?.detailRecordPath
+      ? detailRequest.detailRecordPath
+      : typeof config.recordPath === "string"
+        ? config.recordPath
+        : undefined;
+    const configuredCanonicalUrl = stringValue(config.canonicalUrl);
+    for (const rawItem of records(parsed, recordPath)) {
       const item = fieldMap ? { ...rawItem, __fieldMap: fieldMap } : rawItem;
-      const configuredDetail = context.source.config.detailRequest;
-      const detailRequest = configuredDetail && typeof configuredDetail === "object" ? configuredDetail as { url?: string; method?: "GET" | "POST"; bodyField?: string; bodyTemplate?: unknown; headers?: Record<string, string> } : undefined;
       const itemId = mappedValue(item, "id", ["id", "opportunityId", "opportunityNumber"]);
-      const url = mappedValue(item, "url", ["url", "link", "applicationUrl", "applyUrl"]) ?? (detailRequest?.url && itemId ? detailRequest.url : undefined);
-      if (!url) continue;
+      const fetchUrl = mappedValue(item, "url", ["url", "link", "applicationUrl", "applyUrl"]) ?? (detailRequest?.url && itemId ? detailRequest.url : undefined);
+      const canonicalUrl = configuredCanonicalUrl ?? (detailRequest?.canonicalUrlTemplate && itemId ? stringValue(resolveTemplate(detailRequest.canonicalUrlTemplate, itemId)) : undefined);
+      const evidenceUrl = canonicalUrl ?? fetchUrl ?? snapshot.finalUrl ?? snapshot.url;
+      if (!isDetail && !fetchUrl) continue;
       const title = mappedValue(item, "title", ["title", "name", "opportunityTitle"]);
-      const destination = classifyDestination(url, title ?? "", destinationConfig(context.source));
-      const request = detailRequest && itemId ? { method: detailRequest.method === "GET" ? "GET" as const : "POST" as const, body: detailRequest.bodyTemplate === undefined ? (detailRequest.bodyField ? { [detailRequest.bodyField]: itemId } : { opportunityId: itemId }) : resolveTemplate(detailRequest.bodyTemplate, itemId), ...(detailRequest.headers ? { headers: detailRequest.headers } : {}) } : undefined;
-      candidateLinks.push({ ...destination, role: destination.role === "unknown" ? "detail" : destination.role, authority: "destination", ...(request ? { request } : {}) });
+      if (!isDetail && fetchUrl) {
+        const destination = classifyDestination(fetchUrl, title ?? "", destinationConfig(context.source));
+        const request = detailRequest && itemId ? { method: detailRequest.method === "GET" ? "GET" as const : "POST" as const, body: detailRequest.bodyTemplate === undefined ? (detailRequest.bodyField ? { [detailRequest.bodyField]: itemId } : { opportunityId: itemId }) : resolveTemplate(detailRequest.bodyTemplate, itemId), ...(detailRequest.headers ? { headers: detailRequest.headers } : {}) } : undefined;
+        candidateLinks.push({ ...destination, role: destination.role === "unknown" ? "detail" : destination.role, authority: "destination", ...(itemId ? { stableId: itemId } : {}), ...(canonicalUrl ? { canonicalUrl } : {}), ...(request ? { request } : {}) });
+      }
       for (const [name, value] of [["title", title], ["organization", mappedValue(item, "organization", ["organization", "organizer", "agency", "agencyName"])], ["description", mappedValue(item, "description", ["description", "summary", "synopsis"])], ["deadline", mappedValue(item, "deadline", ["deadline", "deadlineDate", "closeDate", "originalDueDate"])], ["openDate", mappedValue(item, "openDate", ["openDate"])] ] as const) {
-        if (value) fields.push({ fieldName: name, rawValue: value, normalizedValue: value, confidence: 0.8, provenance: { adapterId: this.id, method: `json-${name}`, sourceUrl: url, snapshotId: snapshot.id } });
+        if (value) fields.push({ fieldName: name, rawValue: value, normalizedValue: value, confidence: 0.8, provenance: { adapterId: this.id, method: `json-${name}`, sourceUrl: evidenceUrl, snapshotId: snapshot.id, ...(itemId ? { recordId: itemId } : {}) } });
       }
     }
-    return { fields, candidateLinks, warnings: candidateLinks.length ? [] : ["JSON response contained no records with destination URLs"] };
+    return { fields, candidateLinks, warnings: fields.length || candidateLinks.length ? [] : ["JSON response contained no extractable opportunity records"] };
   }
 }

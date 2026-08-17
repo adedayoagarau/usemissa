@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { DestinationCandidate } from "./destinations.js";
 
-export const INGESTION_V2_VERSION = "v2-shadow-0.1";
+export const INGESTION_V2_VERSION = "v2-shadow-0.2-candidate";
 
 export type IngestionTrigger = "manual" | "scheduled" | "backfill" | "shadow";
 export type IngestionMode = "shadow" | "review" | "promote";
@@ -62,6 +62,7 @@ export interface ExtractedField {
     method: string;
     sourceUrl: string;
     snapshotId: string;
+    recordId?: string;
   };
 }
 

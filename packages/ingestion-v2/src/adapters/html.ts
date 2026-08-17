@@ -1,5 +1,5 @@
 import { createSnapshotId, IngestionFailure, sanitizeSourceText, sha256, type AdapterContext, type ExtractionResult, type PageSnapshot, type SourceAdapter } from "../contracts.js";
-import { classifyDestination, destinationConfig } from "../destinations.js";
+import { classifyDestination, destinationConfig, type DestinationCandidate } from "../destinations.js";
 
 const TITLE = /<title[^>]*>([\s\S]*?)<\/title>/i;
 const H1 = /<h1[^>]*>([\s\S]*?)<\/h1>/i;
@@ -63,6 +63,46 @@ function absoluteUrl(value: string, base: string): string | undefined {
   } catch {
     return undefined;
   }
+}
+
+function mainContent(html: string): string {
+  return html.match(/<main\b[\s\S]*?<\/main>/i)?.[0] ?? html.match(/<article\b[\s\S]*?<\/article>/i)?.[0] ?? html;
+}
+
+function normalizedHost(value: string): string {
+  try {
+    return new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
+
+const FIRST_PARTY_SIGNAL = /apply|application|submit|submission|open[- ]?call|opportunit|contest|prize|award|fellowship|grant|residen|deadline|entry|program/i;
+
+function firstPartyLinks(snapshot: PageSnapshot, config: ReturnType<typeof destinationConfig>): DestinationCandidate[] {
+  const hop = config.firstPartyHop;
+  if (!hop || config.pageRole !== "detail") return [];
+  const sourceHost = normalizedHost(snapshot.finalUrl);
+  const excludedHosts = new Set((hop.excludedHosts ?? []).map((host) => host.toLowerCase().replace(/^www\./, "")));
+  const byHost = new Map<string, { candidate: DestinationCandidate; score: number }>();
+  const html = hop.articleOnly === false ? snapshot.html : mainContent(snapshot.html);
+  for (const match of html.matchAll(LINK)) {
+    const url = absoluteUrl(match[1]!, snapshot.finalUrl);
+    if (!url) continue;
+    const host = normalizedHost(url);
+    if (!host || host === sourceHost || [...excludedHosts].some((excluded) => host === excluded || host.endsWith(`.${excluded}`))) continue;
+    const title = text(match[2] ?? "");
+    const parsed = new URL(url);
+    if (/\.(?:pdf|docx?|xlsx?)(?:$|[?#])/i.test(parsed.pathname)) continue;
+    const score = (FIRST_PARTY_SIGNAL.test(`${url} ${title}`) ? 10 : 0) + Math.min(parsed.pathname.split("/").filter(Boolean).length, 6) - (parsed.protocol === "http:" ? 5 : 0);
+    const candidate: DestinationCandidate = { url, ...(title ? { title: title.slice(0, 240) } : {}), role: "detail", authority: "destination" };
+    const existing = byHost.get(host);
+    if (!existing || score > existing.score) byHost.set(host, { candidate, score });
+  }
+  return [...byHost.values()]
+    .sort((left, right) => right.score - left.score || left.candidate.url.localeCompare(right.candidate.url))
+    .map(({ candidate }) => candidate)
+    .slice(0, Math.min(Math.max(hop.limit ?? 1, 1), 3));
 }
 
 export function robotsAllowsPath(robots: string, path: string, userAgent = USER_AGENT): boolean {
@@ -148,6 +188,12 @@ export class GenericHtmlAdapter implements SourceAdapter {
       const officialWebsite = labeledValue(snapshot.html, /website|official\s+site/i);
       if (officialWebsite) fields.push({ fieldName: "official_website", rawValue: officialWebsite, normalizedValue: officialWebsite, confidence: 0.84, provenance: { adapterId: this.id, method: "html-labeled-field", sourceUrl: snapshot.finalUrl, snapshotId: snapshot.id } });
     }
+    const configuredFirstPartyLinks = firstPartyLinks(snapshot, config);
+    if (configuredFirstPartyLinks.length || (config.pageRole === "detail" && config.firstPartyHop)) {
+      const warnings = antiBotChallenge ? ["Content indicates an anti-bot or JavaScript challenge"] : softNotFound ? ["Content indicates page not found despite a successful HTTP response"] : fields.length ? [] : ["No title-like heading found"];
+      if (!configuredFirstPartyLinks.length && !antiBotChallenge && !softNotFound) warnings.push("No bounded first-party destination was found in the article body");
+      return { fields, candidateLinks: configuredFirstPartyLinks, warnings };
+    }
     const candidateLinks = [];
     const seenUrls = new Set<string>();
     for (const match of snapshot.html.matchAll(LINK)) {
@@ -155,7 +201,12 @@ export class GenericHtmlAdapter implements SourceAdapter {
       const label = text(match[2] ?? "");
       if (!url || url === snapshot.finalUrl || url === context.source.url) continue;
       if ((match[1] ?? "").includes("&#")) continue;
-      const candidate = classifyDestination(url, label, config);
+      const exclusionHaystack = `${new URL(url).pathname} ${label}`.toLowerCase();
+      if (config.excludedPatterns?.some((pattern) => exclusionHaystack.includes(pattern.toLowerCase()))) continue;
+      const configuredPathDetail = config.detailPathRegex && new RegExp(config.detailPathRegex, "i").test(new URL(url).pathname);
+      const candidate = configuredPathDetail
+        ? { url, ...(label ? { title: label.slice(0, 240) } : {}), role: "detail" as const, authority: "destination" as const }
+        : classifyDestination(url, label, config);
       if (candidate.role === "apply" && new URL(url).pathname === "/") continue;
       if (candidate.role === "detail" && new URL(url).pathname.endsWith("/") && new URL(url).pathname.split("/").filter(Boolean).length <= 1) continue;
       if (seenUrls.has(url)) continue;
@@ -165,7 +216,7 @@ export class GenericHtmlAdapter implements SourceAdapter {
         seenUrls.add(url);
         candidateLinks.push(candidate);
       }
-      if (candidateLinks.length >= (config.detailLimit ?? 100)) break;
+      if (candidateLinks.length >= (config.scanLimit ?? config.detailLimit ?? 100)) break;
     }
     const warnings = antiBotChallenge ? ["Content indicates an anti-bot or JavaScript challenge"] : softNotFound ? ["Content indicates page not found despite a successful HTTP response"] : fields.length ? [] : [config.pageRole === "landing" ? "Landing page is not an opportunity; detail destinations must be fetched" : "No title-like heading found"];
     return { fields, candidateLinks, warnings };
@@ -176,7 +227,7 @@ export function createBenchmarkSources(adapterId = "generic-html-v2") {
   return [
     { id: "benchmark-pw-grants", name: "Poets & Writers Grants", url: "https://www.pw.org/grants", adapterId, kind: "directory" as const, geography: ["US", "global"], opportunityTypes: ["grant", "contest", "award"], schedule: { lane: "single-run" as const, cadenceHours: 168 }, config: { comparisonAdapter: "gary", garySourceId: "pw.org", garyTargetUrl: "https://www.pw.org/writing_contests/other_futures_award", extraction: { titleClassNames: ["grant-listing-title"] }, destination: { pageRole: "landing", detailLimit: 5, rules: [{ role: "detail", patterns: ["/writing_contests/", "read more"], authority: "destination" }, { role: "apply", patterns: ["submit", "apply"], authority: "destination" }] } } },
     { id: "benchmark-nyfa-opportunities", name: "NYFA Opportunities", url: "https://www.nyfa.org/awards-grants/", adapterId, kind: "directory" as const, geography: ["US", "global"], opportunityTypes: ["grant", "fellowship", "award"], schedule: { lane: "single-run" as const, cadenceHours: 168 }, config: { comparisonAdapter: "radar", legacyUrls: ["https://www.nyfa.org/grant-discipline/visual-arts/", "https://www.nyfa.org/Content/Show/Opportunities"], destination: { pageRole: "landing", detailLimit: 5, rules: [{ role: "detail", patterns: ["/awards-grants/"], authority: "destination" }, { role: "apply", patterns: ["apply", "submit"], authority: "destination" }] } } },
-    { id: "benchmark-grants-gov-arts", name: "Grants.gov Arts Opportunities API", url: "https://api.grants.gov/v1/api/search2", adapterId: "json-api-v2", kind: "api" as const, geography: ["US"], opportunityTypes: ["grant", "award"], schedule: { lane: "single-run" as const, cadenceHours: 168 }, config: { transport: "json", comparisonAdapter: "none", recordPath: "data.oppHits", fieldMap: { id: "id", title: "title", organization: ["agency", "agencyName"], deadline: "closeDate" }, request: { method: "POST", body: { rows: 5, keyword: "arts", oppStatuses: "forecasted|posted", fundingCategories: "AR" } }, detailRequest: { url: "https://api.grants.gov/v1/api/fetchOpportunity", method: "POST", bodyField: "opportunityId" }, destination: { pageRole: "landing", detailLimit: 5, rules: [{ role: "detail", patterns: ["fetchOpportunity"], authority: "destination" }] } } },
+    { id: "benchmark-grants-gov-arts", name: "Grants.gov Arts Opportunities API", url: "https://api.grants.gov/v1/api/search2", adapterId: "json-api-v2", kind: "api" as const, geography: ["US"], opportunityTypes: ["grant", "award"], schedule: { lane: "single-run" as const, cadenceHours: 168 }, config: { transport: "json", comparisonAdapter: "none", recordPath: "data.oppHits", fieldMap: { id: "id", title: "title", organization: ["agency", "agencyName"], deadline: "closeDate" }, request: { method: "POST", body: { rows: 5, keyword: "arts", oppStatuses: "forecasted|posted", fundingCategories: "AR" } }, detailRequest: { url: "https://api.grants.gov/v1/api/fetchOpportunity", method: "POST", bodyField: "opportunityId", canonicalUrlTemplate: "https://www.grants.gov/search-results-detail/{{id}}" }, destination: { pageRole: "landing", detailLimit: 5, rules: [{ role: "detail", patterns: ["fetchOpportunity"], authority: "destination" }] } } },
     { id: "benchmark-creative-capital", name: "Creative Capital Artist Opportunities", url: "https://creative-capital.org/artist-resources/artist-opportunities/", adapterId, kind: "directory" as const, geography: ["US", "global"], opportunityTypes: ["grant", "fellowship", "residency", "open-call"], schedule: { lane: "single-run" as const, cadenceHours: 168 }, config: { comparisonAdapter: "radar", legacyUrls: ["https://creative-capital.org/opportunities/"], destination: { pageRole: "landing", detailLimit: 5, rules: [{ role: "detail", patterns: ["?opportunity", "artist-opportunities", "opportunit"], authority: "destination" }, { role: "apply", patterns: ["apply", "submit"], authority: "destination" }] } } },
   ];
 }

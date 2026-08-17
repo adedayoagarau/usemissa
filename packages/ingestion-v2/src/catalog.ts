@@ -1,5 +1,6 @@
 import { getRegistry, trustedSource, type SourceRegistryEntry } from "@missa/radar-engine";
 import type { SourceDefinition, SourceLane, SourceSchedule } from "./contracts.js";
+import { FIRST_TRANCHE_SOURCE_MANIFEST, validateSourceManifest, type SourceManifestEntry } from "./sourceManifest.js";
 
 export type IngestionCatalogEntry = SourceDefinition & {
   registryTier: SourceRegistryEntry["tier"];
@@ -75,6 +76,39 @@ export function createIngestionCatalog(adapterId = "generic-html-v2"): Ingestion
   });
 }
 
-export function createWorkerSources(adapterId = "generic-html-v2"): SourceDefinition[] {
-  return createIngestionCatalog(adapterId).filter((source) => source.eligible);
+export type WorkerSourceSet = "first-tranche" | "all-registry";
+
+function applyManifest(entry: SourceManifestEntry, registryEntry: SourceRegistryEntry, adapterId: string): SourceDefinition {
+  const base = sourceDefinitionFromRegistry(registryEntry, adapterId);
+  const sourceManifest = {
+    id: entry.id, desk: entry.desk, role: entry.role, structure: entry.structure, access: entry.access,
+    stableItemId: entry.stableItemId, artFormVerticalIds: entry.artFormVerticalIds,
+    firstPartyDestinationRequired: entry.firstPartyDestinationRequired, publicationAuthority: entry.publicationAuthority,
+    maxIndexPages: entry.maxIndexPages, maxChangedChildrenPerRun: entry.maxChangedChildrenPerRun, refresh: entry.refresh,
+  };
+  return {
+    ...base,
+    name: entry.name,
+    url: entry.urlOverride ?? base.url,
+    adapterId: entry.adapterId ?? base.adapterId,
+    schedule: { ...base.schedule, lane: "core-daily", cadenceHours: entry.refresh.baseCadenceHours },
+    config: { ...base.config, ...entry.configOverride, sourceManifest },
+  };
+}
+
+export function createFirstTrancheSources(adapterId = "generic-html-v2"): SourceDefinition[] {
+  const errors = validateSourceManifest();
+  if (errors.length) throw new Error(`Invalid ingestion v2 source manifest: ${errors.join("; ")}`);
+  const byId = new Map(getRegistry().sources.map((entry) => [entry.id, entry]));
+  return FIRST_TRANCHE_SOURCE_MANIFEST
+    .filter((entry) => entry.runnable && entry.access !== "blocked" && entry.access !== "partner-required")
+    .map((entry) => {
+      const registryEntry = byId.get(entry.registrySourceId);
+      if (!registryEntry) throw new Error(`Missing registry source for manifest entry ${entry.id}: ${entry.registrySourceId}`);
+      return applyManifest(entry, registryEntry, adapterId);
+    });
+}
+
+export function createWorkerSources(adapterId = "generic-html-v2", sourceSet: WorkerSourceSet = "first-tranche"): SourceDefinition[] {
+  return sourceSet === "all-registry" ? createIngestionCatalog(adapterId).filter((source) => source.eligible) : createFirstTrancheSources(adapterId);
 }

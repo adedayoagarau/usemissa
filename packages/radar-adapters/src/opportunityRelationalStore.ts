@@ -216,7 +216,7 @@ async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, s
   const checkedAt = source.lastCheckedAt ?? opportunity.lastCheckedAt ?? opportunity.createdAt;
   const processedAt = source.lastProcessedAt ?? source.lastSuccessfulFetchAt ?? null;
 
-  await client.query(
+  const persisted = await client.query(
     `insert into opportunities (
        id, slug, title, organization_id, source_id, status, publication_state,
        type, discipline, genres, open_date, deadline_date, deadline_timezone,
@@ -238,7 +238,6 @@ async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, s
        organization_id = excluded.organization_id,
        source_id = excluded.source_id,
        status = excluded.status,
-       publication_state = excluded.publication_state,
        type = excluded.type,
        discipline = excluded.discipline,
        genres = excluded.genres,
@@ -260,7 +259,9 @@ async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, s
        source_checked_at = excluded.source_checked_at,
        processing_succeeded_at = excluded.processing_succeeded_at,
        last_changed_at = excluded.last_changed_at,
-       updated_at = now()`,
+       updated_at = now()
+     where opportunities.publication_state <> 'published'
+     returning id`,
     [
       opportunity.id,
       slugFor(opportunity),
@@ -298,13 +299,28 @@ async function upsertOpportunity(client: PoolClient, opportunity: Opportunity, s
     ],
   );
 
+  // Published rows are owned by the review/publication lane. Radar can keep
+  // its compatibility snapshot current, but it must not rewrite the public
+  // canonical row or any of its child evidence after that handoff.
+  if (persisted.rowCount === 0) return;
+
   await client.query('delete from opportunity_eligibility_rules where opportunity_id = $1', [opportunity.id]);
-  for (const [index, rule] of opportunity.fields.eligibility.entries()) {
+  const eligibilityRules = opportunity.fields.eligibility.filter((rule) =>
+    Boolean(rule) && typeof rule.key === 'string' && rule.key.trim().length > 0 &&
+    ((typeof rule.description === 'string' && rule.description.trim().length > 0) ||
+      (typeof rule.value === 'string' && rule.value.trim().length > 0))
+  );
+  for (const [index, rule] of eligibilityRules.entries()) {
+    const description = typeof rule.description === 'string' && rule.description.trim()
+      ? rule.description.trim()
+      : typeof rule.value === 'string' && rule.value.trim()
+        ? rule.value.trim()
+        : rule.key.trim();
     await client.query(
       `insert into opportunity_eligibility_rules
          (id, opportunity_id, rule_key, description, value, certainty, sort_order)
        values ($1, $2, $3, $4, $5, $6, $7)`,
-      [`${opportunity.id}:eligibility:${index}`, opportunity.id, rule.key, rule.description, rule.value ?? null, opportunity.claimedByOrganizationId ? 'confirmed' : 'inferred', index],
+      [`${opportunity.id}:eligibility:${index}`, opportunity.id, rule.key.trim(), description, rule.value?.trim() || null, opportunity.claimedByOrganizationId ? 'confirmed' : 'inferred', index],
     );
   }
 

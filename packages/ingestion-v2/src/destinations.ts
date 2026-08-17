@@ -16,6 +16,10 @@ export interface DestinationRule {
 
 export interface DestinationCandidate {
   url: string;
+  /** Stable provider record identity, when the listing exposes one. */
+  stableId?: string;
+  /** Human-facing canonical page when evidence is fetched through an API. */
+  canonicalUrl?: string;
   title?: string;
   role?: DestinationRole;
   authority?: "source" | "destination";
@@ -42,7 +46,22 @@ export function isPotentialDestination(source: SourceDefinition, candidate: Dest
 export interface DestinationConfig {
   pageRole?: "landing" | "detail";
   rules?: DestinationRule[];
+  /** Optional anchored path expression for sites whose detail URLs are
+   * numeric or otherwise cannot be expressed safely as a substring rule. */
+  detailPathRegex?: string;
+  excludedPatterns?: string[];
   detailLimit?: number;
+  /** Maximum index links inspected to fill the smaller detailLimit with
+   * successfully reconciled candidates. */
+  scanLimit?: number;
+  /** A directory-specific detail page may point onward to the organizer's
+   * first-party page. When configured, v2 extracts only bounded external
+   * links from the article body and fetches the strongest one before review. */
+  firstPartyHop?: {
+    articleOnly?: boolean;
+    excludedHosts?: string[];
+    limit?: number;
+  };
 }
 
 export function destinationConfig(source: SourceDefinition): DestinationConfig {

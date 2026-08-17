@@ -3,22 +3,23 @@ import { createBenchmarkSources, GenericHtmlAdapter } from "./adapters/html.js";
 import { DeepSeekHtmlAdapter } from "./adapters/deepseek.js";
 import { FeedAdapter } from "./adapters/feed.js";
 import { JsonApiAdapter } from "./adapters/json.js";
-import { claimDueIngestionV2Schedules, createIngestionV2Pool, ensureIngestionV2Schema, PostgresShadowRunStore, syncIngestionV2Schedules } from "./persistence.js";
+import { assertIngestionV2SchemaReady, claimDueIngestionV2Schedules, createIngestionV2Pool, PostgresShadowRunStore, syncIngestionV2Schedules } from "./persistence.js";
 import { createPipelineWorker } from "./execution.js";
 import { createQueueBundle, V2_QUEUE_PREFIX } from "./queues.js";
 import { assertIngestionV2DatabaseRole } from "./safety.js";
-import { createWorkerSources } from "./catalog.js";
+import { createWorkerSources, type WorkerSourceSet } from "./catalog.js";
 import { startRun } from "./runs.js";
 
 assertIngestionV2DatabaseRole();
 const pool = createIngestionV2Pool();
-await ensureIngestionV2Schema(pool);
+await assertIngestionV2SchemaReady(pool);
 const queues = createQueueBundle();
 const useDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY);
 const registry = new AdapterRegistry().register(new GenericHtmlAdapter()).register(new DeepSeekHtmlAdapter()).register(new FeedAdapter()).register(new JsonApiAdapter());
 const store = new PostgresShadowRunStore(pool);
 const adapterId = useDeepSeek ? "deepseek-html-v2" : "generic-html-v2";
-const workerSources = [...createWorkerSources(adapterId), ...createBenchmarkSources(adapterId)];
+const sourceSet: WorkerSourceSet = process.env.MISSA_INGESTION_V2_SOURCE_SET === "all-registry" ? "all-registry" : "first-tranche";
+const workerSources = [...createWorkerSources(adapterId, sourceSet), ...createBenchmarkSources(adapterId)];
 await syncIngestionV2Schedules(pool, workerSources);
 const worker = createPipelineWorker(queues, registry, workerSources, store, { promotionPool: pool });
 
@@ -28,7 +29,7 @@ async function scheduleDueSources(): Promise<void> {
   if (scheduling) return;
   scheduling = true;
   try {
-    const dueIds = await claimDueIngestionV2Schedules(pool, 25);
+    const dueIds = await claimDueIngestionV2Schedules(pool, 25, workerSources.map((source) => source.id));
     for (const sourceId of dueIds) {
       const source = sourceById.get(sourceId);
       if (source) await startRun(queues, source, { trigger: "scheduled", mode: process.env.MISSA_INGESTION_V2_PROMOTE_APPROVED === "1" ? "promote" : "shadow" });
@@ -47,7 +48,7 @@ queues.connection.on("error", (error) => console.error("[missa-ingestion-v2] red
 queues.events.on("completed", ({ jobId }) => console.log(`[missa-ingestion-v2] shadow run ${jobId} completed`));
 queues.events.on("failed", ({ jobId, failedReason }) => console.error(`[missa-ingestion-v2] shadow run ${jobId} failed: ${failedReason}`));
 
-console.log(`missa-ingestion-v2 worker listening in shadow mode; adapter=${adapterId}; sources=${workerSources.length}; queue=${V2_QUEUE_PREFIX}`);
+console.log(`missa-ingestion-v2 worker listening in shadow mode; adapter=${adapterId}; sourceSet=${sourceSet}; sources=${workerSources.length}; queue=${V2_QUEUE_PREFIX}`);
 
 async function shutdown(signal: string): Promise<void> {
   console.log(`missa-ingestion-v2 received ${signal}; shutting down`);

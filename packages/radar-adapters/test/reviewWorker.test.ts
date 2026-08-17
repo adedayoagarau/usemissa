@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { reviewCandidate, type ReviewCandidate } from "../src/reviewWorker.js";
+import { isDurablePublicationGateError, reviewCandidate, type ReviewCandidate } from "../src/reviewWorker.js";
 
 function candidate(overrides: Partial<ReviewCandidate> = {}): ReviewCandidate {
   return {
@@ -54,4 +54,10 @@ test("review requires explicit destination reconciliation and approved content",
   assert.match(result.reasons.join(" "), /content review/i);
   assert.equal((result.checks.gates as Record<string, string>).authorityDestination, "review");
   assert.equal((result.checks.gates as Record<string, string>).completeness, "review");
+});
+
+test("recognizes only the durable publication constraint as a human-review conflict", () => {
+  assert.equal(isDurablePublicationGateError({ code: "23514", message: "Publication gates failed for opportunity opp_test" }), true);
+  assert.equal(isDurablePublicationGateError({ code: "23514", message: "A different check constraint failed" }), false);
+  assert.equal(isDurablePublicationGateError(new Error("Publication gates failed for opportunity opp_test")), false);
 });

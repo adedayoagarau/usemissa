@@ -24,4 +24,4 @@ COPY --from=build /app/packages/radar-engine/dist ./packages/radar-engine/dist
 COPY --from=build /app/packages/ingestion-v2/package.json ./packages/ingestion-v2/package.json
 COPY --from=build /app/packages/ingestion-v2/dist ./packages/ingestion-v2/dist
 
-CMD ["node", "packages/ingestion-v2/dist/src/worker.js"]
+CMD ["node", "packages/ingestion-v2/dist/src/postgres-worker.js"]

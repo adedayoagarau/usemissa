@@ -1,7 +1,7 @@
 import pg, { type Pool as PgPool, type PoolClient } from "pg";
-import { classifyIngestionFailure, type ExtractionResult, type IngestionFailureCode, type IngestionRun, type PageSnapshot, type SourceDefinition } from "./contracts.js";
+import { classifyIngestionFailure, INGESTION_V2_VERSION, type ExtractionResult, type IngestionFailureCode, type IngestionRun, type PageSnapshot, type SourceDefinition } from "./contracts.js";
 import type { PublisherReview } from "./publisher.js";
-import type { ShadowArtifact, ShadowRunStore } from "./execution.js";
+import { UNCHANGED_ROOT_WARNING, type ShadowArtifact, type ShadowRunStore } from "./execution.js";
 
 const { Pool } = pg;
 
@@ -75,6 +75,41 @@ export async function ensureIngestionV2Schema(pool: PgPool): Promise<void> {
   await pool.query(ingestionV2Schema);
 }
 
+const REQUIRED_INGESTION_V2_TABLES = [
+  "missa_ingestion_v2_runs",
+  "missa_ingestion_v2_snapshots",
+  "missa_ingestion_v2_extractions",
+  "missa_ingestion_v2_artifacts",
+  "missa_ingestion_v2_source_schedules",
+] as const;
+
+/** Read-only startup check. Long-running workers must never apply DDL implicitly. */
+export async function assertIngestionV2SchemaReady(pool: PgPool): Promise<void> {
+  const result = await pool.query<{ table_name: string; relation: string | null }>(
+    `select table_name, to_regclass(table_name)::text as relation
+     from unnest($1::text[]) as required(table_name)`,
+    [[...REQUIRED_INGESTION_V2_TABLES]],
+  );
+  const missing = result.rows.filter((row) => row.relation === null).map((row) => row.table_name);
+  if (missing.length) throw new Error(`Ingestion v2 schema is not ready; missing ${missing.join(", ")}. Run the explicitly gated schema:ensure command first.`);
+  const columns = await pool.query<{ table_name: string; column_name: string }>(
+    `select required.table_name, required.column_name
+     from (values
+       ('missa_ingestion_v2_runs', 'failure_code'),
+       ('missa_ingestion_v2_snapshots', 'is_root'),
+       ('missa_ingestion_v2_artifacts', 'quality'),
+       ('missa_ingestion_v2_artifacts', 'publisher'),
+       ('missa_ingestion_v2_source_schedules', 'next_run_at')
+     ) as required(table_name, column_name)
+     left join information_schema.columns deployed
+       on deployed.table_schema = current_schema()
+      and deployed.table_name = required.table_name
+      and deployed.column_name = required.column_name
+     where deployed.column_name is null`,
+  );
+  if (columns.rows.length) throw new Error(`Ingestion v2 schema is not ready; missing ${columns.rows.map((row) => `${row.table_name}.${row.column_name}`).join(", ")}. Run the explicitly gated schema:ensure command first.`);
+}
+
 export async function syncIngestionV2Schedules(pool: PgPool, sources: SourceDefinition[]): Promise<void> {
   for (const source of sources) {
     const schedule = source.schedule;
@@ -88,7 +123,8 @@ export async function syncIngestionV2Schedules(pool: PgPool, sources: SourceDefi
   }
 }
 
-export async function claimDueIngestionV2Schedules(pool: PgPool, limit = 25): Promise<string[]> {
+export async function claimDueIngestionV2Schedules(pool: PgPool, limit = 25, sourceIds?: readonly string[]): Promise<string[]> {
+  if (sourceIds?.length === 0) return [];
   const client = await pool.connect();
   try {
     await client.query("begin");
@@ -96,7 +132,8 @@ export async function claimDueIngestionV2Schedules(pool: PgPool, limit = 25): Pr
       `select source_id from missa_ingestion_v2_source_schedules
        where lane in ('core-daily','scheduled') and (next_run_at is null or next_run_at <= now())
        and (open_from is null or open_from <= now()) and (open_until is null or open_until >= now())
-       order by next_run_at nulls first, source_id limit $1 for update skip locked`, [Math.min(Math.max(limit, 1), 100)]);
+       and ($2::text[] is null or source_id = any($2::text[]))
+       order by next_run_at nulls first, source_id limit $1 for update skip locked`, [Math.min(Math.max(limit, 1), 100), sourceIds ? [...sourceIds] : null]);
     for (const row of rows.rows) {
       await client.query(
         `update missa_ingestion_v2_source_schedules set last_enqueued_at=now(), next_run_at=now() + (cadence_hours || ' hours')::interval, updated_at=now() where source_id=$1`,
@@ -113,12 +150,65 @@ export async function claimDueIngestionV2Schedules(pool: PgPool, limit = 25): Pr
   }
 }
 
+export interface IngestionV2SourceRefreshHistory {
+  consecutiveUnchangedRuns: number;
+  consecutiveFailures: number;
+}
+
+export async function readIngestionV2SourceRefreshHistory(pool: PgPool, sourceId: string, limit = 25): Promise<IngestionV2SourceRefreshHistory> {
+  const result = await pool.query<{ status: IngestionRun["status"]; warnings: unknown }>(
+    `select r.status, coalesce(a.warnings, '[]'::jsonb) as warnings
+     from missa_ingestion_v2_runs r
+     left join missa_ingestion_v2_artifacts a on a.run_id = r.id
+     where r.source_id = $1 and r.status in ('completed', 'failed')
+     order by r.created_at desc, r.id desc
+     limit $2`,
+    [sourceId, Math.min(Math.max(Math.trunc(limit), 1), 100)],
+  );
+  let consecutiveFailures = 0;
+  for (const row of result.rows) {
+    if (row.status !== "failed") break;
+    consecutiveFailures += 1;
+  }
+  let consecutiveUnchangedRuns = 0;
+  for (const row of result.rows) {
+    const warnings = Array.isArray(row.warnings) ? row.warnings : [];
+    if (row.status !== "completed" || !warnings.includes(UNCHANGED_ROOT_WARNING)) break;
+    consecutiveUnchangedRuns += 1;
+  }
+  return { consecutiveUnchangedRuns, consecutiveFailures };
+}
+
+export async function rescheduleIngestionV2Source(pool: PgPool, sourceId: string, cadenceHours: number): Promise<void> {
+  const boundedCadenceHours = Math.min(Math.max(Math.trunc(cadenceHours), 1), 24 * 30);
+  const result = await pool.query(
+    `update missa_ingestion_v2_source_schedules
+     set next_run_at = now() + ($2::integer * interval '1 hour'), updated_at = now()
+     where source_id = $1`,
+    [sourceId, boundedCadenceHours],
+  );
+  if (result.rowCount !== 1) throw new Error(`Unknown ingestion v2 schedule: ${sourceId}`);
+}
+
 function json(value: unknown): string {
   return JSON.stringify(value === undefined ? null : value);
 }
 
 export class PostgresShadowRunStore implements ShadowRunStore {
   constructor(private readonly pool: PgPool) {}
+
+  async latestRootContentHash(sourceId: string, processingVersion: string): Promise<string | undefined> {
+    const result = await this.pool.query<{ content_hash: string }>(
+      `select s.content_hash from missa_ingestion_v2_snapshots s
+       join missa_ingestion_v2_runs r on r.id = s.run_id
+       join missa_ingestion_v2_artifacts a on a.run_id = r.id
+       where s.source_id = $1 and s.is_root = true and r.status = 'completed'
+         and a.publisher->>'pipelineVersion' = $2
+       order by s.fetched_at desc, s.id desc limit 1`,
+      [sourceId, processingVersion],
+    );
+    return result.rows[0]?.content_hash;
+  }
 
   async save(artifact: ShadowArtifact): Promise<void> {
     const client = await this.pool.connect();
@@ -204,6 +294,27 @@ export class PostgresShadowRunStore implements ShadowRunStore {
       [run.id, run.sourceId, run.trigger, run.mode, run.status, run.createdAt],
     );
   }
+}
+
+export async function readRecentCandidateArtifacts(
+  pool: PgPool,
+  sourceId: string,
+  limit = 2,
+): Promise<ShadowArtifact[]> {
+  const runs = await pool.query<{ id: string }>(
+    `select r.id from missa_ingestion_v2_runs r
+     join missa_ingestion_v2_artifacts a on a.run_id = r.id
+     where r.source_id = $1
+       and r.status = 'completed'
+       and a.publisher->>'pipelineVersion' = $2
+       and jsonb_array_length(coalesce(a.publisher->'candidateReviews', '[]'::jsonb)) > 0
+     order by r.created_at desc, r.id desc
+     limit $3`,
+    [sourceId, INGESTION_V2_VERSION, Math.min(Math.max(Math.trunc(limit), 2), 10)],
+  );
+  const store = new PostgresShadowRunStore(pool);
+  const artifacts = await Promise.all(runs.rows.map((row) => store.get(row.id)));
+  return artifacts.filter((artifact): artifact is ShadowArtifact => Boolean(artifact)).reverse();
 }
 
 export function createIngestionV2Pool(databaseUrl = process.env.DATABASE_URL): PgPool {

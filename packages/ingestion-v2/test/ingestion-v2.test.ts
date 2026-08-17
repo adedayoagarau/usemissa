@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createIngestionCatalog, createRun, createSnapshotId, evaluatePromotionGate, executeShadowPipeline, redisOptionsFromUrl, robotsAllowsPath, reviewForPublication, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards, writeWithDeepSeek } from "../src/index.js";
+import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, INGESTION_V2_VERSION, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createIngestionCatalog, createRun, createSnapshotId, evaluateCandidateReplayGate, evaluatePromotionGate, executeShadowPipeline, handoffApprovedCandidate, redisOptionsFromUrl, robotsAllowsPath, reviewForPublication, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards, writeWithDeepSeek } from "../src/index.js";
 
 test("creates shadow runs without publishing mode", () => {
   const source = createBenchmarkSources()[0]!;
@@ -134,6 +134,54 @@ test("extracts Grants.gov nested API records and preserves POST detail requests"
   const result = await adapter.extract({ ...context, snapshot }, snapshot);
   assert.equal(result.fields.some((field) => field.fieldName === "organization"), true);
   assert.deepEqual(result.candidateLinks[0]?.request, { method: "POST", body: { opportunityId: "ABC123" } });
+  assert.equal(result.candidateLinks[0]?.stableId, "ABC123");
+  assert.equal(result.candidateLinks[0]?.canonicalUrl, "https://www.grants.gov/search-results-detail/ABC123");
+  assert.equal(result.fields[0]?.provenance.recordId, "ABC123");
+});
+
+test("extracts a Grants.gov detail response against the detail schema", async () => {
+  const root = createBenchmarkSources().find((candidate) => candidate.id === "benchmark-grants-gov-arts")!;
+  const source = {
+    ...root,
+    url: "https://api.grants.gov/v1/api/fetchOpportunity",
+    config: {
+      ...root.config,
+      canonicalUrl: "https://www.grants.gov/search-results-detail/ABC123",
+      detailRequest: {
+        ...(root.config.detailRequest as object),
+        detailRecordPath: "data",
+        detailFieldMap: {
+          id: "id",
+          title: "opportunityTitle",
+          organization: "synopsis.agencyName",
+          description: "synopsis.synopsisDesc",
+          deadline: ["originalDueDate", "synopsis.responseDate"],
+        },
+      },
+      destination: { pageRole: "detail" as const },
+    },
+  };
+  const adapter = new JsonApiAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = {
+    id: "snap_grants_detail",
+    runId: context.run.id,
+    sourceId: source.id,
+    url: source.url,
+    finalUrl: source.url,
+    fetchedAt: new Date().toISOString(),
+    statusCode: 200,
+    contentType: "application/json",
+    contentHash: "hash",
+    html: JSON.stringify({ data: { id: "ABC123", opportunityTitle: "Arts grant", originalDueDate: "2026-12-31", synopsis: { agencyName: "National Arts Agency", synopsisDesc: "Supports new work." } } }),
+    rendered: false,
+  };
+
+  const result = await adapter.extract({ ...context, snapshot }, snapshot);
+
+  assert.deepEqual(result.fields.map((field) => field.fieldName), ["title", "organization", "description", "deadline"]);
+  assert.equal(result.fields[0]?.provenance.sourceUrl, "https://www.grants.gov/search-results-detail/ABC123");
+  assert.equal(result.candidateLinks.length, 0);
 });
 
 test("rejects non-success API responses as typed source failures", async () => {
@@ -209,6 +257,94 @@ test("summarizes a benchmark suite with per-sample fail-closed thresholds", () =
   assert.equal(summary.minimumExactAgreement, 1);
 });
 
+test("candidate replay gate requires two exact, deadline-complete, non-publishing passes", () => {
+  const identity = { title: "Example Prize", organization: "Example Arts", deadline: "2026-12-31", canonicalUrl: "https://example.test/prize", key: "example prize::example arts" };
+  const field = { fieldName: "deadline", rawValue: "2026-12-31", normalizedValue: "2026-12-31", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: "https://example.test/prize", snapshotId: "snap" } };
+  const artifact = (runId: string) => ({
+    run: { id: runId, sourceId: "source", trigger: "shadow" as const, mode: "shadow" as const, status: "completed" as const, createdAt: "2026-08-01T00:00:00.000Z" },
+    snapshot: { id: `snap_${runId}`, runId, sourceId: "source", url: "https://example.test", finalUrl: "https://example.test", fetchedAt: "2026-08-01T00:00:00.000Z", statusCode: 200, contentType: "text/html", contentHash: "hash", html: "", rendered: false },
+    relatedSnapshots: [],
+    extraction: { fields: [field], candidateLinks: [], warnings: [] },
+    quality: { decision: "review" as const, score: 1, reasons: [] },
+    publisher: {
+      decision: "review" as const,
+      model: "deterministic" as const,
+      publicWrite: false as const,
+      rationale: [],
+      pipelineVersion: INGESTION_V2_VERSION,
+      reconciliation: { decision: "pass" as const, authoritativeUrl: identity.canonicalUrl, sourceIdentity: identity, destinationIdentity: identity, reasons: [] },
+      candidateReviews: [{
+        candidate: { url: identity.canonicalUrl, canonicalUrl: identity.canonicalUrl, stableId: "one" },
+        snapshotId: `snap_${runId}`,
+        extraction: { fields: [field], candidateLinks: [], warnings: [] },
+        quality: { decision: "review" as const, score: 1, reasons: [] },
+        review: { decision: "approve" as const, model: "deterministic" as const, publicWrite: false as const, rationale: [], pipelineVersion: INGESTION_V2_VERSION, reconciliation: { decision: "pass" as const, authoritativeUrl: identity.canonicalUrl, sourceIdentity: identity, destinationIdentity: identity, reasons: [] } },
+      }],
+    },
+    published: false as const,
+  });
+
+  const gateNow = new Date("2026-08-01T00:00:00.000Z");
+  const incomplete = evaluateCandidateReplayGate([artifact("one")], ["source"], 2, { now: gateNow });
+  assert.equal(incomplete.eligible, false);
+  assert.match(incomplete.sources[0]?.reasons[0] ?? "", /requires 2 complete passes/);
+  const passing = evaluateCandidateReplayGate([artifact("one"), artifact("two")], ["source"], 2, { now: gateNow });
+  assert.equal(passing.eligible, true);
+  assert.equal(passing.publicWrite, false);
+  assert.equal(passing.sources[0]?.deadlineCoverage, 1);
+  const duplicate = evaluateCandidateReplayGate([artifact("one"), artifact("two")], ["source"], 2, { now: gateNow, existingCanonicalUrls: new Set([identity.canonicalUrl]) });
+  assert.equal(duplicate.eligible, true);
+  assert.equal(duplicate.sources[0]?.duplicateCount, 1);
+  assert.equal(duplicate.sources[0]?.newCandidateCount, 0);
+
+  const modelVariant = artifact("two");
+  modelVariant.publisher.candidateReviews[0]!.extraction.fields.push({
+    fieldName: "description",
+    rawValue: "A paraphrase that can vary between deterministic-temperature model calls.",
+    normalizedValue: "A paraphrase that can vary between deterministic-temperature model calls.",
+    confidence: 0.65,
+    provenance: { adapterId: "deepseek-html-v2", method: "deepseek-json-shadow", sourceUrl: identity.canonicalUrl, snapshotId: "snap_two" },
+  });
+  const modelStable = evaluateCandidateReplayGate([artifact("one"), modelVariant], ["source"], 2, { now: gateNow });
+  assert.equal(modelStable.sources[0]?.stable, true);
+  assert.equal(modelStable.eligible, true);
+});
+
+test("candidate handoff reports an exact canonical duplicate without rewriting it", async () => {
+  const source = createBenchmarkSources()[0]!;
+  const url = "https://example.test/existing-prize";
+  const identity = { title: "Existing Prize", organization: "Example Arts", deadline: "2026-12-31", canonicalUrl: url, key: "existing" };
+  const fields = [
+    { fieldName: "title", rawValue: "Existing Prize", normalizedValue: "Existing Prize", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: url, snapshotId: "snap" } },
+    { fieldName: "organization", rawValue: "Example Arts", normalizedValue: "Example Arts", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: url, snapshotId: "snap" } },
+    { fieldName: "deadline", rawValue: "2026-12-31", normalizedValue: "2026-12-31", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: url, snapshotId: "snap" } },
+  ];
+  const queries: string[] = [];
+  const queryValues: unknown[][] = [];
+  const client = {
+    query: async (text: string, values: unknown[] = []) => {
+      queries.push(text);
+      queryValues.push(values);
+      if (text.includes("select o.id, o.publication_state")) return { rows: [{ id: "opp_existing", publication_state: "published" }], rowCount: 1 };
+      return { rows: [], rowCount: null };
+    },
+    release: () => undefined,
+  };
+  const pool = { connect: async () => client };
+  const review = { decision: "approve" as const, model: "deterministic" as const, publicWrite: false as const, rationale: [], pipelineVersion: INGESTION_V2_VERSION, reconciliation: { decision: "pass" as const, authoritativeUrl: url, sourceIdentity: identity, destinationIdentity: identity, reasons: [] } };
+  const candidate = { candidate: { url, canonicalUrl: url, stableId: "existing" }, snapshotId: "snap", extraction: { fields, candidateLinks: [], warnings: [] }, quality: { decision: "review" as const, score: 1, reasons: [] }, review };
+  const artifact = { run: { id: "run", sourceId: source.id, trigger: "shadow" as const, mode: "shadow" as const, status: "completed" as const, createdAt: "2026-08-01T00:00:00.000Z" }, snapshot: { id: "snap", runId: "run", sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: "2026-08-01T00:00:00.000Z", statusCode: 200, contentType: "text/html", contentHash: "hash", html: "", rendered: false }, extraction: { fields, candidateLinks: [], warnings: [] }, publisher: { ...review, candidateReviews: [candidate] }, published: false as const };
+
+  const result = await handoffApprovedCandidate(pool as never, source, artifact, candidate);
+
+  assert.deepEqual(result, { opportunityId: "opp_existing", status: "duplicate-existing", publicationState: "published" });
+  assert.equal(queries.some((query) => query.includes("insert into opportunities")), false);
+  const duplicateQueryValues = queryValues[queries.findIndex((query) => query.includes("select o.id, o.publication_state"))]!;
+  assert.deepEqual(duplicateQueryValues[2], ["existingprize"]);
+  assert.deepEqual(duplicateQueryValues[4], ["examplearts"]);
+  assert.equal(queries.some((query) => query.includes("pg_advisory_xact_lock")), true);
+});
+
 test("treats Poets & Writers as a landing page and classifies detail destinations", async () => {
   const source = createBenchmarkSources()[0]!;
   const adapter = new GenericHtmlAdapter();
@@ -237,6 +373,20 @@ test("does not classify nested opportunity URLs inside social-share query string
   const context = { run: createRun(source), source };
   const snapshot = { id: "snap_social", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: '<a href="https://www.facebook.com/sharer.php?u=https%3A//www.pw.org/writing_contests/example">Share</a>', rendered: false };
   return adapter.extract({ ...context, snapshot }, snapshot).then((result) => assert.equal(result.candidateLinks.length, 0));
+});
+
+test("classifies numeric detail routes only through an anchored source rule", async () => {
+  const source = {
+    ...createBenchmarkSources()[0]!,
+    url: "https://directory.test/competitions",
+    config: { destination: { pageRole: "landing" as const, detailLimit: 5, detailPathRegex: "^/\\d+/[a-z0-9-]+$" } },
+  };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = { id: "snap_numeric", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "hash", html: '<nav><a href="/about/2026">About 2026</a></nav><main><a href="/1182267/tramod-awards-2026">TraMod Awards</a></main>', rendered: false };
+  const result = await adapter.extract({ ...context, snapshot }, snapshot);
+  assert.deepEqual(result.candidateLinks.map((candidate) => candidate.url), ["https://directory.test/1182267/tramod-awards-2026"]);
+  assert.equal(result.candidateLinks[0]?.authority, "destination");
 });
 
 test("uses DeepSeek JSON output as shadow evidence", async () => {
@@ -296,6 +446,87 @@ test("fetches classified detail destinations as related shadow evidence", async 
     assert.equal(artifact.relatedSnapshots?.length, 1);
     assert.equal(artifact.relatedSnapshots?.[0]?.url, "https://example.test/writing_contests/example");
     assert.equal(artifact.extraction.fields.some((field) => field.rawValue === "Example Contest"), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("follows a bounded directory listing to the organizer first-party page", async () => {
+  const source = {
+    ...createBenchmarkSources()[0]!,
+    id: "newpages-test",
+    name: "NewPages Calls and Contests",
+    url: "https://www.newpages.test/classifieds-fee/all/",
+    config: {
+      destination: {
+        pageRole: "landing" as const,
+        detailLimit: 5,
+        rules: [{ role: "detail" as const, patterns: ["/guide-submission-opportunities/"], authority: "destination" as const }],
+        firstPartyHop: { articleOnly: true, limit: 1, excludedHosts: ["npofficespace.test"] },
+      },
+    },
+  };
+  const registry = new AdapterRegistry().register(new GenericHtmlAdapter());
+  const store = new MemoryShadowRunStore();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nAllow: /", { status: 200 });
+    if (url.endsWith("/classifieds-fee/all/")) {
+      return new Response('<nav><a href="/submission-opportunities/">Submit</a></nav><main><a href="/guide-submission-opportunities/example-prize/">Example Prize</a></main>', { status: 200, headers: { "content-type": "text/html" } });
+    }
+    if (url.endsWith("/guide-submission-opportunities/example-prize/")) {
+      return new Response('<main><h1>Example Prize</h1><p>Deadline: October 1, 2026</p><a href="https://npofficespace.test/listing-request/">Submit listing</a><a href="https://organizer.test/contests/example-prize/">Official contest page</a></main>', { status: 200, headers: { "content-type": "text/html" } });
+    }
+    return new Response("<main><h1>Example Prize</h1><p>Applications close October 1, 2026.</p></main>", { status: 200, headers: { "content-type": "text/html" } });
+  }) as typeof fetch;
+  try {
+    const artifact = await executeShadowPipeline(registry, source, shadowJob(source, { runId: "ingv2_first_party_hop" }), store);
+    assert.equal(artifact.relatedSnapshots?.length, 2);
+    assert.equal(artifact.publisher?.candidateReviews?.length, 1);
+    assert.equal(artifact.publisher?.candidateReviews?.[0]?.candidate.url, "https://organizer.test/contests/example-prize/");
+    assert.equal(artifact.publisher?.candidateReviews?.[0]?.review.reconciliation.authoritativeUrl, "https://organizer.test/contests/example-prize/");
+    assert.equal(artifact.publisher?.candidateReviews?.[0]?.extraction.fields.some((field) => field.fieldName === "deadline"), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("keeps multi-opportunity publisher decisions scoped to each destination", async () => {
+  const source = {
+    ...createBenchmarkSources()[0]!,
+    url: "https://example.test/grants",
+    config: {
+      destination: {
+        pageRole: "landing" as const,
+        detailLimit: 2,
+        rules: [{ role: "detail" as const, patterns: ["/writing_contests/"], authority: "destination" as const }],
+      },
+    },
+  };
+  const registry = new AdapterRegistry().register(new GenericHtmlAdapter());
+  const store = new MemoryShadowRunStore();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async (input) => {
+    const url = String(input);
+    if (url.endsWith("/robots.txt")) return new Response("User-agent: *\nAllow: /", { status: 200 });
+    if (url.endsWith("/grants")) return new Response('<a href="/writing_contests/one">First Prize</a><a href="/writing_contests/two">Second Prize</a>', { status: 200, headers: { "content-type": "text/html" } });
+    if (url.endsWith("/one")) return new Response("<h1>First Prize</h1><p>Deadline: 2026-10-01</p>", { status: 200, headers: { "content-type": "text/html" } });
+    return new Response("<h1>Second Prize</h1><p>Deadline: 2026-11-01</p>", { status: 200, headers: { "content-type": "text/html" } });
+  }) as typeof fetch;
+  try {
+    const artifact = await executeShadowPipeline(registry, source, shadowJob(source, { runId: "ingv2_candidate_scope" }), store);
+    assert.equal(artifact.publisher?.decision, "review");
+    assert.equal(artifact.publisher?.candidateReviews?.length, 2);
+    assert.deepEqual(
+      artifact.publisher?.candidateReviews?.map((candidate) => candidate.extraction.fields.find((field) => field.fieldName === "title")?.normalizedValue),
+      ["First Prize", "Second Prize"],
+    );
+    assert.deepEqual(
+      artifact.publisher?.candidateReviews?.map((candidate) => candidate.review.reconciliation.authoritativeUrl),
+      ["https://example.test/writing_contests/one", "https://example.test/writing_contests/two"],
+    );
+    assert.match(artifact.publisher?.rationale[0] ?? "", /2 distinct opportunity candidates/);
   } finally {
     globalThis.fetch = originalFetch;
   }

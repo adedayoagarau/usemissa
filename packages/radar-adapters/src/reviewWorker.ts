@@ -133,6 +133,12 @@ export function reviewCandidate(candidate: ReviewCandidate): { decision: ReviewD
   return evaluatePublicationRubric(candidate);
 }
 
+export function isDurablePublicationGateError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  return candidate.code === "23514" && typeof candidate.message === "string" && candidate.message.includes("Publication gates failed for opportunity");
+}
+
 async function writeHandoff(client: PoolClient, runId: string, opportunityId: string, toAgent: string, kind: string, status: string, payload: Record<string, unknown>): Promise<void> {
   await client.query(
     `insert into radar_agent_handoffs (id, run_id, opportunity_id, from_agent, to_agent, kind, status, payload)
@@ -140,6 +146,29 @@ async function writeHandoff(client: PoolClient, runId: string, opportunityId: st
      on conflict (run_id, opportunity_id, to_agent, kind) do update set status = excluded.status, payload = excluded.payload, completed_at = case when excluded.status = 'completed' then now() else null end`,
     [randomUUID(), runId, opportunityId, toAgent, kind, status, JSON.stringify(payload)],
   );
+}
+
+async function routeDurableGateConflictToHuman(pool: Pool, runId: string, job: ReviewJob, result: ReturnType<typeof reviewCandidate>, error: unknown): Promise<void> {
+  const message = error instanceof Error ? error.message : String(error);
+  const reasons = [...result.reasons, "The durable database publication gate requires human review."];
+  const checks = { ...result.checks, durablePublicationGate: "review" };
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query(
+      `insert into radar_review_decisions (id, job_id, opportunity_id, run_id, decision, score, reasons, checks)
+       values ($1, $2, $3, $4, 'needs-human', $5, $6::jsonb, $7::jsonb)`,
+      [randomUUID(), job.id, job.opportunityId, runId, result.score, JSON.stringify(reasons), JSON.stringify(checks)],
+    );
+    await client.query("update radar_review_jobs set status = 'needs-human', last_error = $2, lease_until = null, updated_at = now() where id = $1", [job.id, message.slice(0, 500)]);
+    await writeHandoff(client, runId, job.opportunityId, "human-review", "durable-publication-gate", "queued", { score: result.score, reasons, checks });
+    await client.query("commit");
+  } catch (fallbackError) {
+    await client.query("rollback");
+    throw fallbackError;
+  } finally {
+    client.release();
+  }
 }
 
 async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<ReviewDecision> {
@@ -173,6 +202,14 @@ async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<Re
     return result.decision;
   } catch (error) {
     await client.query("rollback");
+    if (isDurablePublicationGateError(error)) {
+      try {
+        await routeDurableGateConflictToHuman(pool, runId, job, result, error);
+        return "needs-human";
+      } catch {
+        // Fall through to the bounded retry path if the human-review handoff fails.
+      }
+    }
     await pool.query("update radar_review_jobs set status = 'failed', last_error = $2, next_attempt_at = now() + interval '10 minutes', lease_until = null, updated_at = now() where id = $1", [job.id, error instanceof Error ? error.message.slice(0, 500) : String(error)]);
     return "error";
   } finally {
