@@ -7,7 +7,31 @@ import {
   SESSION_COOKIE,
 } from "@/lib/auth";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
-import { getRateLimiter, readClientIp, SIGNUP_IP_LIMIT, tooManyRequests } from "@/lib/rate-limit";
+import {
+  getRateLimiter,
+  readClientIp,
+  SIGNUP_IP_LIMIT,
+  tooManyRequests,
+} from "@/lib/rate-limit";
+import {
+  FIRST_SAVE_INTENT_COOKIE,
+  verifyFirstSaveIntent,
+} from "@/lib/firstSaveIntent";
+
+function cookieValue(request: Request): string | undefined {
+  const encoded = request.headers
+    .get("cookie")
+    ?.split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${FIRST_SAVE_INTENT_COOKIE}=`))
+    ?.slice(FIRST_SAVE_INTENT_COOKIE.length + 1);
+  if (!encoded) return undefined;
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return undefined;
+  }
+}
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -45,9 +69,14 @@ export async function POST(request: Request) {
     );
   }
   const normalizedName = displayName.trim();
-  if (!normalizedName || normalizedName.length > 120) {
+  const firstSaveIntent = verifyFirstSaveIntent(cookieValue(request));
+  if ((!normalizedName && !firstSaveIntent) || normalizedName.length > 120) {
     return NextResponse.json(
-      { error: "Use a name between 1 and 120 characters." },
+      {
+        error: firstSaveIntent
+          ? "Use no more than 120 characters for your name."
+          : "Use a name between 1 and 120 characters.",
+      },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -63,18 +92,30 @@ export async function POST(request: Request) {
    * to reject and cannot spend a real visitor's window on their behalf.
    */
   const limiter = await getRateLimiter();
-  const decision = await limiter.consume(SIGNUP_IP_LIMIT, readClientIp(request));
+  const decision = await limiter.consume(
+    SIGNUP_IP_LIMIT,
+    readClientIp(request),
+  );
   if (!decision.allowed) {
-    return tooManyRequests(decision, "Too many sign up attempts. Please wait before trying again.");
+    return tooManyRequests(
+      decision,
+      "Too many sign up attempts. Please wait before trying again.",
+    );
   }
 
   const engine = await getEngine();
   let account;
   try {
     ({ account } = engine.signUp(email, password, normalizedName));
-  } catch {
+  } catch (err) {
+    const accountExists =
+      err instanceof Error &&
+      err.message.toLowerCase().includes("already exists");
+    const message = accountExists
+      ? "An account already uses this email. Log in instead."
+      : "We could not create your account. Check your details and try again.";
     return NextResponse.json(
-      { error: "We could not create your account. Check your details and try again." },
+      { error: message, ...(accountExists ? { code: "account_exists" } : {}) },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }

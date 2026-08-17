@@ -1,67 +1,169 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { saveCanonicalOpportunityToTracker } from "@missa/radar-adapters";
+
 import { getSessionAccount } from "@/lib/auth";
-import { getEngine, persistRadar } from "@/lib/engine";
+import { getOpportunityRepository } from "@/lib/opportunityRepository";
+import {
+  firstSaveMaterialFingerprint,
+  firstSaveMaterialSnapshot,
+  firstSaveNextAction,
+  createFirstSaveCompletionToken,
+} from "@/lib/firstSaveIntent";
+import { trackFirstSaveEvent } from "@/lib/firstSaveAnalytics";
+import {
+  opportunityCanBeSaved,
+  saveOpportunityForAccount,
+} from "@/lib/saveOpportunityToTracker";
+import type { FirstSaveReceipt } from "@/lib/firstSaveTypes";
+
+const noStore = { "Cache-Control": "no-store" };
 
 export async function POST(request: Request) {
   const session = await getSessionAccount(request.headers.get("cookie"));
-  if (!session)
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
-  if (!session.account.userId) {
+  if (!session) {
     return NextResponse.json(
-      { error: "Profile is not available for this account" },
-      { status: 409 },
+      { error: "Not authenticated" },
+      { status: 401, headers: noStore },
+    );
+  }
+  const postgresTracker =
+    process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" &&
+    Boolean(process.env.DATABASE_URL);
+  if (!session.account.userId && !postgresTracker) {
+    return NextResponse.json(
+      {
+        error:
+          "Your account is available, but Tracker is not ready. Try again.",
+      },
+      { status: 409, headers: noStore },
     );
   }
 
   const body = await request.json().catch(() => null);
-  if (!body || typeof body.opportunityId !== "string") {
+  if (
+    !body ||
+    typeof body.opportunityId !== "string" ||
+    !/^[A-Za-z0-9_-]{1,200}$/u.test(body.opportunityId)
+  ) {
     return NextResponse.json(
-      { error: "opportunityId required" },
-      { status: 400 },
+      { error: "Choose an Opportunity to save." },
+      { status: 400, headers: noStore },
     );
   }
 
-  if (
-    process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" &&
-    process.env.DATABASE_URL
-  ) {
-    const tracked = await saveCanonicalOpportunityToTracker(
-      process.env.DATABASE_URL,
-      session.account.id,
+  const requestedJourneyId =
+    typeof body.journeyId === "string" &&
+    /^[0-9a-f-]{36}$/iu.test(body.journeyId)
+      ? body.journeyId
+      : undefined;
+  const journeyId = requestedJourneyId ?? randomUUID();
+  try {
+    const opportunity = await getOpportunityRepository().getById(
       body.opportunityId,
     );
-    if (!tracked)
+    if (!opportunity) {
       return NextResponse.json(
         { error: "Opportunity not found" },
-        { status: 404 },
+        { status: 404, headers: noStore },
       );
-    return NextResponse.json(tracked, {
-      status: tracked.status === "created" ? 201 : 200,
-    });
-  }
+    }
+    if (!opportunityCanBeSaved(opportunity)) {
+      return NextResponse.json(
+        {
+          error:
+            "This Opportunity is closed. It was not added to your Tracker.",
+        },
+        { status: 409, headers: noStore },
+      );
+    }
 
-  const engine = await getEngine();
-  if (!engine.store.opportunities.has(body.opportunityId)) {
+    const snapshotFingerprint = firstSaveMaterialFingerprint(
+      firstSaveMaterialSnapshot(opportunity),
+    );
+    await Promise.all([
+      trackFirstSaveEvent({
+        eventName: "discovery.opportunity_save_intent_created",
+        journeyId,
+        transition: "authenticated-save-intent-created",
+        opportunityId: opportunity.id,
+        accountId: session.account.id,
+        snapshotFingerprint,
+      }),
+      trackFirstSaveEvent({
+        eventName: "journey.intent_revalidated",
+        journeyId,
+        transition: "authenticated-intent-revalidated",
+        opportunityId: opportunity.id,
+        accountId: session.account.id,
+        snapshotFingerprint,
+        result: "current",
+      }),
+    ]);
+
+    const saved = await saveOpportunityForAccount(session, opportunity);
+    const nextAction = firstSaveNextAction(opportunity);
+    const completion = createFirstSaveCompletionToken({
+      journeyId,
+      accountId: session.account.id,
+      opportunityId: opportunity.id,
+    });
+    const receipt: FirstSaveReceipt = {
+      journeyId,
+      accountId: session.account.id,
+      opportunityId: opportunity.id,
+      title: opportunity.title,
+      ...(opportunity.organizationName
+        ? { organizationName: opportunity.organizationName }
+        : {}),
+      result: saved.status,
+      privateState: true,
+      expiresAt: completion.expiresAt,
+      completionToken: completion.token,
+      nextAction,
+    };
+    const saveEvents = [
+      trackFirstSaveEvent({
+        eventName:
+          saved.status === "created"
+            ? "tracker.opportunity_created"
+            : "tracker.opportunity_already_saved",
+        journeyId,
+        transition: `tracker-${saved.status}`,
+        opportunityId: opportunity.id,
+        accountId: session.account.id,
+        result: saved.status,
+      }),
+    ];
+    if (saved.status === "created") {
+      saveEvents.push(
+        trackFirstSaveEvent({
+          eventName: "discovery.opportunity_saved",
+          journeyId,
+          transition: "opportunity-saved-signal",
+          opportunityId: opportunity.id,
+          accountId: session.account.id,
+          snapshotFingerprint,
+          result: saved.status,
+        }),
+      );
+    }
+    await Promise.all(saveEvents);
+
     return NextResponse.json(
-      { error: "Opportunity not found" },
-      { status: 404 },
+      {
+        status: saved.status,
+        tracked: { opportunityId: opportunity.id },
+        receipt,
+      },
+      { status: saved.status === "created" ? 201 : 200, headers: noStore },
+    );
+  } catch {
+    return NextResponse.json(
+      {
+        error:
+          "We could not save this Opportunity. Your Tracker is unchanged. Try again.",
+      },
+      { status: 503, headers: noStore },
     );
   }
-
-  const alreadyPresent = engine.store.tracked.some(
-    (item) =>
-      item.userId === session.account.userId &&
-      item.opportunityId === body.opportunityId,
-  );
-  const tracked = engine.trackOpportunity(
-    session.account.userId,
-    body.opportunityId,
-  );
-  if (!alreadyPresent) await persistRadar();
-
-  return NextResponse.json(
-    { status: alreadyPresent ? "already-present" : "created", tracked },
-    { status: alreadyPresent ? 200 : 201 },
-  );
 }

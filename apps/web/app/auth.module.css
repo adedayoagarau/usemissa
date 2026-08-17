@@ -122,6 +122,12 @@
   display: grid;
   gap: 0.45rem;
 }
+.fieldError {
+  margin: 0;
+  color: var(--destructive);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
 .label {
   color: var(--ink);
   font-size: 0.78rem;
@@ -144,6 +150,10 @@
   display: inline-flex;
   transform: translateY(-50%);
   color: var(--ink-2);
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
 }
 .passwordToggle:hover {
   color: var(--ink);
@@ -155,6 +165,180 @@
   color: var(--destructive);
   font-size: 0.78rem;
   line-height: 1.45;
+}
+.inlineErrorAction {
+  display: block;
+  min-height: 44px;
+  margin-top: 0.35rem;
+  color: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+.intentContext,
+.resolution {
+  margin-top: 1.35rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: color-mix(in oklab, var(--brand-accent) 4%, var(--surface));
+  padding: 1rem;
+}
+.intentContext h3,
+.intentContext p,
+.intentContext small,
+.resolution h3,
+.resolution p,
+.nextAction strong,
+.nextAction span {
+  margin: 0;
+}
+.intentContext h3 {
+  margin-top: 0.45rem;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.intentContext > p:not(.intentEyebrow) {
+  margin-top: 0.2rem;
+  color: var(--ink-2);
+  font-size: 0.8rem;
+}
+.intentContext small {
+  display: block;
+  margin-top: 0.75rem;
+  color: var(--ink-2);
+  font-size: 0.73rem;
+  line-height: 1.45;
+}
+.inlineContextLink {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  margin-top: 0.5rem;
+  color: var(--brand-accent);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.intentEyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--brand-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.intentEyebrow svg,
+.resolutionStatus > svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+.resolution {
+  display: grid;
+  gap: 1rem;
+}
+.resolutionStatus {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.resolutionStatus > svg {
+  margin-top: 0.15rem;
+  color: var(--brand-accent);
+}
+.resolutionStatus h3 {
+  font-size: 1rem;
+  line-height: 1.35;
+}
+.resolutionStatus p {
+  margin-top: 0.4rem;
+  color: var(--ink-2);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.resolutionStatus a,
+.resolutionStatus button {
+  margin-top: 0.8rem;
+}
+.changeList {
+  display: grid;
+  gap: 0;
+  margin: 1rem 0 0;
+  border-top: 1px solid var(--border);
+}
+.changeList > div {
+  display: grid;
+  grid-template-columns: minmax(5rem, 0.35fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.changeList dt {
+  font-size: 0.73rem;
+  font-weight: 650;
+}
+.changeList dd {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.changeList dd span {
+  color: var(--ink-2);
+}
+.changeList dd strong {
+  font-weight: 650;
+}
+.nextAction {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+.nextAction p {
+  color: var(--brand-accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.nextAction strong {
+  font-size: 0.9rem;
+}
+.nextAction span {
+  color: var(--ink-2);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.resolutionActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.resolutionActions a,
+.resolutionLink {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--brand-accent);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.spin {
+  animation: auth-spin 1s linear infinite;
+}
+@keyframes auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .finePrint {
   color: var(--ink-2);
@@ -169,7 +353,8 @@
   color: var(--ink-2);
   font-size: 0.82rem;
 }
-.switchMode a {
+.switchMode a,
+.switchMode button {
   color: var(--brand-accent);
   font-weight: 600;
 }
@@ -180,6 +365,7 @@
   margin-top: 1.5rem;
   color: var(--ink-2);
   font-size: 0.78rem;
+  text-align: left;
 }
 .backLink:hover {
   color: var(--ink);
@@ -189,25 +375,27 @@
     display: block;
   }
   .story {
-    min-height: 16rem;
-    border-right: 0;
-    border-bottom: 1px solid var(--border);
-    padding: 1.5rem;
-  }
-  .storyCopy {
-    margin-top: 3.5rem;
-    padding-top: 0;
-  }
-  .storyTitle {
-    max-width: 25rem;
-    font-size: 2.65rem;
-  }
-  .storyBody,
-  .promiseList {
     display: none;
   }
   .formPane {
     align-items: flex-start;
     padding: 2rem 1.5rem 3rem;
+  }
+  .changeList > div {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+  }
+  .resolutionActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .resolutionActions > * {
+    justify-content: center;
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
   }
 }
