@@ -3,6 +3,7 @@ title: Missa Profile screen contract
 version: "1.1"
 status: approved-and-implemented-locally
 date: "2026-08-08"
+superseded_by: ./missa-profile-product-contract-2026-08-16.md
 parent_plan: ./missa-website-overhaul-plan-2026-08-08.md
 current_routes:
   - /profile
@@ -24,6 +25,8 @@ runtime_visual_audit_status: focused-desktop-mobile-accessibility-passed
 ---
 
 # Missa Profile screen contract
+
+> Superseded by the [current Profile product contract](./missa-profile-product-contract-2026-08-16.md). This file remains as the design record for the earlier combined Profile and Settings direction.
 
 Profile is the creator's control surface for identity, private opportunity preferences, privacy, integrations, saved searches, following, and data. It is not a public portfolio by default and it is not a score of how serious or complete a creator is.
 

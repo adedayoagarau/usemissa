@@ -1,5 +1,19 @@
 export * from './domain/types.js';
-export { PROFILE_SOCIAL_SERVICES, PublicPortfolioValidationError, normalizePublicPortfolioPublishInput, type PublicPortfolioField } from './profile/publicPortfolio.js';
+export { PROFILE_SOCIAL_SERVICES, PublicPortfolioValidationError, isPublicProfileIndexable, normalizePublicPortfolioPublishInput, type PublicPortfolioField } from './profile/publicPortfolio.js';
+export { profileSampleKindForWork } from './profile/sample.js';
+export {
+  DEFAULT_PROFILE_NOTIFICATION_SETTINGS,
+  profileNotificationSettings,
+  updateProfileNotificationSettings,
+} from './profile/notifications.js';
+export {
+  AccountDeletionBlockedError,
+  accountDeletionBlockers,
+  eraseCreatorAccount,
+  creatorAccountAssetRefs,
+  type AccountDeletionBlocker,
+  type CreatorAccountErasureResult,
+} from './profile/accountDeletion.js';
 export * from './ports.js';
 export * from './opportunityPorts.js';
 export * from './content/opportunityContent.js';

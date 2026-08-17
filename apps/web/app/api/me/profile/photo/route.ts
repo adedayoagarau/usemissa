@@ -30,6 +30,7 @@ function ownedPhotoUrl(value: unknown, userId: string): string | undefined {
   if (typeof value !== "string") return undefined;
   try {
     const url = new URL(value);
+    if (url.protocol !== "https:") return undefined;
     if (!url.hostname.endsWith(".public.blob.vercel-storage.com"))
       return undefined;
     if (!url.pathname.startsWith(`/missa/profiles/${userId}/`))

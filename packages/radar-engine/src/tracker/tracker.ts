@@ -259,13 +259,15 @@ export function deadlineReminders(ctx: TrackerContext): Alert[] {
   const today = isoDateOf(ctx.clock.now());
   for (const t of ctx.store.tracked) {
     if (!t.notify || !PRE_SUBMISSION_STATUSES.includes(t.myStatus)) continue;
+    const reminderDays = ctx.store.users.get(t.userId)?.notificationSettings?.deadlineReminderDays ?? REMINDER_DAYS;
+    if (!reminderDays.length) continue;
     const opp = ctx.store.opportunities.get(t.opportunityId);
     const deadline = opp?.fields.deadline.date;
     if (!opp || !deadline || opp.duplicateOfId) continue;
     const days = daysBetween(today, deadline);
     if (days < 0) continue;
     // Smallest rung that covers today, so each rung of the ladder fires once.
-    const rung = [...REMINDER_DAYS].sort((a, b) => a - b).find((d) => days <= d);
+    const rung = [...reminderDays].sort((a, b) => a - b).find((d) => days <= d);
     if (rung === undefined) continue;
     const key = `remind:${t.userId}:${opp.id}:${deadline}:${rung}`;
     if (ctx.store.emittedAlertKeys.has(key)) continue;
@@ -290,7 +292,6 @@ export function deadlineReminders(ctx: TrackerContext): Alert[] {
   }
   return out;
 }
-
 /**
  * When one tracked opportunity is accepted, suggest withdrawing the user's
  * other still-active submissions — the "acceptance orchestration" pattern:

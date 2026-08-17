@@ -108,7 +108,9 @@ function shouldRedirectToWaitlist(request: NextRequest): boolean {
   if (
     pathname === "/login" ||
     pathname === "/profile" ||
-    pathname.startsWith("/profile/")
+    pathname.startsWith("/profile/") ||
+    pathname === "/settings" ||
+    pathname.startsWith("/settings/")
   )
     return false;
   if (

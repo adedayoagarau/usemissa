@@ -525,8 +525,13 @@
   gap: var(--space-control-inline-bordered);
 }
 .hiddenCredit {
-  opacity: 0.55;
+  opacity: 0.78;
   background: var(--profile-subtle);
+}
+.hiddenCredit time,
+.hiddenCredit [data-slot="item-description"],
+.hiddenCredit .hiddenLabel {
+  color: var(--ink);
 }
 .shownCredit {
   opacity: 1;

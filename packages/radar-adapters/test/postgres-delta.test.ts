@@ -104,3 +104,27 @@ test('Radar delta persistence dual-writes creator opportunity preferences when t
 
   assert.ok(calls.some((sql) => sql.startsWith('insert into opportunity_preferences')));
 });
+
+test('Radar delta persistence clears relational preferences when an account is deidentified', async () => {
+  const previous = createStore();
+  const current = createStore();
+  const account = { id: 'acct_1', email: 'creator@example.com', passwordHash: 'salt:hash', userId: 'user_1', isAdmin: false, createdAt: '2026-08-04T00:00:00.000Z' } as const;
+  previous.accounts.set(account.id, account);
+  previous.users.set('user_1', { id: 'user_1', displayName: 'Creator', attributes: {}, genres: [] });
+  current.accounts.set(account.id, {
+    ...account,
+    email: 'deleted+acct_1@users.invalid',
+    passwordHash: 'deleted:deleted',
+    active: false,
+    deletedAt: '2026-08-16T00:00:00.000Z',
+    userId: undefined,
+  });
+  const { pool, calls } = fakePool('3', true, true);
+
+  await saveRadarStoreDeltaToPostgres(current, previous, pool, 3);
+
+  assert.ok(calls.some((sql) => sql.includes("delete from account_taxonomy_preferences where account_id = $1 and origin = 'explicit'")));
+  assert.ok(calls.some((sql) => sql === 'delete from opportunity_preferences where account_id = $1'));
+  assert.ok(!calls.some((sql) => sql.startsWith('insert into account_taxonomy_preferences')));
+  assert.ok(!calls.some((sql) => sql.startsWith('insert into opportunity_preferences')));
+});

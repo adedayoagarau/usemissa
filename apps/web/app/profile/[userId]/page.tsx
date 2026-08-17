@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { readUserHandle } from "@missa/radar-adapters";
 
 import { PublicProfileView } from "@/components/public-profile-view";
 import { PublicSiteShell } from "@/components/public-site-shell";
@@ -17,6 +18,19 @@ async function legacyProfile(userId: string) {
   const engine = await getEngine();
   const user = engine.store.users.get(userId);
   if (!user) return null;
+  if (process.env.DATABASE_URL) {
+    const handle = await readUserHandle(process.env.DATABASE_URL, userId).catch(
+      () => null,
+    );
+    if (!handle) return null;
+    return {
+      user,
+      canonicalPath: `/@${encodeURIComponent(handle.handleKey)}`,
+      profile: user.publicProfilePublishedAt
+        ? engine.publicUserProfile(userId)
+        : { isPrivate: true as const },
+    };
+  }
   if (!user.publicProfilePublishedAt)
     return { user, profile: { isPrivate: true as const } };
   return { user, profile: engine.publicUserProfile(userId) };
@@ -54,6 +68,8 @@ export default async function PublicProfilePage({
   const { userId } = await params;
   const result = await legacyProfile(userId);
   if (!result?.profile) notFound();
+  if ("canonicalPath" in result && result.canonicalPath)
+    redirect(result.canonicalPath);
   const path = `/profile/${encodeURIComponent(userId)}`;
   return (
     <PublicSiteShell current="profile">

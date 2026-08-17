@@ -8,7 +8,7 @@
     "build": "npm run build --workspace=@missa/contracts --prefix ../.. && npm run build --workspace=@missa/taxonomy --prefix ../.. && npm run build --workspace=@missa/radar-engine --prefix ../.. && npm run build --workspace=@missa/radar-adapters --prefix ../.. && npm run build --workspace=@missa/ingestion-v2 --prefix ../.. && npm run build --workspace=@missa/workspace-engine --prefix ../.. && next build",
     "start": "next start",
     "lint": "eslint .",
-    "test:unit": "node --import tsx --test lib/journalPresentation.test.ts",
+    "test:unit": "node --conditions=react-server --import tsx --test app/api/analytics/events/route.test.ts lib/journalPresentation.test.ts lib/profile-handle-routing.test.ts lib/profile-sample-publication.test.ts lib/profile-social-card.test.ts",
     "typecheck": "tsc --noEmit --incremental false",
     "test:e2e": "playwright test"
   },
@@ -55,6 +55,7 @@
     "react-dom": "19.2.7",
     "react-email": "^6.9.1",
     "react-hook-form": "^7.83.0",
+    "react-icons": "^5.7.0",
     "react-payment-inputs": "^1.2.0",
     "react-phone-number-input": "^3.4.17",
     "react-resizable-panels": "^4.12.1",

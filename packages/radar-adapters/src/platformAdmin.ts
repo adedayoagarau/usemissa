@@ -72,7 +72,7 @@ export interface DurableAuditRow {
 export interface PlatformAdminDurableSummary {
   available: boolean;
   generatedAt: string;
-  source: "optional-durable-tables";
+  source: "durable-table-probes";
   tables: Array<{ name: string; available: boolean }>;
   warnings: string[];
   agentRuns: DurableQueueMetric;
@@ -90,7 +90,14 @@ export interface PlatformAdminDurableSummary {
   auditEventRows: DurableAuditRow[];
 }
 
-const OPTIONAL_TABLES = [
+export const PLATFORM_ADMIN_PROFILE_TABLES = [
+  "handles",
+  "handle_aliases",
+  "profile_issue_reports",
+  "account_deletion_requests",
+] as const;
+
+const OPTIONAL_QUEUE_TABLES = [
   "radar_agent_runs",
   "radar_agent_handoffs",
   "radar_review_jobs",
@@ -100,7 +107,12 @@ const OPTIONAL_TABLES = [
   "audit_events",
 ] as const;
 
-type OptionalTable = (typeof OPTIONAL_TABLES)[number];
+export const PLATFORM_ADMIN_DURABLE_TABLES = [
+  ...PLATFORM_ADMIN_PROFILE_TABLES,
+  ...OPTIONAL_QUEUE_TABLES,
+] as const;
+
+type DurableTable = (typeof PLATFORM_ADMIN_DURABLE_TABLES)[number];
 
 function unavailableMetric(): DurableQueueMetric {
   return { maturity: "unavailable", counts: {} };
@@ -133,27 +145,27 @@ function safeError(value: unknown): string | undefined {
 }
 
 /**
- * Read optional worker/agent tables without making them part of the web
- * request's availability contract. The compatibility Radar and Workspace
- * stores are loaded by their owning engines; this adapter only observes
- * additive durable queues when those tables have already been deployed.
+ * Read Profile release dependencies and optional worker/agent tables without
+ * making them part of the public web request's availability contract. The
+ * compatibility Radar and Workspace stores are loaded by their owning engines;
+ * this adapter reports schema readiness to the protected operator surface.
  */
 export async function readPlatformAdminDurableSummary(connectionString: string): Promise<PlatformAdminDurableSummary> {
   const generatedAt = new Date().toISOString();
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   const warnings: string[] = [];
-  const tableAvailability = new Map<OptionalTable, boolean>();
+  const tableAvailability = new Map<DurableTable, boolean>();
 
   try {
-    const result = await pool.query<{ name: OptionalTable; available: boolean }>(
+    const result = await pool.query<{ name: DurableTable; available: boolean }>(
       `select table_name as name, to_regclass('public.' || table_name) is not null as available
        from unnest($1::text[]) as tables(table_name)`,
-      [OPTIONAL_TABLES],
+      [PLATFORM_ADMIN_DURABLE_TABLES],
     );
-    for (const table of OPTIONAL_TABLES) tableAvailability.set(table, result.rows.find((row) => row.name === table)?.available === true);
+    for (const table of PLATFORM_ADMIN_DURABLE_TABLES) tableAvailability.set(table, result.rows.find((row) => row.name === table)?.available === true);
 
     const metric = async (
-      table: OptionalTable,
+      table: DurableTable,
       countQuery: string,
       countKey: "status" | "decision" = "status",
       latestQuery?: string,
@@ -217,7 +229,7 @@ export async function readPlatformAdminDurableSummary(connectionString: string):
       ),
     ]);
 
-    const readRows = async <T extends QueryResultRow>(table: OptionalTable, query: string): Promise<T[]> => {
+    const readRows = async <T extends QueryResultRow>(table: DurableTable, query: string): Promise<T[]> => {
       if (!tableAvailability.get(table)) return [];
       try {
         return (await pool.query<T>(query)).rows;
@@ -387,14 +399,16 @@ export async function readPlatformAdminDurableSummary(connectionString: string):
     }));
 
     const available = [...tableAvailability.values()].some(Boolean);
-    const missing = OPTIONAL_TABLES.filter((table) => !tableAvailability.get(table));
-    if (missing.length > 0 && available) warnings.push(`Optional durable coverage is partial; missing ${missing.join(", ")}`);
+    const missingProfileTables = PLATFORM_ADMIN_PROFILE_TABLES.filter((table) => !tableAvailability.get(table));
+    if (missingProfileTables.length > 0) warnings.unshift(`Profile release is blocked; missing ${missingProfileTables.join(", ")}`);
+    const missingOptionalTables = OPTIONAL_QUEUE_TABLES.filter((table) => !tableAvailability.get(table));
+    if (missingOptionalTables.length > 0 && available) warnings.push(`Optional durable coverage is partial; missing ${missingOptionalTables.join(", ")}`);
 
     return {
       available,
       generatedAt,
-      source: "optional-durable-tables",
-      tables: OPTIONAL_TABLES.map((name) => ({ name, available: tableAvailability.get(name) === true })),
+      source: "durable-table-probes",
+      tables: PLATFORM_ADMIN_DURABLE_TABLES.map((name) => ({ name, available: tableAvailability.get(name) === true })),
       warnings,
       agentRuns,
       agentHandoffs,
@@ -414,9 +428,9 @@ export async function readPlatformAdminDurableSummary(connectionString: string):
     return {
       available: false,
       generatedAt,
-      source: "optional-durable-tables",
-      tables: OPTIONAL_TABLES.map((name) => ({ name, available: false })),
-      warnings: ["Optional durable summaries could not be read; compatibility stores remain the runtime view."],
+      source: "durable-table-probes",
+      tables: PLATFORM_ADMIN_DURABLE_TABLES.map((name) => ({ name, available: false })),
+      warnings: ["Profile and durable table readiness could not be read; compatibility stores remain the runtime view."],
       agentRuns: unavailableMetric(),
       agentHandoffs: unavailableMetric(),
       reviewJobs: unavailableMetric(),

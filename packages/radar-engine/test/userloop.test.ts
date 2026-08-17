@@ -103,6 +103,25 @@ test('deadline reminder ladder fires at 7/3/1 days and stops after submission', 
   assert.equal(reminders().length, 2);
 });
 
+test('Profile notification settings can turn off deadline reminders without turning off Inbox', async () => {
+  const { engine, clock, ids, magazine } = await trackedWorld();
+  const user = engine.store.users.get(ids.userAda)!;
+  user.notificationSettings = {
+    emailAlerts: false,
+    deadlineReminderDays: [],
+    timezone: 'Africa/Lagos',
+  };
+  engine.trackOpportunity(ids.userAda, magazine.id);
+  clock.advanceDays(55);
+  await engine.tick();
+  assert.equal(
+    [...engine.store.alerts.values()].filter(
+      (alert) => alert.kind === 'deadline-reminder' && alert.userId === ids.userAda,
+    ).length,
+    0,
+  );
+});
+
 test('overdue-response nudge fires once the org\'s typical response window has passed with no update', async () => {
   const { engine, clock, ids, magazine } = await trackedWorld();
   const orgId = engine.store.opportunities.get(magazine.id)!.fields.organizationId!;

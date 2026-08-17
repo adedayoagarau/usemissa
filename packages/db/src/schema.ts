@@ -64,7 +64,6 @@ export const memberships = pgTable(
     ),
   ],
 );
-
 export const entities = pgTable(
   "entities",
   {
@@ -1700,6 +1699,73 @@ export const opportunityIssueReports = pgTable(
     index("opportunity_issue_reports_status_idx").on(
       table.status,
       table.createdAt,
+    ),
+  ],
+);
+
+export const profileIssueReports = pgTable(
+  "profile_issue_reports",
+  {
+    id: text("id").primaryKey(),
+    profileUserId: text("profile_user_id").notNull(),
+    reporterAccountId: text("reporter_account_id").references(
+      () => accounts.id,
+      { onDelete: "set null" },
+    ),
+    reason: text("reason").notNull(),
+    note: text("note"),
+    status: text("status").notNull().default("open"),
+    idempotencyKey: uuid("idempotency_key").notNull(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("profile_issue_reports_idempotency_idx").on(
+      table.idempotencyKey,
+    ),
+    index("profile_issue_reports_profile_idx").on(
+      table.profileUserId,
+      table.createdAt,
+    ),
+    index("profile_issue_reports_status_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const accountDeletionRequests = pgTable(
+  "account_deletion_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "restrict" }),
+    userId: text("user_id"),
+    authProvider: text("auth_provider"),
+    authUserId: text("auth_user_id"),
+    status: text("status").notNull().default("pending"),
+    stage: text("stage").notNull().default("prepared"),
+    publicAssetUrls: jsonb("public_asset_urls").notNull().default([]),
+    privateAssetRefs: jsonb("private_asset_refs").notNull().default([]),
+    retainedSubmissions: integer("retained_submissions").notNull().default(0),
+    retainedCompletedReviews: integer("retained_completed_reviews").notNull().default(0),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    lastError: text("last_error"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt,
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("account_deletion_requests_account_idx").on(table.accountId),
+    index("account_deletion_requests_work_idx").on(table.status, table.updatedAt),
+    check(
+      "account_deletion_requests_status_check",
+      sql`${table.status} in ('pending', 'processing', 'failed', 'completed')`,
+    ),
+    check(
+      "account_deletion_requests_stage_check",
+      sql`${table.stage} in ('prepared', 'auth-erased', 'workspace-erased', 'radar-erased', 'assets-erased', 'completed')`,
     ),
   ],
 );

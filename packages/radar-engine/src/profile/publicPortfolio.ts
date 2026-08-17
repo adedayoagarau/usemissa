@@ -1,6 +1,7 @@
 import type {
   IsoDateTime,
   ProfileSelectedWork,
+  ProfileSampleKind,
   ProfileSocialLink,
   ProfileSocialService,
   PublicPortfolio,
@@ -8,6 +9,8 @@ import type {
   PublicUserProfile,
   UserProfile,
 } from "../domain/types.js";
+import type { RadarStore } from "../store/store.js";
+import { profileSampleKindForWork } from "./sample.js";
 
 export type PublicPortfolioField =
   | "displayName"
@@ -16,6 +19,7 @@ export type PublicPortfolioField =
   | "headline"
   | "oneLine"
   | "openTo"
+  | "contactEnabled"
   | "socialLinks"
   | "selectedWorks";
 
@@ -185,28 +189,128 @@ function socialLinks(value: unknown): ProfileSocialLink[] {
   });
 }
 
-function selectedWorks(value: unknown): ProfileSelectedWork[] {
+function sample(
+  value: unknown,
+  resolvedKind?: ProfileSampleKind,
+): ProfileSelectedWork["sample"] {
+  if (value === undefined || value === null) return undefined;
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new PublicPortfolioValidationError(
+      "selectedWorks",
+      "The public sample is not valid.",
+    );
+  const candidate = value as Record<string, unknown>;
+  const candidateKind = candidate.kind;
+  if (
+    typeof candidateKind !== "string" ||
+    !["text", "image", "audio", "video"].includes(candidateKind)
+  )
+    throw new PublicPortfolioValidationError(
+      "selectedWorks",
+      "Choose a supported sample type.",
+    );
+  const kind = resolvedKind ?? (candidateKind as ProfileSampleKind);
+  const rightsConfirmedAt = text(
+    "selectedWorks",
+    candidate.rightsConfirmedAt,
+    40,
+  );
+  if (!rightsConfirmedAt || Number.isNaN(Date.parse(rightsConfirmedAt)))
+    throw new PublicPortfolioValidationError(
+      "selectedWorks",
+      "Confirm that you can publish this sample.",
+    );
+
+  if (kind === "text") {
+    const excerpt = text("selectedWorks", candidate.excerpt, 12_000);
+    if (!excerpt)
+      throw new PublicPortfolioValidationError(
+        "selectedWorks",
+        "Add the passage you want to publish.",
+      );
+    if (excerpt.split(/\s+/u).length > 800)
+      throw new PublicPortfolioValidationError(
+        "selectedWorks",
+        "Keep the public passage to 800 words or fewer.",
+      );
+    return { kind, excerpt, rightsConfirmedAt };
+  }
+
+  const publicAssetUrl = publicUrl("selectedWorks", candidate.publicAssetUrl);
+  if (!publicAssetUrl)
+    throw new PublicPortfolioValidationError(
+      "selectedWorks",
+      "Publish a media file for this sample.",
+    );
+  const accessibilityText = text(
+    "selectedWorks",
+    candidate.accessibilityText,
+    2_000,
+  );
+  if ((kind === "image" || kind === "video") && !accessibilityText)
+    throw new PublicPortfolioValidationError(
+      "selectedWorks",
+      kind === "image"
+        ? "Describe the image for people who cannot see it."
+        : "Describe the video for people who cannot see it.",
+    );
+  const transcript = text("selectedWorks", candidate.transcript, 20_000);
+  if (kind === "video" && !transcript)
+    throw new PublicPortfolioValidationError(
+      "selectedWorks",
+      "Add captions or a transcript for this video.",
+    );
+  return {
+    kind,
+    publicAssetUrl,
+    ...(text("selectedWorks", candidate.contentType, 160)
+      ? { contentType: text("selectedWorks", candidate.contentType, 160) }
+      : {}),
+    ...(accessibilityText ? { accessibilityText } : {}),
+    ...(transcript ? { transcript } : {}),
+    rightsConfirmedAt,
+  };
+}
+
+function selectedWorks(
+  value: unknown,
+  store?: RadarStore,
+  userId?: string,
+): ProfileSelectedWork[] {
   if (!Array.isArray(value) || value.length > 20)
     throw new PublicPortfolioValidationError(
       "selectedWorks",
       "Add no more than 20 selected Works.",
     );
   const seen = new Set<string>();
-  return value.map((entry) => {
+  let sampleCount = 0;
+  return value.map((entry, index) => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry))
       throw new PublicPortfolioValidationError(
         "selectedWorks",
         "Each selected Work needs a title.",
       );
     const candidate = entry as Record<string, unknown>;
-    const workId = id("selectedWorks", candidate.id);
-    const title = text("selectedWorks", candidate.title, 160);
+    const publicationId = id("selectedWorks", candidate.id);
+    const sourceWorkId = candidate.workId
+      ? id("selectedWorks", candidate.workId)
+      : undefined;
+    const sourceWork = sourceWorkId
+      ? store?.libraryWorks.get(sourceWorkId)
+      : undefined;
+    if (sourceWorkId && (!sourceWork || sourceWork.userId !== userId))
+      throw new PublicPortfolioValidationError(
+        "selectedWorks",
+        "That Work is not available in your Library.",
+      );
+    const title =
+      sourceWork?.title.trim() || text("selectedWorks", candidate.title, 160);
     if (!title)
       throw new PublicPortfolioValidationError(
         "selectedWorks",
         "Each selected Work needs a title.",
       );
-    if (seen.has(workId))
+    if (seen.has(publicationId))
       throw new PublicPortfolioValidationError(
         "selectedWorks",
         "Each selected Work must have a unique identifier.",
@@ -222,9 +326,28 @@ function selectedWorks(value: unknown): ProfileSelectedWork[] {
         "selectedWorks",
         "Use a four-digit year for each selected Work.",
       );
-    seen.add(workId);
+    seen.add(publicationId);
+    const sourceFile = sourceWork?.fileId
+      ? store?.libraryFiles.get(sourceWork.fileId)
+      : undefined;
+    const publishedSample = sample(
+      candidate.sample,
+      sourceWork ? profileSampleKindForWork(sourceWork, sourceFile) : undefined,
+    );
+    if (publishedSample) sampleCount += 1;
+    if (publishedSample && index !== 0)
+      throw new PublicPortfolioValidationError(
+        "selectedWorks",
+        "The public sample must belong to the featured Work.",
+      );
+    if (sampleCount > 1)
+      throw new PublicPortfolioValidationError(
+        "selectedWorks",
+        "Publish one featured sample at a time.",
+      );
     return {
-      id: workId,
+      id: publicationId,
+      ...(sourceWorkId ? { workId: sourceWorkId } : {}),
       title,
       ...(text("selectedWorks", candidate.publication, 160)
         ? { publication: text("selectedWorks", candidate.publication, 160) }
@@ -233,15 +356,20 @@ function selectedWorks(value: unknown): ProfileSelectedWork[] {
       ...(publicUrl("selectedWorks", candidate.url)
         ? { url: publicUrl("selectedWorks", candidate.url) }
         : {}),
-      ...(text("selectedWorks", candidate.description, 500)
-        ? { description: text("selectedWorks", candidate.description, 500) }
-        : {}),
+      ...(sourceWork?.description?.trim()
+        ? { description: sourceWork.description.trim().slice(0, 500) }
+        : text("selectedWorks", candidate.description, 500)
+          ? { description: text("selectedWorks", candidate.description, 500) }
+          : {}),
+      ...(publishedSample ? { sample: publishedSample } : {}),
     };
   });
 }
 
 export function normalizePublicPortfolioPublishInput(
   value: PublicPortfolioPublishInput,
+  store?: RadarStore,
+  userId?: string,
 ): PublicPortfolioPublishInput {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new PublicPortfolioValidationError(
@@ -253,6 +381,14 @@ export function normalizePublicPortfolioPublishInput(
     throw new PublicPortfolioValidationError(
       "displayName",
       "Add your public name.",
+    );
+  if (
+    value.contactEnabled !== undefined &&
+    typeof value.contactEnabled !== "boolean"
+  )
+    throw new PublicPortfolioValidationError(
+      "contactEnabled",
+      "Contact preference must be on or off.",
     );
   return {
     displayName,
@@ -271,17 +407,21 @@ export function normalizePublicPortfolioPublishInput(
     ...(text("openTo", value.openTo, 240)
       ? { openTo: text("openTo", value.openTo, 240) }
       : {}),
+    ...(value.contactEnabled === true ? { contactEnabled: true } : {}),
     socialLinks: socialLinks(value.socialLinks),
-    selectedWorks: selectedWorks(value.selectedWorks),
+    selectedWorks: selectedWorks(value.selectedWorks, store, userId),
   };
 }
 
 export function publishPortfolio(
-  user: UserProfile,
+  store: RadarStore,
+  userId: string,
   value: PublicPortfolioPublishInput,
   publishedAt: IsoDateTime,
 ): UserProfile {
-  const normalized = normalizePublicPortfolioPublishInput(value);
+  const user = store.users.get(userId);
+  if (!user) throw new Error(`Unknown user: ${userId}`);
+  const normalized = normalizePublicPortfolioPublishInput(value, store, userId);
   const portfolio: PublicPortfolio = {
     ...(normalized.profileImageUrl
       ? { profileImageUrl: normalized.profileImageUrl }
@@ -289,18 +429,29 @@ export function publishPortfolio(
     ...(normalized.headline ? { headline: normalized.headline } : {}),
     ...(normalized.oneLine ? { oneLine: normalized.oneLine } : {}),
     ...(normalized.openTo ? { openTo: normalized.openTo } : {}),
+    ...(normalized.contactEnabled ? { contactEnabled: true } : {}),
     socialLinks: normalized.socialLinks,
     selectedWorks: normalized.selectedWorks,
   };
   user.displayName = normalized.displayName;
   user.bio = normalized.bio;
-  user.privacy = {
-    ...user.privacy,
-    displayName: "public",
-    bio: normalized.bio ? "public" : "private",
-  };
   user.publicPortfolio = portfolio;
   user.publicProfilePublishedAt = publishedAt;
+  return user;
+}
+
+export function unpublishPortfolio(user: UserProfile): UserProfile {
+  user.publicProfilePublishedAt = undefined;
+  if (user.publicPortfolio) {
+    user.publicPortfolio = {
+      ...user.publicPortfolio,
+      profileImageUrl: undefined,
+      selectedWorks: user.publicPortfolio.selectedWorks.map((work) => ({
+        ...work,
+        sample: undefined,
+      })),
+    };
+  }
   return user;
 }
 
@@ -309,6 +460,7 @@ export function publicPortfolioProjection(
   displayName?: string,
   bio?: string,
 ): PublicUserProfile {
+  if (!user.publicProfilePublishedAt) return { isPrivate: true };
   const portfolio = user.publicPortfolio;
   const profile: PublicUserProfile = {
     id: user.id,
@@ -320,11 +472,17 @@ export function publicPortfolioProjection(
     ...(portfolio?.headline ? { headline: portfolio.headline } : {}),
     ...(portfolio?.oneLine ? { oneLine: portfolio.oneLine } : {}),
     ...(portfolio?.openTo ? { openTo: portfolio.openTo } : {}),
+    ...(portfolio?.contactEnabled ? { contactEnabled: true as const } : {}),
     ...(portfolio?.socialLinks.length
       ? { socialLinks: portfolio.socialLinks.map((link) => ({ ...link })) }
       : {}),
     ...(portfolio?.selectedWorks.length
-      ? { selectedWorks: portfolio.selectedWorks.map((work) => ({ ...work })) }
+      ? {
+          selectedWorks: portfolio.selectedWorks.map((work) => ({
+            ...work,
+            ...(work.sample ? { sample: { ...work.sample } } : {}),
+          })),
+        }
       : {}),
     ...(user.publicProfilePublishedAt
       ? { publishedAt: user.publicProfilePublishedAt }
@@ -342,4 +500,10 @@ export function publicPortfolioProjection(
   )
     return { isPrivate: true };
   return profile;
+}
+
+export function isPublicProfileIndexable(profile: PublicUserProfile): boolean {
+  if (profile.isPrivate || !profile.oneLine?.trim()) return false;
+  const works = profile.selectedWorks ?? [];
+  return works.some((work) => Boolean(work.sample)) || works.length >= 2;
 }

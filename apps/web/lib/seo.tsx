@@ -9,14 +9,14 @@ export function absoluteUrl(path = '/'): string {
   return new URL(path, `${siteUrl()}/`).toString();
 }
 
-export function pageMetadata(input: { title: string; description: string; path: string; noIndex?: boolean }): Metadata {
+export function pageMetadata(input: { title: string; description: string; path: string; noIndex?: boolean; socialImagePath?: string; socialImageAlt?: string }): Metadata {
   const url = absoluteUrl(input.path);
   const socialImage = {
-    url: absoluteUrl('/brand/missa-social-share.png'),
+    url: absoluteUrl(input.socialImagePath ?? '/brand/missa-social-share.png'),
     width: 1200,
     height: 630,
     type: 'image/png',
-    alt: 'Missa, creative opportunities with their source and limits kept visible.',
+    alt: input.socialImageAlt ?? 'Missa, creative opportunities with their source and limits kept visible.',
   };
   return {
     title: input.title,

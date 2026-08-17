@@ -462,8 +462,19 @@ export interface UserProfile {
   publicProfilePublishedAt?: IsoDateTime;
   /** Durable dismissal for the optional first-Profile handle prompt. */
   handlePromptDismissedAt?: IsoDateTime;
+  /** Private rotation key for the owner-controlled calendar subscription. */
+  calendarFeedKey?: string;
+  calendarFeedConnectedAt?: IsoDateTime;
+  /** Private delivery defaults. Inbox alerts remain available when email is off. */
+  notificationSettings?: ProfileNotificationSettings;
   /** Content explicitly saved to the public portfolio surface. */
   publicPortfolio?: PublicPortfolio;
+}
+
+export interface ProfileNotificationSettings {
+  emailAlerts: boolean;
+  deadlineReminderDays: Array<1 | 3 | 7>;
+  timezone: string;
 }
 
 export type ProfileSocialService =
@@ -489,13 +500,34 @@ export interface ProfileSocialLink {
   url: string;
 }
 
+export type ProfileSampleKind = "text" | "image" | "audio" | "video";
+
+export interface ProfileWorkSample {
+  /** Frozen at publication so later Library taxonomy edits cannot change rendering. */
+  kind: ProfileSampleKind;
+  /** Text samples publish only this creator-chosen passage. */
+  excerpt?: string;
+  /** Public copy of a private Library file. Never a private storage key. */
+  publicAssetUrl?: string;
+  contentType?: string;
+  /** Required for images and video; useful for any media sample. */
+  accessibilityText?: string;
+  /** Optional transcript for audio; required for video in this first release. */
+  transcript?: string;
+  rightsConfirmedAt: IsoDateTime;
+}
+
 export interface ProfileSelectedWork {
   id: string;
+  /** Stable link to the private Library source. Omitted only for legacy or external entries. */
+  workId?: string;
+  /** Public snapshot. Library edits do not silently rewrite a published Profile. */
   title: string;
   publication?: string;
   year?: number;
   url?: string;
   description?: string;
+  sample?: ProfileWorkSample;
 }
 
 /** A creator-authored public snapshot. Presence here is an explicit publish act. */
@@ -504,6 +536,8 @@ export interface PublicPortfolio {
   headline?: string;
   oneLine?: string;
   openTo?: string;
+  /** Explicit opt-in to the Missa contact relay. The account email stays private. */
+  contactEnabled?: boolean;
   socialLinks: ProfileSocialLink[];
   selectedWorks: ProfileSelectedWork[];
 }
@@ -642,6 +676,7 @@ export interface PublicUserProfile {
   headline?: string;
   oneLine?: string;
   openTo?: string;
+  contactEnabled?: true;
   socialLinks?: ProfileSocialLink[];
   selectedWorks?: ProfileSelectedWork[];
   publishedAt?: IsoDateTime;
@@ -669,7 +704,7 @@ export interface Account {
   passwordHash: string;
   /** Stable identity from the managed authentication provider, when linked. */
   authUserId?: string;
-  authProvider?: 'neon-auth';
+  authProvider?: "neon-auth";
   /** The individual tracker this account owns, if any. */
   userId?: string;
   /** Platform admin — can see the verification queue and claim reviews. */
@@ -684,6 +719,10 @@ export interface Account {
    */
   verifiedEmailDomain?: string;
   active?: boolean;
+  /** Incrementing this invalidates previously issued Missa session cookies. */
+  sessionVersion?: number;
+  /** Account lifecycle tombstone. The original email and auth identity are removed. */
+  deletedAt?: IsoDateTime;
 }
 
 /** Organization roles. `member` remains the compatibility role for existing workspaces. */
@@ -1078,4 +1117,6 @@ export interface Alert {
   read: boolean;
   /** Set only after the alert has been successfully included in an outbound digest. */
   emailSentAt?: IsoDateTime;
+  /** Set when the owner had email delivery turned off for this alert. */
+  emailSuppressedAt?: IsoDateTime;
 }

@@ -41,6 +41,27 @@ function libraryForScope(engine: Awaited<ReturnType<typeof getEngine>>, userId: 
   };
 }
 
+function profileForScope(engine: Awaited<ReturnType<typeof getEngine>>, userId: string) {
+  const user = engine.store.users.get(userId);
+  if (!user) return undefined;
+  return {
+    exportVersion: 1 as const,
+    included: ['profile'] as const,
+    profile: {
+      id: user.id,
+      displayName: user.displayName,
+      ...(user.bio ? { bio: user.bio } : {}),
+      privacy: engine.profilePrivacy(userId),
+      attributes: { ...user.attributes },
+      genres: [...user.genres],
+      taxonomyPreferences: user.taxonomyPreferences?.map((item) => ({ ...item })) ?? [],
+      ...(user.opportunityPreferences ? { opportunityPreferences: { ...user.opportunityPreferences } } : {}),
+      ...(user.publicProfilePublishedAt ? { publicProfilePublishedAt: user.publicProfilePublishedAt } : {}),
+      ...(user.publicPortfolio ? { publicPortfolio: structuredClone(user.publicPortfolio) } : {}),
+    },
+  };
+}
+
 function encodeLibraryCsv(library: ReturnType<typeof libraryForScope>): string {
   const cell = (value: unknown) => { const text = value == null ? '' : String(value); const safe = /^[=+\-@]/.test(text) ? `'${text}` : text; return /[",\r\n]/.test(safe) ? `"${safe.replaceAll('"', '""')}"` : safe; };
   const rows = [['kind', 'id', 'name', 'body_or_title', 'storage_key', 'created_at', 'updated_at']];
@@ -75,9 +96,11 @@ export async function GET(request: Request) {
   const engine = await getEngine();
   let exportData: TrackerExportV1;
   let libraryData: ReturnType<typeof libraryForScope> | undefined;
+  let profileData: ReturnType<typeof profileForScope> | undefined;
   try {
     exportData = trackerForScope(engine.exportTracker(userId, new Date(nowMs)), scope === 'library' ? 'all' : scope);
     libraryData = libraryForScope(engine, userId);
+    profileData = profileForScope(engine, userId);
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Unknown user:')) return errorResponse('Profile not found', 404);
     console.error('Tracker export projection failed', error);
@@ -86,7 +109,7 @@ export async function GET(request: Request) {
 
   const body = scope === 'library'
     ? (format === 'csv' ? encodeLibraryCsv(libraryData!) : JSON.stringify(libraryData, null, 2))
-    : (format === 'csv' ? encodeTrackerCsv(exportData) : JSON.stringify(scope === 'all' ? { ...exportData, included: ['tracker', 'library'], omitted: [], library: libraryData } : exportData, null, 2));
+    : (format === 'csv' ? encodeTrackerCsv(exportData) : JSON.stringify(scope === 'all' ? { ...exportData, included: ['profile', 'tracker', 'library'], omitted: [], profile: profileData?.profile, library: libraryData } : exportData, null, 2));
   const date = new Date(nowMs).toISOString().slice(0, 10);
   const extension = format === 'csv' ? 'csv' : 'json';
   const contentType = format === 'csv' ? 'text/csv; charset=utf-8' : 'application/json; charset=utf-8';
@@ -113,7 +136,7 @@ export async function GET(request: Request) {
     headers: {
       'Cache-Control': 'private, no-store',
       'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="missa-${scope === 'library' ? 'library' : 'tracker'}-${date}.${extension}"`,
+      'Content-Disposition': `attachment; filename="missa-${scope === 'library' ? 'library' : scope === 'all' && format === 'json' ? 'all-data' : 'tracker'}-${date}.${extension}"`,
     },
   });
 }

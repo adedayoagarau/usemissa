@@ -9,6 +9,18 @@
  */
 export { LlmExtractor, type LlmExtractorOptions } from "./llmExtractor.js";
 export {
+  createProfileIssueReport,
+  readProfileIssueReportQueue,
+  updateProfileIssueReport,
+  PROFILE_ISSUE_REASONS,
+  type CreateProfileIssueReportInput,
+  type CreateProfileIssueReportResult,
+  type ProfileIssueReason,
+  type ProfileIssueReportCase,
+  type ProfileIssueReportQueue,
+  type UpdateProfileIssueReportInput,
+} from "./profileIssueReports.js";
+export {
   ensurePostgresSchema,
   saveStoreToPostgres,
   loadStoreFromPostgres,
@@ -153,6 +165,7 @@ export {
   claimUserHandle,
   handleNamespaceAvailable,
   handleClaimAccessMode,
+  maintainDeletedUserHandlePolicy,
   normalizeUserHandleInput,
   readUserHandle,
   renameUserHandle,
@@ -255,6 +268,8 @@ export {
   type TaxonomyReviewStatus,
 } from "./taxonomyAdmin.js";
 export {
+  PLATFORM_ADMIN_DURABLE_TABLES,
+  PLATFORM_ADMIN_PROFILE_TABLES,
   readPlatformAdminDurableSummary,
   type DurableAgentRunRow,
   type DurableAuditRow,
@@ -379,6 +394,7 @@ export {
 } from "./garyAdmin.js";
 export { GoogleGmailProvider } from "./email/gmail/google.js";
 export { MockGmailProvider } from "./email/gmail/mock.js";
+export * from "./accountDeletionQueue.js";
 export {
   RADAR_INGESTION_LOCK,
   DISCOVERY_INGESTION_LOCK,

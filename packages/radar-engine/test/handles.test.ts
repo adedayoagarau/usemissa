@@ -293,4 +293,12 @@ test("invite, rename, and deletion lifecycle constants are explicit", () => {
     }),
     "eligible",
   );
+  assert.equal(
+    handleReleaseDecision({
+      deletedAt: new Date("2026-01-01T00:00:00.000Z"),
+      now: new Date("2026-04-02T00:00:00.000Z"),
+      publicPageViews: undefined,
+    }),
+    "hold",
+  );
 });

@@ -5,6 +5,8 @@ import {
   readUserHandle,
   waitlistClaimAccess,
 } from "@missa/radar-adapters";
+import { accountDeletionBlockers } from "@missa/radar-engine";
+import { profileNotificationSettings } from "@missa/radar-engine";
 
 import { AppNav } from "@/components/app-nav";
 import {
@@ -20,6 +22,7 @@ const PROFILE_SECTION_VALUES: readonly ProfileSection[] = [
   "identity",
   "preferences",
   "privacy",
+  "notifications",
   "integrations",
   "searches",
   "following",
@@ -76,9 +79,11 @@ export default async function SettingsPage({
     id: user.id,
     displayName: user.displayName.trim(),
     ...(user.bio?.trim() ? { bio: user.bio.trim() } : {}),
-    publicUrl: handle
-      ? `/@${encodeURIComponent(handle)}`
-      : `/profile/${encodeURIComponent(user.id)}`,
+    ...(handle
+      ? { publicUrl: `/@${encodeURIComponent(handle)}` }
+      : process.env.DATABASE_URL
+        ? {}
+        : { publicUrl: `/profile/${encodeURIComponent(user.id)}` }),
     handle: {
       namespaceAvailable: handleNamespaceReady,
       current: currentHandle,
@@ -97,6 +102,19 @@ export default async function SettingsPage({
       noFeeOnly: false,
       simultaneousRequired: false,
     },
+    accountDeletion: {
+      passwordRequired: session.account.authProvider !== "neon-auth",
+      blockers: accountDeletionBlockers(engine.store, session.account.id).map(
+        (blocker) =>
+          blocker.kind === "sole-organization-owner"
+            ? `Transfer ownership of ${blocker.organizationName} first.`
+            : "Remove your platform administrator access first.",
+      ),
+    },
+    integrations: {
+      calendarConnected: Boolean(user.calendarFeedKey),
+    },
+    notifications: profileNotificationSettings(user),
   };
   const organizations = session.memberships.map((membership) => ({
     id: membership.organizationId,

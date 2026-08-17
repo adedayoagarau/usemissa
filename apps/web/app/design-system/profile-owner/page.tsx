@@ -9,7 +9,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function ProfileOwnerReviewPage() {
+export default async function ProfileOwnerReviewPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ handle?: string }>;
+}) {
+  const withoutHandle = (await searchParams)?.handle === "none";
   return (
     <Suspense fallback={<div className="min-h-screen bg-white" />}>
       <ProfileEditor
@@ -17,24 +22,36 @@ export default function ProfileOwnerReviewPage() {
           id: "profile-amaka",
           displayName: "Amaka Obi",
           bio: "Amaka Obi writes essays, fiction, and screenplays about family, work, and the quiet decisions that shape ordinary life.",
-          handle: "amaka",
-          publicUrl: "/design-system/profile-public",
-          published: true,
+          ...(withoutHandle ? {} : { handle: "amaka" }),
+          ...(withoutHandle
+            ? {}
+            : { publicUrl: "/design-system/profile-public" }),
+          handleNamespaceAvailable: true,
+          handleClaimingOpen: true,
+          published: !withoutHandle,
           publicPortfolio: {
             profileImageUrl: "/media/home/artist-at-work.webp",
             headline: "Essayist · Screenwriter · Lagos",
             oneLine: "Writing essays and scripts about ordinary life.",
             openTo:
               "Commissions, residencies, essay assignments, and thoughtful collaborations.",
+            contactEnabled: true,
             selectedWorks: [
               {
                 id: "harmattan-year",
+                workId: "library-harmattan-year",
                 title: "The Harmattan Year",
                 publication: "Granta",
                 year: 2026,
                 url: "https://example.com/the-harmattan-year",
                 description:
                   "An essay about dust, inheritance, and a grandmother who took the weather personally.",
+                sample: {
+                  kind: "text",
+                  excerpt:
+                    "The dust came early that year, three weeks before anyone thought to hang the plastic sheeting.",
+                  rightsConfirmedAt: "2026-08-15T00:00:00.000Z",
+                },
               },
               {
                 id: "borrowed-house",
@@ -56,6 +73,15 @@ export default function ProfileOwnerReviewPage() {
               },
             ],
           },
+          libraryWorks: [
+            {
+              id: "library-harmattan-year",
+              title: "The Harmattan Year",
+              description:
+                "An essay about dust, inheritance, and a grandmother who took the weather personally.",
+              sampleKind: "text",
+            },
+          ],
         }}
         nav={{
           email: "amaka@example.com",

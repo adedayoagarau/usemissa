@@ -5,14 +5,14 @@ import type {
   PublicUserProfile,
 } from "@missa/radar-engine";
 
+import { ProfileContactDialog } from "@/components/profile-contact-dialog";
+import { ProfileLinkIcon } from "@/components/profile-link-icon";
+import { ProfileMediaSample } from "@/components/profile-media-sample";
+import { ProfileReportDialog } from "@/components/profile-report-dialog";
 import { ProfileShareActions } from "@/components/profile-share-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@/components/ui/empty";
+import { buttonVariants } from "@/components/ui/button";
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import {
   Item,
   ItemActions,
@@ -23,6 +23,7 @@ import {
   ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item";
+import { cn } from "@/lib/utils";
 import styles from "./public-profile-view.module.css";
 
 export const PROFILE_SOCIAL_LABELS: Record<ProfileSocialService, string> = {
@@ -115,6 +116,50 @@ function WorkRow({ work }: { work: ProfileSelectedWork }) {
   );
 }
 
+function FeaturedSample({ work }: { work: ProfileSelectedWork }) {
+  const sample = work.sample;
+  if (!sample) return null;
+  if (sample.kind === "text" && sample.excerpt) {
+    return (
+      <blockquote className={styles.textSample}>
+        {sample.excerpt.split(/\n{2,}/u).map((paragraph) => (
+          <p key={paragraph}>{paragraph}</p>
+        ))}
+      </blockquote>
+    );
+  }
+  if (sample.kind === "image" && sample.publicAssetUrl) {
+    return (
+      <figure className={styles.imageSample}>
+        {/* Creator-supplied public media can have arbitrary dimensions. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={sample.publicAssetUrl} alt={sample.accessibilityText ?? ""} />
+      </figure>
+    );
+  }
+  if (
+    (sample.kind === "audio" || sample.kind === "video") &&
+    sample.publicAssetUrl
+  )
+    return <ProfileMediaSample sample={sample} title={work.title} />;
+  return null;
+}
+
+function workAction(work: ProfileSelectedWork): string {
+  switch (work.sample?.kind) {
+    case "text":
+      return "Read this Work";
+    case "audio":
+      return "Listen to this Work";
+    case "video":
+      return "Watch this Work";
+    case "image":
+      return "View this Work";
+    default:
+      return "Open this Work";
+  }
+}
+
 export function PublicProfileView({
   profile,
   handle,
@@ -136,9 +181,6 @@ export function PublicProfileView({
             <EmptyTitle role="heading" aria-level={1}>
               This Profile is private.
             </EmptyTitle>
-            <EmptyDescription>
-              Nothing from this Profile is available to visitors.
-            </EmptyDescription>
           </EmptyHeader>
         </Empty>
       </main>
@@ -168,7 +210,15 @@ export function PublicProfileView({
             ) : null}
           </ItemContent>
         </Item>
-        <ProfileShareActions displayName={displayName} url={shareUrl} />
+        <div className={styles.profileActions}>
+          {profile.contactEnabled && profile.id ? (
+            <ProfileContactDialog
+              displayName={displayName}
+              userId={profile.id}
+            />
+          ) : null}
+          <ProfileShareActions displayName={displayName} url={shareUrl} />
+        </div>
       </header>
 
       <div className={styles.content}>
@@ -183,6 +233,7 @@ export function PublicProfileView({
               {workMeta(featuredWork) ? (
                 <p className={styles.workMeta}>{workMeta(featuredWork)}</p>
               ) : null}
+              <FeaturedSample work={featuredWork} />
               {featuredWork.description ? (
                 <p>{featuredWork.description}</p>
               ) : null}
@@ -193,7 +244,7 @@ export function PublicProfileView({
                   target="_blank"
                   rel="nofollow ugc noopener noreferrer"
                 >
-                  Read or view this Work <ArrowUpRight aria-hidden="true" />
+                  {workAction(featuredWork)} <ArrowUpRight aria-hidden="true" />
                 </a>
               ) : null}
             </article>
@@ -244,33 +295,40 @@ export function PublicProfileView({
           {socialLinks.length ? (
             <section
               className={styles.railSection}
-              aria-labelledby="elsewhere-title"
+              aria-labelledby="links-title"
             >
-              <h2 id="elsewhere-title" className={styles.sectionLabel}>
-                Elsewhere
+              <h2 id="links-title" className={styles.sectionLabel}>
+                Links
               </h2>
-              <ItemGroup className={styles.socialList}>
-                {socialLinks.map((link, index) => (
-                  <div key={link.id} role="listitem">
-                    <Item className={styles.socialRow}>
-                      <a
-                        href={link.url}
-                        target="_blank"
-                        rel="nofollow ugc noopener noreferrer"
-                      >
-                        <span>{PROFILE_SOCIAL_LABELS[link.service]}</span>
-                        <ArrowUpRight aria-hidden="true" />
-                      </a>
-                    </Item>
-                    {index < socialLinks.length - 1 ? (
-                      <ItemSeparator className={styles.separator} />
-                    ) : null}
-                  </div>
+              <div className={styles.socialList} role="list">
+                {socialLinks.map((link) => (
+                  <span key={link.id} role="listitem">
+                    <a
+                      className={cn(
+                        buttonVariants({ variant: "outline" }),
+                        styles.socialLink,
+                      )}
+                      href={link.url}
+                      target="_blank"
+                      rel="nofollow ugc noopener noreferrer"
+                    >
+                      <ProfileLinkIcon
+                        className={styles.socialIcon}
+                        service={link.service}
+                      />
+                      <span>{PROFILE_SOCIAL_LABELS[link.service]}</span>
+                    </a>
+                  </span>
                 ))}
-              </ItemGroup>
+              </div>
             </section>
           ) : null}
         </div>
+      ) : null}
+      {profile.id ? (
+        <footer className={styles.profileFooter}>
+          <ProfileReportDialog userId={profile.id} />
+        </footer>
       ) : null}
     </main>
   );

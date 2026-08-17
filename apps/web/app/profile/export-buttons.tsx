@@ -51,13 +51,13 @@ export function ExportButtons() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">Download your tracker, Works, Files, and Saved Answers. Exports are private and owner-scoped.</p>
+      <p className="text-sm text-muted-foreground">JSON includes your Profile, Tracker, Works, Files, and Saved Answers. CSV contains your Tracker. Exports are private and owner-scoped.</p>
       <div className="flex flex-wrap gap-2">
         <Button type="button" disabled={Boolean(busy)} onClick={() => download('json')} className="min-h-11 min-w-40 gap-2">
-          <Download className="size-4" aria-hidden="true" />{busy === 'json' ? 'Preparing…' : 'Download JSON'}
+          <Download className="size-4" aria-hidden="true" />{busy === 'json' ? 'Preparing…' : 'Download all data'}
         </Button>
         <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => download('csv')} className="min-h-11 min-w-40 gap-2">
-          <Download className="size-4" aria-hidden="true" />{busy === 'csv' ? 'Preparing…' : 'Download CSV'}
+          <Download className="size-4" aria-hidden="true" />{busy === 'csv' ? 'Preparing…' : 'Download Tracker CSV'}
         </Button>
       </div>
       <div className="flex flex-wrap gap-2 border-t border-border pt-4">

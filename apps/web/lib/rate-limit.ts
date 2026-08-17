@@ -53,6 +53,15 @@ async function createRedisRateLimitStoreFromEnv(): Promise<ReturnType<typeof cre
 export const WAITLIST_IP_LIMIT: RateLimitRule = { name: 'waitlist-ip', limit: 5, windowMs: 60 * 60_000 };
 export const WAITLIST_EMAIL_LIMIT: RateLimitRule = { name: 'waitlist-email', limit: 3, windowMs: 60 * 60_000 };
 
+/** Public Profile contact relay. Recipient limits protect creators from distributed abuse. */
+export const PROFILE_CONTACT_IP_LIMIT: RateLimitRule = { name: 'profile-contact-ip', limit: 5, windowMs: 60 * 60_000 };
+export const PROFILE_CONTACT_SENDER_LIMIT: RateLimitRule = { name: 'profile-contact-sender', limit: 3, windowMs: 60 * 60_000 };
+export const PROFILE_CONTACT_RECIPIENT_LIMIT: RateLimitRule = { name: 'profile-contact-recipient', limit: 30, windowMs: 60 * 60_000 };
+
+/** Public Profile reports. Target limits keep coordinated reports from flooding one creator. */
+export const PROFILE_REPORT_IP_LIMIT: RateLimitRule = { name: 'profile-report-ip', limit: 8, windowMs: 60 * 60_000 };
+export const PROFILE_REPORT_TARGET_LIMIT: RateLimitRule = { name: 'profile-report-target', limit: 50, windowMs: 60 * 60_000 };
+
 /**
  * Automated environments provision accounts far faster than any person, from a
  * single egress address. Rather than loosen the shipped limits to accommodate

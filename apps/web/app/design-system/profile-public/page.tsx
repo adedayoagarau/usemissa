@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
-import type { PublicUserProfile } from "@missa/radar-engine";
+import type {
+  ProfileWorkSample,
+  PublicUserProfile,
+} from "@missa/radar-engine";
 
 import { PublicProfileView } from "@/components/public-profile-view";
 import { PublicSiteShell } from "@/components/public-site-shell";
@@ -20,6 +23,7 @@ const profile: PublicUserProfile = {
   bio: "Amaka Obi writes essays, fiction, and screenplays about family, work, and the quiet decisions that shape ordinary life.",
   openTo:
     "Commissions, residencies, essay assignments, and thoughtful collaborations.",
+  contactEnabled: true,
   selectedWorks: [
     {
       id: "harmattan-year",
@@ -29,6 +33,12 @@ const profile: PublicUserProfile = {
       url: "https://example.com/the-harmattan-year",
       description:
         "An essay about dust, inheritance, and a grandmother who took the weather personally.",
+      sample: {
+        kind: "text",
+        excerpt:
+          "The dust came early that year, three weeks before anyone thought to hang the plastic sheeting, and my grandmother announced it the way she announced everything—as though the weather had been consulted beforehand and had disappointed her personally.\n\nWe swept twice a day. By evening, a red line had gathered beneath every door, patient as a second threshold.",
+        rightsConfirmedAt: "2026-08-15T00:00:00.000Z",
+      },
     },
     {
       id: "borrowed-house",
@@ -60,11 +70,61 @@ const profile: PublicUserProfile = {
   publishedAt: "2026-08-15T00:00:00.000Z",
 };
 
-export default function PublicProfileReviewPage() {
+const sampleFixtures: Record<string, ProfileWorkSample | undefined> = {
+  text: profile.selectedWorks?.[0]?.sample,
+  image: {
+    kind: "image",
+    publicAssetUrl: "/media/home/portfolio-still-life.webp",
+    accessibilityText:
+      "A still life arranged on a worktable in soft window light.",
+    rightsConfirmedAt: "2026-08-15T00:00:00.000Z",
+  },
+  audio: {
+    kind: "audio",
+    publicAssetUrl: "/media/missa-bosphorus.mp4",
+    contentType: "audio/mp4",
+    transcript: "Instrumental recording.",
+    rightsConfirmedAt: "2026-08-15T00:00:00.000Z",
+  },
+  video: {
+    kind: "video",
+    publicAssetUrl: "/media/missa-bosphorus.mp4",
+    contentType: "video/mp4",
+    accessibilityText:
+      "A quiet view across the Bosphorus with boats moving through the frame.",
+    transcript: "Ambient water and city sound. No speech.",
+    rightsConfirmedAt: "2026-08-15T00:00:00.000Z",
+  },
+  none: undefined,
+};
+
+export default async function PublicProfileReviewPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ sample?: string }>;
+}) {
+  const variant = (await searchParams)?.sample ?? "text";
+  const selectedSample = Object.prototype.hasOwnProperty.call(
+    sampleFixtures,
+    variant,
+  )
+    ? sampleFixtures[variant]
+    : sampleFixtures.text;
+  const fixture: PublicUserProfile = {
+    ...profile,
+    selectedWorks: (profile.selectedWorks ?? []).map((work, index) =>
+      index === 0
+        ? {
+            ...work,
+            ...(selectedSample ? { sample: selectedSample } : { sample: undefined }),
+          }
+        : work,
+    ),
+  };
   return (
     <PublicSiteShell current="profile">
       <PublicProfileView
-        profile={profile}
+        profile={fixture}
         handle="amaka"
         shareUrl="https://www.usemissa.com/@amaka"
       />

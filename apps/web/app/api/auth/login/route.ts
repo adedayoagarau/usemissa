@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   }
   await limiter.reset(LOGIN_EMAIL_LIMIT, subject);
 
-  const token = issueSessionToken(account.id);
+  const token = issueSessionToken(account.id, account.sessionVersion ?? 0);
   await trackPlatformAnalytics({ eventName: 'auth.login_succeeded', source: 'auth-api', accountId: account.id, properties: { method: 'password' } });
   const response = NextResponse.json({ account: { id: account.id, email: account.email } }, { headers: { 'Cache-Control': 'no-store' } });
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
