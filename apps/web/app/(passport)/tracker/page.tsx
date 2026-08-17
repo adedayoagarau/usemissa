@@ -47,19 +47,22 @@ export default async function TrackerPage({
   const session = await getSessionAccountFromToken(
     cookieStore.get(SESSION_COOKIE)?.value,
   );
-  if (!session?.account.userId) redirect("/login?next=/tracker");
+  if (!session) redirect("/login?next=/tracker");
 
   const raw = searchParams ? await searchParams : {};
   const userId = session.account.userId;
+  const postgresTracker =
+    process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" &&
+    Boolean(process.env.DATABASE_URL);
+  if (!userId && !postgresTracker) redirect("/login?next=/tracker");
   const radar = await getEngine();
   const initialItems: TrackerProductItem[] =
-    process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" &&
-    process.env.DATABASE_URL
+    postgresTracker && process.env.DATABASE_URL
       ? await listCanonicalTrackedOpportunities(
           process.env.DATABASE_URL,
           session.account.id,
         )
-      : Object.values(radar.getTracker(userId).pipeline)
+      : Object.values(radar.getTracker(userId!).pipeline)
           .flat()
           .map((item) => ({
             opportunityId: item.opportunityId,
@@ -128,15 +131,18 @@ export default async function TrackerPage({
       };
     });
 
-  const works = radar
-    .library(userId)
-    .works.map((work) => ({ id: work.id, title: work.title }));
+  const works = userId
+    ? radar
+        .library(userId)
+        .works.map((work) => ({ id: work.id, title: work.title }))
+    : [];
 
   return (
     <TrackerProduct
       initialItems={initialItems}
       hostedSubmissions={hostedSubmissions}
       works={works}
+      accountId={session.account.id}
       userId={userId}
       initialView={safeView(first(raw.view))}
       initialLayout={safeLayout(first(raw.layout))}

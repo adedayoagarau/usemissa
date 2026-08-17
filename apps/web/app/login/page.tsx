@@ -2,7 +2,12 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { AuthForm } from "@/components/auth-form";
-import { safeAuthIntent, safeAuthRedirect } from "@/lib/authRedirect";
+import { safeAuthRedirect } from "@/lib/authRedirect";
+import {
+  FIRST_SAVE_INTENT_COOKIE,
+  firstSaveContext,
+  verifyFirstSaveIntent,
+} from "@/lib/firstSaveIntent";
 
 export default async function LoginPage({
   searchParams,
@@ -10,7 +15,6 @@ export default async function LoginPage({
   searchParams: Promise<{
     mode?: string;
     next?: string;
-    intent?: string;
     invite?: string;
   }>;
 }) {
@@ -18,9 +22,11 @@ export default async function LoginPage({
   const session = await getSessionAccountFromToken(
     cookieStore.get(SESSION_COOKIE)?.value,
   );
-  const { mode, next, intent, invite } = await searchParams;
+  const { mode, next, invite } = await searchParams;
   const redirectTo = safeAuthRedirect(next);
-  if (session) redirect(redirectTo);
+  const firstSaveToken = cookieStore.get(FIRST_SAVE_INTENT_COOKIE)?.value;
+  const firstSaveIntent = verifyFirstSaveIntent(firstSaveToken);
+  if (session && !firstSaveIntent) redirect(redirectTo);
   const initialMode = mode === "signup" ? "signup" : "login";
 
   const inviteToken =
@@ -31,7 +37,11 @@ export default async function LoginPage({
     <AuthForm
       initialMode={initialMode}
       redirectTo={redirectTo}
-      intent={safeAuthIntent(intent)}
+      firstSaveContext={
+        firstSaveIntent ? firstSaveContext(firstSaveIntent) : undefined
+      }
+      authenticated={Boolean(session)}
+      firstSaveUnavailable={Boolean(firstSaveToken && !firstSaveIntent)}
       inviteToken={inviteToken}
     />
   );

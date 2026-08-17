@@ -6,7 +6,10 @@
   border: 1px solid var(--border);
   border-radius: 12px;
   background: white;
-  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
 }
 
 .card:hover,
@@ -136,22 +139,6 @@
   color: var(--primary);
   font-size: 11px;
   font-weight: 650;
-}
-
-.saveLink {
-  display: inline-grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: white;
-  color: var(--primary);
-}
-
-.saveLink svg {
-  width: 16px;
-  height: 16px;
 }
 
 @media (max-width: 620px) {

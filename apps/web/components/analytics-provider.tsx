@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import posthog from 'posthog-js';
-import { usePathname } from 'next/navigation';
-import { useEffect, type ReactNode } from 'react';
+import posthog from "posthog-js";
+import { usePathname } from "next/navigation";
+import { useEffect, type ReactNode } from "react";
 
 let initialized = false;
 
@@ -11,18 +11,22 @@ function ensurePostHog(): boolean {
   if (!key) return false;
   if (!initialized) {
     posthog.init(key, {
-      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
+      api_host:
+        process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
       capture_pageview: false,
       capture_pageleave: true,
-      persistence: 'localStorage',
-      person_profiles: 'identified_only',
+      persistence: "localStorage",
+      person_profiles: "identified_only",
     });
     initialized = true;
   }
   return true;
 }
 
-export function captureProductEvent(eventName: string, properties?: Record<string, unknown>): void {
+export function captureProductEvent(
+  eventName: string,
+  properties?: Record<string, unknown>,
+): void {
   if (ensurePostHog()) posthog.capture(eventName, properties);
 }
 
@@ -31,18 +35,29 @@ export function captureProductEvent(eventName: string, properties?: Record<strin
  * browser identifiers to the first-party event ledger.
  */
 export function browserAttributionProperties(): Record<string, string> {
-  if (typeof window === 'undefined') return {};
+  if (typeof window === "undefined") return {};
 
   const properties: Record<string, string> = {};
   const url = new URL(window.location.href);
-  const trackedParameters = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+  const trackedParameters = [
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+  ];
 
   for (const parameter of trackedParameters) {
     const value = url.searchParams.get(parameter)?.trim();
     if (value) properties[parameter] = value.slice(0, 200);
   }
 
-  properties.device_class = window.innerWidth < 768 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop';
+  properties.device_class =
+    window.innerWidth < 768
+      ? "mobile"
+      : window.innerWidth < 1024
+        ? "tablet"
+        : "desktop";
 
   if (document.referrer) {
     try {
@@ -62,14 +77,22 @@ export function recordPublicAnalyticsEvent(
   eventName: `public.${string}`,
   properties?: Record<string, unknown>,
 ): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
-  const payload = { ...browserAttributionProperties(), ...(properties ?? {}), path: window.location.pathname };
+  const payload = {
+    ...browserAttributionProperties(),
+    ...(properties ?? {}),
+    path: window.location.pathname,
+  };
   captureProductEvent(eventName, payload);
-  void fetch('/api/analytics/events', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ eventName, path: window.location.pathname, properties: payload }),
+  void fetch("/api/analytics/events", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      eventName,
+      path: window.location.pathname,
+      properties: payload,
+    }),
     keepalive: true,
   }).catch(() => undefined);
 }
@@ -79,13 +102,18 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const attribution = browserAttributionProperties();
-    void fetch('/api/analytics/events', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ eventName: 'page_view', path: pathname, properties: attribution }),
+    void fetch("/api/analytics/events", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        eventName: "page_view",
+        path: pathname,
+        properties: attribution,
+      }),
       keepalive: true,
     }).catch(() => undefined);
-    if (ensurePostHog()) posthog.capture('$pageview', { path: pathname, url: window.location.href, ...attribution });
+    if (ensurePostHog())
+      posthog.capture("$pageview", { path: pathname, ...attribution });
   }, [pathname]);
 
   return children;

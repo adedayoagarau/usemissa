@@ -83,6 +83,111 @@
   background: var(--tracker-soft);
 }
 
+.firstSaveHandoff {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) auto;
+  align-items: start;
+  gap: 24px;
+  margin-bottom: 22px;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--primary) 34%, transparent);
+  border-radius: 16px;
+  background: var(--tracker-soft);
+  outline: none;
+}
+
+.firstSaveHandoff:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 24%, transparent);
+}
+
+.firstSaveHandoff p,
+.firstSaveHandoff h2,
+.firstSaveHandoff span,
+.firstSaveHandoff small,
+.firstSaveAction strong {
+  margin: 0;
+}
+
+.firstSaveHandoff > div:first-child > p,
+.firstSaveAction > p {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-deep);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.firstSaveHandoff > div:first-child > p svg {
+  width: 14px;
+  height: 14px;
+}
+
+.firstSaveHandoff h2 {
+  margin-top: 6px;
+  font-family: var(--font-heading), serif;
+  font-size: 1.45rem;
+  font-weight: 550;
+  letter-spacing: -0.02em;
+}
+
+.firstSaveHandoff > div:first-child > span,
+.firstSaveHandoff small,
+.firstSaveAction span {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.firstSaveHandoff small {
+  margin-top: 8px;
+}
+
+.firstSaveAction {
+  display: grid;
+  gap: 5px;
+  border-inline-start: 1px solid var(--tracker-border);
+  padding-inline-start: 22px;
+}
+
+.firstSaveAction strong {
+  font-size: 0.92rem;
+}
+
+.firstSaveAction a {
+  display: inline-flex;
+  min-height: 44px;
+  width: fit-content;
+  align-items: center;
+  gap: 7px;
+  margin-top: 5px;
+  color: var(--accent-deep);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.firstSaveAction a svg {
+  width: 14px;
+  height: 14px;
+}
+
+.firstSaveDismiss,
+.reopenGuidance {
+  min-height: 44px;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.reopenGuidance {
+  margin-bottom: 18px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .importContext p,
 .importContext h2,
 .importContext span {
@@ -163,18 +268,18 @@
   font-weight: 600;
 }
 
-.views > button[data-active='true'] {
+.views > button[data-active="true"] {
   color: var(--foreground);
 }
 
-.views > button[data-active='true']::after {
+.views > button[data-active="true"]::after {
   position: absolute;
   right: 12px;
   bottom: -1px;
   left: 12px;
   height: 2px;
   background: var(--primary);
-  content: '';
+  content: "";
 }
 
 .moreViews {
@@ -286,7 +391,7 @@
   font-weight: 650;
 }
 
-.layoutSwitch button[data-active='true'] {
+.layoutSwitch button[data-active="true"] {
   background: white;
   color: var(--foreground);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--ink) 10%, transparent);
@@ -413,15 +518,20 @@
   width: 3px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--primary) 28%, transparent);
-  content: '';
+  content: "";
 }
 
-.itemCard[data-stage='outcome']::before {
+.itemCard[data-stage="outcome"]::before {
   background: var(--green);
 }
 
-.itemCard[data-stage='archived']::before {
+.itemCard[data-stage="archived"]::before {
   background: var(--muted-foreground);
+}
+
+.itemCard[data-first-save="true"] {
+  border-color: color-mix(in srgb, var(--primary) 48%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 9%, transparent);
 }
 
 .itemIdentity {
@@ -856,6 +966,22 @@
   .calendarLayout {
     grid-template-columns: 1fr;
   }
+
+  .firstSaveHandoff {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .firstSaveAction {
+    border-inline-start: 0;
+    border-top: 1px solid var(--tracker-border);
+    padding-block-start: 16px;
+    padding-inline-start: 0;
+  }
+
+  .firstSaveDismiss {
+    justify-self: start;
+  }
 }
 
 @media (max-width: 620px) {
@@ -888,7 +1014,7 @@
     padding-inline: 7px;
   }
 
-  .views > button[data-active='true']::after {
+  .views > button[data-active="true"]::after {
     right: 6px;
     left: 6px;
   }
