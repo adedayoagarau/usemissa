@@ -462,7 +462,15 @@ export interface UserProfile {
   publicProfilePublishedAt?: IsoDateTime;
   /** Durable dismissal for the optional first-Profile handle prompt. */
   handlePromptDismissedAt?: IsoDateTime;
+  /** Durable once-per-account consequence motion events for public Profile. */
+  profileMotion?: Partial<Record<ProfileMotionEvent, IsoDateTime>>;
 }
+
+export type ProfileMotionEvent =
+  | "first-sample-published"
+  | "recorded-credit"
+  | "indexability-threshold"
+  | "handle-claimed";
 
 export interface TaxonomyPreference {
   termId: string;
@@ -611,6 +619,9 @@ export interface Account {
   email: string;
   /** "<salt-hex>:<hash-hex>" — see auth/crypto.ts. */
   passwordHash: string;
+  /** Stable identity from the managed authentication provider, when linked. */
+  authUserId?: string;
+  authProvider?: "neon-auth";
   /** The individual tracker this account owns, if any. */
   userId?: string;
   /** Platform admin — can see the verification queue and claim reviews. */

@@ -64,6 +64,7 @@ const ELIGIBILITY_PATTERNS: Array<[RegExp, (m: RegExpExecArray) => EligibilityRu
 const EMAIL_RE = /\b[\w.+-]+@[\w-]+\.[\w.]+\b/;
 const SUBMIT_URL_RE = /https?:\/\/[^\s"')]*(?:submit|apply|form|submittable)[^\s"')]*/i;
 const LABELED_URL_RE = /(?:submit (?:at|online|here)|apply at)[:\s]+(https?:\/\/[^\s"')]+)/i;
+const OFFICIAL_URL_RE = /(?:official (?:website|site|page)|more information|full details|apply here)\s*[:\-]?\s*(https?:\/\/[^\s"')]+)/i;
 
 function extractDeadline(text: string, reference: Date): DeadlineInfo {
   if (/\buntil filled\b/i.test(text)) return { kind: 'until-filled', raw: 'until filled' };
@@ -89,6 +90,11 @@ function extractTitle(text: string, source: Source): string | undefined {
   const firstLine = text.split('\n').map((l) => l.trim()).find((l) => l.length > 0);
   if (firstLine && firstLine.length <= 120) return firstLine.replace(/[#*]/g, '').trim();
   return source.name || undefined;
+}
+
+function extractOfficialUrl(text: string, source: Source): string | undefined {
+  if (source.kind === 'organization-website') return source.url;
+  return OFFICIAL_URL_RE.exec(text)?.[1];
 }
 
 function extractOrganization(text: string, source: Source): string | undefined {
@@ -128,7 +134,11 @@ export class DeterministicExtractor implements Extractor {
     const now = this.clock.now();
     const lower = text.toLowerCase();
 
-    const type = TYPE_KEYWORDS.find(([re]) => re.test(text))?.[1] ?? 'open-call';
+    // A residency program remains a residency even when a directory uses
+    // generic “contest” language around the listing.
+    const type = /\bresiden(?:cy|ce|tial)\b/i.test(text)
+      ? 'residency'
+      : TYPE_KEYWORDS.find(([re]) => re.test(text))?.[1] ?? 'open-call';
     const genres = GENRE_VOCAB.filter((g) => lower.includes(g));
     const eligibility: EligibilityRule[] = [];
     for (const [re, build] of ELIGIBILITY_PATTERNS) {
@@ -158,6 +168,7 @@ export class DeterministicExtractor implements Extractor {
       extractedAt: now.toISOString(),
       title: extractTitle(text, source),
       organizationName: extractOrganization(text, source),
+      officialUrl: extractOfficialUrl(text, source),
       type,
       genres,
       taxonomyAssignments: (() => {

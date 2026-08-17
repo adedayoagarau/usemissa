@@ -11,7 +11,9 @@ import {
   DeterministicExtractor,
   FixtureFetcher,
   dueSources,
+  matchOrganizationByDomain,
   type Extractor,
+  type Organization,
 } from '../src/index.js';
 
 async function discoveredWorld() {
@@ -368,6 +370,24 @@ test('organization loop: claim invite → domain-match claim → authoritative o
   assert.deepEqual(grant.conflicts, []);
   assert.equal(grant.fields.deadline.date, '2026-04-25');
   assert.equal(grant.status, 'open');
+});
+
+test('organization domain matching tolerates legacy records without domains', () => {
+  const store = createStore();
+  store.organizations.set('org_legacy', {
+    id: 'org_legacy',
+    name: 'Legacy organization',
+    verified: false,
+  } as Organization);
+  const current: Organization = {
+    id: 'org_current',
+    name: 'Current organization',
+    domains: ['example.org'],
+    verified: true,
+  };
+  store.organizations.set(current.id, current);
+
+  assert.equal(matchOrganizationByDomain(store, 'https://calls.example.org/open'), current);
 });
 
 test('prediction: recurring call yields a reopen window and a proactive alert', async () => {
