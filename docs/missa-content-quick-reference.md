@@ -62,15 +62,19 @@ Remove **successfully** when the verb already shows success.
 
 ## Canonical homepage copy
 
-> # Find your next opportunity.
+> # Find the call worth your time.
 >
-> Discover grants, residencies, fellowships, commissions, and open calls that fit your work.
+> Missa helps you compare the facts, open the official source, save your decision, and keep track of what comes next.
 >
-> **Join the waitlist**
+> **Browse Opportunities**
 >
-> We’ll send you an invite when Missa is ready.
+> **How Missa handles evidence**
 
 Do not add an eyebrow unless it gives information.
+
+For waitlist or invitation surfaces, use the same value in a shorter form:
+
+> Find the calls that fit your work, prepare what you need, and stay on top of every deadline—with the original source close at hand.
 
 ## Product patterns
 

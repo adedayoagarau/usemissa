@@ -35,23 +35,38 @@ When two rules conflict, choose the wording that is more accurate and easier to 
 
 ## 2. What Missa does
 
-### For artists
+Missa is building the trusted opportunity layer for creative work. It turns
+scattered opportunities into understandable decisions while keeping the
+official source, limits, and unknowns visible.
 
-Missa helps artists find opportunities that fit their work and keep track of what they submit.
+### For creators
+
+Missa helps creators find opportunities that fit their work, decide whether they
+are worth the time, and keep track of what they submit.
 
 ### For organizations
 
-Missa helps organizations publish opportunities, receive work, run reviews, and send decisions.
+Missa is building tools for organizations to publish opportunities, receive
+work, run reviews, and send decisions. The wider product direction connects
+those decisions to delivery and reporting.
 
-### The marketing promise
+### The public promise
 
-> Find your next opportunity.
+> Find the call worth your time.
 
-Supporting copy may explain the range:
+Supporting copy may explain the immediate value:
 
-> Discover grants, residencies, fellowships, commissions, and open calls that fit your work.
+> Compare the facts, open the official source, save your decision, and keep track of what comes next.
 
-Do not turn this into a mission statement. Do not mention the technology before the benefit.
+Keep the strategic category language—“the trusted opportunity layer for
+creative work”—in internal positioning, fundraising, and appropriate
+organization-facing context. Do not make a creator read a mission statement or
+technology description before they can understand the next action.
+
+The larger positioning, evidence plan, and current-versus-future boundary live
+in [`missa-value-and-positioning.md`](./missa-value-and-positioning.md). That
+document does not authorize claims about features that are not supported by the
+current route, data, and deployment state.
 
 ## 3. Product naming
 
@@ -237,11 +252,11 @@ Supporting copy must add information.
 
 **Headline**
 
-> Find your next opportunity.
+> Find the call worth your time.
 
 **Support**
 
-> Discover grants, residencies, fellowships, commissions, and open calls that fit your work.
+> Compare the facts, open the official source, save your decision, and keep track of what comes next.
 
 The second line adds scope. It does not restate “find opportunities.”
 
@@ -411,9 +426,9 @@ Use this structure:
 
 Canonical waitlist hero:
 
-> # Find your next opportunity.
+> # Find the call worth your time.
 >
-> Discover grants, residencies, fellowships, commissions, and open calls that fit your work.
+> Compare the facts, open the official source, save your decision, and keep track of what comes next.
 >
 > **Join the waitlist**
 >
@@ -425,11 +440,11 @@ Do not add an eyebrow unless it supplies information, such as **For organization
 
 Lead with the thing the page enables.
 
-**For artists**
+**For creators**
 
-> Find opportunities that fit your work.
+> Find the call worth your time.
 
-> Use your field, location, and preferences to narrow the list. See why each opportunity appears.
+> Compare the requirements, open the official source, and save the next step.
 
 **For organizations**
 
@@ -985,7 +1000,7 @@ Taxonomy values, stable IDs, facet keys, and legacy names may remain in code, sc
 
 Public Profile language is authored presentation: **About**, **Selected Works**, **Works**, **Publications**, and **Links**. Private product language is operational: **Preferences**, **Notifications**, **Integrations**, **Privacy**, **Security**, and **Account**. Do not put private preferences, eligibility information, Tracker activity, submissions, or Library drafts on a public Profile.
 
-Address the person as **you** in product copy. Use **artist**, **writer**, **filmmaker**, or another specific role when known. Use **artists** as a broad marketing term when the audience includes several disciplines. Avoid **creatives** as a default noun.
+Address the person as **you** in product copy. Use **artist**, **writer**, **filmmaker**, or another specific role when known. Use **creators** as a broad marketing term when the audience includes several disciplines. Avoid **creatives** as a default noun.
 
 Use **people** rather than **users** in public copy. **User** is acceptable in technical, legal, analytics, and research documentation.
 
@@ -1046,8 +1061,8 @@ Do not use **Click here**.
 
 | Reject | Use |
 | :-- | :-- |
-| Find the calls that fit your work, all in one calmer place. | Find your next opportunity. |
-| Your work is specific. Your opportunities should be too. | Find opportunities that fit your work. |
+| Find the calls that fit your work, all in one calmer place. | Find the call worth your time. |
+| Your work is specific. Your opportunities should be too. | Compare the facts before you decide. |
 | No password yet. Just a note when Missa is ready for you. | We’ll send you an invite when Missa is ready. |
 | Unlock personalized opportunities powered by AI. | See opportunities based on your field, location, and preferences. |
 | Never miss another deadline. | Add deadlines to your calendar. |
