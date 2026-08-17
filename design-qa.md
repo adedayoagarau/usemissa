@@ -76,6 +76,314 @@
 
 ---
 
+# Application Office prototype QA — 2026-08-15
+
+## Comparison target and evidence
+
+- Source visual truth: `/Users/adedayoagarau/.codex/generated_images/01a008c0-7b49-7ce3-bb23-0688351d5316/exec-11d95f1a-cc3b-4ba4-9460-93ba1cb499a8.png`.
+- Browser-rendered implementation: `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/03-workspace-desktop.png`.
+- Combined full-view comparison: `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/design-qa-comparison.png`.
+- Combined focused comparison: `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/design-qa-focus.png`.
+- Responsive evidence: `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/07-compile-mobile.png`, `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/08-graph-mobile.png`, and `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/09-workspace-mobile.png`.
+- Viewport: 1440 × 1024 CSS px at device scale factor 1 for desktop; 390 × 844 CSS px at device scale factor 1 for mobile.
+- Pixel dimensions: source 1487 × 1058; implementation 1440 × 1024. The full comparison uses a near-lossless aspect-ratio normalization of the source to 1440 × 1024 and compares it with the implementation at native capture size. No finding is based on the 47 × 34 px source difference.
+- State: default light theme, Component Workspace, Saltwater Lessons selected, source requirement open, reviewer context populated, evidence explanation expanded, work not yet confirmed.
+
+## Findings
+
+No actionable P0, P1, or P2 mismatch remains.
+
+- The extra Application Office rail is an intentional product expansion, not an accidental clone mismatch: the supplied screen is used as the Work Sample component lens inside a broader five-state Office machine.
+- The center workspace is narrower than the supplied screen because the persistent Office rail exposes the application state machine. The requirement, selected work, constraint comparison, reviewer context, readiness, and guarded handoff remain legible at 1440 px.
+- Mobile uses a horizontally scrollable application-outline strip so persistent state stays available without creating page-level overflow. Document width remained 390 px in Compile Preview, Living Graph, and Component Workspace.
+
+### Required fidelity surfaces
+
+- Fonts and typography: Ysabeau is preserved for product copy and hierarchy; Fragment Mono handles technical labels and provenance. Headline scale, line height, and small-label tracking remain readable at both verified widths.
+- Spacing and layout rhythm: true-white regions, hairline separators, compact rails, and generous task-canvas spacing preserve the source's editorial density. The Office rail is the only intentional major-region addition.
+- Colors and visual tokens: Missa Aubergine anchors active, progress, and primary-action states; neutral ink, border, green ready, amber review, and red blocker roles remain restrained and semantic.
+- Image quality and asset fidelity: Saltwater Lessons uses the generated 1448 × 1086 editorial ocean asset through `next/image`; the crop is sharp and subject-appropriate. The canonical Missa wordmark and the product's existing icon library are used rather than improvised marks.
+- Copy and content: the source requirement, limits, selected work, reviewer context, readiness, protected submission boundary, and unknown states use realistic application language. The prototype never claims that Missa submitted an application.
+- Accessibility and interaction states: semantic headings, buttons, labels, dialog semantics, visible focus styling, skip link, reduced-motion handling, pressed/expanded states, and keyboard view navigation are present.
+
+## Full-view comparison evidence
+
+The combined image confirms the source's recognizable three-part component pattern—outline, task canvas, readiness—inside the new persistent Office shell. The implementation retains the source's true-white canvas, Aubergine focus treatment, compact typographic rails, work-sample card, explicit readiness, and bottom action posture. The added Office rail and evidence explanation make the application machine visible without replacing the selected screen's task model.
+
+## Focused-region comparison evidence
+
+The focused comparison covers the requirement block, selected Saltwater Lessons asset, hard-constraint evaluation, and reviewer-context entry. It confirms that the implementation replaces the source's generic context list with a more operational constraint table while retaining the same hierarchy and editorial restraint. This was the densest fidelity region; no smaller crop was required after the text, image, dividers, and state treatments remained readable.
+
+## Interaction and runtime verification
+
+- Compiled the application and advanced into Living Graph.
+- Opened Work Samples, confirmed Saltwater Lessons, and observed the readiness state change.
+- Reviewed the v3 → v4 source change, accepted it as a new revision, and continued to Apply Bridge.
+- Filled all 12 supported fields, opened the proof dialog, recorded receipt `NRR-2026-1842`, and verified the submission receipt state.
+- Verified the 390 px Compile Preview, Living Graph, and Component Workspace states with no document-level horizontal overflow.
+- Browser console errors and warnings checked after the primary and mobile flows: none.
+
+## Comparison history
+
+### Pass 1 — five-state browser render
+
+- Evidence: desktop state captures `01` through `06` and mobile captures `07` through `09` in `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/`.
+- Finding: the final graph node retained an outgoing arrow at the end of the second row (P2 visual continuity).
+- Fix: changed the desktop graph-end selector from the fourth node only to every fourth node.
+- Post-fix evidence: the live browser render at the same 1440 × 1024 viewport; no row-ending arrow remains.
+
+### Pass 2 — normalized source/implementation comparison
+
+- Evidence: `design-qa-comparison.png` and `design-qa-focus.png`.
+- Result: no actionable P0/P1/P2 findings. Remaining density difference is the intentional persistent Office rail.
+
+## Follow-up polish (P3, non-blocking)
+
+- A later iteration could collapse the Office rail into a narrower icon-and-label mode between 1024 and 1280 px to return more width to dense component workspaces.
+- The mobile outline strip could add a subtle edge fade to signal horizontal scrolling, provided it stays within Missa's no-decoration-for-decoration's-sake rule.
+
+## Implementation checklist
+
+- [x] Five interactive Office states on one review route.
+- [x] In-memory state inspector and explicit no-persistence boundary.
+- [x] End-to-end guarded handoff and receipt flow.
+- [x] Desktop and 390 px browser verification.
+- [x] Source/implementation full-view and focused comparisons.
+- [x] Scoped lint, TypeScript, and whitespace checks.
+
+final result: passed
+
+---
+
+# Tracker Calendar connection QA — 2026-08-16
+
+## Comparison target and evidence
+
+- Source visual truth: `/Users/adedayoagarau/.codex/generated_images/01a008c0-7b49-7ce3-bb23-0688351d5316/exec-11d95f1a-cc3b-4ba4-9460-93ba1cb499a8.png`.
+- Browser-rendered implementation: `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/12-calendar-sync-desktop.png`.
+- Combined full-view comparison: `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/13-calendar-sync-design-qa-comparison.png`.
+- Focused event-state evidence: `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/12-calendar-event-dialog-desktop.png` and `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/12-calendar-deadline-desktop.png`.
+- Responsive evidence: `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/12-calendar-sync-mobile.png` and `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/12-calendar-sync-mobile-dialog.png`.
+- Viewport: 1512 × 982 CSS px at device scale factor 1 for desktop; 390 × 844 CSS px at device scale factor 1 for mobile.
+- Pixel dimensions: source 1487 × 1058; full implementation capture 1512 × 1331; mobile captures 390 × 844. The comparison board normalizes both desktop views to 720 px width and records the content-state mismatch explicitly: the source is Work Samples while the implementation is Calendar.
+- State: light theme; Calendar disconnected by default; Google direct connection, one-way Missa Deadlines feed, individual `.ics` preparation, and provider-confirmed add states exercised separately.
+
+## Findings
+
+No actionable P0, P1, or P2 mismatch remains.
+
+- The Calendar screen preserves the source office's restrained navigation, three-level typographic hierarchy, hairline structure, white canvas, Aubergine actions, and evidence-first side information. The different content state prevents pixel-level component matching, so QA judges shared shell, density, hierarchy, and interaction language rather than pretending the two screens are identical.
+- Direct Google and Outlook connection is clearly separated from the existing private one-way feed. Feed refresh timing, unknown deadline time, narrow permissions, update approval, and unconfirmed `.ics` import states are all visible before action.
+- The 390 px layout turns the Tracker rail into a drawer, stacks the connection card and deadline action, contains the seven-day strip, and keeps the dialog scrollable without clipping its close control.
+
+### Required fidelity surfaces
+
+- Fonts and typography: existing Missa sans and mono variables preserve sentence case, compact technical labels, editorial headings, readable optical weights, and mobile wrapping without truncation.
+- Spacing and layout rhythm: the connection card, availability lens, weekly agenda, schedule proposal, deadline evidence, and modal use the established compact grid, hairline borders, restrained radii, and calm vertical rhythm.
+- Colors and visual tokens: Aubergine remains reserved for selected state and primary action; muted green identifies confirmed connection, pale blue carries uncertainty, and neutral surfaces avoid implying provider success.
+- Image quality and asset fidelity: the Calendar view introduces no new raster asset. It uses the canonical Missa wordmark and the existing Lucide icon library; no improvised SVG, CSS illustration, or placeholder art was added.
+- Copy and content: `Added` appears only after the simulated provider-confirmation step. A one-way feed says `Included`, individual `.ics` preparation remains unconfirmed, and a missing closing time stays explicit instead of receiving an invented hour.
+
+## Full-view comparison evidence
+
+The combined board confirms that the Calendar reads as another room in the same Office system: global navigation, persistent Tracker rail, compact labels, true-white task surface, Aubergine focus, and high-information cards remain consistent with the supplied source. The implementation is intentionally less form-dense because this state is planning and projection rather than application entry.
+
+## Focused-region comparison evidence
+
+The focused desktop capture covers the upcoming-deadline card and individual-event dialog at readable size. It verifies event name, official date, all-day uncertainty, reminders, included source links, disconnected fallback, and the boundary between `Prepare calendar file` and `Connect calendar`. The mobile dialog capture verifies provider selection, update policy, and permission copy in the constrained state.
+
+## Interaction and runtime verification
+
+- Opened Calendar connection settings and selected Google Calendar.
+- Confirmed that deadline changes default to `Ask me before updating` and that private-calendar reading is described as a separate permission.
+- Completed the simulated Google connection, reviewed the North River Review event, and reached the provider-confirmed `Added to Google Calendar` state.
+- Switched to Apple and other calendars, verified the refresh limitation, and confirmed the page says `Included in Missa Deadlines feed` without offering a false direct-add action.
+- Opened the disconnected event path and verified `.ics` preparation says the calendar app must confirm the event.
+- Verified the 390 × 844 Calendar page and connection dialog in the in-app browser. No Next.js error overlay, visible runtime alert, or failed interaction appeared; the selected browser surface did not expose a separate console-log reader.
+- Full web lint, TypeScript, production build, and `git diff --check` pass.
+
+## Comparison history
+
+### Pass 1 — calendar semantics and responsive render
+
+- Finding: a connected one-way feed reused the direct-provider `Add to calendar feed` wording, which could falsely imply a verified cloud write (P1 product-trust issue).
+- Fix: the feed now uses `Included in Missa Deadlines feed`, exposes provider-controlled refresh timing, and offers feed settings rather than a direct-add confirmation.
+- Post-fix evidence: desktop feed interaction and mobile connection dialog; no direct `Added` claim remains in the feed path.
+
+### Pass 2 — normalized source/implementation comparison
+
+- Evidence: `13-calendar-sync-design-qa-comparison.png` plus the focused event-state captures.
+- Result: no actionable P0/P1/P2 differences remain across the shared shell and visual language. The differing Work Samples and Calendar content states are intentional and explicitly excluded from pixel-precision claims.
+
+## Follow-up polish (P3, non-blocking)
+
+- When direct provider integrations are implemented, add distinct revoked, expired-credential, partial-write, duplicate-event, and provider-rate-limit fixtures before product promotion.
+- Replace the prototype's simulated provider confirmation with receipt-backed provider event IDs before exposing `Added` in production.
+
+## Implementation checklist
+
+- [x] One-event add contract.
+- [x] Direct connection versus one-way feed separation.
+- [x] Unknown-time, update-policy, permission, and provider-refresh content states.
+- [x] Provider-confirmed and unconfirmed outcome language.
+- [x] Desktop and 390 px interaction verification.
+- [x] Source/implementation full-view and focused comparisons.
+- [x] Full lint, TypeScript, build, and whitespace validation.
+
+final result: passed
+
+---
+
+# Application Office Review and Submit QA — 2026-08-16
+
+## Comparison target and evidence
+
+- Source visual truth: `/Users/adedayoagarau/.codex/generated_images/01a008c0-7b49-7ce3-bb23-0688351d5316/exec-11d95f1a-cc3b-4ba4-9460-93ba1cb499a8.png`.
+- Browser-rendered implementation: `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/10-review-desktop.png`.
+- Combined comparison: `/Volumes/Crucial X10/usemissa/apps/web/outputs/application-office-prototype/11-review-design-qa-comparison.png`.
+- Viewport: 1440 × 1024 CSS px at device scale factor 1 for desktop; 390 × 844 CSS px at device scale factor 1 for mobile.
+- Pixel dimensions: source 1487 × 1058, normalized to 1440 × 1024; implementation 1440 × 1024. The comparison canvas places both normalized views side by side without density scaling.
+- State: light theme, Review and submit ready state, four application sections complete, creator and organization confirmations initially unchecked.
+
+## Findings
+
+No actionable P0, P1, or P2 mismatch remains.
+
+- The new screen preserves the source's application outline, central task canvas, readiness rail, restrained editorial density, and explicit submission boundary inside the broader Tracker Office shell.
+- Review content is intentionally longer than the source Work Samples state. The declaration and final action follow the reviewed sections in document order, and the page retains bottom padding so the prototype navigator does not prevent access.
+- The only issue found during the interaction pass was primary-button text inheriting the shell foreground inside the mobile confirmation dialog (P2 contrast). The selector now gives primary and disabled actions explicit scoped foreground colors.
+
+### Required fidelity surfaces
+
+- Fonts and typography: existing Missa display and mono variables preserve the source hierarchy, sentence case, tracked labels, and readable mobile wrapping.
+- Spacing and layout rhythm: the three-column application frame, hairline dividers, compact review rows, restrained radii, and generous confirmation spacing match the established application language.
+- Colors and visual tokens: Aubergine remains reserved for focus and final action; confirmed receipt uses muted green; unconfirmed handoff uses amber without implying failure or success.
+- Image quality and asset fidelity: this state introduces no new raster imagery. The canonical wordmark and existing Lucide icon set remain intact; no placeholder or improvised asset was added.
+- Copy and content: the creator declaration, organization terms, Missa promise, confirmed success copy, receipt facts, and external unconfirmed language preserve the supplied wording. `Submitted` appears only with a receipt value.
+
+## Full-view comparison evidence
+
+The combined comparison confirms that the Review screen reads as the next state of the supplied application workspace rather than a separate product. Global navigation, opportunity header, checklist, task canvas, progress rail, and boundary card retain the same hierarchy. The additional Tracker rail is the previously approved Office expansion.
+
+## Focused-region comparison evidence
+
+A separate crop was not required because the new surfaces contain text, native checkboxes, buttons, and bordered panels rather than dense imagery or custom assets. The full-size combined comparison keeps those controls legible, while the browser pass separately inspected the mobile confirmation dialog and receipt state.
+
+## Interaction and runtime verification
+
+- Accepted the creator declaration and North River Review terms separately; the final action changed from disabled to enabled only after both were checked.
+- Opened the final confirmation dialog and verified its evidence-qualified provider language.
+- Simulated provider confirmation and verified receipt `NRR-2026-1842`, submitted timestamp, submitter, no-response-date state, and `Submitted · Awaiting response`.
+- Opened the external handoff and verified that it contained no Submitted language before proof.
+- Added external receipt `SUB-44820` and verified that only then did the state resolve to Submitted.
+- Verified 1280 px and 390 px document widths with no horizontal overflow.
+- Browser console errors and warnings: none.
+
+## Comparison history
+
+### Pass 1 — Review composition and evidence states
+
+- Evidence: `10-review-desktop.png`, the live 390 × 844 browser view, and the confirmed/unconfirmed interaction states.
+- Finding: mobile confirmation-dialog primary action had Aubergine background with inherited dark text (P2 contrast).
+- Fix: scoped primary and disabled button colors beneath the Office shell selector.
+- Post-fix evidence: computed button foreground `rgb(255, 255, 255)` on background `rgb(90, 63, 104)`; dialog remained enabled and document width remained 390 px.
+
+### Pass 2 — normalized source comparison
+
+- Evidence: `11-review-design-qa-comparison.png`.
+- Result: no actionable P0/P1/P2 findings. The longer review sequence and persistent Tracker rail are intentional product differences.
+
+## Follow-up polish (P3, non-blocking)
+
+- Remove the prototype state controls and bottom navigator when the reviewed workflow is promoted into production UI.
+- Replace the simulated provider response with the real hosted-submission receipt contract before promotion.
+
+## Implementation checklist
+
+- [x] Separate creator declaration and organization-specific terms.
+- [x] Evidence-qualified Missa promise.
+- [x] Direct provider-confirmed success state.
+- [x] External unconfirmed state with proof gate.
+- [x] Desktop and mobile interaction verification.
+
+final result: passed
+
+# Profile portfolio — design QA — 2026-08-14
+
+## Comparison target
+
+- Source visual truth: the user-supplied “MISSA · BUILD REFERENCE · PROFILE PORTFOLIO · 14 AUG 2026” composition and `missa-profile-portfolio-contract-2026-08-14.md`.
+- Rendered implementation: `/design-system/profile-portfolio` on the branch preview alias.
+- The supplied source is a written composition reference, not a capturable image. No local Figma frame, mockup, or source screenshot was available; pixel-level source comparison is therefore blocked.
+
+## Evidence
+
+- Mobile implementation: `qa-evidence/profile-portfolio/mobile-390.png` — 390×844 pixels, 390×844 CSS viewport, density 1.
+- Desktop implementation: `qa-evidence/profile-portfolio/desktop-1131.png` — 1131×994 pixels, 1131px CSS viewport, density 1.
+- Sample grid focus: `qa-evidence/profile-portfolio/sample-grid-1131.png`.
+- Owner mode focus: `qa-evidence/profile-portfolio/owner-mode-1131.png`.
+- Full-view and focused regions were captured from the browser-rendered implementation after the repair pass.
+
+## Findings and repair history
+
+### Earlier pass — actionable findings
+
+- [P1] Identity header used a bespoke two-column layout. Public and owner content detached from the main reading column; the photo appeared visually attached to the wrong owner field.
+- [P1] Owner save bar was fixed against the entire review page and appeared below the signed-out public fixture.
+- [P1] Three sample cards stretched to equal height; audio content sat low and video content could escape its card.
+- [P2] Hidden owner credit was appended after the 2023 row instead of retaining its 2024 position.
+- [P2] Video evidence inherited the audio provider label; portrait was circular; image fixture exposed `ROOM / GENERATOR / OFF`; Contact used an envelope icon.
+
+### Fixes applied
+
+- Rebuilt the identity region with `Item`, `ItemMedia`, and `ItemContent`; owner photo and `Change photo` now stay together.
+- Changed the portrait to a rectangular 70×88 treatment.
+- Changed the save bar to sticky within the owner composition rather than fixed across the review page.
+- Added `align-items: start`, `min-width: 0`, and `overflow: hidden` to the sample grid/card/media chain.
+- Added explicit sample-to-provider data: audio → Spotify, video → YouTube. Platform evidence now requires a provider.
+- Inserted the hidden 2024 row between 2025 and 2023 while preserving the real row and `Show` action.
+- Removed the artwork debug text and envelope icon.
+
+### Post-fix evidence
+
+- 390px runtime: `body.scrollWidth === body.clientWidth === 390`; no horizontal overflow.
+- Public identity uses the shared `Item` anatomy and the photo is rectangular.
+- Sample grid has three contained cards with top-aligned content; video caption and frame remain inside the card.
+- Audio and video no longer render provider or verification labels.
+- Owner sequence reads 2026, 2025, hidden 2024, 2023.
+- The public fixture does not show the owner save bar.
+
+## Required fidelity surfaces
+
+- Fonts and typography: Ysabeau is used for sentences, headings, labels, and actions; Fragment Mono remains for handles, years, evidence labels, and section eyebrows. The hierarchy is legible in the captured desktop and mobile states.
+- Spacing and layout: the repaired identity and sample grid are stable at 390px and 1131px. The review route intentionally contains multiple fixture sections; it is not itself the customer-facing public Profile.
+- Colors and tokens: the implementation uses Missa semantic tokens for borders, ink, primary, surfaces, and evidence treatment. No evidence tier is represented as a success badge.
+- Image quality and asset fidelity: the profile photo uses the existing `/media/home/artist-at-work.webp` asset with a rectangular crop. The artwork and video fixtures remain review placeholders, as the source contract does not provide final media assets.
+- Copy and content: provider labels, hidden-credit language, owner actions, and media captions match the current contract direction. The remaining review-only fixture copy should not ship to customer-facing routes.
+
+## Open questions
+
+- A source screenshot or Figma frame is still required for a true visual-fidelity pass. The current report compares the browser render against the written composition contract and user-supplied review notes, not pixel-equivalent source imagery.
+- The identity’s exact desktop axis should be confirmed against that source frame; the repaired `Item` now shares the page column and no longer creates the previous detached gutter.
+
+## Implementation checklist
+
+- [x] Rebuild identity on Missa `Item` primitives.
+- [x] Contain and top-align sample cards.
+- [x] Add provider assertion/data mapping.
+- [x] Preserve hidden credit order and real row content.
+- [x] Scope owner save bar.
+- [x] Rectangular portrait and remove debug/icon artifacts.
+- [x] Capture desktop, mobile, sample-grid, and owner-mode evidence.
+- [ ] Repeat against a capturable source visual target.
+
+## Follow-up polish
+
+- Confirm the final profile portrait asset and crop with the real public-profile visual target.
+- Exercise keyboard focus, 200% zoom, reduced motion, and all 16 fixtures in the browser after the source frame is available.
+
+final result: blocked — source visual target is only available as written contract/reference text; no capturable source image or Figma frame was available for the required combined comparison.
+
 # Missa selected Tracker Calendar — Local design QA
 
 ## Selection and scope
@@ -584,3 +892,98 @@ Status: local visual directions complete; selection and product promotion pendin
 - Product routes remain untouched.
 
 ---
+
+# Tracker workbench prototype QA — 2026-08-16
+
+## Comparison target and evidence
+
+- Source visual truth: `/Users/adedayoagarau/.codex/generated_images/01a008c0-7b49-7ce3-bb23-0688351d5316/exec-11d95f1a-cc3b-4ba4-9460-93ba1cb499a8.png`.
+- Browser-rendered implementation: `/Volumes/Crucial X10/usemissa/apps/web/outputs/tracker-workbench-prototype/12-workspace-desktop.png`.
+- Combined full-view comparison: `/Volumes/Crucial X10/usemissa/apps/web/outputs/tracker-workbench-prototype/design-qa-comparison.png`.
+- Combined focused comparison: `/Volumes/Crucial X10/usemissa/apps/web/outputs/tracker-workbench-prototype/design-qa-focus.png`.
+- Additional desktop evidence: `01-overview-desktop.png`, `02-overview-collapsed-desktop.png`, `03-for-you-desktop.png`, `04-calendar-desktop.png`, `05-messages-desktop.png`, and `06-map-desktop.png` in `/Volumes/Crucial X10/usemissa/apps/web/outputs/tracker-workbench-prototype/`.
+- Mobile evidence: `07-overview-mobile.png`, `08-drawer-mobile.png`, `09-for-you-mobile.png`, `10-calendar-mobile.png`, and `11-application-mobile.png` in the same output directory.
+- Viewport: 1440 × 1024 CSS px at device scale factor 1 for desktop; 390 × 844 CSS px at device scale factor 1 for mobile.
+- Pixel dimensions: source 1487 × 1058; implementation 1440 × 1024; mobile implementation 390 × 844. The source was aspect-ratio normalized to 1440 × 1024 for the combined comparison.
+- State: light theme; Tracker selected in the global shell; Work Sample component open inside the North River Review application; Saltwater Lessons selected; requirement, readiness, and evidence visible.
+
+## Findings
+
+No actionable P0, P1, or P2 mismatch remains.
+
+- The application lens retains the supplied screen's outline, task canvas, readiness rail, Work selection, reviewer context, and guarded handoff inside the broader Tracker workbench.
+- The additional left rail is intentional: the user clarified that Tracker is the entire private office. It is collapsible on desktop and becomes an off-canvas drawer on mobile.
+- The broader Tracker overview, personalized opportunities, notifications, pipeline, calendar, Work connections, messages, submissions, archive, and Tracker map are product extensions rather than clone surfaces; they use the same Missa tokens, typography, density, and interaction grammar.
+
+### Required fidelity surfaces
+
+- Fonts and typography: the implementation uses the existing Missa font variables, sentence case, compact technical labels, and editorial heading hierarchy. Desktop and 390 px headings wrap without clipping.
+- Spacing and layout rhythm: true-white regions, hairline separators, restrained radii, compact navigation groups, and Comfortable-density task surfaces preserve the source's calm administrative rhythm.
+- Colors and tokens: Aubergine is reserved for selection, primary action, and focused state; green, amber, red, blue, and neutral surfaces retain semantic roles without decorative gradients.
+- Image quality and asset fidelity: Saltwater Lessons uses the generated 1448 × 1086 ocean asset through `next/image`. The canonical Missa wordmark and the existing icon library are used.
+- Copy and content: unknown, missing, protected, proposed, submitted, and receipt states are explicit. Personalized recommendations name their input factors and do not predict acceptance.
+- Accessibility and states: semantic labels, drawer backdrop/close, pressed and current states, skip link, focus treatment, reduced-motion handling, native fields, and dialog semantics are present.
+
+## Full-view comparison evidence
+
+The combined image confirms that Tracker keeps the source screen's recognizable three-part application structure while adding a persistent workbench rail. Top-level global navigation now selects Tracker; Office is not a destination. The application remains a room within Tracker, with the same source-aware Work Sample hierarchy and readiness posture.
+
+## Focused-region comparison evidence
+
+The focused comparison covers the requirement, selected Work, hard constraints, and reviewer context. Text, image crop, borders, status treatment, and operational hierarchy remain legible despite the additional Tracker context. No smaller crop was needed.
+
+## Interaction and runtime verification
+
+- Collapsed and expanded the desktop Tracker rail.
+- Opened the mobile drawer and navigated to personalized opportunities, calendar, and applications.
+- Added and removed opportunity recommendations in local prototype state.
+- Marked notification state locally and navigated consequence-linked items.
+- Sent a prototype-only contextual DM reply and verified the local message state.
+- Opened the twelve-contract Tracker map.
+- Ran the application workflow from Compile Preview through graph, Work matching, source-change revision, Apply Bridge, and receipt `NRR-2026-2714`.
+- Verified desktop and mobile document widths; browser console errors and warnings were empty after the final pass.
+
+## Comparison history
+
+### Pass 1 — expanded Tracker shell
+
+- Evidence: desktop captures `01` through `06` and the first mobile captures.
+- Finding: the 390 px personalized calendar caused 478 px document width because the seven-day strip contributed its fixed grid width to the page (P2).
+- Fix: constrained the calendar section to `min-width: 0`, contained overflow, and kept the week strip's horizontal scrolling inside its card.
+- Post-fix evidence: `10-calendar-mobile.png`; document `scrollWidth` and `clientWidth` both measured 390 px.
+
+### Pass 2 — normalized application-lens comparison
+
+- Evidence: `design-qa-comparison.png` and `design-qa-focus.png`.
+- Result: no actionable P0/P1/P2 findings. The persistent Tracker rail is the approved structural expansion.
+
+### Pass 3 — canonical application language
+
+- Replaced the application workspace with the user-supplied canonical navigation, header, checklist, status, Work Sample, progress, next-action, and application-detail language.
+- Kept the character count computed from the current field value; the supplied 97-character sentence therefore renders as `97 of 400 characters`.
+- Verified `Messages` in global navigation, the local `Add Saltwater Lessons` interaction, the context-resolved `Submit to North River Review` action, receipt state, and 390 px document width with no horizontal overflow.
+- Browser console: no errors. The LCP warning found during the pass was resolved by eagerly loading the above-the-fold Work image.
+
+### Pass 4 — canonical Budget contract
+
+- Added the complete user-supplied Budget screen after Work Samples, including the exact checklist, status, guideline, funding, cost, note, validation, progress, next-action, and application-detail language.
+- Added URL-addressable previews for empty, save-error, complete, changed-guidance, and expired states.
+- Verified that entering `$1,500` for Installation materials changes total costs from `$6,700` to `$8,200`, clears the balance, enables `Continue to Review`, and opens the complete state.
+- Verified `Add funding source` and `Add cost`, required-field validation, a 120-character computed Budget note count, 390 px document width with no overflow, and a clean final browser console.
+
+## Follow-up polish (P3, non-blocking)
+
+- The mobile drawer can later add an internal “jump to room” search if the final information architecture grows beyond the current twelve contracts.
+- The prototype navigator intentionally overlaps lower content; it is review-only chrome and will be removed when a direction is promoted.
+
+## Implementation checklist
+
+- [x] Tracker replaces Office in global navigation and language.
+- [x] Collapsible desktop rail and mobile drawer.
+- [x] Original Tracker pipeline, calendar, Work, submissions, and archive surfaces.
+- [x] Personalized opportunities, notifications, contextual messages, and planning lens.
+- [x] Five-state application preparation and guarded handoff.
+- [x] Twelve explicit room contracts in UI and prototype notes.
+- [x] Desktop/mobile interaction and visual QA.
+
+final result: passed
