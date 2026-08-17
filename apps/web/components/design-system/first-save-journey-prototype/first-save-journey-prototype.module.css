@@ -1,0 +1,870 @@
+.prototype {
+  min-height: 100vh;
+  color: #171418;
+  background: #f7f6f3;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.prototype *,
+.prototype *::before,
+.prototype *::after {
+  box-sizing: border-box;
+}
+
+.prototype button,
+.prototype input,
+.prototype select {
+  font: inherit;
+}
+
+.prototype button,
+.prototype a,
+.prototype select,
+.prototype input {
+  outline-offset: 3px;
+}
+
+.prototype button:focus-visible,
+.prototype a:focus-visible,
+.prototype select:focus-visible,
+.prototype input:focus-visible,
+.journeyContent h1:focus-visible {
+  outline: 3px solid #6a4b78;
+}
+
+.skipLink {
+  position: fixed;
+  z-index: 200;
+  inset-block-start: 8px;
+  inset-inline-start: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: white;
+  background: #4f355d;
+  transform: translateY(calc(-100% - 16px));
+  transition: transform 120ms ease;
+}
+
+.skipLink:focus {
+  transform: translateY(0);
+}
+
+.prototypeNotice {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 6px 24px;
+  border-block-end: 1px solid #ded8e0;
+  color: #4f355d;
+  background: #f1edf3;
+  font-size: 11px;
+}
+
+.prototypeNotice span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.prototypeNotice svg {
+  width: 14px;
+}
+
+.prototypeNotice strong {
+  font-weight: 520;
+}
+
+.appHeader {
+  display: grid;
+  min-height: 64px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 32px;
+  padding-inline: clamp(20px, 4vw, 56px);
+  border-block-end: 1px solid #e0dfdc;
+  background: white;
+}
+
+.appHeader nav {
+  display: flex;
+  min-height: 64px;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.appHeader nav span {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  padding-inline: 12px;
+  color: #716c70;
+  font-size: 14px;
+}
+
+.appHeader nav span[aria-current="page"] {
+  color: #171418;
+  font-weight: 720;
+}
+
+.appHeader nav span[aria-current="page"]::after {
+  position: absolute;
+  inset-inline: 10px;
+  inset-block-end: 0;
+  height: 2px;
+  background: #5a3f68;
+  content: "";
+}
+
+.signedOut {
+  color: #716c70;
+  font-size: 12px;
+}
+
+.prototypeControls {
+  display: grid;
+  grid-template-columns:
+    minmax(240px, 1.2fr) minmax(220px, 0.8fr) minmax(260px, 1fr)
+    auto;
+  align-items: end;
+  gap: 24px;
+  padding: 18px clamp(20px, 4vw, 56px);
+  border-block-end: 1px solid #e0dfdc;
+  background: #fcfcfb;
+}
+
+.prototypeControls p,
+.prototypeControls h2,
+.prototypeControls span,
+.prototypeControls small,
+.stateReadout span,
+.stateReadout small {
+  display: block;
+  margin: 0;
+}
+
+.prototypeControls p,
+.stateReadout span {
+  color: #6a4b78;
+  font-size: 9px;
+  font-weight: 780;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.prototypeControls h2 {
+  margin-block-start: 5px;
+  font-size: 17px;
+}
+
+.prototypeControls > div > span,
+.prototypeControls small {
+  margin-block-start: 5px;
+  color: #716c70;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.prototypeControls label {
+  display: grid;
+  gap: 7px;
+  color: #5e585d;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.prototypeControls select {
+  min-height: 44px;
+  padding-inline: 12px 38px;
+  border: 1px solid #cbc8c4;
+  border-radius: 8px;
+  color: #171418;
+  background: white;
+}
+
+.stateReadout code {
+  display: block;
+  width: fit-content;
+  margin-block-start: 6px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  color: #4f355d;
+  background: #f1edf3;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+}
+
+.resetButton,
+.simulationControl button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-inline: 14px;
+  border: 1px solid #cbc8c4;
+  border-radius: 8px;
+  color: #4f355d;
+  background: white;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.resetButton svg,
+.simulationControl button svg {
+  width: 15px;
+}
+
+.simulationControl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 9px 20px;
+  border-block-end: 1px solid #e3d5ba;
+  color: #684b20;
+  background: #fbf4e7;
+  font-size: 11px;
+}
+
+.simulationControl button {
+  min-height: 36px;
+  border-color: #c7a66e;
+  color: #684b20;
+  background: #fffaf1;
+}
+
+.prototypeContent {
+  min-height: calc(100vh - 188px);
+  padding: clamp(28px, 5vw, 72px) clamp(20px, 5vw, 72px) 128px;
+}
+
+.opportunityReading {
+  min-width: 0;
+}
+
+.sourceLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-block-end: 34px;
+  padding-block: 11px;
+  border-block: 1px solid #d9e2e5;
+  color: #356170;
+  font-size: 11px;
+}
+
+.sourceLine span,
+.sourceLine a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.sourceLine a {
+  color: inherit;
+  font-weight: 700;
+}
+
+.sourceLine svg {
+  width: 14px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #6a4b78;
+  font-size: 10px;
+  font-weight: 780;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.opportunityReading h1 {
+  max-width: 760px;
+  margin: 14px 0 0;
+  font-family: var(--font-display), var(--font-sans), sans-serif;
+  font-size: clamp(38px, 6vw, 72px);
+  font-weight: 560;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.organization {
+  margin: 16px 0 0;
+  color: #5e585d;
+  font-size: 17px;
+}
+
+.summary {
+  max-width: 720px;
+  margin: 30px 0 0;
+  color: #494448;
+  font-size: clamp(17px, 2.2vw, 21px);
+  line-height: 1.55;
+}
+
+.facts,
+.factsCompact {
+  display: grid;
+  margin: 34px 0 0;
+  border-block: 1px solid #dedbd7;
+}
+
+.facts {
+  grid-template-columns: 1.35fr 0.7fr 0.95fr;
+}
+
+.facts > div,
+.factsCompact > div {
+  padding: 18px 18px 18px 0;
+}
+
+.facts > div + div {
+  padding-inline-start: 18px;
+  border-inline-start: 1px solid #dedbd7;
+}
+
+.facts dt,
+.factsCompact dt {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #716c70;
+  font-size: 10px;
+  font-weight: 740;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.facts svg,
+.factsCompact svg {
+  width: 15px;
+}
+
+.facts dd,
+.factsCompact dd {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.facts .factDetail,
+.factsCompact .factDetail {
+  color: #716c70;
+  font-size: 10px;
+}
+
+.readingSection {
+  max-width: 720px;
+  margin-block-start: 38px;
+}
+
+.readingSection h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.readingSection p {
+  margin: 12px 0 0;
+  color: #5e585d;
+  line-height: 1.65;
+}
+
+.publicActions,
+.actionStack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-block-start: 30px;
+}
+
+.primaryButton,
+.secondaryButton,
+.textButton {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.primaryButton {
+  padding-inline: 17px;
+  border: 1px solid #5a3f68;
+  color: white;
+  background: #5a3f68;
+}
+
+.primaryButton:hover {
+  background: #493356;
+}
+
+.primaryButton:disabled {
+  border-color: #cbc8c4;
+  color: #716c70;
+  background: #eceae7;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  padding-inline: 17px;
+  border: 1px solid #c9c5c8;
+  color: #342f33;
+  background: white;
+}
+
+.textButton {
+  padding-inline: 8px;
+  border: 0;
+  color: #5a3f68;
+  background: transparent;
+}
+
+.primaryButton svg,
+.secondaryButton svg,
+.textButton svg {
+  width: 16px;
+}
+
+.boundaryCopy {
+  margin: 12px 0 0;
+  color: #716c70;
+  font-size: 11px;
+}
+
+.journeyContent > .stateIcon {
+  width: 28px;
+  height: 28px;
+  margin-block-end: 22px;
+  color: #5a3f68;
+}
+
+.journeyContent h1 {
+  margin: 9px 0 0;
+  font-size: clamp(25px, 3vw, 36px);
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+.journeyContent > p:not(.eyebrow, .privateNote, .trackerStatus) {
+  margin: 16px 0 0;
+  color: #5e585d;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.privateNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 24px 0 0;
+  padding-block-start: 18px;
+  border-block-start: 1px solid #e5e1e5;
+  color: #5e585d;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.privateNote svg {
+  width: 16px;
+  flex: 0 0 auto;
+  color: #5a3f68;
+}
+
+.authForm {
+  display: grid;
+  gap: 16px;
+  margin-block-start: 24px;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+}
+
+.field label {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.field input {
+  width: 100%;
+  min-height: 46px;
+  padding-inline: 12px;
+  border: 1px solid #c9c5c8;
+  border-radius: 8px;
+  color: #171418;
+  background: white;
+}
+
+.errorNotice,
+.dismissedNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-block-start: 20px;
+  padding: 14px;
+  border: 1px solid #d8b0b4;
+  border-radius: 9px;
+  color: #74363c;
+  background: #fbefef;
+}
+
+.errorNotice svg,
+.dismissedNotice > svg {
+  width: 18px;
+  flex: 0 0 auto;
+}
+
+.errorNotice strong,
+.errorNotice span,
+.dismissedNotice strong,
+.dismissedNotice span {
+  display: block;
+}
+
+.errorNotice span,
+.dismissedNotice span {
+  margin-block-start: 4px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.spin {
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.changeRows {
+  margin-block-start: 24px;
+  border-block: 1px solid #dedbd7;
+}
+
+.changeRows > div {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 16px;
+  padding-block: 14px;
+}
+
+.changeRows > div + div {
+  border-block-start: 1px solid #dedbd7;
+}
+
+.changeRows span {
+  color: #716c70;
+  font-size: 10px;
+  font-weight: 740;
+  text-transform: uppercase;
+}
+
+.changeRows strong {
+  font-size: 12px;
+}
+
+.nextActionPreview,
+.trackerAction {
+  margin-block-start: 24px;
+  padding: 18px;
+  border: 1px solid #d9d0dd;
+  border-radius: 10px;
+  background: #f8f5f9;
+}
+
+.nextActionPreview {
+  display: flex;
+  gap: 13px;
+}
+
+.nextActionPreview > svg {
+  width: 21px;
+  flex: 0 0 auto;
+  color: #5a3f68;
+}
+
+.nextActionPreview span,
+.nextActionPreview strong,
+.nextActionPreview p,
+.trackerAction > span {
+  display: block;
+}
+
+.nextActionPreview span,
+.trackerAction > span {
+  color: #6a4b78;
+  font-size: 9px;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.nextActionPreview strong {
+  margin-block-start: 6px;
+  font-size: 15px;
+}
+
+.nextActionPreview p,
+.trackerAction p {
+  margin: 6px 0 0;
+  color: #5e585d;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.trackerStatus {
+  margin: 10px 0 0;
+  color: #5a3f68;
+  font-size: 11px;
+}
+
+.trackerAction h3 {
+  margin: 9px 0 0;
+  font-size: 22px;
+}
+
+.trackerAction > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-block-start: 18px;
+}
+
+.dismissedNotice {
+  align-items: center;
+  border-color: #cdd6c2;
+  color: #435133;
+  background: #f1f4ed;
+}
+
+.dismissedNotice .secondaryButton {
+  margin-inline-start: auto;
+}
+
+.focusedPublic {
+  max-width: 920px;
+  margin-inline: auto;
+}
+
+.focusedVariant {
+  max-width: 860px;
+  margin-inline: auto;
+}
+
+.focusedBack {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  margin-block-end: 20px;
+  padding: 0;
+  border: 0;
+  color: #5a3f68;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.focusedBack svg {
+  width: 16px;
+}
+
+.compactContext {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1.25fr);
+  gap: 24px;
+  padding: 18px 22px;
+  border: 1px solid #dedbd7;
+  border-radius: 12px 12px 0 0;
+  background: #f2f0ec;
+}
+
+.compactContext > div > span,
+.compactContext > div > strong,
+.compactContext > div > small {
+  display: block;
+}
+
+.compactContext > div > span {
+  color: #716c70;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.compactContext > div > strong {
+  margin-block-start: 7px;
+  font-size: 14px;
+}
+
+.compactContext > div > small {
+  margin-block-start: 4px;
+  color: #716c70;
+  font-size: 10px;
+}
+
+.factsCompact {
+  grid-template-columns: 1.5fr 0.7fr 1fr;
+  margin: 0;
+  border: 0;
+}
+
+.factsCompact > div {
+  padding: 0 12px;
+  border-inline-start: 1px solid #d7d3ce;
+}
+
+.focusedJourney {
+  max-width: 600px;
+  margin-inline: auto;
+  padding: clamp(34px, 7vw, 68px);
+  border: 1px solid #dedbd7;
+  border-block-start: 0;
+  border-radius: 0 0 12px 12px;
+  background: white;
+}
+
+@media (max-width: 960px) {
+  .prototypeControls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .compactContext {
+    grid-template-columns: 1fr;
+  }
+
+  .factsCompact {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .prototypeNotice {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 16px;
+  }
+
+  .appHeader {
+    min-height: 58px;
+    grid-template-columns: 1fr auto;
+    padding-inline: 16px;
+  }
+
+  .appHeader nav {
+    display: none;
+  }
+
+  .prototypeControls {
+    grid-template-columns: 1fr;
+    gap: 15px;
+    padding: 16px;
+  }
+
+  .stateReadout {
+    padding-block: 10px;
+    border-block: 1px solid #e0dfdc;
+  }
+
+  .prototypeContent {
+    padding: 28px 16px 114px;
+  }
+
+  .focusedJourney {
+    padding: 22px;
+  }
+
+  .sourceLine {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-block-end: 26px;
+  }
+
+  .opportunityReading h1 {
+    font-size: 42px;
+  }
+
+  .facts,
+  .factsCompact {
+    grid-template-columns: 1fr;
+  }
+
+  .facts > div,
+  .factsCompact > div,
+  .facts > div + div {
+    padding: 14px 0;
+    border-inline-start: 0;
+    border-block-start: 1px solid #dedbd7;
+  }
+
+  .facts > div:first-child,
+  .factsCompact > div:first-child {
+    border-block-start: 0;
+  }
+
+  .publicActions,
+  .actionStack,
+  .trackerAction > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .primaryButton,
+  .secondaryButton,
+  .textButton {
+    width: 100%;
+  }
+
+  .compactContext {
+    padding: 18px;
+  }
+
+  .dismissedNotice {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dismissedNotice .secondaryButton {
+    margin-inline-start: 0;
+  }
+
+  .simulationControl {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skipLink,
+  .spin {
+    transition: none;
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .primaryButton,
+  .stateReadout code {
+    border: 1px solid ButtonText;
+  }
+}
