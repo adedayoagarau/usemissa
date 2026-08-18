@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, BookOpen, Compass, ListChecks } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { PublicSiteShell } from '@/components/public-site-shell';
 import { NotFoundEpigraph, NotFoundPlate } from '@/components/not-found-identity';
 import { pageMetadata } from '@/lib/seo';
@@ -12,30 +12,6 @@ export const metadata = pageMetadata({
   noIndex: true,
 });
 
-const destinations = [
-  {
-    icon: Compass,
-    title: 'Browse Opportunities',
-    body: 'Open calls with their source, eligibility, and deadline kept separate and current.',
-    href: '/opportunities',
-    label: 'Browse Opportunities',
-  },
-  {
-    icon: BookOpen,
-    title: 'Read Guides',
-    body: "Explanations of how Missa sources, verifies, and presents each Opportunity.",
-    href: '/guides',
-    label: 'Read Guides',
-  },
-  {
-    icon: ListChecks,
-    title: 'How Missa works',
-    body: 'Why the official call stays authoritative and unknown facts stay visible.',
-    href: '/methodology',
-    label: 'Read the methodology',
-  },
-];
-
 export default function NotFound() {
   return (
     <PublicSiteShell current="Not found">
@@ -47,22 +23,10 @@ export default function NotFound() {
             <p>We don&rsquo;t have a source for this page. The link may be old, mistyped, or the page may never have existed. Missa isn&rsquo;t going to guess where it went.</p>
             <NotFoundEpigraph />
             <div className={styles.actions}>
-              <Link href="/" className={styles.primaryAction}>Go home<ArrowRight aria-hidden="true" /></Link>
-              <Link href="/opportunities" className={styles.secondaryAction}>Browse Opportunities<ArrowRight aria-hidden="true" /></Link>
+              <Link href="/opportunities" className={styles.primaryAction}>Browse Opportunities<ArrowRight aria-hidden="true" /></Link>
             </div>
           </div>
           <NotFoundPlate />
-        </section>
-
-        <section className={styles.destinations} aria-label="Where to go instead">
-          {destinations.map(({ icon: Icon, title, body, href, label }) => (
-            <article key={href}>
-              <Icon aria-hidden="true" />
-              <h2>{title}</h2>
-              <p>{body}</p>
-              <Link href={href}>{label}<ArrowRight aria-hidden="true" /></Link>
-            </article>
-          ))}
         </section>
       </main>
     </PublicSiteShell>
