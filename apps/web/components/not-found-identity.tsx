@@ -26,6 +26,14 @@ const MAX_EYE = 9;
 const SPRING = 0.14;
 const DAMPING = 0.72;
 
+// blobatar rotates hue across the full color wheel per seed by default,
+// which drifted into off-brand colors (teal, etc). Locking the hue keeps
+// every blob in Missa's plum family — the name still drives shape and tone.
+// Degrees are the OKLCh hue of --brand-accent (#5a3f68, h≈314) and
+// --brand-deep (#473050, h≈316), computed with blobatar's own sRGB->OKLCh
+// conversion so it lands in the same color space blobatar itself uses.
+const BRAND_HUE = 315;
+
 /**
  * A blobatar for the broken path, still except for its eyes: they track the
  * cursor within range on desktop, or follow a finger directly on touch, and
@@ -39,7 +47,7 @@ const DAMPING = 0.72;
 export function NotFoundBlob() {
   const pathname = usePathname() ?? "/";
   const wrapRef = useRef<HTMLDivElement>(null);
-  const svgMarkup = blobatar(pathname, { size: 132 });
+  const svgMarkup = blobatar(pathname, { size: 132, hue: BRAND_HUE });
 
   useEffect(() => {
     const wrap = wrapRef.current;
