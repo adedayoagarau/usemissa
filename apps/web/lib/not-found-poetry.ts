@@ -18,6 +18,14 @@ export const NOT_FOUND_POEMS: NotFoundPoem[] = [
   { lines: ["Home is the sailor, home from sea,", "And the hunter home from the hill."], attribution: "Robert Louis Stevenson, “Requiem”" },
   { lines: ["We grow accustomed to the Dark –", "When Light is put away –"], attribution: "Emily Dickinson, “We grow accustomed to the Dark”" },
   { lines: ["I too am not a bit tamed, I too am untranslatable,"], attribution: "Walt Whitman, “Song of Myself”" },
+  { lines: ["I wandered lonely as a cloud", "That floats on high o’er vales and hills,"], attribution: "William Wordsworth, “I Wandered Lonely as a Cloud”" },
+  { lines: ["The woods are lovely, dark and deep,", "But I have promises to keep,"], attribution: "Robert Frost, “Stopping by Woods on a Snowy Evening”" },
+  { lines: ["Nothing beside remains. Round the decay", "Of that colossal wreck, boundless and bare", "The lone and level sands stretch far away."], attribution: "Percy Bysshe Shelley, “Ozymandias”" },
+  { lines: ["And we are here as on a darkling plain", "Swept with confused alarms of struggle and flight,", "Where ignorant armies clash by night."], attribution: "Matthew Arnold, “Dover Beach”" },
+  { lines: ["Turning and turning in the widening gyre", "The falcon cannot hear the falconer;", "Things fall apart; the centre cannot hold;"], attribution: "William Butler Yeats, “The Second Coming”" },
+  { lines: ["Was it a vision, or a waking dream?", "Fled is that music:—Do I wake or sleep?"], attribution: "John Keats, “Ode to a Nightingale”" },
+  { lines: ["“Ride, boldly ride,”", "The shade replied,—", "“If you seek for Eldorado!”"], attribution: "Edgar Allan Poe, “Eldorado”" },
+  { lines: ["Afoot and light-hearted I take to the open road,", "Healthy, free, the world before me,"], attribution: "Walt Whitman, “Song of the Open Road”" },
 ];
 
 function hashSeed(seed: string): number {
