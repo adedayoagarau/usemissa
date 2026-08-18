@@ -20,19 +20,14 @@ export function NotFoundEpigraph() {
   );
 }
 
-/** The record this address would have had, if Missa had one. */
-export function NotFoundPlate() {
+/** A quiet stamp: the record this address would have had, if Missa had one. */
+export function NotFoundMark() {
   const pathname = usePathname() ?? "/";
 
   return (
-    <div className={styles.plate}>
-      <Blobatar name={pathname} size={56} className={styles.plateBlob} alt="" />
-      <div className={styles.plateMeta}>
-        <span className={styles.plateCode}>404</span>
-        <p className={styles.plateCaption}>
-          No record for <code>{pathname}</code>
-        </p>
-      </div>
-    </div>
+    <p className={styles.mark}>
+      <Blobatar name={pathname} size={20} className={styles.markBlob} alt="" />
+      Error 404 — no record for <code>{pathname}</code>
+    </p>
   );
 }
