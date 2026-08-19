@@ -38,13 +38,25 @@ export default async function HomePage() {
       <main id="main-content" className={styles.main}>
         <JsonLd data={{ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Missa', url: absoluteUrl('/'), description: 'Creative Opportunities with their source and limits kept visible.', potentialAction: { '@type': 'SearchAction', target: `${absoluteUrl('/opportunities')}?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }} />
 
-        {/* Section 1 — hero: staggered type, breathing constellation of the facts Missa keeps */}
+        {/* Section 1 — hero: staggered type, gooey lilac field, breathing constellation */}
         <section className={styles.hero} aria-labelledby="home-heading">
+          <svg aria-hidden="true" width="0" height="0" style={{ position: 'absolute' }}>
+            <defs>
+              <filter id="missa-goo">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur" />
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -12" result="goo" />
+                <feBlend in="SourceGraphic" in2="goo" />
+              </filter>
+            </defs>
+          </svg>
+          <div className={styles.goo} aria-hidden="true">
+            <i className={styles.gooA} /><i className={styles.gooB} /><i className={styles.gooC} /><i className={styles.gooD} /><i className={styles.gooE} />
+          </div>
           <div className={styles.heroCopy}>
             <p className={`${styles.eyebrow} ${styles.rise}`}>The opportunity index for artists</p>
             <h1 id="home-heading" className={styles.heroTitle}>
               <span className={styles.w1}>Find</span> <span className={styles.w2}>your</span> <span className={styles.w3}>next</span>{' '}
-              <span className={styles.w4}><em>opportunity.</em></span>
+              <span className={styles.w4}><em className={styles.gradientWord}>opportunity.</em></span>
             </h1>
             <p className={`${styles.heroSub} ${styles.rise} ${styles.d3}`}>Grants, residencies, fellowships, commissions, and open calls—gathered with their facts, sources, and deadlines kept visible.</p>
             <div className={`${styles.heroActions} ${styles.rise} ${styles.d4}`}>
@@ -102,11 +114,23 @@ export default async function HomePage() {
               <span className={styles.scrapD}>portal FAQ</span>
             </div>
             <svg className={styles.structureArrow} width="80" height="44" viewBox="0 0 80 44" fill="none"><path className={styles.flow} d="M40 2 V34 M30 26 L40 38 L50 26" stroke="var(--primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            <div className={styles.structureCard}>
-              <div><span>Eligibility</span>Stated plainly</div>
-              <div><span>Deadline</span>With its timezone</div>
-              <div><span>Entry fee</span>Never buried</div>
-              <div><span>Source</span>The official call</div>
+            {/* the shelf: gathered, indexed, readable — Kitbitz illustrations, CC0 */}
+            <div className={styles.shelfScene}>
+              <div className={styles.shelfRow}>
+                <img src="/illustrations/kitbitz/LampFloor-Metal-V-L-Purple700.svg" alt="" className={styles.shelfLamp} />
+                <img src="/illustrations/kitbitz/Books4.svg" alt="" className={styles.shelfBooksA} />
+                <img src="/illustrations/kitbitz/Books2.svg" alt="" className={styles.shelfBooksB} />
+                <img src="/illustrations/kitbitz/BookGroup3-Paper-H-M-MultiColor.svg" alt="" className={styles.shelfBooksC} />
+                <img src="/illustrations/kitbitz/MapRolled-Paper-H-M-Brown400.svg" alt="" className={styles.shelfScroll} />
+                <img src="/illustrations/kitbitz/Fern.svg" alt="" className={styles.shelfFern} />
+              </div>
+              <div className={styles.shelfLine} />
+              <div className={styles.shelfLabels}>
+                <span>Eligibility · stated plainly</span>
+                <span>Deadline · with its timezone</span>
+                <span>Entry fee · never buried</span>
+                <span>Source · the official call</span>
+              </div>
             </div>
           </div>
         </section>
@@ -143,24 +167,36 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Section 6 — source and trust */}
+        {/* Section 6 — source and trust, as a bento */}
         <section className={styles.source} aria-labelledby="source-heading">
-          <div>
-            <h2 id="source-heading">Every listing should keep its source.</h2>
-            <p>Missa does not ask you to trust a summary without evidence. Unknown or conflicting facts stay visible—missing information is never turned into reassurance.</p>
-            <Link href="/methodology" className={styles.sourceLink}>Read the methodology <ArrowRight aria-hidden="true" /></Link>
+          <div className={styles.bento}>
+            <div className={`${styles.bentoCell} ${styles.bentoIntro}`}>
+              <h2 id="source-heading">Every listing should keep its source.</h2>
+              <p>Missa does not ask you to trust a summary without evidence. Unknown or conflicting facts stay visible—missing information is never turned into reassurance.</p>
+              <Link href="/methodology" className={styles.sourceLink}>Read the methodology <ArrowRight aria-hidden="true" /></Link>
+            </div>
+            <aside className={`${styles.bentoCell} ${styles.sourcePanel}`} aria-label="What each listing keeps">
+              <ExternalLink aria-hidden="true" />
+              <p className={styles.eyebrow}>Start with the source</p>
+              <h3>The official call remains authoritative.</h3>
+              <dl>
+                <div><dt>Official call</dt><dd>Linked, never paraphrased away</dd></div>
+                <div><dt>Deadline timezone</dt><dd>Kept with the date</dd></div>
+                <div><dt>Unknown facts</dt><dd>Shown as unknown</dd></div>
+                <div><dt>Conflicts</dt><dd>Surfaced, not smoothed over</dd></div>
+              </dl>
+            </aside>
+            <div className={styles.bentoCell}>
+              <p className={styles.eyebrow}>Entry fee</p>
+              <p className={styles.bentoBig}>Stated before you commit time.</p>
+              <span className={styles.bentoChip}>No fee — or the exact amount</span>
+            </div>
+            <div className={styles.bentoCell}>
+              <p className={styles.eyebrow}>Deadline</p>
+              <p className={styles.bentoBig}>Date, time, and timezone together.</p>
+              <span className={styles.bentoChip}>Never a bare date</span>
+            </div>
           </div>
-          <aside className={styles.sourcePanel} aria-label="What each listing keeps">
-            <ExternalLink aria-hidden="true" />
-            <p className={styles.eyebrow}>Start with the source</p>
-            <h3>The official call remains authoritative.</h3>
-            <dl>
-              <div><dt>Official call</dt><dd>Linked, never paraphrased away</dd></div>
-              <div><dt>Deadline timezone</dt><dd>Kept with the date</dd></div>
-              <div><dt>Unknown facts</dt><dd>Shown as unknown</dd></div>
-              <div><dt>Conflicts</dt><dd>Surfaced, not smoothed over</dd></div>
-            </dl>
-          </aside>
         </section>
 
         {/* Section 7 — both sides of the table */}
@@ -171,6 +207,11 @@ export default async function HomePage() {
 
         {/* Section 8 — the one color moment */}
         <section className={styles.ctaBand} aria-labelledby="cta-heading">
+          <div className={styles.ctaVignette} aria-hidden="true">
+            <img src="/illustrations/kitbitz/RounRug-Textile-H-M-Purple500.svg" alt="" className={styles.vignetteRug} />
+            <img src="/illustrations/kitbitz/CushionChairLeft-Wood-V-M-Purple700.svg" alt="" className={styles.vignetteChair} />
+            <img src="/illustrations/kitbitz/LampFloor-Metal-V-L-Purple700.svg" alt="" className={styles.vignetteLamp} />
+          </div>
           <h2 id="cta-heading">Make less time for searching. Keep more time for the work.</h2>
           <div className={styles.ctaActions}>
             <Link href={signedIn ? '/home' : '/opportunities'} className={styles.ctaPrimary}>{signedIn ? 'Open Missa' : 'Browse Opportunities'}<ArrowRight aria-hidden="true" /></Link>

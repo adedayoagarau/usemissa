@@ -19,8 +19,24 @@
 @keyframes reveal { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ---------- section 1: hero ---------- */
-.hero { display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(320px, .94fr); gap: clamp(32px, 6vw, 80px); align-items: center; padding: clamp(56px, 8vw, 120px) 0 clamp(64px, 8vw, 110px); }
-.heroCopy { max-width: 640px; }
+.hero { position: relative; display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(320px, .94fr); gap: clamp(32px, 6vw, 80px); align-items: center; padding: clamp(56px, 8vw, 120px) 0 clamp(64px, 8vw, 110px); }
+
+/* gooey lilac field: metaballs drift and merge behind the headline */
+.goo { position: absolute; left: -120px; top: 0; width: 520px; height: 520px; filter: url(#missa-goo); opacity: .6; pointer-events: none; }
+.goo i { position: absolute; border-radius: 999px; background: var(--accent-tint); }
+.gooA { width: 210px; height: 210px; left: 60px; top: 90px; animation: gooDriftA 16s ease-in-out infinite alternate; }
+.gooB { width: 140px; height: 140px; left: 230px; top: 60px; background: #e6dcea; animation: gooDriftB 13s ease-in-out infinite alternate; }
+.gooC { width: 110px; height: 110px; left: 150px; top: 260px; background: #efe8f2; animation: gooDriftC 18s ease-in-out infinite alternate; }
+.gooD { width: 74px; height: 74px; left: 320px; top: 210px; background: #e0d4e6; animation: gooDriftA 11s ease-in-out infinite alternate-reverse; }
+.gooE { width: 52px; height: 52px; left: 60px; top: 320px; background: #e6dcea; animation: gooDriftB 15s ease-in-out infinite alternate-reverse; }
+@keyframes gooDriftA { from { transform: translate(0, 0); } to { transform: translate(56px, -34px); } }
+@keyframes gooDriftB { from { transform: translate(0, 0); } to { transform: translate(-48px, 42px); } }
+@keyframes gooDriftC { from { transform: translate(0, 0); } to { transform: translate(38px, 30px); } }
+
+/* the one word that carries color: slow aubergine gradient pan */
+.gradientWord { background: linear-gradient(100deg, var(--accent-deep) 8%, var(--brand-accent) 38%, #8a6b9d 62%, var(--accent-deep) 92%); background-size: 240% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: gradientPan 9s ease-in-out infinite alternate; }
+@keyframes gradientPan { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+.heroCopy { position: relative; z-index: 1; max-width: 640px; }
 .heroTitle { margin: 20px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(3.4rem, 6.8vw, 6.6rem); font-weight: 520; letter-spacing: -.05em; line-height: .94; }
 .heroTitle em { font-style: italic; font-weight: 560; }
 .w1, .w2, .w3, .w4 { display: inline-block; animation: rise 900ms cubic-bezier(.22, 1, .36, 1) both; }
@@ -86,8 +102,21 @@
 .scrapC { transform: rotate(-1deg); animation-delay: 1.1s; }
 .scrapD { transform: rotate(2deg); animation-name: floatyAlt; animation-delay: .6s; }
 .structureArrow { margin: 2px 0 2px 40px; }
-.structureCard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 22px 24px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 24px 60px rgba(23, 20, 24, .07); font-size: .84rem; }
-.structureCard span { display: block; color: var(--ink-2); font-size: .74rem; margin-bottom: 2px; }
+
+/* the shelf: hand-painted CC0 props (Kitbitz), gathered on one indexed shelf */
+.shelfScene { margin-top: 6px; }
+.shelfRow { display: flex; align-items: flex-end; gap: 22px; padding: 0 18px; }
+.shelfRow img { display: block; }
+.shelfLamp { height: 158px; animation: floatyAlt 8s ease-in-out infinite alternate; transform-origin: bottom center; }
+.shelfBooksA { height: 108px; animation: shelfBob 7s ease-in-out infinite alternate; }
+.shelfBooksB { height: 112px; animation: shelfBob 9s ease-in-out infinite alternate-reverse; }
+.shelfBooksC { height: 74px; animation: shelfBob 6.5s ease-in-out infinite alternate; animation-delay: .8s; }
+.shelfScroll { height: 44px; animation: shelfBob 7.5s ease-in-out infinite alternate-reverse; animation-delay: .4s; }
+.shelfFern { height: 88px; animation: floatyAlt 6.8s ease-in-out infinite alternate; transform-origin: bottom center; }
+@keyframes shelfBob { from { transform: translateY(0) rotate(0deg); } to { transform: translateY(-5px) rotate(-.5deg); } }
+.shelfLine { height: 2px; margin-top: -2px; background: var(--ink); border-radius: 2px; }
+.shelfLabels { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; padding: 0 4px; }
+.shelfLabels span { color: var(--ink-2); font-size: .74rem; }
 
 /* ---------- section 4: live Opportunities ---------- */
 .opportunities { padding: 38px 0 84px; border-top: 1px solid var(--border); }
@@ -115,11 +144,18 @@
 .pathTrack strong { display: block; margin-top: 20px; font-family: var(--font-heading), Georgia, serif; font-size: 1.24rem; font-weight: 560; letter-spacing: -.01em; }
 .pathTrack p { margin: 8px 0 0; color: var(--muted-foreground); font-size: .84rem; line-height: 1.6; }
 
-/* ---------- section 6: source ---------- */
-.source { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(36px, 6vw, 88px); align-items: center; padding: clamp(72px, 9vw, 130px) 0; border-top: 1px solid var(--border); }
-.source > div > p { max-width: 460px; margin: 22px 0 0; color: var(--muted-foreground); font-size: 1.02rem; line-height: 1.68; }
+/* ---------- section 6: source and trust, bento ---------- */
+.source { padding: clamp(72px, 9vw, 130px) 0; border-top: 1px solid var(--border); }
+.bento { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 3.5fr) minmax(0, 3.5fr); grid-template-rows: auto auto; gap: 16px; }
+.bentoCell { padding: 30px 32px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); transition: box-shadow 220ms cubic-bezier(.22, 1, .36, 1), transform 220ms cubic-bezier(.22, 1, .36, 1); }
+.bentoCell:hover { transform: translateY(-2px); box-shadow: 0 24px 60px rgba(23, 20, 24, .08); }
+.bentoIntro { grid-row: 1 / 3; display: flex; flex-direction: column; justify-content: center; border: 0; padding-left: 0; background: transparent; }
+.bentoIntro:hover { transform: none; box-shadow: none; }
+.bentoIntro p { max-width: 460px; margin: 22px 0 0; color: var(--muted-foreground); font-size: 1.02rem; line-height: 1.68; }
+.bentoBig { margin: 10px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: 1.3rem; font-weight: 560; line-height: 1.25; letter-spacing: -.01em; }
+.bentoChip { display: inline-block; margin-top: 16px; padding: 7px 14px; border-radius: 999px; background: var(--accent-tint); color: var(--accent-deep); font-size: .78rem; font-weight: 600; }
 .sourceLink { margin-top: 16px; }
-.sourcePanel { padding: 30px 32px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); box-shadow: 0 32px 80px rgba(23, 20, 24, .08); }
+.sourcePanel { grid-column: 2 / 4; box-shadow: 0 32px 80px rgba(23, 20, 24, .08); }
 .sourcePanel > svg { width: 22px; height: 22px; color: var(--primary); }
 .sourcePanel > p { margin-top: 20px; }
 .sourcePanel h3 { margin: 8px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: 1.7rem; font-weight: 560; line-height: 1.14; }
@@ -137,7 +173,12 @@
 .audiences a { margin-top: 14px; }
 
 /* ---------- section 8: the color moment ---------- */
-.ctaBand { margin: 0 0 84px; padding: clamp(64px, 8vw, 110px) clamp(24px, 6vw, 96px); border-radius: 22px; background: var(--primary); color: var(--primary-foreground); text-align: center; }
+.ctaBand { position: relative; overflow: hidden; margin: 0 0 84px; padding: clamp(64px, 8vw, 110px) clamp(24px, 6vw, 96px); border-radius: 22px; background: var(--primary); color: var(--primary-foreground); text-align: center; }
+.ctaVignette { position: absolute; right: 46px; bottom: 0; width: 240px; height: 190px; pointer-events: none; }
+.ctaVignette img { position: absolute; display: block; }
+.vignetteRug { left: 6px; bottom: 6px; width: 190px; opacity: .55; }
+.vignetteChair { left: 34px; bottom: 12px; height: 128px; animation: shelfBob 8s ease-in-out infinite alternate; transform-origin: bottom center; }
+.vignetteLamp { right: 6px; bottom: 12px; height: 168px; animation: floatyAlt 7s ease-in-out infinite alternate; transform-origin: bottom center; }
 .ctaBand h2 { max-width: 680px; margin: 0 auto; font-family: var(--font-heading), Georgia, serif; font-size: clamp(2rem, 3.6vw, 3.2rem); font-weight: 540; letter-spacing: -.03em; line-height: 1.14; }
 .ctaActions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 18px; margin-top: 36px; }
 .ctaPrimary { display: inline-flex; min-height: var(--control-height-public); align-items: center; gap: 9px; padding: 0 28px; border-radius: 999px; background: white; color: var(--accent-deep); font-size: .9rem; font-weight: 700; text-decoration: none; }
@@ -149,6 +190,7 @@
   .frag { transform: var(--settle, none); }
   .fragCard { transform: rotateX(4deg) rotateY(-5deg); }
   .orbit, .chip, .stageCard, .scraps span, .typesTrack { animation: none; }
+  .goo i, .gradientWord, .shelfRow img, .ctaVignette img { animation: none; }
   .stageCard::after { display: none; }
   .flow, .spine { animation: none; }
   .structure > div, .structureVisual, .sectionHeading, .pathTrack, .source > div, .sourcePanel, .audiences article, .ctaBand h2 { animation: none; opacity: 1; }
@@ -158,7 +200,12 @@
 @media (max-width: 980px) {
   .hero { grid-template-columns: 1fr; }
   .stage { max-width: 640px; }
-  .structure, .source { grid-template-columns: 1fr; align-items: start; }
+  .structure { grid-template-columns: 1fr; align-items: start; }
+  .bento { grid-template-columns: 1fr; grid-template-rows: none; }
+  .bentoIntro { grid-row: auto; }
+  .sourcePanel { grid-column: auto; }
+  .ctaVignette { display: none; }
+  .goo { left: -160px; opacity: .5; }
   .opportunityGrid { grid-template-columns: 1fr 1fr; }
   .pathTrack ol { grid-template-columns: 1fr 1fr; row-gap: 44px; }
   .pathSpine { display: none; }
@@ -173,6 +220,13 @@
   .fragCard { top: 38%; left: 0; right: 0; }
   .sectionHeading { display: grid; }
   .opportunityGrid, .audiences, .pathTrack ol { grid-template-columns: 1fr; }
+  .shelfRow { gap: 12px; padding: 0 8px; }
+  .shelfLamp { height: 118px; }
+  .shelfBooksA { height: 80px; }
+  .shelfBooksB { height: 84px; }
+  .shelfBooksC { height: 56px; }
+  .shelfScroll { height: 34px; }
+  .shelfFern { height: 66px; }
   .stageCardRows > div, .sourcePanel dl > div { grid-template-columns: 1fr; gap: 2px; }
   .ctaBand { margin-bottom: 56px; }
 }
