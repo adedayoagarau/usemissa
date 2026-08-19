@@ -1,13 +1,11 @@
 {
   "artboards": [
-    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 5560, "title": "Home — desktop" },
-    { "file": "HeroNight.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 880, "title": "Hero — Night archive variant" },
-    { "file": "Mobile.dc.html", "x": 1560, "y": 1020, "w": 390, "h": 1960, "title": "Home — mobile" }
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 5600, "title": "Home — desktop" },
+    { "file": "Mobile.dc.html", "x": 1560, "y": 0, "w": 390, "h": 1780, "title": "Home — mobile" }
   ],
   "annotations": [
-    { "id": "motion-intent", "x": 0, "y": -300, "w": 480, "text": "Motion (all of it loops, so it is alive whenever you look):\n· Painting drifts slowly (38s Ken Burns); the red and green curtain cutouts sway against it as separate parallax layers.\n· Index fragments settle from scattered 3D depth into the card, then the whole constellation keeps breathing in perspective (16s orbit) while each chip floats on its own period; the card carries a slow sheen sweep.\n· In production the settle is scroll-driven (pinned ~2 viewport heights, CSS scroll timeline); reduced motion renders the settled state with no loops.\n· Depth is CSS perspective + rotate3d only — no WebGL. Ease cubic-bezier(0.22, 1, 0.36, 1).\n· Art: Vermeer, public domain — the repo's existing Correspondence plates from landing/art." },
-    { "id": "direction-note", "x": 1560, "y": -260, "w": 440, "text": "Two hero directions to pick from:\n· Light (in the full page, left): paper #F7F3EE, fragments orbit and settle into one opportunity card. Calmer, editorial, reads instantly.\n· Night archive (right): deep aubergine, a receding ranked index tilted into depth like a card catalog at night. More atmospheric, but the dark opening costs some of the calm-journal register.\nRecommendation: light hero as default, Night archive as the dark theme's identity." },
-    { "id": "mobile-note", "x": 1560, "y": 920, "w": 390, "text": "Mobile replaces the pinned 3D sequence with a simple stacked progression: scattered source scraps → arrow → the indexed card. No scroll-jacking, 44px+ targets, bottom-sheet nav in production." }
+    { "id": "motion-intent", "x": 0, "y": -300, "w": 480, "text": "Direction: white, minimalist, premium motion (settled).\n· Headline words rise out of a slight blur, staggered.\n· Index fragments settle from 3D depth into the opportunity card, then the constellation keeps breathing in perspective (18s orbit) while each chip floats on its own period; the card carries a slow aubergine-tinted sheen.\n· Fine hairline paths flow (marching dashes) from fragments into the card — the indexing metaphor drawn literally.\n· One color moment: the aubergine waitlist band. Everything else is white, hairlines, ink, soft shadows.\n· In production the settle is scroll-driven (CSS scroll timeline, pinned ~2 viewport heights); reduced motion renders the settled state with no loops. No WebGL." },
+    { "id": "mobile-note", "x": 1560, "y": -140, "w": 390, "text": "Mobile replaces the pinned 3D sequence with a stacked progression: source scraps → the indexed card. No scroll-jacking, 44px+ targets." }
   ],
   "launch": { "view": "canvas" }
 }

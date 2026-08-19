@@ -9,41 +9,23 @@
 <helmet>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&family=Onest:wght@400..700&display=swap">
   <style>
-    body { margin: 0; background: #F7F3EE; }
+    body { margin: 0; background: #FFFFFF; }
     a { color: #5A3F68; } a:hover { color: #33223E; }
     .serif { font-family: 'Newsreader', Georgia, serif; }
     .sans { font-family: 'Onest', 'Instrument Sans', system-ui, sans-serif; }
 
-    /* ---- motion system: calm, low-amplitude, ease-out ---- */
-    .rise { animation: rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-    .d1 { animation-delay: 120ms; } .d2 { animation-delay: 240ms; }
-    .d3 { animation-delay: 360ms; } .d4 { animation-delay: 480ms; }
-    @keyframes rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+    /* ---- premium motion: staggered blur-rise, calm ease ---- */
+    .rise { animation: rise 800ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+    .d1 { animation-delay: 100ms; } .d2 { animation-delay: 200ms; }
+    .d3 { animation-delay: 320ms; } .d4 { animation-delay: 440ms; } .d5 { animation-delay: 560ms; }
+    @keyframes rise { from { opacity: 0; transform: translateY(24px); filter: blur(7px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+    .w { display: inline-block; animation: rise 900ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+    .w2 { animation-delay: 90ms; } .w3 { animation-delay: 180ms; } .w4 { animation-delay: 300ms; }
 
-    /* hero painting: slow cinematic drift, layered parallax curtains, grain */
-    .kenburns { animation: kenburns 38s ease-in-out infinite alternate; }
-    @keyframes kenburns { from { transform: scale(1.05) translate(0, 0); } to { transform: scale(1.12) translate(-14px, -10px); } }
-    .sway { animation: sway 13s ease-in-out infinite alternate; transform-origin: top center; }
-    @keyframes sway { from { transform: translateX(0) rotate(0deg); } to { transform: translateX(9px) rotate(0.8deg); } }
-    .sway2 { animation: sway2 11s ease-in-out infinite alternate; transform-origin: top left; }
-    @keyframes sway2 { from { transform: translateY(0) rotate(0deg); } to { transform: translateY(7px) rotate(-0.9deg); } }
-    .grain {
-      position: absolute; inset: 0; pointer-events: none; opacity: 0.5; mix-blend-mode: multiply;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.11 0 0 0 0 0.09 0 0 0 0 0.08 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
-    }
-
-    /* hero 3D stage: fragments settle from scattered depth into the index,
-       then the whole constellation keeps breathing in perspective */
-    .stage { perspective: 1400px; perspective-origin: 60% 40%; }
-    .orbit { position: absolute; inset: 0; transform-style: preserve-3d; animation: orbit 16s ease-in-out infinite alternate; }
-    @keyframes orbit { from { transform: rotateY(-6deg) rotateX(2deg); } to { transform: rotateY(7deg) rotateX(-2deg); } }
-    .sheen { position: relative; overflow: hidden; }
-    .sheen::after {
-      content: ""; position: absolute; top: -60%; bottom: -60%; left: -30%; width: 36%;
-      background: linear-gradient(105deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0) 100%);
-      transform: rotate(8deg); animation: sheen 7s cubic-bezier(0.22, 1, 0.36, 1) infinite;
-    }
-    @keyframes sheen { 0% { left: -40%; } 34% { left: 130%; } 100% { left: 130%; } }
+    /* hero 3D stage: fragments settle out of depth, then keep breathing */
+    .stage { perspective: 1500px; perspective-origin: 58% 38%; }
+    .orbit { position: absolute; inset: 0; transform-style: preserve-3d; animation: orbit 18s ease-in-out infinite alternate; }
+    @keyframes orbit { from { transform: rotateY(-5deg) rotateX(2deg); } to { transform: rotateY(6deg) rotateX(-2deg); } }
     .frag {
       position: absolute; transform-style: preserve-3d;
       animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
@@ -54,117 +36,125 @@
     @keyframes fragC { from { opacity: 0; transform: translate3d(60px, 160px, 380px) rotateX(24deg) rotateY(14deg); } to { opacity: 1; transform: translate3d(0,0,120px) rotateX(8deg) rotateY(7deg); } }
     @keyframes fragD { from { opacity: 0; transform: translate3d(-90px, -150px, 300px) rotateX(-26deg) rotateY(-16deg); } to { opacity: 1; transform: translate3d(0,0,50px) rotateX(-6deg) rotateY(-7deg); } }
     @keyframes fragE { from { opacity: 0; transform: translate3d(150px, 40px, 420px) rotateX(18deg) rotateY(26deg); } to { opacity: 1; transform: translate3d(0,0,140px) rotateX(5deg) rotateY(12deg); } }
-    @keyframes cardIn { from { opacity: 0; transform: translateY(46px) rotateX(10deg) rotateY(-6deg); } to { opacity: 1; transform: translateY(0) rotateX(4deg) rotateY(-5deg); } }
+    @keyframes cardIn { from { opacity: 0; transform: translateY(50px) rotateX(12deg) rotateY(-6deg); } to { opacity: 1; transform: translateY(0) rotateX(4deg) rotateY(-5deg); } }
     .floaty { animation: floaty 6s ease-in-out infinite alternate; }
-    @keyframes floaty { from { transform: translateY(0) rotate(0deg); } to { transform: translateY(-13px) rotate(0.8deg); } }
+    @keyframes floaty { from { transform: translateY(0) rotate(0deg); } to { transform: translateY(-12px) rotate(0.7deg); } }
     .floaty2 { animation: floaty2 7.5s ease-in-out infinite alternate; }
-    @keyframes floaty2 { from { transform: translateY(-6px) rotate(0.5deg); } to { transform: translateY(9px) rotate(-0.7deg); } }
+    @keyframes floaty2 { from { transform: translateY(-5px) rotate(0.4deg); } to { transform: translateY(9px) rotate(-0.6deg); } }
     .cardsway { animation: cardsway 9s ease-in-out infinite alternate; }
-    @keyframes cardsway { from { transform: translateY(0); } to { transform: translateY(-7px); } }
+    @keyframes cardsway { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+    .sheen { position: relative; overflow: hidden; }
+    .sheen::after {
+      content: ""; position: absolute; top: -60%; bottom: -60%; left: -30%; width: 34%;
+      background: linear-gradient(105deg, rgba(90,63,104,0) 0%, rgba(90,63,104,0.06) 50%, rgba(90,63,104,0) 100%);
+      transform: rotate(8deg); animation: sheen 8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+    }
+    @keyframes sheen { 0% { left: -40%; } 32% { left: 132%; } 100% { left: 132%; } }
+
+    /* flowing index lines: fine dashes marching along hairline paths */
+    .flow { stroke-dasharray: 2 7; animation: flow 3.2s linear infinite; }
+    @keyframes flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -36; } }
+    .spine { stroke-dasharray: 6 8; animation: spinedraw 2.2s cubic-bezier(0.22,1,0.36,1) both 300ms, flow 4s linear 2.6s infinite; }
+    @keyframes spinedraw { from { stroke-dashoffset: 420; opacity: 0; } to { stroke-dashoffset: 0; opacity: 1; } }
 
     /* category index line: slow readable drift */
     .drift { display: flex; gap: 0; width: max-content; animation: drift 46s linear infinite; }
     @keyframes drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-    /* line motif: dashes drawing along the how-it-works spine */
-    .spine { stroke-dasharray: 6 8; animation: spine 2.2s cubic-bezier(0.22,1,0.36,1) both 300ms; }
-    @keyframes spine { from { stroke-dashoffset: 420; opacity: 0; } to { stroke-dashoffset: 0; opacity: 1; } }
-
     @media (prefers-reduced-motion: reduce) {
       * { animation-duration: 0.01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; }
-      .drift { animation: none; }
+      .drift, .flow, .sheen::after { animation: none; }
     }
   </style>
 </helmet>
 
-<div class="sans" style="width: 1440px; background: #F7F3EE; color: #19151C; overflow: hidden; position: relative">
+<div class="sans" style="width: 1440px; background: #FFFFFF; color: #19151C; overflow: hidden; position: relative">
 
-  <!-- ======== hero: painted plate with parallax layers and a live 3D index ======== -->
-  <section style="position: relative; height: 940px; background: #12100D; overflow: hidden">
-    <!-- painting: Vermeer, Girl Reading a Letter at an Open Window (public domain) -->
-    <img src="bg.jpg" alt="Vermeer painting of a girl reading a letter at an open window" class="kenburns" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; filter: contrast(1.05) saturate(1.08)">
-    <!-- parallax curtain cutouts drift against the painting -->
-    <img src="red.png" alt="" aria-hidden="true" class="sway2" style="position: absolute; top: -30px; left: -10px; width: 360px; filter: contrast(1.05)">
-    <img src="green.png" alt="" aria-hidden="true" class="sway" style="position: absolute; top: -40px; right: -30px; width: 300px; height: 1030px; object-fit: cover; filter: contrast(1.05)">
-    <div aria-hidden="true" style="position: absolute; inset: 0; background: radial-gradient(ellipse 92% 78% at 50% 40%, rgba(10,8,6,0.16) 0%, rgba(10,8,6,0.6) 100%), linear-gradient(rgba(10,8,6,0.42), rgba(10,8,6,0.12) 34%, rgba(10,8,6,0.5) 100%)"></div>
-    <div class="grain" aria-hidden="true"></div>
+  <!-- ======== header ======== -->
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 28px 72px; position: relative; z-index: 20">
+    <svg width="118" height="26" viewBox="0 0 118 26" fill="none" role="img" aria-label="MISSA"><title>MISSA</title>
+      <path d="M3 23 V4 L12 16 L21 4 V23" stroke="#19151C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M31 4 V23" stroke="#19151C" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M52 6.5 C49 3.5 41 3.8 41 8.6 C41 14 52 12 52 18 C52 23 43 23.4 40 20.4" stroke="#19151C" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+      <path d="M74 6.5 C71 3.5 63 3.8 63 8.6 C63 14 74 12 74 18 C74 23 65 23.4 62 20.4" stroke="#19151C" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+      <path d="M83 23 L92 4 L101 23 M86.4 16.4 H97.6" stroke="#19151C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <circle cx="112" cy="21" r="2.2" fill="#5A3F68"/>
+    </svg>
+    <nav style="display: flex; align-items: center; gap: 40px">
+      <a href="#discover" style="font-size: 14px; font-weight: 500; text-decoration: none; color: #19151C">Discover</a>
+      <a href="#how" style="font-size: 14px; font-weight: 500; text-decoration: none; color: #19151C">How it works</a>
+      <a href="#method" style="font-size: 14px; font-weight: 500; text-decoration: none; color: #19151C">Method</a>
+      <a href="#preview" style="font-size: 14px; font-weight: 500; text-decoration: none; color: #6E6872">Preview Missa</a>
+      <a href="#join" style="font-size: 14px; font-weight: 600; text-decoration: none; color: #FFFFFF; background: #5A3F68; padding: 12px 24px; border-radius: 999px">Join the waitlist</a>
+    </nav>
+  </header>
 
-    <!-- header over the painting -->
-    <header style="position: absolute; top: 0; left: 0; right: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; padding: 26px 64px">
-      <svg width="118" height="26" viewBox="0 0 118 26" fill="none" role="img" aria-label="MISSA"><title>MISSA</title>
-        <path d="M3 23 V4 L12 16 L21 4 V23" stroke="#F0EADD" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <path d="M31 4 V23" stroke="#F0EADD" stroke-width="2.4" stroke-linecap="round"/>
-        <path d="M52 6.5 C49 3.5 41 3.8 41 8.6 C41 14 52 12 52 18 C52 23 43 23.4 40 20.4" stroke="#F0EADD" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-        <path d="M74 6.5 C71 3.5 63 3.8 63 8.6 C63 14 74 12 74 18 C74 23 65 23.4 62 20.4" stroke="#F0EADD" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-        <path d="M83 23 L92 4 L101 23 M86.4 16.4 H97.6" stroke="#F0EADD" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-        <circle cx="112" cy="21" r="2.2" fill="#C8B9D0"/>
-      </svg>
-      <nav style="display: flex; align-items: center; gap: 36px">
-        <a href="#discover" style="font-size: 14px; font-weight: 500; text-decoration: none; color: #F0EADD; text-shadow: 0 1px 12px rgba(0,0,0,0.5)">Discover</a>
-        <a href="#how" style="font-size: 14px; font-weight: 500; text-decoration: none; color: #F0EADD; text-shadow: 0 1px 12px rgba(0,0,0,0.5)">How it works</a>
-        <a href="#method" style="font-size: 14px; font-weight: 500; text-decoration: none; color: #F0EADD; text-shadow: 0 1px 12px rgba(0,0,0,0.5)">Method</a>
-        <a href="#preview" style="font-size: 14px; font-weight: 500; text-decoration: none; color: rgba(240,234,221,0.78); text-shadow: 0 1px 12px rgba(0,0,0,0.5)">Preview Missa</a>
-        <a href="#join" style="font-size: 14px; font-weight: 600; text-decoration: none; color: #19151C; background: #F0EADD; padding: 11px 22px; border-radius: 999px">Join the waitlist</a>
-      </nav>
-    </header>
-
-    <!-- hero type, centered on the painting -->
-    <div style="position: absolute; z-index: 15; left: 50%; top: 138px; transform: translateX(-50%); width: 760px; text-align: center; color: #F0EADD">
-      <p class="rise" style="margin: 0 0 20px 0; font-size: 13px; font-weight: 600; letter-spacing: 0.28em; text-transform: uppercase; color: rgba(240,234,221,0.82); text-shadow: 0 1px 16px rgba(0,0,0,0.55)">The opportunity index for artists</p>
-      <h1 class="serif rise d1" style="margin: 0; font-size: 84px; line-height: 1.03; font-weight: 400; letter-spacing: -0.015em; text-shadow: 0 2px 30px rgba(0,0,0,0.55)">Find your next <em style="font-weight: 500">opportunity.</em></h1>
-      <p class="rise d2" style="margin: 24px auto 0 auto; font-size: 19px; line-height: 1.6; color: rgba(240,234,221,0.85); max-width: 520px; text-shadow: 0 1px 18px rgba(0,0,0,0.55)">Discover grants, residencies, fellowships, commissions, and open calls that fit your work.</p>
-      <div class="rise d3" style="display: flex; align-items: center; justify-content: center; gap: 22px; margin-top: 34px">
-        <a href="#join" style="font-size: 15px; font-weight: 600; text-decoration: none; color: #19151C; background: #F0EADD; padding: 15px 30px; border-radius: 999px">Join the waitlist</a>
-        <a href="#how" style="font-size: 15px; font-weight: 500; text-decoration: none; color: #F0EADD; border-bottom: 1px solid rgba(240,234,221,0.6); padding-bottom: 2px; text-shadow: 0 1px 14px rgba(0,0,0,0.55)">See how Missa works</a>
+  <!-- ======== hero: white space, staggered type, breathing 3D index ======== -->
+  <section style="position: relative; padding: 96px 72px 150px 72px; display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px">
+    <div style="position: relative; z-index: 5; padding-top: 58px">
+      <p class="rise" style="margin: 0 0 26px 0; font-size: 12px; font-weight: 600; letter-spacing: 0.26em; text-transform: uppercase; color: #5A3F68">The opportunity index for artists</p>
+      <h1 class="serif" style="margin: 0; font-size: 92px; line-height: 1.0; font-weight: 400; letter-spacing: -0.018em; color: #19151C"><span class="w">Find</span> <span class="w w2">your</span> <span class="w w3">next</span><br><span class="w w4"><em style="font-weight: 500">opportunity.</em></span></h1>
+      <p class="rise d3" style="margin: 34px 0 0 0; font-size: 19px; line-height: 1.65; color: #6E6872; max-width: 460px">Discover grants, residencies, fellowships, commissions, and open calls that fit your work.</p>
+      <div class="rise d4" style="display: flex; align-items: center; gap: 24px; margin-top: 44px">
+        <a href="#join" style="font-size: 15px; font-weight: 600; text-decoration: none; color: #FFFFFF; background: #5A3F68; padding: 16px 32px; border-radius: 999px; box-shadow: 0 14px 34px rgba(90,63,104,0.28)">Join the waitlist</a>
+        <a href="#how" style="font-size: 15px; font-weight: 500; text-decoration: none; color: #19151C; border-bottom: 1px solid #19151C; padding-bottom: 2px">See how Missa works</a>
       </div>
-      <p class="rise d4" style="margin: 22px 0 0 0; font-size: 13px; color: rgba(240,234,221,0.78); text-shadow: 0 1px 14px rgba(0,0,0,0.55)">No password yet. Just a note when Missa is ready for you.</p>
+      <p class="rise d5" style="margin: 28px 0 0 0; font-size: 13px; color: #6E6872">No password yet. Just a note when Missa is ready for you.</p>
     </div>
 
-    <!-- 3D stage: scattered fragments settle into the indexed card, then keep breathing -->
-    <div class="stage" style="position: absolute; z-index: 15; right: 96px; bottom: 46px; width: 560px; height: 430px">
-      <div class="orbit">
-      <div class="frag" style="top: -6px; left: 20px; animation-name: fragA; animation-duration: 1100ms; animation-delay: 300ms">
-        <div class="floaty" style="background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 10px; padding: 12px 16px; box-shadow: 0 18px 40px rgba(0,0,0,0.35); font-size: 13px; color: #19151C"><span style="color: #6E6872">Deadline</span> &nbsp;October 12, 2026 · 11:59 p.m. ET</div>
-      </div>
-      <div class="frag" style="top: 44px; right: 0px; animation-name: fragB; animation-duration: 1100ms; animation-delay: 420ms">
-        <div class="floaty2" style="background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 10px; padding: 12px 16px; box-shadow: 0 18px 40px rgba(0,0,0,0.35); font-size: 13px; color: #19151C"><span style="color: #6E6872">Funding</span> &nbsp;Up to $8,000 USD</div>
-      </div>
-      <div class="frag" style="top: 118px; left: -26px; animation-name: fragC; animation-duration: 1100ms; animation-delay: 540ms">
-        <div class="floaty2" style="background: #EDE6F0; border: 1px solid #DDD6DE; border-radius: 999px; padding: 9px 16px; font-size: 13px; color: #33223E; box-shadow: 0 14px 32px rgba(0,0,0,0.3)">Poetry · Nonfiction</div>
-      </div>
-      <div class="frag" style="top: 122px; right: 42px; animation-name: fragD; animation-duration: 1100ms; animation-delay: 660ms">
-        <div class="floaty" style="background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 999px; padding: 9px 16px; font-size: 13px; color: #2F6B4F; box-shadow: 0 14px 32px rgba(0,0,0,0.3)">No application fee</div>
-      </div>
-      <div class="frag" style="top: 58px; left: 196px; animation-name: fragE; animation-duration: 1100ms; animation-delay: 780ms">
-        <div class="floaty" style="background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #6E6872; box-shadow: 0 14px 32px rgba(0,0,0,0.3)">Official source · checked 3 days ago</div>
-      </div>
+    <!-- 3D stage on white: fragments settle out of depth into the indexed card, then keep breathing -->
+    <div class="stage" style="position: relative; height: 660px">
+      <!-- flowing hairline paths connecting the fragments to the card -->
+      <svg aria-hidden="true" style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible" viewBox="0 0 640 660" fill="none">
+        <path class="flow" d="M150 60 C 200 130, 180 190, 210 260" stroke="#DCD5DF" stroke-width="1.2"/>
+        <path class="flow" style="animation-delay: 0.8s" d="M520 110 C 470 170, 480 220, 440 270" stroke="#DCD5DF" stroke-width="1.2"/>
+        <path class="flow" style="animation-delay: 1.6s" d="M80 210 C 130 250, 160 260, 200 300" stroke="#DCD5DF" stroke-width="1.2"/>
+        <path class="flow" style="animation-delay: 2.2s" d="M540 200 C 500 240, 470 260, 450 300" stroke="#DCD5DF" stroke-width="1.2"/>
+      </svg>
 
-      <!-- the assembled opportunity card -->
-      <div class="frag" style="top: 178px; left: 26px; right: 6px; animation-name: cardIn; animation-duration: 1300ms; animation-delay: 900ms">
-        <div class="sheen cardsway" style="background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 18px; padding: 28px 30px; box-shadow: 0 40px 90px rgba(0,0,0,0.45)">
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
-            <span style="font-size: 12px; font-weight: 600; color: #33223E; background: #EDE6F0; border-radius: 999px; padding: 6px 12px">Strong fit</span>
-            <span style="font-size: 12px; color: #6E6872">Residency · Maine, United States</span>
-          </div>
-          <h3 class="serif" style="margin: 16px 0 4px 0; font-size: 27px; font-weight: 500; line-height: 1.2">Saltwater Field Notes Fellowship</h3>
-          <p style="margin: 0; font-size: 14px; color: #6E6872">Tidewater Arts Foundation — a fictional demo listing</p>
-          <div style="display: flex; gap: 22px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #DDD6DE; font-size: 13px">
-            <div><div style="color: #6E6872; font-size: 12px">Deadline</div><div style="font-weight: 600; margin-top: 2px">October 12, 2026</div></div>
-            <div><div style="color: #6E6872; font-size: 12px">Funding</div><div style="font-weight: 600; margin-top: 2px">Up to $8,000 USD</div></div>
-            <div><div style="color: #6E6872; font-size: 12px">Fee</div><div style="font-weight: 600; margin-top: 2px; color: #2F6B4F">None</div></div>
-            <div><div style="color: #6E6872; font-size: 12px">Last checked</div><div style="font-weight: 600; margin-top: 2px">3 days ago</div></div>
-          </div>
-          <div style="margin-top: 16px; font-size: 13px; color: #33223E; line-height: 1.7">
-            Matches poetry and nonfiction · Open to artists based in the United States · Deadline leaves eight weeks to prepare
+      <div class="orbit">
+        <div class="frag" style="top: 10px; left: 44px; animation-name: fragA; animation-duration: 1100ms; animation-delay: 300ms">
+          <div class="floaty" style="background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 10px; padding: 12px 16px; box-shadow: 0 16px 40px rgba(25,21,28,0.08); font-size: 13px; color: #19151C"><span style="color: #6E6872">Deadline</span> &nbsp;October 12, 2026 · 11:59 p.m. ET</div>
+        </div>
+        <div class="frag" style="top: 66px; right: 6px; animation-name: fragB; animation-duration: 1100ms; animation-delay: 420ms">
+          <div class="floaty2" style="background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 10px; padding: 12px 16px; box-shadow: 0 16px 40px rgba(25,21,28,0.08); font-size: 13px; color: #19151C"><span style="color: #6E6872">Funding</span> &nbsp;Up to $8,000 USD</div>
+        </div>
+        <div class="frag" style="top: 168px; left: -8px; animation-name: fragC; animation-duration: 1100ms; animation-delay: 540ms">
+          <div class="floaty2" style="background: #EDE6F0; border: 1px solid #E3DAE7; border-radius: 999px; padding: 9px 16px; font-size: 13px; color: #33223E; box-shadow: 0 12px 28px rgba(25,21,28,0.06)">Poetry · Nonfiction</div>
+        </div>
+        <div class="frag" style="top: 174px; right: 40px; animation-name: fragD; animation-duration: 1100ms; animation-delay: 660ms">
+          <div class="floaty" style="background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 999px; padding: 9px 16px; font-size: 13px; color: #2F6B4F; box-shadow: 0 12px 28px rgba(25,21,28,0.06)">No application fee</div>
+        </div>
+        <div class="frag" style="top: 100px; left: 226px; animation-name: fragE; animation-duration: 1100ms; animation-delay: 780ms">
+          <div class="floaty" style="background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #6E6872; box-shadow: 0 12px 28px rgba(25,21,28,0.06)">Official source · checked 3 days ago</div>
+        </div>
+
+        <!-- the assembled opportunity card -->
+        <div class="frag" style="top: 246px; left: 60px; right: 16px; animation-name: cardIn; animation-duration: 1300ms; animation-delay: 900ms">
+          <div class="sheen cardsway" style="background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 18px; padding: 30px 32px; box-shadow: 0 40px 90px rgba(25,21,28,0.12)">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px">
+              <span style="font-size: 12px; font-weight: 600; color: #33223E; background: #EDE6F0; border-radius: 999px; padding: 6px 12px">Strong fit</span>
+              <span style="font-size: 12px; color: #6E6872">Residency · Maine, United States</span>
+            </div>
+            <h3 class="serif" style="margin: 16px 0 4px 0; font-size: 27px; font-weight: 500; line-height: 1.2">Saltwater Field Notes Fellowship</h3>
+            <p style="margin: 0; font-size: 14px; color: #6E6872">Tidewater Arts Foundation — a fictional demo listing</p>
+            <div style="display: flex; gap: 24px; margin-top: 18px; padding-top: 16px; border-top: 1px solid #EFEBF1; font-size: 13px">
+              <div><div style="color: #6E6872; font-size: 12px">Deadline</div><div style="font-weight: 600; margin-top: 2px">October 12, 2026</div></div>
+              <div><div style="color: #6E6872; font-size: 12px">Funding</div><div style="font-weight: 600; margin-top: 2px">Up to $8,000 USD</div></div>
+              <div><div style="color: #6E6872; font-size: 12px">Fee</div><div style="font-weight: 600; margin-top: 2px; color: #2F6B4F">None</div></div>
+              <div><div style="color: #6E6872; font-size: 12px">Last checked</div><div style="font-weight: 600; margin-top: 2px">3 days ago</div></div>
+            </div>
+            <div style="margin-top: 16px; font-size: 13px; color: #33223E; line-height: 1.7">
+              Matches poetry and nonfiction · Open to artists based in the United States · Deadline leaves eight weeks to prepare
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   </section>
 
   <!-- ======== opportunity-type index line ======== -->
-  <section style="border-top: 1px solid #DDD6DE; border-bottom: 1px solid #DDD6DE; padding: 20px 0; overflow: hidden; background: #FFFDFC">
+  <section style="border-top: 1px solid #EFEBF1; border-bottom: 1px solid #EFEBF1; padding: 22px 0; overflow: hidden">
     <div class="drift serif" style="font-size: 22px; color: #6E6872; font-style: italic">
       <span style="white-space: nowrap; padding-right: 12px">Grants · Residencies · Fellowships · Commissions · Open calls · Prizes · Publications · Labs · Mentorships · &nbsp;</span>
       <span style="white-space: nowrap; padding-right: 12px">Grants · Residencies · Fellowships · Commissions · Open calls · Prizes · Publications · Labs · Mentorships · &nbsp;</span>
@@ -172,21 +162,21 @@
   </section>
 
   <!-- ======== problem statement ======== -->
-  <section style="padding: 140px 64px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 64px; align-items: center">
+  <section style="padding: 150px 72px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 72px; align-items: center">
     <div>
       <h2 class="serif" style="margin: 0; font-size: 48px; line-height: 1.14; font-weight: 400; max-width: 560px">Good opportunities are hard enough to win. They should not be hard to find.</h2>
-      <p style="margin: 26px 0 0 0; font-size: 17px; line-height: 1.7; color: #6E6872; max-width: 500px">Calls are scattered across newsletters, PDFs, institutional sites, application portals, social posts, and word of mouth. Missa gathers the details into one place and helps you decide which opportunities deserve your time.</p>
+      <p style="margin: 26px 0 0 0; font-size: 17px; line-height: 1.7; color: #6E6872; max-width: 480px">Calls are scattered across newsletters, PDFs, institutional sites, application portals, social posts, and word of mouth. Missa gathers the details into one place and helps you decide which opportunities deserve your time.</p>
     </div>
     <!-- messy sources -> structured fields -->
     <div style="display: flex; flex-direction: column; gap: 14px">
       <div style="display: flex; gap: 10px; flex-wrap: wrap">
-        <span style="font-size: 12px; color: #6E6872; border: 1px dashed #DDD6DE; border-radius: 6px; padding: 7px 12px; transform: rotate(-2deg)">newsletter, para 4</span>
-        <span style="font-size: 12px; color: #6E6872; border: 1px dashed #DDD6DE; border-radius: 6px; padding: 7px 12px; transform: rotate(1.5deg)">guidelines.pdf, p.3</span>
-        <span style="font-size: 12px; color: #6E6872; border: 1px dashed #DDD6DE; border-radius: 6px; padding: 7px 12px; transform: rotate(-1deg)">a post from March</span>
-        <span style="font-size: 12px; color: #6E6872; border: 1px dashed #DDD6DE; border-radius: 6px; padding: 7px 12px; transform: rotate(2deg)">portal FAQ</span>
+        <span class="floaty" style="font-size: 12px; color: #6E6872; border: 1px dashed #DCD5DF; border-radius: 6px; padding: 7px 12px; transform: rotate(-2deg)">newsletter, para 4</span>
+        <span class="floaty2" style="font-size: 12px; color: #6E6872; border: 1px dashed #DCD5DF; border-radius: 6px; padding: 7px 12px; transform: rotate(1.5deg)">guidelines.pdf, p.3</span>
+        <span class="floaty" style="font-size: 12px; color: #6E6872; border: 1px dashed #DCD5DF; border-radius: 6px; padding: 7px 12px; transform: rotate(-1deg); animation-delay: 1.2s">a post from March</span>
+        <span class="floaty2" style="font-size: 12px; color: #6E6872; border: 1px dashed #DCD5DF; border-radius: 6px; padding: 7px 12px; transform: rotate(2deg); animation-delay: 0.7s">portal FAQ</span>
       </div>
-      <svg aria-hidden="true" width="80" height="44" viewBox="0 0 80 44" fill="none" style="margin: 4px 0 4px 40px"><path d="M40 2 V34 M30 26 L40 38 L50 26" stroke="#5A3F68" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <div style="background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 10px; padding: 20px 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; font-size: 13px">
+      <svg aria-hidden="true" width="80" height="44" viewBox="0 0 80 44" fill="none" style="margin: 4px 0 4px 40px"><path class="flow" d="M40 2 V34 M30 26 L40 38 L50 26" stroke="#5A3F68" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div style="background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 10px; padding: 20px 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; font-size: 13px; box-shadow: 0 24px 60px rgba(25,21,28,0.07)">
         <div><span style="color: #6E6872">Eligibility</span><br>US-based, any career stage</div>
         <div><span style="color: #6E6872">Deadline</span><br>October 12, 2026 · ET</div>
         <div><span style="color: #6E6872">Application fee</span><br><span style="color: #2F6B4F">No application fee</span></div>
@@ -196,37 +186,37 @@
   </section>
 
   <!-- ======== product demonstration ======== -->
-  <section id="preview" style="padding: 120px 64px; background: #33223E; color: #F7F3EE">
+  <section id="preview" style="padding: 130px 72px; border-top: 1px solid #EFEBF1">
     <div style="max-width: 640px">
       <h2 class="serif" style="margin: 0; font-size: 46px; font-weight: 400; line-height: 1.15">See what is worth your time.</h2>
-      <p style="margin: 22px 0 0 0; font-size: 17px; line-height: 1.7; color: rgba(247,243,238,0.72)">Missa turns a listing into a decision. See who can apply, what the opportunity offers, what the application requires, when it is due, and why it may fit your practice.</p>
+      <p style="margin: 22px 0 0 0; font-size: 17px; line-height: 1.7; color: #6E6872">Missa turns a listing into a decision. See who can apply, what the opportunity offers, what the application requires, when it is due, and why it may fit your practice.</p>
     </div>
     <!-- live discover mock -->
-    <div style="margin-top: 56px; background: #F7F3EE; color: #19151C; border-radius: 18px; padding: 28px; box-shadow: 0 48px 110px rgba(0,0,0,0.35)">
+    <div style="margin-top: 56px; background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 18px; padding: 30px; box-shadow: 0 48px 110px rgba(25,21,28,0.10)">
       <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
-        <span style="font-size: 13px; font-weight: 600; background: #5A3F68; color: #F7F3EE; border-radius: 999px; padding: 8px 16px">Poetry</span>
-        <span style="font-size: 13px; background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 999px; padding: 8px 16px">No application fee</span>
-        <span style="font-size: 13px; background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 999px; padding: 8px 16px">Funding ≥ $1,000 USD</span>
-        <span style="font-size: 13px; background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 999px; padding: 8px 16px">Remote or in person</span>
+        <span style="font-size: 13px; font-weight: 600; background: #5A3F68; color: #FFFFFF; border-radius: 999px; padding: 8px 16px">Poetry</span>
+        <span style="font-size: 13px; background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 999px; padding: 8px 16px">No application fee</span>
+        <span style="font-size: 13px; background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 999px; padding: 8px 16px">Funding ≥ $1,000 USD</span>
+        <span style="font-size: 13px; background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 999px; padding: 8px 16px">Remote or in person</span>
         <span style="margin-left: auto; font-size: 13px; color: #6E6872">Sort: Recommended</span>
       </div>
       <p style="margin: 18px 0 10px 0; font-size: 13px; color: #6E6872">3 opportunities</p>
       <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
-        <div style="background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 10px; padding: 20px">
+        <div style="background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 10px; padding: 20px; box-shadow: 0 10px 30px rgba(25,21,28,0.05)">
           <span style="font-size: 11px; font-weight: 600; color: #33223E; background: #EDE6F0; border-radius: 999px; padding: 4px 10px">Strong fit</span>
           <h4 class="serif" style="margin: 12px 0 2px 0; font-size: 19px; font-weight: 500">Soft Archive Poetry Prize</h4>
           <p style="margin: 0 0 12px 0; font-size: 12px; color: #6E6872">Lantern Review Collective</p>
           <p style="margin: 0; font-size: 12px; line-height: 1.8; color: #33223E">$2,500 USD · No fee<br>Due January 9, 2027 · ET<br>Matches poetry · Remote</p>
           <div style="display: flex; gap: 10px; margin-top: 14px; font-size: 12px; font-weight: 600"><span style="color: #5A3F68">Save</span><span style="color: #6E6872">Compare</span><span style="color: #6E6872">View details</span></div>
         </div>
-        <div style="background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 10px; padding: 20px">
+        <div style="background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 10px; padding: 20px; box-shadow: 0 10px 30px rgba(25,21,28,0.05)">
           <span style="font-size: 11px; font-weight: 600; color: #45503A; background: #EEF1E8; border-radius: 999px; padding: 4px 10px">Worth a look</span>
           <h4 class="serif" style="margin: 12px 0 2px 0; font-size: 19px; font-weight: 500">River House Translation Fellowship</h4>
           <p style="margin: 0 0 12px 0; font-size: 12px; color: #6E6872">River House Press</p>
           <p style="margin: 0; font-size: 12px; line-height: 1.8; color: #33223E">$4,000 USD stipend · No fee<br>Due November 2, 2026 · ET<br>Adjacent to your writing practice</p>
           <div style="display: flex; gap: 10px; margin-top: 14px; font-size: 12px; font-weight: 600"><span style="color: #5A3F68">Save</span><span style="color: #6E6872">Compare</span><span style="color: #6E6872">View details</span></div>
         </div>
-        <div style="background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 10px; padding: 20px">
+        <div style="background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 10px; padding: 20px; box-shadow: 0 10px 30px rgba(25,21,28,0.05)">
           <span style="font-size: 11px; font-weight: 600; color: #78551E; background: #F5ECD9; border-radius: 999px; padding: 4px 10px">Needs confirmation</span>
           <h4 class="serif" style="margin: 12px 0 2px 0; font-size: 19px; font-weight: 500">Public Memory Research Grant</h4>
           <p style="margin: 0 0 12px 0; font-size: 12px; color: #6E6872">Civic Histories Fund</p>
@@ -238,27 +228,27 @@
   </section>
 
   <!-- ======== how Missa works ======== -->
-  <section id="how" style="padding: 140px 64px; position: relative">
+  <section id="how" style="padding: 150px 72px; position: relative; border-top: 1px solid #EFEBF1">
     <h2 class="serif" style="margin: 0 0 72px 0; font-size: 46px; font-weight: 400">How Missa works</h2>
     <div style="position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 40px">
-      <svg aria-hidden="true" style="position: absolute; top: 17px; left: 40px; right: 40px; width: calc(100% - 80px); height: 2px; overflow: visible" viewBox="0 0 1000 2" preserveAspectRatio="none" fill="none"><path class="spine" d="M0 1 H1000" stroke="#5A3F68" stroke-width="1.6"/></svg>
+      <svg aria-hidden="true" style="position: absolute; top: 17px; left: 40px; right: 40px; width: calc(100% - 80px); height: 2px; overflow: visible" viewBox="0 0 1000 2" preserveAspectRatio="none" fill="none"><path class="spine" d="M0 1 H1000" stroke="#5A3F68" stroke-width="1.4"/></svg>
       <div style="position: relative">
-        <div style="width: 36px; height: 36px; border-radius: 999px; background: #5A3F68; color: #F7F3EE; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; position: relative; z-index: 2">1</div>
+        <div style="width: 36px; height: 36px; border-radius: 999px; background: #5A3F68; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; position: relative; z-index: 2">1</div>
         <h3 class="serif" style="margin: 22px 0 8px 0; font-size: 23px; font-weight: 500">Tell Missa what you make.</h3>
         <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #6E6872">Choose your disciplines, working methods, location, career stage, and the kinds of support you are looking for.</p>
       </div>
       <div style="position: relative">
-        <div style="width: 36px; height: 36px; border-radius: 999px; background: #5A3F68; color: #F7F3EE; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; position: relative; z-index: 2">2</div>
+        <div style="width: 36px; height: 36px; border-radius: 999px; background: #5A3F68; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; position: relative; z-index: 2">2</div>
         <h3 class="serif" style="margin: 22px 0 8px 0; font-size: 23px; font-weight: 500">Set what matters.</h3>
         <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #6E6872">Filter out application fees, unsuitable locations, low funding, impossible deadlines, or applications heavier than you can take on.</p>
       </div>
       <div style="position: relative">
-        <div style="width: 36px; height: 36px; border-radius: 999px; background: #5A3F68; color: #F7F3EE; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; position: relative; z-index: 2">3</div>
+        <div style="width: 36px; height: 36px; border-radius: 999px; background: #5A3F68; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; position: relative; z-index: 2">3</div>
         <h3 class="serif" style="margin: 22px 0 8px 0; font-size: 23px; font-weight: 500">See the reasoning.</h3>
         <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #6E6872">Missa explains the practical reasons an opportunity may fit. No mysterious percentage. No “perfect match” claim.</p>
       </div>
       <div style="position: relative">
-        <div style="width: 36px; height: 36px; border-radius: 999px; background: #5A3F68; color: #F7F3EE; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; position: relative; z-index: 2">4</div>
+        <div style="width: 36px; height: 36px; border-radius: 999px; background: #5A3F68; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; position: relative; z-index: 2">4</div>
         <h3 class="serif" style="margin: 22px 0 8px 0; font-size: 23px; font-weight: 500">Keep moving.</h3>
         <p style="margin: 0; font-size: 14px; line-height: 1.7; color: #6E6872">Save opportunities, compare requirements, track deadlines, and move each application from saved to submitted.</p>
       </div>
@@ -266,12 +256,12 @@
   </section>
 
   <!-- ======== trust and source transparency ======== -->
-  <section id="method" style="padding: 120px 64px; background: #FFFDFC; border-top: 1px solid #DDD6DE; border-bottom: 1px solid #DDD6DE; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 64px; align-items: center">
+  <section id="method" style="padding: 130px 72px; border-top: 1px solid #EFEBF1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 72px; align-items: center">
     <div>
       <h2 class="serif" style="margin: 0; font-size: 46px; font-weight: 400; line-height: 1.15; max-width: 480px">Every listing should keep its source.</h2>
       <p style="margin: 24px 0 0 0; font-size: 17px; line-height: 1.7; color: #6E6872; max-width: 460px">Missa does not ask you to trust a summary without evidence. Each opportunity keeps the original source, important dates, verification status, and the last time its details were checked.</p>
     </div>
-    <div style="background: #F7F3EE; border: 1px solid #DDD6DE; border-radius: 18px; padding: 30px 32px">
+    <div style="background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 18px; padding: 32px 34px; box-shadow: 0 32px 80px rgba(25,21,28,0.08)">
       <p style="margin: 0 0 18px 0; font-size: 12px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #6E6872">Source and verification</p>
       <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px">
         <div style="display: flex; justify-content: space-between; gap: 16px"><span style="color: #6E6872">Official source</span><span style="font-weight: 500">tidewaterarts.org — demo listing</span></div>
@@ -286,14 +276,10 @@
   </section>
 
   <!-- ======== recommendation philosophy ======== -->
-  <section style="padding: 140px 64px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 64px">
+  <section style="padding: 130px 72px; border-top: 1px solid #EFEBF1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 72px">
     <div>
       <h2 class="serif" style="margin: 0; font-size: 46px; font-weight: 400; line-height: 1.15">Relevant does not mean identical.</h2>
       <p style="margin: 24px 0 0 0; font-size: 17px; line-height: 1.7; color: #6E6872; max-width: 460px">Missa can use your practice and preferences to reduce noise, but it should never flatten your work into a single category. You can see what influenced a recommendation, change those signals, or browse beyond them.</p>
-      <figure style="margin: 40px 0 0 0; max-width: 360px; position: relative">
-        <img src="waiting.jpg" alt="Vermeer painting of a woman in blue reading a letter" style="width: 100%; display: block; border-radius: 10px; box-shadow: 0 32px 70px rgba(51,34,62,0.22); filter: contrast(1.04)">
-        <figcaption class="serif" style="margin: 14px 0 0 0; font-size: 14px; font-style: italic; color: #6E6872; line-height: 1.6">Woman in Blue Reading a Letter, Johannes Vermeer. Every application is a letter waiting for an answer — Missa shortens the wait before you send one.</figcaption>
-      </figure>
     </div>
     <div>
       <p style="margin: 0 0 14px 0; font-size: 12px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #6E6872">Missa is using</p>
@@ -301,36 +287,36 @@
         <span style="font-size: 13px; background: #EDE6F0; color: #33223E; border-radius: 999px; padding: 8px 16px">Poetry</span>
         <span style="font-size: 13px; background: #EDE6F0; color: #33223E; border-radius: 999px; padding: 8px 16px">Essay</span>
         <span style="font-size: 13px; background: #EDE6F0; color: #33223E; border-radius: 999px; padding: 8px 16px">Film</span>
-        <span style="font-size: 13px; background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 999px; padding: 8px 16px">Based in California</span>
-        <span style="font-size: 13px; background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 999px; padding: 8px 16px">Eligible in the United States and Nigeria</span>
-        <span style="font-size: 13px; background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 999px; padding: 8px 16px">No-fee opportunities</span>
-        <span style="font-size: 13px; background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 999px; padding: 8px 16px">Minimum support: $1,000 USD</span>
-        <span style="font-size: 13px; background: #FFFDFC; border: 1px solid #DDD6DE; border-radius: 999px; padding: 8px 16px">At least 21 days before deadline</span>
+        <span style="font-size: 13px; background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 999px; padding: 8px 16px">Based in California</span>
+        <span style="font-size: 13px; background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 999px; padding: 8px 16px">Eligible in the United States and Nigeria</span>
+        <span style="font-size: 13px; background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 999px; padding: 8px 16px">No-fee opportunities</span>
+        <span style="font-size: 13px; background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 999px; padding: 8px 16px">Minimum support: $1,000 USD</span>
+        <span style="font-size: 13px; background: #FFFFFF; border: 1px solid #E8E4EA; border-radius: 999px; padding: 8px 16px">At least 21 days before deadline</span>
       </div>
       <p style="margin: 26px 0 0 0; font-size: 12px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: #6E6872">Fit labels</p>
       <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 14px">
         <div style="display: flex; align-items: center; gap: 12px"><span style="width: 8px; height: 8px; border-radius: 999px; background: #5A3F68"></span>Strong fit</div>
         <div style="display: flex; align-items: center; gap: 12px"><span style="width: 8px; height: 8px; border-radius: 999px; background: #A8B7A0"></span>Worth a look</div>
         <div style="display: flex; align-items: center; gap: 12px"><span style="width: 8px; height: 8px; border-radius: 999px; background: #B9843E"></span>Broad fit</div>
-        <div style="display: flex; align-items: center; gap: 12px"><span style="width: 8px; height: 8px; border-radius: 999px; background: #DDD6DE"></span>Outside your current preferences</div>
+        <div style="display: flex; align-items: center; gap: 12px"><span style="width: 8px; height: 8px; border-radius: 999px; background: #DCD5DF"></span>Outside your current preferences</div>
       </div>
     </div>
   </section>
 
-  <!-- ======== waitlist ======== -->
-  <section id="join" style="padding: 130px 64px; background: #5A3F68; color: #F7F3EE">
+  <!-- ======== waitlist: the one color moment ======== -->
+  <section id="join" style="padding: 140px 72px; background: #5A3F68; color: #FFFFFF">
     <div style="max-width: 720px; margin: 0 auto; text-align: center">
       <h2 class="serif" style="margin: 0; font-size: 50px; font-weight: 400; line-height: 1.14">Make less time for searching. Keep more time for the work.</h2>
       <div style="display: flex; gap: 12px; margin: 44px auto 0 auto; max-width: 560px">
-        <div style="flex: 1; background: #FFFDFC; border-radius: 999px; padding: 15px 24px; text-align: left; font-size: 15px; color: #6E6872">Email address</div>
-        <div style="background: #19151C; color: #F7F3EE; border-radius: 999px; padding: 15px 28px; font-size: 15px; font-weight: 600">Join the waitlist</div>
+        <div style="flex: 1; background: #FFFFFF; border-radius: 999px; padding: 15px 24px; text-align: left; font-size: 15px; color: #6E6872">Email address</div>
+        <div style="background: #19151C; color: #FFFFFF; border-radius: 999px; padding: 15px 28px; font-size: 15px; font-weight: 600">Join the waitlist</div>
       </div>
-      <p style="margin: 20px 0 0 0; font-size: 13px; color: rgba(247,243,238,0.82)">No password yet. Just a note when Missa is ready for you.</p>
+      <p style="margin: 20px 0 0 0; font-size: 13px; color: rgba(255,255,255,0.85)">No password yet. Just a note when Missa is ready for you.</p>
     </div>
   </section>
 
   <!-- ======== footer ======== -->
-  <footer style="padding: 64px; display: flex; align-items: flex-start; justify-content: space-between; gap: 48px">
+  <footer style="padding: 72px; display: flex; align-items: flex-start; justify-content: space-between; gap: 48px">
     <div>
       <svg width="96" height="22" viewBox="0 0 118 26" fill="none" role="img" aria-label="MISSA"><title>MISSA</title>
         <path d="M3 23 V4 L12 16 L21 4 V23" stroke="#19151C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
