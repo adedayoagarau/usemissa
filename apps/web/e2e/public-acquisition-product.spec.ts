@@ -5,11 +5,14 @@ const bannedPublicCopy = /source snapshot|next refresh|freshness signal|profile 
 
 test('public Home leads with useful Opportunities and no operational theatre', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Find the call worth your time.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Find your next opportunity.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Open something useful now' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Browse Opportunities' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Browse Opportunities' }).first()).toBeVisible();
   await expect(page.locator('main')).not.toContainText(bannedPublicCopy);
   await expect(page.locator('img[src*="/media/home/"]')).toHaveCount(0);
+  // Audit the settled page: the hero's load-once entrance motion animates
+  // opacity, and axe must not sample text mid-fade.
+  await page.waitForTimeout(1600);
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
 });
@@ -19,7 +22,7 @@ test('selected public pages keep evidence language customer-safe', async ({ page
     await page.goto(path);
     await expect(page.locator('main')).toBeVisible();
     await expect(page.locator('main')).not.toContainText(bannedPublicCopy);
-    await expect(page.getByRole('link', { name: 'Missa home' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Missa home' }).first()).toBeVisible();
   }
   await page.goto('/methodology');
   await expect(page.getByRole('heading', { name: 'Facts are not scores.' })).toBeVisible();

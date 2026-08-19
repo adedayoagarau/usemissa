@@ -33,7 +33,7 @@
 .primaryAction:hover { transform: translateY(-1px); box-shadow: 0 18px 40px color-mix(in srgb, var(--primary) 32%, transparent); }
 .secondaryAction { display: inline-flex; min-height: var(--control-height-public); align-items: center; color: var(--ink); font-size: .9rem; font-weight: 600; text-decoration: none; border-bottom: 1px solid var(--ink); }
 .primaryAction svg { width: 16px; height: 16px; }
-.heroNote { margin: 22px 0 0; color: var(--ink-3); font-size: .8rem; }
+.heroNote { margin: 22px 0 0; color: var(--ink-2); font-size: .8rem; }
 
 /* the 3D stage: fragments settle from depth, then keep breathing */
 .stage { position: relative; height: clamp(420px, 44vw, 560px); perspective: 1500px; perspective-origin: 58% 38%; }
