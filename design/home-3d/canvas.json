@@ -1,11 +1,11 @@
 {
   "artboards": [
-    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 5600, "title": "Home — desktop" },
-    { "file": "Mobile.dc.html", "x": 1560, "y": 0, "w": 390, "h": 1780, "title": "Home — mobile" }
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 4360, "title": "The Index — desktop" },
+    { "file": "Mobile.dc.html", "x": 1560, "y": 0, "w": 390, "h": 2320, "title": "The Index — mobile" }
   ],
   "annotations": [
-    { "id": "motion-intent", "x": 0, "y": -300, "w": 480, "text": "Direction: white, minimalist, premium motion (settled).\n· Headline words rise out of a slight blur, staggered.\n· Index fragments settle from 3D depth into the opportunity card, then the constellation keeps breathing in perspective (18s orbit) while each chip floats on its own period; the card carries a slow aubergine-tinted sheen.\n· Fine hairline paths flow (marching dashes) from fragments into the card — the indexing metaphor drawn literally.\n· One color moment: the aubergine waitlist band. Everything else is white, hairlines, ink, soft shadows.\n· In production the settle is scroll-driven (CSS scroll timeline, pinned ~2 viewport heights); reduced motion renders the settled state with no loops. No WebGL." },
-    { "id": "mobile-note", "x": 1560, "y": -140, "w": 390, "text": "Mobile replaces the pinned 3D sequence with a stacked progression: source scraps → the indexed card. No scroll-jacking, 44px+ targets." }
+    { "id": "concept", "x": 0, "y": -300, "w": 500, "text": "THE INDEX — the page behaves like a living card catalogue.\n· One idea everywhere: nothing floats, everything is filed. Hairline rules instead of cards, sharp rectangles instead of pills, aubergine used as ink.\n· Two voices: Ysabeau at monumental weight for statements; Fragment Mono (the house mono) for every fact — numbers, deadlines, fees, classifications.\n· Motion is the catalogue working: the classification ticker drifts, the index rail files entries past continuously, rules draw themselves in, margin notes stamp [ → FILED ], the verification stamp lands on the record card.\n· Rail and table rows are schematic here and labeled as such; in the app they are fed by the live published Opportunities." },
+    { "id": "build-note", "x": 1560, "y": -180, "w": 390, "text": "Implementation notes: Ysabeau and Fragment Mono are already the app fonts (next/font local). Table = real semantic table fed by the repository browse; rail = live entries. All motion CSS-only; reduced motion stops the ticker and rail and shows settled states." }
   ],
   "launch": { "view": "canvas" }
 }

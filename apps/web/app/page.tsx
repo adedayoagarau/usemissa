@@ -1,21 +1,61 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { ArrowRight, BookOpen, Building2, ExternalLink, ListChecks } from 'lucide-react';
+import { ArrowRight, BookOpen } from 'lucide-react';
 import type { OpportunityBrowseProjection } from '@missa/radar-engine';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
-import { OpportunityCatalogueCard } from '@/components/opportunity-catalogue-card';
 import { PublicSiteShell } from '@/components/public-site-shell';
 import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
 import styles from './home.module.css';
 
 export const metadata = pageMetadata({
-  title: 'Missa — Find grants, residencies, fellowships, and open calls',
-  description: 'Discover credible creative Opportunities with their sources, deadlines, and limits kept visible—then keep your decision and next step together.',
+  title: 'Missa — The opportunity index for artists',
+  description: 'Grants, residencies, fellowships, commissions, and open calls—filed with their deadlines, fees, eligibility, and sources kept visible.',
   path: '/',
 });
 
 const OPPORTUNITY_TYPES = ['Grants', 'Residencies', 'Fellowships', 'Commissions', 'Open calls', 'Prizes', 'Publications', 'Labs', 'Mentorships'];
+
+function typeLabel(type: OpportunityBrowseProjection['type']): string {
+  if (type === 'open-call') return 'Open call';
+  return type.replace(/-/gu, ' ').replace(/^./u, (character) => character.toUpperCase());
+}
+
+function deadlineLabel(deadline: OpportunityBrowseProjection['deadline']): string {
+  if (!deadline.date) {
+    if (deadline.kind === 'rolling') return 'Rolling';
+    if (deadline.kind === 'until-filled') return 'Until filled';
+    return 'Not listed';
+  }
+  return new Intl.DateTimeFormat('en', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${deadline.date}T12:00:00`));
+}
+
+function feeLabel(item: OpportunityBrowseProjection): string {
+  if (item.fee.status === 'no-fee') return 'None';
+  if (item.fee.status === 'unknown') return 'Not listed';
+  if (item.fee.amountCents !== undefined && item.fee.currency) {
+    const currency = /^[A-Z]{3}$/u.test(item.fee.currency) ? item.fee.currency : undefined;
+    if (currency) {
+      return new Intl.NumberFormat('en', { style: 'currency', currency }).format(item.fee.amountCents / 100);
+    }
+    return `${item.fee.currency}${(item.fee.amountCents / 100).toFixed(2)}`;
+  }
+  return 'Listed on the call';
+}
+
+function RailRows({ items }: { items: OpportunityBrowseProjection[] }) {
+  return (
+    <div>
+      {items.map((item, index) => (
+        <div key={item.id} className={`${styles.railRow} ${index === 0 ? styles.railRowActive : ''}`}>
+          <p className={styles.railKicker}>{typeLabel(item.type)} — entry fee: {feeLabel(item)}</p>
+          <p className={styles.railTitle}>{item.title}</p>
+          <p className={styles.railMeta}>Due {deadlineLabel(item.deadline)}{item.organizationName ? ` · ${item.organizationName}` : ''}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default async function HomePage() {
   const cookieStore = await cookies();
@@ -26,123 +66,117 @@ export default async function HomePage() {
 
   try {
     opportunities = (await getOpportunityRepository().browse(
-      { openNow: true, sort: 'soonest-deadline', limit: 3 },
+      { openNow: true, sort: 'soonest-deadline', limit: 5 },
       session?.account.id ? { accountId: session.account.id } : undefined,
     )).items;
   } catch {
     unavailable = true;
   }
 
+  const browseHref = signedIn ? '/home' : '/opportunities';
+
   return (
     <PublicSiteShell current="Home">
       <main id="main-content" className={styles.main}>
         <JsonLd data={{ '@context': 'https://schema.org', '@type': 'WebSite', name: 'Missa', url: absoluteUrl('/'), description: 'Creative Opportunities with their source and limits kept visible.', potentialAction: { '@type': 'SearchAction', target: `${absoluteUrl('/opportunities')}?q={search_term_string}`, 'query-input': 'required name=search_term_string' } }} />
 
-        {/* Section 1 — hero: staggered type, gooey lilac field, breathing constellation */}
-        <section className={styles.hero} aria-labelledby="home-heading">
-          <svg aria-hidden="true" width="0" height="0" style={{ position: 'absolute' }}>
-            <defs>
-              <filter id="missa-goo">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="blur" />
-                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -12" result="goo" />
-                <feBlend in="SourceGraphic" in2="goo" />
-              </filter>
-            </defs>
-          </svg>
-          <div className={styles.goo} aria-hidden="true">
-            <i className={styles.gooA} /><i className={styles.gooB} /><i className={styles.gooC} /><i className={styles.gooD} /><i className={styles.gooE} />
-          </div>
-          <div className={styles.heroCopy}>
-            <p className={`${styles.eyebrow} ${styles.rise}`}>The opportunity index for artists</p>
-            <h1 id="home-heading" className={styles.heroTitle}>
-              <span className={styles.w1}>Find</span> <span className={styles.w2}>your</span> <span className={styles.w3}>next</span>{' '}
-              <span className={styles.w4}><em className={styles.gradientWord}>opportunity.</em></span>
-            </h1>
-            <p className={`${styles.heroSub} ${styles.rise} ${styles.d3}`}>Grants, residencies, fellowships, commissions, and open calls—gathered with their facts, sources, and deadlines kept visible.</p>
-            <div className={`${styles.heroActions} ${styles.rise} ${styles.d4}`}>
-              <Link href={signedIn ? '/home' : '/opportunities'} className={styles.primaryAction}>{signedIn ? 'Open Missa' : 'Browse Opportunities'}<ArrowRight aria-hidden="true" /></Link>
-              <Link href="/methodology" className={styles.secondaryAction}>How Missa works</Link>
+        {/* classification ticker */}
+        <div className={styles.tickerBand} aria-label="Kinds of Opportunities in the index">
+          <div className={styles.tickerWindow}>
+            <div className={styles.tickerTrack}>
+              <span className={styles.tickerRun}>{OPPORTUNITY_TYPES.join(' · ')} · </span>
+              <span className={styles.tickerRun} aria-hidden="true">{OPPORTUNITY_TYPES.join(' · ')} · </span>
             </div>
-            <p className={`${styles.heroNote} ${styles.rise} ${styles.d5}`}>The official call always stays one click away.</p>
+          </div>
+          <span className={styles.tickerCell}>An index, not a feed</span>
+        </div>
+
+        {/* the ledger */}
+        <section className={styles.ledger} aria-labelledby="home-heading">
+          <div className={styles.ledgerLeft}>
+            <p className={`${styles.indexNo} ${styles.rise}`}>№ 001 — The opportunity index for artists</p>
+            <h1 id="home-heading" className={`${styles.display} ${styles.rise} ${styles.d1}`}>
+              Find your next<br />
+              <em>opportunity</em><span className={styles.tick} aria-hidden="true" />
+            </h1>
+            <div className={`${styles.rule} ${styles.ruleDraw}`} aria-hidden="true" />
+            <div className={`${styles.ledgerFoot} ${styles.rise} ${styles.d3}`}>
+              <p className={styles.sub}>Grants, residencies, fellowships, commissions, and open calls—filed with their deadlines, fees, eligibility, and sources kept visible.</p>
+              <div className={styles.actions}>
+                <Link href={browseHref} className={styles.primary}>{signedIn ? 'Open Missa' : 'Browse the index'}</Link>
+                <Link href="/methodology" className={styles.quiet}>How Missa works</Link>
+              </div>
+            </div>
+            <p className={`${styles.microNote} ${styles.rise} ${styles.d4}`}>The official call stays one click away</p>
           </div>
 
-          <div className={styles.stage} aria-hidden="true">
-            <svg className={styles.stageLines} viewBox="0 0 620 620" fill="none" preserveAspectRatio="none">
-              <path className={styles.flow} d="M150 60 C 200 130, 180 190, 210 250" stroke="var(--border)" strokeWidth="1.2" />
-              <path className={`${styles.flow} ${styles.flowB}`} d="M500 100 C 460 160, 470 210, 430 260" stroke="var(--border)" strokeWidth="1.2" />
-              <path className={`${styles.flow} ${styles.flowC}`} d="M80 210 C 130 250, 160 260, 200 296" stroke="var(--border)" strokeWidth="1.2" />
-            </svg>
-            <div className={styles.orbit}>
-              <div className={`${styles.frag} ${styles.fragA}`}><span className={styles.chip}><strong>Deadline</strong> kept with its timezone</span></div>
-              <div className={`${styles.frag} ${styles.fragB}`}><span className={styles.chip}><strong>Fee</strong> always stated up front</span></div>
-              <div className={`${styles.frag} ${styles.fragC}`}><span className={`${styles.chip} ${styles.chipTint}`}>Eligibility before promotion</span></div>
-              <div className={`${styles.frag} ${styles.fragD}`}><span className={styles.chip}><strong>Official source</strong> linked</span></div>
-              <div className={`${styles.frag} ${styles.fragCard}`}>
-                <div className={styles.stageCard}>
-                  <p className={styles.stageCardEyebrow}>One listing, kept understandable</p>
-                  <dl className={styles.stageCardRows}>
-                    <div><dt>Eligibility</dt><dd>Stated plainly, or marked unknown</dd></div>
-                    <div><dt>Deadline</dt><dd>Date, time, and timezone together</dd></div>
-                    <div><dt>Entry fee</dt><dd>Visible before you commit time</dd></div>
-                    <div><dt>Source</dt><dd>The official call, one click away</dd></div>
-                  </dl>
+          <aside className={styles.rail} aria-label="Currently in the index">
+            <div className={styles.railHead}>
+              <span>Today in the index</span>
+              <span className={styles.pulse} aria-hidden="true" />
+            </div>
+            {opportunities.length ? (
+              <div className={styles.railWindow}>
+                <div className={styles.railLoop}>
+                  <RailRows items={opportunities} />
+                  <div aria-hidden="true"><RailRows items={opportunities} /></div>
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 2 — the index line */}
-        <section className={styles.typesBand} aria-label="Kinds of Opportunities Missa gathers">
-          <div className={styles.typesTrack}>
-            <span className={styles.typesRun}>{OPPORTUNITY_TYPES.join(' · ')} · </span>
-            <span className={styles.typesRun} aria-hidden="true">{OPPORTUNITY_TYPES.join(' · ')} · </span>
-          </div>
-        </section>
-
-        {/* Section 3 — the problem, and what structure looks like */}
-        <section className={styles.structure} aria-labelledby="structure-heading">
-          <div>
-            <h2 id="structure-heading">Good opportunities are hard enough to win. They should not be hard to find.</h2>
-            <p>Calls are scattered across newsletters, PDFs, institutional sites, portals, and word of mouth. Missa gathers the details into one place and keeps the facts—not the promotion—in front of you.</p>
-          </div>
-          <div className={styles.structureVisual} aria-hidden="true">
-            <div className={styles.scraps}>
-              <span className={styles.scrapA}>newsletter, para 4</span>
-              <span className={styles.scrapB}>guidelines.pdf, p.3</span>
-              <span className={styles.scrapC}>a post from March</span>
-              <span className={styles.scrapD}>portal FAQ</span>
-            </div>
-            <svg className={styles.structureArrow} width="80" height="44" viewBox="0 0 80 44" fill="none"><path className={styles.flow} d="M40 2 V34 M30 26 L40 38 L50 26" stroke="var(--primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            {/* the shelf: gathered, indexed, readable — Kitbitz illustrations, CC0 */}
-            <div className={styles.shelfScene}>
-              <div className={styles.shelfRow}>
-                <img src="/illustrations/kitbitz/LampFloor-Metal-V-L-Purple700.svg" alt="" className={styles.shelfLamp} />
-                <img src="/illustrations/kitbitz/Books4.svg" alt="" className={styles.shelfBooksA} />
-                <img src="/illustrations/kitbitz/Books2.svg" alt="" className={styles.shelfBooksB} />
-                <img src="/illustrations/kitbitz/BookGroup3-Paper-H-M-MultiColor.svg" alt="" className={styles.shelfBooksC} />
-                <img src="/illustrations/kitbitz/MapRolled-Paper-H-M-Brown400.svg" alt="" className={styles.shelfScroll} />
-                <img src="/illustrations/kitbitz/Fern.svg" alt="" className={styles.shelfFern} />
+            ) : (
+              <div className={styles.railStatic}>
+                <div className={styles.railRow}><p className={styles.railKicker}>Deadline</p><p className={styles.railTitle}>Kept with its timezone</p></div>
+                <div className={styles.railRow}><p className={styles.railKicker}>Entry fee</p><p className={styles.railTitle}>Stated before you commit time</p></div>
+                <div className={styles.railRow}><p className={styles.railKicker}>Eligibility</p><p className={styles.railTitle}>Plain, or marked unknown</p></div>
+                <div className={styles.railRow}><p className={styles.railKicker}>Source</p><p className={styles.railTitle}>The official call, linked</p></div>
               </div>
-              <div className={styles.shelfLine} />
-              <div className={styles.shelfLabels}>
-                <span>Eligibility · stated plainly</span>
-                <span>Deadline · with its timezone</span>
-                <span>Entry fee · never buried</span>
-                <span>Source · the official call</span>
-              </div>
+            )}
+            <div className={styles.railFoot}>
+              <span>{opportunities.length ? 'Live entries' : 'What every row keeps'}</span>
+              <span>Every row keeps its source</span>
             </div>
+          </aside>
+        </section>
+
+        {/* statement with margin notes */}
+        <section className={styles.statement} aria-labelledby="statement-heading">
+          <div className={styles.statementBody}>
+            <h2 id="statement-heading">Good opportunities are hard enough to win. They should not be <em>hard to find.</em></h2>
+            <p>Calls are scattered across newsletters, PDFs, institutional sites, portals, and word of mouth. Missa files each one with its facts—not its promotion—in front of you.</p>
+          </div>
+          <div className={styles.marginNotes} aria-hidden="true">
+            <p className={styles.file1}>[ Newsletters <em>→ filed</em> ]</p>
+            <p className={styles.file2}>[ Guideline PDFs <em>→ filed</em> ]</p>
+            <p className={styles.file3}>[ Word of mouth <em>→ filed</em> ]</p>
           </div>
         </section>
 
-        {/* Section 4 — live Opportunities (real records, never samples) */}
-        <section className={styles.opportunities} aria-labelledby="open-opportunities-heading">
-          <header className={styles.sectionHeading}>
-            <div><p className={styles.eyebrow}>Published Opportunities</p><h2 id="open-opportunities-heading">Open something useful now</h2><span>A small current set—not fabricated demo records and not a popularity ranking.</span></div>
-            <Link href="/opportunities">Browse all <ArrowRight aria-hidden="true" /></Link>
-          </header>
+        {/* the ledger table — live records */}
+        <section className={styles.tableSection} aria-labelledby="index-heading">
+          <div className={styles.sectionHead}>
+            <div>
+              <p className={styles.indexNo}>№ 002 — Published Opportunities</p>
+              <h2 id="index-heading">See what is worth your time.</h2>
+            </div>
+            <p className={styles.sectionAside}>A small current set—not fabricated records, not a ranking.</p>
+          </div>
           {opportunities.length ? (
-            <div className={styles.opportunityGrid}>{opportunities.map((item) => <OpportunityCatalogueCard key={item.id} item={item} signedIn={signedIn} />)}</div>
+            <table className={styles.ledgerTable}>
+              <thead>
+                <tr><th scope="col">№</th><th scope="col">Opportunity</th><th scope="col">Type</th><th scope="col">Deadline</th><th scope="col">Entry fee</th><th scope="col" className={styles.thEnd}>Record</th></tr>
+              </thead>
+              <tbody>
+                {opportunities.map((item, index) => (
+                  <tr key={item.id}>
+                    <td className={styles.cellMono}>{String(index + 1).padStart(3, '0')}</td>
+                    <td className={styles.cellTitle}><Link href={`/opportunities/${item.slug}`}>{item.title}</Link>{item.organizationName ? <span className={styles.cellOrg}>{item.organizationName}</span> : null}</td>
+                    <td className={styles.cellMono}>{typeLabel(item.type)}</td>
+                    <td className={styles.cellMono}>{deadlineLabel(item.deadline)}</td>
+                    <td className={`${styles.cellMono} ${item.fee.status === 'no-fee' ? styles.cellGood : ''}`}>{feeLabel(item)}</td>
+                    <td className={`${styles.cellMono} ${styles.cellEnd}`}><Link href={`/opportunities/${item.slug}`}>View listing</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           ) : (
             <div className={styles.emptyState} role={unavailable ? 'alert' : 'status'}>
               <BookOpen aria-hidden="true" />
@@ -151,71 +185,54 @@ export default async function HomePage() {
               <div><Link href="/guides">Read Guides</Link><Link href="/opportunities">Open the library</Link></div>
             </div>
           )}
+          <Link href="/opportunities" className={styles.tableMore}><span>Browse the full index</span><ArrowRight aria-hidden="true" /></Link>
         </section>
 
-        {/* Section 5 — one connected path */}
-        <section className={styles.path} aria-labelledby="missa-path-heading">
-          <header><p className={styles.eyebrow}>One connected path</p><h2 id="missa-path-heading">Decide, prepare, and remember</h2></header>
-          <div className={styles.pathTrack}>
-            <svg className={styles.pathSpine} viewBox="0 0 1000 2" preserveAspectRatio="none" fill="none" aria-hidden="true"><path className={styles.spine} d="M0 1 H1000" stroke="var(--primary)" strokeWidth="1.4" /></svg>
-            <ol>
-              <li><span>01</span><strong>Read the independent facts</strong><p>Eligibility, geography, fee, deadline, and Opportunity type remain separate.</p></li>
-              <li><span>02</span><strong>Save your decision</strong><p>Keep the Opportunity and your private next action in Tracker.</p></li>
-              <li><span>03</span><strong>Prepare from the requirements</strong><p>Use the official call to decide which Work and materials belong.</p></li>
-              <li><span>04</span><strong>Keep the record</strong><p>Submission receipts, decisions, and obligations stay attached to the right Work.</p></li>
-            </ol>
-          </div>
-        </section>
-
-        {/* Section 6 — source and trust, as a bento */}
-        <section className={styles.source} aria-labelledby="source-heading">
-          <div className={styles.bento}>
-            <div className={`${styles.bentoCell} ${styles.bentoIntro}`}>
-              <h2 id="source-heading">Every listing should keep its source.</h2>
-              <p>Missa does not ask you to trust a summary without evidence. Unknown or conflicting facts stay visible—missing information is never turned into reassurance.</p>
-              <Link href="/methodology" className={styles.sourceLink}>Read the methodology <ArrowRight aria-hidden="true" /></Link>
+        {/* method A–D */}
+        <section className={styles.method} aria-labelledby="method-heading">
+          <div className={styles.sectionHead}>
+            <div>
+              <p className={styles.indexNo}>№ 003 — Method</p>
+              <h2 id="method-heading">Decide, prepare, and remember.</h2>
             </div>
-            <aside className={`${styles.bentoCell} ${styles.sourcePanel}`} aria-label="What each listing keeps">
-              <ExternalLink aria-hidden="true" />
-              <p className={styles.eyebrow}>Start with the source</p>
-              <h3>The official call remains authoritative.</h3>
+          </div>
+          <ol className={styles.methodGrid}>
+            <li><span className={styles.methodLetter} aria-hidden="true">A</span><h3>Read the facts</h3><p>Eligibility, geography, fee, deadline, and Opportunity type stay separate—never blended into a pitch.</p></li>
+            <li><span className={styles.methodLetter} aria-hidden="true">B</span><h3>Save your decision</h3><p>Keep the Opportunity and your private next action together in Tracker.</p></li>
+            <li><span className={styles.methodLetter} aria-hidden="true">C</span><h3>Prepare from the call</h3><p>Use the official requirements to decide which Work and materials belong.</p></li>
+            <li><span className={styles.methodLetter} aria-hidden="true">D</span><h3>Keep the record</h3><p>Submission receipts, decisions, and obligations stay attached to the right Work.</p></li>
+          </ol>
+        </section>
+
+        {/* the record card */}
+        <section className={styles.evidence} aria-labelledby="evidence-heading">
+          <div className={styles.evidenceBody}>
+            <p className={styles.indexNo}>№ 004 — Evidence</p>
+            <h2 id="evidence-heading">Every listing keeps its source.</h2>
+            <p>Missa does not ask you to trust a summary without evidence. Unknowns stay visible—missing information is never turned into reassurance.</p>
+            <Link href="/methodology" className={styles.evidenceLink}>Read the methodology <ArrowRight aria-hidden="true" /></Link>
+          </div>
+          <div className={styles.recordWrap}>
+            <div className={styles.record} aria-label="What each record keeps">
+              <div className={styles.recordHead}>Record — source &amp; verification</div>
               <dl>
                 <div><dt>Official call</dt><dd>Linked, never paraphrased away</dd></div>
-                <div><dt>Deadline timezone</dt><dd>Kept with the date</dd></div>
-                <div><dt>Unknown facts</dt><dd>Shown as unknown</dd></div>
+                <div><dt>Timezone</dt><dd>Kept with the deadline</dd></div>
+                <div><dt>Unknowns</dt><dd>Shown as unknown</dd></div>
                 <div><dt>Conflicts</dt><dd>Surfaced, not smoothed over</dd></div>
               </dl>
-            </aside>
-            <div className={styles.bentoCell}>
-              <p className={styles.eyebrow}>Entry fee</p>
-              <p className={styles.bentoBig}>Stated before you commit time.</p>
-              <span className={styles.bentoChip}>No fee — or the exact amount</span>
-            </div>
-            <div className={styles.bentoCell}>
-              <p className={styles.eyebrow}>Deadline</p>
-              <p className={styles.bentoBig}>Date, time, and timezone together.</p>
-              <span className={styles.bentoChip}>Never a bare date</span>
+              <span className={styles.stamp} aria-hidden="true">Official call linked</span>
             </div>
           </div>
         </section>
 
-        {/* Section 7 — both sides of the table */}
-        <section className={styles.audiences}>
-          <article><ListChecks aria-hidden="true" /><p className={styles.eyebrow}>For creators</p><h2>Keep your Opportunities and Works together.</h2><p>Your Profile, Tracker, and Library are private working tools—not public scores.</p><Link href={signedIn ? '/profile' : '/signup?next=%2Fprofile'}>{signedIn ? 'Open Profile' : 'Create an account'} <ArrowRight aria-hidden="true" /></Link></article>
-          <article><Building2 aria-hidden="true" /><p className={styles.eyebrow}>For Organizations</p><h2>Run the path from call to per-Work outcome.</h2><p>Publish clearly, receive Submissions, review each Work, communicate decisions, and coordinate delivery.</p><Link href="/for-organizations">See the Organization workflow <ArrowRight aria-hidden="true" /></Link></article>
-        </section>
-
-        {/* Section 8 — the one color moment */}
-        <section className={styles.ctaBand} aria-labelledby="cta-heading">
-          <div className={styles.ctaVignette} aria-hidden="true">
-            <img src="/illustrations/kitbitz/RounRug-Textile-H-M-Purple500.svg" alt="" className={styles.vignetteRug} />
-            <img src="/illustrations/kitbitz/CushionChairLeft-Wood-V-M-Purple700.svg" alt="" className={styles.vignetteChair} />
-            <img src="/illustrations/kitbitz/LampFloor-Metal-V-L-Purple700.svg" alt="" className={styles.vignetteLamp} />
-          </div>
-          <h2 id="cta-heading">Make less time for searching. Keep more time for the work.</h2>
-          <div className={styles.ctaActions}>
-            <Link href={signedIn ? '/home' : '/opportunities'} className={styles.ctaPrimary}>{signedIn ? 'Open Missa' : 'Browse Opportunities'}<ArrowRight aria-hidden="true" /></Link>
-            {!signedIn ? <Link href="/signup" className={styles.ctaSecondary}>Create an account</Link> : null}
+        {/* the slab */}
+        <section className={styles.slab} aria-labelledby="cta-heading">
+          <h2 id="cta-heading">Make less time for searching.<br /><em>Keep more time for the work.</em></h2>
+          <div className={styles.slabActions}>
+            <Link href={browseHref} className={styles.slabPrimary}>{signedIn ? 'Open Missa' : 'Browse the index'}</Link>
+            {!signedIn ? <Link href="/signup" className={styles.slabQuiet}>Create an account</Link> : null}
+            <p className={styles.slabNote}>No noise · no scores · an index</p>
           </div>
         </section>
       </main>

@@ -5,9 +5,9 @@ const bannedPublicCopy = /source snapshot|next refresh|freshness signal|profile 
 
 test('public Home leads with useful Opportunities and no operational theatre', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Find your next opportunity.' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Open something useful now' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Browse Opportunities' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Find your next opportunity' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'See what is worth your time.' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Browse the index' }).first()).toBeVisible();
   await expect(page.locator('main')).not.toContainText(bannedPublicCopy);
   await expect(page.locator('img[src*="/media/home/"]')).toHaveCount(0);
   // Audit the settled page: the hero's load-once entrance motion animates
