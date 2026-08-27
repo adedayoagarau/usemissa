@@ -26,6 +26,15 @@ export interface ReadinessReport {
 
 type ReadinessEnv = Record<string, string | undefined>;
 
+function malwareScannerConfigured(env: ReadinessEnv): boolean {
+  if (!env.MALWARE_SCAN_URL) return false;
+  if (env.MALWARE_SCAN_PROVIDER === "generic") return true;
+  return (
+    env.MALWARE_SCAN_PROVIDER === "cloudmersive" &&
+    Boolean(env.MALWARE_SCAN_TOKEN)
+  );
+}
+
 function check(configured: boolean, required: boolean): ReadinessCheck {
   return {
     state: configured ? "ready" : required ? "missing" : "degraded",
@@ -66,7 +75,7 @@ export function readinessReport(
       Boolean(env.SCIM_BEARER_TOKEN && env.SCIM_ORGANIZATION_ID),
       false,
     ),
-    malwareScanning: check(Boolean(env.MALWARE_SCAN_URL) || !production, false),
+    malwareScanning: check(malwareScannerConfigured(env) || !production, false),
     sharedRateLimiting: check(sharedRateLimitConfigured(env), false),
   };
 
