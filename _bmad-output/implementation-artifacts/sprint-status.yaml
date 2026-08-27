@@ -89,7 +89,7 @@ development_status:
   6-4-public-organization-page: done
   6-5-submitter-file-upload-against-a-submission-path: done
   6-6-applicant-submission-integrity-and-receipts: done
-  epic-6-retrospective: optional
+  epic-6-retrospective: done
 
   epic-7: done
   7-1-admin-inbox-of-incoming-submissions: done

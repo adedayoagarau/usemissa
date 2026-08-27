@@ -202,3 +202,92 @@ appropriate. Story remains `review` pending these fixes and revalidation.
   fixture created no Blob object.
 - Unit tests were intentionally not repeated in light mode; the reviewed
   focused scanner suite already passed 8/8.
+
+### Full Epic 6 validation (2026-08-27)
+
+**FULL EPIC VALIDATION: PARTIAL**
+
+- **Scope and environment.** Validated Stories 6.1–6.6 as a Next.js 16
+  UI/frontend application with the full-mode UI, security, container,
+  accessibility, and performance playbooks. The test processes had no
+  `DATABASE_URL`, private Blob token, Stripe secret, malware provider, or
+  working Docker CLI. No production provider calls, charges, uploads,
+  migrations, or persistent test records were created. The previously noted
+  `story-6-6-runtime@example.test` account was not accessed or modified.
+- **Production build: PASS.** `npm run build` exited 0 for all eight workspace
+  packages. Next.js compiled in 12.7 s, TypeScript completed, all 201 static
+  pages generated, and the production route manifest included the complete
+  organization/open-call/submission-path/upload/draft/checkout/submit,
+  receipt, withdrawal, organization-file, Stripe-webhook, and cleanup surface.
+- **Type/lint gates: PASS.** `npm run typecheck --workspace=@missa/web` and
+  `npm run lint --workspace=@missa/web` both exited 0.
+- **Workspace domain/integration suite: PASS with infrastructure skip.**
+  `npm test --workspace=@missa/workspace-engine` reported 42 tests: 41 passed,
+  0 failed, and 1 skipped. The passing cases covered the complete
+  Team -> Program -> Open Call -> form -> Submission -> Work chain,
+  organization scoping, published-call lookup, non-empty Works, retry
+  idempotency, withdrawal restrictions, payment lifecycle reconciliation,
+  draft ownership/expiry, imports, and delta persistence. The skipped case was
+  the real-Postgres schema/save/load round trip.
+- **Focused web boundaries: PASS; one test-harness incompatibility.** Direct
+  `tsx --test` execution passed 18 focused malware, organization-product,
+  organization-workflow, and public-profile assertions, including all 8
+  malware-scanner contracts. The admin organizations Route Handler test could
+  not load under this direct root-level harness because the `@/lib` tsconfig
+  alias was unresolved (`ERR_MODULE_NOT_FOUND`); this is a harness invocation
+  limitation, not a failing assertion, and the production Next.js build did
+  resolve the same route.
+- **Browser/E2E main paths: PASS in isolation; concurrency warning.** The
+  targeted Playwright matrix covered `submissions`, organization authorization
+  and responsive tenant isolation, organization opportunity/form surfaces,
+  public organization visibility, hosted-application product behavior, and
+  hosted-application field/mobile/receipt directions. The parallel run passed
+  16/17; the cross-role organization-decision-to-receipt test received a
+  non-OK seeded-admin login while seven specs used five workers. Re-running
+  that exact test alone passed (1/1, 11.8 s). Treat this as a shared demo-store
+  concurrency/test-isolation warning: CI should run the mutation-heavy Epic 6
+  suite with one worker or give each worker an isolated store, then prove the
+  parallel contract intentionally.
+- **Accessibility: PASS for automated critical/serious checks exercised.** The
+  selected hosted application, organization, public organization, opportunity,
+  and submission E2Es include `@axe-core/playwright`; all executed assertions
+  passed, including mobile layouts and field/error associations. Manual screen
+  reader, full keyboard, 200/400 percent zoom, and every required fixture and
+  viewport from the hosted-application contract remain launch QA gates.
+- **Security: WARNING.** `npm audit --omit=dev --audit-level=high` reported 29
+  production-tree findings (22 high, 7 moderate), including high findings in
+  `brace-expansion`, `fast-uri`, `ip-address`, `js-yaml`, `nanoid`, `postcss`,
+  `sharp`, `undici`, and `xlsx`; `xlsx` has no published fix in the audit
+  result, while several suggested upgrades are breaking. A tracked-source
+  heuristic scan for common live-key/private-key signatures found 0 candidate
+  files. `gitleaks`/Semgrep were unavailable, so this is not a complete secret
+  or SAST certification.
+- **Container: NOT RUN.** A `Dockerfile` and
+  `docker-compose.ingestion-v2.yml` exist, but no working Docker executable was
+  available (`docker`/`docker compose` exit 127). Reproducible image build,
+  Dockerfile lint, container startup/health, worker connectivity, image size,
+  and Compose service health remain unverified.
+- **Performance: WARNING/BASELINE ONLY.** The successful `.next` output occupied
+  1.9 GB including build caches/server artifacts. The largest emitted static
+  JavaScript chunks were approximately 772 KB (two chunks), 608 KB, 568 KB,
+  and 560 KB. No approved bundle budget/baseline, Lighthouse run, staging
+  latency sample, or load test was available, so no performance pass is
+  claimed.
+- **Durable infrastructure: NOT CERTIFIED.** Per `ONBOARDING.md`, the runtime
+  still dual-runs compatibility snapshots and relational projections. With no
+  explicitly disposable Postgres database, migrations and the real
+  schema/save/load round trip were deliberately not attempted. Likewise, no
+  production-like private Vercel Blob upload/download/deletion lifecycle,
+  Cloudmersive clean/rejected fixture, Stripe paid/cancelled/failed/refund/
+  dispute webhook reconciliation, Resend delivery, deadline race, or cleanup
+  worker was exercised against live infrastructure.
+- **Remaining launch gates.** On an isolated staging stack: replay migrations
+  into a fresh disposable Postgres database; run Epic 6 mutation E2Es serially
+  and with deliberately isolated parallel workers; exercise clean, rejected,
+  oversized, retry, replace, remove, and cleanup Blob/Cloudmersive paths;
+  certify Stripe redirect and replay/reconciliation states without a real
+  charge; verify immutable complete receipts and deadline/form-version races;
+  run container health, full secret/SAST tooling, dependency remediation,
+  Lighthouse/load budgets, and manual keyboard/screen-reader/mobile/zoom/
+  failure/retry QA. Until those pass, Epic 6 is functionally demonstrated in
+  demo mode but is not a production-database/provider certification.
