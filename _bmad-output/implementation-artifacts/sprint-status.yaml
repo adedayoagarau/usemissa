@@ -1,5 +1,5 @@
 # generated: 2026-07-07
-# last_updated: 2026-08-02
+# last_updated: 2026-08-27
 # project: Missa
 # project_key: NOKEY
 # tracking_system: file-system
@@ -141,6 +141,6 @@ development_status:
 
   epic-15: in-progress
   15-1-durable-support-cases-and-issue-outbox: done
-  15-2-durable-message-effect-ledger-and-provider-delivery-history: backlog
+  15-2-durable-message-effect-ledger-and-provider-delivery-history: done
   15-3-governed-crm-billing-and-agent-control-contracts: backlog
   epic-15-retrospective: optional

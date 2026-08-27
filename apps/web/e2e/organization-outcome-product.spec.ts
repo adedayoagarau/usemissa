@@ -7,13 +7,13 @@ async function organizationSession(page: Page) {
   return me.memberships[0]!.organizationId;
 }
 
-test('Messages distinguishes absent correspondence from Decisions on a phone', async ({ page }) => {
+test('Messages reports the durable ledger unavailable without a database on a phone', async ({ page }) => {
   const organizationId = await organizationSession(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/organization/${organizationId}/messages`);
   await expect(page.getByRole('heading', { name: 'Messages', level: 1 })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'No durable correspondence yet' })).toBeVisible();
-  await expect(page.getByText('a Decision is not a Message')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Message ledger unavailable' })).toBeVisible();
+  await expect(page.getByText('Missa cannot read the authoritative delivery ledger, so it does not infer a healthy empty queue from compatibility audit entries.')).toBeVisible();
   await expect(page.getByRole('button', { name: /send|retry/iu })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBeTruthy();
   const accessibility = await new AxeBuilder({ page }).analyze();

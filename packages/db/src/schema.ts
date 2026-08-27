@@ -2428,10 +2428,15 @@ export const platformMessageEffects = pgTable(
     id: text("id").primaryKey(),
     organizationId: text("organization_id"),
     accountId: text("account_id"),
+    tenantKey: text("tenant_key").notNull(),
+    recipientAccountId: text("recipient_account_id"),
+    actorAccountId: text("actor_account_id"),
     kind: text("kind").notNull(),
     provider: text("provider").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),
-    status: text("status").notNull().default("pending"),
+    templateKey: text("template_key").notNull(),
+    templateVersion: text("template_version").notNull(),
+    status: text("status").notNull().default("queued"),
     providerMessageId: text("provider_message_id"),
     providerStatus: text("provider_status"),
     providerEventId: text("provider_event_id"),
@@ -2442,6 +2447,9 @@ export const platformMessageEffects = pgTable(
       .notNull()
       .defaultNow(),
     sentAt: timestamp("sent_at", { withTimezone: true }),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    disposition: text("disposition"),
     createdAt,
     updatedAt,
     metadata: jsonb("metadata")
@@ -2450,8 +2458,8 @@ export const platformMessageEffects = pgTable(
       .default(sql`'{}'::jsonb`),
   },
   (table) => [
-    uniqueIndex("platform_message_effects_idempotency_idx").on(
-      table.idempotencyKey,
+    uniqueIndex("platform_message_effects_tenant_idempotency_idx").on(
+      table.tenantKey, table.idempotencyKey,
     ),
     index("platform_message_effects_status_idx").on(
       table.status,
@@ -2466,7 +2474,7 @@ export const platformMessageEffects = pgTable(
       .where(sql`${table.providerMessageId} is not null`),
     check(
       "platform_message_effects_status_check",
-      sql`${table.status} in ('pending', 'sending', 'sent', 'failed', 'suppressed')`,
+      sql`${table.status} in ('queued', 'attempted', 'accepted', 'delivered', 'bounced', 'failed', 'unknown', 'suppressed')`,
     ),
     check(
       "platform_message_effects_attempts_check",
@@ -2484,9 +2492,11 @@ export const platformMessageAttempts = pgTable(
       .references(() => platformMessageEffects.id, { onDelete: "cascade" }),
     attemptNumber: integer("attempt_number").notNull(),
     provider: text("provider").notNull(),
-    status: text("status").notNull().default("started"),
+    status: text("status").notNull().default("attempted"),
     providerMessageId: text("provider_message_id"),
     error: text("error"),
+    errorCode: text("error_code"),
+    errorCategory: text("error_category"),
     startedAt: timestamp("started_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -2507,7 +2517,7 @@ export const platformMessageAttempts = pgTable(
     ),
     check(
       "platform_message_attempts_status_check",
-      sql`${table.status} in ('started', 'sent', 'failed')`,
+      sql`${table.status} in ('attempted', 'accepted', 'failed')`,
     ),
     check(
       "platform_message_attempts_number_check",
@@ -2528,6 +2538,8 @@ export const platformMessageProviderEvents = pgTable(
       onDelete: "set null",
     }),
     status: text("status").notNull().default("received"),
+    classification: text("classification"),
+    failureCode: text("failure_code"),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
     processedAt: timestamp("processed_at", { withTimezone: true }),
     metadata: jsonb("metadata")

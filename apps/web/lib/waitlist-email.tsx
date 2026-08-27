@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import { beginPlatformMessageEffect, completePlatformMessageEffect } from '@missa/radar-adapters';
 import { renderWaitlistConfirmationEmail, WAITLIST_CONFIRMATION_SUBJECT, waitlistConfirmationText } from '@/emails/waitlist-confirmation';
 import { absoluteUrl } from '@/lib/seo';
+import { runDurableProviderDelivery } from '@/lib/durableMessageDelivery';
 
 export interface WaitlistConfirmationEmailContent {
   subject: string;
@@ -47,44 +48,39 @@ export async function deliverWaitlistConfirmationEmail(
   try {
     effect = await beginPlatformMessageEffect(input.connectionString, {
       idempotencyKey,
+      recipientAccountId: input.signupId,
       kind: 'waitlist-confirmation',
       provider: 'resend',
+      templateKey: 'waitlist-confirmation',
+      templateVersion: 'waitlist-confirmation.v1',
       metadata: { signupId: input.signupId },
       retryFailed: true,
     });
-    if (!effect.shouldDeliver) return { status: 'sent' };
-
+    if (!effect) throw new Error('Durable message ledger did not return an effect');
+    const activeEffect = effect;
     const content = buildWaitlistConfirmationEmail();
-    const result = await new Resend(apiKey).emails.send(
-      {
+    const delivery = await runDurableProviderDelivery({
+      shouldDeliver: activeEffect.shouldDeliver,
+      currentStatus: activeEffect.currentStatus,
+      send: async () => {
+        const result = await new Resend(apiKey).emails.send({
         from,
         to: input.email,
         subject: content.subject,
         html: content.html,
         text: content.text,
         tags: [{ name: 'email_type', value: 'waitlist_confirmation' }],
+        }, { idempotencyKey });
+        if (result.error) throw new Error(result.error.message);
+        return result;
       },
-      { idempotencyKey },
-    );
-    if (result.error) throw new Error(result.error.message);
-
-    await completePlatformMessageEffect({
-      connectionString: input.connectionString,
-      effectId: effect.effectId,
-      attemptNumber: effect.attemptNumber,
-      status: 'sent',
-      providerMessageId: result.data?.id,
+      recordAccepted: async (result) => completePlatformMessageEffect({ connectionString: input.connectionString, effectId: activeEffect.effectId, attemptNumber: activeEffect.attemptNumber, status: 'accepted', providerMessageId: result.data?.id }).then(() => undefined),
+      recordFailed: async (error) => completePlatformMessageEffect({ connectionString: input.connectionString, effectId: activeEffect.effectId, attemptNumber: activeEffect.attemptNumber, status: 'failed', error: error instanceof Error ? error.message : 'Provider send failed' }).then(() => undefined),
     });
-    return { status: 'sent', providerMessageId: result.data?.id };
+    if (delivery.outcome === 'accepted') return { status: 'sent', providerMessageId: delivery.providerResult.data?.id };
+    if (delivery.outcome === 'replayed-accepted') return { status: 'sent' };
+    return { status: 'failed', reason: delivery.outcome === 'unavailable' ? 'Durable message delivery status is unavailable' : delivery.error instanceof Error ? delivery.error.message : 'Provider send failed' };
   } catch (error) {
-    if (effect)
-      await completePlatformMessageEffect({
-        connectionString: input.connectionString,
-        effectId: effect.effectId,
-        attemptNumber: effect.attemptNumber,
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Provider send failed',
-      }).catch(() => undefined);
     return { status: 'failed', reason: error instanceof Error ? error.message : 'Provider send failed' };
   }
 }

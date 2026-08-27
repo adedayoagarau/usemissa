@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { isIP } from "node:net";
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
 export const platformAdminFoundationsSchema = `
@@ -54,6 +55,29 @@ create table if not exists platform_message_effects (
 alter table platform_message_effects add column if not exists provider_status text;
 alter table platform_message_effects add column if not exists provider_event_id text;
 alter table platform_message_effects add column if not exists provider_event_at timestamptz;
+alter table platform_message_effects add column if not exists tenant_key text;
+alter table platform_message_effects add column if not exists recipient_account_id text;
+alter table platform_message_effects add column if not exists actor_account_id text;
+alter table platform_message_effects add column if not exists template_key text;
+alter table platform_message_effects add column if not exists template_version text;
+alter table platform_message_effects add column if not exists accepted_at timestamptz;
+alter table platform_message_effects add column if not exists delivered_at timestamptz;
+alter table platform_message_effects add column if not exists disposition text;
+alter table platform_message_effects drop constraint if exists platform_message_effects_status_check;
+update platform_message_effects set
+  tenant_key = coalesce(tenant_key, case when organization_id is not null then 'org:' || organization_id when account_id is not null then 'account:' || account_id else 'legacy:' || id end),
+  template_key = coalesce(template_key, 'legacy-unknown'),
+  template_version = coalesce(template_version, 'legacy-unknown'),
+  recipient_account_id = coalesce(recipient_account_id, case when organization_id is null then account_id end),
+  actor_account_id = coalesce(actor_account_id, case when organization_id is not null then account_id end),
+  accepted_at = coalesce(accepted_at, case when status = 'sent' then coalesce(sent_at, updated_at) end),
+  status = case status when 'pending' then 'queued' when 'sending' then 'attempted' when 'sent' then 'accepted' else status end;
+alter table platform_message_effects alter column tenant_key set not null;
+alter table platform_message_effects alter column template_key set not null;
+alter table platform_message_effects alter column template_version set not null;
+alter table platform_message_effects add constraint platform_message_effects_status_check check (status in ('queued','attempted','accepted','delivered','bounced','failed','unknown','suppressed'));
+drop index if exists platform_message_effects_idempotency_idx;
+create unique index if not exists platform_message_effects_tenant_idempotency_idx on platform_message_effects (tenant_key, idempotency_key);
 create index if not exists platform_message_effects_status_idx
   on platform_message_effects (status, updated_at);
 create index if not exists platform_message_effects_account_idx
@@ -79,6 +103,11 @@ create table if not exists platform_message_attempts (
 );
 create index if not exists platform_message_attempts_status_idx
   on platform_message_attempts (status, started_at);
+alter table platform_message_attempts add column if not exists error_code text;
+alter table platform_message_attempts add column if not exists error_category text;
+alter table platform_message_attempts drop constraint if exists platform_message_attempts_status_check;
+update platform_message_attempts set status = case status when 'started' then 'attempted' when 'sent' then 'accepted' else status end;
+alter table platform_message_attempts add constraint platform_message_attempts_status_check check (status in ('attempted','accepted','failed'));
 
 create table if not exists platform_message_provider_events (
   id text primary key,
@@ -99,6 +128,8 @@ create index if not exists platform_message_provider_events_message_idx
   on platform_message_provider_events (provider, provider_message_id, occurred_at);
 create index if not exists platform_message_provider_events_status_idx
   on platform_message_provider_events (status, created_at);
+alter table platform_message_provider_events add column if not exists classification text;
+alter table platform_message_provider_events add column if not exists failure_code text;
 
 create table if not exists platform_crm_timeline_events (
   id text primary key,
@@ -276,11 +307,25 @@ function text(value: unknown, max = 2_000): string | undefined {
   return value.slice(0, max);
 }
 
-function safeError(value: unknown): string | undefined {
-  return text(value, 500)
-    ?.replace(/(?:postgres(?:ql)?):\/\/[^\s]+/gi, "[connection redacted]")
-    .replace(/(password|secret|token|api[_-]?key)\s*[:=]\s*[^\s,;]+/gi, "$1=[redacted]");
+/** Privacy boundary for provider-originated diagnostic text. Redaction happens
+ * before truncation so a value crossing the storage limit cannot leak a prefix. */
+export function sanitizePlatformMessageError(value: unknown): string | undefined {
+  if (typeof value !== "string" || !value) return undefined;
+  const redacted = value
+    .replace(/\b(?:https?|postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|redis|rediss|cockroachdb|sqlserver):\/\/[^\s]+/gi, "[url redacted]")
+    .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[email redacted]")
+    .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, (candidate) => isIP(candidate) === 4 ? "[ip redacted]" : candidate)
+    .replace(/\[[0-9A-Fa-f:.%]+\]|(?<![\w:])[0-9A-Fa-f]*:[0-9A-Fa-f:.%]*:[0-9A-Fa-f:.%]*(?![\w:])/g, (candidate) => {
+      const suffix = candidate.match(/[.]+$/)?.[0] ?? "";
+      const literal = suffix ? candidate.slice(0, -suffix.length) : candidate;
+      const address = literal.replace(/^\[|\]$/g, "").split("%", 1)[0] ?? "";
+      return isIP(address) === 6 ? `[ip redacted]${suffix}` : candidate;
+    })
+    .replace(/\b(password|secret|token|api[_-]?key)\b\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi, "$1=[redacted]");
+  return redacted.slice(0, 500);
 }
+
+const safeError = sanitizePlatformMessageError;
 
 function numberValue(value: unknown): number {
   const parsed = typeof value === "number" ? value : Number(value ?? 0);
@@ -301,6 +346,21 @@ function assertIdentifier(value: string, label: string): void {
 
 function json(value: JsonRecord | undefined): string {
   return JSON.stringify(value ?? {});
+}
+function canonicalJson(value: JsonRecord | undefined): string {
+  return JSON.stringify(Object.fromEntries(Object.entries(value ?? {}).sort(([left], [right]) => left.localeCompare(right))));
+}
+
+const MESSAGE_METADATA_KEYS = new Set(["workId", "decisionId", "alertCount", "signupId"]);
+function messageMetadata(value: JsonRecord | undefined): JsonRecord {
+  const result: JsonRecord = {};
+  for (const [key, item] of Object.entries(value ?? {})) {
+    if (!MESSAGE_METADATA_KEYS.has(key)) throw new Error(`Unsupported message metadata key: ${key}`);
+    if (typeof item === "string") { assertIdentifier(item, `message metadata ${key}`); result[key] = item; }
+    else if (key === "alertCount" && Number.isInteger(item) && Number(item) >= 0 && Number(item) <= 10_000) result[key] = item;
+    else throw new Error(`Invalid message metadata ${key}`);
+  }
+  return result;
 }
 
 async function tablePresent(pool: Pool, table: string): Promise<boolean> {
@@ -355,14 +415,28 @@ export async function ensurePlatformAdminFoundationsSchema(connectionString: str
   }
 }
 
-export type PlatformMessageEffectStatus = "pending" | "sending" | "sent" | "failed" | "suppressed";
-export type PlatformMessageProviderEffectStatus = "sent" | "failed" | "suppressed";
+export type PlatformMessageEffectStatus = "queued" | "attempted" | "accepted" | "delivered" | "bounced" | "failed" | "unknown" | "suppressed";
+export type PlatformMessageProviderEffectStatus = "accepted" | "delivered" | "bounced" | "failed" | "suppressed" | "unknown";
 
 export function providerEventEffectStatus(eventType: string): PlatformMessageProviderEffectStatus | undefined {
-  if (["email.bounced", "email.complained", "email.suppressed"].includes(eventType)) return "suppressed";
+  if (eventType === "email.bounced") return "bounced";
+  if (["email.complained", "email.suppressed"].includes(eventType)) return "suppressed";
   if (eventType === "email.failed") return "failed";
-  if (["email.sent", "email.delivered", "email.delivery_delayed", "email.opened", "email.clicked"].includes(eventType)) return "sent";
+  if (eventType === "email.delivered") return "delivered";
+  if (["email.sent", "email.delivery_delayed"].includes(eventType)) return "accepted";
   return undefined;
+}
+
+/** Deterministic reduction: observations never promote; adverse conclusive
+ * evidence wins even when it arrives after delivery. */
+export function reducePlatformMessageProviderEvents(eventTypes: readonly string[]): PlatformMessageProviderEffectStatus | undefined {
+  const states = eventTypes.map(providerEventEffectStatus).filter((value): value is PlatformMessageProviderEffectStatus => Boolean(value));
+  if (states.includes("suppressed")) return "suppressed";
+  if (states.includes("bounced")) return "bounced";
+  if (states.includes("failed")) return "failed";
+  if (states.includes("delivered")) return "delivered";
+  if (states.includes("accepted")) return "accepted";
+  return eventTypes.length ? "unknown" : undefined;
 }
 
 export interface PlatformMessageEffect {
@@ -374,6 +448,10 @@ export interface PlatformMessageEffect {
   status: PlatformMessageEffectStatus | string;
   attemptCount: number;
   providerMessageIdPresent: boolean;
+  recipientReferencePresent: boolean;
+  recipientAccountId?: string;
+  templateKey?: string;
+  templateVersion?: string;
   lastError?: string;
   requestedAt?: string;
   sentAt?: string;
@@ -397,7 +475,7 @@ export interface PlatformAdminMessageHistory {
   generatedAt: string;
   source: string;
   warnings: string[];
-  summary: { effects: number; attempts: number; byStatus: Record<string, number>; attemptsByStatus: Record<string, number> };
+  summary: { effects: number | null; attempts: number | null; byStatus: Record<string, number>; attemptsByStatus: Record<string, number> };
   effects: PlatformMessageEffect[];
   attempts: PlatformMessageAttempt[];
 }
@@ -411,6 +489,9 @@ interface MessageEffectRow extends QueryResultRow {
   status: string;
   attempt_count?: number | string;
   provider_message_id?: string | null;
+  recipient_account_id?: string | null;
+  template_key?: string | null;
+  template_version?: string | null;
   last_error?: string | null;
   requested_at?: unknown;
   sent_at?: unknown;
@@ -428,7 +509,11 @@ function normalizeMessageEffect(row: MessageEffectRow): PlatformMessageEffect {
     status: row.status,
     attemptCount: numberValue(row.attempt_count),
     providerMessageIdPresent: Boolean(row.provider_message_id),
-    ...(safeError(row.last_error) ? { lastError: safeError(row.last_error) } : {}),
+    recipientReferencePresent: Boolean(row.recipient_account_id),
+    ...(text(row.recipient_account_id, 240) ? { recipientAccountId: text(row.recipient_account_id, 240) } : {}),
+    ...(text(row.template_key, 240) ? { templateKey: text(row.template_key, 240) } : {}),
+    ...(text(row.template_version, 240) ? { templateVersion: text(row.template_version, 240) } : {}),
+    ...(sanitizePlatformMessageError(row.last_error) ? { lastError: sanitizePlatformMessageError(row.last_error) } : {}),
     ...(iso(row.requested_at) ? { requestedAt: iso(row.requested_at) } : {}),
     ...(iso(row.sent_at) ? { sentAt: iso(row.sent_at) } : {}),
     ...(iso(row.created_at) ? { createdAt: iso(row.created_at) } : {}),
@@ -442,7 +527,7 @@ function emptyMessageHistory(generatedAt: string, warnings: string[]): PlatformA
     generatedAt,
     source: "platform_message_effects + platform_message_attempts",
     warnings,
-    summary: { effects: 0, attempts: 0, byStatus: {}, attemptsByStatus: {} },
+    summary: { effects: null, attempts: null, byStatus: {}, attemptsByStatus: {} },
     effects: [],
     attempts: [],
   };
@@ -450,7 +535,7 @@ function emptyMessageHistory(generatedAt: string, warnings: string[]): PlatformA
 
 export async function readPlatformAdminMessageHistory(
   connectionString: string,
-  options: { limit?: number } = {},
+  options: { limit?: number; organizationId?: string } = {},
 ): Promise<PlatformAdminMessageHistory> {
   const generatedAt = new Date().toISOString();
   const limit = Math.min(Math.max(options.limit ?? 200, 1), 500);
@@ -460,18 +545,18 @@ export async function readPlatformAdminMessageHistory(
     const missing = missingTables(availability, ["platform_message_effects", "platform_message_attempts"]);
     if (missing.length > 0) return emptyMessageHistory(generatedAt, [`${missing.join(", ")} is not deployed; provider delivery history is unavailable.`]);
     const [counts, attemptCounts, effects, attempts] = await Promise.all([
-      pool.query<{ status: string; count: number | string }>("select status, count(*)::int as count from platform_message_effects group by status"),
-      pool.query<{ status: string; count: number | string }>("select status, count(*)::int as count from platform_message_attempts group by status"),
+      pool.query<{ status: string; count: number | string }>(`select status, count(*)::int as count from platform_message_effects ${options.organizationId ? "where organization_id = $1" : ""} group by status`, options.organizationId ? [options.organizationId] : []),
+      pool.query<{ status: string; count: number | string }>(`select a.status, count(*)::int as count from platform_message_attempts a join platform_message_effects e on e.id = a.effect_id ${options.organizationId ? "where e.organization_id = $1" : ""} group by a.status`, options.organizationId ? [options.organizationId] : []),
       pool.query<MessageEffectRow>(
-        `select id, account_id, organization_id, kind, provider, status, attempt_count,
+        `select id, account_id, organization_id, recipient_account_id, template_key, template_version, kind, provider, status, attempt_count,
                 provider_message_id, last_error, requested_at, sent_at, created_at, updated_at
-           from platform_message_effects order by created_at desc limit $1`,
-        [limit],
+           from platform_message_effects ${options.organizationId ? "where organization_id = $1" : ""} order by created_at desc limit $${options.organizationId ? 2 : 1}`,
+        options.organizationId ? [options.organizationId, limit] : [limit],
       ),
       pool.query<MessageAttemptRow>(
         `select id, effect_id, attempt_number, provider, status, error, started_at, completed_at
-           from platform_message_attempts order by started_at desc limit $1`,
-        [limit],
+           from platform_message_attempts ${options.organizationId ? "where effect_id in (select id from platform_message_effects where organization_id = $1)" : ""} order by started_at desc limit $${options.organizationId ? 2 : 1}`,
+        options.organizationId ? [options.organizationId, limit] : [limit],
       ),
     ]);
     return {
@@ -495,6 +580,11 @@ export async function readPlatformAdminMessageHistory(
   }
 }
 
+export async function readOrganizationMessageHistory(connectionString: string, organizationId: string, options: { limit?: number } = {}): Promise<PlatformAdminMessageHistory> {
+  assertIdentifier(organizationId, "organization id");
+  return readPlatformAdminMessageHistory(connectionString, { ...options, organizationId });
+}
+
 interface MessageAttemptRow extends QueryResultRow {
   id: string;
   effect_id: string;
@@ -513,7 +603,7 @@ function normalizeMessageAttempt(row: MessageAttemptRow): PlatformMessageAttempt
     attemptNumber: numberValue(row.attempt_number),
     provider: row.provider,
     status: row.status,
-    ...(safeError(row.error) ? { error: safeError(row.error) } : {}),
+    ...(sanitizePlatformMessageError(row.error) ? { error: sanitizePlatformMessageError(row.error) } : {}),
     ...(iso(row.started_at) ? { startedAt: iso(row.started_at) } : {}),
     ...(iso(row.completed_at) ? { completedAt: iso(row.completed_at) } : {}),
   };
@@ -522,9 +612,13 @@ function normalizeMessageAttempt(row: MessageAttemptRow): PlatformMessageAttempt
 export interface BeginPlatformMessageEffectInput {
   idempotencyKey: string;
   accountId?: string;
+  recipientAccountId: string;
+  actorAccountId?: string;
   organizationId?: string;
   kind: string;
   provider: string;
+  templateKey: string;
+  templateVersion: string;
   metadata?: JsonRecord;
   retryFailed?: boolean;
 }
@@ -545,7 +639,13 @@ export async function beginPlatformMessageEffect(
   assertIdempotencyKey(input.idempotencyKey);
   assertIdentifier(input.kind, "message kind");
   assertIdentifier(input.provider, "message provider");
-  await ensurePlatformAdminFoundationsSchema(connectionString);
+  assertIdentifier(input.recipientAccountId, "recipient account id");
+  assertIdentifier(input.templateKey, "template key");
+  assertIdentifier(input.templateVersion, "template version");
+  if (input.organizationId) assertIdentifier(input.organizationId, "organization id");
+  if (input.actorAccountId) assertIdentifier(input.actorAccountId, "actor account id");
+  const tenantKey = input.organizationId ? `org:${input.organizationId}` : `account:${input.recipientAccountId}`;
+  const metadata = messageMetadata(input.metadata);
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
     const availability = await tableAvailability(pool, ["platform_message_effects", "platform_message_attempts", "audit_events", "outbox_events"]);
@@ -554,19 +654,19 @@ export async function beginPlatformMessageEffect(
     const client = await pool.connect();
     try {
       await client.query("begin");
-      await client.query("select pg_advisory_xact_lock(hashtext($1))", [input.idempotencyKey]);
-      const existing = await client.query<{ id: string; kind: string; provider: string; status: string; attempt_count: number | string }>(
-        `select id, kind, provider, status, attempt_count
-           from platform_message_effects where idempotency_key = $1 for update`,
-        [input.idempotencyKey],
+      await client.query("select pg_advisory_xact_lock(hashtext($1), hashtext($2))", [tenantKey, input.idempotencyKey]);
+      const existing = await client.query<{ id: string; kind: string; provider: string; status: string; attempt_count: number | string; recipient_account_id: string; template_key: string; template_version: string; metadata: JsonRecord }>(
+        `select id, kind, provider, status, attempt_count, recipient_account_id, template_key, template_version, metadata
+           from platform_message_effects where tenant_key = $1 and idempotency_key = $2 for update`,
+        [tenantKey, input.idempotencyKey],
       );
       const row = existing.rows[0];
-      if (row && (row.kind !== input.kind || row.provider !== input.provider)) {
+      if (row && (row.kind !== input.kind || row.provider !== input.provider || row.recipient_account_id !== input.recipientAccountId || row.template_key !== input.templateKey || row.template_version !== input.templateVersion || canonicalJson(row.metadata) !== canonicalJson(metadata))) {
         const error = new Error("Idempotency key belongs to another message effect");
         error.name = "ConflictError";
         throw error;
       }
-      if (row && (row.status === "sent" || row.status === "suppressed" || (!input.retryFailed && row.status !== "failed"))) {
+      if (row && (["accepted", "delivered", "bounced", "suppressed", "attempted"].includes(row.status) || (!input.retryFailed && row.status !== "failed" && row.status !== "unknown"))) {
         await client.query("commit");
         return { status: "replayed", idempotent: true, shouldDeliver: false, effectId: row.id, attemptNumber: numberValue(row.attempt_count), currentStatus: row.status };
       }
@@ -575,25 +675,25 @@ export async function beginPlatformMessageEffect(
       if (row) {
         await client.query(
           `update platform_message_effects
-              set status = 'sending', attempt_count = $2, last_error = null, updated_at = now()
+              set status = 'attempted', attempt_count = $2, last_error = null, updated_at = now()
             where id = $1`,
           [effectId, attemptNumber],
         );
       } else {
         await client.query(
           `insert into platform_message_effects
-             (id, organization_id, account_id, kind, provider, idempotency_key, status, attempt_count, metadata)
-           values ($1, $2, $3, $4, $5, $6, 'sending', $7, $8::jsonb)`,
-          [effectId, input.organizationId ?? null, input.accountId ?? null, input.kind, input.provider, input.idempotencyKey, attemptNumber, json(input.metadata)],
+             (id, organization_id, account_id, tenant_key, recipient_account_id, actor_account_id, kind, provider, idempotency_key, template_key, template_version, status, attempt_count, metadata)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'attempted', $12, $13::jsonb)`,
+          [effectId, input.organizationId ?? null, input.actorAccountId ?? input.accountId ?? null, tenantKey, input.recipientAccountId, input.actorAccountId ?? null, input.kind, input.provider, input.idempotencyKey, input.templateKey, input.templateVersion, attemptNumber, json(metadata)],
         );
       }
       await client.query(
-        `insert into platform_message_attempts (id, effect_id, attempt_number, provider, metadata)
-         values ($1, $2, $3, $4, $5::jsonb)`,
-        [`msg_attempt_${randomUUID()}`, effectId, attemptNumber, input.provider, json(input.metadata)],
+        `insert into platform_message_attempts (id, effect_id, attempt_number, provider, status, metadata)
+         values ($1, $2, $3, $4, 'attempted', $5::jsonb)`,
+        [`msg_attempt_${randomUUID()}`, effectId, attemptNumber, input.provider, json(metadata)],
       );
       await writeAudit(client, {
-        actorAccountId: input.accountId,
+        actorAccountId: input.actorAccountId ?? input.accountId,
         organizationId: input.organizationId,
         action: "message.effect.requested",
         targetType: "message_effect",
@@ -607,7 +707,7 @@ export async function beginPlatformMessageEffect(
         payload: { kind: input.kind, provider: input.provider, attemptNumber },
       });
       await client.query("commit");
-      return { status: "started", idempotent: false, shouldDeliver: true, effectId, attemptNumber, currentStatus: "sending" };
+      return { status: "started", idempotent: false, shouldDeliver: true, effectId, attemptNumber, currentStatus: "attempted" };
     } catch (error) {
       await client.query("rollback").catch(() => undefined);
       throw error;
@@ -623,11 +723,12 @@ export async function completePlatformMessageEffect(input: {
   connectionString: string;
   effectId: string;
   attemptNumber: number;
-  status: "sent" | "failed";
+  status: "accepted" | "failed";
   providerMessageId?: string;
   error?: string;
 }): Promise<void> {
   assertIdentifier(input.effectId, "message effect id");
+  if (input.providerMessageId) assertIdentifier(input.providerMessageId, "provider message id");
   const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
     const client = await pool.connect();
@@ -638,17 +739,19 @@ export async function completePlatformMessageEffect(input: {
         [input.effectId],
       );
       if (!current.rows[0]) throw new Error("Message effect not found");
-      const errorText = safeError(input.error);
-      await client.query(
+      const errorText = sanitizePlatformMessageError(input.error);
+      const attempt = await client.query(
         `update platform_message_attempts
             set status = $3, provider_message_id = $4, error = $5, completed_at = now()
           where effect_id = $1 and attempt_number = $2`,
         [input.effectId, input.attemptNumber, input.status, input.providerMessageId ?? null, errorText ?? null],
       );
+      if (attempt.rowCount !== 1) throw new Error("Message attempt not found");
       await client.query(
         `update platform_message_effects
             set status = $2, provider_message_id = coalesce($3, provider_message_id),
-                last_error = $4, sent_at = case when $2 = 'sent' then now() else sent_at end,
+                last_error = $4, sent_at = case when $2 = 'accepted' then now() else sent_at end,
+                accepted_at = case when $2 = 'accepted' then now() else accepted_at end,
                 updated_at = now()
           where id = $1`,
         [input.effectId, input.status, input.providerMessageId ?? null, errorText ?? null],
@@ -662,7 +765,7 @@ export async function completePlatformMessageEffect(input: {
                 last_error = $4
           where id = (select id from outbox_events where aggregate_type = 'message_effect'
                        and aggregate_id = $1 order by created_at desc limit 1)`,
-        [input.effectId, input.status === "sent" ? "processed" : "failed", input.attemptNumber, errorText ?? null],
+        [input.effectId, input.status === "accepted" ? "processed" : "failed", input.attemptNumber, errorText ?? null],
       );
       await writeAudit(client, {
         actorAccountId: current.rows[0].account_id ?? undefined,
@@ -690,49 +793,31 @@ async function reconcileProviderMessageEvents(
   provider: string,
   providerMessageId: string,
 ): Promise<boolean> {
-  const latest = await client.query<{ provider_event_id: string; event_type: string; occurred_at: unknown; metadata: JsonRecord }>(
+  const all = await client.query<{ provider_event_id: string; event_type: string; occurred_at: unknown; metadata: JsonRecord }>(
     `select provider_event_id, event_type, occurred_at, metadata
        from platform_message_provider_events
       where provider = $1 and provider_message_id = $2
-      order by occurred_at desc, created_at desc
-      limit 1`,
+      order by occurred_at, created_at, provider_event_id`,
     [provider, providerMessageId],
   );
-  const event = latest.rows[0];
-  if (!event) return false;
-  const effectStatus = providerEventEffectStatus(event.event_type);
-  const errorText = safeError(event.metadata?.reason);
+  if (!all.rows.length) return false;
+  const event = all.rows.at(-1)!;
+  const effectStatus = reducePlatformMessageProviderEvents(all.rows.map((row) => row.event_type));
+  const adverse = [...all.rows].reverse().find((row) => ["email.failed", "email.bounced", "email.complained", "email.suppressed"].includes(row.event_type));
+  const errorText = sanitizePlatformMessageError(adverse?.metadata?.reason);
   await client.query(
     `update platform_message_effects
         set provider_status = $2,
             provider_event_id = $3,
             provider_event_at = $4::timestamptz,
-            status = case
-              when $5 = 'suppressed' then 'suppressed'
-              when $5 = 'failed' and status <> 'suppressed' then 'failed'
-              when $5 = 'sent' and status not in ('failed', 'suppressed') then 'sent'
-              else status
-            end,
-            last_error = case when $5 in ('failed', 'suppressed') then coalesce($6, last_error) else last_error end,
+            status = coalesce($5, status),
+            delivered_at = case when $5 = 'delivered' then coalesce(delivered_at, now()) else delivered_at end,
+            disposition = case when $5 in ('bounced','failed','suppressed','unknown') then $5 else disposition end,
+            last_error = case when $5 in ('bounced','failed','suppressed') then coalesce($6, last_error) else last_error end,
             updated_at = now()
-      where id = $1
-        and (provider_event_at is null or provider_event_at <= $4::timestamptz)`,
+      where id = $1`,
     [effectId, event.event_type, event.provider_event_id, event.occurred_at, effectStatus ?? null, errorText ?? null],
   );
-  if (effectStatus) {
-    await client.query(
-      `update platform_message_attempts
-          set status = case
-                when $4 in ('failed', 'suppressed') then 'failed'
-                when $4 = 'sent' and status <> 'failed' then 'sent'
-                else status
-              end,
-              error = case when $4 in ('failed', 'suppressed') then coalesce($5, error) else error end,
-              completed_at = coalesce(completed_at, now())
-        where effect_id = $1 and provider = $2 and provider_message_id = $3`,
-      [effectId, provider, providerMessageId, effectStatus, errorText ?? null],
-    );
-  }
   await client.query(
     `update platform_message_provider_events
         set effect_id = $3, status = 'matched', processed_at = coalesce(processed_at, now())
@@ -768,7 +853,13 @@ export async function recordPlatformMessageProviderEvent(
   if (input.providerMessageId) assertIdentifier(input.providerMessageId, "provider message id");
   const occurredAt = new Date(input.occurredAt);
   if (!Number.isFinite(occurredAt.getTime())) throw new Error("Invalid provider event timestamp");
-  await ensurePlatformAdminFoundationsSchema(connectionString);
+  const providerMetadata: JsonRecord = {};
+  for (const [key, value] of Object.entries(input.metadata ?? {})) {
+    if (!["reason", "failureType", "failureSubtype"].includes(key)) throw new Error(`Unsupported provider event metadata key: ${key}`);
+    const safe = sanitizePlatformMessageError(value);
+    if (safe) providerMetadata[key] = safe;
+  }
+  const classification = providerEventEffectStatus(input.eventType) ?? (input.eventType === "email.opened" || input.eventType === "email.clicked" ? "observation" : "unsupported");
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
     const client = await pool.connect();
@@ -776,15 +867,19 @@ export async function recordPlatformMessageProviderEvent(
       await client.query("begin");
       const inserted = await client.query<{ id: string }>(
         `insert into platform_message_provider_events
-           (id, provider, provider_event_id, event_type, provider_message_id, occurred_at, metadata)
-         values ($1, $2, $3, $4, $5, $6, $7::jsonb)
+           (id, provider, provider_event_id, event_type, provider_message_id, occurred_at, classification, metadata)
+         values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
          on conflict (provider, provider_event_id) do nothing
          returning id`,
-        [`provider_event_${randomUUID()}`, input.provider, input.providerEventId, input.eventType, input.providerMessageId ?? null, occurredAt.toISOString(), json(input.metadata)],
+        [`provider_event_${randomUUID()}`, input.provider, input.providerEventId, input.eventType, input.providerMessageId ?? null, occurredAt.toISOString(), classification, json(providerMetadata)],
       );
       if (!inserted.rows[0]) {
+        const prior = await client.query<{ status: string }>(
+          `select status from platform_message_provider_events where provider = $1 and provider_event_id = $2`,
+          [input.provider, input.providerEventId],
+        );
         await client.query("commit");
-        return { duplicate: true, matched: false };
+        return { duplicate: true, matched: prior.rows[0]?.status === "matched" };
       }
       let matched = false;
       if (input.providerMessageId) {

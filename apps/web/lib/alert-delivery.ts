@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Resend } from 'resend';
 import { beginPlatformMessageEffect, completePlatformMessageEffect } from '@missa/radar-adapters';
 import type { RadarEngine } from '@missa/radar-engine';
+import { runDurableProviderDelivery } from './durableMessageDelivery';
 
 export interface AlertDeliveryReport {
   status: 'sent' | 'skipped' | 'partial';
@@ -24,6 +25,7 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       failed: 0,
       reason: 'RESEND_API_KEY/RESEND_FROM not configured',
     };
+  if (!process.env.DATABASE_URL) return { status: 'skipped', recipients: 0, alerts: 0, failed: 0, reason: 'Durable message ledger is unavailable' };
   const pending = [...engine.store.alerts.values()].filter((alert) => alert.audience === 'user' && alert.userId && !alert.emailSentAt);
   const byUser = new Map<string, typeof pending>();
   for (const alert of pending) {
@@ -53,52 +55,52 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       .slice(0, 24)}`;
     let effect: Awaited<ReturnType<typeof beginPlatformMessageEffect>> | undefined;
     try {
-      if (process.env.DATABASE_URL) {
         effect = await beginPlatformMessageEffect(process.env.DATABASE_URL, {
           idempotencyKey: effectKey,
           accountId: account.id,
+          recipientAccountId: account.id,
           kind: 'alert-digest',
           provider: 'resend',
+          templateKey: 'alert-digest',
+          templateVersion: 'alert-digest.v1',
           metadata: { alertCount: alerts.length },
           retryFailed: true,
         });
-      }
-      if (effect && !effect.shouldDeliver) {
+      if (!effect) throw new Error('Durable message ledger did not return an effect');
+      const activeEffect = effect;
+      const updateLabel = `${alerts.length} opportunity update${alerts.length === 1 ? '' : 's'}`;
+      const delivery = await runDurableProviderDelivery({
+        shouldDeliver: activeEffect.shouldDeliver,
+        currentStatus: activeEffect.currentStatus,
+        send: async () => {
+          const result = await resend.emails.send({
+            from,
+            to: account.email,
+            subject: `Missa: ${updateLabel}`,
+            text: `You have ${updateLabel} in your Inbox.\n\n${lines}\n\nOpen Missa to review the source, current state, and next step.`,
+          });
+          if (result.error) throw new Error(result.error.message);
+          return result;
+        },
+        recordAccepted: async (result) => completePlatformMessageEffect({
+          connectionString: process.env.DATABASE_URL!, effectId: activeEffect.effectId,
+          attemptNumber: activeEffect.attemptNumber, status: 'accepted', providerMessageId: result.data?.id,
+        }).then(() => undefined),
+        recordFailed: async (error) => completePlatformMessageEffect({
+          connectionString: process.env.DATABASE_URL!, effectId: activeEffect.effectId,
+          attemptNumber: activeEffect.attemptNumber, status: 'failed',
+          error: error instanceof Error ? error.message : 'Provider send failed',
+        }).then(() => undefined),
+      });
+      if (delivery.outcome === 'accepted' || delivery.outcome === 'replayed-accepted') {
         const sentAt = now.toISOString();
         for (const alert of alerts) alert.emailSentAt = sentAt;
         recipients += 1;
         sentAlerts += alerts.length;
         continue;
       }
-      const updateLabel = `${alerts.length} opportunity update${alerts.length === 1 ? '' : 's'}`;
-      const result = await resend.emails.send({
-        from,
-        to: account.email,
-        subject: `Missa: ${updateLabel}`,
-        text: `You have ${updateLabel} in your Inbox.\n\n${lines}\n\nOpen Missa to review the source, current state, and next step.`,
-      });
-      if (result.error) throw new Error(result.error.message);
-      if (effect && process.env.DATABASE_URL)
-        await completePlatformMessageEffect({
-          connectionString: process.env.DATABASE_URL,
-          effectId: effect.effectId,
-          attemptNumber: effect.attemptNumber,
-          status: 'sent',
-          providerMessageId: result.data?.id,
-        });
-      const sentAt = now.toISOString();
-      for (const alert of alerts) alert.emailSentAt = sentAt;
-      recipients += 1;
-      sentAlerts += alerts.length;
-    } catch (error) {
-      if (effect && process.env.DATABASE_URL)
-        await completePlatformMessageEffect({
-          connectionString: process.env.DATABASE_URL,
-          effectId: effect.effectId,
-          attemptNumber: effect.attemptNumber,
-          status: 'failed',
-          error: error instanceof Error ? error.message : 'Provider send failed',
-        }).catch(() => undefined);
+      failed += alerts.length;
+    } catch (_error) {
       failed += alerts.length;
     }
   }

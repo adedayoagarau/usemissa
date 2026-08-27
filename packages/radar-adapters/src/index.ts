@@ -298,6 +298,7 @@ export {
   readPlatformAdminBilling,
   readPlatformAdminCrm,
   readPlatformAdminMessageHistory,
+  readOrganizationMessageHistory,
   processPlatformAgentControlRequests,
   recordPlatformBillingEvent,
   recordPlatformAnalyticsEvent,

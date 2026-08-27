@@ -171,7 +171,9 @@ test("platform foundation schema separates effects, attempts, billing facts, and
   const attempts = getTableConfig(platformMessageAttempts);
   const billing = getTableConfig(platformBillingLedger);
   const controls = getTableConfig(platformAgentControlRequests);
-  assert.ok(effects.indexes.some((index) => index.config.name === "platform_message_effects_idempotency_idx"));
+  assert.ok(effects.indexes.some((index) => index.config.name === "platform_message_effects_tenant_idempotency_idx"));
+  assert.ok(effects.columns.some((column) => column.name === "recipient_account_id"));
+  assert.ok(effects.columns.some((column) => column.name === "template_version"));
   assert.ok(attempts.indexes.some((index) => index.config.name === "platform_message_attempts_effect_attempt_idx"));
   assert.ok(billing.indexes.some((index) => index.config.name === "platform_billing_ledger_provider_event_idx"));
   assert.ok(controls.indexes.some((index) => index.config.name === "platform_agent_control_requests_idempotency_idx"));
