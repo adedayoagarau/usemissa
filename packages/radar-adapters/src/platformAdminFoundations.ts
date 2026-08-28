@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
+import { governedIdentity } from "./governedOperations.js";
 
 export const platformAdminFoundationsSchema = `
 alter table if exists radar_agent_runs add column if not exists paused_at timestamptz;
@@ -179,6 +180,20 @@ create index if not exists platform_billing_ledger_org_created_idx
   on platform_billing_ledger (organization_id, created_at);
 create index if not exists platform_billing_ledger_status_created_idx
   on platform_billing_ledger (status, created_at);
+alter table platform_billing_ledger add column if not exists provider_object_type text;
+alter table platform_billing_ledger add column if not exists processing_status text not null default 'received';
+alter table platform_billing_ledger add column if not exists reconciliation_version integer not null default 1;
+alter table platform_billing_ledger add column if not exists receipt_digest text;
+create table if not exists platform_billing_provider_event_outcomes (
+  id text primary key,
+  ledger_id text not null references platform_billing_ledger(id) on delete restrict,
+  status text not null,
+  error_category text,
+  created_at timestamptz not null default now(),
+  check (status in ('received','processing','applied','ignored','unmatched','retryable-failure','terminal-failure','unknown'))
+);
+create index if not exists platform_billing_provider_event_outcomes_ledger_idx
+  on platform_billing_provider_event_outcomes (ledger_id, created_at);
 
 create table if not exists platform_agent_control_requests (
   id text primary key,
@@ -949,6 +964,7 @@ export interface PlatformCrmTask {
   title: string;
   description?: string;
   status: string;
+  version: number;
   priority: number;
   dueAt?: string;
   ownerAccountId?: string;
@@ -965,6 +981,7 @@ export interface PlatformAdminCrmData {
   warnings: string[];
   summary: { timelineEvents: number; notes: number; accountsWithActivity: number; organizationsWithActivity: number; contacts: number; tasks: number; openTasks: number; latestAt?: string };
   rows: PlatformCrmTimelineEvent[];
+  compatibilityRows: PlatformCrmTimelineEvent[];
   contacts: PlatformCrmContact[];
   tasks: PlatformCrmTask[];
 }
@@ -1008,6 +1025,7 @@ interface CrmTaskRow extends QueryResultRow {
   title: string;
   description?: string | null;
   status: string;
+  version?: number | string;
   priority?: number | string;
   due_at?: unknown;
   owner_account_id?: string | null;
@@ -1061,6 +1079,7 @@ function normalizeCrmTask(row: CrmTaskRow): PlatformCrmTask {
     title: row.title,
     ...(text(row.description, 4_000) ? { description: text(row.description, 4_000) } : {}),
     status: row.status,
+    version: numberValue(row.version) || 1,
     priority: numberValue(row.priority),
     ...(iso(row.due_at) ? { dueAt: iso(row.due_at) } : {}),
     ...(text(row.owner_account_id, 240) ? { ownerAccountId: text(row.owner_account_id, 240) } : {}),
@@ -1072,7 +1091,13 @@ function normalizeCrmTask(row: CrmTaskRow): PlatformCrmTask {
 }
 
 function emptyCrm(generatedAt: string, warnings: string[]): PlatformAdminCrmData {
-  return { available: false, generatedAt, source: "platform_crm_timeline_events + audit_events + contacts + tasks", warnings, summary: { timelineEvents: 0, notes: 0, accountsWithActivity: 0, organizationsWithActivity: 0, contacts: 0, tasks: 0, openTasks: 0 }, rows: [], contacts: [], tasks: [] };
+  return { available: false, generatedAt, source: "platform_crm_timeline_events + contacts + tasks", warnings, summary: { timelineEvents: 0, notes: 0, accountsWithActivity: 0, organizationsWithActivity: 0, contacts: 0, tasks: 0, openTasks: 0 }, rows: [], compatibilityRows: [], contacts: [], tasks: [] };
+}
+
+export function summarizeDurableCrmRows(rows: PlatformCrmTimelineEvent[]): Pick<PlatformAdminCrmData["summary"], "timelineEvents" | "notes" | "accountsWithActivity" | "organizationsWithActivity" | "latestAt"> {
+  const accountIds = new Set(rows.filter((row) => row.subjectType === "account").map((row) => row.subjectId));
+  const organizationIds = new Set(rows.filter((row) => row.subjectType === "organization").map((row) => row.subjectId));
+  return { timelineEvents: rows.length, notes: rows.filter((row) => row.eventType === "note").length, accountsWithActivity: accountIds.size, organizationsWithActivity: organizationIds.size, ...(rows[0]?.createdAt ? { latestAt: rows[0].createdAt } : {}) };
 }
 
 export async function readPlatformAdminCrm(
@@ -1112,9 +1137,7 @@ export async function readPlatformAdminCrm(
       );
       compatibility.push(...audit.rows.map((row) => normalizeCrmEvent(row, true)));
     }
-    const rows = [...timeline.rows.map((row) => normalizeCrmEvent(row)), ...compatibility]
-      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
-      .slice(0, limit);
+    const rows = timeline.rows.map((row) => normalizeCrmEvent(row));
     const contacts = availability.get("platform_crm_contacts") ? (await pool.query<CrmContactRow>(
       `select id, organization_id, account_id, name, email, role, status, source,
               created_by_account_id, created_at, updated_at
@@ -1139,24 +1162,20 @@ export async function readPlatformAdminCrm(
       ...(!availability.get("platform_crm_contacts") ? ["platform_crm_contacts is not deployed; CRM contact records are unavailable."] : []),
       ...(!availability.get("platform_crm_tasks") ? ["platform_crm_tasks is not deployed; CRM follow-up tasks are unavailable."] : []),
     ];
-    const accountIds = new Set(rows.filter((row) => row.subjectType === "account").map((row) => row.subjectId));
-    const organizationIds = new Set(rows.filter((row) => row.subjectType === "organization").map((row) => row.subjectId));
+    const durableSummary = summarizeDurableCrmRows(rows);
     return {
       available: true,
       generatedAt,
-      source: "platform_crm_timeline_events + audit_events + contacts + tasks",
+      source: "platform_crm_timeline_events + contacts + tasks (durable); audit_events (separate compatibility context)",
       warnings,
       summary: {
-        timelineEvents: rows.length,
-        notes: rows.filter((row) => row.eventType === "note").length,
-        accountsWithActivity: accountIds.size,
-        organizationsWithActivity: organizationIds.size,
+        ...durableSummary,
         contacts: contacts.length,
         tasks: tasks.length,
         openTasks: tasks.filter((task) => ["open", "in-progress", "snoozed"].includes(task.status)).length,
-        ...(rows[0]?.createdAt ? { latestAt: rows[0].createdAt } : {}),
       },
       rows,
+      compatibilityRows: compatibility,
       contacts,
       tasks,
     };
@@ -1180,18 +1199,21 @@ export async function createPlatformCrmNote(input: {
   assertIdempotencyKey(input.idempotencyKey);
   if (!input.title.trim() || input.title.length > 240) throw new Error("Invalid CRM note title");
   if (!input.body.trim() || input.body.length > 4_000) throw new Error("Invalid CRM note body");
+  const tenantKey = `${input.subjectType === "organization" ? "org" : "account"}:${input.subjectId}`;
+  const requestIdentity = governedIdentity({ actorAccountId: input.actorAccountId, subjectType: input.subjectType, subjectId: input.subjectId, title: input.title.trim(), body: input.body.trim() });
   const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
-    await pool.query(platformAdminFoundationsSchema);
     const availability = await tableAvailability(pool, ["platform_crm_timeline_events", "audit_events", "outbox_events"]);
     const missing = missingTables(availability, ["platform_crm_timeline_events", "audit_events", "outbox_events"]);
     if (missing.length > 0) throw new Error(`${missing.join(", ")} is not deployed`);
     const client = await pool.connect();
     try {
       await client.query("begin");
+      await requireCrmSubject(client, input.subjectType === "organization" ? input.subjectId : undefined, input.subjectType === "account" ? input.subjectId : undefined);
       await client.query("select pg_advisory_xact_lock(hashtext($1))", [input.idempotencyKey]);
-      const replay = await client.query<{ id: string }>("select id from platform_crm_timeline_events where idempotency_key = $1 for update", [input.idempotencyKey]);
+      const replay = await client.query<{ id: string; request_identity?: string | null }>("select id, request_identity from platform_crm_timeline_events where tenant_key = $1 and idempotency_key = $2 for update", [tenantKey, input.idempotencyKey]);
       if (replay.rows[0]) {
+        if (replay.rows[0].request_identity !== requestIdentity) throw Object.assign(new Error("CRM note idempotency conflict"), { name: "ConflictError" });
         await client.query("commit");
         return { status: "replayed", idempotent: true, eventId: replay.rows[0].id };
       }
@@ -1200,12 +1222,13 @@ export async function createPlatformCrmNote(input: {
       const accountId = input.subjectType === "account" ? input.subjectId : null;
       await client.query(
         `insert into platform_crm_timeline_events
-           (id, organization_id, account_id, event_type, source, title, body, actor_account_id, idempotency_key)
-         values ($1, $2, $3, 'note', 'operator', $4, $5, $6, $7)`,
-        [eventId, organizationId, accountId, input.title.trim(), input.body.trim(), input.actorAccountId, input.idempotencyKey],
+           (id, organization_id, account_id, tenant_key, event_type, source, title, body, actor_account_id, idempotency_key, request_identity)
+         values ($1, $2, $3, $4, 'note', 'operator', $5, $6, $7, $8, $9)`,
+        [eventId, organizationId, accountId, tenantKey, input.title.trim(), input.body.trim(), input.actorAccountId, input.idempotencyKey, requestIdentity],
       );
-      await writeAudit(client, { actorAccountId: input.actorAccountId, organizationId: organizationId ?? undefined, action: "crm.note.created", targetType: input.subjectType, targetId: input.subjectId, detail: { eventId, idempotencyKey: input.idempotencyKey, title: input.title.trim() } });
-      await writeOutbox(client, { topic: "crm.timeline.created", aggregateType: input.subjectType, aggregateId: input.subjectId, payload: { eventId, eventType: "note", title: input.title.trim() } });
+      const evidence = crmNoteEvidence(eventId, input.subjectType);
+      await writeAudit(client, { actorAccountId: input.actorAccountId, organizationId: organizationId ?? undefined, action: "crm.note.created", targetType: input.subjectType, targetId: input.subjectId, detail: evidence });
+      await writeOutbox(client, { topic: "crm.timeline.created", aggregateType: input.subjectType, aggregateId: input.subjectId, payload: evidence });
       await client.query("commit");
       return { status: "created", idempotent: false, eventId };
     } catch (error) {
@@ -1219,9 +1242,20 @@ export async function createPlatformCrmNote(input: {
   }
 }
 
+export function crmNoteEvidence(eventId: string, subjectType: "account" | "organization"): { eventId: string; eventType: "note"; subjectType: "account" | "organization" } {
+  return { eventId, eventType: "note", subjectType };
+}
+
 function assertCrmSubject(organizationId?: string, accountId?: string): void {
   if ((!organizationId && !accountId) || (organizationId && accountId)) throw new Error("Exactly one CRM organizationId or accountId is required");
   assertIdentifier((organizationId ?? accountId) as string, "CRM subject id");
+}
+
+async function requireCrmSubject(client: PoolClient, organizationId?: string, accountId?: string): Promise<void> {
+  const found = organizationId
+    ? await client.query(`select id from radar_organizations where id=$1`, [organizationId])
+    : await client.query(`select id from radar_accounts where id=$1`, [accountId]);
+  if (!found.rows[0]) throw Object.assign(new Error("CRM subject not found"), { name: "NotFoundError" });
 }
 
 function normalizeCrmEmail(value: string | undefined): string | undefined {
@@ -1251,36 +1285,47 @@ export async function createPlatformCrmContact(input: {
   const email = normalizeCrmEmail(input.email);
   const status = input.status ?? "active";
   if (!["active", "inactive", "lead"].includes(status)) throw new Error("Invalid CRM contact status");
+  const tenantKey = input.organizationId ? `org:${input.organizationId}` : `account:${input.accountId}`;
+  const requestIdentity = governedIdentity({ actorAccountId: input.actorAccountId, organizationId: input.organizationId ?? null, accountId: input.accountId ?? null, name, email: email ?? null, role: role ?? null, status });
   const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
-    await pool.query(platformAdminFoundationsSchema);
-    const required = ["platform_crm_contacts", "audit_events", "outbox_events"];
+    const required = ["platform_crm_contacts", "platform_crm_timeline_events", "audit_events", "outbox_events"];
     const availability = await tableAvailability(pool, required);
     const missing = missingTables(availability, required);
     if (missing.length > 0) throw new Error(`${missing.join(", ")} is not deployed`);
     const client = await pool.connect();
     try {
       await client.query("begin");
+      await requireCrmSubject(client, input.organizationId, input.accountId);
       await client.query("select pg_advisory_xact_lock(hashtext($1))", [input.idempotencyKey]);
       const replay = await client.query<CrmContactRow>(
         `select id, organization_id, account_id, name, email, role, status, source,
                 created_by_account_id, created_at, updated_at
-           from platform_crm_contacts where metadata->>'idempotencyKey' = $1 for update`,
-        [input.idempotencyKey],
+           from platform_crm_contacts where tenant_key = $1 and idempotency_key = $2 for update`,
+        [tenantKey, input.idempotencyKey],
       );
       if (replay.rows[0]) {
+        const identity = await client.query<{ request_identity: string }>(`select request_identity from platform_crm_contacts where id=$1`, [replay.rows[0].id]);
+        if (identity.rows[0]?.request_identity !== requestIdentity) throw Object.assign(new Error("CRM contact idempotency conflict"), { name: "ConflictError" });
         await client.query("commit");
         return { status: "replayed", idempotent: true, contact: normalizeCrmContact(replay.rows[0]) };
       }
       const id = `crm_contact_${randomUUID()}`;
       await client.query(
         `insert into platform_crm_contacts
-           (id, organization_id, account_id, name, email, role, status, source, created_by_account_id, metadata)
-         values ($1, $2, $3, $4, $5, $6, $7, 'operator', $8, $9::jsonb)`,
-        [id, input.organizationId ?? null, input.accountId ?? null, name, email ?? null, role || null, status, input.actorAccountId, json({ idempotencyKey: input.idempotencyKey })],
+           (id, organization_id, account_id, tenant_key, name, email, role, status, source, created_by_account_id, idempotency_key, request_identity, metadata)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, 'operator', $9, $10, $11, '{}'::jsonb)`,
+        [id, input.organizationId ?? null, input.accountId ?? null, tenantKey, name, email ?? null, role || null, status, input.actorAccountId, input.idempotencyKey, requestIdentity],
       );
-      await writeAudit(client, { actorAccountId: input.actorAccountId, organizationId: input.organizationId, action: "crm.contact.created", targetType: "crm_contact", targetId: id, detail: { name, email: email ?? null, idempotencyKey: input.idempotencyKey } });
-      await writeOutbox(client, { topic: "crm.contact.created", aggregateType: "crm_contact", aggregateId: id, payload: { organizationId: input.organizationId, accountId: input.accountId, name } });
+      const eventId = `crm_${randomUUID()}`;
+      await client.query(
+        `insert into platform_crm_timeline_events
+           (id, organization_id, account_id, tenant_key, event_type, source, title, actor_account_id, idempotency_key, request_identity, metadata)
+         values ($1,$2,$3,$4,'contact-created','operator','Contact created',$5,$6,$7,$8::jsonb)`,
+        [eventId, input.organizationId ?? null, input.accountId ?? null, tenantKey, input.actorAccountId, `contact:${input.idempotencyKey}`, requestIdentity, json({ contactId: id, status })],
+      );
+      await writeAudit(client, { actorAccountId: input.actorAccountId, organizationId: input.organizationId, action: "crm.contact.created", targetType: "crm_contact", targetId: id, detail: { status, idempotencyKey: input.idempotencyKey } });
+      await writeOutbox(client, { topic: "crm.contact.created", aggregateType: "crm_contact", aggregateId: id, payload: { contactId: id, subjectType: input.organizationId ? "organization" : "account", status } });
       const created = await client.query<CrmContactRow>(
         `select id, organization_id, account_id, name, email, role, status, source,
                 created_by_account_id, created_at, updated_at
@@ -1324,38 +1369,59 @@ export async function createPlatformCrmTask(input: {
   if (input.dueAt && !Number.isFinite(Date.parse(input.dueAt))) throw new Error("Invalid CRM task due date");
   if (input.contactId) assertIdentifier(input.contactId, "CRM contact id");
   if (input.ownerAccountId) assertIdentifier(input.ownerAccountId, "CRM owner account id");
+  const tenantKey = input.organizationId ? `org:${input.organizationId}` : `account:${input.accountId}`;
+  const requestIdentity = governedIdentity({ actorAccountId: input.actorAccountId, organizationId: input.organizationId ?? null, accountId: input.accountId ?? null, contactId: input.contactId ?? null, title, description: description ?? null, priority, dueAt: input.dueAt ?? null, ownerAccountId: input.ownerAccountId ?? null });
   const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
-    await pool.query(platformAdminFoundationsSchema);
-    const required = ["platform_crm_tasks", "audit_events", "outbox_events"];
+    const required = ["platform_crm_tasks", "platform_crm_timeline_events", "audit_events", "outbox_events"];
     const availability = await tableAvailability(pool, required);
     const missing = missingTables(availability, required);
     if (missing.length > 0) throw new Error(`${missing.join(", ")} is not deployed`);
     const client = await pool.connect();
     try {
       await client.query("begin");
+      await requireCrmSubject(client, input.organizationId, input.accountId);
+      if (input.contactId) {
+        const contact = await client.query(`select id from platform_crm_contacts where id=$1 and tenant_key=$2`, [input.contactId, tenantKey]);
+        if (!contact.rows[0]) throw Object.assign(new Error("CRM contact not found for subject"), { name: "NotFoundError" });
+      }
+      if (input.ownerAccountId) {
+        const owner = input.organizationId
+          ? await client.query(`select account_id as id from radar_memberships where account_id=$1 and organization_id=$2`, [input.ownerAccountId, input.organizationId])
+          : await client.query(`select id from radar_accounts where id=$1 and id=$2`, [input.ownerAccountId, input.accountId]);
+        if (!owner.rows[0]) throw Object.assign(new Error("CRM owner not found"), { name: "NotFoundError" });
+      }
       await client.query("select pg_advisory_xact_lock(hashtext($1))", [input.idempotencyKey]);
       const replay = await client.query<CrmTaskRow>(
         `select id, organization_id, account_id, contact_id, title, description, status,
                 priority, due_at, owner_account_id, completed_at, created_by_account_id,
                 created_at, updated_at
-           from platform_crm_tasks where metadata->>'idempotencyKey' = $1 for update`,
-        [input.idempotencyKey],
+           from platform_crm_tasks where tenant_key = $1 and idempotency_key = $2 for update`,
+        [tenantKey, input.idempotencyKey],
       );
       if (replay.rows[0]) {
+        const identity = await client.query<{ request_identity: string }>(`select request_identity from platform_crm_tasks where id=$1`, [replay.rows[0].id]);
+        if (identity.rows[0]?.request_identity !== requestIdentity) throw Object.assign(new Error("CRM task idempotency conflict"), { name: "ConflictError" });
         await client.query("commit");
         return { status: "replayed", idempotent: true, task: normalizeCrmTask(replay.rows[0]) };
       }
       const id = `crm_task_${randomUUID()}`;
       await client.query(
         `insert into platform_crm_tasks
-           (id, organization_id, account_id, contact_id, title, description, priority,
-            due_at, owner_account_id, created_by_account_id, metadata)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)`,
-        [id, input.organizationId ?? null, input.accountId ?? null, input.contactId ?? null, title, description || null, priority, input.dueAt ?? null, input.ownerAccountId ?? null, input.actorAccountId, json({ idempotencyKey: input.idempotencyKey })],
+           (id, organization_id, account_id, tenant_key, contact_id, title, description, priority,
+            due_at, owner_account_id, created_by_account_id, idempotency_key, request_identity, metadata)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, '{}'::jsonb)`,
+        [id, input.organizationId ?? null, input.accountId ?? null, tenantKey, input.contactId ?? null, title, description || null, priority, input.dueAt ?? null, input.ownerAccountId ?? null, input.actorAccountId, input.idempotencyKey, requestIdentity],
       );
-      await writeAudit(client, { actorAccountId: input.actorAccountId, organizationId: input.organizationId, action: "crm.task.created", targetType: "crm_task", targetId: id, detail: { title, dueAt: input.dueAt ?? null, idempotencyKey: input.idempotencyKey } });
-      await writeOutbox(client, { topic: "crm.task.created", aggregateType: "crm_task", aggregateId: id, payload: { organizationId: input.organizationId, accountId: input.accountId, title } });
+      const eventId = `crm_${randomUUID()}`;
+      await client.query(
+        `insert into platform_crm_timeline_events
+           (id, organization_id, account_id, tenant_key, event_type, source, title, actor_account_id, idempotency_key, request_identity, metadata)
+         values ($1,$2,$3,$4,'task-created','operator','Follow-up task created',$5,$6,$7,$8::jsonb)`,
+        [eventId, input.organizationId ?? null, input.accountId ?? null, tenantKey, input.actorAccountId, `task:${input.idempotencyKey}`, requestIdentity, json({ taskId: id, status: "open", priority })],
+      );
+      await writeAudit(client, { actorAccountId: input.actorAccountId, organizationId: input.organizationId, action: "crm.task.created", targetType: "crm_task", targetId: id, detail: { status: "open", priority, idempotencyKey: input.idempotencyKey } });
+      await writeOutbox(client, { topic: "crm.task.created", aggregateType: "crm_task", aggregateId: id, payload: { taskId: id, subjectType: input.organizationId ? "organization" : "account", status: "open" } });
       const created = await client.query<CrmTaskRow>(
         `select id, organization_id, account_id, contact_id, title, description, status,
                 priority, due_at, owner_account_id, completed_at, created_by_account_id,
@@ -1381,30 +1447,48 @@ export async function updatePlatformCrmTaskStatus(input: {
   actorAccountId: string;
   taskId: string;
   status: "open" | "in-progress" | "done" | "snoozed" | "cancelled";
+  expectedStatus: string;
+  expectedVersion: number;
+  idempotencyKey: string;
+  confirmation?: string;
 }): Promise<PlatformCrmTask> {
   assertIdentifier(input.taskId, "CRM task id");
+  assertIdempotencyKey(input.idempotencyKey);
+  if (!Number.isInteger(input.expectedVersion) || input.expectedVersion < 1) throw new Error("Invalid expected CRM task version");
+  if (input.status === "cancelled" && input.confirmation !== `CONFIRM crm-task ${input.taskId} cancelled`) throw new Error("Exact confirmation is required");
   const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
     const client = await pool.connect();
     try {
       await client.query("begin");
+      const requestIdentity = governedIdentity({ actorAccountId: input.actorAccountId, taskId: input.taskId, status: input.status, expectedStatus: input.expectedStatus, expectedVersion: input.expectedVersion });
+      const replay = await client.query<{ id: string; request_identity: string }>(`select id, request_identity from platform_crm_timeline_events where tenant_key = (select tenant_key from platform_crm_tasks where id=$1) and idempotency_key=$2 for update`, [input.taskId, input.idempotencyKey]);
+      if (replay.rows[0]) {
+        if (replay.rows[0].request_identity !== requestIdentity) throw Object.assign(new Error("CRM task idempotency conflict"), { name: "ConflictError" });
+        const current = await client.query<CrmTaskRow>(`select *, version from platform_crm_tasks where id=$1`, [input.taskId]);
+        await client.query("commit");
+        return normalizeCrmTask(current.rows[0]);
+      }
       const updated = await client.query<CrmTaskRow>(
         `update platform_crm_tasks
-            set status = $2, completed_at = case when $2 = 'done' then coalesce(completed_at, now()) else null end, updated_at = now()
-          where id = $1
+            set status = $2, version = version + 1, completed_at = case when $2 = 'done' then coalesce(completed_at, now()) else null end, updated_at = now()
+          where id = $1 and status = $3 and version = $4
         returning id, organization_id, account_id, contact_id, title, description, status,
-                  priority, due_at, owner_account_id, completed_at, created_by_account_id,
+                  version, priority, due_at, owner_account_id, completed_at, created_by_account_id,
                   created_at, updated_at`,
-        [input.taskId, input.status],
+        [input.taskId, input.status, input.expectedStatus, input.expectedVersion],
       );
       if (!updated.rows[0]) {
+        const exists = await client.query(`select 1 from platform_crm_tasks where id=$1`, [input.taskId]);
         await client.query("rollback");
-        const error = new Error("CRM task not found");
-        error.name = "NotFoundError";
+        const error = new Error(exists.rows[0] ? "CRM task version conflict" : "CRM task not found");
+        error.name = exists.rows[0] ? "ConflictError" : "NotFoundError";
         throw error;
       }
       const task = normalizeCrmTask(updated.rows[0]);
-      await writeAudit(client, { actorAccountId: input.actorAccountId, organizationId: task.organizationId, action: "crm.task.status_changed", targetType: "crm_task", targetId: input.taskId, detail: { status: input.status } });
+      const tenantKey = task.organizationId ? `org:${task.organizationId}` : `account:${task.accountId}`;
+      await client.query(`insert into platform_crm_timeline_events (id, organization_id, account_id, tenant_key, event_type, source, title, actor_account_id, idempotency_key, request_identity, metadata) values ($1,$2,$3,$4,'task-status','operator','Task lifecycle changed',$5,$6,$7,$8::jsonb)`, [`crm_${randomUUID()}`, task.organizationId ?? null, task.accountId ?? null, tenantKey, input.actorAccountId, input.idempotencyKey, requestIdentity, json({ taskId: input.taskId, from: input.expectedStatus, to: input.status, version: task.version })]);
+      await writeAudit(client, { actorAccountId: input.actorAccountId, organizationId: task.organizationId, action: "crm.task.status_changed", targetType: "crm_task", targetId: input.taskId, detail: { status: input.status, version: task.version } });
       await writeOutbox(client, { topic: "crm.task.updated", aggregateType: "crm_task", aggregateId: input.taskId, payload: { status: input.status } });
       await client.query("commit");
       return task;
@@ -1653,6 +1737,15 @@ function billingEventType(eventType: string): PlatformBillingEntryType {
 
 export { billingEventType };
 
+export function platformBillingReceiptDigest(input: {
+  provider: string; providerEventId: string; eventType: string; entryType: string; status: PlatformBillingStatus;
+  organizationId?: string; providerObjectId?: string; amountCents?: number; currency?: string;
+  customerId?: string; subscriptionId?: string; invoiceId?: string;
+  occurredAt?: string; providerObjectType?: string;
+}): string {
+  return governedIdentity({ provider: input.provider, providerEventId: input.providerEventId, eventType: input.eventType, entryType: input.entryType, status: input.status, organizationId: input.organizationId ?? null, providerObjectId: input.providerObjectId ?? null, providerObjectType: input.providerObjectType ?? "unknown", amountCents: input.amountCents ?? null, currency: input.currency ?? null, customerId: input.customerId ?? null, subscriptionId: input.subscriptionId ?? null, invoiceId: input.invoiceId ?? null, occurredAt: input.occurredAt ?? null });
+}
+
 function emptyBilling(generatedAt: string, warnings: string[]): PlatformAdminBillingData {
   return { available: false, generatedAt, source: "platform_billing_ledger", warnings, summary: { entries: 0, processed: 0, received: 0, failed: 0, ignored: 0, grossAmountCents: 0, byEntryType: {} }, rows: [] };
 }
@@ -1705,6 +1798,7 @@ export async function recordPlatformBillingEvent(input: {
   organizationId?: string;
   provider?: string;
   providerObjectId?: string;
+  providerObjectType?: string;
   amountCents?: number;
   currency?: string;
   customerId?: string;
@@ -1713,56 +1807,42 @@ export async function recordPlatformBillingEvent(input: {
   occurredAt?: string;
   error?: string;
   metadata?: JsonRecord;
-}): Promise<{ status: "recorded" | "replayed" | "updated"; id: string; currentStatus: PlatformBillingStatus }> {
+}): Promise<{ status: "recorded" | "replayed" | "conflict"; id: string; currentStatus: PlatformBillingStatus }> {
   assertIdentifier(input.providerEventId, "provider event id");
   assertIdentifier(input.eventType, "billing event type");
   const provider = input.provider ?? "stripe";
   const entryType = input.entryType ?? billingEventType(input.eventType);
   const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
-    await pool.query(platformAdminFoundationsSchema);
-    const availability = await tableAvailability(pool, ["platform_billing_ledger", "audit_events", "outbox_events"]);
-    const missing = missingTables(availability, ["platform_billing_ledger", "audit_events", "outbox_events"]);
+    const availability = await tableAvailability(pool, ["platform_billing_ledger", "platform_billing_provider_event_outcomes", "audit_events", "outbox_events"]);
+    const missing = missingTables(availability, ["platform_billing_ledger", "platform_billing_provider_event_outcomes", "audit_events", "outbox_events"]);
     if (missing.length > 0) throw new Error(`${missing.join(", ")} is not deployed`);
     const client = await pool.connect();
     try {
       await client.query("begin");
       await client.query("select pg_advisory_xact_lock(hashtext($1))", [`${provider}:${input.providerEventId}:${entryType}`]);
-      const existing = await client.query<{ id: string; status: PlatformBillingStatus }>(
-        `select id, status from platform_billing_ledger
+      const receiptDigest = platformBillingReceiptDigest({ provider, providerEventId: input.providerEventId, eventType: input.eventType, entryType, status: input.status, ...(input.organizationId ? { organizationId: input.organizationId } : {}), ...(input.providerObjectId ? { providerObjectId: input.providerObjectId } : {}), ...(input.providerObjectType ? { providerObjectType: input.providerObjectType } : {}), ...(input.amountCents !== undefined ? { amountCents: input.amountCents } : {}), ...(input.currency ? { currency: input.currency } : {}), ...(input.customerId ? { customerId: input.customerId } : {}), ...(input.subscriptionId ? { subscriptionId: input.subscriptionId } : {}), ...(input.invoiceId ? { invoiceId: input.invoiceId } : {}), ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}) });
+      const existing = await client.query<{ id: string; status: PlatformBillingStatus; receipt_digest?: string | null }>(
+        `select id, status, receipt_digest from platform_billing_ledger
           where provider = $1 and provider_event_id = $2 and entry_type = $3 for update`,
         [provider, input.providerEventId, entryType],
       );
       const existingRow = existing.rows[0];
-      const status = existingRow?.status === "processed" && input.status === "received" ? "processed" : input.status;
+      const status = input.status;
       const errorText = safeError(input.error);
       if (existingRow) {
-        await client.query(
-          `update platform_billing_ledger
-              set status = $2, organization_id = coalesce($3, organization_id),
-                  provider_object_id = coalesce($4, provider_object_id), amount_cents = coalesce($5, amount_cents),
-                  currency = coalesce($6, currency), customer_id = coalesce($7, customer_id),
-                  subscription_id = coalesce($8, subscription_id), invoice_id = coalesce($9, invoice_id),
-                  occurred_at = coalesce($10, occurred_at), processed_at = case when $2 = 'processed' then now() else processed_at end,
-                  last_error = $11, metadata = $12::jsonb, updated_at = now()
-            where id = $1`,
-          [existingRow.id, status, input.organizationId ?? null, input.providerObjectId ?? null, input.amountCents ?? null, input.currency ?? null, input.customerId ?? null, input.subscriptionId ?? null, input.invoiceId ?? null, input.occurredAt ?? null, errorText ?? null, json(input.metadata)],
-        );
-        if (existingRow.status !== status) {
-          await writeAudit(client, { organizationId: input.organizationId, action: `billing.ledger.${status}`, targetType: "billing_entry", targetId: existingRow.id, detail: { provider, providerEventId: input.providerEventId, eventType: input.eventType, status } });
-          await writeOutbox(client, { topic: "billing.ledger.updated", aggregateType: "billing_entry", aggregateId: existingRow.id, payload: { provider, eventType: input.eventType, status } });
-        }
         await client.query("commit");
-        return { status: existingRow.status === status ? "replayed" : "updated", id: existingRow.id, currentStatus: status };
+        return { status: existingRow.receipt_digest === receiptDigest ? "replayed" : "conflict", id: existingRow.id, currentStatus: existingRow.status };
       }
       const id = `bill_${randomUUID()}`;
       await client.query(
         `insert into platform_billing_ledger
-           (id, organization_id, provider, provider_event_id, provider_object_id, event_type, entry_type,
-            status, amount_cents, currency, customer_id, subscription_id, invoice_id, occurred_at, processed_at, last_error, metadata)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, case when $8 = 'processed' then now() else null end, $15, $16::jsonb)`,
-        [id, input.organizationId ?? null, provider, input.providerEventId, input.providerObjectId ?? null, input.eventType, entryType, status, input.amountCents ?? null, input.currency ?? null, input.customerId ?? null, input.subscriptionId ?? null, input.invoiceId ?? null, input.occurredAt ?? null, errorText ?? null, json(input.metadata)],
+           (id, organization_id, provider, provider_event_id, provider_object_id, provider_object_type, event_type, entry_type,
+            status, amount_cents, currency, customer_id, subscription_id, invoice_id, occurred_at, processed_at, last_error, metadata, receipt_digest)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, null, $16, $17::jsonb, $18)`,
+        [id, input.organizationId ?? null, provider, input.providerEventId, input.providerObjectId ?? null, input.providerObjectType ?? null, input.eventType, entryType, status, input.amountCents ?? null, input.currency ?? null, input.customerId ?? null, input.subscriptionId ?? null, input.invoiceId ?? null, input.occurredAt ?? null, errorText ?? null, json({ objectType: input.providerObjectType ?? "unknown" }), receiptDigest],
       );
+      await client.query(`insert into platform_billing_provider_event_outcomes (id, ledger_id, status) values ($1,$2,'received')`, [`billing_event_outcome_${randomUUID()}`, id]);
       await writeAudit(client, { organizationId: input.organizationId, action: "billing.ledger.recorded", targetType: "billing_entry", targetId: id, detail: { provider, providerEventId: input.providerEventId, eventType: input.eventType, entryType, status } });
       await writeOutbox(client, { topic: "billing.ledger.recorded", aggregateType: "billing_entry", aggregateId: id, payload: { provider, eventType: input.eventType, entryType, status } });
       await client.query("commit");
@@ -1944,6 +2024,30 @@ export async function readPlatformAdminAgentControls(
   }
 }
 
+export function platformAgentControlRequestIdentity(input: {
+  actorAccountId: string;
+  targetType: PlatformAgentTargetType;
+  targetId: string;
+  action: PlatformAgentControlAction;
+  expectedState?: string | null;
+  reason?: string | null;
+}): string {
+  return governedIdentity({
+    actorAccountId: input.actorAccountId,
+    targetType: input.targetType,
+    targetId: input.targetId,
+    action: input.action,
+    expectedState: input.expectedState ?? null,
+    reason: input.reason?.trim() || null,
+    policyVersion: "agent-control.v1",
+  });
+}
+
+export function platformAgentControlReplayStatus(storedIdentity: string | null | undefined, requestIdentity: string): { status: "replayed" | "conflict"; idempotent: boolean } {
+  const idempotent = storedIdentity === requestIdentity;
+  return { status: idempotent ? "replayed" : "conflict", idempotent };
+}
+
 export async function requestPlatformAgentControl(input: {
   connectionString: string;
   actorAccountId: string;
@@ -1953,15 +2057,20 @@ export async function requestPlatformAgentControl(input: {
   idempotencyKey: string;
   expectedState?: string;
   reason?: string;
-}): Promise<{ status: "requested" | "replayed"; idempotent: boolean; request: PlatformAgentControlRequest }> {
+  confirmation: string;
+}): Promise<{ status: "requested" | "replayed" | "conflict"; idempotent: boolean; request: PlatformAgentControlRequest }> {
   assertIdentifier(input.targetId, "agent target id");
   assertIdempotencyKey(input.idempotencyKey);
   if (!CONTROL_TARGET_TABLE[input.targetType] || !CONTROL_ACTIONS[input.targetType].includes(input.action)) throw new Error("Unsupported agent control action");
   if (input.expectedState && (input.expectedState.length > 120 || !/^[A-Za-z0-9_-]+$/.test(input.expectedState))) throw new Error("Invalid expected agent state");
-  if (input.reason && input.reason.length > 1_000) throw new Error("Agent control reason is too long");
+  const reason = input.reason?.trim() || null;
+  if (reason && reason.length > 1_000) throw new Error("Agent control reason is too long");
+  const expectedConfirmation = `CONFIRM ${input.targetType} ${input.targetId} ${input.action}`;
+  if (input.confirmation !== expectedConfirmation) throw new Error("Exact confirmation is required");
+  const requestIdentity = platformAgentControlRequestIdentity({ ...input, reason });
+  const confirmationDigest = governedIdentity({ confirmation: input.confirmation, requestIdentity });
   const pool = new Pool({ connectionString: input.connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
-    await pool.query(platformAdminFoundationsSchema);
     const required = ["platform_agent_control_requests", "audit_events", "outbox_events", CONTROL_TARGET_TABLE[input.targetType]];
     const availability = await tableAvailability(pool, required);
     const missing = missingTables(availability, required);
@@ -1970,14 +2079,14 @@ export async function requestPlatformAgentControl(input: {
     try {
       await client.query("begin");
       await client.query("select pg_advisory_xact_lock(hashtext($1))", [input.idempotencyKey]);
-      const replay = await client.query<ControlRow>(
-        `select id, operation_id, target_type, target_id, expected_state, action, status, actor_account_id, policy_version, reason, expires_at, created_at, updated_at
-           from platform_agent_control_requests where idempotency_key = $1 for update`,
-        [input.idempotencyKey],
+      const replay = await client.query<ControlRow & { request_identity?: string | null }>(
+        `select id, operation_id, target_type, target_id, expected_state, action, status, actor_account_id, policy_version, reason, expires_at, created_at, updated_at, request_identity
+           from platform_agent_control_requests where target_type = $1 and idempotency_key = $2 for update`,
+        [input.targetType, input.idempotencyKey],
       );
       if (replay.rows[0]) {
         await client.query("commit");
-        return { status: "replayed", idempotent: true, request: normalizeControl(replay.rows[0]) };
+        return { ...platformAgentControlReplayStatus(replay.rows[0].request_identity, requestIdentity), request: normalizeControl(replay.rows[0]) };
       }
       const target = await client.query<{ status: string }>(`select status from ${CONTROL_TARGET_TABLE[input.targetType]} where id = $1`, [input.targetId]);
       if (!target.rows[0]) {
@@ -1988,14 +2097,14 @@ export async function requestPlatformAgentControl(input: {
       const id = `agent_control_${randomUUID()}`;
       await client.query(
         `insert into platform_agent_control_requests
-           (id, operation_id, target_type, target_id, expected_state, action, status, actor_account_id, idempotency_key, policy_version, reason, expires_at)
-         values ($1, $1, $2, $3, $4, $5, 'requested', $6, $7, 'agent-control.v1', $8, now() + interval '30 minutes')`,
-        [id, input.targetType, input.targetId, input.expectedState ?? target.rows[0].status, input.action, input.actorAccountId, input.idempotencyKey, input.reason?.trim() || null],
+           (id, operation_id, target_type, target_id, expected_state, action, status, actor_account_id, idempotency_key, policy_version, reason, expires_at, confirmation_digest, request_identity)
+         values ($1, $1, $2, $3, $4, $5, 'requested', $6, $7, 'agent-control.v1', $8, now() + interval '30 minutes', $9, $10)`,
+        [id, input.targetType, input.targetId, input.expectedState ?? target.rows[0].status, input.action, input.actorAccountId, input.idempotencyKey, reason, confirmationDigest, requestIdentity],
       );
       await writeAudit(client, { actorAccountId: input.actorAccountId, action: "agent.control.requested", targetType: input.targetType, targetId: input.targetId, detail: { requestId: id, action: input.action, idempotencyKey: input.idempotencyKey } });
       await writeOutbox(client, { topic: "agent.control.requested", aggregateType: input.targetType, aggregateId: input.targetId, payload: { requestId: id, action: input.action, targetType: input.targetType } });
       await client.query("commit");
-      return { status: "requested", idempotent: false, request: { id, operationId: id, targetType: input.targetType, targetId: input.targetId, expectedState: input.expectedState ?? target.rows[0].status, action: input.action, status: "requested", actorAccountId: input.actorAccountId, policyVersion: "agent-control.v1", expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(), ...(input.reason ? { reason: input.reason.trim() } : {}) } };
+      return { status: "requested", idempotent: false, request: { id, operationId: id, targetType: input.targetType, targetId: input.targetId, expectedState: input.expectedState ?? target.rows[0].status, action: input.action, status: "requested", actorAccountId: input.actorAccountId, policyVersion: "agent-control.v1", expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(), ...(reason ? { reason } : {}) } };
     } catch (error) {
       await client.query("rollback").catch(() => undefined);
       throw error;
@@ -2011,6 +2120,13 @@ export interface PlatformAgentControlProcessingResult {
   processed: number;
   applied: number;
   rejected: number;
+  status: "completed";
+}
+
+export function platformAgentControlPrecondition(input: { expiresAt?: string; policyVersion?: string }, now = Date.now()): "expired" | "stale-policy" | undefined {
+  if (!input.expiresAt || Date.parse(input.expiresAt) <= now) return "expired";
+  if (input.policyVersion !== "agent-control.v1") return "stale-policy";
+  return undefined;
 }
 
 /**
@@ -2024,27 +2140,36 @@ export async function processPlatformAgentControlRequests(
   limit = 25,
 ): Promise<PlatformAgentControlProcessingResult> {
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
-  const result: PlatformAgentControlProcessingResult = { processed: 0, applied: 0, rejected: 0 };
+  const result: PlatformAgentControlProcessingResult = { processed: 0, applied: 0, rejected: 0, status: "completed" };
   try {
-    const availability = await tableAvailability(pool, ["platform_agent_control_requests", "audit_events", "outbox_events", ...Object.values(CONTROL_TARGET_TABLE)]);
-    const required = ["platform_agent_control_requests", "audit_events", "outbox_events"];
-    if (missingTables(availability, required).length > 0) return result;
+    const availability = await tableAvailability(pool, ["platform_agent_control_requests", "platform_agent_control_outcomes", "audit_events", "outbox_events", ...Object.values(CONTROL_TARGET_TABLE)]);
+    const required = ["platform_agent_control_requests", "platform_agent_control_outcomes", "audit_events", "outbox_events"];
+    if (missingTables(availability, required).length > 0) throw new Error(`${missingTables(availability, required).join(", ")} is not deployed`);
     const client = await pool.connect();
     try {
       await client.query("begin");
       const pending = await client.query<ControlRow & { reason?: string | null }>(
         `select id, operation_id, target_type, target_id, expected_state, action, status, actor_account_id, policy_version, reason, expires_at, created_at, updated_at
-           from platform_agent_control_requests where status = 'requested'
+           from platform_agent_control_requests where status = 'requested' or (status = 'processing' and lease_until < now())
           order by created_at asc limit $1 for update skip locked`,
         [Math.min(Math.max(limit, 1), 100)],
       );
       for (const request of pending.rows) {
+        await client.query(`update platform_agent_control_requests set status='processing', lease_owner=$2, lease_until=now()+interval '2 minutes', claimed_at=now(), attempt_count=attempt_count+1, updated_at=now() where id=$1`, [request.id, `platform-agent-control:${process.pid}`]);
+        await client.query(`insert into platform_agent_control_outcomes (id, request_id, status, category) values ($1,$2,'processing','worker-claimed')`, [`agent_outcome_${randomUUID()}`, request.id]);
         result.processed += 1;
         const targetType = request.target_type as PlatformAgentTargetType;
         const table = CONTROL_TARGET_TABLE[targetType];
-        let outcome: "applied" | "rejected" = "rejected";
+        let outcome: "applied" | "rejected" | "expired" = "rejected";
         let reason = "The worker does not support this control action yet.";
-        if (table && availability.get(table) && CONTROL_ACTIONS[targetType]?.includes(request.action as PlatformAgentControlAction)) {
+        let childRunId: string | null = null;
+        const precondition = platformAgentControlPrecondition({ ...(request.expires_at ? { expiresAt: String(request.expires_at) } : {}), ...(request.policy_version ? { policyVersion: request.policy_version } : {}) });
+        if (precondition === "expired") {
+          outcome = "expired";
+          reason = "The control request expired before worker execution.";
+        } else if (precondition === "stale-policy") {
+          reason = "The control request policy version is stale.";
+        } else if (table && availability.get(table) && CONTROL_ACTIONS[targetType]?.includes(request.action as PlatformAgentControlAction)) {
           const target = targetType === "agent-run"
             ? await client.query<{ status: string; lease_until?: unknown; agent_kind?: string; correlation_id?: string | null; metadata?: Record<string, unknown> | null }>(`select status, agent_kind, correlation_id, metadata from ${table} where id = $1 for update`, [request.target_id])
             : targetType === "handoff"
@@ -2075,17 +2200,8 @@ export async function processPlatformAgentControlRequests(
             outcome = "applied";
             reason = "The worker requeued the handoff after validating its terminal state.";
           } else if (current && targetType === "agent-run") {
-            const metadata = current.metadata ?? {};
             if (action === "pause" && current.status === "running") {
-              await client.query(
-                `update radar_agent_runs
-                    set status = 'paused', paused_at = now(), control_request_id = $2,
-                        metadata = metadata || $3::jsonb
-                  where id = $1`,
-                [request.target_id, request.id, JSON.stringify({ controlAction: "pause" })],
-              );
-              outcome = "applied";
-              reason = "The worker marked the run paused; its cooperative loop will skip further work.";
+              reason = "Pause is unavailable until the run worker persists a cooperative checkpoint acknowledgement.";
             } else if (action === "resume" && current.status === "paused") {
               await client.query(
                 `update radar_agent_runs
@@ -2097,15 +2213,7 @@ export async function processPlatformAgentControlRequests(
               outcome = "applied";
               reason = "The worker marked the paused run running; the next loop iteration may resume work.";
             } else if (action === "cancel" && ["running", "paused"].includes(current.status)) {
-              await client.query(
-                `update radar_agent_runs
-                    set status = 'cancelled', cancelled_at = now(), completed_at = coalesce(completed_at, now()), control_request_id = $2,
-                        metadata = metadata || $3::jsonb
-                  where id = $1`,
-                [request.target_id, request.id, JSON.stringify({ controlAction: "cancel" })],
-              );
-              outcome = "applied";
-              reason = "The worker marked the run cancelled; in-flight work must stop at its next cooperative checkpoint.";
+              reason = "Cancel is unavailable until the run worker persists a cooperative checkpoint acknowledgement.";
             } else if (action === "replay" && ["completed", "failed", "cancelled"].includes(current.status)) {
               const replayId = `agent_run_${randomUUID()}`;
               const replayKind = current.agent_kind === "review" ? "review-worker" : current.agent_kind === "enrichment" ? "enrichment-worker" : current.agent_kind ?? "unknown";
@@ -2113,8 +2221,9 @@ export async function processPlatformAgentControlRequests(
                 `insert into radar_agent_runs
                    (id, agent_kind, status, correlation_id, replay_of_run_id, control_request_id, metadata)
                  values ($1, $2, 'queued', coalesce($3, $4), $4, $5, $6::jsonb)`,
-                [replayId, replayKind, current.correlation_id ?? null, request.target_id, request.id, JSON.stringify({ ...metadata, replayOf: request.target_id, replayRequestId: request.id })],
+                [replayId, replayKind, current.correlation_id ?? null, request.target_id, request.id, JSON.stringify({ replayOf: request.target_id, replayRequestId: request.id })],
               );
+              childRunId = replayId;
               outcome = "applied";
               reason = `The worker queued replay run ${replayId}; the matching worker lane owns execution.`;
             } else {
@@ -2132,6 +2241,7 @@ export async function processPlatformAgentControlRequests(
             where id = $1`,
           [request.id, outcome, reason],
         );
+        await client.query(`insert into platform_agent_control_outcomes (id, request_id, status, category, checkpoint_acknowledged, child_run_id) values ($1,$2,$3,$4,false,$5)`, [`agent_outcome_${randomUUID()}`, request.id, outcome, outcome === "applied" ? "worker-applied" : "policy-rejected", childRunId]);
         await writeAudit(client, { actorAccountId: request.actor_account_id ?? undefined, action: `agent.control.${outcome}`, targetType: request.target_type, targetId: request.target_id, detail: { requestId: request.id, action: request.action, reason } });
         await writeOutbox(client, { topic: "agent.control.acknowledged", aggregateType: request.target_type, aggregateId: request.target_id, payload: { requestId: request.id, action: request.action, status: outcome, reason } });
         if (outcome === "applied") result.applied += 1;
@@ -2145,8 +2255,8 @@ export async function processPlatformAgentControlRequests(
     } finally {
       client.release();
     }
-  } catch {
-    return result;
+  } catch (error) {
+    throw Object.assign(new Error("Agent control worker unavailable"), { cause: error });
   } finally {
     await pool.end();
   }

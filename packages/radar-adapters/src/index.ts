@@ -8,6 +8,7 @@
  * usage. See productionEngine.ts's dynamic import for the same reasoning.
  */
 export { LlmExtractor, type LlmExtractorOptions } from "./llmExtractor.js";
+export * from "./governedOperations.js";
 export {
   ensurePostgresSchema,
   saveStoreToPostgres,

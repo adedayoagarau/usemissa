@@ -141,6 +141,13 @@
       "when": 1787846400000,
       "tag": "0028_durable_message_effect_ledger",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1787850000000,
+      "tag": "0029_governed_operations",
+      "breakpoints": true
     }
   ]
 }

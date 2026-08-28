@@ -2575,12 +2575,14 @@ export const platformCrmTimelineEvents = pgTable(
     id: text("id").primaryKey(),
     organizationId: text("organization_id"),
     accountId: text("account_id"),
+    tenantKey: text("tenant_key").notNull(),
     eventType: text("event_type").notNull(),
     source: text("source").notNull(),
     title: text("title").notNull(),
     body: text("body"),
     actorAccountId: text("actor_account_id"),
     idempotencyKey: text("idempotency_key"),
+    requestIdentity: text("request_identity"),
     metadata: jsonb("metadata")
       .notNull()
       .$type<Record<string, unknown>>()
@@ -2588,9 +2590,7 @@ export const platformCrmTimelineEvents = pgTable(
     createdAt,
   },
   (table) => [
-    uniqueIndex("platform_crm_timeline_idempotency_idx").on(
-      table.idempotencyKey,
-    ),
+    uniqueIndex("platform_crm_timeline_tenant_idempotency_idx").on(table.tenantKey, table.idempotencyKey),
     index("platform_crm_timeline_org_created_idx").on(
       table.organizationId,
       table.createdAt,
@@ -2603,6 +2603,7 @@ export const platformCrmTimelineEvents = pgTable(
       table.eventType,
       table.createdAt,
     ),
+    check("platform_crm_timeline_subject_check", sql`(${table.organizationId} is not null)::int + (${table.accountId} is not null)::int = 1`),
   ],
 );
 
@@ -2614,9 +2615,13 @@ export const platformBillingLedger = pgTable(
     provider: text("provider").notNull().default("stripe"),
     providerEventId: text("provider_event_id").notNull(),
     providerObjectId: text("provider_object_id"),
+    providerObjectType: text("provider_object_type"),
+    receiptDigest: text("receipt_digest"),
     eventType: text("event_type").notNull(),
     entryType: text("entry_type").notNull(),
     status: text("status").notNull().default("received"),
+    processingStatus: text("processing_status").notNull().default("received"),
+    reconciliationVersion: integer("reconciliation_version").notNull().default(1),
     amountCents: integer("amount_cents"),
     currency: text("currency"),
     customerId: text("customer_id"),
@@ -2657,6 +2662,11 @@ export const platformBillingLedger = pgTable(
   ],
 );
 
+export const platformBillingProviderEventOutcomes = pgTable("platform_billing_provider_event_outcomes", {
+  id: text("id").primaryKey(), ledgerId: text("ledger_id").notNull().references(() => platformBillingLedger.id, { onDelete: "restrict" }),
+  status: text("status").notNull(), errorCategory: text("error_category"), createdAt,
+}, (table) => [index("platform_billing_provider_event_outcomes_ledger_idx").on(table.ledgerId, table.createdAt)]);
+
 export const platformAgentControlRequests = pgTable(
   "platform_agent_control_requests",
   {
@@ -2670,6 +2680,12 @@ export const platformAgentControlRequests = pgTable(
     actorAccountId: text("actor_account_id").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),
     policyVersion: text("policy_version").notNull().default("agent-control.v1"),
+    confirmationDigest: text("confirmation_digest"),
+    requestIdentity: text("request_identity"),
+    leaseOwner: text("lease_owner"),
+    leaseUntil: timestamp("lease_until", { withTimezone: true }),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    attemptCount: integer("attempt_count").notNull().default(0),
     reason: text("reason"),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     appliedAt: timestamp("applied_at", { withTimezone: true }),
@@ -2681,9 +2697,7 @@ export const platformAgentControlRequests = pgTable(
       .default(sql`'{}'::jsonb`),
   },
   (table) => [
-    uniqueIndex("platform_agent_control_requests_idempotency_idx").on(
-      table.idempotencyKey,
-    ),
+    uniqueIndex("platform_agent_control_requests_domain_idempotency_idx").on(table.targetType, table.idempotencyKey),
     index("platform_agent_control_requests_target_idx").on(
       table.targetType,
       table.targetId,
@@ -2695,7 +2709,7 @@ export const platformAgentControlRequests = pgTable(
     ),
     check(
       "platform_agent_control_requests_status_check",
-      sql`${table.status} in ('requested', 'accepted', 'applied', 'rejected', 'failed', 'cancelled')`,
+      sql`${table.status} in ('requested', 'processing', 'applied', 'rejected', 'failed', 'expired', 'cancelled', 'unknown')`,
     ),
     check(
       "platform_agent_control_requests_action_check",
@@ -2710,6 +2724,10 @@ export const platformCrmContacts = pgTable(
     id: text("id").primaryKey(),
     organizationId: text("organization_id"),
     accountId: text("account_id"),
+    tenantKey: text("tenant_key").notNull(),
+    idempotencyKey: text("idempotency_key"),
+    requestIdentity: text("request_identity"),
+    version: integer("version").notNull().default(1),
     name: text("name").notNull(),
     email: text("email"),
     role: text("role"),
@@ -2738,12 +2756,14 @@ export const platformCrmContacts = pgTable(
     ),
     check(
       "platform_crm_contacts_subject_check",
-      sql`${table.organizationId} is not null or ${table.accountId} is not null`,
+      sql`(${table.organizationId} is not null)::int + (${table.accountId} is not null)::int = 1`,
     ),
     check(
       "platform_crm_contacts_status_check",
       sql`${table.status} in ('active', 'inactive', 'lead')`,
     ),
+    check("platform_crm_contacts_version_check", sql`${table.version} >= 1`),
+    uniqueIndex("platform_crm_contacts_tenant_idempotency_idx").on(table.tenantKey, table.idempotencyKey),
   ],
 );
 
@@ -2753,6 +2773,10 @@ export const platformCrmTasks = pgTable(
     id: text("id").primaryKey(),
     organizationId: text("organization_id"),
     accountId: text("account_id"),
+    tenantKey: text("tenant_key").notNull(),
+    idempotencyKey: text("idempotency_key"),
+    requestIdentity: text("request_identity"),
+    version: integer("version").notNull().default(1),
     contactId: text("contact_id").references(() => platformCrmContacts.id, {
       onDelete: "set null",
     }),
@@ -2784,7 +2808,7 @@ export const platformCrmTasks = pgTable(
     ),
     check(
       "platform_crm_tasks_subject_check",
-      sql`${table.organizationId} is not null or ${table.accountId} is not null`,
+      sql`(${table.organizationId} is not null)::int + (${table.accountId} is not null)::int = 1`,
     ),
     check(
       "platform_crm_tasks_status_check",
@@ -2794,8 +2818,36 @@ export const platformCrmTasks = pgTable(
       "platform_crm_tasks_priority_check",
       sql`${table.priority} between -100 and 100`,
     ),
+    check("platform_crm_tasks_version_check", sql`${table.version} >= 1`),
+    uniqueIndex("platform_crm_tasks_tenant_idempotency_idx").on(table.tenantKey, table.idempotencyKey),
   ],
 );
+
+export const platformBillingActions = pgTable("platform_billing_actions", {
+  id: text("id").primaryKey(), organizationId: text("organization_id").notNull(), action: text("action").notNull(),
+  provider: text("provider").notNull().default("stripe"), providerObjectId: text("provider_object_id"),
+  amountCents: integer("amount_cents"), currency: text("currency"), entitlementKey: text("entitlement_key"),
+  expectedState: text("expected_state"), expectedVersion: integer("expected_version"), policyVersion: text("policy_version").notNull(),
+  actorAccountId: text("actor_account_id").notNull(), reasonCode: text("reason_code").notNull(), confirmationDigest: text("confirmation_digest").notNull(),
+  idempotencyKey: text("idempotency_key").notNull(), requestIdentity: text("request_identity").notNull(), status: text("status").notNull().default("requested"),
+  leaseOwner: text("lease_owner"), leaseUntil: timestamp("lease_until", { withTimezone: true }), attemptCount: integer("attempt_count").notNull().default(0),
+  providerIdempotencyKey: text("provider_idempotency_key").notNull(), recoveryOfActionId: text("recovery_of_action_id"), createdAt, updatedAt,
+}, (table) => [uniqueIndex("platform_billing_actions_org_idempotency_idx").on(table.organizationId, table.idempotencyKey), index("platform_billing_actions_claim_idx").on(table.status, table.leaseUntil, table.createdAt)]);
+
+export const platformBillingActionOutcomes = pgTable("platform_billing_action_outcomes", {
+  id: text("id").primaryKey(), actionId: text("action_id").notNull().references(() => platformBillingActions.id, { onDelete: "restrict" }),
+  status: text("status").notNull(), errorCategory: text("error_category"), providerEventId: text("provider_event_id"), createdAt,
+}, (table) => [index("platform_billing_action_outcomes_action_idx").on(table.actionId, table.createdAt)]);
+
+export const platformEntitlementAdjustments = pgTable("platform_entitlement_adjustments", {
+  id: text("id").primaryKey(), organizationId: text("organization_id").notNull(), actionId: text("action_id").notNull().references(() => platformBillingActions.id, { onDelete: "restrict" }),
+  entitlementKey: text("entitlement_key").notNull(), direction: text("direction").notNull(), version: integer("version").notNull(), createdAt,
+}, (table) => [uniqueIndex("platform_entitlement_adjustments_action_idx").on(table.actionId)]);
+
+export const platformAgentControlOutcomes = pgTable("platform_agent_control_outcomes", {
+  id: text("id").primaryKey(), requestId: text("request_id").notNull().references(() => platformAgentControlRequests.id, { onDelete: "restrict" }),
+  status: text("status").notNull(), category: text("category").notNull(), checkpointAcknowledged: boolean("checkpoint_acknowledged").notNull().default(false), childRunId: text("child_run_id"), createdAt,
+}, (table) => [index("platform_agent_control_outcomes_request_idx").on(table.requestId, table.createdAt), uniqueIndex("platform_agent_control_one_child_idx").on(table.requestId).where(sql`${table.childRunId} is not null`)]);
 
 export const platformAnalyticsEvents = pgTable(
   "platform_analytics_events",

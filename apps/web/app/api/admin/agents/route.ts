@@ -8,6 +8,7 @@ import {
 import { getPlatformAdminAgentControls } from '@/lib/platformAdminFoundations';
 import { platformAdminAuthResponse, requirePlatformAdmin } from '@/lib/platformAdmin';
 import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
+import { agentControlErrorStatus } from '@/lib/governedOperationRoutes';
 
 const headers = { 'cache-control': 'private, no-store' };
 const TARGET_TYPES = new Set<PlatformAgentTargetType>(['agent-run', 'handoff', 'review-job', 'enrichment-job']);
@@ -34,14 +35,15 @@ export async function POST(request: Request) {
   const action = typeof value.action === 'string' && PLATFORM_AGENT_CONTROL_ACTIONS.includes(value.action as PlatformAgentControlAction) ? value.action as PlatformAgentControlAction : undefined;
   const expectedState = typeof value.expectedState === 'string' ? value.expectedState.trim() : undefined;
   const reason = typeof value.reason === 'string' ? value.reason.trim() : undefined;
-  if (!targetType || !targetId || !action) return NextResponse.json({ error: 'targetType, targetId, and a supported action are required.' }, { status: 400, headers });
+  const confirmation = typeof value.confirmation === 'string' ? value.confirmation : '';
+  if (!targetType || !targetId || !action || !confirmation) return NextResponse.json({ error: 'targetType, targetId, action, and exact confirmation are required.' }, { status: 400, headers });
   try {
-    const result = await requestPlatformAgentControl({ connectionString: process.env.DATABASE_URL, actorAccountId: auth.session.account.id, targetType, targetId, action, expectedState, reason, idempotencyKey });
+    const result = await requestPlatformAgentControl({ connectionString: process.env.DATABASE_URL, actorAccountId: auth.session.account.id, targetType, targetId, action, expectedState, reason, confirmation, idempotencyKey });
     await trackPlatformAnalytics({ eventName: 'admin.agent_control_requested', source: 'admin-api', accountId: auth.session.account.id, properties: { targetType, action, idempotent: result.idempotent } });
-    return NextResponse.json(result, { headers, status: result.idempotent ? 200 : 202 });
+    return NextResponse.json(result.status === 'conflict' ? { error: 'Idempotency key conflicts with another control request.' } : result, { headers, status: result.status === 'conflict' ? 409 : result.idempotent ? 200 : 202 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Agent control unavailable';
-    const status = message === 'Invalid idempotency key' || message === 'Unsupported agent control action' || message === 'Invalid agent target id' || message === 'Invalid expected agent state' ? 400 : message === 'Agent target not found' ? 404 : 503;
+    const status = agentControlErrorStatus(error);
     return NextResponse.json({ error: status === 503 ? 'Agent control unavailable.' : message }, { status, headers });
   }
 }

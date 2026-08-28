@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import {
   auditEvents,
@@ -24,6 +25,11 @@ import {
   trackedStatusEvents,
   platformAgentControlRequests,
   platformBillingLedger,
+  platformBillingActions,
+  platformBillingActionOutcomes,
+  platformBillingProviderEventOutcomes,
+  platformEntitlementAdjustments,
+  platformAgentControlOutcomes,
   platformMessageAttempts,
   platformMessageEffects,
   platformCrmContacts,
@@ -176,7 +182,36 @@ test("platform foundation schema separates effects, attempts, billing facts, and
   assert.ok(effects.columns.some((column) => column.name === "template_version"));
   assert.ok(attempts.indexes.some((index) => index.config.name === "platform_message_attempts_effect_attempt_idx"));
   assert.ok(billing.indexes.some((index) => index.config.name === "platform_billing_ledger_provider_event_idx"));
-  assert.ok(controls.indexes.some((index) => index.config.name === "platform_agent_control_requests_idempotency_idx"));
+  assert.ok(controls.indexes.some((index) => index.config.name === "platform_agent_control_requests_domain_idempotency_idx"));
+});
+
+test("governed operations separate provider facts, action queues, outcomes, and entitlements", () => {
+  const actions = getTableConfig(platformBillingActions);
+  const billingOutcomes = getTableConfig(platformBillingActionOutcomes);
+  const providerOutcomes = getTableConfig(platformBillingProviderEventOutcomes);
+  const entitlements = getTableConfig(platformEntitlementAdjustments);
+  const agentOutcomes = getTableConfig(platformAgentControlOutcomes);
+  assert.ok(actions.indexes.some((index) => index.config.name === "platform_billing_actions_org_idempotency_idx" && index.config.unique));
+  assert.ok(actions.columns.some((column) => column.name === "confirmation_digest"));
+  assert.ok(actions.columns.some((column) => column.name === "provider_idempotency_key"));
+  assert.ok(billingOutcomes.foreignKeys.some((key) => key.onDelete === "restrict"));
+  assert.ok(providerOutcomes.foreignKeys.some((key) => key.onDelete === "restrict"));
+  assert.ok(getTableConfig(platformBillingLedger).columns.some((column) => column.name === "receipt_digest"));
+  assert.ok(entitlements.indexes.some((index) => index.config.name === "platform_entitlement_adjustments_action_idx" && index.config.unique));
+  assert.ok(agentOutcomes.columns.some((column) => column.name === "checkpoint_acknowledged"));
+  const oneChild = agentOutcomes.indexes.find((index) => index.config.name === "platform_agent_control_one_child_idx");
+  assert.ok(oneChild?.config.unique);
+  const whereChunks = (oneChild?.config.where as { queryChunks?: Array<{ name?: string; value?: string[] }> } | undefined)?.queryChunks ?? [];
+  assert.ok(whereChunks.some((chunk) => chunk.name === "child_run_id"));
+  assert.ok(whereChunks.some((chunk) => chunk.value?.join("").includes("is not null")));
+});
+
+test("governed CRM migration refuses ambiguous legacy subject ownership", () => {
+  const migration = readFileSync("migrations/0029_governed_operations.sql", "utf8");
+  for (const table of ["platform_crm_timeline_events", "platform_crm_contacts", "platform_crm_tasks"]) {
+    assert.match(migration, new RegExp(`SELECT 1 FROM "${table}"[\\s\\S]*?<> 1[\\s\\S]*?RAISE EXCEPTION '0029 preflight: ${table}`));
+  }
+  assert.doesNotMatch(migration, /SET "account_id" = NULL WHERE "organization_id" IS NOT NULL AND "account_id" IS NOT NULL/);
 });
 
 test("admin operations schema carries CRM ownership, follow-up, and analytics indexes", () => {

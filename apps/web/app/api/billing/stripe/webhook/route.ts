@@ -1,175 +1,32 @@
 import { NextResponse } from 'next/server';
-import { recordPlatformBillingEvent, billingEventType } from '@missa/radar-adapters';
+import { billingEventType, recordPlatformBillingEvent } from '@missa/radar-adapters';
 import { verifyStripeSignature } from '@/lib/billing';
-import { getEngine, persistRadar } from '@/lib/engine';
-import { getWorkspaceEngine, persistWorkspace } from '@/lib/workspaceEngine';
+import { stripeReceiptReferences } from '@/lib/governedOperationRoutes';
 
 export async function POST(request: Request) {
   const payload = await request.text();
   const signature = request.headers.get('stripe-signature');
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!signature || !secret || !verifyStripeSignature(payload, signature, secret)) {
-    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 });
-  }
-  const event = JSON.parse(payload) as { id?: string; type: string; data?: { object?: Record<string, unknown> } };
-  const object = event.data?.object ?? {};
-  const metadata = (object.metadata ?? {}) as Record<string, string>;
-  const organizationId = metadata.organization_id ?? (object.client_reference_id as string | undefined);
-  const providerEventId = event.id ?? `${event.type}:${String(object.id ?? '')}`;
-  const amountCandidate = [object.amount_total, object.amount_paid, object.amount, object.amount_refunded].find((value) => typeof value === 'number' && value >= 0);
-  const ledgerInput = {
-    connectionString: process.env.DATABASE_URL ?? '',
-    providerEventId,
-    eventType: event.type,
-    entryType: billingEventType(event.type),
-    status: 'received' as const,
-    ...(organizationId ? { organizationId } : {}),
-    ...(typeof object.id === 'string' ? { providerObjectId: object.id } : {}),
-    ...(typeof amountCandidate === 'number' ? { amountCents: amountCandidate } : {}),
-    ...(typeof object.currency === 'string' ? { currency: object.currency } : {}),
-    ...(typeof object.customer === 'string' ? { customerId: object.customer } : {}),
-    ...(typeof object.subscription === 'string' ? { subscriptionId: object.subscription } : {}),
-    ...(typeof object.invoice === 'string' ? { invoiceId: object.invoice } : {}),
-    metadata: { organizationId: organizationId ?? null, objectType: typeof object.object === 'string' ? object.object : null },
-  };
-  const ledgerEnabled = Boolean(process.env.DATABASE_URL);
-  if (ledgerEnabled) {
-    try {
-      const receipt = await recordPlatformBillingEvent(ledgerInput);
-      if (receipt.status === 'replayed' && receipt.currentStatus === 'processed') return NextResponse.json({ received: true, idempotent: true });
-    } catch {
-      return NextResponse.json({ error: 'Billing ledger unavailable; Stripe should retry this event.' }, { status: 503 });
-    }
-  }
-  const finish = async (body: Record<string, unknown>, status: 'processed' | 'failed' | 'ignored' = 'processed', httpStatus = 200) => {
-    if (ledgerEnabled) await recordPlatformBillingEvent({ ...ledgerInput, status });
-    return NextResponse.json(body, { status: httpStatus });
-  };
-  if (event.type === 'account.updated') {
-    const accountId = object.id as string | undefined;
-    const radar = await getEngine();
-    const organization = [...radar.store.organizations.values()].find((candidate) => candidate.stripeConnectAccountId === accountId);
-    if (organization) {
-      organization.stripeConnectStatus = object.charges_enabled === true && object.payouts_enabled === true ? 'connected' : 'pending';
-      radar.recordAudit(undefined, 'billing.account_updated', 'organization', organization.id);
-      await persistRadar();
-    }
-    return finish({ received: true });
-  }
-  const paymentEvent = event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded';
-  if (paymentEvent && metadata.path_id && metadata.account_id && object.payment_status === 'paid') {
-    const radar = await getEngine();
-    const eventId = providerEventId;
-    const alreadyProcessed = radar.store.auditLog.some((entry) => {
-      if (entry.action !== 'submission.payment.processed' || !entry.detail) return false;
-      try { return (JSON.parse(entry.detail) as { eventId?: string }).eventId === eventId; } catch { return false; }
+  if (!signature || !secret || !verifyStripeSignature(payload, signature, secret)) return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 });
+  if (!process.env.DATABASE_URL) return NextResponse.json({ error: 'Billing ledger unavailable; Stripe should retry this event.' }, { status: 503 });
+  let event: { id?: string; type?: string; created?: number; data?: { object?: Record<string, unknown> } };
+  try { event = JSON.parse(payload) as typeof event; } catch { return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 }); }
+  if (!event.id || !event.type || !event.data?.object) return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });
+  const object = event.data.object;
+  const metadata = object.metadata && typeof object.metadata === 'object' ? object.metadata as Record<string, unknown> : {};
+  const organizationId = typeof metadata.organization_id === 'string' ? metadata.organization_id : typeof object.client_reference_id === 'string' ? object.client_reference_id : undefined;
+  const amount = [object.amount_total, object.amount_paid, object.amount, object.amount_refunded].find((candidate) => typeof candidate === 'number' && candidate >= 0) as number | undefined;
+  const providerObjectType = typeof object.object === 'string' ? object.object : 'unknown';
+  const references = stripeReceiptReferences(object);
+  try {
+    const receipt = await recordPlatformBillingEvent({
+      connectionString: process.env.DATABASE_URL, providerEventId: event.id, eventType: event.type,
+      entryType: billingEventType(event.type), status: organizationId ? 'received' : 'ignored',
+      ...(organizationId ? { organizationId } : {}), ...(typeof object.id === 'string' ? { providerObjectId: object.id } : {}), providerObjectType,
+      ...(amount !== undefined ? { amountCents: amount } : {}), ...(typeof object.currency === 'string' ? { currency: object.currency.toUpperCase() } : {}),
+      ...references, ...(event.created ? { occurredAt: new Date(event.created * 1000).toISOString() } : {}), metadata: { objectType: providerObjectType },
     });
-    if (alreadyProcessed) return finish({ received: true, idempotent: true });
-    const workspace = await getWorkspaceEngine();
-    const path = workspace.store.submissionPaths.get(metadata.path_id);
-    const sessionAccountId = metadata.account_id;
-    const existing = [...workspace.store.submissions.values()].find((submission) => submission.submissionPathId === metadata.path_id && submission.submitterAccountId === sessionAccountId && submission.paymentSessionId === object.id);
-    if (existing) {
-      radar.recordAudit(undefined, 'submission.payment.processed', 'submission', existing.id, JSON.stringify({ eventId, paymentSessionId: object.id }));
-      await persistRadar();
-      return NextResponse.json({ received: true, submissionId: existing.id, idempotent: true });
-    }
-    const draft = path ? workspace.submissionDraftFor(path.id, sessionAccountId) : undefined;
-    if (!path || !draft) return finish({ error: 'Submission draft is not available yet' }, 'failed', 409);
-    if (draft.paymentSessionId && draft.paymentSessionId !== object.id) return finish({ error: 'Payment does not match the saved draft' }, 'failed', 409);
-    const fileUrl = Object.values(draft.answers).flatMap((value) => Array.isArray(value) ? value : [value]).find((value) => {
-      if (typeof value !== 'string') return false;
-      try { const parsed = new URL(value); return parsed.protocol === 'https:' && parsed.pathname.includes(`/missa/submissions/${sessionAccountId}/`); } catch { return false; }
-    });
-    const works = draft.workTitles.filter(Boolean).map((title, index) => {
-      const saved = draft.answers[`__work_files_${index}`];
-      const attachments = (Array.isArray(saved) ? saved : saved ? [saved] : []).filter((value): value is string => typeof value === 'string' && value.startsWith('https://'));
-      const resolved = attachments.length ? attachments : (index === 0 && fileUrl ? [fileUrl] : []);
-      return { title, ...(resolved.length ? { fileUrl: resolved[0], fileUrls: resolved } : {}) };
-    });
-    if (works.length === 0) return finish({ error: 'Submission draft has no works' }, 'failed', 409);
-    const submission = workspace.createSubmission(path.id, sessionAccountId, works, { status: 'paid', sessionId: String(object.id ?? ''), feeCents: path.feeCents }, { answers: draft.answers, category: draft.category, idempotencyKey: draft.idempotencyKey });
-    workspace.deleteSubmissionDraft(path.id, sessionAccountId);
-    await persistWorkspace();
-    const openCall = workspace.store.openCalls.get(path.openCallId);
-    const account = radar.store.accounts.get(sessionAccountId);
-    if (account?.userId) {
-      radar.addUserAlert({
-        dedupKey: `submission:receipt:${submission.id}`,
-        userId: account.userId,
-        kind: 'submission-receipt',
-        title: `Submission sent: ${openCall?.title ?? 'Missa submission'}`,
-        body: 'Your receipt is ready in Tracker.',
-        reason: 'you submitted through a Missa-hosted form',
-        ...(openCall?.radarOpportunityId ? { opportunityId: openCall.radarOpportunityId } : {}),
-      });
-    }
-    if (account?.userId && openCall?.radarOpportunityId && radar.store.opportunities.has(openCall.radarOpportunityId)) {
-      radar.setMyStatus(account.userId, openCall.radarOpportunityId, 'submitted', { source: 'user', note: `Missa submission ${submission.id}` });
-    }
-    radar.recordAudit(undefined, 'submission.payment.processed', 'submission', submission.id, JSON.stringify({ eventId, paymentSessionId: object.id }));
-    await persistRadar();
-    return finish({ received: true, submissionId: submission.id });
-  }
-  const paymentLifecycle: Record<string, 'failed' | 'refunded' | 'disputed'> = {
-    'checkout.session.expired': 'failed',
-    'payment_intent.payment_failed': 'failed',
-    'charge.refunded': 'refunded',
-    'charge.dispute.created': 'disputed',
-    'charge.dispute.closed': 'refunded',
-  };
-  const lifecycleStatus = paymentLifecycle[event.type];
-  if (lifecycleStatus && (metadata.path_id || metadata.submission_id || metadata.account_id)) {
-    const radar = await getEngine();
-    const eventId = providerEventId;
-    const alreadyReconciled = radar.store.auditLog.some((entry) => {
-      if (!entry.action.startsWith('submission.payment.') || !entry.detail) return false;
-      try { return (JSON.parse(entry.detail) as { eventId?: string }).eventId === eventId; } catch { return false; }
-    });
-    if (alreadyReconciled) return finish({ received: true, idempotent: true });
-    const workspace = await getWorkspaceEngine();
-    const paymentSessionId = metadata.payment_session_id
-      ?? (typeof object.checkout_session === 'string' ? object.checkout_session : undefined)
-      ?? (typeof object.id === 'string' && object.id.startsWith('cs_') ? object.id : undefined);
-    const submission = metadata.submission_id
-      ? workspace.store.submissions.get(metadata.submission_id)
-      : [...workspace.store.submissions.values()].find((candidate) =>
-        candidate.submissionPathId === metadata.path_id
-        && candidate.submitterAccountId === metadata.account_id
-        && (!paymentSessionId || candidate.paymentSessionId === paymentSessionId),
-      );
-    if (submission) {
-      workspace.updateSubmissionPaymentStatus(submission.id, lifecycleStatus);
-      await persistWorkspace();
-      radar.recordAudit(undefined, `submission.payment.${lifecycleStatus}`, 'submission', submission.id, JSON.stringify({ eventId, eventType: event.type, paymentSessionId }));
-      await persistRadar();
-      return finish({ received: true, submissionId: submission.id, paymentStatus: lifecycleStatus });
-    }
-    const draft = metadata.path_id && metadata.account_id
-      ? workspace.submissionDraftFor(metadata.path_id, metadata.account_id)
-      : undefined;
-    if (draft) {
-      radar.recordAudit(undefined, `submission.payment.${lifecycleStatus}`, 'submission_draft', draft.id, JSON.stringify({ eventId, eventType: event.type, paymentSessionId }));
-      await persistRadar();
-      return finish({ received: true, draftId: draft.id, paymentStatus: lifecycleStatus });
-    }
-    return finish({ received: true, reconciled: false });
-  }
-  if (!organizationId) return finish({ received: true }, 'ignored');
-  const radar = await getEngine();
-  const organization = radar.store.organizations.get(organizationId);
-  if (!organization) return finish({ received: true }, 'ignored');
-  if (event.type === 'checkout.session.completed' || event.type === 'customer.subscription.updated') {
-    organization.billingTier = (metadata.plan as typeof organization.billingTier) ?? organization.billingTier;
-    organization.billingStatus = event.type === 'checkout.session.completed' ? 'active' : (object.status as typeof organization.billingStatus) ?? 'active';
-    organization.billingCustomerId = (object.customer as string | undefined) ?? organization.billingCustomerId;
-    organization.billingSubscriptionId = (object.subscription as string | undefined) ?? (object.id as string | undefined) ?? organization.billingSubscriptionId;
-    organization.billingCancelAtPeriodEnd = object.cancel_at_period_end === true;
-  } else if (event.type === 'customer.subscription.deleted') {
-    organization.billingStatus = 'canceled';
-    organization.billingCancelAtPeriodEnd = false;
-  }
-  radar.recordAudit(undefined, `billing.${event.type}`, 'organization', organizationId);
-  await persistRadar();
-  return finish({ received: true });
+    if (receipt.status === 'conflict') return NextResponse.json({ error: 'Conflicting duplicate webhook receipt.' }, { status: 400 });
+    return NextResponse.json({ received: true, queued: receipt.currentStatus === 'received', idempotent: receipt.status === 'replayed' });
+  } catch { return NextResponse.json({ error: 'Billing ledger unavailable; Stripe should retry this event.' }, { status: 503 }); }
 }
