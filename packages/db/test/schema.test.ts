@@ -214,6 +214,41 @@ test("governed CRM migration refuses ambiguous legacy subject ownership", () => 
   assert.doesNotMatch(migration, /SET "account_id" = NULL WHERE "organization_id" IS NOT NULL AND "account_id" IS NOT NULL/);
 });
 
+test("migration journal retains the reconciled operational chain", () => {
+  const journal = JSON.parse(
+    readFileSync("migrations/meta/_journal.json", "utf8"),
+  ) as { entries: Array<{ idx: number; when: number; tag: string }> };
+  const tags = journal.entries.map((entry) => entry.tag);
+  const required = [
+    "0003_submission_payments",
+    "0004_open_call_guidelines",
+    "0005_submission_answers",
+    "0006_submission_idempotency",
+    "0007_submission_drafts",
+    "0008_submission_draft_payment",
+    "0009_work_file_urls",
+    "0010_reconcile_submission_drafts",
+    "0011_taxonomy_graph",
+    "0012_activate_missa_taxonomy",
+    "0013_radar_agent_heartbeat",
+    "0024_radar_source_runs",
+    "0028_durable_message_effect_ledger",
+    "0029_governed_operations",
+  ];
+  for (const tag of required) assert.ok(tags.includes(tag), `${tag} is journaled`);
+  assert.deepEqual(
+    journal.entries.map((entry) => entry.idx),
+    journal.entries.map((_, index) => index),
+  );
+  assert.ok(
+    journal.entries.every(
+      (entry, index) => index === 0 || entry.when > journal.entries[index - 1]!.when,
+    ),
+  );
+  assert.ok(tags.indexOf("0013_radar_agent_heartbeat") < tags.indexOf("0015_admin_operations"));
+  assert.ok(tags.indexOf("0024_radar_source_runs") < tags.indexOf("0025_publication_gate_defaults"));
+});
+
 test("admin operations schema carries CRM ownership, follow-up, and analytics indexes", () => {
   const contacts = getTableConfig(platformCrmContacts);
   const tasks = getTableConfig(platformCrmTasks);

@@ -36,10 +36,14 @@ governed CRM, billing, and agent-control contracts.
 
 ### What did not close
 
-- No identified disposable Postgres, Docker runtime, Resend sandbox, or Stripe
-  sandbox/CLI was available. Migrations 0028/0029 are registered and statically
-  checked, but replay from zero and upgrades, transactional concurrency/leases,
-  out-of-order provider timing, and provider reconciliation remain uncertified.
+- Follow-up environment discovery found live Neon, Vercel, and Railway resources.
+  Fresh replay initially exposed an incomplete Drizzle journal; after repair, all
+  33 migrations replayed successfully and the 0028/0029 upgrade preserved legacy
+  rows. Real-Postgres repository, message-concurrency, event-before-response, and
+  agent-control lease/replay checks passed on isolated disposable databases.
+- Provider lifecycle certification remains partial. Production reports email ready,
+  but the CLI cannot retrieve a usable Resend secret for sandbox event generation;
+  payments are degraded and the linked Vercel project has no Stripe variables.
 - The full radar-adapters suite retains the unrelated Sundance fixture failure:
   162 tests passed, one failed, and two were skipped because the expected
   `Graton Artist Opportunity` record was absent.

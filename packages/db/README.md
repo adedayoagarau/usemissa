@@ -42,9 +42,10 @@ branch. Then seed and backfill the validated vocabulary with:
 DATABASE_URL=postgresql://... npm run db:seed-taxonomy --workspace=@missa/db
 ```
 
-The migration is intentionally not in the Drizzle journal yet: its number must be reconciled
-against the live 0006–0010 history before production cutover. A guarded rehearsal helper applies
-the SQL only when an operator explicitly opts in:
+The reconciled 0003–0013 operational chain is registered in the Drizzle journal.
+Fresh replay and upgrade must still be rehearsed on a disposable database before
+production cutover. A guarded rehearsal helper applies the SQL only when an operator
+explicitly opts in:
 
 ```bash
 DATABASE_URL=postgresql://disposable-branch \
@@ -62,8 +63,8 @@ compatibility reads/writes until this rehearsal and dual-read parity are signed 
 used by Railway worker runs. The adapter also applies the same additive
 `alter table ... add column if not exists` guard when a worker boots, so an
 already-created target schema can receive the column without a destructive
-cutover. Rehearse and register the migration in the intended environment's
-migration journal before treating it as the sole deployment path.
+cutover. The migration is registered after the reconciled 0003–0012 chain;
+rehearse the complete journal before treating it as the sole deployment path.
 
 The seed is idempotent and leaves the scheme in `draft`; publishing the taxonomy requires a
 separate editorial/provenance review.
