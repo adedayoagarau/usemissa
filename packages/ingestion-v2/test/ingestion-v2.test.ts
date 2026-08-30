@@ -686,9 +686,34 @@ test("accepts explicit rolling windows and resolves phased deadlines to the next
   assert.deepEqual(resolveCurrentDeadline(phased.fields, source.url, new Date("2026-08-17T00:00:00.000Z")), { date: "2026-09-13", conflict: false, values: ["2026-09-13", "2026-11-13"], kind: "exact" });
 });
 
+test("recognizes year-round and current seasonal intake without inventing dates", async () => {
+  const source = { ...createBenchmarkSources()[0]!, url: "https://official.test/call", config: { destination: { pageRole: "detail" as const } } };
+  const adapter = new GenericHtmlAdapter();
+  const context = { run: createRun(source), source };
+  const snapshot = { id: "snap_year_round", runId: context.run.id, sourceId: source.id, url: source.url, finalUrl: source.url, fetchedAt: new Date().toISOString(), statusCode: 200, contentType: "text/html", contentHash: "year-round", html: "<h1>Submissions</h1><p>Applications are accepted year-round.</p>", rendered: false };
+  const yearRound = await adapter.extract({ ...context, snapshot }, snapshot);
+  assert.equal(resolveCurrentDeadline(yearRound.fields, source.url).kind, "year-round");
+  assert.equal(hasCurrentDeadlineOrWindow(yearRound.fields, source.url), true);
+
+  const seasonalSnapshot = { ...snapshot, id: "snap_seasonal", contentHash: "seasonal", html: "<h1>Autumn submissions</h1><p>Seasonal submissions are open.</p>" };
+  const seasonal = await adapter.extract({ ...context, snapshot: seasonalSnapshot }, seasonalSnapshot);
+  assert.equal(resolveCurrentDeadline(seasonal.fields, source.url).kind, "seasonal");
+});
+
 test("rejects roundup identities as aggregate evidence rather than one opportunity", () => {
   const extraction = { fields: [{ fieldName: "title", rawValue: "Best Literary Magazines: 100+ Places to Submit in 2026", normalizedValue: "Best Literary Magazines: 100+ Places to Submit in 2026", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: "https://reedsy.test/resources/literary-magazines", snapshotId: "snap" } }], candidateLinks: [], warnings: [] };
   assert.equal(isAggregateOpportunityPage(extraction, "https://reedsy.test/resources/literary-magazines"), true);
+});
+
+test("rejects known directory and funding-guide URLs before canonical handoff", () => {
+  const extraction = { fields: [{ fieldName: "title", rawValue: "Mobility Funding Guide to Moldova", normalizedValue: "Mobility Funding Guide to Moldova", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: "https://on-the-move.org/resources/funding/mobility-funding-guide-moldova", snapshotId: "snap" } }], candidateLinks: [], warnings: [] };
+  assert.equal(isAggregateOpportunityPage(extraction, "https://on-the-move.org/news/deadlines"), true);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://on-the-move.org/resources/funding/mobility-funding-guide-moldova"), true);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://on-the-move.org/news/example-current-open-call"), false);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://www.curatorspace.com/opportunities/index/page/9?orderBy=deadline"), true);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://www.transartists.org/en/air/sapporo-artist-residence"), true);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://www.transartists.org/en/deadlines"), true);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://www.transartists.org/en/news/current-open-call"), false);
 });
 
 test("keeps source coverage separate from each Chill Subs opportunity art form", () => {

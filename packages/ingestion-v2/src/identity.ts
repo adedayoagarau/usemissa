@@ -56,5 +56,9 @@ export function isAggregateOpportunityPage(result: ExtractionResult, canonicalUr
   const rankedCollection = /\b(?:best|top)\b/.test(title) && /\b(?:magazines?|journals?|contests?|places|opportunities|markets?)\b/.test(title);
   const countedCollection = /\b\d{2,}\+?\s+(?:places|magazines?|journals?|contests?|opportunities|markets?)\b/.test(title);
   const collectionUrl = /\/(?:resources\/literary-magazines|director(?:y|ies))(?:\/|$)/.test(url);
-  return explicitDirectory || rankedCollection || countedCollection || collectionUrl;
+  const knownDirectoryUrl = /^https?:\/\/(?:www\.)?on-the-move\.org\/(?:news\/deadlines|resources\/funding(?:\/.*)?)$/.test(url)
+    || /^https?:\/\/(?:www\.)?openartsforum\.com\/opportunities\/\?[^#]*\btag=/.test(url)
+    || /^https?:\/\/(?:www\.)?curatorspace\.com\/opportunities\/index(?:\/.*)?(?:\?.*)?$/.test(url)
+    || /^https?:\/\/(?:www\.)?transartists\.org\/en\/(?:air\/.*|deadlines|transartists-calls)$/.test(url);
+  return explicitDirectory || rankedCollection || countedCollection || collectionUrl || knownDirectoryUrl;
 }
