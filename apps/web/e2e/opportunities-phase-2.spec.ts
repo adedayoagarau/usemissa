@@ -10,6 +10,8 @@ test.describe("Phase 2 opportunity integration contracts", () => {
   test("presentation rollback is server owned and cannot select repository authority", () => {
     expect(resolveOpportunityPresentation({ NODE_ENV: "production" })).toBe("legacy");
     expect(resolveOpportunityPresentation({ NODE_ENV: "development" })).toBe("disclosure-v2");
+    expect(resolveOpportunityPresentation({ NODE_ENV: "production", VERCEL_ENV: "preview" })).toBe("disclosure-v2");
+    expect(resolveOpportunityPresentation({ NODE_ENV: "production", VERCEL_ENV: "production" })).toBe("legacy");
     expect(resolveOpportunityPresentation({ NODE_ENV: "production", MISSA_OPPORTUNITIES_PRESENTATION: "disclosure-v2" })).toBe("disclosure-v2");
     expect(resolveOpportunityPresentation({ NODE_ENV: "development", MISSA_OPPORTUNITIES_PRESENTATION: "legacy" })).toBe("legacy");
 

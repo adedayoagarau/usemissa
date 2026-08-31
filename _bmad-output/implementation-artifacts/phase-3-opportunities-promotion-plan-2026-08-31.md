@@ -20,7 +20,7 @@ Phase 3 will not change the waitlist policy. Public-shell exposure is a separate
 
 1. Add server-rendered presentation attribution and include the presentation in existing first-party discovery/view analytics.
 2. Build the committed branch in production mode with all declared internal packages.
-3. Set `MISSA_OPPORTUNITIES_PRESENTATION=disclosure-v2` for the Phase 3 Preview environment only.
+3. Let the server resolver select `disclosure-v2` by default in Vercel Preview while retaining `legacy` in Vercel Production. An explicit environment value remains the emergency override in either environment.
 4. Deploy the branch as a Vercel Preview; do not use `--prod` and do not move production aliases.
 5. Run the read-only observation harness against Preview at 390px and 1440px.
 6. Confirm API/UI title, slug, source, total, metadata, responsive, accessibility, console, and presentation equivalence.
