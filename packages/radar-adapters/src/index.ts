@@ -65,6 +65,15 @@ export {
   type ProfileRepository,
 } from "./profileRepository.js";
 export {
+  PostgresResidencyRepository,
+  createPostgresResidencyRepositoryFromUrl,
+  type ResidencyBrowsePage,
+  type ResidencyCall,
+  type ResidencyHostCard,
+  type ResidencyHostDetail,
+  type ResidencyRepository,
+} from "./residencyRepository.js";
+export {
   PROFILE_IDENTITY_MATCHER_VERSION,
   matchOpportunityToProfiles,
   normalizeHost,
