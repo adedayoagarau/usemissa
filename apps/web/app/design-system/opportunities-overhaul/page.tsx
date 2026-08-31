@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-export default function OpportunitiesOverhaulDesignSystemPage() {
-  return <OpportunitiesOverhaulPreview />
+export default async function OpportunitiesOverhaulDesignSystemPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ fixture?: string }>;
+}) {
+  const { fixture } = await searchParams;
+  return <OpportunitiesOverhaulPreview selectedFixtureId={fixture} />
 }
