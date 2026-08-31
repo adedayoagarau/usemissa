@@ -87,7 +87,7 @@ export class PostgresResidencyRepository implements ResidencyRepository {
       group by s.id,s.name,s.canonical_url,s.url`, values: [id] });
     if (!result.rows[0]) return null;
     const calls = await this.pool.query({ text: `
-      select distinct o.id,o.title,o.status,o.deadline_date deadline,o.location,o.fee_status,
+      select o.id,o.title,o.status,o.deadline_date deadline,o.location,o.fee_status,
         coalesce(o.guidelines_url,o.submission_url) guidelines_url
       ${DIRECT_RESIDENCY_SQL} and s.id=$1
       order by case when o.status in ('opening-soon','open','closing-soon','deadline-extended') then 0 else 1 end,
