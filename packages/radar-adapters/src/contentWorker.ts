@@ -51,6 +51,7 @@ interface ReviewRow extends QueryResultRow {
 }
 
 const CONTENT_INTERVAL_MINUTES = 10;
+const CONTENT_REVIEW_POLICY_VERSION = 'opportunity-content-review.v2';
 
 export const SEED_CONTENT_JOBS_SQL = `
   with candidates as (
@@ -83,6 +84,23 @@ export const SEED_CONTENT_JOBS_SQL = `
     where radar_content_review_jobs.input_version is distinct from excluded.input_version
 `;
 
+export const REQUEUE_LEGACY_CONTENT_SQL = `
+  update radar_content_review_jobs job
+  set status = 'pending-review', next_attempt_at = now(), lease_until = null,
+      last_error = null, updated_at = now()
+  from opportunity_contents content
+  where content.opportunity_id = job.opportunity_id
+    and content.review_status = 'needs-human'
+    and coalesce(content.review_checks->>'reviewPolicyVersion', '') <> $1
+    and job.status = 'needs-human'
+`;
+
+export const CONTENT_APPROVAL_HANDOFF_SQL = `
+  update opportunities
+  set last_changed_at = now(), updated_at = now()
+  where id = $1 and publication_state = 'reviewable'
+`;
+
 function batchSize(): number {
   const value = Number(process.env.RADAR_CONTENT_BATCH_SIZE ?? 20);
   return Number.isFinite(value) ? Math.max(1, Math.min(50, Math.floor(value))) : 20;
@@ -110,6 +128,7 @@ function materialArray(value: unknown): Array<{ label: string; limit?: string }>
 
 async function seedContentJobs(pool: Pool): Promise<void> {
   await pool.query(SEED_CONTENT_JOBS_SQL);
+  await pool.query(REQUEUE_LEGACY_CONTENT_SQL, [CONTENT_REVIEW_POLICY_VERSION]);
   await pool.query(
     `update radar_content_review_jobs j
      set status = 'pending-review', next_attempt_at = now(), lease_until = null,
@@ -333,6 +352,7 @@ async function reviewJob(pool: Pool, runId: string, job: ContentJob): Promise<Op
     );
     await client.query(`update radar_content_review_jobs set status = $2, lease_until = null, updated_at = now() where id = $1`, [job.id, jobStatus]);
     if (result.decision === 'approved') {
+      await client.query(CONTENT_APPROVAL_HANDOFF_SQL, [job.opportunityId]);
       await writeHandoff(client, runId, job.opportunityId, 'content-review', 'publisher', 'content-approved', 'completed', { score: result.score, builderVersion: row.content.builderVersion });
     } else {
       await writeHandoff(client, runId, job.opportunityId, 'content-review', 'human-review', 'content-needs-review', 'queued', { decision: result.decision, score: result.score, reasons: result.reasons });

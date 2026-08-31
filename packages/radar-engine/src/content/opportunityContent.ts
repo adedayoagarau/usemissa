@@ -75,6 +75,7 @@ export type OpportunityContentDecision =
   | 'error';
 
 const BUILDER_VERSION = 'opportunity-brief.v1';
+export const CONTENT_REVIEW_POLICY_VERSION = 'opportunity-content-review.v2';
 
 function typeLabel(value: string): string {
   return value === 'open-call' ? 'open call' : value.replaceAll('-', ' ');
@@ -167,6 +168,7 @@ export function reviewOpportunityContent(
 ): { decision: OpportunityContentDecision; score: number; reasons: string[]; checks: Record<string, unknown> } {
   const reasons: string[] = [];
   const checks: Record<string, unknown> = {};
+  checks.reviewPolicyVersion = CONTENT_REVIEW_POLICY_VERSION;
   const sourcePresent = /^https?:\/\//i.test(context.sourceUrl) && content.sourceUrl === context.sourceUrl;
   const sourceProcessed = Boolean(context.sourceProcessedAt);
   const organizationConfirmed = context.organizationConfirmed;
