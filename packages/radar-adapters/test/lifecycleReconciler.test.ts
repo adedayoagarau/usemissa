@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyLifecycleEvidence } from "../src/lifecycleReconciler.js";
+import { classifyLifecycleEvidence, LIFECYCLE_APPLY_SQL } from "../src/lifecycleReconciler.js";
 
 const NOW = new Date("2026-08-30T12:00:00.000Z");
+
+test("high-confidence lifecycle application requeues only reviewable opportunities", () => {
+  assert.match(
+    LIFECYCLE_APPLY_SQL,
+    /last_changed_at=case when publication_state='reviewable' then now\(\) else last_changed_at end/,
+  );
+});
 
 test("lifecycle classifier resolves explicit open-ended intake modes", () => {
   assert.deepEqual(
