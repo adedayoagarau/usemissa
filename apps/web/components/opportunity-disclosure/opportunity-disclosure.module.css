@@ -16,6 +16,9 @@
 .card h3 a:hover { color: var(--accent-deep); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .card h3 a:focus-visible, .actions a:focus-visible, .actions button:focus-visible, .back:focus-visible, .finalSource:focus-visible, .sourceBoundary a:focus-visible { border-radius: 6px; outline: 3px solid color-mix(in srgb, var(--ring) 30%, transparent); outline-offset: 3px; }
 .organization, .practices { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.45; }
+.organization { width: fit-content; font-weight: 650; text-decoration: none; }
+.organization:not([data-unbound]):hover { color: var(--accent-deep); text-decoration: underline; text-underline-offset: 3px; }
+.organization[data-unbound='true'] { color: var(--ink-3); font-weight: 500; }
 .practices { margin-top: 4px; font-size: 12px; }
 .scanFacts { display: grid; margin-top: 17px; gap: 7px; }
 .scanFacts span { display: flex; min-width: 0; align-items: center; color: var(--ink-2); font-size: 12px; gap: 8px; }
@@ -41,7 +44,9 @@
 .detailHero { display: grid; margin-top: 24px; align-items: stretch; gap: 40px; grid-template-columns: minmax(260px, 36%) minmax(0, 1fr); }
 .detailHero .identity { min-height: 380px; border: 1px solid var(--border); border-radius: 24px; }
 .detailHero h1 { max-width: 760px; margin: 18px 0 10px; font-family: var(--font-heading), serif; font-size: clamp(2.7rem, 5vw, 5rem); font-weight: 650; letter-spacing: -.06em; line-height: .98; overflow-wrap: anywhere; }
-.detailOrganization { margin: 0; color: var(--ink-2); font-size: 16px; font-weight: 620; }
+.detailOrganization { display: block; width: fit-content; margin: 0; color: var(--ink-2); font-size: 16px; font-weight: 620; text-decoration: none; }
+.detailOrganization:not([data-unbound]):hover { color: var(--accent-deep); text-decoration: underline; text-underline-offset: 4px; }
+.detailOrganization[data-unbound='true'] { color: var(--ink-3); font-weight: 500; }
 .summary { max-width: 700px; margin: 22px 0 0; color: var(--ink-2); font-size: 17px; line-height: 1.65; }
 .actions { display: flex; margin-top: 26px; flex-wrap: wrap; gap: 10px; }
 .actions button, .actions a, .finalSource { display: inline-flex; min-height: 46px; padding: 0 17px; align-items: center; justify-content: center; border: 1px solid var(--brand-accent); border-radius: 10px; background: var(--brand-accent); color: white; cursor: pointer; font-size: 13px; font-weight: 700; gap: 8px; text-decoration: none; }
@@ -83,7 +88,8 @@
 .practiceTags { display: flex; flex-wrap: wrap; gap: 8px; }
 .practiceTags span { display: inline-flex; min-height: 30px; padding: 0 10px; align-items: center; border-radius: 999px; background: var(--accent-tint); color: var(--accent-deep); font-size: 12px; font-weight: 650; }
 .detailSection > :global([data-slot='prepare-checklist']), .detailSection > :global(form) { margin-top: 22px; }
-@media (min-width: 760px) { .card { grid-template-columns: 190px minmax(0, 1fr); } .card .identity { min-height: 100%; border-right: 1px solid var(--border); border-bottom: 0; } }
+@media (min-width: 760px) { .card[data-has-media='true'] { grid-template-columns: 190px minmax(0, 1fr); } .card .identity { min-height: 100%; border-right: 1px solid var(--border); border-bottom: 0; } }
+@media (min-width: 821px) { .detailHero[data-has-media='false'] { grid-template-columns: minmax(0, 780px); } }
 @media (max-width: 820px) { .detailHero { gap: 24px; grid-template-columns: 1fr; } .detailHero .identity { min-height: 260px; } .detailGrid { gap: 42px; grid-template-columns: 1fr; } .decisionRail { position: static; } }
 @media (max-width: 520px) { .cardBody { padding: 17px; } .cardFooter { align-items: flex-start; flex-direction: column; } .detailHero h1 { font-size: clamp(2.45rem, 12vw, 3.6rem); } .detailHero .identity { min-height: 220px; } .requirements > div, .terms > div { grid-template-columns: 1fr; } .actions { align-items: stretch; flex-direction: column; } .actions button, .actions a { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { .card { transition: none; } }

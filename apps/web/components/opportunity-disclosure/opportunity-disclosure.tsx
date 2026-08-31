@@ -21,7 +21,6 @@ import {
   deadlineDisclosure,
   feeDisclosure,
   locationDisclosure,
-  opportunityInitials,
   opportunityTypeLabel,
   primaryPracticeLabels,
   sourceHref,
@@ -32,6 +31,39 @@ import {
 import styles from "./opportunity-disclosure.module.css";
 
 type Icon = ComponentType<{ "aria-hidden"?: boolean }>;
+
+function hasBoundOrganizationMedia(opportunity: OpportunityBrowseProjection): boolean {
+  return Boolean(
+    opportunity.identityAssetUrl &&
+    opportunity.organizationId &&
+    opportunity.organizationName &&
+    (opportunity.organizationVerified || opportunity.source.organizationConfirmed),
+  );
+}
+
+function OrganizationIdentity({
+  opportunity,
+  className,
+}: {
+  opportunity: OpportunityBrowseProjection;
+  className: string;
+}) {
+  if (
+    opportunity.organizationId &&
+    opportunity.organizationName
+  ) {
+    return (
+      <Link className={className} href={`/org/${opportunity.organizationId}`}>
+        {opportunity.organizationName}
+      </Link>
+    );
+  }
+  return (
+    <span className={className} data-unbound="true">
+      Organization not yet linked
+    </span>
+  );
+}
 
 export function DisclosureState({
   tone,
@@ -95,22 +127,19 @@ export function OpportunityIdentity({
   opportunity: OpportunityBrowseProjection;
   priority?: boolean;
 }) {
+  if (!hasBoundOrganizationMedia(opportunity)) return null;
   return (
     <div
       className={styles.identity}
-      data-has-image={Boolean(opportunity.identityAssetUrl)}
+      data-has-image="true"
     >
-      {opportunity.identityAssetUrl ? (
-        // Phase 1 fixtures and repository projections contain only permitted assets.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={opportunity.identityAssetUrl}
-          alt={opportunity.identityAssetAlt ?? ""}
-          loading={priority ? "eager" : "lazy"}
-        />
-      ) : (
-        <span aria-hidden="true">{opportunityInitials(opportunity)}</span>
-      )}
+      {/* Repository media is shown only when it is bound to a confirmed Organization. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={opportunity.identityAssetUrl}
+        alt={opportunity.identityAssetAlt ?? ""}
+        loading={priority ? "eager" : "lazy"}
+      />
     </div>
   );
 }
@@ -127,10 +156,12 @@ export function OpportunityCard({
   const deadline = deadlineDisclosure(opportunity.deadline);
   const practices = primaryPracticeLabels(opportunity);
   const status = statusDisclosure(opportunity);
+  const hasMedia = hasBoundOrganizationMedia(opportunity);
   return (
     <article
       className={styles.card}
       data-state={status.tone}
+      data-has-media={hasMedia}
       data-testid={`opportunity-card-${opportunity.slug}`}
     >
       <OpportunityIdentity opportunity={opportunity} />
@@ -144,9 +175,7 @@ export function OpportunityCard({
         <h3>
           <Link href={href}>{opportunity.title}</Link>
         </h3>
-        <p className={styles.organization}>
-          {opportunity.organizationName ?? "Organization not confirmed"}
-        </p>
+        <OrganizationIdentity opportunity={opportunity} className={styles.organization} />
         {practices.length ? <p className={styles.practices}>{practices.join(" · ")}</p> : null}
         <div className={styles.scanFacts}>
           <span data-tone={deadline.tone}>
@@ -270,15 +299,16 @@ export function OpportunityDetail({
   const content = opportunity.content;
   const officialHref = sourceHref(opportunity);
   const canApply = opportunity.submissionAvailable && !["closed", "archived"].includes(opportunity.status);
+  const hasMedia = hasBoundOrganizationMedia(opportunity);
   return (
     <article className={styles.detail} aria-labelledby="opportunity-title">
       <Link className={styles.back} href={backHref}><ArrowLeft aria-hidden="true" />Back to opportunities</Link>
-      <header className={styles.detailHero}>
+      <header className={styles.detailHero} data-has-media={hasMedia}>
         <OpportunityIdentity opportunity={opportunity} priority />
         <div>
           <DisclosureState tone={statusDisclosure(opportunity).tone}>{opportunityTypeLabel(opportunity.type)}</DisclosureState>
           <h1 id="opportunity-title">{opportunity.title}</h1>
-          <p className={styles.detailOrganization}>{opportunity.organizationName ?? "Organization not confirmed"}</p>
+          <OrganizationIdentity opportunity={opportunity} className={styles.detailOrganization} />
           {followAction}
           <p className={styles.summary}>{summary ?? content?.summary ?? opportunity.organizationSummary ?? "A source-backed summary is not available for this opportunity."}</p>
           {relatedProfile}

@@ -32,6 +32,10 @@ test("browse SQL is parameterized and keeps public publication boundaries", () =
   assert.match(built.text, /o\.publication_state = 'published'/);
   assert.match(
     built.text,
+    /coalesce\(o\.organization_id, source\.organization_id\) as organization_id/,
+  );
+  assert.match(
+    built.text,
     /o\.id ~ '\^\[a-z\]\[a-z0-9-\]\*_\[A-Za-z0-9-\]\+\$'/,
   );
   assert.match(
@@ -192,7 +196,7 @@ test("repository maps rows and returns a continuation cursor", async () => {
       fee_cents: null,
       fee_currency: null,
       fee_raw: null,
-      prize: null,
+      prize: "Grants & Awards Deadline: August 31, 2026 Entry Fee: $14 Cash Prize: $1,000 E-mail address: &#97;&#114;&#116;",
       location: "Remote",
       submission_url: "https://harbor.example/submit",
       submission_state: "available",
@@ -312,6 +316,7 @@ test("repository maps rows and returns a continuation cursor", async () => {
   assert.equal(result.total, 2);
   assert.equal(result.items[0]?.slug.length, 160);
   assert.equal(result.items[0]?.submissionAvailable, true);
+  assert.equal(result.items[0]?.prize, undefined);
   assert.deepEqual(result.items[0]?.callProfile, {
     callKind: "general-submission",
     marketKind: "magazine",

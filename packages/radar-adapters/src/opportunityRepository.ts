@@ -213,6 +213,17 @@ function browseSummary(
     : `${normalized.slice(0, max - 1).trimEnd()}…`;
 }
 
+function publicPrizeSummary(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const normalized = value.replace(/\s+/gu, " ").trim();
+  if (!normalized || normalized.length > 96) return undefined;
+  if (/&#(?:x[0-9a-f]+|\d+);/iu.test(normalized)) return undefined;
+  if (/(?:deadline|entry fee|e-?mail address|log in to (?:send|save))/iu.test(normalized)) {
+    return undefined;
+  }
+  return normalized;
+}
+
 function boundedSlug(
   value: string | null | undefined,
   fallback: string,
@@ -311,8 +322,8 @@ function baseSelect(
     o.id,
     o.slug,
     o.title,
-    o.organization_id,
-    coalesce(org.data->>'name', o.organization_id) as organization_name,
+    coalesce(o.organization_id, source.organization_id) as organization_id,
+    coalesce(org.data->>'name', o.organization_id, source.organization_id) as organization_name,
     org.data->>'verified' as organization_verified,
     asset.url as identity_asset_url,
     asset.alt as identity_asset_alt,
@@ -371,7 +382,7 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
   return `
     from opportunities o
     join opportunity_sources source on source.id = o.source_id
-    left join radar_organizations org on org.id = o.organization_id
+    left join radar_organizations org on org.id = coalesce(o.organization_id, source.organization_id)
     left join lateral (
       select a.url, a.alt
       from opportunity_identity_assets a
@@ -747,7 +758,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
       currency: row.fee_currency ?? undefined,
       raw: row.fee_raw ?? undefined,
     },
-    prize: browseSummary(row.prize),
+    prize: publicPrizeSummary(row.prize),
     location: row.location ?? undefined,
     simultaneousAllowed: row.simultaneous_allowed ?? undefined,
     submissionAvailable:
