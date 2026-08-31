@@ -1,0 +1,72 @@
+{
+  "observedAt": "2026-08-31T22:14:19.678Z",
+  "baseURL": "http://127.0.0.1:3102",
+  "expectedPresentation": "disclosure-v2",
+  "authority": {
+    "total": 5,
+    "sampledId": "opp_0004",
+    "sampledSlug": "north-river-review-call-for-submissions",
+    "sampledTitle": "North River Review — Call for Submissions",
+    "publicSourceKeys": [
+      "kind",
+      "name",
+      "url"
+    ]
+  },
+  "mutationBoundary": "Read-only observation. Save, Follow, Prepare, report, and application actions were not invoked.",
+  "results": [
+    {
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844
+      },
+      "browse": {
+        "httpStatus": 200,
+        "presentation": "disclosure-v2",
+        "heading": "Opportunities",
+        "resultLabel": "5 opportunities",
+        "horizontalOverflow": false,
+        "seriousAxeViolations": []
+      },
+      "detail": {
+        "httpStatus": 200,
+        "presentation": "disclosure-v2",
+        "sourceMatchesApi": true,
+        "heading": "North River Review — Call for Submissions",
+        "metadataScripts": 2,
+        "horizontalOverflow": false,
+        "hasPrivateSaveAction": true,
+        "seriousAxeViolations": []
+      },
+      "consoleErrors": []
+    },
+    {
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000
+      },
+      "browse": {
+        "httpStatus": 200,
+        "presentation": "disclosure-v2",
+        "heading": "Opportunities",
+        "resultLabel": "5 opportunities",
+        "horizontalOverflow": false,
+        "seriousAxeViolations": []
+      },
+      "detail": {
+        "httpStatus": 200,
+        "presentation": "disclosure-v2",
+        "sourceMatchesApi": true,
+        "heading": "North River Review — Call for Submissions",
+        "metadataScripts": 2,
+        "horizontalOverflow": false,
+        "hasPrivateSaveAction": true,
+        "seriousAxeViolations": []
+      },
+      "consoleErrors": []
+    }
+  ],
+  "passed": true
+}

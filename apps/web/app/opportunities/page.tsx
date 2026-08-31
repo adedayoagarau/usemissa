@@ -133,11 +133,11 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
     : null;
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-opportunity-presentation={presentation}>
       <MissaSiteHeader session={headerSession} />
       <PublicDiscoveryEvent
         eventName="public.discovery_view"
-        properties={{ surface: 'opportunities', resultCount: result.items.length }}
+        properties={{ surface: 'opportunities', resultCount: result.items.length, presentation }}
       />
       <JsonLd
         data={{

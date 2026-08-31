@@ -43,6 +43,7 @@ test.describe("Phase 2 opportunity integration contracts", () => {
     expect(Object.keys(browse.items[0].source).sort()).toEqual(["kind", "name", "url"]);
 
     await page.goto("/opportunities");
+    await expect(page.locator('[data-opportunity-presentation="disclosure-v2"]')).toBeVisible();
     await expect(page.getByTestId(`opportunity-card-${browse.items[0].slug}`)).toContainText(browse.items[0].title);
     await expect(page.getByRole("button", { name: `Save ${browse.items[0].title} privately` })).toBeVisible();
     await expect(page.locator("body")).not.toContainText(/checkedAt|processingSucceededAt|lastCheckedAt/);
@@ -51,6 +52,7 @@ test.describe("Phase 2 opportunity integration contracts", () => {
     expect(detailResponse.status()).toBe(200);
     const detail = await detailResponse.json() as { title: string; source: { url: string }; submissionUrl?: string };
     await page.goto(`/opportunities/${browse.items[0].slug}`);
+    await expect(page.locator('[data-opportunity-presentation="disclosure-v2"]')).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: detail.title })).toBeVisible();
     await expect(page.getByRole("link", { name: /Official source/ }).first()).toHaveAttribute("href", detail.source.url);
     if (detail.submissionUrl) {
