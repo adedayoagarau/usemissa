@@ -7,7 +7,9 @@ import { assessCoverage, buildCoverageQueries, type CoverageCellInput, type Cove
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from './workerTelemetry.js';
 
 const LOCK_KEY = 1947350012;
-const DEFAULT_TYPES = ['open-call', 'magazine', 'grant', 'award', 'fellowship', 'residency', 'festival', 'scholarship', 'conference', 'rfp', 'contest', 'pitch', 'exhibition', 'commission', 'other'] as const;
+// Directory products need their own coverage cells. Treating journals and
+// small presses as the generic "magazine" bucket hid source gaps for both.
+const DEFAULT_TYPES = ['open-call', 'magazine', 'journal', 'small-press', 'grant', 'award', 'fellowship', 'residency', 'festival', 'scholarship', 'conference', 'rfp', 'contest', 'pitch', 'exhibition', 'commission', 'other'] as const;
 const DEFAULT_GEOS = ['global', 'US', 'NG', 'GB', 'CA', 'AU'] as const;
 const DEFAULT_LANGUAGES = ['en'] as const;
 
