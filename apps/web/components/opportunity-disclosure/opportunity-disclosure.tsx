@@ -58,9 +58,25 @@ function OrganizationIdentity({
       </Link>
     );
   }
+  if (opportunity.organizationName) {
+    return (
+      <span className={className} data-derived="source-destination">
+        {opportunity.organizationName}
+      </span>
+    );
+  }
   return (
     <span className={className} data-unbound="true">
       Organization not yet linked
+    </span>
+  );
+}
+
+function OrganizationCallCount({ opportunity }: { opportunity: OpportunityBrowseProjection }) {
+  if (!opportunity.organizationOpportunityCount || opportunity.organizationOpportunityCount < 2) return null;
+  return (
+    <span className={styles.organizationCount}>
+      {opportunity.organizationOpportunityCount} current opportunities from this organization
     </span>
   );
 }
@@ -176,6 +192,7 @@ export function OpportunityCard({
           <Link href={href}>{opportunity.title}</Link>
         </h3>
         <OrganizationIdentity opportunity={opportunity} className={styles.organization} />
+        <OrganizationCallCount opportunity={opportunity} />
         {practices.length ? <p className={styles.practices}>{practices.join(" · ")}</p> : null}
         <div className={styles.scanFacts}>
           <span data-tone={deadline.tone}>
@@ -309,6 +326,7 @@ export function OpportunityDetail({
           <DisclosureState tone={statusDisclosure(opportunity).tone}>{opportunityTypeLabel(opportunity.type)}</DisclosureState>
           <h1 id="opportunity-title">{opportunity.title}</h1>
           <OrganizationIdentity opportunity={opportunity} className={styles.detailOrganization} />
+          <OrganizationCallCount opportunity={opportunity} />
           {followAction}
           <p className={styles.summary}>{summary ?? content?.summary ?? opportunity.organizationSummary ?? "A source-backed summary is not available for this opportunity."}</p>
           {relatedProfile}

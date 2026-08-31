@@ -267,6 +267,8 @@ const opportunityIdentitySchema = z.object({
   organizationId: resourceIdSchema.optional(),
   organizationName: z.string().trim().max(240).optional(),
   organizationVerified: z.boolean().optional(),
+  organizationIdentitySource: z.enum(["canonical", "source-destination"]).optional(),
+  organizationOpportunityCount: z.number().int().min(2).optional(),
   identityAssetUrl: httpUrlSchema.optional(),
   identityAssetAlt: z.string().trim().max(240).optional(),
 });

@@ -4,6 +4,7 @@ import { opportunityDetailResponseSchema } from "@missa/contracts";
 import {
   PostgresOpportunityRepository,
   buildOpportunityBrowseQuery,
+  organizationNameFromHost,
 } from "../src/opportunityRepository.js";
 
 const baseQuery = {
@@ -17,6 +18,12 @@ const baseQuery = {
   sort: "soonest-deadline" as const,
   limit: 1,
 };
+
+test("source destination names require an institutional identity clue", () => {
+  assert.equal(organizationNameFromHost("tellurideinstitute.org"), "Telluride Institute");
+  assert.equal(organizationNameFromHost("uno.edu"), undefined);
+  assert.equal(organizationNameFromHost("submittable.com"), undefined);
+});
 
 test("browse SQL is parameterized and keeps public publication boundaries", () => {
   const built = buildOpportunityBrowseQuery(
@@ -181,6 +188,8 @@ test("repository maps rows and returns a continuation cursor", async () => {
       organization_id: "org_0001",
       organization_name: "Harbor Review",
       organization_verified: "true",
+      organization_host: null,
+      organization_opportunity_count: 3,
       identity_asset_url: null,
       identity_asset_alt: null,
       status: "closing-soon",
@@ -269,6 +278,8 @@ test("repository maps rows and returns a continuation cursor", async () => {
       organization_id: "org_0002",
       organization_name: "Lantern Press",
       organization_verified: "false",
+      organization_host: null,
+      organization_opportunity_count: 0,
       identity_asset_url: null,
       identity_asset_alt: null,
       status: "open",
@@ -317,6 +328,8 @@ test("repository maps rows and returns a continuation cursor", async () => {
   assert.equal(result.items[0]?.slug.length, 160);
   assert.equal(result.items[0]?.submissionAvailable, true);
   assert.equal(result.items[0]?.prize, undefined);
+  assert.equal(result.items[0]?.organizationIdentitySource, "canonical");
+  assert.equal(result.items[0]?.organizationOpportunityCount, 3);
   assert.deepEqual(result.items[0]?.callProfile, {
     callKind: "general-submission",
     marketKind: "magazine",

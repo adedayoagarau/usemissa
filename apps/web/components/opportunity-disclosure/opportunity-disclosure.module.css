@@ -11,7 +11,7 @@
 .cardBody { display: flex; min-width: 0; padding: 20px; flex-direction: column; }
 .cardMeta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .prize { color: var(--ochre-deep); font: 600 11px/1.3 var(--font-mono), monospace; }
-.card h3 { margin: 13px 0 7px; font-family: var(--font-heading), serif; font-size: clamp(1.3rem, 2vw, 1.65rem); font-weight: 670; letter-spacing: -.035em; line-height: 1.08; overflow-wrap: anywhere; }
+.card h3 { max-width: 30ch; margin: 13px 0 7px; font-family: var(--font-heading), serif; font-size: clamp(1.4rem, 2.2vw, 1.8rem); font-weight: 760; letter-spacing: -.045em; line-height: 1.02; overflow-wrap: anywhere; text-wrap: balance; }
 .card h3 a { color: var(--ink); text-decoration: none; }
 .card h3 a:hover { color: var(--accent-deep); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .card h3 a:focus-visible, .actions a:focus-visible, .actions button:focus-visible, .back:focus-visible, .finalSource:focus-visible, .sourceBoundary a:focus-visible { border-radius: 6px; outline: 3px solid color-mix(in srgb, var(--ring) 30%, transparent); outline-offset: 3px; }
@@ -19,6 +19,8 @@
 .organization { width: fit-content; font-weight: 650; text-decoration: none; }
 .organization:not([data-unbound]):hover { color: var(--accent-deep); text-decoration: underline; text-underline-offset: 3px; }
 .organization[data-unbound='true'] { color: var(--ink-3); font-weight: 500; }
+.organization[data-derived='source-destination'] { color: var(--ink); }
+.organizationCount { display: block; margin-top: 2px; color: var(--ink-3); font-size: 11px; line-height: 1.4; }
 .practices { margin-top: 4px; font-size: 12px; }
 .scanFacts { display: grid; margin-top: 17px; gap: 7px; }
 .scanFacts span { display: flex; min-width: 0; align-items: center; color: var(--ink-2); font-size: 12px; gap: 8px; }
@@ -47,6 +49,7 @@
 .detailOrganization { display: block; width: fit-content; margin: 0; color: var(--ink-2); font-size: 16px; font-weight: 620; text-decoration: none; }
 .detailOrganization:not([data-unbound]):hover { color: var(--accent-deep); text-decoration: underline; text-underline-offset: 4px; }
 .detailOrganization[data-unbound='true'] { color: var(--ink-3); font-weight: 500; }
+.detailOrganization[data-derived='source-destination'] { color: var(--ink); }
 .summary { max-width: 700px; margin: 22px 0 0; color: var(--ink-2); font-size: 17px; line-height: 1.65; }
 .actions { display: flex; margin-top: 26px; flex-wrap: wrap; gap: 10px; }
 .actions button, .actions a, .finalSource { display: inline-flex; min-height: 46px; padding: 0 17px; align-items: center; justify-content: center; border: 1px solid var(--brand-accent); border-radius: 10px; background: var(--brand-accent); color: white; cursor: pointer; font-size: 13px; font-weight: 700; gap: 8px; text-decoration: none; }

@@ -141,6 +141,8 @@ export interface OpportunityBrowseProjection {
   organizationId?: string;
   organizationName?: string;
   organizationVerified?: boolean;
+  organizationIdentitySource?: "canonical" | "source-destination";
+  organizationOpportunityCount?: number;
   identityAssetUrl?: string;
   identityAssetAlt?: string;
   status: "opening-soon" | "open" | "closing-soon" | "deadline-extended" | "closed" | "archived";

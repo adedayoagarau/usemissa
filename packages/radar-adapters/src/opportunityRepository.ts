@@ -27,6 +27,8 @@ interface OpportunityRow extends QueryResultRow {
   organization_id: string | null;
   organization_name: string | null;
   organization_verified: string | null;
+  organization_host: string | null;
+  organization_opportunity_count: number | string | null;
   identity_asset_url: string | null;
   identity_asset_alt: string | null;
   status: OpportunityBrowseProjection["status"];
@@ -224,6 +226,24 @@ function publicPrizeSummary(value: string | null | undefined): string | undefine
   return normalized;
 }
 
+function titleCase(value: string): string {
+  return value
+    .split(/[\s_-]+/u)
+    .filter(Boolean)
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+export function organizationNameFromHost(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const hostname = value.toLowerCase().replace(/^www\./u, "").split(":")[0] ?? "";
+  const stem = hostname.split(".")[0] ?? "";
+  if (!stem) return undefined;
+  const institutionalSuffix = /(foundation|institute|university|museum|gallery|press|arts|theatre|theater|centre|center|collective|studio|society|council)$/u;
+  if (!institutionalSuffix.test(stem)) return undefined;
+  return titleCase(stem.replace(institutionalSuffix, " $1"));
+}
+
 function boundedSlug(
   value: string | null | undefined,
   fallback: string,
@@ -325,6 +345,8 @@ function baseSelect(
     coalesce(o.organization_id, source.organization_id) as organization_id,
     coalesce(org.data->>'name', o.organization_id, source.organization_id) as organization_name,
     org.data->>'verified' as organization_verified,
+    source_identity.host as organization_host,
+    coalesce(source_count.opportunity_count, canonical_count.opportunity_count, 0) as organization_opportunity_count,
     asset.url as identity_asset_url,
     asset.alt as identity_asset_alt,
     o.status,
@@ -383,6 +405,54 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
     from opportunities o
     join opportunity_sources source on source.id = o.source_id
     left join radar_organizations org on org.id = coalesce(o.organization_id, source.organization_id)
+    left join (
+      select distinct on (lower(trim(candidate.title)))
+        lower(trim(candidate.title)) as title_key,
+        lower(split_part(regexp_replace(regexp_replace(candidate.submission_url, '^https?://', '', 'i'), '^www\\.', '', 'i'), '/', 1)) as host
+        from opportunities candidate
+        join opportunity_sources candidate_source on candidate_source.id = candidate.source_id
+        where candidate.submission_url is not null
+          and lower(candidate.submission_url) ~ '^https?://'
+          and lower(candidate.submission_url) !~ '(submittable|google\\.com|docs\\.google|forms\\.gle|jotform|airtable|typeform|filmfreeway|withoutabox)'
+          and lower(candidate.submission_url) not like '%' || lower(
+            split_part(regexp_replace(regexp_replace(candidate_source.url, '^https?://', '', 'i'), '^www\\.', '', 'i'), '/', 1)
+          ) || '%'
+        order by lower(trim(candidate.title)), candidate.updated_at desc
+    ) source_identity on source_identity.title_key = lower(trim(o.title))
+      and coalesce(o.organization_id, source.organization_id) is null
+    left join (
+      select destination.host, count(distinct destination.title_key)::int as opportunity_count
+      from (
+        select distinct
+          lower(trim(candidate.title)) as title_key,
+          lower(split_part(regexp_replace(regexp_replace(candidate.submission_url, '^https?://', '', 'i'), '^www\\.', '', 'i'), '/', 1)) as host
+        from opportunities candidate
+        join opportunity_sources candidate_source on candidate_source.id = candidate.source_id
+        where candidate.submission_url is not null
+          and lower(candidate.submission_url) ~ '^https?://'
+          and lower(candidate.submission_url) !~ '(submittable|google\\.com|docs\\.google|forms\\.gle|jotform|airtable|typeform|filmfreeway|withoutabox)'
+          and lower(candidate.submission_url) not like '%' || lower(
+            split_part(regexp_replace(regexp_replace(candidate_source.url, '^https?://', '', 'i'), '^www\\.', '', 'i'), '/', 1)
+          ) || '%'
+      ) destination
+      join (
+        select distinct lower(trim(public_peer.title)) as title_key
+        from opportunities public_peer
+        where public_peer.publication_state = 'published'
+          and public_peer.status in ('opening-soon', 'open', 'closing-soon', 'deadline-extended')
+      ) public_title on public_title.title_key = destination.title_key
+      group by destination.host
+    ) source_count on source_count.host = source_identity.host
+    left join (
+      select coalesce(peer.organization_id, peer_source.organization_id) as organization_id,
+        count(distinct lower(trim(peer.title)))::int as opportunity_count
+      from opportunities peer
+      join opportunity_sources peer_source on peer_source.id = peer.source_id
+      where coalesce(peer.organization_id, peer_source.organization_id) is not null
+        and peer.publication_state = 'published'
+        and peer.status in ('opening-soon', 'open', 'closing-soon', 'deadline-extended')
+      group by coalesce(peer.organization_id, peer_source.organization_id)
+    ) canonical_count on canonical_count.organization_id = coalesce(o.organization_id, source.organization_id)
     left join lateral (
       select a.url, a.alt
       from opportunity_identity_assets a
@@ -706,6 +776,10 @@ export function buildOpportunityBrowseQuery(
 
 function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
   const callProfile = normalizeCallProfile(row.call_profile);
+  const canonicalOrganizationName = browseSummary(row.organization_name, 160);
+  const sourceOrganizationName = organizationNameFromHost(row.organization_host);
+  const organizationName = canonicalOrganizationName ?? sourceOrganizationName;
+  const organizationOpportunityCount = Number(row.organization_opportunity_count ?? 0);
   const tailoringReasons = Array.isArray(row.tailoring_reasons)
     ? row.tailoring_reasons
         .flatMap((value) => {
@@ -732,8 +806,16 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     createdAt: asIso(row.created_at),
     title: row.title,
     organizationId: row.organization_id ?? undefined,
-    organizationName: row.organization_name ?? undefined,
+    organizationName,
     organizationVerified: row.organization_verified === "true",
+    ...(organizationName
+      ? {
+          organizationIdentitySource: canonicalOrganizationName
+            ? ("canonical" as const)
+            : ("source-destination" as const),
+        }
+      : {}),
+    ...(organizationName && organizationOpportunityCount > 1 ? { organizationOpportunityCount } : {}),
     identityAssetUrl: row.identity_asset_url ?? undefined,
     identityAssetAlt: row.identity_asset_alt ?? undefined,
     status: row.status,
