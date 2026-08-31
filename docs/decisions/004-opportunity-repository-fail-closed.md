@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -31,10 +31,10 @@ The current repository selector can use a deterministic compatibility repository
 
 ## Decision
 
-We propose **Option C**. Local and test environments may select deterministic fixture data explicitly. Production must require the configured PostgreSQL repository and return an observable unavailable response when that authority cannot be initialized. A presentation flag may never select data authority or bypass this rule.
+We choose **Option C**. Local and test environments may select deterministic fixture data explicitly. Production requires the explicitly configured PostgreSQL repository and returns an observable unavailable response when that authority cannot be initialized. A presentation selector may never select data authority or bypass this rule.
 
 ## Consequences
 
-- Phase 1 documents and tests the intended policy without changing production selection behavior.
-- Phase 2 must implement the fail-closed selector with configuration tests and an operational alert.
+- The selector has configuration tests for local, test, and production modes.
+- Public APIs return a bounded `503`; pages render a customer-safe unavailable state.
 - The public unavailable state must not expose credentials, connection details, worker state, or internal source-health metadata.

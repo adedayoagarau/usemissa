@@ -1,14 +1,24 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { Check, Flag } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
-import { getOpportunityRepository } from '@/lib/opportunityRepository';
+import { getOpportunityRepository, OpportunityRepositoryUnavailableError } from '@/lib/opportunityRepository';
 import { getProfileRepository } from '@/lib/profileRepository';
 import { taxonomyLabelFor } from '@/lib/opportunityTaxonomy';
 import { MissaSiteHeader } from '@/components/missa-site-header';
 import { OpportunityDetailView } from '@/components/opportunity-detail-view';
+import { OpportunityDetail } from '@/components/opportunity-disclosure/opportunity-disclosure';
+import { SaveToTrackerButton } from '@/components/save-to-tracker-button';
+import { FollowButton } from '@/components/follow-button';
+import { PrepareChecklist } from '@/components/prepare-checklist';
+import { OpportunityIssueReport } from '@/components/opportunity-issue-report';
+import { Button } from '@/components/ui/button';
+import { OpportunityCatalogueUnavailable } from '@/components/opportunity-catalogue-unavailable';
 import { PublicDiscoveryEvent } from '@/components/public-discovery-event';
 import { JsonLd, absoluteUrl, breadcrumbJsonLd, opportunityDescription, pageMetadata } from '@/lib/seo';
+import { resolveOpportunityPresentation } from '@/lib/opportunityPresentation';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,10 +55,19 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
   const { id } = await params;
-  const opportunity = await getOpportunityRepository().getById(
-    id,
-    session?.account.id ? { accountId: session.account.id } : undefined,
-  );
+  let opportunity;
+  try {
+    opportunity = await getOpportunityRepository().getById(
+      id,
+      session?.account.id ? { accountId: session.account.id } : undefined,
+    );
+  } catch (error) {
+    if (error instanceof OpportunityRepositoryUnavailableError) {
+      const unavailableSession = session ? { email: session.account.email, hasOrganization: session.memberships.length > 0 } : null;
+      return <OpportunityCatalogueUnavailable session={unavailableSession} />;
+    }
+    throw error;
+  }
   if (!opportunity || (!session && !PUBLIC_STATUSES.has(opportunity.status))) notFound();
 
   const path = `/opportunities/${opportunity.slug}`;
@@ -68,6 +87,29 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   const headerSession = session
     ? { email: session.account.email, hasOrganization: session.memberships.length > 0 }
     : null;
+  const presentation = resolveOpportunityPresentation();
+  const tracked = Boolean(opportunity.personal?.tracked);
+  const saveAction = tracked ? (
+    <Button nativeButton={false} render={<Link href="/tracker" />} variant="secondary">
+      <Check aria-hidden="true" /> In Tracker
+    </Button>
+  ) : (
+    <SaveToTrackerButton
+      opportunityId={opportunity.id}
+      signedIn={Boolean(session)}
+      returnTo={path}
+      opportunityTitle={opportunity.title}
+    />
+  );
+  const followAction = session?.account.userId && opportunity.organizationId && !opportunity.personal?.followingOrganization ? (
+    <FollowButton
+      userId={session.account.userId}
+      organizationId={opportunity.organizationId}
+      organizationName={opportunity.organizationName}
+    />
+  ) : opportunity.personal?.followingOrganization ? (
+    <span className="text-xs text-muted-foreground">Following</span>
+  ) : null;
 
   return (
     <div className="min-h-screen bg-white">
@@ -91,14 +133,30 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         }}
       />
       <JsonLd data={breadcrumbJsonLd([{ name: 'Missa', path: '/' }, { name: 'Opportunities', path: '/opportunities' }, { name: opportunity.title }])} />
-      <OpportunityDetailView
-        opportunity={opportunity}
-        signedIn={Boolean(session)}
-        userId={session?.account.userId}
-        summary={summary}
-        practiceLabels={practiceLabels}
-        relatedProfile={profileMatch ?? undefined}
-      />
+      {presentation === 'disclosure-v2' ? (
+        <main id="main-content" className="mx-auto min-h-screen w-full max-w-[1240px] px-4 py-8 md:px-6 md:py-12">
+          <OpportunityDetail
+            opportunity={opportunity}
+            backHref="/opportunities"
+            saveAction={saveAction}
+            followAction={followAction}
+            preparationAction={<PrepareChecklist opportunityId={opportunity.id} enabled={Boolean(session) && tracked} />}
+            reportAction={session ? <OpportunityIssueReport opportunityId={opportunity.id} /> : <Link href={`/login?next=${encodeURIComponent(path)}`} className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary"><Flag aria-hidden="true" className="size-4" />Sign in to report an issue</Link>}
+            relatedProfile={profileMatch ? <p className="mt-3 text-sm text-muted-foreground">Journal / press profile: <Link href={`/journals/${encodeURIComponent(profileMatch.id)}`} className="font-semibold text-primary underline underline-offset-4">{profileMatch.name}</Link></p> : undefined}
+            practiceLabels={practiceLabels}
+            summary={summary}
+          />
+        </main>
+      ) : (
+        <OpportunityDetailView
+          opportunity={opportunity}
+          signedIn={Boolean(session)}
+          userId={session?.account.userId}
+          summary={summary}
+          practiceLabels={practiceLabels}
+          relatedProfile={profileMatch ?? undefined}
+        />
+      )}
     </div>
   );
 }

@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import type { OpportunityBrowseProjection } from '@missa/radar-engine';
 import { ChevronDown, LoaderCircle } from 'lucide-react';
 import { OpportunityCatalogueCard } from '@/components/opportunity-catalogue-card';
+import { OpportunityCard } from '@/components/opportunity-disclosure/opportunity-disclosure';
+import { SaveToTrackerButton } from '@/components/save-to-tracker-button';
+import type { OpportunityPresentation } from '@/lib/opportunityPresentation';
 import styles from '@/app/opportunities/opportunities.module.css';
 
 type BrowseResponse = {
@@ -21,11 +24,13 @@ export function OpportunityResults({
   initialNextCursor,
   baseQuery,
   signedIn,
+  presentation,
 }: {
   initialItems: OpportunityBrowseProjection[];
   initialNextCursor: string | null;
   baseQuery: string;
   signedIn: boolean;
+  presentation: OpportunityPresentation;
 }) {
   const [snapshots] = useState(() => new Map<string, Snapshot>([['first', { items: initialItems, nextCursor: initialNextCursor }]]));
   const [items, setItems] = useState(initialItems);
@@ -83,7 +88,23 @@ export function OpportunityResults({
   return (
     <>
       <div className={styles.grid}>
-        {items.map((item) => <OpportunityCatalogueCard key={item.id} item={item} signedIn={signedIn} />)}
+        {items.map((item) => presentation === 'disclosure-v2' ? (
+          <OpportunityCard
+            key={item.id}
+            opportunity={item}
+            href={`/opportunities/${item.slug}`}
+            action={
+              <SaveToTrackerButton
+                opportunityId={item.id}
+                tracked={item.personal?.tracked}
+                compact
+                signedIn={signedIn}
+                returnTo={`/opportunities/${item.slug}`}
+                opportunityTitle={item.title}
+              />
+            }
+          />
+        ) : <OpportunityCatalogueCard key={item.id} item={item} signedIn={signedIn} />)}
       </div>
       {nextCursor ? (
         <div className={styles.loadMore}>

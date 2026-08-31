@@ -17,6 +17,40 @@ declare global {
   var __missaOpportunityRepository: OpportunityRepository | undefined;
 }
 
+export class OpportunityRepositoryUnavailableError extends Error {
+  constructor(message = "The opportunity catalogue authority is unavailable.") {
+    super(message);
+    this.name = "OpportunityRepositoryUnavailableError";
+  }
+}
+
+type RepositoryEnvironment = {
+  NODE_ENV?: string;
+  MISSA_OPPORTUNITY_REPOSITORY?: string;
+  DATABASE_URL?: string;
+};
+
+export type OpportunityRepositoryMode = "postgres" | "compatibility";
+
+export function resolveOpportunityRepositoryMode(
+  environment: RepositoryEnvironment = process.env,
+): OpportunityRepositoryMode {
+  const configured = environment.MISSA_OPPORTUNITY_REPOSITORY?.trim();
+  if (configured === "postgres") {
+    if (!environment.DATABASE_URL) {
+      throw new OpportunityRepositoryUnavailableError();
+    }
+    return "postgres";
+  }
+  if (configured && configured !== "compatibility") {
+    throw new OpportunityRepositoryUnavailableError();
+  }
+  if (environment.NODE_ENV === "production") {
+    throw new OpportunityRepositoryUnavailableError();
+  }
+  return "compatibility";
+}
+
 const CATEGORY_TYPES: Record<string, string[]> = {
   magazines: ["magazine"],
   grants: ["grant"],
@@ -262,9 +296,10 @@ class EngineOpportunityRepository implements OpportunityRepository {
 }
 
 export function getOpportunityRepository(): OpportunityRepository {
-  if (process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" && process.env.DATABASE_URL) {
+  const mode = resolveOpportunityRepositoryMode();
+  if (mode === "postgres") {
     if (!globalThis.__missaOpportunityRepository) {
-      globalThis.__missaOpportunityRepository = createPostgresOpportunityRepositoryFromUrl(process.env.DATABASE_URL);
+      globalThis.__missaOpportunityRepository = createPostgresOpportunityRepositoryFromUrl(process.env.DATABASE_URL!);
     }
     return globalThis.__missaOpportunityRepository;
   }

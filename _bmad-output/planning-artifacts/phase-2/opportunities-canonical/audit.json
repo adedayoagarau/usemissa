@@ -1,0 +1,121 @@
+{
+  "baseURL": "http://127.0.0.1:3102",
+  "outputDirectory": "/Volumes/Crucial X10/usemissa-phase-0/_bmad-output/planning-artifacts/phase-2/opportunities-canonical",
+  "results": [
+    {
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844
+      },
+      "browse": {
+        "httpStatus": 200,
+        "heading": "Opportunities",
+        "cards": 5,
+        "horizontalOverflow": false,
+        "seriousAxeViolations": []
+      },
+      "detail": {
+        "httpStatus": 200,
+        "heading": "North River Review — Call for Submissions",
+        "sections": 5,
+        "horizontalOverflow": false,
+        "metadataScripts": 2,
+        "seriousAxeViolations": []
+      },
+      "consoleErrors": []
+    },
+    {
+      "viewport": {
+        "name": "mobile-428",
+        "width": 428,
+        "height": 926
+      },
+      "browse": {
+        "httpStatus": 200,
+        "heading": "Opportunities",
+        "cards": 5,
+        "horizontalOverflow": false,
+        "seriousAxeViolations": []
+      },
+      "detail": {
+        "httpStatus": 200,
+        "heading": "North River Review — Call for Submissions",
+        "sections": 5,
+        "horizontalOverflow": false,
+        "metadataScripts": 2,
+        "seriousAxeViolations": []
+      },
+      "consoleErrors": []
+    },
+    {
+      "viewport": {
+        "name": "tablet-768",
+        "width": 768,
+        "height": 1024
+      },
+      "browse": {
+        "httpStatus": 200,
+        "heading": "Opportunities",
+        "cards": 5,
+        "horizontalOverflow": false,
+        "seriousAxeViolations": []
+      },
+      "detail": {
+        "httpStatus": 200,
+        "heading": "North River Review — Call for Submissions",
+        "sections": 5,
+        "horizontalOverflow": false,
+        "metadataScripts": 2,
+        "seriousAxeViolations": []
+      },
+      "consoleErrors": []
+    },
+    {
+      "viewport": {
+        "name": "desktop-1280",
+        "width": 1280,
+        "height": 900
+      },
+      "browse": {
+        "httpStatus": 200,
+        "heading": "Opportunities",
+        "cards": 5,
+        "horizontalOverflow": false,
+        "seriousAxeViolations": []
+      },
+      "detail": {
+        "httpStatus": 200,
+        "heading": "North River Review — Call for Submissions",
+        "sections": 5,
+        "horizontalOverflow": false,
+        "metadataScripts": 2,
+        "seriousAxeViolations": []
+      },
+      "consoleErrors": []
+    },
+    {
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000
+      },
+      "browse": {
+        "httpStatus": 200,
+        "heading": "Opportunities",
+        "cards": 5,
+        "horizontalOverflow": false,
+        "seriousAxeViolations": []
+      },
+      "detail": {
+        "httpStatus": 200,
+        "heading": "North River Review — Call for Submissions",
+        "sections": 5,
+        "horizontalOverflow": false,
+        "metadataScripts": 2,
+        "seriousAxeViolations": []
+      },
+      "consoleErrors": []
+    }
+  ]
+}

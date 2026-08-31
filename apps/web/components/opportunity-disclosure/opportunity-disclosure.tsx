@@ -118,9 +118,11 @@ export function OpportunityIdentity({
 export function OpportunityCard({
   opportunity,
   href,
+  action,
 }: {
   opportunity: OpportunityBrowseProjection;
   href: string;
+  action?: ReactNode;
 }) {
   const deadline = deadlineDisclosure(opportunity.deadline);
   const practices = primaryPracticeLabels(opportunity);
@@ -162,9 +164,12 @@ export function OpportunityCard({
         </div>
         <div className={styles.cardFooter}>
           <span className={styles.sourceName}>Source: {opportunity.source.name}</span>
-          <span className={styles.cardAction}>
-            Review details <ArrowUpRight aria-hidden="true" />
-          </span>
+          <div className={styles.cardFooterActions}>
+            {action}
+            <span className={styles.cardAction}>
+              Review details <ArrowUpRight aria-hidden="true" />
+            </span>
+          </div>
         </div>
       </div>
     </article>
@@ -243,26 +248,43 @@ export function OpportunityDetailSection({
 export function OpportunityDetail({
   opportunity,
   backHref,
+  saveAction,
+  followAction,
+  preparationAction,
+  reportAction,
+  relatedProfile,
+  practiceLabels,
+  summary,
 }: {
   opportunity: OpportunityDetailProjection;
   backHref: string;
+  saveAction?: ReactNode;
+  followAction?: ReactNode;
+  preparationAction?: ReactNode;
+  reportAction?: ReactNode;
+  relatedProfile?: ReactNode;
+  practiceLabels?: string[];
+  summary?: string;
 }) {
   const profile = opportunity.callProfile;
   const content = opportunity.content;
   const officialHref = sourceHref(opportunity);
   const canApply = opportunity.submissionAvailable && !["closed", "archived"].includes(opportunity.status);
   return (
-    <article className={styles.detail} aria-labelledby="phase-one-opportunity-title">
-      <Link className={styles.back} href={backHref}><ArrowLeft aria-hidden="true" />Back to all fixtures</Link>
+    <article className={styles.detail} aria-labelledby="opportunity-title">
+      <Link className={styles.back} href={backHref}><ArrowLeft aria-hidden="true" />Back to opportunities</Link>
       <header className={styles.detailHero}>
         <OpportunityIdentity opportunity={opportunity} priority />
         <div>
           <DisclosureState tone={statusDisclosure(opportunity).tone}>{opportunityTypeLabel(opportunity.type)}</DisclosureState>
-          <h1 id="phase-one-opportunity-title">{opportunity.title}</h1>
+          <h1 id="opportunity-title">{opportunity.title}</h1>
           <p className={styles.detailOrganization}>{opportunity.organizationName ?? "Organization not confirmed"}</p>
-          <p className={styles.summary}>{content?.summary ?? opportunity.organizationSummary ?? "A source-backed summary is not available for this opportunity."}</p>
+          {followAction}
+          <p className={styles.summary}>{summary ?? content?.summary ?? opportunity.organizationSummary ?? "A source-backed summary is not available for this opportunity."}</p>
+          {relatedProfile}
           <div className={styles.actions} aria-label="Opportunity actions">
-            <button type="button" disabled={!canApply}><Bookmark aria-hidden="true" />{opportunity.personal?.tracked ? "In Tracker" : "Save privately"}</button>
+            {saveAction ?? <button type="button" disabled={!canApply}><Bookmark aria-hidden="true" />{opportunity.personal?.tracked ? "In Tracker" : "Save privately"}</button>}
+            {canApply && opportunity.submissionUrl ? <a href={opportunity.submissionUrl} target="_blank" rel="noreferrer">Open application <ArrowUpRight aria-hidden="true" /><span className={styles.visuallyHidden}>(opens in a new tab)</span></a> : null}
             <a href={officialHref} target="_blank" rel="noreferrer">Official source <ArrowUpRight aria-hidden="true" /><span className={styles.visuallyHidden}>(opens in a new tab)</span></a>
           </div>
         </div>
@@ -282,8 +304,10 @@ export function OpportunityDetail({
           </OpportunityDetailSection>
           <OpportunityDetailSection index="02" eyebrow="Prepare" title="Required materials">
             {opportunity.requiredMaterials.length ? <dl className={styles.requirements}>{opportunity.requiredMaterials.map((item) => <div key={item.label}><dt><FileText aria-hidden="true" />{item.label}</dt><dd>{item.description ?? item.limit ?? (item.required ? "Required" : "Optional")}</dd></div>)}</dl> : <p className={styles.unknownCopy}>Required materials are not listed. Read the official guidelines before preparing files.</p>}
+            {preparationAction}
           </OpportunityDetailSection>
-          <OpportunityDetailSection index="03" eyebrow="Understand" title="Terms and submission rules">
+          {practiceLabels?.length ? <OpportunityDetailSection index="03" eyebrow="Understand" title="Categories named in this call"><div className={styles.practiceTags}>{practiceLabels.map((label) => <span key={label}>{label}</span>)}</div><p className={styles.boundary}>Categories describe the work. They remain separate from eligibility and geography.</p></OpportunityDetailSection> : null}
+          <OpportunityDetailSection index={practiceLabels?.length ? "04" : "03"} eyebrow="Understand" title="Terms and submission rules">
             {profile ? <dl className={styles.terms}>
               <div><dt>Reading period</dt><dd>{profile.readingPeriodLabel ?? "Not listed"}</dd></div>
               <div><dt>Accepted formats</dt><dd>{profile.acceptedFormats.length ? profile.acceptedFormats.join(", ") : "Not listed"}</dd></div>
@@ -296,9 +320,10 @@ export function OpportunityDetail({
               <div><dt>AI-assisted work</dt><dd>Not listed</dd></div>
             </dl> : <p className={styles.unknownCopy}>Detailed call terms are not present in the current record.</p>}
           </OpportunityDetailSection>
-          <OpportunityDetailSection index="04" eyebrow="Verify" title="Official handoff">
+          <OpportunityDetailSection index={practiceLabels?.length ? "05" : "04"} eyebrow="Verify" title="Official handoff">
             <p>Missa provides an orientation to the available record. The organization’s official destination carries the final rules and application action.</p>
             <a className={styles.finalSource} href={officialHref} target="_blank" rel="noreferrer">Read official guidelines <ArrowUpRight aria-hidden="true" /><span className={styles.visuallyHidden}>(opens in a new tab)</span></a>
+            {reportAction}
           </OpportunityDetailSection>
         </div>
       </div>

@@ -39,7 +39,7 @@ test.describe("canonical Opportunities browse", () => {
     await expect(
       page.getByRole("group", { name: "Opportunity type" }),
     ).toBeVisible();
-    await expect(page.getByRole("group", { name: "Field" })).toBeVisible();
+    await expect(page.getByRole("group", { name: "Categories" })).toBeVisible();
     await expect(page.getByLabel("Sort by")).toBeVisible();
     expect(
       await page.evaluate(
@@ -64,7 +64,7 @@ test.describe("canonical Opportunities browse", () => {
       page.getByRole("heading", { name: "Filter opportunities" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("dialog").getByText("More field filters"),
+      page.getByRole("dialog").getByText("More category filters"),
     ).toBeVisible();
     await page.waitForTimeout(250);
     expect(

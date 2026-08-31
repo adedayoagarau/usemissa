@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -31,7 +31,7 @@ Missa has canonical public Opportunity routes, older card and detail composition
 
 ## Decision
 
-We choose **Option C**. Phase 1 owns a reusable disclosure layer whose inputs are `OpportunityBrowseProjection` and `OpportunityDetailProjection`. The existing `/design-system/opportunities-overhaul` route becomes its deterministic reference composition. Canonical `/opportunities` routes remain unchanged until the Phase 2 migration gate.
+We choose **Option C**. The reusable disclosure layer accepts `OpportunityBrowseProjection` and `OpportunityDetailProjection`. The existing `/design-system/opportunities-overhaul` route remains its deterministic reference composition. Canonical `/opportunities` routes integrate the same layer behind a server-owned presentation selector.
 
 Pages and repository reads remain Server Components. Components that require browser state or event handling form small Client Component boundaries. Public facts, source handoff, and private actions remain separate component responsibilities.
 
@@ -40,5 +40,5 @@ Pages and repository reads remain Server Components. Components that require bro
 - The review surface may not invent a second opportunity data type.
 - Formatting and unknown/conflict vocabulary live in shared disclosure helpers.
 - Existing canonical card/detail components receive a Phase 2 merge-or-retire decision.
-- A production presentation flag is not part of Phase 1.
-- Phase 2 must prove repository projection equivalence before replacing canonical composition.
+- The migration selector chooses presentation only and defaults to the legacy composition in production until promotion.
+- Canonical integration must prove both compositions receive the same already-fetched projection.

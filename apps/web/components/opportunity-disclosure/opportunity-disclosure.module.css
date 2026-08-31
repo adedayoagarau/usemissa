@@ -22,6 +22,8 @@
 .scanFacts span[data-tone='warning'] { color: var(--ochre-deep); font-weight: 650; }
 .scanFacts svg { width: 15px; height: 15px; flex: 0 0 auto; color: var(--brand-accent); }
 .cardFooter { display: flex; min-height: 46px; margin-top: 18px; padding-top: 14px; align-items: center; justify-content: space-between; border-top: 1px solid var(--border); gap: 10px; }
+.cardFooterActions { display: flex; align-items: center; gap: 10px; }
+.cardFooterActions > :global(button) { min-width: 44px; min-height: 44px; }
 .sourceName { color: var(--ink-2); font: 560 10px/1.35 var(--font-mono), monospace; overflow-wrap: anywhere; }
 .cardAction { display: inline-flex; align-items: center; color: var(--accent-deep); font-size: 12px; font-weight: 670; gap: 5px; white-space: nowrap; }
 .cardAction svg { width: 14px; height: 14px; }
@@ -78,6 +80,9 @@
 .requirements dd, .terms dd { margin: 0; color: var(--ink-2); font-size: 14px; line-height: 1.5; }
 .terms dt { font-size: 13px; font-weight: 700; }
 .finalSource { width: fit-content; margin-top: 12px; }
+.practiceTags { display: flex; flex-wrap: wrap; gap: 8px; }
+.practiceTags span { display: inline-flex; min-height: 30px; padding: 0 10px; align-items: center; border-radius: 999px; background: var(--accent-tint); color: var(--accent-deep); font-size: 12px; font-weight: 650; }
+.detailSection > :global([data-slot='prepare-checklist']), .detailSection > :global(form) { margin-top: 22px; }
 @media (min-width: 760px) { .card { grid-template-columns: 190px minmax(0, 1fr); } .card .identity { min-height: 100%; border-right: 1px solid var(--border); border-bottom: 0; } }
 @media (max-width: 820px) { .detailHero { gap: 24px; grid-template-columns: 1fr; } .detailHero .identity { min-height: 260px; } .detailGrid { gap: 42px; grid-template-columns: 1fr; } .decisionRail { position: static; } }
 @media (max-width: 520px) { .cardBody { padding: 17px; } .cardFooter { align-items: flex-start; flex-direction: column; } .detailHero h1 { font-size: clamp(2.45rem, 12vw, 3.6rem); } .detailHero .identity { min-height: 220px; } .requirements > div, .terms > div { grid-template-columns: 1fr; } .actions { align-items: stretch; flex-direction: column; } .actions button, .actions a { width: 100%; } }

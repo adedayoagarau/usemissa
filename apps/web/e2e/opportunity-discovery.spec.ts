@@ -6,9 +6,9 @@ test('anonymous opportunities keep canonical taxonomy state across search', asyn
   const aria = await page.getByRole('main').ariaSnapshot();
   expect(aria).toContain('heading "Opportunities"');
   expect(aria).toContain('search:');
-  expect(aria).toContain('group "Field"');
+  expect(aria).toContain('group "Categories"');
 
-  const practiceFamily = page.getByRole('group', { name: 'Field' }).getByRole('checkbox').first();
+  const practiceFamily = page.getByRole('group', { name: 'Categories' }).getByRole('checkbox').first();
   await expect(practiceFamily).toBeVisible();
   await practiceFamily.locator('xpath=ancestor::label').click();
   await expect(page).toHaveURL(/taxonomy=/);
@@ -19,7 +19,7 @@ test('anonymous opportunities keep canonical taxonomy state across search', asyn
   expect(new URL(page.url()).searchParams.get('taxonomyVersion')).toBeTruthy();
 
   await page.reload();
-  await expect(page.getByRole('group', { name: 'Field' }).getByRole('checkbox').first()).toBeChecked();
+  await expect(page.getByRole('group', { name: 'Categories' }).getByRole('checkbox').first()).toBeChecked();
 
   const search = page.getByRole('search').getByLabel('Search opportunities or organizations');
   await search.fill('example search');

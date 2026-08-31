@@ -128,7 +128,7 @@ function FilterPanel({
         <div className={styles.checkList}>
           {opportunityTypes.map(([value, label]) => (
             <label key={value} className={styles.checkRow}>
-              <Checkbox checked={selectedTypes.includes(value)} onCheckedChange={(checked) => toggleValue('type', value, checked === true)} />
+              <Checkbox aria-label={label} checked={selectedTypes.includes(value)} onCheckedChange={(checked) => toggleValue('type', value, checked === true)} />
               <span>{label}</span>
             </label>
           ))}
@@ -140,7 +140,7 @@ function FilterPanel({
         <div className={styles.checkList}>
           {practiceFamilies.map((term) => (
             <label key={term.id} className={styles.checkRow}>
-              <Checkbox checked={selectedTerms.includes(term.id)} onCheckedChange={(checked) => toggleValue('taxonomy', term.id, checked === true)} />
+              <Checkbox aria-label={term.preferredLabel} checked={selectedTerms.includes(term.id)} onCheckedChange={(checked) => toggleValue('taxonomy', term.id, checked === true)} />
               <span>{term.preferredLabel}</span>
             </label>
           ))}

@@ -1,7 +1,7 @@
 import { opportunityDetailResponseSchema } from "@missa/contracts";
 import { NextResponse } from "next/server";
 import { getSessionAccount } from "@/lib/auth";
-import { getOpportunityRepository } from "@/lib/opportunityRepository";
+import { getOpportunityRepository, OpportunityRepositoryUnavailableError } from "@/lib/opportunityRepository";
 
 const PUBLIC_STATUSES = new Set(["opening-soon", "open", "closing-soon", "deadline-extended"]);
 
@@ -11,10 +11,18 @@ export async function GET(
 ) {
   const session = await getSessionAccount(request.headers.get("cookie"));
   const { id } = await params;
-  const result = await getOpportunityRepository().getById(
-    id,
-    session?.account.id ? { accountId: session.account.id } : undefined,
-  );
+  let result;
+  try {
+    result = await getOpportunityRepository().getById(
+      id,
+      session?.account.id ? { accountId: session.account.id } : undefined,
+    );
+  } catch (error) {
+    if (error instanceof OpportunityRepositoryUnavailableError) {
+      return NextResponse.json({ error: "Opportunity catalogue unavailable" }, { status: 503, headers: { "cache-control": "no-store" } });
+    }
+    throw error;
+  }
 
   if (!result) {
     return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });

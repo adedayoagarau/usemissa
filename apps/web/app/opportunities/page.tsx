@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { Sparkles, X } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
-import { getOpportunityRepository } from '@/lib/opportunityRepository';
+import { getOpportunityRepository, OpportunityRepositoryUnavailableError } from '@/lib/opportunityRepository';
 import { parseOpportunityBrowseQuery } from '@/lib/opportunityQuery';
 import { LOCATION_OPTIONS, taxonomyLabelFor } from '@/lib/opportunityTaxonomy';
 import { MissaSiteHeader } from '@/components/missa-site-header';
@@ -15,7 +15,9 @@ import { OpportunitySort } from '@/components/opportunity-sort';
 import { SaveSearchButton } from '@/components/save-search-button';
 import { PublicDiscoveryEvent } from '@/components/public-discovery-event';
 import { Button } from '@/components/ui/button';
+import { OpportunityCatalogueUnavailable } from '@/components/opportunity-catalogue-unavailable';
 import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
+import { resolveOpportunityPresentation } from '@/lib/opportunityPresentation';
 import styles from './opportunities.module.css';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -87,10 +89,20 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
   const query = parseOpportunityBrowseQuery(urlParams);
   const baseQueryParams = new URLSearchParams(urlParams);
   baseQueryParams.delete('cursor');
-  const result = await getOpportunityRepository().browse(
-    query,
-    session?.account.id ? { accountId: session.account.id } : undefined,
-  );
+  let result;
+  try {
+    result = await getOpportunityRepository().browse(
+      query,
+      session?.account.id ? { accountId: session.account.id } : undefined,
+    );
+  } catch (error) {
+    if (error instanceof OpportunityRepositoryUnavailableError) {
+      const unavailableSession = session ? { email: session.account.email, hasOrganization: session.memberships.length > 0 } : null;
+      return <OpportunityCatalogueUnavailable session={unavailableSession} />;
+    }
+    throw error;
+  }
+  const presentation = resolveOpportunityPresentation();
   const filterCount = activeFilterCount(query);
   const activeChips = [
     ...query.types.map((value) => ({ key: 'type', value, label: typeLabels[value] ?? value, list: true })),
@@ -199,6 +211,7 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
                   initialNextCursor={result.nextCursor}
                   baseQuery={baseQueryParams.toString()}
                   signedIn={Boolean(session)}
+                  presentation={presentation}
                 />
               ) : (
                 <div className={styles.empty}>
