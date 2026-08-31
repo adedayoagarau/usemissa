@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createIngestionCatalog, createRun, createSnapshotId, evaluatePromotionGate, executeShadowPipeline, redisOptionsFromUrl, robotsAllowsPath, reviewForPublication, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards, writeWithDeepSeek } from "../src/index.js";
+import { AdapterRegistry, DeepSeekHtmlAdapter, FeedAdapter, GaryObservationAdapter, GenericHtmlAdapter, JsonApiAdapter, MemoryShadowRunStore, assertIngestionV2DatabaseRole, assessEvidenceQuality, buildOpportunityIdentity, compareExtractionResults, compareOpportunityIdentity, compareSourceAdapters, createBenchmarkSources, createIngestionCatalog, createRun, createSnapshotId, evaluatePromotionGate, executeShadowPipeline, isAggregateOpportunityPage, redisOptionsFromUrl, robotsAllowsPath, reviewForPublication, sanitizeSourceText, scoreBenchmarkCase, shadowJob, sourceIsDue, sourceIsOpen, summarizeBenchmarkScorecards, writeWithDeepSeek } from "../src/index.js";
 
 test("creates shadow runs without publishing mode", () => {
   const source = createBenchmarkSources()[0]!;
@@ -8,6 +8,17 @@ test("creates shadow runs without publishing mode", () => {
   assert.equal(run.mode, "shadow");
   assert.equal(run.status, "queued");
   assert.match(run.id, /^ingv2_/);
+});
+
+test("rejects known directory and organization-profile URLs before canonical handoff", () => {
+  const extraction = { fields: [{ fieldName: "title", rawValue: "Mobility Funding Guide to Moldova", normalizedValue: "Mobility Funding Guide to Moldova", confidence: 1, provenance: { adapterId: "test", method: "fixture", sourceUrl: "https://on-the-move.org/resources/funding/mobility-funding-guide-moldova", snapshotId: "snap" } }], candidateLinks: [], warnings: [] };
+  assert.equal(isAggregateOpportunityPage(extraction, "https://on-the-move.org/news/deadlines"), true);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://on-the-move.org/resources/funding/mobility-funding-guide-moldova"), true);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://on-the-move.org/news/example-current-open-call"), false);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://www.curatorspace.com/opportunities/index/page/9?orderBy=deadline"), true);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://www.transartists.org/en/air/sapporo-artist-residence"), true);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://www.transartists.org/en/deadlines"), true);
+  assert.equal(isAggregateOpportunityPage(extraction, "https://www.transartists.org/en/news/current-open-call"), false);
 });
 
 test("DeepSeek writer returns a bounded source-linked page draft", async () => {

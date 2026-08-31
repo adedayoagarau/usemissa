@@ -50,15 +50,19 @@ test('content review approves processed, confirmed, source-linked content', () =
   assert.equal(result.score, 100);
 });
 
-test('content review routes missing source processing to a human', () => {
+test('content review approves sound copy while preserving missing authority checks', () => {
   const content = buildOpportunityContent(input());
   const result = reviewOpportunityContent(content, {
     sourceUrl,
-    organizationConfirmed: true,
+    organizationConfirmed: false,
     submissionState: 'available',
   });
-  assert.equal(result.decision, 'needs-human');
+  assert.equal(result.decision, 'approved');
+  assert.equal(result.checks.reviewPolicyVersion, 'opportunity-content-review.v2');
+  assert.equal(result.checks.sourceProcessed, false);
+  assert.equal(result.checks.organizationConfirmed, false);
   assert.match(result.reasons.join(' '), /successful processing/);
+  assert.match(result.reasons.join(' '), /organization still needs source confirmation/);
 });
 
 test('content review blocks unsafe destinations and promotional claims', () => {

@@ -17,6 +17,7 @@ type Candidate = QueryResultRow & {
   destination_url: string | null;
   source_id: string;
   input_version: string;
+  authority_kind: string;
 };
 
 type FetchEvidence = {
@@ -58,6 +59,26 @@ export function destinationIsProven(sourceUrl: string, sourceHtml: string, desti
   const absolute = normalizedUrl(destination.href);
   const escaped = absolute.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   return new RegExp(escaped, "i").test(sourceHtml.replace(/&amp;/g, "&"));
+}
+
+const AGGREGATOR_HOSTS = [
+  "artconnect.com", "curatorspace.com", "on-the-move.org",
+  "transartists.org", "artopportunities.org", "callforentry.org",
+];
+
+export function isAggregatorHost(value: string): boolean {
+  const hostname = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+  return AGGREGATOR_HOSTS.some((host) => hostname === host || hostname.endsWith(`.${host}`));
+}
+
+export function organizationIsProven(input: {
+  sourceUrl: string;
+  authorityKind: string;
+  destinationProven: boolean;
+}): boolean {
+  return input.destinationProven
+    && !isAggregatorHost(input.sourceUrl)
+    && !["directory", "platform", "feed"].includes(input.authorityKind);
 }
 
 async function fetchEvidence(url: string): Promise<FetchEvidence> {
@@ -107,7 +128,8 @@ async function claim(pool: Pool, batch: number): Promise<Candidate[]> {
     returning j.id as job_id, j.opportunity_id, j.input_version,
       (select s.url from opportunities o join opportunity_sources s on s.id=o.source_id where o.id=j.opportunity_id) as source_url,
       (select coalesce(o.submission_url,o.guidelines_url) from opportunities o where o.id=j.opportunity_id) as destination_url,
-      (select source_id from opportunities where id=j.opportunity_id) as source_id
+      (select source_id from opportunities where id=j.opportunity_id) as source_id,
+      (select s.authority_kind from opportunities o join opportunity_sources s on s.id=o.source_id where o.id=j.opportunity_id) as authority_kind
   `, [batch]);
   return result.rows.filter((row) => Boolean(row.source_url));
 }
@@ -146,7 +168,7 @@ async function repair(pool: Pool, runId: string, candidate: Candidate): Promise<
   }
 
   const deadlineDate = destination?.deadlineDate ?? source.deadlineDate;
-  const organizationConfirmed = new URL(source.finalUrl).hostname === (destination ? new URL(destination.finalUrl).hostname : new URL(source.finalUrl).hostname);
+  const organizationConfirmed = organizationIsProven({ sourceUrl: source.finalUrl, authorityKind: candidate.authority_kind, destinationProven });
   const facts = { sourceStatus: source.statusCode, sourceFinalUrl: source.finalUrl, destinationStatus: destination?.statusCode ?? null, destinationFinalUrl: destination?.finalUrl ?? null, destinationProven, organizationConfirmed, deadlineDate };
   const evidenceOk = destinationProven && organizationConfirmed;
   if (!evidenceOk) {

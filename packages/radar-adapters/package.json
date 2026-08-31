@@ -14,7 +14,8 @@
     "missa-discovery-agent": "dist/src/discoveryWorker.js",
     "missa-coverage-worker": "dist/src/coverageWorker.js",
     "missa-taxonomy-discovery": "dist/src/taxonomyDiscoveryWorker.js",
-    "missa-evidence-repair": "dist/src/evidenceRepairWorker.js"
+    "missa-evidence-repair": "dist/src/evidenceRepairWorker.js",
+    "missa-lifecycle-reconciler": "dist/src/lifecycleWorker.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -28,7 +29,8 @@
     "discovery-agent": "node dist/src/discoveryWorker.js",
     "coverage-worker": "node dist/src/coverageWorker.js",
     "taxonomy-discovery": "node dist/src/taxonomyDiscoveryWorker.js",
-    "evidence-repair": "node dist/src/evidenceRepairWorker.js"
+    "evidence-repair": "node dist/src/evidenceRepairWorker.js",
+    "lifecycle-reconciler": "node dist/src/lifecycleWorker.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
