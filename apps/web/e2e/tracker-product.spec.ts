@@ -11,6 +11,15 @@ async function trackerAccount(page: Page) {
     },
   });
   expect(signup.status()).toBe(201);
+  const sessionCookie = signup.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
+  expect(sessionCookie).toBeTruthy();
+  await page.context().addCookies([{
+    name: 'missa_session',
+    value: sessionCookie!,
+    url: new URL(signup.url()).origin,
+    httpOnly: true,
+    sameSite: 'Lax',
+  }]);
 
   const opportunities = await page.request.get('/api/opportunities?limit=1');
   expect(opportunities.ok()).toBeTruthy();
@@ -83,12 +92,35 @@ test('Tracker status endpoint cannot mutate another account item', async ({ brow
       },
     });
     expect(signup.status()).toBe(201);
+    const sessionCookie = signup.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
+    expect(sessionCookie).toBeTruthy();
+    await otherPage.context().addCookies([{
+      name: 'missa_session',
+      value: sessionCookie!,
+      url: new URL(signup.url()).origin,
+      httpOnly: true,
+      sameSite: 'Lax',
+    }]);
     const response = await otherPage.request.post(`/api/me/tracker/${encodeURIComponent(opportunity.id)}/status`, {
-      data: { status: 'accepted' },
+      headers: { 'Idempotency-Key': crypto.randomUUID() },
+      data: { status: 'accepted', expectedRevision: 1 },
     });
     expect(response.status()).toBe(404);
   } finally {
     await ownerContext.close();
     await otherContext.close();
   }
+});
+
+test('Tracker exposes an explicit recovery action for a stale relational edit', async ({ page }) => {
+  const opportunity = await trackerAccount(page);
+  await page.route(`**/api/me/tracker/${encodeURIComponent(opportunity.id)}/status`, async (route) => {
+    await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'Tracker item changed' }) });
+  });
+  await page.goto('/tracker');
+  const status = page.getByLabel(`Update status for ${opportunity.title}`);
+  await status.selectOption('preparing');
+  await expect(page.getByRole('region', { name: 'Opportunity' }).getByRole('alert')).toContainText('changed in another session');
+  await expect(page.getByRole('button', { name: 'Reload latest Tracker state' })).toBeVisible();
+  await expect(status).toHaveValue('interested');
 });

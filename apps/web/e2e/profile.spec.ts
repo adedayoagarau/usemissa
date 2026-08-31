@@ -5,6 +5,9 @@ async function createAccount(page: Page, name = 'Profile Test User') {
   const email = `profile-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
   const signup = await page.request.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', displayName: name } });
   expect(signup.status()).toBe(201);
+  const sessionCookie = signup.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
+  expect(sessionCookie).toBeTruthy();
+  await page.context().addCookies([{ name: 'missa_session', value: sessionCookie!, url: new URL(signup.url()).origin, httpOnly: true, sameSite: 'Lax' }]);
   const owner = await page.request.get('/api/me/profile');
   expect(owner.ok()).toBeTruthy();
   return { email, profile: (await owner.json()) as { id: string; publicUrl: string } };
@@ -78,7 +81,7 @@ test('Profile ledger keeps section URLs and exposes the full facet model progres
   await expect(page.getByText('12-facet model')).toBeVisible();
   const facet = page.getByLabel('Facet');
   await expect(facet.locator('option')).toHaveCount(12);
-  await expect(facet.locator('option')).toContainText(['Field', 'Discipline', 'Form', 'Genre', 'Subgenre', 'Medium', 'Technique or process', 'Mode or approach', 'Role', 'Theme or subject', 'Audience', 'Language']);
+  await expect(facet.locator('option')).toContainText(['Practice family', 'Discipline', 'Form', 'Genre', 'Subgenre', 'Medium', 'Technique or process', 'Mode or approach', 'Role', 'Theme or subject', 'Audience', 'Language']);
   await expect(page.getByText(/scheme\s+\d/i)).toHaveCount(0);
   await expect(page.getByText(/profile completeness|tracked opportunities|fit score|eligibility score/i)).toHaveCount(0);
   await expect(page.getByText('Request for proposals', { exact: true })).toBeVisible();

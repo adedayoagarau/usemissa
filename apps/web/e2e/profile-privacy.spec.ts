@@ -5,6 +5,9 @@ async function createAccount(page: Page) {
   const password = 'correct-horse-battery';
   const signup = await page.request.post('/api/auth/signup', { data: { email, password, displayName: 'Privacy Test User' } });
   expect(signup.status()).toBe(201);
+  const sessionCookie = signup.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
+  expect(sessionCookie).toBeTruthy();
+  await page.context().addCookies([{ name: 'missa_session', value: sessionCookie!, url: new URL(signup.url()).origin, httpOnly: true, sameSite: 'Lax' }]);
   const owner = await page.request.get('/api/me/profile');
   expect(owner.ok()).toBeTruthy();
   const profile = await owner.json() as { id: string };
@@ -40,7 +43,10 @@ test('owner can save privacy settings and public profile honors them', async ({ 
   await expect(page.getByText('opportunities tracked', { exact: true })).toHaveCount(0);
   await expect(page.locator('body')).not.toContainText(email);
 
-  await page.request.post('/api/auth/login', { data: { email, password } });
+  const login = await page.request.post('/api/auth/login', { data: { email, password } });
+  const loginCookie = login.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
+  expect(loginCookie).toBeTruthy();
+  await page.context().addCookies([{ name: 'missa_session', value: loginCookie!, url: new URL(login.url()).origin, httpOnly: true, sameSite: 'Lax' }]);
   const malformed = await page.request.patch('/api/me/profile/privacy', { data: { unknown: 'public' } });
   expect(malformed.status()).toBe(400);
   const afterMalformed = await page.request.get('/api/me/profile/privacy');
@@ -49,7 +55,12 @@ test('owner can save privacy settings and public profile honors them', async ({ 
 
 test('private display name has no identifying fallback on the public page', async ({ page }) => {
   const { email, id } = await createAccount(page);
-  const update = await page.request.patch('/api/me/profile/privacy', { data: { displayName: 'private' } });
+  const current = await page.request.get('/api/me/profile/privacy');
+  const revision = (await current.json() as { revision: number }).revision;
+  const update = await page.request.patch('/api/me/profile/privacy', {
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    data: { displayName: 'private', expectedRevision: revision },
+  });
   expect(update.ok()).toBeTruthy();
   await page.request.post('/api/auth/logout');
 

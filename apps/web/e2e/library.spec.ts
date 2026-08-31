@@ -7,11 +7,16 @@ async function createLibraryAccount(page: Page) {
     data: { email: `library-${suffix}@example.com`, password: 'correct-horse-battery', displayName: 'Library User' },
   });
   expect(signup.status()).toBe(201);
+  const sessionCookie = signup.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
+  expect(sessionCookie).toBeTruthy();
+  await page.context().addCookies([{ name: 'missa_session', value: sessionCookie!, url: new URL(signup.url()).origin, httpOnly: true, sameSite: 'Lax' }]);
   const workResponse = await page.request.post('/api/me/library/works', {
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
     data: { title: 'Night River', description: 'A poetry manuscript about memory and place.', taxonomyTermIds: ['taxterm_disc-poetry'] },
   });
   expect(workResponse.status()).toBe(201);
   const answerResponse = await page.request.post('/api/me/library/saved-answers', {
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
     data: { name: 'Short bio', body: 'A writer working across poetry and criticism.' },
   });
   expect(answerResponse.status()).toBe(201);
@@ -41,11 +46,11 @@ test('Working Archive keeps URL state and opens a canonical private Work detail'
   await expect(page.getByText(/cannot yet prove which Library revision was sent/i)).toBeVisible();
   await page.screenshot({ path: 'outputs/work-detail-product-desktop.png', fullPage: true });
 
-  await page.getByRole('button', { name: 'Field', exact: true }).click();
+  await page.getByRole('button', { name: 'Details', exact: true }).click();
   await expect(page).toHaveURL(/section=practice/);
   await expect(page.getByRole('heading', { name: 'Describe the Work, not its eligibility' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Edit terms' }).click();
+  await page.getByRole('button', { name: 'Edit details' }).click();
   await page.getByLabel('Work title').fill('Night River — revised');
   await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByRole('status')).toContainText('Work updated');
@@ -84,13 +89,21 @@ test('Library deletion rejects a Work that still belongs to Tracker', async ({ p
   const payload = await opportunities.json() as { items: Array<{ id: string }> };
   const opportunityId = payload.items[0]?.id;
   expect(opportunityId).toBeTruthy();
-  expect([200, 201]).toContain((await page.request.post('/api/me/tracker', { data: { opportunityId } })).status());
-  expect((await page.request.put(`/api/me/tracker/${encodeURIComponent(opportunityId!)}/work`, { data: { workId: work.id } })).status()).toBe(200);
+  const save = await page.request.post('/api/me/tracker', { data: { opportunityId } });
+  expect([200, 201]).toContain(save.status());
+  const saved = await save.json() as { tracked: { revision: number } };
+  expect((await page.request.put(`/api/me/tracker/${encodeURIComponent(opportunityId!)}/work`, {
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    data: { workId: work.id, expectedRevision: saved.tracked.revision },
+  })).status()).toBe(200);
 
-  const deletion = await page.request.delete(`/api/me/library/works/${encodeURIComponent(work.id)}`);
+  const deletion = await page.request.delete(`/api/me/library/works/${encodeURIComponent(work.id)}`, {
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
+    data: { expectedRevision: 1 },
+  });
   expect(deletion.status()).toBe(409);
   const deletionBody = await deletion.json() as { error?: string };
-  expect(deletionBody.error).toContain('Tracker item');
+  expect(deletionBody.error).toContain('linked to Tracker');
 
   await page.goto(`/library/works/${encodeURIComponent(work.id)}`);
   await expect(page.getByRole('button', { name: 'Delete Work' })).toBeDisabled();
