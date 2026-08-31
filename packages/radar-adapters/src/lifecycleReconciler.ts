@@ -286,6 +286,19 @@ function nextInterval(decision: LifecycleDecision): string {
   return "7 days";
 }
 
+export const LIFECYCLE_APPLY_SQL = `
+  update opportunities set status=$2,
+    open_date=coalesce($3::date,open_date), deadline_date=coalesce($4::date,deadline_date),
+    deadline_kind=case
+      when $5='exact' and deadline_date is not distinct from $4::date and deadline_kind='date' then deadline_kind
+      else coalesce($5,deadline_kind)
+    end,
+    source_checked_at=$6,
+    last_changed_at=case when publication_state='reviewable' then now() else last_changed_at end,
+    updated_at=now()
+  where id=$1
+`;
+
 async function recordDecision(pool: Pool, job: LifecycleJob, sourceUrl: string, fetchedAt: Date, sourceDate: string | undefined, decision: LifecycleDecision): Promise<void> {
   const client = await pool.connect();
   try {
@@ -298,16 +311,7 @@ async function recordDecision(pool: Pool, job: LifecycleJob, sourceUrl: string, 
   `, [job.opportunityId, sourceUrl, fetchedAt, sourceDate ? sourceDate.slice(0, 10) : null, LIFECYCLE_CLASSIFIER_VERSION, decision.decision, decision.confidence, decision.evidencePassage ?? null, decision.status ?? null, decision.openDate ?? null, decision.deadlineDate ?? null, decision.deadlineKind ?? null, JSON.stringify({ reason: decision.reason, ...(decision.seasonLabel ? { seasonLabel: decision.seasonLabel } : {}) })]);
 
     if (decision.decision === "apply" && decision.confidence === "high" && decision.status) {
-      await client.query(`
-        update opportunities set status=$2,
-          open_date=coalesce($3::date,open_date), deadline_date=coalesce($4::date,deadline_date),
-          deadline_kind=case
-            when $5='exact' and deadline_date is not distinct from $4::date and deadline_kind='date' then deadline_kind
-            else coalesce($5,deadline_kind)
-          end,
-          source_checked_at=$6, updated_at=now()
-        where id=$1
-      `, [job.opportunityId, decision.status, decision.openDate ?? null, decision.deadlineDate ?? null, decision.deadlineKind ?? null, fetchedAt]);
+      await client.query(LIFECYCLE_APPLY_SQL, [job.opportunityId, decision.status, decision.openDate ?? null, decision.deadlineDate ?? null, decision.deadlineKind ?? null, fetchedAt]);
       if (decision.status === "closed" && decision.seasonLabel) {
         await client.query(`
           insert into opportunity_call_profiles

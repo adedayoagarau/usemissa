@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { reviewCandidate, type ReviewCandidate } from "../src/reviewWorker.js";
+import { reviewCandidate, SEED_REVIEW_JOBS_SQL, type ReviewCandidate } from "../src/reviewWorker.js";
+
+test("review jobs requeue after fresh high-confidence lifecycle evidence", () => {
+  assert.match(SEED_REVIEW_JOBS_SQL, /opportunity_lifecycle_evidence/);
+  assert.match(SEED_REVIEW_JOBS_SQL, /decision = 'apply' and confidence = 'high'/);
+  assert.match(SEED_REVIEW_JOBS_SQL, /input_version is distinct from excluded.input_version/);
+});
 
 function candidate(overrides: Partial<ReviewCandidate> = {}): ReviewCandidate {
   return {

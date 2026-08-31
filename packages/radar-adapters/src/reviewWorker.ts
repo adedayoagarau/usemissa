@@ -15,6 +15,28 @@ type ReviewJob = { id: string; opportunityId: string; inputVersion: string };
 const ACTIVE_STATUSES = ["opening-soon", "open", "closing-soon", "deadline-extended"];
 const REVIEW_INTERVAL_MINUTES = 10;
 
+export const SEED_REVIEW_JOBS_SQL = `
+  insert into radar_review_jobs (id, opportunity_id, priority, input_version)
+  select md5('review:' || o.id), o.id,
+    case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 20 else 0 end,
+    greatest(
+      coalesce(o.last_changed_at, o.created_at),
+      coalesce(lifecycle.created_at, '-infinity'::timestamptz)
+    )::text
+  from opportunities o
+  left join lateral (
+    select created_at
+    from opportunity_lifecycle_evidence
+    where opportunity_id = o.id and decision = 'apply' and confidence = 'high'
+    order by created_at desc limit 1
+  ) lifecycle on true
+  where o.publication_state = 'reviewable'
+  on conflict (opportunity_id) do update
+    set status = 'queued', input_version = excluded.input_version,
+        next_attempt_at = now(), lease_until = null, last_error = null, updated_at = now()
+    where radar_review_jobs.input_version is distinct from excluded.input_version
+`;
+
 function batchSize(): number {
   const value = Number(process.env.RADAR_REVIEW_BATCH_SIZE ?? 20);
   return Number.isFinite(value) ? Math.max(1, Math.min(50, Math.floor(value))) : 20;
@@ -41,18 +63,7 @@ async function finishRun(pool: Pool, runId: string, status: "completed" | "faile
 }
 
 async function seedReviewJobs(pool: Pool): Promise<void> {
-  await pool.query(
-    `insert into radar_review_jobs (id, opportunity_id, priority, input_version)
-     select md5('review:' || o.id), o.id,
-       case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 20 else 0 end,
-       coalesce(o.last_changed_at, o.created_at)::text
-     from opportunities o
-     where o.publication_state = 'reviewable'
-     on conflict (opportunity_id) do update
-       set status = 'queued', input_version = excluded.input_version,
-           next_attempt_at = now(), lease_until = null, last_error = null, updated_at = now()
-       where radar_review_jobs.input_version is distinct from excluded.input_version`,
-  );
+  await pool.query(SEED_REVIEW_JOBS_SQL);
 }
 
 async function claimJobs(pool: Pool, limit: number): Promise<ReviewJob[]> {
