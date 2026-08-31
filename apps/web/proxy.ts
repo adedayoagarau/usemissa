@@ -120,6 +120,8 @@ function shouldRedirectToWaitlist(request: NextRequest): boolean {
     return false;
   if (pathname === "/journals" || pathname.startsWith("/journals/"))
     return false;
+  if (pathname === "/residencies" || pathname.startsWith("/residencies/"))
+    return false;
   if (pathname.startsWith("/@")) return false;
   if (
     pathname === "/signup" &&
