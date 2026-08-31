@@ -1,0 +1,72 @@
+{
+  "observedAt": "2026-08-31T23:18:19.497Z",
+  "baseURL": "http://127.0.0.1:3113",
+  "expectedPresentation": "disclosure-v2",
+  "authority": {
+    "total": 560,
+    "sampledId": "opp_04d9a9ef-8a6d-4c95-98cb-9963e4baa7c2",
+    "sampledSlug": "fischer-prize-opp_04d9a9ef-8a6d-4c95-98cb-9963e4baa7c2",
+    "sampledTitle": "Fischer Prize",
+    "publicSourceKeys": [
+      "kind",
+      "name",
+      "url"
+    ]
+  },
+  "mutationBoundary": "Read-only observation. Save, Follow, Prepare, report, and application actions were not invoked.",
+  "results": [
+    {
+      "viewport": {
+        "name": "mobile-390",
+        "width": 390,
+        "height": 844
+      },
+      "browse": {
+        "httpStatus": 200,
+        "presentation": "disclosure-v2",
+        "heading": "Opportunities",
+        "resultLabel": "560 opportunities",
+        "horizontalOverflow": false,
+        "seriousAxeViolations": []
+      },
+      "detail": {
+        "httpStatus": 200,
+        "presentation": "disclosure-v2",
+        "sourceMatchesApi": true,
+        "heading": "Fischer Prize",
+        "metadataScripts": 2,
+        "horizontalOverflow": false,
+        "hasPrivateSaveAction": true,
+        "seriousAxeViolations": []
+      },
+      "consoleErrors": []
+    },
+    {
+      "viewport": {
+        "name": "desktop-1440",
+        "width": 1440,
+        "height": 1000
+      },
+      "browse": {
+        "httpStatus": 200,
+        "presentation": "disclosure-v2",
+        "heading": "Opportunities",
+        "resultLabel": "560 opportunities",
+        "horizontalOverflow": false,
+        "seriousAxeViolations": []
+      },
+      "detail": {
+        "httpStatus": 200,
+        "presentation": "disclosure-v2",
+        "sourceMatchesApi": true,
+        "heading": "Fischer Prize",
+        "metadataScripts": 2,
+        "horizontalOverflow": false,
+        "hasPrivateSaveAction": true,
+        "seriousAxeViolations": []
+      },
+      "consoleErrors": []
+    }
+  ],
+  "passed": true
+}

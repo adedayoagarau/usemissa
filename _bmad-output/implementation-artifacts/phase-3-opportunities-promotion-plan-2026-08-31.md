@@ -4,7 +4,7 @@ Date: 2026-08-31
 
 Branch: `codex/phase-0-opportunities`
 
-Status: In progress — promotion preflight
+Status: In progress — authority reconciliation passed locally; remote promotion pending
 
 ## Current authority and exposure
 
@@ -42,3 +42,35 @@ Keep `legacy` and both legacy components while any of these remain unproven:
 ## Retirement gate
 
 Legacy removal is not part of the preflight. It requires an observed production rollout, a defined observation window, clean first-party presentation metrics, verified rollback, and an explicit decision about the waitlist/public-shell policy. Repository selection, publication gates, Postgres configuration, and API response contracts remain unchanged.
+
+## Authority reconciliation — 2026-08-31 16:18 PDT
+
+The first branch Preview exposed two regressions caused by this branch missing an
+established mainline catalogue invariant:
+
+- expired exact-deadline records could retain an open-like lifecycle label and
+  enter browse results;
+- ten currently eligible legacy machine rows had multi-segment identifiers that
+  do not satisfy the public Missa resource-ID contract, allowing one row to make
+  an entire paginated API response fail validation.
+
+The repository projection now:
+
+- requires an exact deadline to be today or later for live browse while retaining
+  rolling and until-filled calls without an exact date;
+- keeps contract-invalid legacy identifiers reviewable in the authority but out
+  of the public browse/detail projection until their canonical identities are
+  migrated.
+
+Read-only local observation against the current Preview catalogue authority found
+560 browseable records across 24 pages, zero expired exact deadlines, zero
+contract-invalid public IDs, and zero closed/archived rows. The Phase 3 responsive
+observer passed at 390px and 1440px with Fischer Prize as the sampled record,
+matching source handoff, no horizontal overflow, no serious Axe violations, and
+no console errors. Evidence is recorded under
+`_bmad-output/planning-artifacts/phase-3/opportunities-authority-reconciliation/`.
+
+No production policy, database row, application persistence state, or public
+alias changed. A fresh remote Preview remains required before promotion; avoid a
+deployment until this authority repair is committed and the user authorizes the
+single verification build.
