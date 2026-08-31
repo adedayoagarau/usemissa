@@ -144,9 +144,9 @@ Existing UI is part of the integration contract, not proof of completion. Save, 
 - [ ] Task 9: Integrate and verify every existing creator frontend (AC: 8, 10)
   - [x] Save: keep keyboard activation, signed-out intent return, idempotent interrupted retry, closed/material-change handling, and remove duplicate legacy callers.
   - [x] Tracker: preserve all views, URL state, imports, Work links, receipts, search, live announcements, empty states, phone containment, and cross-account isolation; add explicit stale-conflict recovery.
-  - [ ] Inbox: preserve grouped briefing, email review, mark-read/all-read, action routing, partial-unavailable state, live feedback, phone containment, and ownership.
+  - [x] Inbox: preserve grouped briefing, email review, mark-read/all-read, action routing, partial-unavailable state, live feedback, phone containment, and ownership.
   - [x] Profile and Library: preserve validation, unsaved-change guard, privacy switches, CRUD/reference conflict, uploads, search/sort, auth return, responsive layout, and accessible feedback.
-  - [ ] Calendar and notifications: add feed issue/rotate/revoke evidence, preference controls, truthful provider-unavailable states, and focused browser coverage.
+  - [x] Calendar and notifications: add feed issue/rotate/revoke evidence, preference controls, truthful provider-unavailable states, and focused browser coverage.
   - [ ] Discovery: add mobile/reflow and axe coverage to the current functional/SEO tests; verify saved-search/follow UI uses the relational APIs.
   - [x] Write the final frontend completeness ledger. Mark visual/offline/navigation work `deferred-to-17.2` rather than quietly accepting it.
 
@@ -284,6 +284,7 @@ GPT-5.6
 - 2026-08-30: Closed Task 5 after reconciling Save/un-save, status, Work, lists, checklists, imports/manual rows, reminders, hosted submissions and reads against their relational implementations. The remaining user-scoped Tracker read/status/Work routes now return `410` before loading compatibility state under relational authority; a focused source contract, Web typecheck and lint pass.
 - 2026-08-30: The broader Task 9 Library run exposed password signup/login still loading compatibility authority. Added transactional relational password signup, relational password verification, creator aggregate defaults and governance evidence; disposable-Postgres probing found and fixed ambiguous UUID/text receipt parameters. Signup now returns `201` without registry seeding. After aligning secure-local cookies, idempotency keys and current accessible labels, four Library flows pass. The Tracker-reference deletion case remains unexecuted because the disposable canonical catalogue has zero published Opportunities.
 - 2026-08-30: Published a guarded canonical browser fixture only into `missa_story_16_2_20260830_160631`, then ran the built relational server against it. Save passes 6/6, Tracker passes 4/4, and the consolidated Profile/Library matrix passes 12/12. The runs cover interrupted idempotent replay, material/closed Opportunity handling, stale recovery, cross-account isolation, public privacy projection, responsive/axe behavior, CRUD, and a real published-Opportunity Tracker reference conflict. A cross-chunk Library domain-error identity defect was corrected without weakening the reference guard.
+- 2026-08-30: Extended the guarded disposable fixture with one private Ada email-review candidate and canonical Tracker row. The consolidated Calendar/Inbox run passes 8/8: real event create/delete, token issue/rotate/revoke with old-link invalidation, preference save/reload, grouped read state, unmocked email-review-to-Tracker confirmation, phone containment, signed-out return, provider-unavailable truth, and zero serious/critical axe violations. No external provider consent or production database was used.
 
 ### Completion Notes List
 
@@ -318,6 +319,7 @@ GPT-5.6
 - Task 9 Inbox/notifications browser partial: focused Inbox interaction/mobile/axe passes and concurrent notification preferences now provide the intended actionable 409 recovery. The broader Save/Tracker/Profile/Library/Discovery matrix and Calendar feed/delete lifecycle remain open.
 - Task 9 Library browser partial: relational password signup/authentication is live against the disposable database and 4/5 Library flows pass (Work detail, Saved Answer CRUD, phone/a11y containment, and owner/auth return). The remaining reference-conflict test is data-blocked by an empty published catalogue and is not counted as a pass.
 - Task 9 Save/Tracker/Profile/Library complete: the guarded published fixture enabled clean relational production-bundle runs of Save 6/6, Tracker 4/4, and Profile/Library 12/12. This advances only those frontend subtasks; Inbox, Calendar/notifications, Discovery, and the Task 10 proof matrix remain open.
+- Task 9 Inbox and Calendar/notifications complete: the guarded relational production-bundle suite passes 8/8, including a real email-candidate decision, Calendar event deletion, feed-token invalidation, preference persistence, mobile/axe and truthful unavailable-provider states. Discovery and Task 10 remain open.
 - Task 10 real-Postgres partial: clean migration replay and the guarded two-pool repository suite pass against `missa_story_16_2_20260830_160631`. Complete compatibility backfill/parity, nested-state/projection-retry coverage, and the full repository/browser regression gate remain open.
 
 ### File List

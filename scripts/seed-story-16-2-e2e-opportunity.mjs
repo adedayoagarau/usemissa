@@ -39,6 +39,44 @@ try {
     [opportunityId],
   );
   await client.query("update opportunities set publication_state='published',updated_at=now() where id=$1", [opportunityId]);
+  const ada = await client.query("select id,data->>'userId' as user_id from radar_accounts where lower(email)=lower('ada@example.com') limit 1");
+  if (ada.rows[0]?.user_id) {
+    await client.query(
+      `insert into tracked_opportunities(id,account_id,opportunity_id,status,revision)
+       values('tracked_story-16-2-e2e-ada',$1,$2,'interested',1)
+       on conflict(account_id,opportunity_id) do update set status='interested',revision=tracked_opportunities.revision+1,updated_at=now()`,
+      [ada.rows[0].id, opportunityId],
+    );
+    const now = new Date();
+    const candidate = {
+      id: "story-16-2-e2e-email-candidate",
+      userId: ada.rows[0].user_id,
+      provider: "story-16-2-fixture",
+      providerMessageId: "story-16-2-e2e-message",
+      receivedAt: now.toISOString(),
+      senderDomain: "journal.example",
+      subject: "Your submission is now in review",
+      bodyExcerpt: "Thank you. Your submission is now with our review panel.",
+      bodyHash: "story-16-2-private-fixture",
+      attachmentMetadata: [],
+      classification: "ambiguous",
+      state: "pending",
+      candidates: [{ opportunityId, title: "Story 16.2 Browser Fixture", organizationName: "Fixture Journal", confidence: "possible", reasons: ["title match"] }],
+      proposedStatus: "in-review",
+      confidence: "possible",
+      warnings: ["ambiguous_match"],
+      evidenceReasons: ["private fixture evidence"],
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+      sourceMode: "forwarding",
+    };
+    await client.query(
+      `insert into radar_email_candidates(id,user_id,provider,provider_message_id,state,data,revision)
+       values($1,$2,$3,$4,'pending',$5::jsonb,1)
+       on conflict(id) do update set user_id=excluded.user_id,state='pending',data=excluded.data,revision=radar_email_candidates.revision+1`,
+      [candidate.id, candidate.userId, candidate.provider, candidate.providerMessageId, JSON.stringify(candidate)],
+    );
+  }
   await client.query("COMMIT");
   console.log(`Seeded ${opportunityId} in ${databaseName}`);
 } catch (error) {
