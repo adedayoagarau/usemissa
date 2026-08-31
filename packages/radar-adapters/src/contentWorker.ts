@@ -52,6 +52,37 @@ interface ReviewRow extends QueryResultRow {
 
 const CONTENT_INTERVAL_MINUTES = 10;
 
+export const SEED_CONTENT_JOBS_SQL = `
+  with candidates as (
+    select o.id, o.deadline_date,
+      greatest(
+        coalesce(o.last_changed_at, o.updated_at, o.created_at),
+        coalesce(lifecycle.created_at, '-infinity'::timestamptz)
+      )::text as input_version
+    from opportunities o
+    left join lateral (
+      select created_at
+      from opportunity_lifecycle_evidence
+      where opportunity_id = o.id and decision = 'apply' and confidence = 'high'
+      order by created_at desc limit 1
+    ) lifecycle on true
+    where o.publication_state in ('published', 'reviewable')
+  )
+  insert into radar_content_review_jobs (id, opportunity_id, priority, input_version)
+  select md5('content:' || candidate.id), candidate.id,
+    case when candidate.deadline_date is not null and candidate.deadline_date <= current_date + 30 then 20 else 0 end,
+    candidate.input_version
+  from candidates candidate
+  where not exists (
+    select 1 from opportunity_contents content
+    where content.opportunity_id = candidate.id and content.input_version = candidate.input_version
+  )
+  on conflict (opportunity_id) do update
+    set status = 'queued', input_version = excluded.input_version,
+        next_attempt_at = now(), lease_until = null, last_error = null, updated_at = now()
+    where radar_content_review_jobs.input_version is distinct from excluded.input_version
+`;
+
 function batchSize(): number {
   const value = Number(process.env.RADAR_CONTENT_BATCH_SIZE ?? 20);
   return Number.isFinite(value) ? Math.max(1, Math.min(50, Math.floor(value))) : 20;
@@ -78,23 +109,7 @@ function materialArray(value: unknown): Array<{ label: string; limit?: string }>
 }
 
 async function seedContentJobs(pool: Pool): Promise<void> {
-  await pool.query(
-    `insert into radar_content_review_jobs (id, opportunity_id, priority, input_version)
-     select md5('content:' || o.id), o.id,
-       case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 20 else 0 end,
-       coalesce(o.last_changed_at, o.updated_at, o.created_at)::text
-     from opportunities o
-     where o.publication_state in ('published', 'reviewable')
-       and not exists (
-         select 1 from opportunity_contents c
-         where c.opportunity_id = o.id
-           and c.input_version = coalesce(o.last_changed_at, o.updated_at, o.created_at)::text
-       )
-     on conflict (opportunity_id) do update
-       set status = 'queued', input_version = excluded.input_version,
-           next_attempt_at = now(), lease_until = null, last_error = null, updated_at = now()
-       where radar_content_review_jobs.input_version is distinct from excluded.input_version`,
-  );
+  await pool.query(SEED_CONTENT_JOBS_SQL);
   await pool.query(
     `update radar_content_review_jobs j
      set status = 'pending-review', next_attempt_at = now(), lease_until = null,
