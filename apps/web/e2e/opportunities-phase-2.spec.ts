@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import {
   OpportunityRepositoryUnavailableError,
   resolveOpportunityRepositoryMode,
+  resolveOpportunityRepositoryUrl,
 } from "../lib/opportunityRepository";
 import { resolveOpportunityPresentation } from "../lib/opportunityPresentation";
 
@@ -35,6 +36,21 @@ test.describe("Phase 2 opportunity integration contracts", () => {
     expect(() => resolveOpportunityRepositoryMode({ NODE_ENV: "production" })).toThrow(OpportunityRepositoryUnavailableError);
     expect(() => resolveOpportunityRepositoryMode({ NODE_ENV: "production", MISSA_OPPORTUNITY_REPOSITORY: "compatibility" })).toThrow(OpportunityRepositoryUnavailableError);
     expect(() => resolveOpportunityRepositoryMode({ NODE_ENV: "test", MISSA_OPPORTUNITY_REPOSITORY: "postgres" })).toThrow(OpportunityRepositoryUnavailableError);
+  });
+
+  test("catalogue reads prefer the dedicated read-only authority", () => {
+    expect(resolveOpportunityRepositoryUrl({
+      MISSA_CATALOGUE_DATABASE_URL: "postgres://catalogue.example/missa",
+      DATABASE_URL: "postgres://application.example/missa",
+    })).toBe("postgres://catalogue.example/missa");
+    expect(resolveOpportunityRepositoryUrl({
+      DATABASE_URL: "postgres://application.example/missa",
+    })).toBe("postgres://application.example/missa");
+    expect(resolveOpportunityRepositoryMode({
+      NODE_ENV: "production",
+      MISSA_OPPORTUNITY_REPOSITORY: "postgres",
+      MISSA_CATALOGUE_DATABASE_URL: "postgres://catalogue.example/missa",
+    })).toBe("postgres");
   });
 
   test("canonical browse and detail are equivalent to their bounded API projections", async ({ page, request }) => {

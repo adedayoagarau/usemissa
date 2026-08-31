@@ -27,17 +27,24 @@ export class OpportunityRepositoryUnavailableError extends Error {
 type RepositoryEnvironment = {
   NODE_ENV?: string;
   MISSA_OPPORTUNITY_REPOSITORY?: string;
+  MISSA_CATALOGUE_DATABASE_URL?: string;
   DATABASE_URL?: string;
 };
 
 export type OpportunityRepositoryMode = "postgres" | "compatibility";
+
+export function resolveOpportunityRepositoryUrl(
+  environment: RepositoryEnvironment = process.env,
+): string | undefined {
+  return environment.MISSA_CATALOGUE_DATABASE_URL?.trim() || environment.DATABASE_URL?.trim() || undefined;
+}
 
 export function resolveOpportunityRepositoryMode(
   environment: RepositoryEnvironment = process.env,
 ): OpportunityRepositoryMode {
   const configured = environment.MISSA_OPPORTUNITY_REPOSITORY?.trim();
   if (configured === "postgres") {
-    if (!environment.DATABASE_URL) {
+    if (!resolveOpportunityRepositoryUrl(environment)) {
       throw new OpportunityRepositoryUnavailableError();
     }
     return "postgres";
@@ -299,7 +306,9 @@ export function getOpportunityRepository(): OpportunityRepository {
   const mode = resolveOpportunityRepositoryMode();
   if (mode === "postgres") {
     if (!globalThis.__missaOpportunityRepository) {
-      globalThis.__missaOpportunityRepository = createPostgresOpportunityRepositoryFromUrl(process.env.DATABASE_URL!);
+      globalThis.__missaOpportunityRepository = createPostgresOpportunityRepositoryFromUrl(
+        resolveOpportunityRepositoryUrl()!,
+      );
     }
     return globalThis.__missaOpportunityRepository;
   }
