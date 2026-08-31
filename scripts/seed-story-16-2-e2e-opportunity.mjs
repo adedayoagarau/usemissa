@@ -10,10 +10,16 @@ if (!/^missa_story_16_2_[a-z0-9_]+$/iu.test(databaseName)) {
 const pool = new Pool({ connectionString, max: 1 });
 const sourceId = "story-16-2-e2e-source";
 const opportunityId = "opp_story-16-2-e2e";
+const organizationId = "org_story-16-2-e2e";
 const client = await pool.connect();
 try {
   await client.query("BEGIN");
   await client.query("delete from opportunities where id='story-16-2-e2e-opportunity'");
+  await client.query(
+    `insert into radar_organizations(id,data) values($1,$2::jsonb)
+     on conflict(id) do update set data=excluded.data,updated_at=now()`,
+    [organizationId, JSON.stringify({ id: organizationId, name: "Fixture Journal" })],
+  );
   await client.query(
     `insert into opportunity_sources(id,name,url,kind,active,last_checked_at,last_successful_fetch_at,last_processed_at)
      values($1,'Story 16.2 browser fixture','https://example.invalid/story-16-2-opportunity','organization-website',true,now(),now(),now())
@@ -21,10 +27,10 @@ try {
     [sourceId],
   );
   await client.query(
-    `insert into opportunities(id,slug,title,source_id,status,publication_state,type,deadline_kind,fee_status,submission_url,submission_state,source_checked_at,processing_succeeded_at,last_changed_at)
-     values($1,'story-16-2-browser-fixture','Story 16.2 Browser Fixture',$2,'open','reviewable','contest','rolling','no-fee','https://example.invalid/story-16-2-submit','available',now(),now(),now())
-     on conflict(id) do update set publication_state='reviewable',status='open',source_id=excluded.source_id,deadline_kind='rolling',submission_url=excluded.submission_url,submission_state='available',source_checked_at=now(),processing_succeeded_at=now(),updated_at=now()`,
-    [opportunityId, sourceId],
+    `insert into opportunities(id,slug,title,organization_id,source_id,status,publication_state,type,deadline_kind,fee_status,submission_url,submission_state,source_checked_at,processing_succeeded_at,last_changed_at)
+     values($1,'story-16-2-browser-fixture','Story 16.2 Browser Fixture',$2,$3,'open','reviewable','contest','rolling','no-fee','https://example.invalid/story-16-2-submit','available',now(),now(),now())
+     on conflict(id) do update set publication_state='reviewable',status='open',organization_id=excluded.organization_id,source_id=excluded.source_id,deadline_kind='rolling',submission_url=excluded.submission_url,submission_state='available',source_checked_at=now(),processing_succeeded_at=now(),updated_at=now()`,
+    [opportunityId, organizationId, sourceId],
   );
   await client.query(
     `insert into opportunity_source_evidence(id,opportunity_id,source_id,kind,name,url,checked_at,processing_succeeded_at,organization_confirmed,destination_reconciled)

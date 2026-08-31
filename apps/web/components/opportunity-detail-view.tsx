@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { OpportunityIssueReport } from "@/components/opportunity-issue-report";
 import { PrepareChecklist } from "@/components/prepare-checklist";
+import { FollowButton } from "@/components/follow-button";
 import styles from "./opportunity-detail.module.css";
 
 function initials(opportunity: OpportunityDetailProjection): string {
@@ -134,12 +135,14 @@ function DetailNotice({
 export function OpportunityDetailView({
   opportunity,
   signedIn,
+  userId,
   summary,
   practiceLabels,
   relatedProfile,
 }: {
   opportunity: OpportunityDetailProjection;
   signedIn: boolean;
+  userId?: string;
   summary: string;
   practiceLabels: string[];
   relatedProfile?: ProfileCard;
@@ -179,6 +182,15 @@ export function OpportunityDetailView({
             <p className={styles.organization}>
               {opportunity.organizationName ?? "Organization not confirmed"}
             </p>
+            {userId && opportunity.organizationId && !opportunity.personal?.followingOrganization ? (
+              <FollowButton
+                userId={userId}
+                organizationId={opportunity.organizationId}
+                organizationName={opportunity.organizationName}
+              />
+            ) : opportunity.personal?.followingOrganization ? (
+              <span className="text-xs text-muted-foreground">Following</span>
+            ) : null}
             <p className={styles.heroSummary}>{summary}</p>
             {relatedProfile ? (
               <p className={styles.organization}>

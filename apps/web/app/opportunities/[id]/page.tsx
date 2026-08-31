@@ -94,6 +94,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
       <OpportunityDetailView
         opportunity={opportunity}
         signedIn={Boolean(session)}
+        userId={session?.account.userId}
         summary={summary}
         practiceLabels={practiceLabels}
         relatedProfile={profileMatch ?? undefined}
