@@ -1,0 +1,322 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ysabeau:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Fragment+Mono:ital@0;1&display=swap">
+  <style>
+    body { margin: 0; background: #FFFFFF; }
+    a { color: #5A3F68; } a:hover { color: #473050; }
+    .ys { font-family: 'Ysabeau', 'Instrument Sans', system-ui, sans-serif; }
+    .mono { font-family: 'Fragment Mono', ui-monospace, monospace; }
+
+    /* rules draw themselves in */
+    .rule { height: 1px; background: #171418; transform-origin: left center; animation: drawRule 1100ms cubic-bezier(.22,1,.36,1) both; }
+    .rule2 { height: 2px; background: #171418; transform-origin: left center; animation: drawRule 1100ms cubic-bezier(.22,1,.36,1) both; }
+    @keyframes drawRule { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+    .rise { animation: rise 800ms cubic-bezier(.22,1,.36,1) both; }
+    .d1 { animation-delay: 120ms; } .d2 { animation-delay: 240ms; } .d3 { animation-delay: 380ms; } .d4 { animation-delay: 520ms; }
+    @keyframes rise { from { opacity: 0; transform: translateY(26px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* classification ticker */
+    .tick { display: flex; width: max-content; animation: tick 52s linear infinite; }
+    @keyframes tick { to { transform: translateX(-50%); } }
+
+    /* the index rail: rows file past continuously */
+    .railLoop { animation: railLoop 26s linear infinite; }
+    @keyframes railLoop { to { transform: translateY(-50%); } }
+    .pulse { animation: pulse 2.4s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+
+    /* margin annotations file in one by one */
+    .file1 { animation: fileIn 700ms cubic-bezier(.22,1,.36,1) both 300ms; }
+    .file2 { animation: fileIn 700ms cubic-bezier(.22,1,.36,1) both 520ms; }
+    .file3 { animation: fileIn 700ms cubic-bezier(.22,1,.36,1) both 740ms; }
+    @keyframes fileIn { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: translateX(0); } }
+
+    .stampIn { animation: stampIn 700ms cubic-bezier(.22,1,.36,1) both 500ms; }
+    @keyframes stampIn { from { opacity: 0; transform: rotate(-6deg) scale(1.24); } to { opacity: 1; transform: rotate(-6deg) scale(1); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; }
+      .tick, .railLoop { animation: none; }
+    }
+  </style>
+</helmet>
+
+<div class="ys" style="width: 1440px; background: #FFFFFF; color: #171418; overflow: hidden">
+
+  <!-- ======== masthead ======== -->
+  <header style="display: flex; align-items: center; justify-content: space-between; padding: 22px 56px; border-bottom: 1px solid #171418">
+    <svg width="112" height="25" viewBox="0 0 118 26" fill="none" role="img" aria-label="MISSA"><title>MISSA</title>
+      <path d="M3 23 V4 L12 16 L21 4 V23" stroke="#171418" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M31 4 V23" stroke="#171418" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M52 6.5 C49 3.5 41 3.8 41 8.6 C41 14 52 12 52 18 C52 23 43 23.4 40 20.4" stroke="#171418" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+      <path d="M74 6.5 C71 3.5 63 3.8 63 8.6 C63 14 74 12 74 18 C74 23 65 23.4 62 20.4" stroke="#171418" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+      <path d="M83 23 L92 4 L101 23 M86.4 16.4 H97.6" stroke="#171418" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <circle cx="112" cy="21" r="2.2" fill="#5A3F68"/>
+    </svg>
+    <nav class="mono" style="display: flex; align-items: center; gap: 34px; font-size: 12px; letter-spacing: .08em">
+      <a href="#index" style="text-decoration: none; color: #171418">INDEX</a>
+      <a href="#method" style="text-decoration: none; color: #171418">METHOD</a>
+      <a href="#organizations" style="text-decoration: none; color: #171418">FOR ORGANIZATIONS</a>
+      <a href="#account" style="text-decoration: none; color: #FFFFFF; background: #171418; padding: 11px 18px">CREATE ACCOUNT</a>
+    </nav>
+  </header>
+
+  <!-- ======== classification ticker ======== -->
+  <div style="display: flex; align-items: stretch; border-bottom: 1px solid #171418; overflow: hidden">
+    <div style="flex: 1; overflow: hidden; padding: 9px 0">
+      <div class="tick mono" style="font-size: 11px; letter-spacing: .14em; color: #6D6670">
+        <span style="white-space: nowrap; padding-right: 8px">GRANTS · RESIDENCIES · FELLOWSHIPS · COMMISSIONS · OPEN CALLS · PRIZES · PUBLICATIONS · LABS · MENTORSHIPS ·&nbsp;</span>
+        <span style="white-space: nowrap; padding-right: 8px">GRANTS · RESIDENCIES · FELLOWSHIPS · COMMISSIONS · OPEN CALLS · PRIZES · PUBLICATIONS · LABS · MENTORSHIPS ·&nbsp;</span>
+      </div>
+    </div>
+    <div class="mono" style="border-left: 1px solid #171418; padding: 9px 56px 9px 22px; font-size: 11px; letter-spacing: .14em; color: #5A3F68; white-space: nowrap">AN INDEX, NOT A FEED</div>
+  </div>
+
+  <!-- ======== hero: the ledger ======== -->
+  <section style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 0; border-bottom: 2px solid #171418">
+    <div style="grid-column: 1 / 9; padding: 74px 56px 64px 56px; border-right: 1px solid #171418">
+      <p class="mono rise" style="margin: 0; font-size: 12px; letter-spacing: .18em; color: #5A3F68">№ 001 — THE OPPORTUNITY INDEX FOR ARTISTS</p>
+      <h1 class="rise d1" style="margin: 34px 0 0 0; font-size: 124px; line-height: .96; font-weight: 300; letter-spacing: -.02em">Find your next<br><span style="font-weight: 500; font-style: italic">opportunity</span><span style="display: inline-block; width: 22px; height: 22px; margin-left: 10px; background: #5A3F68"></span></h1>
+      <div class="rule" style="margin: 44px 0 0 0; animation-delay: 600ms"></div>
+      <div class="rise d3" style="display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 40px; margin-top: 26px; align-items: end">
+        <p style="margin: 0; font-size: 19px; line-height: 1.55; color: #6D6670; font-weight: 400">Grants, residencies, fellowships, commissions, and open calls—filed with their deadlines, fees, eligibility, and sources kept visible.</p>
+        <div style="display: flex; align-items: center; justify-content: flex-end; gap: 22px">
+          <a href="#index" style="font-size: 15px; font-weight: 600; text-decoration: none; color: #FFFFFF; background: #5A3F68; padding: 16px 28px">Browse the index</a>
+          <a href="#method" style="font-size: 15px; font-weight: 500; text-decoration: none; color: #171418; border-bottom: 1px solid #171418; padding-bottom: 2px">How Missa works</a>
+        </div>
+      </div>
+      <p class="mono rise d4" style="margin: 30px 0 0 0; font-size: 11px; letter-spacing: .14em; color: #6D6670">THE OFFICIAL CALL STAYS ONE CLICK AWAY</p>
+    </div>
+
+    <!-- the index rail: entries file past -->
+    <aside style="grid-column: 9 / 13; display: flex; flex-direction: column; background: #FFFFFF">
+      <div class="mono" style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid #171418; font-size: 11px; letter-spacing: .16em">
+        <span>TODAY IN THE INDEX</span>
+        <span class="pulse" style="width: 8px; height: 8px; border-radius: 999px; background: #5A3F68"></span>
+      </div>
+      <div style="flex: 1; overflow: hidden; position: relative">
+        <div class="railLoop">
+          <div>
+            <div style="padding: 18px 24px; border-bottom: 1px solid #E6E1E8; border-left: 3px solid #5A3F68; background: #F1EDF3">
+              <p class="mono" style="margin: 0; font-size: 10px; letter-spacing: .14em; color: #5A3F68">RESIDENCY — NO ENTRY FEE</p>
+              <p style="margin: 6px 0 0 0; font-size: 19px; font-weight: 500">Coastal residency, travel funded</p>
+              <p class="mono" style="margin: 8px 0 0 0; font-size: 11px; color: #6D6670">DUE IN 6 WEEKS · SOURCE LINKED</p>
+            </div>
+            <div style="padding: 18px 24px; border-bottom: 1px solid #E6E1E8">
+              <p class="mono" style="margin: 0; font-size: 10px; letter-spacing: .14em; color: #6D6670">GRANT — UP TO $10,000 USD</p>
+              <p style="margin: 6px 0 0 0; font-size: 19px; font-weight: 500">Production grant, any stage</p>
+              <p class="mono" style="margin: 8px 0 0 0; font-size: 11px; color: #6D6670">DUE OCT 12 · 11:59 PM ET</p>
+            </div>
+            <div style="padding: 18px 24px; border-bottom: 1px solid #E6E1E8">
+              <p class="mono" style="margin: 0; font-size: 10px; letter-spacing: .14em; color: #6D6670">FELLOWSHIP — STIPEND</p>
+              <p style="margin: 6px 0 0 0; font-size: 19px; font-weight: 500">Yearlong writing fellowship</p>
+              <p class="mono" style="margin: 8px 0 0 0; font-size: 11px; color: #6D6670">ROLLING · CHECKED THIS WEEK</p>
+            </div>
+            <div style="padding: 18px 24px; border-bottom: 1px solid #E6E1E8">
+              <p class="mono" style="margin: 0; font-size: 10px; letter-spacing: .14em; color: #6D6670">OPEN CALL — PUBLICATION</p>
+              <p style="margin: 6px 0 0 0; font-size: 19px; font-weight: 500">Portfolio issue, first books</p>
+              <p class="mono" style="margin: 8px 0 0 0; font-size: 11px; color: #6D6670">FEE $5 · STATED UP FRONT</p>
+            </div>
+            <div style="padding: 18px 24px; border-bottom: 1px solid #E6E1E8">
+              <p class="mono" style="margin: 0; font-size: 10px; letter-spacing: .14em; color: #6D6670">COMMISSION — PUBLIC ART</p>
+              <p style="margin: 6px 0 0 0; font-size: 19px; font-weight: 500">Site work, budget stated</p>
+              <p class="mono" style="margin: 8px 0 0 0; font-size: 11px; color: #6D6670">SHORTLIST IN JANUARY</p>
+            </div>
+          </div>
+          <div>
+            <div style="padding: 18px 24px; border-bottom: 1px solid #E6E1E8; border-left: 3px solid #5A3F68; background: #F1EDF3">
+              <p class="mono" style="margin: 0; font-size: 10px; letter-spacing: .14em; color: #5A3F68">RESIDENCY — NO ENTRY FEE</p>
+              <p style="margin: 6px 0 0 0; font-size: 19px; font-weight: 500">Coastal residency, travel funded</p>
+              <p class="mono" style="margin: 8px 0 0 0; font-size: 11px; color: #6D6670">DUE IN 6 WEEKS · SOURCE LINKED</p>
+            </div>
+            <div style="padding: 18px 24px; border-bottom: 1px solid #E6E1E8">
+              <p class="mono" style="margin: 0; font-size: 10px; letter-spacing: .14em; color: #6D6670">GRANT — UP TO $10,000 USD</p>
+              <p style="margin: 6px 0 0 0; font-size: 19px; font-weight: 500">Production grant, any stage</p>
+              <p class="mono" style="margin: 8px 0 0 0; font-size: 11px; color: #6D6670">DUE OCT 12 · 11:59 PM ET</p>
+            </div>
+            <div style="padding: 18px 24px; border-bottom: 1px solid #E6E1E8">
+              <p class="mono" style="margin: 0; font-size: 10px; letter-spacing: .14em; color: #6D6670">FELLOWSHIP — STIPEND</p>
+              <p style="margin: 6px 0 0 0; font-size: 19px; font-weight: 500">Yearlong writing fellowship</p>
+              <p class="mono" style="margin: 8px 0 0 0; font-size: 11px; color: #6D6670">ROLLING · CHECKED THIS WEEK</p>
+            </div>
+            <div style="padding: 18px 24px; border-bottom: 1px solid #E6E1E8">
+              <p class="mono" style="margin: 0; font-size: 10px; letter-spacing: .14em; color: #6D6670">OPEN CALL — PUBLICATION</p>
+              <p style="margin: 6px 0 0 0; font-size: 19px; font-weight: 500">Portfolio issue, first books</p>
+              <p class="mono" style="margin: 8px 0 0 0; font-size: 11px; color: #6D6670">FEE $5 · STATED UP FRONT</p>
+            </div>
+            <div style="padding: 18px 24px; border-bottom: 1px solid #E6E1E8">
+              <p class="mono" style="margin: 0; font-size: 10px; letter-spacing: .14em; color: #6D6670">COMMISSION — PUBLIC ART</p>
+              <p style="margin: 6px 0 0 0; font-size: 19px; font-weight: 500">Site work, budget stated</p>
+              <p class="mono" style="margin: 8px 0 0 0; font-size: 11px; color: #6D6670">SHORTLIST IN JANUARY</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mono" style="display: flex; justify-content: space-between; padding: 14px 24px; border-top: 1px solid #171418; font-size: 10px; letter-spacing: .14em; color: #6D6670">
+        <span>SCHEMATIC ENTRIES</span>
+        <span>EVERY ROW KEEPS ITS SOURCE</span>
+      </div>
+    </aside>
+  </section>
+
+  <!-- ======== statement band with margin notes ======== -->
+  <section style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); border-bottom: 1px solid #171418">
+    <div style="grid-column: 1 / 10; padding: 96px 56px; border-right: 1px solid #171418">
+      <h2 style="margin: 0; font-size: 62px; line-height: 1.08; font-weight: 300; letter-spacing: -.015em; max-width: 20ch">Good opportunities are hard enough to win. They should not be <span style="font-style: italic; font-weight: 500; color: #5A3F68">hard to find.</span></h2>
+      <p style="margin: 34px 0 0 0; font-size: 18px; line-height: 1.6; color: #6D6670; max-width: 52ch">Calls are scattered across newsletters, PDFs, institutional sites, portals, and word of mouth. Missa files each one with its facts—not its promotion—in front of you.</p>
+    </div>
+    <div class="mono" style="grid-column: 10 / 13; display: flex; flex-direction: column; justify-content: center; gap: 26px; padding: 40px 32px; font-size: 12px; letter-spacing: .1em; color: #6D6670">
+      <p class="file1" style="margin: 0">[ NEWSLETTERS <span style="color: #5A3F68">→ FILED</span> ]</p>
+      <p class="file2" style="margin: 0">[ GUIDELINE PDFS <span style="color: #5A3F68">→ FILED</span> ]</p>
+      <p class="file3" style="margin: 0">[ WORD OF MOUTH <span style="color: #5A3F68">→ FILED</span> ]</p>
+    </div>
+  </section>
+
+  <!-- ======== the ledger table ======== -->
+  <section id="index" style="padding: 88px 56px; border-bottom: 1px solid #171418">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 32px">
+      <div>
+        <p class="mono" style="margin: 0; font-size: 12px; letter-spacing: .18em; color: #5A3F68">№ 002 — WHAT THE INDEX HOLDS</p>
+        <h2 style="margin: 18px 0 0 0; font-size: 54px; font-weight: 300; letter-spacing: -.015em">See what is worth your time.</h2>
+      </div>
+      <p class="mono" style="margin: 0; font-size: 11px; letter-spacing: .14em; color: #6D6670">SCHEMATIC ROWS — THE LIVE INDEX FILLS THIS TABLE</p>
+    </div>
+    <div style="margin-top: 44px">
+      <div class="mono" style="display: grid; grid-template-columns: 70px minmax(0, 4fr) minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.6fr); gap: 16px; padding: 0 0 12px 0; border-bottom: 2px solid #171418; font-size: 11px; letter-spacing: .14em; color: #6D6670">
+        <span>№</span><span>OPPORTUNITY</span><span>TYPE</span><span>DEADLINE</span><span>ENTRY FEE</span><span>SOURCE</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 70px minmax(0, 4fr) minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.6fr); gap: 16px; align-items: baseline; padding: 20px 0; border-bottom: 1px solid #E6E1E8">
+        <span class="mono" style="font-size: 12px; color: #6D6670">001</span>
+        <span style="font-size: 21px; font-weight: 500">A residency with travel funded</span>
+        <span class="mono" style="font-size: 12px; color: #6D6670">RESIDENCY</span>
+        <span class="mono" style="font-size: 12px">OCT 12 · 11:59 PM ET</span>
+        <span class="mono" style="font-size: 12px; color: #5A3F68">NONE</span>
+        <span class="mono" style="font-size: 12px; text-decoration: underline">OFFICIAL CALL</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 70px minmax(0, 4fr) minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.6fr); gap: 16px; align-items: baseline; padding: 20px 0; border-bottom: 1px solid #E6E1E8; background: #F1EDF3; margin: 0 -16px; padding-left: 16px; padding-right: 16px">
+        <span class="mono" style="font-size: 12px; color: #6D6670">002</span>
+        <span style="font-size: 21px; font-weight: 500">A grant that states its amount</span>
+        <span class="mono" style="font-size: 12px; color: #6D6670">GRANT</span>
+        <span class="mono" style="font-size: 12px">NOV 2 · 5:00 PM GMT</span>
+        <span class="mono" style="font-size: 12px; color: #5A3F68">NONE</span>
+        <span class="mono" style="font-size: 12px; text-decoration: underline">OFFICIAL CALL</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 70px minmax(0, 4fr) minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.6fr); gap: 16px; align-items: baseline; padding: 20px 0; border-bottom: 1px solid #E6E1E8">
+        <span class="mono" style="font-size: 12px; color: #6D6670">003</span>
+        <span style="font-size: 21px; font-weight: 500">An open call with its fee up front</span>
+        <span class="mono" style="font-size: 12px; color: #6D6670">OPEN CALL</span>
+        <span class="mono" style="font-size: 12px">ROLLING</span>
+        <span class="mono" style="font-size: 12px">$5 USD</span>
+        <span class="mono" style="font-size: 12px; text-decoration: underline">OFFICIAL CALL</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 70px minmax(0, 4fr) minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.6fr); gap: 16px; align-items: baseline; padding: 20px 0; border-bottom: 1px solid #E6E1E8">
+        <span class="mono" style="font-size: 12px; color: #6D6670">004</span>
+        <span style="font-size: 21px; font-weight: 500">A fellowship with unknowns shown</span>
+        <span class="mono" style="font-size: 12px; color: #6D6670">FELLOWSHIP</span>
+        <span class="mono" style="font-size: 12px; color: #6D6670">NOT YET STATED</span>
+        <span class="mono" style="font-size: 12px; color: #5A3F68">NONE</span>
+        <span class="mono" style="font-size: 12px; text-decoration: underline">OFFICIAL CALL</span>
+      </div>
+      <a href="#index" class="mono" style="display: flex; justify-content: space-between; padding: 22px 0 0 0; font-size: 13px; letter-spacing: .14em; text-decoration: none; color: #171418">
+        <span>BROWSE THE FULL INDEX</span>
+        <span aria-hidden="true">⟶</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ======== method: A to D ======== -->
+  <section id="method" style="border-bottom: 1px solid #171418">
+    <div style="padding: 88px 56px 0 56px">
+      <p class="mono" style="margin: 0; font-size: 12px; letter-spacing: .18em; color: #5A3F68">№ 003 — METHOD</p>
+      <h2 style="margin: 18px 0 56px 0; font-size: 54px; font-weight: 300; letter-spacing: -.015em">Decide, prepare, and remember.</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #171418">
+      <div style="padding: 36px 32px 56px 56px; border-right: 1px solid #E6E1E8">
+        <p class="mono" style="margin: 0; font-size: 84px; line-height: 1; color: #F1EDF3; font-weight: 400; -webkit-text-stroke: 1px #5A3F68">A</p>
+        <h3 style="margin: 20px 0 10px 0; font-size: 22px; font-weight: 500">Read the facts</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #6D6670">Eligibility, geography, fee, deadline, and type stay separate—never blended into a pitch.</p>
+      </div>
+      <div style="padding: 36px 32px 56px 32px; border-right: 1px solid #E6E1E8">
+        <p class="mono" style="margin: 0; font-size: 84px; line-height: 1; color: #F1EDF3; font-weight: 400; -webkit-text-stroke: 1px #5A3F68">B</p>
+        <h3 style="margin: 20px 0 10px 0; font-size: 22px; font-weight: 500">Save your decision</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #6D6670">Keep the Opportunity and your private next action together in Tracker.</p>
+      </div>
+      <div style="padding: 36px 32px 56px 32px; border-right: 1px solid #E6E1E8">
+        <p class="mono" style="margin: 0; font-size: 84px; line-height: 1; color: #F1EDF3; font-weight: 400; -webkit-text-stroke: 1px #5A3F68">C</p>
+        <h3 style="margin: 20px 0 10px 0; font-size: 22px; font-weight: 500">Prepare from the call</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #6D6670">Use the official requirements to decide which Work and materials belong.</p>
+      </div>
+      <div style="padding: 36px 56px 56px 32px">
+        <p class="mono" style="margin: 0; font-size: 84px; line-height: 1; color: #F1EDF3; font-weight: 400; -webkit-text-stroke: 1px #5A3F68">D</p>
+        <h3 style="margin: 20px 0 10px 0; font-size: 22px; font-weight: 500">Keep the record</h3>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #6D6670">Receipts, decisions, and obligations stay attached to the right Work.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== the record card ======== -->
+  <section style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); border-bottom: 2px solid #171418">
+    <div style="grid-column: 1 / 7; padding: 96px 56px; border-right: 1px solid #171418">
+      <p class="mono" style="margin: 0; font-size: 12px; letter-spacing: .18em; color: #5A3F68">№ 004 — EVIDENCE</p>
+      <h2 style="margin: 18px 0 0 0; font-size: 54px; line-height: 1.1; font-weight: 300; letter-spacing: -.015em">Every listing keeps its source.</h2>
+      <p style="margin: 28px 0 0 0; font-size: 18px; line-height: 1.6; color: #6D6670; max-width: 44ch">Missa does not ask you to trust a summary without evidence. Unknowns stay visible—missing information is never turned into reassurance.</p>
+    </div>
+    <div style="grid-column: 7 / 13; display: flex; align-items: center; justify-content: center; padding: 72px 56px; position: relative; background: #F1EDF3">
+      <div style="width: 100%; max-width: 460px; border: 1px solid #171418; background: #FFFFFF; position: relative">
+        <div class="mono" style="background: #171418; color: #FFFFFF; padding: 12px 20px; font-size: 11px; letter-spacing: .16em">RECORD — SOURCE &amp; VERIFICATION</div>
+        <div style="padding: 8px 20px 20px 20px">
+          <div style="display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid #E6E1E8"><span class="mono" style="font-size: 11px; letter-spacing: .12em; color: #6D6670">OFFICIAL CALL</span><span style="font-size: 14px; font-weight: 500">Linked, never paraphrased away</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid #E6E1E8"><span class="mono" style="font-size: 11px; letter-spacing: .12em; color: #6D6670">TIMEZONE</span><span style="font-size: 14px; font-weight: 500">Kept with the deadline</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid #E6E1E8"><span class="mono" style="font-size: 11px; letter-spacing: .12em; color: #6D6670">UNKNOWNS</span><span style="font-size: 14px; font-weight: 500">Shown as unknown</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 16px; padding: 14px 0"><span class="mono" style="font-size: 11px; letter-spacing: .12em; color: #6D6670">CONFLICTS</span><span style="font-size: 14px; font-weight: 500">Surfaced, not smoothed over</span></div>
+        </div>
+        <div class="mono stampIn" style="position: absolute; top: -22px; right: -34px; border: 2px solid #5A3F68; color: #5A3F68; padding: 10px 16px; font-size: 12px; letter-spacing: .16em; background: rgba(255,255,255,.85)">OFFICIAL CALL LINKED</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== the slab ======== -->
+  <section style="background: #5A3F68; color: #FFFFFF; padding: 104px 56px">
+    <div style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; align-items: end">
+      <h2 style="grid-column: 1 / 9; margin: 0; font-size: 60px; line-height: 1.06; font-weight: 300; letter-spacing: -.015em">Make less time for searching.<br><span style="font-style: italic; font-weight: 500">Keep more time for the work.</span></h2>
+      <div style="grid-column: 9 / 13; display: flex; flex-direction: column; align-items: flex-start; gap: 18px">
+        <a href="#index" style="font-size: 15px; font-weight: 600; text-decoration: none; color: #171418; background: #FFFFFF; padding: 16px 28px">Browse the index</a>
+        <p class="mono" style="margin: 0; font-size: 11px; letter-spacing: .14em; color: rgba(255,255,255,.75)">NO NOISE · NO SCORES · AN INDEX</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== footer ======== -->
+  <footer style="display: flex; align-items: center; justify-content: space-between; padding: 30px 56px; border-top: 1px solid #171418">
+    <svg width="86" height="19" viewBox="0 0 118 26" fill="none" role="img" aria-label="MISSA"><title>MISSA</title>
+      <path d="M3 23 V4 L12 16 L21 4 V23" stroke="#171418" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M31 4 V23" stroke="#171418" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M52 6.5 C49 3.5 41 3.8 41 8.6 C41 14 52 12 52 18 C52 23 43 23.4 40 20.4" stroke="#171418" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+      <path d="M74 6.5 C71 3.5 63 3.8 63 8.6 C63 14 74 12 74 18 C74 23 65 23.4 62 20.4" stroke="#171418" stroke-width="2.4" stroke-linecap="round" fill="none"/>
+      <path d="M83 23 L92 4 L101 23 M86.4 16.4 H97.6" stroke="#171418" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <circle cx="112" cy="21" r="2.2" fill="#5A3F68"/>
+    </svg>
+    <p class="mono" style="margin: 0; font-size: 11px; letter-spacing: .14em; color: #6D6670">SOURCE · FACTS · LIMITS — KEPT VISIBLE</p>
+    <nav class="mono" style="display: flex; gap: 26px; font-size: 11px; letter-spacing: .12em">
+      <a href="#about" style="text-decoration: none; color: #171418">ABOUT</a>
+      <a href="#method" style="text-decoration: none; color: #171418">METHOD</a>
+      <a href="#contact" style="text-decoration: none; color: #171418">CONTACT</a>
+    </nav>
+  </footer>
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

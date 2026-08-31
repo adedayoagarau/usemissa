@@ -12,3 +12,5 @@ apps/web/next-env.d.ts
 apps/web/playwright-report/
 apps/web/test-results/
 test-results/
+design/home-3d/missa-3d-home.html
+apps/web/outputs/

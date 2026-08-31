@@ -1,0 +1,11 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 4360, "title": "The Index — desktop" },
+    { "file": "Mobile.dc.html", "x": 1560, "y": 0, "w": 390, "h": 2320, "title": "The Index — mobile" }
+  ],
+  "annotations": [
+    { "id": "concept", "x": 0, "y": -300, "w": 500, "text": "THE INDEX — the page behaves like a living card catalogue.\n· One idea everywhere: nothing floats, everything is filed. Hairline rules instead of cards, sharp rectangles instead of pills, aubergine used as ink.\n· Two voices: Ysabeau at monumental weight for statements; Fragment Mono (the house mono) for every fact — numbers, deadlines, fees, classifications.\n· Motion is the catalogue working: the classification ticker drifts, the index rail files entries past continuously, rules draw themselves in, margin notes stamp [ → FILED ], the verification stamp lands on the record card.\n· Rail and table rows are schematic here and labeled as such; in the app they are fed by the live published Opportunities." },
+    { "id": "build-note", "x": 1560, "y": -180, "w": 390, "text": "Implementation notes: Ysabeau and Fragment Mono are already the app fonts (next/font local). Table = real semantic table fed by the repository browse; rail = live entries. All motion CSS-only; reduced motion stops the ticker and rail and shows settled states." }
+  ],
+  "launch": { "view": "canvas" }
+}
