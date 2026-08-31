@@ -58,6 +58,7 @@ test('content review approves sound copy while preserving missing authority chec
     submissionState: 'available',
   });
   assert.equal(result.decision, 'approved');
+  assert.equal(result.checks.reviewPolicyVersion, 'opportunity-content-review.v2');
   assert.equal(result.checks.sourceProcessed, false);
   assert.equal(result.checks.organizationConfirmed, false);
   assert.match(result.reasons.join(' '), /successful processing/);
