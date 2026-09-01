@@ -22,12 +22,12 @@ tokens:
       neutral-500: "#74716d"
       neutral-700: "#45413d"
       neutral-900: "#171418"
-      aubergine-50: "#f8f6f9"
-      aubergine-100: "#f1edf3"
-      aubergine-300: "#c8b9d0"
-      aubergine-500: "#806195"
-      aubergine-600: "#5a3f68"
-      aubergine-700: "#473050"
+      forest-50: "#edf3f0"
+      forest-100: "#e3ece8"
+      forest-300: "#9fb8ae"
+      forest-500: "#397060"
+      forest-600: "#285649"
+      forest-700: "#1d4037"
       lichen-50: "#eef1e8"
       lichen-600: "#657547"
       ochre-50: "#f5ecd9"
@@ -76,9 +76,9 @@ tokens:
       ink-muted: "{tokens.primitive.color.neutral-500}"
       border: "{tokens.primitive.color.neutral-200}"
       border-strong: "{tokens.primitive.color.neutral-300}"
-      primary: "{tokens.primitive.color.aubergine-600}"
-      primary-hover: "{tokens.primitive.color.aubergine-700}"
-      primary-subtle: "{tokens.primitive.color.aubergine-100}"
+      primary: "{tokens.primitive.color.forest-600}"
+      primary-hover: "{tokens.primitive.color.forest-700}"
+      primary-subtle: "{tokens.primitive.color.forest-100}"
       success: "{tokens.primitive.color.lichen-600}"
       success-subtle: "{tokens.primitive.color.lichen-50}"
       warning: "{tokens.primitive.color.ochre-700}"
@@ -87,7 +87,7 @@ tokens:
       destructive-subtle: "{tokens.primitive.color.red-50}"
       information: "{tokens.primitive.color.mineral-blue-600}"
       information-subtle: "{tokens.primitive.color.mineral-blue-50}"
-      focus: "{tokens.primitive.color.aubergine-600}"
+      focus: "{tokens.primitive.color.forest-600}"
       overlay: "rgba(28, 24, 21, 0.46)"
     shadow:
       none: "none"
@@ -199,7 +199,7 @@ The organization product covers organization setup, open calls, submissions, rev
 - **White surface:** cards, tables, dialogs, popovers, and inputs.
 - **Subtle neutral surface:** hover, selection, secondary sections, skeletons, and grouped controls.
 - **Near-black ink:** primary text and high-emphasis icons.
-- **Aubergine:** the primary action, active navigation, focus, and selected emphasis. Use sparingly.
+- **Forest:** the primary action, active navigation, focus, and selected emphasis. Use sparingly.
 - **Green:** verified, accepted, completed, and other genuinely positive states.
 - **Amber:** deadlines, watchouts, and time-sensitive attention states.
 - **Red:** destructive actions, invalid input, or genuine failures only.
@@ -207,7 +207,7 @@ The organization product covers organization setup, open calls, submissions, rev
 
 ### Color rules
 
-1. A normal view should have at most one Aubergine-filled primary action.
+1. A normal view should have at most one Forest-filled primary action.
 2. Never use semantic color without a text label or icon that conveys the same meaning.
 3. Declined, withdrawn, archived, and closed are neutral states unless action is required.
 4. Do not create rainbow dashboards. Semantic colors communicate meaning; they are not decoration.
@@ -529,7 +529,7 @@ Use plain industry nouns and direct actions. Personality belongs in supportive m
 
 - Do not restore an off-white or paper-colored page canvas.
 - Do not turn Missa into a dark-first developer tool.
-- Do not copy Notion blue, Linear purple, or Sanity coral as Missa’s brand color.
+- Do not copy Notion blue, Linear purple, or Sanity coral as Missa’s brand color. Legacy Aubergine is not a current action token.
 - Do not use gradients as a substitute for hierarchy.
 - Do not put every control in a pill or every block in a rounded card.
 - Do not make organization workflows spacious at the expense of scanning speed.
@@ -551,7 +551,7 @@ Use plain industry nouns and direct actions. Personality belongs in supportive m
 The following remain intentionally provisional:
 
 - whether the same Ysabeau variable file should be split into separately named Office and SC font assets;
-- the final strength of Aubergine in active navigation;
+- the final strength of Forest in active navigation;
 - the exact organization navigation shell: top navigation, sidebar, or adaptive hybrid;
 - whether dark mode becomes a supported product theme;
 - the final border contrast after reviewing real white-canvas screens.
