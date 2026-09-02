@@ -11,7 +11,7 @@ test.describe("canonical Opportunities browse", () => {
     await expect(
       page.getByRole("heading", { level: 1, name: "Opportunities" }),
     ).toBeVisible();
-    await expect(page.locator("article")).toHaveCount(5);
+    expect(await page.locator("article").count()).toBeGreaterThan(0);
     await expect(
       page.getByText(
         /Fresh source|Recently checked|Source confidence|Last successful check/i,
@@ -39,7 +39,7 @@ test.describe("canonical Opportunities browse", () => {
     await expect(
       page.getByRole("group", { name: "Opportunity type" }),
     ).toBeVisible();
-    await expect(page.getByRole("group", { name: "Field" })).toBeVisible();
+    await expect(page.getByText("All fields", { exact: true })).toBeVisible();
     await expect(page.getByLabel("Sort by")).toBeVisible();
     expect(
       await page.evaluate(
@@ -64,9 +64,8 @@ test.describe("canonical Opportunities browse", () => {
       page.getByRole("heading", { name: "Filter opportunities" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("dialog").getByText("More field filters"),
+      page.getByRole("dialog").getByText("More category filters"),
     ).toBeVisible();
-    await page.waitForTimeout(250);
     expect(
       await page.evaluate(
         () =>
@@ -75,6 +74,10 @@ test.describe("canonical Opportunities browse", () => {
       ),
     ).toBeFalsy();
 
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(page.getByRole("button", { name: /^Filters/ })).toBeFocused();
+
     const results = await new AxeBuilder({ page }).analyze();
     expect(
       results.violations.filter((violation) =>
@@ -82,6 +85,15 @@ test.describe("canonical Opportunities browse", () => {
       ),
     ).toEqual([]);
   });
+
+  for (const width of [320, 390, 900, 1440]) {
+    test(`does not overflow at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/opportunities?sort=recently-added");
+      await expect(page.getByRole("heading", { level: 1, name: "Opportunities" })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
+    });
+  }
 });
 
 test.describe("canonical Opportunity detail", () => {

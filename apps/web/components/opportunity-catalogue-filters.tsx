@@ -137,6 +137,7 @@ function FilterPanel({
           {facetCounts.types.map(({ value, label, count }) => (
             <label key={value} className={styles.checkRow}>
               <Checkbox
+                aria-label={label}
                 checked={selectedTypes.includes(value)}
                 onCheckedChange={(checked) =>
                   toggleValue("type", value, checked === true)

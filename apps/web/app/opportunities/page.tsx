@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { Info, SearchX, X } from "lucide-react";
+import { SearchX, X } from "lucide-react";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import { parseOpportunityBrowseQuery } from "@/lib/opportunityQuery";
 import { getOpportunityFacetCounts } from "@/lib/opportunityFacetCounts";
+import { getEngine } from "@/lib/engine";
 import { LOCATION_OPTIONS, taxonomyLabelFor } from "@/lib/opportunityTaxonomy";
-import { MissaSiteHeader } from "@/components/missa-site-header";
+import { OpportunityShell } from "@/components/opportunity-shell";
+import { OpportunityBrowseHeader } from "@/components/opportunity-browse-header";
 import { OpportunityCatalogueFilters } from "@/components/opportunity-catalogue-filters";
 import { OpportunityResultsRefresh } from "@/components/opportunity-results-refresh";
 import { OpportunityResults } from "@/components/opportunity-results";
@@ -228,19 +230,22 @@ export default async function OpportunitiesPage({
     : filterCount
       ? "No opportunities match this combination yet. Try removing one filter or broadening the location."
       : "No open opportunities are available right now. Try again later.";
-  const headerSession = activeSession
-    ? {
-        email: activeSession.account.email,
-        hasOrganization: activeSession.memberships.length > 0,
-      }
-    : null;
+  const organizationStore = activeSession ? (await getEngine()).store.organizations : null;
+  const headerSession = activeSession ? {
+    email: activeSession.account.email,
+    isAdmin: activeSession.account.isAdmin,
+    organizations: activeSession.memberships.map((membership) => ({
+      id: membership.organizationId,
+      name: organizationStore?.get(membership.organizationId)?.name ?? "Organization",
+    })),
+  } : null;
   const clearFiltersHref = publicPreview
     ? "/opportunities?preview=public"
     : "/opportunities";
 
   return (
+    <OpportunityShell session={headerSession}>
     <div className={styles.shell}>
-      <MissaSiteHeader session={headerSession} />
       <PublicDiscoveryEvent
         eventName="public.discovery_view"
         properties={{
@@ -270,97 +275,41 @@ export default async function OpportunitiesPage({
       />
 
       <main id="main-content" className={styles.main} data-density="comfortable">
-        <section className={styles.intro} aria-labelledby="opportunities-title">
-          <div>
-            <p className={styles.eyebrow}>Missa field guide</p>
-            <h1 id="opportunities-title">Opportunities for creative work</h1>
-            <p className={styles.lede}>
-              Credible calls across writing, visual arts, performance, film,
-              music, design, and interdisciplinary practice.
-            </p>
-          </div>
-          <p className={styles.publicNote}>
-            <Info aria-hidden="true" />
-            <span>
-              Browsing is public. Save and track with a free account.
-            </span>
-          </p>
-        </section>
-
         {usePreviewFixtures ? (
           <p className={styles.previewNotice} role="note">
             Design preview · Representative examples, not published listings
           </p>
         ) : null}
 
-        <OpportunityPracticeNav
-          practices={displayFacetCounts.practices}
-          currentQuery={urlParams.toString()}
-          selectedTaxonomy={query.taxonomyTermIds}
-        />
-
-        <OpportunityFeedTabs activeFeed={activeFeed} />
-
         <div className={styles.workspace}>
           <section className={styles.results} aria-labelledby="results-heading">
-            <div className={styles.searchRow}>
-              <OpportunitySearch
+            <OpportunityBrowseHeader
+              practices={<OpportunityPracticeNav practices={displayFacetCounts.practices} currentQuery={urlParams.toString()} selectedTaxonomy={query.taxonomyTermIds} />}
+              feeds={<OpportunityFeedTabs activeFeed={activeFeed} />}
+              search={<div className={styles.searchRow}><OpportunitySearch
                 key={query.query ?? ""}
                 category={query.category}
                 initialQuery={query.query}
-              />
+              /></div>}
+              activeFilters={activeChips.length ? (
+                <div className={styles.activeFilters} aria-label="Active filters">
+                  {activeChips.map((chip) => <Link key={`${chip.key}-${chip.value}`} href={chip.list ? removeListValueHref(urlParams, chip.key, chip.value) : hrefWith(urlParams, { [chip.key]: undefined })} className={styles.chip} aria-label={`Remove ${chip.label} filter`}>{chip.label}<X aria-hidden="true" /></Link>)}
+                  <Link href={clearFiltersHref} className={styles.clear}>Clear all</Link>
+                </div>
+              ) : undefined}
+              toolbar={<div className={styles.toolbar}>
+                <h2 id="results-heading" aria-live="polite" aria-atomic="true">{displayResult.total.toLocaleString()} {displayResult.total === 1 ? "opportunity" : "opportunities"}</h2>
+                <div className={styles.toolbarActions}>{activeSession?.account.userId ? <SaveSearchButton userId={activeSession.account.userId} criteria={saveCriteria} defaultName={query.query ? `Search: ${query.query}` : "Opportunity search"} /> : null}<OpportunitySort className={styles.sort} signedIn={Boolean(activeSession)} /></div>
+              </div>}
+            />
+            <div className={styles.catalogueLayout}>
               <OpportunityCatalogueFilters
                 locations={LOCATION_OPTIONS}
                 activeFilterCount={filterCount}
                 facetCounts={displayFacetCounts}
                 resultCount={displayResult.total}
               />
-            </div>
-
-            {activeChips.length ? (
-              <div className={styles.activeFilters} aria-label="Active filters">
-                {activeChips.map((chip) => (
-                  <Link
-                    key={`${chip.key}-${chip.value}`}
-                    href={
-                      chip.list
-                        ? removeListValueHref(urlParams, chip.key, chip.value)
-                        : hrefWith(urlParams, { [chip.key]: undefined })
-                    }
-                    className={styles.chip}
-                    aria-label={`Remove ${chip.label} filter`}
-                  >
-                    {chip.label}
-                    <X aria-hidden="true" />
-                  </Link>
-                ))}
-                <Link href={clearFiltersHref} className={styles.clear}>
-                  Clear all
-                </Link>
-              </div>
-            ) : null}
-
-            <div className={styles.toolbar}>
-              <h2 id="results-heading" aria-live="polite" aria-atomic="true">
-                {displayResult.total.toLocaleString()}{" "}
-                {displayResult.total === 1 ? "opportunity" : "opportunities"}
-              </h2>
-              <div className={styles.toolbarActions}>
-                {activeSession?.account.userId ? (
-                  <SaveSearchButton
-                    userId={activeSession.account.userId}
-                    criteria={saveCriteria}
-                    defaultName={
-                      query.query
-                        ? `Search: ${query.query}`
-                        : "Opportunity search"
-                    }
-                  />
-                ) : null}
-                <OpportunitySort className={styles.sort} signedIn={Boolean(activeSession)} />
-              </div>
-            </div>
-
+              <div className={styles.resultColumn}>
             <OpportunityResultsRefresh queryKey={urlParams.toString()}>
               {displayResult.items.length ? (
                 <OpportunityResults
@@ -387,9 +336,12 @@ export default async function OpportunitiesPage({
                 </div>
               )}
             </OpportunityResultsRefresh>
+              </div>
+            </div>
           </section>
         </div>
       </main>
     </div>
+    </OpportunityShell>
   );
 }

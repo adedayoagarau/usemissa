@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { CalendarDays, Gift, MapPin, Tag } from "lucide-react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
@@ -86,6 +87,7 @@ export function OpportunityCatalogueCard({
   previewMode?: boolean;
 }) {
   const pathname = usePathname();
+  const [mediaFailed, setMediaFailed] = useState(false);
   const searchParams = useSearchParams();
   const detailHref = previewMode
     ? `/opportunities?preview=public#${item.id}`
@@ -100,26 +102,32 @@ export function OpportunityCatalogueCard({
   ).slice(0, 2);
   const publicStatus = statusLabel(item.status, item.deadline);
   const titleId = `opportunity-${item.id}-title`;
+  const hasMedia = Boolean(item.identityAssetUrl) && !mediaFailed;
 
   return (
-    <article>
-      <Card className={styles.card} size="lg" variant="interactive">
+    <article className={styles.gridItem}>
+      <Card
+        className={`${styles.card} ${hasMedia ? styles.withMedia : styles.withoutMedia}`}
+        size="lg"
+        variant="interactive"
+      >
       <Link
         href={detailHref}
         className={styles.openLink}
-        aria-labelledby={titleId}
+        aria-label={`View ${item.title}`}
       >
         <span className={styles.media}>
-          {item.identityAssetUrl ? (
+          {hasMedia ? (
             // Only rights-cleared/permitted identity assets reach this projection.
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={item.identityAssetUrl}
               alt={item.identityAssetAlt ?? ""}
+              onError={() => setMediaFailed(true)}
             />
           ) : (
             <span className={styles.fallback} aria-hidden="true">
-              {initials(item)}
+              <span>{initials(item)}</span>
             </span>
           )}
         </span>
@@ -132,7 +140,9 @@ export function OpportunityCatalogueCard({
               </Badge>
             ) : null}
           </span>
-          <span id={titleId} className={styles.title}>{item.title}</span>
+          <span id={titleId} className={styles.title} title={item.title}>
+            {item.title}
+          </span>
           <span className={styles.organization}>
             {item.organizationName ?? "Organization not confirmed"}
           </span>
@@ -156,7 +166,7 @@ export function OpportunityCatalogueCard({
               {item.location ?? "Location not listed"}
             </span>
             {item.prize ? (
-              <span data-kind="award">
+              <span className={styles.award} data-kind="award">
                 <Gift aria-hidden="true" />
                 {item.prize}
               </span>
