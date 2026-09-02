@@ -1,0 +1,124 @@
+{
+  "fixtureId": "deterministic-fit-v1-phase-0-compatibility-ranking-2026-08-20",
+  "capturedAt": "2026-08-20T12:00:00.000Z",
+  "environment": "local-demo-fixture",
+  "sourceCommit": "d88e0e3f4",
+  "sourceFiles": [
+    "apps/web/lib/opportunityRepository.ts",
+    "packages/radar-engine/src/matching/matching.ts",
+    "packages/radar-engine/src/fixtures/serverDemo.ts"
+  ],
+  "query": {
+    "category": "all",
+    "types": [],
+    "disciplines": [],
+    "genres": [],
+    "locations": [],
+    "openNow": true,
+    "verifiedOnly": false,
+    "sort": "recommended",
+    "limit": 5
+  },
+  "algorithm": {
+    "candidateFilter": "not duplicate and status not archived/closed/duplicate/uncertain",
+    "reasonSources": [
+      "opportunity preferences",
+      "saved searches",
+      "taxonomy preferences",
+      "selected Work taxonomy"
+    ],
+    "sort": "tailoring reason count descending, deadline ascending with missing deadlines last",
+    "cursor": "base64url integer offset",
+    "note": "Follow state and Tracker state are projected but do not affect the recommended sort."
+  },
+  "accounts": [
+    {
+      "accountId": "acct_demo_ada",
+      "userId": "user_0001",
+      "profile": "No-fee poetry & fiction",
+      "expectedOrder": [
+        "opp_0004",
+        "opp_0001",
+        "opp_0002",
+        "opp_0005",
+        "opp_0003"
+      ],
+      "reasonCounts": {
+        "opp_0004": 2,
+        "opp_0001": 0,
+        "opp_0002": 0,
+        "opp_0005": 0,
+        "opp_0003": 0
+      },
+      "pagination": {
+        "limit": 3,
+        "page1": ["opp_0004", "opp_0001", "opp_0002"],
+        "nextCursor": "Mw",
+        "page2": ["opp_0005", "opp_0003"],
+        "finalCursor": null
+      }
+    },
+    {
+      "accountId": "acct_demo_ben",
+      "userId": "user_0002",
+      "profile": "Film festivals under $50",
+      "expectedOrder": [
+        "opp_0003",
+        "opp_0004",
+        "opp_0001",
+        "opp_0002",
+        "opp_0005"
+      ],
+      "reasonCounts": {
+        "opp_0003": 2,
+        "opp_0004": 0,
+        "opp_0001": 0,
+        "opp_0002": 0,
+        "opp_0005": 0
+      }
+    }
+  ],
+  "opportunities": [
+    {
+      "id": "opp_0001",
+      "status": "open",
+      "deadline": "2026-09-19",
+      "feeCents": 500
+    },
+    {
+      "id": "opp_0002",
+      "status": "needs-verification",
+      "deadline": "2026-10-04",
+      "feeCents": 0
+    },
+    {
+      "id": "opp_0003",
+      "status": "open",
+      "deadline": "2026-11-08",
+      "feeCents": 4000
+    },
+    {
+      "id": "opp_0004",
+      "status": "closing-soon",
+      "deadline": "2026-08-26",
+      "feeCents": 0
+    },
+    {
+      "id": "opp_0005",
+      "status": "opening-soon",
+      "deadline": "2026-10-14",
+      "feeCents": 0
+    }
+  ],
+  "filterRegressionCases": [
+    { "status": "archived", "expected": "excluded" },
+    { "status": "closed", "expected": "excluded" },
+    { "status": "duplicate", "expected": "excluded" },
+    { "status": "uncertain", "expected": "excluded" },
+    {
+      "status": "needs-verification",
+      "expected": "included by compatibility path; not equivalent to a reviewed safety state"
+    }
+  ],
+  "productionStatus": "unverified: no production credentials were available at capture time"
+}

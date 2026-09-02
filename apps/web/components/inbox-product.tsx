@@ -17,6 +17,8 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { EmailReviewQueue } from '@/components/email-review-queue';
+import { NotificationPreferencesPanel } from '@/components/notification-preferences-panel';
+import type { CreatorNotificationPreferences } from '@missa/radar-adapters';
 
 import styles from './inbox-product.module.css';
 
@@ -32,6 +34,7 @@ export type InboxProductItem = {
   reason: string;
   createdAt: string;
   unread: boolean;
+  revision?: number;
   actionHref: string;
   actionLabel: string;
 };
@@ -60,7 +63,7 @@ function dateLabel(value: string): string {
   return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
 }
 
-export function InboxProduct({ initialItems, initialView = 'briefing' }: { initialItems: InboxProductItem[]; initialView?: InboxView }) {
+export function InboxProduct({ initialItems, initialPreferences, initialView = 'briefing' }: { initialItems: InboxProductItem[]; initialPreferences?: CreatorNotificationPreferences; initialView?: InboxView }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [view, setView] = useState<InboxView>(initialView);
@@ -88,10 +91,16 @@ export function InboxProduct({ initialItems, initialView = 'briefing' }: { initi
     setItems((current) => current.map((item) => affected.has(item.id) ? { ...item, unread: false } : item));
     setBusy(true);
     try {
+      const affectedItems = items.filter((item) => affected.has(item.id));
       const response = await fetch('/api/me/inbox/read', {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(ids ? { ids } : { all: true }),
+        headers: {
+          'content-type': 'application/json',
+          ...(affectedItems.every((item) => item.revision) ? { 'Idempotency-Key': crypto.randomUUID() } : {}),
+        },
+        body: JSON.stringify(ids
+          ? { ids, items: affectedItems.map(({ id, revision }) => ({ id, revision })) }
+          : { all: true, items: affectedItems.map(({ id, revision }) => ({ id, revision })) }),
       });
       if (!response.ok) throw new Error('read-state-failed');
       setStatus(ids ? 'Update marked as read.' : 'All Inbox updates marked as read.');
@@ -182,6 +191,8 @@ export function InboxProduct({ initialItems, initialView = 'briefing' }: { initi
           )}
         </div>
       )}
+
+      {initialPreferences ? <NotificationPreferencesPanel initial={initialPreferences} /> : null}
 
       <p className={styles.liveStatus} role="status" aria-live="polite">{status}</p>
     </div>

@@ -13,6 +13,7 @@ import type {
   OpportunityCallProfile,
   OpportunityContent,
 } from "@missa/radar-engine";
+import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
 
 export interface SqlQuery {
   text: string;
@@ -112,7 +113,6 @@ const CATEGORY_TYPES: Record<string, string[]> = {
 };
 
 const PUBLIC_STATUSES = [
-  "opening-soon",
   "open",
   "closing-soon",
   "deadline-extended",
@@ -519,7 +519,7 @@ export function buildOpportunityBrowseQuery(
   const taxonomyReads = options.taxonomyReads ?? taxonomyReadsEnabled();
   const values: unknown[] = [];
   const conditions: string[] = [
-    "o.publication_state = 'published'",
+    canonicalPublicOpportunityPredicate("o"),
     query.openNow ? `o.status = any($${values.length + 1}::text[])` : "true",
   ];
   if (query.openNow) values.push(PUBLIC_STATUSES);

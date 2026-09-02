@@ -82,7 +82,7 @@ export async function findCanonicalDuplicateMatches(
               )
             )
           )) or (
-            $4::date is null and $7 in ('rolling', 'until-filled') and o.deadline_kind = $7
+            $4::date is null and $7 in ('rolling', 'year-round', 'seasonal', 'until-filled') and o.deadline_kind = $7
             and cardinality($5::text[]) > 0
             and (
               regexp_replace(lower(coalesce(org.data->>'name', '')), '[^a-z0-9]+', '', 'g') = any($5::text[])
@@ -373,11 +373,12 @@ async function writeDeadlineWindows(client: PoolClient, opportunityId: string, s
       [`${opportunityId}:window:${date}`, opportunityId, dates.length > 1 ? `Deadline ${index + 1}` : "Deadline", date, date === resolved.date, sourceUrl],
     );
   }
-  if (!dates.length && resolved.kind === "rolling") {
+  if (!dates.length && ["rolling", "year-round", "seasonal"].includes(resolved.kind)) {
+    const labels = { rolling: "Rolling submissions", "year-round": "Year-round submissions", seasonal: "Seasonal submissions" } as const;
     await client.query(
       `insert into opportunity_call_windows (id,opportunity_id,label,kind,current,source_url,confidence,updated_at)
-       values ($1,$2,'Rolling submissions','rolling',true,$3,'confirmed',now())`,
-      [`${opportunityId}:window:rolling`, opportunityId, sourceUrl],
+       values ($1,$2,$3,$4,true,$5,'confirmed',now())`,
+      [`${opportunityId}:window:${resolved.kind}`, opportunityId, labels[resolved.kind as keyof typeof labels], resolved.kind, sourceUrl],
     );
   }
 }

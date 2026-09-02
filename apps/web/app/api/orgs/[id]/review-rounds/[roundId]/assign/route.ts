@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
+import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; roundId: string }> }) {
   const { id, roundId } = await params;
   const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
-  if (!result.access.scope.reviewRound(roundId)) {
+  if (!workspaceRelationalAuthorityEnabled() && !result.access.scope.reviewRound(roundId)) {
     return NextResponse.json({ error: 'Unknown review round for this organization' }, { status: 404 });
   }
 
@@ -14,7 +15,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'submissionId and reviewerAccountId are required' }, { status: 400 });
   }
 
-  if (!result.access.scope.submission(body.submissionId)) {
+  if (!workspaceRelationalAuthorityEnabled() && !result.access.scope.submission(body.submissionId)) {
     return NextResponse.json({ error: 'Unknown submission for this organization' }, { status: 404 });
   }
   const reviewerMembership = result.access.radar.store.memberships.find(
@@ -24,6 +25,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: 'Reviewer must be a member of this organization' }, { status: 400 });
   }
 
+  if (workspaceRelationalAuthorityEnabled()) {
+    try {
+      const workspace = await getRelationalWorkspace();
+      const payload = { reviewRoundId: roundId, submissionId: body.submissionId, reviewerAccountId: body.reviewerAccountId };
+      const command = workspaceCommandEnvelope(request, { actorAccountId: result.access.session.account.id, organizationId: id, commandType: 'review_assignment.create', payload });
+      const created = await workspace.assignReviewer(command, payload);
+      return NextResponse.json({ id: created.resourceId, ...payload, revision: created.revision, receiptId: created.receiptId, idempotent: created.replayed }, { status: created.replayed ? 200 : 201 });
+    } catch (error) {
+      const mapped = workspaceMutationError(error);
+      return NextResponse.json(mapped?.body ?? { error: error instanceof Error ? error.message : 'failed' }, { status: mapped?.status ?? 404 });
+    }
+  }
   const engine = result.access.workspace;
   try {
     const assignment = engine.assignReviewer(roundId, body.submissionId, body.reviewerAccountId);

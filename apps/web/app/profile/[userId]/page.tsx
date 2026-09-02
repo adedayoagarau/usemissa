@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { getEngine } from "@/lib/engine";
+import { getCreatorProfileRepository } from "@/lib/creatorRepositories";
 import styles from "../../public-editorial.module.css";
 
 export default async function PublicProfilePage({
@@ -13,7 +14,8 @@ export default async function PublicProfilePage({
   const { userId } = await params;
   if (!userId || userId.length > 200 || /[^a-zA-Z0-9_-]/u.test(userId))
     notFound();
-  const profile = (await getEngine()).publicUserProfile(userId);
+  const repository = getCreatorProfileRepository();
+  const profile = repository ? await repository.publicProfile(userId) : (await getEngine()).publicUserProfile(userId);
   if (!profile) notFound();
 
   return (

@@ -23,6 +23,7 @@ test("NYFA visual arts archive emits distinct official opportunity pages", () =>
 });
 
 test("Sundance deadlines emits current official application cards", async () => {
+  const deadlineYear = new Date().getUTCFullYear() + 1;
   const source: Source = {
     id: "sundance-deadlines",
     name: "Sundance Institute Artist Opportunities",
@@ -36,8 +37,8 @@ test("Sundance deadlines emits current official application cards", async () => 
   const html = `
     <h2>Graton Artist Opportunity</h2>
     <p>The opportunity supports emerging filmmakers.</p>
-    <p>Extended Deadline: August 18, 2026</p>
-    <a href="https://apply.sundance.org/prog/2026_graton_artist_opportunity/">Apply Now</a>
+    <p>Extended Deadline: August 18, ${deadlineYear}</p>
+    <a href="https://apply.sundance.org/prog/graton_artist_opportunity/">Apply Now</a>
     <h2>Expired Opportunity</h2>
     <p>Deadline: January 1, 2020</p>
     <a href="https://apply.sundance.org/prog/expired/">Apply Now</a>
@@ -47,7 +48,7 @@ test("Sundance deadlines emits current official application cards", async () => 
   try {
     const result = await fetchMachineDiscoverySource(source);
     assert.deepEqual(result.links.map((link) => link.title), ["Graton Artist Opportunity"]);
-    assert.equal(result.links[0]?.discoveryMachineRecord?.deadlineDate, "2026-08-18");
+    assert.equal(result.links[0]?.discoveryMachineRecord?.deadlineDate, `${deadlineYear}-08-18`);
     assert.equal(result.links[0]?.registryTrust?.status, "verified");
   } finally {
     globalThis.fetch = original;

@@ -20,6 +20,7 @@ export * from "./sourceManifest.js";
 export * from "./postgresRunner.js";
 export * from "./candidateGate.js";
 export * from "./deadline.js";
+export * from "./coverageContract.js";
 export * from "./adapters/feed.js";
 export * from "./adapters/json.js";
 export * from "./adapters/chillSubs.js";

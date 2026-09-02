@@ -47,6 +47,7 @@ export type LibraryProductTerm = {
 
 export type LibraryProductWork = {
   id: string;
+  revision?: number;
   title: string;
   description?: string;
   updatedAt: string;
@@ -58,6 +59,7 @@ export type LibraryProductWork = {
 
 export type LibraryProductFile = {
   id: string;
+  revision?: number;
   filename: string;
   contentType: string;
   byteLength: number;
@@ -68,6 +70,7 @@ export type LibraryProductFile = {
 
 export type LibraryProductAnswer = {
   id: string;
+  revision?: number;
   name: string;
   body: string;
   updatedAt: string;
@@ -75,8 +78,8 @@ export type LibraryProductAnswer = {
 };
 
 type DeleteTarget =
-  | { kind: 'file'; id: string; name: string; linkedWorks: number; checklists: number }
-  | { kind: 'answer'; id: string; name: string; linkedWorks: 0; checklists: number };
+  | { kind: 'file'; id: string; revision?: number; name: string; linkedWorks: number; checklists: number }
+  | { kind: 'answer'; id: string; revision?: number; name: string; linkedWorks: 0; checklists: number };
 
 type Props = {
   works: LibraryProductWork[];
@@ -187,7 +190,7 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
       if (view === 'works') {
         response = await fetch('/api/me/library/works', {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
           body: JSON.stringify({
             title: workTitle,
             description: workDescription,
@@ -198,13 +201,13 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
       } else if (view === 'answers') {
         response = await fetch('/api/me/library/saved-answers', {
           method: 'POST',
-          headers: { 'content-type': 'application/json' },
+          headers: { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
           body: JSON.stringify({ name: answerName, body: answerBody }),
         });
       } else {
         const data = new FormData();
         if (uploadFile) data.append('file', uploadFile);
-        response = await fetch('/api/me/library/files', { method: 'POST', body: data });
+        response = await fetch('/api/me/library/files', { method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() }, body: data });
       }
       const body = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(body.error ?? 'We could not update your Library.');
@@ -234,7 +237,11 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
       const path = deleteTarget.kind === 'file'
         ? `/api/me/library/files/${encodeURIComponent(deleteTarget.id)}`
         : `/api/me/library/saved-answers/${encodeURIComponent(deleteTarget.id)}`;
-      const response = await fetch(path, { method: 'DELETE' });
+      const response = await fetch(path, {
+        method: 'DELETE',
+        headers: deleteTarget.revision ? { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() } : undefined,
+        body: deleteTarget.revision ? JSON.stringify({ expectedRevision: deleteTarget.revision }) : undefined,
+      });
       const body = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(body.error ?? 'We could not delete that item.');
       setStatus(`${deleteTarget.name} deleted.`);
@@ -335,7 +342,7 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
             <dl className={styles.facts}><div><dt>Size</dt><dd>{formatBytes(file.byteLength)}</dd></div><div><dt>Added</dt><dd>{formatDate(file.createdAt)}</dd></div><div><dt>Preparation</dt><dd>{file.checklistCount} checklist reference{file.checklistCount === 1 ? '' : 's'}</dd></div></dl>
             <div className={styles.actions}>
               {storageReady ? <a href={`/api/me/library/files/${encodeURIComponent(file.id)}`} target="_blank" rel="noreferrer" className={buttonVariants({ variant: 'outline' })}>Open file</a> : <Button type="button" variant="outline" disabled>File unavailable</Button>}
-              <Button type="button" variant="ghost" size="icon" aria-label={`Delete ${file.filename}`} onClick={() => setDeleteTarget({ kind: 'file', id: file.id, name: file.filename, linkedWorks: file.linkedWorks.length, checklists: file.checklistCount })}><Trash2 aria-hidden="true" /></Button>
+              <Button type="button" variant="ghost" size="icon" aria-label={`Delete ${file.filename}`} onClick={() => setDeleteTarget({ kind: 'file', id: file.id, revision: file.revision, name: file.filename, linkedWorks: file.linkedWorks.length, checklists: file.checklistCount })}><Trash2 aria-hidden="true" /></Button>
             </div>
           </article>
         ))}</div> : <EmptyState icon={<Upload aria-hidden="true" />} title={query.trim() ? `No files match “${query.trim()}”` : 'No files yet'} body={query.trim() ? 'Clear search or try part of the filename.' : storageReady ? 'Upload a private file, then attach it to a Work.' : 'Private file storage is unavailable in this environment. Your Works and Saved Answers are still available.'} action={query.trim() ? <Button type="button" variant="outline" onClick={() => setQuery('')}>Clear search</Button> : storageReady ? <Button type="button" onClick={() => setCreateOpen(true)}><Upload aria-hidden="true" />Upload file</Button> : undefined} />
@@ -348,7 +355,7 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
             <div className={styles.identity}><h2>{answer.name}</h2><p>{excerpt(answer.body)}</p><span>{words(answer.body)} words · Updated {formatDate(answer.updatedAt)}</span></div>
             <div className={styles.actions}>
               <Button type="button" variant="outline" onClick={() => void copyAnswer(answer)}><Copy aria-hidden="true" />Copy</Button>
-              <Button type="button" variant="ghost" size="icon" aria-label={`Delete ${answer.name}`} onClick={() => setDeleteTarget({ kind: 'answer', id: answer.id, name: answer.name, linkedWorks: 0, checklists: answer.checklistCount })}><Trash2 aria-hidden="true" /></Button>
+              <Button type="button" variant="ghost" size="icon" aria-label={`Delete ${answer.name}`} onClick={() => setDeleteTarget({ kind: 'answer', id: answer.id, revision: answer.revision, name: answer.name, linkedWorks: 0, checklists: answer.checklistCount })}><Trash2 aria-hidden="true" /></Button>
             </div>
           </article>
         ))}</div> : <EmptyState icon={<BookOpenText aria-hidden="true" />} title={query.trim() ? `No Saved Answers match “${query.trim()}”` : 'No Saved Answers yet'} body={query.trim() ? 'Clear search or try the answer name.' : 'Save a biography, statement, or recurring response you want to adapt later.'} action={query.trim() ? <Button type="button" variant="outline" onClick={() => setQuery('')}>Clear search</Button> : <Button type="button" onClick={() => setCreateOpen(true)}><Plus aria-hidden="true" />Create a Saved Answer</Button>} />

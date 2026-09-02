@@ -15,6 +15,7 @@ import {
   type TrackerImportResult,
 } from '@missa/radar-engine';
 import { uuidIds } from './uuidIds.js';
+import { loadCanonicalTrackerImportStore } from './canonicalTrackerImport.js';
 
 export type TrackerImportPersistenceErrorCode = 'conflict' | 'idempotency-conflict' | 'rate-limit' | 'review';
 
@@ -47,7 +48,7 @@ export function trackerImportRequestHash(input: { sourceHash: string; mapping: I
   return createHash('sha256').update(stableJson(input)).digest('hex');
 }
 
-async function rateLimitInTransaction(client: PoolClient, input: { accountId: string; kind: 'preview' | 'commit'; limit: number; windowMs: number; now: Date }): Promise<void> {
+export async function rateLimitInTransaction(client: PoolClient, input: { accountId: string; kind: 'preview' | 'commit'; limit: number; windowMs: number; now: Date }): Promise<void> {
   const key = `tracker-import-rate:${input.accountId}:${input.kind}`;
   await client.query('select pg_advisory_xact_lock(hashtext($1))', [key]);
   const cutoff = new Date(input.now.getTime() - input.windowMs);
@@ -68,6 +69,64 @@ async function rateLimitInTransaction(client: PoolClient, input: { accountId: st
     'insert into tracker_import_rate_events (id, account_id, kind, occurred_at) values ($1, $2, $3, $4)',
     [`tracker_rate_${randomUUID()}`, input.accountId, input.kind, input.now],
   );
+}
+
+export type RelationalTrackerImportInput = Omit<DurableTrackerImportInput,'baseStore'>;
+
+export async function commitRelationalTrackerImportTransaction(pool:Pool,input:RelationalTrackerImportInput):Promise<{result:TrackerImportResult;idempotent:boolean}> {
+  const key=input.idempotencyKey.trim();
+  if (key.length<8 || key.length>240) throw new TrackerImportPersistenceError('A valid idempotency key is required.','idempotency-conflict');
+  const now=input.now ?? new Date();
+  const client=await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query('select pg_advisory_xact_lock(hashtext($1))',[`tracker-import:${input.accountId}`]);
+    const prior=await client.query<{request_hash:string;result:TrackerImportResult}>('select request_hash,result from tracker_import_receipts where account_id=$1 and idempotency_key=$2 for update',[input.accountId,key]);
+    if (prior.rows[0]) {
+      if (prior.rows[0].request_hash!==input.requestHash) throw new TrackerImportPersistenceError('This confirmation key belongs to a different import.','idempotency-conflict');
+      await client.query('commit'); return {result:prior.rows[0].result,idempotent:true};
+    }
+    await rateLimitInTransaction(client,{accountId:input.accountId,kind:'commit',limit:3,windowMs:10*60_000,now});
+    const current=await loadCanonicalTrackerImportStore(client,input.accountId,input.userId);
+    if (trackerImportStateHash(current,input.userId)!==input.expectedTrackerHash) throw new TrackerImportPersistenceError('Your Tracker changed after this preview. Prepare a new preview to compare the latest state.','conflict');
+    const plan=planTrackerImport(current,input.userId,input.parsed,input.mapping);
+    if (trackerImportCandidateHash(plan.candidateSet)!==input.expectedCandidateHash) throw new TrackerImportPersistenceError('Opportunity matches changed after this preview. Prepare a new preview.','conflict');
+    const working=cloneStore(current);
+    const result=commitTrackerImport(working,uuidIds(),input.userId,plan,input.decisions,now,input.sourceHash);
+    if (result.needsReview>0) throw new TrackerImportPersistenceError('Resolve every row issue before importing.','review');
+    const beforeTracked=new Map(current.tracked.map((row)=>[row.opportunityId,row]));
+    for (const row of working.tracked.filter((item)=>item.userId===input.userId)) {
+      const before=beforeTracked.get(row.opportunityId);
+      if (!before) {
+        const id=`tracked_${randomUUID()}`;
+        await client.query(`insert into tracked_opportunities (id,account_id,opportunity_id,status,notify,submitted_at,last_import_id,tracked_at)
+          values ($1,$2,$3,$4,$5,$6,$7,$8)`,[id,input.accountId,row.opportunityId,row.myStatus,row.notify,row.submittedAt ?? null,row.lastImportId ?? null,row.trackedAt]);
+        const event=row.events.at(-1);
+        await client.query(`insert into tracked_status_events (tracked_opportunity_id,account_id,from_status,to_status,source,note,created_at)
+          values ($1,$2,null,$3,$4,$5,$6)`,[id,input.accountId,row.myStatus,event?.source ?? 'user',event?.note ?? null,event?.at ?? now]);
+      } else if (stableJson(before)!==stableJson(row)) {
+        const updated=await client.query<{id:string}>(`update tracked_opportunities set status=$3,notify=$4,submitted_at=$5,last_import_id=$6,revision=revision+1,updated_at=now()
+          where account_id=$1 and opportunity_id=$2 returning id`,[input.accountId,row.opportunityId,row.myStatus,row.notify,row.submittedAt ?? null,row.lastImportId ?? null]);
+        const event=row.events.at(-1);
+        await client.query(`insert into tracked_status_events (tracked_opportunity_id,account_id,from_status,to_status,source,note,created_at)
+          values ($1,$2,$3,$4,$5,$6,$7)`,[updated.rows[0]!.id,input.accountId,before.myStatus,row.myStatus,event?.source ?? 'user',event?.note ?? null,event?.at ?? now]);
+      }
+    }
+    const beforeManual=new Set(current.manualTrackerEntries.map((row)=>row.id));
+    for (const row of working.manualTrackerEntries.filter((item)=>item.userId===input.userId && !beforeManual.has(item.id))) {
+      await client.query(`insert into tracker_manual_entries (id,account_id,title,organization_name,status,source_kind,detail,created_at,updated_at)
+        values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$8)`,[row.id,input.accountId,row.title,row.organizationName,row.myStatus,row.sourceKind,JSON.stringify(row),row.importedAt]);
+    }
+    await client.query(`insert into tracker_import_receipts (id,account_id,user_id,idempotency_key,request_hash,source_hash,created_at,result)
+      values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)`,[result.importId,input.accountId,input.userId,key,input.requestHash,input.sourceHash,now,JSON.stringify(result)]);
+    const correlationId=randomUUID();
+    await client.query(`insert into audit_events (account_id,action,target_type,target_id,detail,correlation_id)
+      values ($1,'tracker.imported','creator-profile',$2,$3::jsonb,$4)`,[input.accountId,input.userId,JSON.stringify({importId:result.importId,imported:result.imported,matched:result.matched,createdManual:result.createdManual,skipped:result.skipped}),correlationId]);
+    await client.query(`insert into outbox_events (topic,aggregate_type,aggregate_id,payload,event_key,correlation_id)
+      values ('tracker.imported','creator-profile',$1,$2::jsonb,$3,$4)`,[input.userId,JSON.stringify({importId:result.importId,imported:result.imported}),result.importId,correlationId]);
+    await client.query('commit'); return {result,idempotent:false};
+  } catch (error) { await client.query('rollback').catch(()=>undefined); throw error; }
+  finally { client.release(); }
 }
 
 export async function consumeTrackerImportPreviewRateLimit(pool: Pool, input: { accountId: string; limit: number; windowMs: number; now?: Date }): Promise<void> {

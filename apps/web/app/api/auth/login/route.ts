@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getEngine } from "@/lib/engine";
+import { getCreatorAccountRepository } from "@/lib/creatorRepositories";
 import {
   issueSessionToken,
   sessionCookieOptions,
@@ -51,10 +52,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const engine = await getEngine();
   let account;
   try {
-    account = engine.logIn(email, password);
+    const repository = getCreatorAccountRepository();
+    account = repository
+      ? await repository.authenticatePassword(email, password)
+      : (await getEngine()).logIn(email, password);
+    if (!account) throw new Error("invalid credentials");
   } catch {
     return NextResponse.json(
       { error: "Invalid email or password." },

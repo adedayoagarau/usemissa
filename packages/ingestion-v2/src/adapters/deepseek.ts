@@ -84,7 +84,7 @@ export class DeepSeekHtmlAdapter implements SourceAdapter {
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: "Return JSON only. Extract only facts explicitly stated on the source page. Use null for unknown values. Dates must be exact ISO dates only; never infer a year. A directory or repost is evidence, not the opportunity owner: organization must name the host, and officialUrl must be the host's first-party program or application page. Never return the directory URL as officialUrl when a first-party page is present. Classify a residency program as residency even if the page uses generic contest language. Example JSON: {\"title\":null,\"organization\":null,\"opportunityType\":null,\"deadlineDate\":null,\"deadlineKind\":\"unknown\",\"fee\":null,\"prize\":null,\"description\":null,\"eligibility\":null,\"submissionUrl\":null,\"officialUrl\":null}" },
-          { role: "user", content: `Return JSON with these keys: title, organization, opportunityType, deadlineDate, deadlineKind, fee, prize, description, eligibility, submissionUrl, officialUrl. opportunityType must be one of open-call, magazine, grant, award, fellowship, residency, festival, scholarship, conference, rfp, contest, pitch, other or null. deadlineKind must be exact, rolling, until-filled, conflicting, or unknown. Page URL: ${snapshot.finalUrl}\n\nPage text:\n${stripHtml(snapshot.html).slice(0, 12_000)}` },
+          { role: "user", content: `Return JSON with these keys: title, organization, opportunityType, deadlineDate, deadlineKind, fee, prize, description, eligibility, submissionUrl, officialUrl. opportunityType must be one of open-call, magazine, grant, award, fellowship, residency, festival, scholarship, conference, rfp, contest, pitch, other or null. deadlineKind must be exact, rolling, year-round, seasonal, until-filled, conflicting, or unknown. Page URL: ${snapshot.finalUrl}\n\nPage text:\n${stripHtml(snapshot.html).slice(0, 12_000)}` },
         ],
       }),
       signal: AbortSignal.timeout(30_000),
@@ -118,7 +118,7 @@ function normalizeFields(fields: DeepSeekFields, snapshot: PageSnapshot): Extrac
   const deadline = text(fields.deadlineDate);
   if (deadline && ISO_DATE.test(deadline)) add("deadline", deadline, 0.6);
   const kind = text(fields.deadlineKind);
-  if (kind && ["exact", "rolling", "until-filled", "conflicting", "unknown"].includes(kind)) add("deadlineKind", kind, 0.6);
+  if (kind && ["exact", "rolling", "year-round", "seasonal", "until-filled", "conflicting", "unknown"].includes(kind)) add("deadlineKind", kind, 0.6);
   add("fee", text(fields.fee));
   add("prize", text(fields.prize));
   add("description", text(fields.description));

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Missa product-wide visual directions</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root { color-scheme: light; --studio-bg:#eef0f3; --studio-ink:#15161a; --studio-muted:#666b75; }
+    body { margin:0; background:var(--studio-bg); color:var(--studio-ink); font-family:Inter, ui-sans-serif, system-ui, sans-serif; }
+    button, input { font:inherit; }
+    button:focus-visible, input:focus-visible { outline:3px solid #246bfd; outline-offset:3px; }
+    .studio { min-height:100vh; }
+    .studio-head { position:sticky; inset-block-start:0; z-index:20; display:grid; grid-template-columns:minmax(240px,1fr) minmax(360px,2fr); gap:24px; padding:18px 24px; background:rgba(255,255,255,.94); border-bottom:1px solid #d8dbe1; backdrop-filter:blur(16px); }
+    .studio-head h1 { margin:0 0 4px; font-size:18px; letter-spacing:-.02em; }
+    .studio-head p { margin:0; color:var(--studio-muted); font-size:13px; }
+    .tabs { display:flex; gap:8px; overflow-x:auto; padding:2px; }
+    .tab { flex:0 0 auto; min-height:40px; padding:8px 13px; border:1px solid #cfd3da; border-radius:9px; background:white; color:#30333a; cursor:pointer; }
+    .tab[aria-selected="true"] { background:#17181c; color:white; border-color:#17181c; }
+    .stage { padding:28px; }
+    .direction { display:none; max-width:1480px; margin:auto; }
+    .direction.active { display:block; }
+    .direction-intro { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:16px; margin-bottom:18px; color:#343740; }
+    .direction-intro > div { background:#fff; border:1px solid #daddE4; border-radius:12px; padding:16px; }
+    .direction-intro h2 { margin:0 0 6px; font-size:20px; }
+    .direction-intro h3 { margin:0 0 6px; font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#6e737d; }
+    .direction-intro p { margin:0; font-size:13px; line-height:1.45; }
+    .product { --canvas:#fff; --surface:#fff; --surface-2:#f5f6f8; --ink:#17181c; --muted:#666b75; --line:#d9dce2; --brand:#244cff; --brand-ink:#fff; --signal:#ff5f3d; --success:#287755; --warning:#8c5d00; --danger:#b42318; --radius:14px; --radius-small:8px; --shadow:none; --display:ui-sans-serif,system-ui,sans-serif; --ui:ui-sans-serif,system-ui,sans-serif; background:var(--canvas); color:var(--ink); border:1px solid #d6d9df; border-radius:18px; overflow:hidden; box-shadow:0 24px 70px rgba(30,34,44,.12); font-family:var(--ui); }
+    .product.signal-blue { --canvas:#fbfaf7; --surface:#fff; --surface-2:#f0efe9; --ink:#101828; --muted:#586174; --line:#d7d7d0; --brand:#244cff; --signal:#ff593d; --radius:10px; --display:"Arial Black",Arial,sans-serif; --ui:Arial,Helvetica,sans-serif; }
+    .product.signal-red { --canvas:#f7f4ef; --surface:#fffdfa; --surface-2:#ede7df; --ink:#1b1918; --muted:#635c56; --line:#d9d0c7; --brand:#d83a25; --brand-ink:#fff; --signal:#2752d9; --radius:6px; --display:Arial,Helvetica,sans-serif; --ui:Arial,Helvetica,sans-serif; }
+    .product.editorial-plum { --canvas:#faf7f3; --surface:#fffdfa; --surface-2:#f1ebe5; --ink:#251b26; --muted:#6e626d; --line:#d9ced7; --brand:#71385f; --signal:#c65332; --success:#446a4b; --radius:16px; --display:Georgia,"Times New Roman",serif; --ui:"Trebuchet MS",Arial,sans-serif; }
+    .product.editorial-forest { --canvas:#f6f5ed; --surface:#fcfbf5; --surface-2:#e8ebe0; --ink:#18231c; --muted:#5d695f; --line:#ccd2c6; --brand:#225e49; --signal:#b54c2f; --success:#225e49; --radius:2px; --display:Georgia,"Times New Roman",serif; --ui:Verdana,Arial,sans-serif; }
+    .product.horizon-cobalt { --canvas:#fbfcff; --surface:#fff; --surface-2:#eef3ff; --ink:#182033; --muted:#626c81; --line:#d6ddec; --brand:#315ac7; --signal:#e3833f; --success:#24735b; --radius:18px; --display:"Trebuchet MS",Arial,sans-serif; --ui:"Trebuchet MS",Arial,sans-serif; }
+    .product.horizon-orange { --canvas:#fffaf5; --surface:#fff; --surface-2:#f7ede3; --ink:#28211d; --muted:#6e625b; --line:#e4d6ca; --brand:#c94f2b; --signal:#326d73; --success:#326d5c; --radius:20px; --display:Verdana,Arial,sans-serif; --ui:Verdana,Arial,sans-serif; }
+    .product.baseline { --canvas:#fff; --surface:#fff; --surface-2:#f7f7f7; --ink:#171418; --muted:#74716d; --line:#e7e7e5; --brand:#5a3f68; --signal:#a8762a; --success:#657547; --radius:12px; --display:Arial,sans-serif; --ui:Arial,sans-serif; }
+    .appbar { min-height:68px; display:flex; align-items:center; gap:26px; padding:12px 24px; border-bottom:1px solid var(--line); background:var(--surface); }
+    .logo { font-family:var(--display); font-weight:800; font-size:22px; letter-spacing:-.05em; }
+    .nav { display:flex; gap:18px; color:var(--muted); font-size:14px; }
+    .nav b { color:var(--ink); }
+    .context { margin-inline-start:auto; min-height:40px; padding:9px 12px; border:1px solid var(--line); border-radius:var(--radius-small); background:var(--surface); color:var(--ink); }
+    .public-hero { display:grid; grid-template-columns:1.15fr .85fr; gap:32px; padding:52px 40px 38px; background:var(--canvas); }
+    .eyebrow { margin:0 0 12px; color:var(--brand); font-weight:800; font-size:12px; letter-spacing:.08em; text-transform:uppercase; }
+    .public-hero h1 { margin:0 0 18px; max-width:760px; font-family:var(--display); font-size:clamp(40px,5vw,76px); font-weight:750; line-height:.96; letter-spacing:-.055em; }
+    .public-hero p { max-width:650px; margin:0; color:var(--muted); font-size:18px; line-height:1.5; }
+    .hero-map { display:grid; align-content:center; gap:10px; padding:24px; border-radius:calc(var(--radius) + 8px); background:var(--surface-2); }
+    .map-node { display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius-small); background:var(--surface); font-size:13px; }
+    .map-node:nth-child(2) { margin-inline-start:24px; }
+    .map-node:nth-child(3) { margin-inline-start:48px; border-color:var(--brand); }
+    .workspace { display:grid; grid-template-columns:260px minmax(0,1fr); min-height:760px; border-top:1px solid var(--line); }
+    .rail { padding:22px 16px; background:var(--surface-2); border-inline-end:1px solid var(--line); }
+    .rail h3 { margin:0 8px 14px; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+    .rail a { display:block; margin:3px 0; padding:10px 12px; color:var(--muted); text-decoration:none; border-radius:var(--radius-small); }
+    .rail a.active { color:var(--ink); background:var(--surface); box-shadow:var(--shadow); font-weight:700; }
+    .main { min-width:0; padding:28px; }
+    .pagehead { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:24px; }
+    .pagehead h2 { margin:0 0 6px; font-family:var(--display); font-size:32px; letter-spacing:-.035em; }
+    .pagehead p { margin:0; color:var(--muted); }
+    .primary { min-height:44px; padding:10px 16px; border:0; border-radius:var(--radius-small); background:var(--brand); color:var(--brand-ink); font-weight:700; }
+    .toolbar { display:grid; grid-template-columns:1fr auto auto; gap:10px; margin-bottom:18px; }
+    .search, .filter { min-height:44px; border:1px solid var(--line); border-radius:var(--radius-small); background:var(--surface); color:var(--muted); padding:10px 13px; }
+    .catalogue { display:grid; grid-template-columns:minmax(320px,.9fr) minmax(440px,1.35fr); gap:18px; align-items:start; }
+    .tiles { display:grid; gap:12px; }
+    .tile { padding:18px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); box-shadow:var(--shadow); }
+    .tile.selected { border:2px solid var(--brand); padding:17px; }
+    .tile-label { color:var(--brand); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.07em; }
+    .tile h3 { margin:8px 0 4px; font-family:var(--display); font-size:21px; line-height:1.1; }
+    .org { color:var(--muted); font-size:14px; }
+    .facts { display:flex; flex-wrap:wrap; gap:7px 14px; margin-top:14px; color:var(--muted); font-size:13px; }
+    .fact strong { color:var(--ink); font-weight:700; }
+    .detail { position:sticky; inset-block-start:112px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); overflow:hidden; }
+    .detail-head { padding:26px; border-bottom:1px solid var(--line); background:linear-gradient(135deg,var(--surface),var(--surface-2)); }
+    .detail-head h2 { margin:9px 0 6px; font-family:var(--display); font-size:34px; line-height:1.05; letter-spacing:-.035em; }
+    .detail-body { padding:24px; }
+    .impact { margin-bottom:18px; padding:14px; border-inline-start:4px solid var(--signal); background:var(--surface-2); }
+    .impact b { display:block; margin-bottom:4px; }
+    .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .datum { padding:13px; border-top:1px solid var(--line); }
+    .datum span { display:block; color:var(--muted); font-size:12px; margin-bottom:4px; }
+    .datum strong { font-size:14px; }
+    .evidence { margin-top:18px; padding:16px; border:1px solid var(--line); border-radius:var(--radius-small); }
+    .evidence-row { display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:start; padding:10px 0; border-bottom:1px solid var(--line); font-size:13px; }
+    .evidence-row:last-child { border-bottom:0; }
+    .state { color:var(--brand); font-weight:800; }
+    .conflict { color:var(--warning); }
+    .source { color:var(--muted); }
+    .actions { display:flex; gap:10px; margin-top:20px; }
+    .secondary { min-height:44px; padding:10px 14px; border:1px solid var(--line); border-radius:var(--radius-small); background:var(--surface); color:var(--ink); }
+    .ops { margin:28px 0 0; border-top:1px solid var(--line); padding-top:26px; }
+    .ops h2 { font-family:var(--display); margin:0 0 5px; }
+    .ops p { color:var(--muted); margin:0 0 16px; }
+    table { width:100%; border-collapse:collapse; background:var(--surface); border:1px solid var(--line); }
+    th, td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:left; font-size:13px; }
+    th { background:var(--surface-2); color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+    .status { display:inline-flex; align-items:center; gap:6px; }
+    .dot { inline-size:8px; block-size:8px; border-radius:50%; background:var(--success); }
+    .dot.warn { background:var(--signal); }
+    .metric { font-variant-numeric:tabular-nums; }
+    .footnote { padding:14px 20px; color:var(--muted); background:var(--surface-2); border-top:1px solid var(--line); font-size:12px; }
+    @media (max-width:900px) {
+      .studio-head { grid-template-columns:1fr; }
+      .direction-intro { grid-template-columns:1fr; }
+      .public-hero, .catalogue { grid-template-columns:1fr; }
+      .workspace { grid-template-columns:1fr; }
+      .rail { display:none; }
+      .nav { display:none; }
+      .detail { position:static; }
+      .main { padding:18px; }
+      .public-hero { padding:34px 20px; }
+      .toolbar { grid-template-columns:1fr 1fr; }
+      .search { grid-column:1 / -1; }
+      .detail-grid { grid-template-columns:1fr; }
+      .ops { overflow-x:auto; }
+    }
+    @media (max-width:520px) {
+      .stage { padding:12px; }
+      .studio-head { padding:14px; }
+      .appbar { padding:10px 14px; }
+      .context { margin-inline-start:auto; font-size:0; width:44px; }
+      .context::after { content:"↔"; font-size:18px; }
+      .public-hero h1 { font-size:42px; }
+      .pagehead { align-items:flex-start; }
+      .pagehead .primary { display:none; }
+      .toolbar { display:flex; overflow-x:auto; }
+      .search { min-width:230px; }
+      .detail-head, .detail-body { padding:18px; }
+      .actions { flex-direction:column; }
+      th:nth-child(3), td:nth-child(3), th:nth-child(5), td:nth-child(5) { display:none; }
+    }
+    @media (prefers-reduced-motion:no-preference) { .direction.active { animation:reveal 180ms ease-out; } @keyframes reveal { from { opacity:.5; transform:translateY(4px); } } }
+  </style>
+</head>
+<body>
+  <div class="studio">
+    <header class="studio-head">
+      <div><h1>Missa visual-foundation comparison</h1><p>Seven candidate systems · identical content · local design study</p></div>
+      <div class="tabs" role="tablist" aria-label="Visual directions">
+        <button class="tab" role="tab" aria-selected="true" data-id="d1">A Signal blue</button>
+        <button class="tab" role="tab" aria-selected="false" data-id="d2">B Signal red</button>
+        <button class="tab" role="tab" aria-selected="false" data-id="d3">C Editorial plum</button>
+        <button class="tab" role="tab" aria-selected="false" data-id="d4">D Editorial forest</button>
+        <button class="tab" role="tab" aria-selected="false" data-id="d5">E Horizon cobalt</button>
+        <button class="tab" role="tab" aria-selected="false" data-id="d6">F Horizon orange</button>
+        <button class="tab" role="tab" aria-selected="false" data-id="d7">G Current baseline</button>
+      </div>
+    </header>
+    <main class="stage" id="stage"></main>
+  </div>
+  <template id="direction-template">
+    <section class="direction">
+      <div class="direction-intro">
+        <div><h3>Territory</h3><h2 class="direction-name"></h2><p class="direction-thesis"></p></div>
+        <div><h3>Typography class</h3><p class="direction-type"></p></div>
+        <div><h3>Risk under test</h3><p class="direction-risk"></p></div>
+      </div>
+      <article class="product">
+        <header class="appbar"><div class="logo">M/SSA</div><nav class="nav"><b>Opportunities</b><span>Tracker</span><span>Library</span><span>Calendar</span></nav><button class="context">Creator ↔ Organization</button></header>
+        <section class="public-hero"><div><p class="eyebrow">One thread. Clear paths.</p><h1>Find the opportunity worth your effort.</h1><p>Understand the call, prepare with what you already have, and keep a trustworthy record of what happened next.</p></div><div class="hero-map"><div class="map-node">Telluride Institute <span>Organization</span></div><div class="map-node">Talking Gourds <span>Program</span></div><div class="map-node">Fischer Prize · 2026 <span>Current cycle</span></div></div></section>
+        <div class="workspace"><aside class="rail"><h3>Creator</h3><a class="active" href="#">Opportunities</a><a href="#">Tracker</a><a href="#">Library</a><a href="#">Calendar</a><a href="#">Inbox</a><h3 style="margin-top:26px">Organization</h3><a href="#">Programs</a><a href="#">Submissions</a><a href="#">Reviews</a><a href="#">Decisions</a></aside><main class="main">
+          <div class="pagehead"><div><p class="eyebrow">Explore</p><h2>Opportunities</h2><p>561 current and reviewable calls</p></div><button class="primary">View your path</button></div>
+          <div class="toolbar"><div class="search">Search opportunities or organizations</div><button class="filter">Filters · 2</button><button class="filter">Soonest deadline</button></div>
+          <div class="catalogue"><div class="tiles"><article class="tile selected"><span class="tile-label">Poetry prize · Open</span><h3>Fischer Prize</h3><div class="org">Telluride Institute · Talking Gourds</div><div class="facts"><span class="fact"><strong>Aug 31</strong> deadline</span><span class="fact"><strong>$14</strong> fee</span><span class="fact"><strong>$1,000</strong> award</span></div></article><article class="tile"><span class="tile-label">Poetry prize · Open</span><h3>Cantor Prize</h3><div class="org">Telluride Institute · Talking Gourds</div><div class="facts"><span class="fact"><strong>Colorado</strong> eligibility</span><span class="fact"><strong>Aug 31</strong> deadline</span></div></article><article class="tile"><span class="tile-label">Residency · Details incomplete</span><h3>The exceptionally long international residency title designed to test wrapping without a photograph</h3><div class="org">Organization not yet confirmed</div></article></div>
+            <article class="detail"><div class="detail-head"><span class="tile-label">Fischer Prize · 2026 cycle</span><h2>Fischer Prize</h2><div class="org">Telluride Institute → Talking Gourds Poetry Program</div></div><div class="detail-body"><div class="impact"><b>Deadline conflict affects your plan</b><span>First-party guidelines say Aug 31. One directory record was updated later but has not been reconciled.</span></div><div class="detail-grid"><div class="datum"><span>Who can apply</span><strong>Writers worldwide · English-language poetry</strong></div><div class="datum"><span>What to submit</span><strong>One poem · up to 125 lines / 3 pages</strong></div><div class="datum"><span>Entry fee</span><strong>$14 each or 3 for $35</strong></div><div class="datum"><span>Award</span><strong>$1,000 + five $250 finalists</strong></div></div><div class="evidence"><strong>Evidence</strong><div class="evidence-row"><span class="state">Confirmed</span><span>Organization and program</span><span class="source">Telluride Institute</span></div><div class="evidence-row"><span class="state conflict">Conflict</span><span>Deadline needs reconciliation</span><span class="source">2 sources</span></div><div class="evidence-row"><span class="state">First-party</span><span>Application destination</span><span class="source">Official form</span></div></div><div class="actions"><button class="primary">Prepare this application</button><button class="secondary">Official guidelines ↗</button></div></div></article></div>
+          <section class="ops"><p class="eyebrow">Operational density test</p><h2>Talking Gourds · 2026 submissions</h2><p>Same identity system, compact workflow composition.</p><table><thead><tr><th>Submission</th><th>Applicant</th><th>Cycle</th><th>Review</th><th>Evidence</th><th>Next action</th></tr></thead><tbody><tr><td>FG-0261</td><td>Amara Okafor</td><td>Fischer 2026</td><td><span class="status"><i class="dot"></i>3 of 3 complete</span></td><td>Terms v3</td><td><button class="secondary">Open decision</button></td></tr><tr><td>FG-0262</td><td>Identity hidden</td><td>Fischer 2026</td><td><span class="status"><i class="dot warn"></i>Conflict declared</span></td><td>Terms v3</td><td><button class="secondary">Reassign</button></td></tr><tr><td>CG-0088</td><td>Leah Martinez</td><td>Cantor 2026</td><td><span class="status"><i class="dot"></i>2 of 3 complete</span></td><td>Terms v2</td><td><button class="secondary">View case</button></td></tr></tbody></table></section>
+        </main></div><div class="footnote">Prototype uses system font categories, not final licensed font choices. Evaluate hierarchy, semantic clarity, continuity, and density before aesthetic preference.</div>
+      </article>
+    </section>
+  </template>
+  <script>
+    const directions = [
+      {id:'d1',cls:'signal-blue',name:'Signal & Structure · Electric blue',thesis:'Mineral structure with a vivid directional signal. The most explicitly modular and Miro-adjacent candidate.',type:'Heavy contemporary grotesk display + neutral grotesk interface. Candidate class only.',risk:'Could resemble generic productivity software or imitate Miro by silhouette.'},
+      {id:'d2',cls:'signal-red',name:'Signal & Structure · Vermilion',thesis:'Warm structural system with sharper geometry and a human, urgent-but-controlled signal.',type:'Contemporary grotesk family with condensed operational potential.',risk:'Red-orange may overstate urgency or compete with destructive semantics.'},
+      {id:'d3',cls:'editorial-plum',name:'Living Editorial · Plum',thesis:'Cultural confidence and editorial warmth paired with disciplined product structure.',type:'Characterful serif display + humanist sans interface.',risk:'May romanticize writing and narrow a cross-disciplinary product.'},
+      {id:'d4',cls:'editorial-forest',name:'Living Editorial · Forest',thesis:'Institutional credibility without coldness; the quietest editorial territory.',type:'Text-led serif display + highly legible interface sans.',risk:'May feel archival or traditional rather than forward-moving.'},
+      {id:'d5',cls:'horizon-cobalt',name:'Clear Horizon · Cobalt',thesis:'Open, optimistic, and calm with a crisp navigational anchor.',type:'One humanist sans family across expressive and operational modes.',risk:'Could become safe and anonymous without ownable composition and iconography.'},
+      {id:'d6',cls:'horizon-orange',name:'Clear Horizon · Persimmon',thesis:'Warm confidence and strong approachability across public and creator surfaces.',type:'Rounded humanist sans family with disciplined compact instances.',risk:'Warmth may become casual or blur warning and action semantics.'},
+      {id:'d7',cls:'baseline',name:'Current Missa baseline · Aubergine',thesis:'Existing white-canvas, Aubergine-centered product language retained as comparator.',type:'Current sans-led approximation for comparison; repository fonts load in implementation.',risk:'Known visual fragmentation and insufficient product-wide distinctiveness.'}
+    ];
+    const stage=document.querySelector('#stage'); const template=document.querySelector('#direction-template');
+    directions.forEach((d,i)=>{const node=template.content.cloneNode(true); const section=node.querySelector('.direction'); section.id=d.id; section.classList.toggle('active',i===0); node.querySelector('.product').classList.add(d.cls); node.querySelector('.direction-name').textContent=d.name; node.querySelector('.direction-thesis').textContent=d.thesis; node.querySelector('.direction-type').textContent=d.type; node.querySelector('.direction-risk').textContent=d.risk; stage.append(node);});
+    document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected','false')); tab.setAttribute('aria-selected','true'); document.querySelectorAll('.direction').forEach(p=>p.classList.toggle('active',p.id===tab.dataset.id)); window.scrollTo({top:0,behavior:'smooth'});}));
+  </script>
+</body>
+</html>

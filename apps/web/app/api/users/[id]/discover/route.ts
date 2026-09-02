@@ -2,11 +2,21 @@ import { NextResponse } from 'next/server';
 import { requireSelf } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { opportunityView } from '@/lib/opportunityView';
+import { getCreatorAccountRepository } from '@/lib/creatorRepositories';
+import { getOpportunityRepository } from '@/lib/opportunityRepository';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const auth = await requireSelf(request, id);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  if (getCreatorAccountRepository()) {
+    const page = await getOpportunityRepository().browse({
+      sort: 'soonest-deadline', limit: 200, openNow: true, types: [],
+      disciplines: [], genres: [], locations: [],
+    }, { accountId: auth.session.account.id });
+    return NextResponse.json(page.items);
+  }
 
   const engine = await getEngine();
   const list = [...engine.store.opportunities.values()]

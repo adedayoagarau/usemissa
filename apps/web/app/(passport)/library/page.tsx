@@ -4,6 +4,7 @@ import { libraryFileReferences, libraryWorkReferences, savedAnswerReferences } f
 import { taxonomyTermById } from '@missa/taxonomy';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
+import { getCreatorLibraryRepository } from '@/lib/creatorRepositories';
 import {
   LibraryProduct,
   type LibraryProductAnswer,
@@ -27,6 +28,11 @@ function safeSort(value: string): LibraryProductSort {
   return value === 'title' ? 'title' : 'updated';
 }
 
+function numericField(value: object, field: string): number | undefined {
+  const candidate = Reflect.get(value, field);
+  return typeof candidate === 'number' ? candidate : undefined;
+}
+
 export default async function LibraryPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
@@ -34,14 +40,20 @@ export default async function LibraryPage({ searchParams }: { searchParams?: Pro
 
   const raw = searchParams ? await searchParams : {};
   const userId = session.account.userId;
-  const engine = await getEngine();
-  const library = engine.library(userId);
+  const repository = getCreatorLibraryRepository();
+  const engine = repository ? undefined : await getEngine();
+  const library = repository ? await repository.library(session.account.id, userId) : engine!.library(userId);
 
   const works: LibraryProductWork[] = library.works.map((work) => {
-    const file = work.fileId ? engine.store.libraryFiles.get(work.fileId) : undefined;
-    const references = libraryWorkReferences(engine.store, userId, work.id);
+    const file = work.fileId ? library.files.find((item) => item.id === work.fileId) : undefined;
+    const trackerCount = numericField(work, 'trackerCount');
+    const checklistCount = numericField(work, 'checklistCount');
+    const references = trackerCount !== undefined && checklistCount !== undefined
+      ? { tracker: trackerCount, checklists: checklistCount }
+      : libraryWorkReferences(engine!.store, userId, work.id);
     return {
       id: work.id,
+      revision: numericField(work, 'revision'),
       title: work.title,
       description: work.description,
       updatedAt: work.updatedAt,
@@ -56,24 +68,29 @@ export default async function LibraryPage({ searchParams }: { searchParams?: Pro
   });
 
   const files: LibraryProductFile[] = library.files.map((file) => {
-    const references = libraryFileReferences(engine.store, userId, file.id);
+    const checklistCount = numericField(file, 'checklistCount');
+    const references = checklistCount !== undefined ? { checklists: checklistCount } : libraryFileReferences(engine!.store, userId, file.id);
     return {
       id: file.id,
+      revision: numericField(file, 'revision'),
       filename: file.filename,
       contentType: file.contentType,
       byteLength: file.byteLength,
       createdAt: file.createdAt,
-      linkedWorks: library.works.filter((work) => work.fileId === file.id).map((work) => ({ id: work.id, title: work.title })),
+      linkedWorks: Array.isArray(Reflect.get(file, 'linkedWorks'))
+        ? Reflect.get(file, 'linkedWorks') as Array<{ id: string; title: string }>
+        : library.works.filter((work) => work.fileId === file.id).map((work) => ({ id: work.id, title: work.title })),
       checklistCount: references.checklists,
     };
   });
 
   const answers: LibraryProductAnswer[] = library.savedAnswers.map((answer) => ({
     id: answer.id,
+    revision: numericField(answer, 'revision'),
     name: answer.name,
     body: answer.body,
     updatedAt: answer.updatedAt,
-    checklistCount: savedAnswerReferences(engine.store, userId, answer.id).checklists,
+    checklistCount: numericField(answer, 'checklistCount') ?? savedAnswerReferences(engine!.store, userId, answer.id).checklists,
   }));
 
   return (

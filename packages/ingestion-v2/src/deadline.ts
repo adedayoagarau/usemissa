@@ -4,7 +4,7 @@ export interface ResolvedDeadline {
   date: string | null;
   conflict: boolean;
   values: string[];
-  kind: "exact" | "rolling" | "until-filled" | "unknown";
+  kind: "exact" | "rolling" | "year-round" | "seasonal" | "until-filled" | "unknown";
 }
 
 function explicitDate(value: string): string | undefined {
@@ -34,7 +34,7 @@ export function resolveCurrentDeadline(
   const declaredKinds = fields.flatMap((field) => {
     if (field.fieldName !== "deadlineKind") return [];
     const value = String(field.normalizedValue ?? field.rawValue ?? "").trim().toLowerCase();
-    return value === "rolling" || value === "until-filled" ? [value] : [];
+    return ["rolling", "year-round", "seasonal", "until-filled"].includes(value) ? [value] : [];
   });
   const candidates = fields.flatMap((field) => {
     if (field.fieldName !== "deadline") return [];
@@ -78,11 +78,13 @@ export function resolveCurrentDeadline(
   }
   if (selected) return { date: selected, conflict: false, values, kind: "exact" };
   if (declaredKinds.includes("rolling")) return { date: null, conflict: false, values, kind: "rolling" };
+  if (declaredKinds.includes("year-round")) return { date: null, conflict: false, values, kind: "year-round" };
+  if (declaredKinds.includes("seasonal")) return { date: null, conflict: false, values, kind: "seasonal" };
   if (declaredKinds.includes("until-filled")) return { date: null, conflict: false, values, kind: "until-filled" };
   return { date: null, conflict: false, values, kind: "unknown" };
 }
 
-/** A current exact date or an explicit rolling/until-filled declaration can
+/** A current exact date or an explicit open-ended intake declaration can
  * enter human review. Unknown dates and conflicts cannot. */
 export function hasCurrentDeadlineOrWindow(
   fields: ExtractionResult["fields"],
@@ -90,5 +92,5 @@ export function hasCurrentDeadlineOrWindow(
   now = new Date(),
 ): boolean {
   const resolved = resolveCurrentDeadline(fields, authoritativeUrl, now);
-  return !resolved.conflict && Boolean(resolved.date || resolved.kind === "rolling" || resolved.kind === "until-filled");
+  return !resolved.conflict && resolved.kind !== "unknown";
 }

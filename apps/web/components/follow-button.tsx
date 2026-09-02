@@ -28,7 +28,7 @@ export function FollowButton({
         startTransition(async () => {
           const res = await fetch(`/api/users/${userId}/following`, {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
+            headers: { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
             body: JSON.stringify({ organizationId }),
           });
           if (res.ok) {

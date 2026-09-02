@@ -22,6 +22,14 @@ export type SourceStructure =
 export type SourceAccess =
   "allowed" | "partner-required" | "manual-only" | "blocked" | "unknown";
 export type PublicationAuthority = "none" | "application-state" | "full";
+export type CoverageSegment =
+  | "contests-and-awards"
+  | "magazines-and-reading-periods"
+  | "grants-and-fellowships"
+  | "residencies"
+  | "publishers-and-manuscripts"
+  | "playwriting-and-screenwriting"
+  | "literary-translation";
 
 export interface SourceRefreshPolicy {
   baseCadenceHours: number;
@@ -48,6 +56,7 @@ export interface SourceManifestEntry {
   kindOverride?: SourceDefinition["kind"];
   stableItemId: string;
   artFormVerticalIds: string[];
+  coverageSegments?: CoverageSegment[];
   firstPartyDestinationRequired: boolean;
   publicationAuthority: PublicationAuthority;
   maxIndexPages: number;
@@ -295,6 +304,7 @@ export const FIRST_TRANCHE_SOURCE_MANIFEST: readonly SourceManifestEntry[] = [
       "creative-nonfiction",
       "novel-book",
     ],
+    coverageSegments: ["contests-and-awards"],
     firstPartyDestinationRequired: true,
     publicationAuthority: "none",
     maxIndexPages: 2,
@@ -331,6 +341,7 @@ export const FIRST_TRANCHE_SOURCE_MANIFEST: readonly SourceManifestEntry[] = [
       "creative-nonfiction",
       "flash-hybrid",
     ],
+    coverageSegments: ["contests-and-awards", "magazines-and-reading-periods"],
     firstPartyDestinationRequired: true,
     publicationAuthority: "none",
     maxIndexPages: 2,
@@ -832,6 +843,7 @@ export const FIRST_TRANCHE_SOURCE_MANIFEST: readonly SourceManifestEntry[] = [
       "nonfiction-essay",
       "hybrid-cross-genre",
     ],
+    coverageSegments: ["contests-and-awards"],
     firstPartyDestinationRequired: true,
     publicationAuthority: "none",
     maxIndexPages: 1,
@@ -880,6 +892,8 @@ export function validateSourceManifest(
       errors.push(`source budgets must be positive: ${entry.id}`);
     if (entry.publicationAuthority !== "none")
       errors.push(`first tranche must remain non-publishing: ${entry.id}`);
+    if (entry.coverageSegments && new Set(entry.coverageSegments).size !== entry.coverageSegments.length)
+      errors.push(`duplicate coverage segment: ${entry.id}`);
   }
   return errors;
 }

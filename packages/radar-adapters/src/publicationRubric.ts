@@ -1,3 +1,5 @@
+import { projectOpportunityAvailability } from "@missa/radar-engine";
+
 export type PublicationGate = "pass" | "fail" | "review";
 export type PublicationDecision = "publish" | "needs-human" | "suppress";
 
@@ -6,6 +8,7 @@ export type PublicationRubricCandidate = {
   status: string;
   submissionState: string;
   deadlineDate: string | null;
+  openDate?: string | null;
   deadlineKind?: string | null;
   submissionUrl: string | null;
   guidelinesUrl: string | null;
@@ -25,8 +28,6 @@ export type PublicationRubricResult = {
   reasons: string[];
   checks: Record<string, unknown>;
 };
-
-const ACTIVE_STATUSES = new Set(["opening-soon", "open", "closing-soon", "deadline-extended"]);
 
 function identityValid(title: string): boolean {
   const normalized = title.toLowerCase().trim();
@@ -48,13 +49,15 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
   const sourcePresent = Boolean(candidate.sourceUrl);
   const sourceProcessed = Boolean(candidate.processingSucceededAt);
   const destinationPresent = Boolean(candidate.submissionUrl || candidate.guidelinesUrl);
-  const active = ACTIVE_STATUSES.has(candidate.status);
-  const deadlineOrWindow = Boolean(
-    candidate.deadlineDate ||
-    candidate.deadlineKind === "rolling" ||
-    candidate.deadlineKind === "until-filled" ||
-    (candidate.readingPeriodKind && candidate.readingPeriodKind !== "unknown"),
-  );
+  const availability = projectOpportunityAvailability({
+    lifecycleStatus: candidate.status,
+    openDate: candidate.openDate,
+    deadlineDate: candidate.deadlineDate,
+    deadlineKind: candidate.deadlineKind,
+    readingPeriodKind: candidate.readingPeriodKind,
+  });
+  const active = availability.availableNow || availability.upcoming;
+  const deadlineOrWindow = availability.timingEvidenceKnown;
   const unsafe = candidate.submissionState === "unsafe";
   const validIdentity = identityValid(candidate.title);
   const aggregate = aggregateIdentity(candidate.title);
@@ -62,7 +65,7 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
   const gates = {
     authorityDestination: sourcePresent && sourceProcessed && destinationPresent && candidate.destinationReconciled && !candidate.reviewOnly ? "pass" : "review" as PublicationGate,
     identity: validIdentity && candidate.organizationConfirmed ? "pass" : "review" as PublicationGate,
-    freshness: active && deadlineOrWindow ? "pass" : "review" as PublicationGate,
+    freshness: availability.publicationTimingReady ? "pass" : "review" as PublicationGate,
     completeness: candidate.contentApproved ? "pass" : "review" as PublicationGate,
     safety: unsafe ? "fail" : "pass" as PublicationGate,
   } satisfies Record<string, PublicationGate>;
@@ -74,6 +77,8 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
     destinationPresent,
     destinationReconciled: candidate.destinationReconciled,
     deadlineOrWindow,
+    availabilityState: availability.state,
+    intakeMode: availability.intakeMode,
     organizationConfirmed: candidate.organizationConfirmed,
     reviewOnly: Boolean(candidate.reviewOnly),
     active,

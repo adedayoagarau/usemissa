@@ -1,9 +1,13 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { listCanonicalTrackedOpportunities } from "@missa/radar-adapters";
+import {
+  creatorRelationalAuthorityEnabled,
+  listCanonicalTrackedOpportunities,
+} from "@missa/radar-adapters";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine } from "@/lib/engine";
-import { getWorkspaceEngine } from "@/lib/workspaceEngine";
+import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from "@/lib/workspaceEngine";
+import { getCreatorLibraryRepository } from "@/lib/creatorRepositories";
 import {
   TrackerProduct,
   type TrackerHostedSubmission,
@@ -52,7 +56,7 @@ export default async function TrackerPage({
   const raw = searchParams ? await searchParams : {};
   const userId = session.account.userId;
   const postgresTracker =
-    process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" &&
+    creatorRelationalAuthorityEnabled(process.env) &&
     Boolean(process.env.DATABASE_URL);
   if (!userId && !postgresTracker) redirect("/login?next=/tracker");
   const radar = await getEngine();
@@ -84,12 +88,17 @@ export default async function TrackerPage({
             importId: item.importId,
           }));
 
+  const hostedSubmissions: TrackerHostedSubmission[] = workspaceRelationalAuthorityEnabled()
+    ? await (await getRelationalWorkspace()).submissionsForOwner(session.account.id)
+    : await compatibilityHostedSubmissions(session.account.id, radar);
+
+  async function compatibilityHostedSubmissions(accountId:string, radarEngine:Awaited<ReturnType<typeof getEngine>>):Promise<TrackerHostedSubmission[]> {
   const workspace = await getWorkspaceEngine();
-  const hostedSubmissions: TrackerHostedSubmission[] = [
+  return [
     ...workspace.store.submissions.values(),
   ]
     .filter(
-      (submission) => submission.submitterAccountId === session.account.id,
+      (submission) => submission.submitterAccountId === accountId,
     )
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt))
     .map((submission) => {
@@ -106,7 +115,7 @@ export default async function TrackerPage({
         ? workspace.store.entities.get(program.entityId)
         : undefined;
       const organization = entity
-        ? radar.store.organizations.get(entity.organizationId)
+        ? radarEngine.store.organizations.get(entity.organizationId)
         : undefined;
       const decisions = workspace.decisionsForSubmission(
         entity?.organizationId ?? "",
@@ -130,9 +139,13 @@ export default async function TrackerPage({
         paymentStatus: submission.paymentStatus,
       };
     });
+  }
 
+  const libraryRepository = getCreatorLibraryRepository();
   const works = userId
-    ? radar
+    ? libraryRepository
+      ? (await libraryRepository.library(session.account.id, userId)).works.map((work) => ({ id: work.id, title: work.title }))
+      : radar
         .library(userId)
         .works.map((work) => ({ id: work.id, title: work.title }))
     : [];

@@ -44,6 +44,7 @@ type ChecklistConnection = { opportunityId: string; title: string; itemCount: nu
 type Props = {
   work: {
     id: string;
+    revision?: number;
     title: string;
     description?: string;
     fileId?: string;
@@ -119,8 +120,8 @@ export function WorkDetailProduct({ work, currentFile, currentFileMissing, files
     try {
       const response = await fetch(`/api/me/library/works/${encodeURIComponent(work.id)}`, {
         method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ title, description, fileId: fileId || null, taxonomyTermIds: termIds }),
+        headers: { 'content-type': 'application/json', ...(work.revision ? { 'Idempotency-Key': crypto.randomUUID() } : {}) },
+        body: JSON.stringify({ title, description, fileId: fileId || null, taxonomyTermIds: termIds, ...(work.revision ? { expectedRevision: work.revision } : {}) }),
       });
       const body = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(body.error ?? 'We could not update this Work.');
@@ -139,7 +140,11 @@ export function WorkDetailProduct({ work, currentFile, currentFileMissing, files
     setBusy(true);
     setError(undefined);
     try {
-      const response = await fetch(`/api/me/library/works/${encodeURIComponent(work.id)}`, { method: 'DELETE' });
+      const response = await fetch(`/api/me/library/works/${encodeURIComponent(work.id)}`, {
+        method: 'DELETE',
+        headers: work.revision ? { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() } : undefined,
+        body: work.revision ? JSON.stringify({ expectedRevision: work.revision }) : undefined,
+      });
       const body = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(body.error ?? 'We could not delete this Work.');
       router.push(returnTo);

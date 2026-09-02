@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { isDurablePublicationGateError, reviewCandidate, type ReviewCandidate } from "../src/reviewWorker.js";
 import { publicationRubricSchema } from "../src/publicationRubricSchema.js";
+import { evaluatePublicationRubric } from "../src/publicationRubric.js";
 
 function candidate(overrides: Partial<ReviewCandidate> = {}): ReviewCandidate {
   return {
@@ -85,8 +86,41 @@ test("durable publication schema permits only a fact-preserving published-to-clo
   assert.match(publicationRubricSchema, /old\.publication_state = 'published'/);
   assert.match(publicationRubricSchema, /new\.status = 'closed'/);
   assert.match(publicationRubricSchema, /new\.deadline_date is not distinct from old\.deadline_date/);
+  assert.match(publicationRubricSchema, /new\.open_date is not distinct from old\.open_date/);
+  assert.match(publicationRubricSchema, /new\.deadline_kind is not distinct from old\.deadline_kind/);
   assert.match(publicationRubricSchema, /new\.submission_state is not distinct from old\.submission_state/);
   assert.match(publicationRubricSchema, /new\.id like 'opp_v2_%'/);
   assert.match(publicationRubricSchema, /new\.source_id like 'v2_source_%'/);
   assert.match(publicationRubricSchema, /ingestion-v2 is review-only/);
+});
+
+test("publication availability distinguishes upcoming from available now", () => {
+  const openingSoon = evaluatePublicationRubric({
+    ...candidate(),
+    status: "opening-soon",
+    openDate: "2099-09-01",
+    deadlineDate: null,
+    deadlineKind: "unknown",
+    readingPeriodKind: "unknown",
+  });
+  assert.equal(openingSoon.decision, "publish");
+  assert.equal(openingSoon.checks.availabilityState, "opening-soon");
+
+  const unsupported = evaluatePublicationRubric({
+    ...candidate(),
+    status: "opening-soon",
+    openDate: null,
+    deadlineDate: null,
+    deadlineKind: "unknown",
+    readingPeriodKind: "unknown",
+  });
+  assert.equal(unsupported.decision, "needs-human");
+  assert.equal(unsupported.checks.availabilityState, "uncertain");
+});
+
+test("durable publication schema accepts verified opening dates and open-ended intake modes", () => {
+  assert.match(publicationRubricSchema, /new\.status = 'opening-soon'.*new\.open_date/s);
+  assert.match(publicationRubricSchema, /new\.deadline_date >= current_date/);
+  assert.match(publicationRubricSchema, /new\.deadline_kind in \('rolling', 'year-round', 'until-filled'\)/);
+  assert.match(publicationRubricSchema, /update of publication_state, source_id, status, open_date, deadline_date, deadline_kind/);
 });

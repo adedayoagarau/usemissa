@@ -15,6 +15,11 @@ test('ensurePostgresSchema + save/load round-trip against a real Postgres connec
   const pool = new Pool({ connectionString: databaseUrl });
   try {
     await ensurePostgresSchema(pool);
+    await pool.query(
+      `insert into radar_organizations (id, data)
+       values ('org_1', '{}')
+       on conflict (id) do nothing`,
+    );
 
     const store = createStore();
     store.entities.set('entity_1', {

@@ -82,7 +82,7 @@ function applyManifest(entry: SourceManifestEntry, registryEntry: SourceRegistry
   const base = sourceDefinitionFromRegistry(registryEntry, adapterId);
   const sourceManifest = {
     id: entry.id, desk: entry.desk, role: entry.role, structure: entry.structure, access: entry.access,
-    stableItemId: entry.stableItemId, artFormVerticalIds: entry.artFormVerticalIds,
+    stableItemId: entry.stableItemId, artFormVerticalIds: entry.artFormVerticalIds, coverageSegments: entry.coverageSegments,
     firstPartyDestinationRequired: entry.firstPartyDestinationRequired, publicationAuthority: entry.publicationAuthority,
     maxIndexPages: entry.maxIndexPages, maxChangedChildrenPerRun: entry.maxChangedChildrenPerRun, refresh: entry.refresh,
   };

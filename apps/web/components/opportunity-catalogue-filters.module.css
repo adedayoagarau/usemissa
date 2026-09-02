@@ -72,6 +72,13 @@
   color: var(--foreground);
 }
 
+.checkRow small {
+  margin-left: auto;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .selectField {
   display: grid;
   gap: 7px;
@@ -173,7 +180,7 @@
   --primary-foreground: #ffffff;
 }
 
-.sheet :global([data-slot='sheet-description']) {
+.sheet :global([data-slot="sheet-description"]) {
   color: #5f5862;
 }
 

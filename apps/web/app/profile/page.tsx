@@ -14,6 +14,7 @@ import {
 } from "@/components/profile-product";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine } from "@/lib/engine";
+import { getCreatorPreferenceRepository, getCreatorProfileRepository } from "@/lib/creatorRepositories";
 
 const PROFILE_SECTION_VALUES: readonly ProfileSection[] = [
   "overview",
@@ -50,6 +51,48 @@ export default async function ProfilePage({
   );
   if (!session?.account.userId)
     redirect(`/login?next=${encodeURIComponent(returnPath)}`);
+
+  const relationalProfiles = getCreatorProfileRepository();
+  const relationalPreferences = getCreatorPreferenceRepository();
+  if (relationalProfiles && relationalPreferences) {
+    const [creator, preferenceBundle, savedSearches, following] = await Promise.all([
+      relationalProfiles.profile(session.account.id),
+      relationalPreferences.preferenceBundle(session.account.id),
+      relationalPreferences.savedSearches(session.account.id, session.account.userId),
+      relationalPreferences.follows(session.account.id),
+    ]);
+    if (!creator) notFound();
+    const handleNamespaceReady = await handleNamespaceAvailable(process.env.DATABASE_URL!).catch(() => false);
+    const currentHandle = handleNamespaceReady ? await readUserHandle(process.env.DATABASE_URL!, creator.userId).catch(() => null) : null;
+    const claimingAccess = handleNamespaceReady
+      ? await waitlistClaimAccess({ connectionString: process.env.DATABASE_URL!, accountId: session.account.id }).catch(() => ({ allowed: false }))
+      : { allowed: false };
+    const profile: ProfileProductData = {
+      id: creator.userId,
+      displayName: creator.displayName,
+      ...(creator.bio ? { bio: creator.bio } : {}),
+      revision: creator.revision,
+      publicUrl: `/profile/${encodeURIComponent(creator.userId)}`,
+      handle: { namespaceAvailable: handleNamespaceReady, current: currentHandle, claimingOpen: claimingAccess.allowed, promptDismissed: false, published: false },
+      privacy: { displayName: creator.privacy.displayName, bio: creator.privacy.bio },
+      taxonomyPreferences: preferenceBundle?.taxonomyPreferences ?? [],
+      preferencesRevision: preferenceBundle?.revision,
+      opportunityPreferences: preferenceBundle?.opportunityPreferences ?? {
+        types: [], disciplines: [], genres: [], locations: [], careerStages: [], noFeeOnly: false, simultaneousRequired: false,
+      },
+    };
+    return (
+      <div className="min-h-screen bg-white">
+        <AppNav
+          email={session.account.email}
+          userId={creator.userId}
+          isAdmin={session.account.isAdmin}
+          organizations={session.memberships.map((membership) => ({ id: membership.organizationId, name: membership.organizationId }))}
+        />
+        <ProfileProduct initialSection={initialSection} initialProfile={profile} savedSearches={savedSearches} following={following} />
+      </div>
+    );
+  }
 
   const engine = await getEngine();
   const user = engine.store.users.get(session.account.userId);

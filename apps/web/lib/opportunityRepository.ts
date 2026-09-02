@@ -9,7 +9,7 @@ import {
   type OpportunityRepositoryContext,
   type OpportunityRepositoryQuery,
 } from "@missa/radar-engine";
-import { createPostgresOpportunityRepositoryFromUrl } from "@missa/radar-adapters";
+import { createPostgresOpportunityRepositoryFromUrl, creatorRelationalAuthorityEnabled } from "@missa/radar-adapters";
 import { MISSA_TAXONOMY, taxonomyDescendantIds, taxonomyLabelFor } from "@missa/taxonomy";
 import { getEngine } from "./engine";
 
@@ -262,7 +262,12 @@ class EngineOpportunityRepository implements OpportunityRepository {
 }
 
 export function getOpportunityRepository(): OpportunityRepository {
-  if (process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" && process.env.DATABASE_URL) {
+  const relationalCreatorAuthority = creatorRelationalAuthorityEnabled(process.env);
+  const postgresRequested = process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres";
+  if ((relationalCreatorAuthority || postgresRequested) && !process.env.DATABASE_URL) {
+    throw new Error("Canonical Opportunity repository is unavailable");
+  }
+  if ((relationalCreatorAuthority || postgresRequested) && process.env.DATABASE_URL) {
     if (!globalThis.__missaOpportunityRepository) {
       globalThis.__missaOpportunityRepository = createPostgresOpportunityRepositoryFromUrl(process.env.DATABASE_URL);
     }

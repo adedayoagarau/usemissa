@@ -1,8 +1,12 @@
 ---
-stepsCompleted: [1, 2, 3, 4, 5]
-inputDocuments: []
+stepsCompleted: [1, 2, 3, 4, 5, 6]
+inputDocuments:
+  - '/tmp/codex-remote-attachments/01a00b87-105f-7af0-a8cb-14244e2a5475/1DF82169-7CC8-4821-AE68-CAEA5E65D119/1-Creative-Opportunity-Aggregators.pdf'
+  - '/tmp/codex-remote-attachments/01a00b87-105f-7af0-a8cb-14244e2a5475/1DF82169-7CC8-4821-AE68-CAEA5E65D119/2-pilot-competition-history.json'
+  - '/tmp/codex-remote-attachments/01a00b87-105f-7af0-a8cb-14244e2a5475/1DF82169-7CC8-4821-AE68-CAEA5E65D119/3-pilot-competition-history-review.json'
+  - '/tmp/codex-remote-attachments/01a00b87-105f-7af0-a8cb-14244e2a5475/1DF82169-7CC8-4821-AE68-CAEA5E65D119/4-Enrichment-tranche-54-findings.pdf'
 workflowType: 'research'
-lastStep: 5
+lastStep: 6
 research_type: 'technical'
 research_topic: 'Missa opportunity personalization recommendation algorithm'
 research_goals: 'Design an evidence-backed, globally appropriate, explainable, privacy-conscious recommendation approach grounded in Missa current product, taxonomy, data, and architecture, with a staged implementation and evaluation plan.'
@@ -12,7 +16,7 @@ web_research_enabled: true
 source_verification: true
 ---
 
-# Research Report: technical
+# From Opportunity Catalog to Creator Fit: Comprehensive Technical Research for Missa
 
 **Date:** 2026-08-16
 **Author:** Missa
@@ -22,7 +26,46 @@ source_verification: true
 
 ## Research Overview
 
-This research examines how Missa should personalize and rank creative opportunities for global creators. It distinguishes current repository truth from recommendations, verifies external technical claims against current primary sources, and treats recommendation as a governed product system rather than a single model.
+This research examines how Missa should personalize and rank creative opportunities for global creators. It distinguishes current repository truth from recommendations, verifies external technical claims against current primary sources, and treats recommendation as a governed product system rather than a single model. The scope covers candidate generation, eligibility, scoring, confidence, diversity, explanations, onboarding cold start, feedback, evaluation, privacy, deployment, and the use of competition history and past-winner evidence.
+
+The principal conclusion is that Missa should first build an auditable deterministic policy inside its existing TypeScript/PostgreSQL architecture. Explicit creator intent and governed opportunity facts should work from onboarding onward; learned ranking, semantic retrieval, and exploration remain replaceable challengers after reliable point-in-time evidence exists. The attached 527-series competition-history pilot validates the usefulness of edition/outcome enrichment while also demonstrating why partial evidence and human-review gates must remain separate from publication and ranking authority.
+
+The detailed technical evidence follows in the stack, integration, architecture, and implementation sections. `Research Synthesis and Final Decision Record` consolidates the final recommendation, pilot findings, limitations, future outlook, and next actions.
+
+## Executive Summary
+
+Missa does not need a recommender platform or opaque prediction model to become meaningfully personal. It already has the essential product and technical ingredients: an authenticated Opportunities boundary, governed taxonomy, explicit opportunity preferences, saved searches, private Work metadata, organization follows, Tracker states, canonical PostgreSQL tables, bounded workers, and customer-facing tailoring reasons. The present repository nevertheless has incompatible meanings of `recommended`, incomplete canonical signal reads, unstable pagination for personalized ordering, and no recommendation-specific point-in-time evidence contract.
+
+The recommended system is a versioned pipeline: private context assembly, deterministic eligibility, candidate generation, feature computation, availability-normalized relevance, separate confidence, diversity reranking, faithful explanation, stable feed snapshot, and append-only request/impression/action evidence. `deterministic-fit-v1` should operate entirely in TypeScript and PostgreSQL. It should answer which currently available opportunities are worth showing a creator now and why; it must not claim to predict artistic merit, acceptance, or winning.
+
+Onboarding is the cold-start engine. Private, editable answers about creative practice, desired opportunity types, geography/participation, fees, travel, accessibility, preparation capacity, stage/goals, and optional Work matching can produce useful recommendations before behavioral history exists. Every answer should update a visible preview. Explicit input overrides inferred behavior; missing information remains unknown rather than negative.
+
+Competition and winner intelligence is strategically valuable as a separate evidence graph. It can enrich pages, reconcile recurring series and editions, strengthen taxonomy and format coverage, generate similar opportunities, improve confidence and explanations, and audit catalog exposure. The attached pilot contains substantial evidence, but no edition is fully reviewed and all 529 publication tasks require human review. Past winners therefore cannot yet be published in bulk or used as training labels. Even after review, winner history should describe the opportunity, not model what a successful creator looks like.
+
+**Key technical decisions:**
+
+- retain the current modular monolith and `OpportunityRepository` serving boundary;
+- implement pure recommendation policy in `@missa/radar-engine` and canonical data/evidence adapters in `@missa/radar-adapters`;
+- preserve eligibility, relevance, confidence, diversity, and explanation as separate concepts;
+- keep Postgres as source of truth and first feature/evidence store;
+- use first-party events for evaluation and PostHog only as an optional projection;
+- adopt replay, shadow, internal review, stable-account canary, and surface-by-surface rollout;
+- add Python learning-to-rank and `pgvector` only after measured need and trustworthy data;
+- prohibit acceptance/winner prediction and unreviewed historical-outcome publication.
+
+## Table of Contents
+
+1. [Technical Research Scope Confirmation](#technical-research-scope-confirmation)
+2. [Technology Stack Analysis](#technology-stack-analysis)
+3. [Integration Patterns Analysis](#integration-patterns-analysis)
+4. [Architectural Patterns and Design](#architectural-patterns-and-design)
+5. [Implementation Approaches and Technology Adoption](#implementation-approaches-and-technology-adoption)
+6. [Technical Research Recommendations](#technical-research-recommendations)
+7. [Research Synthesis and Final Decision Record](#research-synthesis-and-final-decision-record)
+8. [Attached Pilot Evidence Assessment](#attached-pilot-evidence-assessment)
+9. [Future Technical Outlook](#future-technical-outlook)
+10. [Methodology, Source Verification, and Limitations](#methodology-source-verification-and-limitations)
+11. [Technical Research Conclusion](#technical-research-conclusion)
 
 ---
 
@@ -1309,5 +1352,261 @@ Later ML-specific skills:
 - page engagement and useful follow-on actions without using winner resemblance or predicted success.
 
 Acceptance or winner rate must not be the primary recommendation KPI. It is delayed, incompletely reported, organizer-controlled, and selectively observed. The product should optimize useful, feasible creator progress under explicit safety, diversity, privacy, and evidence guardrails.
+
+## Research Synthesis and Final Decision Record
+
+### Technical significance
+
+The opportunity problem is not merely search. A global creator must determine whether a call is open, authoritative, eligible, affordable, accessible, realistic within the available time, relevant to their Work, and worth prioritizing among many alternatives. Catalog metadata changes, deadlines expire, sources conflict, and eligibility is often missing or expressed in prose. A system that optimizes a single engagement number will conflate evidence quality, feasibility, personal intent, and exposure.
+
+Recommendation systems are commonly structured as candidate generation, scoring, and reranking; reranking is where freshness, explicit dislikes, diversity, and fairness constraints can be applied. Missa should adopt that decomposition while adding a preceding eligibility/evidence policy and a following faithful-explanation stage. [Google recommendation-system overview](https://developers.google.com/machine-learning/recommendation/overview/types), [Google reranking guidance](https://developers.google.com/machine-learning/recommendation/dnn/re-ranking).
+
+The strategic value is not a mysterious score. It is the accumulation of governed opportunity facts, creator-controlled intent, source provenance, and measurable decisions. This can reduce the work required to find and assess opportunities while preserving the creator's agency and the official source as authority.
+
+### Final architectural decision
+
+Adopt a modular deterministic recommendation policy within the current Missa monorepo:
+
+```text
+Authenticated request
+  -> private creator context
+  -> canonical published opportunity pool
+  -> safety and hard-eligibility gates
+  -> candidate provenance
+  -> versioned features
+  -> deterministic relevance + separate confidence
+  -> diversity and concentration reranking
+  -> contribution-derived explanations
+  -> stable account-bound feed
+  -> first-party request/impression/action evidence
+  -> offline evaluation and approved policy iteration
+```
+
+This is a clean policy design, not a clean technology rewrite. The online system remains TypeScript and PostgreSQL. Exact retrieval remains the default until the published/open pool and measured latency justify narrowing. No recommendation microservice, online Python runtime, LLM explanation dependency, vector database, Kafka layer, or feature-store product is justified at launch.
+
+### Final algorithm decision
+
+Use `deterministic-fit-v1` with four explicit outputs per candidate:
+
+1. `eligibilityState`: eligible, ineligible, needs input, or unknown;
+2. `relevanceScore`: normalized match to stated intent, feasibility, affinity, value, and timing;
+3. `scoreConfidence`: completeness, freshness, and authority of the evidence used;
+4. `explanation`: actual positive contributions and material watchouts.
+
+Missing optional features are omitted from their group denominator; they are not zero preferences. Only confirmed structured mismatches hard-exclude. Unknown or inferred facts cannot silently remove globally under-documented opportunities. The initial weights documented earlier are hypotheses for curator and user evaluation, not scientific precision.
+
+The final page is reranked as a set, limiting near-duplicates and organization/type concentration while reserving bounded discovery. Diversity cannot restore an ineligible item. Browse, search, onboarding preview, home, digest, and notifications share feature semantics but use separate surface policies and thresholds.
+
+### Final onboarding decision
+
+Make onboarding a progressive private recommendation profile, not a public identity exercise. Start with governed creative fields and desired opportunity types, then ask only questions that materially improve eligibility or feasibility. Location, participation, fee/travel constraints, accessibility, preparation capacity, stage/goals, and optional private Work matching remain editable and skippable.
+
+Show a live preview and a human-readable effect after each answer. Pairwise or example-based calibration may refine tradeoffs, but it must permit both, neither, and explicit mismatch reasons. The selected onboarding direction currently exists in local design-review routes; its promotion to the product requires a separate product gate and real API/state/recovery tests.
+
+Metadata-based hybrid models can later carry explicit attributes into sparse-data learning, but deterministic use of the same metadata provides immediate cold-start utility and clearer control. [Kula, Metadata Embeddings for User and Item Cold-start Recommendations](https://arxiv.org/abs/1507.08439).
+
+### Final competition-history decision
+
+Model competition history as recurring series, editions, categories, judges, prize structures, outcomes, recipients, winning Works, and evidence—not as a text blob or collection of links. Maintain distinct outcome states and never infer a winner from an organizer's general alumni or publication page.
+
+Approved history may contribute to:
+
+- an evidence-linked `Previous editions` page block;
+- taxonomy and accepted-format enrichment;
+- similar-opportunity candidate generation;
+- evidence completeness and competition continuity;
+- creator-facing explanations about recognized Work formats;
+- exposure and catalog-coverage audits.
+
+It must not be used to predict acceptance or define an archetype of a successful creator. Historical outcomes exist only for entrants selected by edition-specific human decision processes and are vulnerable to selective-label, archival, visibility, and prestige bias. [The Selective Labels Problem](https://pmc.ncbi.nlm.nih.gov/articles/PMC5958915/), [Bias and Debias in Recommender Systems](https://arxiv.org/abs/2010.03240).
+
+### Strategic technical advantage
+
+Missa's potential advantage is the combination of four systems that are usually separated:
+
+1. a global source and evidence registry;
+2. a governed creative-practice taxonomy;
+3. private creator preparation context through Profile, Library, and Tracker;
+4. an explainable, reversible recommendation policy.
+
+Aggregator breadth alone does not create trust, and historical outcomes alone do not create personalization. The differentiated product is the evidence trail connecting a creator-controlled reason to a currently valid opportunity fact, with useful uncertainty and an official-source path.
+
+## Attached Pilot Evidence Assessment
+
+### Creative Opportunity Aggregators research
+
+The attached `Creative Opportunity Aggregators.pdf` maps a heterogeneous discovery landscape across literary submissions, visual art, grants and residencies, film, performance, creative jobs, music, festivals, and newsletters. It distinguishes databases, editorial roundups, submission platforms, professional boards, and primary funder/program sources. Its central operational warning is correct for Missa: live counts, deadlines, eligibility, fees, rights, and listing status are dynamic and must be reconciled against the original opportunity notice.
+
+Implications for Missa:
+
+- model each source's role and coverage cells rather than treating all aggregators as equivalent;
+- use aggregators for discovery and coverage, not publication authority;
+- route the first-party organizer/program destination through existing identity and publication gates;
+- measure discipline, geography, source-kind, fee, and opportunity-type coverage;
+- prioritize complementary source portfolios instead of scraping every directory indiscriminately;
+- keep paid placement or listing relationships out of organic relevance unless explicitly labeled and governed.
+
+The PDF is useful as a source-registry research input, not as confirmed-current opportunity inventory. Its summaries are editorial and several underlying listings are time-sensitive.
+
+### Competition-history pilot
+
+The attached `pilot-competition-history.json` is a substantive architecture pilot:
+
+| Measure | Observed pilot value |
+| --- | ---: |
+| Competition series | 527 |
+| Editions | 637 |
+| Categories | 637 |
+| Outcome records | 341 |
+| Editions with outcomes | 183 |
+| Evidence records | 1,177 |
+| Official-results evidence records | 648 |
+| Official results found | 210 editions |
+| Official results not found | 426 editions |
+| Conflicting archive state | 1 edition |
+| Edition gaps | 1,546 |
+| Partial editions | 636 |
+| Needs-review editions | 1 |
+
+The 341 outcomes include 225 `winner`, 66 `finalist`, 16 `runner-up`, 14 `special-mention`, and smaller sets of honorable mentions, additional awards, placements, featured records, selected workshops, and historical winners. All have a recipient name; 267 include a Work title. Judges are present for 221 editions and a prize structure for 361.
+
+These results validate the proposed series/edition/outcome/evidence shape and show that official pages can yield meaningful structured history. They do not validate bulk publication or algorithmic use:
+
+- every edition has at least one unresolved gap;
+- evidence-level `verified` does not mean the whole edition or outcome set is complete;
+- 426 editions did not yield an official result archive;
+- one archive is conflicting;
+- repeated source URLs are expected for multi-year archives but require claim-level locators;
+- every edition contains exactly one category object, which may reflect the source inventory's granularity rather than real competition structure and needs validation.
+
+The pilot's safety configuration is appropriate: provenance/opportunity-representation use only, acceptance prediction disabled, winner training labels disabled, and unresolved entity merges prohibited.
+
+### Review-queue pilot
+
+The attached `pilot-competition-history-review.json` contains 529 unique tasks across 527 series. All are bounded to verified destinations, reject generic alumni pages, and remain `needs-human-review`. Its publication rules require an official source for every claim, an individual outcome source for winner/finalist records, explicit unresolved gaps, and prohibit using winner data for acceptance prediction.
+
+Before operational use, resolve four quality issues:
+
+1. **Historical-edition coverage:** the history file has 637 editions, while the task file addresses 529; 108 derived historical editions lack a direct task.
+2. **Duplicate instructions:** 528 tasks contain repeated note text, including severe repetition in early tasks. Normalize shared policy into a versioned review rubric and retain only task-specific notes.
+3. **Outcome vocabulary mismatch:** tasks allow edition, category, judge, prize, longlist, shortlist, finalist, winner, and winning Work, while the dataset also emits runner-up, placements, special/honorable mentions, featured, selected-workshop, additional-award, and historical-winner states. Define a canonical outcome enum plus source-preserved label before review or publication.
+4. **Task versus claim review:** one task per base inventory edition is insufficient when a page yields multiple historical editions and many claims. Review status must attach to each edition/outcome claim or an explicit reviewed claim set.
+
+The correct current decision is therefore **pilot accepted as research evidence; publication and ranking promotion closed**.
+
+### Enrichment tranche 54
+
+The attached one-page `Enrichment tranche 54 findings.pdf` demonstrates a different enrichment class: a current competition profile with detailed official-source evidence for identity/residence restrictions, manuscript type and length, language, submission window, fee tiers, judging, result timeline, prize, royalties, launch support, retreat, and possible runner-up treatment. It correctly asserts no named current outcome.
+
+This supports keeping current-edition opportunity facts and historical outcomes separate. The former can improve eligibility and feasibility once normalized and reviewed; the latter requires its own edition/outcome evidence. A source mentioning a future results timeline is not winner history.
+
+## Future Technical Outlook
+
+### Near term: governed deterministic personalization
+
+Over the next implementation horizon, Missa should concentrate on canonical signal reads, deterministic policy fixtures, stable feed evidence, onboarding cold start, and a reviewed competition-history pilot. Exact PostgreSQL retrieval and bounded workers remain sufficient until measurement disproves that assumption.
+
+### Medium term: learned ranking and richer retrieval
+
+After representative events and judgments exist, evaluate a small learning-to-rank challenger using point-in-time features and chronological splits. Keep hard eligibility and reranking outside the model. Test semantic retrieval for taxonomy gaps and natural-language intent, but retain structured candidate sources for new opportunities and auditability. Add propensity-aware exploration only after randomized exposure probabilities and unbiased replay are operational.
+
+### Longer term: creator-opportunity evidence network
+
+The durable vision is not a winner-matching engine. It is a temporal evidence network connecting opportunity series and editions, governed terms, requirements, Work preparation, creator-controlled preferences, application actions, and verified outcomes. This could support better preparation guidance, comparable opportunities, changing-source alerts, and accountable discovery without converting artistic decisions into a universal quality label.
+
+Any future generative layer should summarize or query this evidence, never become publication or ranking authority. Model replacement should remain possible without rewriting eligibility, privacy, evidence, and explanation policy.
+
+## Methodology, Source Verification, and Limitations
+
+### Methodology
+
+The research combined:
+
+- direct inspection of Missa repository packages, routes, schemas, migrations, tests, workers, and product contracts;
+- current primary or authoritative web sources for recommender architecture, cold start, integration standards, security, privacy, production ML, evaluation, and deployment;
+- explicit distinction among implemented, partial, local-only, proposed, unverified, and unknown states;
+- review of two attached PDFs and structural analysis of two attached JSON pilot artifacts;
+- adversarial examination of data completeness, review-state meaning, task coverage, vocabulary consistency, and publication authority.
+
+Primary technical references include Google Recommendation Systems and Rules of ML, Google Research's ML Test Score and YouTube architecture, TensorFlow Recommenders, PostgreSQL and pgvector documentation, NIST AI RMF, OWASP API Security, W3C Trace Context, CloudEvents, RFC 9457/8288/9111, GDPR text, and peer-reviewed or primary recommender-system research cited throughout.
+
+### Confidence
+
+- **High:** repository architecture and current code behavior described with inspected file/symbol evidence.
+- **High:** need to separate eligibility, relevance, confidence, diversity, explanation, and source authority.
+- **High:** attached-pilot counts and review-state conclusions computed directly from provided JSON.
+- **Medium-high:** deterministic TypeScript/PostgreSQL first release as the least-regret design.
+- **Medium:** exact initial feature weights, diversity constants, and launch thresholds; these require representative judgments and product experiments.
+- **Low/unverified:** production deployment state, live catalog and traffic scale, live onboarding behavior, historical event volume, and current warehouse/PostHog completeness.
+
+### Limitations and required verification
+
+Before implementation approval or migration:
+
+- query production schema and configuration state;
+- measure open-candidate count and authenticated browse latency;
+- verify canonical preference, saved-search, follow, Work, Tracker, outcome, and event paths;
+- decide consent, purpose, retention, deletion, and Work-use policy;
+- construct representative global creator contexts and graded judgments;
+- validate competition-history identity, category granularity, outcome vocabulary, and task/claim coverage;
+- conduct human review before any attached pilot outcome becomes public;
+- verify official pages live when claims are time-sensitive;
+- perform jurisdiction-specific legal review where required.
+
+The `Creative Opportunity Aggregators.pdf` is an editorial landscape snapshot dated 16 August 2026; it is not a live source registry or endorsement. The competition JSON records contain verified evidence fragments but incomplete edition-level review. The temporary attachment paths may not be durable project storage and should not be treated as canonical runtime assets.
+
+## Technical Resources and Reference Materials
+
+### Internal implementation evidence
+
+- `packages/radar-engine/src/opportunityPorts.ts`
+- `packages/radar-adapters/src/opportunityRepository.ts`
+- `packages/radar-adapters/src/enrichmentWorker.ts`
+- `packages/radar-adapters/src/enrichmentSchema.ts`
+- `packages/contracts/src/opportunities.ts`
+- `packages/db/src/schema.ts`
+- `apps/web/app/api/opportunities/route.ts`
+- `apps/web/lib/opportunityRepository.ts`
+- `.github/workflows/ci.yml`
+- `docs/railway-topology.md`
+- `docs/ingestion-v2-publication-rubric-2026-08-13.md`
+
+### Attached research inputs
+
+- `Creative Opportunity Aggregators.pdf`
+- `pilot-competition-history.json`
+- `pilot-competition-history-review.json`
+- `Enrichment tranche 54 findings.pdf`
+
+### Decision record
+
+| Question | Final answer |
+| --- | --- |
+| Can Missa build useful recommendations now? | Yes, from explicit onboarding and governed metadata without ML |
+| Should Missa build the algorithm from scratch? | Yes as a staged policy, using the existing stack rather than a new platform |
+| Should recommendation be one score? | No; eligibility, relevance, confidence, diversity, and explanation remain separate |
+| Should onboarding feed recommendation? | Yes, privately, progressively, and visibly |
+| Are competition histories useful? | Yes, strongly for pages and opportunity representation; moderately for bounded recommendation features |
+| Are the attached histories publication-ready? | No; all reviewed tasks remain human-gated and every edition has gaps |
+| Should winners train acceptance prediction? | No |
+| Does Missa need vector search now? | No demonstrated need; benchmark later |
+| Does Missa need a recommender microservice now? | No |
+| What is the first release? | Deterministic policy in shadow, then authenticated browse canary |
+
+## Technical Research Conclusion
+
+Missa can build a precise and durable opportunity recommender without pretending that creative judgment is predictable. The correct foundation is a governed relationship among private creator intent, canonical opportunity evidence, deterministic eligibility, transparent scoring, page-level diversity, and faithful explanations. That system can be useful from onboarding, can improve as behavior accumulates, and can accept future retrieval or ranking models without surrendering policy control.
+
+The competition-history pilot strengthens this strategy. It demonstrates that official archives can produce meaningful edition, recipient, Work, judge, and prize evidence at useful scale. It also demonstrates the incompleteness, vocabulary drift, review workload, and selective-outcome bias that make automatic publication or winner-based prediction unsafe. Missa should continue the collection lane, repair its review contract, and promote claims only after human evidence review.
+
+The immediate next technical milestone is not model training. It is Phase 0 and Phase 1: verify production truth, create the evaluation corpus, implement `deterministic-fit-v1` as pure policy, and measure it in replay and shadow mode. Stable recommendation evidence and progressive onboarding follow. Learned ranking earns adoption only after it produces incremental value over that auditable baseline without weakening eligibility, coverage, privacy, fairness, explanation, or fallback reliability.
+
+**Technical Research Completion Date:** 2026-08-17
+
+**Research Period:** Comprehensive current-state repository and external technical analysis, 2026-08-16 to 2026-08-17
+
+**Source Verification:** Primary/authoritative web sources, direct repository evidence, and structural analysis of attached pilot artifacts
+
+**Overall Confidence:** High for architecture and guardrails; medium for untested weights, thresholds, and future model choices
 
 <!-- Content will be appended sequentially through research workflow steps -->

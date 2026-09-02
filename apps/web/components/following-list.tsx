@@ -12,6 +12,7 @@ interface Followed {
   organizationId: string;
   organizationName: string;
   followedAt: string;
+  revision?: number;
 }
 
 /** Story 3.6: see and manage which organizations a submitter follows. */
@@ -27,7 +28,7 @@ export function FollowingList({ userId, following }: { userId: string; following
           {following.map((f) => (
             <div key={f.organizationId} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card px-3 py-3 text-sm">
               <span className="font-medium text-foreground">{f.organizationName}</span>
-              <div className="flex flex-wrap gap-2"><Link href={`/org/${encodeURIComponent(f.organizationId)}`} className={buttonVariants({ size: 'sm', variant: 'outline' })}>View Organization</Link><Button size="sm" variant="ghost" disabled={isPending} onClick={() => startTransition(async () => { const response = await fetch(`/api/users/${userId}/following/${f.organizationId}`, { method: 'DELETE' }); if (!response.ok) { const body = await response.json().catch(() => ({})) as { error?: string }; toast.error(body.error ?? 'We could not unfollow that Organization.'); return; } toast.success('Unfollowed'); router.refresh(); })}>Unfollow</Button></div>
+              <div className="flex flex-wrap gap-2"><Link href={`/org/${encodeURIComponent(f.organizationId)}`} className={buttonVariants({ size: 'sm', variant: 'outline' })}>View Organization</Link><Button size="sm" variant="ghost" disabled={isPending} onClick={() => startTransition(async () => { const response = await fetch(`/api/users/${userId}/following/${f.organizationId}`, { method: 'DELETE', headers: f.revision ? { 'Idempotency-Key': crypto.randomUUID(), 'If-Match': String(f.revision) } : undefined }); if (!response.ok) { const body = await response.json().catch(() => ({})) as { error?: string }; toast.error(body.error ?? 'We could not unfollow that Organization.'); return; } toast.success('Unfollowed'); router.refresh(); })}>Unfollow</Button></div>
             </div>
           ))}
         </div>}

@@ -76,8 +76,10 @@ export {
 } from './gmail/gmailSync.js';
 export { freshnessScore, confidenceScore, computeTrustSignals, trustScore, STALE_FRESHNESS_THRESHOLD } from './scoring/scores.js';
 export { deriveStatus, displayStatus, CLOSING_SOON_DAYS, OPENING_SOON_DAYS, NEEDS_VERIFICATION_CONFIDENCE } from './status/statusEngine.js';
+export { internalRecheckFromHistory, normalizeOpportunityIntakeMode, projectOpportunityAvailability, type HistoricalOpeningWindow, type OpportunityAvailability, type OpportunityAvailabilityInput, type OpportunityAvailabilityState, type OpportunityIntakeMode } from './availability/opportunityAvailability.js';
 export { predictNextOpening, recordCycle } from './prediction/prediction.js';
 export { matchesCriteria, matchesOpportunityPreferences, matchProfiles, type MatchResult } from './matching/matching.js';
+export * from './recommendation/index.js';
 export {
   assessCoverage,
   buildCoverageQueries,
@@ -90,6 +92,16 @@ export {
   type TaxonomyAssignmentMetricInput,
   type TaxonomyOperationalMetrics,
 } from './coverage/coverage.js';
+export {
+  evaluateOperationalCoverage,
+  WRITING_COVERAGE_SEGMENTS,
+  WRITING_COVERAGE_THRESHOLDS,
+  type CoverageContractCheck,
+  type CoverageContractStatus,
+  type CoverageContractThresholds,
+  type OperationalCoverageAssessment,
+  type OperationalCoverageInput,
+} from './coverage/contract.js';
 export { fitScore, formatFee } from './matching/fit.js';
 export { buildInboxDigest, matchOrganizationByDomain, type InboxDigest } from './alerts/alerts.js';
 export { verificationQueue } from './verification/verification.js';

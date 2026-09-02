@@ -6,6 +6,9 @@ import { getEngine, persistRadar } from "./engine";
 
 export type TrackerSaveResult = {
   status: "created" | "already-present";
+  replayed?: boolean;
+  receiptId?: string;
+  revision?: number;
 };
 
 export function opportunityCanBeSaved(
@@ -17,18 +20,25 @@ export function opportunityCanBeSaved(
 export async function saveOpportunityForAccount(
   session: SessionAccount,
   opportunity: OpportunityDetailProjection,
+  idempotencyKey?: string,
 ): Promise<TrackerSaveResult> {
   if (
-    process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" &&
+    process.env.MISSA_CREATOR_RELATIONAL_AUTHORITY === "1" &&
     process.env.DATABASE_URL
   ) {
     const result = await saveCanonicalOpportunityToTracker(
       process.env.DATABASE_URL,
       session.account.id,
       opportunity.id,
+      { idempotencyKey },
     );
     if (!result) throw new Error("Opportunity is not available to save");
-    return { status: result.status };
+    return {
+      status: result.status,
+      replayed: result.replayed,
+      receiptId: result.receiptId,
+      revision: result.tracked.revision,
+    };
   }
 
   if (!session.account.userId)

@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { isMyStatus } from "@missa/radar-engine";
 import {
   canonicalTrackerStatus,
+  CreatorConflictError,
+  CreatorIdempotencyConflictError,
+  creatorRelationalAuthorityEnabled,
   updateCanonicalTrackerStatus,
 } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
@@ -17,7 +20,7 @@ export async function POST(
 ) {
   const session = await getSessionAccount(request.headers.get("cookie"));
   const postgresTracker =
-    process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" &&
+    creatorRelationalAuthorityEnabled(process.env) &&
     Boolean(process.env.DATABASE_URL);
   if (!session || (!session.account.userId && !postgresTracker)) {
     return NextResponse.json(
@@ -41,10 +44,7 @@ export async function POST(
     completion?.accountId === session.account.id &&
     completion.opportunityId === opportunityId;
 
-  if (
-    process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" &&
-    process.env.DATABASE_URL
-  ) {
+  if (postgresTracker && process.env.DATABASE_URL) {
     const status = canonicalTrackerStatus(body.status);
     if (!status) {
       return NextResponse.json(
@@ -52,12 +52,51 @@ export async function POST(
         { status: 400, headers },
       );
     }
-    const updated = await updateCanonicalTrackerStatus(
-      process.env.DATABASE_URL,
-      session.account.id,
-      opportunityId,
-      status,
-    );
+    const expectedRevision = body.expectedRevision;
+    const idempotencyKey = request.headers.get("Idempotency-Key")?.trim();
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) {
+      return NextResponse.json(
+        { error: "expectedRevision must be a positive integer" },
+        { status: 400, headers },
+      );
+    }
+    if (!idempotencyKey || idempotencyKey.length > 200) {
+      return NextResponse.json(
+        { error: "Idempotency-Key must contain 1 to 200 characters" },
+        { status: 400, headers },
+      );
+    }
+    let updated;
+    try {
+      updated = await updateCanonicalTrackerStatus(
+        process.env.DATABASE_URL,
+        session.account.id,
+        opportunityId,
+        status,
+        { expectedRevision, idempotencyKey },
+      );
+    } catch (error) {
+      if (error instanceof CreatorConflictError) {
+        return NextResponse.json(
+          {
+            error: error.message,
+            conflict: {
+              action: "refresh-and-retry",
+              expectedRevision: error.expectedRevision,
+              actualRevision: error.actualRevision,
+            },
+          },
+          { status: 409, headers },
+        );
+      }
+      if (error instanceof CreatorIdempotencyConflictError) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 409, headers },
+        );
+      }
+      throw error;
+    }
     if (!updated) {
       return NextResponse.json(
         { error: "Tracker item not found" },

@@ -28,7 +28,9 @@ import { cn } from '@/lib/utils';
  * "discovery" half of the Opportunities page (FR15): what a submitter
  * actually gets matched against, distinct from just browsing the raw feed.
  */
-export function SavedSearches({ userId, profiles }: { userId: string; profiles: RadarProfile[] }) {
+type SavedSearchView = RadarProfile & { revision?: number };
+
+export function SavedSearches({ userId, profiles }: { userId: string; profiles: SavedSearchView[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -41,7 +43,7 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
     startTransition(async () => {
       const res = await fetch(`/api/users/${userId}/profiles`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
         body: JSON.stringify({
           name: name.trim() || 'Saved search',
           criteria: {
@@ -71,7 +73,11 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
 
   const deleteProfile = (profileId: string) => {
     startTransition(async () => {
-      const response = await fetch(`/api/users/${userId}/profiles/${profileId}`, { method: 'DELETE' });
+      const profile = profiles.find((item) => item.id === profileId);
+      const response = await fetch(`/api/users/${userId}/profiles/${profileId}`, {
+        method: 'DELETE',
+        headers: profile?.revision ? { 'Idempotency-Key': crypto.randomUUID(), 'If-Match': String(profile.revision) } : undefined,
+      });
       if (!response.ok) {
         const body = await response.json().catch(() => ({})) as { error?: string };
         toast.error(body.error ?? 'We could not delete that saved search.');

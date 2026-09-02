@@ -97,6 +97,8 @@ export type ProfileProductData = {
   privacy: PrivacySettings;
   taxonomyPreferences: TaxonomyPreferenceSelection[];
   opportunityPreferences: OpportunityPreferences;
+  revision?: number;
+  preferencesRevision?: number;
 };
 
 type Following = {
@@ -355,6 +357,8 @@ export function ProfileProduct({
   const router = useRouter();
   const [active, setActive] = useState(initialSection);
   const [profile, setProfile] = useState(initialProfile);
+  const [revision, setRevision] = useState(initialProfile.revision);
+  const [preferencesRevision, setPreferencesRevision] = useState(initialProfile.preferencesRevision);
   const [displayName, setDisplayName] = useState(initialProfile.displayName);
   const [bio, setBio] = useState(initialProfile.bio ?? "");
   const [savedIdentity, setSavedIdentity] = useState({
@@ -467,8 +471,11 @@ export function ProfileProduct({
       try {
         const response = await fetch("/api/me/profile", {
           method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ displayName: name, bio: cleanBio }),
+          headers: {
+            "content-type": "application/json",
+            ...(revision ? { "Idempotency-Key": crypto.randomUUID() } : {}),
+          },
+          body: JSON.stringify({ displayName: name, bio: cleanBio, ...(revision ? { expectedRevision: revision } : {}) }),
         });
         const body = (await response
           .json()
@@ -483,6 +490,7 @@ export function ProfileProduct({
           displayName: body.displayName,
           bio: body.bio ?? "",
         });
+        if (typeof body.revision === "number") setRevision(body.revision);
         setProfile((current) => ({
           ...current,
           displayName: body.displayName!,
@@ -517,8 +525,11 @@ export function ProfileProduct({
       try {
         const response = await fetch("/api/me/profile", {
           method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ taxonomyPreferences, opportunityPreferences }),
+          headers: {
+            "content-type": "application/json",
+            ...(preferencesRevision ? { "Idempotency-Key": crypto.randomUUID() } : {}),
+          },
+          body: JSON.stringify({ taxonomyPreferences, opportunityPreferences, ...(preferencesRevision ? { expectedRevision: preferencesRevision } : {}) }),
         });
         const body = (await response
           .json()
@@ -536,6 +547,7 @@ export function ProfileProduct({
           taxonomyPreferences: nextTaxonomy,
           opportunityPreferences: nextOpportunity,
         });
+        if (typeof body.preferencesRevision === "number") setPreferencesRevision(body.preferencesRevision);
         setMessage("Private preferences saved");
         setConfirmedExclusions(false);
       } catch (cause) {
@@ -555,11 +567,15 @@ export function ProfileProduct({
       try {
         const response = await fetch("/api/me/profile/privacy", {
           method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(privacy),
+          headers: {
+            "content-type": "application/json",
+            ...(revision ? { "Idempotency-Key": crypto.randomUUID() } : {}),
+          },
+          body: JSON.stringify({ ...privacy, ...(revision ? { expectedRevision: revision } : {}) }),
         });
         const body = (await response.json().catch(() => ({}))) as {
           settings?: PrivacySettings;
+          revision?: number;
           error?: string;
         };
         if (!response.ok || !body.settings)
@@ -573,6 +589,7 @@ export function ProfileProduct({
         setPrivacy(next);
         setSavedPrivacy(next);
         setProfile((current) => ({ ...current, privacy: next }));
+        if (typeof body.revision === "number") setRevision(body.revision);
         setMessage("Privacy settings saved");
       } catch (cause) {
         setError(

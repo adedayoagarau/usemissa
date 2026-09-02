@@ -8,7 +8,7 @@ import {
   type ImportRowDecision,
   type ImportMapping,
 } from '@missa/radar-engine';
-import { trackerImportRequestHash, TrackerImportPersistenceError } from '@missa/radar-adapters';
+import { commitRelationalTrackerImportTransaction, creatorPoolFor, creatorRelationalAuthorityEnabled, trackerImportRequestHash, TrackerImportPersistenceError } from '@missa/radar-adapters';
 import { getSessionAccount } from '@/lib/auth';
 import { commitTrackerImportWithReceipt } from '@/lib/engine';
 import { stableMappingHash, verifyTrackerImportPreviewToken } from '@/lib/tracker-import-token';
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     const parsed = parseTrackerCsv(bytes);
     mapping = mappingFrom(String(form.get('mapping')), parsed.columns);
     if (stableMappingHash(mapping) !== preview.mappingHash) return jsonError('Preview is out of date. Please preview again.', 409);
-    const committed = await commitTrackerImportWithReceipt({
+    const importInput = {
       accountId: session.account.id,
       userId: session.account.userId,
       idempotencyKey,
@@ -79,7 +79,10 @@ export async function POST(request: Request) {
       parsed,
       mapping,
       decisions,
-    });
+    };
+    const committed = creatorRelationalAuthorityEnabled(process.env) && process.env.DATABASE_URL
+      ? await commitRelationalTrackerImportTransaction(creatorPoolFor(process.env.DATABASE_URL),importInput)
+      : await commitTrackerImportWithReceipt(importInput);
     return NextResponse.json({ ...committed.result, idempotent: committed.idempotent }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     if (error instanceof TrackerImportPersistenceError) {

@@ -816,3 +816,291 @@ So that support and operations do not mutate compatibility stores or invoke unbo
 **When** an operator performs a permitted action
 **Then** authorization, idempotency, confirmation, append-only audit, rollback/recovery semantics, and worker ownership are explicit before UI controls ship
 **And** replay, pause, cancel, billing correction, refund, entitlement, and customer-timeline actions fail closed when their target schema is absent.
+
+---
+
+## Epic 16: Authoritative Relational Runtime *(Production closure)*
+
+Makes Postgres row-level models the runtime authority before canonical product surfaces are promoted. Compatibility snapshots remain a bounded rollback input during cutover, never a silent second truth.
+
+### Story 16.1: Workspace relational repositories and transactional writes
+
+As a Missa customer,
+I want organization, application, submission, review, decision, and delivery state stored transactionally,
+So that concurrent work cannot overwrite another user's changes.
+
+**Acceptance Criteria:**
+
+**Given** the current Workspace compatibility store and migrated relational schema
+**When** supported Workspace commands and reads execute
+**Then** they use tenant-scoped relational repositories, explicit transactions, optimistic versions, idempotency keys, and append-only audit/outbox records
+**And** a reconciliation report proves parity for the launch vertical slice without exposing private content
+**And** stale or conflicting writes fail with actionable conflict responses rather than last-writer-wins replacement.
+
+### Story 16.2: Radar, account, Tracker, Inbox, and preference relational authority
+
+As a creator,
+I want my account, saved Opportunities, Tracker state, Inbox state, and notification preferences to remain consistent,
+So that Missa works reliably across sessions and devices.
+
+**Acceptance Criteria:**
+
+**Given** a database-backed runtime
+**When** discovery, Save, Tracker, Inbox, Calendar, Profile, or notification commands execute
+**Then** canonical row-level repositories own their reads and writes with owner scoping, versions, idempotency, and durable events
+**And** Radar publication reads remain evidence-gated and cannot fall back to unreviewed compatibility data
+**And** multi-session concurrency and retry tests prove convergence without lost updates.
+
+### Story 16.3: Relational cutover, drift reconciliation, and compatibility retirement
+
+As a platform operator,
+I want one observable production truth with a rehearsed rollback path,
+So that Missa does not silently diverge between old and new stores.
+
+**Acceptance Criteria:**
+
+**Given** relational parity for the launch slice
+**When** the cutover is enabled
+**Then** product reads use relational repositories, dual-write drift is measured, mismatches are quarantined, and compatibility fallback is explicit and audited
+**And** the admin System surface reports authority, schema version, lag, drift, and rollback state truthfully
+**And** a disposable-Postgres rehearsal proves migration, backfill, cutover, rollback, and re-cutover before production activation.
+
+---
+
+## Epic 17: Creator Workspace and Missa Office *(Production closure)*
+
+Promotes the approved creator experience as a connected responsive web/PWA journey backed by real contracts.
+
+### Story 17.1: Canonical homepage, discovery, and Opportunity detail promotion
+
+As a creator,
+I want to find and understand current Opportunities immediately,
+So that I can decide what to save without navigating a prototype or fabricated result set.
+
+**Acceptance Criteria:**
+
+**Given** public, partial, unavailable, closed, conflicting, and signed-in states
+**When** a visitor uses the canonical homepage, discovery, or Opportunity detail routes
+**Then** the selected compositions render real evidence-gated records, provenance, deadlines, fees, eligibility unknowns, and safe source links
+**And** Save preserves signed-out intent through authentication and returns an idempotent durable receipt
+**And** mobile, keyboard, no-JavaScript, reduced-motion, localization, and truthful zero-result behavior pass product-route tests.
+
+### Story 17.2: Tracker, Calendar, Inbox, Library, and Profile promotion
+
+As a creator on the go,
+I want one coherent workspace for deadlines, messages, Works, files, answers, and identity,
+So that I can prepare from any responsive browser without losing context.
+
+**Acceptance Criteria:**
+
+**Given** authenticated creator data
+**When** the canonical creator routes are used on phone, tablet, or desktop
+**Then** URL-backed list/filter/detail state, typed related-object links, server pagination, upload progress/retry, mutation rollback, and accessible navigation are complete
+**And** Missa-managed reminders remain canonical while calendar projections state their one-way/provider-confirmed status accurately
+**And** Profile privacy and canonical taxonomy boundaries remain distinct from Tracker and Library ownership.
+
+### Story 17.3: Durable Missa Office application control plane
+
+As an applicant,
+I want Missa Office to preserve the exact application I am preparing,
+So that source changes, retries, or another device cannot corrupt my work or falsely claim submission.
+
+**Acceptance Criteria:**
+
+**Given** a saved Opportunity and reusable Library content
+**When** an applicant creates, edits, compiles, approves, hands off, submits, retries, or withdraws an application
+**Then** the system persists pinned Opportunity/form/profile/Work/File versions, append-only events, optimistic revisions, and idempotent side-effect intents
+**And** autosave reports saved, saving, offline, conflicted, failed, and recovered states without silent overwrite
+**And** readiness, external action, provider receipt, ambiguous outcome, organization decision, and withdrawal remain separate states.
+
+---
+
+## Epic 18: Hosted Application and Payment Integrity *(Production closure)*
+
+Closes the irreversible contracts at the applicant-to-organization boundary.
+
+### Story 18.1: Versioned hosted forms, drafts, and deadline enforcement
+
+As an applicant,
+I want a hosted application to use a stable, current form and deadline contract,
+So that I know what will be submitted and whether it can still be accepted.
+
+**Acceptance Criteria:**
+
+**Given** published form versions, conditional fields, and an authoritative deadline with precision/timezone provenance
+**When** a draft is created, resumed, validated, or finalized
+**Then** it is pinned to explicit versions, detects changed requirements, preserves recoverable edits, and evaluates typed conditions deterministically
+**And** finalization rechecks server time and authoritative availability in the same transaction
+**And** concurrent or repeated finalization returns the same outcome or an explicit conflict/unknown state.
+
+### Story 18.2: Secure upload lifecycle and immutable submission receipt
+
+As an applicant and organization,
+I want every submitted file and answer captured safely and immutably,
+So that both sides can prove what was received.
+
+**Acceptance Criteria:**
+
+**Given** upload quotas, accepted types, private storage, and malware scanning
+**When** files are uploaded, cancelled, retried, replaced, or finalized
+**Then** progress, checksums, scan state, orphan cleanup, authorization, and immutable attachment snapshots are durable
+**And** production fails closed on absent, ambiguous, timed-out, or unsafe scanning
+**And** the final receipt includes immutable form/answer/Work/File/payment/deadline facts, a stable receipt ID, and retrieval/export behavior without leaking provider secrets.
+
+### Story 18.3: Submission fee, waiver, refund, and provider reconciliation
+
+As an applicant and finance operator,
+I want payment and submission truth to reconcile safely,
+So that money movement never fabricates a successful or failed application.
+
+**Acceptance Criteria:**
+
+**Given** Stripe Checkout/Connect, application fees, waivers, refunds, disputes, and signed webhooks
+**When** provider events arrive late, duplicated, or out of order
+**Then** an idempotent ledger reconciles provider and submission state with explicit pending, succeeded, failed, refunded, disputed, and unknown outcomes
+**And** deadline races and payment success without finalization enter recoverable operator-visible states
+**And** currency, amount, fee cap, refund policy, and waiver evidence are versioned on the immutable receipt.
+
+---
+
+## Epic 19: Organization, Review, Decision, and Delivery *(Production closure)*
+
+Promotes the organization operating system using tenant-safe capabilities and durable workflow contracts.
+
+### Story 19.1: Organization settings, people, permissions, and safe switching
+
+As an organization owner,
+I want durable settings and scoped access controls,
+So that the right people can operate the right Programs without tenant leakage or lockout.
+
+**Acceptance Criteria:**
+
+**Given** zero, one, or many memberships and invitations
+**When** a member switches organization or changes settings, roles, seats, teams, Programs, billing, or integrations
+**Then** server-derived versioned capabilities authorize every read and mutation
+**And** invitation lifecycle, scoped membership, last-Owner/transfer invariants, SCIM boundaries, optimistic concurrency, audit, and recovery are enforced transactionally
+**And** unsupported security, payout, deletion, or secret-bearing domains remain visibly unavailable rather than simulated.
+
+### Story 19.2: Versioned reviewer workspace and immutable review submission
+
+As a reviewer,
+I want a stable blind packet and rubric with safe drafts and conflicts,
+So that my review is attributable, private, and not overwritten.
+
+**Acceptance Criteria:**
+
+**Given** a versioned assignment, blind projection, rubric, and conflict policy
+**When** a reviewer drafts, submits, reopens, or corrects a review
+**Then** typed criterion responses, optimistic revisions, autosave, assignment conflicts, idempotent submission, and immutable submitted versions are enforced
+**And** unauthorized identity/file fields are absent from the projection rather than hidden only in the UI
+**And** mobile reading order, keyboard use, required-field focus, zoom, and assistive-technology behavior pass end-to-end checks.
+
+### Story 19.3: Submissions, decisions, messages, delivery, and insights promotion
+
+As an organization operator,
+I want one durable path from intake through decision and delivery,
+So that every applicant outcome and follow-up is traceable.
+
+**Acceptance Criteria:**
+
+**Given** authorized organization workflow state
+**When** operators triage submissions, assign reviews, record Work-level decisions, approve/send messages, complete delivery, or inspect insights
+**Then** typed capabilities, versions, idempotency, append-only history, provider reconciliation, correction handling, and export parity are enforced
+**And** aggregate metrics include definitions, version, timezone, correction history, and small-sample privacy suppression
+**And** desktop-primary screens remain functional on mobile without leaking internal/provider metadata.
+
+---
+
+## Epic 20: Ask Missa, Evidence-Bound Assistance *(Production closure)*
+
+Replaces the current deterministic search-only experience with a governed assistant that can explain and prepare work without becoming an unbounded mutation authority.
+
+### Story 20.1: Evidence-bound retrieval, citations, and privacy scope
+
+As a creator,
+I want Ask Missa to answer from current Opportunity and account-authorized evidence,
+So that I can verify its guidance and know when it is uncertain.
+
+**Acceptance Criteria:**
+
+**Given** public repository evidence and optional authenticated account context
+**When** Ask Missa answers a question
+**Then** claims link to the supporting source or Missa record, distinguish fact from inference, preserve evidence timestamps/versions, and state unavailable or conflicting evidence
+**And** retrieval is tenant/owner scoped, prompt-injection resistant, and excludes private content from logs/analytics
+**And** deterministic repository search remains a safe fallback when the intelligent provider is unavailable.
+
+### Story 20.2: Preview-and-confirm creator assistance
+
+As a creator,
+I want Missa to help discover, compare, and prepare applications,
+So that I can move faster without surrendering control of my records or submissions.
+
+**Acceptance Criteria:**
+
+**Given** an authenticated creator and allowed Tracker/Library/Office context
+**When** the assistant proposes a Save, checklist, answer reuse, Work selection, deadline reminder, or application edit
+**Then** it produces an inspectable preview with evidence, consequence, and required confirmation
+**And** mutations use the same typed, idempotent, versioned commands as the product UI
+**And** the assistant cannot submit, pay, withdraw, publish, or send externally without the workflow's explicit approval gate.
+
+### Story 20.3: Organization assistance, evaluations, and operational controls
+
+As an authorized organization or platform operator,
+I want bounded assistance with triage and explanation,
+So that repetitive work is reduced without automating consequential judgment.
+
+**Acceptance Criteria:**
+
+**Given** capability-scoped organization/admin context
+**When** the assistant summarizes queues, drafts non-sent messages, or explains workflow state
+**Then** it cannot decide eligibility, score applicants outside an approved rubric, publish, send, refund, or alter access without explicit governed commands
+**And** automated evaluations cover correctness, citations, injection, privacy, refusal, tool authorization, cost, latency, and deterministic fallback
+**And** traces, budgets, rate limits, feature flags, and kill switches are operator-visible and privacy-safe.
+
+---
+
+## Epic 21: Production Certification and Launch Control *(Production closure)*
+
+Turns repository completion into release evidence for one explicit creator-to-organization vertical slice.
+
+### Story 21.1: Migration and provider lifecycle certification
+
+As a release owner,
+I want database and provider lifecycles certified in production-like environments,
+So that configuration names and ready deployments are not mistaken for working integrations.
+
+**Acceptance Criteria:**
+
+**Given** disposable Postgres plus Stripe, Resend, Blob/malware, Gmail, SCIM, Railway, Vercel, and analytics environments
+**When** certification runs
+**Then** fresh replay, upgrade, rollback, provider success/failure/duplicate/out-of-order events, worker image build/scan, and readiness checks retain redacted evidence
+**And** production migration 0028/0029 and every later closure migration are applied through the approved release path
+**And** no live funds, customer content, or broad production mutation is used for certification.
+
+### Story 21.2: Full quality, resilience, accessibility, and recovery suite
+
+As a customer,
+I want Missa to remain safe through failures and diverse access needs,
+So that the complete workflow is dependable rather than only the happy path.
+
+**Acceptance Criteria:**
+
+**Given** the launch vertical slice
+**When** CI and production-like suites run
+**Then** TypeScript, lint, unit, relational integration, Playwright, browser/mobile, WCAG 2.2 AA, assistive-technology, concurrency, idempotency, timeout/retry, partial-provider, security, backup/restore, and data-export/deletion checks pass
+**And** flaky or skipped critical tests are treated as release blockers with owners and expiry
+**And** retained evidence distinguishes mocked, local, disposable, staging, canary, and production observations.
+
+### Story 21.3: Canary launch, observability, rollback, and defer ledger
+
+As a release owner,
+I want a controlled launch with observable outcomes and a tested retreat path,
+So that private beta can expand without making unsupported promises.
+
+**Acceptance Criteria:**
+
+**Given** all closure epics and certification evidence
+**When** the canonical vertical slice is released
+**Then** feature flags/canary cohorts, SLOs, alerts, dashboards, runbooks, incident ownership, support paths, backups, rollback drills, and post-release checks are active
+**And** canonical routes replace or redirect parallel prototypes only after approval and verification
+**And** a launch/defer ledger names every included, unavailable, beta, and post-launch capability with no ambiguous “complete” claim.

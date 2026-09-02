@@ -10,6 +10,16 @@
 export { LlmExtractor, type LlmExtractorOptions } from "./llmExtractor.js";
 export * from "./governedOperations.js";
 export {
+  classifyLifecycleEvidence,
+  runLifecycleReconcilerBatch,
+  LIFECYCLE_CLASSIFIER_VERSION,
+} from "./lifecycleReconciler.js";
+export type {
+  LifecycleDecision,
+  LifecycleFetchResult,
+  LifecycleReconcilerOptions,
+} from "./lifecycleReconciler.js";
+export {
   ensurePostgresSchema,
   saveStoreToPostgres,
   loadStoreFromPostgres,
@@ -18,6 +28,93 @@ export {
   SnapshotConflictError,
 } from "./postgresStore.js";
 export { uuidIds } from "./uuidIds.js";
+export { canonicalOpportunityIsPublic, canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+export {
+  creatorRelationalAuthorityEnabled,
+  creatorRelationalAuthorityHealth,
+  type CreatorAuthorityEnvironment,
+  type CreatorAuthorityHealth,
+} from "./creatorAuthority.js";
+export {
+  boundedCreatorReceipt,
+  canonicalCreatorRequestHash,
+  creatorCommandEnvelope,
+  creatorPoolFor,
+  CreatorCommandValidationError,
+  CreatorConflictError,
+  CreatorIdempotencyConflictError,
+  CreatorRepositoryBase,
+  type CreatorCommandEnvelope,
+  type CreatorAggregateCommand,
+  type CreatorAggregateKind,
+  type CreatorAggregateView,
+  type CreatorRepositoryPort,
+  type CreatorReceipt,
+} from "./creatorRepository.js";
+export {
+  normalizeCreatorProfileInput,
+  normalizeCreatorPrivacyInput,
+  PostgresCreatorProfileRepository,
+  type CreatorProfileInput,
+  type CreatorProfileView,
+  type CreatorPrivacyInput,
+} from "./creatorProfileRepository.js";
+export {
+  CreatorAccountProvisionError,
+  PostgresCreatorAccountRepository,
+} from "./creatorAccountRepository.js";
+export {
+  PostgresCreatorPreferenceRepository,
+  type CreatorFollowView,
+  type CreatorPreferenceBundle,
+  type CreatorSavedSearchView,
+} from "./creatorPreferenceRepository.js";
+export {
+  PostgresCreatorTrackerRepository,
+  type CreatorTrackerList,
+  type CreatorTrackerListMembership,
+} from "./creatorTrackerRepository.js";
+export {
+  PostgresCreatorInboxRepository,
+  type CreatorInboxAlertView,
+} from "./creatorInboxRepository.js";
+export {
+  PostgresCreatorNotificationRepository,
+  type CreatorNotificationPreferences,
+  type NotificationDigestCadence,
+} from "./creatorNotificationRepository.js";
+export {
+  CreatorEmailReviewError,
+  PostgresCreatorEmailReviewRepository,
+  type CreatorEmailCandidateView,
+  type CreatorEmailReviewResult,
+} from "./creatorEmailReviewRepository.js";
+export {
+  CreatorLibraryConflictError,
+  CreatorLibraryValidationError,
+  PostgresCreatorLibraryRepository,
+  type CreatorLibraryFile,
+  type CreatorLibraryView,
+  type CreatorLibraryWork,
+  type CreatorSavedAnswer,
+  type CreatorWorkConnections,
+} from "./creatorLibraryRepository.js";
+export {
+  CreatorCalendarError,
+  PostgresCreatorCalendarRepository,
+  type CreatorCalendarItem,
+  type CreatorCalendarEvent,
+  type CreatorCalendarTokenResult,
+  type CreatorCalendarTokenState,
+  type CalendarConnectionView,
+  type CalendarProvider,
+  type CalendarSyncLease,
+} from "./creatorCalendarRepository.js";
+export {
+  encryptCalendarCredential,
+  decryptCalendarCredential,
+} from "./calendarCredentialCrypto.js";
+export { loadCanonicalTrackerImportStore } from "./canonicalTrackerImport.js";
 export {
   createProductionEngine,
   seedRegistryIfEmpty,
@@ -30,16 +127,21 @@ export {
   buildOpportunityBrowseQuery,
   type SqlQuery,
 } from "./opportunityRepository.js";
+export * from "./recommendation/index.js";
 export { saveOpportunityProjectionToPostgres } from "./opportunityRelationalStore.js";
 export {
   canonicalTrackerStatus,
   listCanonicalTrackedOpportunities,
   saveCanonicalOpportunityToTracker,
+  removeCanonicalTrackedOpportunity,
+  updateCanonicalTrackerReminder,
   updateCanonicalTrackerStatus,
   type CanonicalTrackerSave,
   type CanonicalTrackerItem,
   type CanonicalTrackerStatus,
   type CanonicalTrackerStatusUpdate,
+  type CanonicalTrackerReminderUpdate,
+  type CanonicalTrackerRemoval,
 } from "./canonicalTracker.js";
 export {
   PostgresProfileRepository,
@@ -66,6 +168,7 @@ export {
 } from "./profileIdentityMatcher.js";
 export {
   commitTrackerImportTransaction,
+  commitRelationalTrackerImportTransaction,
   consumeTrackerImportPreviewRateLimit,
   trackerImportCandidateHash,
   trackerImportRequestHash,
@@ -73,6 +176,7 @@ export {
   TrackerImportPersistenceError,
   type DurableTrackerImportInput,
   type DurableTrackerImportResult,
+  type RelationalTrackerImportInput,
   type TrackerImportPersistenceErrorCode,
 } from "./trackerImportPersistence.js";
 export {
@@ -119,6 +223,14 @@ export {
   type ContentReviewQueueRow,
   type HumanContentReviewDecision,
 } from "./contentReviewAdmin.js";
+export {
+  classifyPublicationCandidate,
+  publicationReviewMembershipHash,
+  readPublicationReviewPreview,
+  type PublicationReviewLane,
+  type PublicationReviewPreview,
+  type PublicationReviewRow,
+} from "./publicationReview.js";
 export {
   RADAR_AGENT_GRAPH,
   agentGraphSnapshot,

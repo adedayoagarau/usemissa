@@ -455,6 +455,7 @@ export async function saveRadarStoreDeltaToPostgres(
     const versionRow = await client.query<{ version: string }>('select version from missa_snapshot_versions where domain = $1 for update', [RADAR_SNAPSHOT_DOMAIN]);
     const currentVersion = Number(versionRow.rows[0]?.version ?? 0);
     if (expectedVersion !== undefined && expectedVersion !== currentVersion) throw new SnapshotConflictError(RADAR_SNAPSHOT_DOMAIN, expectedVersion, currentVersion);
+    const creatorInboxReady = Boolean((await client.query<{ present: string | null }>("select to_regclass('public.creator_inbox_alerts') as present")).rows[0]?.present);
 
     const deleteRows = async (table: string, column: string, ids: string[]) => {
       for (const id of ids) await client.query(`delete from ${table} where ${column} = $1`, [id]);
@@ -530,9 +531,32 @@ export async function saveRadarStoreDeltaToPostgres(
     for (const row of maps.checklistItems.upserts) { const value = row.value; await client.query('insert into radar_checklist_items (id, checklist_id, data) values ($1, $2, $3) on conflict (id) do update set checklist_id = excluded.checklist_id, data = excluded.data', [value.id, value.checklistId, value]); }
     for (const row of maps.customLists.upserts) { const value = row.value; await client.query('insert into radar_custom_lists (id, user_id, data) values ($1, $2, $3) on conflict (id) do update set user_id = excluded.user_id, data = excluded.data', [value.id, value.userId, value]); }
     for (const row of maps.customListMemberships.upserts) { const value = row.value; await client.query('insert into radar_custom_list_memberships (user_id, list_id, opportunity_id, data) values ($1, $2, $3, $4) on conflict (user_id, list_id, opportunity_id) do update set data = excluded.data', [value.userId, value.listId, value.opportunityId, value]); }
-    for (const row of maps.alerts.upserts) { const value = row.value; await client.query('insert into radar_alerts (id, data) values ($1, $2) on conflict (id) do update set data = excluded.data', [value.id, value]); }
-    for (const key of alertKeys.upserts) await client.query('insert into radar_emitted_alert_keys (key) values ($1) on conflict (key) do nothing', [key.value]);
     for (const row of maps.accounts.upserts) { const value = row.value; await client.query('insert into radar_accounts (id, email, data) values ($1, $2, $3) on conflict (id) do update set email = excluded.email, data = excluded.data', [value.id, value.email, value]); }
+    const accountByUserId = new Map([...current.accounts.values()].flatMap((account) => account.userId ? [[account.userId, account.id] as const] : []));
+    for (const row of maps.alerts.upserts) {
+      const value = row.value;
+      await client.query('insert into radar_alerts (id, data) values ($1, $2) on conflict (id) do update set data = excluded.data', [value.id, value]);
+      const accountId = value.audience === 'user' && value.userId ? accountByUserId.get(value.userId) : undefined;
+      if (creatorInboxReady && accountId) {
+        const dedupeKey = [...current.emittedAlertKeys].find((key) => key.endsWith(`:${value.userId}:${value.opportunityId ?? ''}`)) ?? `alert:${value.id}`;
+        await client.query(
+          `insert into creator_inbox_alerts
+             (id,account_id,opportunity_id,kind,title,body,reason,dedupe_key,delivery_eligibility,read_at,created_at,updated_at)
+           select $1,$2,$3,$4,$5,$6,$7,$8,'in-app',$9,$10,$10
+           where $3::text is null or exists (
+             select 1 from opportunities opportunity
+             where opportunity.id=$3 and opportunity.publication_state='published'
+           )
+           on conflict (id) do update set
+             opportunity_id=excluded.opportunity_id,kind=excluded.kind,title=excluded.title,body=excluded.body,
+             reason=excluded.reason,read_at=coalesce(creator_inbox_alerts.read_at,excluded.read_at),updated_at=now(),
+             revision=case when creator_inbox_alerts.read_at is distinct from coalesce(creator_inbox_alerts.read_at,excluded.read_at)
+                           then creator_inbox_alerts.revision+1 else creator_inbox_alerts.revision end`,
+          [value.id, accountId, value.opportunityId ?? null, value.kind, value.title, value.body, value.reason, dedupeKey, value.read ? value.createdAt : null, value.createdAt],
+        );
+      }
+    }
+    for (const key of alertKeys.upserts) await client.query('insert into radar_emitted_alert_keys (key) values ($1) on conflict (key) do nothing', [key.value]);
     if (maps.users.upserts.length || maps.users.deletes.length || maps.accounts.upserts.length || maps.accounts.deletes.length) {
       await writeAccountTaxonomyPreferences(client, current, maps.accounts.deletes);
       await writeOpportunityPreferences(client, current, maps.accounts.deletes);

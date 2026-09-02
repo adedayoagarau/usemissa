@@ -11,7 +11,8 @@
     "missa-ingestion-v2-postgres-worker": "dist/src/postgres-worker.js",
     "missa-ingestion-v2-shadow-replay": "dist/src/shadowReplayCli.js",
     "missa-ingestion-v2-run": "dist/src/run-cli.js",
-    "missa-ingestion-v2-compare": "dist/src/compare-cli.js"
+    "missa-ingestion-v2-compare": "dist/src/compare-cli.js",
+    "missa-ingestion-v2-coverage": "dist/src/coverageContractCli.js"
   },
   "exports": {
     ".": {
@@ -25,7 +26,8 @@
     "schema:ensure": "npm run build && missa-ingestion-v2-schema",
     "worker": "node dist/src/worker.js",
     "worker:postgres": "node dist/src/postgres-worker.js",
-    "shadow:replay": "npm run build && node dist/src/shadowReplayCli.js"
+    "shadow:replay": "npm run build && node dist/src/shadowReplayCli.js",
+    "coverage:writing": "npm run build && node dist/src/coverageContractCli.js"
   },
   "dependencies": {
     "@missa/radar-engine": "^0.1.0",

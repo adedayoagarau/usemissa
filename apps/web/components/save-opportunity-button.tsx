@@ -1,21 +1,25 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bookmark } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
-export function SaveOpportunityButton({ userId, opportunityId }: { userId: string; opportunityId: string }) {
+export function SaveOpportunityButton({ opportunityId }: { userId: string; opportunityId: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const journeyId = useRef<string | undefined>(undefined);
 
   function save() {
     startTransition(async () => {
-      const response = await fetch(`/api/users/${userId}/track`, {
+      const response = await fetch('/api/me/tracker', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ opportunityId }),
+        body: JSON.stringify({
+          opportunityId,
+          journeyId: journeyId.current ?? (journeyId.current = crypto.randomUUID()),
+        }),
       });
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));

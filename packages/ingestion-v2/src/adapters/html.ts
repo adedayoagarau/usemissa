@@ -73,9 +73,11 @@ function deadlineValuesFromHtml(html: string): string[] {
   return [...new Set(values)];
 }
 
-function deadlineKindFromHtml(html: string): "rolling" | "until-filled" | undefined {
+function deadlineKindFromHtml(html: string): "rolling" | "year-round" | "seasonal" | "until-filled" | undefined {
   const visible = text(html).toLowerCase();
   if (/\b(?:rolling (?:deadline|basis|submissions?|applications?)|submissions? (?:are )?accepted (?:on a )?rolling basis)\b/.test(visible)) return "rolling";
+  if (/\b(?:open|accept(?:ing|s)?|submissions?|applications?)\b[^.!?]{0,50}\b(?:year[- ]round|all year|throughout the year)\b|\b(?:year[- ]round|all year)\b[^.!?]{0,50}\b(?:open|submissions?|applications?)\b/.test(visible)) return "year-round";
+  if (/\b(?:seasonal submissions? (?:are )?open|open for (?:the )?(?:spring|summer|autumn|fall|winter) (?:season|cycle)|accepting submissions? (?:this|for the) (?:spring|summer|autumn|fall|winter))\b/.test(visible)) return "seasonal";
   if (/\b(?:open until filled|until (?:the position is )?filled)\b/.test(visible)) return "until-filled";
   return undefined;
 }

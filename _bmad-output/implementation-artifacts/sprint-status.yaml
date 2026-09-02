@@ -1,5 +1,5 @@
 # generated: 2026-07-07
-# last_updated: 2026-08-27
+# last_updated: 2026-08-30
 # project: Missa
 # project_key: NOKEY
 # tracking_system: file-system
@@ -38,7 +38,7 @@
 #   epic-only entries with no story keys until real stories are written.
 
 generated: 2026-07-07
-last_updated: 2026-08-27
+last_updated: 2026-08-30
 project: Missa
 project_key: NOKEY
 tracking_system: file-system
@@ -144,3 +144,39 @@ development_status:
   15-2-durable-message-effect-ledger-and-provider-delivery-history: done
   15-3-governed-crm-billing-and-agent-control-contracts: done
   epic-15-retrospective: done
+
+  epic-16: in-progress
+  16-1-workspace-relational-repositories-and-transactional-writes: done
+  16-2-radar-account-tracker-inbox-and-preference-relational-authority: in-progress
+  16-3-relational-cutover-drift-reconciliation-and-compatibility-retirement: backlog
+  epic-16-retrospective: optional
+
+  epic-17: backlog
+  17-1-canonical-homepage-discovery-and-opportunity-detail-promotion: backlog
+  17-2-tracker-calendar-inbox-library-and-profile-promotion: backlog
+  17-3-durable-missa-office-application-control-plane: backlog
+  epic-17-retrospective: optional
+
+  epic-18: backlog
+  18-1-versioned-hosted-forms-drafts-and-deadline-enforcement: backlog
+  18-2-secure-upload-lifecycle-and-immutable-submission-receipt: backlog
+  18-3-submission-fee-waiver-refund-and-provider-reconciliation: backlog
+  epic-18-retrospective: optional
+
+  epic-19: backlog
+  19-1-organization-settings-people-permissions-and-safe-switching: backlog
+  19-2-versioned-reviewer-workspace-and-immutable-review-submission: backlog
+  19-3-submissions-decisions-messages-delivery-and-insights-promotion: backlog
+  epic-19-retrospective: optional
+
+  epic-20: backlog
+  20-1-evidence-bound-retrieval-citations-and-privacy-scope: backlog
+  20-2-preview-and-confirm-creator-assistance: backlog
+  20-3-organization-assistance-evaluations-and-operational-controls: backlog
+  epic-20-retrospective: optional
+
+  epic-21: backlog
+  21-1-migration-and-provider-lifecycle-certification: backlog
+  21-2-full-quality-resilience-accessibility-and-recovery-suite: backlog
+  21-3-canary-launch-observability-rollback-and-defer-ledger: backlog
+  epic-21-retrospective: optional

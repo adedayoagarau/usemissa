@@ -14,6 +14,7 @@
     "missa-discovery-agent": "dist/src/discoveryWorker.js",
     "missa-coverage-worker": "dist/src/coverageWorker.js",
     "missa-taxonomy-discovery": "dist/src/taxonomyDiscoveryWorker.js",
+    "missa-publication-review": "dist/src/publicationReviewCli.js",
     "missa-lifecycle-reconciler": "dist/src/lifecycleWorker.js"
   },
   "scripts": {
@@ -28,6 +29,7 @@
     "discovery-agent": "node dist/src/discoveryWorker.js",
     "coverage-worker": "node dist/src/coverageWorker.js",
     "taxonomy-discovery": "node dist/src/taxonomyDiscoveryWorker.js",
+    "publication-review": "node dist/src/publicationReviewCli.js",
     "lifecycle-reconciler": "node dist/src/lifecycleWorker.js"
   },
   "dependencies": {

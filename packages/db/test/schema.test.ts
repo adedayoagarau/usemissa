@@ -23,6 +23,7 @@ import {
   reviewAssignments,
   trackedOpportunities,
   trackedStatusEvents,
+  organizationFollows,
   platformAgentControlRequests,
   platformBillingLedger,
   platformBillingActions,
@@ -47,6 +48,23 @@ import {
   handles,
   handleAliases,
   waitlistInvites,
+  decisions,
+  deliveryTasks,
+  workspaceCommandReceipts,
+  submissions,
+  creatorProfiles,
+  creatorProfileMotionEvents,
+  creatorInboxAlerts,
+  notificationPreferences,
+  calendarFeedTokens,
+  creatorLibraryWorks,
+  creatorLibraryFiles,
+  creatorSavedAnswers,
+  trackerManualEntries,
+  trackerLists,
+  trackerListMemberships,
+  trackerChecklists,
+  trackerChecklistItems,
 } from "../src/schema.js";
 
 test("platform schema carries tenant, audit, outbox, and reviewer indexes", () => {
@@ -234,6 +252,10 @@ test("migration journal retains the reconciled operational chain", () => {
     "0024_radar_source_runs",
     "0028_durable_message_effect_ledger",
     "0029_governed_operations",
+    "0030_workspace_relational_authority",
+    "0031_creator_relational_authority",
+    "0032_opportunity_availability",
+    "0033_aggregate_record_publication_guard",
   ];
   for (const tag of required) assert.ok(tags.includes(tag), `${tag} is journaled`);
   assert.deepEqual(
@@ -247,6 +269,124 @@ test("migration journal retains the reconciled operational chain", () => {
   );
   assert.ok(tags.indexOf("0013_radar_agent_heartbeat") < tags.indexOf("0015_admin_operations"));
   assert.ok(tags.indexOf("0024_radar_source_runs") < tags.indexOf("0025_publication_gate_defaults"));
+});
+
+test("workspace relational authority has revisions and scoped command receipts", () => {
+  const decision = getTableConfig(decisions);
+  const delivery = getTableConfig(deliveryTasks);
+  const receipts = getTableConfig(workspaceCommandReceipts);
+  const submission = getTableConfig(submissions);
+  assert.ok(decision.columns.some((column) => column.name === 'revision'));
+  assert.ok(decision.indexes.some((index) => index.config.name === 'decisions_work_idx' && index.config.unique));
+  assert.ok(delivery.columns.some((column) => column.name === 'revision'));
+  assert.ok(receipts.indexes.some((index) => index.config.name === 'workspace_command_receipts_identity_idx' && index.config.unique));
+  for (const column of ['answers', 'category', 'idempotency_key', 'payment_status', 'payment_session_id', 'fee_cents', 'revision']) {
+    assert.ok(submission.columns.some((candidate) => candidate.name === column), `submissions retains ${column}`);
+  }
+  assert.ok(submission.indexes.some((index) => index.config.name === 'submissions_payment_session_idx' && index.config.unique));
+  const migration = readFileSync('migrations/0030_workspace_relational_authority.sql','utf8');
+  assert.match(migration,/workspace_command_receipts/);
+  assert.match(migration,/outbox_events_event_key_idx/);
+  assert.match(migration,/review_assignments.*updated_at/s);
+  assert.match(migration,/submissions_payment_status_check/);
+  assert.match(migration,/submissions_fee_check/);
+  assert.match(migration,/submissions_payment_session_idx/);
+  for (const table of ['entities','programs','open_calls','submission_paths','submissions','works','review_rounds','review_assignments','decisions','delivery_tasks']) {
+    assert.match(migration, new RegExp(`${table}_revision_check`), `${table} enforces revision >= 1`);
+  }
+  assert.doesNotMatch(migration,/DROP TABLE|TRUNCATE|DROP COLUMN/i);
+  assert.doesNotMatch(migration,/"revision" integer[^,\n]*CHECK \("revision" >= 1\)/, "revision checks are added once with explicit names");
+});
+
+test("target schema replay includes the complete registered tail through workspace authority", () => {
+  const targetSchema = readFileSync("../../scripts/apply-target-schema.mjs", "utf8");
+  const requiredTail = [
+    "0018_trusted_source_registry.sql",
+    "0019_radar_ingestion_reliability.sql",
+    "0020_waitlist_signups.sql",
+    "0021_tracker_import_transactions.sql",
+    "0022_resend_webhook_events.sql",
+    "0023_profile_opportunity_identity.sql",
+    "0024_radar_source_runs.sql",
+    "0025_publication_gate_defaults.sql",
+    "0026_handle_namespace.sql",
+    "0027_waitlist_invites.sql",
+    "0028_durable_message_effect_ledger.sql",
+    "0029_governed_operations.sql",
+    "0030_workspace_relational_authority.sql",
+    "0031_creator_relational_authority.sql",
+    "0032_opportunity_availability.sql",
+    "0033_aggregate_record_publication_guard.sql",
+  ];
+  let previous = -1;
+  for (const migration of requiredTail) {
+    const position = targetSchema.indexOf(`'${migration}'`);
+    assert.ok(position > previous, `${migration} is replayed in dependency order`);
+    previous = position;
+  }
+});
+
+test("opportunity availability migration queues stale claims before restoring the deferred publication gate", () => {
+  const migration = readFileSync("migrations/0032_opportunity_availability.sql", "utf8");
+  const dropTrigger = migration.indexOf("DROP TRIGGER IF EXISTS missa_publication_gate_trigger");
+  const queueSeed = migration.indexOf("INSERT INTO \"opportunity_lifecycle_verification_jobs\"");
+  const recreateTrigger = migration.indexOf("CREATE CONSTRAINT TRIGGER missa_publication_gate_trigger");
+  assert.ok(dropTrigger >= 0 && dropTrigger < queueSeed);
+  assert.ok(queueSeed < recreateTrigger);
+  assert.doesNotMatch(migration, /UPDATE "opportunities"\s+SET\s+"status" = 'uncertain'/s);
+  assert.match(migration, /CASE WHEN "publication_state" = 'published' THEN 100 ELSE 10 END/);
+  assert.match(migration, /"open_date" IS NULL OR "open_date" <= current_date/);
+  assert.match(migration, /NEW\.deadline_date >= current_date/);
+});
+
+test("creator relational authority normalizes every owner-scoped launch aggregate", () => {
+  const ownerTables = [
+    creatorProfiles,
+    creatorProfileMotionEvents,
+    creatorInboxAlerts,
+    notificationPreferences,
+    calendarFeedTokens,
+    creatorLibraryWorks,
+    creatorLibraryFiles,
+    creatorSavedAnswers,
+    trackerManualEntries,
+    trackerLists,
+    trackerChecklists,
+    trackerChecklistItems,
+  ];
+  for (const table of ownerTables) {
+    const config = getTableConfig(table);
+    assert.ok(config.columns.some((column) => column.name === "account_id"), `${config.name} is account-owned`);
+    assert.ok(config.columns.some((column) => column.name === "revision"), `${config.name} has optimistic concurrency`);
+    assert.ok(config.checks.some((constraint) => constraint.name.endsWith("_revision_check")), `${config.name} enforces revision >= 1`);
+  }
+  const memberships = getTableConfig(trackerListMemberships);
+  assert.ok(memberships.columns.some((column) => column.name === "account_id"));
+  assert.ok(memberships.indexes.some((index) => index.config.name === "tracker_list_memberships_identity_idx" && index.config.unique));
+  assert.ok(getTableConfig(creatorInboxAlerts).indexes.some((index) => index.config.name === "creator_inbox_alerts_dedupe_idx" && index.config.unique));
+  assert.ok(getTableConfig(calendarFeedTokens).indexes.some((index) => index.config.name === "calendar_feed_tokens_hash_idx" && index.config.unique));
+  assert.ok(getTableConfig(notificationPreferences).checks.some((constraint) => constraint.name === "notification_preferences_digest_check"));
+  const listColumns = new Set(getTableConfig(trackerLists).columns.map((column) => column.name));
+  for (const field of ["description", "color_token", "archived_at"]) {
+    assert.ok(listColumns.has(field), `tracker_lists preserves ${field}`);
+  }
+  const checklistColumns = new Set(getTableConfig(trackerChecklists).columns.map((column) => column.name));
+  for (const field of ["tracked_at", "source_version"]) assert.ok(checklistColumns.has(field), `tracker_checklists preserves ${field}`);
+  const checklistItemColumns = new Set(getTableConfig(trackerChecklistItems).columns.map((column) => column.name));
+  for (const field of ["normalized_key", "position", "state", "source", "source_confidence"]) {
+    assert.ok(checklistItemColumns.has(field), `tracker_checklist_items preserves ${field}`);
+  }
+
+  for (const table of [opportunityPreferences, savedSearches, trackedOpportunities, organizationFollows]) {
+    assert.ok(getTableConfig(table).columns.some((column) => column.name === "revision"));
+  }
+  const migration = readFileSync("migrations/0031_creator_relational_authority.sql", "utf8");
+  assert.doesNotMatch(migration, /DROP TABLE|TRUNCATE|DROP COLUMN/i);
+  assert.match(migration, /creator_inbox_alerts_dedupe_idx/);
+  assert.match(migration, /calendar_feed_tokens_hash_idx/);
+  assert.match(migration, /radar_accounts_auth_identity_idx/);
+  assert.match(migration, /data->>'authProvider'/);
+  assert.match(migration, /workspace_command_receipts/);
 });
 
 test("admin operations schema carries CRM ownership, follow-up, and analytics indexes", () => {

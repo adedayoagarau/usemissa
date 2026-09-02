@@ -1,0 +1,1034 @@
+{
+  "corpusId": "deterministic-fit-v1-phase-0-global-2026-08-20",
+  "status": "phase-0-reviewed-phase-1-replay-ready",
+  "policyImplementation": "deterministic-fit-v1-replay-harness-v1",
+  "capturedAt": "2026-08-20T12:00:00.000Z",
+  "defaultPolicy": {
+    "missingness": "unknown is not negative",
+    "hardExclusion": "confirmed comparable mismatch only",
+    "sensitiveInference": "forbidden",
+    "acceptancePrediction": "forbidden"
+  },
+  "coverageMatrix": {
+    "countriesRegionsCurrenciesTimezones": [
+      "creator_nia_gh",
+      "creator_maya_in",
+      "creator_luca_it",
+      "creator_sofia_br",
+      "creator_jun_jp",
+      "creator_samira_ca"
+    ],
+    "localRemoteHybridTravel": [
+      "opp_local_gh",
+      "opp_remote_global",
+      "opp_hybrid_lagos",
+      "opp_travel_venice"
+    ],
+    "emergingEstablished": [
+      "creator_nia_gh",
+      "creator_ade_ng",
+      "creator_luca_it"
+    ],
+    "interdisciplinary": [
+      "creator_ade_ng",
+      "creator_maya_in",
+      "creator_sofia_br",
+      "creator_elena_mx"
+    ],
+    "incompleteProfiles": [
+      "creator_nia_gh",
+      "creator_amina_ke",
+      "creator_elena_mx"
+    ],
+    "unknownEligibility": [
+      "opp_unknown_fee_za",
+      "opp_stale_global",
+      "opp_conflicting_deadline"
+    ],
+    "feesAndNoFees": ["opp_local_gh", "opp_fee_brazil", "opp_unknown_fee_za"],
+    "travelSupportAndFunding": [
+      "opp_hybrid_lagos",
+      "opp_funded_kenya",
+      "opp_travel_venice"
+    ],
+    "accessibility": [
+      "creator_noah_us",
+      "opp_accessible_global",
+      "opp_accessibility_unknown"
+    ],
+    "shortPreparation": ["creator_maya_in", "opp_short_prep"],
+    "crossBorderRestrictions": ["creator_nia_gh", "opp_restricted_us"],
+    "sparseContradictoryEvidence": [
+      "opp_unknown_fee_za",
+      "opp_conflicting_deadline"
+    ],
+    "disputedRemovedClosedStale": [
+      "opp_disputed",
+      "opp_removed",
+      "opp_closed",
+      "opp_stale_global"
+    ],
+    "duplicateAndConcentration": [
+      "opp_duplicate_primary",
+      "opp_duplicate_copy",
+      "concentration_case_01"
+    ]
+  },
+  "creators": [
+    {
+      "id": "creator_nia_gh",
+      "country": "GH",
+      "region": "West Africa",
+      "currency": "GHS",
+      "timezone": "Africa/Accra",
+      "locale": "en-GH",
+      "stage": "emerging",
+      "practiceTerms": ["writing.poetry", "music.sound-art"],
+      "opportunityTypes": ["magazine", "residency", "fellowship"],
+      "participation": {
+        "preferredModes": ["remote", "local"],
+        "travel": "unwilling",
+        "location": "Ghana"
+      },
+      "cost": {
+        "feePreference": "no-fee",
+        "currency": "GHS",
+        "maxFeeMinor": 0,
+        "fundingInterest": true
+      },
+      "accessibilityNeeds": { "state": "known", "values": ["captions"] },
+      "preparation": { "state": "known", "daysAvailable": 5 },
+      "goals": { "state": "unknown", "values": [] },
+      "privateWork": { "state": "not-provided", "matchingOptIn": false },
+      "profileCompleteness": "incomplete",
+      "signalAuthority": "creator-explicit"
+    },
+    {
+      "id": "creator_ade_ng",
+      "country": "NG",
+      "region": "West Africa",
+      "currency": "NGN",
+      "timezone": "Africa/Lagos",
+      "locale": "en-NG",
+      "stage": "established",
+      "practiceTerms": [
+        "visual-art.installation",
+        "performance.theatre",
+        "community-practice"
+      ],
+      "opportunityTypes": ["fellowship", "grant", "residency"],
+      "participation": {
+        "preferredModes": ["hybrid", "local"],
+        "travel": "willing",
+        "location": "Nigeria"
+      },
+      "cost": {
+        "feePreference": "funding-preferred",
+        "currency": "NGN",
+        "maxFeeMinor": 250000,
+        "fundingInterest": true
+      },
+      "accessibilityNeeds": { "state": "known", "values": ["step-free"] },
+      "preparation": { "state": "known", "daysAvailable": 30 },
+      "goals": {
+        "state": "known",
+        "values": ["funding", "institutional-partnership"]
+      },
+      "privateWork": {
+        "state": "known",
+        "matchingOptIn": true,
+        "terms": ["visual-art.installation"]
+      },
+      "profileCompleteness": "complete-for-matching",
+      "signalAuthority": "creator-explicit"
+    },
+    {
+      "id": "creator_maya_in",
+      "country": "IN",
+      "region": "South Asia",
+      "currency": "INR",
+      "timezone": "Asia/Kolkata",
+      "locale": "en-IN",
+      "stage": "emerging",
+      "practiceTerms": [
+        "film.documentary",
+        "design.interaction",
+        "writing.essay"
+      ],
+      "opportunityTypes": ["festival", "residency", "open-call"],
+      "participation": {
+        "preferredModes": ["remote", "hybrid"],
+        "travel": "unknown",
+        "location": "India"
+      },
+      "cost": {
+        "feePreference": "ceiling",
+        "currency": "INR",
+        "maxFeeMinor": 300000,
+        "fundingInterest": false
+      },
+      "accessibilityNeeds": { "state": "not-provided", "values": [] },
+      "preparation": { "state": "known", "daysAvailable": 3 },
+      "goals": { "state": "known", "values": ["screening", "peer-network"] },
+      "privateWork": {
+        "state": "known",
+        "matchingOptIn": true,
+        "terms": ["film.documentary"]
+      },
+      "profileCompleteness": "partial",
+      "signalAuthority": "creator-explicit"
+    },
+    {
+      "id": "creator_luca_it",
+      "country": "IT",
+      "region": "Southern Europe",
+      "currency": "EUR",
+      "timezone": "Europe/Rome",
+      "locale": "it-IT",
+      "stage": "established",
+      "practiceTerms": ["performance.theatre", "dance.contemporary"],
+      "opportunityTypes": ["residency", "festival", "fellowship"],
+      "participation": {
+        "preferredModes": ["local", "travel-required"],
+        "travel": "willing",
+        "location": "Italy"
+      },
+      "cost": {
+        "feePreference": "no-fee",
+        "currency": "EUR",
+        "maxFeeMinor": 0,
+        "fundingInterest": true
+      },
+      "accessibilityNeeds": {
+        "state": "known",
+        "values": ["step-free", "quiet-room"]
+      },
+      "preparation": { "state": "known", "daysAvailable": 45 },
+      "goals": { "state": "known", "values": ["residency", "presentation"] },
+      "privateWork": { "state": "not-provided", "matchingOptIn": false },
+      "profileCompleteness": "complete-for-matching",
+      "signalAuthority": "creator-explicit"
+    },
+    {
+      "id": "creator_sofia_br",
+      "country": "BR",
+      "region": "South America",
+      "currency": "BRL",
+      "timezone": "America/Sao_Paulo",
+      "locale": "pt-BR",
+      "stage": "emerging",
+      "practiceTerms": [
+        "music.composition",
+        "film.experimental",
+        "visual-art.moving-image"
+      ],
+      "opportunityTypes": ["festival", "open-call", "grant"],
+      "participation": {
+        "preferredModes": ["remote", "hybrid"],
+        "travel": "willing-if-funded",
+        "location": "Brazil"
+      },
+      "cost": {
+        "feePreference": "ceiling",
+        "currency": "BRL",
+        "maxFeeMinor": 10000,
+        "fundingInterest": true
+      },
+      "accessibilityNeeds": { "state": "not-provided", "values": [] },
+      "preparation": { "state": "known", "daysAvailable": 7 },
+      "goals": { "state": "known", "values": ["screening", "commission"] },
+      "privateWork": { "state": "known", "matchingOptIn": false },
+      "profileCompleteness": "partial",
+      "signalAuthority": "creator-explicit"
+    },
+    {
+      "id": "creator_noah_us",
+      "country": "US",
+      "region": "North America",
+      "currency": "USD",
+      "timezone": "America/New_York",
+      "locale": "en-US",
+      "stage": "established",
+      "practiceTerms": ["visual-art.installation", "photography"],
+      "opportunityTypes": ["grant", "residency", "open-call"],
+      "participation": {
+        "preferredModes": ["remote", "local"],
+        "travel": "unwilling",
+        "location": "United States"
+      },
+      "cost": {
+        "feePreference": "no-fee",
+        "currency": "USD",
+        "maxFeeMinor": 0,
+        "fundingInterest": true
+      },
+      "accessibilityNeeds": {
+        "state": "known",
+        "values": ["captions", "screen-reader-compatible"]
+      },
+      "preparation": { "state": "known", "daysAvailable": 21 },
+      "goals": { "state": "known", "values": ["funding"] },
+      "privateWork": {
+        "state": "known",
+        "matchingOptIn": true,
+        "terms": ["visual-art.installation"]
+      },
+      "profileCompleteness": "complete-for-matching",
+      "signalAuthority": "creator-explicit"
+    },
+    {
+      "id": "creator_amina_ke",
+      "country": "KE",
+      "region": "East Africa",
+      "currency": "KES",
+      "timezone": "Africa/Nairobi",
+      "locale": "en-KE",
+      "stage": "unknown",
+      "practiceTerms": ["writing.essay"],
+      "opportunityTypes": [],
+      "participation": {
+        "preferredModes": [],
+        "travel": "unknown",
+        "location": "unknown"
+      },
+      "cost": {
+        "feePreference": "unknown",
+        "currency": "KES",
+        "maxFeeMinor": null,
+        "fundingInterest": null
+      },
+      "accessibilityNeeds": { "state": "not-provided", "values": [] },
+      "preparation": { "state": "unknown", "daysAvailable": null },
+      "goals": { "state": "unknown", "values": [] },
+      "privateWork": { "state": "not-provided", "matchingOptIn": false },
+      "profileCompleteness": "incomplete",
+      "signalAuthority": "creator-explicit"
+    },
+    {
+      "id": "creator_elena_mx",
+      "country": "MX",
+      "region": "North America",
+      "currency": "MXN",
+      "timezone": "America/Mexico_City",
+      "locale": "es-MX",
+      "stage": "emerging",
+      "practiceTerms": [
+        "craft.textile",
+        "film.documentary",
+        "community-practice"
+      ],
+      "opportunityTypes": ["open-call", "festival"],
+      "participation": {
+        "preferredModes": ["remote", "hybrid"],
+        "travel": "unknown",
+        "location": "Mexico"
+      },
+      "cost": {
+        "feePreference": "unknown",
+        "currency": "MXN",
+        "maxFeeMinor": null,
+        "fundingInterest": false
+      },
+      "accessibilityNeeds": { "state": "not-provided", "values": [] },
+      "preparation": { "state": "known", "daysAvailable": 14 },
+      "goals": { "state": "unknown", "values": [] },
+      "privateWork": { "state": "not-provided", "matchingOptIn": false },
+      "profileCompleteness": "incomplete",
+      "signalAuthority": "creator-explicit"
+    },
+    {
+      "id": "creator_jun_jp",
+      "country": "JP",
+      "region": "East Asia",
+      "currency": "JPY",
+      "timezone": "Asia/Tokyo",
+      "locale": "ja-JP",
+      "stage": "established",
+      "practiceTerms": ["interactive-media", "game-design", "sound-art"],
+      "opportunityTypes": ["festival", "residency", "open-call"],
+      "participation": {
+        "preferredModes": ["remote"],
+        "travel": "unwilling",
+        "location": "Japan"
+      },
+      "cost": {
+        "feePreference": "no-fee",
+        "currency": "JPY",
+        "maxFeeMinor": 0,
+        "fundingInterest": false
+      },
+      "accessibilityNeeds": {
+        "state": "known",
+        "values": ["screen-reader-compatible"]
+      },
+      "preparation": { "state": "known", "daysAvailable": 60 },
+      "goals": { "state": "known", "values": ["screening", "commission"] },
+      "privateWork": {
+        "state": "known",
+        "matchingOptIn": true,
+        "terms": ["interactive-media"]
+      },
+      "profileCompleteness": "complete-for-matching",
+      "signalAuthority": "creator-explicit"
+    },
+    {
+      "id": "creator_samira_ca",
+      "country": "CA",
+      "region": "North America",
+      "currency": "CAD",
+      "timezone": "America/Toronto",
+      "locale": "en-CA",
+      "stage": "emerging",
+      "practiceTerms": ["illustration", "writing.poetry"],
+      "opportunityTypes": ["magazine", "open-call"],
+      "participation": {
+        "preferredModes": ["remote", "local"],
+        "travel": "unknown",
+        "location": "Canada"
+      },
+      "cost": {
+        "feePreference": "ceiling",
+        "currency": "CAD",
+        "maxFeeMinor": 2000,
+        "fundingInterest": false
+      },
+      "accessibilityNeeds": { "state": "not-provided", "values": [] },
+      "preparation": { "state": "known", "daysAvailable": 10 },
+      "goals": { "state": "known", "values": ["publication"] },
+      "privateWork": { "state": "not-provided", "matchingOptIn": false },
+      "profileCompleteness": "partial",
+      "signalAuthority": "creator-explicit"
+    }
+  ],
+  "opportunities": [
+    {
+      "id": "opp_local_gh",
+      "country": "GH",
+      "region": "West Africa",
+      "currency": "GHS",
+      "timezone": "Africa/Accra",
+      "mode": "local",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-gh-2026-08-20",
+      "taxonomy": ["writing.poetry", "music.sound-art"],
+      "eligibility": {
+        "state": "confirmed",
+        "rules": ["Ghana-based or able to participate in Accra"]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 0, "currency": "GHS" },
+      "funding": {
+        "state": "confirmed",
+        "travelSupport": false,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "confirmed", "features": ["captions"] },
+      "preparationDays": 5,
+      "evidence": "complete-current",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_remote_global",
+      "country": "GB",
+      "region": "Northern Europe",
+      "currency": "USD",
+      "timezone": "Europe/London",
+      "mode": "remote",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-global-2026-08-20",
+      "taxonomy": ["writing.poetry", "writing.essay"],
+      "eligibility": {
+        "state": "confirmed",
+        "rules": ["international submissions accepted"]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 0, "currency": "USD" },
+      "funding": {
+        "state": "confirmed",
+        "travelSupport": false,
+        "amountMinor": null
+      },
+      "accessibility": {
+        "state": "confirmed",
+        "features": ["captions", "screen-reader-compatible"]
+      },
+      "preparationDays": 14,
+      "evidence": "complete-current",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_hybrid_lagos",
+      "country": "NG",
+      "region": "West Africa",
+      "currency": "NGN",
+      "timezone": "Africa/Lagos",
+      "mode": "hybrid",
+      "status": "opening-soon",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-ng-2026-08-20",
+      "taxonomy": [
+        "visual-art.installation",
+        "performance.theatre",
+        "community-practice"
+      ],
+      "eligibility": {
+        "state": "confirmed",
+        "rules": ["international applicants accepted"]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 0, "currency": "NGN" },
+      "funding": {
+        "state": "confirmed",
+        "travelSupport": true,
+        "amountMinor": 1000000,
+        "amountCurrency": "NGN"
+      },
+      "accessibility": { "state": "confirmed", "features": ["step-free"] },
+      "preparationDays": 30,
+      "evidence": "complete-current",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_travel_venice",
+      "country": "IT",
+      "region": "Southern Europe",
+      "currency": "EUR",
+      "timezone": "Europe/Rome",
+      "mode": "travel-required",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-it-2026-08-20",
+      "taxonomy": ["performance.theatre", "dance.contemporary"],
+      "eligibility": {
+        "state": "confirmed",
+        "rules": ["international applicants accepted"]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 0, "currency": "EUR" },
+      "funding": {
+        "state": "confirmed",
+        "travelSupport": true,
+        "amountMinor": 1500,
+        "amountCurrency": "EUR"
+      },
+      "accessibility": { "state": "probable", "features": ["step-free"] },
+      "preparationDays": 45,
+      "evidence": "complete-current",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_short_prep",
+      "country": "IN",
+      "region": "South Asia",
+      "currency": "INR",
+      "timezone": "Asia/Kolkata",
+      "mode": "remote",
+      "status": "closing-soon",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-in-2026-08-20",
+      "taxonomy": ["film.documentary", "design.interaction"],
+      "eligibility": {
+        "state": "confirmed",
+        "rules": ["international applicants accepted"]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 1500, "currency": "INR" },
+      "funding": {
+        "state": "confirmed",
+        "travelSupport": false,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "unknown", "features": [] },
+      "preparationDays": 10,
+      "evidence": "complete-current",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_restricted_us",
+      "country": "US",
+      "region": "North America",
+      "currency": "USD",
+      "timezone": "America/New_York",
+      "mode": "travel-required",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-us-2026-08-20",
+      "taxonomy": ["visual-art.installation"],
+      "eligibility": {
+        "state": "confirmed",
+        "rules": ["United States or Canada residents only"]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 0, "currency": "USD" },
+      "funding": {
+        "state": "confirmed",
+        "travelSupport": false,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "confirmed", "features": ["step-free"] },
+      "preparationDays": 21,
+      "evidence": "complete-current",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_accessible_global",
+      "country": "AU",
+      "region": "Oceania",
+      "currency": "AUD",
+      "timezone": "Australia/Sydney",
+      "mode": "remote",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-au-2026-08-20",
+      "taxonomy": [
+        "visual-art.installation",
+        "writing.essay",
+        "interactive-media"
+      ],
+      "eligibility": {
+        "state": "confirmed",
+        "rules": ["international applicants accepted"]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 0, "currency": "AUD" },
+      "funding": {
+        "state": "probable",
+        "travelSupport": false,
+        "amountMinor": null
+      },
+      "accessibility": {
+        "state": "confirmed",
+        "features": ["captions", "screen-reader-compatible", "transcript"]
+      },
+      "preparationDays": 21,
+      "evidence": "complete-current",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_fee_brazil",
+      "country": "BR",
+      "region": "South America",
+      "currency": "BRL",
+      "timezone": "America/Sao_Paulo",
+      "mode": "hybrid",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-br-2026-08-20",
+      "taxonomy": ["film.experimental", "music.composition"],
+      "eligibility": {
+        "state": "confirmed",
+        "rules": ["Brazil-based or international remote participation"]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 5000, "currency": "BRL" },
+      "funding": {
+        "state": "confirmed",
+        "travelSupport": false,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "unknown", "features": [] },
+      "preparationDays": 7,
+      "evidence": "complete-current",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_unknown_fee_za",
+      "country": "ZA",
+      "region": "Southern Africa",
+      "currency": "ZAR",
+      "timezone": "Africa/Johannesburg",
+      "mode": "remote",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "directory-unconfirmed",
+      "sourceVersion": "source-za-sparse-2026-08-20",
+      "taxonomy": ["writing.essay"],
+      "eligibility": { "state": "unknown", "rules": [] },
+      "fee": { "state": "unknown", "amountMinor": null, "currency": "ZAR" },
+      "funding": {
+        "state": "unknown",
+        "travelSupport": null,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "unknown", "features": [] },
+      "preparationDays": null,
+      "evidence": "sparse",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_conflicting_deadline",
+      "country": "FR",
+      "region": "Western Europe",
+      "currency": "EUR",
+      "timezone": "Europe/Paris",
+      "mode": "hybrid",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "conflicting-official-and-directory",
+      "sourceVersion": "source-fr-conflict-2026-08-20",
+      "taxonomy": ["writing.poetry", "visual-art.moving-image"],
+      "eligibility": {
+        "state": "unknown",
+        "rules": ["residency requirement differs by source"]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 0, "currency": "EUR" },
+      "funding": {
+        "state": "probable",
+        "travelSupport": true,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "unknown", "features": [] },
+      "preparationDays": null,
+      "evidence": "contradictory",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_funded_kenya",
+      "country": "KE",
+      "region": "East Africa",
+      "currency": "KES",
+      "timezone": "Africa/Nairobi",
+      "mode": "hybrid",
+      "status": "opening-soon",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-ke-2026-08-20",
+      "taxonomy": ["writing.essay", "community-practice"],
+      "eligibility": {
+        "state": "confirmed",
+        "rules": [
+          "East Africa residents preferred; international applications accepted"
+        ]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 0, "currency": "KES" },
+      "funding": {
+        "state": "confirmed",
+        "travelSupport": true,
+        "amountMinor": 250000,
+        "amountCurrency": "KES"
+      },
+      "accessibility": { "state": "probable", "features": ["step-free"] },
+      "preparationDays": 30,
+      "evidence": "complete-current",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_disputed",
+      "country": "NL",
+      "region": "Western Europe",
+      "currency": "EUR",
+      "timezone": "Europe/Amsterdam",
+      "mode": "remote",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "disputed",
+      "sourceVersion": "source-dispute-2026-08-20",
+      "taxonomy": ["writing.poetry"],
+      "eligibility": { "state": "unknown", "rules": [] },
+      "fee": { "state": "unknown", "amountMinor": null, "currency": "EUR" },
+      "funding": {
+        "state": "unknown",
+        "travelSupport": null,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "unknown", "features": [] },
+      "preparationDays": null,
+      "evidence": "disputed",
+      "safetyDecision": "confirmed-disputed",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_removed",
+      "country": "SE",
+      "region": "Northern Europe",
+      "currency": "SEK",
+      "timezone": "Europe/Stockholm",
+      "mode": "remote",
+      "status": "removed",
+      "publicationState": "suppressed",
+      "sourceAuthority": "canonical-removal",
+      "sourceVersion": "source-removed-2026-08-20",
+      "taxonomy": ["design.interaction"],
+      "eligibility": { "state": "unknown", "rules": [] },
+      "fee": { "state": "unknown", "amountMinor": null, "currency": "SEK" },
+      "funding": {
+        "state": "unknown",
+        "travelSupport": null,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "unknown", "features": [] },
+      "preparationDays": null,
+      "evidence": "removed",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_closed",
+      "country": "US",
+      "region": "North America",
+      "currency": "USD",
+      "timezone": "America/Los_Angeles",
+      "mode": "local",
+      "status": "closed",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-closed-2026-08-20",
+      "taxonomy": ["illustration"],
+      "eligibility": { "state": "confirmed", "rules": [] },
+      "fee": { "state": "confirmed", "amountMinor": 0, "currency": "USD" },
+      "funding": {
+        "state": "confirmed",
+        "travelSupport": false,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "confirmed", "features": [] },
+      "preparationDays": 0,
+      "evidence": "complete-current",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_stale_global",
+      "country": "SG",
+      "region": "Southeast Asia",
+      "currency": "SGD",
+      "timezone": "Asia/Singapore",
+      "mode": "remote",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "official-but-stale",
+      "sourceVersion": "source-sg-2026-05-01",
+      "taxonomy": ["interactive-media"],
+      "eligibility": { "state": "unknown", "rules": [] },
+      "fee": { "state": "unknown", "amountMinor": null, "currency": "SGD" },
+      "funding": {
+        "state": "unknown",
+        "travelSupport": null,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "unknown", "features": [] },
+      "preparationDays": null,
+      "evidence": "stale",
+      "duplicateGroup": null
+    },
+    {
+      "id": "opp_duplicate_primary",
+      "country": "CA",
+      "region": "North America",
+      "currency": "CAD",
+      "timezone": "America/Toronto",
+      "mode": "remote",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-duplicate-primary-2026-08-20",
+      "taxonomy": ["writing.poetry"],
+      "eligibility": {
+        "state": "confirmed",
+        "rules": ["international submissions accepted"]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 0, "currency": "CAD" },
+      "funding": {
+        "state": "confirmed",
+        "travelSupport": false,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "unknown", "features": [] },
+      "preparationDays": 7,
+      "evidence": "complete-current",
+      "duplicateGroup": "dup_2026_01"
+    },
+    {
+      "id": "opp_duplicate_copy",
+      "country": "CA",
+      "region": "North America",
+      "currency": "CAD",
+      "timezone": "America/Toronto",
+      "mode": "remote",
+      "status": "duplicate",
+      "publicationState": "published",
+      "sourceAuthority": "directory-duplicate",
+      "sourceVersion": "source-duplicate-copy-2026-08-20",
+      "taxonomy": ["writing.poetry"],
+      "eligibility": { "state": "unknown", "rules": [] },
+      "fee": { "state": "unknown", "amountMinor": null, "currency": "CAD" },
+      "funding": {
+        "state": "unknown",
+        "travelSupport": null,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "unknown", "features": [] },
+      "preparationDays": null,
+      "evidence": "duplicate",
+      "duplicateGroup": "dup_2026_01",
+      "duplicateOf": "opp_duplicate_primary"
+    },
+    {
+      "id": "opp_accessibility_unknown",
+      "country": "NZ",
+      "region": "Oceania",
+      "currency": "NZD",
+      "timezone": "Pacific/Auckland",
+      "mode": "remote",
+      "status": "open",
+      "publicationState": "published",
+      "sourceAuthority": "official-organization",
+      "sourceVersion": "source-nz-2026-08-20",
+      "taxonomy": ["interactive-media", "game-design"],
+      "eligibility": {
+        "state": "confirmed",
+        "rules": ["international applicants accepted"]
+      },
+      "fee": { "state": "confirmed", "amountMinor": 0, "currency": "NZD" },
+      "funding": {
+        "state": "confirmed",
+        "travelSupport": false,
+        "amountMinor": null
+      },
+      "accessibility": { "state": "unknown", "features": [] },
+      "preparationDays": 21,
+      "evidence": "complete-but-accessibility-missing",
+      "duplicateGroup": null
+    }
+  ],
+  "expectedCases": [
+    {
+      "id": "case_eligible_local",
+      "creatorId": "creator_nia_gh",
+      "opportunityId": "opp_local_gh",
+      "expectedEligibilityState": "eligible",
+      "requiredInvariants": [
+        "explicit practice overlap",
+        "confirmed no fee",
+        "confirmed access information"
+      ]
+    },
+    {
+      "id": "case_funding_and_travel",
+      "creatorId": "creator_ade_ng",
+      "opportunityId": "opp_hybrid_lagos",
+      "expectedEligibilityState": "eligible",
+      "requiredInvariants": [
+        "funding and travel support are separate facts",
+        "step-free is source-backed"
+      ]
+    },
+    {
+      "id": "case_cross_border_mismatch",
+      "creatorId": "creator_nia_gh",
+      "opportunityId": "opp_restricted_us",
+      "expectedEligibilityState": "ineligible",
+      "requiredInvariants": [
+        "only confirmed residence rule and explicit creator location can hard-exclude"
+      ]
+    },
+    {
+      "id": "case_unknown_fee",
+      "creatorId": "creator_amina_ke",
+      "opportunityId": "opp_unknown_fee_za",
+      "expectedEligibilityState": "unknown",
+      "requiredInvariants": [
+        "unknown fee is not paid",
+        "unknown eligibility is not rejection"
+      ]
+    },
+    {
+      "id": "case_short_preparation",
+      "creatorId": "creator_maya_in",
+      "opportunityId": "opp_short_prep",
+      "expectedEligibilityState": "needs_input",
+      "requiredInvariants": [
+        "short preparation is a watchout or needs-input state",
+        "no acceptance prediction"
+      ]
+    },
+    {
+      "id": "case_accessibility_confirmed",
+      "creatorId": "creator_noah_us",
+      "opportunityId": "opp_accessible_global",
+      "expectedEligibilityState": "eligible",
+      "requiredInvariants": ["explicit need matches confirmed source facts"]
+    },
+    {
+      "id": "case_accessibility_missing",
+      "creatorId": "creator_noah_us",
+      "opportunityId": "opp_accessibility_unknown",
+      "expectedEligibilityState": "needs_input",
+      "requiredInvariants": ["missing access facts do not hard-exclude"]
+    },
+    {
+      "id": "case_conflicting_evidence",
+      "creatorId": "creator_samira_ca",
+      "opportunityId": "opp_conflicting_deadline",
+      "expectedEligibilityState": "unknown",
+      "requiredInvariants": [
+        "conflicting deadline remains visible as uncertainty"
+      ]
+    },
+    {
+      "id": "case_disputed",
+      "creatorId": "creator_samira_ca",
+      "opportunityId": "opp_disputed",
+      "expectedEligibilityState": "ineligible",
+      "requiredInvariants": ["safety gate precedes relevance"]
+    },
+    {
+      "id": "case_removed",
+      "creatorId": "creator_jun_jp",
+      "opportunityId": "opp_removed",
+      "expectedEligibilityState": "ineligible",
+      "requiredInvariants": ["removed item cannot be restored by diversity"]
+    },
+    {
+      "id": "case_closed",
+      "creatorId": "creator_luca_it",
+      "opportunityId": "opp_closed",
+      "expectedEligibilityState": "ineligible",
+      "requiredInvariants": ["closed item cannot be restored by score"]
+    },
+    {
+      "id": "case_stale",
+      "creatorId": "creator_jun_jp",
+      "opportunityId": "opp_stale_global",
+      "expectedEligibilityState": "unknown",
+      "requiredInvariants": [
+        "stale evidence reduces confidence, not silently rejection"
+      ]
+    },
+    {
+      "id": "case_duplicate",
+      "creatorId": "creator_samira_ca",
+      "opportunityId": "opp_duplicate_copy",
+      "expectedEligibilityState": "ineligible",
+      "requiredInvariants": ["duplicate cannot create concentration"]
+    },
+    {
+      "id": "case_sensitive_inference_guard",
+      "creatorId": "creator_elena_mx",
+      "opportunityId": "opp_remote_global",
+      "expectedEligibilityState": "eligible",
+      "requiredInvariants": [
+        "no protected or sensitive attribute inferred from country, locale, name, or practice"
+      ]
+    }
+  ],
+  "concentrationCase": {
+    "id": "concentration_case_01",
+    "creatorId": "creator_samira_ca",
+    "candidateOrderBeforeRerank": [
+      "opp_duplicate_primary",
+      "opp_remote_global",
+      "opp_local_gh",
+      "opp_fee_brazil",
+      "opp_accessible_global"
+    ],
+    "organizationIds": [
+      "org_same_01",
+      "org_same_01",
+      "org_same_02",
+      "org_same_03",
+      "org_same_04"
+    ],
+    "expectedRule": "reranking may reduce concentration among eligible candidates but cannot restore an ineligible or duplicate item"
+  }
+}

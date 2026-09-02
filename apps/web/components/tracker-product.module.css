@@ -240,7 +240,8 @@
 }
 
 .quietLink svg,
-.primaryLink svg {
+.primaryLink svg,
+.quietButton svg {
   width: 16px;
   height: 16px;
 }

@@ -81,6 +81,7 @@ export type ReviewCandidate = PublicationRubricCandidate & {
   status: string;
   submissionState: string;
   deadlineDate: string | null;
+  openDate?: string | null;
   submissionUrl: string | null;
   guidelinesUrl: string | null;
   sourceUrl: string | null;
@@ -90,7 +91,7 @@ export type ReviewCandidate = PublicationRubricCandidate & {
 async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandidate | null> {
   const result = await pool.query<ReviewCandidate>(
     `select o.id as "opportunityId", o.title, o.status, o.submission_state as "submissionState",
-       o.deadline_date::text as "deadlineDate", o.deadline_kind as "deadlineKind", o.submission_url as "submissionUrl",
+       o.deadline_date::text as "deadlineDate", o.open_date::text as "openDate", o.deadline_kind as "deadlineKind", o.submission_url as "submissionUrl",
        o.guidelines_url as "guidelinesUrl", s.url as "sourceUrl",
        evidence.processing_succeeded_at as "processingSucceededAt",
        (coalesce(evidence.organization_confirmed, false) or profile_identity.confirmed) as "organizationConfirmed",

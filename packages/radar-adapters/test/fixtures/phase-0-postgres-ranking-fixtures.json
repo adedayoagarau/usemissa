@@ -1,0 +1,85 @@
+{
+  "fixtureId": "deterministic-fit-v1-phase-0-postgres-ranking-2026-08-20",
+  "capturedAt": "2026-08-20T12:00:00.000Z",
+  "environment": "local-query-builder-and-fixture-rows",
+  "sourceCommit": "d88e0e3f4",
+  "sourceFile": "packages/radar-adapters/src/opportunityRepository.ts",
+  "query": {
+    "category": "all",
+    "types": [],
+    "disciplines": [],
+    "genres": [],
+    "locations": [],
+    "openNow": true,
+    "verifiedOnly": false,
+    "sort": "recommended",
+    "limit": 4,
+    "accountId": "acct_phase0"
+  },
+  "candidateGate": {
+    "publicationState": "published",
+    "statuses": ["opening-soon", "open", "closing-soon", "deadline-extended"],
+    "taxonomyReads": "disabled unless the additive taxonomy schema readiness check passes"
+  },
+  "orderBy": "case when evidence.verified_until > now() then 0 else 1 end, o.deadline_date asc nulls last, o.processing_succeeded_at desc nulls last, o.id asc",
+  "fixtureRows": [
+    {
+      "id": "pg_verified_earlier",
+      "publicationState": "published",
+      "status": "open",
+      "verifiedUntil": "2026-09-01T00:00:00.000Z",
+      "deadline": "2026-08-22",
+      "processingSucceededAt": "2026-08-19T00:00:00.000Z"
+    },
+    {
+      "id": "pg_verified_later",
+      "publicationState": "published",
+      "status": "open",
+      "verifiedUntil": "2026-09-01T00:00:00.000Z",
+      "deadline": "2026-08-28",
+      "processingSucceededAt": "2026-08-19T00:00:00.000Z"
+    },
+    {
+      "id": "pg_unverified_earlier",
+      "publicationState": "published",
+      "status": "open",
+      "verifiedUntil": null,
+      "deadline": "2026-08-20",
+      "processingSucceededAt": "2026-08-20T00:00:00.000Z"
+    },
+    {
+      "id": "pg_unverified_no_deadline",
+      "publicationState": "published",
+      "status": "opening-soon",
+      "verifiedUntil": null,
+      "deadline": null,
+      "processingSucceededAt": "2026-08-20T00:00:00.000Z"
+    }
+  ],
+  "expectedOrder": [
+    "pg_verified_earlier",
+    "pg_verified_later",
+    "pg_unverified_earlier",
+    "pg_unverified_no_deadline"
+  ],
+  "cursorContract": {
+    "currentKey": "deadline_date plus id for soonest-deadline; corresponding sort key plus id for other sorts",
+    "policyBinding": false,
+    "phase0Finding": "current cursor is not bound to account, policy version, feature version, or snapshot"
+  },
+  "taxonomyVariants": [
+    {
+      "reads": "disabled",
+      "expected": "legacy empty taxonomy projection and no taxonomy exclusion SQL"
+    },
+    {
+      "reads": "enabled but schema not ready",
+      "expected": "readiness probe disables taxonomy SQL"
+    },
+    {
+      "reads": "enabled and schema ready",
+      "expected": "taxonomy assignment and explicit exclude SQL are present"
+    }
+  ],
+  "productionStatus": "unverified: rows are synthetic and the query was not executed against production"
+}

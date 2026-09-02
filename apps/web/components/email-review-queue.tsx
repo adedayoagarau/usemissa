@@ -23,6 +23,7 @@ type Candidate = {
   proposedStatus?: string;
   warnings: string[];
   attachmentMetadata: Array<{ filename: string; unsafe: boolean }>;
+  revision?: number;
 };
 
 type QueueMode = 'summary' | 'desk';
@@ -90,10 +91,11 @@ export function EmailReviewQueue({ mode = 'desk', onOpenDesk }: { mode?: QueueMo
     setBusy(candidate.id);
     setMessage('');
     try {
+      const idempotencyKey = `${candidate.id}:${crypto.randomUUID()}`;
       const response = await fetch(`/api/me/email-candidates/${candidate.id}/review`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ...decision, idempotencyKey: `${candidate.id}:${Date.now()}` }),
+        headers: { 'content-type': 'application/json', ...(candidate.revision ? { 'Idempotency-Key': idempotencyKey } : {}) },
+        body: JSON.stringify({ ...decision, idempotencyKey, ...(candidate.revision ? { expectedRevision: candidate.revision } : {}) }),
       });
       const body = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) {

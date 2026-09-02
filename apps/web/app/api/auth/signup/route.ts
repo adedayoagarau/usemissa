@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { AuthError } from "@missa/radar-engine";
-import { redeemWaitlistInvite } from "@missa/radar-adapters";
+import { CreatorAccountProvisionError, redeemWaitlistInvite } from "@missa/radar-adapters";
 import { getEngine, persistRadar } from "@/lib/engine";
+import { getCreatorAccountRepository } from "@/lib/creatorRepositories";
 import {
   issueSessionToken,
   sessionCookieOptions,
@@ -94,25 +95,30 @@ export async function POST(request: Request) {
     );
   }
 
-  const engine = await getEngine();
   let account;
   try {
-    ({ account } = engine.signUp(email, password, normalizedName));
+    const repository = getCreatorAccountRepository();
+    if (repository) ({ account } = await repository.provisionPasswordAccount({ email, password, displayName: normalizedName }));
+    else {
+      const engine = await getEngine();
+      ({ account } = engine.signUp(email, password, normalizedName));
+      await persistRadar();
+    }
   } catch (err) {
     const accountExists =
-      err instanceof Error &&
-      err.message.toLowerCase().includes("already exists");
+      (err instanceof CreatorAccountProvisionError && err.code === "account-exists") ||
+      (err instanceof Error && err.message.toLowerCase().includes("already exists"));
     const message = accountExists
       ? "An account already uses this email. Log in instead."
       : err instanceof AuthError
         ? err.message
         : "We could not create your account. Check your details and try again.";
+    if (!accountExists && !(err instanceof AuthError)) console.error("Account signup failed", err);
     return NextResponse.json(
       { error: message, ...(accountExists ? { code: "account_exists" } : {}) },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
-  await persistRadar();
 
   // Invite redemption is deliberately best-effort for account creation. An
   // expired, replayed, or not-yet-migrated invite must not prevent a person

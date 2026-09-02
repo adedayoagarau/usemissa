@@ -1,0 +1,45 @@
+{
+  "version": "deterministic-fit-safety-evidence-v1",
+  "now": "2026-08-20T12:00:00.000Z",
+  "cases": [
+    {
+      "id": "current-publication-clear",
+      "state": "clear",
+      "authority": "publication-review",
+      "versionRelation": "current",
+      "expected": "clear"
+    },
+    {
+      "id": "current-moderation-unsafe",
+      "state": "unsafe",
+      "authority": "canonical-moderation",
+      "versionRelation": "current",
+      "expected": "unsafe"
+    },
+    {
+      "id": "stale-clear",
+      "state": "clear",
+      "authority": "publication-review",
+      "versionRelation": "current",
+      "expiresAt": "2026-08-10T00:00:00.000Z",
+      "expected": "unknown",
+      "missing": "stale"
+    },
+    {
+      "id": "customer-report-clear",
+      "state": "clear",
+      "authority": "customer-report",
+      "versionRelation": "current",
+      "expected": "unknown",
+      "missing": "not-modeled"
+    },
+    {
+      "id": "wrong-version-clear",
+      "state": "clear",
+      "authority": "publication-review",
+      "versionRelation": "different",
+      "expected": "unknown",
+      "missing": "authority-unknown"
+    }
+  ]
+}

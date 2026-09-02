@@ -1,19 +1,15 @@
 import { NextResponse } from 'next/server';
-import { verifyFeedToken } from '@missa/radar-engine';
-import { sessionSecret } from '@/lib/auth';
-import { getEngine } from '@/lib/engine';
+import { getCreatorCalendarRepository } from '@/lib/creatorRepositories';
+import { relationalCalendarFeed } from '@/lib/creator-calendar';
 
-/** No session-cookie auth here on purpose (see calendar-token/route.ts's
- * comment) -- verified via the token query param instead. */
+const noStore = { 'Cache-Control': 'private, no-store' };
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const token = new URL(request.url).searchParams.get('token') ?? '';
-  const payload = verifyFeedToken(token, sessionSecret());
-  if (!payload || payload.userId !== id) {
-    return NextResponse.json({ error: 'Invalid or missing calendar feed token' }, { status: 401 });
-  }
-
-  const engine = await getEngine();
-  const ics = engine.calendarFeed(id);
-  return new NextResponse(ics, { headers: { 'content-type': 'text/calendar; charset=utf-8' } });
+  const repository = getCreatorCalendarRepository();
+  if (!repository || !token) return NextResponse.json({ error: 'Invalid or missing calendar feed token' }, { status: 401, headers: noStore });
+  const items = await repository.itemsForToken(id, token);
+  if (!items) return NextResponse.json({ error: 'Invalid or missing calendar feed token' }, { status: 401, headers: noStore });
+  return new NextResponse(relationalCalendarFeed(items), { headers: { ...noStore, 'Content-Type': 'text/calendar; charset=utf-8', 'Content-Disposition': 'inline; filename="missa-deadlines.ics"' } });
 }
