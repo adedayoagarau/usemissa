@@ -1,6 +1,15 @@
 import { Pool } from "pg";
+import { extractProfileIntelligence } from "./profileIntelligenceExtractor.js";
 
-export type ProfileKind = "literary_magazine" | "small_press";
+
+export type ProfileKind =
+  | "literary_magazine"
+  | "small_press"
+  | "visual_arts_organization"
+  | "gallery"
+  | "residency_center"
+  | "grant_foundation"
+  | "organization";
 
 export interface ProfileBrowseQuery {
   kind?: ProfileKind;
@@ -33,7 +42,43 @@ export interface ProfileOpportunity {
   status: "open" | "closed" | "unknown";
 }
 
+export interface ProfileVisual {
+  id: string;
+  assetType: "logo" | "banner" | "issue_cover";
+  imageUrl: string;
+  label: string | null;
+  issueYear: number | null;
+  season: string | null;
+}
+
+export interface ProfilePrizeWinner {
+  id: string;
+  contestName: string;
+  awardYear: number;
+  winnerName: string;
+  winningTitle: string | null;
+  winningWorkUrl: string | null;
+  judgeName: string | null;
+}
+
+export interface ProfileIntelligenceData {
+  prestigeTier: string;
+  foundingYear: number | null;
+  honors: string[];
+  editorialArchetype: string;
+  sentimentTags: string[];
+  responseDaysMin: number | null;
+  responseDaysMax: number | null;
+  responseLabel: string | null;
+  queryPolicy: string | null;
+}
+
 export interface ProfileDetail extends ProfileCard {
+  logoUrl: string | null;
+  visuals: ProfileVisual[];
+  prizeProvenance: ProfilePrizeWinner[];
+  intelligence: ProfileIntelligenceData | null;
+  socialLinks: Record<string, string | null>;
   submissionGuidelinesUrl: string | null;
   subgenres: string[];
   bookTypes: string[];
@@ -56,6 +101,7 @@ export interface ProfileDetail extends ProfileCard {
   publishesThroughContestsOnly: string | null;
   opportunities: ProfileOpportunity[];
 }
+
 
 export interface ProfileBrowsePage {
   items: ProfileCard[];
@@ -181,8 +227,102 @@ export class PostgresProfileRepository implements ProfileRepository {
         WHERE l.profile_id=$1 AND l.status='confirmed' AND l.verified_until > now()
           AND o.publication_state='published'
       ) linked ORDER BY deadline NULLS LAST, title`, values: [id] });
+
+    let visuals: ProfileVisual[] = [];
+    try {
+      const visRes = await this.pool.query({
+        text: `SELECT id, asset_type, image_url, label, issue_year, season FROM gary_profile_visuals WHERE profile_id=$1 ORDER BY created_at DESC`,
+        values: [id],
+      });
+      visuals = visRes.rows.map((r) => ({
+        id: String(r.id),
+        assetType: r.asset_type as "logo" | "banner" | "issue_cover",
+        imageUrl: String(r.image_url),
+        label: nullableText(r.label),
+        issueYear: r.issue_year != null ? Number(r.issue_year) : null,
+        season: nullableText(r.season),
+      }));
+    } catch {
+      // Table may not exist yet or empty
+    }
+
+    let prizeProvenance: ProfilePrizeWinner[] = [];
+    try {
+      const prizeRes = await this.pool.query({
+        text: `SELECT id, contest_name, award_year, winner_name, winning_title, winning_work_url, judge_name FROM gary_prize_provenance WHERE profile_id=$1 ORDER BY award_year DESC`,
+        values: [id],
+      });
+      prizeProvenance = prizeRes.rows.map((r) => ({
+        id: String(r.id),
+        contestName: String(r.contest_name),
+        awardYear: Number(r.award_year),
+        winnerName: String(r.winner_name),
+        winningTitle: nullableText(r.winning_title),
+        winningWorkUrl: nullableText(r.winning_work_url),
+        judgeName: nullableText(r.judge_name),
+      }));
+    } catch {
+      // Table may not exist yet or empty
+    }
+
+    let intelligence: ProfileIntelligenceData | null = null;
+    let socialLinks: Record<string, string | null> = {};
+    try {
+      const intelRes = await this.pool.query({
+        text: `SELECT * FROM gary_profile_intelligence WHERE profile_id=$1`,
+        values: [id],
+      });
+      if (intelRes.rows.length > 0) {
+        const ir = intelRes.rows[0];
+        intelligence = {
+          prestigeTier: String(ir.prestige_tier || "Tier 3 (Emerging & Community)"),
+          foundingYear: ir.founding_year != null ? Number(ir.founding_year) : null,
+          honors: jsonArray(ir.honors),
+          editorialArchetype: String(ir.editorial_archetype || "Eclectic & Open"),
+          sentimentTags: jsonArray(ir.sentiment_tags),
+          responseDaysMin: ir.response_days_min != null ? Number(ir.response_days_min) : null,
+          responseDaysMax: ir.response_days_max != null ? Number(ir.response_days_max) : null,
+          responseLabel: nullableText(ir.response_label),
+          queryPolicy: nullableText(ir.query_policy),
+        };
+        socialLinks = (typeof ir.social_links === "object" && ir.social_links !== null ? ir.social_links : {}) as Record<string, string | null>;
+      }
+    } catch {
+      // Table may not exist yet or empty
+    }
+
+    // Dynamic fallback if not backfilled in DB yet
+    if (!intelligence) {
+      const computed = extractProfileIntelligence({
+        responseTime: nullableText(row.response_time),
+        editorialFocus: nullableText(row.editorial_focus),
+        editorialTips: nullableText(row.editorial_tips),
+        representativeAuthors: nullableText(row.representative_authors),
+        circulation: nullableText(row.circulation),
+        fullText: nullableText(row.full_text),
+      });
+      intelligence = {
+        prestigeTier: computed.prestige.prestigeTier,
+        foundingYear: computed.prestige.foundingYear,
+        honors: computed.prestige.honors,
+        editorialArchetype: computed.demeanor.archetype,
+        sentimentTags: computed.demeanor.sentimentTags,
+        responseDaysMin: computed.responseTime.minDays,
+        responseDaysMax: computed.responseTime.maxDays,
+        responseLabel: computed.responseTime.label,
+        queryPolicy: computed.responseTime.queryAllowedAfterDays ? `Queries allowed after ${computed.responseTime.queryAllowedAfterDays} days` : null,
+      };
+    }
+
+    const logoUrl = visuals.find((v) => v.assetType === "logo")?.imageUrl || base.mediaUrl;
+
     return {
       ...base,
+      logoUrl,
+      visuals,
+      prizeProvenance,
+      intelligence,
+      socialLinks,
       submissionGuidelinesUrl: nullableText(row.submission_guidelines_url),
       subgenres: jsonArray(row.subgenres_json),
       bookTypes: jsonArray(row.book_types_json),
@@ -216,6 +356,7 @@ export class PostgresProfileRepository implements ProfileRepository {
       })),
     };
   }
+
 
   async getMediaByProfileId(id: string): Promise<ProfileMedia | null> {
     const result = await this.pool.query({

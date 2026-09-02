@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, MapPin, Tag } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { CalendarDays, Gift, MapPin, Tag } from "lucide-react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import styles from "./opportunity-catalogue-card.module.css";
 
 function initials(item: OpportunityBrowseProjection): string {
@@ -57,14 +60,37 @@ function feeLabel(item: OpportunityBrowseProjection): string {
   return "Application fee";
 }
 
+function statusLabel(
+  status: OpportunityBrowseProjection["status"],
+  deadline: OpportunityBrowseProjection["deadline"],
+): string | null {
+  if (status === "closing-soon" && deadline.date) {
+    const deadlineTime = new Date(`${deadline.date}T23:59:59`).getTime();
+    const days = Math.max(0, Math.ceil((deadlineTime - Date.now()) / 86_400_000));
+    return days === 0 ? "Closes today" : `Closes in ${days} ${days === 1 ? "day" : "days"}`;
+  }
+  if (status === "closing-soon") return "Closing soon";
+  if (status === "deadline-extended") return "Deadline extended";
+  if (status === "opening-soon") return "Opening soon";
+  if (deadline.kind === "rolling" || deadline.kind === "until-filled") return "Always open";
+  return null;
+}
+
 export function OpportunityCatalogueCard({
   item,
   signedIn,
+  previewMode = false,
 }: {
   item: OpportunityBrowseProjection;
   signedIn: boolean;
+  previewMode?: boolean;
 }) {
-  const detailHref = `/opportunities/${item.slug}`;
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const detailHref = previewMode
+    ? `/opportunities?preview=public#${item.id}`
+    : `/opportunities/${item.slug}`;
+  const returnTo = `${pathname}${searchParams.size ? `?${searchParams.toString()}` : ""}`;
   const practices = Array.from(
     new Set(
       [item.discipline, ...item.genres].filter((value): value is string =>
@@ -72,13 +98,16 @@ export function OpportunityCatalogueCard({
       ),
     ),
   ).slice(0, 2);
+  const publicStatus = statusLabel(item.status, item.deadline);
+  const titleId = `opportunity-${item.id}-title`;
 
   return (
-    <article className={styles.card}>
+    <article>
+      <Card className={styles.card} size="lg" variant="interactive">
       <Link
         href={detailHref}
         className={styles.openLink}
-        aria-label={`View ${item.title}`}
+        aria-labelledby={titleId}
       >
         <span className={styles.media}>
           {item.identityAssetUrl ? (
@@ -95,27 +124,43 @@ export function OpportunityCatalogueCard({
           )}
         </span>
         <span className={styles.body}>
-          <span className={styles.type}>{typeLabel(item.type)}</span>
-          <span className={styles.title}>{item.title}</span>
+          <span className={styles.kicker}>
+            <span className={styles.type}>{typeLabel(item.type)}</span>
+            {publicStatus ? (
+              <Badge variant="secondary" className={`${styles.status} ${styles[item.status]}`}>
+                {publicStatus}
+              </Badge>
+            ) : null}
+          </span>
+          <span id={titleId} className={styles.title}>{item.title}</span>
           <span className={styles.organization}>
             {item.organizationName ?? "Organization not confirmed"}
           </span>
+          {item.content?.summary ? (
+            <span className={styles.summary}>{item.content.summary}</span>
+          ) : null}
           {practices.length ? (
             <span className={styles.practices}>{practices.join(" · ")}</span>
           ) : null}
           <span className={styles.facts}>
-            <span>
+            <span data-kind="deadline">
               <CalendarDays aria-hidden="true" />
               {deadlineLabel(item.deadline)}
             </span>
-            <span>
+            <span data-kind={item.fee.status === "no-fee" ? "positive" : "fee"}>
               <Tag aria-hidden="true" />
               {feeLabel(item)}
             </span>
-            <span>
+            <span data-kind="information">
               <MapPin aria-hidden="true" />
               {item.location ?? "Location not listed"}
             </span>
+            {item.prize ? (
+              <span data-kind="award">
+                <Gift aria-hidden="true" />
+                {item.prize}
+              </span>
+            ) : null}
           </span>
         </span>
       </Link>
@@ -125,13 +170,14 @@ export function OpportunityCatalogueCard({
           tracked={item.personal?.tracked}
           compact
           signedIn={signedIn}
-          returnTo={detailHref}
+          returnTo={returnTo}
           opportunityTitle={item.title}
         />
         <span aria-hidden="true">
           {item.personal?.tracked ? "In Tracker" : "Save"}
         </span>
       </div>
+      </Card>
     </article>
   );
 }

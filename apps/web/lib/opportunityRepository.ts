@@ -176,7 +176,28 @@ function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepos
   if (categoryTypes.length && !categoryTypes.includes(item.type)) return false;
   if (query.types?.length && !query.types.includes(item.type)) return false;
   if (query.disciplines?.length && (!item.discipline || !query.disciplines.includes(item.discipline))) return false;
-  if (query.genres?.length && !item.genres.some((genre) => query.genres?.includes(genre))) return false;
+  if (query.genres?.length && !item.genres.some((genre) => query.genres?.some((g) => g.toLowerCase() === genre.toLowerCase() || genre.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(genre.toLowerCase())))) return false;
+  if ((query as { domain?: string }).domain) {
+    const domain = (query as { domain?: string }).domain!.toLowerCase();
+    const VISUAL_ARTS = ["painting", "sculpture", "photography", "film", "video", "film/video", "printmaking", "digital art", "sound art", "performance", "ceramics", "installation", "drawing", "textiles", "mixed media", "public art", "visual art"];
+    const MULTI = ["multidisciplinary", "interdisciplinary", "cross-disciplinary"];
+    const LIT = ["poetry", "fiction", "nonfiction", "creative nonfiction", "essay", "short story", "memoir", "literature", "literary", "writing"];
+    const itemHaystack = `${item.title} ${item.genres.join(" ")} ${item.discipline ?? ""} ${item.type}`.toLowerCase();
+
+    if (domain === "visual_arts" || domain === "visual-arts") {
+      const match = item.type === "exhibition" || item.type === "commission" || VISUAL_ARTS.some((m) => itemHaystack.includes(m));
+      if (!match) return false;
+    } else if (domain === "residencies" || domain === "residency") {
+      const match = item.type === "residency" || itemHaystack.includes("residency");
+      if (!match) return false;
+    } else if (domain === "multidisciplinary") {
+      const match = MULTI.some((m) => itemHaystack.includes(m));
+      if (!match) return false;
+    } else if (domain === "literature") {
+      const match = item.type === "magazine" || LIT.some((l) => itemHaystack.includes(l));
+      if (!match) return false;
+    }
+  }
   if (query.taxonomyTermIds?.length) {
     const matchesRequested = (requestedId: string): boolean => {
       if (item.taxonomy?.termIds.includes(requestedId)) return true;

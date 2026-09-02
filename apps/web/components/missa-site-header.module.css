@@ -103,13 +103,13 @@
 
 .authActions > .createButton {
   min-height: 44px;
-  border-color: #5a3f68;
-  background: #5a3f68;
+  border-color: var(--primary);
+  background: var(--primary);
   color: #fff;
 }
 
 .authActions > .createButton:hover {
-  background: #463151;
+  background: color-mix(in srgb, var(--primary) 88%, black);
   color: #fff;
 }
 

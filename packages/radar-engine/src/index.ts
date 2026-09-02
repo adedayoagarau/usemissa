@@ -80,6 +80,7 @@ export { internalRecheckFromHistory, normalizeOpportunityIntakeMode, projectOppo
 export { predictNextOpening, recordCycle } from './prediction/prediction.js';
 export { matchesCriteria, matchesOpportunityPreferences, matchProfiles, type MatchResult } from './matching/matching.js';
 export * from './recommendation/index.js';
+export * from './onboarding/creatorOnboarding.js';
 export {
   assessCoverage,
   buildCoverageQueries,
@@ -229,3 +230,17 @@ export type {
   RegistryCoverageSummary,
 } from './registry/types.js';
 export type { RegistryTaxonomyAudit, RegistryVerticalCompatibility } from './registry/taxonomy.js';
+export {
+  OpportunitySearchEngine,
+  searchOpportunities,
+  detectOpportunityDomain,
+  matchesDomain,
+  VISUAL_ARTS_MEDIUMS,
+  MULTIDISCIPLINARY_TERMS,
+  LITERATURE_TERMS,
+  type OpportunitySearchDomain,
+  type OpportunitySearchOptions,
+  type OpportunitySearchHit,
+  type OpportunitySearchResult,
+} from './search/opportunitySearchEngine.js';
+

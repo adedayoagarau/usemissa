@@ -34,10 +34,12 @@ function FilterPanel({
   locations,
   facetCounts,
   onDone,
+  resultCount,
 }: {
   locations: Array<{ value: string; label: string }>;
   facetCounts: OpportunityFacetCounts;
   onDone?: () => void;
+  resultCount?: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -50,7 +52,6 @@ function FilterPanel({
     const query = next.toString();
     startTransition(() => {
       router.push(query ? `${pathname}?${query}` : pathname);
-      onDone?.();
     });
   }
 
@@ -148,24 +149,6 @@ function FilterPanel({
         </div>
       </fieldset>
 
-      <fieldset className={styles.group}>
-        <legend>Categories</legend>
-        <div className={styles.checkList}>
-          {facetCounts.practices.map((term) => (
-            <label key={term.value} className={styles.checkRow}>
-              <Checkbox
-                checked={selectedTerms.includes(term.value)}
-                onCheckedChange={(checked) =>
-                  toggleValue("taxonomy", term.value, checked === true)
-                }
-              />
-              <span>{term.label}</span>
-              <small>{term.count.toLocaleString()}</small>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-
       <label className={styles.selectField}>
         <span>Location or eligibility reach</span>
         <select
@@ -254,7 +237,7 @@ function FilterPanel({
         ) : null}
       </div>
       <Button type="button" className={styles.doneButton} onClick={onDone}>
-        Show opportunities
+        Show {resultCount?.toLocaleString() ?? ""} opportunities
       </Button>
     </form>
   );
@@ -264,10 +247,12 @@ export function OpportunityCatalogueFilters({
   locations,
   activeFilterCount,
   facetCounts,
+  resultCount,
 }: {
   locations: Array<{ value: string; label: string }>;
   activeFilterCount: number;
   facetCounts: OpportunityFacetCounts;
+  resultCount: number;
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
@@ -302,6 +287,7 @@ export function OpportunityCatalogueFilters({
               locations={locations}
               facetCounts={facetCounts}
               onDone={() => setSheetOpen(false)}
+              resultCount={resultCount}
             />
           </div>
         </SheetContent>

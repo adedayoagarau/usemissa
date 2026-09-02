@@ -65,7 +65,11 @@ import {
   trackerListMemberships,
   trackerChecklists,
   trackerChecklistItems,
+  garyProfileVisuals,
+  garyPrizeProvenance,
+  garyProfileIntelligence,
 } from "../src/schema.js";
+
 
 test("platform schema carries tenant, audit, outbox, and reviewer indexes", () => {
   const membershipConfig = getTableConfig(memberships);
@@ -520,3 +524,43 @@ test("waitlist invites keep hashed tokens unique and link to accounts safely", (
     true,
   );
 });
+
+test("creative preparation backfill schema defines visuals, prize provenance, and intelligence", () => {
+  const visualsConfig = getTableConfig(garyProfileVisuals);
+  assert.ok(
+    visualsConfig.indexes.some(
+      (index) => index.config.name === "gary_profile_visuals_profile_idx",
+    ),
+  );
+  assert.ok(
+    visualsConfig.checks.some(
+      (constraint) => constraint.name === "gary_profile_visuals_asset_type_check",
+    ),
+  );
+
+  const prizeConfig = getTableConfig(garyPrizeProvenance);
+  assert.ok(
+    prizeConfig.indexes.some(
+      (index) => index.config.name === "gary_prize_provenance_profile_idx",
+    ),
+  );
+  assert.equal(
+    prizeConfig.columns.find((c) => c.name === "winner_name")?.notNull,
+    true,
+  );
+
+  const intelConfig = getTableConfig(garyProfileIntelligence);
+  assert.equal(
+    intelConfig.columns.find((c) => c.name === "profile_id")?.primary,
+    true,
+  );
+  assert.equal(
+    intelConfig.columns.find((c) => c.name === "prestige_tier")?.notNull,
+    true,
+  );
+  assert.equal(
+    intelConfig.columns.find((c) => c.name === "editorial_archetype")?.notNull,
+    true,
+  );
+});
+

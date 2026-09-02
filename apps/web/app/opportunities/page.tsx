@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { Sparkles, X } from "lucide-react";
+import { Info, SearchX, X } from "lucide-react";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import { parseOpportunityBrowseQuery } from "@/lib/opportunityQuery";
@@ -13,10 +13,19 @@ import { OpportunityResultsRefresh } from "@/components/opportunity-results-refr
 import { OpportunityResults } from "@/components/opportunity-results";
 import { OpportunitySearch } from "@/components/opportunity-search";
 import { OpportunitySort } from "@/components/opportunity-sort";
+import { OpportunityPracticeNav } from "@/components/opportunity-practice-nav";
+import {
+  OpportunityFeedTabs,
+  type OpportunityFeedId,
+} from "@/components/opportunity-feed-tabs";
 import { SaveSearchButton } from "@/components/save-search-button";
 import { PublicDiscoveryEvent } from "@/components/public-discovery-event";
 import { Button } from "@/components/ui/button";
 import { JsonLd, absoluteUrl, pageMetadata } from "@/lib/seo";
+import {
+  PUBLIC_OPPORTUNITY_PREVIEW_FACETS,
+  previewItemsForQuery,
+} from "@/lib/opportunityPreviewFixtures";
 import styles from "./opportunities.module.css";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -117,17 +126,37 @@ export default async function OpportunitiesPage({
     cookieStore.get(SESSION_COOKIE)?.value,
   );
   const rawParams = searchParams ? await searchParams : {};
+  const publicPreview = rawParams.preview === "public";
+  const activeSession = publicPreview ? null : session;
   const urlParams = toUrlSearchParams(rawParams);
   const query = parseOpportunityBrowseQuery(urlParams);
+  const activeFeed: OpportunityFeedId =
+    query.feeStatus === "no-fee"
+      ? "free"
+      : query.deadlineWithinDays === 14
+        ? "closing"
+        : query.sort === "recently-added"
+          ? "recent"
+          : "all";
   const baseQueryParams = new URLSearchParams(urlParams);
   baseQueryParams.delete("cursor");
   const [result, facetCounts] = await Promise.all([
     getOpportunityRepository().browse(
       query,
-      session?.account.id ? { accountId: session.account.id } : undefined,
+      activeSession?.account.id
+        ? { accountId: activeSession.account.id }
+        : undefined,
     ),
     getOpportunityFacetCounts(),
   ]);
+  const usePreviewFixtures = publicPreview && result.items.length === 0;
+  const previewItems = usePreviewFixtures ? previewItemsForQuery(query) : [];
+  const displayResult = usePreviewFixtures
+    ? { items: previewItems, total: previewItems.length, nextCursor: null }
+    : result;
+  const displayFacetCounts = usePreviewFixtures
+    ? PUBLIC_OPPORTUNITY_PREVIEW_FACETS
+    : facetCounts;
   const filterCount = activeFilterCount(query);
   const activeChips = [
     ...query.types.map((value) => ({
@@ -199,12 +228,15 @@ export default async function OpportunitiesPage({
     : filterCount
       ? "No opportunities match this combination yet. Try removing one filter or broadening the location."
       : "No open opportunities are available right now. Try again later.";
-  const headerSession = session
+  const headerSession = activeSession
     ? {
-        email: session.account.email,
-        hasOrganization: session.memberships.length > 0,
+        email: activeSession.account.email,
+        hasOrganization: activeSession.memberships.length > 0,
       }
     : null;
+  const clearFiltersHref = publicPreview
+    ? "/opportunities?preview=public"
+    : "/opportunities";
 
   return (
     <div className={styles.shell}>
@@ -213,7 +245,7 @@ export default async function OpportunitiesPage({
         eventName="public.discovery_view"
         properties={{
           surface: "opportunities",
-          resultCount: result.items.length,
+          resultCount: displayResult.items.length,
         }}
       />
       <JsonLd
@@ -226,8 +258,8 @@ export default async function OpportunitiesPage({
           url: absoluteUrl("/opportunities"),
           mainEntity: {
             "@type": "ItemList",
-            numberOfItems: result.items.length,
-            itemListElement: result.items.map((item, index) => ({
+            numberOfItems: displayResult.items.length,
+            itemListElement: displayResult.items.map((item, index) => ({
               "@type": "ListItem",
               position: index + 1,
               name: item.title,
@@ -237,29 +269,51 @@ export default async function OpportunitiesPage({
         }}
       />
 
-      <main id="main-content" className={styles.main}>
+      <main id="main-content" className={styles.main} data-density="comfortable">
         <section className={styles.intro} aria-labelledby="opportunities-title">
-          <p className={styles.eyebrow}>Opportunities</p>
-          <h1 id="opportunities-title">Opportunities</h1>
-          <p>
-            Find credible calls, understand what they ask for, and keep the next
-            deadline in view.
+          <div>
+            <p className={styles.eyebrow}>Missa field guide</p>
+            <h1 id="opportunities-title">Opportunities for creative work</h1>
+            <p className={styles.lede}>
+              Credible calls across writing, visual arts, performance, film,
+              music, design, and interdisciplinary practice.
+            </p>
+          </div>
+          <p className={styles.publicNote}>
+            <Info aria-hidden="true" />
+            <span>
+              Browsing is public. Save and track with a free account.
+            </span>
           </p>
         </section>
 
-        <div className={styles.workspace}>
-          <OpportunityCatalogueFilters
-            locations={LOCATION_OPTIONS}
-            activeFilterCount={filterCount}
-            facetCounts={facetCounts}
-          />
+        {usePreviewFixtures ? (
+          <p className={styles.previewNotice} role="note">
+            Design preview · Representative examples, not published listings
+          </p>
+        ) : null}
 
+        <OpportunityPracticeNav
+          practices={displayFacetCounts.practices}
+          currentQuery={urlParams.toString()}
+          selectedTaxonomy={query.taxonomyTermIds}
+        />
+
+        <OpportunityFeedTabs activeFeed={activeFeed} />
+
+        <div className={styles.workspace}>
           <section className={styles.results} aria-labelledby="results-heading">
             <div className={styles.searchRow}>
               <OpportunitySearch
                 key={query.query ?? ""}
                 category={query.category}
                 initialQuery={query.query}
+              />
+              <OpportunityCatalogueFilters
+                locations={LOCATION_OPTIONS}
+                activeFilterCount={filterCount}
+                facetCounts={displayFacetCounts}
+                resultCount={displayResult.total}
               />
             </div>
 
@@ -280,21 +334,21 @@ export default async function OpportunitiesPage({
                     <X aria-hidden="true" />
                   </Link>
                 ))}
-                <Link href="/opportunities" className={styles.clear}>
+                <Link href={clearFiltersHref} className={styles.clear}>
                   Clear all
                 </Link>
               </div>
             ) : null}
 
             <div className={styles.toolbar}>
-              <h2 id="results-heading">
-                {result.total.toLocaleString()}{" "}
-                {result.total === 1 ? "opportunity" : "opportunities"}
+              <h2 id="results-heading" aria-live="polite" aria-atomic="true">
+                {displayResult.total.toLocaleString()}{" "}
+                {displayResult.total === 1 ? "opportunity" : "opportunities"}
               </h2>
               <div className={styles.toolbarActions}>
-                {session?.account.userId ? (
+                {activeSession?.account.userId ? (
                   <SaveSearchButton
-                    userId={session.account.userId}
+                    userId={activeSession.account.userId}
                     criteria={saveCriteria}
                     defaultName={
                       query.query
@@ -303,28 +357,29 @@ export default async function OpportunitiesPage({
                     }
                   />
                 ) : null}
-                <OpportunitySort className={styles.sort} />
+                <OpportunitySort className={styles.sort} signedIn={Boolean(activeSession)} />
               </div>
             </div>
 
             <OpportunityResultsRefresh queryKey={urlParams.toString()}>
-              {result.items.length ? (
+              {displayResult.items.length ? (
                 <OpportunityResults
-                  initialItems={result.items}
-                  initialNextCursor={result.nextCursor}
+                  initialItems={displayResult.items}
+                  initialNextCursor={displayResult.nextCursor}
                   baseQuery={baseQueryParams.toString()}
-                  signedIn={Boolean(session)}
+                  signedIn={Boolean(activeSession)}
+                  previewMode={usePreviewFixtures}
                 />
               ) : (
                 <div className={styles.empty}>
                   <span>
-                    <Sparkles aria-hidden="true" />
+                    <SearchX aria-hidden="true" />
                   </span>
                   <h2>No opportunities match these filters</h2>
                   <p>{emptyDescription}</p>
                   <Button
                     nativeButton={false}
-                    render={<Link href="/opportunities" />}
+                    render={<Link href={clearFiltersHref} />}
                     variant="outline"
                   >
                     Clear filters

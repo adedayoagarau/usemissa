@@ -51,9 +51,13 @@ export function SaveToTrackerButton({
       aria-label={
         pending
           ? "Saving Opportunity"
-          : opportunityTitle
-            ? `Save ${opportunityTitle} privately`
-            : "Save Opportunity privately"
+          : !signedIn
+            ? opportunityTitle
+              ? `Sign in to save ${opportunityTitle} privately`
+              : "Sign in to save this Opportunity privately"
+            : opportunityTitle
+              ? `Save ${opportunityTitle} privately`
+              : "Save Opportunity privately"
       }
       onClick={() => {
         startTransition(async () => {

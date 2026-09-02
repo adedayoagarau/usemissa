@@ -21,11 +21,13 @@ export function OpportunityResults({
   initialNextCursor,
   baseQuery,
   signedIn,
+  previewMode = false,
 }: {
   initialItems: OpportunityBrowseProjection[];
   initialNextCursor: string | null;
   baseQuery: string;
   signedIn: boolean;
+  previewMode?: boolean;
 }) {
   const [snapshots] = useState(() => new Map<string, Snapshot>([['first', { items: initialItems, nextCursor: initialNextCursor }]]));
   const [items, setItems] = useState(initialItems);
@@ -83,7 +85,7 @@ export function OpportunityResults({
   return (
     <>
       <div className={styles.grid}>
-        {items.map((item) => <OpportunityCatalogueCard key={item.id} item={item} signedIn={signedIn} />)}
+        {items.map((item) => <OpportunityCatalogueCard key={item.id} item={item} signedIn={signedIn} previewMode={previewMode} />)}
       </div>
       {nextCursor ? (
         <div className={styles.loadMore}>

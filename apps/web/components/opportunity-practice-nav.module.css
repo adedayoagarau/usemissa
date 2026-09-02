@@ -1,0 +1,89 @@
+.nav {
+  position: relative;
+  margin-top: var(--space-group);
+  border-bottom: 1px solid var(--border);
+}
+
+.scroller {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scroll-padding-inline: 4px;
+  scrollbar-width: none;
+}
+
+.scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.scroller a {
+  position: relative;
+  display: inline-flex;
+  min-height: 48px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.scroller a::after {
+  position: absolute;
+  right: 12px;
+  bottom: -1px;
+  left: 12px;
+  height: 2px;
+  background: transparent;
+  content: "";
+}
+
+.scroller a:hover {
+  color: var(--foreground);
+}
+
+.scroller a:focus-visible {
+  border-radius: 6px;
+  outline: 3px solid color-mix(in srgb, var(--ring) 28%, transparent);
+  outline-offset: -3px;
+}
+
+.scroller a.active {
+  color: var(--primary);
+}
+
+.scroller a.active::after {
+  background: var(--primary);
+}
+
+.scroller svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+  .nav {
+    margin-right: -16px;
+    margin-top: var(--space-group);
+  }
+
+  .nav::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 1px;
+    width: 18px;
+    border-left: 1px solid var(--border);
+    background: var(--background);
+    content: "";
+    pointer-events: none;
+  }
+
+  .scroller {
+    padding-right: 34px;
+  }
+}

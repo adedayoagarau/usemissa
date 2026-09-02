@@ -1,29 +1,20 @@
 .card {
   position: relative;
   min-width: 0;
-  min-height: 218px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: white;
-  transition:
-    border-color 150ms ease,
-    box-shadow 150ms ease,
-    transform 150ms ease;
+  min-height: 0;
+  gap: 0;
+  padding-block: 0;
 }
 
 .card:hover,
 .card:focus-within {
-  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
-  box-shadow: 0 12px 30px rgb(71 48 80 / 8%);
-  transform: translateY(-1px);
+  border-color: var(--input);
 }
 
 .openLink {
-  display: grid;
-  min-height: 216px;
+  display: block;
+  min-height: 100%;
   color: inherit;
-  grid-template-columns: minmax(132px, 34%) minmax(0, 1fr);
   text-decoration: none;
 }
 
@@ -35,7 +26,7 @@
 .media {
   position: relative;
   display: block;
-  min-height: 100%;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
   background: var(--mineral-blue-tint);
 }
@@ -53,7 +44,7 @@
   min-height: 160px;
   place-items: center;
   background: var(--mineral-blue-tint);
-  color: #274b59;
+  color: var(--mineral-blue);
   font-family: var(--font-mono), monospace;
   font-size: 20px;
   letter-spacing: 0.2em;
@@ -62,37 +53,77 @@
 .body {
   display: flex;
   min-width: 0;
-  padding: 20px 58px 20px 20px;
+  min-height: 288px;
+  padding: var(--space-inset);
   flex-direction: column;
 }
 
+.kicker {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding-right: 0;
+}
+
 .type {
-  color: var(--accent-deep);
+  color: var(--mineral-blue);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
+.status {
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.closing-soon {
+  background: var(--ochre-tint);
+  color: var(--ochre-deep);
+}
+
+.deadline-extended {
+  background: var(--mineral-blue-tint);
+  color: var(--mineral-blue);
+}
+
+.opening-soon {
+  background: var(--mineral-blue-tint);
+  color: var(--mineral-blue);
+}
+
 .title {
-  display: -webkit-box;
   margin-top: 8px;
-  overflow: hidden;
   font-family: var(--font-heading), Georgia, serif;
   font-size: clamp(1.25rem, 1.7vw, 1.65rem);
   font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1.15;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
 }
 
 .organization,
-.practices {
+.practices,
+.summary {
   margin-top: 8px;
   color: var(--muted-foreground);
   font-size: 14px;
   line-height: 1.35;
+}
+
+.summary {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .practices {
@@ -102,8 +133,9 @@
 
 .facts {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: auto;
-  gap: 7px;
+  gap: 8px;
   padding-top: 12px;
   color: var(--muted-foreground);
   font-size: 13px;
@@ -120,7 +152,21 @@
   width: 16px;
   height: 16px;
   flex: 0 0 auto;
-  color: var(--accent-deep);
+  color: var(--mineral-blue);
+}
+
+.facts [data-kind="deadline"] svg,
+.facts [data-kind="fee"] svg,
+.facts [data-kind="award"] svg {
+  color: var(--ochre-deep);
+}
+
+.facts [data-kind="positive"] {
+  color: var(--green);
+}
+
+.facts [data-kind="positive"] svg {
+  color: var(--green);
 }
 
 .facts > span:first-child {
@@ -131,8 +177,12 @@
 .save {
   position: absolute;
   z-index: 2;
-  top: 14px;
-  right: 12px;
+  inset-block-start: 12px;
+  inset-inline-end: 12px;
+  padding: 4px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: 0 1px 2px rgb(28 24 21 / 5%);
   display: grid;
   justify-items: center;
   gap: 2px;
@@ -147,12 +197,12 @@
   }
 
   .openLink {
-    min-height: 174px;
-    grid-template-columns: 96px minmax(0, 1fr);
+    min-height: 0;
   }
 
   .body {
-    padding: 16px 52px 16px 14px;
+    min-height: 264px;
+    padding: var(--space-inset);
   }
 
   .title {
@@ -160,12 +210,18 @@
   }
 
   .facts {
-    gap: 5px;
-    padding-top: 10px;
+    gap: 8px;
+    padding-top: 12px;
     font-size: 12px;
   }
 
   .practices {
-    display: none;
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
   }
 }

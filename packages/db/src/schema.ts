@@ -907,7 +907,7 @@ export const garyProfiles = pgTable(
     index("gary_profiles_website_idx").on(table.normalizedWebsiteUrl),
     check(
       "gary_profiles_kind_check",
-      sql`${table.profileKind} in ('literary_magazine', 'small_press')`,
+      sql`${table.profileKind} in ('literary_magazine', 'small_press', 'visual_arts_organization', 'gallery', 'residency_center', 'grant_foundation', 'organization')`,
     ),
     check(
       "gary_profiles_identity_status_check",
@@ -919,6 +919,74 @@ export const garyProfiles = pgTable(
     ),
   ],
 );
+
+export const garyProfileVisuals = pgTable(
+  "gary_profile_visuals",
+  {
+    id: text("id").primaryKey(),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    assetType: text("asset_type").notNull(),
+    imageUrl: text("image_url").notNull(),
+    label: text("label"),
+    issueYear: integer("issue_year"),
+    season: text("season"),
+    metadata: jsonb("metadata").notNull().default({}),
+    createdAt,
+  },
+  (table) => [
+    index("gary_profile_visuals_profile_idx").on(table.profileId, table.assetType),
+    check(
+      "gary_profile_visuals_asset_type_check",
+      sql`${table.assetType} in ('logo', 'banner', 'issue_cover')`,
+    ),
+  ],
+);
+
+export const garyPrizeProvenance = pgTable(
+  "gary_prize_provenance",
+  {
+    id: text("id").primaryKey(),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    opportunityId: text("opportunity_id"),
+    contestName: text("contest_name").notNull(),
+    awardYear: integer("award_year").notNull(),
+    winnerName: text("winner_name").notNull(),
+    winningTitle: text("winning_title"),
+    winningWorkUrl: text("winning_work_url"),
+    judgeName: text("judge_name"),
+    sourceUrl: text("source_url"),
+    createdAt,
+  },
+  (table) => [
+    index("gary_prize_provenance_profile_idx").on(table.profileId, table.awardYear),
+  ],
+);
+
+export const garyProfileIntelligence = pgTable(
+  "gary_profile_intelligence",
+  {
+    profileId: text("profile_id")
+      .primaryKey()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    prestigeTier: text("prestige_tier").notNull().default("Tier 3 (Emerging)"),
+    foundingYear: integer("founding_year"),
+    honors: jsonb("honors").notNull().default([]),
+    editorialArchetype: text("editorial_archetype").notNull().default("Unspecified"),
+    sentimentTags: jsonb("sentiment_tags").notNull().default([]),
+    responseDaysMin: integer("response_days_min"),
+    responseDaysMax: integer("response_days_max"),
+    responseLabel: text("response_label"),
+    queryPolicy: text("query_policy"),
+    socialLinks: jsonb("social_links").notNull().default({}),
+    popularityMetrics: jsonb("popularity_metrics").notNull().default({}),
+    updatedAt,
+  },
+);
+
 
 export const handles = pgTable(
   "handles",

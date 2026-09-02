@@ -476,3 +476,41 @@ export {
   type RadarWorkerOptions,
   type RadarWorkerTickResult,
 } from "./radarWorker.js";
+export {
+  parseResponseTime,
+  extractPrestigeSignals,
+  classifyEditorialDemeanor,
+  extractProfileIntelligence,
+  type ParsedResponseTime,
+  type ExtractedPrestige,
+  type EditorialDemeanor,
+  type ProfileIntelligenceResult,
+} from "./profileIntelligenceExtractor.js";
+export {
+  extractSocialLinks,
+  extractLogo,
+  extractGalleryCovers,
+  extractPrizeWinners,
+  extractProfileEnrichment,
+  type ExtractedSocialLinks,
+  type ExtractedVisual,
+  type ExtractedPrizeWinner,
+  type SinglePassExtractionResult,
+} from "./profileEnrichmentWorker.js";
+export {
+  extractArtsOpportunity,
+  ARTS_MARKERS,
+  RECOGNIZED_MEDIUMS,
+  type ArtsOpportunityKind,
+  type ArtsExtractedOpportunity,
+} from "./arts/artsOpportunityExtractor.js";
+export {
+  runArtsDiscovery,
+  computeWindowState,
+  windowStateToOpportunityStatus,
+  ARTS_DISCOVERY_REGISTRY,
+  type WindowState,
+  type ArtsDiscoveryTarget,
+  type RunArtsDiscoveryOptions,
+  type RunArtsDiscoveryResult,
+} from "./scripts/runArtsDiscovery.js";

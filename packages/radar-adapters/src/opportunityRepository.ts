@@ -543,6 +543,26 @@ export function buildOpportunityBrowseQuery(
       "o.genres && $VALUE::text[]",
       query.genres,
     );
+  if ((query as { domain?: string }).domain) {
+    const domain = (query as { domain?: string }).domain!.toLowerCase();
+    if (domain === "visual_arts" || domain === "visual-arts") {
+      conditions.push(
+        "(o.discipline in ('visual_arts', 'visual art') or o.type in ('exhibition', 'commission') or o.genres && ARRAY['Painting', 'Sculpture', 'Photography', 'Film/Video', 'Printmaking', 'Digital Art', 'Sound Art', 'Performance', 'Ceramics', 'Installation', 'Drawing', 'Textiles', 'Mixed Media', 'Public Art', 'Visual Art']::text[] or o.search_document ~* '(painting|sculpture|photography|visual art|printmaking|exhibition|call for artists)')"
+      );
+    } else if (domain === "residencies" || domain === "residency") {
+      conditions.push(
+        "(o.type = 'residency' or o.genres && ARRAY['Residency']::text[] or o.search_document ~* 'residency')"
+      );
+    } else if (domain === "multidisciplinary") {
+      conditions.push(
+        "(o.discipline = 'multidisciplinary' or o.genres && ARRAY['Multidisciplinary', 'Interdisciplinary']::text[] or o.search_document ~* 'multidisciplinary')"
+      );
+    } else if (domain === "literature") {
+      conditions.push(
+        "(o.type = 'magazine' or o.discipline in ('literature', 'writing') or o.genres && ARRAY['Poetry', 'Fiction', 'Nonfiction', 'Literary Magazine']::text[] or o.search_document ~* '(poetry|fiction|nonfiction|literary|magazine)')"
+      );
+    }
+  }
   if (query.taxonomyTermIds?.length) {
     if (taxonomyReads) {
       const taxonomyPredicate = query.taxonomyIncludeDescendants

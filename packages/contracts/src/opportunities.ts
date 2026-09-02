@@ -72,8 +72,17 @@ export const opportunityCategorySchema = z.enum([
   "more",
 ]);
 
+export const opportunityDomainSchema = z.enum([
+  "visual_arts",
+  "multidisciplinary",
+  "residencies",
+  "literature",
+]);
+export type OpportunityDomain = z.infer<typeof opportunityDomainSchema>;
+
 export const opportunityBrowseQuerySchema = z.object({
   query: z.string().trim().max(200).optional(),
+  domain: opportunityDomainSchema.or(z.string().trim().max(80)).optional(),
   category: opportunityCategorySchema.default("all"),
   types: z.array(opportunityTypeSchema).max(16).default([]),
   disciplines: z.array(z.string().trim().min(1).max(80)).max(16).default([]),
