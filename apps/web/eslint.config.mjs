@@ -17,6 +17,28 @@ export default defineConfig([
           varsIgnorePattern: "^_",
         },
       ],
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/components/shadcn-studio/*", "@/components/shadcn-studio/**"],
+              message:
+                "Studio variants are reference source. Import them only in design-system review surfaces or adapt them behind @/components/missa.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "app/design-system/**/*.{js,jsx,ts,tsx}",
+      "components/design-system/**/*.{js,jsx,ts,tsx}",
+      "components/missa/**/*.{js,jsx,ts,tsx}",
+    ],
+    rules: {
+      "no-restricted-imports": "off",
     },
   },
   {

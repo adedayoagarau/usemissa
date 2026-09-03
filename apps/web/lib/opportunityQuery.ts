@@ -46,6 +46,7 @@ export function parseOpportunityBrowseQuery(params: URLSearchParams): Opportunit
     feeStatus: booleanParam(params, "feeToggle", false) ? "no-fee" : params.get("fee") ?? undefined,
     maxFeeCents: numberParam(params, "maxFeeCents"),
     deadlineWithinDays: numberParam(params, "deadlineWithinDays"),
+    deadlineKind: params.get("deadline") ?? undefined,
     openNow: booleanParam(params, "openNow", true),
     verifiedOnly: booleanParam(params, "verified", false),
     simultaneousRequired: params.has("simultaneous")

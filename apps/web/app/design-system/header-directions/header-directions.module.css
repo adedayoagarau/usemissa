@@ -1,0 +1,230 @@
+.page {
+  min-height: 100vh;
+  padding: 48px;
+  background: var(--muted);
+  color: var(--foreground);
+}
+.intro {
+  display: flex;
+  max-width: 1400px;
+  margin: 0 auto 52px;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+}
+.intro p {
+  margin: 0 0 8px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.intro h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-weight: 430;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+.intro > a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 650;
+}
+.direction {
+  max-width: 1400px;
+  margin: 0 auto 40px;
+}
+.note {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.note > span {
+  padding-top: 3px;
+  color: var(--mineral-blue);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.note h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.note p {
+  margin: 3px 0 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.frame {
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  background: var(--background);
+}
+.frame nav {
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+  gap: 4px;
+}
+.frame nav > span {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding-inline: 15px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.actions {
+  display: flex;
+  margin-left: auto;
+  align-items: center;
+  gap: 18px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.create,
+.compactCreate {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding-inline: 18px 14px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: inset 0 -3px 0 var(--ochre-deep);
+}
+.create svg,
+.compactCreate svg {
+  width: 16px;
+  height: 16px;
+}
+.editorial {
+  padding-inline: 28px;
+  border-block: 1px solid var(--border);
+}
+.editorial nav > span {
+  position: relative;
+}
+.editorial nav > span[data-active="true"] {
+  color: var(--foreground);
+}
+.editorial nav > span[data-active="true"]::after {
+  position: absolute;
+  right: 14px;
+  bottom: -26px;
+  left: 14px;
+  height: 2px;
+  background: var(--primary);
+  content: "";
+}
+.gallery {
+  display: grid;
+  padding: 26px 28px 0;
+  border: 1px solid var(--border);
+}
+.galleryTop {
+  display: flex;
+  align-items: center;
+}
+.gallery nav {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.gallery nav > span {
+  min-height: 68px;
+  gap: 10px;
+  border-inline-start: 1px solid var(--border);
+}
+.gallery nav > span:first-child {
+  border-inline-start: 0;
+  padding-inline-start: 0;
+}
+.gallery nav > span[data-active="true"] {
+  color: var(--primary);
+}
+.gallery nav small {
+  color: var(--mineral-blue);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+.compactCreate {
+  min-height: 42px;
+}
+.studio {
+  margin-inline: 16px;
+  padding-inline: 28px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.studio nav {
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--muted);
+}
+.studio nav > span[data-active="true"] {
+  border-radius: 7px;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: var(--shadow-xs);
+}
+.menu {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 32px 20px;
+  }
+  .intro {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .frame {
+    min-height: 80px;
+    gap: 16px;
+    padding-inline: 18px;
+  }
+  .frame nav,
+  .frame .actions {
+    display: none;
+  }
+  .frame::after {
+    margin-left: auto;
+    color: var(--muted-foreground);
+    content: "Menu";
+    font-size: 13px;
+  }
+  .gallery {
+    padding-top: 20px;
+  }
+  .galleryTop {
+    min-height: 48px;
+  }
+  .gallery nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .gallery nav > span {
+    display: flex;
+    min-height: 56px;
+    border-block-start: 1px solid var(--border);
+  }
+  .gallery::after {
+    display: none;
+  }
+  .studio {
+    margin-inline: 0;
+  }
+}

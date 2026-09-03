@@ -33,6 +33,7 @@ export function SelectedSystemIndex() {
           <div>
             <strong>Product routes are unchanged</strong>
             <p>Selection and comparison stay inside the local component library until a page is explicitly promoted.</p>
+            <Link className={styles.secondaryLink} href='/design-system/component-policy'>Open component policy</Link>
           </div>
         </aside>
       </section>

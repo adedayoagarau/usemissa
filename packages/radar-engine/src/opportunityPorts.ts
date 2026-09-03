@@ -5,7 +5,10 @@ export type OpportunityRepositorySort =
   | "recommended"
   | "soonest-deadline"
   | "recently-verified"
-  | "recently-added";
+  | "recently-added"
+  | "free-first"
+  | "no-fee-first"
+  | "alphabetical";
 
 export type OpportunityRepositoryDeadlineKind =
   | "exact"
@@ -27,6 +30,7 @@ export interface OpportunityRepositoryQuery {
   feeStatus?: "no-fee" | "paid" | "unknown";
   maxFeeCents?: number;
   deadlineWithinDays?: number;
+  deadlineKind?: "rolling";
   openNow?: boolean;
   verifiedOnly?: boolean;
   simultaneousRequired?: boolean;

@@ -17,6 +17,8 @@
     "format:check": "prettier --check .",
     "check:language": "node scripts/check-missa-language.mjs",
     "check:language:all": "node scripts/check-missa-language.mjs --all",
+    "check:design-system": "node scripts/check-design-system.mjs",
+    "design-system:catalogue": "node scripts/check-design-system.mjs --write-catalogue",
     "test:e2e": "npm run test:e2e --workspace=@missa/web",
     "db:generate": "npm run db:generate --workspace=@missa/db",
     "db:seed-taxonomy": "npm run db:seed-taxonomy --workspace=@missa/db",

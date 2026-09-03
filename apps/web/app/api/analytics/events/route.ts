@@ -101,7 +101,6 @@ function isPublicPath(path: string): boolean {
       "/waitlist",
       "/for-organizations",
       "/opportunities",
-      "/guides",
       "/discover/",
       "/org/",
       "/profile/",

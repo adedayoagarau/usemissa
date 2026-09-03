@@ -2,6 +2,7 @@
 
 import { useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export function OpportunitySort({ className, signedIn = false }: { className?: string; signedIn?: boolean }) {
   const pathname = usePathname();
@@ -10,23 +11,38 @@ export function OpportunitySort({ className, signedIn = false }: { className?: s
   const [pending, startTransition] = useTransition();
   const value = searchParams.get('sort') ?? 'soonest-deadline';
 
+  const labels: Record<string, string> = {
+    'soonest-deadline': 'Soonest deadline',
+    'recently-added': 'Recently added',
+    recommended: 'Recommended for you',
+    'free-first': 'Free to apply first',
+    alphabetical: 'Alphabetical (A–Z)',
+  };
+
   return (
-    <label className={className}>
-      <span>Sort by</span>
-      <select
+    <div className={className}>
+      <Select
         value={value}
         disabled={pending}
-        onChange={(event) => {
+        onValueChange={(nextValue) => {
+          if (!nextValue) return;
           const next = new URLSearchParams(searchParams.toString());
-          next.set('sort', event.target.value);
+          next.set('sort', nextValue);
           next.delete('cursor');
           startTransition(() => router.push(`${pathname}?${next.toString()}`));
         }}
       >
-        <option value="soonest-deadline">Soonest deadline</option>
-        <option value="recently-added">Recently added</option>
-        {signedIn ? <option value="recommended">Recommended for you</option> : null}
-      </select>
-    </label>
+        <SelectTrigger aria-label="Sort opportunities" className="min-h-10 border-transparent bg-muted px-3 shadow-none hover:border-border hover:bg-accent-tint">
+          <SelectValue>{(selected: string) => labels[selected] ?? selected}</SelectValue>
+        </SelectTrigger>
+        <SelectContent align="end">
+          <SelectItem value="soonest-deadline">Soonest deadline</SelectItem>
+          <SelectItem value="recently-added">Recently added</SelectItem>
+          <SelectItem value="free-first">Free to apply first</SelectItem>
+          <SelectItem value="alphabetical">Alphabetical (A–Z)</SelectItem>
+          {signedIn ? <SelectItem value="recommended">Recommended for you</SelectItem> : null}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }

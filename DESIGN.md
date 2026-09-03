@@ -1,11 +1,17 @@
 ---
-version: "0.1"
+version: "0.2"
 name: "Missa"
 status: "draft"
-description: "A white-canvas submission platform that combines calm, approachable discovery with precise, high-density operational workflows. Missa should feel editorial without looking like paper, capable without feeling enterprise-heavy, and trustworthy without relying on alarm colors."
+description: "The binding visual and component-construction contract for Missa. It combines editorial public experiences with precise operational workflows and requires approved shadcn or Coss components to be adapted through Missa tokens and product semantics."
 
 references:
+  agent_contract: "AGENTS.md"
+  ai_ui_directive: "docs/ai-ui-build-directive.md"
   color_direction: "docs/missa-color-direction.md"
+  coss_adoption: "docs/design-references/coss-ui-adoption-2026-08-31.md"
+  shadcn_config: "apps/web/components.json"
+  component_policy: "apps/web/component-policy.json"
+  component_catalogue: "apps/web/component-catalogue.json"
   notion: "design-references/notion/DESIGN.md"
   linear: "design-references/linear/DESIGN.md"
   sanity: "design-references/sanity/DESIGN.md"
@@ -63,8 +69,20 @@ tokens:
       fast: "120ms"
       normal: "180ms"
       slow: "280ms"
+    typography:
+      editorial: "Newsreader"
+      interface: "Instrument Sans"
+      data: "Fragment Mono"
 
   semantic:
+    typography:
+      display-editorial: "{tokens.primitive.typography.editorial}"
+      heading-editorial: "{tokens.primitive.typography.editorial}"
+      heading-interface: "{tokens.primitive.typography.interface}"
+      body: "{tokens.primitive.typography.interface}"
+      label: "{tokens.primitive.typography.interface}"
+      action: "{tokens.primitive.typography.interface}"
+      data: "{tokens.primitive.typography.data}"
     color:
       canvas: "{tokens.primitive.color.white}"
       canvas-subtle: "{tokens.primitive.color.neutral-25}"
@@ -135,6 +153,12 @@ tokens:
 
 This file is the visual source of truth for Missa. It governs new interface work and should be consulted before changing layout, type, color, component styling, interaction, or motion.
 
+AI-authored changes must also follow [`AGENTS.md`](./AGENTS.md) and the reusable
+[`AI UI build directive`](./docs/ai-ui-build-directive.md). Those entrypoints
+reference this file; they do not redefine it. The machine-readable selection
+rules in [`apps/web/component-policy.json`](./apps/web/component-policy.json)
+must remain equivalent to the human-readable component contract below.
+
 For user-facing language, use [`docs/missa-content-style-guide.md`](./docs/missa-content-style-guide.md) as the voice and editorial source of truth and [`docs/missa-content-quick-reference.md`](./docs/missa-content-quick-reference.md) for daily drafting. Canonical product nouns remain governed by [`docs/missa-naming-decisions.md`](./docs/missa-naming-decisions.md). The current cross-surface findings and design priorities are recorded in [`docs/missa-content-and-design-audit-2026-08-07.md`](./docs/missa-content-and-design-audit-2026-08-07.md).
 
 The three installed systems are references, not themes to copy:
@@ -160,7 +184,7 @@ The desired character is:
 
 ### Foundation decision
 
-The primary canvas is **true white (`#ffffff`)**. Do not tint the page background cream, beige, parchment, or paper. Character should come from typography, imagery, writing, and the Aubergine accent—not from the canvas.
+The primary canvas is **true white (`#ffffff`)**. Do not tint the page background cream, beige, parchment, or paper. Character should come from typography, imagery, writing, and the restrained Forest accent—not from the canvas.
 
 Subtle neutral surfaces may be used to group controls or distinguish selected and hovered states, but a page should still read as white first.
 
@@ -168,7 +192,7 @@ Subtle neutral surfaces may be used to group controls or distinguish selected an
 
 ### Marketing
 
-Marketing is the most expressive register. Use generous white space, strong editorial composition, restrained motion, real product views, and occasional photographic or moving imagery. Ysabeau may carry major statements without turning the page into a literary journal facsimile.
+Marketing is the most expressive register. Use generous white space, strong editorial composition, restrained motion, real product views, and occasional photographic or moving imagery. Newsreader may carry major statements without turning the page into a literary journal facsimile; Instrument Sans keeps navigation and actions contemporary and legible.
 
 ### Creator product
 
@@ -203,7 +227,7 @@ The organization product covers organization setup, open calls, submissions, rev
 - **Green:** verified, accepted, completed, and other genuinely positive states.
 - **Amber:** deadlines, watchouts, and time-sensitive attention states.
 - **Red:** destructive actions, invalid input, or genuine failures only.
-- **Mineral blue:** neutral information when Aubergine would incorrectly imply an action or warning.
+- **Mineral blue:** neutral information when Forest would incorrectly imply an action or warning.
 
 ### Color rules
 
@@ -212,45 +236,47 @@ The organization product covers organization setup, open calls, submissions, rev
 3. Declined, withdrawn, archived, and closed are neutral states unless action is required.
 4. Do not create rainbow dashboards. Semantic colors communicate meaning; they are not decoration.
 5. Prefer borders and spacing over tinted card backgrounds.
-6. Large Aubergine or Lichen background sections are off-brand.
+6. Large Forest or Lichen background sections are exceptional editorial treatments, not routine product surfaces.
 
 ## 4. Typography
 
-Missa uses one primary family with a dedicated technical companion. The
-typography loaded by `apps/web/app/layout.tsx` is authoritative: Ysabeau carries
-display and product UI, while Fragment Mono is reserved for technical and
-tabular metadata.
+Missa uses an editorial family, an interface family, and a narrowly scoped data
+companion. The font tokens loaded by `apps/web/app/layout.tsx` are authoritative.
+Typography follows the role of the content, not the route on which it appears.
 
 ### Families
 
-- **Ysabeau:** marketing display, page-level headings, opportunity titles, navigation, UI, body copy, forms, buttons, cards, tables, sentences, and actions. Use the variable family across 100–900; display weights are intentionally strong.
-- **Ysabeau Office treatment:** UI, forms, deadlines, fees, and counts. Use `font-optical-sizing: auto` and tabular numerals for changing values.
-- **Ysabeau SC treatment:** small labels and category markers through small-caps OpenType styling.
-- **Fragment Mono:** dates, deadlines, IDs, counts, measurements, handles, durations, and compact technical or tabular metadata. Do not use it for sentences, button labels, or actions.
+- **Newsreader:** editorial display, public page headlines, opportunity and Work titles, portfolio identity, introductions, quotations, and authored work. Do not use it for controls, navigation, forms, dense tables, or operational status text.
+- **Instrument Sans:** navigation, UI headings, body copy, forms, buttons, labels, explanations, cards, tables, and actions. It is the default whenever the text helps a person operate the product.
+- **Fragment Mono:** scan-critical dates, deadlines, money, percentages, counts, IDs, versions, measurements, and compact technical metadata. Do not use it for sentences, button labels, badges, or decorative editorial effect.
 
 ### Type scale
 
-| Role | Family | Size | Weight | Line height | Tracking |
-|---|---|---:|---:|---:|---:|
-| Marketing display | Ysabeau | 64px | 850 | 0.92 | -0.045em |
-| Page display | Ysabeau | 48px | 700 | 1.05 | -0.035em |
-| App page title | Ysabeau Office | 32px | 650 | 1.15 | -0.03em |
-| Section title | Ysabeau Office | 24px | 650 | 1.20 | -0.025em |
-| Card title | Ysabeau | 18px | 650 | 1.30 | -0.015em |
-| Body large | Ysabeau Office | 18px | 400 | 1.55 | -0.01em |
-| Body | Ysabeau Office | 16px | 400 | 1.50 | -0.005em |
-| UI text | Ysabeau Office | 14px | 500 | 1.40 | 0 |
-| Caption | Ysabeau SC | 12px | 600 | 1.40 | 0.01em |
-| Data | Fragment Mono | 13px | 400 | 1.40 | 0 |
+| Role                 | Family          | Size | Weight | Line height | Tracking |
+| -------------------- | --------------- | ---: | -----: | ----------: | -------: |
+| Marketing display    | Newsreader      | 64px |    500 |        0.98 | -0.035em |
+| Page display         | Newsreader      | 48px |    500 |        1.02 | -0.025em |
+| Editorial page title | Newsreader      | 40px |    500 |        1.08 |  -0.02em |
+| App page title       | Instrument Sans | 32px |    650 |        1.15 | -0.025em |
+| Section title        | Instrument Sans | 24px |    650 |        1.20 |  -0.02em |
+| Editorial card title | Newsreader      | 20px |    550 |        1.22 | -0.012em |
+| Interface card title | Instrument Sans | 18px |    650 |        1.30 | -0.012em |
+| Body large           | Instrument Sans | 18px |    400 |        1.55 | -0.005em |
+| Body                 | Instrument Sans | 16px |    400 |        1.50 |        0 |
+| UI text              | Instrument Sans | 14px |    500 |        1.40 |        0 |
+| Caption              | Instrument Sans | 12px |    600 |        1.40 |   0.01em |
+| Data                 | Fragment Mono   | 13px |    400 |        1.40 |        0 |
 
 ### Typography rules
 
-1. Ysabeau display weights are for emphasis; use the Office treatment for dense product copy.
+1. Newsreader supplies editorial voice; Instrument Sans supplies interface clarity. Do not simulate this contrast with arbitrary weight changes.
 2. Never set full paragraphs or table content at display weights.
 3. Use sentence case for buttons, navigation, table headings, and badges.
 4. Uppercase is reserved for very small taxonomy labels; never use it for primary navigation.
 5. Use tabular numerals for changing counts, dates, money, and scores.
 6. Headings should be short and direct. Do not compensate for vague copy with oversized type.
+7. Product code uses `--font-editorial`, `--font-interface`, or `--font-data`; do not declare a font family directly in a feature stylesheet.
+8. Public portfolios may use Newsreader more extensively for authored work, but their controls and navigation remain Instrument Sans.
 
 ## 5. Spacing and Layout
 
@@ -281,12 +307,12 @@ density mode for the surface family.
 
 ### Spacing types
 
-| Type | What it is | Example |
-|---|---|---|
-| **Inset** | Padding inside a container | Card padding, page gutter |
-| **Stack** | Vertical space between stacked elements | Row to row, group to group, section to section |
-| **Inline** | Horizontal space between adjacent elements | Button to button, label to control |
-| **Gap** | Space between grid or flex children | Card grid, sample-mode columns |
+| Type       | What it is                                 | Example                                        |
+| ---------- | ------------------------------------------ | ---------------------------------------------- |
+| **Inset**  | Padding inside a container                 | Card padding, page gutter                      |
+| **Stack**  | Vertical space between stacked elements    | Row to row, group to group, section to section |
+| **Inline** | Horizontal space between adjacent elements | Button to button, label to control             |
+| **Gap**    | Space between grid or flex children        | Card grid, sample-mode columns                 |
 
 Name the type in code comments and review discussion.
 
@@ -305,11 +331,11 @@ arithmetic, not taste; a reviewer checks it by doubling.
 Each mode is a doubling ladder anchored at a different base. Every value already
 exists in the scale above.
 
-| Mode | Base | Row | Group | Section | Inset | Gap |
-|---|---:|---:|---:|---:|---:|---:|
-| **Compact** | 8 | 8 | 16 | 32 | 16 | 16 |
-| **Comfortable** | 12 | 12 | 24 | 48 | 24 | 24 |
-| **Spacious** | 16 | 16 | 32 | 64 | 32 | 32 |
+| Mode            | Base | Row | Group | Section | Inset | Gap |
+| --------------- | ---: | --: | ----: | ------: | ----: | --: |
+| **Compact**     |    8 |   8 |    16 |      32 |    16 |  16 |
+| **Comfortable** |   12 |  12 |    24 |      48 |    24 |  24 |
+| **Spacious**    |   16 |  16 |    32 |      64 |    32 |  32 |
 
 Spacious may use **96** for a major break between top-level page sections on
 marketing surfaces. This is the only permitted value outside the ladder, and
@@ -320,14 +346,14 @@ only boundary. Bordered or filled children use the ladder value.
 
 ### Surface family assignment
 
-| Family | Mode | Routes |
-|---|---|---|
-| Public / marketing | Spacious | `/`, `/guides`, `/guides/*`, `/about`, `/methodology`, `/discover/*` |
-| Public record | Comfortable | `/opportunities`, `/opportunities/*`, `/journals/*`, `/@handle`, `/profile/*` |
-| Creator product | Comfortable | `/profile`, `/settings/*`, `/tracker`, `/library/*`, `/inbox`, `/calendar` |
-| Organization | Compact | Organization workspace, builder, submissions, reviews, decisions, messages, delivery, insights, people, settings |
-| Reviewer | Compact | Reviewer queue and work surfaces |
-| Platform Admin | Compact | All admin routes |
+| Family             | Mode        | Routes                                                                                                           |
+| ------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------- |
+| Public / marketing | Spacious    | `/`, `/guides`, `/guides/*`, `/about`, `/methodology`, `/discover/*`                                             |
+| Public record      | Comfortable | `/opportunities`, `/opportunities/*`, `/journals/*`, `/@handle`, `/profile/*`                                    |
+| Creator product    | Comfortable | `/profile`, `/settings/*`, `/tracker`, `/library/*`, `/inbox`, `/calendar`                                       |
+| Organization       | Compact     | Organization workspace, builder, submissions, reviews, decisions, messages, delivery, insights, people, settings |
+| Reviewer           | Compact     | Reviewer queue and work surfaces                                                                                 |
+| Platform Admin     | Compact     | All admin routes                                                                                                 |
 
 A surface does not mix modes. A dense table inside a Comfortable surface may
 keep Comfortable stacks around it and use Compact internally only within the
@@ -338,22 +364,22 @@ table itself; declare that explicitly.
 These concern hit targets and attachment, not reading rhythm, so they do not
 vary by mode.
 
-| Relationship | Value |
-|---|---:|
-| Label to its control | 8 |
-| Helper text to the thing it qualifies | 8 |
-| Adjacent bordered or filled controls | 12 |
-| Adjacent borderless controls | 24 |
-| Unrelated control groups | 24 minimum, and at least 2× the intra-group inline gap |
+| Relationship                          |                                                               Value |
+| ------------------------------------- | ------------------------------------------------------------------: |
+| Label to its control                  |                                                                   8 |
+| Helper text to the thing it qualifies |                                                                   8 |
+| Adjacent bordered or filled controls  |                                                                  12 |
+| Adjacent borderless controls          |                                                                  24 |
+| Unrelated control groups              |              24 minimum, and at least 2× the intra-group inline gap |
 | Minimum control height and hit target | 44 (Profile/public), 36 (Compact surfaces), never below 44 on touch |
 
 ### Page gutters
 
-| Mode | < 640 | 640–1024 | > 1024 |
-|---|---:|---:|---:|
-| Compact | 16 | 24 | 24 |
-| Comfortable | 24 | 32 | 48 |
-| Spacious | 24 | 40 | 64 |
+| Mode        | < 640 | 640–1024 | > 1024 |
+| ----------- | ----: | -------: | -----: |
+| Compact     |    16 |       24 |     24 |
+| Comfortable |    24 |       32 |     48 |
+| Spacious    |    24 |       40 |     64 |
 
 Every top-level section on a page shares one gutter. A section that sets its
 own horizontal inset is a bug.
@@ -373,13 +399,13 @@ own horizontal inset is a bug.
 
 ### Failure modes
 
-| Failure | What it looks like | Missa example |
-|---|---|---|
-| Sloppy spacing | Repeated relationships use different gaps | ~150px void above an audio player from grid stretch |
-| Border bloat | Every group gets another outline | Credits boxed instead of hairline-separated |
-| Broken continuity | The eye bounces; content sits off the obvious path | Profile name detached from the body column |
-| Content cramming | The layout uses every pixel | Video still overflowing its card |
-| Overlap | Absolute positioning without a container guard | Fixture labels printed on top of fixtures at 390px |
+| Failure           | What it looks like                                 | Missa example                                       |
+| ----------------- | -------------------------------------------------- | --------------------------------------------------- |
+| Sloppy spacing    | Repeated relationships use different gaps          | ~150px void above an audio player from grid stretch |
+| Border bloat      | Every group gets another outline                   | Credits boxed instead of hairline-separated         |
+| Broken continuity | The eye bounces; content sits off the obvious path | Profile name detached from the body column          |
+| Content cramming  | The layout uses every pixel                        | Video still overflowing its card                    |
+| Overlap           | Absolute positioning without a container guard     | Fixture labels printed on top of fixtures at 390px  |
 
 ## 7. Shape, Borders, and Depth
 
@@ -395,77 +421,310 @@ Primary buttons are not pills. Cards are not floating bubbles.
 
 Depth is mostly created by white surfaces, neutral surface changes, hairline borders, and clear spacing. Use the subtle shadow only where a white object would otherwise disappear. Reserve the overlay shadow for dialogs, popovers, command menus, and sheets.
 
-## 8. Core Components
+## 8. Component Construction Contract
+
+Missa uses the copy-and-own shadcn model. Shadcn, Shadcn Studio, and selectively
+approved Coss components are the default construction kit. They provide
+accessible structure and implementation quality; Missa tokens and product
+semantics provide the visual identity.
+
+Do not create a local substitute merely because a registry component needs
+styling. Adapt the registry component with Missa semantic and component tokens.
+Custom implementation is the last option, not the starting point.
+
+### Required component workflow for humans and AI
+
+Before implementing any interface element:
+
+1. Name the user intent: action, selection, disclosure, navigation, status,
+   feedback, data display, or product composition.
+2. Check `apps/web/components/ui` for an installed component that satisfies it.
+3. Search and inspect the configured registries in `apps/web/components.json`:
+   shadcn first, then the licensed `@ss-components`, `@ss-blocks`, and
+   `@ss-pages` catalogues. Use Coss only through the selective-adoption rules in
+   `docs/design-references/coss-ui-adoption-2026-08-31.md`.
+4. View the registry item before installing it. Review its source, dependencies,
+   keyboard behavior, ARIA behavior, responsive behavior, and overwrite diff.
+5. Prefer an existing installed primitive; otherwise import the smallest
+   suitable component or block. Never import a full vendor theme.
+6. Map all styling to Missa primitive, semantic, and component tokens. Remove
+   bundled fonts, raw colors, arbitrary radii, shadows, and motion that conflict
+   with this document.
+7. Wrap domain meaning in a Missa semantic component when the same meaning will
+   recur across routes.
+8. Record the source, installed path, approved variants, and product usages in
+   the component ledger below.
+9. Validate populated, empty, loading, error, disabled, keyboard, 390px mobile,
+   200% zoom, and reduced-motion states as applicable.
+
+If no registry component fits, document what was searched and which functional,
+accessibility, or semantic requirement failed before authoring a custom component.
+
+### Component layers and import boundary
+
+```text
+Missa foundations and tokens
+        ↓
+shadcn / licensed Studio / selected Coss source
+        ↓
+installed primitives in components/ui
+        ↓
+Missa semantic components
+        ↓
+Missa product compositions
+        ↓
+routes and features
+```
+
+- **Installed primitives** own base interaction, focus, disabled behavior, and
+  structural accessibility. They may be used directly only for generic UI.
+- **Semantic components** own recurring Missa meaning, including its label,
+  icon, color role, density, motion permission, and accessible output.
+- **Product compositions** own domain anatomy and conditional fields. They are
+  reusable across public and authenticated presentations.
+- Feature code must not recreate an existing semantic component with raw
+  primitives and utility classes.
+- A registry block may accelerate composition, but it never overrides Missa
+  content hierarchy, tokens, or information policy.
+
+### Source precedence
+
+| Need                                      | Preferred source                          | Rule                                                                                 |
+| ----------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------ |
+| Standard accessible control               | Installed shadcn/Base UI primitive        | Reuse before installing another implementation                                       |
+| Missing standard control                  | shadcn registry                           | Inspect, then install the smallest item                                              |
+| Polished composition or pattern           | Licensed `@ss-components` or `@ss-blocks` | Keep structure; replace vendor styling with Missa tokens                             |
+| Complete page reference                   | Licensed `@ss-pages`                      | Reference or selectively extract; never paste a whole page into production unchanged |
+| Operational particle unavailable above    | Selected Coss item                        | Pilot and diff; do not install `@coss/style` or the full registry                    |
+| Missa domain meaning                      | Missa semantic wrapper                    | Required when meaning repeats or has product-specific states                         |
+| Novel interaction absent from all sources | Custom component                          | Requires documented search, rationale, and full state coverage                       |
+
+### Installed component ledger
+
+Presence in `apps/web/components/ui` means available for evaluation, not blanket
+approval. The status below controls new usage.
+
+| Status           | Meaning                                                          |
+| ---------------- | ---------------------------------------------------------------- |
+| `approved`       | May be used for the documented intent                            |
+| `approved-adapt` | Use only after composing with Missa tokens or semantics          |
+| `internal`       | Dependency of another component; not a feature-level choice      |
+| `experimental`   | Prototype/gallery use until interaction and accessibility review |
+| `deprecated`     | Do not introduce; migrate existing usage                         |
+
+| Family                  | Installed components                                                                                                            | Status and permitted use                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Actions                 | `button`, `button-group`                                                                                                        | `approved`; actions and grouped actions                                                                       |
+| Form foundation         | `field`, `label`, `input`, `textarea`, `checkbox`, `radio-group`, `switch`, `slider`, `input-group`, `input-otp`, `phone-input` | `approved`; use `Field` composition and visible labels                                                        |
+| Choice and search       | `native-select`, `select`, `combobox`, `autocomplete`, `multi-select`, `command`                                                | `approved-adapt`; choose by option count and interaction need, not visual preference                          |
+| Navigation              | `breadcrumb`, `navigation-menu`, `menubar`, `sidebar`, `tabs`, `pagination`                                                     | `approved-adapt`; route, peer-view, and shell semantics must remain distinct                                  |
+| Disclosure              | `accordion`, `collapsible`                                                                                                      | `approved`; in-flow progressive disclosure                                                                    |
+| Overlays                | `tooltip`, `popover`, `dropdown-menu`, `context-menu`, `dialog`, `alert-dialog`, `sheet`, `drawer`, `hover-card`                | `approved-adapt`; select using the overlay decision matrix; `hover-card` cannot contain essential content     |
+| Content structure       | `card`, `item`, `separator`, `aspect-ratio`, `scroll-area`, `resizable`                                                         | `approved-adapt`; never use as decoration-only wrappers                                                       |
+| Identity and metadata   | `avatar`, `badge`, `kbd`, `code-block`, `rating`                                                                                | `approved-adapt`; Badge requires a semantic wrapper for domain states                                         |
+| Data and workflow       | `table`, `calendar`, `kanban`, `sortable`, `stepper`, `chart`, `circular-progress`                                              | `approved-adapt`; validate keyboard, reordering, mobile, and data semantics per use                           |
+| Feedback                | `alert`, `empty`, `sonner`, `progress`, `spinner`, `skeleton`, `shimmer-skeleton`                                               | `approved`; shimmer only for loading structure                                                                |
+| Motion controls         | `motion-toggle`, `motion-toggle-group`, `motion-switch`, `motion-carousel`, `ripple-button`                                     | `experimental`; do not use in production until the component-specific motion and reduced-motion review passes |
+| Base selection controls | `toggle`, `toggle-group`                                                                                                        | `approved-adapt`; use through named view-mode or filter compositions                                          |
+| Media browsing          | `carousel`                                                                                                                      | `approved-adapt`; use only when sequence is meaningful and all items remain keyboard accessible               |
+
+When a new registry item is installed, add it to this ledger in the same change.
+An AI-generated component that duplicates an approved item fails review.
+
+### Product composition map
+
+| Product need                   | Composition                   | Required building blocks                                                                       |
+| ------------------------------ | ----------------------------- | ---------------------------------------------------------------------------------------------- |
+| Browse opportunities           | `OpportunityBrowseToolbar`    | `Field`, `InputGroup`, `Button`, `FilterChip`, `Select`, responsive `Sheet`                    |
+| Display an opportunity result  | `OpportunityCard`             | `Item` or `Card`, semantic badges, dedicated title link, `SaveAction`, optional official media |
+| Decide whether to apply        | `OpportunityDecisionSummary`  | structured list, `Separator`, semantic state components; omit irrelevant unknown fields        |
+| Explain organization authority | `OrganizationAuthorityPanel`  | `Avatar`, structured facts, `AuthorityBadge`, organization link                                |
+| Explain a recommendation       | `MatchExplanationTrigger`     | `Button` trigger, score treatment, `Popover`, reasons and watchouts                            |
+| Save an opportunity            | `SaveAction`                  | `Button`; signed-out intent preservation, loading, saved, and failure feedback                 |
+| Add to Tracker                 | `TrackerAction`               | `Button`, optional `DropdownMenu` for stage, `Sonner` or inline recovery                       |
+| Filter on mobile               | `OpportunityFilterSheet`      | same filter model as desktop, `Sheet`, `Field`, selection controls, result count               |
+| Track applications             | `TrackerBoard` / `TrackerRow` | `Kanban` or `Table` by view, `Badge` semantics, menus and dialogs                              |
+| Edit a Work                    | `WorkEditor`                  | `Field`, form controls, `Sortable`, media blocks, `Dialog`/`Sheet`, process feedback           |
+| Manage calendar                | `OpportunityCalendar`         | `Calendar`, labelled events, `Popover` or side panel, provider sync status                     |
+| Configure Profile              | `ProfileSettingsForm`         | `Tabs` only for same-route peer sections, `Field`, form controls, inline feedback              |
+| Present an artist              | `PortfolioIdentityHeader`     | editorial typography, `Avatar`/media, restrained actions; no dashboard chrome                  |
+| Present portfolio work         | `PortfolioWorkCard`           | media with aspect ratio, editorial title, credits, accessible captions                         |
+| Operate submissions            | `SubmissionTable`             | `Table`, semantic workflow states, row actions, responsive labelled records                    |
+| Confirm destructive work       | `DestructiveConfirmation`     | `AlertDialog`, explicit object name and consequence, destructive final action                  |
+
+### Component specification template
+
+Every approved semantic component and product composition documents:
+
+```yaml
+name:
+status: experimental | approved | deprecated
+intent:
+base_source: installed | shadcn | ss-component | ss-block | coss | custom
+registry_item:
+implementation:
+use_when:
+do_not_use_when:
+anatomy:
+variants:
+states:
+tokens:
+content_rules:
+icon_rules:
+motion_rules:
+responsive_behavior:
+accessibility:
+tests:
+used_by:
+replacement_for:
+```
+
+### Primitive decision matrix
+
+| User intent                            | Required component                            | Do not substitute                                  |
+| -------------------------------------- | --------------------------------------------- | -------------------------------------------------- |
+| Trigger an action                      | `Button`                                      | Badge, clickable `div`, or text with click handler |
+| Enter short free text                  | `Field` + `Input`                             | Placeholder-only input                             |
+| Enter long text                        | `Field` + `Textarea`                          | Contenteditable without editor requirements        |
+| Choose one short option list           | `RadioGroup`                                  | Multiple checkboxes                                |
+| Choose one compact menu option         | `Select` or `NativeSelect`                    | Popover with handmade listbox                      |
+| Search a long option list              | `Combobox` or `Autocomplete`                  | Select with hundreds of items                      |
+| Toggle a persistent setting            | `Switch`                                      | Badge or checkbox styled as a switch               |
+| Select multiple items                  | `Checkbox` group or `MultiSelect`             | Toggle buttons without group semantics             |
+| Switch peer views in one context       | `Tabs`                                        | Route navigation or badges                         |
+| Apply a removable filter               | Missa `FilterChip` built on `Toggle`/`Button` | Read-only Badge                                    |
+| Brief supplementary explanation        | `Popover`                                     | Dialog or essential Tooltip content                |
+| Explain an unfamiliar icon             | `Tooltip`                                     | Hidden essential instructions                      |
+| Small action list                      | `DropdownMenu`                                | Select used for commands                           |
+| Consequential confirmation             | `AlertDialog`                                 | Toast or browser confirm                           |
+| Focused task blocking page interaction | `Dialog`                                      | Popover for multi-field workflows                  |
+| Mobile filters or edge workflow        | `Sheet`                                       | Separate filtering implementation                  |
+| Mobile bottom action chooser           | `Drawer`                                      | Desktop dialog forced onto mobile                  |
+| In-flow single disclosure              | `Collapsible`                                 | Modal overlay                                      |
+| In-flow disclosure group               | `Accordion`                                   | Multiple unrelated dialogs                         |
+| Transient mutation confirmation        | `Sonner` toast                                | Persistent banner                                  |
+| Local recoverable problem              | `Alert` or inline field message               | Destructive toast only                             |
+| Loading shape                          | `Skeleton`                                    | Spinner replacing an entire structured page        |
+| Active indeterminate process           | `Spinner` + text                              | Animated static badge                              |
+| Measurable process                     | `Progress` + text value                       | Decorative animation                               |
+| Tabular comparison                     | `Table`                                       | Grid of cards                                      |
+| Calendar/date choice                   | `Calendar`                                    | Handmade date grid                                 |
+| No available content                   | `Empty`                                       | Blank panel or “No data”                           |
 
 ### Buttons
 
-**Primary** — Aubergine fill, white text, 8px radius. One dominant primary action per view.
+Use the installed `Button` primitive. Approved variants are semantic:
 
-**Secondary** — white background, near-black text, neutral border. Used for supporting actions such as Edit, Copy link, or Preview.
+| Variant       | Use                                                                        |
+| ------------- | -------------------------------------------------------------------------- |
+| `default`     | The single dominant forward action in a region; Forest fill                |
+| `outline`     | Supporting or reversible local action                                      |
+| `secondary`   | Quiet action on a grouped or tinted surface                                |
+| `ghost`       | Repeated row, toolbar, or navigation action                                |
+| `destructive` | The final destructive action, normally inside confirmation                 |
+| `link`        | Inline navigation that must visually read as a link                        |
+| `shine`       | Not approved for routine product UI; experimental marketing-only treatment |
 
-**Ghost** — transparent background. On hover, use the subtle neutral surface. Used for low-emphasis and repeated row actions.
+Primary buttons use Forest, white text, and an 8px radius. All buttons need
+default, hover, active, focus-visible, loading, and disabled states. Loading
+preserves width and sets `aria-busy`. Icon-only buttons require an accessible
+name; provide a tooltip when the action is not universally understood.
 
-**Destructive** — red is reserved for the final destructive action. The trigger that opens a confirmation dialog may remain neutral.
+### Inputs and form controls
 
-All buttons need default, hover, active, focus-visible, loading, and disabled states. Loading preserves width. Disabled controls must remain legible and must not rely on opacity below 50%.
+- Compose form controls with `Field`; keep visible labels and associated helper
+  or error text.
+- Use 44px controls on public and creator surfaces. A documented 36px compact
+  variant is allowed for pointer/keyboard organization workflows, but touch
+  targets remain 44px.
+- Use white background, strong neutral border, 8px radius, and a separated 2px
+  Forest focus ring.
+- Validate on blur or submit unless immediate validation prevents invalid input.
+- Place recovery guidance with the error. Placeholders never replace labels.
 
-### Inputs
+### Cards, items, tables, and structured lists
 
-- 44px default height; 36px compact organization-product variant.
-- White background, strong neutral border, 8px radius.
-- Focus uses a 2px Aubergine ring with sufficient separation from the border.
-- Validation appears inline beneath the field.
-- Validate on blur or submit, not on every keystroke.
-- Labels remain visible; placeholders never replace labels.
+Use `Card` only when content is a bounded object, summary, or actionable module.
+Use `Item` for repeated list records and `Table` for genuinely comparable rows.
+Do not use a card merely to create spacing or a border.
 
-### Cards
+Creator cards use white, a hairline border, 12px radius, and 24px padding.
+Organization cards are reserved for summaries, grouped controls, and review
+tasks. Submission inventories and decision queues use tables or structured lists.
+Do not make an entire card interactive when it contains nested Save, menu, or
+other controls; use a dedicated title or primary-action link.
 
-Creator product cards use white, a hairline border, 12px radius, and 24px padding. Cards should lead with the object or action—not a decorative icon.
+Tables keep headers visible, align dates/counts/fees consistently, and use
+Fragment Mono only for scan-critical values. Narrow presentations become
+labelled records; they do not compress until unreadable.
 
-The organization product uses cards only for summaries, grouped controls, review tasks, and non-tabular modules. Submission inventories, assignments, and decision queues belong in tables or structured lists.
+### Badge and compact-state contract
 
-### Tables and structured lists
+A `Badge` is compact, read-only metadata. It is not a button, filter, tab,
+navigation item, or decoration. Product code should use a semantic badge rather
+than selecting the primitive variant or color directly.
 
-- Keep column labels visible.
-- Align dates, counts, fees, and scores consistently.
-- Use Fragment Mono selectively for scan-critical data.
-- Highlight row hover with a neutral surface, not a shadow.
-- Keep the primary row action discoverable without exposing every secondary action.
-- On narrow screens, convert to labelled rows or cards; never shrink a desktop table until it becomes unreadable.
+| Meaning                        | Missa component                               | Treatment                                           | Motion                                         |
+| ------------------------------ | --------------------------------------------- | --------------------------------------------------- | ---------------------------------------------- |
+| Opportunity type or discipline | `CategoryBadge`                               | Neutral outline or quiet neutral surface            | Never                                          |
+| Opens soon                     | `OpportunityStatusBadge state="opening-soon"` | Mineral information                                 | Never                                          |
+| Open or always open            | `OpportunityStatusBadge state="open"`         | Quiet Forest; explicit label                        | Never                                          |
+| Closing soon                   | `UrgencyBadge`                                | Ochre warning; exact date or days remaining         | Never                                          |
+| Closed or archived             | `OpportunityStatusBadge state="closed"`       | Neutral muted                                       | Never                                          |
+| Free to submit                 | `FeeBadge amount={0}`                         | Quiet Lichen when scan value warrants it            | Never                                          |
+| Confirmed organization         | `AuthorityBadge`                              | Forest or Mineral with scoped text                  | Never                                          |
+| Personalized fit               | `MatchExplanationTrigger`                     | Mineral/Forest score; real button opening `Popover` | Badge itself never animates                    |
+| Draft/published/archived       | `PublicationStateBadge`                       | Restrained workflow token                           | Only while actively transitioning              |
+| Uploading/syncing/processing   | `ProcessBadge`                                | Information state with animated indicator           | Only while process is active                   |
+| Failed process                 | `ProcessBadge state="failed"`                 | Destructive icon and text with nearby recovery      | Never pulse                                    |
+| Unread or selected count       | `CountBadge`                                  | Compact neutral/accent                              | Optional finite entrance when becoming nonzero |
+| Paid or restricted feature     | `PlanBadge`                                   | Neutral premium treatment                           | Never                                          |
 
-### Navigation
+Badge copy uses customer language, never backend enums: `Closes in 6 days`,
+`Opens Sep 14`, `Always open`, `Free to submit`, `Organization confirmed`,
+`96% match`, `Publishing…`, and `Sync failed`.
 
-Marketing navigation is light and spacious. Creator navigation prioritizes Opportunities, Inbox, and Tracker. Organization navigation prioritizes Opportunities, Submissions, Reviews, Decisions, Messages, Delivery, Insights, and Settings.
+Unknown data is not automatically a badge. Show an unknown or conflict state
+only when the absence changes a decision. For example, omit location when an
+opportunity does not require location; do not display `Location not listed`.
 
-Active navigation uses Aubergine text, icon, or a restrained indicator—not a large colored capsule. Organization navigation supports `Cmd/Ctrl + K`. Keyboard shortcuts must always have a visible non-keyboard equivalent.
+### Navigation and selection
 
-### Explained Score
+Marketing navigation is light and spacious. Creator navigation prioritizes
+Opportunities, Inbox, and Tracker. Organization navigation prioritizes
+Opportunities, Submissions, Reviews, Decisions, Messages, Delivery, Insights,
+and Settings.
+
+Active navigation uses Forest text, icon, or a restrained indicator—not a large
+colored capsule. Use `aria-current` for route navigation. Use `Tabs` only for
+peer views whose content changes in place. Use `aria-pressed` for toggles and
+filter chips. Keyboard shortcuts always have a visible non-keyboard equivalent.
+
+### Explained scores
 
 Every Fit Score, Trust Score, or confidence result includes its explanation.
+A `MatchExplanationTrigger` is a real `Button` with compact score presentation;
+it opens a `Popover` containing reasons, watchouts, and disqualifiers. It uses
+`aria-expanded` and `aria-controls`. Never show a bare numeric score and never
+rely on semantic color alone.
 
-- Collapsed: plain-language tier label plus a “Why?” affordance.
-- Expanded: short reasons, watchouts, and disqualifiers.
-- Never show a bare numeric score.
-- Never rely on green, amber, or red alone.
-- Use `aria-expanded` and a real button.
+### Feedback and changing state
 
-### Status
+| Situation                                      | Component                                                |
+| ---------------------------------------------- | -------------------------------------------------------- |
+| Successful local mutation                      | `Sonner` toast; short and transient                      |
+| Field validation                               | Inline `Field` error                                     |
+| Local recoverable failure                      | Inline `Alert` with recovery action                      |
+| Account, permission, billing, or session issue | Persistent `Alert` banner                                |
+| Consequential confirmation                     | `AlertDialog`                                            |
+| Structural loading                             | `Skeleton` or `ShimmerSkeleton` with stable dimensions   |
+| Active measurable work                         | `Progress` with textual value                            |
+| Active unmeasurable work                       | `Spinner` with textual status                            |
+| Empty collection                               | `Empty` with specific explanation and useful next action |
 
-Statuses use a compact text label, optional icon, and quiet surface tint. Urgent states may use stronger color only when they require timely action.
-
-Do not render Declined as a failure alert. Do not render Submitted as success green; it is a neutral process state.
-
-### Change Diff
-
-Show “was” and “now” explicitly. Use muted text and typographic emphasis rather than red/green code-diff styling. Deadline changes may add amber only when the new date requires attention.
-
-### Feedback
-
-- Toast: transient confirmation after a mutation.
-- Inline message: validation or a local recoverable failure.
-- Persistent banner: account-level, permission, billing, or session problem.
-- Dialog: consequential confirmation, not routine feedback.
-- Skeleton: loading structure for lists and cards; avoid layout shift.
+Declined is not a failure alert. Submitted is a neutral process state, not
+success green. Change diffs show “was” and “now” explicitly; deadline changes
+add Ochre only when the new value requires attention.
 
 ## 9. Interaction and Motion
 
@@ -478,6 +737,20 @@ Motion explains change and confirms response. It is not ambient decoration insid
 - Never delay an action so an animation can finish.
 - Respect `prefers-reduced-motion`.
 - Avoid springy cards, parallax in app views, looping gradients, and celebratory motion for routine actions.
+
+An animated component must pass all four gates:
+
+1. The underlying state is currently changing or has just changed.
+2. Motion materially improves comprehension of that change.
+3. The motion stops when the state stops, or completes once after the change.
+4. Text, iconography, and accessible state provide an equivalent without motion.
+
+Indefinite motion is permitted only for a confirmed active process such as
+uploading, syncing, processing, or publishing. Animate the indicator rather
+than the whole badge. Deadlines, fees, eligibility, verification, match scores,
+premium labels, categories, and persistent warnings never pulse, bounce,
+shimmer, or glow. Skeleton shimmer is limited to unresolved loading structure.
+No list may contain multiple independently looping attention animations.
 
 ## 10. Responsive Behaviour
 
@@ -538,19 +811,42 @@ Use plain industry nouns and direct actions. Personality belongs in supportive m
 
 ## 14. Implementation Contract
 
-1. Use the existing shadcn/ui primitives as the base component layer.
-2. Map implementation variables to the semantic tokens in this file.
-3. Components reference semantic or component tokens, never primitive hex values directly.
-4. New variants must document their purpose, states, responsive behaviour, and accessibility requirements.
-5. Existing business logic and product vocabulary must not be changed as part of visual restyling.
-6. Validate desktop, 390px mobile, keyboard navigation, focus order, loading, empty, error, and populated states.
-7. Treat this file as a living draft until the major representative screens have been reviewed together.
+1. Use installed shadcn/Base UI primitives first. Search and view configured
+   shadcn and licensed Studio registries before authoring a missing component.
+2. Import selected Coss components only through the approved selective pilot;
+   never install `@coss/style`, a vendor font stack, or a complete registry over
+   the Missa application.
+3. Treat imported source as owned code: inspect its diff, dependencies,
+   accessibility, interaction states, and upgrade risk before accepting it.
+4. Map implementation variables to the primitive → semantic → component token
+   chain in this file. Components reference semantic or component tokens, never
+   primitive hex values directly.
+5. Feature code selects product meaning, not styling. Repeated meanings use
+   semantic components such as `UrgencyBadge`, `SaveAction`, or `FilterChip`.
+6. Do not create custom variants in route code. A new variant must document an
+   unmet product intent, source search, states, responsive behavior,
+   accessibility, tokens, tests, and owner.
+7. Maintain a component gallery with every approved semantic state and a ledger
+   marking components `experimental`, `approved`, or `deprecated`.
+8. Restrict direct primitive imports where a semantic component exists. Add
+   lint rules against arbitrary colors, font families, radii, shadows, and
+   animation utilities in feature code.
+9. Existing business logic and product vocabulary must not change as part of
+   visual restyling.
+10. Validate desktop, 390px mobile, 200% zoom, keyboard navigation, focus order,
+    loading, empty, error, disabled, long-content, and populated states.
+11. Validate `prefers-reduced-motion`; animation must never be the only state
+    signal and must not change layout.
+12. A registry block is a starting structure, not approval to bypass Missa’s
+    information hierarchy, privacy, authority, or conditional-field rules.
+13. Treat this file as binding for new UI. Existing non-compliant components
+    enter the migration ledger and must not be copied into new work.
 
 ## 15. Open Decisions
 
 The following remain intentionally provisional:
 
-- whether the same Ysabeau variable file should be split into separately named Office and SC font assets;
+- the exact Newsreader optical-size and weight tuning after representative public, creator, organization, and portfolio screens are reviewed;
 - the final strength of Forest in active navigation;
 - the exact organization navigation shell: top navigation, sidebar, or adaptive hybrid;
 - whether dark mode becomes a supported product theme;

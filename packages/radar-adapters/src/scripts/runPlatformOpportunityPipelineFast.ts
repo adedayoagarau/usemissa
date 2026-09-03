@@ -324,9 +324,11 @@ export async function runFastPipeline() {
   }
 }
 
-runFastPipeline()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error("Fast pipeline failed:", err);
-    process.exit(1);
-  });
+if (process.argv[1] && process.argv[1].includes("runPlatformOpportunityPipelineFast")) {
+  runFastPipeline()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error("Fast pipeline failed:", err);
+      process.exit(1);
+    });
+}

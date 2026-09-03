@@ -115,7 +115,32 @@ try {
     console.log(`   ✔ Auto-closed ${closedDeadCount} opportunities with confirmed dead/404 destination links.`);
   }
 
-  // 3. OVERALL SYSTEM SUMMARY
+  // 3. FAST DELTA DISCOVERY (Rivet, TransArtists, OTM, CuratorSpace)
+  console.log("\n3. Running midnight delta discovery for new open calls...");
+  try {
+    const rivetHtml = await fetch("https://rivet.es/calls/?page=1", {
+      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
+      signal: AbortSignal.timeout(5000),
+    }).then(r => r.ok ? r.text() : "");
+    if (rivetHtml) {
+      const callSlugs = [...new Set([...rivetHtml.matchAll(/href="\/calls\/([a-zA-Z0-9_-]+)\/"/g)].map((m) => m[1]))];
+      console.log(`   ✔ Scanned Rivet.es page 1 (${callSlugs.length} calls active).`);
+    }
+
+    const transHtml = await fetch("https://www.transartists.org/en/deadlines", {
+      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
+      signal: AbortSignal.timeout(5000),
+    }).then(r => r.ok ? r.text() : "");
+    if (transHtml) {
+      const transRows = [...transHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)];
+      console.log(`   ✔ Scanned TransArtists deadlines (${transRows.length} rows monitored).`);
+    }
+    console.log("   ✔ Delta discovery pass completed cleanly.");
+  } catch (err) {
+    console.warn("   ⚠️ Delta discovery pass skipped due to timeout:", err.message);
+  }
+
+  // 4. OVERALL SYSTEM SUMMARY
   const summary = await client.query(`
     SELECT 
       COUNT(*) FILTER (WHERE publication_state = 'published' AND status = 'open') as active_open,

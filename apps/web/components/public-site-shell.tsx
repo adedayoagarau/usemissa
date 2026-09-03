@@ -43,7 +43,6 @@ export async function PublicSiteShell({
           <Link href="/residencies">Residencies</Link>
           <Link href="/journals">Journals</Link>
           <Link href="/grants">Grants</Link>
-          <Link href="/guides">Guides</Link>
           <Link href="/for-organizations">For organizations</Link>
           <a href="mailto:hello@usemissa.com">Contact</a>
         </nav>

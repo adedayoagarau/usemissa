@@ -33,7 +33,7 @@ export function OpportunitySearch({ category, initialQuery }: { category: string
         value={value}
         onChange={(event) => setValue(event.target.value)}
         name="q"
-        placeholder="Search opportunities"
+        placeholder="Search by opportunity, organization, or discipline"
         aria-label="Search opportunities or organizations"
         className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
       />

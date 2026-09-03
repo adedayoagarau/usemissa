@@ -18,6 +18,10 @@ export const OPPORTUNITY_TYPE_FACETS: ReadonlyArray<{
   { value: "fellowship", label: "Fellowship" },
   { value: "contest", label: "Contest" },
   { value: "commission", label: "Commission" },
+  { value: "festival", label: "Festival" },
+  { value: "scholarship", label: "Scholarship" },
+  { value: "conference", label: "Conference" },
+  { value: "rfp", label: "RFP / Public Commission" },
 ];
 
 const practiceFacets = MISSA_TAXONOMY.terms

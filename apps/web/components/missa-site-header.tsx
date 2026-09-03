@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, Search, X } from "lucide-react";
+import { ArrowUpRight, Menu, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import styles from "./missa-site-header.module.css";
@@ -18,14 +18,12 @@ const signedInLinks = [
   { href: "/residencies", label: "Residencies" },
   { href: "/tracker", label: "Tracker" },
   { href: "/library", label: "Library" },
-  { href: "/guides", label: "Guides" },
 ] as const;
 
 const publicLinks = [
   { href: "/opportunities", label: "Opportunities" },
   { href: "/directory", label: "Directory" },
   { href: "/residencies", label: "Residencies" },
-  { href: "/guides", label: "Guides" },
   { href: "/for-organizations", label: "For organizations" },
 ] as const;
 
@@ -93,7 +91,8 @@ export function MissaSiteHeader({
                 size="sm"
                 className={styles.createButton}
               >
-                Create account
+                <span>Create account</span>
+                <ArrowUpRight aria-hidden="true" />
               </Button>
             </div>
           )}
@@ -136,9 +135,11 @@ export function MissaSiteHeader({
               </Link>
               <Link
                 href="/signup?next=%2Fopportunities"
+                className={styles.mobileCreate}
                 onClick={() => setMobileOpen(false)}
               >
-                Create account
+                <span>Create account</span>
+                <ArrowUpRight aria-hidden="true" />
               </Link>
             </>
           ) : null}

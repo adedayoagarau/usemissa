@@ -100,7 +100,7 @@
  * knowing which surface family contains them. Row, Group, and Section are
  * Stack values; Inset and Gap retain their named types.
  */
-[data-density='compact'] {
+[data-density="compact"] {
   --space-row: 8px;
   --space-group: 16px;
   --space-section: 32px;
@@ -109,7 +109,7 @@
   --space-gutter: 16px;
 }
 
-[data-density='comfortable'] {
+[data-density="comfortable"] {
   --space-row: 12px;
   --space-group: 24px;
   --space-section: 48px;
@@ -118,7 +118,7 @@
   --space-gutter: 24px;
 }
 
-[data-density='spacious'] {
+[data-density="spacious"] {
   --space-row: 16px;
   --space-group: 32px;
   --space-section: 64px;
@@ -129,29 +129,29 @@
 }
 
 @media (min-width: 640px) {
-  [data-density='compact'] {
+  [data-density="compact"] {
     --space-gutter: 24px;
   }
 
-  [data-density='comfortable'] {
+  [data-density="comfortable"] {
     --space-gutter: 32px;
   }
 
-  [data-density='spacious'] {
+  [data-density="spacious"] {
     --space-gutter: 40px;
   }
 }
 
 @media (min-width: 1025px) {
-  [data-density='compact'] {
+  [data-density="compact"] {
     --space-gutter: 24px;
   }
 
-  [data-density='comfortable'] {
+  [data-density="comfortable"] {
     --space-gutter: 48px;
   }
 
-  [data-density='spacious'] {
+  [data-density="spacious"] {
     --space-gutter: 64px;
   }
 }
@@ -164,7 +164,7 @@ body {
 
 /* Canonical custom Missa wordmark. Each size uses its optically spaced SVG. */
 .missa-wordmark {
-  --missa-wordmark-art: url('/brand/missa-wordmark-120.svg');
+  --missa-wordmark-art: url("/brand/missa-wordmark-120.svg");
 
   display: inline-flex;
   width: 7.5rem;
@@ -184,7 +184,7 @@ body {
 }
 
 .missa-wordmark--marketing {
-  --missa-wordmark-art: url('/brand/missa-wordmark-240.svg');
+  --missa-wordmark-art: url("/brand/missa-wordmark-240.svg");
 
   width: 10rem;
 }
@@ -198,7 +198,7 @@ body {
 }
 
 .missa-wordmark--compact {
-  --missa-wordmark-art: url('/brand/missa-wordmark-80.svg');
+  --missa-wordmark-art: url("/brand/missa-wordmark-80.svg");
 
   width: 5rem;
 }
@@ -218,7 +218,7 @@ body {
 
 @theme inline {
   /* --font-heading/--font-sans/--font-mono are set by next/font/local in
-     app/layout.tsx (Ysabeau/Ysabeau/Fragment Mono). */
+     app/layout.tsx (Newsreader/Instrument Sans/Fragment Mono). */
   --font-heading: var(--font-heading), Georgia, serif;
   --font-sans: var(--font-sans), system-ui, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, monospace;
@@ -285,19 +285,19 @@ body {
   --animate-gradient-flow: gradient-flow 4s linear infinite;
   --animate-progress-bar-stripes: progress-bar-stripes 1s linear infinite;
   @keyframes gradient-flow {
-  0% {
-    background-position: 100% 0%;
+    0% {
+      background-position: 100% 0%;
     }
-  100% {
-    background-position: -100% 0%;
+    100% {
+      background-position: -100% 0%;
     }
   }
   @keyframes progress-bar-stripes {
-  from {
-    background-position-x: 0.75rem;
+    from {
+      background-position-x: 0.75rem;
     }
-  to {
-    background-position-x: 0;
+    to {
+      background-position-x: 0;
     }
   }
 }
@@ -351,10 +351,11 @@ body {
   }
 }
 
-.dark .shiki, .dark .shiki span {
-    background-color: transparent !important;
-    color: var(--shiki-dark) !important;
-    font-style: var(--shiki-dark-font-style) !important;
-    font-weight: var(--shiki-dark-font-weight) !important;
-    text-decoration: var(--shiki-dark-text-decoration) !important;
+.dark .shiki,
+.dark .shiki span {
+  background-color: transparent !important;
+  color: var(--shiki-dark) !important;
+  font-style: var(--shiki-dark-font-style) !important;
+  font-weight: var(--shiki-dark-font-weight) !important;
+  text-decoration: var(--shiki-dark-text-decoration) !important;
 }

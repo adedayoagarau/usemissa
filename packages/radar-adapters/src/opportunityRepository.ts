@@ -462,6 +462,11 @@ function buildOrder(sort: OpportunityRepositoryQuery["sort"]): string {
       return "o.processing_succeeded_at desc nulls last, o.id asc";
     case "recently-added":
       return "o.created_at desc, o.id asc";
+    case "alphabetical":
+      return "lower(o.title) asc, o.id asc";
+    case "free-first":
+    case "no-fee-first":
+      return "case when o.fee_status in ('no-fee', 'free') then 0 when o.fee_status in ('paid', 'fee') then 1 else 2 end asc, coalesce(o.fee_cents, 2147483647) asc, o.deadline_date asc nulls last, o.id asc";
     case "recommended":
       return "case when evidence.verified_until > now() then 0 else 1 end, o.deadline_date asc nulls last, o.processing_succeeded_at desc nulls last, o.id asc";
     case "soonest-deadline":
@@ -616,7 +621,11 @@ export function buildOpportunityBrowseQuery(
       query.locations,
     );
   if (query.feeStatus)
-    addCondition(conditions, values, "o.fee_status = $VALUE", query.feeStatus);
+    conditions.push(query.feeStatus === "no-fee"
+      ? "o.fee_status in ('no-fee', 'free')"
+      : query.feeStatus === "paid"
+        ? "o.fee_status in ('paid', 'fee')"
+        : "o.fee_status not in ('no-fee', 'free', 'paid', 'fee')");
   if (query.maxFeeCents !== undefined)
     addCondition(
       conditions,
@@ -631,6 +640,9 @@ export function buildOpportunityBrowseQuery(
       "o.deadline_date between current_date and current_date + ($VALUE::int)",
       query.deadlineWithinDays,
     );
+  }
+  if (query.deadlineKind === "rolling") {
+    conditions.push("o.deadline_kind in ('rolling', 'until-filled')");
   }
   if (query.simultaneousRequired !== undefined) {
     addCondition(
@@ -830,19 +842,19 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
         .slice(0, 4)
     : [];
   return {
-    id: row.id,
+    id: row.id.includes("_") ? row.id : `opp_${row.id}`,
     slug: boundedSlug(row.slug, row.id),
     createdAt: asIso(row.created_at),
     title: row.title,
-    organizationId: row.organization_id ?? undefined,
+    organizationId: row.organization_id ? (row.organization_id.includes("_") ? row.organization_id : `org_${row.organization_id}`) : undefined,
     organizationName: row.organization_name ?? undefined,
     organizationVerified: row.organization_verified === "true",
     identityAssetUrl: row.identity_asset_url ?? undefined,
     identityAssetAlt: row.identity_asset_alt ?? undefined,
     status: row.status,
-    type: row.type,
+    type: (["open-call", "magazine", "grant", "award", "fellowship", "residency", "festival", "scholarship", "conference", "rfp", "contest", "pitch", "exhibition", "commission", "other"].includes(row.type) ? row.type : "other") as any,
     discipline: row.discipline ?? undefined,
-    genres: row.genres ?? [],
+    genres: (row.genres ?? []).slice(0, 32),
     taxonomy: row.taxonomy ?? {
       schemeVersion: 1,
       termIds: [],
@@ -856,7 +868,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
       raw: row.deadline_raw ?? undefined,
     },
     fee: {
-      status: row.fee_status,
+      status: row.fee_status === "no-fee" || row.fee_status === "paid" ? row.fee_status : "unknown",
       amountCents: row.fee_cents ?? undefined,
       currency: row.fee_currency ?? undefined,
       raw: row.fee_raw ?? undefined,
@@ -867,7 +879,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     submissionAvailable:
       row.submission_state === "available" && Boolean(row.submission_url),
     source: {
-      kind: row.source_kind,
+      kind: (["organization-website", "directory", "feed", "newsletter", "user-suggested", "partner-feed"].includes(row.source_kind) ? row.source_kind : "organization-website") as any,
       name: row.source_name,
       url: row.source_url,
       checkedAt: asIso(row.source_checked_at) ?? new Date(0).toISOString(),

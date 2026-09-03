@@ -3,23 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { CalendarDays, Gift, MapPin, Tag } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Gift, MapPin, Tag } from "lucide-react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import styles from "./opportunity-catalogue-card.module.css";
-
-function initials(item: OpportunityBrowseProjection): string {
-  return (
-    (item.organizationName ?? item.title)
-      .split(/\s+/u)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((word) => word[0]?.toUpperCase())
-      .join("") || "M"
-  );
-}
 
 function typeLabel(type: OpportunityBrowseProjection["type"]): string {
   if (type === "open-call") return "Open call";
@@ -81,7 +70,8 @@ function statusLabel(
   if (status === "closing-soon") return "Closing soon";
   if (status === "deadline-extended") return "Deadline extended";
   if (status === "opening-soon") return "Opening soon";
-  if (deadline.kind === "rolling" || deadline.kind === "until-filled") return "Always open";
+  if (deadline.kind === "rolling" || deadline.kind === "until-filled")
+    return "Always open";
   return null;
 }
 
@@ -119,82 +109,93 @@ export function OpportunityCatalogueCard({
         size="lg"
         variant="interactive"
       >
-      <Link
-        href={detailHref}
-        className={styles.openLink}
-        aria-label={`View ${item.title}`}
-      >
-        <span className={styles.media}>
+        <Link
+          href={detailHref}
+          className={styles.openLink}
+          aria-label={`View ${item.title}`}
+        >
           {hasMedia ? (
-            // Only rights-cleared/permitted identity assets reach this projection.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={item.identityAssetUrl}
-              alt={item.identityAssetAlt ?? ""}
-              onError={() => setMediaFailed(true)}
-            />
-          ) : (
-            <span className={styles.fallback} aria-hidden="true">
-              <span>{initials(item)}</span>
+            <span className={styles.media}>
+              {/* Only rights-cleared/permitted identity assets reach this projection. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={item.identityAssetUrl}
+                alt={item.identityAssetAlt ?? ""}
+                onError={() => setMediaFailed(true)}
+              />
             </span>
-          )}
-        </span>
-        <span className={styles.body}>
-          <span className={styles.kicker}>
-            <span className={styles.type}>{typeLabel(item.type)}</span>
-            {publicStatus ? (
-              <Badge variant="secondary" className={`${styles.status} ${styles[item.status]}`}>
-                {publicStatus}
-              </Badge>
+          ) : null}
+          <span className={styles.body}>
+            <span className={styles.kicker}>
+              <span className={styles.type}>{typeLabel(item.type)}</span>
+              {publicStatus ? (
+                <Badge
+                  variant="secondary"
+                  className={`${styles.status} ${styles[item.status]}`}
+                >
+                  {publicStatus}
+                </Badge>
+              ) : null}
+            </span>
+            <span
+              id={titleId}
+              className={`${styles.title} font-heading`}
+              title={item.title}
+            >
+              {item.title}
+            </span>
+            <span className={styles.organization}>
+              {item.organizationName ?? "Organization not confirmed"}
+            </span>
+            {item.content?.summary ? (
+              <span className={styles.summary}>{item.content.summary}</span>
             ) : null}
-          </span>
-          <span id={titleId} className={styles.title} title={item.title}>
-            {item.title}
-          </span>
-          <span className={styles.organization}>
-            {item.organizationName ?? "Organization not confirmed"}
-          </span>
-          {item.content?.summary ? (
-            <span className={styles.summary}>{item.content.summary}</span>
-          ) : null}
-          {practices.length ? (
-            <span className={styles.practices}>{practices.join(" · ")}</span>
-          ) : null}
-          <span className={styles.facts}>
-            <span data-kind="deadline">
-              <CalendarDays aria-hidden="true" />
-              {deadlineLabel(item.deadline)}
-            </span>
-            <span data-kind={item.fee.status === "no-fee" ? "positive" : "fee"}>
-              <Tag aria-hidden="true" />
-              {feeLabel(item)}
-            </span>
-            {item.location ? <span data-kind="information">
-              <MapPin aria-hidden="true" />
-              {item.location}
-            </span> : null}
-            {item.prize ? (
-              <span className={styles.award} data-kind="award">
-                <Gift aria-hidden="true" />
-                {item.prize}
+            {practices.length ? (
+              <span className={styles.practices}>{practices.join(" · ")}</span>
+            ) : null}
+            <span className={styles.facts}>
+              <span data-kind="deadline" className="font-mono">
+                <CalendarDays aria-hidden="true" />
+                {deadlineLabel(item.deadline)}
               </span>
-            ) : null}
+              <span
+                data-kind={item.fee.status === "no-fee" ? "positive" : "fee"}
+              >
+                <Tag aria-hidden="true" />
+                {feeLabel(item)}
+              </span>
+              {item.location ? (
+                <span data-kind="information">
+                  <MapPin aria-hidden="true" />
+                  {item.location}
+                </span>
+              ) : null}
+              {item.prize ? (
+                <span className={styles.award} data-kind="award">
+                  <Gift aria-hidden="true" />
+                  {item.prize}
+                </span>
+              ) : null}
+            </span>
+            <span className={styles.cta} aria-hidden="true">
+              View opportunity
+              <ArrowUpRight />
+            </span>
           </span>
-        </span>
-      </Link>
-      <div className={styles.save}>
-        <SaveToTrackerButton
-          opportunityId={item.id}
-          tracked={item.personal?.tracked}
-          compact
-          signedIn={signedIn}
-          returnTo={returnTo}
-          opportunityTitle={item.title}
-        />
-        <span aria-hidden="true">
-          {item.personal?.tracked ? "In Tracker" : "Save"}
-        </span>
-      </div>
+        </Link>
+        <div className={styles.save}>
+          <SaveToTrackerButton
+            opportunityId={item.id}
+            tracked={item.personal?.tracked}
+            compact
+            signedIn={signedIn}
+            returnTo={returnTo}
+            opportunityTitle={item.title}
+          />
+          <span aria-hidden="true">
+            {item.personal?.tracked ? "In Tracker" : "Save"}
+          </span>
+        </div>
       </Card>
     </article>
   );

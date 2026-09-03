@@ -16,11 +16,6 @@ import { OpportunityResultsRefresh } from "@/components/opportunity-results-refr
 import { OpportunityResults } from "@/components/opportunity-results";
 import { OpportunitySearch } from "@/components/opportunity-search";
 import { OpportunitySort } from "@/components/opportunity-sort";
-import { OpportunityPracticeNav } from "@/components/opportunity-practice-nav";
-import {
-  OpportunityFeedTabs,
-  type OpportunityFeedId,
-} from "@/components/opportunity-feed-tabs";
 import { SaveSearchButton } from "@/components/save-search-button";
 import { PublicDiscoveryEvent } from "@/components/public-discovery-event";
 import { Button } from "@/components/ui/button";
@@ -42,6 +37,10 @@ const typeLabels: Record<string, string> = {
   fellowship: "Fellowship",
   contest: "Contest",
   commission: "Commission",
+  festival: "Festival",
+  scholarship: "Scholarship",
+  conference: "Conference",
+  rfp: "RFP / Public Commission",
 };
 
 export async function generateMetadata({
@@ -115,7 +114,8 @@ function activeFilterCount(
     query.taxonomyTermIds.length +
     query.locations.length +
     (query.feeStatus ? 1 : 0) +
-    (query.deadlineWithinDays ? 1 : 0)
+    (query.deadlineWithinDays ? 1 : 0) +
+    (query.deadlineKind ? 1 : 0)
   );
 }
 
@@ -133,14 +133,6 @@ export default async function OpportunitiesPage({
   const activeSession = publicPreview ? null : session;
   const urlParams = toUrlSearchParams(rawParams);
   const query = parseOpportunityBrowseQuery(urlParams);
-  const activeFeed: OpportunityFeedId =
-    query.feeStatus === "no-fee"
-      ? "free"
-      : query.deadlineWithinDays === 14
-        ? "closing"
-        : query.sort === "recently-added"
-          ? "recent"
-          : "all";
   const baseQueryParams = new URLSearchParams(urlParams);
   baseQueryParams.delete("cursor");
   const [result, facetCounts] = await Promise.all([
@@ -222,6 +214,16 @@ export default async function OpportunitiesPage({
           },
         ]
       : []),
+    ...(query.deadlineKind
+      ? [
+          {
+            key: "deadline",
+            value: query.deadlineKind,
+            label: "Rolling / year-round",
+            list: false,
+          },
+        ]
+      : []),
   ];
   const saveCriteria = {
     taxonomyTermIds: query.taxonomyTermIds,
@@ -236,129 +238,189 @@ export default async function OpportunitiesPage({
     : filterCount
       ? "No opportunities match this combination yet. Try removing one filter or broadening the location."
       : "No open opportunities are available right now. Try again later.";
-  const organizationStore = activeSession ? (await getEngine()).store.organizations : null;
-  const headerSession = activeSession ? {
-    email: activeSession.account.email,
-    isAdmin: activeSession.account.isAdmin,
-    organizations: activeSession.memberships.map((membership) => ({
-      id: membership.organizationId,
-      name: organizationStore?.get(membership.organizationId)?.name ?? "Organization",
-    })),
-  } : null;
+  const organizationStore = activeSession
+    ? (await getEngine()).store.organizations
+    : null;
+  const headerSession = activeSession
+    ? {
+        email: activeSession.account.email,
+        isAdmin: activeSession.account.isAdmin,
+        organizations: activeSession.memberships.map((membership) => ({
+          id: membership.organizationId,
+          name:
+            organizationStore?.get(membership.organizationId)?.name ??
+            "Organization",
+        })),
+      }
+    : null;
   const clearFiltersHref = publicPreview
     ? "/opportunities?preview=public"
     : "/opportunities";
-  const editorialCounts = {
-    closing: displayResult.items.filter((item) => item.status === "closing-soon").length,
-    free: displayResult.items.filter((item) => item.fee.status === "no-fee").length,
-    opening: displayResult.items.length,
-  };
-
   return (
     <OpportunityShell session={headerSession}>
-    <div className={styles.shell}>
-      <PublicDiscoveryEvent
-        eventName="public.discovery_view"
-        properties={{
-          surface: "opportunities",
-          resultCount: displayResult.items.length,
-        }}
-      />
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "CollectionPage",
-          name: "Creative opportunities",
-          description:
-            "Creative grants, open calls, residencies, awards, commissions, and fellowships.",
-          url: absoluteUrl("/opportunities"),
-          mainEntity: {
-            "@type": "ItemList",
-            numberOfItems: displayResult.items.length,
-            itemListElement: displayResult.items.map((item, index) => ({
-              "@type": "ListItem",
-              position: index + 1,
-              name: item.title,
-              url: absoluteUrl(`/opportunities/${item.slug}`),
-            })),
-          },
-        }}
-      />
+      <div className={styles.shell}>
+        <PublicDiscoveryEvent
+          eventName="public.discovery_view"
+          properties={{
+            surface: "opportunities",
+            resultCount: displayResult.items.length,
+          }}
+        />
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            name: "Creative opportunities",
+            description:
+              "Creative grants, open calls, residencies, awards, commissions, and fellowships.",
+            url: absoluteUrl("/opportunities"),
+            mainEntity: {
+              "@type": "ItemList",
+              numberOfItems: displayResult.items.length,
+              itemListElement: displayResult.items.map((item, index) => ({
+                "@type": "ListItem",
+                position: index + 1,
+                name: item.title,
+                url: absoluteUrl(`/opportunities/${item.slug}`),
+              })),
+            },
+          }}
+        />
 
-      <main id="main-content" className={styles.main} data-density="comfortable">
-        {usePreviewFixtures ? (
-          <p className={styles.previewNotice} role="note">
-            Design preview · Representative examples, not published listings
-          </p>
-        ) : null}
+        <main
+          id="main-content"
+          className={styles.main}
+          data-density="comfortable"
+        >
+          {usePreviewFixtures ? (
+            <p className={styles.previewNotice} role="note">
+              Design preview · Representative examples, not published listings
+            </p>
+          ) : null}
 
-        <div className={styles.workspace}>
-          <section className={styles.results} aria-labelledby="results-heading">
-            <OpportunityEditorialHero counts={editorialCounts} />
-            <OpportunityBrowseHeader
-              practices={<OpportunityPracticeNav practices={displayFacetCounts.practices} currentQuery={urlParams.toString()} selectedTaxonomy={query.taxonomyTermIds} />}
-              feeds={<OpportunityFeedTabs activeFeed={activeFeed} />}
-              search={<div className={styles.searchRow}><OpportunitySearch
-                key={query.query ?? ""}
-                category={query.category}
-                initialQuery={query.query}
-              /></div>}
-              activeFilters={activeChips.length ? (
-                <div className={styles.activeFilters} aria-label="Active filters">
-                  {activeChips.map((chip) => <Link key={`${chip.key}-${chip.value}`} href={chip.list ? removeListValueHref(urlParams, chip.key, chip.value) : hrefWith(urlParams, { [chip.key]: undefined })} className={styles.chip} aria-label={`Remove ${chip.label} filter`}>{chip.label}<X aria-hidden="true" /></Link>)}
-                  <Link href={clearFiltersHref} className={styles.clear}>Clear all</Link>
-                </div>
-              ) : undefined}
-              toolbar={<div className={styles.toolbar}>
-                <h2 id="results-heading" aria-live="polite" aria-atomic="true">{displayResult.total.toLocaleString()} {displayResult.total === 1 ? "opportunity" : "opportunities"}</h2>
-                <div className={styles.toolbarActions}>
-                  <OpportunityCatalogueFilters locations={LOCATION_OPTIONS} activeFilterCount={filterCount} facetCounts={displayFacetCounts} resultCount={displayResult.total} placement="mobile" />
-                  {activeSession?.account.userId ? <div className={styles.saveSearch}><SaveSearchButton userId={activeSession.account.userId} criteria={saveCriteria} defaultName={query.query ? `Search: ${query.query}` : "Opportunity search"} /></div> : null}
-                  <OpportunitySort className={styles.sort} signedIn={Boolean(activeSession)} />
-                </div>
-              </div>}
-            />
-            <div className={styles.catalogueLayout}>
-              <OpportunityCatalogueFilters
-                locations={LOCATION_OPTIONS}
-                activeFilterCount={filterCount}
-                facetCounts={displayFacetCounts}
-                resultCount={displayResult.total}
-                placement="desktop"
+          <div className={styles.workspace}>
+            <section
+              className={styles.results}
+              aria-labelledby="results-heading"
+            >
+              <OpportunityEditorialHero />
+              <OpportunityBrowseHeader
+                search={
+                  <div className={styles.searchRow}>
+                    <OpportunitySearch
+                      key={query.query ?? ""}
+                      category={query.category}
+                      initialQuery={query.query}
+                    />
+                  </div>
+                }
+                activeFilters={
+                  activeChips.length ? (
+                    <div
+                      className={styles.activeFilters}
+                      aria-label="Active filters"
+                    >
+                      {activeChips.map((chip) => (
+                        <Link
+                          key={`${chip.key}-${chip.value}`}
+                          href={
+                            chip.list
+                              ? removeListValueHref(
+                                  urlParams,
+                                  chip.key,
+                                  chip.value,
+                                )
+                              : hrefWith(urlParams, { [chip.key]: undefined })
+                          }
+                          className={styles.chip}
+                          aria-label={`Remove ${chip.label} filter`}
+                        >
+                          {chip.label}
+                          <X aria-hidden="true" />
+                        </Link>
+                      ))}
+                      <Link href={clearFiltersHref} className={styles.clear}>
+                        Clear all
+                      </Link>
+                    </div>
+                  ) : undefined
+                }
+                toolbar={
+                  <div className={styles.toolbar}>
+                    <h2
+                      id="results-heading"
+                      aria-live="polite"
+                      aria-atomic="true"
+                    >
+                      {displayResult.total.toLocaleString()}{" "}
+                      {displayResult.total === 1
+                        ? "opportunity"
+                        : "opportunities"}
+                    </h2>
+                    <div className={styles.toolbarActions}>
+                      <OpportunityCatalogueFilters
+                        locations={LOCATION_OPTIONS}
+                        activeFilterCount={filterCount}
+                        facetCounts={displayFacetCounts}
+                        resultCount={displayResult.total}
+                        placement="all"
+                      />
+                      {activeSession?.account.userId ? (
+                        <div className={styles.saveSearch}>
+                          <SaveSearchButton
+                            userId={activeSession.account.userId}
+                            criteria={saveCriteria}
+                            defaultName={
+                              query.query
+                                ? `Search: ${query.query}`
+                                : "Opportunity search"
+                            }
+                          />
+                        </div>
+                      ) : null}
+                      <OpportunitySort
+                        className={styles.sort}
+                        signedIn={Boolean(activeSession)}
+                      />
+                    </div>
+                  </div>
+                }
               />
-              <div className={styles.resultColumn}>
-            <OpportunityResultsRefresh queryKey={urlParams.toString()}>
-              {displayResult.items.length ? (
-                <OpportunityResults
-                  initialItems={displayResult.items}
-                  initialNextCursor={displayResult.nextCursor}
-                  baseQuery={baseQueryParams.toString()}
-                  signedIn={Boolean(activeSession)}
-                  previewMode={usePreviewFixtures}
-                />
-              ) : (
-                <div className={styles.empty}>
-                  <span>
-                    <SearchX aria-hidden="true" />
-                  </span>
-                  <h2>No opportunities match these filters</h2>
-                  <p>{emptyDescription}</p>
-                  <Button
-                    nativeButton={false}
-                    render={<Link href={clearFiltersHref} />}
-                    variant="outline"
-                  >
-                    Clear filters
-                  </Button>
+              <div className={styles.catalogueLayout}>
+                <div className={styles.resultColumn}>
+                  <OpportunityResultsRefresh queryKey={urlParams.toString()}>
+                    {displayResult.items.length ? (
+                      <OpportunityResults
+                        initialItems={displayResult.items}
+                        initialNextCursor={displayResult.nextCursor}
+                        baseQuery={baseQueryParams.toString()}
+                        signedIn={Boolean(activeSession)}
+                        previewMode={usePreviewFixtures}
+                        total={displayResult.total}
+                      />
+                    ) : (
+                      <div className={styles.empty}>
+                        <span>
+                          <SearchX aria-hidden="true" />
+                        </span>
+                        <h2>No opportunities match these filters</h2>
+                        <p>{emptyDescription}</p>
+                        <Button
+                          nativeButton={false}
+                          render={<Link href={clearFiltersHref} />}
+                          variant="outline"
+                        >
+                          Clear filters
+                        </Button>
+                      </div>
+                    )}
+                  </OpportunityResultsRefresh>
                 </div>
-              )}
-            </OpportunityResultsRefresh>
               </div>
-            </div>
-          </section>
-        </div>
-      </main>
-    </div>
+            </section>
+          </div>
+        </main>
+      </div>
     </OpportunityShell>
   );
 }

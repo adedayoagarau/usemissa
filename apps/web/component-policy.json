@@ -1,0 +1,243 @@
+{
+  "$schema": "./component-policy.schema.json",
+  "version": "0.1.0",
+  "status": "binding-for-new-ui",
+  "instructionEntrypoints": [
+    "AGENTS.md",
+    "docs/ai-ui-build-directive.md",
+    ".github/copilot-instructions.md",
+    ".cursor/rules/missa-ui.mdc"
+  ],
+  "sources": {
+    "installed": "@/components/ui",
+    "studioLocal": "@/components/shadcn-studio",
+    "shadcn": "@shadcn",
+    "studioComponents": "@ss-components",
+    "studioBlocks": "@ss-blocks",
+    "studioPages": "@ss-pages",
+    "coss": "selective-review-only"
+  },
+  "sourcePriority": [
+    "installed",
+    "shadcn",
+    "studioComponents",
+    "studioBlocks",
+    "studioPages",
+    "coss",
+    "custom-with-rationale"
+  ],
+  "typography": {
+    "editorial": "Newsreader",
+    "interface": "Instrument Sans",
+    "data": "Fragment Mono"
+  },
+  "tokens": {
+    "required": true,
+    "allowedColorRoles": [
+      "canvas",
+      "surface",
+      "ink",
+      "primary",
+      "success",
+      "warning",
+      "destructive",
+      "information",
+      "border",
+      "focus"
+    ],
+    "forbidFeatureHex": true,
+    "forbidFeatureFontFamily": true,
+    "forbidArbitraryRadius": true,
+    "forbidArbitraryAnimation": true
+  },
+  "intents": {
+    "action.primary": { "primitive": "Button", "variant": "default" },
+    "action.supporting": { "primitive": "Button", "variant": "outline" },
+    "action.quiet": { "primitive": "Button", "variant": "ghost" },
+    "action.destructive-final": {
+      "primitive": "Button",
+      "variant": "destructive",
+      "container": "AlertDialog"
+    },
+    "input.short-text": { "composition": ["Field", "Input"] },
+    "input.long-text": { "composition": ["Field", "Textarea"] },
+    "choice.single-visible": { "primitive": "RadioGroup" },
+    "choice.single-compact": { "primitive": "Select" },
+    "choice.single-native-mobile": { "primitive": "NativeSelect" },
+    "choice.searchable": { "primitive": "Combobox" },
+    "choice.autocomplete": { "primitive": "Autocomplete" },
+    "choice.multiple": { "primitive": "MultiSelect" },
+    "setting.boolean": { "primitive": "Switch" },
+    "filter.active-removable": { "semantic": "FilterChip", "base": "Button" },
+    "view.peer-switch": { "primitive": "Tabs" },
+    "disclosure.single": { "primitive": "Collapsible" },
+    "disclosure.group": { "primitive": "Accordion" },
+    "explanation.short-interactive": { "primitive": "Popover" },
+    "explanation.icon-only": { "primitive": "Tooltip" },
+    "menu.actions": { "primitive": "DropdownMenu" },
+    "overlay.focused-task": { "primitive": "Dialog" },
+    "overlay.mobile-filter": { "primitive": "Sheet" },
+    "overlay.mobile-action-chooser": { "primitive": "Drawer" },
+    "feedback.transient-success": { "primitive": "Sonner" },
+    "feedback.local-recoverable": { "primitive": "Alert" },
+    "feedback.empty": { "primitive": "Empty" },
+    "loading.structure": { "primitive": "Skeleton" },
+    "loading.indeterminate": { "composition": ["Spinner", "status text"] },
+    "loading.determinate": { "composition": ["Progress", "status text"] },
+    "data.comparison": { "primitive": "Table" },
+    "data.reorder": { "primitive": "Sortable" },
+    "data.board": { "primitive": "Kanban" },
+    "date.selection": { "primitive": "Calendar" },
+    "metadata.static": {
+      "primitive": "Badge",
+      "requiresSemanticWrapperForDomainState": true
+    }
+  },
+  "semanticComponents": {
+    "CategoryBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-04", "badge-09", "badge-10"],
+      "motion": "never"
+    },
+    "OpportunityStatusBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-05", "badge-10"],
+      "motion": "never"
+    },
+    "UrgencyBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-05", "badge-10"],
+      "motion": "never"
+    },
+    "FeeBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-02", "badge-04"],
+      "motion": "never"
+    },
+    "AuthorityBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-10"],
+      "motion": "never"
+    },
+    "MatchExplanationTrigger": {
+      "base": "Button",
+      "disclosure": "Popover",
+      "motion": "popover-transition-only"
+    },
+    "PublicationStateBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-16", "badge-18", "badge-19"],
+      "motion": "active-transition-only"
+    },
+    "ProcessBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-16", "badge-17", "badge-20", "badge-21"],
+      "motion": "indicator-while-confirmed-active"
+    },
+    "CountBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-07", "badge-23"],
+      "motion": "finite-entrance-when-becoming-nonzero"
+    },
+    "FilterChip": {
+      "base": "Button",
+      "studioReferences": ["badge-12", "badge-13"],
+      "motion": "never"
+    },
+    "SaveAction": {
+      "base": "Button",
+      "studioCandidates": ["button-01"],
+      "browserObservedReferences": ["button-23", "button-31"],
+      "motion": "finite-state-transition"
+    }
+  },
+  "productCompositions": {
+    "OpportunityBrowseToolbar": [
+      "Field",
+      "InputGroup",
+      "Button",
+      "FilterChip",
+      "Select",
+      "Sheet"
+    ],
+    "OpportunityCard": [
+      "ItemOrCard",
+      "CategoryBadge",
+      "OpportunityStatusBadge",
+      "UrgencyBadge",
+      "SaveAction"
+    ],
+    "OpportunityDecisionSummary": [
+      "StructuredList",
+      "Separator",
+      "SemanticStatus"
+    ],
+    "OrganizationAuthorityPanel": [
+      "Avatar",
+      "AuthorityBadge",
+      "OrganizationLink"
+    ],
+    "OpportunityFilterSheet": [
+      "Sheet",
+      "Field",
+      "SelectionControls",
+      "ResultCount"
+    ],
+    "TrackerBoard": ["Kanban", "WorkflowBadge", "DropdownMenu", "Dialog"],
+    "OpportunityCalendar": ["Calendar", "PopoverOrPanel", "ProcessBadge"],
+    "WorkEditor": [
+      "Field",
+      "Sortable",
+      "MediaBlocks",
+      "DialogOrSheet",
+      "ProcessFeedback"
+    ],
+    "ProfileSettingsForm": ["Field", "FormControls", "InlineFeedback"],
+    "PortfolioIdentityHeader": [
+      "EditorialTypography",
+      "AvatarOrMedia",
+      "RestrainedActions"
+    ],
+    "PortfolioWorkCard": [
+      "AspectRatio",
+      "Media",
+      "EditorialTitle",
+      "AccessibleCaption"
+    ],
+    "SubmissionTable": [
+      "Table",
+      "WorkflowBadge",
+      "RowActions",
+      "ResponsiveLabelledRows"
+    ]
+  },
+  "motion": {
+    "requiresChangingState": true,
+    "requiresComprehensionBenefit": true,
+    "requiresFiniteOrStateBoundDuration": true,
+    "requiresReducedMotionEquivalent": true,
+    "forbiddenStaticMeanings": [
+      "category",
+      "discipline",
+      "fee",
+      "eligibility",
+      "verification",
+      "match-score",
+      "deadline",
+      "premium",
+      "persistent-warning"
+    ]
+  },
+  "importPolicy": {
+    "semanticRoot": "@/components/missa",
+    "rawPrimitiveRoot": "@/components/ui",
+    "studioRoot": "@/components/shadcn-studio",
+    "restrictedPrimitives": ["badge"],
+    "studioImportsAllowedOnlyIn": [
+      "app/design-system",
+      "components/design-system",
+      "components/missa"
+    ],
+    "legacyBaseline": "apps/web/component-policy-baseline.json"
+  }
+}

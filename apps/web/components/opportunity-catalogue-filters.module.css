@@ -6,11 +6,27 @@
   display: none;
 }
 
-.sidebar { position: sticky; top: 24px; display: block; }
+.desktopControls { display: flex; }
+.desktopFilterBar { display: flex; align-items: center; gap: 6px; }
+.filterTrigger { min-height: 40px; gap: 7px; border-color: transparent; background: var(--muted); box-shadow: none; }
+.filterTrigger:hover { border-color: var(--border); background: var(--accent-tint); }
+.filterTrigger > svg { width: 14px; height: 14px; color: var(--muted-foreground); }
+.triggerCount { display: inline-grid; min-width: 20px; height: 20px; place-items: center; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); font-size: 11px; }
+.optionPopover { width: 300px; padding: 6px; background: var(--background); }
+.optionPopover :global([data-slot="command"]) { min-height: 0; background: var(--background); }
+.optionPopover :global([data-slot="command-list"]) { max-height: 320px; }
+.optionPopover :global([data-slot="command-item"]) { min-height: 42px; }
+.optionCount { margin-left: auto; padding-right: 22px; color: var(--muted-foreground); font-size: 12px; font-variant-numeric: tabular-nums; }
+.resetButton { min-height: 40px; color: var(--primary); }
+.resetButton span { display: inline-grid; min-width: 20px; height: 20px; place-items: center; border-radius: 999px; background: var(--ochre-tint); color: var(--ochre-deep); font-size: 11px; }
 
 .panel {
   display: grid;
-  gap: 16px;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
 }
 
 .heading {
@@ -42,7 +58,7 @@
   display: grid;
   gap: 10px;
   margin: 0;
-  padding: 18px 0;
+  padding: 14px 0;
   border: 0;
   border-top: 1px solid var(--border);
 }
@@ -63,12 +79,15 @@
   min-height: 44px;
   align-items: center;
   gap: 11px;
+  padding-inline: 6px;
+  border-radius: 7px;
   color: var(--muted-foreground);
   cursor: pointer;
   font-size: 14px;
 }
 
 .checkRow:hover {
+  background: var(--muted);
   color: var(--foreground);
 }
 
@@ -82,7 +101,7 @@
 .selectField {
   display: grid;
   gap: 7px;
-  padding: 18px 0;
+  padding: 14px 0;
   border: 0;
   border-top: 1px solid var(--border);
   font-size: 14px;
@@ -208,9 +227,8 @@
 }
 
 @media (max-width: 980px) {
-  .desktopRoot { display: none; }
+  .desktopRoot, .desktopControls { display: none; }
   .mobileRoot { display: block; min-width: 0; }
-  .sidebar { display: none; }
   .mobileControls { display: flex; }
   .mobileControls button {
     width: 100%;

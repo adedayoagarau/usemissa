@@ -22,12 +22,14 @@ export function OpportunityResults({
   baseQuery,
   signedIn,
   previewMode = false,
+  total,
 }: {
   initialItems: OpportunityBrowseProjection[];
   initialNextCursor: string | null;
   baseQuery: string;
   signedIn: boolean;
   previewMode?: boolean;
+  total: number;
 }) {
   const [snapshots] = useState(() => new Map<string, Snapshot>([['first', { items: initialItems, nextCursor: initialNextCursor }]]));
   const [items, setItems] = useState(initialItems);
@@ -86,6 +88,9 @@ export function OpportunityResults({
     <>
       <div className={styles.grid}>
         {items.map((item) => <OpportunityCatalogueCard key={item.id} item={item} signedIn={signedIn} previewMode={previewMode} />)}
+      </div>
+      <div className={styles.resultProgress} aria-live="polite">
+        Showing {items.length.toLocaleString()} of {total.toLocaleString()} opportunities
       </div>
       {nextCursor ? (
         <div className={styles.loadMore}>

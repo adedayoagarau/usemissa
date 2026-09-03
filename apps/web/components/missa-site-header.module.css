@@ -102,14 +102,22 @@
 
 .authActions > .createButton {
   min-height: 44px;
+  gap: 10px;
+  padding-inline: 16px 12px;
   border-color: var(--primary);
   background: var(--primary);
-  color: #fff;
+  color: var(--primary-foreground);
+  box-shadow: inset 0 -3px 0 var(--ochre-deep);
 }
 
 .authActions > .createButton:hover {
-  background: color-mix(in srgb, var(--primary) 88%, black);
-  color: #fff;
+  background: var(--accent-deep);
+  color: var(--primary-foreground);
+}
+
+.createButton svg {
+  width: 16px;
+  height: 16px;
 }
 
 .avatar {
@@ -172,5 +180,18 @@
   .mobileNav a[aria-current="page"] {
     background: var(--accent-tint);
     color: var(--accent-deep);
+  }
+
+  .mobileNav .mobileCreate {
+    justify-content: space-between;
+    margin-top: 4px;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: inset 0 -3px 0 var(--ochre-deep);
+  }
+
+  .mobileCreate svg {
+    width: 17px;
+    height: 17px;
   }
 }
