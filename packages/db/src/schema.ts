@@ -1214,9 +1214,185 @@ export const opportunityIdentityAssets = pgTable(
     sourceUrl: text("source_url"),
     width: integer("width"),
     height: integer("height"),
+    reviewer: text("reviewer"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    evidencePassage: text("evidence_passage"),
+    attributionRequirement: text("attribution_requirement"),
+    approvedCrop: jsonb("approved_crop").$type<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      focalPoint?: { x: number; y: number };
+    }>(),
+    permittedScope: text("permitted_scope"),
+    contentHash: text("content_hash"),
+    inheritanceLevel: text("inheritance_level").notNull().default("opportunity"),
+    linkedOrganizationId: text("linked_organization_id").references(
+      () => organizations.id,
+      { onDelete: "set null" },
+    ),
+    linkedProgramId: text("linked_program_id").references(
+      () => programs.id,
+      { onDelete: "set null" },
+    ),
+    metadata: jsonb("metadata")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, unknown>>(),
     createdAt,
   },
-  (table) => [index("opportunity_assets_opp_idx").on(table.opportunityId)],
+  (table) => [
+    index("opportunity_assets_opp_idx").on(table.opportunityId),
+    check(
+      "opportunity_identity_assets_rights_check",
+      sql`${table.rightsStatus} in ('unknown', 'cleared', 'permitted', 'rejected', 'needs-attribution')`,
+    ),
+    check(
+      "opportunity_identity_assets_inheritance_check",
+      sql`${table.inheritanceLevel} in ('opportunity', 'program', 'organization')`,
+    ),
+  ],
+);
+
+export const opportunityMediaCandidates = pgTable(
+  "opportunity_media_candidates",
+  {
+    id: text("id").primaryKey(),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    jobId: text("job_id").references(() => radarEnrichmentJobs.id, {
+      onDelete: "set null",
+    }),
+    originalUrl: text("original_url").notNull(),
+    resolvedUrl: text("resolved_url").notNull(),
+    pageUrl: text("page_url").notNull(),
+    sourceRole: text("source_role").notNull(),
+    candidateKind: text("candidate_kind").notNull(),
+    alt: text("alt"),
+    caption: text("caption"),
+    title: text("title"),
+    width: integer("width"),
+    height: integer("height"),
+    mimeType: text("mime_type"),
+    fileSize: integer("file_size"),
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    httpStatus: integer("http_status"),
+    redirectChain: jsonb("redirect_chain")
+      .notNull()
+      .default(sql`'[]'::jsonb`)
+      .$type<string[]>(),
+    contentHash: text("content_hash"),
+    attributionText: text("attribution_text"),
+    inheritanceLevel: text("inheritance_level")
+      .notNull()
+      .default("opportunity"),
+    linkedOrganizationId: text("linked_organization_id").references(
+      () => organizations.id,
+      { onDelete: "set null" },
+    ),
+    linkedProgramId: text("linked_program_id").references(
+      () => programs.id,
+      { onDelete: "set null" },
+    ),
+    extractionMethod: text("extraction_method").notNull(),
+    parserVersion: text("parser_version").notNull(),
+    confidence: text("confidence").notNull().default("unknown"),
+    rejectionReasons: text("rejection_reasons")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    status: text("status").notNull().default("reviewable"),
+    rightsStatus: text("rights_status").notNull().default("unknown"),
+    metadata: jsonb("metadata")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, unknown>>(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("opportunity_media_candidates_opp_idx").on(
+      table.opportunityId,
+      table.status,
+    ),
+    index("opportunity_media_candidates_hash_idx").on(table.contentHash),
+    uniqueIndex("opportunity_media_candidates_dedup_idx").on(
+      table.opportunityId,
+      table.resolvedUrl,
+    ),
+    check(
+      "opportunity_media_candidates_kind_check",
+      sql`${table.candidateKind} in ('opportunity-artwork', 'program-artwork', 'organization-logo', 'organization-cover', 'venue/place', 'editorial-image', 'unknown')`,
+    ),
+    check(
+      "opportunity_media_candidates_source_role_check",
+      sql`${table.sourceRole} in ('official-opportunity-page', 'organization-page', 'program-page', 'application-portal', 'discovery-directory', 'attachment')`,
+    ),
+    check(
+      "opportunity_media_candidates_inheritance_check",
+      sql`${table.inheritanceLevel} in ('opportunity', 'program', 'organization')`,
+    ),
+    check(
+      "opportunity_media_candidates_status_check",
+      sql`${table.status} in ('found', 'rejected', 'reviewable', 'cleared', 'permitted', 'needs-attribution', 'blocked')`,
+    ),
+    check(
+      "opportunity_media_candidates_rights_check",
+      sql`${table.rightsStatus} in ('unknown', 'cleared', 'permitted', 'rejected', 'needs-attribution')`,
+    ),
+    check(
+      "opportunity_media_candidates_confidence_check",
+      sql`${table.confidence} in ('confirmed', 'probable', 'unknown')`,
+    ),
+  ],
+);
+
+export const opportunityMediaReviews = pgTable(
+  "opportunity_media_reviews",
+  {
+    id: text("id").primaryKey(),
+    candidateId: text("candidate_id")
+      .notNull()
+      .references(() => opportunityMediaCandidates.id, {
+        onDelete: "cascade",
+      }),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    reviewer: text("reviewer").notNull(),
+    decision: text("decision").notNull(),
+    evidencePassage: text("evidence_passage"),
+    attributionRequirement: text("attribution_requirement"),
+    approvedCrop: jsonb("approved_crop").$type<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      focalPoint?: { x: number; y: number };
+    }>(),
+    permittedScope: text("permitted_scope"),
+    reviewedAlt: text("reviewed_alt"),
+    notes: text("notes"),
+    decidedAt: timestamp("decided_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    createdAt,
+  },
+  (table) => [
+    index("opportunity_media_reviews_opp_idx").on(
+      table.opportunityId,
+      table.decidedAt,
+    ),
+    index("opportunity_media_reviews_candidate_idx").on(table.candidateId),
+    check(
+      "opportunity_media_reviews_decision_check",
+      sql`${table.decision} in ('cleared', 'permitted', 'rejected', 'needs-attribution')`,
+    ),
+  ],
 );
 
 /**

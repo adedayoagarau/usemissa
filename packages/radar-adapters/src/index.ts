@@ -514,3 +514,13 @@ export {
   type RunArtsDiscoveryOptions,
   type RunArtsDiscoveryResult,
 } from "./scripts/runArtsDiscovery.js";
+export {
+  reconcileExpiredOpportunitiesInDatabase,
+  type ReconciliationResult,
+} from "./databaseReconciliation.js";
+export * from "./mediaExtractionContracts.js";
+export * from "./mediaFetcher.js";
+export * from "./mediaExtractor.js";
+export * from "./mediaReviewService.js";
+export { inferSourceRole } from "./enrichmentWorker.js";
+export { runDryRun } from "./mediaDryRunCli.js";

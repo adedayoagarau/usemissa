@@ -15,7 +15,8 @@
     "missa-coverage-worker": "dist/src/coverageWorker.js",
     "missa-taxonomy-discovery": "dist/src/taxonomyDiscoveryWorker.js",
     "missa-publication-review": "dist/src/publicationReviewCli.js",
-    "missa-lifecycle-reconciler": "dist/src/lifecycleWorker.js"
+    "missa-lifecycle-reconciler": "dist/src/lifecycleWorker.js",
+    "missa-media-dry-run": "dist/src/mediaDryRunCli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -30,7 +31,8 @@
     "coverage-worker": "node dist/src/coverageWorker.js",
     "taxonomy-discovery": "node dist/src/taxonomyDiscoveryWorker.js",
     "publication-review": "node dist/src/publicationReviewCli.js",
-    "lifecycle-reconciler": "node dist/src/lifecycleWorker.js"
+    "lifecycle-reconciler": "node dist/src/lifecycleWorker.js",
+    "media-dry-run": "node dist/src/mediaDryRunCli.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",

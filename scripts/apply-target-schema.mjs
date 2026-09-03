@@ -56,7 +56,11 @@ const migrationFiles = [
   '0031_creator_relational_authority.sql',
   '0032_opportunity_availability.sql',
   '0033_aggregate_record_publication_guard.sql',
+  '0034_creative_preparation_backfill.sql',
+  '0035_visual_arts_organizations.sql',
+  '0036_opportunity_media_enrichment.sql',
 ];
+
 
 const through = process.env.MISSA_TARGET_SCHEMA_THROUGH;
 const selectedMigrationFiles = through

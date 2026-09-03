@@ -1,12 +1,13 @@
-#!/usr/bin/env node
-
 import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { ensureEnrichmentSchema } from "./enrichmentSchema.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
+import { fetchWithPolicy, USER_AGENT } from "./mediaFetcher.js";
+import { extractMediaCandidates } from "./mediaExtractor.js";
+import type { SourceRole } from "./mediaExtractionContracts.js";
 
 type JobKind = "media" | "winners" | "guidelines" | "call-profile";
-type ClaimedJob = {
+export type ClaimedJob = {
   id: string;
   opportunityId: string;
   kind: JobKind;
@@ -15,9 +16,11 @@ type ClaimedJob = {
   title: string;
   opportunityType: string;
   genres: string[];
+  organizationId?: string;
+  sourceKind?: string;
+  sourceAuthorityKind?: string;
+  organizationConfirmed?: boolean;
 };
-
-const USER_AGENT = "MissaRadar/1.0 (+https://www.usemissa.com; enrichment; evidence-only)";
 
 function batchSize(value = process.env.RADAR_ENRICHMENT_BATCH_SIZE): number {
   const parsed = Number(value ?? 20);
@@ -100,17 +103,42 @@ async function fetchHtml(sourceUrl: string): Promise<{ html: string; finalUrl: s
   }
 }
 
+export function inferSourceRole(sourceUrl: string, job: ClaimedJob): SourceRole {
+  if (job.sourceAuthorityKind === "directory") return "discovery-directory";
+  if (
+    job.sourceAuthorityKind === "platform" ||
+    /submittable\.com|slideroom\.com|callforentry\.org|typeform\.com|forms\.gle|airtable\.com/i.test(sourceUrl)
+  ) {
+    return "application-portal";
+  }
+  if (/\.(?:pdf|docx?|zip)(?:[?#]|$)/i.test(sourceUrl)) {
+    return "attachment";
+  }
+  if (job.sourceKind === "organization" || (job.organizationId && sourceUrl.includes(job.organizationId))) {
+    return "organization-page";
+  }
+  return "official-opportunity-page";
+}
+
 async function seedJobs(client: PoolClient): Promise<void> {
   await client.query(
     `insert into radar_enrichment_jobs (id, opportunity_id, kind, priority, payload)
      select md5(o.id || ':' || kinds.kind), o.id, kinds.kind,
        (case when kinds.kind = 'call-profile' then 10 else 0 end) +
-       (case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 20 else 0 end),
+       (case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 20 else 0 end) +
+       (case when kinds.kind = 'media' and not exists (
+         select 1 from opportunity_identity_assets a
+         where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')
+       ) and (
+         o.status in ('open', 'closing-soon', 'deadline-extended') or
+         (o.deadline_date is not null and o.deadline_date <= current_date + 30)
+       ) then 40 else 0 end),
        jsonb_build_object('title', o.title)
      from opportunities o
        cross join (values ('media'::text), ('winners'::text), ('guidelines'::text), ('call-profile'::text)) as kinds(kind)
      where o.publication_state in ('published', 'reviewable')
-     on conflict (opportunity_id, kind) do nothing`,
+     on conflict (opportunity_id, kind) do update set
+       priority = excluded.priority`,
   );
 }
 
@@ -131,10 +159,22 @@ async function claimJobs(client: PoolClient, limit: number): Promise<ClaimedJob[
          lease_until = now() + interval '5 minutes', updated_at = now(), last_error = null
      from next_jobs n, opportunities o
      left join opportunity_sources s on s.id = o.source_id
+     left join opportunity_source_evidence e on e.opportunity_id = o.id
+     left join lateral (
+       select true as confirmed
+       from opportunity_profile_links link
+       where link.opportunity_id = o.id and link.status = 'confirmed'
+         and link.verified_until > now()
+       limit 1
+     ) profile_identity on true
      where j.id = n.id and o.id = j.opportunity_id
      returning j.id, j.opportunity_id as "opportunityId", j.kind,
        j.attempts, coalesce(o.guidelines_url, o.submission_url, s.url) as "sourceUrl", o.title,
-       o.type as "opportunityType", o.genres`,
+       o.type as "opportunityType", o.genres,
+       o.organization_id as "organizationId",
+       s.kind as "sourceKind",
+       s.authority_kind as "sourceAuthorityKind",
+       (coalesce(e.organization_confirmed, false) or coalesce(profile_identity.confirmed, false)) as "organizationConfirmed"`,
     [limit],
   );
   return rows.filter((row) => Boolean(row.sourceUrl));
@@ -252,17 +292,9 @@ async function writeEvidence(client: PoolClient, job: ClaimedJob, evidence: { ur
      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
      on conflict (opportunity_id, kind, url) do update set
        title = excluded.title, excerpt = excluded.excerpt, media_url = excluded.media_url,
-       confidence = excluded.confidence, metadata = excluded.metadata, retrieved_at = now()`,
+        confidence = excluded.confidence, metadata = excluded.metadata, retrieved_at = now()`,
     [randomUUID(), job.opportunityId, job.id, evidence.kind, evidence.url, evidence.title ?? null, evidence.excerpt ?? null, evidence.mediaUrl ?? null, evidence.confidence ?? "unknown", JSON.stringify({ source: "public-page", jobKind: job.kind })],
   );
-  if (evidence.kind === "media" && evidence.mediaUrl) {
-    await client.query(
-      `insert into opportunity_identity_assets (id, opportunity_id, url, alt, kind, rights_status, source_url)
-       values ($1, $2, $3, $4, 'organization-mark', 'unknown', $5)
-       on conflict do nothing`,
-      [randomUUID(), job.opportunityId, evidence.mediaUrl, evidence.title ?? job.title, evidence.url],
-    );
-  }
 }
 
 async function completeJob(client: PoolClient, job: ClaimedJob, payload: Record<string, unknown>): Promise<void> {
@@ -282,13 +314,143 @@ async function failJob(client: PoolClient, job: ClaimedJob, error: unknown): Pro
 }
 
 async function processJob(client: PoolClient, job: ClaimedJob): Promise<void> {
-  const { html, finalUrl } = await fetchHtml(job.sourceUrl);
   if (job.kind === "media") {
-    const mediaUrl = extractImage(html, finalUrl);
-    if (mediaUrl) await writeEvidence(client, job, { kind: "media", url: finalUrl, mediaUrl, title: pageTitle(html), confidence: "probable" });
-    await completeJob(client, job, { mediaFound: Boolean(mediaUrl), checkedUrl: finalUrl });
+    const sourceRole = inferSourceRole(job.sourceUrl, job);
+    let fetchResult;
+    try {
+      fetchResult = await fetchWithPolicy(job.sourceUrl, { expectedType: "html", checkRobots: true });
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg === "robots-blocked") {
+        await client.query(
+          `update radar_enrichment_jobs set status = 'blocked', last_error = 'robots-blocked', lease_until = null, updated_at = now() where id = $1`,
+          [job.id],
+        );
+        return;
+      }
+      throw err;
+    }
+
+    const html = typeof fetchResult.body === "string" ? fetchResult.body : fetchResult.body.toString("utf-8");
+    const finalUrl = fetchResult.finalUrl;
+
+    const extraction = extractMediaCandidates(
+      html,
+      {
+        opportunityId: job.opportunityId,
+        title: job.title,
+        pageUrl: finalUrl,
+        sourceRole,
+        organizationId: job.organizationId,
+        organizationConfirmed: job.organizationConfirmed,
+      },
+      fetchResult.redirectChain,
+      fetchResult.httpStatus,
+    );
+
+    let reviewableCount = 0;
+    let rejectedCount = 0;
+
+    for (const candidate of extraction.candidates) {
+      const candidateId = randomUUID();
+      await client.query(
+        `insert into opportunity_media_candidates
+           (id, opportunity_id, job_id, original_url, resolved_url, page_url,
+            source_role, candidate_kind, alt, caption, title, width, height,
+            mime_type, file_size, retrieved_at, http_status, redirect_chain,
+            content_hash, attribution_text, inheritance_level,
+            linked_organization_id, linked_program_id, extraction_method,
+            parser_version, confidence, rejection_reasons, status, rights_status,
+            metadata, created_at, updated_at)
+         values
+           ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+            now(), $16, $17::jsonb, $18, $19, $20, $21, $22, $23, $24, $25,
+            $26, $27, 'unknown', $28::jsonb, now(), now())
+         on conflict (opportunity_id, resolved_url) do update set
+           updated_at = now(),
+           http_status = excluded.http_status,
+           redirect_chain = excluded.redirect_chain,
+           rejection_reasons = excluded.rejection_reasons,
+           metadata = opportunity_media_candidates.metadata || excluded.metadata`,
+        [
+          candidateId,
+          job.opportunityId,
+          job.id,
+          candidate.originalUrl,
+          candidate.resolvedUrl,
+          candidate.pageUrl,
+          candidate.sourceRole,
+          candidate.candidateKind,
+          candidate.alt ?? null,
+          candidate.caption ?? null,
+          candidate.title ?? null,
+          candidate.width ?? null,
+          candidate.height ?? null,
+          candidate.mimeType ?? null,
+          candidate.fileSize ?? null,
+          candidate.httpStatus ?? null,
+          JSON.stringify(candidate.redirectChain ?? []),
+          candidate.contentHash ?? null,
+          candidate.attributionText ?? null,
+          candidate.inheritanceLevel,
+          candidate.linkedOrganizationId ?? null,
+          candidate.linkedProgramId ?? null,
+          candidate.extractionMethod,
+          candidate.parserVersion,
+          candidate.confidence,
+          candidate.rejectionReasons,
+          candidate.status,
+          JSON.stringify(candidate.metadata ?? {}),
+        ],
+      );
+
+      if (candidate.status === "reviewable") {
+        reviewableCount++;
+        await client.query(
+          `insert into radar_opportunity_enrichment_evidence
+             (id, opportunity_id, job_id, kind, url, title, excerpt, media_url, confidence, rights_status, metadata, retrieved_at)
+           values ($1, $2, $3, 'media', $4, $5, $6, $7, $8, 'unknown', $9::jsonb, now())
+           on conflict (opportunity_id, kind, url) do update set
+             title = excluded.title, excerpt = excluded.excerpt, media_url = excluded.media_url,
+             confidence = excluded.confidence, metadata = excluded.metadata, retrieved_at = now()`,
+          [
+            randomUUID(),
+            job.opportunityId,
+            job.id,
+            candidate.resolvedUrl,
+            candidate.alt ?? pageTitle(html) ?? job.title,
+            candidate.caption ?? candidate.attributionText ?? null,
+            candidate.resolvedUrl,
+            candidate.confidence,
+            JSON.stringify({
+              extractionMethod: candidate.extractionMethod,
+              candidateKind: candidate.candidateKind,
+              inheritanceLevel: candidate.inheritanceLevel,
+              sourceRole,
+              pageUrl: finalUrl,
+            }),
+          ],
+        );
+      } else {
+        rejectedCount++;
+      }
+    }
+
+    await completeJob(client, job, {
+      checked: 1,
+      found: extraction.totalDiscovered,
+      rejected: rejectedCount,
+      reviewable: reviewableCount,
+      cleared: 0,
+      blocked: 0,
+      failed: 0,
+      checkedUrl: finalUrl,
+      rejectionBreakdown: extraction.rejectionCounts,
+    });
     return;
   }
+
+  const { html, finalUrl } = await fetchHtml(job.sourceUrl);
   if (job.kind === "winners") {
     const links = extractLinks(html, finalUrl, /winner|alumni|recipient|selected|honou?r|past[- ]?award/i);
     for (const link of links) await writeEvidence(client, job, { kind: "winner", url: link.url, title: link.title, excerpt: excerptFor(html, /winner|recipient|alumni/i), confidence: "probable" });
@@ -354,4 +516,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => { console.error("[missa-enrichment-worker] stopped unexpectedly", error); process.exitCode = 1; });
+if (process.argv[1] && process.argv[1].endsWith("enrichmentWorker.js")) {
+  main().catch((error) => {
+    console.error("[missa-enrichment-worker] stopped unexpectedly", error);
+    process.exitCode = 1;
+  });
+}
