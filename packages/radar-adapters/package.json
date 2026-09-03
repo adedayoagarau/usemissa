@@ -39,7 +39,10 @@
     "resartis:sync": "npx tsx src/scripts/syncResArtisToRailway.ts",
     "artconnect:harvest": "npx tsx src/scripts/harvestArtConnectOrgs.ts",
     "artconnect:review": "npx tsx src/scripts/reviewArtConnectHarvest.ts",
-    "artconnect:sync": "npx tsx src/scripts/syncArtConnectToRailway.ts"
+    "artconnect:sync": "npx tsx src/scripts/syncArtConnectToRailway.ts",
+    "aca:harvest": "npx tsx src/scripts/harvestAcaCalls.ts",
+    "aca:review": "npx tsx src/scripts/reviewAcaHarvest.ts",
+    "aca:sync": "npx tsx src/scripts/syncAcaToRailway.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
