@@ -285,6 +285,8 @@ export class PostgresProfileRepository implements ProfileRepository {
          OR p.canonical_key = 'aca:' || replace($1, '-', '_')
          OR p.canonical_key = 'otm:' || replace($1, '-', '_')
          OR p.canonical_key = 'artconn:' || replace($1, '-', '_')
+         OR p.canonical_key = 'rivet:' || replace($1, '-', '_')
+         OR p.canonical_key = 'trans:' || replace($1, '-', '_')
          OR regexp_replace(lower(p.name), '[^a-z0-9]+', '-', 'g') = $1
       LIMIT 1;`,
       values: [idOrSlug],
