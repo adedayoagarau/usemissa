@@ -249,20 +249,22 @@ export function OpportunityCatalogueFilters({
   activeFilterCount,
   facetCounts,
   resultCount,
+  placement = "all",
 }: {
   locations: Array<{ value: string; label: string }>;
   activeFilterCount: number;
   facetCounts: OpportunityFacetCounts;
   resultCount: number;
+  placement?: "all" | "desktop" | "mobile";
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
-    <div className={styles.root}>
-      <aside className={styles.sidebar} aria-label="Opportunity filters">
+    <div className={`${styles.root} ${placement === "desktop" ? styles.desktopRoot : placement === "mobile" ? styles.mobileRoot : ""}`}>
+      {placement !== "mobile" ? <aside className={styles.sidebar} aria-label="Opportunity filters">
         <FilterPanel locations={locations} facetCounts={facetCounts} />
-      </aside>
-      <div className={styles.mobileControls}>
+      </aside> : null}
+      {placement !== "desktop" ? <div className={styles.mobileControls}>
         <Button
           type="button"
           variant="outline"
@@ -274,8 +276,8 @@ export function OpportunityCatalogueFilters({
             <span className={styles.count}>{activeFilterCount}</span>
           ) : null}
         </Button>
-      </div>
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      </div> : null}
+      {placement !== "desktop" ? <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="bottom" className={styles.sheet}>
           <SheetHeader>
             <SheetTitle>Filter opportunities</SheetTitle>
@@ -292,7 +294,7 @@ export function OpportunityCatalogueFilters({
             />
           </div>
         </SheetContent>
-      </Sheet>
+      </Sheet> : null}
     </div>
   );
 }

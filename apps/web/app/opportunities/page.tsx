@@ -299,7 +299,11 @@ export default async function OpportunitiesPage({
               ) : undefined}
               toolbar={<div className={styles.toolbar}>
                 <h2 id="results-heading" aria-live="polite" aria-atomic="true">{displayResult.total.toLocaleString()} {displayResult.total === 1 ? "opportunity" : "opportunities"}</h2>
-                <div className={styles.toolbarActions}>{activeSession?.account.userId ? <SaveSearchButton userId={activeSession.account.userId} criteria={saveCriteria} defaultName={query.query ? `Search: ${query.query}` : "Opportunity search"} /> : null}<OpportunitySort className={styles.sort} signedIn={Boolean(activeSession)} /></div>
+                <div className={styles.toolbarActions}>
+                  <OpportunityCatalogueFilters locations={LOCATION_OPTIONS} activeFilterCount={filterCount} facetCounts={displayFacetCounts} resultCount={displayResult.total} placement="mobile" />
+                  {activeSession?.account.userId ? <div className={styles.saveSearch}><SaveSearchButton userId={activeSession.account.userId} criteria={saveCriteria} defaultName={query.query ? `Search: ${query.query}` : "Opportunity search"} /></div> : null}
+                  <OpportunitySort className={styles.sort} signedIn={Boolean(activeSession)} />
+                </div>
               </div>}
             />
             <div className={styles.catalogueLayout}>
@@ -308,6 +312,7 @@ export default async function OpportunitiesPage({
                 activeFilterCount={filterCount}
                 facetCounts={displayFacetCounts}
                 resultCount={displayResult.total}
+                placement="desktop"
               />
               <div className={styles.resultColumn}>
             <OpportunityResultsRefresh queryKey={urlParams.toString()}>

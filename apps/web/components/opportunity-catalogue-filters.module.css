@@ -2,6 +2,10 @@
   display: block;
 }
 
+.mobileRoot {
+  display: none;
+}
+
 .sidebar { position: sticky; top: 24px; display: block; }
 
 .panel {
@@ -204,6 +208,8 @@
 }
 
 @media (max-width: 980px) {
+  .desktopRoot { display: none; }
+  .mobileRoot { display: block; min-width: 0; }
   .sidebar { display: none; }
   .mobileControls { display: flex; }
   .mobileControls button {

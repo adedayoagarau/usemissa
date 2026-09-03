@@ -1,6 +1,6 @@
 .nav {
   position: relative;
-  margin-top: var(--space-group);
+  margin-top: 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -67,8 +67,7 @@
 
 @media (max-width: 760px) {
   .nav {
-    margin-right: -16px;
-    margin-top: var(--space-group);
+    margin-right: -24px;
   }
 
   .nav::after {
@@ -77,13 +76,20 @@
     right: 0;
     bottom: 1px;
     width: 18px;
-    border-left: 1px solid var(--border);
-    background: var(--background);
+    background: linear-gradient(90deg, transparent, var(--background));
     content: "";
     pointer-events: none;
   }
 
   .scroller {
     padding-right: 34px;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline proximity;
   }
+
+  .scroller a { scroll-snap-align: start; }
+}
+
+@media (max-width: 360px) {
+  .nav { margin-right: -16px; }
 }
