@@ -605,10 +605,10 @@ export function evaluateRejection(
 
   // 7. Application-platform branding, placeholders & submission portal buttons
   if (
-    /submittable|slideroom|cafe.*logo|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|wpcom|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite|curatorspace/i.test(
+    /submittable|slideroom|cafe.*logo|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|wpcom|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite|curatorspace|artconnect(?:\.com)?\/(?:ac|image)\.png/i.test(
       urlLower,
     ) ||
-    /submittable|slideroom|callforentry|typeform|powered by|submit button|wordpress|automattic|placeholder|curatorspace/i.test(altLower)
+    /submittable|slideroom|callforentry|typeform|powered by|submit button|wordpress|automattic|placeholder|curatorspace|artconnect/i.test(altLower)
   ) {
     reasons.push("application-platform-branding");
   }
@@ -616,8 +616,8 @@ export function evaluateRejection(
   // 8. Discovery directory branding
   if (
     context.sourceRole === "discovery-directory" &&
-    (/pw\.org|poets.*writers|artstation|entrythingy|callfor/i.test(urlLower) ||
-      /directory logo|poets & writers/i.test(altLower))
+    (/pw\.org|poets.*writers|artstation|entrythingy|callfor|curatorspace|artconnect/i.test(urlLower) ||
+      /directory logo|poets & writers|artconnect/i.test(altLower))
   ) {
     reasons.push("directory-branding");
   }
