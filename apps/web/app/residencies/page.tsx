@@ -6,13 +6,13 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Literary Journals & Magazines — 1,680+ Verified Publications",
-  description: "Browse 1,687 verified literary magazines, quarterly reviews, and journals. Find active submission periods, acceptance fees, and response times.",
+  title: "Artist Residencies & Retreats — 980+ Verified Global Residency Centers",
+  description: "Explore 985 verified artist residency programs worldwide. Discover studios, housing, stipends, and retreat spaces across Europe, the Americas, Asia, and Africa.",
 };
 
 const PAGE_SIZE = 48;
 
-export default async function JournalsPage({
+export default async function ResidenciesPage({
   searchParams,
 }: {
   searchParams?: Promise<{ q?: string; page?: string }>;
@@ -25,7 +25,7 @@ export default async function JournalsPage({
   const result = repository
     ? await repository.browse({
         query: query || undefined,
-        kind: "literary_magazine",
+        kind: "residency_center",
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
       })
@@ -34,16 +34,16 @@ export default async function JournalsPage({
   return (
     <PublicSiteShell current="Directory">
       <InstitutionDirectoryView
-        eyebrow="Literary Periodicals"
-        title="Literary Journals & Magazines"
-        description="Explore 1,687 confirmed literary magazines and reviews publishing poetry, fiction, essays, and experimental writing."
-        basePath="/journals"
+        eyebrow="Residencies & Retreats"
+        title="Artist Residencies & Centers"
+        description="Discover 985 confirmed residency centers offering dedicated studios, living accommodations, stipends, and uninterrupted space to create."
+        basePath="/residencies"
         items={result.items}
         total={result.total}
         page={page}
         pageSize={PAGE_SIZE}
         query={query}
-        activeKind="literary_magazine"
+        activeKind="residency_center"
         showKindFilterTabs={true}
       />
     </PublicSiteShell>

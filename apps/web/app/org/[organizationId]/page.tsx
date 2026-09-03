@@ -1,11 +1,14 @@
 import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { ArrowRight, Building2, CalendarDays, CircleDollarSign, ImageIcon, Info } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
+import { getProfileRepository } from '@/lib/profileRepository';
+import { PublicSiteShell } from '@/components/public-site-shell';
+import { InstitutionProfileView } from '@/components/institution-profile-view';
 import { organizationMonogram, publicDeadlineLabel, publicFeeLabel, publicPracticeLabels, safePublicMedia } from '@/lib/publicOrganizationProfile';
 import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
 import { getWorkspaceEngine } from '@/lib/workspaceEngine';
@@ -18,8 +21,14 @@ export async function generateMetadata({ params }: { params: Promise<{ organizat
   const { organizationId } = await params;
   try {
     const organization = (await getEngine()).store.organizations.get(organizationId);
-    if (!organization) return pageMetadata({ title: 'Organization not found', description: 'This public Missa Organization page is not available.', path: `/org/${organizationId}`, noIndex: true });
-    return pageMetadata({ title: `${organization.name} opportunities`, description: `Published Opportunities from ${organization.name} on Missa.`, path: `/org/${organizationId}` });
+    if (organization) {
+      return pageMetadata({ title: `${organization.name} opportunities`, description: `Published Opportunities from ${organization.name} on Missa.`, path: `/org/${organizationId}` });
+    }
+    const profile = await getProfileRepository()?.getById(organizationId);
+    if (profile) {
+      return pageMetadata({ title: `${profile.name} — Arts Organization`, description: profile.summary || `Explore opportunities and exhibitions at ${profile.name}.`, path: `/org/${organizationId}` });
+    }
+    return pageMetadata({ title: 'Organization not found', description: 'This public Missa Organization page is not available.', path: `/org/${organizationId}`, noIndex: true });
   } catch {
     return pageMetadata({ title: 'Organization opportunities', description: 'Published Opportunities on Missa.', path: `/org/${organizationId}`, noIndex: true });
   }
@@ -29,7 +38,24 @@ export default async function PublicOrganizationPage({ params }: { params: Promi
   const { organizationId } = await params;
   const radar = await getEngine();
   const organization = radar.store.organizations.get(organizationId);
-  if (!organization) notFound();
+
+  if (!organization) {
+    const profileRepo = getProfileRepository();
+    const profile = profileRepo ? await profileRepo.getById(organizationId) : null;
+    if (profile) {
+      if (profile.kind === "residency_center") redirect(`/residency/${profile.slug}`);
+      if (profile.kind === "grant_foundation") redirect(`/grant/${profile.slug}`);
+      if (profile.kind === "literary_magazine") redirect(`/journal/${profile.slug}`);
+      if (profile.kind === "small_press") redirect(`/press/${profile.slug}`);
+
+      return (
+        <PublicSiteShell current="Directory">
+          <InstitutionProfileView profile={profile} />
+        </PublicSiteShell>
+      );
+    }
+    notFound();
+  }
   const workspace = await getWorkspaceEngine();
   const openCalls = workspace.publishedOpenCallsForOrganization(organizationId);
   const opportunityRepository = await getOpportunityRepository();

@@ -6,13 +6,13 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Literary Journals & Magazines — 1,680+ Verified Publications",
-  description: "Browse 1,687 verified literary magazines, quarterly reviews, and journals. Find active submission periods, acceptance fees, and response times.",
+  title: "Grant Foundations & Fellowships — 720+ Verified Cultural Grantmakers",
+  description: "Browse 725 verified art foundations, fellowships, and mobility funds offering project grants, travel stipends, and financial awards.",
 };
 
 const PAGE_SIZE = 48;
 
-export default async function JournalsPage({
+export default async function GrantsPage({
   searchParams,
 }: {
   searchParams?: Promise<{ q?: string; page?: string }>;
@@ -25,7 +25,7 @@ export default async function JournalsPage({
   const result = repository
     ? await repository.browse({
         query: query || undefined,
-        kind: "literary_magazine",
+        kind: "grant_foundation",
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
       })
@@ -34,16 +34,16 @@ export default async function JournalsPage({
   return (
     <PublicSiteShell current="Directory">
       <InstitutionDirectoryView
-        eyebrow="Literary Periodicals"
-        title="Literary Journals & Magazines"
-        description="Explore 1,687 confirmed literary magazines and reviews publishing poetry, fiction, essays, and experimental writing."
-        basePath="/journals"
+        eyebrow="Funding & Fellowships"
+        title="Grant Foundations & Grantmakers"
+        description="Explore 725 confirmed philanthropic foundations, cultural councils, and international mobility funds supporting artistic production."
+        basePath="/grants"
         items={result.items}
         total={result.total}
         page={page}
         pageSize={PAGE_SIZE}
         query={query}
-        activeKind="literary_magazine"
+        activeKind="grant_foundation"
         showKindFilterTabs={true}
       />
     </PublicSiteShell>

@@ -20,6 +20,7 @@ export interface ProfileBrowseQuery {
 
 export interface ProfileCard {
   id: string;
+  slug: string;
   kind: ProfileKind;
   name: string;
   websiteUrl: string | null;
@@ -30,6 +31,21 @@ export interface ProfileCard {
   sourceUrl: string | null;
   mediaUrl: string | null;
   mediaAlt: string | null;
+}
+
+export function getSemanticUrlForProfile(kind: ProfileKind, slug: string): string {
+  switch (kind) {
+    case "residency_center":
+      return `/residency/${slug}`;
+    case "literary_magazine":
+      return `/journal/${slug}`;
+    case "small_press":
+      return `/press/${slug}`;
+    case "grant_foundation":
+      return `/grant/${slug}`;
+    default:
+      return `/org/${slug}`;
+  }
 }
 
 export interface ProfileOpportunity {
@@ -132,8 +148,23 @@ function nullableText(value: unknown): string | null {
 }
 
 function card(row: Record<string, unknown>): ProfileCard {
+  const nameSlug = String(row.name || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "");
+
+  const rawKey = String(row.name_key || row.canonical_key || row.id);
+  const keySlug = rawKey
+    .replace(/^(res|aca|otm|artconn|prof_org|org_resartis|org_artconn|org_aca|org_otm|profile):?_?/i, "")
+    .replace(/[^a-z0-9]+/gi, "-")
+    .toLowerCase()
+    .replace(/^-+|-+$/g, "");
+
+  const cleanSlug = nameSlug.length >= 3 ? nameSlug : (keySlug || String(row.id));
+
   return {
     id: String(row.id),
+    slug: cleanSlug,
     kind: row.profile_kind as ProfileKind,
     name: String(row.name),
     websiteUrl: nullableText(row.website_url),
@@ -208,19 +239,59 @@ export class PostgresProfileRepository implements ProfileRepository {
     };
   }
 
-  async getById(id: string): Promise<ProfileDetail | null> {
+  async getById(idOrSlug: string): Promise<ProfileDetail | null> {
     const result = await this.pool.query({
       text: `
-      WITH latest AS (SELECT DISTINCT ON (profile_id) * FROM gary_profile_observations ORDER BY profile_id, observed_at DESC),
-      media AS (SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url, NULLIF(BTRIM(alt_text), '') AS media_alt FROM gary_profile_media_assets WHERE kind='image' AND error IS NULL ORDER BY profile_page_id, created_at)
-      SELECT p.id, p.profile_kind, p.name, p.website_url, o.*, m.media_url, m.media_alt
-      FROM gary_profiles p JOIN latest o ON o.profile_id=p.id
-      LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id=o.id AND pg.role='profile'
-      LEFT JOIN media m ON m.profile_page_id=pg.id WHERE p.id=$1`,
-      values: [id],
+      WITH latest AS (
+        SELECT DISTINCT ON (profile_id) * FROM gary_profile_observations
+        ORDER BY profile_id, observed_at DESC
+      ), media AS (
+        SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url, NULLIF(BTRIM(alt_text), '') AS media_alt
+        FROM gary_profile_media_assets WHERE kind='image' AND error IS NULL
+        ORDER BY profile_page_id, created_at
+      ), visuals AS (
+        SELECT DISTINCT ON (profile_id) profile_id, image_url AS visual_url, label AS visual_alt
+        FROM gary_profile_visuals
+        ORDER BY profile_id, created_at DESC
+      ), intel AS (
+        SELECT profile_id, sentiment_tags FROM gary_profile_intelligence
+      )
+      SELECT p.id, p.profile_kind, p.name, p.website_url, p.name_key, p.canonical_key,
+        COALESCE(o.source_summary, (ro.data->>'biography')) as source_summary,
+        COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
+        o.formats_json, o.reading_period, o.source_detail_url,
+        COALESCE(visuals.visual_url, m.media_url) as media_url,
+        COALESCE(visuals.visual_alt, m.media_alt, p.name) as media_alt,
+        o.submission_guidelines_url, o.subgenres_json, o.book_types_json,
+        o.representative_authors, o.response_time, o.reading_fee,
+        o.unsolicited_submissions, o.simultaneous_submissions, o.payment,
+        o.editorial_focus, o.editorial_tips, o.contact_name,
+        COALESCE(o.contact_email, (ro.data->>'contact_email')) as contact_email,
+        o.contact_details, o.issues_per_year, o.issue_price, o.subscription_price,
+        o.circulation, o.titles_per_year, o.publishes_through_contests_only
+      FROM gary_profiles p
+      LEFT JOIN radar_organizations ro ON ro.id = p.id
+      LEFT JOIN latest o ON o.profile_id = p.id
+      LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
+      LEFT JOIN media m ON m.profile_page_id = pg.id
+      LEFT JOIN visuals ON visuals.profile_id = p.id
+      LEFT JOIN intel ON intel.profile_id = p.id
+      WHERE p.id = $1 
+         OR p.name_key = $1
+         OR p.name_key = replace($1, '-', ' ')
+         OR p.name_key = replace($1, '-', '_')
+         OR p.canonical_key = $1
+         OR p.canonical_key = 'res:' || replace($1, '-', '_')
+         OR p.canonical_key = 'aca:' || replace($1, '-', '_')
+         OR p.canonical_key = 'otm:' || replace($1, '-', '_')
+         OR p.canonical_key = 'artconn:' || replace($1, '-', '_')
+         OR regexp_replace(lower(p.name), '[^a-z0-9]+', '-', 'g') = $1
+      LIMIT 1;`,
+      values: [idOrSlug],
     });
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
+    const actualId = String(row.id);
     const base = card(row);
     const links = await this.pool.query({ text: `
       SELECT * FROM (
@@ -229,6 +300,15 @@ export class PostgresProfileRepository implements ProfileRepository {
         FROM gary_profile_links l JOIN gary_opportunities o ON o.id=l.opportunity_id
         LEFT JOIN LATERAL (SELECT * FROM gary_call_observations WHERE opportunity_id=o.id ORDER BY observed_at DESC LIMIT 1) oco ON TRUE
         WHERE l.profile_id=$1 AND l.status='confirmed'
+        UNION ALL
+        SELECT o.id, o.title, p.name AS organizer,
+          COALESCE(o.submission_url, o.guidelines_url) AS official_website,
+          o.deadline_date AS deadline, o.guidelines_url AS source_detail_url,
+          CASE WHEN o.status IN ('open', 'opening-soon', 'closing-soon', 'deadline-extended') THEN 'open'
+               WHEN o.status IN ('closed', 'archived') THEN 'closed' ELSE 'unknown' END AS status
+        FROM opportunities o
+        JOIN gary_profiles p ON p.id = o.organization_id
+        WHERE o.organization_id = $1 AND o.publication_state = 'published'
         UNION ALL
         SELECT o.id, o.title, p.name AS organizer,
           COALESCE(o.guidelines_url, s.url) AS official_website,
@@ -241,13 +321,13 @@ export class PostgresProfileRepository implements ProfileRepository {
         JOIN gary_profiles p ON p.id=l.profile_id
         WHERE l.profile_id=$1 AND l.status='confirmed' AND l.verified_until > now()
           AND o.publication_state='published'
-      ) linked ORDER BY deadline NULLS LAST, title`, values: [id] });
+      ) linked ORDER BY deadline NULLS LAST, title`, values: [actualId] });
 
     let visuals: ProfileVisual[] = [];
     try {
       const visRes = await this.pool.query({
         text: `SELECT id, asset_type, image_url, label, issue_year, season FROM gary_profile_visuals WHERE profile_id=$1 ORDER BY created_at DESC`,
-        values: [id],
+        values: [actualId],
       });
       visuals = visRes.rows.map((r) => ({
         id: String(r.id),
@@ -265,7 +345,7 @@ export class PostgresProfileRepository implements ProfileRepository {
     try {
       const prizeRes = await this.pool.query({
         text: `SELECT id, contest_name, award_year, winner_name, winning_title, winning_work_url, judge_name FROM gary_prize_provenance WHERE profile_id=$1 ORDER BY award_year DESC`,
-        values: [id],
+        values: [actualId],
       });
       prizeProvenance = prizeRes.rows.map((r) => ({
         id: String(r.id),
@@ -285,7 +365,7 @@ export class PostgresProfileRepository implements ProfileRepository {
     try {
       const intelRes = await this.pool.query({
         text: `SELECT * FROM gary_profile_intelligence WHERE profile_id=$1`,
-        values: [id],
+        values: [actualId],
       });
       if (intelRes.rows.length > 0) {
         const ir = intelRes.rows[0];
@@ -361,12 +441,16 @@ export class PostgresProfileRepository implements ProfileRepository {
         row.publishes_through_contests_only,
       ),
       opportunities: links.rows.map((item) => ({
-        id: item.id,
-        title: item.title,
-        organizer: item.organizer,
-        deadline: item.deadline,
-        detailUrl: item.source_detail_url,
-        officialWebsite: item.official_website,
+        id: String(item.id),
+        title: String(item.title),
+        organizer: String(item.organizer),
+        deadline: item.deadline
+          ? (item.deadline instanceof Date
+              ? item.deadline.toISOString().slice(0, 10)
+              : String(item.deadline).slice(0, 10))
+          : null,
+        detailUrl: nullableText(item.source_detail_url),
+        officialWebsite: nullableText(item.official_website),
         status: item.status,
       })),
     };

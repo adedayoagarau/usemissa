@@ -147,6 +147,7 @@ export {
 export {
   PostgresProfileRepository,
   createPostgresProfileRepositoryFromUrl,
+  getSemanticUrlForProfile,
   type ProfileBrowsePage,
   type ProfileBrowseQuery,
   type ProfileCard,

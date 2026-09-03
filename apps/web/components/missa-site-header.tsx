@@ -14,7 +14,8 @@ export type HeaderSession = {
 
 const signedInLinks = [
   { href: "/opportunities", label: "Opportunities" },
-  { href: "/journals", label: "Journals & presses" },
+  { href: "/directory", label: "Directory" },
+  { href: "/residencies", label: "Residencies" },
   { href: "/tracker", label: "Tracker" },
   { href: "/library", label: "Library" },
   { href: "/guides", label: "Guides" },
@@ -22,8 +23,9 @@ const signedInLinks = [
 
 const publicLinks = [
   { href: "/opportunities", label: "Opportunities" },
+  { href: "/directory", label: "Directory" },
+  { href: "/residencies", label: "Residencies" },
   { href: "/guides", label: "Guides" },
-  { href: "/journals", label: "Journals & presses" },
   { href: "/for-organizations", label: "For organizations" },
 ] as const;
 

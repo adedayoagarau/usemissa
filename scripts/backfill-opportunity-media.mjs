@@ -18,12 +18,18 @@ function parseArgs(args) {
     apply: false,
     autoClearVerified: false,
     verbose: false,
+    workerIndex: null,
+    totalWorkers: null,
   };
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === "--limit" && args[i + 1]) {
       options.limit = Math.max(1, Number(args[++i]) || 50);
+    } else if (arg === "--worker-index" && args[i + 1]) {
+      options.workerIndex = Number(args[++i]);
+    } else if (arg === "--total-workers" && args[i + 1]) {
+      options.totalWorkers = Number(args[++i]);
     } else if (arg === "--opportunity" && args[i + 1]) {
       options.opportunityId = args[++i];
     } else if (arg === "--apply") {
@@ -54,6 +60,9 @@ async function runBackfill() {
   console.log(`Mode:                 ${options.apply ? "LIVE APPLY (writes to database)" : "DRY-RUN (read-only verification)"}`);
   console.log(`Auto-Clear Verified:  ${options.autoClearVerified ? "YES (Fair-use editorial policy)" : "NO (All held as 'unknown')"}`);
   console.log(`Limit:                ${options.limit}`);
+  if (options.totalWorkers && options.workerIndex !== null) {
+    console.log(`Worker Partition:     Worker ${options.workerIndex + 1} of ${options.totalWorkers} (Index ${options.workerIndex})`);
+  }
   if (options.opportunityId) console.log(`Target Opportunity:   ${options.opportunityId}`);
   console.log("=================================================\n");
 
@@ -64,7 +73,7 @@ async function runBackfill() {
   });
 
   try {
-    if (options.apply) {
+    if (options.apply && (!options.totalWorkers || options.workerIndex === 0)) {
       await ensureEnrichmentSchema(pool);
     }
 
@@ -108,6 +117,7 @@ async function runBackfill() {
                 select 1 from opportunity_media_candidates c
                 where c.opportunity_id = o.id
               )
+              ${options.totalWorkers && options.workerIndex !== null ? `and abs(hashtext(o.id)) % ${options.totalWorkers} = ${options.workerIndex}` : ""}
             order by
               (case when o.organization_id is not null then 0 else 1 end),
               (case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 0 else 1 end),

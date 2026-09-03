@@ -6,13 +6,13 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Literary Journals & Magazines — 1,680+ Verified Publications",
-  description: "Browse 1,687 verified literary magazines, quarterly reviews, and journals. Find active submission periods, acceptance fees, and response times.",
+  title: "Small & Independent Presses — 290+ Verified Book Publishers",
+  description: "Browse 296 verified independent literary book publishers, small presses, and university presses with full-length manuscript reading windows.",
 };
 
 const PAGE_SIZE = 48;
 
-export default async function JournalsPage({
+export default async function PressesPage({
   searchParams,
 }: {
   searchParams?: Promise<{ q?: string; page?: string }>;
@@ -25,7 +25,7 @@ export default async function JournalsPage({
   const result = repository
     ? await repository.browse({
         query: query || undefined,
-        kind: "literary_magazine",
+        kind: "small_press",
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
       })
@@ -34,16 +34,16 @@ export default async function JournalsPage({
   return (
     <PublicSiteShell current="Directory">
       <InstitutionDirectoryView
-        eyebrow="Literary Periodicals"
-        title="Literary Journals & Magazines"
-        description="Explore 1,687 confirmed literary magazines and reviews publishing poetry, fiction, essays, and experimental writing."
-        basePath="/journals"
+        eyebrow="Publishing & Books"
+        title="Small & Independent Presses"
+        description="Discover 296 confirmed independent presses publishing poetry collections, novels, creative non-fiction, and chapbooks."
+        basePath="/presses"
         items={result.items}
         total={result.total}
         page={page}
         pageSize={PAGE_SIZE}
         query={query}
-        activeKind="literary_magazine"
+        activeKind="small_press"
         showKindFilterTabs={true}
       />
     </PublicSiteShell>

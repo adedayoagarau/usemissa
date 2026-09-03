@@ -6,13 +6,13 @@ import type { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Literary Journals & Magazines — 1,680+ Verified Publications",
-  description: "Browse 1,687 verified literary magazines, quarterly reviews, and journals. Find active submission periods, acceptance fees, and response times.",
+  title: "Visual Arts Organizations & Galleries — 5,400+ Cultural Institutions",
+  description: "Explore 5,430 verified contemporary art galleries, museums, non-profits, and artist-run spaces across 90+ countries.",
 };
 
 const PAGE_SIZE = 48;
 
-export default async function JournalsPage({
+export default async function OrganizationsPage({
   searchParams,
 }: {
   searchParams?: Promise<{ q?: string; page?: string }>;
@@ -25,7 +25,7 @@ export default async function JournalsPage({
   const result = repository
     ? await repository.browse({
         query: query || undefined,
-        kind: "literary_magazine",
+        kind: "visual_arts_organization",
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
       })
@@ -34,16 +34,16 @@ export default async function JournalsPage({
   return (
     <PublicSiteShell current="Directory">
       <InstitutionDirectoryView
-        eyebrow="Literary Periodicals"
-        title="Literary Journals & Magazines"
-        description="Explore 1,687 confirmed literary magazines and reviews publishing poetry, fiction, essays, and experimental writing."
-        basePath="/journals"
+        eyebrow="Contemporary Visual Culture"
+        title="Visual Arts Organizations & Galleries"
+        description="Browse 5,430 confirmed art galleries, contemporary museums, artist-run centers, and exhibition spaces worldwide."
+        basePath="/organizations"
         items={result.items}
         total={result.total}
         page={page}
         pageSize={PAGE_SIZE}
         query={query}
-        activeKind="literary_magazine"
+        activeKind="visual_arts_organization"
         showKindFilterTabs={true}
       />
     </PublicSiteShell>

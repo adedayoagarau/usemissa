@@ -3,7 +3,7 @@ import { Bookmark, Clock, Sparkles, Trophy } from "lucide-react";
 
 import { cookies } from "next/headers";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
@@ -69,6 +69,17 @@ export default async function JournalDetailPage({
   const profile = await repository.getById(id);
   if (!profile) notFound();
 
+  // Redirect to canonical semantic vertical routes
+  if (profile.kind === "residency_center") {
+    redirect(`/residency/${encodeURIComponent(profile.slug)}`);
+  } else if (profile.kind === "grant_foundation") {
+    redirect(`/grant/${encodeURIComponent(profile.slug)}`);
+  } else if (profile.kind === "small_press") {
+    redirect(`/press/${encodeURIComponent(profile.slug)}`);
+  } else if (profile.kind === "visual_arts_organization") {
+    redirect(`/org/${encodeURIComponent(profile.slug)}`);
+  }
+
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(
     cookieStore.get(SESSION_COOKIE)?.value,
@@ -106,7 +117,7 @@ export default async function JournalDetailPage({
     }
   }
 
-  const isSmallPress = profile.kind === "small_press";
+  const isSmallPress = (profile.kind as string) === "small_press";
   const bookTypes = profile.bookTypes.length
     ? profile.bookTypes
     : profile.subgenres;
