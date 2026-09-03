@@ -79,7 +79,8 @@ try {
     try {
       const res = await fetch(opp.guidelines_url, {
         method: "HEAD",
-        headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" }
+        headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
+        signal: AbortSignal.timeout(3000)
       });
 
       if (res.ok || res.status === 403 || res.status === 405) {
