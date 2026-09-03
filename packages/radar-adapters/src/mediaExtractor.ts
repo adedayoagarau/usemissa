@@ -577,12 +577,12 @@ export function evaluateRejection(
 
   // 3. Social icons
   if (
-    /facebook\.(?:svg|png|jpg)|twitter\.(?:svg|png|jpg)|instagram\.(?:svg|png|jpg)|linkedin\.(?:svg|png|jpg)|youtube\.(?:svg|png|jpg)|pinterest|tiktok|share-on-|social-share/i.test(
+    /facebook|twitter|instagram|linkedin|youtube|pinterest|tiktok|share-on-|social-share|logo_fb|fb[-_]?logo/i.test(
       urlLower,
     ) ||
     /facebook|twitter|instagram|linkedin|follow us|share on/i.test(altLower)
   ) {
-    reasons.push("social-icon");
+    reasons.push("favicon-or-icon");
   }
 
   // 4. Avatars unrelated to the call
@@ -593,31 +593,22 @@ export function evaluateRejection(
     reasons.push("avatar");
   }
 
-  // 5. Navigation chrome, cookie graphics, advertisements
-  if (
-    /navbar-logo|header-logo|footer-logo|site-logo|cookie-banner|ad-banner|sponsor-ad|doubleclick|googleads|adsystem/i.test(
-      urlLower,
-    ) ||
-    /cookie|advertisement|sponsored/i.test(altLower)
-  ) {
-    reasons.push("navigation-or-advertisement");
-  }
-
   // 6. Generic stock photography
   if (
-    /unsplash\.com|shutterstock\.com|gettyimages\.com|stock\.adobe\.com|istockphoto\.com|pexels\.com|pixabay\.com/i.test(
+    /unsplash\.com|shutterstock\.com|gettyimages\.com|istockphoto\.com|stock[-_]?photo|stock[-_]?image/i.test(
       urlLower,
-    )
+    ) ||
+    /stock photo|stock image|getty images|unsplash/i.test(altLower)
   ) {
     reasons.push("generic-stock-photography");
   }
 
   // 7. Application-platform branding, placeholders & submission portal buttons
   if (
-    /submittable|slideroom|cafe.*logo|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|wpcom|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite/i.test(
+    /submittable|slideroom|cafe.*logo|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|wpcom|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite|curatorspace/i.test(
       urlLower,
     ) ||
-    /submittable|slideroom|callforentry|typeform|powered by|submit button|wordpress|automattic|placeholder/i.test(altLower)
+    /submittable|slideroom|callforentry|typeform|powered by|submit button|wordpress|automattic|placeholder|curatorspace/i.test(altLower)
   ) {
     reasons.push("application-platform-branding");
   }
