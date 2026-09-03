@@ -8,9 +8,14 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 48;
 
 function profileKind(value: string | undefined): ProfileKind | undefined {
-  return value === "literary_magazine" || value === "small_press"
-    ? value
-    : undefined;
+  const allowed: ProfileKind[] = [
+    "literary_magazine",
+    "small_press",
+    "visual_arts_organization",
+    "residency_center",
+    "grant_foundation"
+  ];
+  return allowed.includes(value as ProfileKind) ? (value as ProfileKind) : undefined;
 }
 
 function imageAlt(profile: Pick<ProfileCard, "name" | "mediaAlt">): string {
@@ -95,8 +100,11 @@ export default async function JournalsPage({
               defaultValue={kind ?? ""}
               className="min-h-11 w-full min-w-0 rounded-lg border border-input bg-background px-3.5 text-base text-foreground outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
             >
-              <option value="">Journals and presses</option>
-              <option value="literary_magazine">Journals</option>
+              <option value="">All institutions & publishers</option>
+              <option value="visual_arts_organization">Visual arts & galleries</option>
+              <option value="residency_center">Residency centers</option>
+              <option value="grant_foundation">Grant foundations</option>
+              <option value="literary_magazine">Literary journals</option>
               <option value="small_press">Small presses</option>
             </select>
           </label>

@@ -160,7 +160,7 @@ export class PostgresProfileRepository implements ProfileRepository {
     if (query.query?.trim()) {
       values.push(`%${query.query.trim()}%`);
       filters.push(
-        `(p.name ILIKE $${values.length} OR o.source_summary ILIKE $${values.length} OR o.editorial_focus ILIKE $${values.length})`,
+        `(p.name ILIKE $${values.length} OR o.source_summary ILIKE $${values.length} OR o.editorial_focus ILIKE $${values.length} OR (ro.data->>'biography') ILIKE $${values.length})`,
       );
     }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
@@ -177,13 +177,28 @@ export class PostgresProfileRepository implements ProfileRepository {
         SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url, NULLIF(BTRIM(alt_text), '') AS media_alt
         FROM gary_profile_media_assets WHERE kind = 'image' AND error IS NULL
         ORDER BY profile_page_id, created_at
+      ), visuals AS (
+        SELECT DISTINCT ON (profile_id) profile_id, image_url AS visual_url, label AS visual_alt
+        FROM gary_profile_visuals
+        ORDER BY profile_id, created_at DESC
+      ), intel AS (
+        SELECT profile_id, sentiment_tags FROM gary_profile_intelligence
       )
       SELECT p.id, p.profile_kind, p.name, p.website_url,
-        o.source_summary, o.genres_json, o.formats_json, o.reading_period,
-        o.source_detail_url, m.media_url, m.media_alt, count(*) OVER() AS total_count
-      FROM gary_profiles p JOIN latest o ON o.profile_id = p.id
+        COALESCE(o.source_summary, (ro.data->>'biography')) as source_summary,
+        COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
+        o.formats_json, o.reading_period,
+        o.source_detail_url,
+        COALESCE(visuals.visual_url, m.media_url) as media_url,
+        COALESCE(visuals.visual_alt, m.media_alt, p.name) as media_alt,
+        count(*) OVER() AS total_count
+      FROM gary_profiles p
+      LEFT JOIN radar_organizations ro ON ro.id = p.id
+      LEFT JOIN latest o ON o.profile_id = p.id
       LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
       LEFT JOIN media m ON m.profile_page_id = pg.id
+      LEFT JOIN visuals ON visuals.profile_id = p.id
+      LEFT JOIN intel ON intel.profile_id = p.id
       ${where} ORDER BY p.name ASC LIMIT $${limit} OFFSET $${offset}`,
       values,
     });
