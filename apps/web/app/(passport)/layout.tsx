@@ -18,6 +18,6 @@ export default async function PassportLayout({ children }: { children: React.Rea
   const organizations = session.memberships.map((membership) => ({ id: membership.organizationId, name: radar.store.organizations.get(membership.organizationId)?.name ?? membership.organizationId }));
 
   return <CreatorShell email={session.account.email} organizations={organizations} isAdmin={session.account.isAdmin}>
-    <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+    <main className="mx-auto max-w-[1600px] px-6 py-6 sm:py-8">{children}</main>
   </CreatorShell>;
 }

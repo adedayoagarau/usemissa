@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Archive, BookOpen, Building2, Inbox, Menu, Search, Shield, UserRound } from "lucide-react";
+import { Archive, Bookmark, BookOpen, Building2, Inbox, Menu, Search, Shield, UserRound } from "lucide-react";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -11,6 +11,7 @@ import styles from "./creator-shell.module.css";
 
 const primary = [
   { href: "/opportunities", label: "Opportunities", icon: Search },
+  { href: "/saved", label: "Saved", icon: Bookmark },
   { href: "/tracker", label: "Tracker", icon: BookOpen },
   { href: "/library", label: "Library", icon: Archive },
 ] as const;
