@@ -9,7 +9,7 @@ test.describe("canonical Opportunities browse", () => {
     const response = await page.goto("/opportunities");
     expect(response?.status()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "Opportunities" }),
+      page.getByRole("heading", { level: 1, name: "Find the work worth making next." }),
     ).toBeVisible();
     expect(await page.locator("article").count()).toBeGreaterThan(0);
     await expect(
@@ -90,7 +90,7 @@ test.describe("canonical Opportunities browse", () => {
     test(`does not overflow at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/opportunities?sort=recently-added");
-      await expect(page.getByRole("heading", { level: 1, name: "Opportunities" })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Find the work worth making next." })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
     });
   }

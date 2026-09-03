@@ -169,10 +169,10 @@ export function OpportunityCatalogueCard({
               <Tag aria-hidden="true" />
               {feeLabel(item)}
             </span>
-            <span data-kind="information">
+            {item.location ? <span data-kind="information">
               <MapPin aria-hidden="true" />
-              {item.location ?? "Location not listed"}
-            </span>
+              {item.location}
+            </span> : null}
             {item.prize ? (
               <span className={styles.award} data-kind="award">
                 <Gift aria-hidden="true" />

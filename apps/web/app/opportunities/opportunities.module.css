@@ -1,5 +1,5 @@
 .shell { min-height: 100vh; background: var(--background); color: var(--foreground); }
-.main { width: min(100% - 96px, 1180px); margin: 0 auto; padding-block: 48px 96px; }
+.main { width: calc(100% - 80px); margin: 0 auto; padding-block: 36px 96px; }
 .previewNotice { width: fit-content; margin: 0 0 24px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--mineral-blue-tint); color: var(--muted-foreground); font-family: var(--font-mono), monospace; font-size: 11px; }
 .workspace, .results, .resultColumn { min-width: 0; }.searchRow { display: grid; min-width: 0; }
 .activeFilters { display: flex; min-height: 44px; align-items: center; gap: 12px; overflow-x: auto; }

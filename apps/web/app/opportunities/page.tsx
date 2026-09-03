@@ -10,6 +10,7 @@ import { getEngine } from "@/lib/engine";
 import { LOCATION_OPTIONS, taxonomyLabelFor } from "@/lib/opportunityTaxonomy";
 import { OpportunityShell } from "@/components/opportunity-shell";
 import { OpportunityBrowseHeader } from "@/components/opportunity-browse-header";
+import { OpportunityEditorialHero } from "@/components/opportunity-editorial-hero";
 import { OpportunityCatalogueFilters } from "@/components/opportunity-catalogue-filters";
 import { OpportunityResultsRefresh } from "@/components/opportunity-results-refresh";
 import { OpportunityResults } from "@/components/opportunity-results";
@@ -247,6 +248,11 @@ export default async function OpportunitiesPage({
   const clearFiltersHref = publicPreview
     ? "/opportunities?preview=public"
     : "/opportunities";
+  const editorialCounts = {
+    closing: displayResult.items.filter((item) => item.status === "closing-soon").length,
+    free: displayResult.items.filter((item) => item.fee.status === "no-fee").length,
+    opening: displayResult.items.length,
+  };
 
   return (
     <OpportunityShell session={headerSession}>
@@ -288,6 +294,7 @@ export default async function OpportunitiesPage({
 
         <div className={styles.workspace}>
           <section className={styles.results} aria-labelledby="results-heading">
+            <OpportunityEditorialHero counts={editorialCounts} />
             <OpportunityBrowseHeader
               practices={<OpportunityPracticeNav practices={displayFacetCounts.practices} currentQuery={urlParams.toString()} selectedTaxonomy={query.taxonomyTermIds} />}
               feeds={<OpportunityFeedTabs activeFeed={activeFeed} />}

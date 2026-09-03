@@ -21,10 +21,9 @@ const signedInLinks = [
 ] as const;
 
 const publicLinks = [
-  { href: "/", label: "Home" },
   { href: "/opportunities", label: "Opportunities" },
-  { href: "/journals", label: "Journals & presses" },
   { href: "/guides", label: "Guides" },
+  { href: "/journals", label: "Journals & presses" },
   { href: "/for-organizations", label: "For organizations" },
 ] as const;
 
