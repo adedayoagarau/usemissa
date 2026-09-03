@@ -29,6 +29,7 @@ import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { OpportunityIssueReport } from "@/components/opportunity-issue-report";
 import { PrepareChecklist } from "@/components/prepare-checklist";
 import { FollowButton } from "@/components/follow-button";
+import { MobileActionDock } from "@/components/mobile-action-dock";
 import styles from "./opportunity-detail.module.css";
 
 function initials(opportunity: OpportunityDetailProjection): string {
@@ -146,14 +147,18 @@ function DetailNotice({
     opportunity.fee.status === "unknown" ||
     opportunity.requiredMaterials.length === 0
   ) {
+    const missing = [
+      opportunity.fee.status === "unknown" ? "the application fee" : null,
+      opportunity.requiredMaterials.length === 0 ? "the complete file requirements" : null,
+    ].filter((item): item is string => Boolean(item));
     return (
       <div className={styles.productNotice} data-tone="neutral">
         <AlertTriangle aria-hidden="true" />
         <div>
           <strong>Some application details are not listed</strong>
           <p>
-            Use the official source to confirm the fee and complete file
-            requirements before preparing work.
+            Use the official destination to confirm {missing.join(" and ")} before
+            preparing work.
           </p>
         </div>
       </div>
@@ -179,7 +184,13 @@ export function OpportunityDetailView({
 }) {
   const tracked = Boolean(opportunity.personal?.tracked);
   const canonicalPath = `/opportunities/${opportunity.slug}`;
-  const sourceHref = opportunity.guidelinesUrl ?? opportunity.source.url;
+  const officialHref = opportunity.guidelinesUrl ?? opportunity.submissionUrl;
+  const destinationHref = officialHref ?? opportunity.source.url;
+  const destinationLabel = officialHref ? "Official source" : "View original listing";
+  const identityAssetUrl = opportunity.identityAssetUrl ?? relatedProfile?.mediaUrl;
+  const identityAssetAlt = opportunity.identityAssetUrl
+    ? opportunity.identityAssetAlt
+    : relatedProfile?.mediaAlt;
   const call = opportunity.callProfile;
   const acceptedWork = Array.from(new Set([
     ...(call?.acceptedFormats ?? []),
@@ -209,14 +220,14 @@ export function OpportunityDetailView({
         <header className={styles.hero}>
           <div
             className={styles.identityMedia}
-            data-fallback={!opportunity.identityAssetUrl || undefined}
+            data-fallback={!identityAssetUrl || undefined}
           >
-            {opportunity.identityAssetUrl ? (
+            {identityAssetUrl ? (
               // Repository policy permits only rights-cleared/permitted media.
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={opportunity.identityAssetUrl}
-                alt={opportunity.identityAssetAlt ?? ""}
+                src={identityAssetUrl}
+                alt={identityAssetAlt ?? ""}
                 className={styles.identityImage}
               />
             ) : (
@@ -224,7 +235,12 @@ export function OpportunityDetailView({
             )}
           </div>
           <div className={styles.heroCopy}>
-            <Badge variant="outline">{typeLabel(opportunity.type)}</Badge>
+            <div className={styles.heroBadges}>
+              <Badge variant="outline">{typeLabel(opportunity.type)}</Badge>
+              <Badge variant={opportunity.status === "closing-soon" ? "destructive" : "secondary"}>
+                {statusLabel(opportunity.status)}
+              </Badge>
+            </div>
             <h1 id="opportunity-title">{opportunity.title}</h1>
             <p className={styles.organization}>
               {opportunity.organizationName ?? "Organization not confirmed"}
@@ -270,11 +286,11 @@ export function OpportunityDetailView({
               )}
               <a
                 className={styles.sourceButton}
-                href={sourceHref}
+                href={destinationHref}
                 target="_blank"
                 rel="noreferrer"
               >
-                Official source <ExternalLink aria-hidden="true" />
+                {destinationLabel} <ExternalLink aria-hidden="true" />
               </a>
             </div>
           </div>
@@ -282,12 +298,29 @@ export function OpportunityDetailView({
 
         <DetailNotice opportunity={opportunity} />
 
+        <MobileActionDock className={styles.mobileActions}>
+          {tracked ? (
+            <Button nativeButton={false} render={<Link href="/tracker" />} variant="secondary">
+              <Check aria-hidden="true" /> In Tracker
+            </Button>
+          ) : (
+            <SaveToTrackerButton
+              opportunityId={opportunity.id}
+              signedIn={signedIn}
+              returnTo={canonicalPath}
+              opportunityTitle={opportunity.title}
+            />
+          )}
+          <a href={destinationHref} target="_blank" rel="noreferrer">
+            {destinationLabel} <ExternalLink aria-hidden="true" />
+          </a>
+        </MobileActionDock>
+
         <div className={styles.contentGrid}>
           <aside
             className={styles.decisionRail}
             aria-labelledby="decision-facts-title"
           >
-            <p className={styles.kicker}>Decide with</p>
             <h2 id="decision-facts-title">Key facts</h2>
             <dl className={styles.factList}>
               <div
@@ -347,25 +380,23 @@ export function OpportunityDetailView({
             <div className={styles.railActions}>
               <a
                 className={styles.sourceButton}
-                href={sourceHref}
+                href={destinationHref}
                 target="_blank"
                 rel="noreferrer"
               >
-                Official source <ExternalLink aria-hidden="true" />
+                {destinationLabel} <ExternalLink aria-hidden="true" />
               </a>
             </div>
           </aside>
 
           <div className={styles.readingColumn}>
             <section aria-labelledby="about-title">
-              <p className={styles.kicker}>The opportunity</p>
               <h2 id="about-title">What this opportunity is asking for</h2>
               <p className={styles.lede}>{summary}</p>
               {call?.issueTheme ? <p><strong>Theme:</strong> {call.issueTheme}</p> : null}
             </section>
 
             <section aria-labelledby="accepted-work-title">
-              <p className={styles.sectionNumber}>01 · Fit</p>
               <h2 id="accepted-work-title">Accepted work</h2>
               {acceptedWork.length ? (
                 <div className={styles.practiceList}>
@@ -385,7 +416,6 @@ export function OpportunityDetailView({
             </section>
 
             <section aria-labelledby="eligibility-title">
-              <p className={styles.sectionNumber}>02 · Eligibility</p>
               <h2 id="eligibility-title">Eligibility</h2>
               {opportunity.eligibility.length ? (
                 <ul className={styles.eligibilityList}>
@@ -412,7 +442,6 @@ export function OpportunityDetailView({
             </section>
 
             <section aria-labelledby="prepare-title">
-              <p className={styles.sectionNumber}>03 · Prepare</p>
               <h2 id="prepare-title">What to prepare</h2>
               {opportunity.requiredMaterials.length ? (
                 <dl className={styles.requirementList}>
@@ -444,7 +473,6 @@ export function OpportunityDetailView({
 
             {hasPolicies ? (
               <section aria-labelledby="policies-title">
-                <p className={styles.sectionNumber}>04 · Policies</p>
                 <h2 id="policies-title">Submission policies</h2>
                 <dl className={styles.requirementList}>
                   <div><dt><Files aria-hidden="true" />Simultaneous submissions</dt><dd>{policyLabel(opportunity.simultaneousAllowed)}</dd></div>
@@ -458,7 +486,6 @@ export function OpportunityDetailView({
 
             {call ? (
               <section aria-labelledby="terms-title">
-                <p className={styles.sectionNumber}>05 · Terms</p>
                 <h2 id="terms-title">Reading window, payment, and judging</h2>
                 <dl className={styles.requirementList}>
                   <div><dt><Clock3 aria-hidden="true" />Reading period</dt><dd>{call.readingPeriodLabel ?? readingPeriodLabel(call.readingPeriodKind)}</dd></div>
@@ -480,10 +507,12 @@ export function OpportunityDetailView({
             ) : null}
 
             <section aria-labelledby="organization-title">
-              <p className={styles.sectionNumber}>06 · Organization</p>
               <h2 id="organization-title">Who is behind this opportunity</h2>
               <div className={styles.authorityCard}>
-                <Building2 aria-hidden="true" />
+                {relatedProfile?.mediaUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={relatedProfile.mediaUrl} alt="" />
+                ) : <Building2 aria-hidden="true" />}
                 <div>
                   <strong>{opportunity.organizationName ?? "Organization not confirmed"}</strong>
                   {relatedProfile ? <Link href={`/journals/${encodeURIComponent(relatedProfile.id)}`}>View publisher profile</Link> : opportunity.organizationId ? <Link href={`/org/${encodeURIComponent(opportunity.organizationId)}`}>View Organization profile</Link> : <span>Public Organization profile not yet linked</span>}
@@ -494,7 +523,6 @@ export function OpportunityDetailView({
 
             {unknowns.length || opportunity.changes.length ? (
               <section aria-labelledby="record-state-title">
-                <p className={styles.sectionNumber}>07 · Record state</p>
                 <h2 id="record-state-title">What still needs confirmation</h2>
                 {unknowns.length ? <ul className={styles.unknownList}>{unknowns.map((item) => <li key={item}><CircleHelp aria-hidden="true" />{item}</li>)}</ul> : <p>No major decision fields are currently marked unknown.</p>}
                 {opportunity.changes.length ? <p className={styles.boundaryNote}>{opportunity.changes.length} recent {opportunity.changes.length === 1 ? "change is" : "changes are"} recorded. Confirm time-sensitive details on the official page.</p> : null}
@@ -502,7 +530,6 @@ export function OpportunityDetailView({
             ) : null}
 
             <section aria-labelledby="categories-title">
-              <p className={styles.sectionNumber}>08 · Classification</p>
               <h2 id="categories-title">Categories named in this call</h2>
               {practiceLabels.length ? (
                 <div className={styles.practiceList}>
@@ -525,21 +552,22 @@ export function OpportunityDetailView({
               className={styles.sourceSection}
               aria-labelledby="source-title"
             >
-              <p className={styles.sectionNumber}>09 · Apply</p>
-              <h2 id="source-title">Finish on the official source</h2>
+              <h2 id="source-title">
+                {officialHref ? "Finish on the official source" : "Continue from the original listing"}
+              </h2>
               <p>
-                Missa helps you understand and track the opportunity. The
-                Organization’s page carries the final rules and application
-                destination.
+                {officialHref
+                  ? "Missa helps you understand and track the opportunity. The Organization’s page carries the final rules and application destination."
+                  : "Missa helps you understand and track the opportunity. An official application destination is not linked yet; use the original listing to confirm the final rules and where to apply."}
               </p>
               <div className={styles.sourceSectionActions}>
                 <a
                   className={styles.sourceButton}
-                  href={sourceHref}
+                  href={destinationHref}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Official source <ExternalLink aria-hidden="true" />
+                  {destinationLabel} <ExternalLink aria-hidden="true" />
                 </a>
                 {signedIn ? (
                   <div className={styles.productReport}>

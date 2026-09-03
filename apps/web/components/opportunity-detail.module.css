@@ -143,7 +143,7 @@
 }
 
 .main {
-  width: min(100% - 96px, 1120px);
+  width: min(100% - 64px, 1180px);
   margin: 0 auto;
   padding: 24px 0 96px;
 }
@@ -164,18 +164,18 @@
 
 .hero {
   display: grid;
-  min-height: 360px;
+  min-height: 336px;
   margin-top: 24px;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--surface);
-  grid-template-columns: minmax(320px, .76fr) minmax(0, 1.24fr);
+  background: var(--card);
+  grid-template-columns: minmax(280px, .7fr) minmax(0, 1.3fr);
 }
 
 .identityMedia {
   position: relative;
-  min-height: 360px;
+  min-height: 336px;
   overflow: hidden;
   background: var(--muted);
 }
@@ -183,13 +183,20 @@
 .identityMedia[data-fallback='true'] {
   display: grid;
   place-items: center;
-  background: var(--mineral-blue-tint);
+  background: var(--muted);
 }
 
 .identityMedia[data-fallback='true'] span {
-  color: var(--mineral-blue);
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--muted-foreground);
   font-family: var(--font-mono), monospace;
-  font-size: 48px;
+  font-size: 20px;
   letter-spacing: .08em;
 }
 
@@ -204,7 +211,13 @@
   min-width: 0;
   flex-direction: column;
   justify-content: center;
-  padding: 48px;
+  padding: 40px 48px;
+}
+
+.heroBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .heroCopy h1 {
@@ -253,7 +266,7 @@
   padding: 0 16px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--card);
   color: var(--foreground);
   font-size: 14px;
   font-weight: 550;
@@ -340,7 +353,7 @@
   display: grid;
   max-width: 1120px;
   align-items: start;
-  gap: 48px;
+  gap: 56px;
   margin: 48px auto 0;
   grid-template-areas: 'content rail';
   grid-template-columns: minmax(0, 1fr) 320px;
@@ -353,22 +366,11 @@
   padding: 24px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fff;
-}
-
-.kicker,
-.sectionNumber {
-  margin: 0;
-  color: var(--primary);
-  font-family: var(--font-mono), monospace;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: .13em;
-  text-transform: uppercase;
+  background: var(--card);
 }
 
 .decisionRail h2 {
-  margin: 8px 0 24px;
+  margin: 0 0 24px;
   font-family: var(--font-heading), sans-serif;
   font-size: 24px;
   font-weight: 650;
@@ -447,16 +449,19 @@
 .readingColumn {
   display: grid;
   grid-area: content;
-  gap: 48px;
+  gap: 0;
 }
 
 .readingColumn section {
   max-width: 720px;
+  padding: 0 0 48px;
+  margin: 0 0 48px;
+  border-bottom: 1px solid var(--border);
   scroll-margin-top: 88px;
 }
 
 .readingColumn h2 {
-  margin: 12px 0 24px;
+  margin: 0 0 20px;
   font-family: var(--font-heading), sans-serif;
   font-size: 24px;
   font-weight: 650;
@@ -464,7 +469,7 @@
   line-height: 1.2;
 }
 
-.readingColumn p:not(.kicker, .sectionNumber, .boundaryNote) {
+.readingColumn p:not(.boundaryNote) {
   color: var(--ink-2);
   font-size: 16px;
   line-height: 1.5;
@@ -556,6 +561,7 @@
   padding: 24px;
   border: 1px solid var(--border);
   border-radius: 12px;
+  background: var(--muted);
 }
 
 .prizeList {
@@ -596,13 +602,21 @@
   padding: 24px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: var(--surface);
+  background: var(--card);
   grid-template-columns: 32px minmax(0, 1fr);
 }
 
 .authorityCard > svg {
   width: 24px;
   color: var(--mineral-blue);
+}
+
+.authorityCard > img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 
 .authorityCard > div {
@@ -675,7 +689,7 @@
   width: 100%;
   border: 1px solid var(--input);
   border-radius: 8px;
-  background: #fff;
+  background: var(--card);
   color: var(--foreground);
   font: inherit;
   font-size: 14px;
@@ -690,6 +704,10 @@
   min-height: 112px;
   padding: 11px 12px;
   resize: vertical;
+}
+
+.mobileActions {
+  display: none;
 }
 
 @media (max-width: 900px) {
@@ -733,7 +751,7 @@
   }
 
   .main {
-    width: min(100% - 64px, 720px);
+    width: min(100% - 40px, 720px);
     padding-top: 24px;
   }
 
@@ -741,17 +759,17 @@
     display: flex;
     min-height: 0;
     flex-direction: column;
-    border: 0;
-    border-radius: 0;
-  }
-
-  .identityMedia {
-    min-height: 300px;
+    border: 1px solid var(--border);
     border-radius: 12px;
   }
 
+  .identityMedia {
+    min-height: 260px;
+    border-radius: 0;
+  }
+
   .heroCopy {
-    padding: 32px 0 0;
+    padding: 32px;
   }
 
   .heroCopy h1 {
@@ -770,7 +788,7 @@
   .contentGrid {
     display: flex;
     flex-direction: column;
-    gap: 48px;
+    gap: 40px;
     margin-top: 48px;
   }
 
@@ -781,7 +799,7 @@
   }
 
   .readingColumn {
-    gap: 48px;
+    gap: 0;
   }
 }
 
@@ -802,14 +820,26 @@
   }
 
   .identityMedia {
-    min-height: 235px;
+    min-height: 210px;
+  }
+
+  .main {
+    width: min(100% - 48px, 720px);
+    padding-bottom: calc(var(--mobile-action-dock-height, 88px) + 24px);
+  }
+
+  .heroCopy {
+    padding: 24px;
   }
 
   .heroCopy h1 {
     font-size: 32px;
   }
 
-  .heroActions,
+  .heroActions {
+    display: none;
+  }
+
   .sourceSectionActions {
     align-items: stretch;
     flex-direction: column;
@@ -833,5 +863,49 @@
 
   .sourceSection {
     padding: 22px;
+  }
+
+  .mobileActions {
+    position: fixed;
+    z-index: 50;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--background) 96%, transparent);
+    box-shadow: 0 -8px 24px color-mix(in srgb, var(--foreground) 8%, transparent);
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mobileActions > button {
+    width: 100%;
+  }
+
+  .mobileActions > a {
+    display: inline-flex;
+    min-width: 0;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--foreground);
+    font-size: 13px;
+    font-weight: 650;
+    text-align: center;
+  }
+
+  .mobileActions svg {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
   }
 }

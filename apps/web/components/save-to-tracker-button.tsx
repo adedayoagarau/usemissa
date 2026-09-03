@@ -53,8 +53,8 @@ export function SaveToTrackerButton({
           ? "Saving Opportunity"
           : !signedIn
             ? opportunityTitle
-              ? `Sign in to save ${opportunityTitle} privately`
-              : "Sign in to save this Opportunity privately"
+              ? `Save ${opportunityTitle} privately — sign in required`
+              : "Save this Opportunity privately — sign in required"
             : opportunityTitle
               ? `Save ${opportunityTitle} privately`
               : "Save Opportunity privately"
