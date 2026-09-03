@@ -89,21 +89,27 @@ async function runBackfill() {
             select o.id, o.title, coalesce(o.guidelines_url, o.submission_url, s.url) as "sourceUrl",
                    o.organization_id as "organizationId", s.kind as "sourceKind",
                    s.authority_kind as "sourceAuthorityKind",
-                   (coalesce(evidence.organization_confirmed, false) or exists (
+                   (exists (
+                     select 1 from opportunity_source_evidence evidence
+                     where evidence.opportunity_id = o.id and evidence.organization_confirmed = true
+                   ) or exists (
                      select 1 from opportunity_profile_links link
                      where link.opportunity_id = o.id and link.status = 'confirmed' and link.verified_until > now()
                    )) as "organizationConfirmed"
             from opportunities o
             left join opportunity_sources s on s.id = o.source_id
-            left join opportunity_source_evidence evidence on evidence.opportunity_id = o.id
             where o.publication_state in ('published', 'reviewable')
               and coalesce(o.guidelines_url, o.submission_url, s.url) is not null
               and not exists (
                 select 1 from opportunity_identity_assets a
                 where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')
               )
+              and not exists (
+                select 1 from opportunity_media_candidates c
+                where c.opportunity_id = o.id
+              )
             order by
-              (case when o.organization_id is not null or coalesce(evidence.organization_confirmed, false) then 0 else 1 end),
+              (case when o.organization_id is not null then 0 else 1 end),
               (case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 0 else 1 end),
               o.created_at desc
             limit $1`,
@@ -169,6 +175,20 @@ async function runBackfill() {
           const client = await pool.connect();
           try {
             await client.query("BEGIN");
+
+            if (extraction.candidates.length === 0) {
+              const sentinelId = `cand_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
+              await client.query(`
+                INSERT INTO opportunity_media_candidates
+                  (id, opportunity_id, original_url, resolved_url, page_url, source_role,
+                   candidate_kind, inheritance_level, extraction_method, parser_version,
+                   confidence, rejection_reasons, status, rights_status, metadata)
+                VALUES
+                  ($1, $2, $3, $4, $5, $6, 'unknown', 'opportunity', 'none', '1.0.0',
+                   'unknown', ARRAY['no-media-discovered'], 'rejected', 'rejected', '{}'::jsonb)
+                ON CONFLICT (opportunity_id, resolved_url) DO NOTHING
+              `, [sentinelId, opp.id, opp.sourceUrl, `${opp.sourceUrl}#none`, fetchResult.finalUrl, sourceRole]);
+            }
 
             for (const c of extraction.candidates) {
               const candidateId = `cand_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
@@ -259,6 +279,22 @@ async function runBackfill() {
         } else {
           stats.failed++;
           console.log(`    [FAILED] ${msg}`);
+        }
+
+        if (options.apply) {
+          const sentinelId = `cand_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
+          const reason = msg === "robots-blocked" ? "robots-blocked" : "fetch-failed";
+          await pool.query(`
+            INSERT INTO opportunity_media_candidates
+              (id, opportunity_id, original_url, resolved_url, page_url, source_role,
+               candidate_kind, inheritance_level, extraction_method, parser_version,
+               confidence, rejection_reasons, status, rights_status, metadata)
+            VALUES
+              ($1, $2, $3, $4, $3, 'official-opportunity-page',
+               'unknown', 'opportunity', 'none', '1.0.0',
+               'unknown', ARRAY[$5], 'rejected', 'rejected', '{}'::jsonb)
+            ON CONFLICT (opportunity_id, resolved_url) DO NOTHING
+          `, [sentinelId, opp.id, opp.sourceUrl, `${opp.sourceUrl}#${reason}`, reason]).catch(() => {});
         }
       }
       console.log("");

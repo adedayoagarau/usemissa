@@ -32,7 +32,14 @@
     "taxonomy-discovery": "node dist/src/taxonomyDiscoveryWorker.js",
     "publication-review": "node dist/src/publicationReviewCli.js",
     "lifecycle-reconciler": "node dist/src/lifecycleWorker.js",
-    "media-dry-run": "node dist/src/mediaDryRunCli.js"
+    "media-dry-run": "node dist/src/mediaDryRunCli.js",
+    "resartis:slugs": "npx tsx src/scripts/harvestResArtisSlugs.ts",
+    "resartis:harvest": "npx tsx src/scripts/harvestResArtisListings.ts",
+    "resartis:review": "npx tsx src/scripts/reviewResArtisHarvest.ts",
+    "resartis:sync": "npx tsx src/scripts/syncResArtisToRailway.ts",
+    "artconnect:harvest": "npx tsx src/scripts/harvestArtConnectOrgs.ts",
+    "artconnect:review": "npx tsx src/scripts/reviewArtConnectHarvest.ts",
+    "artconnect:sync": "npx tsx src/scripts/syncArtConnectToRailway.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
