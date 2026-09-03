@@ -5,6 +5,7 @@ import {
   type OpportunityBrowsePage,
   type OpportunityBrowseProjection,
   type OpportunityDetailProjection,
+  type OpportunityFacetCounts,
   type OpportunityRepository,
   type OpportunityRepositoryContext,
   type OpportunityRepositoryQuery,
@@ -246,6 +247,48 @@ class EngineOpportunityRepository implements OpportunityRepository {
     const page = items.slice(offset, offset + query.limit);
     const nextOffset = offset + query.limit < items.length ? Buffer.from(String(offset + query.limit)).toString("base64url") : null;
     return { items: page, nextCursor: nextOffset, total: items.length };
+  }
+
+  async facetCounts(query: OpportunityRepositoryQuery, context?: OpportunityRepositoryContext): Promise<OpportunityFacetCounts> {
+    const engine = await getEngine();
+    const nowIso = new Date().toISOString().slice(0, 10);
+    const candidates = [...engine.store.opportunities.values()]
+      .filter((opp) => !opp.duplicateOfId && !["archived", "closed", "duplicate", "uncertain"].includes(opp.status))
+      .filter((opp) => !query.openNow || !opp.fields.deadline?.date || opp.fields.deadline.date >= nowIso)
+      .filter((opp) => !excludedByPrivatePreferences(engine, opp, context))
+      .map((opp) => project(engine, opp, context));
+    const withoutPage = { ...query, cursor: undefined };
+    const matching = candidates.filter((item) => matchesQuery(item, withoutPage));
+    const typeBase = candidates.filter((item) => matchesQuery(item, { ...withoutPage, types: [], category: undefined }));
+    const taxonomyBase = candidates.filter((item) => matchesQuery(item, { ...withoutPage, taxonomyTermIds: [] }));
+
+    const typeCounts = new Map<string, number>();
+    for (const item of typeBase) typeCounts.set(item.type, (typeCounts.get(item.type) ?? 0) + 1);
+
+    const taxonomyCounts = new Map<string, number>();
+    for (const item of taxonomyBase) {
+      const ancestors = new Set(item.taxonomy?.termIds ?? []);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const term of MISSA_TAXONOMY.terms) {
+          if (!ancestors.has(term.id)) continue;
+          for (const parent of term.broaderTermIds) {
+            if (!ancestors.has(parent)) {
+              ancestors.add(parent);
+              changed = true;
+            }
+          }
+        }
+      }
+      for (const termId of ancestors) taxonomyCounts.set(termId, (taxonomyCounts.get(termId) ?? 0) + 1);
+    }
+
+    return {
+      total: matching.length,
+      types: [...typeCounts].map(([value, count]) => ({ value: value as OpportunityBrowseProjection["type"], count })),
+      taxonomyTerms: [...taxonomyCounts].map(([termId, count]) => ({ termId, count })),
+    };
   }
 
   async getById(opportunityId: string, context?: OpportunityRepositoryContext): Promise<OpportunityDetailProjection | null> {

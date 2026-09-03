@@ -125,6 +125,7 @@ export {
   createPostgresOpportunityRepository,
   createPostgresOpportunityRepositoryFromUrl,
   buildOpportunityBrowseQuery,
+  buildOpportunityFacetCountsQuery,
   type SqlQuery,
 } from "./opportunityRepository.js";
 export * from "./recommendation/index.js";

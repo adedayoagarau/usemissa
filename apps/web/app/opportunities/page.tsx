@@ -149,7 +149,12 @@ export default async function OpportunitiesPage({
         ? { accountId: activeSession.account.id }
         : undefined,
     ),
-    getOpportunityFacetCounts(),
+    getOpportunityFacetCounts(
+      query,
+      activeSession?.account.id
+        ? { accountId: activeSession.account.id }
+        : undefined,
+    ),
   ]);
   const usePreviewFixtures = publicPreview && result.items.length === 0;
   const previewItems = usePreviewFixtures ? previewItemsForQuery(query) : [];

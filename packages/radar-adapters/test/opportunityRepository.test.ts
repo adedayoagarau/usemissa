@@ -4,6 +4,7 @@ import { opportunityDetailResponseSchema } from "@missa/contracts";
 import {
   PostgresOpportunityRepository,
   buildOpportunityBrowseQuery,
+  buildOpportunityFacetCountsQuery,
 } from "../src/opportunityRepository.js";
 
 const baseQuery = {
@@ -72,6 +73,73 @@ test("canonical taxonomy filters require every selected hierarchy root", () => {
     if (previous === undefined) delete process.env.MISSA_TAXONOMY_READS;
     else process.env.MISSA_TAXONOMY_READS = previous;
   }
+});
+
+test("facet SQL applies every filter except the facet being counted", () => {
+  const built = buildOpportunityFacetCountsQuery(
+    {
+      ...baseQuery,
+      types: ["grant"],
+      taxonomyTermIds: ["taxterm_pf-writing-and-literature"],
+      taxonomyIncludeDescendants: true,
+      feeStatus: "no-fee",
+    },
+    undefined,
+    { taxonomyReads: true },
+  );
+
+  assert.match(built.text, /matched as materialized/);
+  assert.match(built.text, /type_base as materialized/);
+  assert.match(built.text, /taxonomy_base as materialized/);
+  assert.match(built.text, /count\(distinct base\.id\)/);
+  assert.equal(built.values.filter((value) => value === "no-fee").length, 3);
+  assert.equal(
+    built.values.filter(
+      (value) => Array.isArray(value) && value.length === 1 && value[0] === "grant",
+    ).length,
+    2,
+  );
+  assert.equal(
+    built.values.filter(
+      (value) =>
+        Array.isArray(value) &&
+        value.length === 1 &&
+        value[0] === "taxterm_pf-writing-and-literature",
+    ).length,
+    2,
+  );
+});
+
+test("facet repository executes one aggregate query and normalizes counts", async () => {
+  const calls: string[] = [];
+  const pool = {
+    async query(text: string) {
+      calls.push(text);
+      return {
+        rows: [
+          {
+            total: "4",
+            types: [{ value: "grant", count: "3" }],
+            taxonomy_terms: [
+              { termId: "taxterm_pf-writing-and-literature", count: "2" },
+            ],
+          },
+        ],
+      };
+    },
+  } as never;
+  const repository = new PostgresOpportunityRepository(pool);
+  const counts = await repository.facetCounts(baseQuery);
+
+  assert.equal(calls.length, 1);
+  assert.match(calls[0] ?? "", /jsonb_agg/);
+  assert.deepEqual(counts, {
+    total: 4,
+    types: [{ value: "grant", count: 3 }],
+    taxonomyTerms: [
+      { termId: "taxterm_pf-writing-and-literature", count: 2 },
+    ],
+  });
 });
 
 test("authenticated taxonomy reads explain matches from explicit profile preferences", () => {

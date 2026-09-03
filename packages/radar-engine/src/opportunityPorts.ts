@@ -39,6 +39,12 @@ export interface OpportunityRepositoryContext {
   accountId?: string;
 }
 
+export interface OpportunityFacetCounts {
+  total: number;
+  types: Array<{ value: OpportunityType; count: number }>;
+  taxonomyTerms: Array<{ termId: string; count: number }>;
+}
+
 export interface OpportunityRepositoryDeadline {
   kind: OpportunityRepositoryDeadlineKind;
   date?: string;
@@ -208,6 +214,10 @@ export interface OpportunityRepository {
     query: OpportunityRepositoryQuery,
     context?: OpportunityRepositoryContext,
   ): Promise<OpportunityBrowsePage>;
+  facetCounts(
+    query: OpportunityRepositoryQuery,
+    context?: OpportunityRepositoryContext,
+  ): Promise<OpportunityFacetCounts>;
   getById(
     opportunityId: string,
     context?: OpportunityRepositoryContext,

@@ -4,6 +4,7 @@ import type {
   OpportunityBrowsePage,
   OpportunityBrowseProjection,
   OpportunityDetailProjection,
+  OpportunityFacetCounts,
   OpportunityRepository,
   OpportunityRepositoryContext,
   OpportunityRepositoryDeadline,
@@ -95,6 +96,12 @@ interface ChangeRow extends QueryResultRow {
 
 interface RelatedRow extends QueryResultRow {
   id: string;
+}
+
+interface FacetCountsRow extends QueryResultRow {
+  total: number | string;
+  types: Array<{ value: OpportunityBrowseProjection["type"]; count: number | string }> | null;
+  taxonomy_terms: Array<{ termId: string; count: number | string }> | null;
 }
 
 interface Cursor {
@@ -705,6 +712,101 @@ export function buildOpportunityBrowseQuery(
   return { text, values };
 }
 
+function facetFilterQuery(
+  query: OpportunityRepositoryQuery,
+  context: OpportunityRepositoryContext | undefined,
+  taxonomyReads: boolean,
+  parameterOffset: number,
+): SqlQuery {
+  const built = buildOpportunityBrowseQuery(
+    { ...query, cursor: undefined, limit: 1 },
+    context,
+    { taxonomyReads },
+  );
+  const whereStart = built.text.lastIndexOf("\n    where ");
+  const orderStart = built.text.lastIndexOf("\n    order by ");
+  if (whereStart < 0 || orderStart < 0) {
+    throw new Error("Opportunity browse query is missing its filter boundary");
+  }
+  const text = built.text
+    .slice(whereStart + "\n    where ".length, orderStart)
+    .replace(/\$(\d+)/g, (_, value: string) => `$${Number(value) + parameterOffset}`);
+  return { text, values: built.values.slice(0, -1) };
+}
+
+export function buildOpportunityFacetCountsQuery(
+  query: OpportunityRepositoryQuery,
+  context?: OpportunityRepositoryContext,
+  options: { taxonomyReads?: boolean } = {},
+): SqlQuery {
+  const taxonomyReads = options.taxonomyReads ?? taxonomyReadsEnabled();
+  const values: unknown[] = [];
+  const matched = facetFilterQuery(query, context, taxonomyReads, values.length);
+  values.push(...matched.values);
+  const typeBase = facetFilterQuery(
+    { ...query, category: undefined, types: [] },
+    context,
+    taxonomyReads,
+    values.length,
+  );
+  values.push(...typeBase.values);
+  const taxonomyBase = facetFilterQuery(
+    { ...query, taxonomyTermIds: [] },
+    context,
+    taxonomyReads,
+    values.length,
+  );
+  values.push(...taxonomyBase.values);
+
+  const evidenceJoin = `left join lateral (
+    select e.verified_until
+    from opportunity_source_evidence e
+    where e.opportunity_id = o.id
+    order by e.checked_at desc
+    limit 1
+  ) evidence on true`;
+  const taxonomyCtes = taxonomyReads
+    ? `, taxonomy_ancestors(term_id, ancestor_id) as (
+        select id, id from taxonomy_terms
+        union
+        select ancestors.term_id, relation.object_term_id
+        from taxonomy_ancestors ancestors
+        join taxonomy_term_relations relation
+          on relation.subject_term_id = ancestors.ancestor_id
+        where relation.relation_type = 'broader'
+      ), taxonomy_counts as (
+        select ancestors.ancestor_id as term_id,
+          count(distinct base.id)::int as count
+        from taxonomy_base base
+        join opportunity_taxonomy_terms assignment
+          on assignment.opportunity_id = base.id
+          and assignment.certainty <> 'rejected'
+        join taxonomy_ancestors ancestors on ancestors.term_id = assignment.term_id
+        group by ancestors.ancestor_id
+      )`
+    : `, taxonomy_counts as (
+        select null::text as term_id, 0::int as count where false
+      )`;
+
+  return {
+    text: `with recursive matched as materialized (
+      select o.id from opportunities o ${evidenceJoin} where ${matched.text}
+    ), type_base as materialized (
+      select o.id, o.type from opportunities o ${evidenceJoin} where ${typeBase.text}
+    ), taxonomy_base as materialized (
+      select o.id from opportunities o ${evidenceJoin} where ${taxonomyBase.text}
+    ), type_counts as (
+      select type as value, count(distinct id)::int as count
+      from type_base group by type
+    )${taxonomyCtes}
+    select
+      (select count(*)::int from matched) as total,
+      coalesce((select jsonb_agg(type_counts order by value) from type_counts), '[]'::jsonb) as types,
+      coalesce((select jsonb_agg(jsonb_build_object('termId', term_id, 'count', count) order by term_id) from taxonomy_counts), '[]'::jsonb) as taxonomy_terms`,
+    values,
+  };
+}
+
 function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
   const callProfile = normalizeCallProfile(row.call_profile);
   const tailoringReasons = Array.isArray(row.tailoring_reasons)
@@ -853,6 +955,22 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
         rows[0]?.total_count == null
           ? items.length
           : Number(rows[0].total_count),
+    };
+  }
+
+  async facetCounts(
+    query: OpportunityRepositoryQuery,
+    context?: OpportunityRepositoryContext,
+  ): Promise<OpportunityFacetCounts> {
+    const built = buildOpportunityFacetCountsQuery(query, context, {
+      taxonomyReads: await this.taxonomyReadsAvailable(),
+    });
+    const result = await this.pool.query<FacetCountsRow>(built.text, built.values);
+    const row = result.rows[0];
+    return {
+      total: Number(row?.total ?? 0),
+      types: (row?.types ?? []).map((item) => ({ ...item, count: Number(item.count) })),
+      taxonomyTerms: (row?.taxonomy_terms ?? []).map((item) => ({ ...item, count: Number(item.count) })),
     };
   }
 
