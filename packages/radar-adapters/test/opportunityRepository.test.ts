@@ -31,6 +31,7 @@ test("browse SQL is parameterized and keeps public publication boundaries", () =
 
   assert.match(built.text, /o\.publication_state = 'published'/);
   assert.match(built.text, /o\.status = any\(\$1::text\[\]\)/);
+  assert.match(built.text, /o\.deadline_date is null or o\.deadline_date >= current_date/);
   assert.deepEqual(built.values[0], ["open", "closing-soon", "deadline-extended"]);
   assert.match(built.text, /o\.search_document ilike/);
   assert.match(

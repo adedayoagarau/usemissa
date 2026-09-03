@@ -19,8 +19,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
 
   const engine = await getEngine();
+  const nowIso = new Date().toISOString().slice(0, 10);
   const list = [...engine.store.opportunities.values()]
     .filter((o) => !o.duplicateOfId && !['archived', 'closed', 'duplicate'].includes(o.status))
+    .filter((o) => !o.fields.deadline?.date || o.fields.deadline.date >= nowIso)
     .map((o) => opportunityView(engine, o, id))
     .sort((x, y) => (x.deadline ?? '9999').localeCompare(y.deadline ?? '9999'));
 

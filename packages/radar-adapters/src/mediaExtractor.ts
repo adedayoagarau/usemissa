@@ -612,12 +612,12 @@ export function evaluateRejection(
     reasons.push("generic-stock-photography");
   }
 
-  // 7. Application-platform branding & submission portal buttons
+  // 7. Application-platform branding, placeholders & submission portal buttons
   if (
-    /submittable|slideroom|cafe.*logo|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|wpcom|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo/i.test(
+    /submittable|slideroom|cafe.*logo|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|wpcom|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite/i.test(
       urlLower,
     ) ||
-    /submittable|slideroom|callforentry|typeform|powered by|submit button|wordpress|automattic/i.test(altLower)
+    /submittable|slideroom|callforentry|typeform|powered by|submit button|wordpress|automattic|placeholder/i.test(altLower)
   ) {
     reasons.push("application-platform-branding");
   }

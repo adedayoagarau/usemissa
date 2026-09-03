@@ -520,7 +520,9 @@ export function buildOpportunityBrowseQuery(
   const values: unknown[] = [];
   const conditions: string[] = [
     canonicalPublicOpportunityPredicate("o"),
-    query.openNow ? `o.status = any($${values.length + 1}::text[])` : "true",
+    query.openNow
+      ? `(o.status = any($${values.length + 1}::text[]) and (o.deadline_date is null or o.deadline_date >= current_date))`
+      : "true",
   ];
   if (query.openNow) values.push(PUBLIC_STATUSES);
 

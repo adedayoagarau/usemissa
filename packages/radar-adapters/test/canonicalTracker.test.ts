@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { canonicalTrackerStatus } from "../src/canonicalTracker.js";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const statuses = [
   "interested", "saved", "preparing", "draft-started", "ready-to-submit",
@@ -16,7 +16,10 @@ test("canonical Tracker preserves the complete creator lifecycle vocabulary", ()
 });
 
 test("first Save returns the tracked revision needed by the next safe mutation", () => {
-  const source = readFileSync(new URL("../src/canonicalTracker.ts", import.meta.url), "utf8");
+  const tsPath = new URL("../../src/canonicalTracker.ts", import.meta.url);
+  const fallbackPath = new URL("../src/canonicalTracker.ts", import.meta.url);
+  const path = existsSync(tsPath) ? tsPath : fallbackPath;
+  const source = readFileSync(path, "utf8");
   assert.match(source, /CanonicalTrackerSave[\s\S]*tracked:[\s\S]*revision:\s*number/);
   assert.match(source, /function trackedRow[\s\S]*revision:\s*row\.revision/);
 });

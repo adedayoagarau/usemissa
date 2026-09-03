@@ -2,14 +2,24 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowLeft,
+  Award,
+  BookOpenText,
+  Building2,
   CalendarDays,
   Check,
+  CircleHelp,
+  Clock3,
+  Coins,
   ExternalLink,
   FileText,
+  Files,
   Flag,
   Globe2,
   MapPin,
+  Scale,
+  ShieldCheck,
   Tag,
+  Users,
 } from "lucide-react";
 import type { OpportunityDetailProjection } from "@missa/radar-engine";
 import type { ProfileCard } from "@missa/radar-adapters";
@@ -77,6 +87,26 @@ function statusLabel(status: OpportunityDetailProjection["status"]): string {
   return status
     .replace(/-/gu, " ")
     .replace(/^./u, (character) => character.toUpperCase());
+}
+
+function policyLabel(value: boolean | undefined, unknown = "Not listed"): string {
+  if (value === true) return "Allowed";
+  if (value === false) return "Not allowed";
+  return unknown;
+}
+
+function compactMoney(amountCents?: number, currency?: string): string | undefined {
+  if (amountCents === undefined || !currency) return undefined;
+  if (!/^[A-Z]{3}$/u.test(currency)) return `${currency}${(amountCents / 100).toFixed(2)}`;
+  return new Intl.NumberFormat("en", { style: "currency", currency }).format(amountCents / 100);
+}
+
+function readingPeriodLabel(kind: NonNullable<OpportunityDetailProjection["callProfile"]>["readingPeriodKind"]): string {
+  if (kind === "year-round") return "Open year-round";
+  if (kind === "rolling") return "Rolling reading period";
+  if (kind === "seasonal") return "Seasonal reading period";
+  if (kind === "exact") return "Fixed reading window";
+  return "Reading period not listed";
 }
 
 function DetailNotice({
@@ -150,9 +180,26 @@ export function OpportunityDetailView({
   const tracked = Boolean(opportunity.personal?.tracked);
   const canonicalPath = `/opportunities/${opportunity.slug}`;
   const sourceHref = opportunity.guidelinesUrl ?? opportunity.source.url;
+  const call = opportunity.callProfile;
+  const acceptedWork = Array.from(new Set([
+    ...(call?.acceptedFormats ?? []),
+    ...(call?.publicationFormats ?? []),
+    ...(call?.subgenres ?? []),
+    ...opportunity.genres,
+  ].filter(Boolean)));
+  const hasLimits = Boolean(call?.wordLimitMin !== undefined || call?.wordLimitMax !== undefined || call?.pageLimitMin !== undefined || call?.pageLimitMax !== undefined);
+  const hasPolicies = Boolean(call || opportunity.simultaneousAllowed !== undefined);
+  const payment = compactMoney(call?.paymentAmountCents, call?.paymentCurrency);
+  const unknowns = [
+    opportunity.fee.status === "unknown" ? "Application fee" : null,
+    opportunity.deadline.kind === "unknown" || opportunity.deadline.kind === "conflicting" ? "Confirmed deadline" : null,
+    opportunity.eligibility.length === 0 && !call?.eligibilitySummary ? "Eligibility" : null,
+    opportunity.requiredMaterials.length === 0 ? "Required materials" : null,
+    !call?.rightsSummary ? "Rights and licensing terms" : null,
+  ].filter((value): value is string => Boolean(value));
 
   return (
-    <main id="main-content" className={styles.main}>
+    <main id="main-content" className={styles.main} data-density="comfortable">
       <Link className={styles.backLink} href="/opportunities">
         <ArrowLeft aria-hidden="true" />
         Back to opportunities
@@ -263,6 +310,20 @@ export function OpportunityDetailView({
               </div>
               <div>
                 <dt>
+                  <Award aria-hidden="true" />
+                  Award or payment
+                </dt>
+                <dd>{opportunity.prize ?? call?.prizeSummary ?? payment ?? "Not listed"}</dd>
+              </div>
+              <div>
+                <dt>
+                  <ShieldCheck aria-hidden="true" />
+                  Eligibility
+                </dt>
+                <dd>{call?.eligibilitySummary ?? (opportunity.eligibility.length ? `${opportunity.eligibility.length} stated ${opportunity.eligibility.length === 1 ? "requirement" : "requirements"}` : "Not fully listed")}</dd>
+              </div>
+              <div>
+                <dt>
                   <Globe2 aria-hidden="true" />
                   Reach
                 </dt>
@@ -274,6 +335,13 @@ export function OpportunityDetailView({
                   Status
                 </dt>
                 <dd>{statusLabel(opportunity.status)}</dd>
+              </div>
+              <div>
+                <dt>
+                  <BookOpenText aria-hidden="true" />
+                  Opportunity type
+                </dt>
+                <dd>{typeLabel(opportunity.type)}</dd>
               </div>
             </dl>
             <div className={styles.railActions}>
@@ -293,14 +361,31 @@ export function OpportunityDetailView({
               <p className={styles.kicker}>The opportunity</p>
               <h2 id="about-title">What this opportunity is asking for</h2>
               <p className={styles.lede}>{summary}</p>
-              <p>
-                Use this overview to orient yourself, then rely on the official
-                source for the final rules and submission destination.
-              </p>
+              {call?.issueTheme ? <p><strong>Theme:</strong> {call.issueTheme}</p> : null}
+            </section>
+
+            <section aria-labelledby="accepted-work-title">
+              <p className={styles.sectionNumber}>01 · Fit</p>
+              <h2 id="accepted-work-title">Accepted work</h2>
+              {acceptedWork.length ? (
+                <div className={styles.practiceList}>
+                  {acceptedWork.map((item) => <Badge key={item} variant="secondary">{item}</Badge>)}
+                </div>
+              ) : <p>Accepted forms and genres are not yet listed.</p>}
+              {hasLimits ? (
+                <dl className={styles.requirementList}>
+                  {call?.wordLimitMin !== undefined || call?.wordLimitMax !== undefined ? (
+                    <div><dt><FileText aria-hidden="true" />Word limit</dt><dd>{call.wordLimitMin !== undefined ? `${call.wordLimitMin.toLocaleString()}–` : "Up to "}{call.wordLimitMax?.toLocaleString() ?? "not listed"} words</dd></div>
+                  ) : null}
+                  {call?.pageLimitMin !== undefined || call?.pageLimitMax !== undefined ? (
+                    <div><dt><Files aria-hidden="true" />Page limit</dt><dd>{call.pageLimitMin !== undefined ? `${call.pageLimitMin}–` : "Up to "}{call.pageLimitMax ?? "not listed"} pages</dd></div>
+                  ) : null}
+                </dl>
+              ) : <p className={styles.boundaryNote}>Size and quantity limits are not listed in the current record.</p>}
             </section>
 
             <section aria-labelledby="eligibility-title">
-              <p className={styles.sectionNumber}>01 · Decide</p>
+              <p className={styles.sectionNumber}>02 · Eligibility</p>
               <h2 id="eligibility-title">Eligibility</h2>
               {opportunity.eligibility.length ? (
                 <ul className={styles.eligibilityList}>
@@ -327,7 +412,7 @@ export function OpportunityDetailView({
             </section>
 
             <section aria-labelledby="prepare-title">
-              <p className={styles.sectionNumber}>02 · Prepare</p>
+              <p className={styles.sectionNumber}>03 · Prepare</p>
               <h2 id="prepare-title">What to prepare</h2>
               {opportunity.requiredMaterials.length ? (
                 <dl className={styles.requirementList}>
@@ -357,8 +442,67 @@ export function OpportunityDetailView({
               />
             </section>
 
+            {hasPolicies ? (
+              <section aria-labelledby="policies-title">
+                <p className={styles.sectionNumber}>04 · Policies</p>
+                <h2 id="policies-title">Submission policies</h2>
+                <dl className={styles.requirementList}>
+                  <div><dt><Files aria-hidden="true" />Simultaneous submissions</dt><dd>{policyLabel(opportunity.simultaneousAllowed)}</dd></div>
+                  <div><dt><Files aria-hidden="true" />Multiple submissions</dt><dd>{policyLabel(call?.multipleSubmissionsAllowed)}</dd></div>
+                  <div><dt><BookOpenText aria-hidden="true" />Previously published work</dt><dd>{call?.previouslyUnpublishedRequired === true ? "Must be unpublished" : call?.previouslyUnpublishedRequired === false ? "Previously published work may be accepted" : "Not listed"}</dd></div>
+                  <div><dt><Scale aria-hidden="true" />Reprints</dt><dd>{policyLabel(call?.reprintsAllowed)}</dd></div>
+                  <div><dt><ShieldCheck aria-hidden="true" />Rights</dt><dd>{call?.rightsSummary ?? "Not listed"}</dd></div>
+                </dl>
+              </section>
+            ) : null}
+
+            {call ? (
+              <section aria-labelledby="terms-title">
+                <p className={styles.sectionNumber}>05 · Terms</p>
+                <h2 id="terms-title">Reading window, payment, and judging</h2>
+                <dl className={styles.requirementList}>
+                  <div><dt><Clock3 aria-hidden="true" />Reading period</dt><dd>{call.readingPeriodLabel ?? readingPeriodLabel(call.readingPeriodKind)}</dd></div>
+                  <div><dt><Coins aria-hidden="true" />Payment</dt><dd>{call.paymentType === "none" ? "No payment" : call.paymentType === "unknown" ? "Not listed" : payment ?? call.paymentType?.replaceAll("-", " ") ?? "Not listed"}</dd></div>
+                  <div><dt><Users aria-hidden="true" />Judge</dt><dd>{call.judgeName ?? call.prizes.find((prize) => prize.judgeName)?.judgeName ?? "Not listed"}</dd></div>
+                  <div><dt><Clock3 aria-hidden="true" />Response time</dt><dd>{call.responseTimeDays !== undefined ? `About ${call.responseTimeDays} days` : "Not listed"}</dd></div>
+                </dl>
+                {call.prizes.length ? (
+                  <div className={styles.prizeList}>
+                    {call.prizes.map((prize, index) => (
+                      <div key={`${prize.sourceUrl}-${index}`}>
+                        <Award aria-hidden="true" />
+                        <div><strong>{prize.title ?? `Prize ${prize.rank ?? index + 1}`}</strong><span>{compactMoney(prize.amountCents, prize.currency) ?? prize.description ?? "Amount not listed"}</span></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            <section aria-labelledby="organization-title">
+              <p className={styles.sectionNumber}>06 · Organization</p>
+              <h2 id="organization-title">Who is behind this opportunity</h2>
+              <div className={styles.authorityCard}>
+                <Building2 aria-hidden="true" />
+                <div>
+                  <strong>{opportunity.organizationName ?? "Organization not confirmed"}</strong>
+                  {relatedProfile ? <Link href={`/journals/${encodeURIComponent(relatedProfile.id)}`}>View publisher profile</Link> : opportunity.organizationId ? <Link href={`/org/${encodeURIComponent(opportunity.organizationId)}`}>View Organization profile</Link> : <span>Public Organization profile not yet linked</span>}
+                  {opportunity.relatedOpportunityIds.length ? <span>{opportunity.relatedOpportunityIds.length} other open {opportunity.relatedOpportunityIds.length === 1 ? "opportunity" : "opportunities"}</span> : <span>No other open opportunities are currently linked.</span>}
+                </div>
+              </div>
+            </section>
+
+            {unknowns.length || opportunity.changes.length ? (
+              <section aria-labelledby="record-state-title">
+                <p className={styles.sectionNumber}>07 · Record state</p>
+                <h2 id="record-state-title">What still needs confirmation</h2>
+                {unknowns.length ? <ul className={styles.unknownList}>{unknowns.map((item) => <li key={item}><CircleHelp aria-hidden="true" />{item}</li>)}</ul> : <p>No major decision fields are currently marked unknown.</p>}
+                {opportunity.changes.length ? <p className={styles.boundaryNote}>{opportunity.changes.length} recent {opportunity.changes.length === 1 ? "change is" : "changes are"} recorded. Confirm time-sensitive details on the official page.</p> : null}
+              </section>
+            ) : null}
+
             <section aria-labelledby="categories-title">
-              <p className={styles.sectionNumber}>03 · Understand the call</p>
+              <p className={styles.sectionNumber}>08 · Classification</p>
               <h2 id="categories-title">Categories named in this call</h2>
               {practiceLabels.length ? (
                 <div className={styles.practiceList}>
@@ -381,7 +525,7 @@ export function OpportunityDetailView({
               className={styles.sourceSection}
               aria-labelledby="source-title"
             >
-              <p className={styles.sectionNumber}>04 · Apply</p>
+              <p className={styles.sectionNumber}>09 · Apply</p>
               <h2 id="source-title">Finish on the official source</h2>
               <p>
                 Missa helps you understand and track the opportunity. The

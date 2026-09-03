@@ -10,7 +10,7 @@ function candidate(overrides: Partial<ReviewCandidate> = {}): ReviewCandidate {
     title: "Verified call",
     status: "open",
     submissionState: "available",
-    deadlineDate: "2026-09-01",
+    deadlineDate: "2026-10-01",
     submissionUrl: "https://example.com/submit",
     guidelinesUrl: "https://example.com/guidelines",
     sourceUrl: "https://example.com/call",

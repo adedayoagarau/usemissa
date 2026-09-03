@@ -5,6 +5,7 @@ import type { RadarEngine } from "@missa/radar-engine";
 import { createProductionEngine } from "./productionEngine.js";
 import { finishSourceRun, finishWorkerRun, heartbeatWorkerRun, readWorkerRunLifecycle, startSourceRun, startWorkerRun } from "./workerTelemetry.js";
 import { processPlatformAgentControlRequests } from "./platformAdminFoundations.js";
+import { reconcileExpiredOpportunitiesInDatabase } from "./databaseReconciliation.js";
 
 /**
  * Postgres advisory-lock key for the single Radar ingestion lane. Advisory
@@ -116,6 +117,14 @@ export async function runRadarWorkerTick(
     }
     await options.afterTick?.(production.engine);
     await production.persist();
+    try {
+      const reconciled = await reconcileExpiredOpportunitiesInDatabase(production.pool);
+      if (reconciled.canonicalClosed > 0 || reconciled.radarClosed > 0) {
+        logger.info(`[missa-radar-worker] reconciled expired calls: canonical=${reconciled.canonicalClosed}, radar=${reconciled.radarClosed}`);
+      }
+    } catch (reconcileError) {
+      logger.warn("[missa-radar-worker] failed to reconcile expired opportunities in database", reconcileError);
+    }
     await finishSourceRun(production.pool, sourceRunId, {
       intervalEnd: report.at,
       sourcesSelected: report.sourcesSelected,

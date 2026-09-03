@@ -65,10 +65,18 @@ function statusLabel(
   status: OpportunityBrowseProjection["status"],
   deadline: OpportunityBrowseProjection["deadline"],
 ): string | null {
+  if (status === "closed") return "Closed";
+  if (status === "archived") return "Archived";
+  if (deadline.date) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (deadline.date < today) return "Closed";
+  }
   if (status === "closing-soon" && deadline.date) {
     const deadlineTime = new Date(`${deadline.date}T23:59:59`).getTime();
-    const days = Math.max(0, Math.ceil((deadlineTime - Date.now()) / 86_400_000));
-    return days === 0 ? "Closes today" : `Closes in ${days} ${days === 1 ? "day" : "days"}`;
+    const msDiff = deadlineTime - Date.now();
+    if (msDiff < 0) return "Closed";
+    const days = Math.ceil(msDiff / 86_400_000);
+    return days <= 1 ? "Closes today" : `Closes in ${days} days`;
   }
   if (status === "closing-soon") return "Closing soon";
   if (status === "deadline-extended") return "Deadline extended";

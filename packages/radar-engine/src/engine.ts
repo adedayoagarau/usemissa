@@ -2049,12 +2049,16 @@ export class RadarEngine {
       trust: trustScore(opp.trustSignals),
     };
     opp.prediction = predictNextOpening(opp.pastCycles, now);
+    const previousStatus = opp.status;
     opp.status = deriveStatus(opp, {
       now,
       closedSignalPresent: opp.lastClosedSignal,
       openSignalPresent: opp.lastOpenSignal,
       lastDeadlineExtensionAt: opp.lastDeadlineExtensionAt,
     });
+    if (previousStatus !== opp.status) {
+      opp.lastChangedAt = now.toISOString();
+    }
   }
 
   private saveVersion(

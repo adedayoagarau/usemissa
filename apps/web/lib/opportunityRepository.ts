@@ -228,8 +228,10 @@ function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepos
 class EngineOpportunityRepository implements OpportunityRepository {
   async browse(query: OpportunityRepositoryQuery, context?: OpportunityRepositoryContext): Promise<OpportunityBrowsePage> {
     const engine = await getEngine();
+    const nowIso = new Date().toISOString().slice(0, 10);
     const items = [...engine.store.opportunities.values()]
       .filter((opp) => !opp.duplicateOfId && !["archived", "closed", "duplicate", "uncertain"].includes(opp.status))
+      .filter((opp) => !query.openNow || !opp.fields.deadline?.date || opp.fields.deadline.date >= nowIso)
       .filter((opp) => !excludedByPrivatePreferences(engine, opp, context))
       .map((opp) => project(engine, opp, context))
       .filter((item) => matchesQuery(item, query));

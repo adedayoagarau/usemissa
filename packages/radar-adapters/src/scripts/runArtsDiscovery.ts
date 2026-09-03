@@ -674,7 +674,7 @@ export async function runArtsDiscovery(
                guidelines_url, submission_url, submission_host, submission_state,
                search_document, created_at, updated_at
              ) VALUES (
-               $1, $2, $3, $4, $5, $6, 'published',
+               $1, $2, $3, $4, $5, $6, 'reviewable',
                $7, $8, $9, now()::date, $10, $11,
                $12, $13, 'USD', $14, $15, true,
                $16, $17, $18, 'available',
