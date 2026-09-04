@@ -853,7 +853,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     identityAssetUrl: row.identity_asset_url ?? undefined,
     identityAssetAlt: row.identity_asset_alt ?? undefined,
     status: row.status,
-    type: (["open-call", "magazine", "grant", "award", "fellowship", "residency", "festival", "scholarship", "conference", "rfp", "contest", "pitch", "exhibition", "commission", "other"].includes(row.type) ? row.type : "other") as any,
+    type: (["open-call", "magazine", "grant", "award", "fellowship", "residency", "festival", "scholarship", "conference", "rfp", "contest", "pitch", "exhibition", "commission", "job", "other"].includes(row.type) ? row.type : "other") as any,
     discipline: row.discipline ?? undefined,
     genres: (row.genres ?? []).slice(0, 32),
     taxonomy: row.taxonomy ?? {
