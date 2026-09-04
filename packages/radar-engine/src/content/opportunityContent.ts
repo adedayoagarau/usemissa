@@ -22,6 +22,7 @@ export interface OpportunityContentReview {
 export interface OpportunityContent {
   builderVersion: string;
   summary: string;
+  description?: string;
   highlights: OpportunityContentFact[];
   preparation: string[];
   unknowns: string[];

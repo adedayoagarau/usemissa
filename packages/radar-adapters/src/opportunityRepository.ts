@@ -134,7 +134,7 @@ function taxonomyReadsEnabled(): boolean {
 }
 
 function contentReadsEnabled(): boolean {
-  return process.env.MISSA_OPPORTUNITY_CONTENT_READS?.trim() === "1";
+  return process.env.MISSA_OPPORTUNITY_CONTENT_READS?.trim() !== "0";
 }
 
 function stripJsonNulls<T>(value: T): T {

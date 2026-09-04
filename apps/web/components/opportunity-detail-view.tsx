@@ -393,7 +393,14 @@ export function OpportunityDetailView({
             <section aria-labelledby="about-title">
               <h2 id="about-title">What this opportunity is asking for</h2>
               <p className={styles.lede}>{summary}</p>
-              {call?.issueTheme ? <p><strong>Theme:</strong> {call.issueTheme}</p> : null}
+              {opportunity.content?.description && opportunity.content.description !== summary && opportunity.content.description.length > 80 ? (
+                <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
+                  {opportunity.content.description.split(/\n\s*\n/).map((para, idx) => (
+                    <p key={idx}>{para.trim()}</p>
+                  ))}
+                </div>
+              ) : null}
+              {call?.issueTheme ? <p className="mt-3"><strong>Theme:</strong> {call.issueTheme}</p> : null}
             </section>
 
             <section aria-labelledby="accepted-work-title">
