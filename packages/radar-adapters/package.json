@@ -52,6 +52,7 @@
     "transartists:harvest": "npx tsx src/scripts/harvestTransArtists.ts",
     "transartists:review": "npx tsx src/scripts/reviewTransArtistsHarvest.ts",
     "transartists:sync": "npx tsx src/scripts/syncTransArtistsToRailway.ts",
+    "backfill:editorial": "npx tsx src/scripts/backfillEditorialDossiers.ts",
     "radar:freshness": "node ../../scripts/run-daily-freshness.mjs",
     "radar:pipeline-publish": "npx tsx src/scripts/runPlatformOpportunityPipelineFast.ts",
     "radar:full-sync": "npm run aca:sync && npm run otm:sync && npm run rivet:sync && npm run transartists:sync && npm run artconnect:sync && npm run resartis:sync && npm run radar:pipeline-publish"

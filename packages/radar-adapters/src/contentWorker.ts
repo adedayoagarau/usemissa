@@ -99,7 +99,12 @@ async function seedContentJobs(pool: Pool): Promise<void> {
   await pool.query(
     `insert into radar_content_review_jobs (id, opportunity_id, priority, input_version)
      select md5('content:' || o.id), o.id,
-       case when o.deadline_date is not null and o.deadline_date <= current_date + 30 then 20 else 0 end,
+       case 
+         when o.deadline_date is not null and o.deadline_date between current_date and current_date + 30 then 30
+         when o.deadline_date is not null and o.deadline_date >= current_date then 20
+         when o.deadline_date is null then 10
+         else 0 
+       end,
        coalesce(o.last_changed_at, o.updated_at, o.created_at)::text
      from opportunities o
      where o.publication_state in ('published', 'reviewable')
@@ -107,11 +112,20 @@ async function seedContentJobs(pool: Pool): Promise<void> {
          select 1 from opportunity_contents c
          where c.opportunity_id = o.id
            and c.input_version = coalesce(o.last_changed_at, o.updated_at, o.created_at)::text
+           and c.builder_version = 'editorial-writer.v2'
        )
      on conflict (opportunity_id) do update
-       set status = 'queued', input_version = excluded.input_version,
-           next_attempt_at = now(), lease_until = null, last_error = null, updated_at = now()
-       where radar_content_review_jobs.input_version is distinct from excluded.input_version`,
+       set status = case when radar_content_review_jobs.status in ('building', 'processing') and radar_content_review_jobs.lease_until > now() then radar_content_review_jobs.status else 'queued' end,
+           priority = excluded.priority,
+           input_version = excluded.input_version,
+           next_attempt_at = now(), lease_until = case when radar_content_review_jobs.status in ('building', 'processing') and radar_content_review_jobs.lease_until > now() then radar_content_review_jobs.lease_until else null end,
+           last_error = null, updated_at = now()
+       where radar_content_review_jobs.input_version is distinct from excluded.input_version
+          or not exists (
+            select 1 from opportunity_contents c
+            where c.opportunity_id = radar_content_review_jobs.opportunity_id
+              and c.builder_version = 'editorial-writer.v2'
+          )`,
   );
   await pool.query(
     `update radar_content_review_jobs j
@@ -169,7 +183,7 @@ async function claimReviewJobs(pool: Pool, limit: number): Promise<ContentJob[]>
 async function contentInput(pool: Pool, opportunityId: string): Promise<ContentInputResult | null> {
   const result = await pool.query<ContentRow>(
     `select o.id, o.title, o.type, o.status, o.discipline, o.genres,
-       o.description,
+       coalesce(c.content->>'description', (select obs.description from gary_call_observations obs where obs.opportunity_id = o.id and obs.description is not null order by obs.observed_at desc limit 1)) as description,
        o.organization_id,
        org.data->>'name' as organization_name,
        org.data as organization_data,
@@ -189,6 +203,7 @@ async function contentInput(pool: Pool, opportunityId: string): Promise<ContentI
      from opportunities o
      join opportunity_sources s on s.id = o.source_id
      left join radar_organizations org on org.id = o.organization_id
+     left join opportunity_contents c on c.opportunity_id = o.id
      left join lateral (
        select e.processing_succeeded_at, e.organization_confirmed
        from opportunity_source_evidence e
