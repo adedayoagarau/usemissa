@@ -87,7 +87,7 @@ Observed colors include:
 - neutral borders: approximately 5–10% black;
 - directory-status green family: dark green around `rgb(22, 80, 46)`, pale green around `rgb(229, 244, 239)`, and bright accent around `rgb(110, 213, 141)`.
 
-Missa decision: preserve Missa's warm white, aubergine, mineral blue, and evidence-status tokens. Adopt the restrained allocation of color, not Chillsubs' green palette.
+Missa decision: preserve Missa's true-white canvas, Forest action, mineral blue, and evidence-status tokens (`DESIGN.md`, `docs/missa-color-direction.md`). Adopt the restrained allocation of color, not Chillsubs' bright directory-status greens. Legacy Aubergine is not a current action token.
 
 ## Measured typography
 

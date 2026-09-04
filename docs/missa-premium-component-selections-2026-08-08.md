@@ -42,7 +42,7 @@ Approval means a reference may be adapted inside `/design-system/*`. It does not
 - Style Guide 2.0, `DESIGN.md`, and `docs/missa-color-direction.md` outrank the reference library.
 - Use `Profile` and `Organization` in user-facing language. Historical route groups such as `app/(passport)` and `app/(workspace)` may remain internal.
 - Start on true white with white surfaces, hairline borders, restrained shadow, and Ysabeau/Fragment Mono typography.
-- Aubergine is the only brand action color. Lichen, aged ochre, and mineral blue carry semantic status only.
+- Forest is the only brand action color. Lichen, aged ochre, and mineral blue carry semantic status only. Legacy Aubergine is not a current action token.
 - Profile uses 44px touch-safe controls and calm cards. Organization uses compact controls, tables, drawers, and command-friendly density.
 - Every status has a word or icon; color never carries meaning alone.
 - Source provenance may be available through a source link; freshness timestamps, scores, refresh state, and update prompts remain backend metadata and must not appear in customer-facing UI.
@@ -156,7 +156,7 @@ The product contract is defined in [`missa-organization-chooser-overview-contrac
 | Needs-attention queue | `list/list-03` labelled-value anatomy and `list/list-06` action-row anatomy | Ordered by user consequence. Each row names scope, consequence, and exact filtered destination. Worker names, provider codes, confidence, freshness, and inaccessible counts are rejected. |
 | Lifecycle summary | `card/card-09` quiet outline anatomy; `card/card-02` content hierarchy only | Small number of linked operational summaries. Cards do not replace submission/review/decision tables, and zero is not used to disguise permission limits. Remote avatars, meeting-copy, and participant decoration are discarded. |
 | Active Opportunities and Programs | `table/table-03` compact anatomy or `list/list-03` when the data is not genuinely tabular | Opportunity, Program, state, consequence, and next action. `Team` replaces internal `Entity`; `Opportunity` is the primary object name. Mobile becomes labelled rows, never a squeezed table. |
-| Role and availability labels | `badge/badge-04` neutral anatomy | Text always carries the meaning. Aubergine is not used as a status; suspended, attention, read-only, and role states use semantic tokens and words. |
+| Role and availability labels | `badge/badge-04` neutral anatomy | Text always carries the meaning. Forest is not used as a status; suspended, attention, read-only, and role states use semantic tokens and words. |
 | Invite/create/join | `dialog/dialog-01` for confirmation; `sheet/sheet-05` form/focus anatomy for contextual creation only | Accepting an invitation states Organization and role. Creation and join requests preserve fields after failure. A sheet does not replace onboarding routes or hide required policy. |
 | Mobile Organization navigation | `drawer/drawer-05` side-panel anatomy or installed navigation Sheet primitives | Same current Organization, role, destinations, and urgent actions as desktop. Focus trap, Escape, trigger restoration, and 44px controls are mandatory. |
 | Secondary row actions | `dropdown-menu/dropdown-menu-09` alignment/destructive grouping | Only genuinely secondary actions. The primary destination remains visible. Destructive actions open a scoped confirmation and are omitted without authority. |
@@ -562,7 +562,7 @@ Selected direction: **02 — Program lens**.
 | Direction and section navigation | `tabs/tabs-11`; overflow behavior from `tabs/tabs-14` | Named, keyboard-operable destinations; mobile never hides the current context |
 | Primary measures | `card/card-09` and `card/card-07` | Three quiet measures with grain, denominator, cohort basis, exclusions, and definition access; no decorative trend arrows |
 | Scope and comparison | `select/select-01`, `date-picker/date-picker-10`, `popover/popover-01` | Date, Program/Opportunity scope, and equivalent-period comparison; URL-backed before promotion |
-| Intake trend | Shadcn chart primitive with Recharts inside premium card anatomy | Aubergine current period, muted comparison, accessible tooltip, and always-available data table |
+| Intake trend | Shadcn chart primitive with Recharts inside premium card anatomy | Forest current period, muted comparison, accessible tooltip, and always-available data table |
 | Opportunity comparison | `data-table/data-table-04` desktop; `list/list-03` mobile | Submission, Work, review-assignment, and outcome grains remain named rather than merged into conversion |
 | Practice lens | `select/select-01`, `table/table-03`, `badge/badge-04` | One independent taxonomy facet at a time; tagged-Work rows are explicitly non-additive |
 | Definitions and exclusions | `sheet/sheet-04`, `alert/alert-17`–`alert-20` | Durable metric definitions, exclusions, small-sample suppression, and unavailable-analysis reasons |

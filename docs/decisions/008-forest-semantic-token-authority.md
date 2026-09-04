@@ -10,8 +10,9 @@ Forest as its single brand action, selection, navigation, and focus color.
 Legacy Aubergine values are retired from current semantic tokens.
 
 The canonical implementation mapping is `apps/web/app/globals.css`. The
-canonical design definition is `DESIGN.md`. Product components consume semantic
-or component tokens and must not introduce route-local brand colors.
+canonical design definition is `DESIGN.md`. The palette companion is
+`docs/missa-color-direction.md` (Forest, v2). Product components consume
+semantic or component tokens and must not introduce route-local brand colors.
 
 Coss UI is an approved source for accessible component mechanics and patterns.
 It does not provide a second product theme. Imported Coss components must map to
