@@ -19,9 +19,22 @@ export class SnapshotConflictError extends Error {
   }
 }
 
+let schemaEnsured = false;
+
 /** Creates the Radar tables (idempotent — safe to call on every boot). */
 export async function ensurePostgresSchema(pool: Pool): Promise<void> {
+  if (schemaEnsured) return;
+  try {
+    const check = await pool.query("select 1 from missa_snapshot_versions where domain = 'radar' limit 1");
+    if (check.rowCount && check.rowCount > 0) {
+      schemaEnsured = true;
+      return;
+    }
+  } catch {
+    // table doesn't exist yet, proceed to create
+  }
   await pool.query(postgresSchema);
+  schemaEnsured = true;
 }
 
 async function hasColumn(client: PoolClient, table: string, column: string): Promise<boolean> {
@@ -495,19 +508,38 @@ export async function saveRadarStoreDeltaToPostgres(
     await deleteRows('radar_organizations', 'id', maps.organizations.deletes);
     await deleteRows('radar_audit_log', 'id', current.auditLog.length ? [] : previous.auditLog.map((entry) => entry.id));
 
-    for (const row of maps.sources.upserts) { const value = row.value; await client.query('insert into radar_sources (id, organization_id, active, data) values ($1, $2, $3, $4) on conflict (id) do update set organization_id = excluded.organization_id, active = excluded.active, data = excluded.data', [value.id, value.organizationId ?? null, value.active, value]); }
+    if (maps.sources.upserts.length) {
+      const chunkSize = 500;
+      for (let i = 0; i < maps.sources.upserts.length; i += chunkSize) {
+        const chunk = maps.sources.upserts.slice(i, i + chunkSize);
+        await client.query(
+          `insert into radar_sources (id, organization_id, active, data)
+           select value->>'id', value->>'organizationId', coalesce((value->>'active')::boolean, true), value
+           from jsonb_array_elements($1::jsonb) as incoming(value)
+           on conflict (id) do update set
+             organization_id = excluded.organization_id,
+             active = excluded.active,
+             data = excluded.data`,
+          [JSON.stringify(chunk.map((row) => row.value))],
+        );
+      }
+    }
     for (const row of maps.snapshots.upserts) { const value = row.value; await client.query('insert into radar_snapshots (id, source_id, data) values ($1, $2, $3) on conflict (id) do update set source_id = excluded.source_id, data = excluded.data', [value.id, value.sourceId, value]); }
     if (maps.opportunities.upserts.length) {
-      await client.query(
-        `insert into radar_opportunities (id, status, claimed_by_organization_id, data)
-         select value->>'id', value->>'status', value->>'claimedByOrganizationId', value
-         from jsonb_array_elements($1::jsonb) as incoming(value)
-         on conflict (id) do update set
-           status = excluded.status,
-           claimed_by_organization_id = excluded.claimed_by_organization_id,
-           data = excluded.data`,
-        [JSON.stringify(maps.opportunities.upserts.map((row) => row.value))],
-      );
+      const chunkSize = 500;
+      for (let i = 0; i < maps.opportunities.upserts.length; i += chunkSize) {
+        const chunk = maps.opportunities.upserts.slice(i, i + chunkSize);
+        await client.query(
+          `insert into radar_opportunities (id, status, claimed_by_organization_id, data)
+           select value->>'id', value->>'status', value->>'claimedByOrganizationId', value
+           from jsonb_array_elements($1::jsonb) as incoming(value)
+           on conflict (id) do update set
+             status = excluded.status,
+             claimed_by_organization_id = excluded.claimed_by_organization_id,
+             data = excluded.data`,
+          [JSON.stringify(chunk.map((row) => row.value))],
+        );
+      }
     }
     for (const row of maps.versions.upserts) { const value = row.value; await client.query('insert into radar_opportunity_versions (id, opportunity_id, data) values ($1, $2, $3) on conflict (id) do update set opportunity_id = excluded.opportunity_id, data = excluded.data', [value.id, value.opportunityId, value]); }
     for (const row of maps.changes.upserts) { const value = row.value; await client.query('insert into radar_opportunity_changes (id, opportunity_id, data) values ($1, $2, $3) on conflict (id) do update set opportunity_id = excluded.opportunity_id, data = excluded.data', [value.id, value.opportunityId, value]); }
@@ -659,7 +691,43 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
 
   for (const row of sources.rows) store.sources.set(row.data.id, row.data);
   for (const row of snapshots.rows) store.snapshots.set(row.data.id, row.data);
-  for (const row of opportunities.rows) store.opportunities.set(row.data.id, row.data);
+  for (const row of opportunities.rows) {
+    const opp = row.data;
+    if (!opp || !opp.id) continue;
+    if (!opp.fields) {
+      opp.fields = {
+        title: opp.title ?? "",
+        organizationName: opp.organizationName ?? "",
+        organizationId: opp.organizationId,
+        type: opp.opportunityType ?? "open-call",
+        genres: Array.isArray(opp.genres) ? opp.genres : [],
+        taxonomyAssignments: Array.isArray(opp.taxonomyAssignments) ? opp.taxonomyAssignments : [],
+        openDate: opp.openDate ?? undefined,
+        deadline: {
+          kind: opp.deadlineDate ? "exact" : "unknown",
+          date: opp.deadlineDate ?? undefined,
+        },
+        fee: {
+          status: opp.feeStatus === "fee" || opp.feeCents ? "fixed" : "none",
+          amountCents: opp.feeCents ?? undefined,
+          disclosed: Boolean(opp.feeStatus && opp.feeStatus !== "unknown"),
+        },
+        prize: opp.prize ? { text: String(opp.prize), amountUsd: opp.prizeAmountUsd ?? undefined } : undefined,
+        eligibility: opp.eligibility ?? undefined,
+        requiredMaterials: Array.isArray(opp.requiredMaterials) ? opp.requiredMaterials : [],
+        submissionUrl: opp.submissionUrl ?? undefined,
+        guidelinesUrl: opp.guidelinesUrl ?? undefined,
+      };
+    }
+    opp.scores ??= { freshness: 100, confidence: 100, trust: 0 };
+    opp.trustSignals ??= [];
+    opp.pastCycles ??= [];
+    opp.conflicts ??= [];
+    opp.alternateSourceIds ??= [];
+    opp.sourceId ??= opp.id;
+    opp.sourceUrl ??= opp.guidelinesUrl ?? opp.submissionUrl ?? "";
+    store.opportunities.set(opp.id, opp);
+  }
   for (const row of versions.rows) store.versions.set(row.data.id, row.data);
   for (const row of changes.rows) store.changes.set(row.data.id, row.data);
   for (const row of organizations.rows) store.organizations.set(row.data.id, row.data);

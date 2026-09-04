@@ -9,7 +9,8 @@ const MS_PER_DAY = 86_400_000;
  * Uncertain.
  */
 export function freshnessScore(opp: Opportunity, now: Date): number {
-  const days = Math.max(0, (now.getTime() - Date.parse(opp.lastCheckedAt)) / MS_PER_DAY);
+  const lastChecked = opp.lastCheckedAt || opp.createdAt || now.toISOString();
+  const days = Math.max(0, (now.getTime() - Date.parse(lastChecked)) / MS_PER_DAY);
   const halfLifeDays = opp.claimedByOrganizationId ? 28 : 14;
   return Math.round(100 * Math.pow(0.5, days / halfLifeDays));
 }
@@ -21,9 +22,9 @@ export const STALE_FRESHNESS_THRESHOLD = 30;
  * unresolved cross-source conflicts, boosted by an organization claim
  * (claimed fields are authoritative).
  */
-export function confidenceScore(opp: Opportunity, extractionConfidence: number): number {
-  let score = extractionConfidence;
-  score -= opp.conflicts.length * 20;
+export function confidenceScore(opp: Opportunity, extractionConfidence?: number): number {
+  let score = extractionConfidence ?? 100;
+  score -= (opp.conflicts?.length ?? 0) * 20;
   if (opp.claimedByOrganizationId) score = Math.max(score, 90);
   return Math.max(0, Math.min(100, score));
 }
@@ -35,23 +36,25 @@ export function computeTrustSignals(
     officialSource: boolean;
     organizationVerified: boolean;
     hasHistory: boolean;
-    suspiciousSignals: string[];
+    suspiciousSignals?: string[];
   },
 ): TrustSignal[] {
-  const f = opp.fields;
+  const f = opp.fields ?? ({} as any);
+  const pastCycles = opp.pastCycles ?? [];
+  const suspicious = opts.suspiciousSignals ?? opp.lastSuspiciousSignals ?? [];
   return [
     { key: 'official-source', label: 'Found on official organization page', present: opts.officialSource, weight: 20 },
     { key: 'org-claimed', label: 'Organization claimed this listing', present: !!opp.claimedByOrganizationId, weight: 25 },
     { key: 'org-verified', label: 'Verified organization', present: opts.organizationVerified, weight: 10 },
-    { key: 'historical-call', label: 'Historical call exists', present: opts.hasHistory || opp.pastCycles.length > 0, weight: 10 },
-    { key: 'clear-guidelines', label: 'Clear guidelines (materials listed)', present: f.requiredMaterials.length > 0, weight: 10 },
-    { key: 'contact-email', label: 'Contact email present', present: f.contactEmailPresent, weight: 10 },
-    { key: 'fee-disclosed', label: 'Fee disclosed', present: f.fee.disclosed, weight: 10 },
+    { key: 'historical-call', label: 'Historical call exists', present: opts.hasHistory || pastCycles.length > 0, weight: 10 },
+    { key: 'clear-guidelines', label: 'Clear guidelines (materials listed)', present: (f.requiredMaterials?.length ?? 0) > 0, weight: 10 },
+    { key: 'contact-email', label: 'Contact email present', present: Boolean(f.contactEmailPresent), weight: 10 },
+    { key: 'fee-disclosed', label: 'Fee disclosed', present: Boolean(f.fee?.disclosed), weight: 10 },
     { key: 'stable-identity', label: 'Consistent organization identity', present: !!f.organizationName, weight: 5 },
     {
       key: 'suspicious-language',
-      label: opts.suspiciousSignals.length > 0 ? `Suspicious payment language: ${opts.suspiciousSignals.join('; ')}` : 'No suspicious payment language',
-      present: opts.suspiciousSignals.length > 0,
+      label: suspicious.length > 0 ? `Suspicious payment language: ${suspicious.join('; ')}` : 'No suspicious payment language',
+      present: suspicious.length > 0,
       weight: -50,
     },
   ];

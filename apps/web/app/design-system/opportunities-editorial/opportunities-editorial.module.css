@@ -1,0 +1,31 @@
+.shell {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.banner {
+  position: sticky;
+  z-index: 50;
+  top: 0;
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--lichen-tint);
+  color: var(--foreground);
+  font-size: 12px;
+}
+
+.banner a {
+  color: var(--accent-deep);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.banner a:hover,
+.banner a:focus-visible {
+  text-decoration: underline;
+}

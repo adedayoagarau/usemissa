@@ -80,6 +80,26 @@ create constraint trigger missa_publication_gate_trigger
   on opportunities deferrable initially deferred for each row execute function missa_publication_gate();
 `;
 
+let publicationRubricEnsured = false;
+
 export async function ensurePublicationRubricSchema(pool: Pool): Promise<void> {
+  if (publicationRubricEnsured) return;
+  try {
+    const check = await pool.query(
+      "select prosrc from pg_proc where proname = 'missa_publication_gate' limit 1",
+    );
+    if (
+      check.rowCount &&
+      check.rowCount > 0 &&
+      typeof check.rows[0].prosrc === "string" &&
+      check.rows[0].prosrc.includes("new.status = 'closed'")
+    ) {
+      publicationRubricEnsured = true;
+      return;
+    }
+  } catch {
+    // proceed to ensure if check failed
+  }
   await pool.query(publicationRubricSchema);
+  publicationRubricEnsured = true;
 }

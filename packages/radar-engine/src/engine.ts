@@ -2032,23 +2032,23 @@ export class RadarEngine {
   }
 
   private rescore(opp: Opportunity, now: Date): void {
-    if (opp.status === "archived") return;
+    if (!opp || opp.status === "archived" || !opp.fields) return;
     const source = this.store.sources.get(opp.sourceId);
-    const org = opp.fields.organizationId
+    const org = opp.fields?.organizationId
       ? this.store.organizations.get(opp.fields.organizationId)
       : undefined;
     opp.trustSignals = computeTrustSignals(opp, {
       officialSource: source?.kind === "organization-website",
       organizationVerified: org?.verified ?? false,
-      hasHistory: opp.pastCycles.length > 0,
-      suspiciousSignals: opp.lastSuspiciousSignals,
+      hasHistory: (opp.pastCycles?.length ?? 0) > 0,
+      suspiciousSignals: opp.lastSuspiciousSignals ?? [],
     });
     opp.scores = {
       freshness: freshnessScore(opp, now),
       confidence: confidenceScore(opp, opp.lastExtractionConfidence),
       trust: trustScore(opp.trustSignals),
     };
-    opp.prediction = predictNextOpening(opp.pastCycles, now);
+    opp.prediction = predictNextOpening(opp.pastCycles ?? [], now);
     const previousStatus = opp.status;
     opp.status = deriveStatus(opp, {
       now,
