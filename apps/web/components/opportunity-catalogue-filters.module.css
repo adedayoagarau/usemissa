@@ -250,3 +250,7 @@
 }
 
 @media (min-width: 981px) and (max-width: 1199px) { .sidebar { top: 92px; } }
+
+.index .filterTrigger { min-height: 44px; background: transparent; color: var(--muted-foreground); border-color: transparent; font-size: 13px; font-weight: 500; }
+.index .filterTrigger:hover { background: var(--muted); color: var(--foreground); }
+.index .desktopFilterBar { gap: 2px; }

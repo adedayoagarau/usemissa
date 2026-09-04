@@ -388,17 +388,51 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
     join opportunity_sources source on source.id = o.source_id
     left join radar_organizations org on org.id = o.organization_id
     left join lateral (
-      select a.url, a.alt
-      from opportunity_identity_assets a
-      where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')
-        and a.kind in ('opportunity-artwork', 'opportunity-cover')
+      select asset_candidate.url, asset_candidate.alt
+      from (
+        select a.url, a.alt,
+          case a.kind
+            when 'opportunity-artwork' then 1
+            when 'opportunity-cover' then 2
+            else 3
+          end as priority,
+          1 as tier,
+          a.created_at
+        from opportunity_identity_assets a
+        where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')
+          and a.kind in ('opportunity-artwork', 'opportunity-cover')
+        union all
+        select a.url, a.alt,
+          case a.kind
+            when 'opportunity-artwork' then 1
+            when 'opportunity-cover' then 2
+            else 3
+          end as priority,
+          2 as tier,
+          a.created_at
+        from opportunity_identity_assets a
+        where o.organization_id is not null
+          and a.linked_organization_id = o.organization_id
+          and a.rights_status in ('cleared', 'permitted')
+          and a.kind in ('opportunity-artwork', 'opportunity-cover', 'organization-banner')
+        union all
+        select v.image_url as url, coalesce(v.label, org.data->>'name') as alt,
+          case v.asset_type
+            when 'banner' then 1
+            when 'issue_cover' then 2
+            else 3
+          end as priority,
+          3 as tier,
+          v.created_at
+        from gary_profile_visuals v
+        where o.organization_id is not null
+          and v.profile_id = o.organization_id
+          and v.asset_type in ('banner', 'issue_cover', 'logo')
+      ) asset_candidate
       order by
-        case a.kind
-          when 'opportunity-artwork' then 1
-          when 'opportunity-cover' then 2
-          else 3
-        end asc,
-        a.created_at desc
+        asset_candidate.tier asc,
+        asset_candidate.priority asc,
+        asset_candidate.created_at desc
       limit 1
     ) asset on true
     left join lateral (

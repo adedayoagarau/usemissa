@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../components/design-system/collection-palette.css";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
@@ -359,3 +360,4 @@ body {
   font-weight: var(--shiki-dark-font-weight) !important;
   text-decoration: var(--shiki-dark-text-decoration) !important;
 }
+

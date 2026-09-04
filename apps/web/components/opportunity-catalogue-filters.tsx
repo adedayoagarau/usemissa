@@ -60,6 +60,7 @@ function DesktopFilters({
 
   function navigate(next: URLSearchParams) {
     next.delete("cursor");
+    next.delete("trail");
     const query = next.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
   }
@@ -181,6 +182,7 @@ function FilterPanel({
   const selectedTerms = searchParams.getAll("taxonomy");
   function navigate(next: URLSearchParams) {
     next.delete("cursor");
+    next.delete("trail");
     const query = next.toString();
     startTransition(() => {
       router.push(query ? `${pathname}?${query}` : pathname);
@@ -393,17 +395,19 @@ export function OpportunityCatalogueFilters({
   facetCounts,
   resultCount,
   placement = "all",
+  appearance = "default",
 }: {
   locations: Array<{ value: string; label: string }>;
   activeFilterCount: number;
   facetCounts: OpportunityFacetCounts;
   resultCount: number;
   placement?: "all" | "desktop" | "mobile";
+  appearance?: "default" | "index";
 }) {
   const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
-    <div className={`${styles.root} ${placement === "desktop" ? styles.desktopRoot : placement === "mobile" ? styles.mobileRoot : ""}`}>
+    <div className={`${styles.root} ${appearance === "index" ? styles.index : ""} ${placement === "desktop" ? styles.desktopRoot : placement === "mobile" ? styles.mobileRoot : ""}`}>
       {placement !== "mobile" ? <div className={styles.desktopControls}>
         <DesktopFilters locations={locations} facetCounts={facetCounts} activeFilterCount={activeFilterCount} />
       </div> : null}

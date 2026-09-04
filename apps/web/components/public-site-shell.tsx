@@ -9,9 +9,11 @@ import styles from "./public-site-shell.module.css";
 export async function PublicSiteShell({
   children,
   current,
+  collectionLinks,
 }: {
   children: ReactNode;
   current?: string;
+  collectionLinks?: Array<{ slug: string; title: string }>;
 }) {
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(
@@ -28,7 +30,30 @@ export async function PublicSiteShell({
     <div className={styles.site}>
       <MissaSiteHeader session={headerSession} current={current} />
       {children}
-      <footer className={styles.footer}>
+      <footer
+        className={styles.footer}
+        data-collections={Boolean(collectionLinks?.length) || undefined}
+      >
+        {collectionLinks?.length ? (
+          <nav
+            className={styles.collections}
+            aria-labelledby="footer-collections-title"
+          >
+            <h2 id="footer-collections-title" className="font-sans">
+              Keep exploring
+            </h2>
+            <div>
+              {collectionLinks.map((collection) => (
+                <Link
+                  key={collection.slug}
+                  href={`/discover/${collection.slug}`}
+                >
+                  {collection.title}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        ) : null}
         <div>
           <MissaWordmark size="compact" className={styles.wordmark} />
           <p>

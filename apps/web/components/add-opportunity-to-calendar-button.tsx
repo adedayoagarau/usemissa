@@ -11,12 +11,14 @@ import styles from "./add-opportunity-to-calendar-button.module.css";
 export function AddOpportunityToCalendarButton({
   item,
   className,
+  showLabel = false,
 }: {
   item: Pick<
     OpportunityBrowseProjection,
     "id" | "title" | "organizationName" | "deadline"
   >;
   className?: string;
+  showLabel?: boolean;
 }) {
   const href = buildOpportunityDeadlineCalendarHref(item);
   if (!href) return null;
@@ -27,12 +29,13 @@ export function AddOpportunityToCalendarButton({
     <a
       href={href}
       download={opportunityDeadlineCalendarFilename(item)}
-      className={[styles.button, className].filter(Boolean).join(" ")}
+      className={[styles.button, showLabel && styles.labelled, className].filter(Boolean).join(" ")}
       aria-label={label}
       title={label}
       onClick={(event) => event.stopPropagation()}
     >
       <CalendarPlus aria-hidden="true" />
+      {showLabel ? <span>Add to calendar</span> : null}
     </a>
   );
 }

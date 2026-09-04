@@ -95,7 +95,7 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
        o.deadline_date::text as "deadlineDate", o.open_date::text as "openDate", o.deadline_kind as "deadlineKind", o.submission_url as "submissionUrl",
        o.guidelines_url as "guidelinesUrl", s.url as "sourceUrl",
        evidence.processing_succeeded_at as "processingSucceededAt",
-       (coalesce(evidence.organization_confirmed, false) or profile_identity.confirmed) as "organizationConfirmed",
+       (coalesce(evidence.organization_confirmed, false) or profile_identity.confirmed or (o.organization_id is not null and exists(select 1 from gary_profiles p where p.id = o.organization_id))) as "organizationConfirmed",
        coalesce(evidence.destination_reconciled, false) as "destinationReconciled",
        (coalesce((evidence.destination_reconciliation->>'v2ReviewOnly')::boolean, false)
          or (o.id like 'opp_v2_%' and o.source_id like 'v2_source_%')) as "reviewOnly",

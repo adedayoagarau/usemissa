@@ -51,51 +51,142 @@
     "forbidArbitraryAnimation": true
   },
   "intents": {
-    "action.primary": { "primitive": "Button", "variant": "default" },
-    "action.supporting": { "primitive": "Button", "variant": "outline" },
-    "action.quiet": { "primitive": "Button", "variant": "ghost" },
+    "action.opportunity-detail-persistent": { "semantic": "OpportunityDetailStickyActions", "composition": ["SaveToTrackerButton", "Button", "Link"] },
+    "composition.collection-cover": { "semantic": "DiscoveryCollectionPage", "appearance": "editorial-collection-palette", "composition": ["EditorialTypography", "DecorativeSvg", "Link"] },
+    "action.primary": {
+      "primitive": "Button",
+      "variant": "default"
+    },
+    "action.supporting": {
+      "primitive": "Button",
+      "variant": "outline"
+    },
+    "action.quiet": {
+      "primitive": "Button",
+      "variant": "ghost"
+    },
     "action.destructive-final": {
       "primitive": "Button",
       "variant": "destructive",
       "container": "AlertDialog"
     },
-    "input.short-text": { "composition": ["Field", "Input"] },
-    "input.long-text": { "composition": ["Field", "Textarea"] },
-    "choice.single-visible": { "primitive": "RadioGroup" },
-    "choice.single-compact": { "primitive": "Select" },
-    "choice.single-native-mobile": { "primitive": "NativeSelect" },
-    "choice.searchable": { "primitive": "Combobox" },
-    "choice.autocomplete": { "primitive": "Autocomplete" },
-    "choice.multiple": { "primitive": "MultiSelect" },
-    "setting.boolean": { "primitive": "Switch" },
-    "filter.active-removable": { "semantic": "FilterChip", "base": "Button" },
-    "view.peer-switch": { "primitive": "Tabs" },
-    "disclosure.single": { "primitive": "Collapsible" },
-    "disclosure.group": { "primitive": "Accordion" },
-    "explanation.short-interactive": { "primitive": "Popover" },
-    "explanation.icon-only": { "primitive": "Tooltip" },
-    "menu.actions": { "primitive": "DropdownMenu" },
-    "overlay.focused-task": { "primitive": "Dialog" },
-    "overlay.mobile-filter": { "primitive": "Sheet" },
-    "overlay.mobile-action-chooser": { "primitive": "Drawer" },
-    "feedback.transient-success": { "primitive": "Sonner" },
-    "feedback.local-recoverable": { "primitive": "Alert" },
-    "feedback.empty": { "primitive": "Empty" },
-    "loading.structure": { "primitive": "Skeleton" },
-    "loading.indeterminate": { "composition": ["Spinner", "status text"] },
-    "loading.determinate": { "composition": ["Progress", "status text"] },
-    "data.comparison": { "primitive": "Table" },
-    "data.reorder": { "primitive": "Sortable" },
-    "data.board": { "primitive": "Kanban" },
+    "input.short-text": {
+      "composition": ["Field", "Input"]
+    },
+    "input.long-text": {
+      "composition": ["Field", "Textarea"]
+    },
+    "choice.single-visible": {
+      "primitive": "RadioGroup"
+    },
+    "choice.single-compact": {
+      "primitive": "Select"
+    },
+    "choice.opportunity-sort": {
+      "primitive": "Select",
+      "semantic": "OpportunitySort",
+      "appearance": "shared-opportunity-dropdown"
+    },
+    "choice.single-native-mobile": {
+      "primitive": "NativeSelect"
+    },
+    "choice.searchable": {
+      "primitive": "Combobox"
+    },
+    "choice.autocomplete": {
+      "primitive": "Autocomplete"
+    },
+    "choice.multiple": {
+      "primitive": "MultiSelect"
+    },
+    "setting.boolean": {
+      "primitive": "Switch"
+    },
+    "filter.active-removable": {
+      "semantic": "FilterChip",
+      "base": "Button"
+    },
+    "view.peer-switch": {
+      "primitive": "Tabs"
+    },
+    "disclosure.single": {
+      "primitive": "Collapsible"
+    },
+    "disclosure.group": {
+      "primitive": "Accordion"
+    },
+    "explanation.short-interactive": {
+      "primitive": "Popover"
+    },
+    "explanation.icon-only": {
+      "primitive": "Tooltip"
+    },
+    "menu.actions": {
+      "primitive": "DropdownMenu"
+    },
+    "overlay.focused-task": {
+      "primitive": "Dialog"
+    },
+    "overlay.mobile-filter": {
+      "primitive": "Sheet"
+    },
+    "overlay.mobile-action-chooser": {
+      "primitive": "Drawer"
+    },
+    "feedback.transient-success": {
+      "primitive": "Sonner"
+    },
+    "feedback.local-recoverable": {
+      "primitive": "Alert"
+    },
+    "feedback.empty": {
+      "primitive": "Empty"
+    },
+    "loading.structure": {
+      "primitive": "Skeleton"
+    },
+    "loading.indeterminate": {
+      "composition": ["Spinner", "status text"]
+    },
+    "loading.determinate": {
+      "composition": ["Progress", "status text"]
+    },
+    "data.comparison": {
+      "primitive": "Table"
+    },
+    "data.reorder": {
+      "primitive": "Sortable"
+    },
+    "data.board": {
+      "primitive": "Kanban"
+    },
     "data.display.opportunity-card": {
-      "composition": ["Card", "NativeBadge", "AddOpportunityToCalendarButton"],
+      "composition": [
+        "Card",
+        "NativeBadge",
+        "SaveToTrackerButton",
+        "AddOpportunityToCalendarButton"
+      ],
       "registrySource": "@uitripled/project-card-shadcnui",
       "implementation": "@/components/design-system/opportunity-browse-project-card"
     },
-    "date.selection": { "primitive": "Calendar" },
+    "navigation.opportunity-pages": {
+      "composition": ["Pagination", "OpportunityBrowsePagination"]
+    },
+    "disclosure.opportunity-collections": {
+      "composition": ["Button", "OpportunityCollectionsStrip"]
+    },
+    "date.selection": {
+      "primitive": "Calendar"
+    },
     "metadata.static": {
       "primitive": "Badge",
       "requiresSemanticWrapperForDomainState": true
+    },
+    "data.display.directory-profile": {
+      "composition": ["Card", "Link"],
+      "semantic": "DirectoryBrowseView",
+      "appearance": "white-index"
     }
   },
   "semanticComponents": {
@@ -175,6 +266,7 @@
     "OpportunityBrowseProjectCard": [
       "Card",
       "NativeBadge",
+      "SaveToTrackerButton",
       "AddOpportunityToCalendarButton"
     ],
     "OpportunityDecisionSummary": [

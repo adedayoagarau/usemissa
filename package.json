@@ -20,6 +20,7 @@
     "check:design-system": "node scripts/check-design-system.mjs",
     "design-system:catalogue": "node scripts/check-design-system.mjs --write-catalogue",
     "test:e2e": "npm run test:e2e --workspace=@missa/web",
+    "dev:web:live-data": "railway run npm run dev --workspace=@missa/web",
     "db:generate": "npm run db:generate --workspace=@missa/db",
     "db:seed-taxonomy": "npm run db:seed-taxonomy --workspace=@missa/db",
     "handles:plan": "npm run build --workspace=@missa/radar-engine && npm run build --workspace=@missa/radar-adapters && node packages/radar-adapters/dist/src/handlesPlan.js",
@@ -30,6 +31,8 @@
     "media:dry-run": "node packages/radar-adapters/dist/src/mediaDryRunCli.js",
     "media:backfill": "node scripts/backfill-opportunity-media.mjs",
     "media:reclassify-kinds": "node scripts/reclassify-opportunity-media-kinds.mjs",
+    "radar:freshness": "node scripts/run-daily-freshness.mjs",
+    "radar:reconcile-links": "node scripts/reconcile-profile-links.mjs",
     "postinstall": "node scripts/patch-next-themes.mjs"
   },
   "devDependencies": {

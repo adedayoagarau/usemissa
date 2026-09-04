@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 
-export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v3";
+export const PROFILE_IDENTITY_MATCHER_VERSION = "profile-host-name-v4";
 
 const NAME_STOP_WORDS = new Set([
   "a", "an", "and", "award", "awards", "call", "contest", "for", "from",
@@ -20,6 +20,7 @@ export type ProfileUrlEvidence = {
 export type OpportunityIdentityInput = {
   opportunityId: string;
   title: string;
+  organizationId?: string | null;
   organizationName: string | null;
   sourceName: string | null;
   sourceCheckedAt: string | null;
@@ -175,6 +176,29 @@ export function matchOpportunityToProfiles(
   const context = [opportunity.title, opportunity.organizationName ?? ""];
   const decisions = new Map<string, ProfileIdentityDecision>();
 
+  // Direct organization link if opportunity.organizationId matches a known profile
+  if (opportunity.organizationId) {
+    const orgProfile = profileUrls.find((p) => p.profileId === opportunity.organizationId);
+    if (orgProfile) {
+      const matchedHost = normalizeHost(orgProfile.url) ?? "";
+      decisions.set(`${orgProfile.profileId}:host`, {
+        profileId: orgProfile.profileId,
+        opportunityId: opportunity.opportunityId,
+        relation: "host",
+        status: "confirmed",
+        confidence: 0.99,
+        matchedHost,
+        opportunityUrl: opportunity.sourceUrl ?? opportunity.guidelinesUrl ?? orgProfile.url,
+        profileUrl: orgProfile.url,
+        nameScore: 1,
+        matchedNameTokens: [orgProfile.profileName],
+        identityBasis: "exact-url",
+        profileCheckedAt: orgProfile.profileCheckedAt,
+        opportunityCheckedAt: opportunity.sourceCheckedAt,
+      });
+    }
+  }
+
   for (const candidateUrl of opportunityUrls(opportunity)) {
     const host = normalizeHost(candidateUrl.url);
     if (!host) continue;
@@ -202,24 +226,30 @@ export function matchOpportunityToProfiles(
     const unique = [...bestByProfile.values()].sort((left, right) => right.score - left.score);
     const best = unique[0];
     const runnerUp = unique[1];
+    const isMultiTenantHost = unique.length > 3;
+
     for (const candidate of unique) {
-      const freshOpportunity = isFresh(opportunity.sourceCheckedAt, 3, now);
+      const isDirectOrgMatch = Boolean(opportunity.organizationId && opportunity.organizationId === candidate.profile.profileId);
+      if (isMultiTenantHost && !isDirectOrgMatch && candidate.score === 0) {
+        continue;
+      }
+      const freshOpportunity = !opportunity.sourceCheckedAt || isFresh(opportunity.sourceCheckedAt, 30, now);
       const freshProfile = isFresh(candidate.profile.profileCheckedAt, 14, now);
-      const isUnambiguousBest = candidate === best && candidate.hasCompatibleIdentity &&
-        (!runnerUp || candidate.score - runnerUp.score >= 0.15) && freshOpportunity && freshProfile;
+      const isUnambiguousBest = isDirectOrgMatch || (candidate === best && candidate.hasCompatibleIdentity &&
+        (!runnerUp || candidate.score - runnerUp.score >= 0.15) && freshOpportunity && freshProfile);
       const key = `${candidate.profile.profileId}:${candidateUrl.relation}`;
       const decision: ProfileIdentityDecision = {
         profileId: candidate.profile.profileId,
         opportunityId: opportunity.opportunityId,
         relation: candidateUrl.relation,
         status: isUnambiguousBest ? "confirmed" : "pending",
-        confidence: Number((0.7 + candidate.score * 0.3).toFixed(3)),
+        confidence: isDirectOrgMatch ? 0.99 : Number((0.7 + candidate.score * 0.3).toFixed(3)),
         matchedHost: host,
         opportunityUrl: candidateUrl.url,
         profileUrl: candidate.profile.url,
-        nameScore: candidate.score,
+        nameScore: isDirectOrgMatch ? 1 : candidate.score,
         matchedNameTokens: candidate.matchedTokens,
-        identityBasis: candidate.identityBasis,
+        identityBasis: isDirectOrgMatch ? "exact-url" : candidate.identityBasis,
         profileCheckedAt: candidate.profile.profileCheckedAt,
         opportunityCheckedAt: opportunity.sourceCheckedAt,
       };
@@ -312,11 +342,13 @@ export async function syncProfileOpportunityLinks(
   const [opportunityResult, profileResult] = await Promise.all([
     pool.query<OpportunityIdentityInput>(
       `select o.id as "opportunityId", o.title,
-         latest_version.fields ->> 'organizationName' as "organizationName",
+         coalesce(org.data->>'name', latest_version.fields ->> 'organizationName') as "organizationName",
+         o.organization_id as "organizationId",
          s.name as "sourceName",
          o.source_checked_at as "sourceCheckedAt", s.url as "sourceUrl",
          o.guidelines_url as "guidelinesUrl", o.submission_url as "submissionUrl"
        from opportunities o join opportunity_sources s on s.id = o.source_id
+       left join radar_organizations org on org.id = o.organization_id
        left join lateral (
          select fields from opportunity_versions
          where opportunity_id = o.id order by created_at desc limit 1

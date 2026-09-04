@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
+import { SaveOpportunityButton } from "@/components/save-opportunity-button";
 import { CalendarDays, MapPin, Tag } from "lucide-react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { AddOpportunityToCalendarButton } from "@/components/add-opportunity-to-calendar-button";
@@ -18,21 +21,12 @@ const TYPE_LABELS: Record<string, string> = {
   exhibition: "Exhibition",
 };
 
-const FALLBACK_PLATES = {
-  grant: "/media/home/artist-at-work.webp",
-  residency: "/media/home/opportunity-architecture.webp",
-  award: "/media/home/opportunity-mountains.webp",
-  contest: "/media/home/opportunity-mountains.webp",
-  fellowship: "/media/home/opportunity-dance.webp",
-  "open-call": "/media/home/gallery-interior.webp",
-  exhibition: "/media/home/gallery-interior.webp",
-  default: "/media/home/portfolio-still-life.webp",
-} as const;
-
 function typeLabel(type: string): string {
   return (
     TYPE_LABELS[type] ||
-    type.replace(/-/g, " ").replace(/^./, (character) => character.toUpperCase())
+    type
+      .replace(/-/g, " ")
+      .replace(/^./, (character) => character.toUpperCase())
   );
 }
 
@@ -96,47 +90,72 @@ function statusBadge(
   return null;
 }
 
-function fallbackPlateFor(type: string): string {
-  return (
-    FALLBACK_PLATES[type as keyof typeof FALLBACK_PLATES] ??
-    FALLBACK_PLATES.default
-  );
-}
-
 export function OpportunityBrowseProjectCard({
   item,
+  signedIn,
 }: {
+  signedIn?: boolean;
   item: OpportunityBrowseProjection;
 }) {
-  const practices = [item.discipline, ...item.genres]
+  const practices = Array.from(
+    new Set(
+      [item.discipline, ...item.genres]
+        .filter((value): value is string => Boolean(value))
+        .map(titleCasePractice),
+    ),
+  )
     .filter((value): value is string => Boolean(value))
-    .slice(0, 2)
-    .map(titleCasePractice);
-  const cardImage = item.identityAssetUrl || fallbackPlateFor(item.type);
+    .slice(0, 2);
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const cardImage =
+    item.identityAssetUrl && item.identityAssetUrl !== failedImage
+      ? item.identityAssetUrl
+      : null;
   const secondaryBadge = statusBadge(item);
 
   return (
     <article className={styles.card}>
-      <div className={styles.media}>
+      <div
+        className={styles.media}
+        data-identity-only={!cardImage || undefined}
+      >
         <Link
           href={`/opportunities/${item.id}`}
           className={styles.mediaLink}
           tabIndex={-1}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={cardImage}
-            alt={item.identityAssetAlt || item.title}
-            loading="lazy"
-          />
+          {cardImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={cardImage}
+              alt={item.identityAssetAlt || item.organizationName || item.title}
+              loading="lazy"
+              onError={() => setFailedImage(cardImage)}
+            />
+          ) : (
+            <span className={styles.identityPlate} aria-hidden="true">
+              <span className={styles.identityName}>
+                {item.organizationName || typeLabel(item.type)}
+              </span>
+            </span>
+          )}
         </Link>
         <div className={styles.badges}>
-          <NativeBadge variant="glass" size="sm" animate={false}>
+          <NativeBadge
+            variant="neutral"
+            className={styles.imageBadge}
+            size="sm"
+            animate={false}
+          >
             {typeLabel(item.type)}
           </NativeBadge>
           {secondaryBadge ? (
             <NativeBadge
-              variant={secondaryBadge.variant}
+              variant="neutral"
+              className={styles.imageBadge}
+              data-urgency={
+                secondaryBadge.label === "Closing soon" || undefined
+              }
               size="sm"
               animate={false}
             >
@@ -144,13 +163,29 @@ export function OpportunityBrowseProjectCard({
             </NativeBadge>
           ) : null}
         </div>
-        <AddOpportunityToCalendarButton item={item} className={styles.calendarAction} />
+        {signedIn === undefined ? (
+          <SaveOpportunityButton
+            opportunityId={item.id}
+            className={styles.saveAction}
+          />
+        ) : (
+          <div className={styles.saveAction}>
+            <SaveToTrackerButton
+              opportunityId={item.id}
+              opportunityTitle={item.title}
+              signedIn={signedIn}
+              tracked={item.personal?.tracked}
+              compact
+              returnTo={`/opportunities/${item.id}`}
+            />
+          </div>
+        )}
       </div>
       <div className={styles.body}>
         <h3 className={styles.title}>
           <Link href={`/opportunities/${item.id}`}>{item.title}</Link>
         </h3>
-        {item.organizationName ? (
+        {item.organizationName && cardImage ? (
           <p className={styles.org}>{item.organizationName}</p>
         ) : null}
         {practices.length > 0 ? (
@@ -174,6 +209,7 @@ export function OpportunityBrowseProjectCard({
         </div>
       </div>
       <div className={styles.footer}>
+        <AddOpportunityToCalendarButton item={item} showLabel />
         <Link href={`/opportunities/${item.id}`} className={styles.view}>
           View opportunity
         </Link>

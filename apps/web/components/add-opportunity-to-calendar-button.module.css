@@ -39,3 +39,5 @@
     transition: none;
   }
 }
+
+.labelled { width: auto; min-height: 44px; height: auto; gap: 8px; padding: 0 12px; background: var(--bg); backdrop-filter: none; font-size: 13px; font-weight: 500; }

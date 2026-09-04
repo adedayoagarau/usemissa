@@ -920,3 +920,54 @@
   font-size: 13px;
   line-height: 1.45;
 }
+
+/* Approved white-index detail treatment: reading first, quiet supporting rail. */
+.main { width: min(calc(100% - 48px), 1240px); padding-top: 24px; }
+.heroCard { padding: 24px 0 32px; margin-top: 8px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; box-shadow: none; }
+.heroTitle { max-width: 1000px; font-size: clamp(28px, 3.6vw, 44px); font-weight: 500; line-height: 1.15; letter-spacing: -0.035em; margin-top: 20px; }
+.detailType { font-size: 12px; color: var(--accent-deep); padding-right: 12px; border-right: 1px solid var(--border); }
+.heroByline { gap: 12px; }
+.heroActions { margin-top: 24px; padding-top: 0; border: 0; }
+.badgeCluster { gap: 8px 16px; margin-top: 24px; }
+.signalChip { border: 0; border-radius: var(--radius-sm); background: transparent; padding: 6px 0; font-weight: 400; }
+.signalChip[data-tone] { padding: 6px 10px; }
+.contentGrid { grid-template-columns: minmax(0, 1fr) 320px; gap: 64px; margin-top: 32px; }
+.readingColumn { gap: 32px; }
+.callSection, .dossierSection, .eligibilitySection { border: 0; border-bottom: 1px solid var(--border); padding: 0 0 32px; border-radius: 0; background: transparent; }
+.sectionHeader { margin-bottom: 16px; padding-bottom: 0; border: 0; }
+.sectionHeader h2 { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; }
+.callParagraph { font-size: 16px; line-height: 1.8; }
+.organizerCard, .factCard { padding: 24px; border-radius: var(--radius-lg); box-shadow: none; }
+.organizerName { font-size: 16px; line-height: 1.4; }
+.organizerKind { font-size: 12px; }
+.organizerMedia { object-fit: contain; }
+.factCard { background: var(--muted); border-color: transparent; }
+.factCard h3 { font-size: 16px; font-weight: 600; }
+.main a:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+@media (max-width: 1024px) { .contentGrid { grid-template-columns: minmax(0, 1fr) 280px; gap: 32px; } }
+@media (max-width: 767px) {
+ .main { width: calc(100% - 32px); }
+ .heroCard { padding: 16px 0 24px; }
+ .heroActions { display: flex; gap: 8px; }
+ .contentGrid { grid-template-columns: 1fr; gap: 32px; }
+ .callSection, .dossierSection, .eligibilitySection { padding: 0 0 24px; }
+ .heroTitle { font-size: 30px; }
+ .heroByline { font-size: 13px; }
+ .signalChip { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .main *, .main *::before, .main *::after { transition: none; } }
+@media (max-width: 767px) {
+  .heroActions > :not(:last-child) { display: none; }
+}
+
+.categoriesSection { padding: 0; border: 0; background: transparent; }
+.categoriesSection h3 { font-size: 16px; font-weight: 500; }
+.eligibilityItem, .dossierItem { padding: 12px 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: transparent; }
+.eligibilityCheck, .dossierCheck { background: transparent; color: var(--muted-foreground); }
+.eligibilityDetail { margin-top: 4px; }
+.applicationSection h2 { font-size: 22px; font-weight: 500; margin: 0 0 16px; }
+.applicationSection p { font-size: 14px; line-height: 1.6; color: var(--muted-foreground); margin-bottom: 16px; }
+.applicationSection .reportQuietLink { display: flex; margin-top: 16px; }
+.readingColumn section { scroll-margin-top: 160px; }
+@media (min-width: 1025px) { .decisionRail { top: 160px; } }
+@media (min-width: 768px) { .main a, .main button, .main input { scroll-margin-top: 160px; } }

@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { OpportunitySort } from "@/components/opportunity-sort";
+import { OpportunityBrowsePagination } from "@/components/opportunity-browse-pagination";
+import { OpportunityCollectionsStrip } from "@/components/opportunity-collections-strip";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
 import {
   ArrowUpRight,
   Check,
@@ -29,6 +32,7 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import styles from "./opportunities-browse-v2-preview.module.css";
+import dropdownStyles from "@/components/opportunity-dropdown.module.css";
 
 const typeOptions: Record<string, string> = {
   "open-call": "Open call",
@@ -113,8 +117,15 @@ export interface ActiveFiltersState {
 }
 
 export function OpportunitiesBrowseV2Preview({
+  embedded = false,
+  filterControls,
+  activeFilterContent,
+  toolbarActions,
+  signedIn,
   initialItems = [],
   totalCount = 0,
+  nextCursor = null,
+  loadFailed = false,
   initialQuery = "",
   activeFilters: serverFilters = {
     type: null,
@@ -124,17 +135,32 @@ export function OpportunitiesBrowseV2Preview({
     fee: null,
   },
 }: {
+  embedded?: boolean;
+  filterControls?: ReactNode;
+  activeFilterContent?: ReactNode;
+  toolbarActions?: ReactNode;
+  signedIn?: boolean;
   initialItems?: OpportunityBrowseProjection[];
   totalCount?: number;
+  nextCursor?: string | null;
+  loadFailed?: boolean;
   initialQuery?: string;
   activeFilters?: ActiveFiltersState;
 }) {
   const router = useRouter();
+  const basePath = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [filters, setFilters] = useState<ActiveFiltersState>(serverFilters);
+  const serverKey = JSON.stringify([initialQuery, serverFilters]);
+  const [previousServerKey, setPreviousServerKey] = useState(serverKey);
+  if (previousServerKey !== serverKey) {
+    setPreviousServerKey(serverKey);
+    setFilters(serverFilters);
+    setSearchQuery(initialQuery);
+  }
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [isMobileFilters, setIsMobileFilters] = useState(false);
 
@@ -146,12 +172,6 @@ export function OpportunitiesBrowseV2Preview({
     return () => media.removeEventListener("change", sync);
   }, []);
 
-  // Sync state if server params change
-  useEffect(() => {
-    setFilters(serverFilters);
-    setSearchQuery(initialQuery);
-  }, [serverFilters, initialQuery]);
-
   const updateFilters = (
     newFilters: Partial<ActiveFiltersState>,
     newQuery?: string,
@@ -162,7 +182,12 @@ export function OpportunitiesBrowseV2Preview({
 
     const q = newQuery !== undefined ? newQuery : searchQuery;
 
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(filterControls ? searchParams.toString() : undefined);
+    params.delete("cursor");
+    params.delete("trail");
+    params.delete("q");
+    const sort = searchParams.get("sort");
+    if (sort) params.set("sort", sort);
     if (q.trim()) params.set("q", q.trim());
     if (merged.type) params.set("type", merged.type);
     if (merged.discipline) params.set("discipline", merged.discipline);
@@ -173,8 +198,8 @@ export function OpportunitiesBrowseV2Preview({
     if (closeSheet) setFilterSheetOpen(false);
 
     startTransition(() => {
-      router.push(`/design-system/opportunities-browse-v2?${params.toString()}`);
-      document.getElementById("results")?.scrollIntoView({ behavior: "smooth" });
+      router.push(`${basePath}?${params.toString()}`);
+
     });
   };
 
@@ -188,27 +213,13 @@ export function OpportunitiesBrowseV2Preview({
       fee: null,
     });
     startTransition(() => {
-      router.push("/design-system/opportunities-browse-v2");
+      router.push(`${basePath}?sort=${searchParams.get("sort") ?? "soonest-deadline"}${searchParams.get("preview") === "public" ? "&preview=public" : ""}`);
     });
   };
 
-  // Instant client-side filter applied on top of items for sub-second snappiness
-  const displayedItems = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    return initialItems.filter((item) => {
-      if (q) {
-        const matchesTitle = item.title.toLowerCase().includes(q);
-        const matchesOrg = item.organizationName?.toLowerCase().includes(q);
-        const matchesDisc = item.discipline?.toLowerCase().includes(q);
-        if (!matchesTitle && !matchesOrg && !matchesDisc) return false;
-      }
-      if (filters.type && item.type !== filters.type) return false;
-      if (filters.discipline && item.discipline !== filters.discipline && !item.genres.includes(filters.discipline)) return false;
-      if (filters.fee === "no-fee" && item.fee.status !== "no-fee") return false;
-      if (filters.fee === "has-fee" && item.fee.status !== "paid") return false;
-      return true;
-    });
-  }, [initialItems, searchQuery, filters]);
+  const displayedItems = initialItems;
+  const pageOffset = searchParams.has("cursor") ? searchParams.getAll("trail").length * 48 : 0;
+  const resultRange = displayedItems.length ? `${(pageOffset + 1).toLocaleString()}–${(pageOffset + displayedItems.length).toLocaleString()} of ${totalCount.toLocaleString()}` : "0 results";
 
   const activeChips = useMemo(() => {
     const chips: Array<{ key: keyof ActiveFiltersState; label: string }> = [];
@@ -222,6 +233,7 @@ export function OpportunitiesBrowseV2Preview({
 
   return (
     <div className={styles.shell}>
+      {!embedded ? <>
       <div className={styles.banner} role="note">
         <span>
           Option A · White index —{" "}
@@ -262,40 +274,25 @@ export function OpportunitiesBrowseV2Preview({
         </div>
       </header>
 
-      <main className={styles.main} id="results">
+      </> : null}
+      <main className={styles.main} id={embedded ? "main-content" : "results"}>
         <header className={styles.pageIntro}>
           <p className={styles.eyebrow}>Opportunities</p>
           <div className={styles.introRow}>
             <div className={styles.introCopy}>
               <h1 id="prototype-title">
-                Find calls for submissions, residencies, grants.
+                Find your next opportunity.
               </h1>
               <p className={styles.lede}>
-                Published openings across writing, visual arts, performance,
-                film, music, design, and interdisciplinary practice.
+                Open calls, residencies and funding for your creative practice.
               </p>
             </div>
-            <p className={styles.count}>
-              {(totalCount || displayedItems.length).toLocaleString()} open
-            </p>
           </div>
         </header>
 
-        <section className={styles.collectionsBand} aria-labelledby="collections-heading">
-          <p id="collections-heading" className={styles.collectionsLabel}>
-            Collections
-          </p>
-          <nav className={styles.collections} aria-label="Curated collections">
-            {collections.map((item) => (
-              <Link key={item.href} href={item.href}>
-                {item.label}
-              </Link>
-            ))}
-            <Link href="/design-system/opportunities-browse" className={styles.collectionsAll}>
-              All collections →
-            </Link>
-          </nav>
-        </section>
+        <div className={styles.collectionsBand}>
+          <OpportunityCollectionsStrip items={collections.map(item => ({ ...item, href: item.href.replace("/opportunities?", `${basePath}?`) }))} />
+        </div>
 
         <div className={styles.browse}>
           <form
@@ -310,7 +307,7 @@ export function OpportunitiesBrowseV2Preview({
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Try Poetry, Grants, or search by organization…"
+              placeholder="Search by title, practice or organization"
               aria-label="Search opportunities"
             />
             {searchQuery ? (
@@ -326,15 +323,12 @@ export function OpportunitiesBrowseV2Preview({
                 <X aria-hidden="true" />
               </button>
             ) : null}
-            <button type="submit" className={styles.searchSubmit} disabled={isPending}>
-              <span className={styles.searchMark} aria-hidden="true">
-                <ArrowUpRight className={styles.searchArrow} />
-              </span>
-              Search
-            </button>
+            <Button type="submit" variant="default" size="icon" className={styles.searchSubmit} disabled={isPending} aria-label="Search opportunities" title="Search opportunities">
+              <ArrowUpRight aria-hidden="true" />
+            </Button>
           </form>
 
-          {activeChips.length > 0 ? (
+          {activeFilterContent ?? (activeChips.length > 0 ? (
             <div className={styles.activeFilters} aria-label="Active filters">
               {activeChips.map((chip) => (
                 <span key={chip.key} className={styles.chip}>
@@ -356,10 +350,10 @@ export function OpportunitiesBrowseV2Preview({
                 Clear all
               </button>
             </div>
-          ) : null}
+          ) : null)}
 
           <div className={styles.toolbar}>
-            {isMobileFilters ? (
+            {filterControls ?? (isMobileFilters ? (
               <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
                 <SheetTrigger
                   render={
@@ -396,6 +390,7 @@ export function OpportunitiesBrowseV2Preview({
                           <button
                             type="button"
                             className={styles.sheetOption}
+                            aria-pressed={!filters[key]}
                             data-selected={!filters[key] ? "true" : undefined}
                             onClick={() => updateFilters({ [key]: null })}
                           >
@@ -406,6 +401,7 @@ export function OpportunitiesBrowseV2Preview({
                               key={optionKey}
                               type="button"
                               className={styles.sheetOption}
+                              aria-pressed={filters[key] === optionKey}
                               data-selected={
                                 filters[key] === optionKey ? "true" : undefined
                               }
@@ -437,7 +433,7 @@ export function OpportunitiesBrowseV2Preview({
                       type="button"
                       onClick={() => updateFilters({}, searchQuery, true)}
                     >
-                      Apply filters
+                      Show results
                     </Button>
                   </SheetFooter>
                 </SheetContent>
@@ -454,10 +450,10 @@ export function OpportunitiesBrowseV2Preview({
                   <ChevronDown aria-hidden="true" />
                 </PopoverTrigger>
                 <PopoverContent align="end" className="p-1 w-52">
-                  <div className={styles.popoverList}>
+                  <div className={dropdownStyles.list}>
                     <button
                       type="button"
-                      className={styles.popoverOption}
+                      className={dropdownStyles.option}
                       data-selected={!filters.type ? "true" : undefined}
                       onClick={() => updateFilters({ type: null })}
                     >
@@ -468,7 +464,7 @@ export function OpportunitiesBrowseV2Preview({
                       <button
                         key={key}
                         type="button"
-                        className={styles.popoverOption}
+                        className={dropdownStyles.option}
                         data-selected={filters.type === key ? "true" : undefined}
                         onClick={() => updateFilters({ type: filters.type === key ? null : key })}
                       >
@@ -490,10 +486,10 @@ export function OpportunitiesBrowseV2Preview({
                   <ChevronDown aria-hidden="true" />
                 </PopoverTrigger>
                 <PopoverContent align="end" className="p-1 w-56">
-                  <div className={styles.popoverList}>
+                  <div className={dropdownStyles.list}>
                     <button
                       type="button"
-                      className={styles.popoverOption}
+                      className={dropdownStyles.option}
                       data-selected={!filters.discipline ? "true" : undefined}
                       onClick={() => updateFilters({ discipline: null })}
                     >
@@ -504,7 +500,7 @@ export function OpportunitiesBrowseV2Preview({
                       <button
                         key={key}
                         type="button"
-                        className={styles.popoverOption}
+                        className={dropdownStyles.option}
                         data-selected={filters.discipline === key ? "true" : undefined}
                         onClick={() => updateFilters({ discipline: filters.discipline === key ? null : key })}
                       >
@@ -526,10 +522,10 @@ export function OpportunitiesBrowseV2Preview({
                   <ChevronDown aria-hidden="true" />
                 </PopoverTrigger>
                 <PopoverContent align="end" className="p-1 w-52">
-                  <div className={styles.popoverList}>
+                  <div className={dropdownStyles.list}>
                     <button
                       type="button"
-                      className={styles.popoverOption}
+                      className={dropdownStyles.option}
                       data-selected={!filters.location ? "true" : undefined}
                       onClick={() => updateFilters({ location: null })}
                     >
@@ -540,7 +536,7 @@ export function OpportunitiesBrowseV2Preview({
                       <button
                         key={key}
                         type="button"
-                        className={styles.popoverOption}
+                        className={dropdownStyles.option}
                         data-selected={filters.location === key ? "true" : undefined}
                         onClick={() => updateFilters({ location: filters.location === key ? null : key })}
                       >
@@ -562,10 +558,10 @@ export function OpportunitiesBrowseV2Preview({
                   <ChevronDown aria-hidden="true" />
                 </PopoverTrigger>
                 <PopoverContent align="end" className="p-1 w-52">
-                  <div className={styles.popoverList}>
+                  <div className={dropdownStyles.list}>
                     <button
                       type="button"
-                      className={styles.popoverOption}
+                      className={dropdownStyles.option}
                       data-selected={!filters.deadline ? "true" : undefined}
                       onClick={() => updateFilters({ deadline: null })}
                     >
@@ -576,7 +572,7 @@ export function OpportunitiesBrowseV2Preview({
                       <button
                         key={key}
                         type="button"
-                        className={styles.popoverOption}
+                        className={dropdownStyles.option}
                         data-selected={filters.deadline === key ? "true" : undefined}
                         onClick={() => updateFilters({ deadline: filters.deadline === key ? null : key })}
                       >
@@ -598,10 +594,10 @@ export function OpportunitiesBrowseV2Preview({
                   <ChevronDown aria-hidden="true" />
                 </PopoverTrigger>
                 <PopoverContent align="end" className="p-1 w-52">
-                  <div className={styles.popoverList}>
+                  <div className={dropdownStyles.list}>
                     <button
                       type="button"
-                      className={styles.popoverOption}
+                      className={dropdownStyles.option}
                       data-selected={!filters.fee ? "true" : undefined}
                       onClick={() => updateFilters({ fee: null })}
                     >
@@ -612,7 +608,7 @@ export function OpportunitiesBrowseV2Preview({
                       <button
                         key={key}
                         type="button"
-                        className={styles.popoverOption}
+                        className={dropdownStyles.option}
                         data-selected={filters.fee === key ? "true" : undefined}
                         onClick={() => updateFilters({ fee: filters.fee === key ? null : key })}
                       >
@@ -624,16 +620,24 @@ export function OpportunitiesBrowseV2Preview({
                 </PopoverContent>
               </Popover>
 
-              <span className={styles.sort}>Soonest deadline</span>
+
             </div>
-            )}
+            ))}
+            {toolbarActions}
+            <OpportunitySort className={styles.sortControl} signedIn={signedIn} />
             <p className={styles.resultsMeta} aria-live="polite">
-              {(totalCount || displayedItems.length).toLocaleString()} results
+              {isPending ? "Updating…" : resultRange}
             </p>
           </div>
         </div>
 
-        {displayedItems.length === 0 ? (
+        <div id="browse-results" className={styles.resultsAnchor} tabIndex={-1} />
+        {loadFailed ? (
+          <div className={styles.emptyState} role="alert">
+            <p className={styles.emptyTitle}>We couldn’t load opportunities.</p>
+            <Button variant="outline" onClick={() => router.refresh()}>Try again</Button>
+          </div>
+        ) : displayedItems.length === 0 ? (
           <div className={styles.emptyState} role="status">
             <p className={styles.emptyTitle}>No matches for your current search or filters.</p>
             <button type="button" className={styles.emptyAction} onClick={clearAllFilters}>
@@ -643,7 +647,7 @@ export function OpportunitiesBrowseV2Preview({
               <p className={styles.emptyHint}>Try a collection instead:</p>
               <div className={styles.emptyLinks}>
                 {emptyStateCollections.map((item) => (
-                  <Link key={item.href} href={item.href}>
+                  <Link key={item.href} href={item.href.replace("/opportunities?", `${basePath}?`)}>
                     {item.label}
                   </Link>
                 ))}
@@ -657,14 +661,12 @@ export function OpportunitiesBrowseV2Preview({
             aria-live="polite"
           >
             {displayedItems.map((item) => (
-              <OpportunityBrowseProjectCard key={item.id} item={item} />
+              <OpportunityBrowseProjectCard key={item.id} item={item} signedIn={signedIn} />
             ))}
           </div>
         )}
 
-        <p className={styles.note}>
-          Live data feed wired to PostgreSQL. Index displays live editorial photography, normalized taxonomy, and authentic host organizations.
-        </p>
+        {!loadFailed ? <OpportunityBrowsePagination nextCursor={nextCursor} className={styles.pagination} /> : null}
       </main>
     </div>
   );

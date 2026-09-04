@@ -1,4 +1,19 @@
 {
+  "opportunityDetail": {
+    "persistentActions": "OpportunityDetailStickyActions observes summary exit; desktop only, existing mobile dock retained",
+    "status": "approved",
+    "implementation": "apps/web/components/opportunity-detail-view.tsx",
+    "adaptation": "White-index detail layout, interface typography, unboxed reading sections, organizer and facts rail; public reputation scores and unknown turnaround removed",
+    "actions": ["SaveToTrackerButton", "AddOpportunityToCalendarButton", "MobileActionDock", "OpportunityDetailStickyActions", "official destination link"],
+    "mobile": "Single-column reading; Save and Apply stay in existing dock, calendar remains in summary"
+  },
+  "collectionBrowse": {
+    "status": "approved",
+    "implementation": "apps/web/app/discover/[slug]/page.tsx",
+    "composition": ["OpportunityBrowseProjectCard", "OpportunitySort", "OpportunityBrowsePagination"],
+    "themes": "Twelve individual editorial palettes in components/design-system/collection-palette.css; cover copy and motifs in lib/collectionArtDirection.ts; shared white cards",
+    "state": "Collection constraints retained; URL sorting and cursor history; 48 results per page"
+  },
   "generatedFrom": "apps/web/components/shadcn-studio",
   "verifiedAgainst": "https://shadcnstudio.com/components",
   "observedAt": "2026-09-03",
@@ -1261,5 +1276,38 @@
         "typography-15"
       ]
     }
-  ]
+  ],
+  "opportunityBrowseProjectCard": {
+    "status": "approved",
+    "implementation": "apps/web/components/design-system/opportunity-browse-project-card.tsx",
+    "registrySource": "@uitripled/project-card-shadcnui",
+    "actions": {
+      "image": "SaveToTrackerButton on /opportunities, using account tracked state and first-save authentication flow",
+      "footer": "AddOpportunityToCalendarButton, labelled, fixed deadlines only"
+    },
+    "adaptation": "Missa tokens, deduplicated practices, compact facts, organization-name identity plates for missing or failed images, three-column desktop and single-column mobile",
+    "imageBadges": "Opaque Missa canvas and Ochre urgency surfaces; no photo-dependent transparency",
+    "routes": [
+      "/opportunities",
+      "/design-system/opportunities-browse-v2"
+    ]
+  },
+  "browsePatterns": {
+    "status": "approved",
+    "pagination": "apps/web/components/opportunity-browse-pagination.tsx",
+    "collections": "apps/web/components/opportunity-collections-strip.tsx",
+    "sort": "apps/web/components/opportunity-sort.tsx",
+    "state": "URL cursor history, query, filters and sort; six initial collection links with scroll reveal",
+    "dropdownStyle": "apps/web/components/opportunity-dropdown.module.css; shared row spacing, hover, selected and focus states for filters and sorting",
+    "canonicalFilters": "OpportunityCatalogueFilters index appearance retains full taxonomy and facet counts"
+  },
+  "directoryBrowse": {
+    "status": "approved",
+    "implementation": "apps/web/components/directory-browse-view.tsx",
+    "source": "Installed Card, Input, Button, Empty and Pagination; native navigation links",
+    "adaptation": "White index with organization images and Avatar category-icon fallbacks, URL-preserved category/search/page state, repository totals, no blanket verification claims",
+    "routes": [
+      "/directory"
+    ]
+  }
 }
