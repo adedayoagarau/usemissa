@@ -1,3 +1,4 @@
+import Link from "next/link";
 import styles from "./opportunity-editorial-hero.module.css";
 
 export function OpportunityEditorialHero() {
@@ -12,7 +13,26 @@ export function OpportunityEditorialHero() {
           Explore opportunities across writing, visual arts, performance, film,
           music, design and interdisciplinary practice.
         </p>
+        <div className={styles.curatedTags} aria-label="Curated collections">
+          <span className={styles.curatedLabel}>Curated collections:</span>
+          <Link href="/discover/queer-lgbtq-opportunities" className={styles.curatedChip}>
+            Queer & LGBTQ+
+          </Link>
+          <Link href="/discover/bipoc-opportunities" className={styles.curatedChip}>
+            BIPOC Creators
+          </Link>
+          <Link href="/discover/women-nonbinary-opportunities" className={styles.curatedChip}>
+            Women & Non-Binary
+          </Link>
+          <Link href="/discover/disabled-neurodivergent-opportunities" className={styles.curatedChip}>
+            Disabled & Neurodivergent
+          </Link>
+          <Link href="/discover/emerging-writers-artists" className={styles.curatedChip}>
+            Emerging & Debut
+          </Link>
+        </div>
       </div>
     </section>
   );
 }
+
