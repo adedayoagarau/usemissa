@@ -134,7 +134,7 @@ function taxonomyReadsEnabled(): boolean {
 }
 
 function contentReadsEnabled(): boolean {
-  return process.env.MISSA_OPPORTUNITY_CONTENT_READS?.trim() !== "0";
+  return process.env.MISSA_OPPORTUNITY_CONTENT_READS?.trim() === "1";
 }
 
 function stripJsonNulls<T>(value: T): T {
@@ -384,7 +384,14 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
       select a.url, a.alt
       from opportunity_identity_assets a
       where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')
-      order by a.created_at desc
+        and a.kind in ('opportunity-artwork', 'opportunity-cover')
+      order by
+        case a.kind
+          when 'opportunity-artwork' then 1
+          when 'opportunity-cover' then 2
+          else 3
+        end asc,
+        a.created_at desc
       limit 1
     ) asset on true
     left join lateral (
@@ -622,11 +629,12 @@ export function buildOpportunityBrowseQuery(
       query.locations,
     );
   if (query.feeStatus)
-    conditions.push(query.feeStatus === "no-fee"
-      ? "o.fee_status in ('no-fee', 'free')"
-      : query.feeStatus === "paid"
-        ? "o.fee_status in ('paid', 'fee')"
-        : "o.fee_status not in ('no-fee', 'free', 'paid', 'fee')");
+    addCondition(
+      conditions,
+      values,
+      "case when $VALUE = 'no-fee' then o.fee_status in ('no-fee', 'free') when $VALUE = 'paid' then o.fee_status in ('paid', 'fee') else o.fee_status = $VALUE end",
+      query.feeStatus,
+    );
   if (query.maxFeeCents !== undefined)
     addCondition(
       conditions,

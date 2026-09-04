@@ -56,7 +56,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   const taxonomyLabels = (opportunity.taxonomy?.termIds ?? []).map(taxonomyLabelFor);
   const profileRepository = getProfileRepository();
   const profileMatch = profileRepository
-    ? await profileRepository.getForOpportunity(opportunity.id)
+    ? (await profileRepository.getForOpportunity(opportunity.id)) ??
+      (opportunity.organizationId ? await profileRepository.getById(opportunity.organizationId) : null)
     : null;
   const practiceLabels = Array.from(
     [...taxonomyLabels, ...opportunity.genres].reduce((labels, label) => {

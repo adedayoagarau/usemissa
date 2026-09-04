@@ -7,22 +7,27 @@ import {
   Building2,
   CalendarDays,
   Check,
-  CircleHelp,
   Clock3,
   Coins,
   ExternalLink,
+  EyeOff,
   FileText,
   Files,
   Flag,
   Globe2,
-  MapPin,
   Scale,
   ShieldCheck,
+  Sparkles,
   Tag,
+  UserCheck,
   Users,
 } from "lucide-react";
 import type { OpportunityDetailProjection } from "@missa/radar-engine";
-import type { ProfileCard } from "@missa/radar-adapters";
+import {
+  type ProfileCard,
+  type ProfileDetail,
+  getSemanticUrlForProfile,
+} from "@missa/radar-adapters";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
@@ -30,11 +35,13 @@ import { OpportunityIssueReport } from "@/components/opportunity-issue-report";
 import { PrepareChecklist } from "@/components/prepare-checklist";
 import { FollowButton } from "@/components/follow-button";
 import { MobileActionDock } from "@/components/mobile-action-dock";
+import { decodeHtmlEntities } from "@/lib/textUtils";
+import { cn } from "@/lib/utils";
 import styles from "./opportunity-detail.module.css";
 
-function initials(opportunity: OpportunityDetailProjection): string {
+function initials(name: string): string {
   return (
-    (opportunity.organizationName ?? opportunity.title)
+    name
       .split(/\s+/u)
       .filter(Boolean)
       .slice(0, 2)
@@ -50,50 +57,66 @@ function typeLabel(type: OpportunityDetailProjection["type"]): string {
     .replace(/^./u, (character) => character.toUpperCase());
 }
 
-function deadlineLabel(
-  deadline: OpportunityDetailProjection["deadline"],
-): string {
-  if (deadline.date) {
-    return new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(
-      new Date(`${deadline.date}T12:00:00`),
-    );
+function getDeadlineUrgency(deadline: OpportunityDetailProjection["deadline"]): {
+  label: string;
+  urgent: boolean;
+} {
+  if (!deadline.date) {
+    if (deadline.kind === "rolling") return { label: "Rolling deadline", urgent: false };
+    if (deadline.kind === "until-filled") return { label: "Until filled", urgent: false };
+    return { label: "Deadline open", urgent: false };
   }
-  if (deadline.kind === "rolling") return "Rolling deadline";
-  if (deadline.kind === "until-filled") return "Until filled";
-  if (deadline.kind === "conflicting") return "Deadline needs confirmation";
-  return "Deadline not listed";
+
+  const target = new Date(`${deadline.date}T23:59:59`);
+  const now = new Date();
+  const diffMs = target.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  const formattedDate = new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+  }).format(target);
+
+  if (diffDays < 0) {
+    return { label: `Closed ${formattedDate}`, urgent: false };
+  }
+  if (diffDays === 0) {
+    return { label: "Closes today", urgent: true };
+  }
+  if (diffDays === 1) {
+    return { label: "Closes tomorrow", urgent: true };
+  }
+  if (diffDays <= 7) {
+    return { label: `Closes ${formattedDate} · ${diffDays} days left`, urgent: true };
+  }
+  if (diffDays <= 30) {
+    return { label: `Closes ${formattedDate} · ${diffDays} days left`, urgent: false };
+  }
+  return { label: `Closes ${formattedDate}`, urgent: false };
 }
 
-function feeLabel(opportunity: OpportunityDetailProjection): string {
-  if (opportunity.fee.status === "no-fee") return "No fee";
-  if (opportunity.fee.status === "unknown") return "Fee not listed";
+function getFeeBadge(opportunity: OpportunityDetailProjection): {
+  label: string;
+  isFree: boolean;
+} {
+  if (opportunity.fee.status === "no-fee" || opportunity.fee.amountCents === 0) {
+    return { label: "Free to enter", isFree: true };
+  }
   if (opportunity.fee.amountCents !== undefined && opportunity.fee.currency) {
     const currency = /^[A-Z]{3}$/u.test(opportunity.fee.currency)
       ? opportunity.fee.currency
       : undefined;
-    if (currency)
-      return new Intl.NumberFormat("en", {
-        style: "currency",
-        currency,
-      }).format(opportunity.fee.amountCents / 100);
-    return `${opportunity.fee.currency}${(opportunity.fee.amountCents / 100).toFixed(2)}`;
+    const formatted = currency
+      ? new Intl.NumberFormat("en", { style: "currency", currency }).format(
+          opportunity.fee.amountCents / 100,
+        )
+      : `${opportunity.fee.currency}${(opportunity.fee.amountCents / 100).toFixed(2)}`;
+    return { label: `${formatted} fee`, isFree: false };
   }
-  return "Application fee";
-}
-
-function statusLabel(status: OpportunityDetailProjection["status"]): string {
-  if (status === "closing-soon") return "Closing soon";
-  if (status === "deadline-extended") return "Deadline extended";
-  if (status === "opening-soon") return "Opening soon";
-  return status
-    .replace(/-/gu, " ")
-    .replace(/^./u, (character) => character.toUpperCase());
-}
-
-function policyLabel(value: boolean | undefined, unknown = "Not listed"): string {
-  if (value === true) return "Allowed";
-  if (value === false) return "Not allowed";
-  return unknown;
+  if (opportunity.fee.status === "paid") {
+    return { label: "Entry fee required", isFree: false };
+  }
+  return { label: "Free to enter", isFree: true };
 }
 
 function compactMoney(amountCents?: number, currency?: string): string | undefined {
@@ -102,67 +125,55 @@ function compactMoney(amountCents?: number, currency?: string): string | undefin
   return new Intl.NumberFormat("en", { style: "currency", currency }).format(amountCents / 100);
 }
 
-function readingPeriodLabel(kind: NonNullable<OpportunityDetailProjection["callProfile"]>["readingPeriodKind"]): string {
-  if (kind === "year-round") return "Open year-round";
-  if (kind === "rolling") return "Rolling reading period";
-  if (kind === "seasonal") return "Seasonal reading period";
-  if (kind === "exact") return "Fixed reading window";
-  return "Reading period not listed";
+function getPrizeBadge(opportunity: OpportunityDetailProjection): string | null {
+  const call = opportunity.callProfile;
+  if (opportunity.prize && opportunity.prize.trim()) {
+    return decodeHtmlEntities(opportunity.prize);
+  }
+  if (call?.prizeSummary && call.prizeSummary.trim()) {
+    return decodeHtmlEntities(call.prizeSummary);
+  }
+  if (call?.paymentAmountCents && call.paymentCurrency) {
+    const pay = compactMoney(call.paymentAmountCents, call.paymentCurrency);
+    if (pay) return `${pay} payment`;
+  }
+  return null;
 }
 
-function DetailNotice({
-  opportunity,
-}: {
-  opportunity: OpportunityDetailProjection;
-}) {
-  if (opportunity.status === "closed" || opportunity.status === "archived") {
-    return (
-      <div className={styles.productNotice} data-tone="neutral">
-        <AlertTriangle aria-hidden="true" />
-        <div>
-          <strong>This opportunity is closed</strong>
-          <p>
-            The record remains available for reference. Check the Organization’s
-            official page for a future edition.
-          </p>
-        </div>
-      </div>
-    );
+function getLimitsBadge(call: OpportunityDetailProjection["callProfile"]): string | null {
+  if (!call) return null;
+  if (call.wordLimitMax) {
+    if (call.wordLimitMin) return `${call.wordLimitMin.toLocaleString()}–${call.wordLimitMax.toLocaleString()} words`;
+    return `Up to ${call.wordLimitMax.toLocaleString()} words`;
   }
-  if (opportunity.deadline.kind === "conflicting") {
-    return (
-      <div className={styles.productNotice} data-tone="warning">
-        <AlertTriangle aria-hidden="true" />
-        <div>
-          <strong>The deadline needs confirmation</strong>
-          <p>
-            The available source information does not agree. Confirm the
-            deadline on the official page before preparing work.
-          </p>
-        </div>
-      </div>
-    );
+  if (call.pageLimitMax) {
+    if (call.pageLimitMin) return `${call.pageLimitMin}–${call.pageLimitMax} pages`;
+    return `Up to ${call.pageLimitMax} pages`;
   }
-  if (
-    opportunity.fee.status === "unknown" ||
-    opportunity.requiredMaterials.length === 0
-  ) {
-    const missing = [
-      opportunity.fee.status === "unknown" ? "the application fee" : null,
-      opportunity.requiredMaterials.length === 0 ? "the complete file requirements" : null,
-    ].filter((item): item is string => Boolean(item));
-    return (
-      <div className={styles.productNotice} data-tone="neutral">
-        <AlertTriangle aria-hidden="true" />
-        <div>
-          <strong>Some application details are not listed</strong>
-          <p>
-            Use the official destination to confirm {missing.join(" and ")} before
-            preparing work.
-          </p>
-        </div>
-      </div>
-    );
+  return null;
+}
+
+function getScopeBadge(location: string | undefined): string {
+  if (!location) return "Open worldwide";
+  const lower = location.toLowerCase();
+  if (lower.includes("international") || lower.includes("global") || lower.includes("worldwide")) {
+    return "Open worldwide";
+  }
+  if (lower.includes("remote") || lower.includes("online")) {
+    return "Remote / Online";
+  }
+  return location;
+}
+
+function getOrganizerProfileUrl(
+  profile: ProfileCard | ProfileDetail | undefined,
+  organizationId: string | undefined,
+): string | null {
+  if (profile?.slug) {
+    return getSemanticUrlForProfile(profile.kind, profile.slug);
+  }
+  if (organizationId) {
+    return `/org/${encodeURIComponent(organizationId)}`;
   }
   return null;
 }
@@ -180,332 +191,352 @@ export function OpportunityDetailView({
   userId?: string;
   summary: string;
   practiceLabels: string[];
-  relatedProfile?: ProfileCard;
+  relatedProfile?: ProfileCard | ProfileDetail;
 }) {
   const tracked = Boolean(opportunity.personal?.tracked);
   const canonicalPath = `/opportunities/${opportunity.slug}`;
   const officialHref = opportunity.guidelinesUrl ?? opportunity.submissionUrl;
   const destinationHref = officialHref ?? opportunity.source.url;
-  const destinationLabel = officialHref ? "Official source" : "View original listing";
-  const identityAssetUrl = opportunity.identityAssetUrl ?? relatedProfile?.mediaUrl;
-  const identityAssetAlt = opportunity.identityAssetUrl
-    ? opportunity.identityAssetAlt
-    : relatedProfile?.mediaAlt;
+  const destinationLabel = officialHref ? "Open Official Application" : "Open Original Listing";
+
   const call = opportunity.callProfile;
-  const acceptedWork = Array.from(new Set([
-    ...(call?.acceptedFormats ?? []),
-    ...(call?.publicationFormats ?? []),
-    ...(call?.subgenres ?? []),
-    ...opportunity.genres,
-  ].filter(Boolean)));
-  const hasLimits = Boolean(call?.wordLimitMin !== undefined || call?.wordLimitMax !== undefined || call?.pageLimitMin !== undefined || call?.pageLimitMax !== undefined);
-  const hasPolicies = Boolean(call || opportunity.simultaneousAllowed !== undefined);
-  const payment = compactMoney(call?.paymentAmountCents, call?.paymentCurrency);
-  const unknowns = [
-    opportunity.fee.status === "unknown" ? "Application fee" : null,
-    opportunity.deadline.kind === "unknown" || opportunity.deadline.kind === "conflicting" ? "Confirmed deadline" : null,
-    opportunity.eligibility.length === 0 && !call?.eligibilitySummary ? "Eligibility" : null,
-    opportunity.requiredMaterials.length === 0 ? "Required materials" : null,
-    !call?.rightsSummary ? "Rights and licensing terms" : null,
-  ].filter((value): value is string => Boolean(value));
+  const profileIntelligence = (relatedProfile as ProfileDetail | undefined)?.intelligence;
+
+  // Photographic identity asset (if cleared/permitted)
+  const identityAssetUrl = opportunity.identityAssetUrl;
+  const identityAssetAlt = opportunity.identityAssetAlt ?? opportunity.title;
+
+  // Decoded title and organization
+  const cleanTitle = decodeHtmlEntities(opportunity.title);
+  const organizerName = decodeHtmlEntities(
+    opportunity.organizationName ?? relatedProfile?.name ?? "Host Organization",
+  );
+  const organizerUrl = getOrganizerProfileUrl(relatedProfile, opportunity.organizationId);
+
+  // Type identification
+  const isGrant =
+    opportunity.type === "grant" ||
+    opportunity.type === "fellowship" ||
+    opportunity.type === "award" ||
+    opportunity.type === "scholarship";
+  const isResidency = opportunity.type === "residency";
+  const isExhibition = opportunity.type === "exhibition" || opportunity.type === "open-call";
+  const isLiterary =
+    opportunity.type === "magazine" ||
+    (opportunity.discipline && /literature|writing|poetry|fiction|nonfiction/i.test(opportunity.discipline));
+
+  // Context-aware section titles
+  const readingHeading = isGrant
+    ? "About this Grant & Funding"
+    : isResidency
+      ? "About the Residency & Program"
+      : isExhibition
+        ? "About the Exhibition & Call"
+        : "The Call for Submissions";
+
+  const readingBadge = isGrant
+    ? "Funding & Scope"
+    : isResidency
+      ? "Residency Overview"
+      : isExhibition
+        ? "Curatorial Vision"
+        : "Editorial Vision";
+
+  const dossierHeading = isGrant
+    ? "Application Checklist & Materials"
+    : isResidency
+      ? "What to Prepare (Portfolio & Proposal)"
+      : isExhibition
+        ? "What to Prepare (Exhibition Materials)"
+        : "What to Prepare (Submission Dossier)";
+
+  const dossierBadge = isGrant
+    ? "Application Checklist"
+    : isResidency
+      ? "Proposal Dossier"
+      : "Submission Dossier";
+
+  // Signal Badges
+  const deadlineUrgency = getDeadlineUrgency(opportunity.deadline);
+  const feeBadge = getFeeBadge(opportunity);
+  const prizeBadge = getPrizeBadge(opportunity);
+  const limitsBadge = getLimitsBadge(call);
+  const scopeBadge = getScopeBadge(opportunity.location);
+
+  // Editorial Call / Grant Narrative Text
+  const rawCallText =
+    opportunity.content?.description ||
+    opportunity.content?.summary ||
+    summary ||
+    "";
+  const cleanCallText = decodeHtmlEntities(rawCallText);
+  const callParagraphs = cleanCallText
+    .split(/\n\s*\n|\n/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+
+  // Discipline chip text
+  const disciplineChip =
+    opportunity.discipline && opportunity.discipline !== "all-disciplines"
+      ? opportunity.discipline
+      : opportunity.genres[0]
+        ? `${typeLabel(opportunity.type)} · ${opportunity.genres[0]}`
+        : typeLabel(opportunity.type);
+
+  // Blind / Anonymity detection
+  const isBlind = Boolean(
+    call?.eligibilitySummary?.toLowerCase().includes("blind") ||
+      call?.rightsSummary?.toLowerCase().includes("blind") ||
+      opportunity.requiredMaterials.some((m) =>
+        (m.label + (m.description ?? "")).toLowerCase().includes("blind") ||
+        (m.label + (m.description ?? "")).toLowerCase().includes("anonymous"),
+      ),
+  );
+
+  const hasEligibility =
+    opportunity.eligibility.length > 0 || Boolean(call?.eligibilitySummary);
 
   return (
-    <main id="main-content" className={styles.main} data-density="comfortable">
+    <main id="main-content" className={styles.main}>
       <Link className={styles.backLink} href="/opportunities">
         <ArrowLeft aria-hidden="true" />
         Back to opportunities
       </Link>
 
       <article aria-labelledby="opportunity-title">
-        <header className={styles.hero}>
+        {/* ==================================================================
+            1. THE FAST-SCAN LAYER (Labels, Badges & Chips)
+            ================================================================== */}
+        <header className={styles.heroCard}>
           <div
-            className={styles.identityMedia}
-            data-fallback={!identityAssetUrl || undefined}
-          >
-            {identityAssetUrl ? (
-              // Repository policy permits only rights-cleared/permitted media.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={identityAssetUrl}
-                alt={identityAssetAlt ?? ""}
-                className={styles.identityImage}
-              />
-            ) : (
-              <span aria-hidden="true">{initials(opportunity)}</span>
+            className={cn(
+              styles.heroHeader,
+              identityAssetUrl && styles.heroHeaderWithMedia,
             )}
-          </div>
-          <div className={styles.heroCopy}>
-            <div className={styles.heroBadges}>
-              <Badge variant="outline">{typeLabel(opportunity.type)}</Badge>
-              <Badge variant={opportunity.status === "closing-soon" ? "destructive" : "secondary"}>
-                {statusLabel(opportunity.status)}
-              </Badge>
+          >
+            <div>
+              {/* Byline & Organizer */}
+              <div className={styles.heroByline}>
+                <span>by</span>
+                {organizerUrl ? (
+                  <Link href={organizerUrl} className={styles.organizerLink}>
+                    {organizerName}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-foreground">{organizerName}</span>
+                )}
+                {opportunity.organizationVerified ? (
+                  <span className={styles.verifiedBadge}>
+                    <ShieldCheck aria-hidden="true" />
+                    Verified Host
+                  </span>
+                ) : null}
+                {userId && opportunity.organizationId && !opportunity.personal?.followingOrganization ? (
+                  <FollowButton
+                    userId={userId}
+                    organizationId={opportunity.organizationId}
+                    organizationName={opportunity.organizationName}
+                  />
+                ) : opportunity.personal?.followingOrganization ? (
+                  <span className="text-xs text-muted-foreground">· Following</span>
+                ) : null}
+              </div>
+
+              {/* Title */}
+              <h1 id="opportunity-title" className={cn(styles.heroTitle, "font-serif")}>
+                {cleanTitle}
+              </h1>
+
+              {/* Scannable Signal Badges (Chips) */}
+              <div className={styles.badgeCluster} aria-label="Key signals at a glance">
+                {/* 1. Fee */}
+                <span
+                  className={styles.signalChip}
+                  data-tone={feeBadge.isFree ? "free" : undefined}
+                >
+                  <Tag aria-hidden="true" />
+                  {feeBadge.label}
+                </span>
+
+                {/* 2. Prize / Award / Funding */}
+                {prizeBadge ? (
+                  <span className={styles.signalChip} data-tone="prize">
+                    <Award aria-hidden="true" />
+                    {prizeBadge}
+                  </span>
+                ) : null}
+
+                {/* 3. Deadline Countdown */}
+                <span
+                  className={styles.signalChip}
+                  data-tone={deadlineUrgency.urgent ? "urgent" : undefined}
+                >
+                  <Clock3 aria-hidden="true" />
+                  {deadlineUrgency.label}
+                </span>
+
+                {/* 4. Discipline / Type */}
+                <span className={styles.signalChip}>
+                  <BookOpenText aria-hidden="true" />
+                  {disciplineChip}
+                </span>
+
+                {/* 5. Limits (if literary / specified) */}
+                {limitsBadge ? (
+                  <span className={styles.signalChip}>
+                    <FileText aria-hidden="true" />
+                    {limitsBadge}
+                  </span>
+                ) : null}
+
+                {/* 6. Simultaneous Submissions (only if relevant) */}
+                {isLiterary && opportunity.simultaneousAllowed !== undefined ? (
+                  <span className={styles.signalChip}>
+                    <Files aria-hidden="true" />
+                    {opportunity.simultaneousAllowed ? "Simultaneous OK" : "No simultaneous"}
+                  </span>
+                ) : null}
+
+                {/* 7. Blind Reading */}
+                {isBlind ? (
+                  <span className={styles.signalChip} data-tone="primary">
+                    <EyeOff aria-hidden="true" />
+                    Blind review
+                  </span>
+                ) : null}
+
+                {/* 8. Scope / Reach */}
+                <span className={styles.signalChip}>
+                  <Globe2 aria-hidden="true" />
+                  {scopeBadge}
+                </span>
+              </div>
             </div>
-            <h1 id="opportunity-title">{opportunity.title}</h1>
-            <p className={styles.organization}>
-              {opportunity.organizationName ?? "Organization not confirmed"}
-            </p>
-            {userId && opportunity.organizationId && !opportunity.personal?.followingOrganization ? (
-              <FollowButton
-                userId={userId}
-                organizationId={opportunity.organizationId}
-                organizationName={opportunity.organizationName}
-              />
-            ) : opportunity.personal?.followingOrganization ? (
-              <span className="text-xs text-muted-foreground">Following</span>
-            ) : null}
-            <p className={styles.heroSummary}>{summary}</p>
-            {relatedProfile ? (
-              <p className={styles.organization}>
-                Journal / press profile:{" "}
-                <Link
-                  href={`/journals/${encodeURIComponent(relatedProfile.id)}`}
-                >
-                  {relatedProfile.name}
-                </Link>
-              </p>
-            ) : null}
-            <div className={styles.heroActions}>
-              {tracked ? (
-                <Button
-                  nativeButton={false}
-                  render={<Link href="/tracker" />}
-                  variant="secondary"
-                  className={styles.primaryAction}
-                >
-                  <Check aria-hidden="true" />
-                  In Tracker
-                </Button>
-              ) : (
-                <SaveToTrackerButton
-                  opportunityId={opportunity.id}
-                  signedIn={signedIn}
-                  returnTo={canonicalPath}
-                  opportunityTitle={opportunity.title}
+
+            {/* Optional Authentic Photography Banner */}
+            {identityAssetUrl ? (
+              <div className={styles.heroVisual}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={identityAssetUrl}
+                  alt={identityAssetAlt}
+                  className={styles.heroImage}
                 />
-              )}
-              <a
-                className={styles.sourceButton}
-                href={destinationHref}
-                target="_blank"
-                rel="noreferrer"
+              </div>
+            ) : null}
+          </div>
+
+          {/* Hero Two-Way Action Bar */}
+          <div className={styles.heroActions}>
+            {tracked ? (
+              <Button
+                nativeButton={false}
+                render={<Link href="/tracker" />}
+                variant="secondary"
+                className={styles.primaryAction}
               >
-                {destinationLabel} <ExternalLink aria-hidden="true" />
-              </a>
-            </div>
+                <Check aria-hidden="true" />
+                In Tracker
+              </Button>
+            ) : (
+              <SaveToTrackerButton
+                opportunityId={opportunity.id}
+                signedIn={signedIn}
+                returnTo={canonicalPath}
+                opportunityTitle={cleanTitle}
+              />
+            )}
+            <a
+              className={styles.sourceButton}
+              href={destinationHref}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {destinationLabel} <ExternalLink aria-hidden="true" />
+            </a>
           </div>
         </header>
 
-        <DetailNotice opportunity={opportunity} />
-
-        <MobileActionDock className={styles.mobileActions}>
-          {tracked ? (
-            <Button nativeButton={false} render={<Link href="/tracker" />} variant="secondary">
-              <Check aria-hidden="true" /> In Tracker
-            </Button>
-          ) : (
-            <SaveToTrackerButton
-              opportunityId={opportunity.id}
-              signedIn={signedIn}
-              returnTo={canonicalPath}
-              opportunityTitle={opportunity.title}
-            />
-          )}
-          <a href={destinationHref} target="_blank" rel="noreferrer">
-            {destinationLabel} <ExternalLink aria-hidden="true" />
-          </a>
-        </MobileActionDock>
-
+        {/* ==================================================================
+            Content Grid (Reading Column + Aside Rail)
+            ================================================================== */}
         <div className={styles.contentGrid}>
-          <aside
-            className={styles.decisionRail}
-            aria-labelledby="decision-facts-title"
-          >
-            <h2 id="decision-facts-title">Key facts</h2>
-            <dl className={styles.factList}>
-              <div
-                data-warning={
-                  opportunity.deadline.kind === "conflicting" || undefined
-                }
-              >
-                <dt>
-                  <CalendarDays aria-hidden="true" />
-                  Deadline
-                </dt>
-                <dd>{deadlineLabel(opportunity.deadline)}</dd>
-              </div>
-              <div>
-                <dt>
-                  <Tag aria-hidden="true" />
-                  Fee
-                </dt>
-                <dd>{feeLabel(opportunity)}</dd>
-              </div>
-              <div>
-                <dt>
-                  <Award aria-hidden="true" />
-                  Award or payment
-                </dt>
-                <dd>{opportunity.prize ?? call?.prizeSummary ?? payment ?? "Not listed"}</dd>
-              </div>
-              <div>
-                <dt>
-                  <ShieldCheck aria-hidden="true" />
-                  Eligibility
-                </dt>
-                <dd>{call?.eligibilitySummary ?? (opportunity.eligibility.length ? `${opportunity.eligibility.length} stated ${opportunity.eligibility.length === 1 ? "requirement" : "requirements"}` : "Not fully listed")}</dd>
-              </div>
-              <div>
-                <dt>
-                  <Globe2 aria-hidden="true" />
-                  Reach
-                </dt>
-                <dd>{opportunity.location ?? "Location not listed"}</dd>
-              </div>
-              <div>
-                <dt>
-                  <MapPin aria-hidden="true" />
-                  Status
-                </dt>
-                <dd>{statusLabel(opportunity.status)}</dd>
-              </div>
-              <div>
-                <dt>
-                  <BookOpenText aria-hidden="true" />
-                  Opportunity type
-                </dt>
-                <dd>{typeLabel(opportunity.type)}</dd>
-              </div>
-            </dl>
-            <div className={styles.railActions}>
-              <a
-                className={styles.sourceButton}
-                href={destinationHref}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {destinationLabel} <ExternalLink aria-hidden="true" />
-              </a>
-            </div>
-          </aside>
-
+          {/* Main Reading Column */}
           <div className={styles.readingColumn}>
-            <section aria-labelledby="about-title">
-              <h2 id="about-title">What this opportunity is asking for</h2>
-              <p className={styles.lede}>{summary}</p>
-              {opportunity.content?.description && opportunity.content.description !== summary && opportunity.content.description.length > 80 ? (
-                <div className="mt-4 space-y-3 text-sm leading-relaxed text-muted-foreground">
-                  {opportunity.content.description.split(/\n\s*\n/).map((para, idx) => (
-                    <p key={idx}>{para.trim()}</p>
-                  ))}
+            {/* 2. THE READING LAYER (Call / Overview) */}
+            <section className={styles.callSection} aria-labelledby="call-title">
+              <div className={styles.sectionHeader}>
+                <h2 id="call-title" className="font-serif">
+                  {readingHeading}
+                </h2>
+                <span className={styles.sectionHeaderLabel}>
+                  <Sparkles aria-hidden="true" />
+                  {readingBadge}
+                </span>
+              </div>
+
+              {/* Theme Callout */}
+              {call?.issueTheme ? (
+                <div className={styles.themeCallout}>
+                  <span className={styles.themeLabel}>Theme & Prompt</span>
+                  <p className={cn(styles.themeText, "font-serif")}>
+                    {decodeHtmlEntities(call.issueTheme)}
+                  </p>
                 </div>
               ) : null}
-              {call?.issueTheme ? <p className="mt-3"><strong>Theme:</strong> {call.issueTheme}</p> : null}
+
+              {/* Narrative Text */}
+              <div className={styles.callBody}>
+                {callParagraphs.length ? (
+                  callParagraphs.map((para, index) => (
+                    <p key={index} className={cn(styles.callParagraph, "font-serif")}>
+                      {para}
+                    </p>
+                  ))
+                ) : (
+                  <p className={cn(styles.callParagraph, "font-serif")}>
+                    Review the official listing for complete details and guidelines.
+                  </p>
+                )}
+              </div>
             </section>
 
-            <section aria-labelledby="accepted-work-title">
-              <h2 id="accepted-work-title">Accepted work</h2>
-              {acceptedWork.length ? (
-                <div className={styles.practiceList}>
-                  {acceptedWork.map((item) => <Badge key={item} variant="secondary">{item}</Badge>)}
+            {/* 3. ELIGIBILITY & CRITERIA (Who Can Apply) */}
+            {hasEligibility ? (
+              <section className={styles.eligibilitySection} aria-labelledby="eligibility-title">
+                <div className={styles.sectionHeader}>
+                  <h2 id="eligibility-title" className="font-serif">
+                    Who Is Eligible
+                  </h2>
+                  <span className={styles.sectionHeaderLabel}>
+                    <UserCheck aria-hidden="true" />
+                    Eligibility Criteria
+                  </span>
                 </div>
-              ) : <p>Accepted forms and genres are not yet listed.</p>}
-              {hasLimits ? (
-                <dl className={styles.requirementList}>
-                  {call?.wordLimitMin !== undefined || call?.wordLimitMax !== undefined ? (
-                    <div><dt><FileText aria-hidden="true" />Word limit</dt><dd>{call.wordLimitMin !== undefined ? `${call.wordLimitMin.toLocaleString()}–` : "Up to "}{call.wordLimitMax?.toLocaleString() ?? "not listed"} words</dd></div>
-                  ) : null}
-                  {call?.pageLimitMin !== undefined || call?.pageLimitMax !== undefined ? (
-                    <div><dt><Files aria-hidden="true" />Page limit</dt><dd>{call.pageLimitMin !== undefined ? `${call.pageLimitMin}–` : "Up to "}{call.pageLimitMax ?? "not listed"} pages</dd></div>
-                  ) : null}
-                </dl>
-              ) : <p className={styles.boundaryNote}>Size and quantity limits are not listed in the current record.</p>}
-            </section>
 
-            <section aria-labelledby="eligibility-title">
-              <h2 id="eligibility-title">Eligibility</h2>
-              {opportunity.eligibility.length ? (
-                <ul className={styles.eligibilityList}>
-                  {opportunity.eligibility.map((rule) => (
-                    <li key={rule.key}>
-                      <Check aria-hidden="true" />
-                      <span>
-                        {rule.description}
-                        {rule.value ? ` — ${rule.value}` : ""}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>
-                  Eligibility is not fully listed in the current record. Confirm
-                  it on the official source before applying.
-                </p>
-              )}
-              <p className={styles.boundaryNote}>
-                Eligibility describes the call’s stated rules. It is not a
-                promise that an applicant qualifies.
-              </p>
-            </section>
+                {call?.eligibilitySummary ? (
+                  <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+                    {decodeHtmlEntities(call.eligibilitySummary)}
+                  </p>
+                ) : null}
 
-            <section aria-labelledby="prepare-title">
-              <h2 id="prepare-title">What to prepare</h2>
-              {opportunity.requiredMaterials.length ? (
-                <dl className={styles.requirementList}>
-                  {opportunity.requiredMaterials.map((material) => (
-                    <div key={material.label}>
-                      <dt>
-                        <FileText aria-hidden="true" />
-                        {material.label}
-                      </dt>
-                      <dd>
-                        {material.description ??
-                          material.limit ??
-                          (material.required ? "Required" : "Optional")}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              ) : (
-                <p>
-                  Required materials are not fully listed. Review the official
-                  source before preparing files.
-                </p>
-              )}
-              <PrepareChecklist
-                opportunityId={opportunity.id}
-                enabled={signedIn && tracked}
-              />
-            </section>
-
-            {hasPolicies ? (
-              <section aria-labelledby="policies-title">
-                <h2 id="policies-title">Submission policies</h2>
-                <dl className={styles.requirementList}>
-                  <div><dt><Files aria-hidden="true" />Simultaneous submissions</dt><dd>{policyLabel(opportunity.simultaneousAllowed)}</dd></div>
-                  <div><dt><Files aria-hidden="true" />Multiple submissions</dt><dd>{policyLabel(call?.multipleSubmissionsAllowed)}</dd></div>
-                  <div><dt><BookOpenText aria-hidden="true" />Previously published work</dt><dd>{call?.previouslyUnpublishedRequired === true ? "Must be unpublished" : call?.previouslyUnpublishedRequired === false ? "Previously published work may be accepted" : "Not listed"}</dd></div>
-                  <div><dt><Scale aria-hidden="true" />Reprints</dt><dd>{policyLabel(call?.reprintsAllowed)}</dd></div>
-                  <div><dt><ShieldCheck aria-hidden="true" />Rights</dt><dd>{call?.rightsSummary ?? "Not listed"}</dd></div>
-                </dl>
-              </section>
-            ) : null}
-
-            {call ? (
-              <section aria-labelledby="terms-title">
-                <h2 id="terms-title">Reading window, payment, and judging</h2>
-                <dl className={styles.requirementList}>
-                  <div><dt><Clock3 aria-hidden="true" />Reading period</dt><dd>{call.readingPeriodLabel ?? readingPeriodLabel(call.readingPeriodKind)}</dd></div>
-                  <div><dt><Coins aria-hidden="true" />Payment</dt><dd>{call.paymentType === "none" ? "No payment" : call.paymentType === "unknown" ? "Not listed" : payment ?? call.paymentType?.replaceAll("-", " ") ?? "Not listed"}</dd></div>
-                  <div><dt><Users aria-hidden="true" />Judge</dt><dd>{call.judgeName ?? call.prizes.find((prize) => prize.judgeName)?.judgeName ?? "Not listed"}</dd></div>
-                  <div><dt><Clock3 aria-hidden="true" />Response time</dt><dd>{call.responseTimeDays !== undefined ? `About ${call.responseTimeDays} days` : "Not listed"}</dd></div>
-                </dl>
-                {call.prizes.length ? (
-                  <div className={styles.prizeList}>
-                    {call.prizes.map((prize, index) => (
-                      <div key={`${prize.sourceUrl}-${index}`}>
-                        <Award aria-hidden="true" />
-                        <div><strong>{prize.title ?? `Prize ${prize.rank ?? index + 1}`}</strong><span>{compactMoney(prize.amountCents, prize.currency) ?? prize.description ?? "Amount not listed"}</span></div>
+                {opportunity.eligibility.length ? (
+                  <div className={styles.eligibilityGrid}>
+                    {opportunity.eligibility.map((rule) => (
+                      <div key={rule.key} className={styles.eligibilityItem}>
+                        <span className={styles.eligibilityCheck}>
+                          <Check aria-hidden="true" />
+                        </span>
+                        <div className={styles.eligibilityContent}>
+                          <span className={styles.eligibilityLabel}>
+                            {decodeHtmlEntities(rule.description)}
+                          </span>
+                          {rule.value ? (
+                            <span className={styles.eligibilityDetail}>
+                              Rule: {decodeHtmlEntities(rule.value)}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -513,61 +544,170 @@ export function OpportunityDetailView({
               </section>
             ) : null}
 
-            <section aria-labelledby="organization-title">
-              <h2 id="organization-title">Who is behind this opportunity</h2>
-              <div className={styles.authorityCard}>
-                {relatedProfile?.mediaUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={relatedProfile.mediaUrl} alt="" />
-                ) : <Building2 aria-hidden="true" />}
-                <div>
-                  <strong>{opportunity.organizationName ?? "Organization not confirmed"}</strong>
-                  {relatedProfile ? <Link href={`/journals/${encodeURIComponent(relatedProfile.id)}`}>View publisher profile</Link> : opportunity.organizationId ? <Link href={`/org/${encodeURIComponent(opportunity.organizationId)}`}>View Organization profile</Link> : <span>Public Organization profile not yet linked</span>}
-                  {opportunity.relatedOpportunityIds.length ? <span>{opportunity.relatedOpportunityIds.length} other open {opportunity.relatedOpportunityIds.length === 1 ? "opportunity" : "opportunities"}</span> : <span>No other open opportunities are currently linked.</span>}
-                </div>
+            {/* 4. THE SUBMISSION DOSSIER (What to Prepare) */}
+            <section className={styles.dossierSection} aria-labelledby="dossier-title">
+              <div className={styles.sectionHeader}>
+                <h2 id="dossier-title" className="font-serif">
+                  {dossierHeading}
+                </h2>
+                <span className={styles.sectionHeaderLabel}>
+                  <ShieldCheck aria-hidden="true" />
+                  {dossierBadge}
+                </span>
+              </div>
+
+              <div className={styles.dossierGrid}>
+                {/* 1. Stated Required Materials from DB */}
+                {opportunity.requiredMaterials.map((material) => (
+                  <div key={material.label} className={styles.dossierItem}>
+                    <span className={styles.dossierCheck}>
+                      <Check aria-hidden="true" />
+                    </span>
+                    <div className={styles.dossierContent}>
+                      <span className={styles.dossierLabel}>
+                        {decodeHtmlEntities(material.label)}
+                      </span>
+                      <span className={styles.dossierDetail}>
+                        {material.description
+                          ? decodeHtmlEntities(material.description)
+                          : material.limit
+                            ? `Limit: ${material.limit}`
+                            : material.required
+                              ? "Required submission document"
+                              : "Optional supporting material"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {/* 2. Literary Manuscript & Limits (only if literary or explicitly limited) */}
+                {isLiterary ? (
+                  <div className={styles.dossierItem}>
+                    <span className={styles.dossierCheck}>
+                      <Check aria-hidden="true" />
+                    </span>
+                    <div className={styles.dossierContent}>
+                      <span className={styles.dossierLabel}>Manuscript & Work</span>
+                      <span className={styles.dossierDetail}>
+                        {limitsBadge ? `${limitsBadge} · ` : ""}
+                        {call?.acceptedFormats?.length
+                          ? `Accepted: ${call.acceptedFormats.join(", ")}`
+                          : "Standard file formats (.pdf / .docx)"}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* 3. Anonymity / Blind Reading (only if explicitly blind) */}
+                {isBlind ? (
+                  <div className={styles.dossierItem}>
+                    <span className={styles.dossierCheck}>
+                      <Check aria-hidden="true" />
+                    </span>
+                    <div className={styles.dossierContent}>
+                      <span className={styles.dossierLabel}>Anonymity Guidelines</span>
+                      <span className={styles.dossierDetail}>
+                        Blind review: do not include your name or identifying contact info on the submitted work.
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* 4. Rights & Licensing (only if stated or literary) */}
+                {call?.rightsSummary ? (
+                  <div className={styles.dossierItem}>
+                    <span className={styles.dossierCheck}>
+                      <Check aria-hidden="true" />
+                    </span>
+                    <div className={styles.dossierContent}>
+                      <span className={styles.dossierLabel}>Rights & Policies</span>
+                      <span className={styles.dossierDetail}>
+                        {decodeHtmlEntities(call.rightsSummary)}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+
+                {/* If nothing is in requiredMaterials and not literary, provide clear notice */}
+                {!opportunity.requiredMaterials.length && !isLiterary ? (
+                  <div className={styles.dossierItem}>
+                    <span className={styles.dossierCheck}>
+                      <Check aria-hidden="true" />
+                    </span>
+                    <div className={styles.dossierContent}>
+                      <span className={styles.dossierLabel}>Standard Application Portal</span>
+                      <span className={styles.dossierDetail}>
+                        Complete the application form directly on the official host website. Check the portal for any specific file uploads.
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Interactive tracker checklist if tracked & signed in */}
+              <div className="mt-6">
+                <PrepareChecklist
+                  opportunityId={opportunity.id}
+                  enabled={signedIn && tracked}
+                />
               </div>
             </section>
 
-            {unknowns.length || opportunity.changes.length ? (
-              <section aria-labelledby="record-state-title">
-                <h2 id="record-state-title">What still needs confirmation</h2>
-                {unknowns.length ? <ul className={styles.unknownList}>{unknowns.map((item) => <li key={item}><CircleHelp aria-hidden="true" />{item}</li>)}</ul> : <p>No major decision fields are currently marked unknown.</p>}
-                {opportunity.changes.length ? <p className={styles.boundaryNote}>{opportunity.changes.length} recent {opportunity.changes.length === 1 ? "change is" : "changes are"} recorded. Confirm time-sensitive details on the official page.</p> : null}
-              </section>
-            ) : null}
-
-            <section aria-labelledby="categories-title">
-              <h2 id="categories-title">Categories named in this call</h2>
-              {practiceLabels.length ? (
-                <div className={styles.practiceList}>
-                  {practiceLabels.map((practice) => (
-                    <Badge key={practice} variant="secondary">
-                      {practice}
+            {/* Categories and Practice Tags */}
+            {practiceLabels.length ? (
+              <section className={styles.categoriesSection} aria-labelledby="tags-title">
+                <h3 id="tags-title">Tags & Focus Areas</h3>
+                <div className={styles.tagCluster}>
+                  {practiceLabels.map((tag) => (
+                    <Badge key={tag} variant="secondary">
+                      {tag}
                     </Badge>
                   ))}
                 </div>
-              ) : (
-                <p>Categories are not yet listed for this record.</p>
-              )}
-              <p className={styles.boundaryNote}>
-                Categories describe the work. They remain separate from
-                eligibility and geography.
-              </p>
-            </section>
+              </section>
+            ) : null}
 
-            <section
-              className={styles.sourceSection}
-              aria-labelledby="source-title"
-            >
-              <h2 id="source-title">
-                {officialHref ? "Finish on the official source" : "Continue from the original listing"}
-              </h2>
-              <p>
-                {officialHref
-                  ? "Missa helps you understand and track the opportunity. The Organization’s page carries the final rules and application destination."
-                  : "Missa helps you understand and track the opportunity. An official application destination is not linked yet; use the original listing to confirm the final rules and where to apply."}
-              </p>
-              <div className={styles.sourceSectionActions}>
+            {/* 5. Bottom Two-Way Action Dock & Community Integrity */}
+            <section className={styles.bottomActionDock} aria-labelledby="bottom-action-title">
+              <div className={styles.bottomActionDockLeft}>
+                <strong id="bottom-action-title">Ready to apply or track?</strong>
+                <span>
+                  Save this call to receive deadline reminders, or proceed to the official portal.
+                </span>
+                {signedIn ? (
+                  <div className="mt-2">
+                    <OpportunityIssueReport opportunityId={opportunity.id} />
+                  </div>
+                ) : (
+                  <Link
+                    className={styles.reportQuietLink}
+                    href={`/login?next=${encodeURIComponent(canonicalPath)}`}
+                  >
+                    <Flag aria-hidden="true" />
+                    Flag an inaccuracy
+                  </Link>
+                )}
+              </div>
+
+              <div className={styles.bottomActionDockButtons}>
+                {tracked ? (
+                  <Button
+                    nativeButton={false}
+                    render={<Link href="/tracker" />}
+                    variant="secondary"
+                    className={styles.primaryAction}
+                  >
+                    <Check aria-hidden="true" />
+                    In Tracker
+                  </Button>
+                ) : (
+                  <SaveToTrackerButton
+                    opportunityId={opportunity.id}
+                    signedIn={signedIn}
+                    returnTo={canonicalPath}
+                    opportunityTitle={cleanTitle}
+                  />
+                )}
                 <a
                   className={styles.sourceButton}
                   href={destinationHref}
@@ -576,23 +716,169 @@ export function OpportunityDetailView({
                 >
                   {destinationLabel} <ExternalLink aria-hidden="true" />
                 </a>
-                {signedIn ? (
-                  <div className={styles.productReport}>
-                    <OpportunityIssueReport opportunityId={opportunity.id} />
-                  </div>
-                ) : (
-                  <Link
-                    className={styles.reportTrigger}
-                    href={`/login?next=${encodeURIComponent(canonicalPath)}`}
-                  >
-                    <Flag aria-hidden="true" />
-                    Sign in to report an issue
-                  </Link>
-                )}
               </div>
             </section>
           </div>
+
+          {/* ==================================================================
+              Aside Decision Rail (Host Intelligence & Key Facts)
+              ================================================================== */}
+          <aside className={styles.decisionRail} aria-label="Host intelligence and facts">
+            {/* 4. THE ORGANIZER & HONEST ODDS */}
+            <div className={styles.organizerCard}>
+              <div className={styles.organizerCardHeader}>
+                {relatedProfile?.mediaUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={relatedProfile.mediaUrl}
+                    alt=""
+                    className={styles.organizerMedia}
+                  />
+                ) : (
+                  <div className={styles.organizerAvatarFallback} aria-hidden="true">
+                    {initials(organizerName)}
+                  </div>
+                )}
+                <div>
+                  <h3 className={styles.organizerName}>{organizerName}</h3>
+                  <span className={styles.organizerKind}>
+                    {relatedProfile?.kind ? typeLabel(relatedProfile.kind as any) : typeLabel(opportunity.type)}
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.organizerSignals}>
+                {/* Prestige / Demeanor */}
+                {profileIntelligence?.editorialArchetype || profileIntelligence?.prestigeTier ? (
+                  <div className={styles.signalRow}>
+                    <span className={styles.signalLabel}>
+                      <Award aria-hidden="true" />
+                      Reputation
+                    </span>
+                    <span className={styles.signalValue}>
+                      {profileIntelligence.prestigeTier || profileIntelligence.editorialArchetype}
+                    </span>
+                  </div>
+                ) : null}
+
+                {/* Average Response Time */}
+                <div className={styles.signalRow}>
+                  <span className={styles.signalLabel}>
+                    <Clock3 aria-hidden="true" />
+                    Turnaround
+                  </span>
+                  <span className={styles.signalValue}>
+                    {call?.responseTimeDays
+                      ? `~${call.responseTimeDays} days`
+                      : profileIntelligence?.responseLabel ?? "Standard cycle"}
+                  </span>
+                </div>
+
+                {/* Reading Period */}
+                {call?.readingPeriodLabel ? (
+                  <div className={styles.signalRow}>
+                    <span className={styles.signalLabel}>
+                      <CalendarDays aria-hidden="true" />
+                      Application Window
+                    </span>
+                    <span className={styles.signalValue}>{call.readingPeriodLabel}</span>
+                  </div>
+                ) : null}
+
+                {/* Other Opportunities */}
+                {opportunity.relatedOpportunityIds.length ? (
+                  <div className={styles.signalRow}>
+                    <span className={styles.signalLabel}>
+                      <Building2 aria-hidden="true" />
+                      Active Calls
+                    </span>
+                    <span className={styles.signalValue}>
+                      {opportunity.relatedOpportunityIds.length} other{" "}
+                      {opportunity.relatedOpportunityIds.length === 1 ? "call" : "calls"}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
+              {organizerUrl ? (
+                <div className={styles.organizerCardActions}>
+                  <Link href={organizerUrl} className={styles.profileButton}>
+                    View Institution Profile →
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Quick Fact Snapshot */}
+            <div className={styles.factCard}>
+              <h3>Decision Snapshot</h3>
+              <dl className={styles.factList}>
+                <div className={styles.factRow}>
+                  <dt className={styles.factTerm}>
+                    <CalendarDays aria-hidden="true" />
+                    Deadline
+                  </dt>
+                  <dd className={styles.factDefinition}>
+                    {opportunity.deadline.date ?? "Rolling"}
+                  </dd>
+                </div>
+                <div className={styles.factRow}>
+                  <dt className={styles.factTerm}>
+                    <Tag aria-hidden="true" />
+                    Fee
+                  </dt>
+                  <dd className={styles.factDefinition}>{feeBadge.label}</dd>
+                </div>
+                {prizeBadge ? (
+                  <div className={styles.factRow}>
+                    <dt className={styles.factTerm}>
+                      <Coins aria-hidden="true" />
+                      Award / Pay
+                    </dt>
+                    <dd className={styles.factDefinition}>{prizeBadge}</dd>
+                  </div>
+                ) : null}
+                <div className={styles.factRow}>
+                  <dt className={styles.factTerm}>
+                    <Globe2 aria-hidden="true" />
+                    Reach
+                  </dt>
+                  <dd className={styles.factDefinition}>{scopeBadge}</dd>
+                </div>
+                <div className={styles.factRow}>
+                  <dt className={styles.factTerm}>
+                    <Users aria-hidden="true" />
+                    Type
+                  </dt>
+                  <dd className={styles.factDefinition}>{typeLabel(opportunity.type)}</dd>
+                </div>
+              </dl>
+            </div>
+          </aside>
         </div>
+
+        {/* Mobile Sticky Action Bar */}
+        <MobileActionDock className={styles.mobileActions}>
+          {tracked ? (
+            <Button
+              nativeButton={false}
+              render={<Link href="/tracker" />}
+              variant="secondary"
+            >
+              <Check aria-hidden="true" /> In Tracker
+            </Button>
+          ) : (
+            <SaveToTrackerButton
+              opportunityId={opportunity.id}
+              signedIn={signedIn}
+              returnTo={canonicalPath}
+              opportunityTitle={cleanTitle}
+            />
+          )}
+          <a href={destinationHref} target="_blank" rel="noreferrer">
+            Apply ↗
+          </a>
+        </MobileActionDock>
       </article>
     </main>
   );
