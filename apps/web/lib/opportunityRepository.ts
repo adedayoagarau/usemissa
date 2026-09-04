@@ -25,6 +25,7 @@ const CATEGORY_TYPES: Record<string, string[]> = {
   residencies: ["residency"],
   fellowships: ["fellowship"],
   contests: ["contest"],
+  jobs: ["job"],
 };
 
 function feeStatus(opp: Opportunity): "no-fee" | "paid" | "unknown" {

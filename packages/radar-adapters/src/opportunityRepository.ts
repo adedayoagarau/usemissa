@@ -117,6 +117,7 @@ const CATEGORY_TYPES: Record<string, string[]> = {
   residencies: ["residency"],
   fellowships: ["fellowship"],
   contests: ["contest"],
+  jobs: ["job"],
 };
 
 const PUBLIC_STATUSES = [

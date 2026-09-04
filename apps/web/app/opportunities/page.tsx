@@ -41,6 +41,7 @@ const typeLabels: Record<string, string> = {
   scholarship: "Scholarship",
   conference: "Conference",
   rfp: "RFP / Public Commission",
+  job: "Job / Employment",
 };
 
 export async function generateMetadata({
@@ -304,7 +305,8 @@ export default async function OpportunitiesPage({
               aria-labelledby="results-heading"
             >
               <OpportunityEditorialHero />
-              <OpportunityBrowseHeader
+              <div className={styles.catalogue}>
+                <OpportunityBrowseHeader
                 search={
                   <div className={styles.searchRow}>
                     <OpportunitySearch
@@ -347,8 +349,9 @@ export default async function OpportunitiesPage({
                 }
                 toolbar={
                   <div className={styles.toolbar}>
-                    <h2
+                    <p
                       id="results-heading"
+                      className={styles.resultCount}
                       aria-live="polite"
                       aria-atomic="true"
                     >
@@ -356,7 +359,7 @@ export default async function OpportunitiesPage({
                       {displayResult.total === 1
                         ? "opportunity"
                         : "opportunities"}
-                    </h2>
+                    </p>
                     <div className={styles.toolbarActions}>
                       <OpportunityCatalogueFilters
                         locations={LOCATION_OPTIONS}
@@ -386,6 +389,7 @@ export default async function OpportunitiesPage({
                   </div>
                 }
               />
+              </div>
               <div className={styles.catalogueLayout}>
                 <div className={styles.resultColumn}>
                   <OpportunityResultsRefresh queryKey={urlParams.toString()}>

@@ -18,6 +18,7 @@ export const opportunityTypeSchema = z.enum([
   "pitch",
   "exhibition",
   "commission",
+  "job",
   "other",
 ]);
 

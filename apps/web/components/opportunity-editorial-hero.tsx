@@ -13,8 +13,7 @@ export function OpportunityEditorialHero() {
           Explore opportunities across writing, visual arts, performance, film,
           music, design and interdisciplinary practice.
         </p>
-        <div className={styles.curatedTags} aria-label="Curated collections">
-          <span className={styles.curatedLabel}>Curated collections:</span>
+        <nav className={styles.curatedTags} aria-label="Curated collections">
           <Link href="/discover/queer-lgbtq-opportunities" className={styles.curatedChip}>
             Queer & LGBTQ+
           </Link>
@@ -30,7 +29,10 @@ export function OpportunityEditorialHero() {
           <Link href="/discover/emerging-writers-artists" className={styles.curatedChip}>
             Emerging & Debut
           </Link>
-        </div>
+          <Link href="/discover/jobs-for-creators" className={styles.curatedChip}>
+            Creative Jobs
+          </Link>
+        </nav>
       </div>
     </section>
   );

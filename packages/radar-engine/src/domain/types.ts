@@ -28,6 +28,7 @@ export type OpportunityType =
   | "pitch"
   | "exhibition"
   | "commission"
+  | "job"
   | "other";
 
 /** Statuses exactly as enumerated in the strategy doc. "Claimed by Organization"

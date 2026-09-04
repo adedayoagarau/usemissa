@@ -98,6 +98,17 @@ export const discoveryGuides: DiscoveryGuide[] = [
     ],
     query: { ...baseQuery, verifiedOnly: true },
   },
+  {
+    slug: 'jobs-for-creators',
+    title: 'Creative & arts job opportunities',
+    description: 'Find paid editorial roles, curatorial positions, publishing internships, and academic faculty openings for creators.',
+    answer: 'Creative and cultural jobs provide steady income, institutional backing, and professional growth for practitioners. Always confirm the salary transparency, benefits, eligibility criteria, and application procedure directly on the hiring institution’s official careers page.',
+    faqs: [
+      { question: 'What kinds of jobs are listed on Missa?', answer: 'Missa indexes creative-sector positions including literary magazine editors, publishing interns, museum and gallery curators, arts administration coordinators, and higher education faculty in creative writing and studio arts.' },
+      { question: 'What should I verify before applying to a creative job?', answer: 'Check the employment status (full-time, part-time, contract), salary range or stipend, remote vs in-person requirements, closing date, required portfolio or writing samples, and the employer’s official submission path.' },
+    ],
+    query: { ...baseQuery, types: ['job'] },
+  },
 ];
 
 export const discoveryCollections: DiscoveryCollection[] = [
@@ -210,6 +221,16 @@ export const discoveryCollections: DiscoveryCollection[] = [
     checklist: ['Definition of "emerging" or career-stage requirements', 'Accepted genres and portfolio limits', 'Mentorship, exhibition, or publication deliverables', 'Official guidelines and deadline date'],
     relatedGuideSlug: 'find-submission-opportunities',
     query: { ...baseQuery, query: 'emerging' },
+  },
+  {
+    slug: 'jobs-for-creators',
+    title: 'Jobs for Creators & Arts Professionals',
+    description: 'Find paid editorial roles, curatorial positions, publishing internships, and academic faculty openings.',
+    answer: 'Creative and cultural jobs offer structured compensation, institutional backing, and professional growth for practitioners. Always confirm the salary transparency, benefits, eligibility criteria, and application procedure directly on the hiring institution’s official careers page.',
+    audience: 'Writers, editors, curators, arts administrators, and educators looking for full-time, part-time, or contract positions.',
+    checklist: ['Role responsibilities, schedule, and location (remote/onsite)', 'Compensation, salary bands, or stipend rates', 'Eligibility, required portfolio, and submission materials', 'Application closing date and official careers portal'],
+    relatedGuideSlug: 'jobs-for-creators',
+    query: { ...baseQuery, types: ['job'] },
   },
 ];
 
