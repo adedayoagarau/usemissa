@@ -247,6 +247,13 @@ test("10. Public opportunity projections: unknown media NEVER appears, cleared/p
 
   // Query must filter rights_status to 'cleared' and 'permitted'
   assert.match(browseQuery.text, /a\.rights_status in \('cleared', 'permitted'\)/);
+  // Catalogue cards only surface opportunity artwork/covers — not logos or org banners
+  assert.match(
+    browseQuery.text,
+    /a\.kind in \('opportunity-artwork', 'opportunity-cover'\)/,
+  );
+  assert.doesNotMatch(browseQuery.text, /editorial-hero/);
+  assert.doesNotMatch(browseQuery.text, /organization-mark/);
   // Must NOT include 'unknown'
   assert.doesNotMatch(browseQuery.text, /a\.rights_status in \([^)]*'unknown'/);
 });

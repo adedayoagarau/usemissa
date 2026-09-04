@@ -32,7 +32,7 @@ export function OpportunitySort({ className, signedIn = false }: { className?: s
           startTransition(() => router.push(`${pathname}?${next.toString()}`));
         }}
       >
-        <SelectTrigger aria-label="Sort opportunities" className="min-h-10 border-transparent bg-muted px-3 shadow-none hover:border-border hover:bg-accent-tint">
+        <SelectTrigger aria-label="Sort opportunities" className="min-h-9 border-transparent bg-transparent px-2 shadow-none hover:bg-muted">
           <SelectValue>{(selected: string) => labels[selected] ?? selected}</SelectValue>
         </SelectTrigger>
         <SelectContent align="end">

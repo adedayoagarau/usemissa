@@ -20,13 +20,13 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ params }: { params: Promise<{ organizationId: string }> }): Promise<Metadata> {
   const { organizationId } = await params;
   try {
-    const organization = (await getEngine()).store.organizations.get(organizationId);
-    if (organization) {
-      return pageMetadata({ title: `${organization.name} opportunities`, description: `Published Opportunities from ${organization.name} on Missa.`, path: `/org/${organizationId}` });
-    }
     const profile = await getProfileRepository()?.getById(organizationId);
     if (profile) {
       return pageMetadata({ title: `${profile.name} — Arts Organization`, description: profile.summary || `Explore opportunities and exhibitions at ${profile.name}.`, path: `/org/${organizationId}` });
+    }
+    const organization = (await getEngine()).store.organizations.get(organizationId);
+    if (organization) {
+      return pageMetadata({ title: `${organization.name} opportunities`, description: `Published Opportunities from ${organization.name} on Missa.`, path: `/org/${organizationId}` });
     }
     return pageMetadata({ title: 'Organization not found', description: 'This public Missa Organization page is not available.', path: `/org/${organizationId}`, noIndex: true });
   } catch {
@@ -36,24 +36,28 @@ export async function generateMetadata({ params }: { params: Promise<{ organizat
 
 export default async function PublicOrganizationPage({ params }: { params: Promise<{ organizationId: string }> }) {
   const { organizationId } = await params;
+
+  // 1. Check Gary Profiles (PostgreSQL authority) first
+  const profileRepo = getProfileRepository();
+  const profile = profileRepo ? await profileRepo.getById(organizationId) : null;
+  if (profile) {
+    if (profile.kind === "residency_center") redirect(`/residency/${profile.slug}`);
+    if (profile.kind === "grant_foundation") redirect(`/grant/${profile.slug}`);
+    if (profile.kind === "literary_magazine") redirect(`/journal/${profile.slug}`);
+    if (profile.kind === "small_press") redirect(`/press/${profile.slug}`);
+
+    return (
+      <PublicSiteShell current="Directory">
+        <InstitutionProfileView profile={profile} />
+      </PublicSiteShell>
+    );
+  }
+
+  // 2. Fallback to Radar in-memory store
   const radar = await getEngine();
   const organization = radar.store.organizations.get(organizationId);
 
   if (!organization) {
-    const profileRepo = getProfileRepository();
-    const profile = profileRepo ? await profileRepo.getById(organizationId) : null;
-    if (profile) {
-      if (profile.kind === "residency_center") redirect(`/residency/${profile.slug}`);
-      if (profile.kind === "grant_foundation") redirect(`/grant/${profile.slug}`);
-      if (profile.kind === "literary_magazine") redirect(`/journal/${profile.slug}`);
-      if (profile.kind === "small_press") redirect(`/press/${profile.slug}`);
-
-      return (
-        <PublicSiteShell current="Directory">
-          <InstitutionProfileView profile={profile} />
-        </PublicSiteShell>
-      );
-    }
     notFound();
   }
   const workspace = await getWorkspaceEngine();

@@ -10,6 +10,7 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import { getProfileRepository } from "@/lib/profileRepository";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { cleanCrawledNarrative, cleanTitleOrLabel } from "@/lib/textUtils";
 
 export const dynamic = "force-dynamic";
 
@@ -35,10 +36,6 @@ function profileLabel(profile: Pick<ProfileDetail, "kind">): string {
 
 function imageAlt(profile: Pick<ProfileDetail, "name" | "mediaAlt">): string {
   return profile.mediaAlt || `${profile.name} image`;
-}
-
-function mediaSrc(id: string): string {
-  return `/api/journals/${encodeURIComponent(id)}/media`;
 }
 
 function emailAddress(value: string | null): string | null {
@@ -138,14 +135,14 @@ export default async function JournalDetailPage({
         </Link>
 
         <header className="mt-8 flex min-w-0 flex-wrap items-start gap-4 sm:gap-6">
-          {profile.logoUrl || profile.mediaUrl ? (
-            // Directory media is served through Missa's source-preserving media route or verified logo CDN.
+          {profile.logoUrl ? (
+            // Directory logos are verified marks; fall back is handled below.
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={profile.logoUrl || mediaSrc(profile.id)}
+              src={profile.logoUrl}
               alt={imageAlt(profile)}
               decoding="async"
-              className="size-20 shrink-0 rounded-xl object-cover bg-card border border-border sm:size-28"
+              className="size-20 shrink-0 rounded-xl object-contain bg-card border border-border p-1.5 sm:size-28"
             />
           ) : (
             <span
@@ -290,7 +287,9 @@ export default async function JournalDetailPage({
               </h2>
 
               <p className="mt-3 leading-7 break-words whitespace-pre-line text-muted-foreground">
-                {displayValue(profile.editorialFocus || profile.summary)}
+                {profile.editorialFocus || profile.summary
+                  ? cleanCrawledNarrative(profile.editorialFocus || profile.summary)
+                  : UNKNOWN}
               </p>
             </section>
 
@@ -303,7 +302,7 @@ export default async function JournalDetailPage({
                   Editorial tips
                 </h2>
                 <p className="mt-3 leading-7 break-words whitespace-pre-line text-muted-foreground">
-                  {profile.editorialTips}
+                  {cleanCrawledNarrative(profile.editorialTips)}
                 </p>
               </section>
             ) : null}

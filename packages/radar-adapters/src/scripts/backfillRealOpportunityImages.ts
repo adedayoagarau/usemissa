@@ -84,7 +84,7 @@ async function run() {
       if (img) {
         await pool.query(`
           INSERT INTO opportunity_identity_assets (id, opportunity_id, url, alt, rights_status, kind, created_at)
-          VALUES ($1, $2, $3, $4, 'cleared', 'editorial-hero', NOW())
+          VALUES ($1, $2, $3, $4, 'cleared', 'opportunity-artwork', NOW())
           ON CONFLICT (id) DO UPDATE SET url = EXCLUDED.url, rights_status = 'cleared'
         `, [`asset_${row.id}`, row.id, img, `${row.title} visual`]);
         added++;

@@ -5,39 +5,90 @@
 const NUMERIC_ENTITY_REGEX = new RegExp("&\\x23(\\d+);", "g");
 const HEX_ENTITY_REGEX = new RegExp("&\\x23x([0-9a-fA-F]+);", "g");
 
+const ENTITY_MAP: Record<string, string> = {
+  "&amp;": "&",
+  "&apos;": "'",
+  "&quot;": '"',
+  "&lt;": "<",
+  "&gt;": ">",
+  "&nbsp;": " ",
+  "&middot;": "·",
+  "&mdash;": "—",
+  "&ndash;": "–",
+  "&hellip;": "…",
+  "&lsquo;": "‘",
+  "&rsquo;": "’",
+  "&ldquo;": "“",
+  "&rdquo;": "”",
+  "&bull;": "•",
+  "&deg;": "°",
+  "&raquo;": "»",
+  "&laquo;": "«",
+  "&rsaquo;": "›",
+  "&lsaquo;": "‹",
+  "&copy;": "©",
+  "&reg;": "®",
+  "&trade;": "™",
+  "&sect;": "§",
+  "&para;": "¶",
+  "&dagger;": "†",
+  "&Dagger;": "‡",
+  "&times;": "×",
+  "&divide;": "÷",
+  "&plusmn;": "±",
+  "&euro;": "€",
+  "&pound;": "£",
+  "&yen;": "¥",
+  "&cent;": "¢",
+  "&shy;": "",
+};
+
+function decodeSinglePass(text: string): string {
+  let s = text;
+  for (const [ent, val] of Object.entries(ENTITY_MAP)) {
+    if (s.includes(ent)) {
+      s = s.replaceAll(ent, val);
+    }
+  }
+  s = s.replace(NUMERIC_ENTITY_REGEX, (_, code) => {
+    try {
+      const num = parseInt(code, 10);
+      return Number.isFinite(num) && num > 0 ? String.fromCodePoint(num) : "";
+    } catch {
+      return "";
+    }
+  });
+  s = s.replace(HEX_ENTITY_REGEX, (_, hex) => {
+    try {
+      const num = parseInt(hex, 16);
+      return Number.isFinite(num) && num > 0 ? String.fromCodePoint(num) : "";
+    } catch {
+      return "";
+    }
+  });
+  return s;
+}
+
 export function decodeHtmlEntities(text: string | null | undefined): string {
   if (!text) return "";
-  return text
-    .replace(/&amp;/g, "&")
-    .replace(/&apos;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&middot;/g, "·")
-    .replace(/&mdash;/g, "—")
-    .replace(/&ndash;/g, "–")
-    .replace(/&hellip;/g, "…")
-    .replace(/&lsquo;/g, "‘")
-    .replace(/&rsquo;/g, "’")
-    .replace(/&ldquo;/g, "“")
-    .replace(/&rdquo;/g, "”")
-    .replace(/&bull;/g, "•")
-    .replace(NUMERIC_ENTITY_REGEX, (_, code) => {
-      try {
-        return String.fromCharCode(parseInt(code, 10));
-      } catch {
-        return "";
-      }
-    })
-    .replace(HEX_ENTITY_REGEX, (_, hex) => {
-      try {
-        return String.fromCharCode(parseInt(hex, 16));
-      } catch {
-        return "";
-      }
-    })
-    .trim();
+  let current = text;
+  // Decode up to 2 passes to resolve double-encoded entities (e.g. &amp;quot;)
+  for (let i = 0; i < 2; i++) {
+    const next = decodeSinglePass(current);
+    if (next === current) break;
+    current = next;
+  }
+  return current.trim();
+}
+
+/**
+ * Sanitizes single-line titles or labels (e.g. opportunity title, org name, location)
+ * by decoding entities and collapsing internal whitespace to single spaces.
+ */
+export function cleanTitleOrLabel(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const decoded = decodeHtmlEntities(raw);
+  return decoded.replace(/[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\s]+/g, " ").trim();
 }
 
 /**

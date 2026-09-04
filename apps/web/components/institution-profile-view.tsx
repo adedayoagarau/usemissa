@@ -2,6 +2,7 @@ import type { ProfileDetail } from "@missa/radar-adapters";
 import { KIND_METADATA } from "./institution-directory-view";
 import Link from "next/link";
 import { Globe, ArrowLeft, ArrowUpRight, Calendar, Sparkles, Building2, CheckCircle2, MapPin } from "lucide-react";
+import { cleanCrawledNarrative, cleanTitleOrLabel } from "@/lib/textUtils";
 
 function safeHostname(url?: string | null): string {
   if (!url) return "Official website";
@@ -25,7 +26,8 @@ interface InstitutionProfileViewProps {
 export function InstitutionProfileView({ profile }: InstitutionProfileViewProps) {
   const meta = KIND_METADATA[profile.kind] || KIND_METADATA.all;
   const Icon = meta.icon;
-  const logoUrl = profile.logoUrl || profile.mediaUrl;
+  const logoUrl = profile.logoUrl;
+  const bannerUrl = profile.bannerUrl;
 
   return (
     <div className="mx-auto min-h-screen max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
@@ -40,6 +42,17 @@ export function InstitutionProfileView({ profile }: InstitutionProfileViewProps)
         </Link>
       </nav>
 
+      {bannerUrl ? (
+        <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={bannerUrl}
+            alt={profile.bannerAlt || `${profile.name} editorial image`}
+            className="aspect-[21/9] w-full object-cover"
+          />
+        </div>
+      ) : null}
+
       {/* Hero Header */}
       <header className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between border-b border-border pb-8">
         <div className="flex items-start gap-4 sm:gap-5">
@@ -47,8 +60,8 @@ export function InstitutionProfileView({ profile }: InstitutionProfileViewProps)
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={logoUrl}
-              alt={profile.mediaAlt || profile.name}
-              className="size-20 sm:size-24 shrink-0 rounded-2xl border border-border/80 object-cover shadow-xs"
+              alt={`${profile.name} logo`}
+              className="size-20 sm:size-24 shrink-0 rounded-2xl border border-border/80 object-contain bg-background p-2 shadow-xs"
             />
           ) : (
             <div className="flex size-20 sm:size-24 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-muted/40 text-muted-foreground">
@@ -107,10 +120,10 @@ export function InstitutionProfileView({ profile }: InstitutionProfileViewProps)
           {profile.summary || profile.editorialFocus ? (
             <section aria-labelledby="about-heading" className="space-y-3">
               <h2 id="about-heading" className="font-heading text-lg font-semibold text-foreground">
-                About {profile.name}
+                About {cleanTitleOrLabel(profile.name)}
               </h2>
               <div className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
-                {profile.summary || profile.editorialFocus}
+                {cleanCrawledNarrative(profile.summary || profile.editorialFocus)}
               </div>
             </section>
           ) : null}

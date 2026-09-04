@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import { extractProfileIntelligence } from "./profileIntelligenceExtractor.js";
+import { cleanCrawledText, cleanTitleOrLabel } from "./cleanText.js";
 
 
 export type ProfileKind =
@@ -91,6 +92,9 @@ export interface ProfileIntelligenceData {
 
 export interface ProfileDetail extends ProfileCard {
   logoUrl: string | null;
+  /** Wide editorial/banner art for the profile hero — not the logo mark. */
+  bannerUrl: string | null;
+  bannerAlt: string | null;
   visuals: ProfileVisual[];
   prizeProvenance: ProfilePrizeWinner[];
   intelligence: ProfileIntelligenceData | null;
@@ -166,15 +170,15 @@ function card(row: Record<string, unknown>): ProfileCard {
     id: String(row.id),
     slug: cleanSlug,
     kind: row.profile_kind as ProfileKind,
-    name: String(row.name),
+    name: cleanTitleOrLabel(String(row.name)),
     websiteUrl: nullableText(row.website_url),
-    summary: nullableText(row.source_summary),
+    summary: row.source_summary ? cleanCrawledText(String(row.source_summary)) : null,
     genres: jsonArray(row.genres_json),
     formats: jsonArray(row.formats_json),
     readingPeriod: nullableText(row.reading_period),
     sourceUrl: nullableText(row.source_detail_url),
     mediaUrl: nullableText(row.media_url),
-    mediaAlt: nullableText(row.media_alt),
+    mediaAlt: row.media_alt ? cleanTitleOrLabel(String(row.media_alt)) : null,
   };
 }
 
@@ -211,6 +215,7 @@ export class PostgresProfileRepository implements ProfileRepository {
       ), visuals AS (
         SELECT DISTINCT ON (profile_id) profile_id, image_url AS visual_url, label AS visual_alt
         FROM gary_profile_visuals
+        WHERE asset_type = 'logo'
         ORDER BY profile_id, created_at DESC
       ), intel AS (
         SELECT profile_id, sentiment_tags FROM gary_profile_intelligence
@@ -252,6 +257,7 @@ export class PostgresProfileRepository implements ProfileRepository {
       ), visuals AS (
         SELECT DISTINCT ON (profile_id) profile_id, image_url AS visual_url, label AS visual_alt
         FROM gary_profile_visuals
+        WHERE asset_type = 'logo'
         ORDER BY profile_id, created_at DESC
       ), intel AS (
         SELECT profile_id, sentiment_tags FROM gary_profile_intelligence
@@ -411,11 +417,18 @@ export class PostgresProfileRepository implements ProfileRepository {
       };
     }
 
-    const logoUrl = visuals.find((v) => v.assetType === "logo")?.imageUrl || base.mediaUrl;
+    const logoVisual = visuals.find((v) => v.assetType === "logo");
+    const bannerVisual =
+      visuals.find((v) => v.assetType === "banner") ??
+      visuals.find((v) => v.assetType === "issue_cover");
+    const logoUrl = logoVisual?.imageUrl ?? null;
 
     return {
       ...base,
+      // Directory/cards use logo marks; never substitute a banner into the logo slot.
       logoUrl,
+      bannerUrl: bannerVisual?.imageUrl ?? null,
+      bannerAlt: bannerVisual?.label ?? base.mediaAlt,
       visuals,
       prizeProvenance,
       intelligence,
@@ -429,8 +442,8 @@ export class PostgresProfileRepository implements ProfileRepository {
       unsolicitedSubmissions: nullableText(row.unsolicited_submissions),
       simultaneousSubmissions: nullableText(row.simultaneous_submissions),
       payment: nullableText(row.payment),
-      editorialFocus: nullableText(row.editorial_focus),
-      editorialTips: nullableText(row.editorial_tips),
+      editorialFocus: row.editorial_focus ? cleanCrawledText(String(row.editorial_focus)) : null,
+      editorialTips: row.editorial_tips ? cleanCrawledText(String(row.editorial_tips)) : null,
       contactName: nullableText(row.contact_name),
       contactEmail: nullableText(row.contact_email),
       contactDetails: nullableText(row.contact_details),

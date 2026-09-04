@@ -15,6 +15,11 @@ import type {
   OpportunityContent,
 } from "@missa/radar-engine";
 import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import {
+  cleanCrawledText,
+  cleanTitleOrLabel,
+  decodeHtmlEntities,
+} from "./cleanText.js";
 
 export interface SqlQuery {
   text: string;
@@ -214,7 +219,7 @@ function browseSummary(
   max = 300,
 ): string | undefined {
   if (!value) return undefined;
-  const normalized = value.trim();
+  const normalized = cleanTitleOrLabel(value);
   if (!normalized) return undefined;
   return normalized.length <= max
     ? normalized
@@ -854,12 +859,12 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     id: row.id.includes("_") ? row.id : `opp_${row.id}`,
     slug: boundedSlug(row.slug, row.id),
     createdAt: asIso(row.created_at),
-    title: row.title,
+    title: cleanTitleOrLabel(row.title),
     organizationId: row.organization_id ? (row.organization_id.includes("_") ? row.organization_id : `org_${row.organization_id}`) : undefined,
-    organizationName: row.organization_name ?? undefined,
+    organizationName: row.organization_name ? cleanTitleOrLabel(row.organization_name) : undefined,
     organizationVerified: row.organization_verified === "true",
     identityAssetUrl: row.identity_asset_url ?? undefined,
-    identityAssetAlt: row.identity_asset_alt ?? undefined,
+    identityAssetAlt: row.identity_asset_alt ? cleanTitleOrLabel(row.identity_asset_alt) : undefined,
     status: row.status,
     type: (["open-call", "magazine", "grant", "award", "fellowship", "residency", "festival", "scholarship", "conference", "rfp", "contest", "pitch", "exhibition", "commission", "job", "other"].includes(row.type) ? row.type : "other") as any,
     discipline: row.discipline ?? undefined,
@@ -883,13 +888,13 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
       raw: row.fee_raw ?? undefined,
     },
     prize: browseSummary(row.prize),
-    location: row.location ?? undefined,
+    location: row.location ? cleanTitleOrLabel(row.location) : undefined,
     simultaneousAllowed: row.simultaneous_allowed ?? undefined,
     submissionAvailable:
       row.submission_state === "available" && Boolean(row.submission_url),
     source: {
       kind: (["organization-website", "directory", "feed", "newsletter", "user-suggested", "partner-feed"].includes(row.source_kind) ? row.source_kind : "organization-website") as any,
-      name: row.source_name,
+      name: cleanTitleOrLabel(row.source_name),
       url: row.source_url,
       checkedAt: asIso(row.source_checked_at) ?? new Date(0).toISOString(),
       processingSucceededAt: asIso(row.processing_succeeded_at),
@@ -901,7 +906,15 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
       followingOrganization: row.following_organization,
       tailoringReasons,
     },
-    ...(row.content ? { content: row.content } : {}),
+    ...(row.content
+      ? {
+          content: {
+            ...row.content,
+            ...(row.content.summary ? { summary: cleanCrawledText(row.content.summary) } : {}),
+            ...(row.content.description ? { description: cleanCrawledText(row.content.description) } : {}),
+          },
+        }
+      : {}),
     ...(callProfile ? { callProfile } : {}),
   };
 }

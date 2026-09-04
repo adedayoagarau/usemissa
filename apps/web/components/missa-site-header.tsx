@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowUpRight, Menu, Search, X } from "lucide-react";
+import { Menu, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import styles from "./missa-site-header.module.css";
@@ -91,8 +91,7 @@ export function MissaSiteHeader({
                 size="sm"
                 className={styles.createButton}
               >
-                <span>Create account</span>
-                <ArrowUpRight aria-hidden="true" />
+                Create account
               </Button>
             </div>
           )}
@@ -138,8 +137,7 @@ export function MissaSiteHeader({
                 className={styles.mobileCreate}
                 onClick={() => setMobileOpen(false)}
               >
-                <span>Create account</span>
-                <ArrowUpRight aria-hidden="true" />
+                Create account
               </Link>
             </>
           ) : null}

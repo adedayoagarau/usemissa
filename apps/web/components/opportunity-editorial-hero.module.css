@@ -1,11 +1,11 @@
 .section {
   position: relative;
   display: grid;
-  min-height: clamp(390px, 36vw, 520px);
+  min-height: clamp(300px, 28vw, 420px);
   overflow: hidden;
   align-items: center;
   margin-inline: calc(50% - 50vw);
-  padding: 64px 40px;
+  padding: 56px 40px 64px;
   background: var(--muted);
   color: var(--foreground);
   isolation: isolate;
@@ -25,33 +25,33 @@
   inset: 0;
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--background) 98%, transparent) 0%,
-    color-mix(in srgb, var(--background) 94%, transparent) 32%,
-    color-mix(in srgb, var(--background) 66%, transparent) 52%,
-    transparent 76%
+    color-mix(in srgb, var(--background) 97%, transparent) 0%,
+    color-mix(in srgb, var(--background) 92%, transparent) 38%,
+    color-mix(in srgb, var(--background) 72%, transparent) 58%,
+    transparent 82%
   );
   content: "";
 }
 
 .heroCopy {
-  width: min(720px, 58vw);
+  width: min(680px, 56vw);
 }
 
 .heroCopy h1 {
-  max-width: 13ch;
+  max-width: 12ch;
   margin: 0;
   text-wrap: balance;
-  font-size: clamp(3.25rem, 5.7vw, 6.25rem);
+  font-size: clamp(2.75rem, 5vw, 5rem);
   font-weight: 420;
   letter-spacing: -0.045em;
-  line-height: 0.94;
+  line-height: 0.96;
 }
 
 .intro {
-  max-width: 610px;
-  margin: 28px 0 0;
+  max-width: 560px;
+  margin: 20px 0 0;
   color: var(--muted-foreground);
-  font-size: clamp(1rem, 1.35vw, 1.125rem);
+  font-size: clamp(1rem, 1.2vw, 1.0625rem);
   line-height: 1.55;
 }
 
@@ -59,36 +59,27 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 24px;
-}
-
-.curatedLabel {
-  color: var(--muted-foreground);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  margin-right: 4px;
+  gap: 6px;
+  margin-top: 20px;
 }
 
 .curatedChip {
   display: inline-flex;
   align-items: center;
   border-radius: var(--radius-full, 9999px);
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--background) 80%, transparent);
-  padding: 4px 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--background) 72%, transparent);
+  padding: 3px 10px;
   color: var(--foreground);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
   text-decoration: none;
-  backdrop-filter: blur(8px);
-  transition: all 0.15s ease-in-out;
+  transition: border-color 140ms ease, background 140ms ease;
 }
 
 .curatedChip:hover {
   background: var(--background);
-  border-color: var(--ring, var(--foreground));
-  color: var(--foreground);
+  border-color: var(--border);
 }
 
 .curatedChip:focus-visible {
@@ -98,12 +89,13 @@
 
 @media (max-width: 980px) {
   .section {
-    min-height: 460px;
-    padding-inline: 32px;
+    min-height: 380px;
+    padding-inline: 32px 32px;
+    padding-bottom: 56px;
   }
 
   .heroCopy {
-    width: min(660px, 68vw);
+    width: min(620px, 72vw);
   }
 
   .art {
@@ -113,10 +105,10 @@
 
 @media (max-width: 720px) {
   .section {
-    min-height: 520px;
-    margin-inline: -24px;
+    min-height: 420px;
+    margin-inline: calc(50% - 50vw);
     align-items: end;
-    padding: 48px 24px;
+    padding: 40px 24px 48px;
   }
 
   .art {
@@ -126,9 +118,9 @@
   .section::after {
     background: linear-gradient(
       180deg,
-      color-mix(in srgb, var(--background) 12%, transparent) 0%,
-      color-mix(in srgb, var(--background) 88%, transparent) 44%,
-      color-mix(in srgb, var(--background) 98%, transparent) 78%
+      color-mix(in srgb, var(--background) 8%, transparent) 0%,
+      color-mix(in srgb, var(--background) 86%, transparent) 42%,
+      color-mix(in srgb, var(--background) 98%, transparent) 76%
     );
   }
 
@@ -138,18 +130,21 @@
 
   .heroCopy h1 {
     max-width: 11ch;
-    font-size: clamp(3rem, 14vw, 4.8rem);
+    font-size: clamp(2.5rem, 12vw, 3.75rem);
   }
 
   .intro {
     max-width: 34rem;
-    margin-top: 20px;
+    margin-top: 16px;
+  }
+
+  .curatedTags {
+    margin-top: 16px;
   }
 }
 
 @media (max-width: 360px) {
   .section {
-    margin-inline: -16px;
     padding-inline: 16px;
   }
 }

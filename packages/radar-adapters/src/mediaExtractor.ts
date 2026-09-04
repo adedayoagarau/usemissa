@@ -582,7 +582,7 @@ export function evaluateRejection(
     ) ||
     /facebook|twitter|instagram|linkedin|follow us|share on/i.test(altLower)
   ) {
-    reasons.push("favicon-or-icon");
+    reasons.push("social-icon");
   }
 
   // 4. Avatars unrelated to the call

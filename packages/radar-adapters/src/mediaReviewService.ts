@@ -82,7 +82,10 @@ export async function reviewMediaCandidate(
     const assetKind =
       candidate.candidate_kind === "organization-logo"
         ? "organization-mark"
-        : "opportunity-cover";
+        : candidate.candidate_kind === "organization-cover" ||
+            candidate.candidate_kind === "editorial-image"
+          ? "editorial-hero"
+          : "opportunity-artwork";
     const finalAlt = params.reviewedAlt ?? candidate.alt;
 
     await client.query(

@@ -28,7 +28,9 @@
     "seo:indexnow": "node scripts/indexnow-submit.mjs",
     "waitlist:check": "node scripts/check-waitlist-release.mjs",
     "media:dry-run": "node packages/radar-adapters/dist/src/mediaDryRunCli.js",
-    "media:backfill": "node scripts/backfill-opportunity-media.mjs"
+    "media:backfill": "node scripts/backfill-opportunity-media.mjs",
+    "media:reclassify-kinds": "node scripts/reclassify-opportunity-media-kinds.mjs",
+    "postinstall": "node scripts/patch-next-themes.mjs"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.10",

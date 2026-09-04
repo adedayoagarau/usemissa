@@ -31,11 +31,11 @@
 
 .inner {
   display: flex;
-  width: calc(100% - 80px);
-  min-height: 88px;
+  width: min(calc(100% - 48px), 1360px);
+  min-height: 72px;
   margin: 0 auto;
   align-items: center;
-  gap: 56px;
+  gap: 40px;
 }
 
 .brandLink {
@@ -45,9 +45,9 @@
 
 .desktopNav {
   display: flex;
-  min-height: 88px;
+  align-self: stretch;
   align-items: stretch;
-  gap: 8px;
+  gap: 4px;
 }
 
 .desktopNav a {
@@ -56,25 +56,29 @@
   min-width: 0;
   align-items: center;
   justify-content: center;
-  padding: 0 18px;
+  padding: 0 14px;
   color: var(--muted-foreground);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   text-decoration: none;
 }
 
 .desktopNav a:hover,
-.desktopNav a:focus-visible,
-.desktopNav a[aria-current="page"] {
+.desktopNav a:focus-visible {
   color: var(--foreground);
+}
+
+.desktopNav a[aria-current="page"] {
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .desktopNav a[aria-current="page"]::after {
   position: absolute;
-  right: 12px;
+  right: 14px;
   bottom: -1px;
-  left: 12px;
-  height: 3px;
+  left: 14px;
+  height: 1px;
   background: var(--primary);
   content: "";
 }
@@ -92,32 +96,32 @@
 
 .authActions > a {
   min-height: 44px;
-  padding: 0 10px;
+  padding: 0 8px;
   display: inline-flex;
   align-items: center;
-  color: var(--foreground);
+  color: var(--muted-foreground);
   font-size: 14px;
-  font-weight: 550;
+  font-weight: 500;
+}
+
+.authActions > a:hover,
+.authActions > a:focus-visible {
+  color: var(--foreground);
 }
 
 .authActions > .createButton {
   min-height: 44px;
-  gap: 10px;
-  padding-inline: 16px 12px;
-  border-color: var(--primary);
+  padding-inline: 14px;
+  border: 0;
   background: var(--primary);
   color: var(--primary-foreground);
-  box-shadow: inset 0 -3px 0 var(--ochre-deep);
+  box-shadow: none;
+  font-weight: 550;
 }
 
 .authActions > .createButton:hover {
   background: var(--accent-deep);
   color: var(--primary-foreground);
-}
-
-.createButton svg {
-  width: 16px;
-  height: 16px;
 }
 
 .avatar {
@@ -183,15 +187,9 @@
   }
 
   .mobileNav .mobileCreate {
-    justify-content: space-between;
+    justify-content: center;
     margin-top: 4px;
     background: var(--primary);
     color: var(--primary-foreground);
-    box-shadow: inset 0 -3px 0 var(--ochre-deep);
-  }
-
-  .mobileCreate svg {
-    width: 17px;
-    height: 17px;
   }
 }

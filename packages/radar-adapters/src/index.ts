@@ -8,6 +8,11 @@
  * usage. See productionEngine.ts's dynamic import for the same reasoning.
  */
 export { LlmExtractor, type LlmExtractorOptions } from "./llmExtractor.js";
+export {
+  cleanCrawledText,
+  cleanTitleOrLabel,
+  decodeHtmlEntities,
+} from "./cleanText.js";
 export * from "./governedOperations.js";
 export {
   classifyLifecycleEvidence,

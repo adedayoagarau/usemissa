@@ -1,0 +1,50 @@
+---
+description: Missa public homepage art direction — layout, Forest grade, Midjourney plates
+globs: apps/web/app/page.tsx,apps/web/app/home.module.css,apps/web/app/design-system/homepage*/**
+alwaysApply: false
+---
+
+# Homepage art direction
+
+Canonical color is Forest, not Aubergine. Read `DESIGN.md` and
+`docs/missa-color-direction.md` before generating or placing homepage media.
+
+## Page job
+
+Signed-out `/` is a marketing surface (Spacious density). Primary action:
+Browse openings. Headline: **Opportunities and grants for every creator.**
+
+## Four acts
+
+| Act | Surface | Media |
+| --- | --- | --- |
+| 1 Night library | Exceptional Forest-700 band | Cycling studio plates (`--sref 2605247324`) |
+| 2 Open now | True white | Live opportunity artwork only. No generated fakes. |
+| 3 The path | True white | Four 4:3 stills (P1–P4) |
+| 4 Two doors | True white, full-bleed splits | Two 16:9 plates (A1–A2) |
+
+Do not make the rest of the site dark-first. One Forest hero band, then white.
+
+## Hero H1 (current)
+
+VanMoof density. Full-bleed knit/cyc plate is the hero. Type is a caption,
+not a landing-page stack. **Face left. Headline and one Explore control on
+the knit, right.** Do not put a headline on the face. No cycling list, no
+second overlay, no heavy Forest slab.
+
+- `--sref 2605247324`, forest-black cyc, ochre rim, knit texture
+- Headline at section-title scale (24px Newsreader), not marketing display
+- Lede names disciplines. Inverse `Button`: white 44px square + label
+- Mobile plate: `knit-h1-mobile.jpg` portrait. Desktop: `knit-h1.jpg`
+- Mobile nav: compact floating pill (Framer-style), not a sheet
+- No green scrim or gradient overlay on the plate
+
+## Motion
+
+Energy lives in the plate, not in UI chrome. Honor reduced-motion. No
+infinite Ken Burns.
+
+## Mobbin structure refs (do not copy palettes)
+
+- Interaction: Magnific marketing homepage (list drives the plate)
+- Motion energy: VanMoof long-exposure hero
