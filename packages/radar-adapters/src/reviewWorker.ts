@@ -13,16 +13,17 @@ type ReviewDecision = "publish" | "needs-human" | "suppress" | "error";
 type ReviewJob = { id: string; opportunityId: string; inputVersion: string };
 
 const ACTIVE_STATUSES = ["opening-soon", "open", "closing-soon", "deadline-extended"];
-const REVIEW_INTERVAL_MINUTES = 10;
+const REVIEW_INTERVAL_MINUTES = 2;
+const BACKLOG_DRAIN_DELAY_MS = 2_000;
 
 function batchSize(): number {
-  const value = Number(process.env.RADAR_REVIEW_BATCH_SIZE ?? 20);
-  return Number.isFinite(value) ? Math.max(1, Math.min(50, Math.floor(value))) : 20;
+  const value = Number(process.env.RADAR_REVIEW_BATCH_SIZE ?? 50);
+  return Number.isFinite(value) ? Math.max(1, Math.min(200, Math.floor(value))) : 50;
 }
 
 function intervalMs(): number {
   const value = Number(process.env.RADAR_REVIEW_INTERVAL_MINUTES ?? REVIEW_INTERVAL_MINUTES);
-  return Number.isFinite(value) && value > 0 ? Math.max(60_000, Math.round(value * 60_000)) : REVIEW_INTERVAL_MINUTES * 60_000;
+  return Number.isFinite(value) && value > 0 ? Math.max(15_000, Math.round(value * 60_000)) : REVIEW_INTERVAL_MINUTES * 60_000;
 }
 
 async function startRun(pool: Pool): Promise<string> {
@@ -248,18 +249,21 @@ async function main(): Promise<void> {
   console.log(`[missa-review-agent] running every ${Math.round(intervalMs() / 60_000)} minutes, batch=${batchSize()}`);
   try {
     while (!controller.signal.aborted) {
+      let hasMore = false;
       try {
         await heartbeatWorkerRun(pool, workerRunId, "review-worker");
         const result = await runReviewTick(pool);
         const outputs = Object.values(result.decisions).reduce((sum, count) => sum + count, 0);
         await heartbeatWorkerRun(pool, workerRunId, "review-worker", { inputCount: result.claimed, outputCount: outputs });
         console.log(`[missa-review-agent] tick: claimed=${result.claimed} decisions=${JSON.stringify(result.decisions)}`);
+        hasMore = result.claimed >= batchSize();
       } catch (error) {
         await heartbeatWorkerRun(pool, workerRunId, "review-worker", { lastError: error instanceof Error ? error.message : String(error) });
         console.error("[missa-review-agent] tick failed; retrying after interval", error);
       }
+      const sleepDuration = hasMore ? BACKLOG_DRAIN_DELAY_MS : intervalMs();
       await new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, intervalMs());
+        const timer = setTimeout(resolve, sleepDuration);
         controller.signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true });
       });
     }

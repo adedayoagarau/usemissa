@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { CalendarDays, MapPin, Tag } from "lucide-react";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
+import { AddOpportunityToCalendarButton } from "@/components/add-opportunity-to-calendar-button";
 import { NativeBadge } from "@/components/uitripled/native-badge-carbon";
-import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import styles from "./opportunity-browse-project-card.module.css";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -117,17 +117,19 @@ export function OpportunityBrowseProjectCard({
 
   return (
     <article className={styles.card}>
-      <Link
-        href={`/opportunities/${item.id}`}
-        className={styles.media}
-        tabIndex={-1}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={cardImage}
-          alt={item.identityAssetAlt || item.title}
-          loading="lazy"
-        />
+      <div className={styles.media}>
+        <Link
+          href={`/opportunities/${item.id}`}
+          className={styles.mediaLink}
+          tabIndex={-1}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={cardImage}
+            alt={item.identityAssetAlt || item.title}
+            loading="lazy"
+          />
+        </Link>
         <div className={styles.badges}>
           <NativeBadge variant="glass" size="sm" animate={false}>
             {typeLabel(item.type)}
@@ -142,7 +144,8 @@ export function OpportunityBrowseProjectCard({
             </NativeBadge>
           ) : null}
         </div>
-      </Link>
+        <AddOpportunityToCalendarButton item={item} className={styles.calendarAction} />
+      </div>
       <div className={styles.body}>
         <h3 className={styles.title}>
           <Link href={`/opportunities/${item.id}`}>{item.title}</Link>
@@ -171,12 +174,8 @@ export function OpportunityBrowseProjectCard({
         </div>
       </div>
       <div className={styles.footer}>
-        <SaveToTrackerButton
-          opportunityId={item.id}
-          opportunityTitle={item.title}
-        />
         <Link href={`/opportunities/${item.id}`} className={styles.view}>
-          View
+          View opportunity
         </Link>
       </div>
     </article>

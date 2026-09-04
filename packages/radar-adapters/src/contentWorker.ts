@@ -50,16 +50,17 @@ interface ReviewRow extends QueryResultRow {
   submission_state: string;
 }
 
-const CONTENT_INTERVAL_MINUTES = 10;
+const CONTENT_INTERVAL_MINUTES = 2;
+const BACKLOG_DRAIN_DELAY_MS = 2_000;
 
 function batchSize(): number {
-  const value = Number(process.env.RADAR_CONTENT_BATCH_SIZE ?? 20);
-  return Number.isFinite(value) ? Math.max(1, Math.min(50, Math.floor(value))) : 20;
+  const value = Number(process.env.RADAR_CONTENT_BATCH_SIZE ?? 50);
+  return Number.isFinite(value) ? Math.max(1, Math.min(200, Math.floor(value))) : 50;
 }
 
 function intervalMs(): number {
   const value = Number(process.env.RADAR_CONTENT_INTERVAL_MINUTES ?? CONTENT_INTERVAL_MINUTES);
-  return Number.isFinite(value) && value > 0 ? Math.max(60_000, Math.round(value * 60_000)) : CONTENT_INTERVAL_MINUTES * 60_000;
+  return Number.isFinite(value) && value > 0 ? Math.max(15_000, Math.round(value * 60_000)) : CONTENT_INTERVAL_MINUTES * 60_000;
 }
 
 function iso(value: Date | string | null | undefined): string | undefined {
@@ -372,14 +373,17 @@ async function main(): Promise<void> {
   console.log(`[missa-content-worker] running every ${Math.round(delay / 60_000)} minutes, batch=${limit}`);
   try {
     while (!controller.signal.aborted) {
+      let hasMore = false;
       try {
         const result = await runContentReviewTick(pool, limit);
         console.log(`[missa-content-worker] tick: built=${result.built} reviewed=${result.reviewed} decisions=${JSON.stringify(result.decisions)}`);
+        hasMore = result.built >= limit || result.reviewed >= limit;
       } catch (error) {
         console.error('[missa-content-worker] tick failed; retrying after interval', error);
       }
+      const sleepDuration = hasMore ? BACKLOG_DRAIN_DELAY_MS : delay;
       await new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, delay);
+        const timer = setTimeout(resolve, sleepDuration);
         controller.signal.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
       });
     }

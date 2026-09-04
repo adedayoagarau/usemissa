@@ -88,7 +88,7 @@
     "data.reorder": { "primitive": "Sortable" },
     "data.board": { "primitive": "Kanban" },
     "data.display.opportunity-card": {
-      "composition": ["Card", "NativeBadge", "SaveAction"],
+      "composition": ["Card", "NativeBadge", "AddOpportunityToCalendarButton"],
       "registrySource": "@uitripled/project-card-shadcnui",
       "implementation": "@/components/design-system/opportunity-browse-project-card"
     },
@@ -175,7 +175,7 @@
     "OpportunityBrowseProjectCard": [
       "Card",
       "NativeBadge",
-      "SaveAction"
+      "AddOpportunityToCalendarButton"
     ],
     "OpportunityDecisionSummary": [
       "StructuredList",

@@ -22,14 +22,16 @@ export type ClaimedJob = {
   organizationConfirmed?: boolean;
 };
 
+const BACKLOG_DRAIN_DELAY_MS = 5_000;
+
 function batchSize(value = process.env.RADAR_ENRICHMENT_BATCH_SIZE): number {
-  const parsed = Number(value ?? 20);
-  return Number.isFinite(parsed) ? Math.max(1, Math.min(50, Math.floor(parsed))) : 20;
+  const parsed = Number(value ?? 30);
+  return Number.isFinite(parsed) ? Math.max(1, Math.min(100, Math.floor(parsed))) : 30;
 }
 
 function intervalMs(): number {
-  const minutes = Number(process.env.RADAR_ENRICHMENT_INTERVAL_MINUTES ?? 10);
-  return Number.isFinite(minutes) && minutes > 0 ? Math.max(60_000, Math.round(minutes * 60_000)) : 600_000;
+  const minutes = Number(process.env.RADAR_ENRICHMENT_INTERVAL_MINUTES ?? 3);
+  return Number.isFinite(minutes) && minutes > 0 ? Math.max(30_000, Math.round(minutes * 60_000)) : 180_000;
 }
 
 function absoluteUrl(value: string | undefined, base: string): string | undefined {
@@ -500,15 +502,18 @@ async function main(): Promise<void> {
   console.log(`[missa-enrichment-worker] running every ${Math.round(delay / 60_000)} minutes, batch=${limit}`);
   try {
     while (!controller.signal.aborted) {
+      let hasMore = false;
       try {
         await heartbeatWorkerRun(pool, workerRunId, "enrichment-worker");
         const result = await tick(pool, limit);
         await heartbeatWorkerRun(pool, workerRunId, "enrichment-worker", { inputCount: result.claimed, outputCount: result.completed });
+        hasMore = result.claimed >= limit;
       } catch (error) {
         await heartbeatWorkerRun(pool, workerRunId, "enrichment-worker", { lastError: error instanceof Error ? error.message : String(error) });
         console.error("[missa-enrichment-worker] tick failed", error);
       }
-      await new Promise<void>((resolve) => { const timer = setTimeout(resolve, delay); controller.signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true }); });
+      const sleepDuration = hasMore ? BACKLOG_DRAIN_DELAY_MS : delay;
+      await new Promise<void>((resolve) => { const timer = setTimeout(resolve, sleepDuration); controller.signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true }); });
     }
   } finally {
     await finishWorkerRun(pool, workerRunId, "enrichment-worker", "cancelled");
