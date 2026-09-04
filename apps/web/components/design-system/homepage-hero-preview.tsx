@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowUpRight, Menu, X } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { MissaWordmark } from "@/components/missa-wordmark";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,33 @@ const navLinks = [
 
 export function HomepageHeroPreview() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [menuOpen]);
 
   return (
     <section className={styles.hero} aria-labelledby="homepage-hero-heading">
@@ -54,40 +81,49 @@ export function HomepageHeroPreview() {
           inverse
           className={styles.floatWordmark}
         />
-        <div className={styles.floatMenu}>
-          <button
-            type="button"
-            className={styles.floatToggle}
-            aria-expanded={menuOpen}
-            aria-controls="homepage-hero-menu"
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMenuOpen((open) => !open)}
+        <div className={styles.floatMenu} ref={menuRef}>
+          <div
+            className={styles.morphMenu}
+            data-open={menuOpen ? "true" : "false"}
           >
-            {menuOpen ? (
-              <X aria-hidden="true" className={styles.floatToggleIcon} />
-            ) : (
-              <Menu aria-hidden="true" className={styles.floatToggleIcon} />
-            )}
-          </button>
-          <nav
-            id="homepage-hero-menu"
-            className={styles.floatLinks}
-            aria-label="Primary"
-            hidden={!menuOpen}
-          >
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
+            <button
+              type="button"
+              className={styles.morphTrigger}
+              aria-expanded={menuOpen}
+              aria-controls="homepage-hero-menu"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <span className={styles.morphIndicator} aria-hidden="true" />
+            </button>
+            <div className={styles.morphPanel}>
+              <nav
+                id="homepage-hero-menu"
+                className={styles.morphLinks}
+                aria-label="Primary"
+                aria-hidden={!menuOpen}
+                inert={menuOpen ? undefined : true}
               >
-                {link.label}
-              </Link>
-            ))}
-            <Link href="/login" onClick={() => setMenuOpen(false)}>
-              Log in
-            </Link>
-          </nav>
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    tabIndex={menuOpen ? 0 : -1}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+                <Link
+                  href="/login"
+                  tabIndex={menuOpen ? 0 : -1}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Log in
+                </Link>
+              </nav>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -128,7 +164,7 @@ export function HomepageHeroPreview() {
             <span className={styles.exploreMark} aria-hidden="true">
               <ArrowUpRight className={styles.exploreArrow} />
             </span>
-            Browse openings
+            Explore
           </Button>
         </div>
       </div>

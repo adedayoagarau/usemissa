@@ -75,69 +75,120 @@
   pointer-events: auto;
 }
 
-.floatToggle {
-  display: inline-flex;
+.morphMenu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  transition:
+    background-color 220ms cubic-bezier(0.2, 0, 0, 1),
+    border-color 220ms cubic-bezier(0.2, 0, 0, 1),
+    padding 280ms cubic-bezier(0.2, 0, 0, 1),
+    width 280ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.morphMenu[data-open="true"] {
+  width: min(220px, calc(100vw - 32px));
+  padding: 2px 2px 6px;
+  border-color: color-mix(in srgb, var(--primary-foreground) 16%, transparent);
+  background: color-mix(in srgb, var(--accent-deep) 32%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.morphTrigger {
+  display: flex;
   width: 44px;
   height: 44px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--primary-foreground) 28%, transparent);
-  border-radius: var(--radius-md);
+  border: 0;
   background: transparent;
   color: var(--primary-foreground);
   cursor: pointer;
 }
 
-.floatToggle:hover,
-.floatToggle:focus-visible {
-  background: color-mix(in srgb, var(--primary-foreground) 8%, transparent);
-}
-
-.floatToggle:focus-visible {
+.morphTrigger:focus-visible {
   outline: 2px solid var(--primary-foreground);
   outline-offset: 2px;
-}
-
-.floatToggleIcon {
-  width: 18px;
-  height: 18px;
-}
-
-.floatLinks {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 1;
-  display: flex;
-  min-width: 220px;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px;
-  border: 1px solid color-mix(in srgb, var(--primary-foreground) 22%, transparent);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--accent-deep) 52%, transparent);
-  backdrop-filter: blur(12px);
 }
 
-.floatLinks[hidden] {
-  display: none;
+.morphIndicator {
+  display: block;
+  width: 20px;
+  height: 1.5px;
+  border-radius: 999px;
+  background: var(--primary-foreground);
+  transform-origin: center;
+  transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.floatLinks a {
+.morphMenu[data-open="false"] .morphIndicator {
+  animation: morphHint 2.4s ease-in-out infinite;
+}
+
+.morphMenu[data-open="true"] .morphIndicator {
+  transform: scaleX(0.72);
+  opacity: 0.72;
+}
+
+@keyframes morphHint {
+  0%,
+  82%,
+  100% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+
+  90% {
+    opacity: 0.55;
+    transform: scaleX(0.78);
+  }
+}
+
+.morphPanel {
+  display: grid;
+  width: 100%;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 280ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.morphMenu[data-open="true"] .morphPanel {
+  grid-template-rows: 1fr;
+}
+
+.morphLinks {
   display: flex;
-  min-height: 44px;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.morphMenu[data-open="true"] .morphLinks {
+  opacity: 1;
+  transition-delay: 70ms;
+}
+
+.morphLinks a {
+  display: flex;
+  min-height: 40px;
   align-items: center;
-  padding-inline: 12px;
+  padding-inline: 10px;
   border-radius: calc(var(--radius-md) - 2px);
   color: var(--primary-foreground);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   text-decoration: none;
 }
 
-.floatLinks a:hover,
-.floatLinks a:focus-visible {
+.morphLinks a:hover,
+.morphLinks a:focus-visible {
   background: color-mix(in srgb, var(--primary-foreground) 8%, transparent);
 }
 
@@ -181,14 +232,15 @@
   min-height: calc(100svh - 88px);
   min-height: calc(100dvh - 88px);
   flex-direction: column;
+  align-items: flex-end;
   justify-content: flex-end;
-  padding-block: 32px max(40px, env(safe-area-inset-bottom));
+  padding-block: 24px max(32px, env(safe-area-inset-bottom));
 }
 
 .copyInner {
   display: flex;
   min-width: 0;
-  width: 100%;
+  width: min(100%, 15.5rem);
   flex-direction: column;
   align-items: flex-start;
 }
@@ -203,20 +255,20 @@
   margin: 0;
   overflow-wrap: break-word;
   font-family: var(--font-heading), Georgia, serif;
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
   text-wrap: pretty;
 }
 
 .lede {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   overflow-wrap: break-word;
-  color: color-mix(in srgb, var(--primary-foreground) 80%, transparent);
-  font-size: 16px;
+  color: color-mix(in srgb, var(--primary-foreground) 76%, transparent);
+  font-size: 13px;
   font-weight: 400;
-  line-height: 1.5;
+  line-height: 1.45;
   text-wrap: pretty;
 }
 
@@ -225,15 +277,15 @@
   width: auto;
   height: 44px;
   min-width: 0;
-  margin-top: 24px;
+  margin-top: 16px;
   justify-content: flex-start;
-  gap: 12px;
+  gap: 10px;
   padding: 0;
   background: transparent;
   color: var(--primary-foreground);
   border: 0;
   box-shadow: none;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   transform: none;
 }
@@ -254,8 +306,8 @@
 
 .exploreMark {
   display: inline-flex;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
@@ -270,8 +322,8 @@
 }
 
 .exploreArrow {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   transform: translate3d(0, 0, 0);
   transition: transform 120ms cubic-bezier(0.2, 0, 0, 1);
 }
@@ -366,13 +418,47 @@
   .copyInner {
     width: min(100%, 30rem);
   }
+
+  .copy h1 {
+    font-size: 24px;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+
+  .lede {
+    margin-top: 12px;
+    color: color-mix(in srgb, var(--primary-foreground) 80%, transparent);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  .explore {
+    margin-top: 24px;
+    gap: 12px;
+    font-size: 14px;
+  }
+
+  .exploreMark {
+    width: 44px;
+    height: 44px;
+  }
+
+  .exploreArrow {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .exploreMark,
   .exploreArrow,
-  .skipLink {
+  .skipLink,
+  .morphMenu,
+  .morphPanel,
+  .morphLinks,
+  .morphIndicator {
     transition: none;
+    animation: none;
   }
 
   .explore:hover .exploreArrow,

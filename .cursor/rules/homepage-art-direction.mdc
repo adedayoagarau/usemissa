@@ -33,10 +33,10 @@ the knit, right.** Do not put a headline on the face. No cycling list, no
 second overlay, no heavy Forest slab.
 
 - `--sref 2605247324`, forest-black cyc, ochre rim, knit texture
-- Headline at section-title scale (24px Newsreader), not marketing display
-- Lede names disciplines. Inverse `Button`: white 44px square + label
+- Mobile caption: 18px Newsreader H1, 13px lede, 15.5rem rail on the knit (right)
+- Desktop caption: 24px H1, 16px lede, 30rem rail bottom-right
 - Mobile plate: `knit-h1-mobile.jpg` portrait. Desktop: `knit-h1.jpg`
-- Mobile nav: compact floating pill (Framer-style), not a sheet
+- Mobile nav: line-only trigger; frosted panel only when open
 - No green scrim or gradient overlay on the plate
 
 ## Motion
