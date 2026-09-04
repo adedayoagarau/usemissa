@@ -35,7 +35,11 @@ import { OpportunityIssueReport } from "@/components/opportunity-issue-report";
 import { PrepareChecklist } from "@/components/prepare-checklist";
 import { FollowButton } from "@/components/follow-button";
 import { MobileActionDock } from "@/components/mobile-action-dock";
-import { decodeHtmlEntities } from "@/lib/textUtils";
+import {
+  cleanCrawledNarrative,
+  decodeHtmlEntities,
+  inferSubmissionChecklist,
+} from "@/lib/textUtils";
 import { cn } from "@/lib/utils";
 import styles from "./opportunity-detail.module.css";
 
@@ -214,16 +218,18 @@ export function OpportunityDetailView({
   const organizerUrl = getOrganizerProfileUrl(relatedProfile, opportunity.organizationId);
 
   // Type identification
+  const isLiterary =
+    opportunity.type === "magazine" ||
+    (opportunity.discipline && /literature|writing|poetry|fiction|nonfiction/i.test(opportunity.discipline)) ||
+    opportunity.genres.some((g) => /literature|writing|poetry|fiction|nonfiction/i.test(g)) ||
+    /poetry|fiction|nonfiction|poem|story|manuscript|essay|memoir/i.test(opportunity.title);
   const isGrant =
     opportunity.type === "grant" ||
     opportunity.type === "fellowship" ||
     opportunity.type === "award" ||
     opportunity.type === "scholarship";
   const isResidency = opportunity.type === "residency";
-  const isExhibition = opportunity.type === "exhibition" || opportunity.type === "open-call";
-  const isLiterary =
-    opportunity.type === "magazine" ||
-    (opportunity.discipline && /literature|writing|poetry|fiction|nonfiction/i.test(opportunity.discipline));
+  const isExhibition = !isLiterary && (opportunity.type === "exhibition" || (opportunity.type === "open-call" && /exhibit|gallery|show/i.test(opportunity.title)));
 
   // Context-aware section titles
   const readingHeading = isGrant
@@ -245,16 +251,10 @@ export function OpportunityDetailView({
   const dossierHeading = isGrant
     ? "Application Checklist & Materials"
     : isResidency
-      ? "What to Prepare (Portfolio & Proposal)"
+      ? "Portfolio & Proposal Materials"
       : isExhibition
-        ? "What to Prepare (Exhibition Materials)"
-        : "What to Prepare (Submission Dossier)";
-
-  const dossierBadge = isGrant
-    ? "Application Checklist"
-    : isResidency
-      ? "Proposal Dossier"
-      : "Submission Dossier";
+        ? "Exhibition Materials"
+        : "What to Prepare";
 
   // Signal Badges
   const deadlineUrgency = getDeadlineUrgency(opportunity.deadline);
@@ -269,9 +269,9 @@ export function OpportunityDetailView({
     opportunity.content?.summary ||
     summary ||
     "";
-  const cleanCallText = decodeHtmlEntities(rawCallText);
+  const cleanCallText = cleanCrawledNarrative(rawCallText);
   const callParagraphs = cleanCallText
-    .split(/\n\s*\n|\n/)
+    .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter((p) => p.length > 0);
 
@@ -292,6 +292,28 @@ export function OpportunityDetailView({
         (m.label + (m.description ?? "")).toLowerCase().includes("anonymous"),
       ),
   );
+
+  // Dynamic, authentic submission materials (eliminates identical boilerplate)
+  const preparationMaterials = opportunity.requiredMaterials.length > 0
+    ? opportunity.requiredMaterials.map((m) => ({
+        label: decodeHtmlEntities(m.label),
+        detail: m.description
+          ? decodeHtmlEntities(m.description)
+          : m.limit
+            ? `Limit: ${m.limit}`
+            : m.required
+              ? "Required submission document"
+              : "Optional supporting material",
+      }))
+    : inferSubmissionChecklist({
+        isLiterary,
+        isGrant,
+        isResidency,
+        isExhibition,
+        text: rawCallText,
+        limitsBadge,
+        acceptedFormats: call?.acceptedFormats,
+      });
 
   const hasEligibility =
     opportunity.eligibility.length > 0 || Boolean(call?.eligibilitySummary);
@@ -544,104 +566,30 @@ export function OpportunityDetailView({
               </section>
             ) : null}
 
-            {/* 4. THE SUBMISSION DOSSIER (What to Prepare) */}
+            {/* 4. WHAT TO PREPARE (Concrete Submission / Application Checklist) */}
             <section className={styles.dossierSection} aria-labelledby="dossier-title">
               <div className={styles.sectionHeader}>
                 <h2 id="dossier-title" className="font-serif">
                   {dossierHeading}
                 </h2>
-                <span className={styles.sectionHeaderLabel}>
-                  <ShieldCheck aria-hidden="true" />
-                  {dossierBadge}
-                </span>
               </div>
 
               <div className={styles.dossierGrid}>
-                {/* 1. Stated Required Materials from DB */}
-                {opportunity.requiredMaterials.map((material) => (
-                  <div key={material.label} className={styles.dossierItem}>
+                {preparationMaterials.map((item) => (
+                  <div key={item.label} className={styles.dossierItem}>
                     <span className={styles.dossierCheck}>
                       <Check aria-hidden="true" />
                     </span>
                     <div className={styles.dossierContent}>
                       <span className={styles.dossierLabel}>
-                        {decodeHtmlEntities(material.label)}
+                        {item.label}
                       </span>
                       <span className={styles.dossierDetail}>
-                        {material.description
-                          ? decodeHtmlEntities(material.description)
-                          : material.limit
-                            ? `Limit: ${material.limit}`
-                            : material.required
-                              ? "Required submission document"
-                              : "Optional supporting material"}
+                        {item.detail}
                       </span>
                     </div>
                   </div>
                 ))}
-
-                {/* 2. Literary Manuscript & Limits (only if literary or explicitly limited) */}
-                {isLiterary ? (
-                  <div className={styles.dossierItem}>
-                    <span className={styles.dossierCheck}>
-                      <Check aria-hidden="true" />
-                    </span>
-                    <div className={styles.dossierContent}>
-                      <span className={styles.dossierLabel}>Manuscript & Work</span>
-                      <span className={styles.dossierDetail}>
-                        {limitsBadge ? `${limitsBadge} · ` : ""}
-                        {call?.acceptedFormats?.length
-                          ? `Accepted: ${call.acceptedFormats.join(", ")}`
-                          : "Standard file formats (.pdf / .docx)"}
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* 3. Anonymity / Blind Reading (only if explicitly blind) */}
-                {isBlind ? (
-                  <div className={styles.dossierItem}>
-                    <span className={styles.dossierCheck}>
-                      <Check aria-hidden="true" />
-                    </span>
-                    <div className={styles.dossierContent}>
-                      <span className={styles.dossierLabel}>Anonymity Guidelines</span>
-                      <span className={styles.dossierDetail}>
-                        Blind review: do not include your name or identifying contact info on the submitted work.
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* 4. Rights & Licensing (only if stated or literary) */}
-                {call?.rightsSummary ? (
-                  <div className={styles.dossierItem}>
-                    <span className={styles.dossierCheck}>
-                      <Check aria-hidden="true" />
-                    </span>
-                    <div className={styles.dossierContent}>
-                      <span className={styles.dossierLabel}>Rights & Policies</span>
-                      <span className={styles.dossierDetail}>
-                        {decodeHtmlEntities(call.rightsSummary)}
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
-
-                {/* If nothing is in requiredMaterials and not literary, provide clear notice */}
-                {!opportunity.requiredMaterials.length && !isLiterary ? (
-                  <div className={styles.dossierItem}>
-                    <span className={styles.dossierCheck}>
-                      <Check aria-hidden="true" />
-                    </span>
-                    <div className={styles.dossierContent}>
-                      <span className={styles.dossierLabel}>Standard Application Portal</span>
-                      <span className={styles.dossierDetail}>
-                        Complete the application form directly on the official host website. Check the portal for any specific file uploads.
-                      </span>
-                    </div>
-                  </div>
-                ) : null}
               </div>
 
               {/* Interactive tracker checklist if tracked & signed in */}
