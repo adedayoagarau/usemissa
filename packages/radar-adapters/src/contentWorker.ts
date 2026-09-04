@@ -9,6 +9,10 @@ import {
   type OpportunityContentBuildInput,
   type OpportunityContentDecision,
 } from '@missa/radar-engine';
+import {
+  writeOpportunityEditorial,
+  writeOrganizationEditorial,
+} from './editorialWriter.js';
 import { ensureAgentGraphSchema } from './agentGraphSchema.js';
 import { ensureContentReviewSchema } from './contentReviewSchema.js';
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from './workerTelemetry.js';
@@ -21,7 +25,9 @@ interface ContentRow extends QueryResultRow {
   title: string;
   type: string;
   status: string;
+  organization_id: string | null;
   organization_name: string | null;
+  organization_data: Record<string, unknown> | null;
   discipline: string | null;
   genres: string[] | null;
   deadline_kind: string;
@@ -40,6 +46,17 @@ interface ContentRow extends QueryResultRow {
   organization_confirmed: boolean;
   accepted_formats: string[] | null;
   required_materials: unknown;
+  description: string | null;
+  guidelines_text: string | null;
+  editorial_focus: string | null;
+  eligibility_summary: string | null;
+  reading_period_kind: string | null;
+}
+
+interface ContentInputResult {
+  input: OpportunityContentBuildInput;
+  organizationId: string | null;
+  organizationData: Record<string, unknown> | null;
 }
 
 interface ReviewRow extends QueryResultRow {
@@ -149,10 +166,13 @@ async function claimReviewJobs(pool: Pool, limit: number): Promise<ContentJob[]>
   return result.rows;
 }
 
-async function contentInput(pool: Pool, opportunityId: string): Promise<OpportunityContentBuildInput | null> {
+async function contentInput(pool: Pool, opportunityId: string): Promise<ContentInputResult | null> {
   const result = await pool.query<ContentRow>(
     `select o.id, o.title, o.type, o.status, o.discipline, o.genres,
+       o.description,
+       o.organization_id,
        org.data->>'name' as organization_name,
+       org.data as organization_data,
        o.deadline_kind, o.deadline_date::text as deadline_date,
        nullif(o.deadline_date::text, '') as deadline_raw,
        o.fee_status, o.fee_cents, o.fee_currency, o.prize, o.location,
@@ -162,7 +182,10 @@ async function contentInput(pool: Pool, opportunityId: string): Promise<Opportun
        coalesce(evidence.organization_confirmed, false) as organization_confirmed,
        coalesce(profile.accepted_formats, '{}') as accepted_formats,
        coalesce((select jsonb_agg(jsonb_build_object('label', m.label, 'limit', m."limit") order by m.sort_order)
-                 from opportunity_required_materials m where m.opportunity_id = o.id), '[]'::jsonb) as required_materials
+                 from opportunity_required_materials m where m.opportunity_id = o.id), '[]'::jsonb) as required_materials,
+       profile.eligibility_summary,
+       profile.reading_period_kind,
+       org.data->>'description' as editorial_focus
      from opportunities o
      join opportunity_sources s on s.id = o.source_id
      left join radar_organizations org on org.id = o.organization_id
@@ -178,25 +201,35 @@ async function contentInput(pool: Pool, opportunityId: string): Promise<Opportun
   const row = result.rows[0];
   if (!row) return null;
   return {
-    title: row.title,
-    type: row.type,
-    status: row.status,
-    organizationName: row.organization_name ?? undefined,
-    discipline: row.discipline ?? undefined,
-    genres: row.genres ?? [],
-    deadline: { kind: row.deadline_kind, date: row.deadline_date ?? undefined, raw: row.deadline_raw ?? undefined },
-    fee: { status: row.fee_status, amountCents: row.fee_cents ?? undefined, currency: row.fee_currency ?? undefined },
-    prize: row.prize ?? undefined,
-    location: row.location ?? undefined,
-    submissionUrl: row.submission_url ?? undefined,
-    guidelinesUrl: row.guidelines_url ?? undefined,
-    submissionState: row.submission_state,
-    requiredMaterials: materialArray(row.required_materials),
-    acceptedFormats: row.accepted_formats ?? [],
-    sourceUrl: row.source_url,
-    sourceProcessedAt: iso(row.processing_succeeded_at),
-    organizationConfirmed: row.organization_confirmed,
-    generatedAt: new Date().toISOString(),
+    organizationId: row.organization_id,
+    organizationData: row.organization_data,
+    input: {
+      title: row.title,
+      type: row.type,
+      status: row.status,
+      organizationName: row.organization_name ?? undefined,
+      discipline: row.discipline ?? undefined,
+      genres: row.genres ?? [],
+      deadline: { kind: row.deadline_kind, date: row.deadline_date ?? undefined, raw: row.deadline_raw ?? undefined },
+      fee: { status: row.fee_status, amountCents: row.fee_cents ?? undefined, currency: row.fee_currency ?? undefined },
+      prize: row.prize ?? undefined,
+      location: row.location ?? undefined,
+      submissionUrl: row.submission_url ?? undefined,
+      guidelinesUrl: row.guidelines_url ?? undefined,
+      submissionState: row.submission_state,
+      requiredMaterials: materialArray(row.required_materials),
+      acceptedFormats: row.accepted_formats ?? [],
+      sourceUrl: row.source_url,
+      sourceProcessedAt: iso(row.processing_succeeded_at),
+      organizationConfirmed: row.organization_confirmed,
+      generatedAt: new Date().toISOString(),
+      description: row.description ?? undefined,
+      guidelinesText: row.guidelines_text ?? undefined,
+      editorialFocus: row.editorial_focus ?? undefined,
+      organizationSummary: typeof row.organization_data?.description === 'string' ? row.organization_data.description : undefined,
+      eligibilitySummary: row.eligibility_summary ?? undefined,
+      readingPeriodKind: row.reading_period_kind ?? undefined,
+    },
   };
 }
 
@@ -225,12 +258,40 @@ async function writeHandoff(client: PoolClient, runId: string, opportunityId: st
 }
 
 async function buildJob(pool: Pool, runId: string, job: ContentJob): Promise<boolean> {
-  const input = await contentInput(pool, job.opportunityId);
-  if (!input) {
+  const fetched = await contentInput(pool, job.opportunityId);
+  if (!fetched) {
     await pool.query(`update radar_content_review_jobs set status = 'blocked', last_error = 'Opportunity is no longer content-buildable', lease_until = null, updated_at = now() where id = $1`, [job.id]);
     return false;
   }
-  const content = buildOpportunityContent(input);
+  const { input, organizationId, organizationData } = fetched;
+
+  // 1. Synthesize curatorial dossier using AI (DeepSeek / OpenAI) or elevated deterministic writer
+  const content = await writeOpportunityEditorial(input);
+
+  // 2. If the host institution has not had an editorial profile written yet, craft one
+  if (organizationId && organizationData && !organizationData.editorialProfile) {
+    try {
+      const orgEditorial = await writeOrganizationEditorial({
+        name: input.organizationName || String(organizationData.name || ''),
+        websiteUrl: String(organizationData.website_url || organizationData.websiteUrl || ''),
+        kind: String(organizationData.kind || ''),
+        location: input.location,
+        rawDescription: String(organizationData.description || organizationData.biography || ''),
+        editorialFocus: input.editorialFocus,
+        sampleCalls: [input.title],
+      });
+      await pool.query(
+        `update radar_organizations
+         set data = jsonb_set(data, '{editorialProfile}', $2::jsonb),
+             updated_at = now()
+         where id = $1`,
+        [organizationId, JSON.stringify(orgEditorial)],
+      );
+    } catch (orgErr) {
+      console.warn(`[content-worker] Failed to generate organization editorial profile for ${organizationId}:`, orgErr);
+    }
+  }
+
   const client = await pool.connect();
   try {
     await client.query('begin');

@@ -6,7 +6,6 @@ export type OpportunityRepositorySort =
   | "soonest-deadline"
   | "recently-verified"
   | "recently-added"
-  | "free-first"
   | "no-fee-first"
   | "alphabetical";
 

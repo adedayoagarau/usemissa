@@ -265,6 +265,7 @@ export function OpportunityDetailView({
 
   // Editorial Call / Grant Narrative Text
   const rawCallText =
+    opportunity.content?.curatorialOverview ||
     opportunity.content?.description ||
     opportunity.content?.summary ||
     summary ||
@@ -294,26 +295,36 @@ export function OpportunityDetailView({
   );
 
   // Dynamic, authentic submission materials (eliminates identical boilerplate)
-  const preparationMaterials = opportunity.requiredMaterials.length > 0
-    ? opportunity.requiredMaterials.map((m) => ({
-        label: decodeHtmlEntities(m.label),
-        detail: m.description
-          ? decodeHtmlEntities(m.description)
-          : m.limit
-            ? `Limit: ${m.limit}`
-            : m.required
-              ? "Required submission document"
-              : "Optional supporting material",
-      }))
-    : inferSubmissionChecklist({
-        isLiterary,
-        isGrant,
-        isResidency,
-        isExhibition,
-        text: rawCallText,
-        limitsBadge,
-        acceptedFormats: call?.acceptedFormats,
-      });
+  const preparationMaterials =
+    opportunity.content?.curatedChecklist && opportunity.content.curatedChecklist.length > 0
+      ? opportunity.content.curatedChecklist.map((c) => ({
+          label: decodeHtmlEntities(c.item),
+          detail: c.curatorialAdvice
+            ? decodeHtmlEntities(c.curatorialAdvice)
+            : c.requirement
+              ? decodeHtmlEntities(c.requirement)
+              : "Required submission document",
+        }))
+      : opportunity.requiredMaterials.length > 0
+        ? opportunity.requiredMaterials.map((m) => ({
+            label: decodeHtmlEntities(m.label),
+            detail: m.description
+              ? decodeHtmlEntities(m.description)
+              : m.limit
+                ? `Limit: ${m.limit}`
+                : m.required
+                  ? "Required submission document"
+                  : "Optional supporting material",
+          }))
+        : inferSubmissionChecklist({
+            isLiterary,
+            isGrant,
+            isResidency,
+            isExhibition,
+            text: rawCallText,
+            limitsBadge,
+            acceptedFormats: call?.acceptedFormats,
+          });
 
   const hasEligibility =
     opportunity.eligibility.length > 0 || Boolean(call?.eligibilitySummary);
@@ -521,6 +532,46 @@ export function OpportunityDetailView({
                   </p>
                 )}
               </div>
+
+              {/* Target Audience & Conceptual Fit */}
+              {opportunity.content?.targetAudience ? (
+                <div className={styles.targetAudienceCard}>
+                  <span className={styles.themeLabel}>Target Audience & Candidate Profile</span>
+                  {opportunity.content.targetAudience.careerStages &&
+                  opportunity.content.targetAudience.careerStages.length > 0 ? (
+                    <div className={styles.targetAudienceStages}>
+                      {opportunity.content.targetAudience.careerStages.map((stage) => (
+                        <span key={stage} className={styles.targetAudienceStageBadge}>
+                          {stage.replace(/-/g, " ")}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  {opportunity.content.targetAudience.idealCandidate ? (
+                    <p className={styles.targetAudienceText}>
+                      {opportunity.content.targetAudience.idealCandidate}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Insider Curatorial & Submission Guidance */}
+              {opportunity.content?.insiderTips && opportunity.content.insiderTips.length > 0 ? (
+                <div className={styles.insiderTipsCard}>
+                  <div className={styles.insiderTipsHeader}>
+                    <Sparkles className="size-4 text-primary" aria-hidden="true" />
+                    <h3 className={styles.insiderTipsTitle}>Curatorial & Submission Guidance</h3>
+                  </div>
+                  <ul className={styles.insiderTipsList}>
+                    {opportunity.content.insiderTips.map((tip, idx) => (
+                      <li key={idx} className={styles.insiderTipItem}>
+                        <span className={styles.insiderTipBullet} aria-hidden="true" />
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </section>
 
             {/* 3. ELIGIBILITY & CRITERIA (Who Can Apply) */}

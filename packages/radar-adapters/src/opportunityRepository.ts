@@ -47,7 +47,9 @@ interface OpportunityRow extends QueryResultRow {
   deadline_time: Date | string | null;
   deadline_timezone: string | null;
   deadline_raw: string | null;
-  fee_status: OpportunityRepositoryFee["status"];
+  // The canonical public contract has three values, while older crawler rows
+  // may still contain `free` or `fee` until migration 0037 is applied.
+  fee_status: OpportunityRepositoryFee["status"] | "free" | "fee";
   fee_cents: number | null;
   fee_currency: string | null;
   fee_raw: string | null;
@@ -469,6 +471,20 @@ function categoryTypes(category: string | undefined): string[] {
   return category ? (CATEGORY_TYPES[category] ?? []) : [];
 }
 
+/** Legacy crawls used spelling and separator variants. The database migration
+ * makes these durable; this read-time boundary keeps old deployments and
+ * partial backfills truthful in the meantime. */
+function canonicalLegacyDiscipline(value: string): string {
+  const normalized = value.trim().toLowerCase().replaceAll("_", " ");
+  if (["visual art", "visual arts", "visual-arts"].includes(normalized))
+    return "visual-arts";
+  if (["short story", "flash fiction", "fiction"].includes(normalized))
+    return "fiction";
+  if (["theater", "theatre", "theatre and performance"].includes(normalized))
+    return "theatre";
+  return normalized.replaceAll(" ", "-");
+}
+
 function buildOrder(sort: OpportunityRepositoryQuery["sort"]): string {
   switch (sort) {
     case "recently-verified":
@@ -477,7 +493,6 @@ function buildOrder(sort: OpportunityRepositoryQuery["sort"]): string {
       return "o.created_at desc, o.id asc";
     case "alphabetical":
       return "lower(o.title) asc, o.id asc";
-    case "free-first":
     case "no-fee-first":
       return "case when o.fee_status in ('no-fee', 'free') then 0 when o.fee_status in ('paid', 'fee') then 1 else 2 end asc, coalesce(o.fee_cents, 2147483647) asc, o.deadline_date asc nulls last, o.id asc";
     case "recommended":
@@ -516,6 +531,48 @@ function addCursorCondition(
       `(o.created_at < ${keyPlaceholder}::timestamptz or (o.created_at = ${keyPlaceholder}::timestamptz and o.id > ${idPlaceholder}))`,
     );
     return;
+  }
+
+  if (query.sort === "alphabetical" && cursor.key) {
+    const keyPlaceholder = `$${values.length + 1}`;
+    values.push(cursor.key);
+    const idPlaceholder = `$${values.length + 1}`;
+    values.push(cursor.id);
+    conditions.push(
+      `(lower(o.title) > ${keyPlaceholder} or (lower(o.title) = ${keyPlaceholder} and o.id > ${idPlaceholder}))`,
+    );
+    return;
+  }
+
+  if (query.sort === "no-fee-first" && cursor.key) {
+    try {
+      const key = JSON.parse(cursor.key) as {
+        rank?: number;
+        feeCents?: number;
+        deadline?: string;
+      };
+      if (
+        typeof key.rank === "number" &&
+        typeof key.feeCents === "number" &&
+        typeof key.deadline === "string"
+      ) {
+        const rankPlaceholder = `$${values.length + 1}`;
+        values.push(key.rank);
+        const feePlaceholder = `$${values.length + 1}`;
+        values.push(key.feeCents);
+        const deadlinePlaceholder = `$${values.length + 1}`;
+        values.push(key.deadline);
+        const idPlaceholder = `$${values.length + 1}`;
+        values.push(cursor.id);
+        const rank = "case when o.fee_status in ('no-fee', 'free') then 0 when o.fee_status in ('paid', 'fee') then 1 else 2 end";
+        conditions.push(
+          `((${rank}, coalesce(o.fee_cents, 2147483647), coalesce(o.deadline_date, date '9999-12-31'), o.id) > (${rankPlaceholder}::int, ${feePlaceholder}::int, ${deadlinePlaceholder}::date, ${idPlaceholder}))`,
+        );
+        return;
+      }
+    } catch {
+      // A malformed cursor is ignored, matching the existing safe fallback.
+    }
   }
 
   if (cursor.key) {
@@ -560,8 +617,8 @@ export function buildOpportunityBrowseQuery(
     addCondition(
       conditions,
       values,
-      "o.discipline = any($VALUE::text[])",
-      query.disciplines,
+      "case lower(replace(trim(coalesce(o.discipline, '')), '_', ' ')) when 'visual art' then 'visual-arts' when 'visual arts' then 'visual-arts' when 'short story' then 'fiction' when 'flash fiction' then 'fiction' when 'theater' then 'theatre' else replace(lower(trim(coalesce(o.discipline, ''))), ' ', '-') end = any($VALUE::text[])",
+      query.disciplines.map(canonicalLegacyDiscipline),
     );
   if (query.genres?.length)
     addCondition(
@@ -637,7 +694,7 @@ export function buildOpportunityBrowseQuery(
     addCondition(
       conditions,
       values,
-      "case when $VALUE = 'no-fee' then o.fee_status in ('no-fee', 'free') when $VALUE = 'paid' then o.fee_status in ('paid', 'fee') else o.fee_status = $VALUE end",
+      "case when $VALUE = 'no-fee' then o.fee_status in ('no-fee', 'free') when $VALUE = 'paid' then o.fee_status in ('paid', 'fee') else coalesce(o.fee_status, 'unknown') not in ('no-fee', 'free', 'paid', 'fee') end",
       query.feeStatus,
     );
   if (query.maxFeeCents !== undefined)
@@ -656,7 +713,7 @@ export function buildOpportunityBrowseQuery(
     );
   }
   if (query.deadlineKind === "rolling") {
-    conditions.push("o.deadline_kind in ('rolling', 'until-filled')");
+    conditions.push("o.deadline_kind in ('rolling', 'year-round', 'until-filled')");
   }
   if (query.simultaneousRequired !== undefined) {
     addCondition(
@@ -882,7 +939,12 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
       raw: row.deadline_raw ?? undefined,
     },
     fee: {
-      status: row.fee_status === "no-fee" || row.fee_status === "paid" ? row.fee_status : "unknown",
+      status:
+        row.fee_status === "no-fee" || row.fee_status === "free"
+          ? "no-fee"
+          : row.fee_status === "paid" || row.fee_status === "fee"
+            ? "paid"
+            : "unknown",
       amountCents: row.fee_cents ?? undefined,
       currency: row.fee_currency ?? undefined,
       raw: row.fee_raw ?? undefined,
@@ -928,6 +990,14 @@ function cursorFor(
       ? (row.createdAt ?? null)
       : sort === "recently-verified"
         ? (row.source.processingSucceededAt ?? null)
+        : sort === "alphabetical"
+          ? row.title.toLocaleLowerCase()
+          : sort === "no-fee-first"
+            ? JSON.stringify({
+                rank: row.fee.status === "no-fee" ? 0 : row.fee.status === "paid" ? 1 : 2,
+                feeCents: row.fee.amountCents ?? 2147483647,
+                deadline: row.deadline.date ?? "9999-12-31",
+              })
         : (row.deadline.date ?? null);
   return encodeCursor({ sort, key, id: row.id });
 }

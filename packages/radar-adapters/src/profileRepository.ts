@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { extractProfileIntelligence } from "./profileIntelligenceExtractor.js";
 import { cleanCrawledText, cleanTitleOrLabel } from "./cleanText.js";
+import type { OrganizationEditorialProfile } from "./editorialWriter.js";
 
 
 export type ProfileKind =
@@ -119,6 +120,7 @@ export interface ProfileDetail extends ProfileCard {
   circulation: string | null;
   titlesPerYear: string | null;
   publishesThroughContestsOnly: string | null;
+  editorialProfile?: OrganizationEditorialProfile | null;
   opportunities: ProfileOpportunity[];
 }
 
@@ -274,7 +276,8 @@ export class PostgresProfileRepository implements ProfileRepository {
         o.editorial_focus, o.editorial_tips, o.contact_name,
         COALESCE(o.contact_email, (ro.data->>'contact_email')) as contact_email,
         o.contact_details, o.issues_per_year, o.issue_price, o.subscription_price,
-        o.circulation, o.titles_per_year, o.publishes_through_contests_only
+        o.circulation, o.titles_per_year, o.publishes_through_contests_only,
+        ro.data->'editorialProfile' as editorial_profile
       FROM gary_profiles p
       LEFT JOIN radar_organizations ro ON ro.id = p.id
       LEFT JOIN latest o ON o.profile_id = p.id
@@ -455,6 +458,7 @@ export class PostgresProfileRepository implements ProfileRepository {
       publishesThroughContestsOnly: nullableText(
         row.publishes_through_contests_only,
       ),
+      editorialProfile: (row.editorial_profile as OrganizationEditorialProfile | undefined) ?? null,
       opportunities: links.rows.map((item) => ({
         id: String(item.id),
         title: String(item.title),

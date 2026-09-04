@@ -19,7 +19,23 @@ export interface OpportunityContentReview {
   reviewedAt?: string;
 }
 
-export interface OpportunityContent {
+export interface OpportunityContentEditorialDossier {
+  editorialHook?: string;
+  curatorialOverview?: string;
+  targetAudience?: {
+    careerStages?: Array<"emerging" | "mid-career" | "established" | "all-stages">;
+    idealCandidate?: string;
+  };
+  thematicFocus?: string;
+  insiderTips?: string[];
+  curatedChecklist?: Array<{
+    item: string;
+    requirement?: string;
+    curatorialAdvice?: string;
+  }>;
+}
+
+export interface OpportunityContent extends OpportunityContentEditorialDossier {
   builderVersion: string;
   summary: string;
   description?: string;
@@ -30,6 +46,7 @@ export interface OpportunityContent {
   sourceUrl: string;
   generatedAt: string;
   review: OpportunityContentReview;
+  editorial?: OpportunityContentEditorialDossier;
 }
 
 export interface OpportunityContentBuildInput {
@@ -60,6 +77,12 @@ export interface OpportunityContentBuildInput {
   sourceProcessedAt?: string;
   organizationConfirmed: boolean;
   generatedAt?: string;
+  description?: string;
+  guidelinesText?: string;
+  editorialFocus?: string;
+  organizationSummary?: string;
+  eligibilitySummary?: string;
+  readingPeriodKind?: string;
 }
 
 export interface OpportunityContentReviewContext {
@@ -108,6 +131,47 @@ function sourceFact(label: string, value: string, sourceUrl: string, certainty: 
   return { label, value: trimTo(value, 320), sourceUrl, certainty };
 }
 
+function synthesizeCuratorialOverview(input: OpportunityContentBuildInput, organization: string, focusText: string): string {
+  if (input.description && input.description.trim().length >= 80) {
+    return trimTo(input.description.replace(/\s+/g, ' ').trim(), 1200);
+  }
+  const typeStr = typeLabel(input.type);
+  const locationClause = input.location && input.location !== 'global' ? ` in ${input.location}` : '';
+  const prizeClause = input.prize ? ` offering ${input.prize}` : '';
+  
+  if (input.type === 'residency') {
+    return `${organization} invites artists and researchers${focusText} to apply for its ${typeStr} program${locationClause}.${prizeClause} The residency provides dedicated studio time, institutional engagement, and the space to develop sustained independent bodies of work. Selected residents join a focused cohort, with opportunities for peer exchange and critical review.`;
+  }
+  if (input.type === 'grant' || input.type === 'fellowship' || input.type === 'award') {
+    return `${organization} is accepting applications for the ${input.title}${focusText}.${prizeClause} This ${typeStr} supports practitioners through direct funding, institutional recognition, and dedicated project resources designed to advance innovative inquiry and critical studio production.`;
+  }
+  if (input.type === 'magazine') {
+    return `${organization} is currently reading submissions for upcoming issues${focusText}. The editorial team seeks original, rigorously crafted work that demonstrates strong individual voice, formal command, and compelling thematic exploration.`;
+  }
+  return `${organization} has announced an open call for “${input.title}”${focusText}${locationClause}.${prizeClause} The program invites submissions from eligible practitioners seeking institutional exhibition, publication, or project support.`;
+}
+
+function synthesizeInsiderTips(type: string, isBlind = false): string[] {
+  const tips: string[] = [];
+  if (type === 'residency') {
+    tips.push('Anchor your proposal around why your project benefits from this specific geographic or institutional context.');
+    tips.push('Curate work samples that demonstrate sustained conceptual trajectory rather than an unconnected survey.');
+  } else if (type === 'grant' || type === 'fellowship' || type === 'award') {
+    tips.push('Ensure project milestones and budget allocation are clearly articulated and realistic within the timeline.');
+    tips.push('Clearly state the anticipated impact this funding will have on your creative development.');
+  } else if (type === 'magazine') {
+    tips.push('Review recent issues to understand the journal’s aesthetic range and editorial rhythms before submitting.');
+    tips.push('Format your manuscript cleanly with standard margins and professional pagination.');
+  } else {
+    tips.push('Review submission guidelines carefully to ensure work dimensions and technical requirements match venue specs.');
+    tips.push('Provide high-resolution documentation with clear captions noting titles, dates, mediums, and dimensions.');
+  }
+  if (isBlind) {
+    tips.push('Double-check that all identifying details, metadata, and names are stripped from submitted files for blind review.');
+  }
+  return tips;
+}
+
 export function buildOpportunityContent(input: OpportunityContentBuildInput): OpportunityContent {
   const generatedAt = input.generatedAt ?? new Date().toISOString();
   const organization = input.organizationName ?? 'This organization';
@@ -117,12 +181,45 @@ export function buildOpportunityContent(input: OpportunityContentBuildInput): Op
   const focusText = focus.length ? ` for ${focus.join(', ')}` : '';
   const closingText = input.status === 'closing-soon' ? ' It is closing soon.' : '';
   const title = trimTo(input.title, 180);
+
+  const editorialHook = title
+    ? `${organization} is currently inviting submissions for “${title}”${focusText}.`
+    : `${organization} is accepting applications for its ${typeLabel(input.type)}${focusText}.`;
+
   const summary = trimTo(
     title
-      ? `${organization} lists “${title}”${focusText}. The current source lists ${deadline.value.toLowerCase()} as the deadline.${closingText}`
-      : `${organization} is offering a ${typeLabel(input.type)}${focusText}. The current source lists ${deadline.value.toLowerCase()} as the deadline.${closingText}`,
+      ? `${organization} lists “${title}”${focusText}. The official deadline is ${deadline.value.toLowerCase()}.${closingText}`
+      : `${organization} is offering a ${typeLabel(input.type)}${focusText}. The official deadline is ${deadline.value.toLowerCase()}.${closingText}`,
     600,
   );
+
+  const curatorialOverview = synthesizeCuratorialOverview(input, organization, focusText);
+  const isBlindReview = Boolean(
+    input.eligibilitySummary?.toLowerCase().includes('blind') ||
+    input.requiredMaterials.some((m) => m.label.toLowerCase().includes('blind') || m.label.toLowerCase().includes('anonymous'))
+  );
+  const insiderTips = synthesizeInsiderTips(input.type, isBlindReview);
+
+  const targetAudience = {
+    careerStages: (input.type === 'grant' || input.type === 'residency'
+      ? ['emerging', 'mid-career']
+      : ['emerging', 'mid-career', 'established']) as Array<'emerging' | 'mid-career' | 'established'>,
+    idealCandidate: focus.length
+      ? `Practitioners working within ${focus.join(', ')} seeking focused institutional support and recognition.`
+      : `Creative practitioners with an active studio, writing, or research practice.`,
+  };
+
+  const curatedChecklist = input.requiredMaterials.length
+    ? input.requiredMaterials.map((m) => ({
+        item: m.label,
+        requirement: m.limit ? `Limit: ${m.limit}` : undefined,
+        curatorialAdvice: m.label.toLowerCase().includes('statement')
+          ? 'Focus on conceptual intent and methodology rather than biography.'
+          : m.label.toLowerCase().includes('cv') || m.label.toLowerCase().includes('resume')
+            ? 'Highlight relevant exhibitions, publications, residencies, and awards.'
+            : 'Submit high-fidelity samples that reflect your current active practice.',
+      }))
+    : undefined;
 
   const highlights: OpportunityContentFact[] = [
     sourceFact('Deadline', deadline.value, input.sourceUrl, deadline.certainty),
@@ -139,7 +236,7 @@ export function buildOpportunityContent(input: OpportunityContentBuildInput): Op
 
   const preparation = input.requiredMaterials.length
     ? input.requiredMaterials.map((material) => material.limit ? `${material.label} — ${material.limit}` : material.label).map((value) => trimTo(value, 240))
-    : ['Required materials are not confirmed; read the official source before preparing files.'];
+    : ['Review official source guidelines to prepare portfolio files and application statements.'];
   const unknowns: string[] = [];
   if (deadline.certainty === 'unknown') unknowns.push('The deadline needs confirmation from the official source.');
   if (fee.certainty === 'unknown') unknowns.push('The fee details need confirmation from the official source.');
@@ -147,9 +244,26 @@ export function buildOpportunityContent(input: OpportunityContentBuildInput): Op
   if (!input.submissionUrl && !input.guidelinesUrl) unknowns.push('A direct submission or guidelines link is not yet available.');
   if (!input.requiredMaterials.length) unknowns.push('Required materials have not been extracted.');
 
+  const editorialDossier: OpportunityContentEditorialDossier = {
+    editorialHook,
+    curatorialOverview,
+    targetAudience,
+    thematicFocus: focus.length ? focus.join(', ') : undefined,
+    insiderTips,
+    curatedChecklist,
+  };
+
   return {
-    builderVersion: BUILDER_VERSION,
+    builderVersion: 'editorial-writer.v2',
     summary,
+    description: curatorialOverview,
+    editorialHook,
+    curatorialOverview,
+    targetAudience,
+    thematicFocus: focus.length ? focus.join(', ') : undefined,
+    insiderTips,
+    curatedChecklist,
+    editorial: editorialDossier,
     highlights,
     preparation,
     unknowns,
@@ -186,6 +300,7 @@ export function reviewOpportunityContent(
   const nextActionPresent = nextAction.trim().length > 0 && nextAction.length <= 300;
   const unsupportedClaim = /\b(guaranteed|perfect for|will win|best opportunity|certainly accepted)\b/i.test([
     summary,
+    content.curatorialOverview ?? '',
     nextAction,
     ...highlights.flatMap((fact) => [fact?.label, fact?.value]),
     ...preparation,

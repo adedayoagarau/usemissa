@@ -229,6 +229,56 @@ test("keyset cursor allocates independent key and id parameters", () => {
   assert.equal(first.values.at(-1), 2);
 });
 
+test("browse filters normalize legacy discipline, fee, and rolling values", () => {
+  const built = buildOpportunityBrowseQuery({
+    ...baseQuery,
+    disciplines: ["Visual Arts", "short story", "theater"],
+    feeStatus: "unknown",
+    deadlineKind: "rolling",
+  });
+
+  assert.match(built.text, /when 'visual arts' then 'visual-arts'/);
+  assert.match(built.text, /when 'short story' then 'fiction'/);
+  assert.match(built.text, /when 'theater' then 'theatre'/);
+  assert.match(built.text, /coalesce\(o\.fee_status, 'unknown'\) not in/);
+  assert.match(built.text, /o\.deadline_kind in \('rolling', 'year-round', 'until-filled'\)/);
+  assert.deepEqual(built.values[1], ["visual-arts", "fiction", "theatre"]);
+  assert.equal(built.values[2], "unknown");
+});
+
+test("alphabetical and free-first sorts use matching keyset cursors", () => {
+  const alphabeticalCursor = Buffer.from(
+    JSON.stringify({ sort: "alphabetical", key: "zine call", id: "opp_0001" }),
+    "utf8",
+  ).toString("base64url");
+  const alphabetical = buildOpportunityBrowseQuery({
+    ...baseQuery,
+    sort: "alphabetical",
+    cursor: alphabeticalCursor,
+  });
+  assert.match(alphabetical.text, /order by lower\(o\.title\) asc, o\.id asc/);
+  assert.match(alphabetical.text, /lower\(o\.title\) > \$2/);
+  assert.deepEqual(alphabetical.values.slice(1, 3), ["zine call", "opp_0001"]);
+
+  const freeFirstCursor = Buffer.from(
+    JSON.stringify({
+      sort: "no-fee-first",
+      key: JSON.stringify({ rank: 0, feeCents: 0, deadline: "2026-09-10" }),
+      id: "opp_0002",
+    }),
+    "utf8",
+  ).toString("base64url");
+  const freeFirst = buildOpportunityBrowseQuery({
+    ...baseQuery,
+    sort: "no-fee-first",
+    cursor: freeFirstCursor,
+  });
+  assert.match(freeFirst.text, /order by case when o\.fee_status in \('no-fee', 'free'\) then 0/);
+  assert.match(freeFirst.text, /coalesce\(o\.fee_cents, 2147483647\)/);
+  assert.match(freeFirst.text, /date '9999-12-31'/);
+  assert.deepEqual(freeFirst.values.slice(1, 5), [0, 0, "2026-09-10", "opp_0002"]);
+});
+
 test("repository maps rows and returns a continuation cursor", async () => {
   const rows = [
     {

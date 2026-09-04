@@ -531,3 +531,4 @@ export * from "./mediaExtractor.js";
 export * from "./mediaReviewService.js";
 export { inferSourceRole } from "./enrichmentWorker.js";
 export { runDryRun } from "./mediaDryRunCli.js";
+export * from "./editorialWriter.js";

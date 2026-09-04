@@ -78,6 +78,12 @@ export function InstitutionProfileView({ profile }: InstitutionProfileViewProps)
                 <CheckCircle2 className="size-3" aria-hidden="true" />
                 Verified Radar Profile
               </span>
+              {profile.editorialProfile?.demeanor ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2.5 py-0.5 font-mono text-xs font-medium text-secondary-foreground">
+                  <Sparkles className="size-3 text-primary" aria-hidden="true" />
+                  {profile.editorialProfile.demeanor}
+                </span>
+              ) : null}
             </div>
 
             <h1 className="mt-2 font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl break-words">
@@ -116,15 +122,28 @@ export function InstitutionProfileView({ profile }: InstitutionProfileViewProps)
       <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-3">
         {/* Primary Content (2 cols) */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Biography / Curatorial Focus */}
-          {profile.summary || profile.editorialFocus ? (
+          {/* Institutional Narrative / Curatorial Ethos */}
+          {profile.editorialProfile?.overview || profile.summary || profile.editorialFocus ? (
             <section aria-labelledby="about-heading" className="space-y-3">
               <h2 id="about-heading" className="font-heading text-lg font-semibold text-foreground">
                 About {cleanTitleOrLabel(profile.name)}
               </h2>
-              <div className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
-                {cleanCrawledNarrative(profile.summary || profile.editorialFocus)}
+              <div className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line font-serif">
+                {cleanCrawledNarrative(profile.editorialProfile?.overview || profile.summary || profile.editorialFocus)}
               </div>
+            </section>
+          ) : null}
+
+          {/* Curatorial & Submission Guidance */}
+          {profile.editorialProfile?.submissionGuidance ? (
+            <section aria-labelledby="guidance-heading" className="rounded-xl border border-border bg-card p-6 space-y-3">
+              <div className="flex items-center gap-2 text-foreground font-heading font-semibold text-base">
+                <Sparkles className="size-4 text-primary" aria-hidden="true" />
+                <h3 id="guidance-heading">Curatorial & Applicant Guidance</h3>
+              </div>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                {profile.editorialProfile.submissionGuidance}
+              </p>
             </section>
           ) : null}
 
