@@ -59,6 +59,7 @@ const migrationFiles = [
   '0034_creative_preparation_backfill.sql',
   '0035_visual_arts_organizations.sql',
   '0036_opportunity_media_enrichment.sql',
+  '0041_creator_portfolios.sql',
 ];
 
 

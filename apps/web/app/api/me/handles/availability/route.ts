@@ -32,17 +32,9 @@ export async function GET(request: Request) {
       },
     );
   const key = normalizeUserHandleInput(raw);
-  if (
-    !key ||
-    !process.env.DATABASE_URL ||
-    !(await handleNamespaceAvailable(process.env.DATABASE_URL).catch(
-      () => false,
-    ))
-  )
-    return NextResponse.json(
-      { available: false },
-      { headers: { "Cache-Control": "no-store" } },
-    );
+  if (!key) return NextResponse.json({available:false},{headers:{"Cache-Control":"no-store"}});
+  if (!process.env.DATABASE_URL || !(await handleNamespaceAvailable(process.env.DATABASE_URL).catch(()=>false)))
+    return NextResponse.json({error:"Availability checks are temporarily unavailable. Please retry."},{status:503});
   const resolved = await resolveHandle(process.env.DATABASE_URL, key);
   return NextResponse.json(
     { available: !resolved },

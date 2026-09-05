@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  customType,
   check,
   boolean,
   date,
@@ -4399,3 +4400,20 @@ export const waitlistInvites = pgTable(
     ),
   ],
 );
+
+
+const portfolioBytes = customType<{data:Buffer}>({dataType:()=>"bytea"});
+export const creatorPortfolioDrafts = pgTable("creator_portfolio_drafts", {
+ accountId:text("account_id").primaryKey().references(()=>accounts.id,{onDelete:"cascade"}),
+ draftData:jsonb("draft_data").notNull().default({}),
+ revision:integer("revision").notNull().default(0),
+ publishedData:jsonb("published_data"),
+ publishedAt:timestamp("published_at",{withTimezone:true}),
+ publishedMediaIds:uuid("published_media_ids").array().notNull().default(sql`'{}'::uuid[]`),
+ updatedAt,
+});
+export const creatorPortfolioMedia = pgTable("creator_portfolio_media", {
+ id:uuid("id").primaryKey(),
+ accountId:text("account_id").notNull().references(()=>accounts.id,{onDelete:"cascade"}),
+ contentType:text("content_type").notNull(),bytes:portfolioBytes("bytes").notNull(),createdAt,
+},table=>[index("creator_portfolio_media_owner_idx").on(table.accountId),check("creator_portfolio_media_bytes_check",sql`octet_length(${table.bytes}) BETWEEN 1 AND 20971520`)]);

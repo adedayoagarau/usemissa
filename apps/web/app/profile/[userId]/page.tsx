@@ -1,26 +1,13 @@
-import { notFound } from "next/navigation";
-import { PublicSiteShell } from "@/components/public-site-shell";
-import { getEngine } from "@/lib/engine";
-import { getCreatorProfileRepository } from "@/lib/creatorRepositories";
-import { PublicCreatorProfile } from "@/components/public-creator-profile";
-
-export default async function PublicProfilePage({
-  params,
-}: {
-  params: Promise<{ userId: string }>;
-}) {
-  const { userId } = await params;
-  if (!userId || userId.length > 200 || /[^a-zA-Z0-9_-]/u.test(userId))
-    notFound();
-  const repository = getCreatorProfileRepository();
-  const profile = repository
-    ? await repository.publicProfile(userId)
-    : (await getEngine()).publicUserProfile(userId);
-  if (!profile) notFound();
-
-  return (
-    <PublicSiteShell>
-      <PublicCreatorProfile profile={profile} />
-    </PublicSiteShell>
-  );
+import { notFound, redirect } from 'next/navigation';
+import { readUserHandle } from '@missa/radar-adapters';
+import { getCreatorProfileRepository } from '@/lib/creatorRepositories';
+export const dynamic='force-dynamic';
+export default async function PublicProfilePage({params}:{params:Promise<{userId:string}>}) {
+ const {userId}=await params;
+ if(!userId||userId.length>200||!process.env.DATABASE_URL)notFound();
+ const repo=getCreatorProfileRepository();
+ if(!await repo?.publicPortfolio(userId))notFound();
+ const handle=await readUserHandle(process.env.DATABASE_URL,userId);
+ if(!handle)notFound();
+ redirect(`/@${handle.handleKey}`);
 }

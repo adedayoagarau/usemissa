@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Instagram from "@/assets/svg/instagram-icon";
 import { InstitutionSocialLinks } from "./institution-social-links";
-import { portfolioDraft, publicWebUrl } from "@/lib/creator-portfolio-draft";
+import { portfolioDraft, portfolioRevision, importLocalPortfolio, publicWebUrl } from "@/lib/creator-portfolio-draft";
 import { Button, buttonVariants } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
@@ -29,6 +29,8 @@ import {
 } from "./portfolio-publication-picker";
 import { PortfolioLinkPreview } from "./portfolio-link-preview";
 import "./design-system/creator-palette.css";
+import { PortfolioHandleField } from "./portfolio-handle-field";
+import type { PortfolioData } from "@/lib/creator-portfolio-schema";
 import styles from "./creator-portfolio-studio.module.css";
 function MediaPicker({ label, value, audio = false, onSelect, onRemove }: {
   label: string; value: string; audio?: boolean;
@@ -61,16 +63,22 @@ type Work = {
   audio: string;
   formats: string[];
 };
-export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
+export function CreatorPortfolioStudio({ ownerId, publicData }: { ownerId?: string; publicData?: PortfolioData }) {
+  const isAccount = Boolean(ownerId && ownerId !== "design-preview-only");
+  const [handle, setHandle] = useState(publicData?.handle ?? "");
+  const [currentHandle, setCurrentHandle] = useState("");
+  const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const [publicationAction, setPublicationAction] = useState<"publish" | "unpublish" | "rename" | "import" | null>(null);
+  const [publishing, setPublishing] = useState(false);
   const [step, setStep] = useState(1);
   const [preview, setPreview] = useState(false);
   const [entryMode, setEntryMode] = useState("link");
-  const [theme, setTheme] = useState("sage");
-  const [name, setName] = useState(""),
-    [bio, setBio] = useState(""),
-    [photo, setPhoto] = useState(""),
-    [selected, setSelected] = useState<string[]>([]);
-  const [works, setWorks] = useState<Work[]>([]);
+  const [theme, setTheme] = useState<string>(publicData?.theme ?? "sage");
+  const [name, setName] = useState(publicData?.name ?? ""),
+    [bio, setBio] = useState(publicData?.bio ?? ""),
+    [photo, setPhoto] = useState(publicData?.photo ?? ""),
+    [selected, setSelected] = useState<string[]>(publicData?.selected ?? []);
+  const [works, setWorks] = useState<Work[]>(publicData?.works ?? []);
   const [activeWork, setActiveWork] = useState(0);
   const work = works[activeWork] ?? {
     title: "",
@@ -90,15 +98,15 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
       ),
     );
   const [viewingWork, setViewingWork] = useState<Work | null>(null);
-  const [book, setBook] = useState({ title: "", cover: "", year: "", url: "" }),
+  const [book, setBook] = useState(publicData?.book ?? { title: "", cover: "", year: "", url: "" }),
     [credit, setCredit] = useState<{
       title: string;
       venue: string;
       year: string;
       url: string;
       organization?: PortfolioOrganization;
-    }>({ title: "", venue: "", year: "", url: "" });
-  const [contact, setContact] = useState({
+    }>(publicData?.credit ?? { title: "", venue: "", year: "", url: "" });
+  const [contact, setContact] = useState(publicData?.contact ?? {
     email: "",
     website: "",
     instagram: "",
@@ -108,7 +116,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
   const [sampleDetail, setSampleDetail] = useState<
     "book" | "publication" | null
   >(null);
-  const [sections, setSections] = useState(["Books", "Selected publications"]);
+  const [sections, setSections] = useState(publicData?.sections ?? ["Books", "Selected publications"]);
   const [storage, setStorage] = useState(ownerId ? "Loading draft…" : "");
   const [ready, setReady] = useState(!ownerId);
   const [saving, setSaving] = useState(false);
@@ -118,6 +126,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
     if (!ownerId) return;
     let active = true;
     portfolioDraft<{
+      handle?: string;
       name: string;
       bio: string;
       photo: string;
@@ -133,6 +142,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
       .then((draft) => {
         if (!active) return;
         if (draft) {
+          setHandle(draft.handle ?? "");
           setName(draft.name);
           setBio(draft.bio);
           setPhoto(draft.photo);
@@ -148,8 +158,8 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
               ? draft.theme!
               : "sage",
           );
-          setStorage("Draft restored · saved to your account");
-        } else setStorage("Private draft · saved to your account");
+          setStorage(isAccount ? "Draft restored · saved to your account" : "Draft restored · saved on this device");
+        } else setStorage(isAccount ? "Private draft · saved to your account" : "Private draft · saved on this device");
         setReady(true);
       })
       .catch(() => {
@@ -157,13 +167,13 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
           setStorage(
             "Draft storage is unavailable. You can preview, but changes will not survive a reload.",
           );
-          setReady(true);
+          setReady(false);
         }
       });
     return () => {
       active = false;
     };
-  }, [ownerId]);
+  }, [ownerId, isAccount]);
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -177,6 +187,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
     setSaving(true);
     try {
       await portfolioDraft(ownerId, {
+        handle,
         name,
         bio,
         photo,
@@ -188,12 +199,11 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
         sections,
         theme,
       });
-      setStorage("Draft saved · private draft in your account");
+      setStorage(isAccount ? "Draft saved · private draft in your account" : "Draft saved · on this device");
       setDirty(false);
-    } catch {
-      setStorage(
-        "Could not save your draft. Keep this page open and try again.",
-      );
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not save. Please retry.");
+      setStorage("Could not save your draft. Keep this page open and try again.");
     } finally {
       setSaving(false);
     }
@@ -204,6 +214,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
     const timer = setTimeout(() => {
       setSaving(true);
       portfolioDraft(ownerId, {
+        handle,
         name,
         bio,
         photo,
@@ -217,13 +228,12 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
       })
         .then(() => {
           if (!cancelled) {
-            setStorage("Saved · private draft in your account");
+            setStorage(isAccount ? "Saved · private draft in your account" : "Saved · on this device");
             setDirty(false);
           }
         })
-        .catch(() => {
-          if (!cancelled)
-            setStorage("Could not save. Keep this page open and try Save now.");
+        .catch((error) => {
+          if (!cancelled) { setError(error instanceof Error ? error.message : "Could not save. Please retry."); setStorage("Could not save. Keep this page open and try Save now."); }
         })
         .finally(() => {
           if (!cancelled) setSaving(false);
@@ -235,9 +245,11 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
     };
   }, [
     ownerId,
+    isAccount,
     ready,
     dirty,
     uploading,
+    handle,
     name,
     bio,
     photo,
@@ -249,6 +261,49 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
     sections,
     theme,
   ]);
+  useEffect(() => {
+    if (!isAccount) return;
+    let active = true;
+    Promise.all([fetch("/api/me/handles").then(r=>r.json()),fetch("/api/creator/portfolio-draft").then(r=>r.json())]).then(([identity,state])=>{
+      if(!active)return;
+      setCurrentHandle(identity.handle?.handleKey ?? "");
+      setPublishedAt(state.publishedAt ?? null);
+    }).catch(()=>undefined);
+    return()=>{active=false;};
+  },[isAccount]);
+  async function uploadAccountMedia(file:File) {
+    const form=new FormData();form.set("file",file);
+    const res=await fetch("/api/creator/portfolio-media",{method:"POST",body:form});
+    const data=await res.json();if(!res.ok)throw new Error(data.error);return data.url as string;
+  }
+  async function finishPublication() {
+    if(!ownerId || !isAccount)return;
+    setPublishing(true);setError("");
+    try {
+      if(publicationAction === "import") {
+        await importLocalPortfolio(ownerId);window.location.reload();return;
+      } else if(publicationAction === "unpublish") {
+        const res=await fetch("/api/creator/portfolio-publish",{method:"DELETE"});const data=await res.json();if(!res.ok)throw new Error(data.error);
+        setPublishedAt(null);setStorage("Unpublished · your draft is safe in your account");
+      } else if(publicationAction === "rename") {
+        const res=await fetch("/api/me/handles",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({handle})});const data=await res.json();if(!res.ok)throw new Error(data.error);
+        setCurrentHandle(data.handle.handleKey);setStorage("Profile address updated");
+      } else {
+        if(!name.trim())throw new Error("Add your display name before publishing.");
+        let address=currentHandle;
+        if(!address) {
+          const res=await fetch("/api/me/handles",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({handle})});const data=await res.json();if(!res.ok)throw new Error(data.error);
+          address=data.handle.handleKey;setCurrentHandle(address);
+        }
+        // This write confirms the exact reviewed snapshot before publication.
+        await portfolioDraft(ownerId,{handle:address,name,bio,photo,selected,works,book,credit,contact,sections,theme});
+        const res=await fetch("/api/creator/portfolio-publish",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({revision:portfolioRevision(ownerId)})});const data=await res.json();if(!res.ok)throw new Error(data.error);
+        setPublishedAt(data.publishedAt);setDirty(false);setStorage("Published · your public profile is ready to share");
+      }
+      setPublicationAction(null);
+    } catch(error) {setError(error instanceof Error?error.message:"Please try again.");}
+    finally {setPublishing(false);}
+  }
   const [filter, setFilter] = useState("All work"),
     [read, setRead] = useState(false),
     [error, setError] = useState("");
@@ -275,14 +330,14 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
     let url: string;
     setUploading((count) => count + 1);
     try {
-      url = await new Promise<string>((resolve, reject) => {
+      url = isAccount ? await uploadAccountMedia(file) : await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result as string);
         reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(file);
       });
-    } catch {
-      setError("This file could not be read. Try another file.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "This file could not be read. Try another file.");
       return;
     } finally {
       setUploading((count) => count - 1);
@@ -303,7 +358,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
         ],
       }));
   };
-  const isSample = !ownerId;
+  const isSample = !ownerId && !publicData;
   const creditOrganizationHref =
     credit.organization?.href &&
     /^\/(journal|press|residency|grant|org)\/[^/]+$/.test(
@@ -337,7 +392,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
     (item) => filter === "All work" || workFormats(item).includes(filter),
   );
   return (
-    <div className={styles.world}>
+    <div className={styles.world} data-creator-theme={publicData ? theme : undefined}>
       <main id="main-content" className={styles.main}>
         {ownerId ? (
           <section
@@ -379,17 +434,19 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
               >
                 {saving ? "Saving…" : "Save now"}
               </Button>
+              {isAccount && <Button disabled={!ready || saving || uploading > 0 || publishing} onClick={() => setPublicationAction("publish")}>{publishedAt ? "Publish changes" : "Publish profile"}</Button>}
             </div>
+            {isAccount && currentHandle && <div><p>Profile address: <Link href={`/@${currentHandle}`}>usemissa.com/@{currentHandle}</Link></p><Button variant="ghost" onClick={() => {setHandle(currentHandle);setPublicationAction("rename");}}>Change profile address</Button>{publishedAt && <Button variant="ghost" onClick={() => setPublicationAction("unpublish")}>Unpublish profile</Button>}</div>}
+            {isAccount && <Button variant="ghost" disabled={!ready || saving} onClick={()=>setPublicationAction("import")}>Import a preview draft from this device</Button>}
             <p className={styles.hint}>
-              Only you can see this draft. Publishing isn’t available in this
-              preview.
+              {isAccount ? "Edits stay private until you publish. Your contact details and selected media will be public when included." : "Only you can see this draft. Publishing isn’t available in this preview."}
             </p>
           </section>
-        ) : (
+        ) : !publicData ? (
           <p className={styles.top}>
             Design preview · fictional creator and work
           </p>
-        )}
+        ) : null}
         <div className={ownerId ? styles.studioLayout : undefined}>
           {ownerId && (
             <section
@@ -518,6 +575,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                         maxLength={100}
                       />
                     </label>
+                    {!currentHandle && <PortfolioHandleField value={handle} onChange={value => {setHandle(value);setDirty(true);}} current={currentHandle} name={name} sample={!isAccount} />}
                     <label>
                       Introduction
                       <Textarea
@@ -1265,6 +1323,15 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
           {preview ? "Return to editor" : "See your profile"}
         </Button></div>
       )}
+      <Dialog open={publicationAction !== null} onOpenChange={open=>{if(!open&&!publishing)setPublicationAction(null);}}>
+        <DialogContent>
+          <DialogTitle>{publicationAction === "import" ? "Import your preview draft?" : publicationAction === "unpublish" ? "Unpublish your profile?" : publicationAction === "rename" ? "Change profile address" : "Publish your profile"}</DialogTitle>
+          <DialogDescription>{publicationAction === "import" ? "This replaces your account draft with the preview saved in this browser. Your published profile stays unchanged." : publicationAction === "unpublish" ? "Visitors will no longer see your profile or its media. Your private draft and handle stay yours." : publicationAction === "rename" ? "This changes your shareable link. Existing rename limits apply; old links redirect to your current address." : "The profile you previewed, including its contact details and media, will be visible to anyone with this link."}</DialogDescription>
+          {publicationAction !== "unpublish" && publicationAction !== "import" && <>{!currentHandle || publicationAction === "rename" ? <PortfolioHandleField value={handle} onChange={setHandle} current={currentHandle} name={name} /> : <p>usemissa.com/@{currentHandle}</p>}</>}
+          {error && <p role="alert">{error}</p>}
+          <Button disabled={publishing} onClick={finishPublication}>{publishing ? "Please wait…" : publicationAction === "import" ? "Import draft" : publicationAction === "unpublish" ? "Unpublish" : publicationAction === "rename" ? "Save new address" : "Confirm and publish"}</Button>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={sampleDetail !== null}
         onOpenChange={(value) => {

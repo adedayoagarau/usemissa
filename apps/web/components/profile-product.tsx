@@ -27,7 +27,6 @@ import type { UserHandle } from "@missa/radar-adapters";
 import { EmailForwardingCard } from "@/components/email-forwarding-card";
 import { FollowingList } from "@/components/following-list";
 import { GmailSyncCard } from "@/components/gmail-sync-card";
-import { HandleClaimCard } from "@/components/handle-claim-card";
 import { SavedSearches } from "@/components/saved-searches";
 import {
   TaxonomyBrowsePicker,
@@ -727,14 +726,7 @@ export function ProfileProduct({
           <SectionHeading section={active} />
           {active === "overview" ? (
             <div className={styles.overview}>
-              <HandleClaimCard
-                initialHandle={profile.handle.current}
-                initialNamespaceAvailable={profile.handle.namespaceAvailable}
-                claimingOpen={profile.handle.claimingOpen}
-                promptDismissed={profile.handle.promptDismissed}
-                displayName={profile.displayName}
-                published={profile.handle.published}
-              />
+              <Link href="/profile/portfolio" className={buttonVariants({variant:"outline"})}>Manage your public profile and handle</Link>
               <Alert>
                 <CircleUserRound aria-hidden="true" />
                 <AlertTitle>{nextStep.title}</AlertTitle>
