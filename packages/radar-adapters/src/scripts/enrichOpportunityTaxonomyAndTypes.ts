@@ -8,6 +8,7 @@ export interface TaxonomyEnrichmentStats {
   bipocCount: number;
   womenCount: number;
   disabilityCount: number;
+  emergingCount: number;
   translationCount: number;
   craftCount: number;
 }
@@ -21,6 +22,7 @@ export async function enrichOpportunityTaxonomyAndTypes(pool: Pool): Promise<Tax
     bipocCount: 0,
     womenCount: 0,
     disabilityCount: 0,
+    emergingCount: 0,
     translationCount: 0,
     craftCount: 0,
   };
@@ -28,7 +30,7 @@ export async function enrichOpportunityTaxonomyAndTypes(pool: Pool): Promise<Tax
   const client = await pool.connect();
   try {
     const res = await client.query(`
-      SELECT o.id, o.title, o.type, o.genres, o.search_document,
+      SELECT o.id, o.title, o.type, o.opportunity_type_id, o.genres, o.search_document,
              coalesce(org.data->>'name', '') as org_name
       FROM opportunities o
       LEFT JOIN radar_organizations org ON org.id = o.organization_id
@@ -40,6 +42,7 @@ export async function enrichOpportunityTaxonomyAndTypes(pool: Pool): Promise<Tax
     const updates: Array<{
       id: string;
       newType: string;
+      newTypeId: string | null;
       newGenres: string[];
       newSearchDoc: string;
     }> = [];
@@ -49,37 +52,48 @@ export async function enrichOpportunityTaxonomyAndTypes(pool: Pool): Promise<Tax
       let tagsChanged = false;
 
       let currentType: string = (row.type || "").trim().toLowerCase();
+      let currentTypeId: string = (row.opportunity_type_id || "").trim().toLowerCase();
       const currentGenres: string[] = Array.isArray(row.genres) ? [...row.genres] : [];
       let searchDoc: string = (row.search_document || "").toLowerCase();
       const combinedText = `${row.title} ${row.org_name} ${searchDoc}`.toLowerCase();
 
       // 1. Reclassify ambiguous opportunity types (e.g. "open-call", "other", or empty)
-      if (!currentType || currentType === "open-call" || currentType === "other") {
-        if (/\b(residency|artist-in-residence|air program|creative retreat)\b/i.test(combinedText)) {
-          currentType = "residency";
-          typeChanged = true;
-        } else if (/\b(fellowship|scholarship|mentorship program)\b/i.test(combinedText)) {
-          currentType = "fellowship";
-          typeChanged = true;
-        } else if (/\b(grant|funding|project grant|emergency fund|artist grant)\b/i.test(combinedText)) {
-          currentType = "grant";
-          typeChanged = true;
-        } else if (/\b(contest|prize|competition|award|poetry prize|fiction contest)\b/i.test(combinedText)) {
-          currentType = "contest";
-          typeChanged = true;
-        } else if (/\b(exhibition|biennial|triennial|gallery call|juried show|curatorial proposal)\b/i.test(combinedText)) {
-          currentType = "exhibition";
-          typeChanged = true;
-        } else if (/\b(magazine|journal|literary review|periodical|chapbook|anthology)\b/i.test(combinedText)) {
-          currentType = "magazine";
-          typeChanged = true;
-        } else if (/\b(job|employment|hiring|internship|curator role|editorial position|faculty)\b/i.test(combinedText)) {
-          currentType = "job";
-          typeChanged = true;
+      let targetType = currentType;
+      if (!targetType || targetType === "open-call" || targetType === "other") {
+        if (/\b(residency|artist-in-residence|air program|creative retreat|fellow in residence)\b/i.test(combinedText)) {
+          targetType = "residency";
+        } else if (/\b(fellowship|mentorship program|scholarship)\b/i.test(combinedText)) {
+          targetType = "fellowship";
+        } else if (/\b(grant|funding|project grant|emergency fund|artist grant|relief fund)\b/i.test(combinedText)) {
+          targetType = "grant";
+        } else if (/\b(contest|prize|competition|award|poetry prize|fiction contest|short story prize|annual award)\b/i.test(combinedText)) {
+          targetType = "contest";
+        } else if (/\b(exhibition|biennial|triennial|gallery call|juried show|curatorial proposal|solo show|group show|open call for artists|call for artists|art submissions)\b/i.test(combinedText)) {
+          targetType = "exhibition";
+        } else if (/\b(magazine|journal|literary review|periodical|chapbook|anthology|call for submissions?:? (poetry|fiction|prose|work)|poems?|poetry for|fiction for|issue\s+\d+|publication)\b/i.test(combinedText)) {
+          targetType = "magazine";
+        } else if (/\b(job|employment|hiring|internship|curator role|editorial position|faculty|stage manager)\b/i.test(combinedText)) {
+          targetType = "job";
         } else if (/\b(commission|public art|mural proposal|site-specific installation)\b/i.test(combinedText)) {
-          currentType = "commission";
-          typeChanged = true;
+          targetType = "commission";
+        } else if (/\b(festival|conference|symposium|summit)\b/i.test(combinedText)) {
+          targetType = "festival";
         }
+      }
+
+      if (targetType !== currentType) {
+        typeChanged = true;
+      }
+
+      // Map targetType to valid opportunity_type_id
+      let targetTypeId = targetType;
+      if (targetType === "magazine") targetTypeId = "publication";
+      else if (targetType === "contest") targetTypeId = "competition";
+      else if (targetType === "commission" || targetType === "public_art") targetTypeId = "open-call";
+      else if (targetType === "job" || targetType === "other") targetTypeId = "open-call";
+
+      if (targetTypeId !== currentTypeId) {
+        typeChanged = true;
       }
 
       // 2. Identity & thematic taxonomy enrichment
@@ -101,7 +115,7 @@ export async function enrichOpportunityTaxonomyAndTypes(pool: Pool): Promise<Tax
       }
 
       // B. BIPOC / Creators of Color
-      if (/\b(bipoc|black\s+writers?|black\s+artists?|indigenous|native\s+american|first\s+nations|latinx|latine|hispanic|asian\s+american|aapi|writers\s+of\s+color|artists\s+of\s+color)\b/i.test(combinedText)) {
+      if (/\b(bipoc|black\s+writers?|black\s+artists?|indigenous|native\s+american|first\s+nations|latinx|latine|hispanic|asian\s+american|aapi|writers\s+of\s+color|artists\s+of\s+color|creators\s+of\s+color|underrepresented)\b/i.test(combinedText)) {
         if (!newGenresSet.has("BIPOC") && !newGenresSet.has("Writers of Color")) {
           newGenresSet.add("BIPOC");
           newGenresSet.add("Writers of Color");
@@ -115,7 +129,7 @@ export async function enrichOpportunityTaxonomyAndTypes(pool: Pool): Promise<Tax
       }
 
       // C. Women & Non-Binary
-      if (/\b(women|woman|female|non-binary|gender-marginalized|female-identifying)\b/i.test(combinedText)) {
+      if (/\b(women|woman|female|non-binary|gender-marginalized|female-identifying|femme|matron|mothers)\b/i.test(combinedText)) {
         if (!newGenresSet.has("Women") && !newGenresSet.has("Non-Binary")) {
           newGenresSet.add("Women");
           newGenresSet.add("Non-Binary");
@@ -129,7 +143,7 @@ export async function enrichOpportunityTaxonomyAndTypes(pool: Pool): Promise<Tax
       }
 
       // D. Disability & Neurodivergence
-      if (/\b(disabilit|disabled|neurodiverg|autis|deaf|accessib)\b/i.test(combinedText)) {
+      if (/\b(disabilit|disabled|neurodiverg|autis|deaf|chronically\s+ill|accessibility|accessible\s+to\s+all)\b/i.test(combinedText)) {
         if (!newGenresSet.has("Disability") && !newGenresSet.has("Neurodivergent")) {
           newGenresSet.add("Disability");
           newGenresSet.add("Neurodivergent");
@@ -142,7 +156,20 @@ export async function enrichOpportunityTaxonomyAndTypes(pool: Pool): Promise<Tax
         stats.disabilityCount++;
       }
 
-      // E. Translation
+      // E. Emerging / Early Career
+      if (/\b(emerging|early-career|debut|first\s+book|first\s+collection|undergraduate|student\s+writers?)\b/i.test(combinedText)) {
+        if (!newGenresSet.has("Emerging")) {
+          newGenresSet.add("Emerging");
+          tagsChanged = true;
+        }
+        if (!searchDoc.includes("emerging")) {
+          searchTermsToAdd.push("emerging early-career debut");
+          tagsChanged = true;
+        }
+        stats.emergingCount++;
+      }
+
+      // F. Translation
       if (/\b(translation|translator|translated|multilingual|bilingual)\b/i.test(combinedText)) {
         if (!newGenresSet.has("Translation")) {
           newGenresSet.add("Translation");
@@ -155,7 +182,7 @@ export async function enrichOpportunityTaxonomyAndTypes(pool: Pool): Promise<Tax
         stats.translationCount++;
       }
 
-      // F. Craft / Ceramics
+      // G. Craft / Ceramics
       if (/\b(craft|ceramics|ceramic|pottery|textiles|glass|metalwork|woodwork)\b/i.test(combinedText)) {
         if (!newGenresSet.has("Craft") && !newGenresSet.has("Ceramics")) {
           newGenresSet.add("Craft");
@@ -177,13 +204,14 @@ export async function enrichOpportunityTaxonomyAndTypes(pool: Pool): Promise<Tax
         if (searchTermsToAdd.length > 0) {
           updatedSearchDoc = `${searchDoc} ${searchTermsToAdd.join(" ")}`;
         }
-        if (typeChanged && !updatedSearchDoc.includes(currentType)) {
-          updatedSearchDoc = `${updatedSearchDoc} ${currentType}`;
+        if (typeChanged && !updatedSearchDoc.includes(targetType)) {
+          updatedSearchDoc = `${updatedSearchDoc} ${targetType}`;
         }
 
         updates.push({
           id: row.id,
-          newType: currentType,
+          newType: targetType,
+          newTypeId: targetTypeId,
           newGenres: Array.from(newGenresSet),
           newSearchDoc: updatedSearchDoc.trim(),
         });
@@ -200,9 +228,9 @@ export async function enrichOpportunityTaxonomyAndTypes(pool: Pool): Promise<Tax
       for (const item of batch) {
         await client.query(
           `UPDATE opportunities
-           SET type = $1, genres = $2, search_document = $3, updated_at = now()
-           WHERE id = $4`,
-          [item.newType, item.newGenres, item.newSearchDoc, item.id]
+           SET type = $1, opportunity_type_id = $2, genres = $3, search_document = $4, updated_at = now()
+           WHERE id = $5`,
+          [item.newType, item.newTypeId, item.newGenres, item.newSearchDoc, item.id]
         );
       }
       await client.query("COMMIT");
@@ -228,6 +256,7 @@ if (process.argv[1] && /enrichOpportunityTaxonomyAndTypes\.(ts|js)$/.test(proces
       console.log(`  • BIPOC: ${stats.bipocCount}`);
       console.log(`  • Women & Non-Binary: ${stats.womenCount}`);
       console.log(`  • Disability / Accessible: ${stats.disabilityCount}`);
+      console.log(`  • Emerging / Debut: ${stats.emergingCount}`);
       console.log(`  • Translation: ${stats.translationCount}`);
       console.log(`  • Craft & Ceramics: ${stats.craftCount}`);
       return pool.end();
