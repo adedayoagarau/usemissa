@@ -1,5 +1,7 @@
 # Public creator portfolio
 
+Current integration reference: [Directory and creator portfolio handoff](directory-portfolio-integration-handoff.md). Use its source-verified endpoints and persistence boundaries when continuing implementation; older historical status below may be superseded.
+
 The public profile is the visitor-facing result. Its identity, selected work, books and credits serve visibility across disciplines. Portrait, editorial Newsreader headings, Instrument Sans interface text and the approved green surface carry the design direction.
 
 ## Routes and ownership
@@ -76,3 +78,22 @@ Final phone verification: the public tunnel was exercised at 390px, including in
 Upload selection uses the existing Button policy with a labelled native file input: visible Add, Replace, Remove, supported formats, size limit, and the existing media preview. No vendor component or theme was installed. Filters are shown only for multiple media formats. Book cover/title retain their destination without a duplicate button; publication credits lead with the work title and retain separate organization and work destinations. Link-only work shows its destination hostname. Mobile preview navigation has its own bottom surface and safe-area padding.
 
 Next slice: connect this editor to authenticated account storage, durable media upload, and an explicit preview/publish/unpublish journey, then render the approved portfolio on the real public profile route. Current drafts remain device-local; this pass does not publish anything. Preserve existing drafts during migration. Optional fetched metadata must be reviewed by the creator before becoming authored profile content.
+
+## Account-connected portfolio slice (September 4, 2026)
+
+This section supersedes the earlier device-only boundary for `/profile/portfolio`.
+The design-system previews deliberately remain device-local and cannot publish.
+
+- **Intent and components:** selection of a public address uses `input.creator-handle` / `PortfolioHandleField`, built from installed `ui/Input`, `ui/Button`, and labelled status text. Publishing, renaming, unpublishing and import are focused confirmations using the existing Dialog policy. No registry install or visual theme migration.
+- **Journey:** Account → Public profile → About you. Display name is prefilled from the account when available. Handle is optional while drafting and suggested from the name. Availability is debounced, cancellable, and distinguishes taken names from service failure. First publish claims the handle and confirms the final address. Claimed handles are changed separately from ordinary biography editing. Existing reservation and invite/rename rules remain authoritative.
+- **Persistence:** authenticated writes are awaited, with a revision check to prevent stale tabs/devices overwriting each other. A local recovery copy remains. Draft errors never claim account success. Loading failure disables editing and offers retry. An explicit import copies the sample preview from the current browser; it does not automatically import another browser/account's content.
+- **Publication:** a validated snapshot is separate from the editable draft. Only titled works and enabled book/publication sections enter that snapshot. Contact fields included in the preview become public only on confirmation. Unpublishing clears public data/media access while retaining the draft and handle. Public routes read only the published projection; old user-ID URLs redirect to the canonical handle. Renamed handle aliases redirect to the current published URL.
+- **Media:** authenticated uploads verify file content type and size. Media is stored separately in PostgreSQL, limited to 20 MB per file and 100 MB per account, and served through an owner-or-published-reference gate with no-store headers. No Vercel Blob credential is needed for this implementation. Raw data URLs from older drafts are migrated to owned media before account saving; local copies are retained. This is a bounded initial storage implementation, not a CDN/transcoding pipeline.
+- **Migration:** `packages/db/migrations/0041_creator_portfolios.sql` preserves existing drafts, adds revision/public snapshot fields and creates owned media storage. The connected database was inspected and already contained these tables/columns. This slice did not run a remote migration. Schema correctness and snapshot behavior were tested independently with PGlite PostgreSQL in isolation.
+- **Phone:** the temporary proxy permits the profile/login and authenticated portfolio/handle endpoints, forwards sessions, and rejects cross-origin mutations. The anonymous design preview remains separate. No application deployment is included.
+
+Validation: focused PostgreSQL test covers legacy migration, stale revisions, ownership, private/public media access, unchanged publication during editing, and unpublish. Browser journey tests cover responsive sample/editor behavior and anonymous API rejection. The account client flow uses mocked transport, not a real-user sign-in or a claim against the live namespace. No real creator profile was published as a test. Native iOS Safari login and end-to-end cross-device account use still require the user's review; Chromium mobile/reflow checks do not substitute for that.
+
+Next product page after reviewing this slice: For organizations. Account feature follow-ons include multiple books/publication entries, media storage management and a CDN pipeline; none are prerequisites for the existing single-book/single-credit editor.
+
+Final focused validation for this slice: seven Playwright tests passed (including the real account client component with mocked transport), the isolated PostgreSQL snapshot/ownership test passed, TypeScript and scoped ESLint passed, and the design-system policy passed. The temporary phone URL returned login successfully, redirected protected settings to login, and returned 401 for anonymous account data. A fresh isolated Chromium session at 390 px rendered the handle field without horizontal overflow; the user's phone draft was not modified by QA.

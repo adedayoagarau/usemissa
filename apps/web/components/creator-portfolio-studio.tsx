@@ -105,9 +105,11 @@ type Work = {
 export function CreatorPortfolioStudio({
   ownerId,
   publicData,
+  initialName = "",
 }: {
   ownerId?: string;
   publicData?: PortfolioData;
+  initialName?: string;
 }) {
   const isAccount = Boolean(ownerId && ownerId !== "design-preview-only");
   const [handle, setHandle] = useState(publicData?.handle ?? "");
@@ -124,7 +126,7 @@ export function CreatorPortfolioStudio({
   const [preview, setPreview] = useState(false);
   const [entryMode, setEntryMode] = useState("link");
   const [theme, setTheme] = useState<string>(publicData?.theme ?? "sage");
-  const [name, setName] = useState(publicData?.name ?? ""),
+  const [name, setName] = useState(publicData?.name ?? initialName),
     [bio, setBio] = useState(publicData?.bio ?? ""),
     [photo, setPhoto] = useState(publicData?.photo ?? ""),
     [selected, setSelected] = useState<string[]>(publicData?.selected ?? []);
@@ -178,6 +180,11 @@ export function CreatorPortfolioStudio({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(0);
   const [dirty, setDirty] = useState(false);
+  const mutationVersion = useRef(0);
+  const markDirty = () => {
+    mutationVersion.current += 1;
+    setDirty(true);
+  };
   useEffect(() => {
     if (!ownerId) return;
     let active = true;
@@ -227,10 +234,12 @@ export function CreatorPortfolioStudio({
           );
         setReady(true);
       })
-      .catch(() => {
+      .catch((error) => {
         if (active) {
           setStorage(
-            "Draft storage is unavailable. You can preview, but changes will not survive a reload.",
+            error instanceof Error
+              ? error.message
+              : "Could not load your draft. Retry before editing.",
           );
           setReady(false);
         }
@@ -249,6 +258,7 @@ export function CreatorPortfolioStudio({
   }, [dirty]);
   const saveDraft = async () => {
     if (!ownerId) return;
+    const version = mutationVersion.current;
     setSaving(true);
     try {
       await portfolioDraft(ownerId, {
@@ -269,7 +279,7 @@ export function CreatorPortfolioStudio({
           ? "Draft saved · private draft in your account"
           : "Draft saved · on this device",
       );
-      setDirty(false);
+      if (mutationVersion.current === version) setDirty(false);
     } catch (error) {
       setError(
         error instanceof Error
@@ -306,7 +316,7 @@ export function CreatorPortfolioStudio({
             setStorage(
               isAccount
                 ? "Saved · private draft in your account"
-                : "Saved · on this device",
+                : "Saved on this device",
             );
             setDirty(false);
           }
@@ -491,7 +501,7 @@ export function CreatorPortfolioStudio({
     } finally {
       setUploading((count) => count - 1);
     }
-    setDirty(true);
+    markDirty();
     if (kind === "photo") setPhoto(url);
     else if (kind === "cover")
       setBook((current) => ({ ...current, cover: url }));
@@ -571,6 +581,14 @@ export function CreatorPortfolioStudio({
                   ? "Changes will save shortly…"
                   : storage}
             </p>
+            {!ready && (
+              <Button
+                variant="outline"
+                onClick={() => window.location.reload()}
+              >
+                Retry loading draft
+              </Button>
+            )}
             <div className={styles.contactActions}>
               <Button
                 disabled={!ready}
@@ -599,9 +617,7 @@ export function CreatorPortfolioStudio({
               <div>
                 <p>
                   Profile address:{" "}
-                  <Link href={`/@${currentHandle}`}>
-                    usemissa.com/@{currentHandle}
-                  </Link>
+                  {publishedAt ? <Link href={`/@${currentHandle}`}>usemissa.com/@{currentHandle}</Link> : <span>usemissa.com/@{currentHandle} · not published</span>}
                 </p>
                 <Button
                   variant="ghost"
@@ -679,7 +695,7 @@ export function CreatorPortfolioStudio({
                 disabled={!ready}
                 aria-busy={!ready}
                 className={styles.editorFields}
-                onChange={() => setDirty(true)}
+                onChange={() => markDirty()}
               >
                 <p className={styles.eyebrow}>YOUR SPACE</p>
                 <h2>
@@ -720,7 +736,7 @@ export function CreatorPortfolioStudio({
                         aria-pressed={theme === value}
                         onClick={() => {
                           setTheme(value);
-                          setDirty(true);
+                          markDirty();
                         }}
                       >
                         <span
@@ -747,7 +763,7 @@ export function CreatorPortfolioStudio({
                         variant={selected.includes(p) ? "default" : "outline"}
                         aria-pressed={selected.includes(p)}
                         onClick={() => {
-                          setDirty(true);
+                          markDirty();
                           setSelected(
                             selected.includes(p)
                               ? selected.filter((x) => x !== p)
@@ -775,7 +791,7 @@ export function CreatorPortfolioStudio({
                         value={handle}
                         onChange={(value) => {
                           setHandle(value);
-                          setDirty(true);
+                          markDirty();
                         }}
                         current={currentHandle}
                         name={name}
@@ -794,7 +810,10 @@ export function CreatorPortfolioStudio({
                       label="Profile photo"
                       value={photo}
                       onSelect={(file) => upload(file, "photo")}
-                      onRemove={() => setPhoto("")}
+                      onRemove={() => {
+                        setPhoto("");
+                        markDirty();
+                      }}
                     />
                     {photo && (
                       <img
@@ -833,7 +852,7 @@ export function CreatorPortfolioStudio({
                               ];
                               setWorks(next);
                               setActiveWork(index - 1);
-                              setDirty(true);
+                              markDirty();
                             }}
                           >
                             <ArrowUp aria-hidden="true" />
@@ -845,7 +864,7 @@ export function CreatorPortfolioStudio({
                             onClick={() => {
                               setWorks(works.filter((_, i) => i !== index));
                               setActiveWork(0);
-                              setDirty(true);
+                              markDirty();
                             }}
                           >
                             Remove
@@ -868,7 +887,7 @@ export function CreatorPortfolioStudio({
                           ]);
                           setActiveWork(works.length);
                           setEntryMode("link");
-                          setDirty(true);
+                          markDirty();
                         }}
                       >
                         {works.length
@@ -954,14 +973,20 @@ export function CreatorPortfolioStudio({
                               label="Image"
                               value={work.image}
                               onSelect={(file) => upload(file, "image")}
-                              onRemove={() => setWork({ ...work, image: "" })}
+                              onRemove={() => {
+                                setWork({ ...work, image: "" });
+                                markDirty();
+                              }}
                             />
                             <MediaPicker
                               label="Audio"
                               value={work.audio}
                               audio
                               onSelect={(file) => upload(file, "audio")}
-                              onRemove={() => setWork({ ...work, audio: "" })}
+                              onRemove={() => {
+                                setWork({ ...work, audio: "" });
+                                markDirty();
+                              }}
                             />
                             {work.image && (
                               <img
@@ -1003,7 +1028,7 @@ export function CreatorPortfolioStudio({
                           }
                           aria-pressed={sections.includes(section)}
                           onClick={() => {
-                            setDirty(true);
+                            markDirty();
                             setSections(
                               sections.includes(section)
                                 ? sections.filter((s) => s !== section)
@@ -1019,7 +1044,7 @@ export function CreatorPortfolioStudio({
                       <Button
                         variant="outline"
                         onClick={() => {
-                          setDirty(true);
+                          markDirty();
                           setSections([...sections].reverse());
                         }}
                       >
@@ -1062,7 +1087,10 @@ export function CreatorPortfolioStudio({
                       label="Book cover"
                       value={book.cover}
                       onSelect={(file) => upload(file, "cover")}
-                      onRemove={() => setBook({ ...book, cover: "" })}
+                      onRemove={() => {
+                        setBook({ ...book, cover: "" });
+                        markDirty();
+                      }}
                     />
                     <PortfolioLinkPreview url={book.url} title={book.title} />
                     {book.cover && (
@@ -1094,7 +1122,7 @@ export function CreatorPortfolioStudio({
                           venue,
                           organization,
                         }));
-                        setDirty(true);
+                        markDirty();
                       }}
                     />
                   </>
@@ -1198,12 +1226,16 @@ export function CreatorPortfolioStudio({
                   <p className={styles.disciplines}>
                     {isSample
                       ? "poet / sound artist / photographer"
-                      : selected.join(" / ") || "Your creative practice"}
+                      : selected.join(" / ") ||
+                        (ownerId ? "Your creative practice" : "")}
                   </p>
                   <p className={styles.bio}>
                     {isSample
                       ? "I work across text, field recordings and photography to trace the quiet geographies that hold us and the ones we leave behind."
-                      : bio || "A few words about you and what you make."}
+                      : bio ||
+                        (ownerId
+                          ? "A few words about you and what you make."
+                          : "")}
                   </p>
                   <div className={styles.contactActions}>
                     {isSample ? (
@@ -1389,7 +1421,9 @@ export function CreatorPortfolioStudio({
                 <p className={styles.empty}>
                   {displayWorks.length
                     ? "No work in this format yet."
-                    : "Add your first work when you’re ready."}
+                    : ownerId
+                      ? "Add your first work when you’re ready."
+                      : ""}
                 </p>
               )}
               {(filter === "All work" || filter === "Writing") && (

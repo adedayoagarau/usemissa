@@ -96,3 +96,20 @@ export function publicationIssue(draft: PortfolioData): string | undefined {
   )
     return "Check your public contact email before publishing.";
 }
+
+/** Publish only modules shown in the preview; hidden/untitled drafts stay private. */
+export function publicPortfolioProjection(draft: PortfolioData): PortfolioData {
+  return {
+    ...draft,
+    works: draft.works.filter((work) => work.title.trim()),
+    book:
+      draft.sections.includes("Books") && draft.book.title.trim()
+        ? draft.book
+        : { title: "", cover: "", year: "", url: "" },
+    credit:
+      draft.sections.includes("Selected publications") &&
+      draft.credit.title.trim()
+        ? draft.credit
+        : { title: "", venue: "", year: "", url: "" },
+  };
+}

@@ -24,7 +24,7 @@ export default async function PortfolioSettingsPage() {
           name: membership.organizationId,
         }))}
       />
-      <CreatorPortfolioStudio ownerId={session.account.id} />
+      <CreatorPortfolioStudio ownerId={session.account.id} initialName={session.account.displayName ?? ""} />
     </>
   );
 }

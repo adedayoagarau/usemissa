@@ -22,7 +22,7 @@ test('portfolio snapshots, ownership, revisions, media privacy and legacy draft 
   let rev=await repo.writePortfolio('a',{name:'Version one'},0);
   assert.equal(rev,1);
   await assert.rejects(repo.writePortfolio('a',{name:'Stale overwrite'},0));
-  await assert.rejects(repo.publishPortfolio('a',rev,[]));
+  await assert.rejects(repo.publishPortfolio('a',rev,[],{name:'Version one'}));
   await db.exec(`insert into handles values('user-a','user','claimed');`);
   const media='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const foreign='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
@@ -32,15 +32,15 @@ test('portfolio snapshots, ownership, revisions, media privacy and legacy draft 
   assert.equal(await repo.portfolioMedia(media,'b'),undefined);
   assert.ok(await repo.portfolioMedia(media,'a'));
   assert.equal(await repo.ownPortfolioMedia('a',[foreign]),false);
-  await assert.rejects(repo.publishPortfolio('a',rev,[foreign]));
-  await repo.publishPortfolio('a',rev,[media]);
+  await assert.rejects(repo.publishPortfolio('a',rev,[foreign],{name:'Version one'}));
+  await repo.publishPortfolio('a',rev,[media],{name:'Version one'});
   assert.deepEqual(await repo.publicPortfolio('user-a'),{name:'Version one'});
   assert.ok(await repo.portfolioMedia(media));
   rev=await repo.writePortfolio('a',{name:'Unpublished edit'},rev);
   assert.deepEqual(await repo.publicPortfolio('user-a'),{name:'Version one'});
   const results=await Promise.allSettled([repo.writePortfolio('a',{name:'Tab one'},rev),repo.writePortfolio('a',{name:'Tab two'},rev)]);
   assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
-  await assert.rejects(repo.publishPortfolio('a',rev,[]));
+  await assert.rejects(repo.publishPortfolio('a',rev,[],{name:'Version one'}));
   await repo.unpublishPortfolio('a');
   assert.equal(await repo.publicPortfolio('user-a'),undefined);
   assert.equal(await repo.portfolioMedia(media),undefined);

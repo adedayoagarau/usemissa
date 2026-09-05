@@ -191,13 +191,13 @@ export class PostgresCreatorProfileRepository extends CreatorRepositoryBase {
     throw new CreatorConflictError('profile',accountId,revision,-1);
   }
 
-  async publishPortfolio(accountId: string, revision: number, mediaIds: string[]) {
+  async publishPortfolio(accountId: string, revision: number, mediaIds: string[], projection: unknown) {
     const result=await this.query<{published_at:string}>(
-      `update creator_portfolio_drafts p set published_data=draft_data, published_at=now(), published_media_ids=$3::uuid[]
+      `update creator_portfolio_drafts p set published_data=$4::jsonb, published_at=now(), published_media_ids=$3::uuid[]
        where account_id=$1 and revision=$2
        and exists(select 1 from radar_accounts a join handles h on h.subject_id=a.data->>'userId' and h.subject_type='user' and h.state='claimed' where a.id=$1)
        and not exists(select 1 from unnest($3::uuid[]) mid where not exists(select 1 from creator_portfolio_media m where m.id=mid and m.account_id=$1))
-       returning published_at`,[accountId,revision,mediaIds]);
+       returning published_at`,[accountId,revision,mediaIds,JSON.stringify(projection)]);
     if(!result.rows[0]) throw new CreatorConflictError('profile',accountId,revision,-1);
     return result.rows[0].published_at;
   }

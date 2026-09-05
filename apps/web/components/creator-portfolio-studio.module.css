@@ -514,3 +514,8 @@
 .credit > h3:first-child { margin-bottom: 8px; }
 .credit > h3 + h3 { font-size: 16px; }
 .world[data-creator-theme] { background: var(--creator-canvas); }
+/* Label/control and helper spacing follow the fixed relationship scale. */
+.handleField { display: grid; gap: 8px; overflow-wrap: anywhere; }
+.handleField p { font-size: 14px; color: var(--muted-foreground); }
+.handleField strong { color: var(--foreground); }
+.handleField input, .editorFields input:not([type="file"]) { min-height: 44px; }

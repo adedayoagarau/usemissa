@@ -1351,11 +1351,11 @@
   },
   "publicCreatorProfile": {
     "status": "review",
-    "implementation": "apps/web/components/public-creator-profile.tsx",
+    "implementation": "apps/web/components/creator-portfolio-studio.tsx",
     "source": "Installed ui/Button (primary, outline, ghost), Input, Textarea, Dialog; InstitutionSocialLinks; native audio and accessible file selection through labelled Add/Replace/Remove buttons",
     "preview": "/design-system/creator-profile-v2",
-    "boundary": "Authenticated /profile/portfolio edits device-local drafts. Sample-account settings accessible through the temporary preview tunnel. Publishing and cross-device account storage remain unavailable.",
-    "onboarding": "Full-page independent editing sections, live side preview, mobile preview toggle, device-local autosave, link metadata previews, directory-linked publication credits and four curated themes.",
+    "boundary": "Account-scoped confirmed draft saving, private media, revision conflicts and explicit published snapshots. Design previews remain local-only. No deployment performed by this slice; connected schema inspected separately.",
+    "onboarding": "Independent sections; handle suggestion and availability below name, required on first publish; separate address change and unpublish confirmations; explicit local preview import.",
     "settings": "/profile/portfolio",
     "settingsPreview": "/design-system/creator-profile-settings",
     "adaptations": "Public contact row; content-backed format views; outlined reading action; image disclosure; account-scoped draft keys; opt-in contact fields; optional ordered books/publications",
@@ -1363,8 +1363,10 @@
     "editorComponents": [
       "apps/web/components/portfolio-link-preview.tsx",
       "apps/web/components/portfolio-publication-picker.tsx",
-      "apps/web/components/design-system/creator-palette.css"
+      "apps/web/components/design-system/creator-palette.css",
+      "apps/web/components/portfolio-handle-field.tsx"
     ],
-    "states": "Restoring, autosaving, saved, storage failure/retry, link loading/ready/unavailable/retry, empty works, unsupported file, directory loading/selected/manual/unavailable, light/dark themes."
+    "states": "Loading/retry, saving/confirmed/error/conflict, private draft, publish confirmation, published, unpublish, rename, handle checking/available/taken/invalid/unavailable, media selected/replaced/removed/unsupported/quota.",
+    "publicRoute": "/@handle"
   }
 }

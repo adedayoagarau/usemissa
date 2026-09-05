@@ -666,15 +666,15 @@ export function ProfileProduct({
           </div>
         </div>
         <Link
-          href={profile.publicUrl}
-          aria-label="Preview public Profile"
+          href="/profile/portfolio"
+          aria-label="Manage public profile"
           className={cn(
             buttonVariants({ variant: "outline" }),
             styles.previewLink,
           )}
         >
           <Eye aria-hidden="true" />
-          <span>Preview public Profile</span>
+          <span>Manage public profile</span>
         </Link>
       </header>
 
@@ -1232,10 +1232,10 @@ export function ProfileProduct({
                   </Button>
                 ) : null}
                 <Link
-                  href={profile.publicUrl}
+                  href="/profile/portfolio"
                   className={buttonVariants({ variant: "outline" })}
                 >
-                  Preview public Profile
+                  Manage public profile
                 </Link>
               </div>
             </div>

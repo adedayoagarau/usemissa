@@ -297,3 +297,22 @@ test("link preview failure is recoverable and private addresses are blocked", as
     page.getByRole("heading", { name: "Recovered preview" }),
   ).toBeVisible();
 });
+
+test('handle choice is optional in a private draft and media removal persists', async ({page,request})=>{
+ await page.goto('/design-system/creator-profile-settings');
+ await page.getByLabel('Name',{exact:true}).fill('Maya Bennett');
+ await page.getByRole('button',{name:'Use @mayabennett',exact:true}).click();
+ await expect(page.getByLabel('Handle',{exact:true})).toHaveValue('mayabennett');
+ await expect(page.getByText('Availability is checked when you sign in.',{exact:false})).toBeVisible();
+ await page.getByLabel('Profile photo',{exact:true}).setInputFiles({name:'photo.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6vQAAAABJRU5ErkJggg==','base64')});
+ await expect(page.getByRole('button',{name:'Replace profile photo'})).toBeVisible();
+ await page.getByRole('button',{name:'Remove profile photo'}).click();
+ await expect(page.getByRole('img',{name:'Your profile photo preview'})).toHaveCount(0);
+ await page.getByRole('button',{name:'Save now',exact:true}).click();
+ await expect(page.getByRole('status').filter({hasText:'on this device'})).toBeVisible();
+ await page.reload();await expect(page.getByLabel('Handle',{exact:true})).toHaveValue('mayabennett');
+ await expect(page.getByRole('img',{name:'Your profile photo preview'})).toHaveCount(0);
+ for(const [path,method] of [['portfolio-draft','GET'],['portfolio-draft','PUT'],['portfolio-publish','POST'],['portfolio-publish','DELETE'],['portfolio-media','POST']] as const){
+  const res=await request.fetch(`/api/creator/${path}`,{method,data:method==='GET'?undefined:{}});expect(res.status()).toBe(401);
+ }
+});

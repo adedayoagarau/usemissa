@@ -27,6 +27,7 @@ export function safeAuthRedirect(value: string | undefined): string {
     const allowed = [
       "/opportunities",
       "/tracker",
+      "/saved",
       "/calendar",
       "/library",
       "/profile",

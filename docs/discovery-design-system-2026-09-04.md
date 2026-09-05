@@ -1,5 +1,7 @@
 # Missa discovery design system
 
+Current integration reference: [Directory and creator portfolio handoff](directory-portfolio-integration-handoff.md). Use its source-verified endpoints and persistence boundaries when continuing implementation; older historical status below may be superseded.
+
 This document records the implemented September 4 design direction. DESIGN.md remains the visual authority and component-policy.json governs component selection. This is a local implementation record, not a deployment or research certification.
 
 ## Three page patterns

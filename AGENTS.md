@@ -10,6 +10,7 @@ These instructions apply to every AI-authored UI change in this repository.
 | Machine-readable component choice         | `apps/web/component-policy.json`    |
 | Installed Studio inventory                | `apps/web/component-catalogue.json` |
 | Reusable AI UI directive                  | `docs/ai-ui-build-directive.md`     |
+| Directory filters and creator portfolio integration | `docs/directory-portfolio-integration-handoff.md` |
 
 ## Before building UI
 

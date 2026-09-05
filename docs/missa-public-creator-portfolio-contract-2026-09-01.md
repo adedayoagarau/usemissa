@@ -11,6 +11,8 @@ related:
 
 # Missa public creator portfolio contract
 
+Current integration reference: [Directory and creator portfolio handoff](directory-portfolio-integration-handoff.md). Use its source-verified endpoints and persistence boundaries when continuing implementation; older historical status below may be superseded.
+
 ## Purpose
 
 The public creator Profile is an artist-controlled portfolio. It must present

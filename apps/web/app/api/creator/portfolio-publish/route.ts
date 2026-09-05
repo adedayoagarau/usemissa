@@ -6,6 +6,7 @@ import {
   portfolioSchema,
   portfolioMediaIds,
   publicationIssue,
+  publicPortfolioProjection,
 } from "@/lib/creator-portfolio-schema";
 export async function POST(request: Request) {
   const session = await getSessionAccount(request.headers.get("cookie"));
@@ -35,7 +36,8 @@ export async function POST(request: Request) {
         { error: "Add your display name before publishing." },
         { status: 400 },
       );
-    const issue = publicationIssue(parsed.data);
+    const projection = publicPortfolioProjection(parsed.data);
+    const issue = publicationIssue(projection);
     if (issue) return NextResponse.json({ error: issue }, { status: 400 });
     if (body.revision !== state.revision)
       return NextResponse.json(
@@ -45,7 +47,8 @@ export async function POST(request: Request) {
     const publishedAt = await repo.publishPortfolio(
       session.account.id,
       state.revision,
-      portfolioMediaIds(parsed.data),
+      portfolioMediaIds(projection),
+      projection,
     );
     return NextResponse.json({ publishedAt, href: `/@${handle.handleKey}` });
   } catch {
