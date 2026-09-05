@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { radarWorkerBatchSize, runRadarWorkerTick, runCoverageWorkerTick, runTaxonomyDiscoveryWorkerTick } from '@missa/radar-adapters';
-import { deliverPendingAlertEmails } from '@/lib/alert-delivery';
+import { deliverPendingAlertEmails, deliverPendingDeadlineEmails } from '@/lib/alert-delivery';
 
 /**
  * Vercel Cron target (Story 1.5) -- replaces the manual "Check for updates"
@@ -28,7 +28,14 @@ export async function GET(request: Request) {
   }
 
   let emailDelivery: Awaited<ReturnType<typeof deliverPendingAlertEmails>> | undefined;
-  const result = await runRadarWorkerTick({ maxSources: radarWorkerBatchSize(), afterTick: async (engine) => { emailDelivery = await deliverPendingAlertEmails(engine); } });
+  let deadlineDelivery: Awaited<ReturnType<typeof deliverPendingDeadlineEmails>> | undefined;
+  const result = await runRadarWorkerTick({
+    maxSources: radarWorkerBatchSize(),
+    afterTick: async (engine) => {
+      emailDelivery = await deliverPendingAlertEmails(engine);
+      deadlineDelivery = await deliverPendingDeadlineEmails(engine);
+    },
+  });
   if (result.status === 'skipped') {
     return NextResponse.json({ status: 'skipped', reason: 'another ingestion tick is running' }, { status: 202 });
   }
@@ -43,6 +50,7 @@ export async function GET(request: Request) {
     changes: report.changes.length,
     alerts: report.alerts.length,
     emailDelivery,
+    deadlineDelivery,
     coverage,
     discovery,
   });

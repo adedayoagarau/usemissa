@@ -128,3 +128,121 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
     failed,
   };
 }
+
+export interface DeadlineDeliveryReport {
+  status: 'sent' | 'skipped' | 'partial';
+  recipients: number;
+  reminders: number;
+  failed: number;
+  reason?: string;
+}
+
+/**
+ * Sweeps pending deadline reminders from engine alerts and dispatches
+ * dedicated deadline countdown emails grouped by user.
+ */
+export async function deliverPendingDeadlineEmails(engine: RadarEngine, now = new Date()): Promise<DeadlineDeliveryReport> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  const connectionString = process.env.DATABASE_URL;
+
+  if (!apiKey || !from) {
+    return {
+      status: 'skipped',
+      recipients: 0,
+      reminders: 0,
+      failed: 0,
+      reason: 'RESEND_API_KEY/RESEND_FROM not configured',
+    };
+  }
+
+  // Find user deadline-reminder alerts that haven't had emails sent
+  const pending = [...engine.store.alerts.values()].filter(
+    (alert) => alert.audience === 'user' && alert.userId && alert.kind === 'deadline-reminder' && !alert.emailSentAt
+  );
+
+  if (pending.length === 0) {
+    return { status: 'sent', recipients: 0, reminders: 0, failed: 0 };
+  }
+
+  const byUser = new Map<string, typeof pending>();
+  for (const alert of pending) {
+    const rows = byUser.get(alert.userId!);
+    if (rows) rows.push(alert);
+    else byUser.set(alert.userId!, [alert]);
+  }
+
+  const preferenceRepository = (connectionString && creatorRelationalAuthorityEnabled(process.env))
+    ? new PostgresCreatorNotificationRepository(creatorPoolFor(connectionString))
+    : undefined;
+
+  let recipients = 0;
+  let sentReminders = 0;
+  let failed = 0;
+
+  for (const [userId, alerts] of byUser) {
+    const account = [...engine.store.accounts.values()].find(
+      (candidate) => candidate.userId === userId && candidate.active !== false
+    );
+    if (!account?.email) {
+      failed += alerts.length;
+      continue;
+    }
+
+    if (preferenceRepository) {
+      try {
+        const preference = await preferenceRepository.syncProviderState(account.id, 'available');
+        if (!preference.emailEnabled || !preference.reminderEnabled || preference.providerState !== 'available') {
+          continue;
+        }
+      } catch {
+        failed += alerts.length;
+        continue;
+      }
+    }
+
+    // Map alerts to opportunity items
+    const opportunities = alerts.flatMap((alert) => {
+      const opp = alert.opportunityId ? engine.store.opportunities.get(alert.opportunityId) : undefined;
+      if (!opp || !opp.fields.deadline.date) return [];
+      const days = Math.max(0, Math.round((Date.parse(opp.fields.deadline.date) - now.getTime()) / 86_400_000));
+      return [{
+        id: opp.id,
+        title: opp.fields.title,
+        organizationName: opp.fields.organizationName || 'Organization',
+        deadlineFormatted: opp.fields.deadline.date,
+        daysRemaining: days,
+        categoryLabel: opp.fields.type,
+      }];
+    });
+
+    if (opportunities.length === 0) continue;
+
+    const { deliverDeadlineReminderEmail } = await import('../emails/deadline-reminder');
+    const report = await deliverDeadlineReminderEmail(
+      {
+        accountId: account.id,
+        email: account.email,
+        opportunities,
+      },
+      connectionString
+    );
+
+    if (report.status === 'sent' || report.status === 'replayed') {
+      const sentAt = now.toISOString();
+      for (const alert of alerts) alert.emailSentAt = sentAt;
+      recipients += 1;
+      sentReminders += alerts.length;
+    } else {
+      failed += alerts.length;
+    }
+  }
+
+  return {
+    status: failed ? (sentReminders ? 'partial' : 'skipped') : 'sent',
+    recipients,
+    reminders: sentReminders,
+    failed,
+  };
+}
+

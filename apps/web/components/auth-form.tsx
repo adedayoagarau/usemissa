@@ -692,9 +692,19 @@ export function AuthForm({
                 ) : null}
               </div>
               <div className={styles.field} key="password">
-                <label htmlFor="password" className={styles.label}>
-                  Password
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="password" className={styles.label}>
+                    Password
+                  </label>
+                  {mode === "login" && (
+                    <Link
+                      href="/forgot-password"
+                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
+                    >
+                      Forgot password?
+                    </Link>
+                  )}
+                </div>
                 <div className={styles.passwordWrap}>
                   <Input
                     className="h-11"

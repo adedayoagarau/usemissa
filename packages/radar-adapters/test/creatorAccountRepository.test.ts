@@ -33,3 +33,25 @@ test("password signup creates the account aggregates and governance evidence in 
   assert.ok(statements.some((value) => value.startsWith("insert into outbox_events")));
   assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
 });
+
+test("updatePassword updates hash and records audit event in transaction", async () => {
+  const account = { id: "acct-one", email: "ada@example.com", passwordHash: hashPassword("old-pass"), userId: "user-one", isAdmin: false, createdAt: new Date(0).toISOString(), active: true };
+  const statements: string[] = [];
+  const client = {
+    query: async (text: string) => {
+      statements.push(text.replace(/\s+/g, " ").trim());
+      if (text.includes("select id, email, data from radar_accounts")) {
+        return { rows: [{ id: account.id, email: account.email, data: account }] };
+      }
+      return { rows: [] };
+    },
+    release: () => statements.push("RELEASE"),
+  };
+  const pool = { connect: async () => client } as unknown as Pool;
+  const success = await new PostgresCreatorAccountRepository(pool).updatePassword("acct-one", "new-secret-password");
+  assert.equal(success, true);
+  assert.ok(statements.some((s) => s.startsWith("update radar_accounts set data =")));
+  assert.ok(statements.some((s) => s.includes("account.password_reset")));
+  assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
+});
+

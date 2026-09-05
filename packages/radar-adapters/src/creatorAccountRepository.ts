@@ -59,6 +59,40 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
     return account;
   }
 
+  async updatePassword(accountId: string, newPassword: string): Promise<boolean> {
+    const client = await this.database.connect();
+    try {
+      await client.query("BEGIN");
+      const existing = await client.query<AccountRow>("select id, email, data from radar_accounts where id = $1 for update", [accountId]);
+      if (!existing.rows[0]) {
+        await client.query("ROLLBACK");
+        return false;
+      }
+      const account = accountFromRow(existing.rows[0]);
+      if (account.active === false) {
+        await client.query("ROLLBACK");
+        return false;
+      }
+      const updated: Account = {
+        ...account,
+        passwordHash: hashPassword(newPassword),
+      };
+      await client.query("update radar_accounts set data = $2::jsonb, updated_at = now() where id = $1", [accountId, JSON.stringify(updated)]);
+      const receiptId = randomUUID();
+      await client.query(
+        "insert into audit_events (account_id, action, target_type, target_id, detail, correlation_id) values ($1, 'account.password_reset', 'account', $1, $2::jsonb, $3)",
+        [accountId, JSON.stringify({ receiptId, method: "password_reset" }), receiptId]
+      );
+      await client.query("COMMIT");
+      return true;
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
   async provisionPasswordAccount(input: { email: string; password: string; displayName: string }): Promise<{ account: Account; created: true }> {
     const email = input.email.trim().toLowerCase();
     const client = await this.database.connect();

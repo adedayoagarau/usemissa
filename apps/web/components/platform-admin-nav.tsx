@@ -65,6 +65,7 @@ const serveLinks: NavItem[] = [
   { href: "/admin/waitlist", label: "Waitlist", icon: Mail },
   { href: "/admin/support", label: "Support", icon: LifeBuoy },
   { href: "/admin/messaging", label: "Messaging", icon: Mail },
+  { href: "/admin/email-previews", label: "Email previews", icon: Mail },
 ];
 
 const businessLinks: NavItem[] = [
