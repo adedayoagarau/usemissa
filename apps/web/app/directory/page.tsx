@@ -30,12 +30,18 @@ function parseKind(val?: string): ProfileKind | undefined {
 export default async function DirectoryPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; kind?: string; page?: string }>;
+  searchParams?: Promise<{
+    q?: string;
+    kind?: string;
+    page?: string;
+    window?: string;
+  }>;
 }) {
   const params = searchParams ? await searchParams : {};
   const repository = getProfileRepository();
   const query = params.q?.trim() ?? "";
   const kind = parseKind(params.kind);
+  const activeWindow = params.window?.trim() || undefined;
   const requestedPage = Number(params.page ?? "1");
   let page =
     Number.isSafeInteger(requestedPage) &&
@@ -54,6 +60,7 @@ export default async function DirectoryPage({
       result = await repository.browse({
         query: query || undefined,
         kind,
+        scheduleState: activeWindow as any,
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
       });
@@ -63,6 +70,7 @@ export default async function DirectoryPage({
         result = await repository.browse({
           query: query || undefined,
           kind,
+          scheduleState: activeWindow as any,
           limit: PAGE_SIZE,
           offset: (page - 1) * PAGE_SIZE,
         });
@@ -82,6 +90,7 @@ export default async function DirectoryPage({
         pageSize={PAGE_SIZE}
         query={query}
         activeKind={kind}
+        activeWindow={activeWindow}
       />
     </PublicSiteShell>
   );

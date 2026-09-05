@@ -28,6 +28,7 @@ export function DirectoryBrowseView({
   pageSize,
   query,
   activeKind,
+  activeWindow,
   loadFailed = false,
   basePath = "/directory",
   title = "Find your creative community.",
@@ -39,16 +40,23 @@ export function DirectoryBrowseView({
   pageSize: number;
   query: string;
   activeKind?: ProfileKind;
+  activeWindow?: string;
   loadFailed?: boolean;
   basePath?: string;
   title?: string;
   description?: string;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
-  function href(nextPage = 1, kind = activeKind ?? "", search = query) {
+  function href(
+    nextPage = 1,
+    kind = activeKind ?? "",
+    search = query,
+    win = activeWindow ?? "",
+  ) {
     const params = new URLSearchParams();
     if (kind && basePath === "/directory") params.set("kind", kind);
     if (search) params.set("q", search);
+    if (win) params.set("window", win);
     if (nextPage > 1) params.set("page", String(nextPage));
     const path =
       basePath === "/directory"
@@ -66,6 +74,20 @@ export function DirectoryBrowseView({
     ["grant_foundation", "Foundations"],
     ["visual_arts_organization", "Galleries & arts organizations"],
   ];
+
+  const showScheduleFilters =
+    activeKind === "literary_magazine" ||
+    activeKind === "small_press" ||
+    basePath === "/journals";
+
+  const WINDOW_OPTIONS = [
+    { value: "", label: "All reading windows" },
+    { value: "open", label: "Open now" },
+    { value: "closing_soon", label: "Closing soon" },
+    { value: "opening_soon", label: "Opening soon" },
+    { value: "closed", label: "Closed" },
+  ];
+
   return (
     <main id="main-content" className={styles.main}>
       <header className={styles.intro}>
@@ -77,7 +99,7 @@ export function DirectoryBrowseView({
         {categories.map(([kind, label]) => (
           <Link
             key={kind}
-            href={href(1, kind)}
+            href={href(1, kind, query, activeWindow)}
             aria-current={(activeKind ?? "") === kind ? "page" : undefined}
           >
             {label}
@@ -95,7 +117,7 @@ export function DirectoryBrowseView({
           Search organizations
         </label>
         <Input
-          key={`${query}:${activeKind}`}
+          key={`${query}:${activeKind}:${activeWindow}`}
           id="directory-search"
           name="q"
           defaultValue={query}
@@ -104,6 +126,9 @@ export function DirectoryBrowseView({
         />
         {activeKind && basePath === "/directory" && (
           <input type="hidden" name="kind" value={activeKind} />
+        )}
+        {activeWindow && (
+          <input type="hidden" name="window" value={activeWindow} />
         )}
         <Button
           type="submit"
@@ -114,6 +139,26 @@ export function DirectoryBrowseView({
           <ArrowUpRight size={18} aria-hidden="true" />
         </Button>
       </form>
+
+      {showScheduleFilters && (
+        <nav aria-label="Reading window filters" className={styles.scheduleFilters}>
+          {WINDOW_OPTIONS.map((opt) => {
+            const isActive = (activeWindow ?? "") === opt.value;
+            return (
+              <Link
+                key={opt.value}
+                href={href(1, activeKind ?? "", query, opt.value)}
+                className={styles.filterPill}
+                data-active={isActive || undefined}
+                aria-current={isActive ? "page" : undefined}
+              >
+                {opt.label}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
+
       <div className={styles.ledger}>
         <p role="status">
           {loadFailed ? (
@@ -130,10 +175,16 @@ export function DirectoryBrowseView({
                   matching <strong>“{query}”</strong>
                 </>
               )}
+              {activeWindow && (
+                <>
+                  {" "}
+                  • reading window: <strong>{activeWindow.replace(/_/g, " ")}</strong>
+                </>
+              )}
             </>
           )}
         </p>
-        {query || (activeKind && basePath === "/directory") ? (
+        {query || activeWindow || (activeKind && basePath === "/directory") ? (
           <Link href={basePath}>Clear filters</Link>
         ) : (
           <span>Alphabetical order</span>

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function Page({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string; page?: string }>;
+  searchParams?: Promise<{ q?: string; page?: string; window?: string }>;
 }) {
   return (
     <DirectoryCategoryPage

@@ -1,6 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Local preview uploads use blob URLs. */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import {
   Mail,
@@ -30,6 +30,21 @@ import {
 import { PortfolioLinkPreview } from "./portfolio-link-preview";
 import "./design-system/creator-palette.css";
 import styles from "./creator-portfolio-studio.module.css";
+function MediaPicker({ label, value, audio = false, onSelect, onRemove }: {
+  label: string; value: string; audio?: boolean;
+  onSelect: (file?: File) => void; onRemove: () => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  return <div className={styles.mediaPicker}>
+    <strong>{label}</strong>
+    <input ref={input} className="sr-only" tabIndex={-1} aria-label={label} type="file" accept={audio ? "audio/*" : "image/*"} onChange={(event) => { onSelect(event.target.files?.[0]); event.target.value = ""; }} />
+    <div className={styles.contactActions}>
+      <Button variant="outline" onClick={() => input.current?.click()}>{value ? "Replace" : "Add"} {label.toLowerCase()}</Button>
+      {value && <Button variant="ghost" onClick={onRemove}>Remove {label.toLowerCase()}</Button>}
+    </div>
+    <small>{value ? "Added · shown in your preview" : audio ? "Choose an audio file · up to 20 MB" : "JPG, PNG, WebP or GIF · up to 20 MB"}</small>
+  </div>;
+}
 const practices = [
   "Writing",
   "Music",
@@ -133,8 +148,8 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
               ? draft.theme!
               : "sage",
           );
-          setStorage("Draft restored from this device · not published");
-        } else setStorage("Private draft · saved on this device only");
+          setStorage("Draft restored · saved to your account");
+        } else setStorage("Private draft · saved to your account");
         setReady(true);
       })
       .catch(() => {
@@ -173,7 +188,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
         sections,
         theme,
       });
-      setStorage("Draft saved on this device · not published");
+      setStorage("Draft saved · private draft in your account");
       setDirty(false);
     } catch {
       setStorage(
@@ -202,7 +217,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
       })
         .then(() => {
           if (!cancelled) {
-            setStorage("Saved on this device · private draft");
+            setStorage("Saved · private draft in your account");
             setDirty(false);
           }
         })
@@ -511,21 +526,9 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                         maxLength={600}
                       />
                     </label>
-                    <label>
-                      Profile photo
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => upload(e.target.files?.[0], "photo")}
-                      />
-                      {photo && (
-                        <img
-                          src={photo}
-                          className={styles.uploadPreview}
-                          alt="Your profile photo preview"
-                        />
-                      )}
-                    </label>
+                    <MediaPicker label="Profile photo" value={photo} onSelect={(file) => upload(file, "photo")} onRemove={() => setPhoto("")} />
+                    {photo && <img src={photo} className={styles.uploadPreview} alt="Your profile photo preview" />}
+
                   </>
                 )}
                 {step === 2 && (
@@ -673,26 +676,8 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                         )}
                         {entryMode === "media" && (
                           <>
-                            <label>
-                              Image
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) =>
-                                  upload(e.target.files?.[0], "image")
-                                }
-                              />
-                            </label>
-                            <label>
-                              Audio
-                              <input
-                                type="file"
-                                accept="audio/*"
-                                onChange={(e) =>
-                                  upload(e.target.files?.[0], "audio")
-                                }
-                              />
-                            </label>
+                            <MediaPicker label="Image" value={work.image} onSelect={(file) => upload(file, "image")} onRemove={() => setWork({ ...work, image: "" })} />
+                            <MediaPicker label="Audio" value={work.audio} audio onSelect={(file) => upload(file, "audio")} onRemove={() => setWork({ ...work, audio: "" })} />
                             {work.image && (
                               <img
                                 src={work.image}
@@ -788,14 +773,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                         }
                       />
                     </label>
-                    <label>
-                      Book cover
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => upload(e.target.files?.[0], "cover")}
-                      />
-                    </label>
+                    <MediaPicker label="Book cover" value={book.cover} onSelect={(file) => upload(file, "cover")} onRemove={() => setBook({ ...book, cover: "" })} />
                     <PortfolioLinkPreview url={book.url} title={book.title} />
                     {book.cover && (
                       <img
@@ -989,7 +967,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                   </div>
                 </div>
               </header>
-              <nav className={styles.tabs} aria-label="Work formats">
+              {formats.length > 1 && <nav className={styles.tabs} aria-label="Work formats">
                 {["All work", ...formats].map((f) => (
                   <Button
                     variant="ghost"
@@ -1000,7 +978,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                     {f}
                   </Button>
                 ))}
-              </nav>
+              </nav>}
               <p className="sr-only" role="status">
                 {filter === "All work" ? "All formats" : filter} selected
               </p>
@@ -1094,6 +1072,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                           )}
                         {!isSample && publicWebUrl(work.url ?? "") && (
                           <p>
+                            <span className={styles.workSource}>{new URL(publicWebUrl(work.url ?? "")!).hostname.replace(/^www\./, "")}</span>
                             <a
                               className={buttonVariants({ variant: "outline" })}
                               href={publicWebUrl(work.url ?? "")}
@@ -1101,7 +1080,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                               rel="noopener noreferrer"
                               aria-label={`Open ${work.title} (opens in new tab)`}
                             >
-                              Open work
+                              Read work
                               <ArrowUpRight aria-hidden="true" />
                             </a>
                           </p>
@@ -1194,23 +1173,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                         {(isSample || book.year) &&
                           ` · ${isSample ? "2025" : book.year}`}
                       </p>
-                      {publicWebUrl(book.url) && !isSample && (
-                        <Button
-                          variant="outline"
-                          nativeButton={false}
-                          role="link"
-                          render={
-                            <a
-                              href={publicWebUrl(book.url)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            />
-                          }
-                        >
-                          View book
-                          <ArrowUpRight aria-hidden="true" />
-                        </Button>
-                      )}
+
                     </section>
                   )}
                   {sections.includes("Selected publications") &&
@@ -1222,6 +1185,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                       >
                         <h2>Selected publications</h2>
                         <div className={styles.credit}>
+                          <h3>{isSample ? "Station fragments" : credit.title}</h3>
                           <h3>
                             {isSample ||
                             (creditOrganizationHref ??
@@ -1260,8 +1224,8 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                           </h3>
                           <p>
                             {isSample
-                              ? "Station fragments · 2025"
-                              : `${credit.title}${credit.year ? ` · ${credit.year}` : ""}`}
+                              ? "2025"
+                              : credit.year}
                           </p>
                           {publicWebUrl(credit.url) && !isSample && (
                             <Button
@@ -1276,7 +1240,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
                                 />
                               }
                             >
-                              Read publication
+                              Read work
                               <ArrowUpRight aria-hidden="true" />
                             </Button>
                           )}
@@ -1290,7 +1254,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
         </div>
       </main>
       {ownerId && (
-        <Button
+        <div className={styles.phonePreviewBar}><Button
           className={styles.phonePreviewToggle}
           disabled={!ready}
           onClick={() => {
@@ -1299,7 +1263,7 @@ export function CreatorPortfolioStudio({ ownerId }: { ownerId?: string }) {
           }}
         >
           {preview ? "Return to editor" : "See your profile"}
-        </Button>
+        </Button></div>
       )}
       <Dialog
         open={sampleDetail !== null}

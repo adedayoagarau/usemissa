@@ -162,6 +162,24 @@ export class PostgresCreatorProfileRepository extends CreatorRepositoryBase {
     });
   }
 
+  async getPortfolioDraft<T = unknown>(accountId: string): Promise<T | undefined> {
+    const result = await this.query<{ draft_data: T }>(
+      "select draft_data from creator_portfolio_drafts where account_id = $1",
+      [accountId],
+    );
+    return result.rows[0]?.draft_data;
+  }
+
+  async savePortfolioDraft<T = unknown>(accountId: string, draft: T): Promise<void> {
+    await this.query(
+      `insert into creator_portfolio_drafts (account_id, draft_data, updated_at)
+       values ($1, $2::jsonb, now())
+       on conflict (account_id) do update
+       set draft_data = excluded.draft_data, updated_at = now()`,
+      [accountId, JSON.stringify(draft)],
+    );
+  }
+
   private async throwProfileConflict(client: PoolClient, envelope: CreatorCommandEnvelope): Promise<never> {
     const current = await client.query<{ revision: number }>(
       "select revision from creator_profiles where account_id = $1 for update",

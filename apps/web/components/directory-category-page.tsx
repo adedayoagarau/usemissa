@@ -15,11 +15,12 @@ export async function DirectoryCategoryPage({
   basePath: string;
   title: string;
   description: string;
-  searchParams?: Promise<{ q?: string; page?: string }>;
+  searchParams?: Promise<{ q?: string; page?: string; window?: string }>;
 }) {
   const params = (await searchParams) ?? {};
   const query = params.q?.trim() ?? "";
   const requested = Number(params.page ?? 1);
+  const activeWindow = params.window?.trim() || undefined;
   let page =
     Number.isSafeInteger(requested) && requested > 0 && requested <= 100000
       ? requested
@@ -35,6 +36,7 @@ export async function DirectoryCategoryPage({
       result = await repository.browse({
         query: query || undefined,
         kind,
+        scheduleState: activeWindow as any,
         limit: 48,
         offset: (page - 1) * 48,
       });
@@ -43,6 +45,7 @@ export async function DirectoryCategoryPage({
         result = await repository.browse({
           query: query || undefined,
           kind,
+          scheduleState: activeWindow as any,
           limit: 48,
           offset: 0,
         });
@@ -64,6 +67,7 @@ export async function DirectoryCategoryPage({
         pageSize={48}
         query={query}
         activeKind={kind}
+        activeWindow={activeWindow}
         loadFailed={loadFailed}
       />
     </PublicSiteShell>

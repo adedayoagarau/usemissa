@@ -45,10 +45,10 @@ export type ProfileKind =
   | "organization";
 
 export interface ProfileBrowseQuery {
-  /** Restrict autocomplete searches to organization names. */
-  nameOnly?: boolean;
   kind?: ProfileKind;
   query?: string;
+  nameOnly?: boolean;
+  scheduleState?: "open" | "closing_soon" | "opening_soon" | "closed" | "all";
   limit?: number;
   offset?: number;
 }
@@ -254,6 +254,60 @@ export class PostgresProfileRepository implements ProfileRepository {
       );
     }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+    const scheduleFilter = query.scheduleState && query.scheduleState !== "all" ? query.scheduleState : null;
+    if (scheduleFilter) {
+      const result = await this.pool.query({
+        text: `
+        WITH latest AS (
+          SELECT DISTINCT ON (profile_id) * FROM gary_profile_observations
+          ORDER BY profile_id, observed_at DESC
+        ), media AS (
+          SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url, NULLIF(BTRIM(alt_text), '') AS media_alt
+          FROM gary_profile_media_assets WHERE kind = 'image' AND error IS NULL
+          ORDER BY profile_page_id, created_at
+        ), visuals AS (
+          SELECT DISTINCT ON (profile_id) profile_id, image_url AS visual_url, label AS visual_alt
+          FROM gary_profile_visuals
+          WHERE asset_type = 'logo'
+          ORDER BY profile_id, created_at DESC
+        ), intel AS (
+          SELECT profile_id, sentiment_tags FROM gary_profile_intelligence
+        )
+        SELECT p.id, p.profile_kind, p.name, p.website_url,
+          COALESCE(o.source_summary, (ro.data->>'biography')) as source_summary,
+          COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
+          o.formats_json, o.reading_period,
+          o.source_detail_url,
+          COALESCE(visuals.visual_url, m.media_url) as media_url,
+          COALESCE(visuals.visual_alt, m.media_alt, p.name) as media_alt
+        FROM gary_profiles p
+        LEFT JOIN radar_organizations ro ON ro.id = p.id
+        LEFT JOIN latest o ON o.profile_id = p.id
+        LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
+        LEFT JOIN media m ON m.profile_page_id = pg.id
+        LEFT JOIN visuals ON visuals.profile_id = p.id
+        LEFT JOIN intel ON intel.profile_id = p.id
+        ${where} ORDER BY p.name ASC`,
+        values,
+      });
+
+      const cards = result.rows.map((row) => card(row));
+      const filtered = cards.filter((item) => {
+        if (!item.schedule) return false;
+        if (scheduleFilter === "open") {
+          return item.schedule.state === "open" || item.schedule.state === "always_open";
+        }
+        return item.schedule.state === scheduleFilter;
+      });
+
+      const limit = Math.min(Math.max(query.limit ?? 24, 1), 100);
+      const offset = Math.max(query.offset ?? 0, 0);
+      return {
+        items: filtered.slice(offset, offset + limit),
+        total: filtered.length,
+      };
+    }
+
     values.push(Math.min(Math.max(query.limit ?? 24, 1), 100));
     const limit = values.length;
     values.push(Math.max(query.offset ?? 0, 0));

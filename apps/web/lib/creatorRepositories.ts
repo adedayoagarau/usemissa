@@ -25,9 +25,14 @@ declare global {
 }
 
 function pool() {
-  if (!creatorRelationalAuthorityEnabled(process.env)) return undefined;
-  if (!process.env.DATABASE_URL) throw new Error('Creator relational authority is unavailable');
-  return creatorPoolFor(process.env.DATABASE_URL);
+  if (creatorRelationalAuthorityEnabled(process.env)) {
+    if (!process.env.DATABASE_URL) throw new Error('Creator relational authority is unavailable');
+    return creatorPoolFor(process.env.DATABASE_URL);
+  }
+  if (process.env.DATABASE_URL) {
+    return creatorPoolFor(process.env.DATABASE_URL);
+  }
+  return undefined;
 }
 
 export function getCreatorAccountRepository(): PostgresCreatorAccountRepository | undefined {
