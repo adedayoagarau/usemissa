@@ -14,6 +14,8 @@ interface CliOptions {
   concurrency: number;
   kind?: ProfileKind;
   id?: string;
+  continuous: boolean;
+  unvisitedOnly: boolean;
 }
 
 function parseArgs(): CliOptions {
@@ -23,14 +25,20 @@ function parseArgs(): CliOptions {
   let concurrency = 3;
   let kind: ProfileKind | undefined = undefined;
   let id: string | undefined = undefined;
+  let continuous = false;
+  let unvisitedOnly = true;
 
   for (const arg of args) {
     if (arg === "--dry-run") {
       dryRun = true;
+    } else if (arg === "--loop" || arg === "--continuous") {
+      continuous = true;
+    } else if (arg === "--all") {
+      unvisitedOnly = false;
     } else if (arg.startsWith("--limit=")) {
       limit = Math.max(1, parseInt(arg.split("=")[1], 10) || 10);
     } else if (arg.startsWith("--concurrency=")) {
-      concurrency = Math.max(1, Math.min(10, parseInt(arg.split("=")[1], 10) || 3));
+      concurrency = Math.max(1, Math.min(20, parseInt(arg.split("=")[1], 10) || 3));
     } else if (arg.startsWith("--kind=")) {
       kind = arg.split("=")[1] as ProfileKind;
     } else if (arg.startsWith("--id=")) {
@@ -38,7 +46,7 @@ function parseArgs(): CliOptions {
     }
   }
 
-  return { dryRun, limit, concurrency, kind, id };
+  return { dryRun, limit, concurrency, kind, id, continuous, unvisitedOnly };
 }
 
 async function main() {
@@ -50,49 +58,16 @@ async function main() {
     process.exit(1);
   }
 
-  const pool = new Pool({ connectionString: dbUrl, max: options.concurrency + 2 });
+  const pool = new Pool({ connectionString: dbUrl, max: options.concurrency + 4 });
 
   console.log("==================================================================");
   console.log(" Organization Media Discovery & Backfill Engine");
   console.log(` Mode: ${options.dryRun ? "DRY RUN (preview only)" : "LIVE WRITE (persisting to DB)"}`);
+  console.log(` Concurrency: ${options.concurrency} workers`);
+  console.log(` Continuous loop: ${options.continuous}`);
   if (options.kind) console.log(` Target Organization Kind: ${options.kind}`);
   if (options.id) console.log(` Target Profile ID: ${options.id}`);
-  if (options.limit) console.log(` Limit: ${options.limit}`);
-  console.log("==================================================================\n");
-
-  const queryValues: unknown[] = [];
-  let sql = `
-    SELECT p.id, p.name, p.profile_kind, p.website_url
-    FROM gary_profiles p
-    WHERE p.website_url IS NOT NULL
-  `;
-
-  if (options.id) {
-    queryValues.push(options.id);
-    sql += ` AND p.id = $${queryValues.length}`;
-  }
-
-  if (options.kind) {
-    queryValues.push(options.kind);
-    sql += ` AND p.profile_kind = $${queryValues.length}`;
-  }
-
-  sql += ` ORDER BY p.name ASC`;
-
-  if (options.limit) {
-    queryValues.push(options.limit);
-    sql += ` LIMIT $${queryValues.length}`;
-  }
-
-  const res = await pool.query<{
-    id: string;
-    name: string;
-    profile_kind: ProfileKind;
-    website_url: string;
-  }>(sql, queryValues);
-
-  console.log(`Found ${res.rows.length} organization profiles to process.\n`);
-
+  if (options.limit) console.log(` Limit per cycle: ${options.limit}`);
   const summary = {
     totalProcessed: 0,
     discovered: 0,
@@ -108,7 +83,54 @@ async function main() {
     } as Record<MediaGroup, number>,
   };
 
-  for (let i = 0; i < res.rows.length; i += options.concurrency) {
+  do {
+    const queryValues: unknown[] = [];
+    let sql = `
+      SELECT p.id, p.name, p.profile_kind, p.website_url
+      FROM gary_profiles p
+      LEFT JOIN gary_organization_media_refresh_status s ON s.profile_id = p.id
+      WHERE p.website_url IS NOT NULL
+    `;
+
+    if (options.unvisitedOnly && !options.id) {
+      sql += ` AND s.profile_id IS NULL`;
+    }
+
+    if (options.id) {
+      queryValues.push(options.id);
+      sql += ` AND p.id = $${queryValues.length}`;
+    }
+
+    if (options.kind) {
+      queryValues.push(options.kind);
+      sql += ` AND p.profile_kind = $${queryValues.length}`;
+    }
+
+    sql += ` ORDER BY p.name ASC`;
+
+    if (options.limit) {
+      queryValues.push(options.limit);
+      sql += ` LIMIT $${queryValues.length}`;
+    }
+
+    const res = await pool.query<{
+      id: string;
+      name: string;
+      profile_kind: ProfileKind;
+      website_url: string;
+    }>(sql, queryValues);
+
+    if (res.rows.length === 0) {
+      console.log("No unvisited profiles found. All matching organizations processed!");
+      if (!options.continuous) break;
+      console.log("Sleeping 30 seconds before next polling cycle...");
+      await new Promise((r) => setTimeout(r, 30000));
+      continue;
+    }
+
+    console.log(`Processing batch of ${res.rows.length} organization profiles...`);
+
+    for (let i = 0; i < res.rows.length; i += options.concurrency) {
     const chunk = res.rows.slice(i, i + options.concurrency);
     const results = await Promise.all(
       chunk.map(async (prof) => {
@@ -159,6 +181,7 @@ async function main() {
       }
     }
   }
+  } while (options.continuous);
 
   console.log("\n==================================================================");
   console.log(" Execution Summary");
