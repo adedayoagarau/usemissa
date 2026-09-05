@@ -1,5 +1,5 @@
 import type { ProfileDetail } from "@missa/radar-adapters";
-import { Bookmark, Clock, Sparkles, Trophy } from "lucide-react";
+import { Bookmark, Clock, Sparkles, Trophy, Award } from "lucide-react";
 
 import { cookies } from "next/headers";
 import Link from "next/link";
@@ -9,9 +9,11 @@ import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import { getProfileRepository } from "@/lib/profileRepository";
+import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { cleanCrawledNarrative, cleanTitleOrLabel } from "@/lib/textUtils";
 import { MagazineScheduleBadge } from "@/components/ui/magazine-schedule-badge";
+import { ReportResponseDialog } from "@/components/rankings/report-response-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +79,10 @@ export default async function JournalDetailPage({
   } else if (profile.kind === "visual_arts_organization") {
     redirect(`/org/${encodeURIComponent(profile.slug)}`);
   }
+
+  const rankingRepository = getMagazineRankingRepository();
+  const rankings = await rankingRepository.getMagazineStanding(profile.id);
+  const primaryRank = rankings.find((r) => r.genre === "overall") ?? rankings[0];
 
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(
@@ -159,6 +165,16 @@ export default async function JournalDetailPage({
               <p className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">
                 {profileLabel(profile)}
               </p>
+              {primaryRank ? (
+                <Link
+                  href={`/rankings/magazines?genre=${primaryRank.genre}`}
+                  className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary border border-primary/20 hover:bg-primary/15 transition-colors"
+                >
+                  <Award className="size-3" aria-hidden="true" />
+                  <span>#{primaryRank.rankPosition} {primaryRank.genre === "overall" ? "Overall" : `in ${primaryRank.genre.charAt(0).toUpperCase() + primaryRank.genre.slice(1)}`}</span>
+                  <span className="text-[10px] text-muted-foreground">({primaryRank.totalScore} pts)</span>
+                </Link>
+              ) : null}
               {profile.intelligence?.prestigeTier ? (
                 <span className="inline-flex items-center rounded-md bg-accent-tint/15 px-2 py-0.5 text-xs font-medium text-accent-deep border border-accent-tint/30">
                   {profile.intelligence.prestigeTier}
@@ -271,7 +287,13 @@ export default async function JournalDetailPage({
                   </div>
 
                   <div className="rounded-xl border border-border/70 bg-background/60 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Response Turnaround</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Response Turnaround</p>
+                      <ReportResponseDialog
+                        profileId={profile.id}
+                        magazineName={profile.name}
+                      />
+                    </div>
                     <p className="mt-1.5 font-semibold text-foreground flex items-center gap-1.5">
                       <Clock className="size-4 text-primary shrink-0" aria-hidden="true" />
                       {profile.intelligence.responseLabel || profile.responseTime || "Turnaround variable"}
@@ -281,6 +303,39 @@ export default async function JournalDetailPage({
                     </p>
                   </div>
                 </div>
+
+                {rankings.length > 0 ? (
+                  <div className="mt-4 rounded-xl border border-border/70 bg-background/60 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Missa Index Standing (2026)
+                      </p>
+                      <Link
+                        href="/rankings/magazines"
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        View Full Rankings →
+                      </Link>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {rankings.map((r) => (
+                        <div
+                          key={r.genre}
+                          className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-xs"
+                        >
+                          <Award className="size-3.5 text-primary shrink-0" aria-hidden="true" />
+                          <span className="font-semibold text-foreground">
+                            #{r.rankPosition} {r.genre === "overall" ? "Overall" : r.genre.charAt(0).toUpperCase() + r.genre.slice(1)}
+                          </span>
+                          <span className="font-mono text-muted-foreground">({r.totalScore} pts)</span>
+                          <span className="text-[10px] text-accent-deep bg-accent-tint/15 px-1.5 py-0.5 rounded">
+                            {r.prestigeTier.replace(/ \(.*\)/, "")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </section>
             ) : null}
 

@@ -255,3 +255,5 @@ export {
   type OpportunitySearchResult,
 } from './search/opportunitySearchEngine.js';
 
+export * from './ranking/magazineRankingEngine.js';
+

@@ -12,6 +12,7 @@ import { REGISTRY_VERTICALS } from './verticals.js';
 import { LITERARY_FICTION_SOURCES } from './bundles/literary-fiction.js';
 import { POETRY_SOURCES } from './bundles/poetry.js';
 import { CNF_SOURCES } from './bundles/creative-nonfiction.js';
+import { GLOBAL_LITERARY_PHASE_3_SOURCES } from './bundles/global-literary-phase-3.js';
 import { BULK_SOURCES } from './sources-bulk.js';
 import { EXPANDED_SOURCES } from './sources-expanded.js';
 import { buildRegistryCoverage, defaultSourceTrust, registryTaxonomyTermIds, registryVerticalCompatibility, trustedSource } from './taxonomy.js';
@@ -64,6 +65,7 @@ export function assembleRegistry(): SourceRegistry {
     ...LITERARY_FICTION_SOURCES,
     ...POETRY_SOURCES,
     ...CNF_SOURCES,
+    ...GLOBAL_LITERARY_PHASE_3_SOURCES,
     ...BULK_SOURCES,
     ...EXPANDED_SOURCES,
   ]) {

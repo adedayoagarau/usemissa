@@ -1,0 +1,3533 @@
+{
+  "tier_1": {
+    "tierNumber": 1,
+    "tierTitle": "Tier 1, Elite GLOSSIES: career makers, VERY HIGH circulation, prizewinning, professional payment",
+    "count": 3,
+    "magazines": [
+      {
+        "name": "New Yorker",
+        "krouseScore": 614,
+        "tier": 1,
+        "payment": "$2/word",
+        "responseTimeMonths": "3",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "Harper’s",
+        "krouseScore": 147,
+        "tier": 1,
+        "payment": "$0.50-1/word",
+        "responseTimeMonths": "1.5 - 6",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "The Atlantic/*The Atlantic Online",
+        "krouseScore": 97,
+        "tier": 1,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      }
+    ]
+  },
+  "tier_2": {
+    "tierNumber": 2,
+    "tierTitle": "Tier 2, Elite litmags, prizewinning, usually good payment",
+    "count": 27,
+    "magazines": [
+      {
+        "name": "Ploughshares",
+        "krouseScore": 167,
+        "tier": 2,
+        "payment": "$45/pg",
+        "responseTimeMonths": "2 - 4",
+        "maxWordCount": "up to 6K"
+      },
+      {
+        "name": "Paris Review",
+        "krouseScore": 160,
+        "tier": 2,
+        "payment": "$500-1000",
+        "responseTimeMonths": "3",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "Zoetrope: All",
+        "krouseScore": null,
+        "tier": 2,
+        "payment": "DK",
+        "responseTimeMonths": "5",
+        "maxWordCount": "7K"
+      },
+      {
+        "name": "One Story",
+        "krouseScore": 127,
+        "tier": 2,
+        "payment": "$500",
+        "responseTimeMonths": "2 - 6",
+        "maxWordCount": "3-8K"
+      },
+      {
+        "name": "McSweeney’s",
+        "krouseScore": 122,
+        "tier": 2,
+        "payment": "$400",
+        "responseTimeMonths": "1 - 9",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "New England Review",
+        "krouseScore": 110,
+        "tier": 2,
+        "payment": "$20/pg",
+        "responseTimeMonths": "4",
+        "maxWordCount": "20K"
+      },
+      {
+        "name": "Kenyon Review, The",
+        "krouseScore": 109,
+        "tier": 2,
+        "payment": "$0.08 per published word of prose",
+        "responseTimeMonths": "4",
+        "maxWordCount": "7.5K"
+      },
+      {
+        "name": "Sewanee Review",
+        "krouseScore": 102,
+        "tier": 2,
+        "payment": "DK",
+        "responseTimeMonths": "1.5-2",
+        "maxWordCount": "10K"
+      },
+      {
+        "name": "Conjunctions",
+        "krouseScore": 94,
+        "tier": 2,
+        "payment": "DK",
+        "responseTimeMonths": "3 - 6",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "Granta",
+        "krouseScore": 91,
+        "tier": 2,
+        "payment": "$400 for online version; DK print",
+        "responseTimeMonths": "6",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "*Electric Literature",
+        "krouseScore": 89,
+        "tier": 2,
+        "payment": "$300",
+        "responseTimeMonths": "3 - 6",
+        "maxWordCount": "10K"
+      },
+      {
+        "name": "Iowa Review",
+        "krouseScore": 82,
+        "tier": 2,
+        "payment": "$0.08/word",
+        "responseTimeMonths": "4",
+        "maxWordCount": "25 pages"
+      },
+      {
+        "name": "Virginia Quarterly Review",
+        "krouseScore": 78,
+        "tier": 2,
+        "payment": "$1K and above",
+        "responseTimeMonths": "6",
+        "maxWordCount": "2.5-8K"
+      },
+      {
+        "name": "Harvard Review",
+        "krouseScore": 76,
+        "tier": 2,
+        "payment": "not listed",
+        "responseTimeMonths": "6",
+        "maxWordCount": "1-7K"
+      },
+      {
+        "name": "American Short Fiction",
+        "krouseScore": 75,
+        "tier": 2,
+        "payment": "not listed",
+        "responseTimeMonths": "4",
+        "maxWordCount": "2-15K"
+      },
+      {
+        "name": "ZZYZZYVA",
+        "krouseScore": 69,
+        "tier": 2,
+        "payment": "not listed",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "Southern Review",
+        "krouseScore": 65,
+        "tier": 2,
+        "payment": "$75 for first pg",
+        "responseTimeMonths": "6",
+        "maxWordCount": "usually 10K (but will consider higher)"
+      },
+      {
+        "name": "Missouri Review",
+        "krouseScore": 65,
+        "tier": 2,
+        "payment": "$25/pg",
+        "responseTimeMonths": "3",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "Threepenny Review    (*no simultaneous subs)",
+        "krouseScore": 53,
+        "tier": 2,
+        "payment": "$400",
+        "responseTimeMonths": ".5 - 2",
+        "maxWordCount": "under 4K preferred"
+      },
+      {
+        "name": "Yale Review",
+        "krouseScore": 52,
+        "tier": 2,
+        "payment": "$400 - 500",
+        "responseTimeMonths": "4",
+        "maxWordCount": "6K"
+      },
+      {
+        "name": "Georgia Review, The",
+        "krouseScore": 51,
+        "tier": 2,
+        "payment": "$50/pg up to $800",
+        "responseTimeMonths": "10",
+        "maxWordCount": "9K"
+      },
+      {
+        "name": "Drift, The",
+        "krouseScore": 51,
+        "tier": 2,
+        "payment": "$500 - $1",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Colorado Review",
+        "krouseScore": 48,
+        "tier": 2,
+        "payment": "$300",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "usually between 15 and 25 pages"
+      },
+      {
+        "name": "Idaho Review",
+        "krouseScore": 47,
+        "tier": 2,
+        "payment": "$300 and 2 copies",
+        "responseTimeMonths": "6",
+        "maxWordCount": "up to 25 pgs preferred"
+      },
+      {
+        "name": "AGNI",
+        "krouseScore": 46,
+        "tier": 2,
+        "payment": "$20/pg",
+        "responseTimeMonths": "2 - 4",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "Sun, The",
+        "krouseScore": 43,
+        "tier": 2,
+        "payment": "$200+",
+        "responseTimeMonths": "6",
+        "maxWordCount": "up to 7K preferred"
+      },
+      {
+        "name": "Chicago Quarterly Review",
+        "krouseScore": 41,
+        "tier": 2,
+        "payment": "2 copies",
+        "responseTimeMonths": "6",
+        "maxWordCount": "5K"
+      }
+    ]
+  },
+  "tier_3": {
+    "tierNumber": 3,
+    "tierTitle": "Tier 3, Highly respected: small circulation, prizewinning, often payment",
+    "count": 39,
+    "magazines": [
+      {
+        "name": "A Public Space",
+        "krouseScore": 32,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "New Letters",
+        "krouseScore": 31,
+        "tier": 3,
+        "payment": "modest honorarium and two copies",
+        "responseTimeMonths": "5",
+        "maxWordCount": "up to 30K/60 pages if novella"
+      },
+      {
+        "name": "*Joyland",
+        "krouseScore": 31,
+        "tier": 3,
+        "payment": "$200",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "12K"
+      },
+      {
+        "name": "Bellevue Literary Review",
+        "krouseScore": 30,
+        "tier": 3,
+        "payment": "$150",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "5K max"
+      },
+      {
+        "name": "Cincinnati Review",
+        "krouseScore": 28,
+        "tier": 3,
+        "payment": "$25/pg",
+        "responseTimeMonths": "3 - 4",
+        "maxWordCount": "40 pgs"
+      },
+      {
+        "name": "Boulevard",
+        "krouseScore": 27,
+        "tier": 3,
+        "payment": "$100-300",
+        "responseTimeMonths": "3 - 4",
+        "maxWordCount": "8K"
+      },
+      {
+        "name": "Michigan Quarterly Review",
+        "krouseScore": 27,
+        "tier": 3,
+        "payment": "$10/pg",
+        "responseTimeMonths": "4-6",
+        "maxWordCount": "1.5-7K"
+      },
+      {
+        "name": "Hudson Review    (*no simultaneous subs)",
+        "krouseScore": 27,
+        "tier": 3,
+        "payment": "none",
+        "responseTimeMonths": "6",
+        "maxWordCount": "10K"
+      },
+      {
+        "name": "Noon Annual",
+        "krouseScore": 26,
+        "tier": 3,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Wigleaf: (very) short fiction",
+        "krouseScore": 26,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "1K"
+      },
+      {
+        "name": "BOMB magazine",
+        "krouseScore": 26,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Ecotone",
+        "krouseScore": 24,
+        "tier": 3,
+        "payment": "honorarium plus 2 copies and a 1-year subscription",
+        "responseTimeMonths": "6 - 9",
+        "maxWordCount": "30 pgs"
+      },
+      {
+        "name": "Santa Monica Review",
+        "krouseScore": 22,
+        "tier": 3,
+        "payment": "copies and subscription",
+        "responseTimeMonths": "2",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Five Points",
+        "krouseScore": 20,
+        "tier": 3,
+        "payment": "$15/pg to 250",
+        "responseTimeMonths": "1 - 4",
+        "maxWordCount": "7.5K"
+      },
+      {
+        "name": "Alaska Quarterly Review",
+        "krouseScore": 20,
+        "tier": 3,
+        "payment": "1 copy and AQR subscription",
+        "responseTimeMonths": "1.5-4",
+        "maxWordCount": "20K/80 pgs"
+      },
+      {
+        "name": "Bennington Review",
+        "krouseScore": 17,
+        "tier": 3,
+        "payment": "$120/stories under 6 typeset pages",
+        "responseTimeMonths": "5-8",
+        "maxWordCount": "30 pgs"
+      },
+      {
+        "name": "n+1",
+        "krouseScore": 16,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "North American Review",
+        "krouseScore": 16,
+        "tier": 3,
+        "payment": "$20 - 100",
+        "responseTimeMonths": "5",
+        "maxWordCount": "10K"
+      },
+      {
+        "name": "*TriQuarterly",
+        "krouseScore": 16,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "Los Angeles Review",
+        "krouseScore": 16,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "4K"
+      },
+      {
+        "name": "Image Journal",
+        "krouseScore": 15,
+        "tier": 3,
+        "payment": "100 - 400",
+        "responseTimeMonths": "5",
+        "maxWordCount": "6K “in general"
+      },
+      {
+        "name": "StoryQuarterly",
+        "krouseScore": 15,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "6.25K"
+      },
+      {
+        "name": "Common, The",
+        "krouseScore": 15,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "10K"
+      },
+      {
+        "name": "Copper Nickel",
+        "krouseScore": 14,
+        "tier": 3,
+        "payment": "$30/pg",
+        "responseTimeMonths": "3",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Indiana Review",
+        "krouseScore": 13,
+        "tier": 3,
+        "payment": "$5/pg + 2 copies",
+        "responseTimeMonths": "4",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Massachusetts Review",
+        "krouseScore": 13,
+        "tier": 3,
+        "payment": "$100",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "7.5K/20 pages"
+      },
+      {
+        "name": "Washington Square Review",
+        "krouseScore": 12,
+        "tier": 3,
+        "payment": "two copies",
+        "responseTimeMonths": "2-4",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "Witness",
+        "krouseScore": 11,
+        "tier": 3,
+        "payment": "$150",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "7K"
+      },
+      {
+        "name": "Epoch",
+        "krouseScore": 11,
+        "tier": 3,
+        "payment": "$100 - $500",
+        "responseTimeMonths": "1.5",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*New Orleans Review",
+        "krouseScore": 10,
+        "tier": 3,
+        "payment": "$300",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "LitMag",
+        "krouseScore": 10,
+        "tier": 3,
+        "payment": "$150/under 5K words",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "15K"
+      },
+      {
+        "name": "Southampton Review",
+        "krouseScore": 10,
+        "tier": 3,
+        "payment": "$100+ and 1 copy",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "7.5K"
+      },
+      {
+        "name": "Prairie Schooner",
+        "krouseScore": 10,
+        "tier": 3,
+        "payment": "copies",
+        "responseTimeMonths": "4 - 6",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "New Ohio Review",
+        "krouseScore": 10,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "20 pgs"
+      },
+      {
+        "name": "*Guernica",
+        "krouseScore": 10,
+        "tier": 3,
+        "payment": "$150",
+        "responseTimeMonths": "6",
+        "maxWordCount": "7K"
+      },
+      {
+        "name": "Salamander",
+        "krouseScore": 10,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Revel",
+        "krouseScore": 10,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Catamaran Literary Reader",
+        "krouseScore": 10,
+        "tier": 3,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Narrative Magazine",
+        "krouseScore": 52,
+        "tier": 3,
+        "payment": "$350-1000",
+        "responseTimeMonths": "1 - 3",
+        "maxWordCount": "40K"
+      }
+    ]
+  },
+  "tier_4": {
+    "tierNumber": 4,
+    "tierTitle": "Tier 4, Respected: usually small circulation, one or more recent prizes or “notable” prize mentions, sometimes payment",
+    "count": 124,
+    "magazines": [
+      {
+        "name": "Pleiades",
+        "krouseScore": 8,
+        "tier": 4,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "prefers under 12K"
+      },
+      {
+        "name": "*Prime Number",
+        "krouseScore": 8,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Ninth Letter",
+        "krouseScore": 8,
+        "tier": 4,
+        "payment": "$25/pg",
+        "responseTimeMonths": "2",
+        "maxWordCount": "8K"
+      },
+      {
+        "name": "Southwest Review",
+        "krouseScore": 8,
+        "tier": 4,
+        "payment": "nominal and copies",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "8K"
+      },
+      {
+        "name": "Baltimore Review",
+        "krouseScore": 8,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Jewish Fiction",
+        "krouseScore": 7,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Shenandoah",
+        "krouseScore": 7,
+        "tier": 4,
+        "payment": "$100 per 1000 words of prose up to $500",
+        "responseTimeMonths": "1.5-2",
+        "maxWordCount": "8000 novel excerpts and short stories"
+      },
+      {
+        "name": "Fiction Magazine",
+        "krouseScore": 7,
+        "tier": 4,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "best under 5K"
+      },
+      {
+        "name": "Arts & Letters",
+        "krouseScore": 6,
+        "tier": 4,
+        "payment": "$10/pg",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "25 pgs"
+      },
+      {
+        "name": "Berkeley Fiction Review",
+        "krouseScore": 6,
+        "tier": 4,
+        "payment": "$25",
+        "responseTimeMonths": "6-12",
+        "maxWordCount": "30 pgs (double spaced"
+      },
+      {
+        "name": "West Branch",
+        "krouseScore": 6,
+        "tier": 4,
+        "payment": "$0.05/word to $100",
+        "responseTimeMonths": "2.5",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Brick",
+        "krouseScore": 6,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Mississippi Review",
+        "krouseScore": 6,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Tint Journal",
+        "krouseScore": 6,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "N/A"
+      },
+      {
+        "name": "Gulf Coast",
+        "krouseScore": 5,
+        "tier": 4,
+        "payment": "$50/pg",
+        "responseTimeMonths": "4 - 6",
+        "maxWordCount": "7K"
+      },
+      {
+        "name": "Baffler",
+        "krouseScore": 5,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Fractured Lit",
+        "krouseScore": 5,
+        "tier": 4,
+        "payment": "$50 for micro-fiction",
+        "responseTimeMonths": "3",
+        "maxWordCount": "Micro-fiction up to 400"
+      },
+      {
+        "name": "Post Road",
+        "krouseScore": 5,
+        "tier": 4,
+        "payment": "$50",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "BOA Editions",
+        "krouseScore": 5,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Greensboro Review",
+        "krouseScore": 5,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "7.5K"
+      },
+      {
+        "name": "New World Writing Quarterly",
+        "krouseScore": 5,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*swamp pink    (formerly Crazyhorse)",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "$20 - 35/pg to $200",
+        "responseTimeMonths": "3 - 4",
+        "maxWordCount": "2.5-8.5K"
+      },
+      {
+        "name": "Pinch",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "2 copies",
+        "responseTimeMonths": "3-6",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "Potomac Review",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Subtropics",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "$1000",
+        "responseTimeMonths": "1.5",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "*Masters Review: New Voices",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "$100 for flash fiction up to 1",
+        "responseTimeMonths": "2-3",
+        "maxWordCount": "7k"
+      },
+      {
+        "name": "*CRAFT",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "$100 for flash",
+        "responseTimeMonths": "4-6",
+        "maxWordCount": "6k"
+      },
+      {
+        "name": "Hopkins Review",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "$100",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "8K"
+      },
+      {
+        "name": "Split Lip",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "$75",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Water",
+        "krouseScore": null,
+        "tier": 4,
+        "payment": "copies",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "8K"
+      },
+      {
+        "name": "Third Coast",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "copies",
+        "responseTimeMonths": "3-6",
+        "maxWordCount": "7.5K"
+      },
+      {
+        "name": "Pangyrus",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Louisville Review",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "2-4",
+        "maxWordCount": "none"
+      },
+      {
+        "name": "Point, The",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "South Carolina Review",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Red Rock Review",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Air/Light",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Mount Hope",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Tahoma Literary Review",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Khōréō",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Paper Brigade",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Journal, The",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Short Story, Long",
+        "krouseScore": 4,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Zone 3",
+        "krouseScore": 3,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Southern Indiana Review",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "$100/stories under six pages",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "under 10k preferred"
+      },
+      {
+        "name": "*River Styx",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "$45-150",
+        "responseTimeMonths": "5-6",
+        "maxWordCount": "usually 8K"
+      },
+      {
+        "name": "Prairie Fire",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Harvard Advocate",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Another Chicago Magazine",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Stinging Fly",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "€175-1250",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "One Teen Story",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "$500",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Iron Horse",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "$100",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Grist",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "$50",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "7K"
+      },
+      {
+        "name": "Consequence",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "$30-50",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Black Warrior Review",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "nominal",
+        "responseTimeMonths": "4",
+        "maxWordCount": "7.5K"
+      },
+      {
+        "name": "Pembroke Magazine",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "7.5K"
+      },
+      {
+        "name": "Notre Dame Review",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "*Terrain.org",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Ep;phany",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*   Offing, The",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Southern Humanities Review",
+        "krouseScore": 2,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Chautauqua Journal",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*   failbetter.com",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Boston Review",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "$300",
+        "responseTimeMonths": "4",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "*   SmokeLong Quarterly",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "100",
+        "responseTimeMonths": "0.5",
+        "maxWordCount": "flash narratives up to 1000 words."
+      },
+      {
+        "name": "Willow Springs",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "100",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "Puerto del Sol",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*   Oyster River Pages",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "7.5K"
+      },
+      {
+        "name": "Florida Review",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Healing Muse, The",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*   Cleaver",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Broadkill Review",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Center for Appalachian Studies",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Chestnut Review",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Reed Magazine",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Wrath",
+        "krouseScore": null,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Lake Effect",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Hunger Mountain",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "8K"
+      },
+      {
+        "name": "*   The Normal School",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "*   Transition",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Examined Life",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Oxford Magazine",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*   Quarterly West",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Ragaire",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Laurel Review",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Adroit Journal",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Alta Journal",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Phoebe",
+        "krouseScore": 1,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Confrontation",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "$25 - 250",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Barrelhouse",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "$50",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "under 8K preferred"
+      },
+      {
+        "name": "*   J Journal",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "copies",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "6"
+      },
+      {
+        "name": "Mid",
+        "krouseScore": null,
+        "tier": 4,
+        "payment": "copies",
+        "responseTimeMonths": "1 - 5",
+        "maxWordCount": "6K"
+      },
+      {
+        "name": "*   Kweli",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Western Humanities Review",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "25 pgs"
+      },
+      {
+        "name": "Brooklyn Rail",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Chicago Review",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*   Crab Orchard Review",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*   Blackbird",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "query if over 8K"
+      },
+      {
+        "name": "Minnesota Review",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Worcester Review",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Vassar Review",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Literal Latte",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Nimrod",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "7.5K"
+      },
+      {
+        "name": "Salt Hill",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "30 pgs"
+      },
+      {
+        "name": "PRISM International",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Meridian",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Pulp Literature",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Bat City Review",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Quiddity",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Rumpus",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Outlook Springs",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*New Delta Review",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Exile",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Fiction International",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Provincetown Arts",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Cola (formerly Yemassee)",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Spectacle",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "African American Review",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Moon City",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Obsidian",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Chapter House    (formerly Mud City)",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Reservoir Journal",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Sixfold Fiction",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*About Place",
+        "krouseScore": 0,
+        "tier": 4,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      }
+    ]
+  },
+  "tier_5": {
+    "tierNumber": 5,
+    "tierTitle": "Tier 5, Very good: usually small circulation, no recent prizes or mentions, sometimes payment",
+    "count": 244,
+    "magazines": [
+      {
+        "name": "Capilano Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$50/pg to $200",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Descant",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$100",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Nashville Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$100",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Flash Fiction Online",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$60",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Saranac Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$60",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Frigg",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$50",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "annalemma",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$50",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Writer’s Foundry Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$50",
+        "responseTimeMonths": "3",
+        "maxWordCount": "4"
+      },
+      {
+        "name": "*Exposition Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$50",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Coastal Shelf",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$30 per piece",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Good Life Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$75 for the quarterly",
+        "responseTimeMonths": "6",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "Fiddlehead",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$40 CAD/pg",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Grain Magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$50/pg CAD to 225",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "3.5K"
+      },
+      {
+        "name": "Malahat Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$40/pg CAD",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "8K"
+      },
+      {
+        "name": "*Antigonish Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$10/pg to $50",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Turnrow",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$15/pg",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Funicular Magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$10/page (up to $100) for short story",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "F(r)iction",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$10/page + 2 copies",
+        "responseTimeMonths": "1-2",
+        "maxWordCount": "7.5K"
+      },
+      {
+        "name": "Litmosphere: Journal of Charlotte Lit",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$50-250",
+        "responseTimeMonths": "1",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "Lilith",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$50-150",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Short Story Stack",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "Winning story gets $100 plus 50% of subscription revenue",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "10K"
+      },
+      {
+        "name": "Shooter Literary Magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "£25",
+        "responseTimeMonths": "1 month after deadline",
+        "maxWordCount": "2-6K"
+      },
+      {
+        "name": "Rosebud",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$30",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "Ideally 1K-3K"
+      },
+      {
+        "name": "Bourbon Penn",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$10-25",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Vestal Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$25",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Sequestrum",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$10-15",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Meanjin",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$0.20/word AUD",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "2-4K"
+      },
+      {
+        "name": "*Elegant Literature",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "10 cents/word",
+        "responseTimeMonths": "1",
+        "maxWordCount": ".5-2K"
+      },
+      {
+        "name": "After Dinner Conversation",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$75",
+        "responseTimeMonths": "1.5-2",
+        "maxWordCount": "7K"
+      },
+      {
+        "name": "*Cafe Irreal",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$0.01/word",
+        "responseTimeMonths": "2-4",
+        "maxWordCount": "2K"
+      },
+      {
+        "name": "*Five South",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "nominal",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Porter House Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "nominal",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*carte blanche",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "nominal",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Fugue",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "nominal",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Atticus Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "nominal",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Raising Mothers",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "varies",
+        "responseTimeMonths": "Under 3",
+        "maxWordCount": "1.2-3K"
+      },
+      {
+        "name": "Bellingham Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "sometimes",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Cimarron Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "2 copies",
+        "responseTimeMonths": "3-6",
+        "maxWordCount": "25 pages preferred"
+      },
+      {
+        "name": "Cutbank",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "8.5K"
+      },
+      {
+        "name": "Sonora Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Southeast Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Beloit Fiction Journal",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Little Star",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Salmagundi",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Denver Quarterly",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Event Magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Arkansas International",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*X",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Memorious",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Fourteen Hills",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "6K"
+      },
+      {
+        "name": "*Portland Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Redivider",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Asian American Literary Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Dr. T.J. Eckleburg Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "North Carolina Literary Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Crab Creek Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Little Fiction",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Hobart",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "2K"
+      },
+      {
+        "name": "*Tampa Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Carolina Quarterly",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Mizna",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "At Length",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Texas Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Anomaly",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Lumina",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Jelly Bucket",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Emrys Journal",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Foglifter",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Passages North",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Lunch Ticket",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Fence",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Apple Valley Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Collateral Journal",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Booth",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "subTerrain",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Hayden’s Ferry",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Words without Borders",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "The MacGuffin",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "North Dakota Quarterly",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "BLOOM",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Bangalore Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "3",
+        "maxWordCount": "4K"
+      },
+      {
+        "name": "Commonweal",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Santa Clara Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "American Reader",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "JMWW",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Necessary Fiction",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Northwest Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Chariton Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Pithead Chapel",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "2",
+        "maxWordCount": "4K"
+      },
+      {
+        "name": "Sou’wester",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "New South",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Able Muse",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Brainchild",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Barcelona Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "4500"
+      },
+      {
+        "name": "Dublin Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*The White Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Queen’s Quarterly",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "2",
+        "maxWordCount": "3K"
+      },
+      {
+        "name": "*PIF magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Contrary",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Byline",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Callaloo",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "The London Magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "4K"
+      },
+      {
+        "name": "Kalliope",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Calyx",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Brooklyn Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Appalachian Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Blue Earth Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Blue Mesa Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Dogwood",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Folded Word",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Jabberwock Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "New Millennium Writings",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Moth",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "New Quarterly",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "[sic]",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Caribbean Writer",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Faultline",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Relief: A Journal of Art & Faith",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Folio",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Stone Canoe",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Saturday Evening Post",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "3K"
+      },
+      {
+        "name": "Columbia Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Connecticut Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "American Literary Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "4",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Artful Dodge",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Bridge",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Kyoto Journal",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Territory",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Polyphony Lit",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Quarter After Eight",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Tiferet",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Transformations",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "War, Literature and The Arts",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Apalachee Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Apogee",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "Bayou Magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*BlazeVOX",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Blue Lake Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Brooklyn Quarterly",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Burnside Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Little Fiction, Big Truths",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Eclectica",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Evergreen",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Decomp",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*The Boiler",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Threadcount",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Calliope",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Cream City Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Cutthroat",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*DIAGRAM",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*FictionWeek Literary Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Fourth River",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "1 copy",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "None"
+      },
+      {
+        "name": "Gargoyle",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Gigantic Sequins",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Great River Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*HAD Magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Harpur Palate",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Hawai’i Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Hazlitt",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "HOOT",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Kaleidoscope",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Great Plains Quarterly",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Duende",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*West Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Madison Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Literary Orphans",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Litro Magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "MER/Mom Egg Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "3-6",
+        "maxWordCount": "1K"
+      },
+      {
+        "name": "*Museum of Americana, The",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Painted Bride Quarterly",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Penn Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Permafrost",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Phare",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Roanoke Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "under 1",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "Room",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "SAND",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "St. Anne’s Academic Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Solstice: a Magazine of Diverse Voices",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Soundings East",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "South Dakota Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Summerset Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "3",
+        "maxWordCount": "8K"
+      },
+      {
+        "name": "*Talking Writing",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Tendrils",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Twisted Vine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Unsaid",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Valparaiso Fiction Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Volt",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Winter Tangerine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "3:AM Magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "100 Word Story",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Wildness",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "1",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "Peach Mag",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Lascaux Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Kelsey Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Smoky Blue Literary and Arts Magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Chiron Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Blackbriar Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "none",
+        "responseTimeMonths": "24 hrs to 7 days",
+        "maxWordCount": "6K"
+      },
+      {
+        "name": "Emerge Magazine",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "2.5K"
+      },
+      {
+        "name": "The Fiction Desk",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Confingo",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Exacting Clam",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Fictive Dream",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Gutter",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Manchester Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Turkoslavia",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "1-3",
+        "maxWordCount": "not restricted"
+      },
+      {
+        "name": "Litbreak",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Wilderness House Literary Review",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Dial, The",
+        "krouseScore": 0,
+        "tier": 5,
+        "payment": "$250 for excerpt",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "about 3K"
+      },
+      {
+        "name": "*Uncharted",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "$200",
+        "responseTimeMonths": "3",
+        "maxWordCount": "5K"
+      },
+      {
+        "name": "Three",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "$100/story and $30/flash fiction",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Aurealis",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "60AUD",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Not One of Us",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "¼¢/word",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Nightmare",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Apex Magazine",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Tractor Beam",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "$1000",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "6K"
+      },
+      {
+        "name": "*GigaNotoSaurus",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "$100",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "5-25K"
+      },
+      {
+        "name": "*Heroic Fantasy Quarterly",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "$100",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Analog: Science Fiction and Fact",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "8-10¢/word",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Lightspeed",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "8¢/word",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Beneath Ceaseless Skies",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "8¢/word",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "10K"
+      },
+      {
+        "name": "Fantasy & Science Fiction",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "some payment",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Phantom Drift",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "$50",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*PodCastle",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "6¢/word",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Dark, The",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "3¢/word",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "2-6K"
+      },
+      {
+        "name": "*Drabblecast",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "6¢/word",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Strange Horizons",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "6¢/word",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Uncanny Magazine",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "some payment",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Lady Churchill’s Rosebud Wristlet",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "$0.03/word",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Clarkesworld",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "some payment",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Asimov’s Science Fiction",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "The Fairy Tale Review",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Mermaids Monthly",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "FIYAH",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*365 Tomorrows",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "600"
+      },
+      {
+        "name": "*Ashtales",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "2K"
+      },
+      {
+        "name": "*Pseudopod",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "6¢/word",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "*Bloodletter",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Ellery Queen Mystery Magazine",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "5-8¢/word",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Black Cat Mystery Magazine",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Mystery Tribune",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "The Strand",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Alfred Hitchcock Mystery Magazine",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Tough",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "DK",
+        "responseTimeMonths": "DK",
+        "maxWordCount": "DK"
+      },
+      {
+        "name": "Gray’s Sporting Journal",
+        "krouseScore": null,
+        "tier": 5,
+        "payment": "$600-1",
+        "responseTimeMonths": "6-7",
+        "maxWordCount": "DK"
+      }
+    ]
+  }
+}

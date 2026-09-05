@@ -23,8 +23,9 @@ function bounded(value: unknown, max = 500): string | undefined {
   return typeof value === 'string' && value ? value.slice(0, max) : undefined;
 }
 
-/** Reduce a verified Resend payload to operational delivery facts. Recipient,
- * sender, subject, body, click URL, IP, and user-agent data are not retained. */
+/** Reduce a verified Resend payload to operational delivery facts. Sender,
+ * subject, body, click URL, IP, and user-agent data are not retained.
+ * Recipient email is retained solely on adverse delivery events for suppression loops. */
 export function resendProviderEventRecord(event: WebhookEventPayload): ResendProviderEventRecord | undefined {
   const data = event.data as unknown as Record<string, unknown>;
   const providerMessageId = bounded(data.email_id, 240);

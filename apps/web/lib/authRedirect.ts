@@ -25,6 +25,8 @@ export function safeAuthRedirect(value: string | undefined): string {
       return "/opportunities";
     }
     const allowed = [
+      "/onboarding",
+      "/workspace",
       "/opportunities",
       "/tracker",
       "/saved",

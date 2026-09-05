@@ -7,7 +7,7 @@ import {
   PROFILE_LAYOUTS,
   type ProfileSection,
 } from "./institution-profile-layout";
-import { ArrowLeft, ArrowUpRight, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, ArrowRight, MapPin } from "lucide-react";
 import { KIND_METADATA } from "./institution-directory-view";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -243,7 +243,16 @@ export function InstitutionProfileView({
     ),
     opportunities: true,
     guidance: Boolean(
-      profile.editorialProfile?.submissionGuidance || guidelines,
+      profile.editorialProfile?.submissionGuidance ||
+        profile.editorialTips ||
+        guidelines ||
+        profile.readingPeriod ||
+        profile.schedule?.badgeLabel ||
+        profile.readingFee ||
+        profile.payment ||
+        profile.responseTime ||
+        profile.simultaneousSubmissions ||
+        profile.unsolicitedSubmissions,
     ),
   };
   const labels = {
@@ -326,6 +335,12 @@ export function InstitutionProfileView({
             {openCount}{" "}
             {openCount === 1 ? "open opportunity" : "open opportunities"} listed
           </span>
+          {(profile.city || profile.country) && (
+            <span className={styles.locationBadge}>
+              <MapPin size={13} aria-hidden="true" />
+              {[profile.city, profile.country].filter(Boolean).join(", ")}
+            </span>
+          )}
         </div>
       </header>
       <nav className={styles.sectionNav} aria-label="Profile sections">
@@ -474,27 +489,115 @@ export function InstitutionProfileView({
                         )}
                       </section>
                     ),
-                    guidance: (
-                      <section
-                        id="profile-guidance"
-                        className={styles.guidance}
-                      >
-                        <h2 className="font-sans">{layout.guidance}</h2>
-                        {profile.editorialProfile?.submissionGuidance && (
-                          <p className={styles.prose}>
-                            {cleanCrawledNarrative(
-                              profile.editorialProfile.submissionGuidance,
-                            )}
-                          </p>
-                        )}
-                        {guidelines && (
-                          <a href={guidelines} target="_blank" rel="noreferrer">
-                            Read official guidelines
-                            <ArrowUpRight size={16} aria-hidden="true" />
-                          </a>
-                        )}
-                      </section>
-                    ),
+                    guidance: (() => {
+                      // Build structured guideline cards from available profile fields
+                      interface GuidelineCard {
+                        label: string;
+                        value: string;
+                        note?: string;
+                      }
+                      const cards: GuidelineCard[] = [];
+
+                      // Reading period
+                      const readingPeriodValue =
+                        profile.readingPeriod ||
+                        profile.schedule?.badgeLabel;
+                      if (readingPeriodValue) {
+                        cards.push({
+                          label: publication ? "Reading period" : "Application window",
+                          value: readingPeriodValue,
+                        });
+                      }
+
+                      // Fees
+                      if (profile.readingFee) {
+                        cards.push({
+                          label: publication ? "Reading fee" : "Application fee",
+                          value: profile.readingFee,
+                        });
+                      }
+
+                      // Payment/compensation
+                      if (profile.payment) {
+                        cards.push({
+                          label: "Payment",
+                          value: profile.payment,
+                        });
+                      }
+
+                      // Response time
+                      if (profile.responseTime) {
+                        cards.push({
+                          label: "Response time",
+                          value: profile.responseTime,
+                        });
+                      }
+
+                      // Simultaneous submissions
+                      if (profile.simultaneousSubmissions) {
+                        cards.push({
+                          label: "Simultaneous submissions",
+                          value: profile.simultaneousSubmissions,
+                        });
+                      }
+
+                      // Unsolicited submissions
+                      if (profile.unsolicitedSubmissions) {
+                        cards.push({
+                          label: "Unsolicited submissions",
+                          value: profile.unsolicitedSubmissions,
+                        });
+                      }
+
+                      return (
+                        <section
+                          id="profile-guidance"
+                          className={styles.guidance}
+                        >
+                          <h2 className="font-sans">{layout.guidance}</h2>
+                          {cards.length > 0 && (
+                            <div className={styles.guidelinesCards}>
+                              {cards.map((card) => (
+                                <div
+                                  key={card.label}
+                                  className={styles.guidelineCard}
+                                >
+                                  <span className={styles.guidelineCardLabel}>
+                                    {card.label}
+                                  </span>
+                                  <span className={styles.guidelineCardValue}>
+                                    {card.value}
+                                  </span>
+                                  {card.note && (
+                                    <span className={styles.guidelineCardNote}>
+                                      {card.note}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {profile.editorialProfile?.submissionGuidance && (
+                            <p className={styles.prose}>
+                              {cleanCrawledNarrative(
+                                profile.editorialProfile.submissionGuidance,
+                              )}
+                            </p>
+                          )}
+                          {profile.editorialTips && !profile.editorialProfile?.submissionGuidance && (
+                            <p className={styles.prose}>
+                              {cleanCrawledNarrative(profile.editorialTips)}
+                            </p>
+                          )}
+                          {guidelines && (
+                            <a href={guidelines} target="_blank" rel="noreferrer">
+                              Read official guidelines
+                              <ArrowUpRight size={16} aria-hidden="true" />
+                            </a>
+                          )}
+                        </section>
+                      );
+                    })(),
                   }[key]
                 }
               </Fragment>

@@ -33,3 +33,26 @@ test('Resend webhook rejects unsigned requests before persistence', async () => 
     if (previousDatabase === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previousDatabase;
   }
 });
+
+test('Resend webhook rejects invalid webhook signatures', async () => {
+  const previousSecret = process.env.RESEND_WEBHOOK_SECRET;
+  const previousDatabase = process.env.DATABASE_URL;
+  process.env.RESEND_WEBHOOK_SECRET = 'whsec_dGVzdF9zZWNyZXRfdmFsdWVfZm9yX3N2aXhfMTIzNDU2';
+  process.env.DATABASE_URL = 'postgres://unused';
+  try {
+    const response = await POST(new Request('http://localhost/api/webhooks/resend', {
+      method: 'POST',
+      headers: {
+        'svix-id': 'msg_test_123',
+        'svix-timestamp': '1234567890',
+        'svix-signature': 'v1,invalid_signature',
+      },
+      body: JSON.stringify({ type: 'email.sent' }),
+    }));
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), { error: 'Invalid webhook signature.' });
+  } finally {
+    if (previousSecret === undefined) delete process.env.RESEND_WEBHOOK_SECRET; else process.env.RESEND_WEBHOOK_SECRET = previousSecret;
+    if (previousDatabase === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previousDatabase;
+  }
+});

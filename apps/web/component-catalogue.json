@@ -1,4 +1,8 @@
 {
+  "applicationTrackerPreview": {"status":"experimental", "implementation":"apps/web/components/application-tracker-preview.tsx", "route":"/design-system/my-applications", "composition":["Button","Field","Input","Textarea","NativeSelect"]},
+  "applicationPreparationPreview": {"status":"experimental", "implementation":"apps/web/components/application-preparation-preview.tsx", "route":"/design-system/application-preparation", "composition":["Button","Field","Textarea","NativeSelect"], "boundary":"Sample materials, local React state; no persistence, upload, or submission integration."},
+  "creatorWorkspacePreview": {"status":"experimental", "implementation":"apps/web/components/creator-workspace-preview.tsx", "route":"/design-system/creator-workspace", "composition":["Button","Checkbox","Link"], "boundary":"Interactive local-state workspace preview. It does not create applications, save materials, set reminders, or claim external submission status."},
+  "creatorOnboardingPreview": {"status":"experimental", "implementation":"apps/web/components/creator-onboarding-preview.tsx", "route":"/design-system/creator-onboarding", "composition":["Checkbox","Button","Link"], "boundary":"Two optional questions; local React state only; no account persistence"},
   "opportunityDetail": {
     "persistentActions": "OpportunityDetailStickyActions observes summary exit; desktop only, existing mobile dock retained",
     "status": "approved",

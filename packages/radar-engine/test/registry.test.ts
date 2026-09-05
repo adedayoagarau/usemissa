@@ -86,3 +86,41 @@ test('priority source families declare their site schema and correct source tier
     assert.equal(source?.followsOutboundLinks, false, `${name} must not fan out as an aggregator`);
   }
 });
+
+test('phase 3 global literary tranche starts with country-scoped first-party seeds', () => {
+  const reg = assembleRegistry();
+  const trancheNames = [
+    'Naira Stories',
+    'LOGOS Magazine',
+    'The Inkline',
+    'African Writer Magazine',
+    'The Iroko Circle',
+    'Brittle Paper',
+    'Agbowo',
+    'Omenana',
+    'Nenta Literary Journal',
+    'Ta Adesa',
+    'Hummingbird Journal',
+    'Lolwe',
+    'Jalada Africa',
+    'Inkazi Africa',
+    'KUDU Journal',
+    'Botsotso Publishing',
+    'Coinage Africa',
+    'Doek',
+    'Munyori Literary Journal',
+    'Bakwa Magazine',
+    'Kalahari Review',
+  ];
+
+  const tranche = reg.sources.filter((source) => trancheNames.includes(source.name));
+  assert.equal(tranche.length, trancheNames.length);
+  assert.ok(tranche.every((source) => source.tier === 0));
+  assert.ok(tranche.every((source) => source.kind === 'organization-website'));
+  assert.ok(tranche.every((source) => source.opportunityTypes.includes('magazine')));
+  assert.deepEqual(
+    [...new Set(tranche.flatMap((source) => source.geography ?? []))].sort(),
+    ['BW', 'CM', 'GH', 'KE', 'NA', 'NG', 'ZA', 'ZW', 'global'],
+  );
+  assert.ok(tranche.every((source) => source.notes?.includes('Phase 3 Tranche A')));
+});

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { billingEventType, crmNoteEvidence, platformAdminFoundationsSchema, platformAgentControlPrecondition, platformAgentControlReplayStatus, platformAgentControlRequestIdentity, platformBillingReceiptDigest, providerEventEffectStatus, reducePlatformMessageProviderEvents, sanitizePlatformMessageError, summarizeDurableCrmRows } from '../src/platformAdminFoundations.js';
+import { billingEventType, crmNoteEvidence, platformAdminFoundationsSchema, platformAgentControlPrecondition, platformAgentControlReplayStatus, platformAgentControlRequestIdentity, platformBillingReceiptDigest, providerEventEffectStatus, reducePlatformMessageProviderEvents, sanitizePlatformMessageError, sanitizePlatformMessageProviderMetadata, summarizeDurableCrmRows } from '../src/platformAdminFoundations.js';
 
 test('message provider errors redact personal, network, URL, and credential values while retaining safe context', () => {
   const original = 'recipient artist@example.com sender=staff@usemissa.com diagnostic https://provider.test/events/evt_123 click http://click.test/a?token=visible ipv4 203.0.113.42 ipv6 2001:db8:85a3::8a2e:370:7334 database postgres://dbuser:dbpass@db.test/missa password="open sesame" category=recipient_rejected';
@@ -86,13 +86,13 @@ test('platform foundation schema carries idempotency and control boundaries', ()
   assert.match(platformAdminFoundationsSchema, /platform_message_effects/);
   assert.match(platformAdminFoundationsSchema, /platform_message_attempts/);
   assert.match(platformAdminFoundationsSchema, /platform_message_provider_events/);
+  assert.match(platformAdminFoundationsSchema, /platform_message_provider_events_email_idx/);
   assert.match(platformAdminFoundationsSchema, /tenant_key/);
   assert.match(platformAdminFoundationsSchema, /recipient_account_id/);
   assert.match(platformAdminFoundationsSchema, /template_version/);
   assert.match(platformAdminFoundationsSchema, /'accepted','delivered','bounced'/);
   assert.match(platformAdminFoundationsSchema, /platform_billing_ledger/);
   assert.match(platformAdminFoundationsSchema, /platform_agent_control_requests/);
-  assert.match(platformAdminFoundationsSchema, /policy_version/);
   assert.match(platformAdminFoundationsSchema, /policy_version/);
   assert.match(platformAdminFoundationsSchema, /platform_crm_contacts/);
   assert.match(platformAdminFoundationsSchema, /platform_crm_tasks/);
@@ -107,4 +107,24 @@ test('provider email events map terminal and observational states without invent
   assert.equal(providerEventEffectStatus('email.failed'), 'failed');
   assert.equal(providerEventEffectStatus('email.bounced'), 'bounced');
   assert.equal(providerEventEffectStatus('domain.updated'), undefined);
+});
+
+test('provider event metadata sanitizes diagnostic errors and preserves adverse suppression email', () => {
+  const sanitized = sanitizePlatformMessageProviderMetadata({
+    reason: '550 User unknown at artist@example.com diagnostic=https://mx.test/error',
+    failureType: 'permanent',
+    failureSubtype: 'General',
+    email: 'Artist@Example.COM ',
+  });
+  assert.deepEqual(sanitized, {
+    reason: '550 User unknown at [email redacted] diagnostic=[url redacted]',
+    failureType: 'permanent',
+    failureSubtype: 'General',
+    email: 'artist@example.com',
+  });
+
+  assert.throws(
+    () => sanitizePlatformMessageProviderMetadata({ unsupported_key: 'malicious' }),
+    /Unsupported provider event metadata key: unsupported_key/,
+  );
 });

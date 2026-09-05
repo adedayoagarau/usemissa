@@ -109,6 +109,7 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
       await client.query("insert into creator_profiles (account_id,user_id,display_name) values ($1,$2,$3)", [accountId, userId, input.displayName]);
       await client.query("insert into opportunity_preferences (account_id) values ($1)", [accountId]);
       await client.query("insert into notification_preferences (account_id) values ($1)", [accountId]);
+      await client.query("insert into creator_product_states (account_id) values ($1) on conflict (account_id) do nothing", [accountId]).catch(() => undefined);
       const receiptId = randomUUID();
       await client.query(`insert into workspace_command_receipts (id,scope_type,scope_id,actor_account_id,command_type,idempotency_key,request_hash,result,correlation_id) values ($1,'owner',$2,$2,'account.password-signup',$3,$3,$4::jsonb,$5)`, [receiptId, accountId, email, JSON.stringify({ resourceType: "account", resourceId: accountId, revision: 1, receiptId, replayed: false }), receiptId]);
       await client.query("insert into audit_events (account_id,action,target_type,target_id,detail,correlation_id) values ($1,'account.provisioned','account',$1,$2::jsonb,$3)", [accountId, JSON.stringify({ receiptId, revision: 1, method: "password" }), receiptId]);
@@ -166,6 +167,7 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
       await client.query("insert into creator_profiles (account_id,user_id,display_name) values ($1,$2,$3)", [accountId, userId, input.displayName]);
       await client.query("insert into opportunity_preferences (account_id) values ($1)", [accountId]);
       await client.query("insert into notification_preferences (account_id) values ($1)", [accountId]);
+      await client.query("insert into creator_product_states (account_id) values ($1) on conflict (account_id) do nothing", [accountId]).catch(() => undefined);
       const receiptId = randomUUID();
       await client.query(
         `insert into workspace_command_receipts

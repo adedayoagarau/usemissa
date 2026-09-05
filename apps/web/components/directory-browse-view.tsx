@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, ArrowUpRight, Search } from "lucide-react";
+import { ArrowRight, ArrowUpRight, MapPin, Search } from "lucide-react";
 import {
   getSemanticUrlForProfile,
   type ProfileCard,
   type ProfileKind,
 } from "@missa/radar-adapters";
+import { PRIMARY_PUBLISHING_COUNTRIES, countryNameFromCode } from "@missa/contracts";
 import { KIND_METADATA } from "./institution-directory-view";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -30,6 +31,7 @@ export function DirectoryBrowseView({
   query,
   activeKind,
   activeWindow,
+  activeCountry,
   activeSort,
   loadFailed = false,
   basePath = "/directory",
@@ -43,6 +45,7 @@ export function DirectoryBrowseView({
   query: string;
   activeKind?: ProfileKind;
   activeWindow?: string;
+  activeCountry?: string;
   activeSort?: string;
   loadFailed?: boolean;
   basePath?: string;
@@ -56,12 +59,14 @@ export function DirectoryBrowseView({
     search = query,
     win = activeWindow ?? "",
     sort = activeSort ?? "",
+    country = activeCountry ?? "",
   ) {
     const params = new URLSearchParams();
     if (kind && basePath === "/directory") params.set("kind", kind);
     if (search) params.set("q", search);
     if (win) params.set("window", win);
     if (sort && sort !== "name_asc") params.set("sort", sort);
+    if (country) params.set("country", country);
     if (nextPage > 1) params.set("page", String(nextPage));
     const path =
       basePath === "/directory"
@@ -105,7 +110,7 @@ export function DirectoryBrowseView({
         {categories.map(([kind, label]) => (
           <Link
             key={kind}
-            href={href(1, kind, query, activeWindow, activeSort)}
+            href={href(1, kind, query, activeWindow, activeSort, activeCountry)}
             aria-current={(activeKind ?? "") === kind ? "page" : undefined}
           >
             {label}
@@ -123,7 +128,7 @@ export function DirectoryBrowseView({
           Search organizations
         </label>
         <Input
-          key={`${query}:${activeKind}:${activeWindow}:${activeSort}`}
+          key={`${query}:${activeKind}:${activeWindow}:${activeSort}:${activeCountry}`}
           id="directory-search"
           name="q"
           defaultValue={query}
@@ -135,6 +140,9 @@ export function DirectoryBrowseView({
         )}
         {activeWindow && (
           <input type="hidden" name="window" value={activeWindow} />
+        )}
+        {activeCountry && (
+          <input type="hidden" name="country" value={activeCountry} />
         )}
         {activeSort && activeSort !== "name_asc" && (
           <input type="hidden" name="sort" value={activeSort} />
@@ -149,6 +157,23 @@ export function DirectoryBrowseView({
         </Button>
       </form>
 
+      <nav aria-label="Country filters" className={styles.countryFilters}>
+        {PRIMARY_PUBLISHING_COUNTRIES.map((opt) => {
+          const isActive = (activeCountry ?? "") === opt.code;
+          return (
+            <Link
+              key={opt.code}
+              href={href(1, activeKind ?? "", query, activeWindow, activeSort, opt.code)}
+              className={styles.filterPill}
+              data-active={isActive || undefined}
+              aria-current={isActive ? "page" : undefined}
+            >
+              {opt.name}
+            </Link>
+          );
+        })}
+      </nav>
+
       {showScheduleFilters && (
         <nav aria-label="Reading window filters" className={styles.scheduleFilters}>
           {WINDOW_OPTIONS.map((opt) => {
@@ -156,7 +181,7 @@ export function DirectoryBrowseView({
             return (
               <Link
                 key={opt.value}
-                href={href(1, activeKind ?? "", query, opt.value, activeSort)}
+                href={href(1, activeKind ?? "", query, opt.value, activeSort, activeCountry)}
                 className={styles.filterPill}
                 data-active={isActive || undefined}
                 aria-current={isActive ? "page" : undefined}
@@ -190,11 +215,25 @@ export function DirectoryBrowseView({
                   • reading window: <strong>{activeWindow.replace(/_/g, " ")}</strong>
                 </>
               )}
+              {activeCountry && (
+                <>
+                  {" "}
+                  • country: <strong>{countryNameFromCode(activeCountry) || activeCountry}</strong>
+                </>
+              )}
             </>
           )}
         </p>
         <div className={styles.ledgerActions}>
-          {query || activeWindow || (activeSort && activeSort !== "name_asc") || (activeKind && basePath === "/directory") ? (
+          {showScheduleFilters ? (
+            <Link
+              href="/rankings/magazines"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-accent-deep transition-colors"
+            >
+              <span>🏆 2026 Rankings Index →</span>
+            </Link>
+          ) : null}
+          {query || activeWindow || activeCountry || (activeSort && activeSort !== "name_asc") || (activeKind && basePath === "/directory") ? (
             <Link href={basePath}>Clear filters</Link>
           ) : null}
           <DirectorySort showScheduleSorts={showScheduleFilters} />
@@ -236,6 +275,12 @@ export function DirectoryBrowseView({
                     {item.name.trim() || "Organization profile"}
                   </Link>
                 </h2>
+                {(item.city || item.country) && (
+                  <p className={styles.location}>
+                    <MapPin size={13} aria-hidden="true" className={styles.locationIcon} />
+                    <span>{[item.city, item.country || item.countryCode].filter(Boolean).join(", ")}</span>
+                  </p>
+                )}
                 {item.summary ? (
                   <p className={styles.summary}>{item.summary}</p>
                 ) : null}

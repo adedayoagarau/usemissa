@@ -7,6 +7,7 @@ import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import { parseOpportunityBrowseQuery } from "@/lib/opportunityQuery";
 import { getOpportunityFacetCounts } from "@/lib/opportunityFacetCounts";
 import { getEngine } from "@/lib/engine";
+import { countryNameFromCode } from "@missa/contracts";
 import { LOCATION_OPTIONS, taxonomyLabelFor } from "@/lib/opportunityTaxonomy";
 import { OpportunityShell } from "@/components/opportunity-shell";
 import { OpportunityCatalogueFilters } from "@/components/opportunity-catalogue-filters";
@@ -181,7 +182,7 @@ export default async function OpportunitiesPage({
     ...query.locations.map((value) => ({
       key: "location",
       value,
-      label: value,
+      label: countryNameFromCode(value) || value,
       list: true,
     })),
     ...(query.feeStatus

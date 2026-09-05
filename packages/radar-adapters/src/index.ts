@@ -413,6 +413,7 @@ export {
   completePlatformMessageEffect,
   providerEventEffectStatus,
   recordPlatformMessageProviderEvent,
+  sanitizePlatformMessageProviderMetadata,
   createPlatformCrmContact,
   createPlatformCrmNote,
   createPlatformCrmTask,
@@ -566,4 +567,11 @@ export {
   type OrganizationMediaBundle,
   type MediaDiscoveryResult,
 } from "./organizationMediaDiscovery.js";
+
+export {
+  PostgresMagazineRankingRepository,
+  type MagazineRankingRow,
+  type MagazineRankingsFilter,
+  type MagazineRankingPage,
+} from "./ranking/magazineRankingRepository.js";
 

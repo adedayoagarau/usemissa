@@ -51,11 +51,15 @@
     "forbidArbitraryAnimation": true
   },
   "intents": {
+    "composition.application-tracker-preview": {"semantic":"ApplicationTrackerPreview", "composition":["Button","Field","Input","Textarea","NativeSelect"], "boundary":"Device-local preview; no notification delivery or live calendar sync."},
+    "composition.application-preparation": {"semantic":"ApplicationPreparationPreview", "composition":["Button","Field","Textarea","NativeSelect"], "boundary":"Preparation and external submission status remain separate."},
     "input.creator-handle": {"semantic": "PortfolioHandleField", "composition": ["Input", "Button", "status text"], "appearance": "optional-draft-handle-with-availability-and-publish-confirmation"},
     "choice.publication-directory": {"semantic": "PortfolioPublicationPicker", "primitive": "Combobox", "appearance": "asynchronous-directory-search-with-manual-name-fallback"},
     "choice.creator-theme": {"semantic": "CreatorPortfolioStudio", "base": "Button", "appearance": "single-pressed-curated-theme-card"},
     "composition.creator-profile-editor": {"semantic": "CreatorPortfolioStudio", "composition": ["Button", "Input", "Textarea", "Combobox", "Dialog", "PortfolioLinkPreview"], "appearance": "full-page-independent-sections-with-live-preview", "mediaSelection": "labelled-button-trigger-with-replace-remove-and-preview"},
     "composition.creator-portfolio": {"semantic": "CreatorPortfolioStudio", "composition": ["Button", "Input", "Textarea", "Dialog", "InstitutionSocialLinks"], "appearance": "editorial-public-portfolio-with-separate-owner-settings"},
+    "composition.creator-onboarding": {"semantic": "CreatorOnboarding", "composition": ["Button", "Checkbox", "Link"], "appearance": "editorial-onboarding-with-practices-and-interests"},
+    "composition.creator-workspace": {"semantic":"CreatorWorkspace", "composition":["Button","Checkbox","Link"], "appearance":"editorial-private-workspace-with-one-priority-next-action", "boundary":"Never infer an external application status or submission from a link open."},
     "filter.creator-work-format": {"semantic": "CreatorPortfolioStudio", "base": "Button", "variant": "ghost", "appearance": "pressed-format-filter"},
     "composition.organization-profile": { "semantic": "InstitutionProfileView", "appearance": "kind-specific-information-architecture", "composition": ["Avatar", "Button", "Card", "Empty"] },
     "disclosure.organization-media": { "semantic": "InstitutionMediaGallery", "composition": ["Button", "Dialog", "Tabs"] },

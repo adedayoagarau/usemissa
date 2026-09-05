@@ -12,9 +12,11 @@ function linkFor(path: string, organizationId: string): string {
 export function WorkspaceShellNav({ organizations }: { organizations: Organization[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const selectedId = organizations.some((organization) => organization.id === searchParams.get('organizationId'))
-    ? searchParams.get('organizationId')!
-    : organizations[0]?.id;
+  const orgParam = searchParams.get('organizationId');
+  if (pathname === '/workspace' && !orgParam) return null;
+  const selectedId = organizations.some((organization) => organization.id === orgParam)
+    ? orgParam!
+    : (pathname.startsWith('/workspace/') || pathname.startsWith('/submissions') ? organizations[0]?.id : undefined);
   if (!selectedId) return null;
 
   const primary = [

@@ -646,6 +646,8 @@ export const opportunities = pgTable(
     feeCurrency: text("fee_currency"),
     prize: text("prize"),
     location: text("location"),
+    countryCode: text("country_code"),
+    country: text("country"),
     simultaneousAllowed: boolean("simultaneous_allowed"),
     guidelinesUrl: text("guidelines_url"),
     submissionUrl: text("submission_url"),
@@ -672,6 +674,7 @@ export const opportunities = pgTable(
     ),
     index("opportunities_type_deadline_idx").on(table.type, table.deadlineDate),
     index("opportunities_discipline_idx").on(table.discipline),
+    index("opportunities_country_code_idx").on(table.countryCode),
     index("opportunities_fee_idx").on(table.feeStatus, table.feeCents),
     index("opportunities_org_status_idx").on(
       table.organizationId,
@@ -886,6 +889,9 @@ export const garyProfiles = pgTable(
     name: text("name").notNull(),
     websiteUrl: text("website_url"),
     normalizedWebsiteUrl: text("normalized_website_url"),
+    countryCode: text("country_code"),
+    country: text("country"),
+    city: text("city"),
     identityStatus: text("identity_status").notNull().default("confirmed"),
     identityConfidence: numeric("identity_confidence", {
       precision: 4,
@@ -906,6 +912,7 @@ export const garyProfiles = pgTable(
     uniqueIndex("gary_profiles_canonical_key_idx").on(table.canonicalKey),
     index("gary_profiles_kind_name_idx").on(table.profileKind, table.nameKey),
     index("gary_profiles_website_idx").on(table.normalizedWebsiteUrl),
+    index("gary_profiles_country_code_idx").on(table.countryCode),
     check(
       "gary_profiles_kind_check",
       sql`${table.profileKind} in ('literary_magazine', 'small_press', 'visual_arts_organization', 'gallery', 'residency_center', 'grant_foundation', 'organization')`,
@@ -2213,6 +2220,47 @@ export const creatorProfiles = pgTable(
       sql`${table.trackedOpportunityCountVisibility} in ('public', 'private')`,
     ),
     check("creator_profiles_revision_check", sql`${table.revision} >= 1`),
+  ],
+);
+
+export const creatorProductStates = pgTable(
+  "creator_product_states",
+  {
+    accountId: text("account_id")
+      .primaryKey()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    onboardingVersion: integer("onboarding_version").notNull().default(1),
+    onboardingStatus: text("onboarding_status").notNull().default("not_started"),
+    onboardingStep: integer("onboarding_step").notNull().default(0),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    skippedAt: timestamp("skipped_at", { withTimezone: true }),
+    lastRoute: text("last_route"),
+    dismissedPrompts: text("dismissed_prompts")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    primaryPractice: text("primary_practice"),
+    secondaryPractices: text("secondary_practices")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    practiceRoles: jsonb("practice_roles")
+      .notNull()
+      .default(sql`'{}'::jsonb`)
+      .$type<Record<string, "primary" | "secondary" | "interdisciplinary">>(),
+    revision: revision(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    check(
+      "creator_product_states_status_check",
+      sql`${table.onboardingStatus} in ('not_started', 'in_progress', 'completed', 'skipped')`,
+    ),
+    check(
+      "creator_product_states_revision_check",
+      sql`${table.revision} >= 1`,
+    ),
   ],
 );
 
@@ -4417,3 +4465,110 @@ export const creatorPortfolioMedia = pgTable("creator_portfolio_media", {
  accountId:text("account_id").notNull().references(()=>accounts.id,{onDelete:"cascade"}),
  contentType:text("content_type").notNull(),bytes:portfolioBytes("bytes").notNull(),createdAt,
 },table=>[index("creator_portfolio_media_owner_idx").on(table.accountId),check("creator_portfolio_media_bytes_check",sql`octet_length(${table.bytes}) BETWEEN 1 AND 20971520`)]);
+
+export const missaLiteraryAwards = pgTable(
+  "missa_literary_awards",
+  {
+    id: text("id").primaryKey(),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    genre: text("genre").notNull(),
+    anthology: text("anthology").notNull(),
+    awardType: text("award_type").notNull(),
+    awardYear: integer("award_year").notNull(),
+    pieceTitle: text("piece_title"),
+    authorName: text("author_name"),
+    createdAt,
+  },
+  (table) => [
+    index("idx_missa_awards_profile_year").on(
+      table.profileId,
+      table.awardYear,
+      table.genre,
+    ),
+    check(
+      "missa_awards_genre_check",
+      sql`${table.genre} in ('fiction', 'poetry', 'nonfiction', 'hybrid')`,
+    ),
+    check(
+      "missa_awards_type_check",
+      sql`${table.awardType} in ('win', 'special_mention', 'notable')`,
+    ),
+  ],
+);
+
+export const missaSubmissionTelemetry = pgTable(
+  "missa_submission_telemetry",
+  {
+    id: text("id").primaryKey(),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    userId: text("user_id"),
+    genre: text("genre"),
+    submittedDate: date("submitted_date").notNull(),
+    decisionDate: date("decision_date"),
+    responseDays: integer("response_days"),
+    outcome: text("outcome"),
+    rejectionType: text("rejection_type"),
+    feePaidCents: integer("fee_paid_cents").notNull().default(0),
+    createdAt,
+  },
+  (table) => [
+    index("idx_missa_telemetry_profile").on(
+      table.profileId,
+      table.outcome,
+      table.responseDays,
+    ),
+    check(
+      "missa_telemetry_genre_check",
+      sql`${table.genre} is null or ${table.genre} in ('fiction', 'poetry', 'nonfiction', 'hybrid')`,
+    ),
+    check(
+      "missa_telemetry_outcome_check",
+      sql`${table.outcome} is null or ${table.outcome} in ('accepted', 'rejected', 'withdrawn', 'pending')`,
+    ),
+    check(
+      "missa_telemetry_rejection_type_check",
+      sql`${table.rejectionType} is null or ${table.rejectionType} in ('form', 'tiered_personal', 'editor_note')`,
+    ),
+  ],
+);
+
+export const missaMagazineRankings = pgTable(
+  "missa_magazine_rankings",
+  {
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    rankingYear: integer("ranking_year").notNull(),
+    genre: text("genre").notNull(),
+    rankPosition: integer("rank_position").notNull(),
+    prestigeTier: text("prestige_tier").notNull(),
+    totalScore: numeric("total_score", { precision: 5, scale: 2 }).notNull(),
+    accoladesScore: numeric("accolades_score", { precision: 5, scale: 2 }).notNull(),
+    payScore: numeric("pay_score", { precision: 5, scale: 2 }).notNull(),
+    turnaroundScore: numeric("turnaround_score", { precision: 5, scale: 2 }).notNull(),
+    feesScore: numeric("fees_score", { precision: 5, scale: 2 }).notNull(),
+    respectScore: numeric("respect_score", { precision: 5, scale: 2 }).notNull(),
+    formatEthicsScore: numeric("format_ethics_score", { precision: 5, scale: 2 }).notNull(),
+    medianResponseDays: integer("median_response_days"),
+    regularFeeCents: integer("regular_fee_cents").notNull().default(0),
+    contributorPayCents: integer("contributor_pay_cents").notNull().default(0),
+    simultaneousPolicy: text("simultaneous_policy").notNull().default("allowed"),
+    updatedAt,
+  },
+  (table) => [
+    primaryKey({ columns: [table.profileId, table.rankingYear, table.genre] }),
+    index("idx_missa_rankings_lookup").on(
+      table.rankingYear,
+      table.genre,
+      table.rankPosition,
+    ),
+    check(
+      "missa_rankings_genre_check",
+      sql`${table.genre} in ('overall', 'fiction', 'poetry', 'nonfiction')`,
+    ),
+  ],
+);

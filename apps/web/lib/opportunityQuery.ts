@@ -43,6 +43,8 @@ export function parseOpportunityBrowseQuery(params: URLSearchParams): Opportunit
       ? booleanParam(params, "taxonomyDescendants", false)
       : listParam(params, "taxonomy").length > 0,
     locations: listParam(params, "location"),
+    country: params.get("country") ?? undefined,
+    countryCode: params.get("countryCode") ?? undefined,
     feeStatus: booleanParam(params, "feeToggle", false) ? "no-fee" : params.get("fee") ?? undefined,
     maxFeeCents: numberParam(params, "maxFeeCents"),
     deadlineWithinDays: numberParam(params, "deadlineWithinDays"),

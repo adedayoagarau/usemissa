@@ -68,6 +68,9 @@ import {
   garyProfileVisuals,
   garyPrizeProvenance,
   garyProfileIntelligence,
+  missaLiteraryAwards,
+  missaSubmissionTelemetry,
+  missaMagazineRankings,
 } from "../src/schema.js";
 
 
@@ -562,5 +565,28 @@ test("creative preparation backfill schema defines visuals, prize provenance, an
     intelConfig.columns.find((c) => c.name === "editorial_archetype")?.notNull,
     true,
   );
+});
+
+test("missa literary magazine index schema defines awards, telemetry, and rankings", () => {
+  const awardsConfig = getTableConfig(missaLiteraryAwards);
+  assert.equal(awardsConfig.columns.find((c) => c.name === "profile_id")?.notNull, true);
+  assert.equal(awardsConfig.columns.find((c) => c.name === "anthology")?.notNull, true);
+  assert.ok(awardsConfig.indexes.some((i) => i.config.name === "idx_missa_awards_profile_year"));
+  assert.ok(awardsConfig.checks.some((constraint) => constraint.name === "missa_awards_genre_check"));
+  assert.ok(awardsConfig.checks.some((constraint) => constraint.name === "missa_awards_type_check"));
+
+  const telemetryConfig = getTableConfig(missaSubmissionTelemetry);
+  assert.equal(telemetryConfig.columns.find((c) => c.name === "profile_id")?.notNull, true);
+  assert.equal(telemetryConfig.columns.find((c) => c.name === "submitted_date")?.notNull, true);
+  assert.ok(telemetryConfig.indexes.some((i) => i.config.name === "idx_missa_telemetry_profile"));
+  assert.ok(telemetryConfig.checks.some((constraint) => constraint.name === "missa_telemetry_outcome_check"));
+  assert.ok(telemetryConfig.checks.some((constraint) => constraint.name === "missa_telemetry_rejection_type_check"));
+
+  const rankingsConfig = getTableConfig(missaMagazineRankings);
+  assert.equal(rankingsConfig.primaryKeys.length, 1);
+  assert.equal(rankingsConfig.columns.find((c) => c.name === "rank_position")?.notNull, true);
+  assert.equal(rankingsConfig.columns.find((c) => c.name === "total_score")?.notNull, true);
+  assert.ok(rankingsConfig.indexes.some((i) => i.config.name === "idx_missa_rankings_lookup"));
+  assert.ok(rankingsConfig.checks.some((constraint) => constraint.name === "missa_rankings_genre_check"));
 });
 

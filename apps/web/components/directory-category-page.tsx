@@ -15,12 +15,13 @@ export async function DirectoryCategoryPage({
   basePath: string;
   title: string;
   description: string;
-  searchParams?: Promise<{ q?: string; page?: string; window?: string; sort?: string }>;
+  searchParams?: Promise<{ q?: string; page?: string; window?: string; country?: string; sort?: string }>;
 }) {
   const params = (await searchParams) ?? {};
   const query = params.q?.trim() ?? "";
   const requested = Number(params.page ?? 1);
   const activeWindow = params.window?.trim() || undefined;
+  const activeCountry = params.country?.trim() || undefined;
   const activeSort = params.sort?.trim() || undefined;
   let page =
     Number.isSafeInteger(requested) && requested > 0 && requested <= 100000
@@ -38,6 +39,7 @@ export async function DirectoryCategoryPage({
         query: query || undefined,
         kind,
         scheduleState: activeWindow as any,
+        country: activeCountry,
         sortBy: activeSort as any,
         limit: 48,
         offset: (page - 1) * 48,
@@ -48,6 +50,7 @@ export async function DirectoryCategoryPage({
           query: query || undefined,
           kind,
           scheduleState: activeWindow as any,
+          country: activeCountry,
           sortBy: activeSort as any,
           limit: 48,
           offset: 0,
@@ -71,6 +74,7 @@ export async function DirectoryCategoryPage({
         query={query}
         activeKind={kind}
         activeWindow={activeWindow}
+        activeCountry={activeCountry}
         activeSort={activeSort}
         loadFailed={loadFailed}
       />

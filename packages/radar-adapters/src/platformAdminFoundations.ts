@@ -129,6 +129,9 @@ create index if not exists platform_message_provider_events_message_idx
   on platform_message_provider_events (provider, provider_message_id, occurred_at);
 create index if not exists platform_message_provider_events_status_idx
   on platform_message_provider_events (status, created_at);
+create index if not exists platform_message_provider_events_email_idx
+  on platform_message_provider_events (lower((metadata->>'email')))
+  where metadata ? 'email';
 alter table platform_message_provider_events add column if not exists classification text;
 alter table platform_message_provider_events add column if not exists failure_code text;
 
@@ -338,6 +341,24 @@ export function sanitizePlatformMessageError(value: unknown): string | undefined
     })
     .replace(/\b(password|secret|token|api[_-]?key)\b\s*[:=]\s*(?:"[^"]*"|'[^']*'|[^\s,;]+)/gi, "$1=[redacted]");
   return redacted.slice(0, 500);
+}
+
+export function sanitizePlatformMessageProviderMetadata(metadata?: JsonRecord): JsonRecord {
+  const providerMetadata: JsonRecord = {};
+  for (const [key, value] of Object.entries(metadata ?? {})) {
+    if (!["reason", "failureType", "failureSubtype", "email"].includes(key)) {
+      throw new Error(`Unsupported provider event metadata key: ${key}`);
+    }
+    if (key === "email") {
+      if (typeof value === "string" && value.includes("@")) {
+        providerMetadata.email = value.trim().toLowerCase().slice(0, 240);
+      }
+    } else {
+      const safe = sanitizePlatformMessageError(value);
+      if (safe) providerMetadata[key] = safe;
+    }
+  }
+  return providerMetadata;
 }
 
 const safeError = sanitizePlatformMessageError;
@@ -856,8 +877,9 @@ export interface RecordPlatformMessageProviderEventResult {
   matched: boolean;
 }
 
-/** Persist one verified provider event without recipient, subject, body, IP, or
- * click URL data. The provider event id is the idempotency boundary. */
+/** Persist one verified provider event. Subject, body, IP, and click URL data are
+ * not retained; recipient email is only permitted for adverse event suppression indexing.
+ * The provider event id is the idempotency boundary. */
 export async function recordPlatformMessageProviderEvent(
   connectionString: string,
   input: RecordPlatformMessageProviderEventInput,
@@ -868,12 +890,7 @@ export async function recordPlatformMessageProviderEvent(
   if (input.providerMessageId) assertIdentifier(input.providerMessageId, "provider message id");
   const occurredAt = new Date(input.occurredAt);
   if (!Number.isFinite(occurredAt.getTime())) throw new Error("Invalid provider event timestamp");
-  const providerMetadata: JsonRecord = {};
-  for (const [key, value] of Object.entries(input.metadata ?? {})) {
-    if (!["reason", "failureType", "failureSubtype"].includes(key)) throw new Error(`Unsupported provider event metadata key: ${key}`);
-    const safe = sanitizePlatformMessageError(value);
-    if (safe) providerMetadata[key] = safe;
-  }
+  const providerMetadata = sanitizePlatformMessageProviderMetadata(input.metadata);
   const classification = providerEventEffectStatus(input.eventType) ?? (input.eventType === "email.opened" || input.eventType === "email.clicked" ? "observation" : "unsupported");
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {

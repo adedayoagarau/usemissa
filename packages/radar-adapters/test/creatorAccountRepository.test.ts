@@ -28,6 +28,7 @@ test("password signup creates the account aggregates and governance evidence in 
   assert.ok(statements.some((value) => value.startsWith("insert into creator_profiles")));
   assert.ok(statements.some((value) => value.startsWith("insert into opportunity_preferences")));
   assert.ok(statements.some((value) => value.startsWith("insert into notification_preferences")));
+  assert.ok(statements.some((value) => value.startsWith("insert into creator_product_states")));
   assert.ok(statements.some((value) => value.startsWith("insert into workspace_command_receipts")));
   assert.ok(statements.some((value) => value.startsWith("insert into audit_events")));
   assert.ok(statements.some((value) => value.startsWith("insert into outbox_events")));

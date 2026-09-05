@@ -1,4 +1,5 @@
 import { assembleRegistry } from '@missa/radar-engine';
+import { countryNameFromCode } from '@missa/contracts';
 import { MISSA_TAXONOMY, taxonomyFacetForTerm, taxonomyLabelFor as canonicalTaxonomyLabelFor, termsForFacet as canonicalTermsForFacet, type TaxonomyFacetKey, type TaxonomySeedTerm } from '@missa/taxonomy';
 
 function labelFor(value: string): string {
@@ -65,5 +66,14 @@ export function taxonomyFacetFor(termId: string): TaxonomyFacetKey | undefined {
 export const LOCATION_OPTIONS = [...new Set(
   registry.sources.flatMap((source) => source.geography ?? []),
 )]
-  .sort((a, b) => a.localeCompare(b))
-  .map((value) => ({ value, label: value === 'global' ? 'Worldwide' : labelFor(value) }));
+  .sort((a, b) => {
+    if (a.toLowerCase() === 'global') return -1;
+    if (b.toLowerCase() === 'global') return 1;
+    const nameA = countryNameFromCode(a) || a;
+    const nameB = countryNameFromCode(b) || b;
+    return nameA.localeCompare(nameB);
+  })
+  .map((value) => ({
+    value,
+    label: value.toLowerCase() === 'global' ? 'Worldwide' : (countryNameFromCode(value) || labelFor(value)),
+  }));

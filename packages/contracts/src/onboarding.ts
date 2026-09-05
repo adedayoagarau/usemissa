@@ -145,3 +145,50 @@ export const creatorOnboardingResponseSchema = z.object({
 });
 
 export type CreatorOnboardingResponse = z.infer<typeof creatorOnboardingResponseSchema>;
+
+export const onboardingStatusSchema = z.enum([
+  "not_started",
+  "in_progress",
+  "completed",
+  "skipped",
+]);
+
+export type OnboardingStatus = z.infer<typeof onboardingStatusSchema>;
+
+export const creatorOnboardingStateSchema = z.object({
+  authenticated: z.boolean(),
+  status: onboardingStatusSchema,
+  step: z.number().int().min(0).max(3),
+  practices: z.array(z.string()),
+  refinements: z.array(z.string()),
+  interests: z.array(z.string()),
+  completedAt: z.string().datetime().optional(),
+  skippedAt: z.string().datetime().optional(),
+  nextAction: z
+    .object({
+      label: z.string(),
+      description: z.string(),
+      href: z.string(),
+      kind: z.enum([
+        "resume-save",
+        "explore-matches",
+        "prepare-opportunity",
+        "browse-all",
+      ]),
+    })
+    .optional(),
+});
+
+export type CreatorOnboardingState = z.infer<typeof creatorOnboardingStateSchema>;
+
+export const creatorOnboardingMutationSchema = z.object({
+  action: z.enum(["save_step", "complete", "skip"]),
+  step: z.number().int().min(0).max(3).optional(),
+  practices: z.array(z.string().trim()).default([]),
+  refinements: z.array(z.string().trim()).default([]),
+  interests: z.array(z.string().trim()).default([]),
+  primaryPractice: z.string().trim().optional(),
+  lastRoute: z.string().trim().optional(),
+});
+
+export type CreatorOnboardingMutation = z.infer<typeof creatorOnboardingMutationSchema>;

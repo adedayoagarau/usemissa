@@ -25,6 +25,21 @@ type PreferenceRow = {
 
 export type CreatorPreferenceBundle = Readonly<{ opportunityPreferences: OpportunityPreferences; taxonomyPreferences: TaxonomyPreference[]; revision: number }>;
 
+export type CreatorProductStateView = Readonly<{
+  accountId: string;
+  onboardingVersion: number;
+  onboardingStatus: "not_started" | "in_progress" | "completed" | "skipped";
+  onboardingStep: number;
+  completedAt?: string;
+  skippedAt?: string;
+  lastRoute?: string;
+  dismissedPrompts: string[];
+  primaryPractice?: string;
+  secondaryPractices: string[];
+  practiceRoles: Record<string, "primary" | "secondary" | "interdisciplinary">;
+  revision: number;
+}>;
+
 export class PostgresCreatorPreferenceRepository extends CreatorRepositoryBase {
   constructor(pool: Pool) { super(pool); }
 
@@ -193,5 +208,109 @@ export class PostgresCreatorPreferenceRepository extends CreatorRepositoryBase {
       }
       return { resourceType: "organization-follow", resourceId: organizationId, revision: row.revision + 1 };
     });
+  }
+
+  async productState(accountId: string): Promise<CreatorProductStateView | undefined> {
+    const result = await this.query<{
+      account_id: string;
+      onboarding_version: number;
+      onboarding_status: CreatorProductStateView["onboardingStatus"];
+      onboarding_step: number;
+      completed_at: Date | string | null;
+      skipped_at: Date | string | null;
+      last_route: string | null;
+      dismissed_prompts: string[] | null;
+      primary_practice: string | null;
+      secondary_practices: string[] | null;
+      practice_roles: Record<string, "primary" | "secondary" | "interdisciplinary"> | null;
+      revision: number;
+    }>(
+      `select account_id, onboarding_version, onboarding_status, onboarding_step,
+              completed_at, skipped_at, last_route, dismissed_prompts,
+              primary_practice, secondary_practices, practice_roles, revision
+       from creator_product_states where account_id = $1`,
+      [accountId],
+    ).catch(() => ({ rows: [] }));
+    const row = result.rows[0];
+    if (!row) return undefined;
+    return {
+      accountId: row.account_id,
+      onboardingVersion: row.onboarding_version,
+      onboardingStatus: row.onboarding_status,
+      onboardingStep: row.onboarding_step,
+      ...(row.completed_at ? { completedAt: new Date(row.completed_at).toISOString() } : {}),
+      ...(row.skipped_at ? { skippedAt: new Date(row.skipped_at).toISOString() } : {}),
+      ...(row.last_route ? { lastRoute: row.last_route } : {}),
+      dismissedPrompts: row.dismissed_prompts ?? [],
+      ...(row.primary_practice ? { primaryPractice: row.primary_practice } : {}),
+      secondaryPractices: row.secondary_practices ?? [],
+      practiceRoles: row.practice_roles ?? {},
+      revision: row.revision,
+    };
+  }
+
+  async upsertProductState(
+    accountId: string,
+    patch: {
+      onboardingVersion?: number;
+      onboardingStatus?: CreatorProductStateView["onboardingStatus"];
+      onboardingStep?: number;
+      completedAt?: string | null;
+      skippedAt?: string | null;
+      lastRoute?: string | null;
+      dismissedPrompts?: string[];
+      primaryPractice?: string | null;
+      secondaryPractices?: string[];
+      practiceRoles?: Record<string, "primary" | "secondary" | "interdisciplinary">;
+    },
+  ): Promise<CreatorProductStateView> {
+    await this.query(
+      `insert into creator_product_states (
+         account_id, onboarding_version, onboarding_status, onboarding_step,
+         completed_at, skipped_at, last_route, dismissed_prompts,
+         primary_practice, secondary_practices, practice_roles
+       ) values ($1, coalesce($2, 1), coalesce($3, 'not_started'), coalesce($4, 0), $5, $6, $7, coalesce($8, ARRAY[]::text[]), $9, coalesce($10, ARRAY[]::text[]), coalesce($11::jsonb, '{}'::jsonb))
+       on conflict (account_id) do update set
+         onboarding_version = coalesce($2, creator_product_states.onboarding_version),
+         onboarding_status = coalesce($3, creator_product_states.onboarding_status),
+         onboarding_step = coalesce($4, creator_product_states.onboarding_step),
+         completed_at = case when $12::boolean then $5::timestamptz else creator_product_states.completed_at end,
+         skipped_at = case when $13::boolean then $6::timestamptz else creator_product_states.skipped_at end,
+         last_route = coalesce($7, creator_product_states.last_route),
+         dismissed_prompts = coalesce($8, creator_product_states.dismissed_prompts),
+         primary_practice = coalesce($9, creator_product_states.primary_practice),
+         secondary_practices = coalesce($10, creator_product_states.secondary_practices),
+         practice_roles = coalesce($11::jsonb, creator_product_states.practice_roles),
+         revision = creator_product_states.revision + 1,
+         updated_at = now()`,
+      [
+        accountId,
+        patch.onboardingVersion ?? null,
+        patch.onboardingStatus ?? null,
+        patch.onboardingStep ?? null,
+        patch.completedAt ?? null,
+        patch.skippedAt ?? null,
+        patch.lastRoute ?? null,
+        patch.dismissedPrompts ?? null,
+        patch.primaryPractice ?? null,
+        patch.secondaryPractices ?? null,
+        patch.practiceRoles ? JSON.stringify(patch.practiceRoles) : null,
+        patch.completedAt !== undefined,
+        patch.skippedAt !== undefined,
+      ],
+    );
+    const updated = await this.productState(accountId);
+    return updated ?? {
+      accountId,
+      onboardingVersion: patch.onboardingVersion ?? 1,
+      onboardingStatus: patch.onboardingStatus ?? "not_started",
+      onboardingStep: patch.onboardingStep ?? 0,
+      ...(patch.completedAt ? { completedAt: patch.completedAt } : {}),
+      ...(patch.skippedAt ? { skippedAt: patch.skippedAt } : {}),
+      dismissedPrompts: patch.dismissedPrompts ?? [],
+      secondaryPractices: patch.secondaryPractices ?? [],
+      practiceRoles: patch.practiceRoles ?? {},
+      revision: 1,
+    };
   }
 }

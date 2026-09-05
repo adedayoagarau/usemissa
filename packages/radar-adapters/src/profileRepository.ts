@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { normalizeCountry, countryNameFromCode } from "@missa/contracts";
 import { extractProfileIntelligence } from "./profileIntelligenceExtractor.js";
 import { cleanCrawledText, cleanTitleOrLabel } from "./cleanText.js";
 import type { OrganizationEditorialProfile } from "./editorialWriter.js";
@@ -49,6 +50,8 @@ export interface ProfileBrowseQuery {
   query?: string;
   nameOnly?: boolean;
   scheduleState?: "open" | "always_open" | "closing_soon" | "opening_soon" | "closed" | "all";
+  country?: string;
+  countryCode?: string;
   sortBy?: "name_asc" | "opening_soonest" | "closing_soonest" | "recently_updated";
   limit?: number;
   offset?: number;
@@ -65,6 +68,9 @@ export interface ProfileCard {
   formats: string[];
   readingPeriod: string | null;
   schedule?: MagazineScheduleResult | null;
+  country?: string | null;
+  countryCode?: string | null;
+  city?: string | null;
   sourceUrl: string | null;
   mediaUrl: string | null;
   mediaAlt: string | null;
@@ -221,6 +227,18 @@ function card(row: Record<string, unknown>, extra?: { opportunities?: ProfileOpp
       })
     : null;
 
+  const rawCountry = nullableText(row.country) || nullableText(row.org_country);
+  const rawCountryCode = nullableText(row.country_code);
+  const rawCity = nullableText(row.city) || nullableText(row.org_city);
+  const normalized = rawCountryCode
+    ? {
+        countryCode: rawCountryCode.toUpperCase(),
+        country: rawCountry || countryNameFromCode(rawCountryCode) || rawCountryCode,
+      }
+    : (rawCountry ? normalizeCountry(rawCountry) : null);
+  const countryCode = normalized?.countryCode ?? (rawCountryCode || null);
+  const country = normalized?.country ?? (rawCountry || null);
+
   return {
     id: String(row.id),
     slug: cleanSlug,
@@ -232,6 +250,9 @@ function card(row: Record<string, unknown>, extra?: { opportunities?: ProfileOpp
     formats: jsonArray(row.formats_json),
     readingPeriod,
     schedule,
+    country,
+    countryCode,
+    city: rawCity,
     sourceUrl: nullableText(row.source_detail_url),
     mediaUrl: nullableText(row.media_url),
     mediaAlt: row.media_alt ? cleanTitleOrLabel(String(row.media_alt)) : null,
@@ -253,6 +274,27 @@ export class PostgresProfileRepository implements ProfileRepository {
       filters.push(
         query.nameOnly ? `p.name ILIKE $${values.length}` : `(p.name ILIKE $${values.length} OR o.source_summary ILIKE $${values.length} OR o.editorial_focus ILIKE $${values.length} OR (ro.data->>'biography') ILIKE $${values.length})`,
       );
+    }
+    const countryParam = query.countryCode?.trim() || query.country?.trim();
+    if (countryParam) {
+      const norm = normalizeCountry(countryParam);
+      if (norm?.countryCode === "GLOBAL") {
+        values.push("GLOBAL", "%global%", "%worldwide%");
+        const i1 = values.length - 2;
+        const i2 = values.length - 1;
+        const i3 = values.length;
+        filters.push(`(p.country_code = $${i1} OR p.country ILIKE $${i2} OR (ro.data->>'country') ILIKE $${i3})`);
+      } else if (norm) {
+        values.push(norm.countryCode, `%${norm.country}%`);
+        const iCode = values.length - 1;
+        const iLike = values.length;
+        filters.push(`(p.country_code = $${iCode} OR p.country ILIKE $${iLike} OR (ro.data->>'country') ILIKE $${iLike} OR (ro.data->>'country') = $${iCode})`);
+      } else {
+        values.push(countryParam, `%${countryParam}%`);
+        const iExact = values.length - 1;
+        const iLike = values.length;
+        filters.push(`(p.country_code ILIKE $${iExact} OR p.country ILIKE $${iLike} OR (ro.data->>'country') ILIKE $${iLike})`);
+      }
     }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
     const scheduleFilter = query.scheduleState && query.scheduleState !== "all" ? query.scheduleState : null;
@@ -277,6 +319,9 @@ export class PostgresProfileRepository implements ProfileRepository {
           SELECT profile_id, sentiment_tags FROM gary_profile_intelligence
         )
         SELECT p.id, p.profile_kind, p.name, p.website_url,
+          p.country_code, p.country, p.city,
+          (ro.data->>'country') as org_country,
+          (ro.data->>'city') as org_city,
           COALESCE(o.source_summary, (ro.data->>'biography')) as source_summary,
           COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
           o.formats_json, o.reading_period,
@@ -391,6 +436,9 @@ export class PostgresProfileRepository implements ProfileRepository {
         SELECT profile_id, sentiment_tags FROM gary_profile_intelligence
       )
       SELECT p.id, p.profile_kind, p.name, p.website_url,
+        p.country_code, p.country, p.city,
+        (ro.data->>'country') as org_country,
+        (ro.data->>'city') as org_city,
         COALESCE(o.source_summary, (ro.data->>'biography')) as source_summary,
         COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
         o.formats_json, o.reading_period,
@@ -440,6 +488,9 @@ export class PostgresProfileRepository implements ProfileRepository {
         SELECT profile_id, sentiment_tags FROM gary_profile_intelligence
       )
       SELECT p.id, p.profile_kind, p.name, p.website_url, p.name_key, p.canonical_key,
+        p.country_code, p.country, p.city,
+        (ro.data->>'country') as org_country,
+        (ro.data->>'city') as org_city,
         COALESCE(o.source_summary, (ro.data->>'biography')) as source_summary,
         COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
         o.formats_json, o.reading_period, o.source_detail_url,

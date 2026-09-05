@@ -724,6 +724,36 @@ export function buildOpportunityBrowseQuery(
       "o.location = any($VALUE::text[])",
       query.locations,
     );
+  // Country-scoped filtering:
+  // - geographicScope === "headquartered": publisher based in that country
+  // - default (eligible): opportunities open to writers in that country (including GLOBAL)
+  const countryParam = (query as { countryCode?: string; country?: string; geographicScope?: string }).countryCode?.trim()
+    || (query as { countryCode?: string; country?: string; geographicScope?: string }).country?.trim();
+  if (countryParam) {
+    const geographicScope = (query as { geographicScope?: string }).geographicScope;
+    if (countryParam.toUpperCase() === "GLOBAL") {
+      conditions.push(
+        "(o.country_code = 'GLOBAL' or o.location ilike '%worldwide%' or o.location ilike '%global%' or o.location is null)"
+      );
+    } else {
+      const codeUpper = countryParam.toUpperCase();
+      if (geographicScope === "headquartered") {
+        values.push(codeUpper, `%${countryParam}%`);
+        const iCode = values.length - 1;
+        const iLike = values.length;
+        conditions.push(
+          `(o.country_code = $${iCode} or o.country ilike $${iLike})`
+        );
+      } else {
+        values.push(codeUpper, `%${countryParam}%`);
+        const iCode = values.length - 1;
+        const iLike = values.length;
+        conditions.push(
+          `(o.country_code = $${iCode} or o.country ilike $${iLike} or o.country_code = 'GLOBAL' or o.location ilike '%worldwide%' or o.location ilike '%global%' or o.country_code is null)`
+        );
+      }
+    }
+  }
   if (query.feeStatus)
     addCondition(
       conditions,

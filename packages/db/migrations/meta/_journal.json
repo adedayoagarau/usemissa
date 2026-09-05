@@ -281,6 +281,13 @@
       "when": 1788573600000,
       "tag": "0041_creator_portfolios",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1788660000000,
+      "tag": "0042_missa_magazine_rankings",
+      "breakpoints": true
     }
   ]
 }
