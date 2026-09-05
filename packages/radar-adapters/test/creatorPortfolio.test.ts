@@ -1,0 +1,52 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+import type { Pool } from 'pg';
+import { PostgresCreatorProfileRepository } from '../src/creatorProfileRepository.js';
+
+test('portfolio snapshots, ownership, revisions, media privacy and legacy draft migration',async()=>{
+ const db=new PGlite();
+ try {
+  await db.exec(`create table radar_accounts(id text primary key,data jsonb not null);create table handles(subject_id text,subject_type text,state text);
+    insert into radar_accounts values('a','{"userId":"user-a"}'),('b','{"userId":"user-b"}');
+    create table creator_portfolio_drafts(account_id text primary key references radar_accounts(id) on delete cascade,draft_data jsonb not null,updated_at timestamptz default now());
+    insert into creator_portfolio_drafts(account_id,draft_data) values('a','{"name":"Legacy draft"}');`);
+  const migration=await readFile(new URL('../../../db/migrations/0041_creator_portfolios.sql',import.meta.url),'utf8');
+  await db.exec(migration);await db.exec(migration);
+  const client={query:(sql:string,params?:unknown[])=>db.query(sql,params),release(){}};
+  const pool={...client,connect:async()=>client} as unknown as Pool;
+  const repo=new PostgresCreatorProfileRepository(pool);
+  assert.deepEqual((await repo.portfolioState('a')).draft,{name:'Legacy draft'});
+  assert.equal(await repo.publicPortfolio('user-a'),undefined);
+  let rev=await repo.writePortfolio('a',{name:'Version one'},0);
+  assert.equal(rev,1);
+  await assert.rejects(repo.writePortfolio('a',{name:'Stale overwrite'},0));
+  await assert.rejects(repo.publishPortfolio('a',rev,[]));
+  await db.exec(`insert into handles values('user-a','user','claimed');`);
+  const media='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const foreign='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  await repo.addPortfolioMedia('a',media,'image/png',Buffer.from([1,2,3]));
+  await repo.addPortfolioMedia('b',foreign,'image/png',Buffer.from([4,5,6]));
+  assert.equal(await repo.portfolioMedia(media),undefined);
+  assert.equal(await repo.portfolioMedia(media,'b'),undefined);
+  assert.ok(await repo.portfolioMedia(media,'a'));
+  assert.equal(await repo.ownPortfolioMedia('a',[foreign]),false);
+  await assert.rejects(repo.publishPortfolio('a',rev,[foreign]));
+  await repo.publishPortfolio('a',rev,[media]);
+  assert.deepEqual(await repo.publicPortfolio('user-a'),{name:'Version one'});
+  assert.ok(await repo.portfolioMedia(media));
+  rev=await repo.writePortfolio('a',{name:'Unpublished edit'},rev);
+  assert.deepEqual(await repo.publicPortfolio('user-a'),{name:'Version one'});
+  const results=await Promise.allSettled([repo.writePortfolio('a',{name:'Tab one'},rev),repo.writePortfolio('a',{name:'Tab two'},rev)]);
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+  await assert.rejects(repo.publishPortfolio('a',rev,[]));
+  await repo.unpublishPortfolio('a');
+  assert.equal(await repo.publicPortfolio('user-a'),undefined);
+  assert.equal(await repo.portfolioMedia(media),undefined);
+  assert.ok(await repo.portfolioMedia(media,'a'));
+  assert.ok((await repo.portfolioState('a')).draft);
+  await db.exec(`delete from radar_accounts where id='a'`);
+  assert.equal(await repo.portfolioMedia(media,'a'),undefined);
+ } finally {await db.close();}
+});

@@ -66,6 +66,7 @@
     "playwright": "^1.49.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.0",
     "typescript": "^5.7.0"
