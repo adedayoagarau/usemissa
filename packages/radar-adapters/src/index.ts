@@ -532,3 +532,34 @@ export * from "./mediaReviewService.js";
 export { inferSourceRole } from "./enrichmentWorker.js";
 export { runDryRun } from "./mediaDryRunCli.js";
 export * from "./editorialWriter.js";
+export {
+  extractVolumeAndNumber,
+  extractPublicationDate,
+  findIssueArchiveUrls,
+  extractIssuesFromHtml,
+  issueDeterministicId,
+  discoverAndStoreProfileIssues,
+  getProfileIssuesFromDb,
+  type ExtractedIssue,
+  type ProfileIssueRecord,
+  type IssueRefreshState,
+  type IssueRefreshResult,
+  type ProfileIssuesResponse,
+} from "./profileIssueDiscovery.js";
+export {
+  extractIdentityMedia,
+  extractPressBooks,
+  extractResidencyPhotos,
+  extractGalleryExhibitions,
+  extractFoundationProjects,
+  findNavigationTargetUrls,
+  discoverOrganizationMedia,
+  getOrganizationMediaBundle,
+  orgMediaDeterministicId,
+  type MediaGroup,
+  type DiscoveredMediaItem,
+  type OrganizationMediaRecord,
+  type OrganizationMediaBundle,
+  type MediaDiscoveryResult,
+} from "./organizationMediaDiscovery.js";
+

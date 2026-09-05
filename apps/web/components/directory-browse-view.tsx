@@ -28,6 +28,9 @@ export function DirectoryBrowseView({
   query,
   activeKind,
   loadFailed = false,
+  basePath = "/directory",
+  title = "Find your creative community.",
+  description = "Explore residencies, journals, presses and arts organizations worldwide.",
 }: {
   items: ProfileCard[];
   total: number;
@@ -36,14 +39,23 @@ export function DirectoryBrowseView({
   query: string;
   activeKind?: ProfileKind;
   loadFailed?: boolean;
+  basePath?: string;
+  title?: string;
+  description?: string;
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   function href(nextPage = 1, kind = activeKind ?? "", search = query) {
     const params = new URLSearchParams();
-    if (kind) params.set("kind", kind);
+    if (kind && basePath === "/directory") params.set("kind", kind);
     if (search) params.set("q", search);
     if (nextPage > 1) params.set("page", String(nextPage));
-    return `/directory${params.size ? `?${params}` : ""}`;
+    const path =
+      basePath === "/directory"
+        ? basePath
+        : kind
+          ? (KIND_METADATA[kind]?.path ?? "/directory")
+          : "/directory";
+    return `${path}${params.size ? `?${params}` : ""}`;
   }
   const categories = [
     ["", "All organizations"],
@@ -57,11 +69,8 @@ export function DirectoryBrowseView({
     <main id="main-content" className={styles.main}>
       <header className={styles.intro}>
         <p className={styles.eyebrow}>Directory</p>
-        <h1 className="font-sans">Find your creative community.</h1>
-        <p>
-          Explore residencies, journals, presses and arts organizations
-          worldwide.
-        </p>
+        <h1 className="font-sans">{title}</h1>
+        <p>{description}</p>
       </header>
       <nav aria-label="Directory categories" className={styles.categories}>
         {categories.map(([kind, label]) => (
@@ -75,7 +84,7 @@ export function DirectoryBrowseView({
         ))}
       </nav>
       <form
-        action="/directory"
+        action={basePath}
         method="get"
         role="search"
         className={styles.search}
@@ -92,7 +101,9 @@ export function DirectoryBrowseView({
           placeholder="Search by name or interest…"
           className={styles.input}
         />
-        {activeKind && <input type="hidden" name="kind" value={activeKind} />}
+        {activeKind && basePath === "/directory" && (
+          <input type="hidden" name="kind" value={activeKind} />
+        )}
         <Button
           type="submit"
           aria-label="Search organizations"
@@ -121,8 +132,8 @@ export function DirectoryBrowseView({
             </>
           )}
         </p>
-        {query || activeKind ? (
-          <Link href="/directory">Clear filters</Link>
+        {query || (activeKind && basePath === "/directory") ? (
+          <Link href={basePath}>Clear filters</Link>
         ) : (
           <span>Alphabetical order</span>
         )}

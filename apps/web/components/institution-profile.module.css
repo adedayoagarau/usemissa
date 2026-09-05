@@ -1,0 +1,500 @@
+.main {
+  --profile-surface: var(--accent-tint);
+  --profile-ink: var(--accent-deep);
+  width: min(calc(100% - 48px), 1240px);
+  margin: 0 auto;
+  padding: 24px 0 64px;
+}
+.main[data-kind="literary_magazine"],
+.main[data-kind="small_press"] {
+  --profile-surface: var(--mineral-blue-tint);
+  --profile-ink: var(--mineral-blue);
+}
+.main[data-kind="grant_foundation"] {
+  --profile-surface: var(--ochre-tint);
+  --profile-ink: var(--ochre-deep);
+}
+.back {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 44px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  text-decoration: none;
+}
+.hero {
+  padding: 32px;
+  margin-top: 20px;
+  background: var(--profile-surface);
+  border-top: 2px solid var(--profile-ink);
+}
+.identity {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.logo {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+}
+.logo::after {
+  border-radius: var(--radius-md);
+}
+.logo .logoImage {
+  border-radius: var(--radius-md);
+  object-fit: contain;
+  padding: 8px;
+}
+.logo .logoFallback {
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--profile-ink);
+}
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--profile-ink);
+}
+.domain {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--foreground);
+  font-size: 13px;
+  min-height: 32px;
+  overflow-wrap: anywhere;
+}
+.titleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+  margin-top: 24px;
+}
+.titleRow h1 {
+  max-width: 820px;
+  margin: 0;
+  font-size: clamp(32px, 4.7vw, 64px);
+  font-weight: 500;
+  line-height: 1.07;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+.heroActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.heroActions a {
+  min-height: 44px;
+}
+.signature {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-top: 16px;
+  margin-top: 24px;
+  border-top: 1px solid color-mix(in srgb, var(--profile-ink) 20%, transparent);
+  font-size: 12px;
+  color: var(--foreground);
+}
+.sectionNav {
+  display: flex;
+  overflow-x: auto;
+  gap: 28px;
+  border-bottom: 1px solid var(--border);
+  margin: 8px 0 32px;
+}
+.sectionNav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 56px;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+.main a:hover {
+  color: var(--primary);
+}
+.main a:focus-visible,
+.main button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.main section {
+  scroll-margin-top: 96px;
+}
+.sectionHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.sectionHeading h2,
+.reading h2 {
+  margin: 0 0 16px;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+.sectionHeading h2 {
+  margin: 0;
+}
+.sectionHeading > span {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.gallerySection {
+  margin-bottom: 48px;
+}
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.gallery[data-single] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.galleryCard {
+  min-width: 0;
+}
+.galleryTrigger {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 280px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--muted);
+  cursor: zoom-in;
+}
+.gallery[data-single] .galleryTrigger {
+  height: 360px;
+}
+.galleryImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.galleryImage[data-cover] {
+  object-fit: contain;
+  padding: 20px;
+}
+.expand {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--bg);
+  color: var(--foreground);
+}
+.galleryCard > p {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.galleryCard > p > span {
+  color: var(--profile-ink);
+}
+.lightbox {
+  width: min(calc(100% - 32px), 1040px);
+  max-width: 1040px;
+}
+.expandedImage {
+  display: block;
+  width: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+}
+.mediaUnavailable {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+.contentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 64px;
+}
+.reading {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+.about {
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--border);
+}
+.prose {
+  max-width: 68ch;
+  text-align: left;
+  font-size: 16px;
+  line-height: 1.8;
+  white-space: pre-line;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+}
+.aside {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.aside h2 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.facts {
+  padding: 24px;
+  background: var(--muted);
+  border-radius: var(--radius-lg);
+}
+.facts dl {
+  margin: 0;
+}
+.facts dl > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.facts dt {
+  color: var(--muted-foreground);
+}
+.facts dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.practices > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.practices span {
+  padding: 4px 8px;
+  background: var(--profile-surface);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+.contact a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--primary);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.opportunities {
+  display: grid;
+  gap: 12px;
+}
+.opportunities .opportunity {
+  padding: 24px;
+  gap: 12px;
+  box-shadow: none;
+}
+.callMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.callMeta span[data-open] {
+  color: var(--primary);
+}
+.opportunity h3 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+.opportunity h3 a {
+  text-decoration: none;
+}
+.callActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.callActions a,
+.guidance > a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--primary);
+  text-decoration: none;
+}
+.guidance {
+  border-top: 1px solid var(--border);
+  padding-top: 32px;
+}
+.empty {
+  border: 1px dashed var(--border);
+  min-height: 160px;
+}
+@media (max-width: 1024px) {
+  .titleRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .heroActions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .contentGrid {
+    gap: 32px;
+    grid-template-columns: minmax(0, 1fr) 260px;
+  }
+  .gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  .main {
+    width: calc(100% - 32px);
+    padding-top: 16px;
+  }
+  .hero {
+    padding: 24px 20px;
+    margin-top: 12px;
+  }
+  .signature {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .contentGrid,
+  .gallery {
+    grid-template-columns: 1fr;
+  }
+  .galleryTrigger,
+  .gallery[data-single] .galleryTrigger {
+    height: 280px;
+  }
+  .sectionNav {
+    gap: 24px;
+  }
+  .gallerySection {
+    margin-bottom: 32px;
+  }
+  .titleRow h1 {
+    font-size: 36px;
+  }
+  .heroActions {
+    flex-direction: column;
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lightbox {
+    animation: none;
+    transition: none;
+  }
+}
+
+.galleryImage {
+  object-fit: contain;
+  padding: 20px;
+}
+.galleryCard > p {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.galleryCard > p > span {
+  margin-right: 12px;
+}
+
+.gallerySection[data-issues] {
+  border-top: 1px solid var(--border);
+  padding-top: 32px;
+}
+.issueIntro {
+  color: var(--muted-foreground);
+  margin: -4px 0 24px;
+}
+.gallerySection[data-issues] .gallery {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+.gallerySection[data-issues] .galleryCard {
+  max-width: 380px;
+}
+.gallerySection[data-issues] .galleryTrigger {
+  height: 360px;
+  border-radius: var(--radius-md);
+}
+.gallerySection[data-issues] .galleryCard > p {
+  color: var(--foreground);
+  font-size: 16px;
+  font-weight: 600;
+}
+.issueDate,
+.issuePreview {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.issueEmpty {
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+}
+.issueEmpty h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.issueEmpty p {
+  color: var(--muted-foreground);
+}
+.issueEmpty a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--primary);
+}
+
+.issueAuthor { margin-top: 4px; font-size: 14px; line-height: 1.5; color: var(--muted-foreground); }
+
+.gallerySection[data-photos] { border-top: 1px solid var(--border); padding-top: 32px; }
+.gallerySection[data-photos] .gallery { grid-template-columns: 2fr 1fr; gap: 24px; }
+.gallerySection[data-photos] .galleryCard:first-child { grid-column: 1 / -1; }
+.gallerySection[data-photos] .galleryTrigger { height: 320px; }
+.gallerySection[data-photos] .galleryCard:first-child .galleryTrigger { height: clamp(280px, 40vw, 520px); }
+.gallerySection[data-photos] .galleryImage { padding: 0; object-fit: cover; }
+@media (max-width: 640px) {
+  .gallerySection[data-photos] .gallery { grid-template-columns: 1fr; }
+  .gallerySection[data-photos] .galleryTrigger { height: 260px; }
+}

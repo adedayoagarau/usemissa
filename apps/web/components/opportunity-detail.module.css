@@ -971,3 +971,6 @@
 .readingColumn section { scroll-margin-top: 160px; }
 @media (min-width: 1025px) { .decisionRail { top: 160px; } }
 @media (min-width: 768px) { .main a, .main button, .main input { scroll-margin-top: 160px; } }
+
+/* Back-link and organizer line form one compact introduction. */
+.heroCard { margin-top: 0; padding-top: 20px; }

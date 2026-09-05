@@ -4,13 +4,23 @@
     "status": "approved",
     "implementation": "apps/web/components/opportunity-detail-view.tsx",
     "adaptation": "White-index detail layout, interface typography, unboxed reading sections, organizer and facts rail; public reputation scores and unknown turnaround removed",
-    "actions": ["SaveToTrackerButton", "AddOpportunityToCalendarButton", "MobileActionDock", "OpportunityDetailStickyActions", "official destination link"],
+    "actions": [
+      "SaveToTrackerButton",
+      "AddOpportunityToCalendarButton",
+      "MobileActionDock",
+      "OpportunityDetailStickyActions",
+      "official destination link"
+    ],
     "mobile": "Single-column reading; Save and Apply stay in existing dock, calendar remains in summary"
   },
   "collectionBrowse": {
     "status": "approved",
     "implementation": "apps/web/app/discover/[slug]/page.tsx",
-    "composition": ["OpportunityBrowseProjectCard", "OpportunitySort", "OpportunityBrowsePagination"],
+    "composition": [
+      "OpportunityBrowseProjectCard",
+      "OpportunitySort",
+      "OpportunityBrowsePagination"
+    ],
     "themes": "Twelve individual editorial palettes in components/design-system/collection-palette.css; cover copy and motifs in lib/collectionArtDirection.ts; shared white cards",
     "state": "Collection constraints retained; URL sorting and cursor history; 48 results per page"
   },
@@ -1302,12 +1312,48 @@
     "canonicalFilters": "OpportunityCatalogueFilters index appearance retains full taxonomy and facet counts"
   },
   "directoryBrowse": {
+    "categoryLoader": "apps/web/components/directory-category-page.tsx",
+    "documentation": "docs/discovery-design-system-2026-09-04.md",
     "status": "approved",
     "implementation": "apps/web/components/directory-browse-view.tsx",
     "source": "Installed Card, Input, Button, Empty and Pagination; native navigation links",
     "adaptation": "White index with organization images and Avatar category-icon fallbacks, URL-preserved category/search/page state, repository totals, no blanket verification claims",
     "routes": [
-      "/directory"
+      "/directory",
+      "/residencies",
+      "/journals",
+      "/presses",
+      "/grants",
+      "/organizations"
     ]
+  },
+  "organizationProfile": {
+    "status": "approved",
+    "implementation": "apps/web/components/institution-profile-view.tsx",
+    "gallery": "apps/web/components/institution-media-gallery.tsx",
+    "source": "Installed Avatar, Button, Card, Empty and Dialog",
+    "adaptation": "Token-themed shared profile; publication typography; three initial media cards with disclosure and accessible image dialog; actual media only; missing data omitted",
+    "documentation": "docs/organization-profile-design-2026-09-04.md",
+    "kindLayout": "apps/web/components/institution-profile-layout.ts",
+    "variants": [
+      "literary_magazine",
+      "small_press",
+      "residency_center",
+      "grant_foundation",
+      "gallery",
+      "visual_arts_organization",
+      "organization"
+    ],
+    "journalMedia": "Past issues: three initial portrait issue covers, preview dialog, reveal, and explicit unavailable state with official website link",
+    "pressMedia": "Books: portrait cover shelf, three initially, View all books, preview dialog, press-specific empty state",
+    "spatialMedia": "Large lead photo plus supporting grid for residency, gallery, foundation and arts profiles; mobile stack; full-image dialog; sourced editorial fallback and missing-photo state",
+    "socialLinks": "apps/web/components/institution-social-links.tsx \u2014 header identity, stored URLs, Button ghost/icon"
+  },
+  "publicCreatorProfile": {
+    "status": "review",
+    "implementation": "apps/web/components/public-creator-profile.tsx",
+    "source": "Installed Card and native links",
+    "preview": "/design-system/creator-profile-v2",
+    "boundary": "Public name/bio only on real routes; fictional text-work/credits preview"
   }
 }

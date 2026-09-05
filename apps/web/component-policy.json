@@ -51,6 +51,8 @@
     "forbidArbitraryAnimation": true
   },
   "intents": {
+    "composition.organization-profile": { "semantic": "InstitutionProfileView", "appearance": "kind-specific-information-architecture", "composition": ["Avatar", "Button", "Card", "Empty"] },
+    "disclosure.organization-media": { "semantic": "InstitutionMediaGallery", "composition": ["Button", "Dialog"] },
     "action.opportunity-detail-persistent": { "semantic": "OpportunityDetailStickyActions", "composition": ["SaveToTrackerButton", "Button", "Link"] },
     "composition.collection-cover": { "semantic": "DiscoveryCollectionPage", "appearance": "editorial-collection-palette", "composition": ["EditorialTypography", "DecorativeSvg", "Link"] },
     "action.primary": {

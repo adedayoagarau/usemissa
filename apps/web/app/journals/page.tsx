@@ -1,51 +1,23 @@
-import { getProfileRepository } from "@/lib/profileRepository";
-import { PublicSiteShell } from "@/components/public-site-shell";
-import { InstitutionDirectoryView } from "@/components/institution-directory-view";
 import type { Metadata } from "next";
-
+import { DirectoryCategoryPage } from "@/components/directory-category-page";
 export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
-  title: "Literary Journals & Magazines — 1,680+ Verified Publications",
-  description: "Browse 1,687 verified literary magazines, quarterly reviews, and journals. Find active submission periods, acceptance fees, and response times.",
+  title: "Literary journals & magazines",
+  description:
+    "Explore literary journals and magazines publishing poetry, fiction and essays.",
 };
-
-const PAGE_SIZE = 48;
-
-export default async function JournalsPage({
+export default function Page({
   searchParams,
 }: {
   searchParams?: Promise<{ q?: string; page?: string }>;
 }) {
-  const params = searchParams ? await searchParams : {};
-  const repository = getProfileRepository();
-  const query = params.q?.trim() ?? "";
-  const page = Math.max(Number(params.page ?? "1") || 1, 1);
-
-  const result = repository
-    ? await repository.browse({
-        query: query || undefined,
-        kind: "literary_magazine",
-        limit: PAGE_SIZE,
-        offset: (page - 1) * PAGE_SIZE,
-      })
-    : { items: [], total: 0 };
-
   return (
-    <PublicSiteShell current="Directory">
-      <InstitutionDirectoryView
-        eyebrow="Literary Periodicals"
-        title="Literary Journals & Magazines"
-        description="Explore 1,687 confirmed literary magazines and reviews publishing poetry, fiction, essays, and experimental writing."
-        basePath="/journals"
-        items={result.items}
-        total={result.total}
-        page={page}
-        pageSize={PAGE_SIZE}
-        query={query}
-        activeKind="literary_magazine"
-        showKindFilterTabs={true}
-      />
-    </PublicSiteShell>
+    <DirectoryCategoryPage
+      kind="literary_magazine"
+      basePath="/journals"
+      title="Find a home for your writing."
+      description="Explore literary journals and magazines publishing poetry, fiction and essays."
+      searchParams={searchParams}
+    />
   );
 }

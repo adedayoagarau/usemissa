@@ -857,3 +857,5 @@ Resolve these through representative screens, then update this file rather than 
 ### Collection editorial covers (September 4, 2026)
 
 Individual discovery collections use distinct editorial palettes following the user-approved art direction. The canonical palette lives in `apps/web/components/design-system/collection-palette.css`: palette primitives map to surface, text and graphic roles, which the collection cover consumes. These colors are scoped to editorial covers and subtle collection canvases; they do not replace Forest actions or semantic status colors. White opportunity cards and shared browsing controls remain unchanged. Static, decorative SVG motifs are hidden from assistive technology. Collection names stay visible above expressive headlines; type uses the established interface and editorial families.
+
+Discovery implementation and extension guide: [Discovery design system](docs/discovery-design-system-2026-09-04.md). Category directories use DirectoryBrowseView via DirectoryCategoryPage; opportunity details use OpportunityDetailView.

@@ -1,7 +1,7 @@
 export default function JournalsLoading() {
   return (
     <main
-      className="mx-auto min-h-screen max-w-6xl px-4 py-12 sm:px-6 sm:py-16"
+      className="mx-auto min-h-screen max-w-7xl px-4 py-8 sm:px-6"
       aria-busy="true"
       aria-labelledby="journals-loading-heading"
     >
@@ -10,16 +10,16 @@ export default function JournalsLoading() {
       </p>
       <h1
         id="journals-loading-heading"
-        className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl"
+        className="mt-2 font-sans text-2xl font-medium tracking-tight"
       >
-        Journals & small presses
+        Find a home for your writing.
       </h1>
       <p
-        className="mt-4 text-lg leading-7 text-muted-foreground"
+        className="mt-2 text-sm leading-6 text-muted-foreground"
         role="status"
         aria-live="polite"
       >
-        Loading journals and small presses…
+        Loading journals…
       </p>
       <div
         className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3"

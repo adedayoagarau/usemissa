@@ -1,10 +1,8 @@
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { notFound } from "next/navigation";
 import { resolveHandle } from "@missa/radar-adapters";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { getEngine } from "@/lib/engine";
-import styles from "../public-editorial.module.css";
+import { PublicCreatorProfile } from "@/components/public-creator-profile";
 
 export default async function PublicHandlePage({
   params,
@@ -32,35 +30,7 @@ export default async function PublicHandlePage({
 
   return (
     <PublicSiteShell>
-      <main id="main-content" className={styles.main}>
-        <header className={styles.hero}>
-          <p className={styles.eyebrow}>Public Profile</p>
-          <h1>{profile.displayName ?? "Creator Profile"}</h1>
-          <p>{profile.bio || "This creator has not published a biography."}</p>
-        </header>
-        <section className={styles.section} aria-labelledby="published-content">
-          <header className={styles.sectionHeader}>
-            <p className={styles.eyebrow}>Published by the creator</p>
-            <h2 id="published-content">Profile information</h2>
-            <p>
-              Only information this creator has chosen to make public belongs on
-              this page. Private Tracker activity and matching preferences are
-              not part of the public Profile.
-            </p>
-          </header>
-        </section>
-        <nav
-          className={styles.actions}
-          aria-label="Continue from public Profile"
-        >
-          <Link href="/opportunities">
-            Explore Opportunities <ArrowRight aria-hidden="true" />
-          </Link>
-          <Link href="/signup">
-            Create your Profile <ArrowRight aria-hidden="true" />
-          </Link>
-        </nav>
-      </main>
+      <PublicCreatorProfile profile={profile} />
     </PublicSiteShell>
   );
 }

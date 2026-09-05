@@ -2,6 +2,27 @@ import { Pool } from "pg";
 import { extractProfileIntelligence } from "./profileIntelligenceExtractor.js";
 import { cleanCrawledText, cleanTitleOrLabel } from "./cleanText.js";
 import type { OrganizationEditorialProfile } from "./editorialWriter.js";
+import {
+  getProfileIssuesFromDb,
+  type ProfileIssueRecord,
+  type ProfileIssuesResponse,
+  type IssueRefreshState,
+} from "./profileIssueDiscovery.js";
+import {
+  getOrganizationMediaBundle,
+  type OrganizationMediaBundle,
+  type OrganizationMediaRecord,
+  type MediaGroup,
+} from "./organizationMediaDiscovery.js";
+
+export type {
+  ProfileIssueRecord,
+  ProfileIssuesResponse,
+  IssueRefreshState,
+  OrganizationMediaBundle,
+  OrganizationMediaRecord,
+  MediaGroup,
+};
 
 
 export type ProfileKind =
@@ -122,6 +143,7 @@ export interface ProfileDetail extends ProfileCard {
   publishesThroughContestsOnly: string | null;
   editorialProfile?: OrganizationEditorialProfile | null;
   opportunities: ProfileOpportunity[];
+  mediaBundle?: OrganizationMediaBundle | null;
 }
 
 
@@ -141,6 +163,14 @@ export interface ProfileRepository {
   getById(id: string): Promise<ProfileDetail | null>;
   getForOpportunity(opportunityId: string): Promise<ProfileCard | null>;
   getMediaByProfileId(id: string): Promise<ProfileMedia | null>;
+  getProfileIssues(
+    profileId: string,
+    options?: { limit?: number; offset?: number },
+  ): Promise<ProfileIssuesResponse>;
+  getOrganizationMedia(
+    profileId: string,
+    options?: { limitPerGroup?: number },
+  ): Promise<OrganizationMediaBundle>;
 }
 
 function jsonArray(value: unknown): string[] {
@@ -420,19 +450,33 @@ export class PostgresProfileRepository implements ProfileRepository {
       };
     }
 
+    let mediaBundle: OrganizationMediaBundle | null = null;
+    try {
+      mediaBundle = await getOrganizationMediaBundle(this.pool, actualId, { limitPerGroup: 12 });
+    } catch {
+      // Non-fatal if table not present
+    }
+
     const logoVisual = visuals.find((v) => v.assetType === "logo");
     const bannerVisual =
       visuals.find((v) => v.assetType === "banner") ??
       visuals.find((v) => v.assetType === "issue_cover");
-    const logoUrl = logoVisual?.imageUrl ?? null;
+    
+    // Prefer discovered mediaBundle identity if present
+    const discoveredLogo = mediaBundle?.identity.items.find((i) => i.mediaType === "logo")?.imageUrl;
+    const discoveredLead = mediaBundle?.leadPhoto?.imageUrl;
+    const logoUrl = discoveredLogo ?? logoVisual?.imageUrl ?? null;
+    const bannerUrl = discoveredLead ?? bannerVisual?.imageUrl ?? null;
+    const bannerAlt = mediaBundle?.leadPhoto?.altText ?? bannerVisual?.label ?? base.mediaAlt;
 
     return {
       ...base,
       // Directory/cards use logo marks; never substitute a banner into the logo slot.
       logoUrl,
-      bannerUrl: bannerVisual?.imageUrl ?? null,
-      bannerAlt: bannerVisual?.label ?? base.mediaAlt,
+      bannerUrl,
+      bannerAlt,
       visuals,
+      mediaBundle,
       prizeProvenance,
       intelligence,
       socialLinks,
@@ -534,6 +578,20 @@ export class PostgresProfileRepository implements ProfileRepository {
       ORDER BY l.confidence DESC, p.name ASC LIMIT 1`, values: [opportunityId] });
     const row = result.rows[0] as Record<string, unknown> | undefined;
     return row ? card(row) : null;
+  }
+
+  async getProfileIssues(
+    profileId: string,
+    options: { limit?: number; offset?: number } = {},
+  ): Promise<ProfileIssuesResponse> {
+    return getProfileIssuesFromDb(this.pool, profileId, options);
+  }
+
+  async getOrganizationMedia(
+    profileId: string,
+    options: { limitPerGroup?: number } = {},
+  ): Promise<OrganizationMediaBundle> {
+    return getOrganizationMediaBundle(this.pool, profileId, options);
   }
 }
 

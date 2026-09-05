@@ -1,284 +1,528 @@
 import type { ProfileDetail } from "@missa/radar-adapters";
-import { KIND_METADATA } from "./institution-directory-view";
 import Link from "next/link";
-import { Globe, ArrowLeft, ArrowUpRight, Calendar, Sparkles, Building2, CheckCircle2, MapPin } from "lucide-react";
-import { cleanCrawledNarrative, cleanTitleOrLabel } from "@/lib/textUtils";
+import { InstitutionSocialLinks } from "./institution-social-links";
+import editorialMedia from "@/lib/profile-editorial-media.json";
+import { Fragment } from "react";
+import {
+  PROFILE_LAYOUTS,
+  type ProfileSection,
+} from "./institution-profile-layout";
+import { ArrowLeft, ArrowUpRight, ArrowRight } from "lucide-react";
+import { KIND_METADATA } from "./institution-directory-view";
+import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Empty, EmptyDescription } from "./ui/empty";
+import {
+  InstitutionMediaGallery,
+  type InstitutionGalleryImage,
+} from "./institution-media-gallery";
+import {
+  cleanCrawledNarrative,
+  cleanTitleOrLabel,
+  decodeHtmlEntities,
+} from "@/lib/textUtils";
+import styles from "./institution-profile.module.css";
 
-function safeHostname(url?: string | null): string {
-  if (!url) return "Official website";
+function safeHref(value?: string | null): string | undefined {
+  if (!value) return;
   try {
-    const formatted = url.startsWith("http") ? url : `https://${url}`;
-    return new URL(formatted).hostname.replace(/^www\./, "");
+    const url = new URL(
+      /^https?:\/\//i.test(value) ? value : `https://${value}`,
+    );
+    if (["https:", "http:"].includes(url.protocol)) return url.href;
   } catch {
-    return "Official website";
+    return;
   }
 }
-
-function safeHref(url?: string | null): string {
-  if (!url) return "#";
-  return url.startsWith("http") ? url : `https://${url}`;
+function humanize(value: string) {
+  return value.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
-
-interface InstitutionProfileViewProps {
+export function InstitutionProfileView({
+  profile,
+}: {
   profile: ProfileDetail;
-}
-
-export function InstitutionProfileView({ profile }: InstitutionProfileViewProps) {
+}) {
   const meta = KIND_METADATA[profile.kind] || KIND_METADATA.all;
   const Icon = meta.icon;
-  const logoUrl = profile.logoUrl;
-  const bannerUrl = profile.bannerUrl;
+  const layout = PROFILE_LAYOUTS[profile.kind] || PROFILE_LAYOUTS.organization;
+  const publication = ["literary_magazine", "small_press"].includes(
+    profile.kind,
+  );
+  const journal = profile.kind === "literary_magazine";
+  const website = safeHref(profile.websiteUrl);
+  const guidelines = safeHref(profile.submissionGuidelinesUrl);
+  const about = cleanCrawledNarrative(
+    profile.editorialProfile?.overview ||
+      profile.editorialFocus ||
+      profile.summary ||
+      "",
+  );
+  const images: InstitutionGalleryImage[] = [];
+  const addImage = (
+    url: string | null,
+    label: string,
+    cover: boolean,
+    opts?: {
+      subtitle?: string | null;
+      credit?: string | null;
+      dateLabel?: string | null;
+      officialUrl?: string | null;
+      readingUrl?: string | null;
+      purchaseUrl?: string | null;
+    }
+  ) => {
+    if (
+      url &&
+      url !== profile.logoUrl &&
+      !images.some((image) => image.url === url)
+    ) {
+      images.push({
+        url,
+        label: decodeHtmlEntities(label),
+        cover,
+        subtitle: opts?.subtitle ? decodeHtmlEntities(opts.subtitle) : undefined,
+        credit: opts?.credit ? decodeHtmlEntities(opts.credit) : undefined,
+        dateLabel: opts?.dateLabel ? decodeHtmlEntities(opts.dateLabel) : undefined,
+        officialUrl: opts?.officialUrl || undefined,
+        readingUrl: opts?.readingUrl || undefined,
+        purchaseUrl: opts?.purchaseUrl || undefined,
+      });
+    }
+  };
 
+  // 1. If we have authentic discovered media in mediaBundle, use that group
+  const mb = profile.mediaBundle;
+  if (mb) {
+    if (profile.kind === "small_press" && mb.books.items.length > 0) {
+      for (const b of mb.books.items) {
+        addImage(b.imageUrl, b.title, true, {
+          subtitle: b.subtitle,
+          credit: b.creatorCredit,
+          dateLabel: b.publicationDateRaw || (b.publicationYear ? String(b.publicationYear) : null),
+          officialUrl: b.officialUrl,
+          readingUrl: b.readingUrl,
+          purchaseUrl: b.purchaseUrl,
+        });
+      }
+    } else if (journal && mb.issues.items.length > 0) {
+      for (const iss of mb.issues.items) {
+        addImage(iss.imageUrl, iss.title, true, {
+          subtitle: iss.subtitle,
+          dateLabel: iss.publicationDateRaw,
+          officialUrl: iss.officialUrl,
+          readingUrl: iss.readingUrl,
+          purchaseUrl: iss.purchaseUrl,
+        });
+      }
+    } else if (profile.kind === "residency_center" && mb.photos.items.length > 0) {
+      for (const p of mb.photos.items) {
+        addImage(p.imageUrl, p.title, false, {
+          subtitle: p.subtitle,
+          credit: p.creatorCredit,
+          officialUrl: p.officialUrl,
+        });
+      }
+    } else if ((profile.kind === "gallery" || profile.kind === "visual_arts_organization") && (mb.exhibitions.items.length > 0 || mb.photos.items.length > 0)) {
+      for (const ex of mb.exhibitions.items) {
+        addImage(ex.imageUrl, ex.title, false, {
+          subtitle: ex.subtitle,
+          credit: ex.creatorCredit,
+          dateLabel: ex.publicationDateRaw,
+          officialUrl: ex.officialUrl,
+        });
+      }
+      for (const p of mb.photos.items) {
+        addImage(p.imageUrl, p.title, false, {
+          subtitle: p.subtitle,
+          credit: p.creatorCredit,
+        });
+      }
+    } else if (profile.kind === "grant_foundation" && (mb.projects.items.length > 0 || mb.photos.items.length > 0)) {
+      for (const pr of mb.projects.items) {
+        addImage(pr.imageUrl, pr.title, false, {
+          subtitle: pr.subtitle,
+          credit: pr.creatorCredit,
+          dateLabel: pr.publicationDateRaw,
+          officialUrl: pr.officialUrl,
+        });
+      }
+    }
+  }
+
+  const curated = (
+    editorialMedia as Record<
+      string,
+      { source: string; images: InstitutionGalleryImage[] }
+    >
+  )[profile.slug];
+
+  // 2. Fallback to existing visuals or banner if mediaBundle had no group items
+  if (images.length === 0) {
+    addImage(
+      profile.bannerUrl,
+      profile.bannerAlt || `${profile.name} — overview`,
+      false,
+    );
+    if (publication) images.length = 0;
+    for (const visual of profile.visuals ?? []) {
+      if (
+        visual.assetType !== "logo" &&
+        (!publication || visual.assetType === "issue_cover")
+      ) {
+        addImage(
+          visual.imageUrl,
+          [
+            visual.label ||
+              (visual.assetType === "issue_cover" ? "Issue cover" : profile.name),
+            visual.season,
+            visual.issueYear,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          visual.assetType === "issue_cover",
+        );
+      }
+    }
+    if (!publication && !images.length && curated) images.push(...curated.images);
+  }
+  const facts = [
+    ["Founded", profile.intelligence?.foundingYear],
+    [
+      publication ? "Reading period" : "Application window",
+      profile.readingPeriod,
+    ],
+    [publication ? "Reading fee" : "Application fee", profile.readingFee],
+    ...(publication
+      ? [
+          ["Payment", profile.payment],
+          ["Response time", profile.responseTime],
+          ["Unsolicited submissions", profile.unsolicitedSubmissions],
+          ["Simultaneous submissions", profile.simultaneousSubmissions],
+        ]
+      : []),
+    ...(profile.kind === "literary_magazine"
+      ? [
+          ["Issues per year", profile.issuesPerYear],
+          ["Issue price", profile.issuePrice],
+          ["Subscription", profile.subscriptionPrice],
+        ]
+      : []),
+    ...(profile.kind === "small_press"
+      ? [
+          ["Titles per year", profile.titlesPerYear],
+          ["Contest-only publishing", profile.publishesThroughContestsOnly],
+        ]
+      : []),
+  ].filter(
+    ([, value]) => value !== null && value !== undefined && value !== "",
+  );
+  const focusText = cleanCrawledNarrative(profile.editorialFocus || "");
+  const focusTerms = [
+    ...new Set([
+      ...profile.genres,
+      ...(publication ? profile.subgenres : []),
+      ...(profile.kind === "small_press" ? profile.bookTypes : []),
+    ]),
+  ];
+  const visible: Record<ProfileSection, boolean> = {
+    gallery: true,
+    about: Boolean(about),
+    focus: Boolean(
+      focusTerms.length ||
+      (focusText && focusText !== about) ||
+      (profile.kind === "small_press" && profile.representativeAuthors),
+    ),
+    opportunities: true,
+    guidance: Boolean(
+      profile.editorialProfile?.submissionGuidance || guidelines,
+    ),
+  };
+  const labels = {
+    gallery: layout.media,
+    about: "About",
+    focus: layout.focus,
+    opportunities: layout.calls,
+    guidance: layout.guidance,
+  };
+  const openCount = profile.opportunities.filter(
+    (opp) => opp.status === "open",
+  ).length;
   return (
-    <div className="mx-auto min-h-screen max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
-      {/* Back link */}
-      <nav aria-label="Breadcrumb">
-        <Link
-          href={meta.path}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-3.5" aria-hidden="true" />
-          Back to {meta.plural}
-        </Link>
-      </nav>
-
-      {bannerUrl ? (
-        <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={bannerUrl}
-            alt={profile.bannerAlt || `${profile.name} editorial image`}
-            className="aspect-[21/9] w-full object-cover"
-          />
-        </div>
-      ) : null}
-
-      {/* Hero Header */}
-      <header className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between border-b border-border pb-8">
-        <div className="flex items-start gap-4 sm:gap-5">
-          {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={logoUrl}
-              alt={`${profile.name} logo`}
-              className="size-20 sm:size-24 shrink-0 rounded-2xl border border-border/80 object-contain bg-background p-2 shadow-xs"
-            />
-          ) : (
-            <div className="flex size-20 sm:size-24 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-muted/40 text-muted-foreground">
-              <Icon className="size-8 opacity-70" aria-hidden="true" />
-            </div>
-          )}
-
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2.5 py-0.5 font-mono text-xs font-medium text-primary">
-                {meta.label}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2.5 py-0.5 font-mono text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="size-3" aria-hidden="true" />
-                Verified Radar Profile
-              </span>
-              {profile.editorialProfile?.demeanor ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2.5 py-0.5 font-mono text-xs font-medium text-secondary-foreground">
-                  <Sparkles className="size-3 text-primary" aria-hidden="true" />
-                  {profile.editorialProfile.demeanor}
-                </span>
-              ) : null}
-            </div>
-
-            <h1 className="mt-2 font-heading text-2xl font-bold tracking-tight text-foreground sm:text-3xl break-words">
-              {profile.name}
-            </h1>
-
-            {profile.websiteUrl ? (
+    <main id="main-content" className={styles.main} data-kind={profile.kind}>
+      <Link href={meta.path} className={styles.back}>
+        <ArrowLeft size={16} aria-hidden="true" />
+        Back to {meta.plural.toLowerCase()}
+      </Link>
+      <header className={styles.hero}>
+        <div className={styles.identity}>
+          <Avatar className={styles.logo}>
+            {profile.logoUrl && (
+              <AvatarImage
+                src={profile.logoUrl}
+                alt=""
+                className={styles.logoImage}
+              />
+            )}
+            <AvatarFallback className={styles.logoFallback}>
+              <Icon size={32} aria-hidden="true" />
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <p className={styles.eyebrow}>{meta.label}</p>
+            {website && (
               <a
-                href={safeHref(profile.websiteUrl)}
+                href={website}
                 target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:underline"
+                rel="noreferrer"
+                className={styles.domain}
               >
-                <Globe className="size-3.5" aria-hidden="true" />
-                {safeHostname(profile.websiteUrl)}
-                <ArrowUpRight className="size-3 opacity-60" aria-hidden="true" />
+                {new URL(website).hostname.replace(/^www\./, "")}
+                <ArrowUpRight size={14} aria-hidden="true" />
               </a>
-            ) : null}
+            )}
+            <InstitutionSocialLinks links={profile.socialLinks || {}} name={profile.name} />
           </div>
         </div>
-
-        {profile.websiteUrl ? (
-          <a
-            href={safeHref(profile.websiteUrl)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-xs transition-opacity hover:opacity-90"
-          >
-            Visit Official Website
-            <ArrowUpRight className="size-4" aria-hidden="true" />
-          </a>
-        ) : null}
+        <div className={styles.titleRow}>
+          <h1 className={publication ? "font-heading" : "font-sans"}>
+            {cleanTitleOrLabel(profile.name)}
+          </h1>
+          <div className={styles.heroActions}>
+            {website && (
+              <Button
+                nativeButton={false}
+                render={<a href={website} target="_blank" rel="noreferrer" />}
+              >
+                Visit website <ArrowUpRight size={16} aria-hidden="true" />
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<a href="#profile-opportunities" />}
+            >
+              {layout.calls}
+              <ArrowRight size={16} aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+        <div className={styles.signature}>
+          <span>{layout.signature}</span>
+          <span>
+            {openCount}{" "}
+            {openCount === 1 ? "open opportunity" : "open opportunities"} listed
+          </span>
+        </div>
       </header>
-
-      {/* Main Content Layout */}
-      <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-3">
-        {/* Primary Content (2 cols) */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Institutional Narrative / Curatorial Ethos */}
-          {profile.editorialProfile?.overview || profile.summary || profile.editorialFocus ? (
-            <section aria-labelledby="about-heading" className="space-y-3">
-              <h2 id="about-heading" className="font-heading text-lg font-semibold text-foreground">
-                About {cleanTitleOrLabel(profile.name)}
-              </h2>
-              <div className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line font-serif">
-                {cleanCrawledNarrative(profile.editorialProfile?.overview || profile.summary || profile.editorialFocus)}
-              </div>
-            </section>
-          ) : null}
-
-          {/* Curatorial & Submission Guidance */}
-          {profile.editorialProfile?.submissionGuidance ? (
-            <section aria-labelledby="guidance-heading" className="rounded-xl border border-border bg-card p-6 space-y-3">
-              <div className="flex items-center gap-2 text-foreground font-heading font-semibold text-base">
-                <Sparkles className="size-4 text-primary" aria-hidden="true" />
-                <h3 id="guidance-heading">Curatorial & Applicant Guidance</h3>
-              </div>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {profile.editorialProfile.submissionGuidance}
-              </p>
-            </section>
-          ) : null}
-
-          {/* Active Published Opportunities */}
-          <section aria-labelledby="opportunities-heading" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 id="opportunities-heading" className="font-heading text-lg font-semibold text-foreground">
-                Opportunities & Open Calls
-              </h2>
-              <span className="font-mono text-xs text-muted-foreground">
-                {profile.opportunities.length} {profile.opportunities.length === 1 ? "call" : "calls"}
-              </span>
-            </div>
-
-            {profile.opportunities.length > 0 ? (
-              <div className="divide-y divide-border rounded-xl border border-border bg-card">
-                {profile.opportunities.map((opp) => (
-                  <div key={opp.id} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className={`font-medium ${opp.status === "open" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-                          ● {opp.status === "open" ? "Active Call" : "Closed / Upcoming"}
-                        </span>
-                        {opp.deadline ? (
-                          <span className="text-muted-foreground">
-                            · Deadline: {String(opp.deadline)}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">· Rolling admissions</span>
+      <nav className={styles.sectionNav} aria-label="Profile sections">
+        {layout.order
+          .filter((key) => visible[key])
+          .map((key) => (
+            <a key={key} href={`#profile-${key}`}>
+              {labels[key]}
+            </a>
+          ))}
+        {!layout.order.includes("gallery") && (
+          <a href="#profile-gallery">{layout.media}</a>
+        )}
+      </nav>
+      <div className={styles.contentGrid}>
+        <div className={styles.reading}>
+          {layout.order
+            .filter((key) => visible[key])
+            .map((key) => (
+              <Fragment key={key}>
+                {
+                  {
+                    gallery: (
+                      <InstitutionMediaGallery
+                        images={images}
+                        title={layout.media}
+                        issues={journal}
+                        books={profile.kind === "small_press"}
+                        website={website}
+                        photos={!publication}
+                        source={curated?.source}
+                      />
+                    ),
+                    about: (
+                      <section id="profile-about" className={styles.about}>
+                        <h2 className="font-sans">{layout.about}</h2>
+                        <div className={styles.prose}>{about}</div>
+                      </section>
+                    ),
+                    focus: (
+                      <section id="profile-focus" className={styles.practices}>
+                        <h2 className="font-sans">{layout.focus}</h2>
+                        {focusText && focusText !== about && (
+                          <p className={styles.prose}>{focusText}</p>
                         )}
-                      </div>
-                      <h3 className="mt-1 font-heading text-base font-semibold text-foreground break-words">
-                        {opp.title}
-                      </h3>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href={`/opportunities/${opp.id}`}
-                        className="inline-flex items-center justify-center rounded-lg border border-border bg-background px-3.5 py-2 text-xs font-semibold text-foreground hover:bg-muted"
+                        {focusTerms.length > 0 && (
+                          <div>
+                            {focusTerms.map((term) => (
+                              <span key={term}>{humanize(term)}</span>
+                            ))}
+                          </div>
+                        )}
+                        {profile.kind === "small_press" &&
+                          profile.representativeAuthors && (
+                            <p className={styles.prose}>
+                              <strong>Selected authors</strong>
+                              <br />
+                              {cleanCrawledNarrative(
+                                profile.representativeAuthors,
+                              )}
+                            </p>
+                          )}
+                      </section>
+                    ),
+                    opportunities: (
+                      <section id="profile-opportunities">
+                        <div className={styles.sectionHeading}>
+                          <h2 className="font-sans">{layout.calls}</h2>
+                          <span>{profile.opportunities.length} listed</span>
+                        </div>
+                        {profile.opportunities.length ? (
+                          <div className={styles.opportunities}>
+                            {profile.opportunities.map((opp) => {
+                              const detail =
+                                opp.detailUrl?.startsWith("/") &&
+                                !opp.detailUrl.startsWith("//")
+                                  ? opp.detailUrl
+                                  : safeHref(opp.detailUrl);
+                              const official = safeHref(opp.officialWebsite);
+                              return (
+                                <Card
+                                  key={opp.id}
+                                  className={styles.opportunity}
+                                >
+                                  <div className={styles.callMeta}>
+                                    <span
+                                      data-open={
+                                        opp.status === "open" || undefined
+                                      }
+                                    >
+                                      {opp.status === "open"
+                                        ? "Open"
+                                        : opp.status === "closed"
+                                          ? "Closed"
+                                          : "Check availability"}
+                                    </span>
+                                    {opp.deadline && (
+                                      <span>Deadline · {opp.deadline}</span>
+                                    )}
+                                  </div>
+                                  <h3 className="font-sans">
+                                    {detail ? (
+                                      <Link href={detail}>{opp.title}</Link>
+                                    ) : (
+                                      opp.title
+                                    )}
+                                  </h3>
+                                  <div className={styles.callActions}>
+                                    {detail && (
+                                      <Link href={detail}>
+                                        View opportunity{" "}
+                                        <ArrowRight
+                                          size={16}
+                                          aria-hidden="true"
+                                        />
+                                      </Link>
+                                    )}
+                                    {official && (
+                                      <a
+                                        href={official}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                      >
+                                        Official listing
+                                        <ArrowUpRight
+                                          size={16}
+                                          aria-hidden="true"
+                                        />
+                                      </a>
+                                    )}
+                                  </div>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <Empty className={styles.empty}>
+                            <h3 className="font-sans">
+                              No opportunities listed yet
+                            </h3>
+                            <EmptyDescription>
+                              Check the organization’s website for its latest
+                              calls and programs.
+                            </EmptyDescription>
+                          </Empty>
+                        )}
+                      </section>
+                    ),
+                    guidance: (
+                      <section
+                        id="profile-guidance"
+                        className={styles.guidance}
                       >
-                        View Details
-                      </Link>
-                      {opp.officialWebsite ? (
-                        <a
-                          href={opp.officialWebsite}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center gap-1 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
-                        >
-                          Apply <ArrowUpRight className="size-3" aria-hidden="true" />
-                        </a>
-                      ) : null}
-                    </div>
+                        <h2 className="font-sans">{layout.guidance}</h2>
+                        {profile.editorialProfile?.submissionGuidance && (
+                          <p className={styles.prose}>
+                            {cleanCrawledNarrative(
+                              profile.editorialProfile.submissionGuidance,
+                            )}
+                          </p>
+                        )}
+                        {guidelines && (
+                          <a href={guidelines} target="_blank" rel="noreferrer">
+                            Read official guidelines
+                            <ArrowUpRight size={16} aria-hidden="true" />
+                          </a>
+                        )}
+                      </section>
+                    ),
+                  }[key]
+                }
+              </Fragment>
+            ))}
+        </div>
+        <aside className={styles.aside} aria-label="Organization details">
+          {facts.length > 0 && (
+            <div className={styles.facts}>
+              <h2 className="font-sans">At a glance</h2>
+              <dl>
+                {facts.map(([label, value]) => (
+                  <div key={String(label)}>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
                   </div>
                 ))}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                No active open calls currently listed for this cycle. Check back soon or visit their official website.
+              </dl>
+            </div>
+          )}
+          {profile.contactEmail &&
+            /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(profile.contactEmail) && (
+              <div className={styles.contact}>
+                <h2 className="font-sans">Get in touch</h2>
+                <a href={`mailto:${profile.contactEmail}`}>
+                  {profile.contactEmail}
+                </a>
               </div>
             )}
-          </section>
-        </div>
-
-        {/* Sidebar Metadata (1 col) */}
-        <aside className="space-y-6">
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <h3 className="font-heading text-sm font-semibold text-foreground">
-              Institutional Facts
-            </h3>
-
-            <dl className="divide-y divide-border text-xs space-y-3">
-              <div className="pt-2 flex justify-between">
-                <dt className="text-muted-foreground">Category</dt>
-                <dd className="font-medium text-foreground">{meta.label}</dd>
-              </div>
-
-              {profile.intelligence?.foundingYear ? (
-                <div className="pt-3 flex justify-between">
-                  <dt className="text-muted-foreground">Founded</dt>
-                  <dd className="font-medium text-foreground">{profile.intelligence.foundingYear}</dd>
-                </div>
-              ) : null}
-
-              {profile.readingPeriod ? (
-                <div className="pt-3 flex justify-between">
-                  <dt className="text-muted-foreground">Reading Window</dt>
-                  <dd className="font-medium text-foreground">{profile.readingPeriod}</dd>
-                </div>
-              ) : null}
-
-              {profile.readingFee ? (
-                <div className="pt-3 flex justify-between">
-                  <dt className="text-muted-foreground">Application Fee</dt>
-                  <dd className="font-medium text-foreground">{profile.readingFee}</dd>
-                </div>
-              ) : null}
-
-              {profile.payment ? (
-                <div className="pt-3 flex justify-between">
-                  <dt className="text-muted-foreground">Honorarium / Pay</dt>
-                  <dd className="font-medium text-foreground">{profile.payment}</dd>
-                </div>
-              ) : null}
-
-              {profile.contactEmail ? (
-                <div className="pt-3 flex justify-between truncate">
-                  <dt className="text-muted-foreground">Contact</dt>
-                  <dd className="font-medium text-foreground truncate">{profile.contactEmail}</dd>
-                </div>
-              ) : null}
-            </dl>
-          </div>
-
-          {/* Discipline Tags */}
-          {profile.genres && profile.genres.length > 0 ? (
-            <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <h3 className="font-heading text-sm font-semibold text-foreground">
-                Disciplines & Focus
-              </h3>
-              <div className="flex flex-wrap gap-1.5">
-                {profile.genres.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-block rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground capitalize"
-                  >
-                    {tag.replace(/-/g, " ")}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </aside>
       </div>
-    </div>
+      {!layout.order.includes("gallery") && (
+        <InstitutionMediaGallery
+          images={images}
+          title={layout.media}
+          issues={journal}
+          books={profile.kind === "small_press"}
+          website={website}
+          photos={!publication}
+          source={curated?.source}
+        />
+      )}
+    </main>
   );
 }

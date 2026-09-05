@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Search, Building2, BookOpen, Sparkles, Trophy, Palette, ArrowRight } from "lucide-react";
 
 export const KIND_METADATA: Record<string, { label: string; plural: string; path: string; icon: typeof Building2; countLabel: string }> = {
+  gallery: { label: "Art Gallery", plural: "Galleries & Arts Organizations", path: "/organizations", icon: Palette, countLabel: "galleries" },
+  organization: { label: "Organization", plural: "Organizations", path: "/organizations", icon: Building2, countLabel: "organizations" },
   all: { label: "All Institutions", plural: "All Directory", path: "/directory", icon: Building2, countLabel: "9,120+ institutions" },
   residency_center: { label: "Artist Residency", plural: "Residencies", path: "/residencies", icon: Sparkles, countLabel: "985 centers" },
   literary_magazine: { label: "Literary Journal", plural: "Literary Journals", path: "/journals", icon: BookOpen, countLabel: "1,680+ magazines" },
