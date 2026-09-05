@@ -111,6 +111,12 @@
 .ledger > span {
   flex-shrink: 0;
 }
+.ledgerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
 .grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

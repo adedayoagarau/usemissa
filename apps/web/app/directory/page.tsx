@@ -35,6 +35,7 @@ export default async function DirectoryPage({
     kind?: string;
     page?: string;
     window?: string;
+    sort?: string;
   }>;
 }) {
   const params = searchParams ? await searchParams : {};
@@ -42,6 +43,7 @@ export default async function DirectoryPage({
   const query = params.q?.trim() ?? "";
   const kind = parseKind(params.kind);
   const activeWindow = params.window?.trim() || undefined;
+  const activeSort = params.sort?.trim() || undefined;
   const requestedPage = Number(params.page ?? "1");
   let page =
     Number.isSafeInteger(requestedPage) &&
@@ -61,6 +63,7 @@ export default async function DirectoryPage({
         query: query || undefined,
         kind,
         scheduleState: activeWindow as any,
+        sortBy: activeSort as any,
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
       });
@@ -71,6 +74,7 @@ export default async function DirectoryPage({
           query: query || undefined,
           kind,
           scheduleState: activeWindow as any,
+          sortBy: activeSort as any,
           limit: PAGE_SIZE,
           offset: (page - 1) * PAGE_SIZE,
         });
@@ -91,6 +95,7 @@ export default async function DirectoryPage({
         query={query}
         activeKind={kind}
         activeWindow={activeWindow}
+        activeSort={activeSort}
       />
     </PublicSiteShell>
   );

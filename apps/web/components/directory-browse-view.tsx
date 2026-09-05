@@ -12,6 +12,7 @@ import { Card } from "./ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Empty, EmptyHeader, EmptyDescription } from "./ui/empty";
 import { MagazineScheduleBadge } from "./ui/magazine-schedule-badge";
+import { DirectorySort } from "./directory-sort";
 import {
   Pagination,
   PaginationContent,
@@ -29,6 +30,7 @@ export function DirectoryBrowseView({
   query,
   activeKind,
   activeWindow,
+  activeSort,
   loadFailed = false,
   basePath = "/directory",
   title = "Find your creative community.",
@@ -41,6 +43,7 @@ export function DirectoryBrowseView({
   query: string;
   activeKind?: ProfileKind;
   activeWindow?: string;
+  activeSort?: string;
   loadFailed?: boolean;
   basePath?: string;
   title?: string;
@@ -52,11 +55,13 @@ export function DirectoryBrowseView({
     kind = activeKind ?? "",
     search = query,
     win = activeWindow ?? "",
+    sort = activeSort ?? "",
   ) {
     const params = new URLSearchParams();
     if (kind && basePath === "/directory") params.set("kind", kind);
     if (search) params.set("q", search);
     if (win) params.set("window", win);
+    if (sort && sort !== "name_asc") params.set("sort", sort);
     if (nextPage > 1) params.set("page", String(nextPage));
     const path =
       basePath === "/directory"
@@ -83,6 +88,7 @@ export function DirectoryBrowseView({
   const WINDOW_OPTIONS = [
     { value: "", label: "All reading windows" },
     { value: "open", label: "Open now" },
+    { value: "always_open", label: "Always open" },
     { value: "closing_soon", label: "Closing soon" },
     { value: "opening_soon", label: "Opening soon" },
     { value: "closed", label: "Closed" },
@@ -99,7 +105,7 @@ export function DirectoryBrowseView({
         {categories.map(([kind, label]) => (
           <Link
             key={kind}
-            href={href(1, kind, query, activeWindow)}
+            href={href(1, kind, query, activeWindow, activeSort)}
             aria-current={(activeKind ?? "") === kind ? "page" : undefined}
           >
             {label}
@@ -117,7 +123,7 @@ export function DirectoryBrowseView({
           Search organizations
         </label>
         <Input
-          key={`${query}:${activeKind}:${activeWindow}`}
+          key={`${query}:${activeKind}:${activeWindow}:${activeSort}`}
           id="directory-search"
           name="q"
           defaultValue={query}
@@ -129,6 +135,9 @@ export function DirectoryBrowseView({
         )}
         {activeWindow && (
           <input type="hidden" name="window" value={activeWindow} />
+        )}
+        {activeSort && activeSort !== "name_asc" && (
+          <input type="hidden" name="sort" value={activeSort} />
         )}
         <Button
           type="submit"
@@ -147,7 +156,7 @@ export function DirectoryBrowseView({
             return (
               <Link
                 key={opt.value}
-                href={href(1, activeKind ?? "", query, opt.value)}
+                href={href(1, activeKind ?? "", query, opt.value, activeSort)}
                 className={styles.filterPill}
                 data-active={isActive || undefined}
                 aria-current={isActive ? "page" : undefined}
@@ -184,11 +193,12 @@ export function DirectoryBrowseView({
             </>
           )}
         </p>
-        {query || activeWindow || (activeKind && basePath === "/directory") ? (
-          <Link href={basePath}>Clear filters</Link>
-        ) : (
-          <span>Alphabetical order</span>
-        )}
+        <div className={styles.ledgerActions}>
+          {query || activeWindow || (activeSort && activeSort !== "name_asc") || (activeKind && basePath === "/directory") ? (
+            <Link href={basePath}>Clear filters</Link>
+          ) : null}
+          <DirectorySort showScheduleSorts={showScheduleFilters} />
+        </div>
       </div>
       {items.length ? (
         <div className={styles.grid}>

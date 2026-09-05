@@ -48,7 +48,8 @@ export interface ProfileBrowseQuery {
   kind?: ProfileKind;
   query?: string;
   nameOnly?: boolean;
-  scheduleState?: "open" | "closing_soon" | "opening_soon" | "closed" | "all";
+  scheduleState?: "open" | "always_open" | "closing_soon" | "opening_soon" | "closed" | "all";
+  sortBy?: "name_asc" | "opening_soonest" | "closing_soonest" | "recently_updated";
   limit?: number;
   offset?: number;
 }
@@ -255,7 +256,9 @@ export class PostgresProfileRepository implements ProfileRepository {
     }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
     const scheduleFilter = query.scheduleState && query.scheduleState !== "all" ? query.scheduleState : null;
-    if (scheduleFilter) {
+    const isScheduleSort = query.sortBy === "opening_soonest" || query.sortBy === "closing_soonest";
+
+    if (scheduleFilter || isScheduleSort) {
       const result = await this.pool.query({
         text: `
         WITH latest AS (
@@ -292,13 +295,59 @@ export class PostgresProfileRepository implements ProfileRepository {
       });
 
       const cards = result.rows.map((row) => card(row));
-      const filtered = cards.filter((item) => {
-        if (!item.schedule) return false;
-        if (scheduleFilter === "open") {
-          return item.schedule.state === "open" || item.schedule.state === "always_open";
-        }
-        return item.schedule.state === scheduleFilter;
-      });
+      let filtered = cards;
+
+      if (scheduleFilter) {
+        filtered = cards.filter((item) => {
+          if (!item.schedule) return false;
+          if (scheduleFilter === "open") {
+            return item.schedule.state === "open" || item.schedule.state === "always_open";
+          }
+          return item.schedule.state === scheduleFilter;
+        });
+      }
+
+      if (query.sortBy === "opening_soonest") {
+        filtered.sort((a, b) => {
+          const aOpening = a.schedule?.state === "opening_soon";
+          const bOpening = b.schedule?.state === "opening_soon";
+          if (aOpening && !bOpening) return -1;
+          if (!aOpening && bOpening) return 1;
+          if (aOpening && bOpening && a.schedule?.nextDate && b.schedule?.nextDate) {
+            const cmp = a.schedule.nextDate.localeCompare(b.schedule.nextDate);
+            if (cmp !== 0) return cmp;
+          }
+          const aOpen = a.schedule?.state === "open" || a.schedule?.state === "always_open";
+          const bOpen = b.schedule?.state === "open" || b.schedule?.state === "always_open";
+          if (aOpen && !bOpen) return -1;
+          if (!aOpen && bOpen) return 1;
+          return a.name.localeCompare(b.name);
+        });
+      } else if (query.sortBy === "closing_soonest") {
+        filtered.sort((a, b) => {
+          const aClosing = a.schedule?.state === "closing_soon";
+          const bClosing = b.schedule?.state === "closing_soon";
+          if (aClosing && !bClosing) return -1;
+          if (!aClosing && bClosing) return 1;
+          if (aClosing && bClosing && a.schedule?.nextDate && b.schedule?.nextDate) {
+            const cmp = a.schedule.nextDate.localeCompare(b.schedule.nextDate);
+            if (cmp !== 0) return cmp;
+          }
+          const aOpen = a.schedule?.state === "open";
+          const bOpen = b.schedule?.state === "open";
+          if (aOpen && !bOpen) return -1;
+          if (!aOpen && bOpen) return 1;
+          if (aOpen && bOpen && a.schedule?.nextDate && b.schedule?.nextDate) {
+            const cmp = a.schedule.nextDate.localeCompare(b.schedule.nextDate);
+            if (cmp !== 0) return cmp;
+          }
+          const aAlways = a.schedule?.state === "always_open";
+          const bAlways = b.schedule?.state === "always_open";
+          if (aAlways && !bAlways) return -1;
+          if (!aAlways && bAlways) return 1;
+          return a.name.localeCompare(b.name);
+        });
+      }
 
       const limit = Math.min(Math.max(query.limit ?? 24, 1), 100);
       const offset = Math.max(query.offset ?? 0, 0);
@@ -307,6 +356,11 @@ export class PostgresProfileRepository implements ProfileRepository {
         total: filtered.length,
       };
     }
+
+    const orderClause =
+      query.sortBy === "recently_updated"
+        ? "ORDER BY o.observed_at DESC NULLS LAST, p.name ASC"
+        : "ORDER BY p.name ASC";
 
     values.push(Math.min(Math.max(query.limit ?? 24, 1), 100));
     const limit = values.length;
@@ -344,7 +398,7 @@ export class PostgresProfileRepository implements ProfileRepository {
       LEFT JOIN media m ON m.profile_page_id = pg.id
       LEFT JOIN visuals ON visuals.profile_id = p.id
       LEFT JOIN intel ON intel.profile_id = p.id
-      ${where} ORDER BY p.name ASC LIMIT $${limit} OFFSET $${offset}`,
+      ${where} ${orderClause} LIMIT $${limit} OFFSET $${offset}`,
       values,
     });
     return {

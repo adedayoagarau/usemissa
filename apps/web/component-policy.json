@@ -51,6 +51,7 @@
     "forbidArbitraryAnimation": true
   },
   "intents": {
+    "input.creator-handle": {"semantic": "PortfolioHandleField", "composition": ["Input", "Button", "status text"], "appearance": "optional-draft-handle-with-availability-and-publish-confirmation"},
     "choice.publication-directory": {"semantic": "PortfolioPublicationPicker", "primitive": "Combobox", "appearance": "asynchronous-directory-search-with-manual-name-fallback"},
     "choice.creator-theme": {"semantic": "CreatorPortfolioStudio", "base": "Button", "appearance": "single-pressed-curated-theme-card"},
     "composition.creator-profile-editor": {"semantic": "CreatorPortfolioStudio", "composition": ["Button", "Input", "Textarea", "Combobox", "Dialog", "PortfolioLinkPreview"], "appearance": "full-page-independent-sections-with-live-preview", "mediaSelection": "labelled-button-trigger-with-replace-remove-and-preview"},

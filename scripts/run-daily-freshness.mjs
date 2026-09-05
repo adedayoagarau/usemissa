@@ -140,7 +140,110 @@ try {
     console.warn("   ⚠️ Delta discovery pass skipped due to timeout:", err.message);
   }
 
-  // 4. OVERALL SYSTEM SUMMARY
+  // 4. RECONCILE MAGAZINE & PRESS SUBMISSION SCHEDULES
+  console.log("\n4. Reconciling literary magazine and press submission schedules...");
+  try {
+    const { resolveMagazineSchedule } = await import("../packages/radar-engine/dist/src/index.js");
+    const magObs = await client.query(`
+      WITH latest_obs AS (
+        SELECT DISTINCT ON (profile_id)
+          profile_id,
+          reading_period,
+          source_detail_url,
+          website_url,
+          submission_guidelines_url
+        FROM gary_profile_observations
+        ORDER BY profile_id, observed_at DESC
+      )
+      SELECT
+        p.id,
+        p.name,
+        p.profile_kind,
+        o.reading_period,
+        COALESCE(o.submission_guidelines_url, o.website_url, 'https://usemissa.com') as source_url
+      FROM gary_profiles p
+      JOIN latest_obs o ON o.profile_id = p.id
+      WHERE p.profile_kind IN ('literary_magazine', 'small_press');
+    `);
+
+    function toIsoDateString(val) {
+      if (!val) return null;
+      if (val instanceof Date) return val.toISOString().slice(0, 10);
+      const str = String(val).trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+      const parsed = new Date(str);
+      if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+      return null;
+    }
+
+    const allLinksRes = await client.query(`
+      SELECT
+        l.profile_id,
+        o.id,
+        o.title,
+        o.status,
+        o.deadline_date::text as deadline
+      FROM opportunity_profile_links l
+      JOIN opportunities o ON o.id = l.opportunity_id
+      WHERE l.status = 'confirmed'
+    `);
+    const oppsByProfileId = new Map();
+    for (const opp of allLinksRes.rows) {
+      const pid = String(opp.profile_id);
+      if (!oppsByProfileId.has(pid)) oppsByProfileId.set(pid, []);
+      oppsByProfileId.get(pid).push({
+        id: String(opp.id),
+        title: String(opp.title),
+        status: String(opp.status),
+        deadline: toIsoDateString(opp.deadline),
+      });
+    }
+
+    let activeWindowsReconciled = 0;
+    const now = new Date();
+    const todayIso = now.toISOString().slice(0, 10);
+
+    for (const mag of magObs.rows) {
+      const opps = oppsByProfileId.get(String(mag.id)) || [];
+      const sched = resolveMagazineSchedule({
+        readingPeriod: mag.reading_period,
+        opportunities: opps,
+        now,
+      });
+
+      const closesAt = toIsoDateString(sched.nextDate);
+
+      if (opps.length > 0 && closesAt && (sched.state === "open" || sched.state === "closing_soon" || sched.state === "opening_soon")) {
+        for (const opp of opps) {
+          const windowId = `win:sched:${opp.id}`;
+          await client.query(`
+            INSERT INTO opportunity_call_windows (
+              id, opportunity_id, label, opens_at, closes_at, kind, timezone, current, source_url, confidence, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4::date, $5::date, $6, 'America/New_York', true, $7, 'probable', now(), now())
+            ON CONFLICT (id) DO UPDATE SET
+              closes_at = EXCLUDED.closes_at,
+              label = EXCLUDED.label,
+              current = EXCLUDED.current,
+              updated_at = now();
+          `, [
+            windowId,
+            opp.id,
+            `Reading Window: ${sched.badgeLabel}`,
+            todayIso,
+            closesAt,
+            sched.windowKind,
+            mag.source_url,
+          ]);
+          activeWindowsReconciled++;
+        }
+      }
+    }
+    console.log(`   ✔ Reconciled schedules for ${magObs.rows.length} magazines (${activeWindowsReconciled} call windows active/updated).`);
+  } catch (err) {
+    console.warn("   ⚠️ Magazine schedule reconciliation notice:", err.message);
+  }
+
+  // 5. OVERALL SYSTEM SUMMARY
   const summary = await client.query(`
     SELECT 
       COUNT(*) FILTER (WHERE publication_state = 'published' AND status = 'open') as active_open,

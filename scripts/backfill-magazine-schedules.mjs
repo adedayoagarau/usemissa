@@ -76,6 +76,16 @@ async function run() {
 
     const now = new Date();
 
+    function toIsoDateString(val) {
+      if (!val) return null;
+      if (val instanceof Date) return val.toISOString().slice(0, 10);
+      const str = String(val).trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+      const parsed = new Date(str);
+      if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+      return null;
+    }
+
     // Prefetch all confirmed linked opportunities in one fast query
     const allLinksRes = await client.query(`
       SELECT
@@ -83,7 +93,7 @@ async function run() {
         o.id,
         o.title,
         o.status,
-        o.deadline_date as deadline
+        o.deadline_date::text as deadline
       FROM opportunity_profile_links l
       JOIN opportunities o ON o.id = l.opportunity_id
       WHERE l.status = 'confirmed'
@@ -96,7 +106,7 @@ async function run() {
         id: String(opp.id),
         title: String(opp.title),
         status: String(opp.status),
-        deadline: opp.deadline ? String(opp.deadline).slice(0, 10) : null,
+        deadline: toIsoDateString(opp.deadline),
       });
     }
 
@@ -200,7 +210,8 @@ async function run() {
             // Silently continue
           }
 
-          if (schedule.nextDate && (schedule.state === 'open' || schedule.state === 'closing_soon' || schedule.state === 'opening_soon')) {
+          const closesAt = toIsoDateString(schedule.nextDate);
+          if (closesAt && (schedule.state === 'open' || schedule.state === 'closing_soon' || schedule.state === 'opening_soon')) {
             try {
               const windowId = `win:sched:${opp.id}`;
               await client.query(`
@@ -241,7 +252,7 @@ async function run() {
                 opp.id,
                 `Reading Window: ${schedule.badgeLabel}`,
                 now.toISOString().slice(0, 10),
-                schedule.nextDate,
+                closesAt,
                 schedule.windowKind,
                 row.source_url,
               ]);

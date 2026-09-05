@@ -83,6 +83,7 @@ const ALWAYS_OPEN_PATTERNS = [
   /\bno deadline\b/i,
   /\bperpetual\b/i,
   /\bopen 365\b/i,
+  /\bjan(?:uary)?\.?\s*(?:0?1)?\s*(?:to|–|-|through)\s*dec(?:ember)?\.?\s*(?:31)?\b/i,
 ];
 
 const EXPLICIT_CLOSED_PATTERNS = [
@@ -321,6 +322,21 @@ export function resolveMagazineSchedule(input: MagazineScheduleInput): MagazineS
   // 4. Parse date windows from reading period text
   const windows = parseReadingWindows(rawText);
   if (windows.length > 0) {
+    // If a window covers the full calendar year (e.g. Jan 1 to Dec 31, Jan - Dec), it is effectively always open
+    const hasFullYearWindow = windows.some(
+      (w) => w.startMonth === 0 && w.startDay <= 5 && w.endMonth === 11 && w.endDay >= 25,
+    );
+    if (hasFullYearWindow) {
+      return {
+        state: "always_open",
+        badgeLabel: "Always open",
+        detailLabel: "Submissions accepted year-round",
+        tone: "success",
+        rawReadingPeriod: rawText,
+        windowKind: "year-round",
+      };
+    }
+
     const currentYear = now.getFullYear();
 
     // Evaluate each window to determine current status or upcoming start
