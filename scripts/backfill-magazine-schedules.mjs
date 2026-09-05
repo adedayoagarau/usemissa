@@ -76,28 +76,35 @@ async function run() {
 
     const now = new Date();
 
-    for (const row of res.rows) {
-      const readingPeriod = row.reading_period ? row.reading_period.trim() : null;
-      if (readingPeriod) stats.withReadingPeriod++;
-
-      // Fetch linked opportunities if any
-      const oppLinks = await client.query(`
-        SELECT
-          o.id,
-          o.title,
-          o.status,
-          o.deadline_date as deadline
-        FROM opportunity_profile_links l
-        JOIN opportunities o ON o.id = l.opportunity_id
-        WHERE l.profile_id = $1 AND l.status = 'confirmed'
-      `, [row.id]);
-
-      const opportunities = oppLinks.rows.map((opp) => ({
+    // Prefetch all confirmed linked opportunities in one fast query
+    const allLinksRes = await client.query(`
+      SELECT
+        l.profile_id,
+        o.id,
+        o.title,
+        o.status,
+        o.deadline_date as deadline
+      FROM opportunity_profile_links l
+      JOIN opportunities o ON o.id = l.opportunity_id
+      WHERE l.status = 'confirmed'
+    `);
+    const oppsByProfileId = new Map();
+    for (const opp of allLinksRes.rows) {
+      const pid = String(opp.profile_id);
+      if (!oppsByProfileId.has(pid)) oppsByProfileId.set(pid, []);
+      oppsByProfileId.get(pid).push({
         id: String(opp.id),
         title: String(opp.title),
         status: String(opp.status),
         deadline: opp.deadline ? String(opp.deadline).slice(0, 10) : null,
-      }));
+      });
+    }
+
+    for (const row of res.rows) {
+      const readingPeriod = row.reading_period ? row.reading_period.trim() : null;
+      if (readingPeriod) stats.withReadingPeriod++;
+
+      const opportunities = oppsByProfileId.get(String(row.id)) || [];
 
       const schedule = resolveMagazineSchedule({
         readingPeriod,
