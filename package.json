@@ -33,6 +33,8 @@
     "media:reclassify-kinds": "node scripts/reclassify-opportunity-media-kinds.mjs",
     "radar:freshness": "node scripts/run-daily-freshness.mjs",
     "radar:reconcile-links": "node scripts/reconcile-profile-links.mjs",
+    "magazine:schedules": "npm run build --workspace=@missa/radar-engine && node scripts/backfill-magazine-schedules.mjs",
+    "magazine:schedules:dry-run": "npm run build --workspace=@missa/radar-engine && node scripts/backfill-magazine-schedules.mjs --dry-run",
     "postinstall": "node scripts/patch-next-themes.mjs"
   },
   "devDependencies": {

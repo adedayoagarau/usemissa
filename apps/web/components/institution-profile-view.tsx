@@ -13,6 +13,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Empty, EmptyDescription } from "./ui/empty";
+import { MagazineScheduleBadge } from "./ui/magazine-schedule-badge";
 import {
   InstitutionMediaGallery,
   type InstitutionGalleryImage,
@@ -195,7 +196,9 @@ export function InstitutionProfileView({
     ["Founded", profile.intelligence?.foundingYear],
     [
       publication ? "Reading period" : "Application window",
-      profile.readingPeriod,
+      publication && profile.schedule?.badgeLabel && profile.readingPeriod && !profile.readingPeriod.toLowerCase().includes(profile.schedule.badgeLabel.toLowerCase())
+        ? `${profile.readingPeriod} · ${profile.schedule.badgeLabel}`
+        : profile.readingPeriod || profile.schedule?.badgeLabel,
     ],
     [publication ? "Reading fee" : "Application fee", profile.readingFee],
     ...(publication
@@ -290,9 +293,14 @@ export function InstitutionProfileView({
           </div>
         </div>
         <div className={styles.titleRow}>
-          <h1 className={publication ? "font-heading" : "font-sans"}>
-            {cleanTitleOrLabel(profile.name)}
-          </h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className={publication ? "font-heading" : "font-sans"}>
+              {cleanTitleOrLabel(profile.name)}
+            </h1>
+            {profile.schedule ? (
+              <MagazineScheduleBadge schedule={profile.schedule} />
+            ) : null}
+          </div>
           <div className={styles.heroActions}>
             {website && (
               <Button

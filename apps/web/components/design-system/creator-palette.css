@@ -1,0 +1,27 @@
+/* Creator themes use the existing Missa palette; no typography or layout overrides. */
+[data-creator-theme="sage"] {
+  --creator-canvas: var(--accent-tint);
+}
+[data-creator-theme="paper"] {
+  --creator-canvas: var(--ochre-tint);
+  --primary: var(--ochre-deep);
+  --ring: var(--ochre-deep);
+}
+[data-creator-theme="mineral"] {
+  --creator-canvas: var(--mineral-blue-tint);
+  --primary: var(--mineral-blue);
+  --ring: var(--mineral-blue);
+}
+[data-creator-theme="night"] {
+  --creator-canvas: var(--ink);
+  --foreground: var(--surface);
+  --background: var(--ink);
+  --primary: var(--accent-tint);
+  --primary-foreground: var(--ink);
+  --muted: var(--ink-2);
+  --muted-foreground: var(--accent-tint);
+  --border: var(--ink-2);
+  --input: var(--ink-2);
+  --ring: var(--accent-tint);
+  --accent-deep: var(--lichen-tint);
+}

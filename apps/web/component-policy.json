@@ -207,6 +207,11 @@
       "studioCandidates": ["badge-05", "badge-10"],
       "motion": "never"
     },
+    "MagazineScheduleBadge": {
+      "base": "Badge",
+      "studioCandidates": ["badge-05", "badge-10"],
+      "motion": "never"
+    },
     "UrgencyBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-05", "badge-10"],

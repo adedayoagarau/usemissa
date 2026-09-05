@@ -77,6 +77,17 @@ export {
 export { freshnessScore, confidenceScore, computeTrustSignals, trustScore, STALE_FRESHNESS_THRESHOLD } from './scoring/scores.js';
 export { deriveStatus, displayStatus, CLOSING_SOON_DAYS, OPENING_SOON_DAYS, NEEDS_VERIFICATION_CONFIDENCE } from './status/statusEngine.js';
 export { internalRecheckFromHistory, normalizeOpportunityIntakeMode, projectOpportunityAvailability, type HistoricalOpeningWindow, type OpportunityAvailability, type OpportunityAvailabilityInput, type OpportunityAvailabilityState, type OpportunityIntakeMode } from './availability/opportunityAvailability.js';
+export {
+  resolveMagazineSchedule,
+  parseReadingWindows,
+  type MagazineScheduleState,
+  type MagazineScheduleTone,
+  type MagazineWindowKind,
+  type MagazineScheduleResult,
+  type MagazineScheduleInput,
+  type LinkedOpportunitySummary,
+  type ParsedWindow,
+} from './availability/magazineSchedule.js';
 export { predictNextOpening, recordCycle } from './prediction/prediction.js';
 export { matchesCriteria, matchesOpportunityPreferences, matchProfiles, type MatchResult } from './matching/matching.js';
 export * from './recommendation/index.js';

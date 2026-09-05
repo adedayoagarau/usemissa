@@ -859,3 +859,9 @@ Resolve these through representative screens, then update this file rather than 
 Individual discovery collections use distinct editorial palettes following the user-approved art direction. The canonical palette lives in `apps/web/components/design-system/collection-palette.css`: palette primitives map to surface, text and graphic roles, which the collection cover consumes. These colors are scoped to editorial covers and subtle collection canvases; they do not replace Forest actions or semantic status colors. White opportunity cards and shared browsing controls remain unchanged. Static, decorative SVG motifs are hidden from assistive technology. Collection names stay visible above expressive headlines; type uses the established interface and editorial families.
 
 Discovery implementation and extension guide: [Discovery design system](docs/discovery-design-system-2026-09-04.md). Category directories use DirectoryBrowseView via DirectoryCategoryPage; opportunity details use OpportunityDetailView.
+
+## Creator portfolio appearance (2026-09-04)
+
+The full-page owner editor remains in the standard Missa interface. The portfolio preview may use a creator-selected palette from `apps/web/components/design-system/creator-palette.css`: Sage studio maps to accent-tint, Paper to ochre-tint with ochre-deep actions, Mineral to mineral-blue-tint with mineral-blue actions, and After hours to ink with surface text and pale forest actions. These are semantic mappings of the existing palette, not new raw colors. Typography and layout remain fixed across themes. User-uploaded backgrounds are not part of this approved variant.
+
+Theme selection uses explicit labelled pressed cards; it never relies on color alone. Themes are persisted with the private draft and applied only to the portfolio surface, preserving familiar editor controls. Test both text contrast and actual computed background colors, not just the selected theme attribute.

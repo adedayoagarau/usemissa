@@ -680,6 +680,7 @@ export function ProfileProduct({
       </header>
 
       <nav className={styles.sectionNav} aria-label="Profile sections">
+        <Link href="/profile/portfolio" className={buttonVariants({ variant: "ghost" })}><Eye aria-hidden="true" />Public profile</Link>
         {SECTION_DEFINITIONS.map((item) => {
           const Icon = item.icon;
           return (
@@ -698,6 +699,10 @@ export function ProfileProduct({
 
       <div className={styles.contentLayout}>
         <aside aria-label="Profile section index">
+          <Link href="/profile/portfolio">
+            <Eye aria-hidden="true" />
+            <span><strong>Public profile</strong><small>Build and preview your portfolio</small></span>
+          </Link>
           {SECTION_DEFINITIONS.map((item) => {
             const Icon = item.icon;
             return (

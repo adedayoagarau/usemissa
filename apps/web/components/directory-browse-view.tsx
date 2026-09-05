@@ -11,6 +11,7 @@ import { Input } from "./ui/input";
 import { Card } from "./ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import { Empty, EmptyHeader, EmptyDescription } from "./ui/empty";
+import { MagazineScheduleBadge } from "./ui/magazine-schedule-badge";
 import {
   Pagination,
   PaginationContent,
@@ -146,20 +147,25 @@ export function DirectoryBrowseView({
             return (
               <Card key={item.id} className={styles.card}>
                 <div className={styles.identity}>
-                  <Avatar className={styles.icon}>
-                    {item.mediaUrl && (
-                      <AvatarImage
-                        src={item.mediaUrl}
-                        alt=""
-                        className={styles.logo}
-                        loading="lazy"
-                      />
-                    )}
-                    <AvatarFallback className={styles.logoFallback}>
-                      <Icon size={22} aria-hidden="true" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className={styles.kind}>{meta.label}</span>
+                  <div className={styles.identityStart}>
+                    <Avatar className={styles.icon}>
+                      {item.mediaUrl && (
+                        <AvatarImage
+                          src={item.mediaUrl}
+                          alt=""
+                          className={styles.logo}
+                          loading="lazy"
+                        />
+                      )}
+                      <AvatarFallback className={styles.logoFallback}>
+                        <Icon size={22} aria-hidden="true" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className={styles.kind}>{meta.label}</span>
+                  </div>
+                  {item.schedule ? (
+                    <MagazineScheduleBadge schedule={item.schedule} />
+                  ) : null}
                 </div>
                 <h2 className="font-sans">
                   <Link

@@ -14,6 +14,12 @@ import {
   type OrganizationMediaRecord,
   type MediaGroup,
 } from "./organizationMediaDiscovery.js";
+import {
+  resolveMagazineSchedule,
+  type MagazineScheduleResult,
+  type MagazineScheduleState,
+  type MagazineScheduleTone,
+} from "@missa/radar-engine";
 
 export type {
   ProfileIssueRecord,
@@ -22,7 +28,11 @@ export type {
   OrganizationMediaBundle,
   OrganizationMediaRecord,
   MediaGroup,
+  MagazineScheduleResult,
+  MagazineScheduleState,
+  MagazineScheduleTone,
 };
+export { resolveMagazineSchedule };
 
 
 export type ProfileKind =
@@ -53,6 +63,7 @@ export interface ProfileCard {
   genres: string[];
   formats: string[];
   readingPeriod: string | null;
+  schedule?: MagazineScheduleResult | null;
   sourceUrl: string | null;
   mediaUrl: string | null;
   mediaAlt: string | null;
@@ -186,7 +197,7 @@ function nullableText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function card(row: Record<string, unknown>): ProfileCard {
+function card(row: Record<string, unknown>, extra?: { opportunities?: ProfileOpportunity[] }): ProfileCard {
   const nameSlug = String(row.name || "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/gi, "-")
@@ -200,6 +211,14 @@ function card(row: Record<string, unknown>): ProfileCard {
     .replace(/^-+|-+$/g, "");
 
   const cleanSlug = nameSlug.length >= 3 ? nameSlug : (keySlug || String(row.id));
+  const readingPeriod = nullableText(row.reading_period);
+  const isPublication = row.profile_kind === "literary_magazine" || row.profile_kind === "small_press";
+  const schedule = isPublication
+    ? resolveMagazineSchedule({
+        readingPeriod,
+        opportunities: extra?.opportunities,
+      })
+    : null;
 
   return {
     id: String(row.id),
@@ -210,7 +229,8 @@ function card(row: Record<string, unknown>): ProfileCard {
     summary: row.source_summary ? cleanCrawledText(String(row.source_summary)) : null,
     genres: jsonArray(row.genres_json),
     formats: jsonArray(row.formats_json),
-    readingPeriod: nullableText(row.reading_period),
+    readingPeriod,
+    schedule,
     sourceUrl: nullableText(row.source_detail_url),
     mediaUrl: nullableText(row.media_url),
     mediaAlt: row.media_alt ? cleanTitleOrLabel(String(row.media_alt)) : null,
@@ -274,7 +294,7 @@ export class PostgresProfileRepository implements ProfileRepository {
       values,
     });
     return {
-      items: result.rows.map(card),
+      items: result.rows.map((row) => card(row)),
       total: Number(result.rows[0]?.total_count ?? 0),
     };
   }
@@ -472,41 +492,7 @@ export class PostgresProfileRepository implements ProfileRepository {
     const bannerUrl = discoveredLead ?? bannerVisual?.imageUrl ?? null;
     const bannerAlt = mediaBundle?.leadPhoto?.altText ?? bannerVisual?.label ?? base.mediaAlt;
 
-    return {
-      ...base,
-      // Directory/cards use logo marks; never substitute a banner into the logo slot.
-      logoUrl,
-      bannerUrl,
-      bannerAlt,
-      visuals,
-      mediaBundle,
-      prizeProvenance,
-      intelligence,
-      socialLinks,
-      submissionGuidelinesUrl: nullableText(row.submission_guidelines_url),
-      subgenres: jsonArray(row.subgenres_json),
-      bookTypes: jsonArray(row.book_types_json),
-      representativeAuthors: nullableText(row.representative_authors),
-      responseTime: nullableText(row.response_time),
-      readingFee: nullableText(row.reading_fee),
-      unsolicitedSubmissions: nullableText(row.unsolicited_submissions),
-      simultaneousSubmissions: nullableText(row.simultaneous_submissions),
-      payment: nullableText(row.payment),
-      editorialFocus: row.editorial_focus ? cleanCrawledText(String(row.editorial_focus)) : null,
-      editorialTips: row.editorial_tips ? cleanCrawledText(String(row.editorial_tips)) : null,
-      contactName: nullableText(row.contact_name),
-      contactEmail: nullableText(row.contact_email),
-      contactDetails: nullableText(row.contact_details),
-      issuesPerYear: nullableText(row.issues_per_year),
-      issuePrice: nullableText(row.issue_price),
-      subscriptionPrice: nullableText(row.subscription_price),
-      circulation: nullableText(row.circulation),
-      titlesPerYear: nullableText(row.titles_per_year),
-      publishesThroughContestsOnly: nullableText(
-        row.publishes_through_contests_only,
-      ),
-      editorialProfile: (row.editorial_profile as OrganizationEditorialProfile | undefined) ?? null,
-      opportunities: links.rows.map((item) => ({
+      const opportunities: ProfileOpportunity[] = links.rows.map((item) => ({
         id: String(item.id),
         title: String(item.title),
         organizer: String(item.organizer),
@@ -518,8 +504,54 @@ export class PostgresProfileRepository implements ProfileRepository {
         detailUrl: nullableText(item.source_detail_url),
         officialWebsite: nullableText(item.official_website),
         status: item.status,
-      })),
-    };
+      }));
+      const isPublication =
+        row.profile_kind === "literary_magazine" ||
+        row.profile_kind === "small_press";
+      const schedule = isPublication
+        ? resolveMagazineSchedule({
+            readingPeriod: nullableText(row.reading_period),
+            opportunities,
+          })
+        : base.schedule;
+
+      return {
+        ...base,
+        schedule,
+        // Directory/cards use logo marks; never substitute a banner into the logo slot.
+        logoUrl,
+        bannerUrl,
+        bannerAlt,
+        visuals,
+        mediaBundle,
+        prizeProvenance,
+        intelligence,
+        socialLinks,
+        submissionGuidelinesUrl: nullableText(row.submission_guidelines_url),
+        subgenres: jsonArray(row.subgenres_json),
+        bookTypes: jsonArray(row.book_types_json),
+        representativeAuthors: nullableText(row.representative_authors),
+        responseTime: nullableText(row.response_time),
+        readingFee: nullableText(row.reading_fee),
+        unsolicitedSubmissions: nullableText(row.unsolicited_submissions),
+        simultaneousSubmissions: nullableText(row.simultaneous_submissions),
+        payment: nullableText(row.payment),
+        editorialFocus: row.editorial_focus ? cleanCrawledText(String(row.editorial_focus)) : null,
+        editorialTips: row.editorial_tips ? cleanCrawledText(String(row.editorial_tips)) : null,
+        contactName: nullableText(row.contact_name),
+        contactEmail: nullableText(row.contact_email),
+        contactDetails: nullableText(row.contact_details),
+        issuesPerYear: nullableText(row.issues_per_year),
+        issuePrice: nullableText(row.issue_price),
+        subscriptionPrice: nullableText(row.subscription_price),
+        circulation: nullableText(row.circulation),
+        titlesPerYear: nullableText(row.titles_per_year),
+        publishesThroughContestsOnly: nullableText(
+          row.publishes_through_contests_only,
+        ),
+        editorialProfile: (row.editorial_profile as OrganizationEditorialProfile | undefined) ?? null,
+        opportunities,
+      };
   }
 
 

@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "bash scripts/vercel-ignore-build.sh || bash ../../scripts/vercel-ignore-build.sh || exit 0",
   "crons": [
     { "path": "/api/cron/tick", "schedule": "*/15 * * * *" },
     { "path": "/api/cron/gmail-sync", "schedule": "*/15 * * * *" },

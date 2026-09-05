@@ -2,6 +2,7 @@ import type { ProfileCard, ProfileKind } from "@missa/radar-adapters";
 import { getSemanticUrlForProfile } from "@missa/radar-adapters";
 import Link from "next/link";
 import { Search, Building2, BookOpen, Sparkles, Trophy, Palette, ArrowRight } from "lucide-react";
+import { MagazineScheduleBadge } from "./ui/magazine-schedule-badge";
 
 export const KIND_METADATA: Record<string, { label: string; plural: string; path: string; icon: typeof Building2; countLabel: string }> = {
   gallery: { label: "Art Gallery", plural: "Galleries & Arts Organizations", path: "/organizations", icon: Palette, countLabel: "galleries" },
@@ -180,9 +181,14 @@ export function InstitutionDirectoryView({
                       </div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <span className="inline-block font-mono text-[11px] font-medium tracking-wide text-primary uppercase">
-                        {kindMeta.label}
-                      </span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-block font-mono text-[11px] font-medium tracking-wide text-primary uppercase">
+                          {kindMeta.label}
+                        </span>
+                        {item.schedule ? (
+                          <MagazineScheduleBadge schedule={item.schedule} />
+                        ) : null}
+                      </div>
                       <h2 className="mt-0.5 font-heading text-base font-semibold leading-snug text-foreground break-words group-hover:text-primary">
                         {item.name}
                       </h2>

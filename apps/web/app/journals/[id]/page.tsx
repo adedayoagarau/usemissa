@@ -11,6 +11,7 @@ import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import { getProfileRepository } from "@/lib/profileRepository";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { cleanCrawledNarrative, cleanTitleOrLabel } from "@/lib/textUtils";
+import { MagazineScheduleBadge } from "@/components/ui/magazine-schedule-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -174,9 +175,14 @@ export default async function JournalDetailPage({
                 </span>
               ) : null}
             </div>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight break-words sm:text-4xl">
-              {profile.name}
-            </h1>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-semibold tracking-tight break-words sm:text-4xl">
+                {profile.name}
+              </h1>
+              {profile.schedule ? (
+                <MagazineScheduleBadge schedule={profile.schedule} />
+              ) : null}
+            </div>
             <div className="mt-3 flex min-w-0 flex-wrap gap-x-4 gap-y-2">
               {profile.websiteUrl ? (
                 <a
@@ -606,7 +612,15 @@ export default async function JournalDetailPage({
                   />
                   <Fact
                     label="Reading period"
-                    value={displayValue(profile.readingPeriod)}
+                    value={
+                      profile.schedule?.badgeLabel &&
+                      profile.readingPeriod &&
+                      !profile.readingPeriod
+                        .toLowerCase()
+                        .includes(profile.schedule.badgeLabel.toLowerCase())
+                        ? `${profile.readingPeriod} · ${profile.schedule.badgeLabel}`
+                        : displayValue(profile.readingPeriod)
+                    }
                   />
                   <Fact
                     label="Response time"
@@ -619,7 +633,15 @@ export default async function JournalDetailPage({
                   <Fact label="Formats" value={displayList(profile.formats)} />
                   <Fact
                     label="Reading period"
-                    value={displayValue(profile.readingPeriod)}
+                    value={
+                      profile.schedule?.badgeLabel &&
+                      profile.readingPeriod &&
+                      !profile.readingPeriod
+                        .toLowerCase()
+                        .includes(profile.schedule.badgeLabel.toLowerCase())
+                        ? `${profile.readingPeriod} · ${profile.schedule.badgeLabel}`
+                        : displayValue(profile.readingPeriod)
+                    }
                   />
                   <Fact
                     label="Response time"

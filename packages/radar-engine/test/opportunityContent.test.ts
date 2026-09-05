@@ -31,7 +31,7 @@ function input(overrides: Partial<OpportunityContentBuildInput> = {}): Opportuni
 
 test('content builder creates a bounded source-linked opportunity brief', () => {
   const content = buildOpportunityContent(input({ generatedAt: '2026-08-06T00:00:00.000Z' }));
-  assert.equal(content.builderVersion, 'opportunity-brief.v1');
+  assert.equal(content.builderVersion, 'editorial-writer.v2');
   assert.match(content.summary, /Example Arts/);
   assert.match(content.summary, /Open call for new work/);
   assert.equal(content.highlights.every((fact) => fact.sourceUrl === sourceUrl), true);

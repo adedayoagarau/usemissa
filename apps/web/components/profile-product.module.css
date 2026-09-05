@@ -49,7 +49,7 @@
   scrollbar-width: none;
 }
 .sectionNav::-webkit-scrollbar { display: none; }
-.sectionNav button {
+.sectionNav :is(button, a) {
   display: inline-flex;
   min-height: 3.25rem;
   flex: 0 0 auto;
@@ -61,8 +61,8 @@
   font-size: .82rem;
   white-space: nowrap;
 }
-.sectionNav button svg { width: .95rem; }
-.sectionNav button[aria-current='page'] { border-bottom-color: var(--primary); color: var(--foreground); font-weight: 650; }
+.sectionNav :is(button, a) svg { width: .95rem; }
+.sectionNav :is(button, a)[aria-current='page'] { border-bottom-color: var(--primary); color: var(--foreground); font-weight: 650; }
 
 .contentLayout {
   display: grid;
@@ -72,7 +72,7 @@
   align-items: start;
 }
 .contentLayout > aside { position: sticky; top: 1rem; display: grid; gap: .15rem; }
-.contentLayout > aside > button {
+.contentLayout > aside > :is(button, a) {
   display: grid;
   grid-template-columns: 1.1rem minmax(0, 1fr) auto;
   min-height: 4.35rem;
@@ -82,8 +82,8 @@
   padding: .6rem .7rem .6rem 1rem;
   text-align: left;
 }
-.contentLayout > aside > button:hover { background: var(--muted); }
-.contentLayout > aside > button[aria-current='page'] { border-left-color: var(--primary); background: var(--accent-tint); }
+.contentLayout > aside > :is(button, a):hover { background: var(--muted); }
+.contentLayout > aside > :is(button, a)[aria-current='page'] { border-left-color: var(--primary); background: var(--accent-tint); }
 .contentLayout > aside svg { width: 1rem; color: var(--muted-foreground); }
 .contentLayout > aside strong,
 .contentLayout > aside small { display: block; }
