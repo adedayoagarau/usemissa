@@ -22,6 +22,7 @@ export interface ArtsDiscoveryTarget {
     fixedDeadlineDate?: string;
     isRolling?: boolean;
     type?: "residency" | "exhibition" | "grant" | "fellowship" | "public_art";
+    tags?: string[];
   }>;
 }
 
@@ -474,7 +475,174 @@ export const ARTS_DISCOVERY_REGISTRY: ArtsDiscoveryTarget[] = [
         rawText: `Anonymous Was A Woman Environmental Art Grants program. Grants of up to $20,000 for women and non-binary artists working on environmental visual arts, public art, and sculpture. No application fee. Deadline: ${relativeIsoDate(21)}.`,
         fixedDeadlineDate: relativeIsoDate(21),
         type: "grant",
+        tags: ["women", "non-binary", "grant", "environmental art", "visual art"],
         location: "National (USA)",
+      },
+    ],
+  },
+  // 6. Specialized & Under-represented Sector Targets
+  {
+    organizationId: "org_pen_america",
+    name: "PEN America",
+    websiteUrl: "https://pen.org",
+    profileKind: "grant_foundation",
+    domain: "multidisciplinary",
+    sourceId: "src_pen_america_grants",
+    sourceUrl: "https://pen.org/grants-fellowships",
+    sourceKind: "organization-website",
+    calls: [
+      {
+        id: "opp_pen_translation_fund_grants",
+        title: "PEN Translation Fund Grants",
+        rawText: `PEN America Translation Fund Grants. Grants of $4,000 to support translators of poetry, fiction, drama, or creative nonfiction working on book-length projects from any language into English. Free to apply. Deadline: ${relativeIsoDate(40)}.`,
+        fixedDeadlineDate: relativeIsoDate(40),
+        type: "grant",
+        tags: ["translation", "literary translation", "grant", "literature"],
+        location: "International",
+      },
+      {
+        id: "opp_pen_emerging_voices_fellowship",
+        title: "PEN Emerging Voices Fellowship",
+        rawText: `PEN Emerging Voices Fellowship. An immersive 5-month mentorship program providing curriculum, mentorship, and professional networking for early-career writers from communities historically underrepresented in publishing, including BIPOC, LGBTQ+, and disabled writers. $1,500 stipend provided. No fee. Deadline: ${relativeIsoDate(30)}.`,
+        fixedDeadlineDate: relativeIsoDate(30),
+        type: "fellowship",
+        tags: ["emerging", "fellowship", "mentorship", "queer", "lgbtq", "bipoc", "writers of color"],
+        location: "United States (Virtual / National)",
+      },
+    ],
+  },
+  {
+    organizationId: "org_whiting_foundation",
+    name: "Whiting Foundation",
+    websiteUrl: "https://www.whiting.org",
+    profileKind: "grant_foundation",
+    domain: "multidisciplinary",
+    sourceId: "src_whiting_grants",
+    sourceUrl: "https://www.whiting.org/awards/creative-nonfiction-grant",
+    sourceKind: "organization-website",
+    calls: [
+      {
+        id: "opp_whiting_creative_nonfiction_grant",
+        title: "Whiting Creative Nonfiction Grant",
+        rawText: `Whiting Creative Nonfiction Grant. Up to ten grants of $40,000 awarded to multi-year, deeply researched creative nonfiction projects under contract with a publisher. Free to apply. Deadline: ${relativeIsoDate(60)}.`,
+        fixedDeadlineDate: relativeIsoDate(60),
+        type: "grant",
+        tags: ["grant", "creative nonfiction", "nonfiction", "book"],
+        location: "United States",
+      },
+    ],
+  },
+  {
+    organizationId: "org_nea_arts_gov",
+    name: "National Endowment for the Arts (NEA)",
+    websiteUrl: "https://www.arts.gov",
+    profileKind: "grant_foundation",
+    domain: "multidisciplinary",
+    sourceId: "src_nea_literature_grants",
+    sourceUrl: "https://www.arts.gov/grants/creative-writing-fellowships",
+    sourceKind: "organization-website",
+    calls: [
+      {
+        id: "opp_nea_literature_translation_fellowship",
+        title: "NEA Literature Translation Fellowships",
+        rawText: `National Endowment for the Arts Literature Translation Fellowships. Grants of $12,500 to $25,000 for published translators of poetry and prose from other languages into English. Application fee: $0 (free). Deadline: ${relativeIsoDate(45)}.`,
+        fixedDeadlineDate: relativeIsoDate(45),
+        type: "fellowship",
+        tags: ["translation", "literary translation", "fellowship", "grant"],
+        location: "United States (Citizens & Permanent Residents)",
+      },
+      {
+        id: "opp_nea_creative_writing_fellowship",
+        title: "NEA Creative Writing Fellowships",
+        rawText: `National Endowment for the Arts Creative Writing Fellowships. Grants of $25,000 to published creative writers of poetry, fiction, and creative nonfiction to encourage the production of new work. Application fee: $0 (free). Deadline: ${relativeIsoDate(50)}.`,
+        fixedDeadlineDate: relativeIsoDate(50),
+        type: "fellowship",
+        tags: ["fellowship", "grant", "creative writing", "poetry", "fiction", "creative nonfiction"],
+        location: "United States (Citizens & Permanent Residents)",
+      },
+    ],
+  },
+  {
+    organizationId: "org_archie_bray",
+    name: "Archie Bray Foundation for the Ceramic Arts",
+    websiteUrl: "https://archiebray.org",
+    profileKind: "residency_center",
+    domain: "residency",
+    sourceId: "src_archie_bray_residencies",
+    sourceUrl: "https://archiebray.org/residencies",
+    sourceKind: "organization-website",
+    calls: [
+      {
+        id: "opp_archie_bray_ceramic_residency",
+        title: "Archie Bray Foundation Ceramic Artist Residency",
+        rawText: `Archie Bray Foundation Ceramic Artist Residencies in Helena, Montana. Private studio spaces, world-class kiln and firing facilities, technician support, and $1,500 monthly artist stipend. Full ceramic studio access. Application fee: $0. Deadline: ${relativeIsoDate(35)}.`,
+        fixedDeadlineDate: relativeIsoDate(35),
+        type: "residency",
+        tags: ["ceramics", "craft", "sculpture", "residency", "visual art"],
+        location: "Helena, Montana",
+      },
+    ],
+  },
+  {
+    organizationId: "org_penland_craft",
+    name: "Penland School of Craft",
+    websiteUrl: "https://penland.org",
+    profileKind: "residency_center",
+    domain: "residency",
+    sourceId: "src_penland_residencies",
+    sourceUrl: "https://penland.org/artists/resident-artist-program",
+    sourceKind: "organization-website",
+    calls: [
+      {
+        id: "opp_penland_resident_artist_program",
+        title: "Penland Resident Artist Program in Studio Craft",
+        rawText: `Penland School of Craft Resident Artist Program. Three-year immersive residencies for studio craft practitioners across ceramics, textiles, glass, metal, wood, and printmaking. Housing provided and private studio space in North Carolina’s Blue Ridge Mountains. Application fee: $0. Deadline: ${relativeIsoDate(42)}.`,
+        fixedDeadlineDate: relativeIsoDate(42),
+        type: "residency",
+        tags: ["craft", "ceramics", "textiles", "glass", "woodworking", "residency"],
+        location: "Penland, North Carolina",
+      },
+    ],
+  },
+  {
+    organizationId: "org_lambda_literary",
+    name: "Lambda Literary",
+    websiteUrl: "https://lambdaliterary.org",
+    profileKind: "grant_foundation",
+    domain: "multidisciplinary",
+    sourceId: "src_lambda_fellowships",
+    sourceUrl: "https://lambdaliterary.org/writers-retreat",
+    sourceKind: "organization-website",
+    calls: [
+      {
+        id: "opp_lambda_literary_emerging_lgbtq_fellowship",
+        title: "Lambda Literary Emerging LGBTQ Voices Fellowship",
+        rawText: `Lambda Literary Emerging LGBTQ Voices Fellowship. Premier intensive writing retreat and fellowship for emerging LGBTQ+ writers across fiction, poetry, and nonfiction. Full tuition scholarship and travel stipends available. Application fee: $0 (fee waiver available). Deadline: ${relativeIsoDate(28)}.`,
+        fixedDeadlineDate: relativeIsoDate(28),
+        type: "fellowship",
+        tags: ["queer", "lgbtq", "lgbtqia", "emerging", "fellowship", "retreat", "writing", "poetry", "fiction"],
+        location: "United States (National)",
+      },
+    ],
+  },
+  {
+    organizationId: "org_queer_art",
+    name: "Queer|Art",
+    websiteUrl: "https://www.queer-art.org",
+    profileKind: "grant_foundation",
+    domain: "multidisciplinary",
+    sourceId: "src_queer_art_mentorship",
+    sourceUrl: "https://www.queer-art.org/mentorship",
+    sourceKind: "organization-website",
+    calls: [
+      {
+        id: "opp_queer_art_mentorship_fellowship",
+        title: "Queer|Art|Mentorship Annual Fellowship",
+        rawText: `Queer|Art|Mentorship Annual Fellowship. Year-long creative and professional mentorship program pairing emerging LGBTQ+ artists with established mentors across film, literature, performance, and visual art. $1,000 project stipend provided. Free to apply. Deadline: ${relativeIsoDate(32)}.`,
+        fixedDeadlineDate: relativeIsoDate(32),
+        type: "fellowship",
+        tags: ["queer", "lgbtq", "lgbtqia", "fellowship", "mentorship", "visual art", "film", "performance"],
+        location: "New York, NY / National (Virtual)",
       },
     ],
   },
@@ -619,6 +787,7 @@ export async function runArtsDiscovery(
         const genres = Array.from(
           new Set([
             ...extracted.disciplines,
+            ...(call.tags ?? []),
             ...(target.domain === "residency" ? ["Residency"] : []),
             ...(target.domain === "visual_arts" ? ["Visual Art"] : []),
             ...(target.domain === "multidisciplinary" ? ["Multidisciplinary"] : []),
@@ -642,6 +811,7 @@ export async function runArtsDiscovery(
           target.name,
           opportunityType,
           ...genres,
+          ...(call.tags ?? []),
           target.domain,
           call.location ?? "",
           prize ?? "",
@@ -739,7 +909,7 @@ export async function runArtsDiscovery(
 }
 
 // Allow direct execution from command line
-if (process.argv[1] && process.argv[1].endsWith("runArtsDiscovery.ts")) {
+if (process.argv[1] && /runArtsDiscovery\.(ts|js)$/.test(process.argv[1])) {
   runArtsDiscovery({ dryRun: !process.env.DATABASE_URL })
     .then((res) => {
       console.log(`[runArtsDiscovery] Completed arts discovery & ingestion:`);

@@ -908,6 +908,67 @@ export function OpportunityDetailView({
                 ) : null}
               </div>
 
+              {/* Authentic Discovered Media Showcase */}
+              {relatedProfile?.mediaBundle ? (() => {
+                const mb = relatedProfile.mediaBundle;
+                const isShelf = relatedProfile.kind === "small_press" || relatedProfile.kind === "literary_magazine";
+                const displayItems = (
+                  relatedProfile.kind === "small_press"
+                    ? mb.books.items
+                    : relatedProfile.kind === "literary_magazine"
+                      ? mb.issues.items
+                      : relatedProfile.kind === "residency_center"
+                        ? mb.photos.items
+                        : mb.exhibitions.items.length > 0
+                          ? mb.exhibitions.items
+                          : mb.photos.items
+                ).slice(0, 3);
+
+                if (!displayItems.length) return null;
+
+                const heading =
+                  relatedProfile.kind === "small_press"
+                    ? "Recent Books"
+                    : relatedProfile.kind === "literary_magazine"
+                      ? "Past Issues"
+                      : relatedProfile.kind === "residency_center"
+                        ? "Studios & Campus"
+                        : "Exhibitions & Space";
+
+                return (
+                  <div className={styles.orgMediaSection}>
+                    <h4 className={styles.orgMediaTitle}>{heading}</h4>
+                    <div className={styles.orgMediaGrid}>
+                      {displayItems.map((item) => (
+                        <a
+                          key={item.id}
+                          href={item.officialUrl || item.readingUrl || item.purchaseUrl || organizerUrl || "#"}
+                          target={item.officialUrl || item.readingUrl || item.purchaseUrl ? "_blank" : undefined}
+                          rel="noreferrer"
+                          className={styles.orgMediaItem}
+                          data-shelf={isShelf || undefined}
+                          title={item.title}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.imageUrl}
+                            alt={item.altText || item.title}
+                            className={styles.orgMediaThumb}
+                            loading="lazy"
+                          />
+                          <div className={styles.orgMediaMeta}>
+                            <span className={styles.orgMediaItemTitle}>{item.title}</span>
+                            {item.subtitle ? (
+                              <span className={styles.orgMediaItemSub}>{item.subtitle}</span>
+                            ) : null}
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })() : null}
+
               {organizerUrl ? (
                 <div className={styles.organizerCardActions}>
                   <Link href={organizerUrl} className={styles.profileButton}>

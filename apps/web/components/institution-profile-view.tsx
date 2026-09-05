@@ -64,6 +64,7 @@ export function InstitutionProfileView({
     label: string,
     cover: boolean,
     opts?: {
+      group?: "issues" | "books" | "photos" | "exhibitions" | "projects" | "identity";
       subtitle?: string | null;
       credit?: string | null;
       dateLabel?: string | null;
@@ -81,6 +82,7 @@ export function InstitutionProfileView({
         url,
         label: decodeHtmlEntities(label),
         cover,
+        group: opts?.group,
         subtitle: opts?.subtitle ? decodeHtmlEntities(opts.subtitle) : undefined,
         credit: opts?.credit ? decodeHtmlEntities(opts.credit) : undefined,
         dateLabel: opts?.dateLabel ? decodeHtmlEntities(opts.dateLabel) : undefined,
@@ -91,12 +93,13 @@ export function InstitutionProfileView({
     }
   };
 
-  // 1. If we have authentic discovered media in mediaBundle, use that group
+  // 1. If we have authentic discovered media in mediaBundle, load from all available groups
   const mb = profile.mediaBundle;
   if (mb) {
-    if (profile.kind === "small_press" && mb.books.items.length > 0) {
+    if (mb.books.items.length > 0) {
       for (const b of mb.books.items) {
         addImage(b.imageUrl, b.title, true, {
+          group: "books",
           subtitle: b.subtitle,
           credit: b.creatorCredit,
           dateLabel: b.publicationDateRaw || (b.publicationYear ? String(b.publicationYear) : null),
@@ -105,9 +108,11 @@ export function InstitutionProfileView({
           purchaseUrl: b.purchaseUrl,
         });
       }
-    } else if (journal && mb.issues.items.length > 0) {
+    }
+    if (mb.issues.items.length > 0) {
       for (const iss of mb.issues.items) {
         addImage(iss.imageUrl, iss.title, true, {
+          group: "issues",
           subtitle: iss.subtitle,
           dateLabel: iss.publicationDateRaw,
           officialUrl: iss.officialUrl,
@@ -115,32 +120,32 @@ export function InstitutionProfileView({
           purchaseUrl: iss.purchaseUrl,
         });
       }
-    } else if (profile.kind === "residency_center" && mb.photos.items.length > 0) {
+    }
+    if (mb.photos.items.length > 0) {
       for (const p of mb.photos.items) {
         addImage(p.imageUrl, p.title, false, {
+          group: "photos",
           subtitle: p.subtitle,
           credit: p.creatorCredit,
           officialUrl: p.officialUrl,
         });
       }
-    } else if ((profile.kind === "gallery" || profile.kind === "visual_arts_organization") && (mb.exhibitions.items.length > 0 || mb.photos.items.length > 0)) {
+    }
+    if (mb.exhibitions.items.length > 0) {
       for (const ex of mb.exhibitions.items) {
         addImage(ex.imageUrl, ex.title, false, {
+          group: "exhibitions",
           subtitle: ex.subtitle,
           credit: ex.creatorCredit,
           dateLabel: ex.publicationDateRaw,
           officialUrl: ex.officialUrl,
         });
       }
-      for (const p of mb.photos.items) {
-        addImage(p.imageUrl, p.title, false, {
-          subtitle: p.subtitle,
-          credit: p.creatorCredit,
-        });
-      }
-    } else if (profile.kind === "grant_foundation" && (mb.projects.items.length > 0 || mb.photos.items.length > 0)) {
+    }
+    if (mb.projects.items.length > 0) {
       for (const pr of mb.projects.items) {
         addImage(pr.imageUrl, pr.title, false, {
+          group: "projects",
           subtitle: pr.subtitle,
           credit: pr.creatorCredit,
           dateLabel: pr.publicationDateRaw,

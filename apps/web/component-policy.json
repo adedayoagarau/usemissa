@@ -51,8 +51,13 @@
     "forbidArbitraryAnimation": true
   },
   "intents": {
+    "choice.publication-directory": {"semantic": "PortfolioPublicationPicker", "primitive": "Combobox", "appearance": "asynchronous-directory-search-with-manual-name-fallback"},
+    "choice.creator-theme": {"semantic": "CreatorPortfolioStudio", "base": "Button", "appearance": "single-pressed-curated-theme-card"},
+    "composition.creator-profile-editor": {"semantic": "CreatorPortfolioStudio", "composition": ["Button", "Input", "Textarea", "Combobox", "Dialog", "PortfolioLinkPreview"], "appearance": "full-page-independent-sections-with-live-preview"},
+    "composition.creator-portfolio": {"semantic": "CreatorPortfolioStudio", "composition": ["Button", "Input", "Textarea", "Dialog", "InstitutionSocialLinks"], "appearance": "editorial-public-portfolio-with-separate-owner-settings"},
+    "filter.creator-work-format": {"semantic": "CreatorPortfolioStudio", "base": "Button", "variant": "ghost", "appearance": "pressed-format-filter"},
     "composition.organization-profile": { "semantic": "InstitutionProfileView", "appearance": "kind-specific-information-architecture", "composition": ["Avatar", "Button", "Card", "Empty"] },
-    "disclosure.organization-media": { "semantic": "InstitutionMediaGallery", "composition": ["Button", "Dialog"] },
+    "disclosure.organization-media": { "semantic": "InstitutionMediaGallery", "composition": ["Button", "Dialog", "Tabs"] },
     "action.opportunity-detail-persistent": { "semantic": "OpportunityDetailStickyActions", "composition": ["SaveToTrackerButton", "Button", "Link"] },
     "composition.collection-cover": { "semantic": "DiscoveryCollectionPage", "appearance": "editorial-collection-palette", "composition": ["EditorialTypography", "DecorativeSvg", "Link"] },
     "action.primary": {

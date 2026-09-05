@@ -35,6 +35,8 @@ export type ProfileKind =
   | "organization";
 
 export interface ProfileBrowseQuery {
+  /** Restrict autocomplete searches to organization names. */
+  nameOnly?: boolean;
   kind?: ProfileKind;
   query?: string;
   limit?: number;
@@ -54,6 +56,7 @@ export interface ProfileCard {
   sourceUrl: string | null;
   mediaUrl: string | null;
   mediaAlt: string | null;
+  mediaBundle?: OrganizationMediaBundle | null;
 }
 
 export function getSemanticUrlForProfile(kind: ProfileKind, slug: string): string {
@@ -227,7 +230,7 @@ export class PostgresProfileRepository implements ProfileRepository {
     if (query.query?.trim()) {
       values.push(`%${query.query.trim()}%`);
       filters.push(
-        `(p.name ILIKE $${values.length} OR o.source_summary ILIKE $${values.length} OR o.editorial_focus ILIKE $${values.length} OR (ro.data->>'biography') ILIKE $${values.length})`,
+        query.nameOnly ? `p.name ILIKE $${values.length}` : `(p.name ILIKE $${values.length} OR o.source_summary ILIKE $${values.length} OR o.editorial_focus ILIKE $${values.length} OR (ro.data->>'biography') ILIKE $${values.length})`,
       );
     }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
@@ -577,7 +580,14 @@ export class PostgresProfileRepository implements ProfileRepository {
       WHERE l.opportunity_id=$1 AND l.status='confirmed' AND l.verified_until > now()
       ORDER BY l.confidence DESC, p.name ASC LIMIT 1`, values: [opportunityId] });
     const row = result.rows[0] as Record<string, unknown> | undefined;
-    return row ? card(row) : null;
+    if (!row) return null;
+    const baseCard = card(row);
+    try {
+      baseCard.mediaBundle = await getOrganizationMediaBundle(this.pool, baseCard.id, { limitPerGroup: 4 });
+    } catch {
+      // Non-fatal if media table is empty
+    }
+    return baseCard;
   }
 
   async getProfileIssues(

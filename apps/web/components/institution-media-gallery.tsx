@@ -1,8 +1,9 @@
 "use client";
 import { publicationCoverCaption } from "@/lib/publication-cover-caption";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "./ui/button";
-import { Expand } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
+import { Expand, ArrowUpRight, BookOpen, ShoppingBag, ExternalLink } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -11,10 +12,20 @@ import {
   DialogTrigger,
 } from "./ui/dialog";
 import styles from "./institution-profile.module.css";
+
+export type MediaGroupKey =
+  | "all"
+  | "issues"
+  | "books"
+  | "photos"
+  | "exhibitions"
+  | "projects";
+
 export type InstitutionGalleryImage = {
   url: string;
   label: string;
   cover: boolean;
+  group?: "issues" | "books" | "photos" | "exhibitions" | "projects" | "identity";
   dateLabel?: string;
   subtitle?: string;
   credit?: string;
@@ -22,6 +33,16 @@ export type InstitutionGalleryImage = {
   readingUrl?: string;
   purchaseUrl?: string;
 };
+
+const GROUP_LABELS: Record<string, string> = {
+  all: "All",
+  issues: "Past Issues",
+  books: "Published Titles",
+  photos: "Photos",
+  exhibitions: "Exhibitions",
+  projects: "Projects",
+};
+
 function MediaImage({
   image,
   expanded = false,
@@ -44,6 +65,7 @@ function MediaImage({
     />
   );
 }
+
 export function InstitutionMediaGallery({
   images,
   title,
@@ -62,9 +84,36 @@ export function InstitutionMediaGallery({
   source?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("all");
+
   const shelf = issues || books;
   const itemName = books ? "books" : "issues";
+
+  // Discover which distinct groups exist
+  const distinctGroups = useMemo(() => {
+    const groups = new Set<string>();
+    for (const img of images) {
+      if (img.group && img.group !== "identity") {
+        groups.add(img.group);
+      }
+    }
+    return Array.from(groups);
+  }, [images]);
+
+  const showTabs = distinctGroups.length > 1;
+
+  // Filter items by active tab
+  const displayedImages = useMemo(() => {
+    if (!showTabs || activeTab === "all") {
+      return images;
+    }
+    return images.filter((img) => img.group === activeTab);
+  }, [images, showTabs, activeTab]);
+
   if (!images.length && !shelf && !photos) return null;
+
+  const visibleImages = expanded ? displayedImages : displayedImages.slice(0, 6);
+
   return (
     <section
       id="profile-gallery"
@@ -79,16 +128,18 @@ export function InstitutionMediaGallery({
         </h2>
         <span>
           {images.length > 0 &&
-            `${images.length} ${shelf ? "covers" : "images"}`}
+            `${images.length} ${shelf ? "items" : "images"}`}
         </span>
       </div>
+
       {shelf && (
         <p className={styles.issueIntro}>
           {books
-            ? "Explore books from the press’s catalogue."
-            : "Explore the publication through its past issues."}
+            ? "Explore titles from the press’s catalogue."
+            : "Explore the publication through its past issues and volumes."}
         </p>
       )}
+
       {photos && !images.length && (
         <div className={styles.issueEmpty}>
           <h3>Photos aren’t available yet</h3>
@@ -99,6 +150,7 @@ export function InstitutionMediaGallery({
           )}
         </div>
       )}
+
       {photos && source && (
         <p className={styles.issueIntro}>
           Photos from{" "}
@@ -107,6 +159,7 @@ export function InstitutionMediaGallery({
           </a>
         </p>
       )}
+
       {shelf && !images.length && (
         <div className={styles.issueEmpty}>
           <h3>
@@ -126,12 +179,41 @@ export function InstitutionMediaGallery({
           )}
         </div>
       )}
+
+      {showTabs && (
+        <div className="mb-6">
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => {
+              if (val) {
+                setActiveTab(val);
+                setExpanded(false);
+              }
+            }}
+          >
+            <TabsList variant="line" className="border-b border-border w-full justify-start gap-3 pb-1">
+              <TabsTrigger value="all" className="text-sm font-medium">
+                All ({images.length})
+              </TabsTrigger>
+              {distinctGroups.map((grp) => {
+                const count = images.filter((img) => img.group === grp).length;
+                return (
+                  <TabsTrigger key={grp} value={grp} className="text-sm font-medium">
+                    {GROUP_LABELS[grp] || grp} ({count})
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
+
       <div
         className={styles.gallery}
-        data-single={images.length === 1 || undefined}
+        data-single={visibleImages.length === 1 || undefined}
       >
-        {(expanded ? images : images.slice(0, 3)).map((image, index) => {
-          const caption = shelf
+        {visibleImages.map((image, index) => {
+          const caption = (shelf || image.cover)
             ? publicationCoverCaption(image.label)
             : { title: image.label };
           return (
@@ -147,11 +229,15 @@ export function InstitutionMediaGallery({
                   </span>
                 </DialogTrigger>
                 <p>
-                  {!shelf && <span>{String(index + 1).padStart(2, "0")}</span>}
+                  {!shelf && !image.cover && (
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                  )}
                   {caption.title}
                 </p>
                 {(caption.author || image.subtitle) && (
-                  <div className={styles.issueAuthor}>{caption.author || image.subtitle}</div>
+                  <div className={styles.issueAuthor}>
+                    {caption.author || image.subtitle}
+                  </div>
                 )}
                 {image.credit && (
                   <div className={styles.issueAuthor}>{image.credit}</div>
@@ -165,8 +251,9 @@ export function InstitutionMediaGallery({
                       href={image.readingUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-primary hover:underline"
+                      className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
                     >
+                      <BookOpen size={12} aria-hidden="true" />
                       Read ↗
                     </a>
                   )}
@@ -175,8 +262,9 @@ export function InstitutionMediaGallery({
                       href={image.purchaseUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-primary hover:underline"
+                      className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
                     >
+                      <ShoppingBag size={12} aria-hidden="true" />
                       Buy ↗
                     </a>
                   )}
@@ -185,12 +273,13 @@ export function InstitutionMediaGallery({
                       href={image.officialUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-muted-foreground hover:underline"
+                      className="inline-flex items-center gap-1 text-muted-foreground hover:underline"
                     >
+                      <ExternalLink size={12} aria-hidden="true" />
                       Details ↗
                     </a>
                   )}
-                  {shelf && (
+                  {shelf && !image.readingUrl && !image.purchaseUrl && !image.officialUrl && (
                     <span className={styles.issuePreview}>Preview cover</span>
                   )}
                 </div>
@@ -198,15 +287,96 @@ export function InstitutionMediaGallery({
               <DialogContent className={styles.lightbox}>
                 <DialogTitle>{caption.title}</DialogTitle>
                 <DialogDescription className="sr-only">
-                  Expanded organization media. Press Escape to close.
+                  Expanded view of {caption.title}
                 </DialogDescription>
-                <MediaImage image={image} expanded />
+                <div className="flex flex-col gap-4">
+                  <MediaImage image={image} expanded />
+                  <div className="border-t border-border pt-4 flex flex-col gap-2">
+                    <div className="text-base font-medium">{caption.title}</div>
+                    {(caption.author || image.subtitle) && (
+                      <div className="text-sm text-muted-foreground">
+                        {caption.author || image.subtitle}
+                      </div>
+                    )}
+                    {image.credit && (
+                      <div className="text-xs text-muted-foreground">
+                        Credit: {image.credit}
+                      </div>
+                    )}
+                    {image.dateLabel && (
+                      <div className="text-xs text-muted-foreground">
+                        Date / Season: {image.dateLabel}
+                      </div>
+                    )}
+                    {(image.readingUrl || image.purchaseUrl || image.officialUrl) && (
+                      <div className="flex flex-wrap items-center gap-2 pt-2">
+                        {image.readingUrl && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            nativeButton={false}
+                            render={
+                              <a
+                                href={image.readingUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5"
+                              />
+                            }
+                          >
+                            <BookOpen size={14} aria-hidden="true" />
+                            Read online
+                            <ArrowUpRight size={14} aria-hidden="true" />
+                          </Button>
+                        )}
+                        {image.purchaseUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            nativeButton={false}
+                            render={
+                              <a
+                                href={image.purchaseUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5"
+                              />
+                            }
+                          >
+                            <ShoppingBag size={14} aria-hidden="true" />
+                            Buy copy
+                            <ArrowUpRight size={14} aria-hidden="true" />
+                          </Button>
+                        )}
+                        {image.officialUrl && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            nativeButton={false}
+                            render={
+                              <a
+                                href={image.officialUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5"
+                              />
+                            }
+                          >
+                            <ExternalLink size={14} aria-hidden="true" />
+                            Official page
+                            <ArrowUpRight size={14} aria-hidden="true" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </DialogContent>
             </Dialog>
           );
         })}
       </div>
-      {images.length > 3 && (
+      {displayedImages.length > 6 && (
         <Button
           className="mt-5"
           variant="outline"
@@ -217,7 +387,7 @@ export function InstitutionMediaGallery({
             ? shelf
               ? `Show fewer ${itemName}`
               : "Show fewer images"
-            : `View all ${images.length} ${shelf ? itemName : "images"}`}
+            : `View all ${displayedImages.length} ${shelf ? itemName : "images"}`}
         </Button>
       )}
     </section>

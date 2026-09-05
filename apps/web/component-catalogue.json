@@ -1352,8 +1352,19 @@
   "publicCreatorProfile": {
     "status": "review",
     "implementation": "apps/web/components/public-creator-profile.tsx",
-    "source": "Installed Card and native links",
+    "source": "Installed ui/Button (primary, outline, ghost), Input, Textarea, Dialog; InstitutionSocialLinks; native audio and file inputs",
     "preview": "/design-system/creator-profile-v2",
-    "boundary": "Public name/bio only on real routes; fictional text-work/credits preview"
+    "boundary": "Authenticated /profile/portfolio edits device-local drafts. Sample-account settings accessible through the temporary preview tunnel. Publishing and cross-device account storage remain unavailable.",
+    "onboarding": "Full-page independent editing sections, live side preview, mobile preview toggle, device-local autosave, link metadata previews, directory-linked publication credits and four curated themes.",
+    "settings": "/profile/portfolio",
+    "settingsPreview": "/design-system/creator-profile-settings",
+    "adaptations": "Public contact row; content-backed format views; outlined reading action; image disclosure; account-scoped draft keys; opt-in contact fields; optional ordered books/publications",
+    "validation": "See docs/public-creator-profile-design.md for exact checks and limitations.",
+    "editorComponents": [
+      "apps/web/components/portfolio-link-preview.tsx",
+      "apps/web/components/portfolio-publication-picker.tsx",
+      "apps/web/components/design-system/creator-palette.css"
+    ],
+    "states": "Restoring, autosaving, saved, storage failure/retry, link loading/ready/unavailable/retry, empty works, unsupported file, directory loading/selected/manual/unavailable, light/dark themes."
   }
 }
