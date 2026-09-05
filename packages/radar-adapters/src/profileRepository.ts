@@ -281,8 +281,8 @@ export class PostgresProfileRepository implements ProfileRepository {
           COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
           o.formats_json, o.reading_period,
           o.source_detail_url,
-          COALESCE(visuals.visual_url, m.media_url) as media_url,
-          COALESCE(visuals.visual_alt, m.media_alt, p.name) as media_alt
+          COALESCE(org_media.lead_url, visuals.visual_url, m.media_url) as media_url,
+          COALESCE(org_media.lead_alt, visuals.visual_alt, m.media_alt, p.name) as media_alt
         FROM gary_profiles p
         LEFT JOIN radar_organizations ro ON ro.id = p.id
         LEFT JOIN latest o ON o.profile_id = p.id
@@ -290,6 +290,13 @@ export class PostgresProfileRepository implements ProfileRepository {
         LEFT JOIN media m ON m.profile_page_id = pg.id
         LEFT JOIN visuals ON visuals.profile_id = p.id
         LEFT JOIN intel ON intel.profile_id = p.id
+        LEFT JOIN LATERAL (
+          SELECT image_url AS lead_url, COALESCE(NULLIF(BTRIM(alt_text), ''), NULLIF(BTRIM(title), ''), p.name) AS lead_alt
+          FROM gary_organization_media
+          WHERE profile_id = p.id AND review_status = 'verified'
+          ORDER BY is_lead DESC, (media_group = 'identity') DESC, display_order ASC, created_at DESC
+          LIMIT 1
+        ) org_media ON true
         ${where} ORDER BY p.name ASC`,
         values,
       });
@@ -388,8 +395,8 @@ export class PostgresProfileRepository implements ProfileRepository {
         COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
         o.formats_json, o.reading_period,
         o.source_detail_url,
-        COALESCE(visuals.visual_url, m.media_url) as media_url,
-        COALESCE(visuals.visual_alt, m.media_alt, p.name) as media_alt,
+        COALESCE(org_media.lead_url, visuals.visual_url, m.media_url) as media_url,
+        COALESCE(org_media.lead_alt, visuals.visual_alt, m.media_alt, p.name) as media_alt,
         count(*) OVER() AS total_count
       FROM gary_profiles p
       LEFT JOIN radar_organizations ro ON ro.id = p.id
@@ -398,6 +405,13 @@ export class PostgresProfileRepository implements ProfileRepository {
       LEFT JOIN media m ON m.profile_page_id = pg.id
       LEFT JOIN visuals ON visuals.profile_id = p.id
       LEFT JOIN intel ON intel.profile_id = p.id
+      LEFT JOIN LATERAL (
+        SELECT image_url AS lead_url, COALESCE(NULLIF(BTRIM(alt_text), ''), NULLIF(BTRIM(title), ''), p.name) AS lead_alt
+        FROM gary_organization_media
+        WHERE profile_id = p.id AND review_status = 'verified'
+        ORDER BY is_lead DESC, (media_group = 'identity') DESC, display_order ASC, created_at DESC
+        LIMIT 1
+      ) org_media ON true
       ${where} ${orderClause} LIMIT $${limit} OFFSET $${offset}`,
       values,
     });
@@ -429,8 +443,8 @@ export class PostgresProfileRepository implements ProfileRepository {
         COALESCE(o.source_summary, (ro.data->>'biography')) as source_summary,
         COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
         o.formats_json, o.reading_period, o.source_detail_url,
-        COALESCE(visuals.visual_url, m.media_url) as media_url,
-        COALESCE(visuals.visual_alt, m.media_alt, p.name) as media_alt,
+        COALESCE(org_media.lead_url, visuals.visual_url, m.media_url) as media_url,
+        COALESCE(org_media.lead_alt, visuals.visual_alt, m.media_alt, p.name) as media_alt,
         o.submission_guidelines_url, o.subgenres_json, o.book_types_json,
         o.representative_authors, o.response_time, o.reading_fee,
         o.unsolicited_submissions, o.simultaneous_submissions, o.payment,
@@ -446,6 +460,13 @@ export class PostgresProfileRepository implements ProfileRepository {
       LEFT JOIN media m ON m.profile_page_id = pg.id
       LEFT JOIN visuals ON visuals.profile_id = p.id
       LEFT JOIN intel ON intel.profile_id = p.id
+      LEFT JOIN LATERAL (
+        SELECT image_url AS lead_url, COALESCE(NULLIF(BTRIM(alt_text), ''), NULLIF(BTRIM(title), ''), p.name) AS lead_alt
+        FROM gary_organization_media
+        WHERE profile_id = p.id AND review_status = 'verified'
+        ORDER BY is_lead DESC, (media_group = 'identity') DESC, display_order ASC, created_at DESC
+        LIMIT 1
+      ) org_media ON true
       WHERE p.id = $1 
          OR p.id = (SELECT target_profile_id FROM gary_profile_redirects WHERE source_id_or_slug = $1 LIMIT 1)
          OR p.name_key = $1
@@ -712,12 +733,21 @@ export class PostgresProfileRepository implements ProfileRepository {
       )
       SELECT p.id, p.profile_kind, p.name, p.website_url,
         o.source_summary, o.genres_json, o.formats_json, o.reading_period,
-        o.last_updated, o.source_detail_url, o.observed_at, m.media_url
+        o.last_updated, o.source_detail_url, o.observed_at,
+        COALESCE(org_media.lead_url, m.media_url) as media_url,
+        COALESCE(org_media.lead_alt, p.name) as media_alt
       FROM opportunity_profile_links l
       JOIN gary_profiles p ON p.id=l.profile_id
       JOIN latest o ON o.profile_id=p.id
       LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id=o.id AND pg.role='profile'
       LEFT JOIN media m ON m.profile_page_id=pg.id
+      LEFT JOIN LATERAL (
+        SELECT image_url AS lead_url, COALESCE(NULLIF(BTRIM(alt_text), ''), NULLIF(BTRIM(title), ''), p.name) AS lead_alt
+        FROM gary_organization_media
+        WHERE profile_id = p.id AND review_status = 'verified'
+        ORDER BY is_lead DESC, (media_group = 'identity') DESC, display_order ASC, created_at DESC
+        LIMIT 1
+      ) org_media ON true
       WHERE l.opportunity_id=$1 AND l.status='confirmed' AND l.verified_until > now()
       ORDER BY l.confidence DESC, p.name ASC LIMIT 1`, values: [opportunityId] });
     const row = result.rows[0] as Record<string, unknown> | undefined;
