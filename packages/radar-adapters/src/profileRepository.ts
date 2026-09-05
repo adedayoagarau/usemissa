@@ -447,6 +447,7 @@ export class PostgresProfileRepository implements ProfileRepository {
       LEFT JOIN visuals ON visuals.profile_id = p.id
       LEFT JOIN intel ON intel.profile_id = p.id
       WHERE p.id = $1 
+         OR p.id = (SELECT target_profile_id FROM gary_profile_redirects WHERE source_id_or_slug = $1 LIMIT 1)
          OR p.name_key = $1
          OR p.name_key = replace($1, '-', ' ')
          OR p.name_key = replace($1, '-', '_')

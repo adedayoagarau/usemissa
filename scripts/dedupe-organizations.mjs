@@ -178,73 +178,87 @@ async function run() {
     let relinkedOpportunitiesCount = 0;
 
     if (!isDryRun) {
-      console.log('\n3. Merging duplicate clusters into canonical profiles...');
+      console.log('\n3. Merging duplicate clusters into canonical profiles in batches...');
 
-      for (const cluster of duplicateClusters) {
-        const canonicalId = cluster.canonical.id;
+      // Process in batches of 50 clusters
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < duplicateClusters.length; i += BATCH_SIZE) {
+        const batch = duplicateClusters.slice(i, i + BATCH_SIZE);
+        await client.query('BEGIN');
+        try {
+          for (const cluster of batch) {
+            const canonicalId = cluster.canonical.id;
 
-        for (const dupe of cluster.duplicates) {
-          const dupeId = dupe.id;
+            for (const dupe of cluster.duplicates) {
+              const dupeId = dupe.id;
 
-          // a. Re-link opportunity_profile_links
-          const oppRes = await client.query(`
-            UPDATE opportunity_profile_links
-            SET profile_id = $1
-            WHERE profile_id = $2
-              AND NOT EXISTS (
-                SELECT 1 FROM opportunity_profile_links existing
-                WHERE existing.profile_id = $1
-                  AND existing.opportunity_id = opportunity_profile_links.opportunity_id
-                  AND existing.relation = opportunity_profile_links.relation
-              )
-            RETURNING id;
-          `, [canonicalId, dupeId]);
-          relinkedOpportunitiesCount += oppRes.rowCount;
-          await client.query('DELETE FROM opportunity_profile_links WHERE profile_id = $1', [dupeId]);
+              // a. Re-link opportunity_profile_links
+              const oppRes = await client.query(`
+                UPDATE opportunity_profile_links
+                SET profile_id = $1
+                WHERE profile_id = $2
+                  AND NOT EXISTS (
+                    SELECT 1 FROM opportunity_profile_links existing
+                    WHERE existing.profile_id = $1
+                      AND existing.opportunity_id = opportunity_profile_links.opportunity_id
+                      AND existing.relation = opportunity_profile_links.relation
+                  )
+                RETURNING id;
+              `, [canonicalId, dupeId]);
+              relinkedOpportunitiesCount += oppRes.rowCount;
+              await client.query('DELETE FROM opportunity_profile_links WHERE profile_id = $1', [dupeId]);
 
-          // a2. Re-link gary_profile_links
-          await client.query(`
-            UPDATE gary_profile_links
-            SET profile_id = $1
-            WHERE profile_id = $2
-              AND NOT EXISTS (
-                SELECT 1 FROM gary_profile_links existing
-                WHERE existing.profile_id = $1
-                  AND existing.opportunity_id = gary_profile_links.opportunity_id
-                  AND existing.relation = gary_profile_links.relation
-              )
-          `, [canonicalId, dupeId]);
-          await client.query('DELETE FROM gary_profile_links WHERE profile_id = $1', [dupeId]);
+              // a2. Re-link gary_profile_links
+              await client.query(`
+                UPDATE gary_profile_links
+                SET profile_id = $1
+                WHERE profile_id = $2
+                  AND NOT EXISTS (
+                    SELECT 1 FROM gary_profile_links existing
+                    WHERE existing.profile_id = $1
+                      AND existing.opportunity_id = gary_profile_links.opportunity_id
+                      AND existing.relation = gary_profile_links.relation
+                  )
+              `, [canonicalId, dupeId]);
+              await client.query('DELETE FROM gary_profile_links WHERE profile_id = $1', [dupeId]);
 
-          // b. Re-link observations
-          await client.query('UPDATE gary_profile_observations SET profile_id = $1 WHERE profile_id = $2', [canonicalId, dupeId]);
+              // b. Re-link observations
+              await client.query('UPDATE gary_profile_observations SET profile_id = $1 WHERE profile_id = $2', [canonicalId, dupeId]);
 
-          // c. Re-link visuals
-          await client.query('UPDATE gary_profile_visuals SET profile_id = $1 WHERE profile_id = $2', [canonicalId, dupeId]);
+              // c. Re-link visuals
+              await client.query('UPDATE gary_profile_visuals SET profile_id = $1 WHERE profile_id = $2', [canonicalId, dupeId]);
 
-          // d. Re-link issues
-          await client.query('UPDATE gary_profile_issues SET profile_id = $1 WHERE profile_id = $2', [canonicalId, dupeId]);
+              // d. Re-link issues
+              await client.query('UPDATE gary_profile_issues SET profile_id = $1 WHERE profile_id = $2', [canonicalId, dupeId]);
 
-          // e. Re-link organization media
-          await client.query('UPDATE gary_organization_media SET profile_id = $1 WHERE profile_id = $2', [canonicalId, dupeId]);
+              // e. Re-link organization media
+              await client.query('UPDATE gary_organization_media SET profile_id = $1 WHERE profile_id = $2', [canonicalId, dupeId]);
 
-          // f. Re-link handles
-          await client.query('UPDATE handles SET reserved_from_profile_id = $1 WHERE reserved_from_profile_id = $2', [canonicalId, dupeId]);
+              // f. Re-link handles
+              await client.query('UPDATE handles SET reserved_from_profile_id = $1 WHERE reserved_from_profile_id = $2', [canonicalId, dupeId]);
 
-          // g. Save redirect alias
-          await client.query(`
-            INSERT INTO gary_profile_redirects (source_id_or_slug, target_profile_id, created_at)
-            VALUES ($1, $2, now())
-            ON CONFLICT (source_id_or_slug) DO UPDATE SET target_profile_id = EXCLUDED.target_profile_id;
-          `, [dupeId, canonicalId]);
+              // g. Save redirect alias
+              await client.query(`
+                INSERT INTO gary_profile_redirects (source_id_or_slug, target_profile_id, created_at)
+                VALUES ($1, $2, now())
+                ON CONFLICT (source_id_or_slug) DO UPDATE SET target_profile_id = EXCLUDED.target_profile_id;
+              `, [dupeId, canonicalId]);
 
-          // h. Delete redundant profile
-          await client.query('DELETE FROM gary_profiles WHERE id = $1', [dupeId]);
-          purgedProfilesCount++;
+              // h. Delete redundant profile
+              await client.query('DELETE FROM gary_profiles WHERE id = $1', [dupeId]);
+              purgedProfilesCount++;
+            }
+            mergedClustersCount++;
+          }
+          await client.query('COMMIT');
+          process.stdout.write(`   Processed ${Math.min(i + BATCH_SIZE, duplicateClusters.length)}/${duplicateClusters.length} clusters...\r`);
+        } catch (err) {
+          await client.query('ROLLBACK');
+          console.error(`\nError processing batch at ${i}:`, err.message);
+          throw err;
         }
-        mergedClustersCount++;
       }
-      console.log(`   ✔ Successfully merged ${mergedClustersCount} clusters (${purgedProfilesCount} redundant profile rows purged).`);
+      console.log(`\n   ✔ Successfully merged ${mergedClustersCount} clusters (${purgedProfilesCount} redundant profile rows purged).`);
     }
 
     // 4. Clean up junk non-arts commercial scrapings with 0 opportunities
