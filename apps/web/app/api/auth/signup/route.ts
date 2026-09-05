@@ -14,6 +14,7 @@ import {
   FIRST_SAVE_INTENT_COOKIE,
   verifyFirstSaveIntent,
 } from "@/lib/firstSaveIntent";
+import { deliverWelcomeEmail } from "@/emails/welcome";
 
 function cookieValue(request: Request): string | undefined {
   const encoded = request.headers
@@ -151,6 +152,16 @@ export async function POST(request: Request) {
     source: "auth-api",
     accountId: account.id,
     properties: { method: "password" },
+  });
+  void deliverWelcomeEmail(
+    {
+      accountId: account.id,
+      email: account.email,
+      displayName: normalizedName,
+    },
+    process.env.DATABASE_URL
+  ).catch((err) => {
+    console.error("Welcome email delivery failed", err);
   });
   const response = NextResponse.json(
     {

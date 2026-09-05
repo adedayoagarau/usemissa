@@ -146,6 +146,7 @@ const excludedPrefixes = [
   "components/shadcn-studio/",
   "components/design-system/",
   "app/design-system/",
+  "emails/",
 ];
 
 const findings = [];

@@ -39,5 +39,9 @@ export function resendProviderEventRecord(event: WebhookEventPayload): ResendPro
   if (failureType) metadata.failureType = failureType;
   const failureSubtype = bounded(bounce?.subType, 80);
   if (failureSubtype) metadata.failureSubtype = failureSubtype;
+  const toCandidate = Array.isArray(data.to) ? data.to[0] : typeof data.to === 'string' ? data.to : undefined;
+  if (toCandidate && ['email.bounced', 'email.complained', 'email.suppressed', 'email.failed'].includes(event.type)) {
+    metadata.email = bounded(String(toCandidate).trim().toLowerCase(), 240);
+  }
   return { eventType: event.type, providerMessageId, occurredAt: event.created_at, metadata };
 }

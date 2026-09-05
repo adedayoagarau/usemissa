@@ -72,3 +72,6 @@ User approved closing the creator journey before organization work. This is the 
 Existing implementation to build on: `calendar-workspace.tsx`, `notification-preferences-panel.tsx`, `/api/me/notification-preferences`, and `packages/radar-adapters/src/creatorNotificationRepository.ts`. Existing calendar documentation contains older route assumptions; reconcile against current implementation before using it as a status report.
 
 No outbound email or notification is authorized merely by this implementation backlog; use isolated fixtures/previews for QA unless a specific test recipient is approved.
+
+
+External application feasibility is delegated through [Application bridge investigation brief](application-bridge-investigation-brief.md). Frontend must not assume supported transfer or submission until destination-specific evidence returns.

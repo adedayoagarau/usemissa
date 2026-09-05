@@ -1,8 +1,14 @@
 import { createHash } from 'node:crypto';
-import { Resend } from 'resend';
-import { beginPlatformMessageEffect, completePlatformMessageEffect, creatorPoolFor, creatorRelationalAuthorityEnabled, PostgresCreatorInboxRepository, PostgresCreatorNotificationRepository, type CreatorNotificationPreferences } from '@missa/radar-adapters';
+import {
+  creatorPoolFor,
+  creatorRelationalAuthorityEnabled,
+  PostgresCreatorInboxRepository,
+  PostgresCreatorNotificationRepository,
+  type CreatorNotificationPreferences,
+} from '@missa/radar-adapters';
 import type { Alert, RadarEngine } from '@missa/radar-engine';
-import { runDurableProviderDelivery } from './durableMessageDelivery';
+import { sendMail } from './mail-service';
+import { renderAlertDigestEmail } from '../emails/alert-digest';
 
 export interface AlertDeliveryReport {
   status: 'sent' | 'skipped' | 'partial';
@@ -46,7 +52,6 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
     if (rows) rows.push(alert);
     else byUser.set(alert.userId!, [alert]);
   }
-  const resend = new Resend(apiKey);
   const preferenceRepository = creatorRelationalAuthorityEnabled(process.env)
     ? new PostgresCreatorNotificationRepository(creatorPoolFor(connectionString))
     : undefined;
@@ -76,7 +81,6 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       }
       if (!eligibleAlerts.length) continue;
     }
-    const lines = eligibleAlerts.map((alert) => `• ${alert.title}\n  ${alert.body}\n  Why this is here: ${alert.reason}`).join('\n\n');
     const effectKey = `alert-digest:${userId}:${createHash('sha256')
       .update(
         eligibleAlerts
@@ -86,54 +90,34 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       )
       .digest('hex')
       .slice(0, 24)}`;
-    let effect: Awaited<ReturnType<typeof beginPlatformMessageEffect>> | undefined;
-    try {
-        effect = await beginPlatformMessageEffect(connectionString, {
-          idempotencyKey: effectKey,
-          accountId: account.id,
-          recipientAccountId: account.id,
-          kind: 'alert-digest',
-          provider: 'resend',
-          templateKey: 'alert-digest',
-          templateVersion: 'alert-digest.v1',
-          metadata: { alertCount: eligibleAlerts.length },
-          retryFailed: true,
-        });
-      if (!effect) throw new Error('Durable message ledger did not return an effect');
-      const activeEffect = effect;
-      const updateLabel = `${eligibleAlerts.length} opportunity update${eligibleAlerts.length === 1 ? '' : 's'}`;
-      const delivery = await runDurableProviderDelivery({
-        shouldDeliver: activeEffect.shouldDeliver,
-        currentStatus: activeEffect.currentStatus,
-        send: async () => {
-          const result = await resend.emails.send({
-            from,
-            to: account.email,
-            subject: `Missa: ${updateLabel}`,
-            text: `You have ${updateLabel} in your Inbox.\n\n${lines}\n\nOpen Missa to review the source, current state, and next step.`,
-          });
-          if (result.error) throw new Error(result.error.message);
-          return result;
-        },
-        recordAccepted: async (result) => completePlatformMessageEffect({
-          connectionString, effectId: activeEffect.effectId,
-          attemptNumber: activeEffect.attemptNumber, status: 'accepted', providerMessageId: result.data?.id,
-        }).then(() => undefined),
-        recordFailed: async (error) => completePlatformMessageEffect({
-          connectionString, effectId: activeEffect.effectId,
-          attemptNumber: activeEffect.attemptNumber, status: 'failed',
-          error: error instanceof Error ? error.message : 'Provider send failed',
-        }).then(() => undefined),
-      });
-      if (delivery.outcome === 'accepted' || delivery.outcome === 'replayed-accepted') {
-        const sentAt = now.toISOString();
-        for (const alert of eligibleAlerts) alert.emailSentAt = sentAt;
-        recipients += 1;
-        sentAlerts += eligibleAlerts.length;
-        continue;
-      }
-      failed += eligibleAlerts.length;
-    } catch (_error) {
+
+    const { subject, html } = renderAlertDigestEmail({
+      alerts: eligibleAlerts,
+      accountId: account.id,
+      email: account.email,
+    });
+
+    const report = await sendMail({
+      recipientEmail: account.email,
+      recipientAccountId: account.id,
+      kind: 'alert-digest',
+      category: 'notification_digest',
+      idempotencyKey: effectKey,
+      subject,
+      html,
+      templateKey: 'alert-digest',
+      templateVersion: 'alert-digest.v2',
+      metadata: { alertCount: eligibleAlerts.length },
+      connectionString,
+      retryFailed: true,
+    });
+
+    if (report.status === 'sent' || report.status === 'replayed') {
+      const sentAt = now.toISOString();
+      for (const alert of eligibleAlerts) alert.emailSentAt = sentAt;
+      recipients += 1;
+      sentAlerts += eligibleAlerts.length;
+    } else {
       failed += eligibleAlerts.length;
     }
   }
