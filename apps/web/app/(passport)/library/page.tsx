@@ -5,6 +5,7 @@ import { taxonomyTermById } from '@missa/taxonomy';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { getCreatorLibraryRepository } from '@/lib/creatorRepositories';
+import { creatorFileStorageReady } from '@/lib/creator-file-storage';
 import {
   LibraryProduct,
   type LibraryProductAnswer,
@@ -101,7 +102,7 @@ export default async function LibraryPage({ searchParams }: { searchParams?: Pro
       initialView={safeView(first(raw.view))}
       initialSort={safeSort(first(raw.sort))}
       initialQuery={first(raw.q).slice(0, 200)}
-      storageReady={Boolean(process.env.BLOB_READ_WRITE_TOKEN || (process.env.VERCEL_OIDC_TOKEN && process.env.BLOB_STORE_ID))}
+      storageReady={creatorFileStorageReady()}
     />
   );
 }

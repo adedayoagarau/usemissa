@@ -28,6 +28,17 @@ const CATEGORY_TYPES: Record<string, string[]> = {
   jobs: ["job"],
 };
 
+function canonicalLegacyDiscipline(value: string): string {
+  const normalized = value.trim().toLowerCase().replaceAll("_", " ");
+  if (["visual art", "visual arts", "visual-arts"].includes(normalized))
+    return "visual-arts";
+  if (["short story", "flash fiction", "fiction"].includes(normalized))
+    return "fiction";
+  if (["theater", "theatre", "theatre and performance"].includes(normalized))
+    return "theatre";
+  return normalized.replaceAll(" ", "-");
+}
+
 function feeStatus(opp: Opportunity): "no-fee" | "paid" | "unknown" {
   if (!opp.fields.fee.disclosed) return "unknown";
   return opp.fields.fee.amountCents === 0 ? "no-fee" : "paid";
@@ -167,6 +178,7 @@ function excludedByPrivatePreferences(engine: Awaited<ReturnType<typeof getEngin
 }
 
 function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepositoryQuery): boolean {
+  if (query.ids && !query.ids.includes(item.id)) return false;
   if (query.query) {
     const taxonomyLabels = (item.taxonomy?.termIds ?? [])
       .map((termId) => MISSA_TAXONOMY.terms.find((term) => term.id === termId)?.preferredLabel ?? "")
@@ -177,7 +189,12 @@ function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepos
   const categoryTypes = query.category ? CATEGORY_TYPES[query.category] ?? [] : [];
   if (categoryTypes.length && !categoryTypes.includes(item.type)) return false;
   if (query.types?.length && !query.types.includes(item.type)) return false;
-  if (query.disciplines?.length && (!item.discipline || !query.disciplines.includes(item.discipline))) return false;
+  if (
+    query.disciplines?.length &&
+    (!item.discipline ||
+      !query.disciplines.includes(canonicalLegacyDiscipline(item.discipline)))
+  )
+    return false;
   if (query.genres?.length && !item.genres.some((genre) => query.genres?.some((g) => g.toLowerCase() === genre.toLowerCase() || genre.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(genre.toLowerCase())))) return false;
   if ((query as { domain?: string }).domain) {
     const domain = (query as { domain?: string }).domain!.toLowerCase();
@@ -261,6 +278,7 @@ class EngineOpportunityRepository implements OpportunityRepository {
     const withoutPage = { ...query, cursor: undefined };
     const matching = candidates.filter((item) => matchesQuery(item, withoutPage));
     const typeBase = candidates.filter((item) => matchesQuery(item, { ...withoutPage, types: [], category: undefined }));
+    const disciplineBase = candidates.filter((item) => matchesQuery(item, { ...withoutPage, disciplines: [] }));
     const taxonomyBase = candidates.filter((item) => matchesQuery(item, { ...withoutPage, taxonomyTermIds: [] }));
 
     const typeCounts = new Map<string, number>();
@@ -285,9 +303,18 @@ class EngineOpportunityRepository implements OpportunityRepository {
       for (const termId of ancestors) taxonomyCounts.set(termId, (taxonomyCounts.get(termId) ?? 0) + 1);
     }
 
+    const disciplineCounts = new Map<string, number>();
+    for (const item of disciplineBase) {
+      if (!item.discipline) continue;
+      const value = canonicalLegacyDiscipline(item.discipline);
+      if (!value || value === "all-disciplines") continue;
+      disciplineCounts.set(value, (disciplineCounts.get(value) ?? 0) + 1);
+    }
+
     return {
       total: matching.length,
       types: [...typeCounts].map(([value, count]) => ({ value: value as OpportunityBrowseProjection["type"], count })),
+      disciplines: [...disciplineCounts].map(([value, count]) => ({ value, count })),
       taxonomyTerms: [...taxonomyCounts].map(([termId, count]) => ({ termId, count })),
     };
   }

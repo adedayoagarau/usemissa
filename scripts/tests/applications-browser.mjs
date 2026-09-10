@@ -1,0 +1,68 @@
+import {fileURLToPath} from 'node:url';
+import {randomUUID} from 'node:crypto';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import nextEnv from '@next/env';
+import pg from 'pg';
+import {chromium} from 'playwright';
+import {expect as baseExpect} from '@playwright/test';
+const expect=baseExpect.configure({timeout:15000});
+import {createSessionToken} from '@missa/radar-engine';
+import AxeBuilder from '@axe-core/playwright';
+nextEnv.loadEnvConfig(fileURLToPath(new URL('../../apps/web/',import.meta.url)),true,{info(){},error(){}});
+const pool=new pg.Pool({connectionString:process.env.DATABASE_URL}),id=`application-ui-${randomUUID()}`,email=`${id}@example.invalid`,browser=await chromium.launch();
+let page;
+try {
+ await pool.query('insert into radar_accounts(id,email,data) values($1,$2,$3)',[id,email,JSON.stringify({id,email,userId:id,active:true})]);
+ await pool.query('insert into notification_preferences(account_id) values($1)',[id]);
+ const calls=(await pool.query("select id,title from opportunities where publication_state='published' and status='open' order by case when type='residency' then 0 else 1 end,id limit 4")).rows;assert(calls.length===4);
+ for(const call of calls)await pool.query('insert into tracked_opportunities(id,account_id,opportunity_id,status) values($1,$2,$3,$4)',[randomUUID(),id,call.id,'saved']);
+ const work=`work-${randomUUID()}`;await pool.query('insert into creator_library_works(id,account_id,title,description) values($1,$2,$3,$4)',[work,id,'Residency writing sample','Selected poems for this application.']);
+ const context=await browser.newContext({baseURL:'http://localhost:3100',viewport:{width:1440,height:1000},reducedMotion:'reduce'});page=await context.newPage();page.setDefaultTimeout(60000);
+ const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ if(process.env.APPLICATIONS_DIAGNOSTIC)page.on('console',m=>{if(m.type()==='error')console.log(m.text().slice(0,6000).replace(/postgres(?:ql)?:\/\/[^\s]+/g,'[database URL redacted]'));});
+ await context.addCookies([{name:'missa_session',value:createSessionToken(id,process.env.MISSA_SESSION_SECRET,new Date()),url:'http://localhost:3100'}]);
+ await page.goto('http://localhost:3100/tracker',{timeout:90000});
+ if(process.env.APPLICATIONS_DIAGNOSTIC){console.log('Diagnostic API status:',(await page.request.get('http://localhost:3100/api/me/applications')).status());console.log('Client errors:',errors);}
+ await page.getByRole('heading',{name:'My applications',exact:true}).waitFor({timeout:90000});
+ await page.getByRole('button',{name:new RegExp(calls[0].title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'))}).click();
+ await page.getByRole('heading',{name:'Prepare your application'}).waitFor({timeout:60000});
+ await page.getByRole('button',{name:'Add a step',exact:true}).click();await page.getByLabel('Step',{exact:true}).fill('Choose a writing sample');await page.getByRole('button',{name:'Add step',exact:true}).click();
+ await page.getByRole('checkbox',{name:'Choose a writing sample',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Link material for Choose a writing sample'}).click();await page.getByLabel('Material',{exact:true}).selectOption(`work:${work}`);await page.getByRole('button',{name:'Save material',exact:true}).click();
+ await page.getByRole('checkbox',{name:'Choose a writing sample',exact:true}).check();
+ await expect(page.getByRole('checkbox',{name:'Choose a writing sample',exact:true})).toBeChecked();
+ await page.getByRole('button',{name:'Add notes',exact:true}).click();await page.getByLabel('Notes',{exact:true}).fill('Review the proposal before sending.');
+ let fail=true;await page.route('**/api/me/applications/*',async route=>{if(route.request().method()==='PATCH'&&fail){fail=false;await route.fulfill({status:503,json:{error:'Test a temporary save failure'}});}else await route.continue();});
+ await page.getByRole('button',{name:'Save notes',exact:true}).click();await page.getByRole('alert').filter({hasText:'Test a temporary'}).waitFor();assert.equal(await page.getByLabel('Notes',{exact:true}).inputValue(),'Review the proposal before sending.');
+ await page.getByRole('button',{name:'Save notes',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);
+ await page.reload();await page.getByText('Review the proposal before sending.',{exact:true}).waitFor({timeout:60000});
+ await page.getByRole('button',{name:'Set reminder',exact:true}).click();await page.getByLabel('What do you want to do?',{exact:true}).fill('Review my writing sample');await page.getByLabel('Repeat',{exact:true}).selectOption('7');await page.getByRole('dialog').getByRole('button',{name:'Set reminder',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);
+ await page.getByRole('button',{name:/Review my writing sample/}).click();await page.getByRole('button',{name:'Tomorrow',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);
+ await expect(page.getByRole('checkbox',{name:'Choose a writing sample',exact:true})).toBeChecked();fs.mkdirSync('apps/web/outputs',{recursive:true});await page.screenshot({path:'apps/web/outputs/applications-connected-desktop.png',fullPage:true,animations:'disabled'});
+ await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ const accessibility=await new AxeBuilder({page}).analyze();assert.deepEqual(accessibility.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[]);
+ await page.screenshot({path:'apps/web/outputs/applications-connected-mobile.png',fullPage:true,animations:'disabled'});
+ await page.getByRole('button',{name:'Record submission',exact:true}).click();await page.getByLabel('Date',{exact:true}).fill(await page.getByLabel('Date',{exact:true}).getAttribute('max'));await page.getByRole('button',{name:'Save update',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page).toHaveURL(/view=awaiting/);
+ let detail=await (await page.request.get(`/api/me/applications/${calls[0].id}`)).json();assert.equal(detail.myStatus,'submitted');assert.equal(detail.materials[0].works[0].title,'Residency writing sample');assert(detail.submittedAt);const scheduled=await(await page.request.get('/api/me/reminders')).json();assert.equal(scheduled.reminders.filter(r=>r.state==='scheduled').length,0,'recording submission cancels its preparation reminder');
+ await page.getByRole('button',{name:'Record an update',exact:true}).click();await page.getByLabel('What happened?').selectOption('accepted');await page.getByRole('button',{name:'Save update',exact:true}).click();await expect(page).toHaveURL(/view=history/);
+ await page.getByRole('button',{name:'Application history',exact:true}).click();await page.getByText('Selected material versions preserved',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Back to applications',exact:true}).click();await expect(page.getByRole('tab',{name:/History/})).toHaveAttribute('aria-selected','true');
+ await page.setViewportSize({width:640,height:700});await page.evaluate(()=>document.documentElement.style.fontSize='200%');assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.setViewportSize({width:1440,height:1000});await page.goto('http://localhost:3100/inbox?view=reminders');await page.getByRole('heading',{name:'Coming up',exact:true}).waitFor();await page.getByRole('button',{name:'Notification settings',exact:true}).click();await page.getByText('Choose what you hear about and where it reaches you.',{exact:true}).waitFor();await page.screenshot({path:'apps/web/outputs/inbox-connected-desktop.png',fullPage:true,animations:'disabled'});
+ await page.goto('http://localhost:3100/library');
+ await page.getByRole('button',{name:'Open Residency writing sample',exact:true}).click();
+ await page.getByRole('heading',{name:'Used in applications'}).waitFor();await expect(page.getByRole('dialog').getByRole('link',{name:new RegExp(calls[0].title.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'))}).first()).toBeVisible({timeout:20000});
+ await page.getByRole('button',{name:'Close',exact:true}).click();await page.getByRole('tab',{name:/Reusable text/}).click();await page.getByRole('button',{name:'New text',exact:true}).first().click();
+ await page.getByLabel('Text name',{exact:true}).fill('Artist bio');await page.getByLabel('Text',{exact:true}).fill('I write poems about cities.');await page.getByRole('button',{name:'Save text',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0,{timeout:20000});
+ await page.getByRole('button',{name:'Open Artist bio',exact:true}).click();await page.getByRole('button',{name:'Edit text',exact:true}).click();await page.getByLabel('Text',{exact:true}).fill('I write poems about cities and migration.');await page.getByRole('button',{name:'Save text',exact:true}).click();await page.getByRole('button',{name:'Edit text',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Close',exact:true}).click();await page.reload();await page.getByRole('button',{name:'Open Artist bio',exact:true}).click();await expect(page.getByRole('dialog').getByText('I write poems about cities and migration.',{exact:true})).toBeVisible();
+ await page.getByRole('dialog').getByText('This material is ready to use in your next application.',{exact:true}).waitFor();await page.screenshot({path:'apps/web/outputs/library-connected-desktop.png',fullPage:true,animations:'disabled'});await page.setViewportSize({width:390,height:844});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ const libraryAxe=await new AxeBuilder({page}).analyze();assert.deepEqual(libraryAxe.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id),[]);await page.screenshot({path:'apps/web/outputs/library-connected-mobile.png',fullPage:true,animations:'disabled'});
+ assert.deepEqual(errors,[]);console.log('PASS: actual saved applications, selection/deep link, checklist/materials, failed-note retry, reload, mobile, axe, recorded submission/outcome and history.');
+}catch(e){if(page){fs.mkdirSync('apps/web/outputs',{recursive:true});await page.screenshot({path:'apps/web/outputs/applications-test-failure.png',fullPage:true}).catch(()=>{});console.log((await page.locator('body').innerText()).slice(0,5000));}throw e;}
+finally{
+ await browser.close();await pool.query('delete from tracked_opportunities where account_id=$1',[id]);
+ await pool.query('delete from outbox_events where correlation_id in (select correlation_id from workspace_command_receipts where actor_account_id=$1) or correlation_id in (select correlation_id from audit_events where account_id=$1)',[id]);
+ await pool.query('delete from audit_events where account_id=$1',[id]);await pool.query('delete from workspace_command_receipts where actor_account_id=$1',[id]);await pool.query('delete from radar_accounts where id=$1',[id]);await pool.end();
+}

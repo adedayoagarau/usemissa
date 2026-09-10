@@ -14,8 +14,8 @@ export default async function PassportLayout({ children }: { children: React.Rea
     const returnPath = safeAuthRedirect(requestHeaders.get('x-missa-request-path') ?? undefined);
     redirect(`/login?next=${encodeURIComponent(returnPath)}`);
   }
-  const radar = await getEngine();
-  const organizations = session.memberships.map((membership) => ({ id: membership.organizationId, name: radar.store.organizations.get(membership.organizationId)?.name ?? membership.organizationId }));
+  const radar = session.memberships.length ? await getEngine() : undefined;
+  const organizations = session.memberships.map((membership) => ({ id: membership.organizationId, name: radar?.store.organizations.get(membership.organizationId)?.name ?? membership.organizationId }));
 
   return <CreatorShell email={session.account.email} organizations={organizations} isAdmin={session.account.isAdmin}>
     <main className="mx-auto max-w-[1600px] px-6 py-6 sm:py-8">{children}</main>

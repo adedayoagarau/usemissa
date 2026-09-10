@@ -403,9 +403,9 @@ export function OpportunityDetailView({
                     organizationName={opportunity.organizationName}
                   />
                 ) : opportunity.personal?.followingOrganization ? (
-                  <span className="text-xs text-muted-foreground">
-                    · Following
-                  </span>
+                  <Link href={`/following?organization=${encodeURIComponent(opportunity.organizationId ?? "")}`} className="text-sm text-primary underline underline-offset-4">
+                    Following
+                  </Link>
                 ) : null}
               </div>
 
@@ -741,7 +741,12 @@ export function OpportunityDetailView({
                 {destinationLabel} <ExternalLink aria-hidden="true" />
               </a>
               {signedIn ? (
-                <OpportunityIssueReport opportunityId={opportunity.id} />
+                <OpportunityIssueReport
+                  opportunityId={opportunity.id}
+                  opportunityName={cleanTitle}
+                  signedIn={signedIn}
+                  subjectPath={canonicalPath}
+                />
               ) : (
                 <Link
                   className={styles.reportQuietLink}

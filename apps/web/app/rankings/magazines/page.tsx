@@ -1,7 +1,11 @@
+import Link from "next/link";
+import catalogueStyles from "@/components/design-system/opportunities-browse-v2-preview.module.css";
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { MagazineRankingsInteractive } from "@/components/rankings/magazine-rankings-interactive";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
+import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import type { RankingGenre } from "@missa/radar-engine";
 
 export const dynamic = "force-dynamic";
@@ -27,34 +31,51 @@ export default async function MagazineRankingsPage({
       : "overall";
 
   const repository = getMagazineRankingRepository();
-  const page = await repository.listRankings({ genre, year: 2026, limit: 1000 });
+  const [page, cookieStore] = await Promise.all([
+    repository.listRankings({ genre, year: 2026, limit: 1000 }),
+    cookies(),
+  ]);
+  const session = await getSessionAccountFromToken(
+    cookieStore.get(SESSION_COOKIE)?.value,
+  );
 
   return (
-    <PublicSiteShell current="Directory">
+    <PublicSiteShell current="Magazine rankings">
       <main
         id="main-content"
-        className="mx-auto min-h-screen max-w-5xl min-w-0 px-4 py-12 sm:px-6 sm:py-16"
+        className={catalogueStyles.main}
       >
-        <header className="mb-10 max-w-3xl">
-          <p className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">
-            Missa Index · 2026 Edition
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-            Literary Magazine Rankings
-          </h1>
-          <p className="mt-3 text-base leading-7 text-muted-foreground">
-            Missa’s proprietary literary index. Evaluated across 10-year rolling
-            anthology honors (Pushcart, Best American, O. Henry, Best of the
-            Net), contributor compensation, real-world turnaround times, and
-            ethical submission accessibility.
-          </p>
+        <header className={`${catalogueStyles.pageIntro} mb-8`}>
+          <p className={catalogueStyles.eyebrow}>Rankings · 2026</p>
+          <div className={catalogueStyles.introRow}>
+            <div className={catalogueStyles.introCopy}>
+              <h1>Magazine rankings</h1>
+              <p className={catalogueStyles.lede}>Poetry, fiction, and nonfiction. Ranked by Missa.</p>
+            </div>
+          </div>
         </header>
+        {page.dataSource === "seed" && (
+          <p
+            role="status"
+            className="mb-6 rounded-lg border border-border bg-muted p-6 text-sm leading-6"
+          >
+            <strong>Rankings preview.</strong> This view uses seed data while
+            the live index is unavailable. Scores are illustrative; submission
+            fees, schedules, and response reporting are not shown.
+          </p>
+        )}
 
         <MagazineRankingsInteractive
+          key={genre}
+          preview={page.dataSource === "seed"}
           initialItems={page.items}
           currentGenre={genre}
           total={page.total}
+          signedIn={Boolean(session)}
         />
+        <footer className="mt-8 border-t border-border pt-4">
+          <Link href="/rankings/methodology" className="inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4">Methodology</Link>
+        </footer>
       </main>
     </PublicSiteShell>
   );

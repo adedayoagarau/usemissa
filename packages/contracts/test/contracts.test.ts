@@ -3,6 +3,9 @@ import test from "node:test";
 import {
   chatAssistantPayloadSchema,
   chatPostInputSchema,
+  AFRICAN_COUNTRIES,
+  CANONICAL_COUNTRIES,
+  normalizeCountry,
   opportunityBrowseQuerySchema,
   opportunityDetailResponseSchema,
   opportunityContentSchema,
@@ -58,6 +61,26 @@ test("browse queries default to safe, bounded public search behavior", () => {
   assert.throws(() =>
     opportunityBrowseQuerySchema.parse({ limit: 500, query: "x".repeat(201) }),
   );
+});
+
+test("country contract covers every African country for country-by-country ingestion", () => {
+  assert.equal(AFRICAN_COUNTRIES.length, 54);
+  assert.equal(new Set(AFRICAN_COUNTRIES.map((country) => country.code)).size, 54);
+  for (const country of AFRICAN_COUNTRIES) {
+    assert.equal(CANONICAL_COUNTRIES[country.code], country.name);
+    assert.deepEqual(normalizeCountry(country.name), {
+      countryCode: country.code,
+      country: country.name,
+    });
+  }
+  assert.deepEqual(normalizeCountry("DRC"), {
+    countryCode: "CD",
+    country: "Democratic Republic of the Congo",
+  });
+  assert.deepEqual(normalizeCountry("Ivory Coast"), {
+    countryCode: "CI",
+    country: "Cote d'Ivoire",
+  });
 });
 
 test("tailoring reasons remain factual and bounded", () => {

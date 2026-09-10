@@ -1,0 +1,38 @@
+.missa-opportunity-carousel {
+  background: var(--marketing-highlight);
+  --discovery-card-size: 400px;
+  --discovery-card-height: 484px;
+  --discovery-neighbour-height: 352px;
+  --discovery-card-radius: 28px;
+  --discovery-image-radius: 23px;
+  --discovery-stat-radius: 24px;
+  --discovery-stat-surface: var(--surface);
+  --discovery-card-edge: var(--surface);
+  --discovery-card-ink: var(--primary-foreground);
+  --discovery-card-shadow: 0 16px 48px
+    color-mix(in srgb, var(--ink) 9%, transparent);
+  --discovery-skeleton-surface: color-mix(
+    in srgb,
+    currentColor 10%,
+    transparent
+  );
+  --discovery-arrow-surface: color-mix(in srgb, currentColor 7%, transparent);
+  --discovery-organization-surface: var(--surface);
+  --discovery-pill: 9999px;
+  --discovery-scrim: linear-gradient(
+    to bottom,
+    transparent 12%,
+    color-mix(in srgb, var(--ink) 30%, transparent) 45%,
+    color-mix(in srgb, var(--ink) 90%, transparent) 100%
+  );
+  --discovery-duration: 280ms;
+  --discovery-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (max-width: 600px) {
+  .missa-opportunity-carousel {
+    background: var(--marketing-highlight);
+    --discovery-card-size: min(300px, calc(100vw - 64px));
+    --discovery-card-height: 448px;
+    --discovery-neighbour-height: 310px;
+  }
+}

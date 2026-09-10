@@ -80,6 +80,7 @@ test("facet SQL applies every filter except the facet being counted", () => {
     {
       ...baseQuery,
       types: ["grant"],
+      disciplines: ["visual-arts"],
       taxonomyTermIds: ["taxterm_pf-writing-and-literature"],
       taxonomyIncludeDescendants: true,
       feeStatus: "no-fee",
@@ -91,13 +92,14 @@ test("facet SQL applies every filter except the facet being counted", () => {
   assert.match(built.text, /matched as materialized/);
   assert.match(built.text, /type_base as materialized/);
   assert.match(built.text, /taxonomy_base as materialized/);
+  assert.match(built.text, /discipline_base as materialized/);
   assert.match(built.text, /count\(distinct base\.id\)/);
-  assert.equal(built.values.filter((value) => value === "no-fee").length, 3);
+  assert.equal(built.values.filter((value) => value === "no-fee").length, 4);
   assert.equal(
     built.values.filter(
       (value) => Array.isArray(value) && value.length === 1 && value[0] === "grant",
     ).length,
-    2,
+    3,
   );
   assert.equal(
     built.values.filter(
@@ -106,7 +108,16 @@ test("facet SQL applies every filter except the facet being counted", () => {
         value.length === 1 &&
         value[0] === "taxterm_pf-writing-and-literature",
     ).length,
-    2,
+    3,
+  );
+  assert.equal(
+    built.values.filter(
+      (value) =>
+        Array.isArray(value) &&
+        value.length === 1 &&
+        value[0] === "visual-arts",
+    ).length,
+    3,
   );
 });
 
@@ -136,6 +147,7 @@ test("facet repository executes one aggregate query and normalizes counts", asyn
   assert.deepEqual(counts, {
     total: 4,
     types: [{ value: "grant", count: 3 }],
+    disciplines: [],
     taxonomyTerms: [
       { termId: "taxterm_pf-writing-and-literature", count: 2 },
     ],
@@ -568,4 +580,19 @@ test("detail projection strips nullable call profile fields before contract vali
   assert.equal(result.callProfile?.readingPeriodLabel, undefined);
   assert.equal(result.callProfile?.lastVerifiedAt, "2026-07-30T00:00:00.000Z");
   assert.equal(result.callProfile?.prizes[0]?.title, undefined);
+});
+
+
+test("account-aware facet queries bind only referenced parameters", () => {
+  for (const taxonomyReads of [false, true]) {
+    const built = buildOpportunityFacetCountsQuery(
+      { ...baseQuery, query: "poetry", types: ["grant"] },
+      { accountId: "account-facet-regression" },
+      { taxonomyReads },
+    );
+    const referenced = [...new Set([...built.text.matchAll(/\$(\d+)/g)].map(match => Number(match[1])))].sort((a, b) => a - b);
+    assert.deepEqual(referenced, built.values.map((_, index) => index + 1));
+    assert.equal(built.values.includes("account-facet-regression"), taxonomyReads);
+    assert.equal(built.values.filter(value => value === "%poetry%").length, 4);
+  }
 });

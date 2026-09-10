@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BookOpenText,
   ChevronDown,
@@ -35,6 +35,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { TaxonomyBrowsePicker } from '@/components/taxonomy-browse-picker';
 import { captureProductEvent } from '@/components/analytics-provider';
 import styles from './library-product.module.css';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { NativeSelect } from '@/components/ui/native-select';
+import { LibraryMaterialSheet, type LibrarySelection } from '@/components/missa/library-material-sheet';
 
 export type LibraryProductView = 'works' | 'files' | 'answers';
 export type LibraryProductSort = 'updated' | 'title';
@@ -121,6 +124,8 @@ function excerpt(value: string, max = 180): string {
 export function LibraryProduct({ works, files, answers, initialView, initialSort, initialQuery, storageReady }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [selection, setSelection] = useState<LibrarySelection | null>(null);
+  useEffect(() => { setViewState(initialView); setSortState(initialSort); setQuery(initialQuery); }, [initialView, initialSort, initialQuery]);
   const [view, setViewState] = useState(initialView);
   const [sort, setSortState] = useState(initialSort);
   const [query, setQuery] = useState(initialQuery);
@@ -178,7 +183,7 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
 
   const count = view === 'works' ? visibleWorks.length : view === 'files' ? visibleFiles.length : visibleAnswers.length;
   const total = view === 'works' ? works.length : view === 'files' ? files.length : answers.length;
-  const createLabel = view === 'works' ? 'New Work' : view === 'files' ? 'Upload file' : 'New Saved Answer';
+  const createLabel = view === 'works' ? 'New work' : view === 'files' ? 'Upload file' : 'New text';
 
   async function submitCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -273,100 +278,41 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
   }
 
   return (
-    <section className={styles.library} aria-labelledby="library-title">
-      <header className={styles.heading}>
-        <div>
-          <p className={styles.eyebrow}>Private creative archive</p>
-          <h1 id="library-title">Library</h1>
-          <p>Find the Work, file, or reusable answer you need without changing what an Organization already received.</p>
-        </div>
-        <Button type="button" onClick={() => { setError(undefined); setCreateOpen(true); }}><Plus aria-hidden="true" />{createLabel}</Button>
+    <section className="mx-auto max-w-6xl space-y-6 pb-12" aria-labelledby="library-title">
+      <header className="flex flex-wrap items-end justify-between gap-6">
+        <div><h1 id="library-title" className="font-sans text-3xl font-semibold tracking-tight">Library</h1><p className="mt-2 text-muted-foreground">Your work, ready for its next application.</p></div>
+        <Button type="button" disabled={view === 'files' && !storageReady} onClick={() => { setError(undefined); setCreateOpen(true); }}><Plus aria-hidden="true" />{createLabel}</Button>
       </header>
-
-      <div className={styles.viewBar}>
+      <Tabs value={view} onValueChange={value => setView(value as LibraryProductView)} className="gap-6">
         <nav aria-label="Library views">
-          {([
-            ['works', 'Works', works.length],
-            ['files', 'Files', files.length],
-            ['answers', 'Saved Answers', answers.length],
-          ] as Array<[LibraryProductView, string, number]>).map(([id, label, itemCount]) => (
-            <button key={id} type="button" aria-current={view === id ? 'page' : undefined} onClick={() => setView(id)}>
-              {label}<span>{itemCount}</span>
-            </button>
-          ))}
+          <TabsList variant="line" className="min-h-12 max-w-full gap-4 sm:gap-8">{([
+          ['works', 'Works', works.length], ['files', 'Files', files.length], ['answers', 'Reusable text', answers.length],
+          ] as const).map(([id, title, n]) => <TabsTrigger key={id} value={id} className="min-h-11 px-1">{title}<span className="text-xs tabular-nums text-muted-foreground">{n}</span></TabsTrigger>)}</TabsList>
         </nav>
-        <p><ShieldCheck aria-hidden="true" />Private by default</p>
-      </div>
-
-      {error ? <p className={styles.error} role="alert">{error}</p> : null}
-      {status ? <p className={styles.status} role="status" aria-live="polite">{status}</p> : null}
-
-      <div className={styles.toolbar}>
-        <label className={styles.search}>
-          <span>Search {view === 'answers' ? 'Saved Answers' : view}</span>
-          <span><Search aria-hidden="true" /><Input type="search" value={query} onChange={(event) => { const next = event.target.value; setQuery(next); writeUrl({ q: next }); }} placeholder={view === 'works' ? 'Title, file, or field term' : view === 'files' ? 'Filename' : 'Saved Answer name'} /></span>
-        </label>
-        <label className={styles.sort}>
-          <span>Sort</span>
-          <span><select value={sort} onChange={(event) => setSort(event.target.value as LibraryProductSort)}><option value="updated">Recently updated</option><option value="title">Title A–Z</option></select><ChevronDown aria-hidden="true" /></span>
-        </label>
-      </div>
-
-      <div className={styles.resultMeta}><p>{query.trim() ? `${count} matching` : total} {view === 'answers' ? 'Saved Answers' : view}</p><span>{query.trim() ? `Search: ${query.trim()}` : 'All items'}</span></div>
-
-      {view === 'works' ? (
-        visibleWorks.length ? <div className={styles.results}>{visibleWorks.map((work) => (
-          <article key={work.id} className={styles.workRow}>
-            <span className={styles.workMark} aria-hidden="true">{work.title.slice(0, 1).toLocaleUpperCase()}</span>
-            <div className={styles.identity}>
-              <p>{work.terms.slice(0, 2).map((term) => term.label).join(' · ') || 'Field not described yet'}</p>
-              <h2>{work.title}</h2>
-              {work.description ? <p>{excerpt(work.description)}</p> : <p className={styles.quiet}>No description yet.</p>}
-              {work.terms.length ? <div className={styles.terms} aria-label={`Field terms for ${work.title}`}>{work.terms.slice(0, 4).map((term) => <span key={term.termId}>{term.label}</span>)}</div> : null}
-            </div>
-            <dl className={styles.facts}>
-              <div><dt>Current file</dt><dd>{work.file?.filename ?? 'No file linked'}</dd></div>
-              <div><dt>Connections</dt><dd>{work.trackerCount} Tracker · {work.checklistCount} checklist</dd></div>
-              <div><dt>Updated</dt><dd>{formatDate(work.updatedAt)}</dd></div>
-            </dl>
-            <Link href={workHref(work.id)} className={buttonVariants({ variant: 'outline' })}>Open Work</Link>
-          </article>
-        ))}</div> : <EmptyState icon={<FolderOpen aria-hidden="true" />} title={query.trim() ? `No Works match “${query.trim()}”` : 'Begin with a Work, not a folder'} body={query.trim() ? 'Clear search or try a title, filename, or field term.' : 'A Work keeps its current file, field terms, and preparation connections together.'} action={query.trim() ? <Button type="button" variant="outline" onClick={() => setQuery('')}>Clear search</Button> : <Button type="button" onClick={() => setCreateOpen(true)}><Plus aria-hidden="true" />Create your first Work</Button>} />
-      ) : null}
-
-      {view === 'files' ? (
-        visibleFiles.length ? <div className={styles.results}>{visibleFiles.map((file) => (
-          <article key={file.id} className={styles.resourceRow}>
-            <span className={styles.resourceIcon}><FileGlyph contentType={file.contentType} /></span>
-            <div className={styles.identity}><h2>{file.filename}</h2><p>{file.linkedWorks.length ? `Linked to ${file.linkedWorks.map((work) => work.title).join(', ')}` : 'Not linked to a Work'}</p></div>
-            <dl className={styles.facts}><div><dt>Size</dt><dd>{formatBytes(file.byteLength)}</dd></div><div><dt>Added</dt><dd>{formatDate(file.createdAt)}</dd></div><div><dt>Preparation</dt><dd>{file.checklistCount} checklist reference{file.checklistCount === 1 ? '' : 's'}</dd></div></dl>
-            <div className={styles.actions}>
-              {storageReady ? <a href={`/api/me/library/files/${encodeURIComponent(file.id)}`} target="_blank" rel="noreferrer" className={buttonVariants({ variant: 'outline' })}>Open file</a> : <Button type="button" variant="outline" disabled>File unavailable</Button>}
-              <Button type="button" variant="ghost" size="icon" aria-label={`Delete ${file.filename}`} onClick={() => setDeleteTarget({ kind: 'file', id: file.id, revision: file.revision, name: file.filename, linkedWorks: file.linkedWorks.length, checklists: file.checklistCount })}><Trash2 aria-hidden="true" /></Button>
-            </div>
-          </article>
-        ))}</div> : <EmptyState icon={<Upload aria-hidden="true" />} title={query.trim() ? `No files match “${query.trim()}”` : 'No files yet'} body={query.trim() ? 'Clear search or try part of the filename.' : storageReady ? 'Upload a private file, then attach it to a Work.' : 'Private file storage is unavailable in this environment. Your Works and Saved Answers are still available.'} action={query.trim() ? <Button type="button" variant="outline" onClick={() => setQuery('')}>Clear search</Button> : storageReady ? <Button type="button" onClick={() => setCreateOpen(true)}><Upload aria-hidden="true" />Upload file</Button> : undefined} />
-      ) : null}
-
-      {view === 'answers' ? (
-        visibleAnswers.length ? <div className={styles.results}>{visibleAnswers.map((answer) => (
-          <article key={answer.id} className={styles.answerRow}>
-            <span className={styles.resourceIcon}><BookOpenText aria-hidden="true" /></span>
-            <div className={styles.identity}><h2>{answer.name}</h2><p>{excerpt(answer.body)}</p><span>{words(answer.body)} words · Updated {formatDate(answer.updatedAt)}</span></div>
-            <div className={styles.actions}>
-              <Button type="button" variant="outline" onClick={() => void copyAnswer(answer)}><Copy aria-hidden="true" />Copy</Button>
-              <Button type="button" variant="ghost" size="icon" aria-label={`Delete ${answer.name}`} onClick={() => setDeleteTarget({ kind: 'answer', id: answer.id, revision: answer.revision, name: answer.name, linkedWorks: 0, checklists: answer.checklistCount })}><Trash2 aria-hidden="true" /></Button>
-            </div>
-          </article>
-        ))}</div> : <EmptyState icon={<BookOpenText aria-hidden="true" />} title={query.trim() ? `No Saved Answers match “${query.trim()}”` : 'No Saved Answers yet'} body={query.trim() ? 'Clear search or try the answer name.' : 'Save a biography, statement, or recurring response you want to adapt later.'} action={query.trim() ? <Button type="button" variant="outline" onClick={() => setQuery('')}>Clear search</Button> : <Button type="button" onClick={() => setCreateOpen(true)}><Plus aria-hidden="true" />Create a Saved Answer</Button>} />
-      ) : null}
-
+        <TabsContent value={view} className="space-y-6">
+          {error && !createOpen && !deleteTarget ? <p className="text-sm text-destructive" role="alert">{error}</p> : null}
+          {status ? <p className="text-sm text-primary" role="status" aria-live="polite">{status}</p> : null}
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="min-w-0 flex-1"><Label htmlFor="library-search" className="sr-only">Search {view === 'answers' ? 'reusable text' : view}</Label><div className="relative"><Search className="pointer-events-none absolute start-3 top-3 size-4 text-muted-foreground" aria-hidden="true"/><Input id="library-search" type="search" className="ps-10" value={query} onChange={event => { setQuery(event.target.value); writeUrl({ q: event.target.value }); }} placeholder={view === 'works' ? 'Search your work' : view === 'files' ? 'Search files' : 'Search reusable text'}/></div></div>
+            <div><Label htmlFor="library-sort" className="sr-only">Sort materials</Label><NativeSelect id="library-sort" value={sort} onChange={event => setSort(event.target.value as LibraryProductSort)}><option value="updated">Recently updated</option><option value="title">Title A–Z</option></NativeSelect></div>
+          </div>
+          <p className="text-xs text-muted-foreground">{query.trim() ? `${count} matching` : total} {view === 'answers' ? 'saved texts' : view}</p>
+          {view === 'works' && visibleWorks.length ? <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{visibleWorks.map(work => <button key={work.id} type="button" aria-label={`Open ${work.title}`} onClick={() => setSelection({ kind: 'work', item: work, href: workHref(work.id) })} className="group flex min-h-64 flex-col overflow-hidden rounded-xl border border-border bg-card text-start outline-offset-4 hover:border-primary focus-visible:outline-2 focus-visible:outline-ring">
+            <span className="flex w-full items-start justify-between gap-4 border-b border-border bg-secondary p-5"><span className="flex size-12 items-center justify-center rounded-lg bg-background font-heading text-2xl text-primary" aria-hidden="true">{work.title.slice(0, 1).toUpperCase()}</span><span className="text-xs text-muted-foreground">{work.terms.slice(0, 2).map(t => t.label).join(' · ')}</span></span>
+            <span className="flex w-full flex-1 flex-col gap-3 p-5"><span className="break-words font-heading text-2xl leading-tight">{work.title}</span>{work.description ? <span className="line-clamp-2 text-sm text-muted-foreground">{work.description}</span> : null}<span className="mt-auto flex flex-wrap items-center justify-between gap-3 pt-4 text-xs text-muted-foreground"><span>{formatDate(work.updatedAt)}</span><span className="text-primary">{work.trackerCount + work.checklistCount > 0 ? 'Linked to applications' : 'Open work'} →</span></span></span>
+          </button>)}</div> : null}
+          {view === 'files' && visibleFiles.length ? <div className="divide-y divide-border border-y border-border">{visibleFiles.map(file => <article key={file.id} className="flex items-start gap-3 py-5 sm:items-center sm:gap-5"><span className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-secondary text-primary"><FileGlyph contentType={file.contentType}/></span><button type="button" className="min-w-0 flex-1 text-start outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setSelection({ kind: 'file', item: file, storageReady })}><span className="block break-words font-medium">{file.filename}</span><span className="mt-2 block text-xs text-muted-foreground">{formatBytes(file.byteLength)} · {formatDate(file.createdAt)}</span>{file.linkedWorks.length ? <span className="mt-2 block text-sm text-muted-foreground">{file.linkedWorks.map(w => w.title).join(', ')}</span> : null}</button><Button type="button" variant="ghost" size="icon" aria-label={`Delete ${file.filename}`} onClick={() => { setError(undefined); setDeleteTarget({ kind: 'file', id: file.id, revision: file.revision, name: file.filename, linkedWorks: file.linkedWorks.length, checklists: file.checklistCount }); }}><Trash2 aria-hidden="true"/></Button></article>)}</div> : null}
+          {view === 'answers' && visibleAnswers.length ? <div className="grid gap-5 sm:grid-cols-2">{visibleAnswers.map(answer => <article key={answer.id} className="flex min-w-0 flex-col rounded-xl border border-border p-5"><button type="button" className="flex-1 text-start outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring" aria-label={`Open ${answer.name}`} onClick={() => setSelection({ kind: 'answer', item: answer })}><span className="block font-sans text-xl font-semibold">{answer.name}</span><span className="mt-4 line-clamp-4 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">{answer.body}</span></button><div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"><span className="text-xs text-muted-foreground">{words(answer.body)} words</span><div className="flex gap-1"><Button type="button" variant="ghost" onClick={() => void copyAnswer(answer)}><Copy aria-hidden="true"/>Copy</Button><Button type="button" variant="ghost" size="icon" aria-label={`Delete ${answer.name}`} onClick={() => { setError(undefined); setDeleteTarget({ kind: 'answer', id: answer.id, revision: answer.revision, name: answer.name, linkedWorks: 0, checklists: answer.checklistCount }); }}><Trash2 aria-hidden="true"/></Button></div></div></article>)}</div> : null}
+          {!count ? <div className="space-y-5 border-y border-border py-12"><FolderOpen className="size-8 text-primary"/><h2 className="font-sans text-xl font-semibold">{query ? 'No matching materials' : view === 'works' ? 'What are you working on?' : view === 'files' ? 'Keep your files together' : 'Write it once. Make it yours each time.'}</h2><p className="max-w-lg text-sm text-muted-foreground">{query ? 'Try another title or clear your search.' : view === 'works' ? 'Add a poem, a portfolio or a project. Link it when you prepare an application.' : view === 'files' ? storageReady ? 'Add a writing sample, portfolio, budget or supporting document.' : 'Private file storage is currently unavailable. Works and reusable text are still available.' : 'Keep your bio, artist statement and other application text here.'}</p>{query ? <Button variant="outline" onClick={() => { setQuery(''); writeUrl({ q: '' }); }}>Clear search</Button> : view !== 'files' || storageReady ? <Button onClick={() => setCreateOpen(true)}><Plus/>{createLabel}</Button> : null}</div> : null}
+        </TabsContent>
+      </Tabs>
+      {selection ? <LibraryMaterialSheet key={`${selection.kind}:${selection.item.id}`} selected={selection} onClose={() => setSelection(null)} onSaved={() => router.refresh()}/> : null}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className={view === 'works' ? styles.createDialog : undefined}>
           <form onSubmit={submitCreate}>
             <DialogHeader>
               <DialogTitle>{createLabel}</DialogTitle>
-              <DialogDescription>{view === 'works' ? 'Create one private creative object. Files and field terms can be changed later without changing a submitted receipt.' : view === 'files' ? 'Upload one private file up to 100 MiB.' : 'Save reusable text privately. Reusing it later creates a separate submission answer.'}</DialogDescription>
+              <DialogDescription>{view === 'works' ? 'Add your work. You can link files and describe it now or later.' : view === 'files' ? 'Upload one private file up to 100 MiB.' : 'A bio, a statement or any text you use in applications.'}</DialogDescription>
             </DialogHeader>
             <div className={styles.formBody}>
               {view === 'works' ? <>
@@ -376,10 +322,10 @@ export function LibraryProduct({ works, files, answers, initialView, initialSort
                 <fieldset><legend>Field terms <span>Optional · up to 32</span></legend><TaxonomyBrowsePicker idPrefix="create-library-work" selectedTermIds={workTermIds} onSelectedTermIdsChange={setWorkTermIds} description="Describe the Work across independent facets. These terms stay private and do not determine eligibility or quality." /></fieldset>
               </> : null}
               {view === 'files' ? <div><Label htmlFor="library-file">Choose file</Label><Input id="library-file" type="file" disabled={!storageReady || busy} onChange={(event) => setUploadFile(event.target.files?.[0])} required /><p>{storageReady ? '1 byte to 100 MiB. Preview support depends on file type.' : 'Private file storage is unavailable in this environment.'}</p></div> : null}
-              {view === 'answers' ? <><div><Label htmlFor="answer-name">Saved Answer name</Label><Input id="answer-name" value={answerName} onChange={(event) => setAnswerName(event.target.value)} maxLength={120} required /><p>{answerName.length}/120 characters</p></div><div><Label htmlFor="answer-body">Answer</Label><Textarea id="answer-body" value={answerBody} onChange={(event) => setAnswerBody(event.target.value)} maxLength={20000} rows={9} required /><p>{answerBody.length}/20,000 characters · {words(answerBody)} words</p></div></> : null}
+              {view === 'answers' ? <><div><Label htmlFor="answer-name">Text name</Label><Input id="answer-name" value={answerName} onChange={(event) => setAnswerName(event.target.value)} maxLength={120} required /><p>{answerName.length}/120 characters</p></div><div><Label htmlFor="answer-body">Text</Label><Textarea id="answer-body" value={answerBody} onChange={(event) => setAnswerBody(event.target.value)} maxLength={20000} rows={9} required /><p>{answerBody.length}/20,000 characters · {words(answerBody)} words</p></div></> : null}
               {error ? <p className={styles.error} role="alert">{error}</p> : null}
             </div>
-            <DialogFooter><DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose><Button type="submit" disabled={busy || (view === 'works' ? !workTitle.trim() : view === 'files' ? !storageReady || !uploadFile : !answerName.trim() || !answerBody.trim())}>{busy ? 'Saving…' : view === 'works' ? 'Create Work' : view === 'files' ? 'Upload file' : 'Save Answer'}</Button></DialogFooter>
+            <DialogFooter><DialogClose render={<Button type="button" variant="outline" />}>Cancel</DialogClose><Button type="submit" disabled={busy || (view === 'works' ? !workTitle.trim() : view === 'files' ? !storageReady || !uploadFile : !answerName.trim() || !answerBody.trim())}>{busy ? 'Saving…' : view === 'works' ? 'Create work' : view === 'files' ? 'Upload file' : 'Save text'}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

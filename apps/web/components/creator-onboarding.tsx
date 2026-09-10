@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
+import { MissaWordmark } from "@/components/missa-wordmark";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -12,6 +13,8 @@ import {
 } from "@/lib/creatorOnboardingTaxonomy";
 
 type OnboardingStateProps = {
+  /** Local design tour only: no account writes. */
+  preview?: boolean;
   initialPractices?: string[];
   initialRefinements?: string[];
   initialInterests?: string[];
@@ -33,6 +36,7 @@ const INTEREST_IMAGES = [
 ];
 
 export function CreatorOnboarding({
+  preview = false,
   initialPractices = [],
   initialRefinements = [],
   initialInterests = [],
@@ -40,7 +44,7 @@ export function CreatorOnboarding({
   initialStatus = "not_started",
 }: OnboardingStateProps) {
   const router = useRouter();
-  const [step, setStep] = useState(initialStep >= 2 ? 0 : initialStep);
+  const [step, setStep] = useState(initialStatus === "completed" || initialStatus === "skipped" ? 2 : Math.min(2, Math.max(0, initialStep)));
   const [practices, setPractices] = useState<string[]>(initialPractices);
   const [refinements, setRefinements] = useState<string[]>(initialRefinements);
   const [interests, setInterests] = useState<string[]>(initialInterests);
@@ -60,6 +64,7 @@ export function CreatorOnboarding({
   ).flatMap((p) => p.refinements);
 
   async function handleSaveStep(nextStep: number) {
+    if (preview) { move(nextStep); return; }
     setSaving(true);
     setError(null);
     try {
@@ -76,46 +81,47 @@ export function CreatorOnboarding({
         }),
       });
       if (!response.ok) {
-        throw new Error("Failed to save choices");
+        const payload = await response.json().catch(() => undefined) as { error?: string } | undefined;
+        throw new Error(payload?.error ?? "We could not save your choices. Please try again.");
       }
       move(nextStep);
-    } catch (err) {
-      setError("We could not save your choices. You can continue and we will retry.");
-      move(nextStep);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "We could not save your choices. Please try again.");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleSkip() {
+    if (preview) { move(2); return; }
     setSaving(true);
     setError(null);
     try {
-      await fetch("/api/me/onboarding", {
+      const response = await fetch("/api/me/onboarding", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "skip",
           step,
-          lastRoute: "/workspace",
+          lastRoute: "/tracker",
         }),
       });
-      router.push("/workspace");
+      if (!response.ok) throw new Error("Could not skip setup");
+      router.push("/tracker");
     } catch {
-      router.push("/workspace");
+      setSaving(false);
+      setError("We could not save this change. Please try again.");
+      return;
     } finally {
       setSaving(false);
     }
   }
 
-  const currentSelected = step === 0 ? practices : interests;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="mx-auto flex max-w-7xl items-center justify-between gap-4 border-b border-border px-6 py-5 md:px-10">
-        <Link href="/opportunities" aria-label="Missa home">
-          <img src="/brand/missa-wordmark-120.svg" alt="Missa" width="120" height="32" />
-        </Link>
+        <MissaWordmark href="/" size="app" />
         <span className="text-xs text-muted-foreground">Your creative space · Setup</span>
       </header>
 
@@ -360,7 +366,7 @@ export function CreatorOnboarding({
               <div className="space-y-3">
                 <Link
                   className={buttonVariants({ className: "w-full" })}
-                  href="/workspace"
+                  href="/tracker"
                 >
                   Enter your workspace
                   <ArrowRight aria-hidden="true" />

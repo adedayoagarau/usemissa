@@ -56,7 +56,7 @@ function DesktopFilters({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selectedTypes = searchParams.getAll("type");
-  const selectedTerms = searchParams.getAll("taxonomy");
+  const selectedDisciplines = searchParams.getAll("discipline");
 
   function navigate(next: URLSearchParams) {
     next.delete("cursor");
@@ -103,7 +103,7 @@ function DesktopFilters({
 
   function clearAll() {
     const next = new URLSearchParams(searchParams.toString());
-    for (const key of ["type", "taxonomy", "taxonomyDescendants", "taxonomyVersion", "location", "fee", "deadlineWithinDays", "deadline"])
+    for (const key of ["type", "discipline", "taxonomy", "taxonomyDescendants", "taxonomyVersion", "location", "fee", "deadlineWithinDays", "deadline"])
       next.delete(key);
     navigate(next);
   }
@@ -136,11 +136,11 @@ function DesktopFilters({
           </CommandItem>)}
         </CommandGroup></CommandList>
       </Command>)}
-      {menu("Discipline", selectedTerms.length, <Command>
+      {menu("Discipline", selectedDisciplines.length, <Command>
         <CommandInput placeholder="Find a discipline…" />
         <CommandList><CommandEmpty>No disciplines found.</CommandEmpty><CommandGroup>
-          {facetCounts.practices.map((option) => <CommandItem key={option.value} value={option.label} data-checked={selectedTerms.includes(option.value)} onSelect={() => toggle("taxonomy", option.value)}>
-            <Checkbox checked={selectedTerms.includes(option.value)} aria-hidden="true" tabIndex={-1} />
+          {facetCounts.disciplines.map((option) => <CommandItem key={option.value} value={option.label} data-checked={selectedDisciplines.includes(option.value)} onSelect={() => toggle("discipline", option.value)}>
+            <Checkbox checked={selectedDisciplines.includes(option.value)} aria-hidden="true" tabIndex={-1} />
             <span>{option.label}</span><span className={styles.optionCount}>{option.count.toLocaleString()}</span>
           </CommandItem>)}
         </CommandGroup></CommandList>
@@ -180,6 +180,7 @@ function FilterPanel({
   const [pending, startTransition] = useTransition();
   const selectedTypes = searchParams.getAll("type");
   const selectedTerms = searchParams.getAll("taxonomy");
+  const selectedDisciplines = searchParams.getAll("discipline");
   function navigate(next: URLSearchParams) {
     next.delete("cursor");
     next.delete("trail");
@@ -285,6 +286,25 @@ function FilterPanel({
                 checked={selectedTypes.includes(value)}
                 onCheckedChange={(checked) =>
                   toggleValue("type", value, checked === true)
+                }
+              />
+              <span>{label}</span>
+              <small>{count.toLocaleString()}</small>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className={styles.group}>
+        <legend>Discipline</legend>
+        <div className={styles.checkList}>
+          {facetCounts.disciplines.map(({ value, label, count }) => (
+            <label key={value} className={styles.checkRow}>
+              <Checkbox
+                aria-label={label}
+                checked={selectedDisciplines.includes(value)}
+                onCheckedChange={(checked) =>
+                  toggleValue("discipline", value, checked === true)
                 }
               />
               <span>{label}</span>

@@ -30,7 +30,7 @@ export async function PUT(request: Request) {
   if (!repository) return json({ error: "Notification preferences are unavailable." }, 503);
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const cadence = body?.digestCadence;
-  const fields = ["inAppEnabled", "emailEnabled", "savedSearchEnabled", "followEnabled", "reminderEnabled"] as const;
+  const fields = ["inAppEnabled", "emailEnabled", "savedSearchEnabled", "followEnabled", "reminderEnabled", "smsEnabled"] as const;
   if (!body || !fields.every((field) => typeof body[field] === "boolean") || !["off", "daily", "weekly"].includes(String(cadence))) {
     return json({ error: "Choose valid notification settings." }, 400);
   }
@@ -42,7 +42,7 @@ export async function PUT(request: Request) {
   const input = {
     inAppEnabled: Boolean(body.inAppEnabled), emailEnabled: Boolean(body.emailEnabled),
     digestCadence: cadence as "off" | "daily" | "weekly", savedSearchEnabled: Boolean(body.savedSearchEnabled),
-    followEnabled: Boolean(body.followEnabled), reminderEnabled: Boolean(body.reminderEnabled),
+    followEnabled: Boolean(body.followEnabled), reminderEnabled: Boolean(body.reminderEnabled), smsEnabled: Boolean(body.smsEnabled), smsPhone: typeof body.smsPhone === "string" ? body.smsPhone.trim() : null,
   };
   try {
     const receipt = await repository.update(

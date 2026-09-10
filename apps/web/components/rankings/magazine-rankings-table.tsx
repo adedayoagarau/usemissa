@@ -1,18 +1,25 @@
+
+import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import Link from "next/link";
 import { Award, Clock, DollarSign, ArrowUp, ArrowDown, Minus, Sparkles } from "lucide-react";
 import type { MagazineRankingRow } from "@missa/radar-adapters";
 import type { RankingGenre } from "@missa/radar-engine";
+import { MagazineScheduleBadge } from "@/components/ui/magazine-schedule-badge";
+import { MagazineCitizenshipBadges } from "@/components/missa/magazine-citizenship-badges";
+import { MagazineTrackerAction } from "@/components/rankings/magazine-tracker-action";
 
 interface MagazineRankingsTableProps {
   items: MagazineRankingRow[];
   currentGenre: RankingGenre;
   total: number;
+  signedIn?: boolean;
 }
 
 export function MagazineRankingsTable({
   items,
   currentGenre,
   total,
+  signedIn = false,
 }: MagazineRankingsTableProps) {
   const GENRE_TABS: Array<{ genre: RankingGenre; label: string }> = [
     { genre: "overall", label: "Overall Index" },
@@ -78,7 +85,7 @@ export function MagazineRankingsTable({
                 Turnaround (15)
               </th>
               <th scope="col" className="py-3.5 pr-4 pl-3 text-right sm:pr-6">
-                Tier
+                Tracker
               </th>
             </tr>
           </thead>
@@ -122,10 +129,14 @@ export function MagazineRankingsTable({
 
                 {/* Magazine Identity */}
                 <td className="py-4 px-3">
-                  <div className="font-semibold text-foreground hover:text-primary">
-                    <Link href={`/journals/${encodeURIComponent(row.slug)}`}>
+                  <div className="flex flex-wrap items-center gap-2 font-semibold text-foreground">
+                    <Link
+                      href={`/journal/${encodeURIComponent(row.slug)}`}
+                      className="hover:text-primary"
+                    >
                       {row.name}
                     </Link>
+                    <MagazineScheduleBadge schedule={row.schedule} />
                   </div>
                   <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span className="capitalize">{row.genre}</span>
@@ -138,6 +149,11 @@ export function MagazineRankingsTable({
                       </>
                     ) : null}
                   </div>
+                  <MagazineCitizenshipBadges
+                    ranking={row}
+                    compact
+                    className="mt-2"
+                  />
                 </td>
 
                 {/* Total Score */}
@@ -171,11 +187,18 @@ export function MagazineRankingsTable({
                   </div>
                 </td>
 
-                {/* Tier Badge */}
+                {/* Tracker Action */}
                 <td className="py-4 pr-4 pl-3 text-right sm:pr-6">
-                  <span className="inline-flex items-center rounded-md bg-accent-tint/15 border border-accent-tint/30 px-2 py-0.5 text-xs font-medium text-accent-deep">
-                    {row.prestigeTier.replace(/ \(.*\)/, "")}
-                  </span>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <RankingTierBadge tier={row.prestigeTier} />
+                    <MagazineTrackerAction
+                      magazineName={row.name}
+                      magazineSlug={row.slug}
+                      activeOpportunity={row.activeOpportunity}
+                      signedIn={signedIn}
+                      returnTo={`/rankings/magazines?genre=${currentGenre}`}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}

@@ -4,6 +4,7 @@ import * as React from "react";
 import { useState } from "react";
 import { Clock, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { MagazineTelemetrySummary } from "@missa/radar-adapters";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +18,10 @@ interface ReportResponseDialogProps {
   profileId: string;
   magazineName: string;
   trigger?: React.ReactNode;
-  onSuccess?: (newMedianDays: number | null) => void;
+  onSuccess?: (
+    newMedianDays: number | null,
+    telemetrySummary?: MagazineTelemetrySummary,
+  ) => void;
 }
 
 export function ReportResponseDialog({
@@ -28,12 +32,8 @@ export function ReportResponseDialog({
 }: ReportResponseDialogProps) {
   const [open, setOpen] = useState(false);
   const [genre, setGenre] = useState<string>("fiction");
-  const [submittedDate, setSubmittedDate] = useState<string>(
-    new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-  );
-  const [decisionDate, setDecisionDate] = useState<string>(
-    new Date().toISOString().split("T")[0]
-  );
+  const [submittedDate, setSubmittedDate] = useState<string>("");
+  const [decisionDate, setDecisionDate] = useState<string>("");
   const [outcome, setOutcome] = useState<string>("rejected");
   const [rejectionType, setRejectionType] = useState<string>("form");
   const [feePaidDollars, setFeePaidDollars] = useState<string>("0");
@@ -63,29 +63,37 @@ export function ReportResponseDialog({
           profileId,
           genre,
           submittedDate,
-          decisionDate: outcome === "pending" ? null : decisionDate,
-          responseDays: outcome === "pending" ? null : calculatedDays,
+          decisionDate: outcome === "pending" || !decisionDate ? null : decisionDate,
+          responseDays:
+            outcome === "pending" || calculatedDays <= 0 ? null : calculatedDays,
           outcome,
           rejectionType: outcome === "rejected" ? rejectionType : null,
           feePaidCents: Math.round(parseFloat(feePaidDollars || "0") * 100),
         }),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as {
+        error?: string;
+        message?: string;
+        newMedianDays?: number | null;
+        telemetrySummary?: MagazineTelemetrySummary;
+      };
       if (!res.ok) {
         throw new Error(data.error || "Failed to submit telemetry.");
       }
 
       setSuccessMsg(data.message || "Thank you! Your report has been logged.");
       if (onSuccess) {
-        onSuccess(data.newMedianDays);
+        onSuccess(data.newMedianDays ?? null, data.telemetrySummary);
       }
       setTimeout(() => {
         setOpen(false);
         setSuccessMsg(null);
       }, 1500);
-    } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred.");
+    } catch (err: unknown) {
+      setError(
+        err instanceof Error ? err.message : "An unexpected error occurred.",
+      );
     } finally {
       setLoading(false);
     }
@@ -118,7 +126,7 @@ export function ReportResponseDialog({
               <span>Report Submission Outcome</span>
             </DialogTitle>
             <DialogDescription>
-              Help keep Missa's response times and transparency scores accurate for{" "}
+              Help keep Missa response times and transparency scores accurate for{" "}
               <strong className="text-foreground">{magazineName}</strong>. All reports are strictly anonymous.
             </DialogDescription>
           </DialogHeader>
@@ -177,6 +185,7 @@ export function ReportResponseDialog({
                     value={decisionDate}
                     onChange={(e) => setDecisionDate(e.target.value)}
                     disabled={outcome === "pending"}
+                    required={outcome !== "pending"}
                     className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-50"
                   />
                 </div>

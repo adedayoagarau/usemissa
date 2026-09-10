@@ -36,6 +36,9 @@ export async function POST(request: Request) {
       regularFeeCents: item.regularFeeCents,
       contributorPayCents: item.contributorPayCents,
       simultaneousPolicy: item.simultaneousPolicy,
+      formatEthicsScore: item.formatEthicsScore,
+      activeOpportunity: item.activeOpportunity,
+      schedule: item.schedule,
     }));
 
     const criteria: StrategyCriteria = {

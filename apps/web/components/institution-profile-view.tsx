@@ -2,7 +2,7 @@ import type { ProfileDetail } from "@missa/radar-adapters";
 import Link from "next/link";
 import { InstitutionSocialLinks } from "./institution-social-links";
 import editorialMedia from "@/lib/profile-editorial-media.json";
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import {
   PROFILE_LAYOUTS,
   type ProfileSection,
@@ -40,9 +40,12 @@ function humanize(value: string) {
   return value.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 export function InstitutionProfileView({
-  profile,
+  profile, rankingSummary, journalDetails, opportunityActions,
 }: {
   profile: ProfileDetail;
+  rankingSummary?: ReactNode;
+  journalDetails?: ReactNode;
+  opportunityActions?: Record<string, ReactNode>;
 }) {
   const meta = KIND_METADATA[profile.kind] || KIND_METADATA.all;
   const Icon = meta.icon;
@@ -192,8 +195,16 @@ export function InstitutionProfileView({
     }
     if (!publication && !images.length && curated) images.push(...curated.images);
   }
+  // Preserve issue art present in the legacy profile even when grouped media exists.
+  if (journal) for (const visual of profile.visuals ?? []) {
+    if (visual.assetType === "issue_cover") addImage(visual.imageUrl,
+      [visual.label || "Issue cover", visual.season, visual.issueYear].filter(Boolean).join(" · "), true, {group:"issues"});
+  }
+  const submissionFactLabels = new Set(["Reading period", "Reading fee", "Payment", "Response time", "Unsolicited submissions", "Simultaneous submissions"]);
   const facts = [
     ["Founded", profile.intelligence?.foundingYear],
+    ["Formats", profile.formats.join(", ")],
+    ["Circulation", profile.circulation],
     [
       publication ? "Reading period" : "Application window",
       publication && profile.schedule?.badgeLabel && profile.readingPeriod && !profile.readingPeriod.toLowerCase().includes(profile.schedule.badgeLabel.toLowerCase())
@@ -223,7 +234,7 @@ export function InstitutionProfileView({
         ]
       : []),
   ].filter(
-    ([, value]) => value !== null && value !== undefined && value !== "",
+    ([label, value]) => value !== null && value !== undefined && value !== "" && !(journal && submissionFactLabels.has(String(label))),
   );
   const focusText = cleanCrawledNarrative(profile.editorialFocus || "");
   const focusTerms = [
@@ -287,7 +298,7 @@ export function InstitutionProfileView({
           </Avatar>
           <div>
             <p className={styles.eyebrow}>{meta.label}</p>
-            {website && (
+            {website && !journal && (
               <a
                 href={website}
                 target="_blank"
@@ -298,7 +309,7 @@ export function InstitutionProfileView({
                 <ArrowUpRight size={14} aria-hidden="true" />
               </a>
             )}
-            <InstitutionSocialLinks links={profile.socialLinks || {}} name={profile.name} />
+            {!journal && <InstitutionSocialLinks links={profile.socialLinks || {}} name={profile.name} />}
           </div>
         </div>
         <div className={styles.titleRow}>
@@ -329,6 +340,7 @@ export function InstitutionProfileView({
             </Button>
           </div>
         </div>
+        {rankingSummary}
         <div className={styles.signature}>
           <span>{layout.signature}</span>
           <span>
@@ -354,6 +366,7 @@ export function InstitutionProfileView({
         {!layout.order.includes("gallery") && (
           <a href="#profile-gallery">{layout.media}</a>
         )}
+        {journalDetails && <a href="#profile-rankings">Rankings & reports</a>}
       </nav>
       <div className={styles.contentGrid}>
         <div className={styles.reading}>
@@ -407,14 +420,15 @@ export function InstitutionProfileView({
                     ),
                     opportunities: (
                       <section id="profile-opportunities">
+                        <span id="journal-opportunities-heading" />
                         <div className={styles.sectionHeading}>
                           <h2 className="font-sans">{layout.calls}</h2>
                           <span>{profile.opportunities.length} listed</span>
                         </div>
                         {profile.opportunities.length ? (
                           <div className={styles.opportunities}>
-                            {profile.opportunities.map((opp) => {
-                              const detail =
+                            {profile.opportunities.map((opp, index) => {
+                              const detail = opportunityActions ? (opp.id in opportunityActions ? `/opportunities/${encodeURIComponent(opp.id)}` : undefined) :
                                 opp.detailUrl?.startsWith("/") &&
                                 !opp.detailUrl.startsWith("//")
                                   ? opp.detailUrl
@@ -422,7 +436,7 @@ export function InstitutionProfileView({
                               const official = safeHref(opp.officialWebsite);
                               return (
                                 <Card
-                                  key={opp.id}
+                                  key={`${opp.id}-${index}`}
                                   className={styles.opportunity}
                                 >
                                   <div className={styles.callMeta}>
@@ -449,6 +463,7 @@ export function InstitutionProfileView({
                                     )}
                                   </h3>
                                   <div className={styles.callActions}>
+                                    {opportunityActions?.[opp.id]}
                                     {detail && (
                                       <Link href={detail}>
                                         View opportunity{" "}
@@ -458,7 +473,7 @@ export function InstitutionProfileView({
                                         />
                                       </Link>
                                     )}
-                                    {official && (
+                                    {!opportunityActions && official && (
                                       <a
                                         href={official}
                                         target="_blank"
@@ -584,7 +599,7 @@ export function InstitutionProfileView({
                               )}
                             </p>
                           )}
-                          {profile.editorialTips && !profile.editorialProfile?.submissionGuidance && (
+                          {profile.editorialTips && profile.editorialTips !== profile.editorialProfile?.submissionGuidance && (
                             <p className={styles.prose}>
                               {cleanCrawledNarrative(profile.editorialTips)}
                             </p>
@@ -602,8 +617,11 @@ export function InstitutionProfileView({
                 }
               </Fragment>
             ))}
+          {journalDetails}
         </div>
         <aside className={styles.aside} aria-label="Organization details">
+          {profile.contactName && <p>{profile.contactName}</p>}
+          {profile.contactDetails && <p className={styles.prose}>{profile.contactDetails}</p>}
           {facts.length > 0 && (
             <div className={styles.facts}>
               <h2 className="font-sans">At a glance</h2>

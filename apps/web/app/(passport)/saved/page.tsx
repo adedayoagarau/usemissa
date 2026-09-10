@@ -15,6 +15,7 @@ export default async function SavedPage() {
   if (!session) redirect("/login?next=/saved");
 
   const relational = creatorRelationalAuthorityEnabled(process.env) && Boolean(process.env.DATABASE_URL);
+  if (relational) redirect("/tracker?view=saved");
   const radar = await getEngine();
   const items: TrackerProductItem[] = relational && process.env.DATABASE_URL
     ? await listCanonicalTrackedOpportunities(process.env.DATABASE_URL, session.account.id)

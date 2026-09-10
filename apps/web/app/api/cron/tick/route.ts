@@ -1,3 +1,4 @@
+import { tickGoals } from '@/lib/goal-engine';
 import { NextResponse } from 'next/server';
 import { radarWorkerBatchSize, runRadarWorkerTick, runCoverageWorkerTick, runTaxonomyDiscoveryWorkerTick } from '@missa/radar-adapters';
 import { deliverPendingAlertEmails, deliverPendingDeadlineEmails } from '@/lib/alert-delivery';
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  const goals = await tickGoals();
   let emailDelivery: Awaited<ReturnType<typeof deliverPendingAlertEmails>> | undefined;
   let deadlineDelivery: Awaited<ReturnType<typeof deliverPendingDeadlineEmails>> | undefined;
   const result = await runRadarWorkerTick({
@@ -37,7 +39,7 @@ export async function GET(request: Request) {
     },
   });
   if (result.status === 'skipped') {
-    return NextResponse.json({ status: 'skipped', reason: 'another ingestion tick is running' }, { status: 202 });
+    return NextResponse.json({ status: 'skipped', reason: 'another ingestion tick is running', goals }, { status: 202 });
   }
 
   const report = result.report!;
@@ -45,6 +47,7 @@ export async function GET(request: Request) {
   const discovery = await runTaxonomyDiscoveryWorkerTick({ logger: console });
   return NextResponse.json({
     status: 'completed',
+    goals,
     sourcesChecked: report.sourcesChecked,
     sourcesFailed: report.sourcesFailed,
     changes: report.changes.length,

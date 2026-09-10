@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
  * "discovery" half of the Opportunities page (FR15): what a submitter
  * actually gets matched against, distinct from just browsing the raw feed.
  */
-type SavedSearchView = RadarProfile & { revision?: number };
+type SavedSearchView = RadarProfile & { revision?: number; includeInDigest?: boolean };
 
 export function SavedSearches({ userId, profiles }: { userId: string; profiles: SavedSearchView[] }) {
   const router = useRouter();
@@ -37,6 +37,7 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
   const [taxonomyTermIds, setTaxonomyTermIds] = useState<string[]>([]);
   const [noFeeOnly, setNoFeeOnly] = useState(false);
   const [deadlineWithinDays, setDeadlineWithinDays] = useState('');
+  const [includeInDigest, setIncludeInDigest] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   const createProfile = () => {
@@ -52,6 +53,7 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
             taxonomyIncludeDescendants: true,
             noFeeOnly,
             deadlineWithinDays: deadlineWithinDays ? Number(deadlineWithinDays) : undefined,
+            includeInDigest,
           },
         }),
       });
@@ -64,9 +66,31 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
       setTaxonomyTermIds([]);
       setNoFeeOnly(false);
       setDeadlineWithinDays('');
+      setIncludeInDigest(true);
       setOpen(false);
       toast.success('Saved search created');
       captureProductEvent('opportunity_search_saved', { taxonomyTermCount: taxonomyTermIds.length });
+      router.refresh();
+    });
+  };
+
+  const setDigest = (profile: SavedSearchView, enabled: boolean) => {
+    startTransition(async () => {
+      const response = await fetch(`/api/users/${userId}/profiles/${profile.id}`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'Idempotency-Key': crypto.randomUUID(),
+          'If-Match': String(profile.revision ?? 1),
+        },
+        body: JSON.stringify({ includeInDigest: enabled }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as { error?: string };
+        toast.error(body.error ?? 'We could not update alerts for that search.');
+        return;
+      }
+      toast.success(enabled ? 'Saved-search alerts on' : 'Saved-search alerts off');
       router.refresh();
     });
   };
@@ -137,6 +161,16 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
                     No fee only
                   </FieldLabel>
                 </Field>
+                <Field orientation="horizontal">
+                  <Checkbox
+                    id="saved-search-alerts"
+                    checked={includeInDigest}
+                    onCheckedChange={(checked) => setIncludeInDigest(checked === true)}
+                  />
+                  <FieldLabel htmlFor="saved-search-alerts" className="font-normal">
+                    Include new matches in my alerts
+                  </FieldLabel>
+                </Field>
               </div>
               <DialogFooter>
                 <Button disabled={isPending} onClick={createProfile}>
@@ -149,16 +183,27 @@ export function SavedSearches({ userId, profiles }: { userId: string; profiles: 
         {profiles.length === 0 ? <div className="rounded-lg border border-dashed border-border bg-muted/40 p-5"><p className="font-medium text-foreground">No saved searches yet</p><p className="mt-1 text-sm leading-6 text-muted-foreground">Create one here, or begin from the filters on Opportunities. No current matches means only that Missa has no matching published records right now.</p><Link href="/opportunities" className={cn(buttonVariants({ variant: 'outline' }), 'mt-4')}>Open Opportunities</Link></div> : <div className="space-y-2">
           {profiles.map((p) => (
             <div key={p.id} className="flex items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm">
-              <span>
+              <span className="min-w-0">
                 {p.name}
                 {p.criteria.taxonomyTermIds?.length ? <span className="text-muted-foreground"> · {p.criteria.taxonomyTermIds.map((termId) => taxonomyLabelFor(termId)).join(', ')}</span> : null}
                 {p.criteria.genres?.length ? <span className="text-muted-foreground"> · {p.criteria.genres.join(', ')}</span> : null}
                 {p.criteria.noFeeOnly ? <span className="text-muted-foreground"> · no fee</span> : null}
                 {p.criteria.deadlineWithinDays ? <span className="text-muted-foreground"> · within {p.criteria.deadlineWithinDays}d</span> : null}
               </span>
-              <Button size="sm" variant="outline" disabled={isPending} onClick={() => deleteProfile(p.id)}>
-                Delete
-              </Button>
+              <span className="flex shrink-0 items-center gap-2">
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Checkbox
+                    checked={p.includeInDigest === true}
+                    disabled={isPending}
+                    aria-label={`${p.name}: include new matches in alerts`}
+                    onCheckedChange={(checked) => setDigest(p, checked === true)}
+                  />
+                  Alerts
+                </label>
+                <Button size="sm" variant="outline" disabled={isPending} onClick={() => deleteProfile(p.id)}>
+                  Delete
+                </Button>
+              </span>
             </div>
           ))}
         </div>}

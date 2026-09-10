@@ -106,10 +106,14 @@ export function CreatorPortfolioStudio({
   ownerId,
   publicData,
   initialName = "",
+  embedded = false,
+  sampleTheme = "sage",
 }: {
   ownerId?: string;
   publicData?: PortfolioData;
   initialName?: string;
+  embedded?: boolean;
+  sampleTheme?: "white" | "sage" | "paper" | "mineral" | "night";
 }) {
   const isAccount = Boolean(ownerId && ownerId !== "design-preview-only");
   const [handle, setHandle] = useState(publicData?.handle ?? "");
@@ -125,7 +129,7 @@ export function CreatorPortfolioStudio({
   const [step, setStep] = useState(1);
   const [preview, setPreview] = useState(false);
   const [entryMode, setEntryMode] = useState("link");
-  const [theme, setTheme] = useState<string>(publicData?.theme ?? "sage");
+  const [theme, setTheme] = useState<string>(publicData?.theme ?? sampleTheme);
   const [name, setName] = useState(publicData?.name ?? initialName),
     [bio, setBio] = useState(publicData?.bio ?? ""),
     [photo, setPhoto] = useState(publicData?.photo ?? ""),
@@ -550,12 +554,19 @@ export function CreatorPortfolioStudio({
   const visibleWorks = displayWorks.filter(
     (item) => filter === "All work" || workFormats(item).includes(filter),
   );
+  const PortfolioContainer = embedded ? "section" : "main";
+  const IdentityHeading = embedded ? "h4" : "h1";
+  const WorkHeading = embedded ? "h4" : "h2";
   return (
     <div
-      className={styles.world}
-      data-creator-theme={publicData ? theme : undefined}
+      className={`${styles.world} ${embedded ? styles.embedded : ""}`}
+      data-creator-theme={publicData || embedded ? theme : undefined}
     >
-      <main id="main-content" className={styles.main}>
+      <PortfolioContainer
+        id={embedded ? undefined : "main-content"}
+        className={styles.main}
+        aria-label={embedded ? "Sample creator portfolio" : undefined}
+      >
         {ownerId ? (
           <section
             className={styles.ownerPanel}
@@ -617,7 +628,13 @@ export function CreatorPortfolioStudio({
               <div>
                 <p>
                   Profile address:{" "}
-                  {publishedAt ? <Link href={`/@${currentHandle}`}>usemissa.com/@{currentHandle}</Link> : <span>usemissa.com/@{currentHandle} · not published</span>}
+                  {publishedAt ? (
+                    <Link href={`/@${currentHandle}`}>
+                      usemissa.com/@{currentHandle}
+                    </Link>
+                  ) : (
+                    <span>usemissa.com/@{currentHandle} · not published</span>
+                  )}
                 </p>
                 <Button
                   variant="ghost"
@@ -655,7 +672,9 @@ export function CreatorPortfolioStudio({
           </section>
         ) : !publicData ? (
           <p className={styles.top}>
-            Design preview · fictional creator and work
+            {embedded
+              ? "Sample portfolio · fictional creator and work"
+              : "Design preview · fictional creator and work"}
           </p>
         ) : null}
         <div className={ownerId ? styles.studioLayout : undefined}>
@@ -1222,7 +1241,9 @@ export function CreatorPortfolioStudio({
                   />
                 )}
                 <div>
-                  <h1 className="font-heading">{displayName}</h1>
+                  <IdentityHeading className="font-heading">
+                    {displayName}
+                  </IdentityHeading>
                   <p className={styles.disciplines}>
                     {isSample
                       ? "poet / sound artist / photographer"
@@ -1231,62 +1252,67 @@ export function CreatorPortfolioStudio({
                   </p>
                   <p className={styles.bio}>
                     {isSample
-                      ? "I work across text, field recordings and photography to trace the quiet geographies that hold us and the ones we leave behind."
+                      ? embedded
+                        ? "I make poems, photographs and sound recordings."
+                        : "I work across text, field recordings and photography to trace the quiet geographies that hold us and the ones we leave behind."
                       : bio ||
                         (ownerId
                           ? "A few words about you and what you make."
                           : "")}
                   </p>
-                  <div className={styles.contactActions}>
-                    {isSample ? (
-                      <>
-                        <Button onClick={() => setContactDemo(true)}>
-                          <Mail aria-hidden="true" />
-                          Contact Riley
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          aria-label="Website — sample link"
-                          onClick={() => setContactDemo(true)}
-                        >
-                          <Globe aria-hidden="true" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          aria-label="Instagram — sample link"
-                          onClick={() => setContactDemo(true)}
-                        >
-                          <Instagram aria-hidden="true" />
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email) && (
-                          <Button
-                            nativeButton={false}
-                            role="link"
-                            render={
-                              <a
-                                href={`mailto:${encodeURIComponent(contact.email)}`}
-                              />
-                            }
-                          >
+                  {!embedded && (
+                    <div className={styles.contactActions}>
+                      {isSample ? (
+                        <>
+                          <Button onClick={() => setContactDemo(true)}>
                             <Mail aria-hidden="true" />
-                            Contact {displayName.split(" ")[0]}
+                            Contact Riley
                           </Button>
-                        )}
-                        <InstitutionSocialLinks
-                          name={displayName}
-                          links={{
-                            website: publicWebUrl(contact.website) ?? null,
-                            instagram: publicWebUrl(contact.instagram) ?? null,
-                          }}
-                        />
-                      </>
-                    )}
-                  </div>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            aria-label="Website — sample link"
+                            onClick={() => setContactDemo(true)}
+                          >
+                            <Globe aria-hidden="true" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            aria-label="Instagram — sample link"
+                            onClick={() => setContactDemo(true)}
+                          >
+                            <Instagram aria-hidden="true" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          {/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email) && (
+                            <Button
+                              nativeButton={false}
+                              role="link"
+                              render={
+                                <a
+                                  href={`mailto:${encodeURIComponent(contact.email)}`}
+                                />
+                              }
+                            >
+                              <Mail aria-hidden="true" />
+                              Contact {displayName.split(" ")[0]}
+                            </Button>
+                          )}
+                          <InstitutionSocialLinks
+                            name={displayName}
+                            links={{
+                              website: publicWebUrl(contact.website) ?? null,
+                              instagram:
+                                publicWebUrl(contact.instagram) ?? null,
+                            }}
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </header>
               {formats.length > 1 && (
@@ -1341,7 +1367,9 @@ export function CreatorPortfolioStudio({
                         </button>
                       )}
                       <div>
-                        <h2 className="font-heading">{title}</h2>
+                        <WorkHeading className="font-heading">
+                          {title}
+                        </WorkHeading>
                         <p className={styles.disciplines}>
                           {filter === "Images"
                             ? "Photography"
@@ -1356,7 +1384,7 @@ export function CreatorPortfolioStudio({
                         {isSample && filter === "Images" && (
                           <p>Landscape seen through a train window.</p>
                         )}
-                        {isSample && filter === "All work" && (
+                        {isSample && !embedded && filter === "All work" && (
                           <p>
                             A study of places in transition—gathered in
                             notebooks, recordings and photographs made while
@@ -1376,7 +1404,7 @@ export function CreatorPortfolioStudio({
                         {filter !== "Images" && filter !== "Sound" && (
                           <p className={styles.poem}>
                             {isSample
-                              ? "The train keeps a separate weather\nthan the one outside—\ncondensing, clearing,\nforgetting as we move."
+                              ? "The train carries weather from one place to the next—\ncondensing, clearing,\nchanging as we move."
                               : work.text.slice(0, 180)}
                           </p>
                         )}
@@ -1426,7 +1454,7 @@ export function CreatorPortfolioStudio({
                       : ""}
                 </p>
               )}
-              {(filter === "All work" || filter === "Writing") && (
+              {!embedded && (filter === "All work" || filter === "Writing") && (
                 <div className={styles.lower}>
                   {sections.includes("Books") && (isSample || book.title) && (
                     <section style={{ order: sections.indexOf("Books") }}>
@@ -1579,7 +1607,7 @@ export function CreatorPortfolioStudio({
             </>
           </div>
         </div>
-      </main>
+      </PortfolioContainer>
       {ownerId && (
         <div className={styles.phonePreviewBar}>
           <Button
@@ -1712,7 +1740,7 @@ export function CreatorPortfolioStudio({
           <DialogDescription>Text by {displayName}</DialogDescription>
           <p className={styles.poem}>
             {isSample
-              ? "The train keeps a separate weather\nthan the one outside—\ncondensing, clearing,\nforgetting as we move.\n\nI write the names of stations\non the back of yesterday.\nEach valley holds its breath\nand lets us pass.\n\nAt home, I will remember\nnot the distance,\nbut the window—\nhow it made a room of leaving."
+              ? "The train carries weather from one place to the next—\ncondensing, clearing,\nchanging as we move.\n\nI write the names of stations\non the back of yesterday.\nEach valley holds its breath\nand lets us pass.\n\nAt home, I will remember\nnot the distance,\nbut the window—\nhow it made a room of leaving."
               : viewingWork?.text}
           </p>
         </DialogContent>

@@ -2099,6 +2099,7 @@ export const trackedOpportunities = pgTable(
     status: text("status").notNull().default("interested"),
     notify: boolean("notify").notNull().default(true),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    notes: text("notes"),
     workId: text("work_id"),
     lastImportId: text("last_import_id"),
     revision: revision(),
@@ -2143,6 +2144,7 @@ export const trackedStatusEvents = pgTable(
     candidateId: text("candidate_id"),
     evidence: jsonb("evidence").$type<Record<string, unknown>>(),
     idempotencyKey: text("idempotency_key"),
+    occurredOn: date("occurred_on"),
     createdAt,
   },
   (table) => [
@@ -2345,6 +2347,10 @@ export const notificationPreferences = pgTable(
     savedSearchEnabled: boolean("saved_search_enabled").notNull().default(true),
     followEnabled: boolean("follow_enabled").notNull().default(true),
     reminderEnabled: boolean("reminder_enabled").notNull().default(true),
+    smsEnabled: boolean("sms_enabled").notNull().default(false),
+    smsPhone: text("sms_phone"),
+    smsPhoneVerifiedAt: timestamp("sms_phone_verified_at", { withTimezone: true }),
+    smsProviderState: text("sms_provider_state").notNull().default("unavailable"),
     providerState: text("provider_state").notNull().default("unavailable"),
     revision: revision(),
     createdAt,
@@ -2360,10 +2366,152 @@ export const notificationPreferences = pgTable(
       sql`${table.providerState} in ('unavailable', 'available')`,
     ),
     check(
+      "notification_preferences_sms_provider_check",
+      sql`${table.smsProviderState} in ('unavailable', 'available')`,
+    ),
+    check(
       "notification_preferences_revision_check",
       sql`${table.revision} >= 1`,
     ),
   ],
+);
+
+export const creatorGoals = pgTable(
+  "creator_goals",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    target: integer("target").notNull(),
+    startsOn: date("starts_on").notNull(),
+    endsOn: date("ends_on").notNull(),
+    timezone: text("timezone").notNull(),
+    nextStep: text("next_step").notNull(),
+    cadenceDays: integer("cadence_days").notNull(),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true }),
+    state: text("state").notNull().default("active"),
+    recommendations: boolean("recommendations").notNull().default(true),
+    revision: revision(),
+    requestHash: text("request_hash"),
+    opportunityTypes: text("opportunity_types").array().notNull().default(sql`ARRAY[]::text[]`),
+    workId: text("work_id").references(() => creatorLibraryWorks.id, { onDelete: "set null" }),
+    matchPreferences: jsonb("match_preferences").notNull().default(sql`'{}'::jsonb`).$type<Record<string, unknown>>(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("creator_goals_owner").on(table.accountId),
+    index("creator_goals_due").on(table.nextCheckAt),
+    check("creator_goals_target_check", sql`${table.target} between 1 and 1000`),
+    check("creator_goals_dates_check", sql`${table.endsOn} >= ${table.startsOn}`),
+    check("creator_goals_cadence_check", sql`${table.cadenceDays} in (0,7,30)`),
+    check("creator_goals_state_check", sql`${table.state} in ('active','paused','archived')`),
+    check("creator_goals_revision_check", sql`${table.revision} >= 1`),
+  ],
+);
+
+export const creatorGoalTargets = pgTable(
+  "creator_goal_targets",
+  {
+    goalId: text("goal_id").notNull().references(() => creatorGoals.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    targetId: text("target_id").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.goalId, table.kind, table.targetId] }),
+    check("creator_goal_targets_kind_check", sql`${table.kind} in ('opportunity','organization','program')`),
+  ],
+);
+
+export const creatorGoalCheckins = pgTable("creator_goal_checkins", {
+  id: text("id").primaryKey(),
+  goalId: text("goal_id").notNull().references(() => creatorGoals.id, { onDelete: "cascade" }),
+  nextStep: text("next_step").notNull(),
+  createdAt,
+});
+
+export const creatorGoalNotifications = pgTable(
+  "creator_goal_notifications",
+  {
+    id: text("id").primaryKey(),
+    goalId: text("goal_id").notNull().references(() => creatorGoals.id, { onDelete: "cascade" }),
+    dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+    state: text("state").notNull(),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("creator_goal_notifications_due_idx").on(table.goalId, table.dueAt),
+    check("creator_goal_notifications_state_check", sql`${table.state} in ('delivered','suppressed')`),
+  ],
+);
+
+export const creatorApplicationReminders = pgTable(
+  "creator_application_reminders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    opportunityId: text("opportunity_id").notNull().references(() => opportunities.id, { onDelete: "restrict" }),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    timezone: text("timezone").notNull().default("UTC"),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    snoozedUntil: timestamp("snoozed_until", { withTimezone: true }),
+    repeatDays: integer("repeat_days").notNull().default(0),
+    deadlineOffsetDays: integer("deadline_offset_days"),
+    sourceDeadline: date("source_deadline"),
+    state: text("state").notNull().default("scheduled"),
+    lastDeliveredAt: timestamp("last_delivered_at", { withTimezone: true }),
+    revision: revision(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("creator_application_reminders_owner_kind_idx").on(table.accountId, table.opportunityId, table.kind),
+    index("creator_application_reminders_due_idx").on(table.dueAt),
+    check("creator_application_reminders_kind_check", sql`${table.kind} in ('preparation','deadline','response')`),
+    check("creator_application_reminders_state_check", sql`${table.state} in ('scheduled','delivered','cancelled','needs-review','suppressed','expired')`),
+    check("creator_application_reminders_revision_check", sql`${table.revision} >= 1`),
+  ],
+);
+
+export const creatorProgramFollows = pgTable(
+  "creator_program_follows",
+  {
+    accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    programId: text("program_id").notNull().references(() => programs.id, { onDelete: "restrict" }),
+    revision: revision(),
+    createdAt,
+  },
+  (table) => [primaryKey({ columns: [table.accountId, table.programId] }), check("creator_program_follows_revision_check", sql`${table.revision} >= 1`)],
+);
+
+export const creatorFollowEditions = pgTable(
+  "creator_follow_editions",
+  {
+    accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    targetId: text("target_id").notNull(),
+    opportunityId: text("opportunity_id").notNull().references(() => opportunities.id, { onDelete: "cascade" }),
+    editionKey: text("edition_key").notNull(),
+    openSeen: boolean("open_seen").notNull().default(false),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.accountId, table.kind, table.targetId, table.opportunityId, table.editionKey] }), check("creator_follow_editions_kind_check", sql`${table.kind} in ('organization','program')`)],
+);
+
+export const creatorRecommendationFeedback = pgTable(
+  "creator_recommendation_feedback",
+  {
+    accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    opportunityId: text("opportunity_id").notNull().references(() => opportunities.id, { onDelete: "cascade" }),
+    contextKey: text("context_key").notNull(),
+    hidden: boolean("hidden").notNull().default(true),
+    reason: text("reason").notNull(),
+    revision: revision(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [primaryKey({ columns: [table.accountId, table.opportunityId, table.contextKey] }), check("creator_recommendation_feedback_reason_check", sql`${table.reason} in ('not-relevant','wrong-discipline','not-eligible','fee','timing','already-applied','other')`), check("creator_recommendation_feedback_revision_check", sql`${table.revision} >= 1`)],
 );
 
 export const calendarFeedTokens = pgTable(
@@ -2413,6 +2561,12 @@ export const creatorCalendarEvents = pgTable(
     startAt: timestamp("start_at", { withTimezone: true }).notNull(),
     endAt: timestamp("end_at", { withTimezone: true }).notNull(),
     allDay: boolean("all_day").notNull().default(false),
+    opportunityId: text("opportunity_id").references(() => opportunities.id, { onDelete: "set null" }),
+    purpose: text("purpose").notNull().default("personal"),
+    sourceDeadlineDate: date("source_deadline_date"),
+    previousSourceDeadlineDate: date("previous_source_deadline_date"),
+    deadlineChangedAt: timestamp("deadline_changed_at", { withTimezone: true }),
+    deadlineReconciliationStatus: text("deadline_reconciliation_status").notNull().default("current"),
     color: text("color").notNull().default("ink"),
     revision: revision(),
     createdAt,
@@ -2424,6 +2578,9 @@ export const creatorCalendarEvents = pgTable(
       table.startAt,
       table.endAt,
     ),
+    uniqueIndex("creator_calendar_events_official_deadline_idx")
+      .on(table.accountId, table.opportunityId)
+      .where(sql`${table.purpose} = 'official-deadline'`),
     check(
       "creator_calendar_events_range_check",
       sql`${table.endAt} > ${table.startAt}`,
@@ -2769,6 +2926,31 @@ export const trackerListMemberships = pgTable(
   ],
 );
 
+export const applicationMaterialVersions = pgTable(
+  "application_material_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: text("account_id").notNull().references(() => accounts.id, { onDelete: "cascade" }),
+    trackedOpportunityId: text("tracked_opportunity_id").notNull().references(() => trackedOpportunities.id, { onDelete: "cascade" }),
+    eventId: uuid("event_id").notNull().references(() => trackedStatusEvents.id, { onDelete: "cascade" }),
+    materials: jsonb("materials").notNull().$type<Record<string, unknown>>(),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("application_material_versions_event_idx").on(table.eventId),
+    index("application_material_versions_owner_idx").on(table.accountId, table.trackedOpportunityId),
+  ],
+);
+
+export const applicationMaterialFiles = pgTable(
+  "application_material_files",
+  {
+    versionId: uuid("version_id").notNull().references(() => applicationMaterialVersions.id, { onDelete: "cascade" }),
+    fileId: text("file_id").notNull().references(() => creatorLibraryFiles.id, { onDelete: "restrict" }),
+  },
+  (table) => [primaryKey({ columns: [table.versionId, table.fileId] })],
+);
+
 export const trackerChecklists = pgTable(
   "tracker_checklists",
   {
@@ -2892,10 +3074,14 @@ export const opportunityIssueReports = pgTable(
       .notNull()
       .references(() => accounts.id, { onDelete: "cascade" }),
     opportunityId: text("opportunity_id")
-      .notNull()
       .references(() => opportunities.id, { onDelete: "restrict" }),
+    subjectType: text("subject_type").notNull().default("opportunity"),
+    subjectId: text("subject_id").notNull(),
+    subjectPath: text("subject_path"),
     reason: text("reason").notNull(),
     note: text("note"),
+    correction: text("correction"),
+    evidenceUrl: text("evidence_url"),
     status: text("status").notNull().default("open"),
     idempotencyKey: uuid("idempotency_key"),
     createdAt,
@@ -2907,6 +3093,11 @@ export const opportunityIssueReports = pgTable(
     ),
     index("opportunity_issue_reports_status_idx").on(
       table.status,
+      table.createdAt,
+    ),
+    index("opportunity_issue_reports_subject_idx").on(
+      table.subjectType,
+      table.subjectId,
       table.createdAt,
     ),
   ],

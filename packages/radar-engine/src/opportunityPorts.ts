@@ -18,6 +18,8 @@ export type OpportunityRepositoryDeadlineKind =
   | "unknown";
 
 export interface OpportunityRepositoryQuery {
+  /** Internal shortlist lookup; public visibility and account exclusions still apply. */
+  ids?: string[];
   query?: string;
   category?: string;
   types?: OpportunityType[];
@@ -45,6 +47,7 @@ export interface OpportunityRepositoryContext {
 export interface OpportunityFacetCounts {
   total: number;
   types: Array<{ value: OpportunityType; count: number }>;
+  disciplines: Array<{ value: string; count: number }>;
   taxonomyTerms: Array<{ termId: string; count: number }>;
 }
 

@@ -8,9 +8,9 @@ import {
   normalizeMediaUrl,
   inferSourceRole,
   reviewMediaCandidate,
-  runDryRun,
   buildOpportunityBrowseQuery,
 } from "../src/index.js";
+import { runDryRun } from "../src/mediaDryRunCli.js";
 import {
   OFFICIAL_CALL_JSON_LD_HTML,
   OPEN_GRAPH_AND_TWITTER_HTML,

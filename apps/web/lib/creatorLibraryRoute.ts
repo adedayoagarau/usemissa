@@ -23,6 +23,7 @@ export function libraryId(prefix: string, idempotencyKey?: string | null): strin
 }
 
 export function creatorLibraryError(error: unknown) {
+  if (error && typeof error === "object" && Reflect.get(error,"constraint") === "application_material_files_file_id_fkey") return creatorLibraryJson({error:"This file is preserved with a recorded submission. Keep it to retain your application history."},409);
   const errorName = error instanceof Error ? error.name : "";
   if (error instanceof CreatorConflictError || error instanceof CreatorIdempotencyConflictError || errorName === "CreatorConflictError" || errorName === "CreatorIdempotencyConflictError") return creatorLibraryJson({ error: (error as Error).message, conflict: { action: "refresh-and-retry" } }, 409);
   if (error instanceof CreatorLibraryConflictError || errorName === "CreatorLibraryConflictError") return creatorLibraryJson({ error: (error as Error).message }, 409);

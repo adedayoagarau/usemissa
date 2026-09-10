@@ -1,0 +1,43 @@
+import {fileURLToPath} from 'node:url';
+import {randomUUID} from 'node:crypto';
+import assert from 'node:assert/strict';
+import nextEnv from '@next/env';
+import {creatorPoolFor,creatorCommandEnvelope} from '@missa/radar-adapters';
+nextEnv.loadEnvConfig(fileURLToPath(new URL('../../apps/web/',import.meta.url)),true,{info(){},error(){}});
+const {ApplicationWorkspaceRepository}=await import('../../apps/web/lib/application-workspace.ts');
+const {LibraryMaterialUsageRepository}=await import('../../apps/web/lib/library-material-usage.ts');
+const usageRepo=new LibraryMaterialUsageRepository();
+const pool=creatorPoolFor(process.env.DATABASE_URL),repo=new ApplicationWorkspaceRepository(),id=`application-test-${randomUUID()}`,tracked=`tracked-${randomUUID()}`,work=`work-${randomUUID()}`,file=`file-${randomUUID()}`;
+try {
+  await pool.query('insert into radar_accounts(id,email,data) values($1,$2,$3)',[id,`${id}@example.invalid`,JSON.stringify({id,userId:id})]);
+  const call=(await pool.query("select id from opportunities where publication_state='published' order by id limit 1")).rows[0];assert(call);
+  await pool.query('insert into creator_library_works(id,account_id,title,description,metadata) values($1,$2,$3,$4,$5)',[work,id,'Original poems','Original description',JSON.stringify({fileId:file})]);
+  await pool.query('insert into creator_library_files(id,account_id,storage_key,name) values($1,$2,$3,$4)',[file,id,`test/${file}`,'Poems.pdf']);
+  await pool.query('insert into tracked_opportunities(id,account_id,opportunity_id,status,work_id) values($1,$2,$3,$4,$5)',[tracked,id,call.id,'saved',work]);
+  assert.equal((await repo.list(id)).length,1);assert.equal(await repo.detail('not-owner',call.id),null);
+  const notes={action:'notes',notes:'A private preparation note'};
+  const change=(input,revision,key=randomUUID())=>repo.change(creatorCommandEnvelope(id,`application.${input.action}`,key,{opportunityId:call.id,...input},revision),call.id,input);
+  await change(notes,1);assert.equal((await repo.detail(id,call.id)).notes,notes.notes);
+  await assert.rejects(change(notes,1),'stale edits rejected');
+  const day=new Date().toISOString().slice(0,10),record={action:'record',status:'submitted',occurredOn:day,timezone:'UTC',note:'Recorded submission'},key=randomUUID();
+  await change(record,2,key);await change(record,2,key);
+  let detail=await repo.detail(id,call.id);assert.equal(detail.history.length,1,'retry does not duplicate');assert(detail.submittedAt);assert.equal(detail.materials[0].works[0].title,'Original poems');assert.equal(detail.materials[0].files[0].name,'Poems.pdf');
+  await pool.query('update creator_library_works set title=$2,description=$3,revision=revision+1 where id=$1',[work,'Revised poems','New description']);
+  detail=await repo.detail(id,call.id);assert.equal(detail.materials[0].works[0].title,'Original poems','submitted material remains unchanged');
+  const usage=await usageRepo.usage(id,'work',work);assert.equal(usage.applications.length,1);assert(usage.applications[0].preserved);assert.equal(usage.versions[0].material.title,'Original poems');assert.equal(await usageRepo.usage('not-owner','work',work),null);assert.equal((await usageRepo.usage(id,'file',file)).versions.length,1);
+  await assert.rejects(pool.query('delete from creator_library_files where id=$1',[file]),'submitted file pinned');
+  await change({...record,note:'Corrected details'},3);assert.equal((await repo.detail(id,call.id)).materials.length,1,'date correction does not snapshot revised materials');
+  await change({...record,status:'accepted'},4);assert.equal((await repo.detail(id,call.id)).myStatus,'accepted');
+  await change({...record,status:'saved',note:'Corrected mistaken submission'},5);assert.equal((await repo.detail(id,call.id)).submittedAt,null,'reverting to preparation clears effective submission');
+  await assert.rejects(change({...record,occurredOn:'2999-01-01'},6),'future actual dates rejected');
+  assert.equal((await repo.detail(id,call.id)).revision,6,'rejected operation unchanged');
+  console.log('PASS: account ownership, notes, event dates, retries, revisions, immutable materials, pinned files, outcomes, corrections, future-date validation.');
+}finally{
+  await pool.query('delete from tracked_opportunities where account_id=$1',[id]);
+  await pool.query('delete from creator_library_files where account_id=$1',[id]);
+  await pool.query('delete from outbox_events where correlation_id in (select correlation_id from workspace_command_receipts where actor_account_id=$1)',[id]);
+  await pool.query('delete from audit_events where account_id=$1',[id]);
+  await pool.query('delete from workspace_command_receipts where actor_account_id=$1',[id]);
+  await pool.query('delete from radar_accounts where id=$1',[id]);
+  await pool.end();
+}

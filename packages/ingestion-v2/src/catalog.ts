@@ -35,6 +35,11 @@ function sourceKind(entry: SourceRegistryEntry): SourceDefinition["kind"] {
   return "organization-website";
 }
 
+function sourceNameKey(value: string): string[] {
+  return value.toLowerCase().replace(/[^a-z0-9]+/gu, " ").trim().split(/\s+/u)
+    .filter((token) => token.length > 2 && !["open", "calls", "call", "opportunities", "opportunity", "funding"].includes(token));
+}
+
 export function sourceDefinitionFromRegistry(entry: SourceRegistryEntry, adapterId = "generic-html-v2"): SourceDefinition {
   const kind = sourceKind(entry);
   const schedule = scheduleForRegistry(entry, Boolean(entry.active && trustedSource(entry)));
@@ -100,11 +105,21 @@ function applyManifest(entry: SourceManifestEntry, registryEntry: SourceRegistry
 export function createFirstTrancheSources(adapterId = "generic-html-v2"): SourceDefinition[] {
   const errors = validateSourceManifest();
   if (errors.length) throw new Error(`Invalid ingestion v2 source manifest: ${errors.join("; ")}`);
-  const byId = new Map(getRegistry().sources.map((entry) => [entry.id, entry]));
+  const registrySources = getRegistry().sources;
+  const byId = new Map(registrySources.map((entry) => [entry.id, entry]));
+  const byUrl = new Map(registrySources.map((entry) => [entry.url.replace(/\/$/u, '').toLowerCase(), entry]));
   return FIRST_TRANCHE_SOURCE_MANIFEST
     .filter((entry) => entry.runnable && entry.access !== "blocked" && entry.access !== "partner-required")
     .map((entry) => {
-      const registryEntry = byId.get(entry.registrySourceId);
+      const nameCandidates = registrySources.filter((candidate) => {
+        const wanted = sourceNameKey(entry.name);
+        const available = new Set(sourceNameKey(candidate.name));
+        return wanted.some((token) => available.has(token));
+      });
+      const registryEntry = byId.get(entry.registrySourceId)
+        ?? (entry.urlOverride ? byUrl.get(entry.urlOverride.replace(/\/$/u, '').toLowerCase()) : undefined)
+        ?? (nameCandidates.length === 1 ? nameCandidates[0] : undefined)
+        ?? registrySources.find((candidate) => candidate.name === entry.name);
       if (!registryEntry) throw new Error(`Missing registry source for manifest entry ${entry.id}: ${entry.registrySourceId}`);
       return applyManifest(entry, registryEntry, adapterId);
     });

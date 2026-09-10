@@ -108,6 +108,7 @@ interface RelatedRow extends QueryResultRow {
 interface FacetCountsRow extends QueryResultRow {
   total: number | string;
   types: Array<{ value: OpportunityBrowseProjection["type"]; count: number | string }> | null;
+  disciplines: Array<{ value: string; count: number | string }> | null;
   taxonomy_terms: Array<{ termId: string; count: number | string }> | null;
 }
 
@@ -519,6 +520,15 @@ function canonicalLegacyDiscipline(value: string): string {
   return normalized.replaceAll(" ", "-");
 }
 
+const legacyDisciplineSql = `case lower(replace(trim(coalesce(o.discipline, '')), '_', ' '))
+  when 'visual art' then 'visual-arts'
+  when 'visual arts' then 'visual-arts'
+  when 'short story' then 'fiction'
+  when 'flash fiction' then 'fiction'
+  when 'theater' then 'theatre'
+  else replace(lower(trim(coalesce(o.discipline, ''))), ' ', '-')
+end`;
+
 function buildOrder(sort: OpportunityRepositoryQuery["sort"]): string {
   switch (sort) {
     case "recently-verified":
@@ -641,6 +651,7 @@ export function buildOpportunityBrowseQuery(
       : "true",
   ];
   if (query.openNow) values.push(PUBLIC_STATUSES);
+  if (query.ids) addCondition(conditions, values, "o.id = any($VALUE::text[])", query.ids);
 
   const types = [...(query.types ?? []), ...categoryTypes(query.category)];
   if (types.length)
@@ -651,7 +662,7 @@ export function buildOpportunityBrowseQuery(
     addCondition(
       conditions,
       values,
-      "case lower(replace(trim(coalesce(o.discipline, '')), '_', ' ')) when 'visual art' then 'visual-arts' when 'visual arts' then 'visual-arts' when 'short story' then 'fiction' when 'flash fiction' then 'fiction' when 'theater' then 'theatre' else replace(lower(trim(coalesce(o.discipline, ''))), ' ', '-') end = any($VALUE::text[])",
+      `${legacyDisciplineSql} = any($VALUE::text[])`,
       query.disciplines.map(canonicalLegacyDiscipline),
     );
   if (query.genres?.length)
@@ -875,10 +886,22 @@ function facetFilterQuery(
   if (whereStart < 0 || orderStart < 0) {
     throw new Error("Opportunity browse query is missing its filter boundary");
   }
+  // SELECT-only account parameters disappear when extracting WHERE. Keep only
+  // referenced bindings and renumber them, otherwise PostgreSQL cannot infer
+  // the type of an unused placeholder (for example $2 on signed-in browse).
+  const values: unknown[] = [];
+  const bindings = new Map<number, number>();
   const text = built.text
     .slice(whereStart + "\n    where ".length, orderStart)
-    .replace(/\$(\d+)/g, (_, value: string) => `$${Number(value) + parameterOffset}`);
-  return { text, values: built.values.slice(0, -1) };
+    .replace(/\$(\d+)/g, (_, value: string) => {
+      const original = Number(value);
+      if (!bindings.has(original)) {
+        values.push(built.values[original - 1]);
+        bindings.set(original, values.length + parameterOffset);
+      }
+      return `$${bindings.get(original)}`;
+    });
+  return { text, values };
 }
 
 export function buildOpportunityFacetCountsQuery(
@@ -904,6 +927,13 @@ export function buildOpportunityFacetCountsQuery(
     values.length,
   );
   values.push(...taxonomyBase.values);
+  const disciplineBase = facetFilterQuery(
+    { ...query, disciplines: [] },
+    context,
+    taxonomyReads,
+    values.length,
+  );
+  values.push(...disciplineBase.values);
 
   const evidenceJoin = `left join lateral (
     select e.verified_until
@@ -942,13 +972,22 @@ export function buildOpportunityFacetCountsQuery(
       select o.id, o.type from opportunities o ${evidenceJoin} where ${typeBase.text}
     ), taxonomy_base as materialized (
       select o.id from opportunities o ${evidenceJoin} where ${taxonomyBase.text}
+    ), discipline_base as materialized (
+      select o.id, ${legacyDisciplineSql} as value
+      from opportunities o ${evidenceJoin} where ${disciplineBase.text}
     ), type_counts as (
       select type as value, count(distinct id)::int as count
       from type_base group by type
+    ), discipline_counts as (
+      select value, count(distinct id)::int as count
+      from discipline_base
+      where value <> '' and value <> 'all-disciplines'
+      group by value
     )${taxonomyCtes}
     select
       (select count(*)::int from matched) as total,
       coalesce((select jsonb_agg(type_counts order by value) from type_counts), '[]'::jsonb) as types,
+      coalesce((select jsonb_agg(discipline_counts order by value) from discipline_counts), '[]'::jsonb) as disciplines,
       coalesce((select jsonb_agg(jsonb_build_object('termId', term_id, 'count', count) order by term_id) from taxonomy_counts), '[]'::jsonb) as taxonomy_terms`,
     values,
   };
@@ -1138,6 +1177,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     return {
       total: Number(row?.total ?? 0),
       types: (row?.types ?? []).map((item) => ({ ...item, count: Number(item.count) })),
+      disciplines: (row?.disciplines ?? []).map((item) => ({ ...item, count: Number(item.count) })),
       taxonomyTerms: (row?.taxonomy_terms ?? []).map((item) => ({ ...item, count: Number(item.count) })),
     };
   }

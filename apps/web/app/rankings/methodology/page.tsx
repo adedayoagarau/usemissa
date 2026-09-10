@@ -1,3 +1,5 @@
+import catalogueStyles from "@/components/design-system/opportunities-browse-v2-preview.module.css";
+import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Award, DollarSign, Clock, CheckCircle2, ShieldCheck, Sparkles, Scale, HeartHandshake } from "lucide-react";
@@ -11,10 +13,10 @@ export const metadata: Metadata = {
 
 export default function RankingsMethodologyPage() {
   return (
-    <PublicSiteShell current="Directory">
+    <PublicSiteShell current="Magazine rankings">
       <main
         id="main-content"
-        className="mx-auto min-h-screen max-w-4xl min-w-0 px-4 py-12 sm:px-6 sm:py-16"
+        className={catalogueStyles.main}
       >
         {/* Navigation Breadcrumb */}
         <div className="mb-8 flex items-center gap-2 text-sm text-muted-foreground">
@@ -28,15 +30,15 @@ export default function RankingsMethodologyPage() {
         </div>
 
         {/* Header */}
-        <header className="mb-12">
-          <p className="text-sm font-semibold tracking-[0.2em] text-primary uppercase">
-            Editorial Framework · 2026 Edition
+        <header className={`${catalogueStyles.pageIntro} mb-8`}>
+          <p className={catalogueStyles.eyebrow}>
+            Rankings · 2026
           </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-foreground sm:text-5xl">
-            How We Rank Literary Magazines
+          <h1 className="mt-2">
+            Ranking methodology
           </h1>
-          <p className="mt-4 text-lg leading-8 text-muted-foreground">
-            A guide to the Missa Literary Magazine Index (MLMI): why we built a multi-dimensional benchmark, how our 100-point composite score works, and how writers can use these numbers to shape their submission journeys.
+          <p className={catalogueStyles.lede}>
+            The sources, scoring criteria, and tiers behind Missa’s magazine rankings.
           </p>
         </header>
 
@@ -228,9 +230,7 @@ export default function RankingsMethodologyPage() {
 
             <div className="mt-6 space-y-3">
               <div className="flex items-start gap-4 rounded-xl border border-border bg-card/40 p-4">
-                <span className="inline-flex shrink-0 rounded-md bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-600 dark:text-amber-400">
-                  Tier 1 · Score 75+
-                </span>
+                <RankingTierBadge tier="Tier 1">Tier 1 · Score 75+</RankingTierBadge>
                 <div>
                   <h3 className="text-base font-semibold text-foreground">Flagship Luminary</h3>
                   <p className="mt-1 text-sm text-muted-foreground">
@@ -240,9 +240,7 @@ export default function RankingsMethodologyPage() {
               </div>
 
               <div className="flex items-start gap-4 rounded-xl border border-border bg-card/40 p-4">
-                <span className="inline-flex shrink-0 rounded-md bg-blue-500/10 px-2.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400">
-                  Tier 2 · Score 60–74
-                </span>
+                <RankingTierBadge tier="Tier 2">Tier 2 · Score 60–74</RankingTierBadge>
                 <div>
                   <h3 className="text-base font-semibold text-foreground">High Distinction</h3>
                   <p className="mt-1 text-sm text-muted-foreground">
@@ -252,9 +250,7 @@ export default function RankingsMethodologyPage() {
               </div>
 
               <div className="flex items-start gap-4 rounded-xl border border-border bg-card/40 p-4">
-                <span className="inline-flex shrink-0 rounded-md bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  Tier 3 · Score 45–59
-                </span>
+                <RankingTierBadge tier="Tier 3">Tier 3 · Score 45–59</RankingTierBadge>
                 <div>
                   <h3 className="text-base font-semibold text-foreground">Distinguished Contemporary</h3>
                   <p className="mt-1 text-sm text-muted-foreground">
@@ -264,9 +260,7 @@ export default function RankingsMethodologyPage() {
               </div>
 
               <div className="flex items-start gap-4 rounded-xl border border-border bg-card/40 p-4">
-                <span className="inline-flex shrink-0 rounded-md bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground">
-                  Tier 4 · Score &lt; 45
-                </span>
+                <RankingTierBadge tier="Tier 4">Tier 4 · Score &lt; 45</RankingTierBadge>
                 <div>
                   <h3 className="text-base font-semibold text-foreground">Emerging & Community</h3>
                   <p className="mt-1 text-sm text-muted-foreground">

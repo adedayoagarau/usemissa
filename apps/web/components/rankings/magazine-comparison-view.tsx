@@ -3,19 +3,25 @@
 import * as React from "react";
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Award, Clock, DollarSign, Plus, X, ArrowLeft, ArrowUp, ArrowDown, Minus, Sparkles, ExternalLink } from "lucide-react";
+import { RankingMovement, RankingTierBadge } from "@/components/missa/ranking-indicators";
+import { Award, Clock, DollarSign, X, ArrowLeft, ExternalLink } from "lucide-react";
 import type { MagazineRankingRow } from "@missa/radar-adapters";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MagazineScheduleBadge } from "@/components/ui/magazine-schedule-badge";
+import { MagazineCitizenshipBadges } from "@/components/missa/magazine-citizenship-badges";
+import { MagazineTrackerAction } from "@/components/rankings/magazine-tracker-action";
 
 interface MagazineComparisonViewProps {
   allMagazines: MagazineRankingRow[];
   initialSelectedIds: string[];
+  signedIn: boolean;
 }
 
 export function MagazineComparisonView({
   allMagazines,
   initialSelectedIds,
+  signedIn,
 }: MagazineComparisonViewProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds.slice(0, 3));
   const [searchQuery, setSearchQuery] = useState("");
@@ -114,31 +120,18 @@ export function MagazineComparisonView({
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <Link
-                        href={`/journals/${encodeURIComponent(mag.slug)}`}
+                        href={`/journal/${encodeURIComponent(mag.slug)}`}
                         className="text-base font-semibold text-foreground hover:text-primary transition-colors flex items-center gap-1.5"
                       >
                         <span>{mag.name}</span>
                         <ExternalLink className="size-3.5 text-muted-foreground" aria-hidden="true" />
                       </Link>
-                      <div className="mt-1 flex items-center gap-2">
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
                         <span className="font-mono text-xs font-semibold text-primary">
                           #{mag.rankPosition} Overall
                         </span>
-                        {mag.rankDelta != null ? (
-                          mag.rankDelta > 0 ? (
-                            <span className="inline-flex items-center text-accent-deep text-xs font-semibold">
-                              <ArrowUp className="size-3" aria-hidden="true" />
-                              +{mag.rankDelta}
-                            </span>
-                          ) : mag.rankDelta < 0 ? (
-                            <span className="inline-flex items-center text-destructive text-xs font-semibold">
-                              <ArrowDown className="size-3" aria-hidden="true" />
-                              {mag.rankDelta}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">steady</span>
-                          )
-                        ) : null}
+                        <MagazineScheduleBadge schedule={mag.schedule} />
+                        <RankingMovement delta={mag.rankDelta} />
                       </div>
                     </div>
                     <button
@@ -171,9 +164,7 @@ export function MagazineComparisonView({
                     <span className="inline-flex rounded-lg bg-primary/10 px-2.5 py-1 font-mono text-base font-bold text-primary">
                       {mag.totalScore} / 100
                     </span>
-                    <span className="rounded bg-accent-tint/15 px-2 py-0.5 text-xs font-medium text-accent-deep border border-accent-tint/30">
-                      {mag.prestigeTier.replace(/ \(.*\)/, "")}
-                    </span>
+                    <RankingTierBadge tier={mag.prestigeTier} />
                   </div>
                 </td>
               ))}
@@ -235,10 +226,10 @@ export function MagazineComparisonView({
                       {mag.medianResponseDays ? `~${mag.medianResponseDays} days` : `${mag.turnaroundScore}/15`}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {mag.medianResponseDays && mag.medianResponseDays <= 30
-                      ? "Lightning response (< 30 days)"
-                      : mag.medianResponseDays && mag.medianResponseDays <= 60
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {mag.medianResponseDays && mag.medianResponseDays <= 30
+                          ? "Lightning response (< 30 days)"
+                          : mag.medianResponseDays && mag.medianResponseDays <= 60
                       ? "Swift response (< 60 days)"
                       : "Standard literary turnaround"}
                   </p>
@@ -263,6 +254,24 @@ export function MagazineComparisonView({
               ))}
               {Array.from({ length: 3 - selectedMagazines.length }).map((_, i) => (
                 <td key={`empty-fee-${i}`} className="p-4"></td>
+              ))}
+            </tr>
+
+            {/* Editorial Citizenship */}
+            <tr className="divide-x divide-border">
+              <td className="p-4 font-semibold text-foreground">Editorial Badges</td>
+              {selectedMagazines.map((mag) => (
+                <td key={mag.profileId} className="p-4">
+                  <MagazineCitizenshipBadges ranking={mag} />
+                  {!mag.medianResponseDays && mag.regularFeeCents > 0 && mag.contributorPayCents === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No badge thresholds met from current ranking fields.
+                    </p>
+                  ) : null}
+                </td>
+              ))}
+              {Array.from({ length: 3 - selectedMagazines.length }).map((_, i) => (
+                <td key={`empty-badges-${i}`} className="p-4"></td>
               ))}
             </tr>
 
@@ -294,11 +303,18 @@ export function MagazineComparisonView({
                 <td key={mag.profileId} className="p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
-                      href={`/journals/${encodeURIComponent(mag.slug)}`}
+                      href={`/journal/${encodeURIComponent(mag.slug)}`}
                       className={cn(buttonVariants({ variant: "default", size: "sm" }), "text-xs")}
                     >
                       View Full Profile
                     </Link>
+                    <MagazineTrackerAction
+                      magazineName={mag.name}
+                      magazineSlug={mag.slug}
+                      activeOpportunity={mag.activeOpportunity}
+                      signedIn={signedIn}
+                      returnTo="/rankings/compare"
+                    />
                     {mag.websiteUrl ? (
                       <a
                         href={mag.websiteUrl}

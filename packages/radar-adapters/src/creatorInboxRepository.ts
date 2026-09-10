@@ -36,7 +36,7 @@ export class PostgresCreatorInboxRepository extends CreatorRepositoryBase {
       `select alert.id,alert.opportunity_id,alert.kind,alert.title,alert.body,alert.reason,alert.dedupe_key,alert.delivery_eligibility,alert.read_at,alert.revision,alert.created_at
        from creator_inbox_alerts alert
        left join opportunities o on o.id=alert.opportunity_id
-       where alert.account_id=$1 and (alert.opportunity_id is null or ${canonicalPublicOpportunityPredicate("o")})
+       where alert.account_id=$1 and (alert.opportunity_id is null or exists(select 1 from tracked_opportunities t where t.account_id=alert.account_id and t.opportunity_id=alert.opportunity_id) or ${canonicalPublicOpportunityPredicate("o")})
        order by alert.created_at desc,alert.id desc limit 500`,
       [accountId],
     );

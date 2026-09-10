@@ -290,6 +290,8 @@ export function OpportunitiesBrowseV2Preview({
           </div>
         </header>
 
+        {signedIn ? <nav aria-label="Opportunity views" className="mb-6 flex min-h-12 items-center gap-6 border-b border-border text-sm"><Link href="/opportunities" aria-current="page" className="border-b-2 border-primary py-3 font-semibold text-primary">Explore all</Link><Link href="/opportunities/for-you" className="py-3 text-muted-foreground hover:text-primary">For you</Link></nav> : null}
+
         <div className={styles.collectionsBand}>
           <OpportunityCollectionsStrip items={collections.map(item => ({ ...item, href: item.href.replace("/opportunities?", `${basePath}?`) }))} />
         </div>

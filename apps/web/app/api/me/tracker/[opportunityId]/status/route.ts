@@ -66,6 +66,10 @@ export async function POST(
         { status: 400, headers },
       );
     }
+    const occurredOn = body.occurredOn === undefined ? undefined : String(body.occurredOn);
+    if (occurredOn !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(occurredOn)) {
+      return NextResponse.json({ error: "occurredOn must be a valid calendar date" }, { status: 400, headers });
+    }
     let updated;
     try {
       updated = await updateCanonicalTrackerStatus(
@@ -73,7 +77,7 @@ export async function POST(
         session.account.id,
         opportunityId,
         status,
-        { expectedRevision, idempotencyKey },
+        { expectedRevision, idempotencyKey, occurredOn },
       );
     } catch (error) {
       if (error instanceof CreatorConflictError) {

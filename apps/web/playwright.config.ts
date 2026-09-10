@@ -26,6 +26,9 @@ export default defineConfig({
         env: {
           DATABASE_URL: "",
           MISSA_SESSION_SECRET: "missa-e2e-session-secret",
+          MISSA_CREATOR_RELATIONAL_AUTHORITY: "0",
+          MISSA_OPPORTUNITY_REPOSITORY: "engine",
+          MISSA_OPPORTUNITY_CONTENT_READS: "engine",
         },
         url: "http://127.0.0.1:3100",
         reuseExistingServer: false,

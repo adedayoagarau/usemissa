@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { DISCOVERY_BETA, isDiscoveryBetaPath } from "./lib/discoveryBeta";
+
 const REQUEST_PATH_HEADER = "x-missa-request-path";
 
 /**
@@ -70,6 +72,7 @@ async function resolveHandleRedirect(
 
 function shouldRedirectToWaitlist(request: NextRequest): boolean {
   const { pathname, searchParams } = request.nextUrl;
+  if (DISCOVERY_BETA && isDiscoveryBetaPath(pathname)) return false;
   if (
     pathname === "/waitlist" ||
     pathname === "/waitlist/opengraph-image" ||

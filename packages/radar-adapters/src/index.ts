@@ -535,7 +535,10 @@ export * from "./mediaFetcher.js";
 export * from "./mediaExtractor.js";
 export * from "./mediaReviewService.js";
 export { inferSourceRole } from "./enrichmentWorker.js";
-export { runDryRun } from "./mediaDryRunCli.js";
+// The media dry-run CLI is intentionally not exported from this runtime
+// barrel. It imports node:fs and path resolution for offline fixtures; a
+// barrel export makes Next trace the whole repository into every web route.
+// Import `./mediaDryRunCli.js` directly from the CLI entrypoint instead.
 export * from "./editorialWriter.js";
 export {
   extractVolumeAndNumber,
@@ -570,8 +573,9 @@ export {
 
 export {
   PostgresMagazineRankingRepository,
+  type MagazineRankingOpportunity,
   type MagazineRankingRow,
   type MagazineRankingsFilter,
   type MagazineRankingPage,
+  type MagazineTelemetrySummary,
 } from "./ranking/magazineRankingRepository.js";
-

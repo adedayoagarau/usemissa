@@ -1,0 +1,5093 @@
+{
+  "date": "2026-09-05",
+  "head": "a2139ec0fd26e4bbb9b1f805a8ccc6a6d19626e9",
+  "boundary": "Structural source inventory, not runtime certification. Includes current uncommitted worker changes.",
+  "pages": [
+    {
+      "file": "apps/web/app/(admin)/admin/agents/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-agent-controls",
+        "@/components/platform-admin",
+        "@/lib/platformAdminFoundations"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/analytics/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-analytics",
+        "@/components/platform-admin",
+        "@/lib/platformAdminViews"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/audit/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/billing/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-billing",
+        "@/components/platform-admin",
+        "@/lib/platformAdminFoundations"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/content/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-content",
+        "@/components/platform-admin",
+        "@/lib/platformAdminViews"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/crm/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-crm",
+        "@/components/platform-admin",
+        "@/lib/platformAdminFoundations"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/customers/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-customers",
+        "@/components/platform-admin",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/email-previews/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin",
+        "@/lib/platformAdmin",
+        "./email-preview-client",
+        "@/emails/welcome",
+        "@/emails/deadline-reminder",
+        "@/emails/decision-letter",
+        "@/emails/alert-digest",
+        "@/emails/password-reset"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/gary/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin",
+        "@/components/platform-admin-gary",
+        "@/lib/platformAdminGary"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/governance/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-governance",
+        "@/components/platform-admin",
+        "@/lib/platformAdminContinuation"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/ingestion-v2/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/ingestion-v2-workbench",
+        "@/components/platform-admin",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/messaging/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-messaging",
+        "@/components/platform-admin",
+        "@/lib/platformAdminContinuation"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/operations/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-queue",
+        "@/components/platform-admin",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/organizations/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-organizations",
+        "@/components/platform-admin",
+        "@/lib/platformAdminContinuation"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-control-room",
+        "@/components/platform-admin",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/radar/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "lucide-react",
+        "@/components/platform-admin",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/support/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin-support",
+        "@/components/platform-admin",
+        "@/lib/platformAdminSupport"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/system/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/taxonomy/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@missa/radar-adapters",
+        "@/components/platform-admin",
+        "@/components/platform-admin-taxonomy-proposals"
+      ]
+    },
+    {
+      "file": "apps/web/app/(admin)/admin/waitlist/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/platform-admin",
+        "@/lib/platformAdminWaitlist",
+        "@missa/radar-adapters"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/ask/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation",
+        "@/components/chat/ask-missa",
+        "./ask.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/calendar/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/navigation",
+        "@/lib/auth",
+        "@/components/calendar-workspace"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/home/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/import/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation",
+        "next/headers",
+        "@/lib/auth",
+        "@/components/tracker-import-stepper"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/inbox/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/navigation",
+        "@missa/radar-engine",
+        "@missa/radar-adapters",
+        "@/components/inbox-product",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/insights/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/library/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/navigation",
+        "@missa/radar-engine",
+        "@missa/taxonomy",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/components/library-product"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/library/works/[workId]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/navigation",
+        "@missa/taxonomy",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/components/work-detail-product"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/messages/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/my-submissions/[submissionId]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/my-submissions/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/saved/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/navigation",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/components/saved-opportunities",
+        "@/components/tracker-product"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/tracker/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/navigation",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/workspaceEngine",
+        "@/lib/creatorRepositories",
+        "@/components/tracker-product"
+      ]
+    },
+    {
+      "file": "apps/web/app/(passport)/tracker/submissions/[submissionId]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/workspaceEngine",
+        "@/components/withdraw-submission-button",
+        "./submission-detail.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/(workspace)/reviewer/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation"
+      ]
+    },
+    {
+      "file": "apps/web/app/(workspace)/submissions/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation",
+        "next/headers",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/workspaceEngine",
+        "@/components/submission-card",
+        "next/link"
+      ]
+    },
+    {
+      "file": "apps/web/app/(workspace)/workspace/decisions/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "@/lib/workspacePage"
+      ]
+    },
+    {
+      "file": "apps/web/app/(workspace)/workspace/delivery/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "@/lib/workspacePage"
+      ]
+    },
+    {
+      "file": "apps/web/app/(workspace)/workspace/insights/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/lib/workspacePage"
+      ]
+    },
+    {
+      "file": "apps/web/app/(workspace)/workspace/messages/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "@/lib/workspacePage"
+      ]
+    },
+    {
+      "file": "apps/web/app/(workspace)/workspace/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation",
+        "next/headers",
+        "next/link",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/workspaceEngine",
+        "@/lib/creatorRepositories",
+        "@missa/radar-adapters",
+        "@/components/workspace-forms",
+        "@/components/form-builder",
+        "@/components/organization-seats",
+        "@/components/organization-billing",
+        "@/components/open-call-controls",
+        "@/components/creator-workspace",
+        "@/components/tracker-product",
+        "@/lib/creatorOnboardingTaxonomy"
+      ]
+    },
+    {
+      "file": "apps/web/app/(workspace)/workspace/people/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/organization-seats",
+        "@/lib/workspacePage"
+      ]
+    },
+    {
+      "file": "apps/web/app/(workspace)/workspace/reviews/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "@/lib/workspacePage"
+      ]
+    },
+    {
+      "file": "apps/web/app/(workspace)/workspace/settings/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/components/organization-billing",
+        "@/lib/workspacePage"
+      ]
+    },
+    {
+      "file": "apps/web/app/[handle]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation",
+        "@missa/radar-adapters",
+        "@/components/public-site-shell",
+        "@/components/creator-portfolio-studio",
+        "@/lib/creatorRepositories",
+        "@/lib/creator-portfolio-schema"
+      ]
+    },
+    {
+      "file": "apps/web/app/about/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "lucide-react",
+        "@/components/public-site-shell",
+        "@/lib/seo",
+        "../public-editorial.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/countries/[country]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "next/link",
+        "next/navigation",
+        "lucide-react",
+        "@/components/public-site-shell",
+        "@/lib/seo",
+        "@missa/contracts",
+        "@missa/radar-adapters",
+        "@/lib/profileRepository",
+        "@/lib/opportunityRepository",
+        "./country-hub.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/countries/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "next/link",
+        "lucide-react",
+        "@/components/public-site-shell",
+        "@/lib/seo",
+        "@missa/contracts",
+        "@/lib/profileRepository",
+        "./countries.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/admin/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/admin-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/admin-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/admin-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/application-office-prototype/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/application-office-prototype/application-office-prototype"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/application-preparation/page.tsx",
+      "prototype": true,
+      "imports": [
+        "@/components/application-preparation-preview"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/auth-onboarding/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/auth-onboarding-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/auth-onboarding-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/auth-onboarding-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/autocomplete-button-group/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/autocomplete/autocomplete-01",
+        "@/components/shadcn-studio/autocomplete/autocomplete-02",
+        "@/components/shadcn-studio/autocomplete/autocomplete-03",
+        "@/components/shadcn-studio/autocomplete/autocomplete-04",
+        "@/components/shadcn-studio/autocomplete/autocomplete-05",
+        "@/components/shadcn-studio/autocomplete/autocomplete-06",
+        "@/components/shadcn-studio/autocomplete/autocomplete-07",
+        "@/components/shadcn-studio/autocomplete/autocomplete-08",
+        "@/components/shadcn-studio/autocomplete/autocomplete-09",
+        "@/components/shadcn-studio/autocomplete/autocomplete-10",
+        "@/components/shadcn-studio/button-group/button-group-01",
+        "@/components/shadcn-studio/button-group/button-group-02",
+        "@/components/shadcn-studio/button-group/button-group-03",
+        "@/components/shadcn-studio/button-group/button-group-04",
+        "@/components/shadcn-studio/button-group/button-group-05",
+        "@/components/shadcn-studio/button-group/button-group-06",
+        "@/components/shadcn-studio/button-group/button-group-07",
+        "@/components/shadcn-studio/button-group/button-group-08",
+        "@/components/shadcn-studio/button-group/button-group-09",
+        "@/components/shadcn-studio/button-group/button-group-10",
+        "@/components/shadcn-studio/button-group/button-group-11",
+        "@/components/shadcn-studio/button-group/button-group-12",
+        "@/components/shadcn-studio/button-group/button-group-13",
+        "@/components/shadcn-studio/button-group/button-group-14",
+        "@/components/shadcn-studio/button-group/button-group-15",
+        "@/components/shadcn-studio/button-group/button-group-16"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/badges/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/badge/badge-01",
+        "@/components/shadcn-studio/badge/badge-02",
+        "@/components/shadcn-studio/badge/badge-03",
+        "@/components/shadcn-studio/badge/badge-04",
+        "@/components/shadcn-studio/badge/badge-05",
+        "@/components/shadcn-studio/badge/badge-06",
+        "@/components/shadcn-studio/badge/badge-07",
+        "@/components/shadcn-studio/badge/badge-08",
+        "@/components/shadcn-studio/badge/badge-09",
+        "@/components/shadcn-studio/badge/badge-10",
+        "@/components/shadcn-studio/badge/badge-11",
+        "@/components/shadcn-studio/badge/badge-12",
+        "@/components/shadcn-studio/badge/badge-13",
+        "@/components/shadcn-studio/badge/badge-14",
+        "@/components/shadcn-studio/badge/badge-15",
+        "@/components/shadcn-studio/badge/badge-16",
+        "@/components/shadcn-studio/badge/badge-17",
+        "@/components/shadcn-studio/badge/badge-18",
+        "@/components/shadcn-studio/badge/badge-19",
+        "@/components/shadcn-studio/badge/badge-20",
+        "@/components/shadcn-studio/badge/badge-21",
+        "@/components/shadcn-studio/badge/badge-22",
+        "@/components/shadcn-studio/badge/badge-23",
+        "@/components/shadcn-studio/badge/badge-24"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/breadcrumbs/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/breadcrumb/breadcrumb-01",
+        "@/components/shadcn-studio/breadcrumb/breadcrumb-02",
+        "@/components/shadcn-studio/breadcrumb/breadcrumb-03",
+        "@/components/shadcn-studio/breadcrumb/breadcrumb-04",
+        "@/components/shadcn-studio/breadcrumb/breadcrumb-05",
+        "@/components/shadcn-studio/breadcrumb/breadcrumb-06",
+        "@/components/shadcn-studio/breadcrumb/breadcrumb-07",
+        "@/components/shadcn-studio/breadcrumb/breadcrumb-08"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/buttons/page.tsx",
+      "prototype": true,
+      "imports": [
+        "lucide-react",
+        "next",
+        "@/components/ui/button"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/calendar/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/calendar-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/calendar-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/calendar-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/calendars/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/calendar/calendar-01",
+        "@/components/shadcn-studio/calendar/calendar-02",
+        "@/components/shadcn-studio/calendar/calendar-03",
+        "@/components/shadcn-studio/calendar/calendar-04",
+        "@/components/shadcn-studio/calendar/calendar-05",
+        "@/components/shadcn-studio/calendar/calendar-06",
+        "@/components/shadcn-studio/calendar/calendar-07",
+        "@/components/shadcn-studio/calendar/calendar-08",
+        "@/components/shadcn-studio/calendar/calendar-09",
+        "@/components/shadcn-studio/calendar/calendar-10",
+        "@/components/shadcn-studio/calendar/calendar-11",
+        "@/components/shadcn-studio/calendar/calendar-12",
+        "@/components/shadcn-studio/calendar/calendar-13",
+        "@/components/shadcn-studio/calendar/calendar-14",
+        "@/components/shadcn-studio/calendar/calendar-15",
+        "@/components/shadcn-studio/calendar/calendar-16",
+        "@/components/shadcn-studio/calendar/calendar-17",
+        "@/components/shadcn-studio/calendar/calendar-18",
+        "@/components/shadcn-studio/calendar/calendar-19",
+        "@/components/shadcn-studio/calendar/calendar-20",
+        "@/components/shadcn-studio/date-picker/date-picker-01",
+        "@/components/shadcn-studio/date-picker/date-picker-02",
+        "@/components/shadcn-studio/date-picker/date-picker-03",
+        "@/components/shadcn-studio/date-picker/date-picker-04",
+        "@/components/shadcn-studio/date-picker/date-picker-05",
+        "@/components/shadcn-studio/date-picker/date-picker-06",
+        "@/components/shadcn-studio/date-picker/date-picker-07",
+        "@/components/shadcn-studio/date-picker/date-picker-08",
+        "@/components/shadcn-studio/date-picker/date-picker-09",
+        "@/components/shadcn-studio/date-picker/date-picker-10"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/cards/page.tsx",
+      "prototype": true,
+      "imports": [
+        "lucide-react",
+        "next",
+        "@/components/shadcn-studio/card/card-01",
+        "@/components/shadcn-studio/card/card-02",
+        "@/components/shadcn-studio/card/card-03",
+        "@/components/shadcn-studio/card/card-04",
+        "@/components/shadcn-studio/card/card-05",
+        "@/components/shadcn-studio/card/card-06",
+        "@/components/shadcn-studio/card/card-07",
+        "@/components/shadcn-studio/card/card-08",
+        "@/components/shadcn-studio/card/card-09",
+        "@/components/shadcn-studio/card/card-10",
+        "@/components/shadcn-studio/card/card-11",
+        "@/components/shadcn-studio/card/card-12",
+        "@/components/shadcn-studio/card/card-13",
+        "@/components/shadcn-studio/card/card-14",
+        "@/components/shadcn-studio/card/card-15",
+        "@/components/shadcn-studio/card/card-16",
+        "@/components/shadcn-studio/card/card-17",
+        "@/components/shadcn-studio/review-grid",
+        "@/components/ui/badge",
+        "@/components/ui/button",
+        "@/components/ui/card"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/carousel-media/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/carousel/carousel-01",
+        "@/components/shadcn-studio/carousel/carousel-02",
+        "@/components/shadcn-studio/carousel/carousel-03",
+        "@/components/shadcn-studio/carousel/carousel-04",
+        "@/components/shadcn-studio/carousel/carousel-05",
+        "@/components/shadcn-studio/carousel/carousel-06",
+        "@/components/shadcn-studio/carousel/carousel-07",
+        "@/components/shadcn-studio/carousel/carousel-08",
+        "@/components/shadcn-studio/carousel/carousel-09",
+        "@/components/shadcn-studio/carousel/carousel-10",
+        "@/components/shadcn-studio/carousel/carousel-11",
+        "@/components/shadcn-studio/carousel/carousel-12",
+        "@/components/shadcn-studio/aspect-ratio/aspect-ratio-01",
+        "@/components/shadcn-studio/aspect-ratio/aspect-ratio-02",
+        "@/components/shadcn-studio/aspect-ratio/aspect-ratio-03",
+        "@/components/shadcn-studio/aspect-ratio/aspect-ratio-04",
+        "@/components/shadcn-studio/aspect-ratio/aspect-ratio-05",
+        "@/components/shadcn-studio/aspect-ratio/aspect-ratio-06",
+        "@/components/shadcn-studio/aspect-ratio/aspect-ratio-07"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/commands/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/command/command-01",
+        "@/components/shadcn-studio/command/command-02",
+        "@/components/shadcn-studio/command/command-03",
+        "@/components/shadcn-studio/command/command-04",
+        "@/components/shadcn-studio/command/command-05",
+        "@/components/shadcn-studio/command/command-06",
+        "@/components/shadcn-studio/command/command-07",
+        "@/components/shadcn-studio/command/command-08",
+        "@/components/shadcn-studio/command/command-09",
+        "@/components/shadcn-studio/command/command-10",
+        "@/components/shadcn-studio/command/command-11",
+        "@/components/shadcn-studio/command/command-12",
+        "@/components/shadcn-studio/command/command-13",
+        "@/components/shadcn-studio/command/command-14",
+        "@/components/shadcn-studio/combobox/combobox-01",
+        "@/components/shadcn-studio/combobox/combobox-02",
+        "@/components/shadcn-studio/combobox/combobox-03",
+        "@/components/shadcn-studio/combobox/combobox-04",
+        "@/components/shadcn-studio/combobox/combobox-05",
+        "@/components/shadcn-studio/combobox/combobox-06",
+        "@/components/shadcn-studio/combobox/combobox-07",
+        "@/components/shadcn-studio/combobox/combobox-08",
+        "@/components/shadcn-studio/combobox/combobox-09",
+        "@/components/shadcn-studio/combobox/combobox-10"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/component-policy/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "next/link",
+        "@/component-catalogue.json",
+        "@/component-policy.json"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/control-feedback/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/shadcn-studio/review-grid",
+        "@/components/shadcn-studio/kbd/kbd-01",
+        "@/components/shadcn-studio/kbd/kbd-02",
+        "@/components/shadcn-studio/kbd/kbd-03",
+        "@/components/shadcn-studio/kbd/kbd-04",
+        "@/components/shadcn-studio/kbd/kbd-05",
+        "@/components/shadcn-studio/kbd/kbd-06",
+        "@/components/shadcn-studio/kbd/kbd-07",
+        "@/components/shadcn-studio/kbd/kbd-08",
+        "@/components/shadcn-studio/rating/rating-01",
+        "@/components/shadcn-studio/rating/rating-02",
+        "@/components/shadcn-studio/rating/rating-03",
+        "@/components/shadcn-studio/rating/rating-04",
+        "@/components/shadcn-studio/rating/rating-05",
+        "@/components/shadcn-studio/rating/rating-06",
+        "@/components/shadcn-studio/rating/rating-07",
+        "@/components/shadcn-studio/rating/rating-08",
+        "@/components/shadcn-studio/slider/slider-01",
+        "@/components/shadcn-studio/slider/slider-02",
+        "@/components/shadcn-studio/slider/slider-03",
+        "@/components/shadcn-studio/slider/slider-04",
+        "@/components/shadcn-studio/slider/slider-05",
+        "@/components/shadcn-studio/slider/slider-06",
+        "@/components/shadcn-studio/slider/slider-07",
+        "@/components/shadcn-studio/slider/slider-08",
+        "@/components/shadcn-studio/slider/slider-09",
+        "@/components/shadcn-studio/slider/slider-10",
+        "@/components/shadcn-studio/slider/slider-11",
+        "@/components/shadcn-studio/slider/slider-12",
+        "@/components/shadcn-studio/slider/slider-13",
+        "@/components/shadcn-studio/slider/slider-14",
+        "@/components/shadcn-studio/slider/slider-15",
+        "@/components/shadcn-studio/slider/slider-16",
+        "@/components/shadcn-studio/slider/slider-17",
+        "@/components/shadcn-studio/slider/slider-18",
+        "@/components/shadcn-studio/slider/slider-19",
+        "@/components/shadcn-studio/spinner/spinner-01",
+        "@/components/shadcn-studio/spinner/spinner-02",
+        "@/components/shadcn-studio/spinner/spinner-03",
+        "@/components/shadcn-studio/spinner/spinner-04",
+        "@/components/shadcn-studio/spinner/spinner-05",
+        "@/components/shadcn-studio/spinner/spinner-06",
+        "@/components/shadcn-studio/spinner/spinner-07",
+        "@/components/shadcn-studio/spinner/spinner-08",
+        "@/components/shadcn-studio/spinner/spinner-09",
+        "@/components/shadcn-studio/spinner/spinner-10",
+        "@/components/shadcn-studio/toggle/toggle-01",
+        "@/components/shadcn-studio/toggle/toggle-02",
+        "@/components/shadcn-studio/toggle/toggle-03",
+        "@/components/shadcn-studio/toggle/toggle-04",
+        "@/components/shadcn-studio/toggle/toggle-05",
+        "@/components/shadcn-studio/toggle/toggle-06",
+        "@/components/shadcn-studio/toggle/toggle-07",
+        "@/components/shadcn-studio/toggle/toggle-08",
+        "@/components/shadcn-studio/toggle/toggle-09",
+        "@/components/shadcn-studio/toggle/toggle-10",
+        "@/components/shadcn-studio/toggle/toggle-11",
+        "@/components/shadcn-studio/toggle/toggle-12",
+        "@/components/shadcn-studio/toggle/toggle-13",
+        "@/components/shadcn-studio/toggle/toggle-14",
+        "@/components/shadcn-studio/toggle-group/toggle-group-01",
+        "@/components/shadcn-studio/toggle-group/toggle-group-02",
+        "@/components/shadcn-studio/toggle-group/toggle-group-03",
+        "@/components/shadcn-studio/toggle-group/toggle-group-04",
+        "@/components/shadcn-studio/toggle-group/toggle-group-05",
+        "@/components/shadcn-studio/toggle-group/toggle-group-06",
+        "@/components/shadcn-studio/toggle-group/toggle-group-07",
+        "@/components/shadcn-studio/toggle-group/toggle-group-08",
+        "@/components/shadcn-studio/toggle-group/toggle-group-09",
+        "@/components/shadcn-studio/toggle-group/toggle-group-10",
+        "@/components/shadcn-studio/toggle-group/toggle-group-11",
+        "@/components/shadcn-studio/toggle-group/toggle-group-12",
+        "@/components/shadcn-studio/toggle-group/toggle-group-13",
+        "@/components/shadcn-studio/toggle-group/toggle-group-14",
+        "@/components/shadcn-studio/toggle-group/toggle-group-15",
+        "@/components/shadcn-studio/toggle-group/toggle-group-16"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/creator-onboarding/page.tsx",
+      "prototype": true,
+      "imports": [
+        "@/components/creator-onboarding-preview"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/creator-profile-settings/page.tsx",
+      "prototype": true,
+      "imports": [
+        "@/components/creator-portfolio-studio"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/creator-profile-v2/page.tsx",
+      "prototype": true,
+      "imports": [
+        "@/components/creator-portfolio-studio",
+        "@/components/public-site-shell"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/creator-utilities/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/creator-utilities-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/creator-utilities-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/creator-utilities-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/creator-workspace/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/creator-workspace-preview"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/data-table-code-block/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/data-table/data-table-01",
+        "@/components/shadcn-studio/data-table/data-table-02",
+        "@/components/shadcn-studio/data-table/data-table-03",
+        "@/components/shadcn-studio/data-table/data-table-04",
+        "@/components/shadcn-studio/data-table/data-table-05",
+        "@/components/shadcn-studio/data-table/data-table-06",
+        "@/components/shadcn-studio/data-table/data-table-07",
+        "@/components/shadcn-studio/data-table/data-table-08",
+        "@/components/shadcn-studio/data-table/data-table-09",
+        "@/components/shadcn-studio/data-table/data-table-10",
+        "@/components/shadcn-studio/data-table/data-table-11",
+        "@/components/shadcn-studio/data-table/data-table-12",
+        "@/components/shadcn-studio/data-table/data-table-13",
+        "@/components/shadcn-studio/code-block/code-block-01",
+        "@/components/shadcn-studio/code-block/code-block-02",
+        "@/components/shadcn-studio/code-block/code-block-03",
+        "@/components/shadcn-studio/code-block/code-block-04",
+        "@/components/shadcn-studio/code-block/code-block-05",
+        "@/components/shadcn-studio/code-block/code-block-06",
+        "@/components/shadcn-studio/code-block/code-block-07"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/disclosure/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/accordion/accordion-01",
+        "@/components/shadcn-studio/accordion/accordion-02",
+        "@/components/shadcn-studio/accordion/accordion-03",
+        "@/components/shadcn-studio/accordion/accordion-04",
+        "@/components/shadcn-studio/accordion/accordion-05",
+        "@/components/shadcn-studio/accordion/accordion-06",
+        "@/components/shadcn-studio/accordion/accordion-07",
+        "@/components/shadcn-studio/accordion/accordion-08",
+        "@/components/shadcn-studio/accordion/accordion-09",
+        "@/components/shadcn-studio/accordion/accordion-10",
+        "@/components/shadcn-studio/accordion/accordion-11",
+        "@/components/shadcn-studio/accordion/accordion-12",
+        "@/components/shadcn-studio/accordion/accordion-13",
+        "@/components/shadcn-studio/accordion/accordion-14",
+        "@/components/shadcn-studio/accordion/accordion-15",
+        "@/components/shadcn-studio/collapsible/collapsible-01",
+        "@/components/shadcn-studio/collapsible/collapsible-02",
+        "@/components/shadcn-studio/collapsible/collapsible-03",
+        "@/components/shadcn-studio/collapsible/collapsible-04",
+        "@/components/shadcn-studio/collapsible/collapsible-05",
+        "@/components/shadcn-studio/collapsible/collapsible-06",
+        "@/components/shadcn-studio/collapsible/collapsible-07",
+        "@/components/shadcn-studio/collapsible/collapsible-08",
+        "@/components/shadcn-studio/collapsible/collapsible-09",
+        "@/components/shadcn-studio/collapsible/collapsible-10"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/dropdown-menus/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-01",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-02",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-03",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-04",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-05",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-06",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-07",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-08",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-09",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-10",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-11",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-12",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-13",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-14",
+        "@/components/shadcn-studio/dropdown-menu/dropdown-menu-15"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/feedback-states/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/alert/alert-01",
+        "@/components/shadcn-studio/alert/alert-02",
+        "@/components/shadcn-studio/alert/alert-03",
+        "@/components/shadcn-studio/alert/alert-04",
+        "@/components/shadcn-studio/alert/alert-05",
+        "@/components/shadcn-studio/alert/alert-06",
+        "@/components/shadcn-studio/alert/alert-07",
+        "@/components/shadcn-studio/alert/alert-08",
+        "@/components/shadcn-studio/alert/alert-09",
+        "@/components/shadcn-studio/alert/alert-10",
+        "@/components/shadcn-studio/alert/alert-11",
+        "@/components/shadcn-studio/alert/alert-12",
+        "@/components/shadcn-studio/alert/alert-13",
+        "@/components/shadcn-studio/alert/alert-14",
+        "@/components/shadcn-studio/alert/alert-15",
+        "@/components/shadcn-studio/alert/alert-16",
+        "@/components/shadcn-studio/alert/alert-17",
+        "@/components/shadcn-studio/alert/alert-18",
+        "@/components/shadcn-studio/alert/alert-19",
+        "@/components/shadcn-studio/alert/alert-20",
+        "@/components/shadcn-studio/alert/alert-21",
+        "@/components/shadcn-studio/alert/alert-22",
+        "@/components/shadcn-studio/alert/alert-23",
+        "@/components/shadcn-studio/alert/alert-24",
+        "@/components/shadcn-studio/alert/alert-25",
+        "@/components/shadcn-studio/sonner/sonner-01",
+        "@/components/shadcn-studio/sonner/sonner-02",
+        "@/components/shadcn-studio/sonner/sonner-03",
+        "@/components/shadcn-studio/sonner/sonner-04",
+        "@/components/shadcn-studio/sonner/sonner-05",
+        "@/components/shadcn-studio/sonner/sonner-06",
+        "@/components/shadcn-studio/sonner/sonner-07",
+        "@/components/shadcn-studio/sonner/sonner-08",
+        "@/components/shadcn-studio/sonner/sonner-09",
+        "@/components/shadcn-studio/sonner/sonner-10",
+        "@/components/shadcn-studio/sonner/sonner-11",
+        "@/components/shadcn-studio/sonner/sonner-12",
+        "@/components/shadcn-studio/sonner/sonner-13",
+        "@/components/shadcn-studio/sonner/sonner-14",
+        "@/components/shadcn-studio/sonner/sonner-15",
+        "@/components/shadcn-studio/sonner/sonner-16",
+        "@/components/shadcn-studio/sonner/sonner-17",
+        "@/components/shadcn-studio/sonner/sonner-18",
+        "@/components/shadcn-studio/sonner/sonner-19",
+        "@/components/shadcn-studio/sonner/sonner-20",
+        "@/components/shadcn-studio/progress/progress-01",
+        "@/components/shadcn-studio/progress/progress-02",
+        "@/components/shadcn-studio/progress/progress-03",
+        "@/components/shadcn-studio/progress/progress-04",
+        "@/components/shadcn-studio/progress/progress-05",
+        "@/components/shadcn-studio/progress/progress-06",
+        "@/components/shadcn-studio/progress/progress-07",
+        "@/components/shadcn-studio/progress/progress-08",
+        "@/components/shadcn-studio/progress/progress-09",
+        "@/components/shadcn-studio/progress/progress-10",
+        "@/components/shadcn-studio/progress/progress-11",
+        "@/components/shadcn-studio/progress/progress-12",
+        "@/components/shadcn-studio/progress/progress-13",
+        "@/components/shadcn-studio/progress/progress-14",
+        "@/components/shadcn-studio/progress/progress-15",
+        "@/components/shadcn-studio/progress/progress-16",
+        "@/components/shadcn-studio/progress/progress-17",
+        "@/components/shadcn-studio/progress/progress-18",
+        "@/components/shadcn-studio/progress/progress-19",
+        "@/components/shadcn-studio/progress/progress-20",
+        "@/components/shadcn-studio/progress/progress-21",
+        "@/components/shadcn-studio/progress/progress-22",
+        "@/components/shadcn-studio/progress/progress-23",
+        "@/components/shadcn-studio/skeleton/skeleton-01",
+        "@/components/shadcn-studio/skeleton/skeleton-02",
+        "@/components/shadcn-studio/skeleton/skeleton-03",
+        "@/components/shadcn-studio/skeleton/skeleton-04",
+        "@/components/shadcn-studio/skeleton/skeleton-05",
+        "@/components/shadcn-studio/skeleton/skeleton-06",
+        "@/components/shadcn-studio/skeleton/skeleton-07",
+        "@/components/shadcn-studio/skeleton/skeleton-08",
+        "@/components/shadcn-studio/skeleton/skeleton-09",
+        "@/components/shadcn-studio/skeleton/skeleton-10",
+        "@/components/shadcn-studio/skeleton/skeleton-11",
+        "@/components/shadcn-studio/skeleton/skeleton-12"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/first-save-journey-prototype/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "next/navigation",
+        "@/components/design-system/first-save-journey-prototype/first-save-journey-prototype"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/form-field/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/form/form-01",
+        "@/components/shadcn-studio/form/form-02",
+        "@/components/shadcn-studio/form/form-03",
+        "@/components/shadcn-studio/form/form-04",
+        "@/components/shadcn-studio/form/form-05",
+        "@/components/shadcn-studio/form/form-06",
+        "@/components/shadcn-studio/form/form-07",
+        "@/components/shadcn-studio/form/form-08",
+        "@/components/shadcn-studio/form/form-09",
+        "@/components/shadcn-studio/form/form-10",
+        "@/components/shadcn-studio/input-otp/input-otp-01",
+        "@/components/shadcn-studio/input-otp/input-otp-02",
+        "@/components/shadcn-studio/input-otp/input-otp-03",
+        "@/components/shadcn-studio/input-otp/input-otp-04",
+        "@/components/shadcn-studio/input-otp/input-otp-05",
+        "@/components/shadcn-studio/input-otp/input-otp-06",
+        "@/components/shadcn-studio/input-otp/input-otp-07",
+        "@/components/shadcn-studio/input-otp/input-otp-08",
+        "@/components/shadcn-studio/input-otp/input-otp-09",
+        "@/components/shadcn-studio/input-otp/input-otp-10",
+        "@/components/shadcn-studio/textarea/textarea-01",
+        "@/components/shadcn-studio/textarea/textarea-02",
+        "@/components/shadcn-studio/textarea/textarea-03",
+        "@/components/shadcn-studio/textarea/textarea-04",
+        "@/components/shadcn-studio/textarea/textarea-05",
+        "@/components/shadcn-studio/textarea/textarea-06",
+        "@/components/shadcn-studio/textarea/textarea-07",
+        "@/components/shadcn-studio/textarea/textarea-08",
+        "@/components/shadcn-studio/textarea/textarea-09",
+        "@/components/shadcn-studio/textarea/textarea-10",
+        "@/components/shadcn-studio/textarea/textarea-11",
+        "@/components/shadcn-studio/textarea/textarea-12",
+        "@/components/shadcn-studio/textarea/textarea-13",
+        "@/components/shadcn-studio/textarea/textarea-14",
+        "@/components/shadcn-studio/textarea/textarea-15",
+        "@/components/shadcn-studio/textarea/textarea-16",
+        "@/components/shadcn-studio/textarea/textarea-17",
+        "@/components/shadcn-studio/textarea/textarea-18",
+        "@/components/shadcn-studio/textarea/textarea-19",
+        "@/components/shadcn-studio/textarea/textarea-20",
+        "@/components/shadcn-studio/label/label-01",
+        "@/components/shadcn-studio/label/label-02",
+        "@/components/shadcn-studio/label/label-03",
+        "@/components/shadcn-studio/label/label-04",
+        "@/components/shadcn-studio/label/label-05",
+        "@/components/shadcn-studio/label/label-06",
+        "@/components/shadcn-studio/label/label-07",
+        "@/components/shadcn-studio/label/label-08",
+        "@/components/shadcn-studio/label/label-09"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/header-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "next/link",
+        "lucide-react",
+        "@/components/missa-wordmark",
+        "./header-directions.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/homepage-future/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "next/headers",
+        "@/components/design-system/homepage-future",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/publicAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/homepage-hero/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/homepage-hero-preview"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/hosted-application/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/hosted-application-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/hosted-application-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "@/components/design-system/hosted-application-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/inbox/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/inbox-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/inbox-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/inbox-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/input-formats/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/input-mask/input-mask-01",
+        "@/components/shadcn-studio/input-mask/input-mask-02",
+        "@/components/shadcn-studio/input-mask/input-mask-03",
+        "@/components/shadcn-studio/input-mask/input-mask-04",
+        "@/components/shadcn-studio/input-mask/input-mask-05",
+        "@/components/shadcn-studio/input-mask/input-mask-06",
+        "@/components/shadcn-studio/phone-input/phone-input-01",
+        "@/components/shadcn-studio/phone-input/phone-input-02",
+        "@/components/shadcn-studio/phone-input/phone-input-03",
+        "@/components/shadcn-studio/phone-input/phone-input-04",
+        "@/components/shadcn-studio/phone-input/phone-input-05",
+        "@/components/shadcn-studio/phone-input/phone-input-06",
+        "@/components/shadcn-studio/phone-input/phone-input-07",
+        "@/components/shadcn-studio/phone-input/phone-input-08",
+        "@/components/shadcn-studio/phone-input/phone-input-09"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/inputs/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/input/input-01",
+        "@/components/shadcn-studio/input/input-02",
+        "@/components/shadcn-studio/input/input-03",
+        "@/components/shadcn-studio/input/input-04",
+        "@/components/shadcn-studio/input/input-05",
+        "@/components/shadcn-studio/input/input-06",
+        "@/components/shadcn-studio/input/input-07",
+        "@/components/shadcn-studio/input/input-08",
+        "@/components/shadcn-studio/input/input-09",
+        "@/components/shadcn-studio/input/input-10",
+        "@/components/shadcn-studio/input/input-11",
+        "@/components/shadcn-studio/input/input-12",
+        "@/components/shadcn-studio/input/input-13",
+        "@/components/shadcn-studio/input/input-14",
+        "@/components/shadcn-studio/input/input-15",
+        "@/components/shadcn-studio/input/input-16",
+        "@/components/shadcn-studio/input/input-17",
+        "@/components/shadcn-studio/input/input-18",
+        "@/components/shadcn-studio/input/input-19",
+        "@/components/shadcn-studio/input/input-20",
+        "@/components/shadcn-studio/input/input-21",
+        "@/components/shadcn-studio/input/input-22",
+        "@/components/shadcn-studio/input/input-23",
+        "@/components/shadcn-studio/input/input-24",
+        "@/components/shadcn-studio/input/input-25",
+        "@/components/shadcn-studio/input/input-26",
+        "@/components/shadcn-studio/input/input-27",
+        "@/components/shadcn-studio/input/input-28",
+        "@/components/shadcn-studio/input/input-29",
+        "@/components/shadcn-studio/input/input-30",
+        "@/components/shadcn-studio/input/input-31",
+        "@/components/shadcn-studio/input/input-32",
+        "@/components/shadcn-studio/input/input-33",
+        "@/components/shadcn-studio/input/input-34",
+        "@/components/shadcn-studio/input/input-35",
+        "@/components/shadcn-studio/input/input-36",
+        "@/components/shadcn-studio/input/input-37",
+        "@/components/shadcn-studio/input/input-38",
+        "@/components/shadcn-studio/input/input-39",
+        "@/components/shadcn-studio/input/input-40",
+        "@/components/shadcn-studio/input/input-41",
+        "@/components/shadcn-studio/input/input-42",
+        "@/components/shadcn-studio/input/input-43",
+        "@/components/shadcn-studio/input/input-44",
+        "@/components/shadcn-studio/input/input-45"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/library-work/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/library-work-selected"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/my-applications/page.tsx",
+      "prototype": true,
+      "imports": [
+        "@/components/application-tracker-preview"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/navigation-identity/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/navigation-menu/navigation-menu-01",
+        "@/components/shadcn-studio/navigation-menu/navigation-menu-02",
+        "@/components/shadcn-studio/navigation-menu/navigation-menu-03",
+        "@/components/shadcn-studio/navigation-menu/navigation-menu-04",
+        "@/components/shadcn-studio/navigation-menu/navigation-menu-05",
+        "@/components/shadcn-studio/navigation-menu/navigation-menu-06",
+        "@/components/shadcn-studio/navigation-menu/navigation-menu-07",
+        "@/components/shadcn-studio/navigation-menu/navigation-menu-08",
+        "@/components/shadcn-studio/navigation-menu/navigation-menu-09",
+        "@/components/shadcn-studio/menubar/menubar-01",
+        "@/components/shadcn-studio/menubar/menubar-02",
+        "@/components/shadcn-studio/menubar/menubar-03",
+        "@/components/shadcn-studio/menubar/menubar-04",
+        "@/components/shadcn-studio/menubar/menubar-05",
+        "@/components/shadcn-studio/menubar/menubar-06",
+        "@/components/shadcn-studio/menubar/menubar-07",
+        "@/components/shadcn-studio/menubar/menubar-08",
+        "@/components/shadcn-studio/avatar/avatar-01",
+        "@/components/shadcn-studio/avatar/avatar-02",
+        "@/components/shadcn-studio/avatar/avatar-03",
+        "@/components/shadcn-studio/avatar/avatar-04",
+        "@/components/shadcn-studio/avatar/avatar-05",
+        "@/components/shadcn-studio/avatar/avatar-06",
+        "@/components/shadcn-studio/avatar/avatar-07",
+        "@/components/shadcn-studio/avatar/avatar-08",
+        "@/components/shadcn-studio/avatar/avatar-09",
+        "@/components/shadcn-studio/avatar/avatar-10",
+        "@/components/shadcn-studio/avatar/avatar-11",
+        "@/components/shadcn-studio/avatar/avatar-12",
+        "@/components/shadcn-studio/avatar/avatar-13",
+        "@/components/shadcn-studio/avatar/avatar-14",
+        "@/components/shadcn-studio/avatar/avatar-15",
+        "@/components/shadcn-studio/avatar/avatar-16",
+        "@/components/shadcn-studio/avatar/avatar-17",
+        "@/components/shadcn-studio/avatar/avatar-18",
+        "@/components/shadcn-studio/avatar/avatar-19",
+        "@/components/shadcn-studio/avatar/avatar-20"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/opportunities-browse/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/opportunities-browse-hub"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/opportunities-browse-forest/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/opportunities-browse-forest-preview"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/opportunities-browse-postal/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/opportunities-browse-postal-preview"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/opportunities-browse-v2/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@missa/radar-engine",
+        "@/lib/opportunityRepository",
+        "@/components/design-system/opportunities-browse-v2-preview"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/opportunities-editorial/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "next/link",
+        "@/components/opportunity-editorial-hero",
+        "./opportunities-editorial.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/opportunities-overhaul/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/opportunities-overhaul-preview"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/opportunity-detail/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/opportunity-detail-selected"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/opportunity-detail-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/opportunity-detail-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/opportunity-journey/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/opportunity-journey-review"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/organization-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/organization-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-insights/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/organization-insights-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-insights-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "@/components/design-system/organization-insights-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-messages-delivery/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/organization-messages-delivery-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-messages-delivery-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "@/components/design-system/organization-messages-delivery-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-opportunities/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/organization-opportunity-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-opportunities-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/organization-opportunity-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-people-permissions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/organization-people-permissions-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-people-permissions-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "@/components/design-system/organization-people-permissions-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-settings-billing/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/organization-settings-billing-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-settings-billing-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "@/components/design-system/organization-settings-billing-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-workflow/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/organization-workflow-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/organization-workflow-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/organization-workflow-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/overlays/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/dialog/dialog-01",
+        "@/components/shadcn-studio/dialog/dialog-02",
+        "@/components/shadcn-studio/dialog/dialog-03",
+        "@/components/shadcn-studio/dialog/dialog-04",
+        "@/components/shadcn-studio/dialog/dialog-05",
+        "@/components/shadcn-studio/dialog/dialog-06",
+        "@/components/shadcn-studio/dialog/dialog-07",
+        "@/components/shadcn-studio/dialog/dialog-08",
+        "@/components/shadcn-studio/dialog/dialog-09",
+        "@/components/shadcn-studio/dialog/dialog-10",
+        "@/components/shadcn-studio/dialog/dialog-11",
+        "@/components/shadcn-studio/dialog/dialog-12",
+        "@/components/shadcn-studio/dialog/dialog-13",
+        "@/components/shadcn-studio/dialog/dialog-14",
+        "@/components/shadcn-studio/dialog/dialog-15",
+        "@/components/shadcn-studio/dialog/dialog-16",
+        "@/components/shadcn-studio/dialog/dialog-17",
+        "@/components/shadcn-studio/dialog/dialog-18",
+        "@/components/shadcn-studio/dialog/dialog-19",
+        "@/components/shadcn-studio/dialog/dialog-20",
+        "@/components/shadcn-studio/sheet/sheet-01",
+        "@/components/shadcn-studio/sheet/sheet-02",
+        "@/components/shadcn-studio/sheet/sheet-03",
+        "@/components/shadcn-studio/sheet/sheet-04",
+        "@/components/shadcn-studio/sheet/sheet-05"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/selected-system-index"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/pagination-tabs/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/pagination/pagination-01",
+        "@/components/shadcn-studio/pagination/pagination-02",
+        "@/components/shadcn-studio/pagination/pagination-03",
+        "@/components/shadcn-studio/pagination/pagination-04",
+        "@/components/shadcn-studio/pagination/pagination-05",
+        "@/components/shadcn-studio/pagination/pagination-06",
+        "@/components/shadcn-studio/pagination/pagination-07",
+        "@/components/shadcn-studio/pagination/pagination-08",
+        "@/components/shadcn-studio/pagination/pagination-09",
+        "@/components/shadcn-studio/pagination/pagination-10",
+        "@/components/shadcn-studio/tabs/tabs-01",
+        "@/components/shadcn-studio/tabs/tabs-02",
+        "@/components/shadcn-studio/tabs/tabs-03",
+        "@/components/shadcn-studio/tabs/tabs-04",
+        "@/components/shadcn-studio/tabs/tabs-05",
+        "@/components/shadcn-studio/tabs/tabs-06",
+        "@/components/shadcn-studio/tabs/tabs-07",
+        "@/components/shadcn-studio/tabs/tabs-08",
+        "@/components/shadcn-studio/tabs/tabs-09",
+        "@/components/shadcn-studio/tabs/tabs-10",
+        "@/components/shadcn-studio/tabs/tabs-11",
+        "@/components/shadcn-studio/tabs/tabs-12",
+        "@/components/shadcn-studio/tabs/tabs-13",
+        "@/components/shadcn-studio/tabs/tabs-14",
+        "@/components/shadcn-studio/tabs/tabs-15",
+        "@/components/shadcn-studio/tabs/tabs-16",
+        "@/components/shadcn-studio/tabs/tabs-17",
+        "@/components/shadcn-studio/tabs/tabs-18",
+        "@/components/shadcn-studio/tabs/tabs-19",
+        "@/components/shadcn-studio/tabs/tabs-20",
+        "@/components/shadcn-studio/tabs/tabs-21",
+        "@/components/shadcn-studio/tabs/tabs-22",
+        "@/components/shadcn-studio/tabs/tabs-23",
+        "@/components/shadcn-studio/tabs/tabs-24",
+        "@/components/shadcn-studio/tabs/tabs-25"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/popovers/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/popover/popover-01",
+        "@/components/shadcn-studio/popover/popover-02",
+        "@/components/shadcn-studio/popover/popover-03",
+        "@/components/shadcn-studio/popover/popover-04",
+        "@/components/shadcn-studio/popover/popover-05",
+        "@/components/shadcn-studio/popover/popover-06",
+        "@/components/shadcn-studio/popover/popover-07",
+        "@/components/shadcn-studio/popover/popover-08",
+        "@/components/shadcn-studio/popover/popover-09",
+        "@/components/shadcn-studio/popover/popover-10"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/profile/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/profile-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/profile-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/profile-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/profile-opportunity-journey/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/profile-opportunity-journey-preview"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/profile-portfolio/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/profile-portfolio-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/progress-typography/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/shadcn-studio/review-grid",
+        "@/components/shadcn-studio/separator/separator-01",
+        "@/components/shadcn-studio/separator/separator-02",
+        "@/components/shadcn-studio/separator/separator-03",
+        "@/components/shadcn-studio/separator/separator-04",
+        "@/components/shadcn-studio/separator/separator-05",
+        "@/components/shadcn-studio/separator/separator-06",
+        "@/components/shadcn-studio/separator/separator-07",
+        "@/components/shadcn-studio/separator/separator-08",
+        "@/components/shadcn-studio/separator/separator-09",
+        "@/components/shadcn-studio/separator/separator-10",
+        "@/components/shadcn-studio/separator/separator-11",
+        "@/components/shadcn-studio/separator/separator-12",
+        "@/components/shadcn-studio/separator/separator-13",
+        "@/components/shadcn-studio/separator/separator-14",
+        "@/components/shadcn-studio/stepper/stepper-01",
+        "@/components/shadcn-studio/stepper/stepper-02",
+        "@/components/shadcn-studio/stepper/stepper-03",
+        "@/components/shadcn-studio/stepper/stepper-04",
+        "@/components/shadcn-studio/stepper/stepper-05",
+        "@/components/shadcn-studio/stepper/stepper-06",
+        "@/components/shadcn-studio/stepper/stepper-07",
+        "@/components/shadcn-studio/stepper/stepper-08",
+        "@/components/shadcn-studio/stepper/stepper-09",
+        "@/components/shadcn-studio/stepper/stepper-10",
+        "@/components/shadcn-studio/stepper/stepper-11",
+        "@/components/shadcn-studio/stepper/stepper-12",
+        "@/components/shadcn-studio/typography/typography-01",
+        "@/components/shadcn-studio/typography/typography-02",
+        "@/components/shadcn-studio/typography/typography-03",
+        "@/components/shadcn-studio/typography/typography-04",
+        "@/components/shadcn-studio/typography/typography-05",
+        "@/components/shadcn-studio/typography/typography-06",
+        "@/components/shadcn-studio/typography/typography-07",
+        "@/components/shadcn-studio/typography/typography-08",
+        "@/components/shadcn-studio/typography/typography-09",
+        "@/components/shadcn-studio/typography/typography-10",
+        "@/components/shadcn-studio/typography/typography-11",
+        "@/components/shadcn-studio/typography/typography-12",
+        "@/components/shadcn-studio/typography/typography-13",
+        "@/components/shadcn-studio/typography/typography-14",
+        "@/components/shadcn-studio/typography/typography-15"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/public-acquisition/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/public-acquisition-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/public-acquisition-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/public-acquisition-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/public-organization-profile/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/public-organization-profile-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/public-organization-profile-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "@/components/design-system/public-organization-profile-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/reviewer/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/reviewer-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/reviewer-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/reviewer-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/selection-controls/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/checkbox/checkbox-01",
+        "@/components/shadcn-studio/checkbox/checkbox-02",
+        "@/components/shadcn-studio/checkbox/checkbox-03",
+        "@/components/shadcn-studio/checkbox/checkbox-04",
+        "@/components/shadcn-studio/checkbox/checkbox-05",
+        "@/components/shadcn-studio/checkbox/checkbox-06",
+        "@/components/shadcn-studio/checkbox/checkbox-07",
+        "@/components/shadcn-studio/checkbox/checkbox-08",
+        "@/components/shadcn-studio/checkbox/checkbox-09",
+        "@/components/shadcn-studio/checkbox/checkbox-10",
+        "@/components/shadcn-studio/checkbox/checkbox-11",
+        "@/components/shadcn-studio/checkbox/checkbox-12",
+        "@/components/shadcn-studio/checkbox/checkbox-13",
+        "@/components/shadcn-studio/checkbox/checkbox-14",
+        "@/components/shadcn-studio/checkbox/checkbox-15",
+        "@/components/shadcn-studio/radio-group/radio-group-01",
+        "@/components/shadcn-studio/radio-group/radio-group-02",
+        "@/components/shadcn-studio/radio-group/radio-group-03",
+        "@/components/shadcn-studio/radio-group/radio-group-04",
+        "@/components/shadcn-studio/radio-group/radio-group-05",
+        "@/components/shadcn-studio/radio-group/radio-group-06",
+        "@/components/shadcn-studio/radio-group/radio-group-07",
+        "@/components/shadcn-studio/radio-group/radio-group-08",
+        "@/components/shadcn-studio/radio-group/radio-group-09",
+        "@/components/shadcn-studio/radio-group/radio-group-10",
+        "@/components/shadcn-studio/switch/switch-01",
+        "@/components/shadcn-studio/switch/switch-02",
+        "@/components/shadcn-studio/switch/switch-03",
+        "@/components/shadcn-studio/switch/switch-04",
+        "@/components/shadcn-studio/switch/switch-05",
+        "@/components/shadcn-studio/switch/switch-06",
+        "@/components/shadcn-studio/switch/switch-07",
+        "@/components/shadcn-studio/switch/switch-08",
+        "@/components/shadcn-studio/switch/switch-09",
+        "@/components/shadcn-studio/switch/switch-10",
+        "@/components/shadcn-studio/switch/switch-11",
+        "@/components/shadcn-studio/switch/switch-12",
+        "@/components/shadcn-studio/switch/switch-13",
+        "@/components/shadcn-studio/switch/switch-14",
+        "@/components/shadcn-studio/switch/switch-15",
+        "@/components/shadcn-studio/switch/switch-16",
+        "@/components/shadcn-studio/switch/switch-17",
+        "@/components/shadcn-studio/switch/switch-18",
+        "@/components/shadcn-studio/switch/switch-19",
+        "@/components/shadcn-studio/switch/switch-20"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/selects/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/select/select-01",
+        "@/components/shadcn-studio/select/select-02",
+        "@/components/shadcn-studio/select/select-03",
+        "@/components/shadcn-studio/select/select-04",
+        "@/components/shadcn-studio/select/select-05",
+        "@/components/shadcn-studio/select/select-06",
+        "@/components/shadcn-studio/select/select-07",
+        "@/components/shadcn-studio/select/select-08",
+        "@/components/shadcn-studio/select/select-09",
+        "@/components/shadcn-studio/select/select-10",
+        "@/components/shadcn-studio/select/select-11",
+        "@/components/shadcn-studio/select/select-12",
+        "@/components/shadcn-studio/select/select-13",
+        "@/components/shadcn-studio/select/select-14",
+        "@/components/shadcn-studio/select/select-15",
+        "@/components/shadcn-studio/select/select-16",
+        "@/components/shadcn-studio/select/select-17",
+        "@/components/shadcn-studio/select/select-18",
+        "@/components/shadcn-studio/select/select-19",
+        "@/components/shadcn-studio/select/select-20",
+        "@/components/shadcn-studio/select/select-21",
+        "@/components/shadcn-studio/select/select-22",
+        "@/components/shadcn-studio/select/select-23",
+        "@/components/shadcn-studio/select/select-24",
+        "@/components/shadcn-studio/select/select-25",
+        "@/components/shadcn-studio/select/select-26",
+        "@/components/shadcn-studio/select/select-27",
+        "@/components/shadcn-studio/select/select-28",
+        "@/components/shadcn-studio/select/select-29",
+        "@/components/shadcn-studio/select/select-30",
+        "@/components/shadcn-studio/select/select-31",
+        "@/components/shadcn-studio/select/select-32",
+        "@/components/shadcn-studio/select/select-33",
+        "@/components/shadcn-studio/select/select-34",
+        "@/components/shadcn-studio/select/select-35"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/shell/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/shell-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/shell-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/shell-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/tables/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/table/table-01",
+        "@/components/shadcn-studio/table/table-02",
+        "@/components/shadcn-studio/table/table-03",
+        "@/components/shadcn-studio/table/table-04",
+        "@/components/shadcn-studio/table/table-05",
+        "@/components/shadcn-studio/table/table-06",
+        "@/components/shadcn-studio/table/table-07",
+        "@/components/shadcn-studio/table/table-08",
+        "@/components/shadcn-studio/table/table-09",
+        "@/components/shadcn-studio/table/table-10",
+        "@/components/shadcn-studio/table/table-11",
+        "@/components/shadcn-studio/table/table-12",
+        "@/components/shadcn-studio/table/table-13",
+        "@/components/shadcn-studio/table/table-14",
+        "@/components/shadcn-studio/table/table-15"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/tooltips/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/ui/tooltip",
+        "@/components/shadcn-studio/tooltip/tooltip-01",
+        "@/components/shadcn-studio/tooltip/tooltip-02",
+        "@/components/shadcn-studio/tooltip/tooltip-03",
+        "@/components/shadcn-studio/tooltip/tooltip-04",
+        "@/components/shadcn-studio/tooltip/tooltip-05",
+        "@/components/shadcn-studio/tooltip/tooltip-06",
+        "@/components/shadcn-studio/tooltip/tooltip-07",
+        "@/components/shadcn-studio/tooltip/tooltip-08",
+        "@/components/shadcn-studio/tooltip/tooltip-09",
+        "@/components/shadcn-studio/tooltip/tooltip-10",
+        "@/components/shadcn-studio/tooltip/tooltip-11",
+        "@/components/shadcn-studio/tooltip/tooltip-12",
+        "@/components/shadcn-studio/tooltip/tooltip-13",
+        "@/components/shadcn-studio/tooltip/tooltip-14",
+        "@/components/shadcn-studio/tooltip/tooltip-15"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/tracker/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/tracker-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/tracker-directions/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/tracker-directions"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/tracker-workbench-prototype/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/design-system/application-office-prototype/application-office-prototype"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/typography-proof/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next/font/local",
+        "./typography-proof"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/user-flows/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "next/link"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/workspace-layout/page.tsx",
+      "prototype": true,
+      "imports": [
+        "react",
+        "next",
+        "@/components/shadcn-studio/resizable/resizable-01",
+        "@/components/shadcn-studio/resizable/resizable-02",
+        "@/components/shadcn-studio/resizable/resizable-03",
+        "@/components/shadcn-studio/resizable/resizable-04",
+        "@/components/shadcn-studio/resizable/resizable-05",
+        "@/components/shadcn-studio/resizable/resizable-06",
+        "@/components/shadcn-studio/resizable/resizable-07",
+        "@/components/shadcn-studio/resizable/resizable-08",
+        "@/components/shadcn-studio/resizable/resizable-09",
+        "@/components/shadcn-studio/scroll-area/scroll-area-01",
+        "@/components/shadcn-studio/scroll-area/scroll-area-02",
+        "@/components/shadcn-studio/scroll-area/scroll-area-03",
+        "@/components/shadcn-studio/scroll-area/scroll-area-04",
+        "@/components/shadcn-studio/scroll-area/scroll-area-05",
+        "@/components/shadcn-studio/scroll-area/scroll-area-06",
+        "@/components/shadcn-studio/context-menu/context-menu-01",
+        "@/components/shadcn-studio/context-menu/context-menu-02",
+        "@/components/shadcn-studio/context-menu/context-menu-03",
+        "@/components/shadcn-studio/context-menu/context-menu-04",
+        "@/components/shadcn-studio/context-menu/context-menu-05",
+        "@/components/shadcn-studio/context-menu/context-menu-06",
+        "@/components/shadcn-studio/context-menu/context-menu-07",
+        "@/components/shadcn-studio/context-menu/context-menu-08",
+        "@/components/shadcn-studio/context-menu/context-menu-09"
+      ]
+    },
+    {
+      "file": "apps/web/app/design-system/workspace-patterns/page.tsx",
+      "prototype": true,
+      "imports": [
+        "next",
+        "@/components/shadcn-studio/review-grid",
+        "@/components/shadcn-studio/drawer/drawer-01",
+        "@/components/shadcn-studio/drawer/drawer-02",
+        "@/components/shadcn-studio/drawer/drawer-03",
+        "@/components/shadcn-studio/drawer/drawer-04",
+        "@/components/shadcn-studio/drawer/drawer-05",
+        "@/components/shadcn-studio/drawer/drawer-06",
+        "@/components/shadcn-studio/drawer/drawer-07",
+        "@/components/shadcn-studio/drawer/drawer-08",
+        "@/components/shadcn-studio/drawer/drawer-09",
+        "@/components/shadcn-studio/drawer/drawer-10",
+        "@/components/shadcn-studio/drawer/drawer-11",
+        "@/components/shadcn-studio/drawer/drawer-12",
+        "@/components/shadcn-studio/drawer/drawer-13",
+        "@/components/shadcn-studio/drawer/drawer-14",
+        "@/components/shadcn-studio/drawer/drawer-15",
+        "@/components/shadcn-studio/kanban/kanban-01",
+        "@/components/shadcn-studio/kanban/kanban-02",
+        "@/components/shadcn-studio/kanban/kanban-03",
+        "@/components/shadcn-studio/kanban/kanban-04",
+        "@/components/shadcn-studio/list/list-01",
+        "@/components/shadcn-studio/list/list-02",
+        "@/components/shadcn-studio/list/list-03",
+        "@/components/shadcn-studio/list/list-04",
+        "@/components/shadcn-studio/list/list-05",
+        "@/components/shadcn-studio/list/list-06",
+        "@/components/shadcn-studio/list/list-07",
+        "@/components/shadcn-studio/list/list-08",
+        "@/components/shadcn-studio/list/list-09",
+        "@/components/shadcn-studio/list/list-10",
+        "@/components/shadcn-studio/sortable/sortable-01",
+        "@/components/shadcn-studio/sortable/sortable-02",
+        "@/components/shadcn-studio/sortable/sortable-03",
+        "@/components/shadcn-studio/sortable/sortable-04",
+        "@/components/shadcn-studio/sortable/sortable-05"
+      ]
+    },
+    {
+      "file": "apps/web/app/directory/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/lib/profileRepository",
+        "@/components/public-site-shell",
+        "@/components/directory-browse-view",
+        "@missa/radar-adapters",
+        "next"
+      ]
+    },
+    {
+      "file": "apps/web/app/discover/[slug]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/lib/collectionArtDirection",
+        "next",
+        "next/link",
+        "next/navigation",
+        "next/headers",
+        "lucide-react",
+        "@/components/opportunity-sort",
+        "@/components/opportunity-browse-pagination",
+        "@missa/radar-engine",
+        "@/components/public-site-shell",
+        "@/components/design-system/opportunity-browse-project-card",
+        "@/components/public-discovery-event",
+        "@/lib/auth",
+        "@/lib/opportunityRepository",
+        "@/lib/discoveryGuides",
+        "@/lib/seo",
+        "./collection.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/discover/opportunities/[id]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation"
+      ]
+    },
+    {
+      "file": "apps/web/app/for-organizations/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "lucide-react",
+        "@/components/public-site-shell",
+        "@/lib/seo",
+        "./org.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/forgot-password/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "react",
+        "@/components/ui/button",
+        "@/components/ui/input",
+        "@/components/missa-wordmark"
+      ]
+    },
+    {
+      "file": "apps/web/app/grant/[slug]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/lib/profileRepository",
+        "@/components/public-site-shell",
+        "@/components/institution-profile-view",
+        "next/navigation",
+        "next"
+      ]
+    },
+    {
+      "file": "apps/web/app/grants/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "@/components/directory-category-page"
+      ]
+    },
+    {
+      "file": "apps/web/app/journal/[slug]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/lib/profileRepository",
+        "@/components/public-site-shell",
+        "@/components/institution-profile-view",
+        "next/navigation",
+        "next"
+      ]
+    },
+    {
+      "file": "apps/web/app/journals/[id]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@missa/radar-adapters",
+        "lucide-react",
+        "next/headers",
+        "next/link",
+        "next/navigation",
+        "@/components/ui/button",
+        "@/components/save-to-tracker-button",
+        "@/lib/auth",
+        "@/lib/opportunityRepository",
+        "@/lib/profileRepository",
+        "@/lib/magazineRankingRepository",
+        "@/components/public-site-shell",
+        "@/lib/textUtils",
+        "@/components/ui/magazine-schedule-badge",
+        "@/components/rankings/report-response-dialog",
+        "@/components/missa/magazine-citizenship-badges",
+        "@/components/rankings/journal-telemetry-panel"
+      ]
+    },
+    {
+      "file": "apps/web/app/journals/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "@/components/directory-category-page"
+      ]
+    },
+    {
+      "file": "apps/web/app/login/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation",
+        "next/headers",
+        "@/lib/auth",
+        "@/components/auth-form",
+        "@/lib/authRedirect",
+        "@/lib/firstSaveIntent"
+      ]
+    },
+    {
+      "file": "apps/web/app/methodology/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "lucide-react",
+        "@/components/public-site-shell",
+        "@/lib/seo",
+        "../public-editorial.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/onboarding/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/navigation",
+        "@/lib/auth",
+        "@/lib/creatorRepositories",
+        "@/lib/engine",
+        "@/components/creator-onboarding",
+        "@/lib/creatorOnboardingTaxonomy"
+      ]
+    },
+    {
+      "file": "apps/web/app/opportunities/[id]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "next/headers",
+        "next/navigation",
+        "@/lib/auth",
+        "@/lib/opportunityRepository",
+        "@/lib/profileRepository",
+        "@/lib/opportunityTaxonomy",
+        "@/components/missa-site-header",
+        "@/components/opportunity-detail-view",
+        "@/components/public-discovery-event",
+        "@/lib/seo"
+      ]
+    },
+    {
+      "file": "apps/web/app/opportunities/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "next/link",
+        "next/headers",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/opportunityRepository",
+        "@/lib/opportunityQuery",
+        "@/lib/opportunityFacetCounts",
+        "@/lib/engine",
+        "@missa/contracts",
+        "@/lib/opportunityTaxonomy",
+        "@/components/opportunity-shell",
+        "@/components/opportunity-catalogue-filters",
+        "@/components/save-search-button",
+        "@/components/public-discovery-event",
+        "@/lib/seo",
+        "@/lib/opportunityPreviewFixtures",
+        "@/components/design-system/opportunities-browse-v2-preview",
+        "./opportunities.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/opportunities-preview/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation"
+      ]
+    },
+    {
+      "file": "apps/web/app/org/[organizationId]/[openCallId]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/link",
+        "next/navigation",
+        "next",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/opportunityRepository",
+        "@/lib/publicOrganizationProfile",
+        "@/lib/seo",
+        "@/lib/workspaceEngine",
+        "@/components/missa-site-header",
+        "@/components/submit-form",
+        "./hosted-application.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/org/[organizationId]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/link",
+        "next/navigation",
+        "next",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/opportunityRepository",
+        "@/lib/profileRepository",
+        "@/components/public-site-shell",
+        "@/components/institution-profile-view",
+        "@/lib/publicOrganizationProfile",
+        "@/lib/seo",
+        "@/lib/workspaceEngine",
+        "@/components/missa-site-header",
+        "./public-organization.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/decisions/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/workspaceEngine",
+        "@/lib/organizationProduct",
+        "@/lib/organizationWorkflow",
+        "../workflow.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/delivery/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/organizationOutcome",
+        "@/lib/organizationProduct",
+        "@/lib/workspaceEngine",
+        "../outcome-desk.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/insights/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@missa/taxonomy",
+        "@/lib/auth",
+        "@/lib/workspaceEngine",
+        "@/lib/organizationInsights",
+        "@/lib/organizationProduct",
+        "./insights.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/messages/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/organizationProduct",
+        "@/lib/organizationMessagePresentation",
+        "../outcome-desk.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/opportunities/[opportunityId]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "@/lib/auth",
+        "@/lib/workspaceEngine",
+        "@/lib/organizationProduct",
+        "@/components/organization-opportunity-editor",
+        "./detail.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/opportunities/new/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "@/lib/auth",
+        "@/lib/workspaceEngine",
+        "@/components/organization-opportunity-create",
+        "./new.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/opportunities/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/workspaceEngine",
+        "@/lib/organizationProduct",
+        "./opportunities.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/overview/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/workspaceEngine",
+        "@/lib/organizationProduct",
+        "./overview.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/people/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/organizationPeople",
+        "@/lib/organizationProduct",
+        "@/lib/workspaceEngine",
+        "./people.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/reviews/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/workspaceEngine",
+        "@/lib/organizationProduct",
+        "../workflow.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/settings/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/organizationProduct",
+        "@/lib/organizationSettings",
+        "@/lib/workspaceEngine",
+        "./settings.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/submissions/[submissionId]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/workspaceEngine",
+        "@/lib/organizationWorkflow",
+        "./dossier.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/[organizationId]/submissions/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/workspaceEngine",
+        "@/lib/organizationProduct",
+        "@/lib/organizationWorkflow",
+        "./submissions.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organization/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/organizationProduct",
+        "@/components/organization-chooser",
+        "./organization.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/organizations/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "@/components/directory-category-page"
+      ]
+    },
+    {
+      "file": "apps/web/app/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "lucide-react",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/opportunityRepository",
+        "@/components/opportunity-catalogue-card",
+        "@/components/public-site-shell",
+        "@/lib/seo",
+        "./home.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/press/[slug]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/lib/profileRepository",
+        "@/components/public-site-shell",
+        "@/components/institution-profile-view",
+        "next/navigation",
+        "next"
+      ]
+    },
+    {
+      "file": "apps/web/app/presses/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "@/components/directory-category-page"
+      ]
+    },
+    {
+      "file": "apps/web/app/privacy/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "next/link"
+      ]
+    },
+    {
+      "file": "apps/web/app/profile/[userId]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation",
+        "@missa/radar-adapters",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/profile/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/navigation",
+        "@missa/radar-adapters",
+        "@/components/app-nav",
+        "@/components/profile-product",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/profile/portfolio/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/navigation",
+        "@/lib/auth",
+        "@/components/app-nav",
+        "@/components/creator-portfolio-studio"
+      ]
+    },
+    {
+      "file": "apps/web/app/publication-claim/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/navigation",
+        "next/headers",
+        "@/lib/auth",
+        "@/components/public-site-shell"
+      ]
+    },
+    {
+      "file": "apps/web/app/rankings/claim/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "next/link",
+        "lucide-react",
+        "@/components/public-site-shell",
+        "@/components/rankings/publisher-claim-form",
+        "@/lib/magazineRankingRepository"
+      ]
+    },
+    {
+      "file": "apps/web/app/rankings/compare/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "next/headers",
+        "@/components/public-site-shell",
+        "@/lib/magazineRankingRepository",
+        "@/components/rankings/magazine-comparison-view",
+        "@/lib/auth"
+      ]
+    },
+    {
+      "file": "apps/web/app/rankings/magazines/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "next/headers",
+        "@/components/public-site-shell",
+        "@/components/rankings/magazine-rankings-interactive",
+        "@/lib/magazineRankingRepository",
+        "@/lib/auth",
+        "@missa/radar-engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/rankings/methodology/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "next/link",
+        "lucide-react",
+        "@/components/public-site-shell"
+      ]
+    },
+    {
+      "file": "apps/web/app/rankings/plan/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "next/headers",
+        "next/link",
+        "lucide-react",
+        "@/components/public-site-shell",
+        "@/components/rankings/smart-shortlist-builder",
+        "@/lib/magazineRankingRepository",
+        "@/lib/auth",
+        "@missa/radar-engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/reset-password/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/navigation",
+        "react",
+        "@/components/ui/button",
+        "@/components/ui/input",
+        "@/components/missa-wordmark"
+      ]
+    },
+    {
+      "file": "apps/web/app/residencies/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next",
+        "@/components/directory-category-page"
+      ]
+    },
+    {
+      "file": "apps/web/app/residency/[slug]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "@/lib/profileRepository",
+        "@/components/public-site-shell",
+        "@/components/institution-profile-view",
+        "next/navigation",
+        "next"
+      ]
+    },
+    {
+      "file": "apps/web/app/reviews/[assignmentId]/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/headers",
+        "next/navigation",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/reviewerProduct",
+        "@/lib/workspaceEngine",
+        "@/components/reviewer-evidence-desk"
+      ]
+    },
+    {
+      "file": "apps/web/app/reviews/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "next/headers",
+        "next/navigation",
+        "lucide-react",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/reviewerProduct",
+        "@/lib/workspaceEngine",
+        "./reviews.module.css"
+      ]
+    },
+    {
+      "file": "apps/web/app/signup/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/navigation",
+        "next/headers",
+        "@/lib/auth",
+        "@/lib/authRedirect",
+        "@/components/auth-form",
+        "@/lib/firstSaveIntent"
+      ]
+    },
+    {
+      "file": "apps/web/app/unsubscribe/page.tsx",
+      "prototype": false,
+      "imports": [
+        "next/link",
+        "@/lib/email-tokens",
+        "@/lib/seo",
+        "@missa/radar-adapters"
+      ]
+    },
+    {
+      "file": "apps/web/app/waitlist/page.tsx",
+      "prototype": false,
+      "imports": [
+        "lucide-react",
+        "next/link",
+        "next/navigation",
+        "@/lib/seo",
+        "@/components/missa-wordmark",
+        "./waitlist-form",
+        "./waitlist-artwork",
+        "./waitlist-faq",
+        "./waitlist-faq-content",
+        "./waitlist.module.css"
+      ]
+    }
+  ],
+  "apiRoutes": [
+    {
+      "file": "apps/web/app/api/admin/agents/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/platformAdminFoundations",
+        "@/lib/platformAdmin",
+        "@/lib/platformAnalytics",
+        "@/lib/governedOperationRoutes"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/analytics/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/platformAdminViews",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/audit/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "@/lib/platformAdminApi"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/billing/actions/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/billing/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/platformAdminFoundations",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/content/review/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "@missa/radar-adapters",
+        "next/server",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/content/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/platformAdminViews",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/crm/route.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/platformAdminFoundations",
+        "@/lib/platformAnalytics",
+        "@/lib/platformAdmin",
+        "@/lib/governedOperationRoutes"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/customers/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "@/lib/platformAdminApi"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/email-previews/send-test/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/platformAdmin",
+        "@/lib/mail-service",
+        "@/lib/email-preference-evaluator",
+        "@/emails/welcome",
+        "@/emails/deadline-reminder",
+        "@/emails/decision-letter",
+        "@/emails/alert-digest",
+        "@/emails/password-reset"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/gary/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/platformAdminGary",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/governance/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/platformAdminContinuation",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/ingestion-v2/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "@missa/ingestion-v2",
+        "next/server",
+        "@/lib/platformAdmin",
+        "@missa/radar-adapters",
+        "@/lib/platformAnalytics"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/messaging/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/platformAdminContinuation",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/operations/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/platformAdminApi",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/organizations/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/platformAdminContinuation",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/overview/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "@/lib/platformAdminApi"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/radar/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "@/lib/platformAdminApi"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/support/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/platformAdminSupport",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/system/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "@/lib/platformAdminApi"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/admin/taxonomy/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/platformAdmin"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/analytics/events/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/platformAnalytics"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/auth/[...path]/route.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/neon-auth/server"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/auth/forgot-password/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/engine",
+        "@/lib/password-reset-tokens",
+        "@/emails/password-reset"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/auth/gmail/callback/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/auth/login/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/lib/auth",
+        "@/lib/platformAnalytics",
+        "@/lib/auth-rate-limit"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/auth/logout/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/neon-auth/server"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/auth/me/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/auth/missa-session/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/neon-auth/account",
+        "@/lib/neon-auth/server",
+        "@/lib/platformAnalytics"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/auth/reset-password/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@missa/radar-engine",
+        "@/lib/engine",
+        "@/lib/password-reset-tokens"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/auth/signup/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@missa/radar-adapters",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/lib/auth",
+        "@/lib/platformAnalytics",
+        "@/lib/auth-rate-limit",
+        "@/lib/firstSaveIntent",
+        "@/emails/welcome"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/billing/stripe/webhook/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/billing",
+        "@/lib/governedOperationRoutes"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/creator/portfolio-draft/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/creatorRepositories",
+        "@/lib/creator-portfolio-schema",
+        "@/lib/portfolio-request"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/creator/portfolio-media/[id]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "@/lib/auth",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/creator/portfolio-media/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/creatorRepositories",
+        "file-type",
+        "@/lib/portfolio-request"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/creator/portfolio-publish/route.ts",
+      "methods": [
+        "POST",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/creatorRepositories",
+        "@/lib/creator-portfolio-schema"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/cron/gmail-sync/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/engine",
+        "@/lib/gmail-sync-worker"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/cron/submission-cleanup/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "@vercel/blob",
+        "next/server",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/cron/tick/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/alert-delivery"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/health/readiness/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/readiness"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/inbound/email/forwarded/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "node:crypto",
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/inbound/gmail/push/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/engine",
+        "@/lib/google-pubsub-auth"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/internal/handle-resolution/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/journals/[id]/media/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/profileRepository"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/journals/[id]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/profileRepository"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/journals/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/profileRepository"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/journey/first-save/guidance/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/firstSaveAnalytics",
+        "@/lib/firstSaveIntent"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/journey/first-save/intent/route.ts",
+      "methods": [
+        "POST",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/opportunityRepository",
+        "@/lib/authRedirect",
+        "@/lib/firstSaveIntent",
+        "@/lib/firstSaveAnalytics"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/journey/first-save/resume/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/opportunityRepository",
+        "@/lib/firstSaveIntent",
+        "@/lib/firstSaveAnalytics",
+        "@/lib/saveOpportunityToTracker",
+        "@/lib/firstSaveTypes"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/calendar/connections/[provider]/callback/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/creatorRepositories",
+        "@/lib/calendar-providers"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/calendar/connections/[provider]/route.ts",
+      "methods": [
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/creatorRepositories",
+        "@/lib/calendar-providers"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/calendar/connections/[provider]/start/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/creatorRepositories",
+        "@/lib/calendar-providers"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/calendar/connections/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/creatorRepositories",
+        "@/lib/calendar-providers"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/calendar/events/[id]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/calendar/events/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "node:crypto",
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/calendar/sync/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/creatorRepositories",
+        "@/lib/calendar-providers"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/chat/[conversationId]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/chat/chatService"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/chat/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/contracts",
+        "@/lib/auth",
+        "@/lib/chat/chatService"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/checklist-items/[id]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/email-candidates/[id]/review/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/email-candidates/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/email-forwarding/pause/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/email-forwarding/resume/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/email-forwarding/rotate/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/email-rate-limit"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/email-forwarding/route.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/email-rate-limit"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/email-sync/gmail/mode/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/email-sync/gmail/route.ts",
+      "methods": [
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/email-sync/gmail/start/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/email-sync/gmail/sync/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/email-sync/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/export/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/lib/tracker-export"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/handles/availability/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/handle-rate-limit"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/handles/prompt/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/handles/publish/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/handles/route.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/imports/tracker/commit/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "node:crypto",
+        "next/server",
+        "@missa/radar-engine",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/tracker-import-token"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/imports/tracker/preview/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "node:crypto",
+        "next/server",
+        "@missa/radar-engine",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/tracker-import-token"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/inbox/read/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/library/files/[id]/route.ts",
+      "methods": [
+        "GET",
+        "DELETE"
+      ],
+      "imports": [
+        "@vercel/blob",
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/lib/creatorLibraryRoute"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/library/files/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "@vercel/blob",
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/lib/creatorLibraryRoute"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/library/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/library/saved-answers/[id]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/lib/creatorLibraryRoute"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/library/saved-answers/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/lib/creatorLibraryRoute"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/library/works/[id]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/lib/creatorLibraryRoute"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/library/works/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/lib/creatorLibraryRoute"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/lists/[id]/opportunities/[opportunityId]/route.ts",
+      "methods": [
+        "POST",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/lists/[id]/opportunities/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/lists/[id]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/lists/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/notification-preferences/route.ts",
+      "methods": [
+        "GET",
+        "PUT"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/onboarding/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/headers",
+        "next/server",
+        "@missa/contracts",
+        "../../../../lib/auth",
+        "../../../../lib/creatorRepositories",
+        "../../../../lib/engine",
+        "@missa/radar-adapters",
+        "../../../../lib/creatorOnboardingTaxonomy"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/opportunities/[id]/checklist/items/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/opportunities/[id]/checklist/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/opportunities/[id]/report/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@missa/contracts",
+        "@/lib/auth"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/profile/motion/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/headers",
+        "next/server",
+        "@missa/radar-engine",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/profile/onboarding/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/headers",
+        "next/server",
+        "@missa/contracts",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/profile/privacy/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "imports": [
+        "next/headers",
+        "next/server",
+        "@missa/radar-engine",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/profile/route.ts",
+      "methods": [
+        "GET",
+        "PATCH"
+      ],
+      "imports": [
+        "next/headers",
+        "next/server",
+        "@missa/radar-engine",
+        "@missa/taxonomy",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/submissions/[submissionId]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/submissions/[submissionId]/withdraw/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/workspaceEngine",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/submissions/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/tracker/[opportunityId]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/tracker/[opportunityId]/status/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/firstSaveAnalytics",
+        "@/lib/firstSaveIntent"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/tracker/[opportunityId]/work/route.ts",
+      "methods": [
+        "PUT",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories",
+        "@/lib/creatorLibraryRoute"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/tracker/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "node:crypto",
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/opportunityRepository",
+        "@/lib/firstSaveIntent",
+        "@/lib/firstSaveAnalytics",
+        "@/lib/saveOpportunityToTracker",
+        "@/lib/firstSaveTypes"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/me/unsubscribe/route.ts",
+      "methods": [
+        "POST",
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/email-tokens"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/opportunities/[id]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "@missa/contracts",
+        "next/server",
+        "@/lib/auth",
+        "@/lib/opportunityRepository"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/opportunities/[id]/submission/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/opportunityRepository"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/opportunities/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/contracts",
+        "@/lib/auth",
+        "@/lib/opportunityRepository",
+        "@/lib/opportunityQuery"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/opportunities/search/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/contracts",
+        "@/lib/auth",
+        "@/lib/opportunityRepository",
+        "@/lib/opportunityQuery"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/billing/cancel/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/billing/connect/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/billing/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/billing"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/decision-emails/preview/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/decision-emails/send/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "node:crypto",
+        "@/lib/organizationAccess",
+        "@/lib/platformAnalytics",
+        "@/lib/organizationMessagePresentation",
+        "@/lib/mail-service",
+        "@/emails/decision-letter"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/delivery-tasks/[taskId]/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/delivery-tasks/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/imports/open-calls/commit/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/workspace-engine",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/imports/open-calls/preview/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/workspace-engine",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/imports/submissions/commit/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/workspace-engine",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/imports/submissions/preview/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/workspace-engine",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/insights/export/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/insights/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/members/[accountId]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/contracts",
+        "@missa/radar-engine",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/members/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/contracts",
+        "@missa/radar-engine",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/open-calls/[openCallId]/guidelines/import/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/workspace-engine",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/open-calls/[openCallId]/publish/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/open-calls/[openCallId]/review-rounds/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/open-calls/[openCallId]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/open-calls/[openCallId]/submission-paths/route.ts",
+      "methods": [
+        "POST",
+        "PATCH"
+      ],
+      "imports": [
+        "next/server",
+        "node:crypto",
+        "@missa/workspace-engine",
+        "@/lib/organizationAccess",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/open-calls/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/review-rounds/[roundId]/assign/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/seats/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/submissions/[submissionId]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/submissions/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/teams/[entityId]/programs/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/teams/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/works/[workId]/decision/route.ts",
+      "methods": [
+        "POST",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/workspaceEngine",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/works/[workId]/delivery-tasks/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/organizationAccess",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/orgs/[id]/works/[workId]/file/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "@vercel/blob",
+        "next/server",
+        "@/lib/organizationAccess"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/portfolio-link-preview/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/portfolio-link-metadata"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/profile/[userId]/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/profile-redirect/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/publications/search/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/profileRepository",
+        "@missa/radar-adapters"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/rankings/claim/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/rankings/plan/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/magazineRankingRepository",
+        "@missa/radar-engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/rankings/report-response/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "next/headers",
+        "@/lib/auth",
+        "@/lib/magazineRankingRepository"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/recommendations/feed/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/reviewer/assignments/[assignmentId]/review/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/reviewer/assignments/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/scim/v2/organizations/[id]/Users/[userId]/route.ts",
+      "methods": [
+        "GET",
+        "PATCH",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/engine",
+        "@/lib/scim"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/scim/v2/organizations/[id]/Users/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/engine",
+        "@/lib/scim"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/submission-paths/[pathId]/checkout/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/submission-paths/[pathId]/draft/route.ts",
+      "methods": [
+        "GET",
+        "PUT",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/submission-paths/[pathId]/submit/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/workspaceEngine",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/submission-paths/[pathId]/upload/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "@vercel/blob",
+        "next/server",
+        "@/lib/auth",
+        "@/lib/malwareScanner",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/taxonomy/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/contracts",
+        "@missa/taxonomy"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/calendar-token/route.ts",
+      "methods": [
+        "GET",
+        "POST",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/calendar.ics/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/creatorRepositories",
+        "@/lib/creator-calendar"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/delivery-tasks/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/workspaceEngine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/discover/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/opportunityView",
+        "@/lib/creatorRepositories",
+        "@/lib/opportunityRepository"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/following/[organizationId]/route.ts",
+      "methods": [
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/following/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/inbox/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/profiles/[profileId]/route.ts",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@missa/taxonomy",
+        "@missa/contracts",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/profiles/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "node:crypto",
+        "@missa/radar-adapters",
+        "@missa/taxonomy",
+        "@missa/contracts",
+        "@/lib/auth",
+        "@/lib/engine",
+        "@/lib/creatorRepositories"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/props/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/status/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@missa/radar-engine",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/track/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/tracker/[opportunityId]/work/route.ts",
+      "methods": [
+        "PUT",
+        "DELETE"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/users/[id]/tracker/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth",
+        "@/lib/engine"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/waitlist/invite/redeem/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/auth"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/waitlist/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "@missa/radar-adapters",
+        "@/lib/platformAnalytics",
+        "@/lib/waitlist-email",
+        "./waitlist-rate-limit"
+      ]
+    },
+    {
+      "file": "apps/web/app/api/webhooks/resend/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "imports": [
+        "next/server",
+        "resend",
+        "@missa/radar-adapters",
+        "@/lib/resendWebhook"
+      ]
+    }
+  ],
+  "backendEntryFiles": [
+    "packages/ingestion-v2/src/postgres-worker.ts",
+    "packages/ingestion-v2/src/worker.ts",
+    "packages/radar-adapters/src/contentWorker.ts",
+    "packages/radar-adapters/src/coverageWorker.ts",
+    "packages/radar-adapters/src/creatorAccountRepository.ts",
+    "packages/radar-adapters/src/creatorCalendarRepository.ts",
+    "packages/radar-adapters/src/creatorEmailReviewRepository.ts",
+    "packages/radar-adapters/src/creatorInboxRepository.ts",
+    "packages/radar-adapters/src/creatorLibraryRepository.ts",
+    "packages/radar-adapters/src/creatorNotificationRepository.ts",
+    "packages/radar-adapters/src/creatorPreferenceRepository.ts",
+    "packages/radar-adapters/src/creatorProfileRepository.ts",
+    "packages/radar-adapters/src/creatorRepository.ts",
+    "packages/radar-adapters/src/creatorTrackerRepository.ts",
+    "packages/radar-adapters/src/discoveryWorker.ts",
+    "packages/radar-adapters/src/enrichmentWorker.ts",
+    "packages/radar-adapters/src/lifecycleWorker.ts",
+    "packages/radar-adapters/src/opportunityRepository.ts",
+    "packages/radar-adapters/src/productionEngine.ts",
+    "packages/radar-adapters/src/profileEnrichmentWorker.ts",
+    "packages/radar-adapters/src/profileRepository.ts",
+    "packages/radar-adapters/src/radarWorker.ts",
+    "packages/radar-adapters/src/ranking/magazineRankingRepository.ts",
+    "packages/radar-adapters/src/researchWorker.ts",
+    "packages/radar-adapters/src/reviewWorker.ts",
+    "packages/radar-adapters/src/sourcePromotionWorker.ts",
+    "packages/radar-adapters/src/taxonomyDiscoveryWorker.ts",
+    "packages/radar-adapters/src/worker.ts",
+    "packages/radar-adapters/src/workerTelemetry.ts",
+    "packages/radar-engine/src/engine.ts",
+    "packages/radar-engine/src/ranking/magazineRankingEngine.ts",
+    "packages/radar-engine/src/recommendation/writerMatchingEngine.ts",
+    "packages/radar-engine/src/search/opportunitySearchEngine.ts",
+    "packages/radar-engine/src/status/statusEngine.ts",
+    "packages/workspace-engine/src/engine.ts",
+    "packages/workspace-engine/src/productionEngine.ts",
+    "packages/workspace-engine/src/relationalWorkspace.ts"
+  ],
+  "testFiles": [
+    "apps/web/emails/deadline-reminder.test.ts",
+    "apps/web/emails/password-reset.test.ts",
+    "apps/web/emails/welcome.test.ts",
+    "apps/web/emails/decision-letter.test.ts",
+    "apps/web/lib/designTokenAuthority.test.ts",
+    "apps/web/lib/firstSaveIntent.test.ts",
+    "apps/web/lib/governedOperationRoutes.test.ts",
+    "apps/web/lib/organizationMessagePresentation.test.ts",
+    "apps/web/lib/password-reset-tokens.test.ts",
+    "apps/web/lib/email-preference-evaluator.test.ts",
+    "apps/web/lib/organizationPeople.test.ts",
+    "apps/web/lib/workspaceRelationalSubmissionRoute.test.ts",
+    "apps/web/lib/organizationOutcome.test.ts",
+    "apps/web/lib/organizationProduct.test.ts",
+    "apps/web/lib/email-tokens.test.ts",
+    "apps/web/lib/platformAdminViews.test.ts",
+    "apps/web/lib/creatorExportAuthority.test.ts",
+    "apps/web/lib/platformAdminContinuation.test.ts",
+    "apps/web/lib/malwareScanner.test.ts",
+    "apps/web/lib/organizationWorkflow.test.ts",
+    "apps/web/lib/resendWebhook.test.ts",
+    "apps/web/lib/reviewerProduct.test.ts",
+    "apps/web/lib/platformAdminAuth.test.ts",
+    "apps/web/lib/passwordAuthAuthority.test.ts",
+    "apps/web/lib/platformAdmin.test.ts",
+    "apps/web/lib/mail-service.test.ts",
+    "apps/web/lib/tracker-export.test.ts",
+    "apps/web/lib/workspaceRelationalDecisionRoute.test.ts",
+    "apps/web/lib/workspaceEngine.test.ts",
+    "apps/web/lib/durableMessageDelivery.test.ts",
+    "apps/web/lib/legacyTrackerAuthority.test.ts",
+    "apps/web/lib/publicOrganizationProfile.test.ts",
+    "apps/web/lib/organizationSettings.test.ts",
+    "apps/web/lib/creatorOnboardingTaxonomy.test.ts",
+    "apps/web/lib/google-pubsub-auth.test.ts",
+    "apps/web/lib/authRedirect.test.ts",
+    "apps/web/lib/organizationInsights.test.ts",
+    "apps/web/lib/chat/chatService.test.ts",
+    "apps/web/lib/chat/chatContext.test.ts",
+    "apps/web/emails/components/base-layout.test.ts",
+    "apps/web/app/api/analytics/events/route.test.ts",
+    "apps/web/app/api/webhooks/resend/route.test.ts",
+    "apps/web/app/api/me/chat/route.test.ts",
+    "apps/web/app/api/me/unsubscribe/route.test.ts",
+    "apps/web/app/api/me/onboarding/route.test.ts",
+    "apps/web/app/api/me/opportunities/[id]/report/route.test.ts",
+    "apps/web/app/api/admin/customers/route.test.ts",
+    "apps/web/app/api/admin/organizations/route.test.ts",
+    "apps/web/app/api/admin/crm/route.test.ts",
+    "apps/web/app/api/admin/agents/route.test.ts",
+    "apps/web/app/api/admin/content/route.test.ts",
+    "apps/web/app/api/admin/operations/route.test.ts",
+    "apps/web/app/api/admin/support/route.test.ts",
+    "apps/web/app/api/admin/governance/route.test.ts",
+    "apps/web/app/api/admin/ingestion-v2/route.test.ts",
+    "apps/web/app/api/admin/overview/route.test.ts",
+    "apps/web/app/api/admin/messaging/route.test.ts",
+    "apps/web/app/api/admin/billing/route.test.ts",
+    "apps/web/app/api/admin/analytics/route.test.ts",
+    "apps/web/app/api/opportunities/search/route.test.ts",
+    "packages/radar-adapters/test/radarWorker.test.ts",
+    "packages/radar-adapters/test/postgres-delta.test.ts",
+    "packages/radar-adapters/test/canonicalTrackerImport.test.ts",
+    "packages/radar-adapters/test/machineDiscoveryAdapters.test.ts",
+    "packages/radar-adapters/test/opportunityMediaEnrichment.test.ts",
+    "packages/radar-adapters/test/organizationMediaDiscovery.test.ts",
+    "packages/radar-adapters/test/creatorAuthority.test.ts",
+    "packages/radar-adapters/test/platformAdminFoundations.test.ts",
+    "packages/radar-adapters/test/sourcePromotionWorker.test.ts",
+    "packages/radar-adapters/test/profileIntelligenceExtractor.test.ts",
+    "packages/radar-adapters/test/opportunityRelationalStore.test.ts",
+    "packages/radar-adapters/test/handleNamespace.test.ts",
+    "packages/radar-adapters/test/lifecycleReconciler.test.ts",
+    "packages/radar-adapters/test/adapters.test.ts",
+    "packages/radar-adapters/test/platformAdminSupport.test.ts",
+    "packages/radar-adapters/test/profileCountry.test.ts",
+    "packages/radar-adapters/test/creatorRepository.test.ts",
+    "packages/radar-adapters/test/discoveryWorker.test.ts",
+    "packages/radar-adapters/test/reviewWorker.test.ts",
+    "packages/radar-adapters/test/publicationReview.test.ts",
+    "packages/radar-adapters/test/governedOperations.test.ts",
+    "packages/radar-adapters/test/gmail.test.ts",
+    "packages/radar-adapters/test/creatorAccountRepository.test.ts",
+    "packages/radar-adapters/test/waitlistInvites.test.ts",
+    "packages/radar-adapters/test/artsOpportunityExtractor.test.ts",
+    "packages/radar-adapters/test/creatorPortfolio.test.ts",
+    "packages/radar-adapters/test/postgres-integration.test.ts",
+    "packages/radar-adapters/test/contentReviewAdmin.test.ts",
+    "packages/radar-adapters/test/taxonomyDiscoveryWorker.test.ts",
+    "packages/radar-adapters/test/creator-relational-postgres.test.ts",
+    "packages/radar-adapters/test/profileIdentityMatcher.test.ts",
+    "packages/radar-adapters/test/databaseReconciliation.test.ts",
+    "packages/radar-adapters/test/profileIssueDiscovery.test.ts",
+    "packages/radar-adapters/test/gmailGoogle.test.ts",
+    "packages/radar-adapters/test/evidenceStorage.test.ts",
+    "packages/radar-adapters/test/opportunityRepository.test.ts",
+    "packages/radar-adapters/test/profileEnrichmentWorker.test.ts",
+    "packages/radar-adapters/test/creatorLibraryExportAudit.test.ts",
+    "packages/radar-adapters/test/canonicalOpportunityProjection.test.ts",
+    "packages/radar-adapters/test/creatorProfileRepository.test.ts",
+    "packages/radar-adapters/test/recommendation.test.ts",
+    "packages/radar-adapters/test/trackerImportPersistence.test.ts",
+    "packages/radar-adapters/test/canonicalTracker.test.ts",
+    "packages/radar-adapters/test/sourceDiscoveryAdapters.test.ts",
+    "packages/workspace-engine/test/postgres-delta.test.ts",
+    "packages/workspace-engine/test/relational-postgres.test.ts",
+    "packages/workspace-engine/test/domain.test.ts",
+    "packages/workspace-engine/test/engine.test.ts",
+    "packages/workspace-engine/test/ids.test.ts",
+    "packages/workspace-engine/test/office-application.test.ts",
+    "packages/workspace-engine/test/postgres-integration.test.ts",
+    "packages/workspace-engine/test/guidelines.test.ts",
+    "packages/workspace-engine/test/organizationScope.test.ts",
+    "packages/workspace-engine/test/relational-workspace.test.ts",
+    "packages/workspace-engine/test/submissionImports.test.ts",
+    "packages/workspace-engine/test/imports.test.ts",
+    "packages/ingestion-v2/test/postgres-runner.test.ts",
+    "packages/ingestion-v2/test/postgres.test.ts",
+    "packages/ingestion-v2/test/ingestion-v2.test.ts",
+    "packages/db/test/schema.test.ts",
+    "packages/radar-engine/test/profile.test.ts",
+    "packages/radar-engine/test/coverage-contract.test.ts",
+    "packages/radar-engine/test/matching.test.ts",
+    "packages/radar-engine/test/calendarFeed.test.ts",
+    "packages/radar-engine/test/userloop.test.ts",
+    "packages/radar-engine/test/scheduler.test.ts",
+    "packages/radar-engine/test/scoring.test.ts",
+    "packages/radar-engine/test/auth.test.ts",
+    "packages/radar-engine/test/emailForwarding.test.ts",
+    "packages/radar-engine/test/checklist.test.ts",
+    "packages/radar-engine/test/corpusReplay.test.ts",
+    "packages/radar-engine/test/extraction.test.ts",
+    "packages/radar-engine/test/props.test.ts",
+    "packages/radar-engine/test/coverage.test.ts",
+    "packages/radar-engine/test/engine.test.ts",
+    "packages/radar-engine/test/opportunityContent.test.ts",
+    "packages/radar-engine/test/creatorOnboarding.test.ts",
+    "packages/radar-engine/test/lists.test.ts",
+    "packages/radar-engine/test/magazineRankingEngine.test.ts",
+    "packages/radar-engine/test/fetcher.test.ts",
+    "packages/radar-engine/test/writerMatchingEngine.test.ts",
+    "packages/radar-engine/test/import.test.ts",
+    "packages/radar-engine/test/opportunityAvailability.test.ts",
+    "packages/radar-engine/test/registry.test.ts",
+    "packages/radar-engine/test/export.test.ts",
+    "packages/radar-engine/test/library.test.ts",
+    "packages/radar-engine/test/magazineSchedule.test.ts",
+    "packages/radar-engine/test/harness.test.ts",
+    "packages/radar-engine/test/organization-seats.test.ts",
+    "packages/radar-engine/test/gmailSync.test.ts",
+    "packages/radar-engine/test/recommendation.test.ts",
+    "packages/radar-engine/test/opportunitySearchEngine.test.ts",
+    "packages/radar-engine/test/handles.test.ts",
+    "packages/taxonomy/test/catalog.test.ts",
+    "packages/taxonomy/test/resolve.test.ts",
+    "packages/taxonomy/test/browse.test.ts",
+    "packages/contracts/test/contracts.test.ts"
+  ]
+}

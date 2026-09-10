@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-// @ts-expect-error Node's type-strip runtime resolves this source extension directly.
+// Node's type-strip runtime resolves this source extension directly.
 import { runDurableProviderDelivery } from './durableMessageDelivery.ts';
 
 for (const producer of ['alert digest', 'waitlist confirmation', 'decision email']) {

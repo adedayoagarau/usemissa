@@ -3,7 +3,6 @@ import type {
   OpportunityRepositoryQuery,
   OpportunityType,
 } from "@missa/radar-engine";
-import { MISSA_TAXONOMY } from "@missa/taxonomy";
 import { getOpportunityRepository } from "./opportunityRepository";
 
 export const OPPORTUNITY_TYPE_FACETS: ReadonlyArray<{
@@ -24,14 +23,18 @@ export const OPPORTUNITY_TYPE_FACETS: ReadonlyArray<{
   { value: "rfp", label: "RFP / Public Commission" },
 ];
 
-const practiceFacets = MISSA_TAXONOMY.terms
-  .filter((term) => term.selectable && term.facet === "practice-family")
-  .sort((a, b) => a.preferredLabel.localeCompare(b.preferredLabel));
+function labelForDiscipline(value: string): string {
+  const knownLabels: Record<string, string> = {
+    "visual-arts": "Visual arts",
+    "writing-and-literature": "Writing & literature",
+  };
+  return knownLabels[value] ?? value.replaceAll("-", " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
 
 export interface OpportunityFacetCounts {
   total: number;
   types: Array<{ value: OpportunityType; label: string; count: number }>;
-  practices: Array<{ value: string; label: string; count: number }>;
+  disciplines: Array<{ value: string; label: string; count: number }>;
 }
 
 export async function getOpportunityFacetCounts(
@@ -41,9 +44,6 @@ export async function getOpportunityFacetCounts(
   const repository = getOpportunityRepository();
   const counts = await repository.facetCounts(query, context);
   const typeCounts = new Map(counts.types.map((item) => [item.value, item.count]));
-  const taxonomyCounts = new Map(
-    counts.taxonomyTerms.map((item) => [item.termId, item.count]),
-  );
 
   return {
     total: counts.total,
@@ -51,15 +51,9 @@ export async function getOpportunityFacetCounts(
       ...option,
       count: typeCounts.get(option.value) ?? 0,
     })),
-    practices: practiceFacets
-      .map((term) => ({
-        value: term.id,
-        label: term.preferredLabel,
-        count: taxonomyCounts.get(term.id) ?? 0,
-      }))
-      .filter(
-        (option) =>
-          option.count > 0 || query.taxonomyTermIds?.includes(option.value),
-      ),
+    disciplines: (counts.disciplines ?? [])
+      .map((option) => ({ ...option, label: labelForDiscipline(option.value) }))
+      .filter((option) => option.count > 0 || query.disciplines?.includes(option.value))
+      .sort((a, b) => a.label.localeCompare(b.label)),
   };
 }

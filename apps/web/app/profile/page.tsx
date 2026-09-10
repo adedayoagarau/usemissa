@@ -55,11 +55,12 @@ export default async function ProfilePage({
   const relationalProfiles = getCreatorProfileRepository();
   const relationalPreferences = getCreatorPreferenceRepository();
   if (relationalProfiles && relationalPreferences) {
-    const [creator, preferenceBundle, savedSearches, following] = await Promise.all([
+    const [creator, preferenceBundle, savedSearches, following, portfolio] = await Promise.all([
       relationalProfiles.profile(session.account.id),
       relationalPreferences.preferenceBundle(session.account.id),
       relationalPreferences.savedSearches(session.account.id, session.account.userId),
       relationalPreferences.follows(session.account.id),
+      relationalProfiles.portfolioState(session.account.id),
     ]);
     if (!creator) notFound();
     const handleNamespaceReady = await handleNamespaceAvailable(process.env.DATABASE_URL!).catch(() => false);
@@ -73,7 +74,7 @@ export default async function ProfilePage({
       ...(creator.bio ? { bio: creator.bio } : {}),
       revision: creator.revision,
       publicUrl: `/profile/${encodeURIComponent(creator.userId)}`,
-      handle: { namespaceAvailable: handleNamespaceReady, current: currentHandle, claimingOpen: claimingAccess.allowed, promptDismissed: false, published: false },
+      handle: { namespaceAvailable: handleNamespaceReady, current: currentHandle, claimingOpen: claimingAccess.allowed, promptDismissed: false, published: Boolean(portfolio.publishedAt) },
       privacy: { displayName: creator.privacy.displayName, bio: creator.privacy.bio },
       taxonomyPreferences: preferenceBundle?.taxonomyPreferences ?? [],
       preferencesRevision: preferenceBundle?.revision,

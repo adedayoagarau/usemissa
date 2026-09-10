@@ -3,6 +3,8 @@ import test from "node:test";
 import { hashPassword } from "@missa/radar-engine";
 import type { Pool } from "pg";
 import { PostgresCreatorAccountRepository } from "../src/creatorAccountRepository.js";
+import { PostgresCreatorPreferenceRepository } from "../src/creatorPreferenceRepository.js";
+import { creatorCommandEnvelope } from "../src/creatorRepository.js";
 
 test("password authentication reads the relational account and rejects a wrong password", async () => {
   const account = { id: "acct-one", email: "ada@example.com", passwordHash: hashPassword("correct-horse"), userId: "user-one", isAdmin: false, createdAt: new Date(0).toISOString(), active: true };
@@ -56,3 +58,22 @@ test("updatePassword updates hash and records audit event in transaction", async
   assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
 });
 
+test("preference updates provision a default record for legacy accounts", async () => {
+  const statements: string[] = [];
+  const client = {
+    query: async (text: string) => {
+      statements.push(text.replace(/\s+/g, " ").trim());
+      if (text.startsWith("update opportunity_preferences")) return { rows: [{ account_id: "acct-legacy", revision: 2 }] };
+      return { rows: [] };
+    },
+    release: () => statements.push("RELEASE"),
+  };
+  const pool = { connect: async () => client } as unknown as Pool;
+  const repository = new PostgresCreatorPreferenceRepository(pool);
+  await repository.updatePreferences(
+    creatorCommandEnvelope("acct-legacy", "creator-preferences.update", "legacy-onboarding", { preferences: "writing" }, 1),
+    [],
+    { types: [], disciplines: ["Writing"], genres: [], locations: [], careerStages: [], noFeeOnly: false, simultaneousRequired: false },
+  );
+  assert.ok(statements.some((statement) => statement.startsWith("insert into opportunity_preferences (account_id) values ($1) on conflict")));
+});

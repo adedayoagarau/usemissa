@@ -5,6 +5,8 @@ import { getSessionAccount } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
 import { getCreatorLibraryRepository } from '@/lib/creatorRepositories';
 import { creatorLibraryError, creatorLibraryJson, libraryEnvelope } from '@/lib/creatorLibraryRoute';
+import { creatorFileStorageReady, localCreatorFileStorageEnabled, readLocalCreatorFile, deleteLocalCreatorFile } from '@/lib/creator-file-storage';
+export const runtime='nodejs';
 
 const headers = { 'Cache-Control': 'private, no-store' };
 
@@ -18,8 +20,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     : (await getEngine()).library(session.account.userId).files.find((item) => item.id === id);
   if (!file) return NextResponse.json({ error: 'File not found.' }, { status: 404, headers });
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token && !(process.env.VERCEL_OIDC_TOKEN && process.env.BLOB_STORE_ID)) return NextResponse.json({ error: 'File storage is not configured.' }, { status: 503, headers });
+  if (!creatorFileStorageReady()) return NextResponse.json({ error: 'File storage is not configured.' }, { status: 503, headers });
   try {
+    if(localCreatorFileStorageEnabled()){
+      const bytes=await readLocalCreatorFile(file.storageKey);
+      return new NextResponse(bytes,{headers:{...headers,'content-type':file.contentType,'content-length':String(bytes.byteLength),'content-disposition':`inline; filename*=UTF-8''${encodeURIComponent(file.filename)}`}});
+    }
     const blob = await get(file.storageKey, { access: 'private', useCache: true, ...(token ? { token } : {}) });
     if (!blob || blob.statusCode !== 200) return NextResponse.json({ error: 'File bytes are unavailable.' }, { status: 404, headers });
     const disposition = `inline; filename*=UTF-8''${encodeURIComponent(file.filename)}`;
@@ -42,8 +48,8 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
       const result = await repository.deleteFile(envelope, id);
       const token = process.env.BLOB_READ_WRITE_TOKEN;
       let bytesDeletion: 'deleted' | 'cleanup-pending' = 'cleanup-pending';
-      if (token || (process.env.VERCEL_OIDC_TOKEN && process.env.BLOB_STORE_ID)) {
-        try { await del(result.storageKey, { ...(token ? { token } : {}) }); bytesDeletion = 'deleted'; await repository.settleFileDeletion(session.account.id, result.cleanupId, 'deleted'); }
+      if (creatorFileStorageReady()) {
+        try { if(localCreatorFileStorageEnabled())await deleteLocalCreatorFile(result.storageKey);else await del(result.storageKey, { ...(token ? { token } : {}) }); bytesDeletion = 'deleted'; await repository.settleFileDeletion(session.account.id, result.cleanupId, 'deleted'); }
         catch (error) { await repository.settleFileDeletion(session.account.id, result.cleanupId, 'failed', error instanceof Error ? error.message : 'Provider deletion failed'); }
       }
       return creatorLibraryJson({ deleted: true, bytesDeletion, receipt: result.receipt });

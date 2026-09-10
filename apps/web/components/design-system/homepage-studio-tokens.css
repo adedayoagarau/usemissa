@@ -1,0 +1,31 @@
+/* Approved homepage composition roles. Values derive from DESIGN.md's existing
+   palette/spacing/type scale; the 280ms reveal is finite and user-requested. */
+.missa-homepage-studio {
+  --studio-canvas: var(--bg);
+  --studio-ink: var(--ink);
+  --studio-ink-secondary: var(--ink-2);
+  --studio-line: var(--border);
+  --studio-action: var(--brand-accent);
+  --studio-action-hover: var(--accent-deep);
+  --studio-selected: var(--accent-tint);
+  --studio-surface: var(--muted);
+  --studio-radius-control: 8px;
+  --studio-radius-media: 16px;
+  --studio-motion-fast: 120ms;
+  --studio-motion-scene: 280ms;
+  --studio-motion-ease: cubic-bezier(0.2, 0, 0, 1);
+  --studio-display: 64px;
+  --studio-title: 40px;
+  --studio-body: 18px;
+  --studio-label: 14px;
+  --studio-caption: 12px;
+  --studio-max-width: 1360px;
+  --studio-gutter: 32px;
+}
+@media (max-width: 767px) {
+  .missa-homepage-studio {
+    --studio-gutter: 16px;
+    --studio-display: 48px;
+    --studio-title: 32px;
+  }
+}

@@ -361,3 +361,25 @@ body {
   text-decoration: var(--shiki-dark-text-decoration) !important;
 }
 
+
+/* Ranking status colors shared by the index and its methodology. */
+:root {
+  --ranking-tier-1-foreground: var(--color-amber-700);
+  --ranking-tier-1-background: var(--color-amber-50);
+  --ranking-tier-2-foreground: var(--color-blue-700);
+  --ranking-tier-2-background: var(--color-blue-50);
+  --ranking-tier-3-foreground: var(--color-emerald-700);
+  --ranking-tier-3-background: var(--color-emerald-50);
+  --ranking-up: var(--color-emerald-700);
+  --ranking-down: var(--color-red-700);
+}
+.dark {
+  --ranking-tier-1-foreground: var(--color-amber-300);
+  --ranking-tier-1-background: var(--color-amber-950);
+  --ranking-tier-2-foreground: var(--color-blue-300);
+  --ranking-tier-2-background: var(--color-blue-950);
+  --ranking-tier-3-foreground: var(--color-emerald-300);
+  --ranking-tier-3-background: var(--color-emerald-950);
+  --ranking-up: var(--color-emerald-300);
+  --ranking-down: var(--color-red-300);
+}

@@ -169,7 +169,7 @@ for (const file of sourceFiles) {
       `@/components/ui/${primitive}(?:["'])`,
       "g",
     );
-    if (!isExcluded && importPattern.test(source))
+    if (!isExcluded && !Object.values(policy.semanticComponents).some(entry => entry.implementation === relative) && importPattern.test(source))
       record(file, "direct-domain-primitive-import", primitive);
   }
 

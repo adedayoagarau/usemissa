@@ -8,6 +8,7 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine } from "@/lib/engine";
 import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from "@/lib/workspaceEngine";
 import { getCreatorLibraryRepository } from "@/lib/creatorRepositories";
+import { ApplicationsWorkspace } from "@/components/missa/applications-workspace";
 import {
   TrackerProduct,
   type TrackerHostedSubmission,
@@ -59,6 +60,9 @@ export default async function TrackerPage({
     creatorRelationalAuthorityEnabled(process.env) &&
     Boolean(process.env.DATABASE_URL);
   if (!userId && !postgresTracker) redirect("/login?next=/tracker");
+  // The creator workspace loads its own account-scoped records. A legacy
+  // workspace loader must not prevent the application shell from rendering.
+  if (postgresTracker) return <ApplicationsWorkspace />;
   const radar = await getEngine();
   const initialItems: TrackerProductItem[] =
     postgresTracker && process.env.DATABASE_URL

@@ -1,8 +1,64 @@
 {
-  "applicationTrackerPreview": {"status":"experimental", "implementation":"apps/web/components/application-tracker-preview.tsx", "route":"/design-system/my-applications", "composition":["Button","Field","Input","Textarea","NativeSelect"]},
-  "applicationPreparationPreview": {"status":"experimental", "implementation":"apps/web/components/application-preparation-preview.tsx", "route":"/design-system/application-preparation", "composition":["Button","Field","Textarea","NativeSelect"], "boundary":"Sample materials, local React state; no persistence, upload, or submission integration."},
-  "creatorWorkspacePreview": {"status":"experimental", "implementation":"apps/web/components/creator-workspace-preview.tsx", "route":"/design-system/creator-workspace", "composition":["Button","Checkbox","Link"], "boundary":"Interactive local-state workspace preview. It does not create applications, save materials, set reminders, or claim external submission status."},
-  "creatorOnboardingPreview": {"status":"experimental", "implementation":"apps/web/components/creator-onboarding-preview.tsx", "route":"/design-system/creator-onboarding", "composition":["Checkbox","Button","Link"], "boundary":"Two optional questions; local React state only; no account persistence"},
+  "liquidGlassWelcome": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/liquid-glass-welcome.tsx",
+    "route": "/welcome",
+    "composition": [
+      "Button",
+      "Link",
+      "DecorativeCanvas"
+    ],
+    "source": "Installed Base UI Button; original WebGL scene informed by Appllama interaction study. No upstream code/assets copied.",
+    "tokens": "components/design-system/welcome-tokens.css and welcome-motion.ts",
+    "evidence": "docs/design-references/liquid-glass-welcome.md",
+    "boundary": "Optional entry screen with real navigation. Does not save preferences or replace /onboarding."
+  },
+  "applicationTrackerPreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/application-tracker-preview.tsx",
+    "route": "/design-system/my-applications",
+    "composition": [
+      "Button",
+      "Field",
+      "Input",
+      "Textarea",
+      "NativeSelect"
+    ]
+  },
+  "applicationPreparationPreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/application-preparation-preview.tsx",
+    "route": "/design-system/application-preparation",
+    "composition": [
+      "Button",
+      "Field",
+      "Textarea",
+      "NativeSelect"
+    ],
+    "boundary": "Sample materials, local React state; no persistence, upload, or submission integration."
+  },
+  "creatorWorkspacePreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/creator-workspace-preview.tsx",
+    "route": "/design-system/creator-workspace",
+    "composition": [
+      "Button",
+      "Checkbox",
+      "Link"
+    ],
+    "boundary": "Interactive local-state workspace preview. It does not create applications, save materials, set reminders, or claim external submission status."
+  },
+  "creatorOnboardingPreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/creator-onboarding-preview.tsx",
+    "route": "/design-system/creator-onboarding",
+    "composition": [
+      "Checkbox",
+      "Button",
+      "Link"
+    ],
+    "boundary": "Two optional questions; local React state only; no account persistence"
+  },
   "opportunityDetail": {
     "persistentActions": "OpportunityDetailStickyActions observes summary exit; desktop only, existing mobile dock retained",
     "status": "approved",
@@ -1372,5 +1428,287 @@
     ],
     "states": "Loading/retry, saving/confirmed/error/conflict, private draft, publish confirmation, published, unpublish, rename, handle checking/available/taken/invalid/unavailable, media selected/replaced/removed/unsupported/quota.",
     "publicRoute": "/@handle"
+  },
+  "discoveryBeta": {
+    "status": "review",
+    "implementation": "apps/web/components/ui/beta-badge.tsx",
+    "source": "Installed Badge outline; Studio badge-10 inspected",
+    "adaptation": "Static inherited-color Beta badge beside canonical wordmark; discovery-focused public navigation and homepage",
+    "validation": "docs/discovery-beta-and-rankings-2026-09-06.md"
+  },
+  "magazineIndex": {
+    "status": "review",
+    "implementation": "apps/web/components/rankings/magazine-rankings-interactive.tsx",
+    "source": "Installed Table, Field, Input, NativeSelect, Button, Empty; Studio table-01 inspected",
+    "adaptation": "Comfortable public page with compact table, responsive row actions, labelled filters, 25-row pagination; retains existing tracking and reporting integrations",
+    "validation": "docs/discovery-beta-and-rankings-2026-09-06.md"
+  },
+  "discoveryJourneyPreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/design-system/discovery-journey-preview.tsx",
+    "route": "/design-system/discovery-journey/home",
+    "source": "Existing public page components, HomepageHeroPreview, AuthForm, CreatorOnboarding, installed Button",
+    "adaptation": "Connected review sequence and proposed navigation; user-referenced teal only on ranking previews; signup never calls auth APIs."
+  },
+  "rankingIndicators": {
+    "implementation": "apps/web/components/missa/ranking-indicators.tsx",
+    "source": "Installed Badge and Lucide arrows",
+    "intent": "Ranking tier and year-over-year movement",
+    "tokens": "Shared ranking tier and movement semantic tokens in globals.css",
+    "states": "Four tier colors; positive, negative, zero and absent movement; static indicators",
+    "adaptation": "Amber, blue, green and neutral tiers matching the user reference; visible arrows and accessible movement labels"
+  },
+  "contentIssueReport": {
+    "status": "approved",
+    "implementation": "apps/web/components/content-issue-report-dialog.tsx",
+    "source": "Installed Dialog, Button, Input and Textarea with policy-selected NativeSelect",
+    "intent": "Focused correction report from an opportunity or journal profile",
+    "states": "Signed out, idle, disabled, sending, error and success",
+    "boundary": "Authenticated reports enter the support review queue and never edit public records automatically"
+  },
+  "socialAuthentication": {
+    "status": "review",
+    "implementation": "apps/web/components/missa/social-auth-button.tsx",
+    "source": "Installed ui/Button; local Google brand mark and Lucide LoaderCircle",
+    "intent": "Configured third-party authentication entry",
+    "states": "Unavailable omitted, idle, connecting, provider failure returned to form, callback linking failure",
+    "adaptation": "Full-width outline action and explicit connecting text; rendered only when Neon Auth is configured."
+  },
+  "homepageStudio": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/homepage-studio.tsx",
+    "route": "/design-system/homepage-studio",
+    "composition": [
+      "Button",
+      "Link",
+      "Switch",
+      "Sheet",
+      "Alert",
+      "Item",
+      "ResponsiveImage"
+    ],
+    "source": "Installed Base UI controls; Studio button-01 inspected; original composed photographic stage. No missing interaction primitive or registry install.",
+    "tokens": "components/design-system/homepage-studio-tokens.css",
+    "evidence": "docs/homepage-cinematic-2026-09-07/evidence/implementation-checkpoint.md",
+    "boundary": "Local studio selection only; no account preference, submission, or reminder claim."
+  },
+  "videoWorld": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/video-world.tsx",
+    "route": "/design-system/video-world",
+    "composition": [
+      "Button",
+      "Link",
+      "NativeVideo"
+    ],
+    "source": "Installed Base UI Button and native video. Reference footage: Amir Music, CC BY 4.0. Player authored locally from documented requirements.",
+    "tokens": "components/design-system/video-world-tokens.css",
+    "evidence": "docs/homepage-cinematic-2026-09-07/06-reference-correction.md"
+  },
+  "applicationsDesignPreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/applications-design-preview.tsx",
+    "route": "/design-system/applications-v2",
+    "composition": [
+      "Tabs",
+      "Button",
+      "Field",
+      "Input",
+      "Textarea",
+      "Dialog",
+      "NativeSelect",
+      "Empty",
+      "Alert",
+      "Skeleton",
+      "Link",
+      "CreatorShell",
+      "ApplicationLabels"
+    ],
+    "source": "Installed Base UI primitives; original Missa composition",
+    "evidence": "docs/my-applications/product-journey.md",
+    "boundary": "Fictional records and memory-only interactions; does not replace live tracker."
+  },
+  "homepageNextOpening": {
+    "implementation": "apps/web/components/missa/homepage-next-opening.tsx",
+    "route": "/design-system/homepage-hero",
+    "source": "Installed ui/carousel.tsx (Embla), Studio carousel-08 controls and card/card-05.tsx image-content pattern, composed with ui/card.tsx. Six original generated campaign images.",
+    "tokens": "components/design-system/homepage-carousel-tokens.css",
+    "boundary": "Introduction and compact live-count row precede six overlapping portrait category cards. Active card exposes category-specific search; inactive cards retain visible labels. User-driven motion, no account mutation.",
+    "evidence": "docs/homepage-cinematic-2026-09-07/19-homepage-colour-and-painting.md",
+    "adaptation": "Four live metrics with plus suffixes and directory navigation; staggered desktop row and mobile two-column layout. Embla horizontal wheel gestures and looping slides; Card-05 content-card pattern, generated imagery, raised active card, tokenized motion and loading placeholders. Citron full-width discovery surface. Selection controls wait for the carousel API before accepting input."
+  },
+  "applicationLabels": {
+    "implementation": "apps/web/components/missa/application-labels.tsx",
+    "source": "Installed Badge outline and secondary variants",
+    "evidence": "docs/my-applications/product-journey.md"
+  },
+  "goalsPreview": {
+    "semantic": "GoalsPreview",
+    "implementation": "apps/web/components/missa/goals-preview.tsx",
+    "composition": [
+      "CreatorShell",
+      "Button",
+      "Input",
+      "NativeSelect",
+      "Dialog",
+      "ApplicationLabels",
+      "Progress"
+    ],
+    "boundary": "Fictional local-state goals. No persistence, recommendation ranking or reminder delivery.",
+    "evidence": "docs/my-applications/goals.md",
+    "route": "/design-system/goals",
+    "source": "Existing Missa shell and installed Base UI controls"
+  },
+  "goalsWorkspace": {
+    "semantic": "GoalsWorkspace",
+    "implementation": "apps/web/components/missa/goals-workspace.tsx",
+    "composition": [
+      "CreatorShell",
+      "Button",
+      "Input",
+      "NativeSelect",
+      "Sheet",
+      "Dialog",
+      "GoalSubmissionProgress"
+    ],
+    "boundary": "Account-owned persisted goals using canonical catalogue IDs and server scheduling",
+    "route": "/goals",
+    "evidence": "docs/my-applications/connected-goal-journey.md",
+    "typedGoals": "Direction, discipline, optional owned Library work, typed progress, program targets, explicit fee currency and separate attendance preferences."
+  },
+  "goalSubmissionProgress": {
+    "implementation": "apps/web/components/missa/goal-submission-progress.tsx",
+    "source": "Installed Progress and Lucide Check; decorative circles accompany numeric data",
+    "evidence": "docs/my-applications/connected-goal-journey.md"
+  },
+  "homepageContinuation": {
+    "implementation": "apps/web/components/missa/homepage-continuation.tsx",
+    "routes": [
+      "/",
+      "/design-system/homepage-hero"
+    ],
+    "source": "OpportunityBrowseProjectCard from data.display.opportunity-card, also rendered on /opportunities. Installed Accordion, Button, Skeleton and canonical MissaWordmark. No separate homepage opportunity card markup.",
+    "tokens": "components/design-system/homepage-continuation-tokens.css",
+    "adaptation": "Canonical opportunity cards unchanged. Directory uses exact backend profile names, kinds, routes and media. Headlands is featured with a credited official campus image, followed by installed Avatar organization rows with fallbacks. Approved full-width marketing colour bands; shared operational cards unchanged.",
+    "evidence": "docs/homepage-cinematic-2026-09-07/19-homepage-colour-and-painting.md"
+  },
+  "homepageWorkspace": {
+    "implementation": "apps/web/components/missa/homepage-workspace.tsx",
+    "routes": [
+      "/",
+      "/design-system/homepage-hero"
+    ],
+    "source": "Installed Tabs/Studio tabs-09, Table/table-01, Switch/switch-01, Button and Skeleton. Actual CreatorPortfolioStudio embedded variant and GoalSubmissionProgress reused.",
+    "tokens": "components/design-system/homepage-continuation-tokens.css",
+    "adaptation": "Photographic feature stories beside interactive product views. Original fictional campaign artwork, distinct existing palette tokens and large editorial titles. Portfolio themes and format filters, actual public deadlines, local notification switches and resettable sample submission goals. No account writes or notification delivery. Approved full-width marketing colour bands; shared operational cards unchanged. White is the initial local portfolio preview theme.",
+    "evidence": "docs/homepage-cinematic-2026-09-07/19-homepage-colour-and-painting.md"
+  },
+  "ApplicationsWorkspace": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/missa/applications-workspace.tsx",
+    "route": "/tracker",
+    "composition": [
+      "Button",
+      "Tabs",
+      "Dialog",
+      "Collapsible",
+      "Field",
+      "Input",
+      "Textarea",
+      "NativeSelect",
+      "ApplicationLabels",
+      "Skeleton",
+      "ApplicationPreparation"
+    ],
+    "source": "Installed Base UI components and Missa ApplicationLabels",
+    "evidence": "docs/my-applications/creator-build-1-7.md",
+    "boundary": "Real API data; materials captured on explicit submission. Validation in progress."
+  },
+  "ApplicationPreparation": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/missa/application-preparation.tsx",
+    "route": "/tracker",
+    "composition": [
+      "Button",
+      "Checkbox",
+      "Progress",
+      "Dialog",
+      "Field",
+      "Input",
+      "NativeSelect",
+      "Skeleton"
+    ],
+    "source": "Installed Base UI components and Missa ApplicationLabels",
+    "evidence": "docs/my-applications/creator-build-1-7.md",
+    "boundary": "Real API data; materials captured on explicit submission. Validation in progress."
+  },
+  "LibraryMaterialSheet": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/missa/library-material-sheet.tsx",
+    "route": "/library",
+    "composition": [
+      "Sheet",
+      "Button",
+      "Collapsible",
+      "Field",
+      "Input",
+      "Textarea",
+      "Skeleton"
+    ],
+    "source": "Installed Base UI Sheet and form components",
+    "adaptation": "Current Library content with linked applications and preserved submission versions. Responsive full-width mobile drawer.",
+    "evidence": "docs/my-applications/creator-build-1-7.md"
+  },
+  "ApplicationReminders": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/missa/application-reminders.tsx",
+    "routes": [
+      "/tracker",
+      "/inbox?view=reminders"
+    ],
+    "composition": [
+      "Button",
+      "Dialog",
+      "Field",
+      "Input",
+      "NativeSelect",
+      "Skeleton"
+    ],
+    "source": "Installed Base UI Dialog and form patterns",
+    "adaptation": "Date and recurrence adapt to preparation, confirmed deadlines or response follow-ups. Scheduled data persisted in PostgreSQL.",
+    "evidence": "docs/my-applications/creator-build-1-7.md"
+  },
+  "FollowingWorkspace": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/missa/following-workspace.tsx",
+    "route": "/following",
+    "composition": [
+      "Tabs",
+      "Button",
+      "Sheet",
+      "Avatar",
+      "Field",
+      "Input",
+      "NativeSelect",
+      "Skeleton",
+      "ApplicationLabels"
+    ],
+    "source": "Installed Base UI and Missa semantic application labels",
+    "adaptation": "Organization drawer shows programs; program drawer shows actual rounds. Private follow state persists across open and closed calls.",
+    "evidence": "docs/my-applications/creator-build-1-7.md"
+  },
+  "RecommendationsWorkspace": {
+    "implementation": "apps/web/components/missa/recommendations-workspace.tsx",
+    "source": "Existing OpportunityBrowseProjectCard and installed Base UI primitives",
+    "policy": "composition.creator-recommendations",
+    "states": "Loading, empty, error/retry, contextual selection, collapsed/expanded reasons, feedback saving/error/hidden/restored, current calls and programs between rounds.",
+    "validation": "Database ownership, goal constraints, work snapshots, edit/retry/correction tests passed. Browser create/edit/reload, real cards, failed feedback retry, hide/restore, plan-ahead, 390px, 200% text and serious/critical axe checks passed; reduced motion enabled."
+  },
+  "calendarPlanning": {
+    "implementation": "apps/web/components/calendar-workspace.tsx",
+    "policy": "composition.calendar-planning",
+    "adaptation": "Existing calendar composition retained; old raw colors and font families migrated to inherited Missa tokens. New actions use Button, NativeSelect and Collapsible. Legacy grid/editor primitive migration remains design debt.",
+    "states": "Create/edit, loading, failed save/retry, empty schedule, overlap feedback, inferred deadline label, notification-off label, linked application/goal/reminder, unavailable providers.",
+    "validation": "DB ownership/private continuity/link/unlink/legacy update/retry checks, timezone/DST and multi-day boundary checks, actual account browser application-to-preparation handoff, save/reopen, all-day edit, overlap, keyboard, 390px and serious/critical axe passed. Provider external delivery not verified."
   }
 }

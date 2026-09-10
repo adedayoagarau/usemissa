@@ -34,11 +34,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const expectedRevision = Number(request.headers.get('If-Match'));
     if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 1) return NextResponse.json({ error: 'If-Match revision is required.' }, { status: 400 });
     try {
-      const input = { id: profileId, name, criteria: parsed.data, includeInDigest: current.includeInDigest };
+    const includeInDigest = Object.prototype.hasOwnProperty.call(body, 'includeInDigest')
+      ? body.includeInDigest === true
+      : current.includeInDigest;
+    const input = { id: profileId, name, criteria: parsed.data, includeInDigest };
       const receipt = await repository.updateSavedSearch(
         creatorCommandEnvelope(auth.session.account.id, 'saved-search.update', request.headers.get('Idempotency-Key')?.trim() ?? '', input, expectedRevision), input,
       );
-      return NextResponse.json({ ...current, name, criteria: parsed.data, revision: receipt.revision, idempotent: receipt.replayed });
+      return NextResponse.json({ ...current, name, criteria: parsed.data, includeInDigest, revision: receipt.revision, idempotent: receipt.replayed });
     } catch (error) {
       if (error instanceof CreatorCommandValidationError) return NextResponse.json({ error: error.message }, { status: 400 });
       if (error instanceof CreatorConflictError) return NextResponse.json({ error: error.message, conflict: { action: 'refresh-and-retry', actualRevision: error.actualRevision } }, { status: 409 });

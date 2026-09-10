@@ -1,0 +1,338 @@
+.page {
+  min-block-size: 100svh;
+  background: var(--welcome-paper);
+  color: var(--welcome-text);
+}
+.shell {
+  max-inline-size: 1440px;
+  margin-inline: auto;
+  padding-inline: var(--space-gutter);
+}
+/* Spacious density: Inline 16, Group 32, Section 64. */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding-block: var(--s4);
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+}
+.brand img {
+  inline-size: 100px;
+  block-size: auto;
+}
+.skip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-block-size: 44px;
+  font-size: 14px;
+  color: var(--welcome-forest);
+}
+.skip:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.hero {
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  align-items: center;
+  gap: var(--s8);
+  padding-block: var(--s4) var(--s8);
+}
+.intro {
+  min-inline-size: 0;
+  padding-block: var(--s4);
+}
+.eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--welcome-forest);
+  margin-block-end: var(--s4);
+}
+.title {
+  overflow-wrap: anywhere;
+  font-size: clamp(48px, 5.2vw, 76px);
+  font-weight: 450;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  max-inline-size: 10ch;
+  text-wrap: balance;
+}
+.title em {
+  color: var(--welcome-forest);
+  font-weight: 450;
+}
+.description {
+  font-size: 18px;
+  line-height: 1.6;
+  max-inline-size: 33ch;
+  color: var(--ink-2);
+  margin-block: var(--s4);
+}
+.actions {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--s2);
+  margin-block-start: var(--s5);
+}
+.primary {
+  min-inline-size: 220px;
+  gap: var(--s2);
+  border-radius: var(--welcome-control-radius);
+}
+.note {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.sceneWrap {
+  min-inline-size: 0;
+  container-type: inline-size;
+}
+.scene {
+  position: relative;
+  block-size: 580px;
+  overflow: hidden;
+  border-radius: var(--welcome-panel-radius);
+  background: linear-gradient(
+    180deg,
+    var(--welcome-paper),
+    var(--welcome-mist)
+  );
+  isolation: isolate;
+}
+.canvas {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+.sceneLabel {
+  position: absolute;
+  inset-block-start: var(--s4);
+  inset-inline: var(--s4);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2);
+  align-items: center;
+  pointer-events: none;
+  font-size: 12px;
+  color: var(--welcome-forest);
+}
+.sceneLabel span:last-child {
+  border-block-end: 1px solid var(--welcome-forest);
+  padding-block-end: 4px;
+}
+.gateCopy {
+  position: absolute;
+  inset-block-start: 24%;
+  inset-inline: var(--s3);
+  text-align: center;
+  pointer-events: none;
+}
+.gateCopy p {
+  font-size: 36px;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+.gateCopy span {
+  display: block;
+  margin-block-start: var(--s2);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.sceneButton {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  background: transparent !important;
+  border-radius: var(--welcome-panel-radius);
+  touch-action: none;
+  cursor: grab;
+  z-index: 2;
+}
+.sceneButton:active {
+  cursor: grabbing;
+  transform: none;
+}
+.sceneButton:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -4px;
+}
+.hint {
+  position: absolute;
+  inset-block-end: var(--s4);
+  inset-inline: var(--s3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s1);
+  pointer-events: none;
+  font-size: 13px;
+  color: var(--welcome-forest);
+  z-index: 3;
+}
+.sceneFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-block-start: var(--s2);
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.sceneFooter button {
+  font-size: 12px;
+}
+.openCopy {
+  position: absolute;
+  inset-block-end: 15%;
+  inset-inline: var(--s3);
+  text-align: center;
+  pointer-events: none;
+}
+.openCopy p {
+  font-size: 32px;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+}
+.openCopy span {
+  display: block;
+  font-size: 13px;
+  margin-block-start: var(--s1);
+  color: var(--ink-2);
+}
+.values {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--s4);
+  border-block-start: 1px solid var(--welcome-line);
+  padding-block: var(--s4) var(--s6);
+}
+.value {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+}
+.value svg {
+  color: var(--welcome-forest);
+  margin-block-start: 2px;
+  flex-shrink: 0;
+}
+.value strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.value p {
+  margin-block-start: var(--s1);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.fallbackOrb {
+  position: absolute;
+  inline-size: 85%;
+  aspect-ratio: 1;
+  inset-inline-start: 7.5%;
+  inset-block-end: -38%;
+  border: 1px solid var(--welcome-glass-edge);
+  border-radius: var(--welcome-glass-radius);
+  background: radial-gradient(
+    circle at 35% 25%,
+    var(--welcome-paper),
+    var(--welcome-glass-fill) 50%,
+    var(--welcome-mist)
+  );
+}
+.scene[data-open="true"] .fallbackOrb {
+  inline-size: 88px;
+  inset-inline-start: calc(50% - 44px);
+  inset-block-end: 40%;
+}
+.fallbackCards {
+  position: absolute;
+  inset-inline: var(--s4);
+  inset-block-start: 25%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s2);
+}
+.fallbackCards span {
+  padding: var(--s2);
+  background: var(--welcome-paper);
+  border: 1px solid var(--welcome-line);
+  border-radius: var(--welcome-control-radius);
+  color: var(--welcome-forest);
+  font-size: 14px;
+}
+.page a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
+@media (max-width: 850px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: var(--s4);
+    padding-block-start: 0;
+  }
+  .intro {
+    text-align: center;
+    padding-block: var(--s2);
+  }
+  .eyebrow {
+    margin-block-end: var(--s2);
+  }
+  .title {
+    margin-inline: auto;
+    max-inline-size: 14ch;
+    font-size: clamp(44px, 8vw, 64px);
+  }
+  .description {
+    margin-inline: auto;
+    margin-block: var(--s3);
+    font-size: 16px;
+  }
+  .actions {
+    align-items: center;
+    margin-block-start: var(--s3);
+  }
+  .sceneWrap {
+    max-inline-size: 560px;
+    inline-size: 100%;
+    margin-inline: auto;
+  }
+  .values {
+    grid-template-columns: 1fr;
+    gap: var(--s4);
+  }
+  .header {
+    padding-block: var(--s2);
+  }
+}
+@container (max-width: 400px) {
+  .scene {
+    block-size: 470px;
+  }
+  .gateCopy p {
+    font-size: 30px;
+  }
+  .sceneLabel {
+    inset-inline: var(--s3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page *,
+  .page *::before,
+  .page *::after {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

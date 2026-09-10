@@ -381,6 +381,9 @@ export function ProfileProduct({
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
   const [confirmedExclusions, setConfirmedExclusions] = useState(false);
+  const [closeAccountOpen, setCloseAccountOpen] = useState(false);
+  const [closeAccountText, setCloseAccountText] = useState("");
+  const [closingAccount, setClosingAccount] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const identityDirty = !same({ displayName, bio }, savedIdentity);
@@ -1291,6 +1294,17 @@ export function ProfileProduct({
                   Open Tracker import
                 </Link>
               </div>
+              <div className={styles.importCallout}>
+                <div>
+                  <h3>Close your account</h3>
+                  <p>
+                    Your private workspace will stop accepting sign-ins. Published profiles are removed from public view; audit records are retained where required.
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => setCloseAccountOpen(true)}>
+                  Close account
+                </Button>
+              </div>
             </div>
           ) : null}
         </main>
@@ -1315,6 +1329,37 @@ export function ProfileProduct({
             <AlertDialogCancel>Keep editing</AlertDialogCancel>
             <AlertDialogAction onClick={discardCurrent}>
               Discard and continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={closeAccountOpen} onOpenChange={(open) => { if (!closingAccount) setCloseAccountOpen(open); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Close your Missa account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This signs you out and removes your public profile. Your exported data and required audit history are retained. This cannot be undone from Missa.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Label htmlFor="close-account-confirmation">Type CLOSE MY ACCOUNT</Label>
+          <Input id="close-account-confirmation" value={closeAccountText} onChange={(event) => setCloseAccountText(event.target.value)} autoComplete="off" />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={closingAccount}>Keep account</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={closingAccount || closeAccountText !== "CLOSE MY ACCOUNT"}
+              onClick={(event) => {
+                event.preventDefault();
+                setClosingAccount(true);
+                fetch("/api/me/account/close", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmation: closeAccountText }) })
+                  .then(async (response) => {
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(data.error || "Could not close your account.");
+                    window.location.href = "/";
+                  })
+                  .catch((reason: unknown) => { setError(reason instanceof Error ? reason.message : "Could not close your account."); setClosingAccount(false); });
+              }}
+            >
+              {closingAccount ? "Closing…" : "Close account"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

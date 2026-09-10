@@ -1,5 +1,19 @@
 import { Pool } from "pg";
-import type { RankingGenre, ComputedMagazineRankings } from "@missa/radar-engine";
+import {
+  resolveMagazineSchedule,
+  type ComputedMagazineRankings,
+  type MagazineScheduleResult,
+  type RankingGenre,
+} from "@missa/radar-engine";
+
+export interface MagazineRankingOpportunity {
+  id: string;
+  title: string;
+  deadline: string | null;
+  status: "open" | "closed" | "unknown";
+  detailUrl: string | null;
+  officialWebsite: string | null;
+}
 
 export interface MagazineRankingRow {
   profileId: string;
@@ -24,6 +38,31 @@ export interface MagazineRankingRow {
   regularFeeCents: number;
   contributorPayCents: number;
   simultaneousPolicy: string;
+  activeOpportunity: MagazineRankingOpportunity | null;
+  schedule: MagazineScheduleResult | null;
+}
+
+export interface MagazineTelemetrySummary {
+  profileId: string;
+  sampleSize: number;
+  decidedReports: number;
+  acceptanceRate: number | null;
+  medianResponseDays: number | null;
+  p90ResponseDays: number | null;
+  distribution: {
+    under30: number;
+    days31To60: number;
+    days61To90: number;
+    days90Plus: number;
+  };
+  outcomes: {
+    accepted: number;
+    personalRejections: number;
+    formRejections: number;
+    withdrawn: number;
+    pending: number;
+  };
+  latestReportAt: string | null;
 }
 
 export interface MagazineRankingsFilter {
@@ -41,13 +80,109 @@ export interface MagazineRankingPage {
   genre: RankingGenre;
 }
 
+function nullableText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function dateText(value: unknown): string | null {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+}
+
+function opportunityStatus(value: unknown): MagazineRankingOpportunity["status"] {
+  const status = String(value ?? "unknown");
+  if (["open", "opening-soon", "closing-soon", "deadline-extended"].includes(status)) return "open";
+  if (["closed", "archived"].includes(status)) return "closed";
+  return "unknown";
+}
+
+function rankingRow(row: Record<string, unknown>): MagazineRankingRow {
+  const activeOpportunity = nullableText(row.active_opportunity_id)
+    ? {
+        id: String(row.active_opportunity_id),
+        title: String(row.active_opportunity_title ?? "Open call"),
+        deadline: dateText(row.active_opportunity_deadline),
+        status: opportunityStatus(row.active_opportunity_status),
+        detailUrl: nullableText(row.active_opportunity_detail_url),
+        officialWebsite: nullableText(row.active_opportunity_official_website),
+      }
+    : null;
+  const schedule = resolveMagazineSchedule({
+    readingPeriod: nullableText(row.reading_period),
+    opportunities: activeOpportunity
+      ? [
+          {
+            id: activeOpportunity.id,
+            title: activeOpportunity.title,
+            status: activeOpportunity.status,
+            deadline: activeOpportunity.deadline,
+            opensAt: dateText(row.active_opportunity_open_date),
+          },
+        ]
+      : null,
+  });
+
+  return {
+    profileId: String(row.profile_id),
+    name: String(row.name),
+    slug: String(row.slug).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+    websiteUrl: row.website_url ? String(row.website_url) : null,
+    mediaUrl: row.media_url ? String(row.media_url) : null,
+    rankingYear: Number(row.ranking_year),
+    genre: row.genre as RankingGenre,
+    rankPosition: Number(row.rank_position),
+    previousYearRank: row.prev_rank != null ? Number(row.prev_rank) : null,
+    rankDelta: row.rank_delta != null ? Number(row.rank_delta) : null,
+    prestigeTier: String(row.prestige_tier),
+    totalScore: Number(row.total_score),
+    accoladesScore: Number(row.accolades_score),
+    payScore: Number(row.pay_score),
+    turnaroundScore: Number(row.turnaround_score),
+    feesScore: Number(row.fees_score),
+    respectScore: Number(row.respect_score),
+    formatEthicsScore: Number(row.format_ethics_score),
+    medianResponseDays: row.median_response_days != null ? Number(row.median_response_days) : null,
+    regularFeeCents: Number(row.regular_fee_cents),
+    contributorPayCents: Number(row.contributor_pay_cents),
+    simultaneousPolicy: String(row.simultaneous_policy),
+    activeOpportunity,
+    schedule,
+  };
+}
+
+function emptyTelemetrySummary(profileId: string): MagazineTelemetrySummary {
+  return {
+    profileId,
+    sampleSize: 0,
+    decidedReports: 0,
+    acceptanceRate: null,
+    medianResponseDays: null,
+    p90ResponseDays: null,
+    distribution: {
+      under30: 0,
+      days31To60: 0,
+      days61To90: 0,
+      days90Plus: 0,
+    },
+    outcomes: {
+      accepted: 0,
+      personalRejections: 0,
+      formRejections: 0,
+      withdrawn: 0,
+      pending: 0,
+    },
+    latestReportAt: null,
+  };
+}
+
 export class PostgresMagazineRankingRepository {
   constructor(private readonly pool: Pool) {}
 
   async listRankings(filter: MagazineRankingsFilter = {}): Promise<MagazineRankingPage> {
     const year = filter.year ?? 2026;
     const genre = filter.genre ?? "overall";
-    const limit = Math.min(Math.max(filter.limit ?? 50, 1), 100);
+    const limit = Math.min(Math.max(filter.limit ?? 50, 1), 1000);
     const offset = Math.max(filter.offset ?? 0, 0);
 
     const values: unknown[] = [year, genre];
@@ -60,13 +195,26 @@ export class PostgresMagazineRankingRepository {
 
     const whereClause = whereConditions.join(" AND ");
 
-    const query = `
+      const query = `
+      WITH latest_observation AS (
+        SELECT DISTINCT ON (profile_id) profile_id, reading_period
+        FROM gary_profile_observations
+        ORDER BY profile_id, observed_at DESC
+      )
       SELECT
         r.profile_id,
         p.name,
         COALESCE(NULLIF(p.name_key, ''), p.id) as slug,
         p.website_url,
         m.image_url as media_url,
+        latest_observation.reading_period,
+        active_opp.id as active_opportunity_id,
+        active_opp.title as active_opportunity_title,
+        active_opp.status as active_opportunity_status,
+        active_opp.open_date as active_opportunity_open_date,
+        active_opp.deadline_date as active_opportunity_deadline,
+        active_opp.detail_url as active_opportunity_detail_url,
+        active_opp.official_website as active_opportunity_official_website,
         r.ranking_year,
         r.genre,
         r.rank_position,
@@ -90,6 +238,7 @@ export class PostgresMagazineRankingRepository {
         COUNT(*) OVER() as total_count
       FROM missa_magazine_rankings r
       JOIN gary_profiles p ON p.id = r.profile_id
+      LEFT JOIN latest_observation ON latest_observation.profile_id = p.id
       LEFT JOIN missa_magazine_rankings prev
         ON prev.profile_id = r.profile_id
         AND prev.genre = r.genre
@@ -101,6 +250,32 @@ export class PostgresMagazineRankingRepository {
         ORDER BY is_lead DESC, (media_group = 'identity') DESC, display_order ASC
         LIMIT 1
       ) m ON true
+      LEFT JOIN LATERAL (
+        SELECT
+          o.id,
+          o.title,
+          o.status,
+          o.open_date::text as open_date,
+          o.deadline_date::text as deadline_date,
+          COALESCE(o.guidelines_url, s.url) AS detail_url,
+          COALESCE(o.submission_url, o.guidelines_url, s.url) AS official_website
+        FROM opportunities o
+        JOIN opportunity_sources s ON s.id = o.source_id
+        LEFT JOIN opportunity_profile_links l
+          ON l.opportunity_id = o.id
+          AND l.profile_id = p.id
+          AND l.status = 'confirmed'
+          AND l.verified_until > now()
+        WHERE (o.organization_id = p.id OR l.profile_id = p.id)
+          AND o.publication_state = 'published'
+          AND o.status IN ('opening-soon', 'open', 'closing-soon', 'deadline-extended')
+          AND (o.deadline_date IS NULL OR o.deadline_date >= current_date)
+        ORDER BY
+          CASE WHEN o.status = 'closing-soon' THEN 0 WHEN o.deadline_date IS NOT NULL THEN 1 ELSE 2 END,
+          o.deadline_date ASC NULLS LAST,
+          o.title ASC
+        LIMIT 1
+      ) active_opp ON true
       WHERE ${whereClause}
       ORDER BY r.rank_position ASC
       LIMIT $${values.length + 1} OFFSET $${values.length + 2}
@@ -111,30 +286,7 @@ export class PostgresMagazineRankingRepository {
     try {
       const res = await this.pool.query(query, values);
       const total = Number(res.rows[0]?.total_count ?? 0);
-      const items: MagazineRankingRow[] = res.rows.map((row) => ({
-        profileId: String(row.profile_id),
-        name: String(row.name),
-        slug: String(row.slug).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
-        websiteUrl: row.website_url ? String(row.website_url) : null,
-        mediaUrl: row.media_url ? String(row.media_url) : null,
-        rankingYear: Number(row.ranking_year),
-        genre: row.genre as RankingGenre,
-        rankPosition: Number(row.rank_position),
-        previousYearRank: row.prev_rank != null ? Number(row.prev_rank) : null,
-        rankDelta: row.rank_delta != null ? Number(row.rank_delta) : null,
-        prestigeTier: String(row.prestige_tier),
-        totalScore: Number(row.total_score),
-        accoladesScore: Number(row.accolades_score),
-        payScore: Number(row.pay_score),
-        turnaroundScore: Number(row.turnaround_score),
-        feesScore: Number(row.fees_score),
-        respectScore: Number(row.respect_score),
-        formatEthicsScore: Number(row.format_ethics_score),
-        medianResponseDays: row.median_response_days != null ? Number(row.median_response_days) : null,
-        regularFeeCents: Number(row.regular_fee_cents),
-        contributorPayCents: Number(row.contributor_pay_cents),
-        simultaneousPolicy: String(row.simultaneous_policy),
-      }));
+      const items: MagazineRankingRow[] = res.rows.map((row) => rankingRow(row));
 
       return { items, total, year, genre };
     } catch {
@@ -145,12 +297,25 @@ export class PostgresMagazineRankingRepository {
   async getMagazineStanding(profileId: string, year: number = 2026): Promise<MagazineRankingRow[]> {
     try {
       const res = await this.pool.query(
-        `SELECT
+        `WITH latest_observation AS (
+          SELECT DISTINCT ON (profile_id) profile_id, reading_period
+          FROM gary_profile_observations
+          ORDER BY profile_id, observed_at DESC
+        )
+        SELECT
           r.profile_id,
           p.name,
           COALESCE(NULLIF(p.name_key, ''), p.id) as slug,
           p.website_url,
           NULL as media_url,
+          latest_observation.reading_period,
+          active_opp.id as active_opportunity_id,
+          active_opp.title as active_opportunity_title,
+          active_opp.status as active_opportunity_status,
+          active_opp.open_date as active_opportunity_open_date,
+          active_opp.deadline_date as active_opportunity_deadline,
+          active_opp.detail_url as active_opportunity_detail_url,
+          active_opp.official_website as active_opportunity_official_website,
           r.ranking_year,
           r.genre,
           r.rank_position,
@@ -173,41 +338,100 @@ export class PostgresMagazineRankingRepository {
           r.simultaneous_policy
         FROM missa_magazine_rankings r
         JOIN gary_profiles p ON p.id = r.profile_id
+        LEFT JOIN latest_observation ON latest_observation.profile_id = p.id
         LEFT JOIN missa_magazine_rankings prev
           ON prev.profile_id = r.profile_id
           AND prev.genre = r.genre
           AND prev.ranking_year = (r.ranking_year - 1)
+        LEFT JOIN LATERAL (
+          SELECT
+            o.id,
+            o.title,
+            o.status,
+            o.open_date::text as open_date,
+            o.deadline_date::text as deadline_date,
+            COALESCE(o.guidelines_url, s.url) AS detail_url,
+            COALESCE(o.submission_url, o.guidelines_url, s.url) AS official_website
+          FROM opportunities o
+          JOIN opportunity_sources s ON s.id = o.source_id
+          LEFT JOIN opportunity_profile_links l
+            ON l.opportunity_id = o.id
+            AND l.profile_id = p.id
+            AND l.status = 'confirmed'
+            AND l.verified_until > now()
+          WHERE (o.organization_id = p.id OR l.profile_id = p.id)
+            AND o.publication_state = 'published'
+            AND o.status IN ('opening-soon', 'open', 'closing-soon', 'deadline-extended')
+            AND (o.deadline_date IS NULL OR o.deadline_date >= current_date)
+          ORDER BY
+            CASE WHEN o.status = 'closing-soon' THEN 0 WHEN o.deadline_date IS NOT NULL THEN 1 ELSE 2 END,
+            o.deadline_date ASC NULLS LAST,
+            o.title ASC
+          LIMIT 1
+        ) active_opp ON true
         WHERE r.profile_id = $1 AND r.ranking_year = $2
         ORDER BY CASE WHEN r.genre = 'overall' THEN 1 ELSE 2 END, r.rank_position ASC`,
         [profileId, year]
       );
 
-      return res.rows.map((row) => ({
-        profileId: String(row.profile_id),
-        name: String(row.name),
-        slug: String(row.slug),
-        websiteUrl: row.website_url ? String(row.website_url) : null,
-        mediaUrl: null,
-        rankingYear: Number(row.ranking_year),
-        genre: row.genre as RankingGenre,
-        rankPosition: Number(row.rank_position),
-        previousYearRank: row.prev_rank != null ? Number(row.prev_rank) : null,
-        rankDelta: row.rank_delta != null ? Number(row.rank_delta) : null,
-        prestigeTier: String(row.prestige_tier),
-        totalScore: Number(row.total_score),
-        accoladesScore: Number(row.accolades_score),
-        payScore: Number(row.pay_score),
-        turnaroundScore: Number(row.turnaround_score),
-        feesScore: Number(row.fees_score),
-        respectScore: Number(row.respect_score),
-        formatEthicsScore: Number(row.format_ethics_score),
-        medianResponseDays: row.median_response_days != null ? Number(row.median_response_days) : null,
-        regularFeeCents: Number(row.regular_fee_cents),
-        contributorPayCents: Number(row.contributor_pay_cents),
-        simultaneousPolicy: String(row.simultaneous_policy),
-      }));
+      return res.rows.map((row) => rankingRow(row));
     } catch {
       return [];
+    }
+  }
+
+  async getTelemetrySummary(profileId: string): Promise<MagazineTelemetrySummary> {
+    try {
+      const res = await this.pool.query(
+        `SELECT
+          COUNT(*)::int as sample_size,
+          COUNT(*) FILTER (WHERE outcome IS NOT NULL AND outcome <> 'pending')::int as decided_reports,
+          COUNT(*) FILTER (WHERE outcome = 'accepted')::int as accepted,
+          COUNT(*) FILTER (WHERE outcome = 'rejected' AND rejection_type IN ('tiered_personal', 'editor_note'))::int as personal_rejections,
+          COUNT(*) FILTER (WHERE outcome = 'rejected' AND (rejection_type IS NULL OR rejection_type = 'form'))::int as form_rejections,
+          COUNT(*) FILTER (WHERE outcome = 'withdrawn')::int as withdrawn,
+          COUNT(*) FILTER (WHERE outcome = 'pending')::int as pending,
+          COUNT(*) FILTER (WHERE response_days > 0 AND response_days <= 30)::int as under_30,
+          COUNT(*) FILTER (WHERE response_days BETWEEN 31 AND 60)::int as days_31_60,
+          COUNT(*) FILTER (WHERE response_days BETWEEN 61 AND 90)::int as days_61_90,
+          COUNT(*) FILTER (WHERE response_days > 90)::int as days_90_plus,
+          percentile_cont(0.5) WITHIN GROUP (ORDER BY response_days) FILTER (WHERE response_days > 0) as median_days,
+          percentile_cont(0.9) WITHIN GROUP (ORDER BY response_days) FILTER (WHERE response_days > 0) as p90_days,
+          MAX(created_at)::text as latest_report_at
+        FROM missa_submission_telemetry
+        WHERE profile_id = $1`,
+        [profileId],
+      );
+
+      const row = res.rows[0] as Record<string, unknown> | undefined;
+      if (!row) return emptyTelemetrySummary(profileId);
+      const sampleSize = Number(row.sample_size ?? 0);
+      const decidedReports = Number(row.decided_reports ?? 0);
+      const accepted = Number(row.accepted ?? 0);
+      return {
+        profileId,
+        sampleSize,
+        decidedReports,
+        acceptanceRate: decidedReports > 0 ? Math.round((accepted / decidedReports) * 1000) / 10 : null,
+        medianResponseDays: row.median_days != null ? Math.round(Number(row.median_days)) : null,
+        p90ResponseDays: row.p90_days != null ? Math.round(Number(row.p90_days)) : null,
+        distribution: {
+          under30: Number(row.under_30 ?? 0),
+          days31To60: Number(row.days_31_60 ?? 0),
+          days61To90: Number(row.days_61_90 ?? 0),
+          days90Plus: Number(row.days_90_plus ?? 0),
+        },
+        outcomes: {
+          accepted,
+          personalRejections: Number(row.personal_rejections ?? 0),
+          formRejections: Number(row.form_rejections ?? 0),
+          withdrawn: Number(row.withdrawn ?? 0),
+          pending: Number(row.pending ?? 0),
+        },
+        latestReportAt: row.latest_report_at ? String(row.latest_report_at) : null,
+      };
+    } catch {
+      return emptyTelemetrySummary(profileId);
     }
   }
 

@@ -2,32 +2,53 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Archive, Bookmark, BookOpen, Building2, Inbox, Menu, Search, Shield, UserRound } from "lucide-react";
+import { Archive, BookOpen, Bell, Building2, CalendarDays, Inbox, ListOrdered, Menu, PanelLeftClose, PanelLeftOpen, Target, Search, Shield, UserRound } from "lucide-react";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./creator-shell.module.css";
 
 const primary = [
   { href: "/opportunities", label: "Opportunities", icon: Search },
-  { href: "/saved", label: "Saved", icon: Bookmark },
-  { href: "/tracker", label: "Tracker", icon: BookOpen },
+  { href: "/following", label: "Following", icon: Bell },
+  { href: "/tracker", label: "My applications", icon: BookOpen },
+  { href: "/goals", label: "Goals", icon: Target },
   { href: "/library", label: "Library", icon: Archive },
+  { href: "/calendar", label: "Calendar", icon: CalendarDays },
 ] as const;
 
 export type CreatorOrganization = { id: string; name: string };
 
-export function CreatorShell({ children, email, organizations = [], isAdmin = false }: { children: React.ReactNode; email: string; organizations?: CreatorOrganization[]; isAdmin?: boolean }) {
+export function CreatorShell({ children, email, organizations = [], isAdmin = false, applicationsPreview = false }: { children: React.ReactNode; email: string; organizations?: CreatorOrganization[]; isAdmin?: boolean; applicationsPreview?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [logoutError, setLogoutError] = useState(false);
   const links = [
-    ...primary,
+    ...(applicationsPreview ? [
+      { href: "/opportunities", label: "Opportunities", icon: Search },
+      { href: "/directory", label: "Directory", icon: Building2 },
+      { href: "/rankings/magazines", label: "Rankings", icon: ListOrdered },
+      { href: "/design-system/applications-v2", label: "My applications", icon: BookOpen },
+      { href: "/design-system/goals", label: "Goals", icon: Target },
+      { href: "/library", label: "Library", icon: Archive },
+      { href: "/calendar", label: "Calendar", icon: CalendarDays },
+    ] : primary),
     { href: "/inbox", label: "Inbox", icon: Inbox },
     { href: "/profile", label: "Profile", icon: UserRound },
   ];
+  useEffect(() => {
+    setCollapsed(window.localStorage.getItem("missa-creator-nav") === "collapsed");
+  }, []);
+  function toggleRail() {
+    setCollapsed((value) => {
+      const next = !value;
+      window.localStorage.setItem("missa-creator-nav", next ? "collapsed" : "expanded");
+      return next;
+    });
+  }
 
   const navigation = (
     <>
@@ -51,12 +72,12 @@ export function CreatorShell({ children, email, organizations = [], isAdmin = fa
     router.refresh();
   }
 
-  return <div className={styles.shell}>
+  return <div className={styles.shell} data-rail-collapsed={collapsed || undefined}>
     <a className={styles.skipLink} href="#main-content">Skip to content</a>
     <aside className={styles.rail}>
-      <MissaWordmark href="/opportunities" size="app" className={styles.wordmark} />
+      <div className={styles.railHeader}><MissaWordmark href="/opportunities" size="app" className={styles.wordmark} /><button type="button" className={styles.collapseButton} onClick={toggleRail} aria-label={collapsed ? "Expand navigation" : "Collapse navigation"} title={collapsed ? "Expand navigation" : "Collapse navigation"}>{collapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}</button></div>
       {navigation}
-      <div className={styles.account}><span aria-hidden="true">{email[0]?.toUpperCase()}</span><div><b>{email.split("@")[0]}</b><small>{email}</small></div><button type="button" onClick={() => void signOut()}>Log out</button>{logoutError ? <p role="alert">Could not log out. Try again.</p> : null}</div>
+      <div className={styles.account}><span aria-hidden="true">{email[0]?.toUpperCase()}</span><div><b>{applicationsPreview ? "Design preview" : email.split("@")[0]}</b><small>{applicationsPreview ? "Sample account navigation" : email}</small></div><button type="button" disabled={applicationsPreview} onClick={() => void signOut()}>{applicationsPreview ? "Preview only" : "Log out"}</button>{logoutError ? <p role="alert">Could not log out. Try again.</p> : null}</div>
     </aside>
     <header className={styles.mobileHeader}>
       <MissaWordmark href="/opportunities" size="app" />
@@ -64,9 +85,9 @@ export function CreatorShell({ children, email, organizations = [], isAdmin = fa
     </header>
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent side="left" className={styles.drawer}>
-        <SheetHeader><SheetTitle>Profile</SheetTitle><SheetDescription>Navigate your creator tools.</SheetDescription></SheetHeader>
+        <SheetHeader><SheetTitle>{applicationsPreview ? "Missa navigation" : "Profile"}</SheetTitle><SheetDescription>Navigate your creator tools.</SheetDescription></SheetHeader>
         {navigation}
-        <button className={styles.mobileLogout} type="button" onClick={() => void signOut()}>Log out</button>
+        <button className={styles.mobileLogout} disabled={applicationsPreview} type="button" onClick={() => void signOut()}>{applicationsPreview ? "Preview only" : "Log out"}</button>
       </SheetContent>
     </Sheet>
     <div className={styles.content}>{children}</div>

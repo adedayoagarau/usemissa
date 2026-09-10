@@ -45,18 +45,20 @@ export async function POST(request: Request) {
         { status: 500, headers: noStore }
       );
     }
+    const telemetrySummary = await repo.getTelemetrySummary(body.profileId.trim());
 
     return NextResponse.json(
       {
         success: true,
         message: "Thank you for contributing to the community turnaround index!",
         newMedianDays: result.newMedianDays,
+        telemetrySummary,
       },
       { status: 200, headers: noStore }
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: err instanceof Error ? err.message : "Internal server error" },
       { status: 500, headers: noStore }
     );
   }

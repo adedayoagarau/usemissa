@@ -43,6 +43,7 @@ export default function PlatformAdminSupport({
   const [summary, setSummary] = useState(area.data.summary);
   const [savingId, setSavingId] = useState<string>();
   const [error, setError] = useState<string>();
+  const [resolutionById, setResolutionById] = useState<Record<string, { correction: string; evidenceUrl: string; field: string; value: string }>>({});
   const [statusFilter, setStatusFilter] = useState<
     PlatformSupportStatus | "all"
   >("all");
@@ -60,6 +61,7 @@ export default function PlatformAdminSupport({
     if (!row || row.status === status) return;
     setSavingId(caseId);
     setError(undefined);
+    const resolution = resolutionById[caseId];
     try {
       const response = await fetch("/api/admin/support", {
         method: "POST",
@@ -67,7 +69,7 @@ export default function PlatformAdminSupport({
           "content-type": "application/json",
           "Idempotency-Key": crypto.randomUUID(),
         },
-        body: JSON.stringify({ caseId, status }),
+        body: JSON.stringify({ caseId, status, ...(resolution?.correction.trim() ? { correction: resolution.correction.trim() } : {}), ...(resolution?.evidenceUrl.trim() ? { evidenceUrl: resolution.evidenceUrl.trim() } : {}), ...(resolution?.field ? { correctedField: resolution.field, correctedValue: resolution.value } : {}) }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok)
@@ -285,6 +287,18 @@ export default function PlatformAdminSupport({
                               {row.note}
                             </span>
                           )}
+                          {row.status !== "resolved" ? <div className="mt-3 grid gap-2">
+                            <label className="text-[11px] text-muted-foreground">Verified correction
+                              <textarea className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.correction ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: event.target.value, evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} placeholder="What should the public record say?" />
+                            </label>
+                            <label className="text-[11px] text-muted-foreground">Apply to public field
+                              <select className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.field ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: event.target.value, value: current[row.id]?.value ?? "" } }))}><option value="">Record only</option><option value="deadline_date">Deadline date</option><option value="status">Status</option><option value="fee_status">Fee status</option><option value="fee_cents">Fee amount (cents)</option><option value="guidelines_url">Guidelines URL</option><option value="submission_url">Submission URL</option><option value="location">Location</option><option value="title">Title</option></select>
+                            </label>
+                            {resolutionById[row.id]?.field ? <label className="text-[11px] text-muted-foreground">Corrected value<input className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.value ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: event.target.value } }))} /></label> : null}
+                            <label className="text-[11px] text-muted-foreground">Official source URL
+                              <input className="mt-1 block w-full border border-border px-2 py-1 text-xs" type="url" value={resolutionById[row.id]?.evidenceUrl ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: event.target.value, field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} placeholder="https://official-source.example" />
+                            </label>
+                          </div> : null}
                         </td>
                         <td className="px-4 py-3 font-mono text-[11px] whitespace-nowrap text-muted-foreground">
                           {dateLabel(row.createdAt)}
@@ -334,6 +348,12 @@ export default function PlatformAdminSupport({
                         {row.note}
                       </p>
                     )}
+                    {row.status !== "resolved" ? <div className="grid gap-2">
+                      <label className="text-xs text-muted-foreground">Verified correction<textarea className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.correction ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: event.target.value, evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} /></label>
+                      <label className="text-xs text-muted-foreground">Official source URL<input className="mt-1 block w-full border border-border px-2 py-1 text-xs" type="url" value={resolutionById[row.id]?.evidenceUrl ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: event.target.value, field: current[row.id]?.field ?? "", value: current[row.id]?.value ?? "" } }))} /></label>
+                      <label className="text-xs text-muted-foreground">Apply to public field<select className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.field ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: event.target.value, value: current[row.id]?.value ?? "" } }))}><option value="">Record only</option><option value="deadline_date">Deadline date</option><option value="status">Status</option><option value="fee_status">Fee status</option><option value="fee_cents">Fee amount (cents)</option><option value="guidelines_url">Guidelines URL</option><option value="submission_url">Submission URL</option><option value="location">Location</option><option value="title">Title</option></select></label>
+                      {resolutionById[row.id]?.field ? <label className="text-xs text-muted-foreground">Corrected value<input className="mt-1 block w-full border border-border px-2 py-1 text-xs" value={resolutionById[row.id]?.value ?? ""} onChange={(event) => setResolutionById((current) => ({ ...current, [row.id]: { correction: current[row.id]?.correction ?? "", evidenceUrl: current[row.id]?.evidenceUrl ?? "", field: current[row.id]?.field ?? "", value: event.target.value } }))} /></label> : null}
+                    </div> : null}
                   </article>
                 ))}
               </div>

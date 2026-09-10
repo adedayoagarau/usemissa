@@ -390,6 +390,55 @@ test("African Culture Fund discovery keeps live call pages and excludes results"
   ]);
 });
 
+test("African literary directory discovery fans out to review-needed source candidates", () => {
+  const directory = source({
+    id: "source-doek-list",
+    name: "Doek List",
+    url: "https://doeklitmag.com/the-doek-list/",
+    discoveryAdapterId: "african-literary-directory",
+    registryTier: 2,
+  });
+  const html = `
+    <main>
+      <a href="https://afreada.com/">Afreada</a>
+      <a href="https://afreada.com/about/">About Afreada</a>
+      <a href="https://afrosf.submittable.com/submit">AfroSF</a>
+      <a href="https://www.instagram.com/doeklitmag/">Instagram</a>
+      <a href="/submissions/">Submit to Doek</a>
+    </main>
+  `;
+
+  const links = discoverSourceLinks(directory, html, directory.url);
+  assert.deepEqual(
+    links.map((link) => ({
+      url: link.url,
+      title: link.title,
+      kind: link.kind,
+      tier: link.registryTier,
+      trust: link.registryTrust?.status,
+      evidence: link.registryTrust?.evidenceUrl,
+    })),
+    [
+      {
+        url: "https://afreada.com/",
+        title: "Afreada",
+        kind: "organization-website",
+        tier: 0,
+        trust: "needs-review",
+        evidence: "https://doeklitmag.com/the-doek-list/",
+      },
+      {
+        url: "https://afrosf.submittable.com/submit",
+        title: "AfroSF",
+        kind: "partner-feed",
+        tier: 1,
+        trust: "needs-review",
+        evidence: "https://doeklitmag.com/the-doek-list/",
+      },
+    ],
+  );
+});
+
 test("TransArtists discovery follows current call articles and resolves official hosts", () => {
   const index: Source = {
     id: "transartists", name: "TransArtists Open Calls", url: "https://www.transartists.org/en/transartists-calls",

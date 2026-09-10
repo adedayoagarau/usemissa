@@ -865,3 +865,8 @@ Discovery implementation and extension guide: [Discovery design system](docs/dis
 The full-page owner editor remains in the standard Missa interface. The portfolio preview may use a creator-selected palette from `apps/web/components/design-system/creator-palette.css`: Sage studio maps to accent-tint, Paper to ochre-tint with ochre-deep actions, Mineral to mineral-blue-tint with mineral-blue actions, and After hours to ink with surface text and pale forest actions. These are semantic mappings of the existing palette, not new raw colors. Typography and layout remain fixed across themes. User-uploaded backgrounds are not part of this approved variant.
 
 Theme selection uses explicit labelled pressed cards; it never relies on color alone. Themes are persisted with the private draft and applied only to the portfolio surface, preserving familiar editor controls. Test both text contrast and actual computed background colors, not just the selected theme attribute.
+
+
+### Homepage colour extension — 2026-09-07
+
+The user approved brighter full-width homepage sections and a forest/citron/white feature palette. The marketing surface may use citron `#DDF45B` and sky `#C6E8F4` as scoped primitives in `homepage-marketing-palette.css`; their semantic roles are highlight, workspace ground and quiet ground. This is an intentional exception to the white-first canvas for the homepage only. Existing app and opportunity-card tokens remain unchanged. See `docs/homepage-cinematic-2026-09-07/19-homepage-colour-and-painting.md`.

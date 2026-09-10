@@ -207,7 +207,7 @@ export class PostgresCreatorProfileRepository extends CreatorRepositoryBase {
   }
 
   async publicPortfolio(userId:string): Promise<unknown | undefined> {
-    const result=await this.query<{published_data:unknown}>(`select p.published_data from creator_portfolio_drafts p join radar_accounts a on a.id=p.account_id where a.data->>'userId'=$1 and p.published_at is not null`,[userId]);
+    const result=await this.query<{published_data:unknown}>(`select p.published_data from creator_portfolio_drafts p join radar_accounts a on a.id=p.account_id where a.data->>'userId'=$1 and coalesce(a.data->>'active','true') <> 'false' and p.published_at is not null`,[userId]);
     return result.rows[0]?.published_data;
   }
 
@@ -231,8 +231,41 @@ export class PostgresCreatorProfileRepository extends CreatorRepositoryBase {
   async portfolioMedia(id:string, accountId?:string) {
     const result=await this.query<{bytes:Buffer;content_type:string}>(
       `select m.bytes,m.content_type from creator_portfolio_media m where id=$1 and
-       (account_id=$2 or exists(select 1 from creator_portfolio_drafts p where p.account_id=m.account_id and p.published_at is not null and m.id=any(p.published_media_ids)))`,[id,accountId??null]);
+       (account_id=$2 or exists(select 1 from creator_portfolio_drafts p join radar_accounts a on a.id=p.account_id where p.account_id=m.account_id and coalesce(a.data->>'active','true') <> 'false' and p.published_at is not null and m.id=any(p.published_media_ids)))`,[id,accountId??null]);
     return result.rows[0];
+  }
+
+  /** Remove an owner-uploaded asset only when it is not part of the live snapshot. */
+  async deletePortfolioMedia(id: string, accountId: string): Promise<"deleted" | "published" | "missing"> {
+    const result = await this.query<{ id: string }>(
+      `delete from creator_portfolio_media m
+       where m.id = $1 and m.account_id = $2
+         and not exists (
+           select 1 from creator_portfolio_drafts p
+           where p.account_id = m.account_id
+             and p.published_at is not null
+             and m.id = any(p.published_media_ids)
+         )
+       returning m.id`,
+      [id, accountId],
+    );
+    if (result.rows[0]) return "deleted";
+    const owned = await this.query<{ published: boolean }>(
+      `select exists(
+         select 1 from creator_portfolio_media m
+         where m.id=$1 and m.account_id=$2
+       ) as published`,
+      [id, accountId],
+    );
+    if (!owned.rows[0]?.published) return "missing";
+    const live = await this.query<{ live: boolean }>(
+      `select exists(
+         select 1 from creator_portfolio_drafts p
+         where p.account_id=$2 and p.published_at is not null and $1::uuid = any(p.published_media_ids)
+       ) as live`,
+      [id, accountId],
+    );
+    return live.rows[0]?.live ? "published" : "missing";
   }
 
   private async throwProfileConflict(client: PoolClient, envelope: CreatorCommandEnvelope): Promise<never> {

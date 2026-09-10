@@ -4,6 +4,7 @@ import { taxonomyTermById } from '@missa/taxonomy';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { getCreatorLibraryRepository } from '@/lib/creatorRepositories';
+import { creatorFileStorageReady } from '@/lib/creator-file-storage';
 import { WorkDetailProduct, type WorkDetailSection } from '@/components/work-detail-product';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -93,7 +94,7 @@ export default async function LibraryWorkPage({ params, searchParams }: {
       checklistConnections={checklistConnections}
       returnTo={safeReturnTo(first(raw.from))}
       initialSection={safeSection(first(raw.section))}
-      storageReady={Boolean(process.env.BLOB_READ_WRITE_TOKEN || (process.env.VERCEL_OIDC_TOKEN && process.env.BLOB_STORE_ID))}
+      storageReady={creatorFileStorageReady()}
     />
   );
 }

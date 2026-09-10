@@ -9,6 +9,7 @@ import {
   decryptCalendarCredential,
   encryptCalendarCredential,
 } from "./calendarCredentialCrypto.js";
+import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
 
 export type CreatorCalendarTokenState = {
   active: boolean;
@@ -27,9 +28,12 @@ export type CreatorCalendarItem = {
   organizationName?: string;
   myStatus: string;
   deadline?: string;
+  deadlineKind?: string;
   expectedResponseBy?: string;
 };
 export type CreatorCalendarEvent = {
+  opportunityId?: string;
+  purpose?: string;
   id: string;
   title: string;
   description?: string;
@@ -41,6 +45,12 @@ export type CreatorCalendarEvent = {
   revision: number;
   createdAt: string;
   updatedAt: string;
+  syncStatus?: "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  syncError?: string;
+  syncNextAttemptAt?: string;
+  previousDeadline?: string;
+  deadlineChangedAt?: string;
+  deadlineReconciliationStatus?: "current" | "needs-review" | "dismissed";
 };
 export class CreatorCalendarError extends Error {}
 export type CalendarProvider = "google" | "microsoft";
@@ -334,6 +344,23 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
     );
   }
 
+  async retryCalendarSync(accountId: string, eventId: string) {
+    const result = await this.query<{ id: string }>(
+      `update calendar_sync_jobs j
+          set status='queued',lease_until=null,last_error_code=null,next_attempt_at=now(),updated_at=now()
+        where j.id = (
+          select j2.id
+            from calendar_sync_jobs j2
+            join calendar_provider_connections c on c.id=j2.connection_id
+           where c.account_id=$1 and j2.event_id=$2 and j2.status='failed'
+           order by j2.updated_at desc limit 1
+        )
+      returning id`,
+      [accountId, eventId],
+    );
+    return { queued: result.rowCount === 1 };
+  }
+
   async events(
     accountId: string,
     from: Date,
@@ -349,10 +376,22 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       all_day: boolean;
       color: string;
       revision: number;
+      opportunity_id: string | null;
+      purpose: string;
       created_at: Date | string;
       updated_at: Date | string;
+      sync_status: "queued" | "running" | "succeeded" | "failed" | "cancelled" | null;
+      sync_error: string | null;
+      sync_next_attempt_at: Date | string | null;
+      previous_source_deadline_date: string | null;
+      deadline_changed_at: Date | string | null;
+      deadline_reconciliation_status: "current" | "needs-review" | "dismissed";
     }>(
-      `select id,title,description,location,start_at,end_at,all_day,color,revision,created_at,updated_at from creator_calendar_events where account_id=$1 and start_at<$3 and end_at>$2 order by start_at,id`,
+      `select e.id,e.title,e.description,e.location,e.start_at,e.end_at,e.all_day,e.color,e.revision,e.opportunity_id,e.purpose,e.created_at,e.updated_at,e.previous_source_deadline_date,e.deadline_changed_at,e.deadline_reconciliation_status,
+         sync.status as sync_status,sync.last_error_code as sync_error,sync.next_attempt_at as sync_next_attempt_at
+       from creator_calendar_events e
+       left join lateral (select j.status,j.last_error_code,j.next_attempt_at from calendar_sync_jobs j join calendar_provider_connections c on c.id=j.connection_id and c.account_id=e.account_id where j.event_id=e.id order by j.updated_at desc limit 1) sync on true
+       where e.account_id=$1 and e.start_at<$3 and e.end_at>$2 order by e.start_at,e.id`,
       [accountId, from, to],
     );
     return result.rows.map((row) => ({
@@ -360,6 +399,8 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       title: row.title,
       ...(row.description ? { description: row.description } : {}),
       ...(row.location ? { location: row.location } : {}),
+      opportunityId: row.opportunity_id ?? undefined,
+      purpose: row.purpose,
       startAt: iso(row.start_at),
       endAt: iso(row.end_at),
       allDay: row.all_day,
@@ -367,7 +408,152 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       revision: row.revision,
       createdAt: iso(row.created_at),
       updatedAt: iso(row.updated_at),
+      ...(row.sync_status ? { syncStatus: row.sync_status } : {}),
+      ...(row.sync_error ? { syncError: row.sync_error } : {}),
+      ...(row.sync_next_attempt_at ? { syncNextAttemptAt: iso(row.sync_next_attempt_at) } : {}),
+      ...(row.previous_source_deadline_date ? { previousDeadline: row.previous_source_deadline_date } : {}),
+      ...(row.deadline_changed_at ? { deadlineChangedAt: iso(row.deadline_changed_at) } : {}),
+      deadlineReconciliationStatus: row.deadline_reconciliation_status,
     }));
+  }
+
+  async ensureOpportunityDeadline(accountId: string, opportunityId: string) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      const source = await client.query<{
+        tracked_id: string;
+        title: string;
+        deadline_date: string | null;
+        deadline_kind: string | null;
+      }>(
+        `select t.id tracked_id,o.title,o.deadline_date::text deadline_date,o.deadline_kind
+           from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
+          where t.account_id=$1 and t.opportunity_id=$2 for update of t`,
+        [accountId, opportunityId],
+      );
+      const row = source.rows[0];
+      if (!row || !row.deadline_date || !["exact", "fixed"].includes(row.deadline_kind ?? "")) {
+        await client.query("commit");
+        return { status: "no-deadline" as const };
+      }
+      const eventId = `deadline:${row.tracked_id}`;
+      const inserted = await client.query<{ id: string; revision: number }>(
+        `insert into creator_calendar_events
+           (id,account_id,title,description,start_at,end_at,all_day,color,opportunity_id,purpose)
+         values ($1,$2,$3,'Official opportunity deadline',$4::date,$4::date+interval '1 day',true,'ochre',$5,'official-deadline',$4::date)
+         on conflict (account_id,opportunity_id) where purpose='official-deadline'
+         do update set title=excluded.title,start_at=excluded.start_at,end_at=excluded.end_at,
+           previous_source_deadline_date=case when creator_calendar_events.source_deadline_date is distinct from excluded.source_deadline_date then creator_calendar_events.source_deadline_date else creator_calendar_events.previous_source_deadline_date end,
+           source_deadline_date=excluded.source_deadline_date,
+           deadline_changed_at=case when creator_calendar_events.source_deadline_date is distinct from excluded.source_deadline_date then now() else creator_calendar_events.deadline_changed_at end,
+           deadline_reconciliation_status=case when creator_calendar_events.source_deadline_date is distinct from excluded.source_deadline_date then 'needs-review' else creator_calendar_events.deadline_reconciliation_status end,
+           revision=case when creator_calendar_events.start_at<>excluded.start_at then creator_calendar_events.revision+1 else creator_calendar_events.revision end,
+           updated_at=case when creator_calendar_events.start_at<>excluded.start_at then now() else creator_calendar_events.updated_at end
+         returning id,revision`,
+        [eventId, accountId, row.title, row.deadline_date, opportunityId],
+      );
+      const savedEventId = inserted.rows[0]!.id;
+      await queueCalendarSync(client, accountId, savedEventId, "upsert", inserted.rows[0]!.revision);
+      await client.query("commit");
+      return { status: "added" as const, eventId: savedEventId };
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async ensureGoalDate(accountId: string, goalId: string) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      const source = await client.query<{ title: string; ends_on: string }>(
+        `select title,ends_on::text from creator_goals where id=$1 and account_id=$2 for update`,
+        [goalId, accountId],
+      );
+      const goal = source.rows[0];
+      if (!goal) throw new Error("Goal not found.");
+      const eventId = `goal:${goalId}`;
+      const inserted = await client.query<{ id: string; revision: number }>(
+        `insert into creator_calendar_events
+           (id,account_id,title,description,start_at,end_at,all_day,color,purpose)
+         values ($1,$2,$3,'Goal date',$4::date,$4::date+interval '1 day',true,'forest','goal-date')
+         on conflict (id) do update set title=excluded.title,start_at=excluded.start_at,end_at=excluded.end_at,
+           revision=case when creator_calendar_events.start_at<>excluded.start_at then creator_calendar_events.revision+1 else creator_calendar_events.revision end,
+           updated_at=case when creator_calendar_events.start_at<>excluded.start_at then now() else creator_calendar_events.updated_at end
+         returning id,revision`,
+        [eventId, accountId, goal.title, goal.ends_on],
+      );
+      await queueCalendarSync(client, accountId, inserted.rows[0]!.id, "upsert", inserted.rows[0]!.revision);
+      await client.query("commit");
+      return { status: "added" as const, eventId: inserted.rows[0]!.id };
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async resolveDeadlineReconciliation(
+    accountId: string,
+    eventId: string,
+    action: "move-preparation" | "keep-preparation",
+  ) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      const official = await client.query<{
+        opportunity_id: string | null;
+        start_at: Date;
+        previous_source_deadline_date: string | null;
+        deadline_reconciliation_status: string;
+      }>(
+        `select opportunity_id,start_at,previous_source_deadline_date,deadline_reconciliation_status
+           from creator_calendar_events
+          where id=$1 and account_id=$2 and purpose='official-deadline' for update`,
+        [eventId, accountId],
+      );
+      const row = official.rows[0];
+      if (!row) throw new CreatorCalendarError("Calendar deadline not found.");
+      if (row.deadline_reconciliation_status !== "needs-review" || !row.previous_source_deadline_date || !row.opportunity_id) {
+        await client.query("commit");
+        return { status: "already-resolved" as const, moved: 0 };
+      }
+      let moved = 0;
+      if (action === "move-preparation") {
+        const shifted = await client.query<{ id: string; revision: number }>(
+          `update creator_calendar_events preparation
+              set start_at = preparation.start_at + (official.start_at - official.previous_source_deadline_date::date),
+                  end_at = preparation.end_at + (official.start_at - official.previous_source_deadline_date::date),
+                  revision = preparation.revision + 1,
+                  updated_at = now()
+             from creator_calendar_events official
+            where official.id=$1 and preparation.account_id=$2
+              and preparation.opportunity_id=official.opportunity_id
+              and preparation.purpose='preparation'
+           returning preparation.id,preparation.revision`,
+          [eventId, accountId],
+        );
+        moved = shifted.rowCount ?? 0;
+        for (const event of shifted.rows) await queueCalendarSync(client, accountId, event.id, "upsert", event.revision);
+      }
+      await client.query(
+        `update creator_calendar_events
+            set deadline_reconciliation_status='dismissed', updated_at=now()
+          where id=$1 and account_id=$2`,
+        [eventId, accountId],
+      );
+      await client.query("commit");
+      return { status: "resolved" as const, moved };
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async createEvent(
@@ -381,12 +567,19 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       endAt: unknown;
       allDay?: unknown;
       color?: unknown;
+      opportunityId?: unknown;
+      purpose?: unknown;
     },
   ) {
     const value = calendarInput(input);
     return this.executeOwnerCommand(envelope, async (client) => {
+      await validateCalendarApplication(
+        client,
+        envelope.accountId,
+        value.opportunityId,
+      );
       const row = await client.query<{ revision: number }>(
-        `insert into creator_calendar_events(id,account_id,title,description,location,start_at,end_at,all_day,color) values($1,$2,$3,$4,$5,$6,$7,$8,$9) returning revision`,
+        `insert into creator_calendar_events(id,account_id,title,description,location,start_at,end_at,all_day,color,opportunity_id,purpose) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) returning revision`,
         [
           input.id,
           envelope.accountId,
@@ -397,6 +590,8 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
           value.endAt,
           value.allDay,
           value.color,
+          value.opportunityId ?? null,
+          value.purpose,
         ],
       );
       await queueCalendarSync(
@@ -425,6 +620,8 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       endAt: unknown;
       allDay?: unknown;
       color?: unknown;
+      opportunityId?: unknown;
+      purpose?: unknown;
     },
   ) {
     const value = calendarInput(input);
@@ -439,8 +636,13 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         throw new CreatorCalendarError(
           "This event changed in another session. Refresh and try again.",
         );
+      await validateCalendarApplication(
+        client,
+        envelope.accountId,
+        value.opportunityId,
+      );
       const updated = await client.query<{ revision: number }>(
-        `update creator_calendar_events set title=$3,description=$4,location=$5,start_at=$6,end_at=$7,all_day=$8,color=$9,revision=revision+1,updated_at=now() where id=$1 and account_id=$2 returning revision`,
+        `update creator_calendar_events set title=$3,description=$4,location=$5,start_at=$6,end_at=$7,all_day=$8,color=$9,opportunity_id=case when $12::boolean then $10 else opportunity_id end,purpose=case when $13::boolean then $11 else purpose end,revision=revision+1,updated_at=now() where id=$1 and account_id=$2 returning revision`,
         [
           id,
           envelope.accountId,
@@ -451,6 +653,10 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
           value.endAt,
           value.allDay,
           value.color,
+          value.opportunityId ?? null,
+          value.purpose,
+          input.opportunityId !== undefined,
+          input.purpose !== undefined,
         ],
       );
       await queueCalendarSync(
@@ -659,14 +865,15 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       organization_name: string | null;
       status: string;
       deadline_date: string | null;
+      deadline_kind: string;
       submitted_at: Date | string | null;
       response_time_days: number | null;
     }>(
-      `select t.opportunity_id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,t.status,o.deadline_date,t.submitted_at,cp.response_time_days
+      `select t.opportunity_id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,t.status,o.deadline_date::text as deadline_date,o.deadline_kind,t.submitted_at,cp.response_time_days
        from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
        left join radar_organizations org on org.id=o.organization_id
        left join opportunity_call_profiles cp on cp.opportunity_id=o.id
-       where t.account_id=$1 and o.publication_state='published' order by t.updated_at desc`,
+       where t.account_id=$1 and ${canonicalPublicOpportunityPredicate("o")} order by t.updated_at desc`,
       [accountId],
     );
     return result.rows.map((row) => ({
@@ -674,9 +881,30 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       title: row.title,
       organizationName: row.organization_name ?? undefined,
       myStatus: row.status,
-      deadline: row.deadline_date ?? undefined,
+      deadline: [
+        "interested",
+        "saved",
+        "preparing",
+        "draft-started",
+        "ready-to-submit",
+      ].includes(row.status)
+        ? (row.deadline_date ?? undefined)
+        : undefined,
+      deadlineKind: row.deadline_kind,
       expectedResponseBy:
-        row.submitted_at && row.response_time_days
+        [
+          "submitted",
+          "received",
+          "in-review",
+          "longlisted",
+          "finalist",
+          "waitlisted",
+          "revision-requested",
+          "partially-withdrawn",
+          "shortlisted",
+        ].includes(row.status) &&
+        row.submitted_at &&
+        row.response_time_days
           ? new Date(
               new Date(row.submitted_at).getTime() +
                 row.response_time_days * 86_400_000,
@@ -709,6 +937,8 @@ function calendarInput(input: {
   endAt: unknown;
   allDay?: unknown;
   color?: unknown;
+  opportunityId?: unknown;
+  purpose?: unknown;
 }) {
   if (
     typeof input.title !== "string" ||
@@ -735,7 +965,15 @@ function calendarInput(input: {
     typeof input.color === "string" && colors.has(input.color)
       ? input.color
       : "ink";
+  const purpose = input.purpose ?? "personal";
+  if (
+    typeof purpose !== "string" ||
+    !["personal", "preparation", "attendance", "unavailable", "official-deadline", "personal-target"].includes(purpose)
+  )
+    throw new CreatorCalendarError("Choose a type of time.");
   return {
+    opportunityId: text(input.opportunityId, 200),
+    purpose,
     title: input.title.trim(),
     description: text(input.description, 4000),
     location: text(input.location, 300),
@@ -744,4 +982,21 @@ function calendarInput(input: {
     allDay: input.allDay === true,
     color,
   };
+}
+
+async function validateCalendarApplication(
+  client: PoolClient,
+  accountId: string,
+  opportunityId?: string,
+) {
+  if (
+    opportunityId &&
+    !(
+      await client.query(
+        "select id from tracked_opportunities where account_id=$1 and opportunity_id=$2",
+        [accountId, opportunityId],
+      )
+    ).rowCount
+  )
+    throw new CreatorCalendarError("Choose one of your saved applications.");
 }

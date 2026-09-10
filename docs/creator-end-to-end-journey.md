@@ -20,8 +20,10 @@ A parallel, optional visibility journey branches from the account: Public profil
 | Track/return | Record progress and see next actions | /tracker, /calendar and /inbox exist; /home redirects to Opportunities | Status transitions persist; deadline/time-zone behavior; notification preferences and actual delivery separately verified |
 | Build visibility | Edit a portfolio at their own pace | /profile/portfolio is authenticated, section-based editor | Draft restore, autosave errors/conflicts, multi-work editing, media and organization links |
 | Publish/share | Understand what becomes public | Handle APIs, published snapshot and /@handle route exist | Claim conflict, preview, explicit publish, anonymous public access, private draft isolation |
-| Maintain | Update safely and control visibility | Republish, rename and unpublish paths exist | Old snapshot remains while editing; aliases; media revocation; second-device editing |
-| Manage account | Recover access and control personal information | /profile contains identity/preferences/privacy/integrations/data sections | Recovery, logout, export/deletion and distinction between private preferences and public content |
+| Maintain | Update safely and control visibility | Republish, rename, unpublish, revision conflicts and owner media controls are wired | Old snapshot remains while editing; aliases; live-media protection; second-device editing |
+| Manage account | Recover access and control personal information | /profile contains identity/preferences/privacy/integrations/data sections | Recovery, logout, owner export, explicit account closure, and distinction between private preferences and public content |
+
+Discovery and correction continuity now has an explicit loop: saved searches persist canonical criteria with a per-search alert choice; global notification preferences control in-app/email cadence; correction reports enter the admin queue; resolution requires verified copy and an official URL, can apply an allowlisted field correction to the canonical opportunity, and emits one deduplicated alert to accounts tracking that opportunity.
 
 ## Concrete gaps found
 
@@ -55,7 +57,7 @@ User approved closing the creator journey before organization work. This is the 
 
 - [x] Preserve /saved through authentication (redirect allowlist and regression assertions).
 - [x] Send account-profile actions to the authenticated portfolio editor instead of an unpublished public URL. Existing Link/Button styling is retained; this is navigation, not a new component variant.
-- [ ] Complete password recovery, expired-session recovery and authentication error states.
+- [ ] Complete password recovery, expired-session recovery and authentication error states. Local email signup/login now fall back to the compatibility endpoint when Neon rejects the local origin; Google remains on Neon Auth.
 - [ ] Connect optional, resumable orientation to private preferences; preserve first-save intent.
 - [ ] Clarify account identity versus public portfolio identity and privacy controls.
 - [ ] Verify one complete authenticated save and portfolio publication journey using isolated test data.

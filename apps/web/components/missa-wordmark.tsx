@@ -1,72 +1,101 @@
-import Link from 'next/link';
-import type { CSSProperties } from 'react';
+import Link from "next/link";
+import { BetaBadge } from "@/components/ui/beta-badge";
+import type { CSSProperties } from "react";
 
 type MissaWordmarkProps = {
   href?: string | null;
-  size?: 'compact' | 'app' | 'marketing';
+  size?: "compact" | "app" | "marketing";
   inverse?: boolean;
   className?: string;
 };
 
 const WORDMARK_SPECS = {
-  compact: { asset: '/brand/missa-wordmark-80.svg', width: '5rem', aspectRatio: '89 / 18' },
-  app: { asset: '/brand/missa-wordmark-120.svg', width: '7.5rem', aspectRatio: '131 / 29' },
-  marketing: { asset: '/brand/missa-wordmark-240.svg', width: '10rem', aspectRatio: '265 / 57' },
+  compact: {
+    asset: "/brand/missa-wordmark-80.svg",
+    width: "5rem",
+    aspectRatio: "89 / 18",
+  },
+  app: {
+    asset: "/brand/missa-wordmark-120.svg",
+    width: "7.5rem",
+    aspectRatio: "131 / 29",
+  },
+  marketing: {
+    asset: "/brand/missa-wordmark-240.svg",
+    width: "10rem",
+    aspectRatio: "265 / 57",
+  },
 } as const;
 
 /** Canonical Missa wordmark shared across every product surface. */
 export function MissaWordmark({
-  href = '/',
-  size = 'app',
+  href = "/",
+  size = "app",
   inverse = false,
   className,
 }: MissaWordmarkProps) {
   const spec = WORDMARK_SPECS[size];
   const classes = [
-    'missa-wordmark',
+    "missa-wordmark",
     `missa-wordmark--${size}`,
-    inverse ? 'missa-wordmark--inverse' : '',
-    className ?? '',
+    inverse ? "missa-wordmark--inverse" : "",
+    className ?? "",
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 
   const rootStyle: CSSProperties = {
-    display: 'inline-flex',
-    width: spec.width,
+    display: "inline-flex",
+    width: "max-content",
+    gap: "var(--space-helper)",
     flexShrink: 0,
-    alignItems: 'center',
-    color: inverse ? '#ffffff' : 'currentColor',
-    textDecoration: 'none',
-    verticalAlign: 'middle',
+    alignItems: "center",
+    color: inverse ? "var(--primary-foreground)" : "currentColor",
+    textDecoration: "none",
+    verticalAlign: "middle",
   };
   const artStyle: CSSProperties = {
-    display: 'block',
-    width: '100%',
+    display: "block",
+    width: spec.width,
+    flexShrink: 0,
     aspectRatio: spec.aspectRatio,
-    background: 'currentColor',
+    background: "currentColor",
     maskImage: `url('${spec.asset}')`,
-    maskPosition: 'center',
-    maskRepeat: 'no-repeat',
-    maskSize: 'contain',
+    maskPosition: "center",
+    maskRepeat: "no-repeat",
+    maskSize: "contain",
     WebkitMaskImage: `url('${spec.asset}')`,
-    WebkitMaskPosition: 'center',
-    WebkitMaskRepeat: 'no-repeat',
-    WebkitMaskSize: 'contain',
+    WebkitMaskPosition: "center",
+    WebkitMaskRepeat: "no-repeat",
+    WebkitMaskSize: "contain",
   };
-  const artwork = <span className="missa-wordmark__art" style={artStyle} aria-hidden="true" />;
+  const artwork = (
+    <span className="missa-wordmark__art" style={artStyle} aria-hidden="true" />
+  );
 
   if (href === null) {
     return (
-      <span className={classes} style={rootStyle} role="img" aria-label="Missa">
+      <span
+        className={classes}
+        style={rootStyle}
+        role="img"
+        aria-label="Missa beta"
+      >
         {artwork}
+        <BetaBadge />
       </span>
     );
   }
 
   return (
-    <Link href={href} className={classes} style={rootStyle} aria-label="Missa home">
+    <Link
+      href={href}
+      className={classes}
+      style={rootStyle}
+      aria-label="Missa beta home"
+    >
       {artwork}
+      <BetaBadge />
     </Link>
   );
 }

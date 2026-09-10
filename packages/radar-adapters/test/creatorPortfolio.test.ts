@@ -27,6 +27,8 @@ test('portfolio snapshots, ownership, revisions, media privacy and legacy draft 
   const media='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
   const foreign='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
   await repo.addPortfolioMedia('a',media,'image/png',Buffer.from([1,2,3]));
+  const orphan='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  await repo.addPortfolioMedia('a',orphan,'image/png',Buffer.from([7,8,9]));
   await repo.addPortfolioMedia('b',foreign,'image/png',Buffer.from([4,5,6]));
   assert.equal(await repo.portfolioMedia(media),undefined);
   assert.equal(await repo.portfolioMedia(media,'b'),undefined);
@@ -34,7 +36,12 @@ test('portfolio snapshots, ownership, revisions, media privacy and legacy draft 
   assert.equal(await repo.ownPortfolioMedia('a',[foreign]),false);
   await assert.rejects(repo.publishPortfolio('a',rev,[foreign],{name:'Version one'}));
   await repo.publishPortfolio('a',rev,[media],{name:'Version one'});
+  assert.equal(await repo.deletePortfolioMedia(media,'a'),'published');
+  assert.equal(await repo.deletePortfolioMedia(orphan,'a'),'deleted');
   assert.deepEqual(await repo.publicPortfolio('user-a'),{name:'Version one'});
+  await db.exec(`update radar_accounts set data=jsonb_set(data,'{active}','false'::jsonb) where id='a'`);
+  assert.equal(await repo.publicPortfolio('user-a'),undefined);
+  await db.exec(`update radar_accounts set data=jsonb_set(data,'{active}','true'::jsonb) where id='a'`);
   assert.ok(await repo.portfolioMedia(media));
   rev=await repo.writePortfolio('a',{name:'Unpublished edit'},rev);
   assert.deepEqual(await repo.publicPortfolio('user-a'),{name:'Version one'});

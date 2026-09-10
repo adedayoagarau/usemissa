@@ -5,12 +5,16 @@ export type NotificationDigestCadence = "off" | "daily" | "weekly";
 export type CreatorNotificationPreferences = Readonly<{
   inAppEnabled: boolean; emailEnabled: boolean; digestCadence: NotificationDigestCadence;
   savedSearchEnabled: boolean; followEnabled: boolean; reminderEnabled: boolean;
+  smsEnabled?: boolean; smsPhone?: string | null; smsPhoneVerifiedAt?: string | null;
+  smsProviderState?: "unavailable" | "available";
   providerState: "unavailable" | "available"; revision: number;
 }>;
 
 type PreferenceRow = {
   in_app_enabled: boolean; email_enabled: boolean; digest_cadence: NotificationDigestCadence;
   saved_search_enabled: boolean; follow_enabled: boolean; reminder_enabled: boolean;
+  sms_enabled: boolean; sms_phone: string | null; sms_phone_verified_at: Date | string | null;
+  sms_provider_state: "unavailable" | "available";
   provider_state: "unavailable" | "available"; revision: number;
 };
 
@@ -18,7 +22,9 @@ function view(row: PreferenceRow): CreatorNotificationPreferences {
   return {
     inAppEnabled: row.in_app_enabled, emailEnabled: row.email_enabled, digestCadence: row.digest_cadence,
     savedSearchEnabled: row.saved_search_enabled, followEnabled: row.follow_enabled,
-    reminderEnabled: row.reminder_enabled, providerState: row.provider_state, revision: row.revision,
+    reminderEnabled: row.reminder_enabled, smsEnabled: row.sms_enabled, smsPhone: row.sms_phone,
+    smsPhoneVerifiedAt: row.sms_phone_verified_at ? new Date(row.sms_phone_verified_at).toISOString() : null,
+    smsProviderState: row.sms_provider_state, providerState: row.provider_state, revision: row.revision,
   };
 }
 
@@ -29,6 +35,7 @@ export class PostgresCreatorNotificationRepository extends CreatorRepositoryBase
     const result = await this.query<PreferenceRow>(
       `select in_app_enabled,email_enabled,digest_cadence,saved_search_enabled,
               follow_enabled,reminder_enabled,provider_state,revision
+              ,sms_enabled,sms_phone,sms_phone_verified_at,sms_provider_state
        from notification_preferences where account_id=$1`,
       [accountId],
     );
@@ -46,14 +53,15 @@ export class PostgresCreatorNotificationRepository extends CreatorRepositoryBase
     return this.preferences(accountId);
   }
 
-  async update(envelope: CreatorCommandEnvelope, input: Omit<CreatorNotificationPreferences, "providerState" | "revision">): Promise<CreatorReceipt> {
+  async update(envelope: CreatorCommandEnvelope, input: Omit<CreatorNotificationPreferences, "providerState" | "revision" | "smsProviderState" | "smsPhoneVerifiedAt" | "smsEnabled" | "smsPhone"> & Partial<Pick<CreatorNotificationPreferences, "smsEnabled" | "smsPhone">>): Promise<CreatorReceipt> {
     return this.executeOwnerCommand(envelope, async (client) => {
       const updated = await client.query<{ revision: number }>(
         `update notification_preferences set in_app_enabled=$3,email_enabled=$4,digest_cadence=$5,
-           saved_search_enabled=$6,follow_enabled=$7,reminder_enabled=$8,revision=revision+1,updated_at=now()
+           saved_search_enabled=$6,follow_enabled=$7,reminder_enabled=$8,sms_enabled=$9,sms_phone=$10,
+           revision=revision+1,updated_at=now()
          where account_id=$1 and revision=$2 returning revision`,
         [envelope.accountId, envelope.expectedRevision, input.inAppEnabled, input.emailEnabled, input.digestCadence,
-          input.savedSearchEnabled, input.followEnabled, input.reminderEnabled],
+          input.savedSearchEnabled, input.followEnabled, input.reminderEnabled, input.smsEnabled ?? false, input.smsPhone ?? null],
       );
       if (!updated.rows[0]) return this.conflict(client, envelope);
       return { resourceType: "notification-preferences", resourceId: envelope.accountId, revision: updated.rows[0].revision };

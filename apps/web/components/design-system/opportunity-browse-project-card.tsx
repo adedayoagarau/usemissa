@@ -10,6 +10,22 @@ import { AddOpportunityToCalendarButton } from "@/components/add-opportunity-to-
 import { NativeBadge } from "@/components/uitripled/native-badge-carbon";
 import styles from "./opportunity-browse-project-card.module.css";
 
+type OpportunityCardItem = Pick<
+  OpportunityBrowseProjection,
+  | "id"
+  | "title"
+  | "type"
+  | "organizationName"
+  | "identityAssetUrl"
+  | "identityAssetAlt"
+  | "discipline"
+  | "genres"
+  | "deadline"
+  | "fee"
+  | "location"
+  | "personal"
+>;
+
 const TYPE_LABELS: Record<string, string> = {
   "open-call": "Open call",
   grant: "Grant",
@@ -54,7 +70,7 @@ function deadlineLabel(
   }).format(new Date(`${deadline.date}T12:00:00`));
 }
 
-function feeLabel(item: OpportunityBrowseProjection): string {
+function feeLabel(item: OpportunityCardItem): string {
   if (item.fee.status === "no-fee") return "No fee";
   if (item.fee.status === "unknown") return "Fee not listed";
   if (item.fee.amountCents !== undefined && item.fee.currency) {
@@ -73,7 +89,7 @@ function feeLabel(item: OpportunityBrowseProjection): string {
 }
 
 function statusBadge(
-  item: OpportunityBrowseProjection,
+  item: OpportunityCardItem,
 ): { label: string; variant: "neutral" | "default" } | null {
   if (item.fee.status === "no-fee") {
     return { label: "No fee", variant: "neutral" };
@@ -95,7 +111,7 @@ export function OpportunityBrowseProjectCard({
   signedIn,
 }: {
   signedIn?: boolean;
-  item: OpportunityBrowseProjection;
+  item: OpportunityCardItem;
 }) {
   const practices = Array.from(
     new Set(
@@ -123,6 +139,7 @@ export function OpportunityBrowseProjectCard({
           href={`/opportunities/${item.id}`}
           className={styles.mediaLink}
           tabIndex={-1}
+          aria-label={`View ${item.title}`}
         >
           {cardImage ? (
             // eslint-disable-next-line @next/next/no-img-element

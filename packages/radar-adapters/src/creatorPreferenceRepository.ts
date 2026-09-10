@@ -78,6 +78,13 @@ export class PostgresCreatorPreferenceRepository extends CreatorRepositoryBase {
     preferences: OpportunityPreferences,
   ): Promise<CreatorReceipt> {
     return this.executeOwnerCommand(envelope, async (client) => {
+      // Accounts created before creator preferences became mandatory can still
+      // authenticate. Initialize their empty preference record in the same
+      // transaction as the first save so onboarding remains available.
+      await client.query(
+        "insert into opportunity_preferences (account_id) values ($1) on conflict (account_id) do nothing",
+        [envelope.accountId],
+      );
       const updated = await client.query<{ account_id: string; revision: number }>(
         `update opportunity_preferences set
            types=$3, disciplines=$4, genres=$5, locations=$6, career_stages=$7,

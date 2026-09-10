@@ -1,0 +1,26 @@
+/* Primitive → semantic → component material. Scoped to the welcome composition. */
+.missa-welcome {
+  --welcome-paper: var(--surface);
+  --welcome-forest: var(--brand-accent);
+  --welcome-mist: var(--accent-tint);
+  --welcome-blue: var(--mineral-blue);
+  --welcome-gold: var(--ochre);
+  --welcome-text: var(--ink);
+  --welcome-line: var(--border);
+  --welcome-glass-fill: color-mix(
+    in srgb,
+    var(--welcome-paper) 55%,
+    transparent
+  );
+  --welcome-glass-edge: color-mix(
+    in srgb,
+    var(--welcome-paper) 85%,
+    var(--welcome-forest)
+  );
+  --welcome-glass-radius: 50%;
+  --welcome-panel-radius: var(--radius-xl);
+  --welcome-control-radius: var(--radius-md);
+  --welcome-motion-fast: 180ms;
+  --welcome-motion-reveal: 520ms;
+  --welcome-motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}

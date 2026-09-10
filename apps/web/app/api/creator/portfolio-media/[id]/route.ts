@@ -21,3 +21,21 @@ export async function GET(
     },
   });
 }
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/.test(id)) return Response.json({ error: "Media not found." }, { status: 404 });
+  const session = await getSessionAccount(request.headers.get("cookie"));
+  if (!session) return Response.json({ error: "Not authenticated." }, { status: 401 });
+  const repo = getCreatorProfileRepository();
+  if (!repo) return Response.json({ error: "Media storage is unavailable." }, { status: 503 });
+  const result = await repo.deletePortfolioMedia(id, session.account.id);
+  if (result === "published") {
+    return Response.json({ error: "This media is in your published profile. Publish an updated profile before removing it." }, { status: 409 });
+  }
+  if (result === "missing") return Response.json({ error: "Media not found." }, { status: 404 });
+  return Response.json({ deleted: true });
+}

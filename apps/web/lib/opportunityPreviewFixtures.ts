@@ -216,14 +216,14 @@ export const PUBLIC_OPPORTUNITY_PREVIEW_FACETS: OpportunityFacetCounts = {
     { value: "contest", label: "Contest", count: 1 },
     { value: "commission", label: "Commission", count: 2 },
   ],
-  practices: [
-    { value: practice.writing, label: "Writing & literature", count: 2 },
-    { value: practice.visual, label: "Visual arts", count: 1 },
-    { value: practice.performance, label: "Performance & live art", count: 1 },
-    { value: practice.film, label: "Film & moving image", count: 1 },
-    { value: practice.music, label: "Music & sound", count: 1 },
-    { value: practice.design, label: "Design", count: 1 },
-    { value: practice.interdisciplinary, label: "Interdisciplinary, hybrid & emerging practice", count: 1 },
+  disciplines: [
+    { value: "writing-and-literature", label: "Writing & literature", count: 2 },
+    { value: "visual-arts", label: "Visual arts", count: 1 },
+    { value: "performance", label: "Performance", count: 1 },
+    { value: "film", label: "Film", count: 1 },
+    { value: "music", label: "Music", count: 1 },
+    { value: "design", label: "Design", count: 1 },
+    { value: "interdisciplinary", label: "Interdisciplinary", count: 1 },
   ],
 };
 

@@ -4,8 +4,9 @@ import {
   type MagazineRankingRow,
   type MagazineRankingPage,
   type MagazineRankingsFilter,
+  type MagazineTelemetrySummary,
 } from "@missa/radar-adapters";
-import { rankMagazines, type RankingGenre } from "@missa/radar-engine";
+import { rankMagazines, type RankingGenre, type ScoreBreakdown } from "@missa/radar-engine";
 import { SEED_MAGAZINES } from "@missa/radar-adapters/dist/src/ranking/data/seedRankings.js";
 
 declare global {
@@ -44,10 +45,17 @@ function getFallbackRankings(genre: RankingGenre = "overall"): MagazineRankingRo
         regularFeeCents: 0,
         contributorPayCents: 0,
         simultaneousPolicy: "allowed",
+        activeOpportunity: null,
+        schedule: null,
       });
 
       // Specific genres
-      for (const [g, gScore] of Object.entries(item.genres) as Array<[RankingGenre, any]>) {
+      for (const [g, gScore] of Object.entries(item.genres) as Array<
+        [
+          Exclude<RankingGenre, "overall">,
+          (ScoreBreakdown & { rankPosition: number }) | undefined,
+        ]
+      >) {
         if (!gScore) continue;
         rows.push({
           profileId: item.profileId,
@@ -72,6 +80,8 @@ function getFallbackRankings(genre: RankingGenre = "overall"): MagazineRankingRo
           regularFeeCents: 0,
           contributorPayCents: 0,
           simultaneousPolicy: "allowed",
+          activeOpportunity: null,
+          schedule: null,
         });
       }
     }
@@ -84,8 +94,9 @@ function getFallbackRankings(genre: RankingGenre = "overall"): MagazineRankingRo
 }
 
 export function getMagazineRankingRepository(): {
-  listRankings: (filter?: MagazineRankingsFilter) => Promise<MagazineRankingPage>;
+  listRankings: (filter?: MagazineRankingsFilter) => Promise<MagazineRankingPage & { dataSource: "seed" | "database" }>;
   getMagazineStanding: (profileId: string) => Promise<MagazineRankingRow[]>;
+  getTelemetrySummary: (profileId: string) => Promise<MagazineTelemetrySummary>;
   recordSubmissionTelemetry: (input: {
     profileId: string;
     userId?: string | null;
@@ -105,6 +116,7 @@ export function getMagazineRankingRepository(): {
         const genre = filter.genre ?? "overall";
         const all = getFallbackRankings(genre);
         return {
+          dataSource: "seed",
           items: all.slice(filter.offset ?? 0, (filter.offset ?? 0) + (filter.limit ?? 50)),
           total: all.length,
           year: filter.year ?? 2026,
@@ -115,6 +127,28 @@ export function getMagazineRankingRepository(): {
         const all = getFallbackRankings("overall");
         return all.filter((r) => r.profileId === profileId);
       },
+      getTelemetrySummary: async (profileId: string) => ({
+        profileId,
+        sampleSize: 0,
+        decidedReports: 0,
+        acceptanceRate: null,
+        medianResponseDays: null,
+        p90ResponseDays: null,
+        distribution: {
+          under30: 0,
+          days31To60: 0,
+          days61To90: 0,
+          days90Plus: 0,
+        },
+        outcomes: {
+          accepted: 0,
+          personalRejections: 0,
+          formRejections: 0,
+          withdrawn: 0,
+          pending: 0,
+        },
+        latestReportAt: null,
+      }),
       recordSubmissionTelemetry: async () => ({ success: true, newMedianDays: null }),
     };
   }
@@ -129,12 +163,13 @@ export function getMagazineRankingRepository(): {
   return {
     listRankings: async (filter = {}) => {
       const page = await repo.listRankings(filter);
-      if (page.items.length > 0) return page;
+      if (page.items.length > 0) return { ...page, dataSource: "database" };
 
       // Graceful fallback to seeded engine computations if DB isn't hydrated yet
       const genre = filter.genre ?? "overall";
       const fallback = getFallbackRankings(genre);
       return {
+        dataSource: "seed",
         items: fallback.slice(filter.offset ?? 0, (filter.offset ?? 0) + (filter.limit ?? 50)),
         total: fallback.length,
         year: filter.year ?? 2026,
@@ -147,6 +182,9 @@ export function getMagazineRankingRepository(): {
 
       const all = getFallbackRankings("overall");
       return all.filter((r) => r.profileId === profileId);
+    },
+    getTelemetrySummary: async (profileId: string) => {
+      return repo.getTelemetrySummary(profileId);
     },
     recordSubmissionTelemetry: async (input) => {
       return repo.recordSubmissionTelemetry(input);

@@ -57,8 +57,7 @@ export async function PublicSiteShell({
         <div>
           <MissaWordmark size="compact" className={styles.wordmark} />
           <p>
-            Creative Opportunities with the source, facts, and limits kept
-            visible.
+            Missa is in beta. Discover opportunities for your creative practice.
           </p>
         </div>
         <nav aria-label="Footer navigation">
@@ -68,8 +67,8 @@ export async function PublicSiteShell({
           <Link href="/residencies">Residencies</Link>
           <Link href="/journals">Journals</Link>
           <Link href="/grants">Grants</Link>
-          <Link href="/for-organizations">For organizations</Link>
-          <a href="mailto:hello@usemissa.com">Contact</a>
+          <Link href="/rankings/magazines">Magazine rankings</Link>
+          <a href="mailto:hello@usemissa.com">Share feedback</a>
         </nav>
       </footer>
     </div>

@@ -49,6 +49,7 @@ type TrackerRow = {
   revision: number;
   notify: boolean;
   work_id: string | null;
+  submitted_at?: Date | string | null;
 };
 
 type TrackerOpportunityRow = TrackerRow & {
@@ -58,6 +59,7 @@ type TrackerOpportunityRow = TrackerRow & {
   opportunity_type: string;
   deadline_date: string | null;
   deadline_kind: string | null;
+  submitted_at: Date | string | null;
 };
 
 const OPPORTUNITY_TYPES = new Set<OpportunityType>([
@@ -141,9 +143,9 @@ export async function listCanonicalTrackedOpportunities(
 ): Promise<CanonicalTrackerItem[]> {
   const pool = creatorPoolFor(connectionString);
     const result = await pool.query<TrackerOpportunityRow>(
-      `select t.id, t.account_id, t.opportunity_id, t.status, t.tracked_at, t.updated_at, t.revision, t.notify, t.work_id,
+      `select t.id, t.account_id, t.opportunity_id, t.status, t.tracked_at, t.updated_at, t.revision, t.notify, t.work_id, t.submitted_at,
               o.title, coalesce(org.data->>'name', o.organization_id) as organization_name, o.status as opportunity_status,
-              o.type as opportunity_type, o.deadline_date, o.deadline_kind
+              o.type as opportunity_type, o.deadline_date::text as deadline_date, o.deadline_kind
        from tracked_opportunities t
        join opportunities o on o.id = t.opportunity_id
        left join radar_organizations org on org.id = o.organization_id
@@ -187,7 +189,7 @@ export async function updateCanonicalTrackerStatus(
   accountId: string,
   opportunityId: string,
   status: CanonicalTrackerStatus,
-  options: { expectedRevision?: number; idempotencyKey?: string; source?: "user" | "radar" | "email"; note?: string; confidence?: "high" | "possible" | "unknown"; candidateId?: string; evidence?: Record<string, unknown> } = {},
+  options: { expectedRevision?: number; idempotencyKey?: string; source?: "user" | "radar" | "email"; note?: string; confidence?: "high" | "possible" | "unknown"; candidateId?: string; evidence?: Record<string, unknown>; occurredOn?: string } = {},
 ): Promise<CanonicalTrackerStatusUpdate | null> {
   const pool = creatorPoolFor(connectionString);
   const client = await pool.connect();
@@ -209,9 +211,9 @@ export async function updateCanonicalTrackerStatus(
       }
     }
     const current = await client.query<TrackerOpportunityRow>(
-      `select t.id, t.account_id, t.opportunity_id, t.status, t.tracked_at, t.updated_at, t.revision, t.notify, t.work_id,
+      `select t.id, t.account_id, t.opportunity_id, t.status, t.tracked_at, t.updated_at, t.revision, t.notify, t.work_id, t.submitted_at,
               o.title, coalesce(org.data->>'name', o.organization_id) as organization_name, o.status as opportunity_status,
-              o.type as opportunity_type, o.deadline_date, o.deadline_kind
+              o.type as opportunity_type, o.deadline_date::text as deadline_date, o.deadline_kind
        from tracked_opportunities t
        join opportunities o on o.id = t.opportunity_id
        left join radar_organizations org on org.id = o.organization_id
@@ -235,17 +237,27 @@ export async function updateCanonicalTrackerStatus(
 
     const updated = await client.query<TrackerRow>(
       `update tracked_opportunities
-       set status = $3, revision = revision + 1, updated_at = now()
+       set status = $3,
+           submitted_at = case
+             when $3 = 'submitted' and submitted_at is null then coalesce($5::date, current_date)::timestamp at time zone 'UTC'
+             when $3 in ('interested','saved','preparing','draft-started','ready-to-submit') then null
+             else submitted_at
+           end,
+           revision = revision + 1, updated_at = now()
        where account_id = $1 and opportunity_id = $2 and revision = $4
        returning id, account_id, opportunity_id, status, tracked_at, updated_at, revision, notify, work_id`,
-      [accountId, opportunityId, status, row.revision],
+      [accountId, opportunityId, status, row.revision, options.occurredOn ?? null],
     );
+    const eventId = randomUUID();
     await client.query(
       `insert into tracked_status_events
-         (tracked_opportunity_id, account_id, from_status, to_status, source, idempotency_key, note, confidence, candidate_id, evidence)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)`,
-      [row.id, accountId, row.status, status, options.source ?? "user", options.idempotencyKey ?? null, options.note ?? null, options.confidence ?? null, options.candidateId ?? null, options.evidence ? JSON.stringify(options.evidence) : null],
+         (id, tracked_opportunity_id, account_id, from_status, to_status, source, idempotency_key, note, confidence, candidate_id, evidence, occurred_on)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12::date)`,
+      [eventId, row.id, accountId, row.status, status, options.source ?? "user", options.idempotencyKey ?? null, options.note ?? null, options.confidence ?? null, options.candidateId ?? null, options.evidence ? JSON.stringify(options.evidence) : null, options.occurredOn ?? null],
     );
+    if (status === "submitted" && !row.submitted_at)
+      await snapshotCanonicalApplicationMaterials(client, accountId, row.id, row.work_id, eventId);
+    await client.query("update creator_application_reminders set state='cancelled',due_at=null,snoozed_until=null,revision=revision+1,updated_at=now() where account_id=$1 and opportunity_id=$2 and state in ('scheduled','needs-review') and ((kind in ('preparation','deadline') and not $3::boolean) or (kind='response' and $4::boolean))", [accountId, opportunityId, ['interested','saved','preparing','draft-started','ready-to-submit'].includes(status), ['accepted','declined','withdrawn','delivered','archived'].includes(status)]);
     const next = updated.rows[0];
     const result = next
       ? {
@@ -264,6 +276,61 @@ export async function updateCanonicalTrackerStatus(
   } finally {
     client.release();
   }
+}
+
+async function snapshotCanonicalApplicationMaterials(
+  client: import("pg").PoolClient,
+  accountId: string,
+  trackedOpportunityId: string,
+  workId: string | null,
+  eventId: string,
+) {
+  const works = (await client.query(
+    `select distinct w.id,w.title,w.description,w.metadata,w.revision
+       from creator_library_works w
+      where w.account_id=$1 and (
+        w.id=$2 or w.id in (
+          select i.work_id from tracker_checklist_items i
+          join tracker_checklists c on c.id=i.checklist_id
+         where c.tracked_opportunity_id=$3 and c.account_id=$1 and i.account_id=$1
+        )
+      )`,
+    [accountId, workId, trackedOpportunityId],
+  )).rows;
+  const answers = (await client.query(
+    `select distinct a.id,a.label,a.answer,a.revision
+       from creator_saved_answers a
+       join tracker_checklist_items i on i.saved_answer_id=a.id and i.account_id=a.account_id
+       join tracker_checklists c on c.id=i.checklist_id and c.account_id=i.account_id
+      where a.account_id=$1 and c.tracked_opportunity_id=$2`,
+    [accountId, trackedOpportunityId],
+  )).rows;
+  const files = (await client.query(
+    `select distinct f.id,f.name,f.mime_type,f.size_bytes,f.revision
+       from creator_library_files f
+      where f.account_id=$1 and (
+        f.work_id = any($2::text[]) or f.id in (
+          select w.metadata->>'fileId' from creator_library_works w
+           where w.account_id=$1 and w.id=any($2::text[])
+        ) or f.id in (
+          select i.file_id from tracker_checklist_items i
+          join tracker_checklists c on c.id=i.checklist_id
+         where c.account_id=$1 and i.account_id=$1 and c.tracked_opportunity_id=$3
+        )
+      )`,
+    [accountId, works.map((work: { id: string }) => work.id), trackedOpportunityId],
+  )).rows;
+  const versionId = randomUUID();
+  await client.query(
+    `insert into application_material_versions(id,account_id,tracked_opportunity_id,event_id,materials)
+     values($1,$2,$3,$4,$5::jsonb)`,
+    [versionId, accountId, trackedOpportunityId, eventId, JSON.stringify({ works, answers, files })],
+  );
+  for (const file of files)
+    await client.query(
+      `insert into application_material_files(version_id,file_id) values($1,$2)`,
+      [versionId, file.id],
+    );
 }
 
 async function recordTrackerStatusCommand(
@@ -327,7 +394,7 @@ export async function updateCanonicalTrackerReminder(
     const current = await client.query<TrackerOpportunityRow>(
       `select t.id, t.account_id, t.opportunity_id, t.status, t.tracked_at, t.updated_at, t.revision, t.notify, t.work_id,
               o.title, coalesce(org.data->>'name', o.organization_id) as organization_name, o.status as opportunity_status,
-              o.type as opportunity_type, o.deadline_date, o.deadline_kind
+              o.type as opportunity_type, o.deadline_date::text as deadline_date, o.deadline_kind
        from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
        left join radar_organizations org on org.id=o.organization_id
        where t.account_id=$1 and t.opportunity_id=$2 and ${canonicalPublicOpportunityPredicate("o")} for update of t`,

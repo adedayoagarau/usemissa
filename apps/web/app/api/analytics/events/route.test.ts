@@ -13,6 +13,23 @@ test("anonymous page views are accepted without exposing private event writes", 
   assert.equal(response.status, 202);
 });
 
+test("anonymous page views cover every nested public beta surface", async () => {
+  for (const path of [
+    "/discover/emerging-writers-artists",
+    "/journal/cincinnati-review",
+    "/rankings/magazines",
+  ]) {
+    const response = await POST(
+      new Request("http://localhost/api/analytics/events", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ eventName: "page_view", path }),
+      }),
+    );
+    assert.equal(response.status, 202, path);
+  }
+});
+
 test("anonymous visitors cannot write private analytics event names", async () => {
   const response = await POST(
     new Request("http://localhost/api/analytics/events", {

@@ -4,19 +4,9 @@ import * as React from "react";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
-  Sparkles,
-  Zap,
-  Scale,
-  Rocket,
   Check,
   Copy,
-  DollarSign,
-  Clock,
-  ExternalLink,
   ChevronRight,
-  Shield,
-  Layers,
-  ArrowRight,
   BookmarkPlus,
   RefreshCw,
 } from "lucide-react";
@@ -24,15 +14,20 @@ import type { RankingGenre, SubmissionStrategyPreset, PortfolioStrategyPlan } fr
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { MagazineScheduleBadge } from "@/components/ui/magazine-schedule-badge";
+import { MagazineCitizenshipBadges } from "@/components/missa/magazine-citizenship-badges";
+import { MagazineTrackerAction } from "@/components/rankings/magazine-tracker-action";
 
 interface SmartShortlistBuilderProps {
   initialPlan?: PortfolioStrategyPlan;
   initialGenre?: RankingGenre;
+  signedIn: boolean;
 }
 
 export function SmartShortlistBuilder({
   initialPlan,
   initialGenre = "overall",
+  signedIn,
 }: SmartShortlistBuilderProps) {
   const [genre, setGenre] = useState<RankingGenre>(initialGenre);
   const [preset, setPreset] = useState<SubmissionStrategyPreset>("balanced");
@@ -47,7 +42,7 @@ export function SmartShortlistBuilder({
   const [copied, setCopied] = useState(false);
 
   // Generate or regenerate the portfolio plan
-  const handleGenerate = () => {
+  const handleGenerate = React.useCallback(() => {
     startTransition(async () => {
       try {
         const res = await fetch("/api/rankings/plan", {
@@ -72,14 +67,14 @@ export function SmartShortlistBuilder({
         toast.error("Could not generate submission plan. Please try again.");
       }
     });
-  };
+  }, [fastOnly, freeOnly, genre, payingOnly, preset, simultaneousOnly]);
 
   // Initial load if no plan provided
   React.useEffect(() => {
     if (!plan) {
       handleGenerate();
     }
-  }, []);
+  }, [handleGenerate, plan]);
 
   const handleCopyMarkdown = () => {
     if (!plan) return;
@@ -92,7 +87,7 @@ export function SmartShortlistBuilder({
       "",
     ];
 
-    plan.slots.forEach((slot, idx) => {
+    plan.slots.forEach((slot) => {
       const mag = slot.magazine;
       const payStr = mag.contributorPayCents > 0 ? `$${(mag.contributorPayCents / 100).toFixed(0)} pay` : "Unpaid / Copies";
       const feeStr = mag.regularFeeCents === 0 ? "$0 fee" : `$${(mag.regularFeeCents / 100).toFixed(0)} fee`;
@@ -124,7 +119,7 @@ export function SmartShortlistBuilder({
               Configure Your Submission Strategy
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Tell Missa what you're submitting. We calculate a balanced batch of reach, target, and anchor journals to maximize placement and minimize wait times.
+              Tell Missa what you are submitting. We calculate a balanced batch of reach, target, and anchor journals to maximize placement and minimize wait times.
             </p>
           </div>
 
@@ -311,7 +306,7 @@ export function SmartShortlistBuilder({
             </div>
 
             <div className="divide-y divide-border rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-              {plan.slots.map((slot, index) => {
+              {plan.slots.map((slot) => {
                 const mag = slot.magazine;
                 const isReach = slot.role === "reach";
                 const isTarget = slot.role === "target";
@@ -337,11 +332,12 @@ export function SmartShortlistBuilder({
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
-                            href={`/journals/${encodeURIComponent(mag.slug)}`}
+                            href={`/journal/${encodeURIComponent(mag.slug)}`}
                             className="font-semibold text-foreground hover:text-primary transition-colors text-base truncate"
                           >
                             {mag.name}
                           </Link>
+                          <MagazineScheduleBadge schedule={mag.schedule} />
                           <span className="text-xs text-muted-foreground">
                             · Rank #{mag.rankPosition}
                           </span>
@@ -349,6 +345,17 @@ export function SmartShortlistBuilder({
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           {slot.roleDescription}
                         </p>
+                        <MagazineCitizenshipBadges
+                          ranking={{
+                            genre,
+                            medianResponseDays: mag.medianResponseDays,
+                            regularFeeCents: mag.regularFeeCents,
+                            contributorPayCents: mag.contributorPayCents,
+                            formatEthicsScore: mag.formatEthicsScore ?? 0,
+                          }}
+                          compact
+                          className="mt-2"
+                        />
                       </div>
                     </div>
 
@@ -386,12 +393,19 @@ export function SmartShortlistBuilder({
 
                       {/* View Profile Link */}
                       <Link
-                        href={`/journals/${encodeURIComponent(mag.slug)}`}
+                        href={`/journal/${encodeURIComponent(mag.slug)}`}
                         className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-xs gap-1")}
                       >
                         <span>Guidelines</span>
                         <ChevronRight className="size-3" />
                       </Link>
+                      <MagazineTrackerAction
+                        magazineName={mag.name}
+                        magazineSlug={mag.slug}
+                        activeOpportunity={mag.activeOpportunity}
+                        signedIn={signedIn}
+                        returnTo="/rankings/plan"
+                      />
                     </div>
                   </div>
                 );

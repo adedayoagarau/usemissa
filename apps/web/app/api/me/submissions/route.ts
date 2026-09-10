@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getWorkspaceEngine, getRelationalWorkspace, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 const headers = { 'Cache-Control': 'private, no-store' };
 
 export async function GET(request: Request) {
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers });
+  try {
+  if (workspaceRelationalAuthorityEnabled()) {
+    const submissions = await (await getRelationalWorkspace()).submissionsForOwner(session.account.id);
+    return NextResponse.json({ submissions }, { headers });
+  }
   const workspace = await getWorkspaceEngine();
   const radar = await getEngine();
   const submissions = [...workspace.store.submissions.values()]
@@ -21,4 +26,7 @@ export async function GET(request: Request) {
       return { ...submission, works: workspace.worksForSubmission(submission.id), openCallTitle: openCall?.title ?? 'Submission', organizationName: organization?.name, organizationId: entity?.organizationId };
     });
   return NextResponse.json({ submissions }, { headers });
+  } catch {
+    return NextResponse.json({ error: 'Submissions sent through Missa could not load. Try again.' }, { status: 503, headers });
+  }
 }

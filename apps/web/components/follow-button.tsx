@@ -1,8 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export function FollowButton({
   userId,
@@ -16,32 +18,52 @@ export function FollowButton({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [followed, setFollowed] = useState(false);
+  const requestKey = useRef<string | null>(null);
 
-  if (followed) return <span className="text-xs text-muted-foreground">Following</span>;
+  if (followed)
+    return (
+      <Link
+        href={`/following?organization=${encodeURIComponent(organizationId)}`}
+        className="text-sm text-primary underline underline-offset-4"
+      >
+        Following
+      </Link>
+    );
 
   return (
-    <button
+    <Button
+      variant="ghost"
       type="button"
       disabled={isPending}
-      className="text-xs text-primary underline-offset-2 hover:underline disabled:opacity-50"
+      className="text-primary"
       onClick={() =>
         startTransition(async () => {
-          const res = await fetch(`/api/users/${userId}/following`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
-            body: JSON.stringify({ organizationId }),
-          });
-          if (res.ok) {
-            setFollowed(true);
-            toast.success(`Following ${organizationName ?? 'this organization'}`);
-            router.refresh();
-          } else {
-            toast.error('Failed to follow');
+          requestKey.current ??= crypto.randomUUID();
+          try {
+            const res = await fetch(`/api/users/${userId}/following`, {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                "Idempotency-Key": requestKey.current,
+              },
+              body: JSON.stringify({ organizationId }),
+            });
+            if (res.ok) {
+              setFollowed(true);
+              toast.success(
+                `Following ${organizationName ?? "this organization"}`,
+              );
+              router.refresh();
+            } else {
+              toast.error("Following could not be saved. Try again.");
+            }
+          } catch {
+            toast.error("Following could not be saved. Try again.");
           }
         })
       }
     >
-      Follow organization
-    </button>
+      {isPending ? "Saving…" : "Follow organization"}
+    </Button>
   );
 }

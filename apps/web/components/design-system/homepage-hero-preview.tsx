@@ -8,18 +8,22 @@ import { useEffect, useRef, useState } from "react";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import { Button } from "@/components/ui/button";
 import styles from "./homepage-hero-preview.module.css";
+import "./homepage-marketing-palette.css";
 
 const DESKTOP_PLATE = "/design-system/homepage-hero/knit-h1.jpg";
 const MOBILE_PLATE = "/design-system/homepage-hero/knit-h1-mobile.jpg";
 
 const navLinks = [
   { href: "/opportunities", label: "Opportunities" },
+  { href: "/rankings/magazines", label: "Rankings" },
   { href: "/directory", label: "Directory" },
-  { href: "/residencies", label: "Residencies" },
-  { href: "/for-organizations", label: "For organizations" },
 ] as const;
 
-export function HomepageHeroPreview() {
+export function HomepageHeroPreview({
+  exploreHref = "/opportunities",
+}: {
+  exploreHref?: string;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -50,9 +54,12 @@ export function HomepageHeroPreview() {
   }, [menuOpen]);
 
   return (
-    <section className={styles.hero} aria-labelledby="homepage-hero-heading">
+    <section
+      className={`missa-homepage-hero ${styles.hero}`}
+      aria-labelledby="homepage-hero-heading"
+    >
       <a className={styles.skipLink} href="#homepage-hero-heading">
-        Skip to story
+        Skip to content
       </a>
 
       <div className={styles.stage} aria-hidden="true">
@@ -121,6 +128,13 @@ export function HomepageHeroPreview() {
                 >
                   Log in
                 </Link>
+                <Link
+                  href="/signup"
+                  tabIndex={menuOpen ? 0 : -1}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Create account
+                </Link>
               </nav>
             </div>
           </div>
@@ -128,7 +142,12 @@ export function HomepageHeroPreview() {
       </div>
 
       <header className={styles.bar}>
-        <MissaWordmark href="/" size="app" inverse className={styles.wordmark} />
+        <MissaWordmark
+          href="/"
+          size="app"
+          inverse
+          className={styles.wordmark}
+        />
         <nav className={styles.nav} aria-label="Primary">
           {navLinks.map((link) => (
             <Link key={link.href} href={link.href}>
@@ -152,19 +171,18 @@ export function HomepageHeroPreview() {
             Opportunities and grants for every creator
           </h1>
           <p className={styles.lede}>
-            For writers, visual artists, performers, filmmakers, musicians, and
-            designers.
+            Find open calls, grants, residencies and places to share your work.
           </p>
           <Button
             nativeButton={false}
-            render={<Link href="/opportunities" />}
+            render={<Link href={exploreHref} />}
             variant="ghost"
             className={styles.explore}
           >
             <span className={styles.exploreMark} aria-hidden="true">
               <ArrowUpRight className={styles.exploreArrow} />
             </span>
-            Explore
+            Browse opportunities
           </Button>
         </div>
       </div>

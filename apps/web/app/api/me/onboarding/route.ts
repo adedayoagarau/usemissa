@@ -88,7 +88,11 @@ export async function GET() {
       if (user.opportunityPreferences?.types) {
         interests = mapOpportunityTypesToInterestLabels(user.opportunityPreferences.types);
       }
-      if (practices.length > 0 || interests.length > 0) {
+      const savedStatus = user.attributes.onboardingStatus;
+      if (savedStatus === "skipped" || savedStatus === "completed" || savedStatus === "in_progress") {
+        status = savedStatus;
+        step = Number(user.attributes.onboardingStep ?? 0);
+      } else if (practices.length > 0 || interests.length > 0) {
         status = "completed";
         step = 2;
       }
@@ -108,21 +112,21 @@ export async function GET() {
       kind: "resume-save",
       label: `Prepare ${firstSaveIntent.context.title}`,
       description: "Review deadline and application details in your private workspace.",
-      href: "/workspace",
+      href: "/tracker",
     };
   } else if (practices.length > 0) {
     nextAction = {
       kind: "explore-matches",
       label: `Explore ${practices.join(" & ")} opportunities`,
       description: "Curated open calls matching your private practice preferences.",
-      href: "/workspace",
+      href: "/tracker",
     };
   } else {
     nextAction = {
       kind: "browse-all",
       label: "Explore all open calls",
       description: "Start exploring upcoming deadlines across disciplines.",
-      href: "/workspace",
+      href: "/tracker",
     };
   }
 
@@ -172,7 +176,10 @@ export async function POST(request: Request) {
   const data = parseResult.data;
   const preferenceRepo = getCreatorPreferenceRepository();
   const profileRepo = getCreatorProfileRepository();
-  const engine = await getEngine();
+  // Relational creator repositories are the durable authority. Loading and
+  // persisting the legacy engine alongside them can turn a successful creator
+  // write into a failed response when its unrelated snapshot is stale.
+  const engine = preferenceRepo ? undefined : await getEngine();
   const now = new Date().toISOString();
 
   if (data.action === "skip") {
@@ -181,15 +188,23 @@ export async function POST(request: Request) {
         onboardingStatus: "skipped",
         skippedAt: now,
         onboardingStep: data.step ?? 0,
-        lastRoute: data.lastRoute ?? "/workspace",
+        lastRoute: data.lastRoute ?? "/tracker",
       });
     }
 
+    if (!preferenceRepo && session.account.userId) {
+      const user = engine!.store.users.get(session.account.userId);
+      if (user) {
+        user.attributes.onboardingStatus = "skipped";
+        user.attributes.onboardingStep = String(data.step ?? 0);
+        await persistRadar();
+      }
+    }
     return NextResponse.json(
       {
         success: true,
         status: "skipped",
-        redirectUrl: "/workspace",
+        redirectUrl: "/tracker",
       },
       { headers: noStore }
     );
@@ -237,7 +252,13 @@ export async function POST(request: Request) {
     try {
       await preferenceRepo.updatePreferences(envelope, taxonomyPreferences, updatedOpportunity);
     } catch (err) {
-      console.warn("Preference update error (continuing with product state):", err);
+      console.error("Preference update failed:", err);
+      return NextResponse.json(
+        {
+          error: "Could not save your preferences. Please try again.",
+        },
+        { status: 503, headers: noStore },
+      );
     }
 
     await preferenceRepo.upsertProductState(session.account.id, {
@@ -246,13 +267,14 @@ export async function POST(request: Request) {
       completedAt: isComplete ? now : null,
       primaryPractice: data.primaryPractice ?? data.practices[0] ?? null,
       secondaryPractices: data.practices.slice(1),
-      lastRoute: data.lastRoute ?? "/workspace",
+      lastRoute: data.lastRoute ?? "/tracker",
     });
   }
 
-  // Dual-write to in-memory engine for store consistency
-  if (session.account.userId) {
-    let user = engine.store.users.get(session.account.userId);
+  // The in-memory engine is the fallback only when relational creator storage
+  // is unavailable. It must not compete with the durable creator records.
+  if (!preferenceRepo && session.account.userId) {
+    let user = engine!.store.users.get(session.account.userId);
     if (!user) {
       user = {
         id: session.account.userId,
@@ -274,7 +296,7 @@ export async function POST(request: Request) {
           simultaneousRequired: false,
         },
       };
-      engine.store.users.set(session.account.userId, user);
+      engine!.store.users.set(session.account.userId, user);
     } else {
       user.genres = data.refinements;
       user.taxonomyPreferences = taxonomyPreferences.map((t) => ({
@@ -288,6 +310,8 @@ export async function POST(request: Request) {
         user.opportunityPreferences.genres = data.refinements;
       }
     }
+    user.attributes.onboardingStatus = newStatus;
+    user.attributes.onboardingStep = String(currentStep);
     await persistRadar();
   }
 
@@ -296,7 +320,7 @@ export async function POST(request: Request) {
       success: true,
       status: newStatus,
       step: currentStep,
-      redirectUrl: "/workspace",
+      redirectUrl: "/tracker",
     },
     { headers: noStore }
   );

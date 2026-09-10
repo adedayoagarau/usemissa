@@ -32,14 +32,15 @@ test('Working Archive keeps URL state and opens a canonical private Work detail'
 
   await expect(page.getByRole('heading', { level: 1, name: 'Library' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Library views' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Works/ })).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByRole('heading', { name: 'Night River', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Works/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('button', { name: 'Open Night River' })).toBeVisible();
   await expect(page.getByText('Poetry', { exact: true }).first()).toBeVisible();
   expect(new URL(page.url()).searchParams.get('q')).toBe('Night');
   expect(new URL(page.url()).searchParams.get('sort')).toBe('title');
   await page.screenshot({ path: 'outputs/library-product-desktop.png', fullPage: true });
 
-  await page.getByRole('link', { name: 'Open Work' }).click();
+  await page.getByRole('button', { name: 'Open Night River' }).click();
+  await page.getByRole('link', { name: 'Edit work' }).click();
   await expect(page).toHaveURL(new RegExp(`/library/works/${work.id}`));
   await expect(page.getByRole('heading', { level: 1, name: 'Night River' })).toBeVisible();
   await expect(page.getByText('Private Work', { exact: true }).first()).toBeVisible();
@@ -64,23 +65,23 @@ test('Library creates and deletes Saved Answers with scoped confirmation', async
   const { answer } = await createLibraryAccount(page);
   await page.goto('/library?view=answers');
 
-  await expect(page.getByRole('button', { name: /Saved Answers/ })).toHaveAttribute('aria-current', 'page');
-  await expect(page.getByRole('heading', { name: 'Short bio', exact: true })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Reusable text/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText('Short bio', { exact: true })).toBeVisible();
   await expect(page.getByText('A writer working across poetry and criticism.', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Delete Short bio' }).click();
   await expect(page.getByRole('heading', { name: 'Delete Saved Answer?' })).toBeVisible();
   await expect(page.getByText(/Historical submission receipts are separate/i)).toBeVisible();
   await page.getByRole('button', { name: 'Delete permanently' }).click();
-  await expect(page.getByRole('heading', { name: 'No Saved Answers yet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Write it once/i })).toBeVisible();
   const after = await page.request.get('/api/me/library');
   expect(JSON.stringify(await after.json())).not.toContain(answer.id);
 
-  await page.getByRole('button', { name: 'New Saved Answer' }).click();
-  await page.getByLabel('Saved Answer name').fill('General statement');
-  await page.getByLabel('Answer', { exact: true }).fill('A reusable statement for future applications.');
-  await page.getByRole('button', { name: 'Save Answer' }).click();
-  await expect(page.getByRole('heading', { name: 'General statement' })).toBeVisible();
+  await page.getByLabel(/Reusable text/).getByRole('button', { name: 'New text' }).click();
+  await page.getByLabel('Text name').fill('General statement');
+  await page.getByLabel('Text', { exact: true }).fill('A reusable statement for future applications.');
+  await page.getByRole('button', { name: 'Save text' }).click();
+  await expect(page.getByRole('button', { name: 'Open General statement' })).toBeVisible();
 });
 
 test('Library deletion rejects a Work that still belongs to Tracker', async ({ page }) => {
@@ -103,7 +104,7 @@ test('Library deletion rejects a Work that still belongs to Tracker', async ({ p
   });
   expect(deletion.status()).toBe(409);
   const deletionBody = await deletion.json() as { error?: string };
-  expect(deletionBody.error).toContain('linked to Tracker');
+  expect(deletionBody.error).toMatch(/linked to \d+ Tracker/);
 
   await page.goto(`/library/works/${encodeURIComponent(work.id)}`);
   await expect(page.getByRole('button', { name: 'Delete Work' })).toBeDisabled();

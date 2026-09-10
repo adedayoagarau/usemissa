@@ -1,3 +1,5 @@
+import type { MagazineScheduleResult } from "../availability/magazineSchedule.js";
+
 export type RankingGenre = "fiction" | "poetry" | "nonfiction" | "overall";
 
 export type MissaPrestigeTier =
@@ -395,19 +397,7 @@ export interface StrategyCriteria {
 export interface RecommendedMagazineTierSlot {
   role: "reach" | "target" | "safety";
   roleDescription: string;
-  magazine: {
-    profileId: string;
-    name: string;
-    slug: string;
-    websiteUrl: string | null;
-    rankPosition: number;
-    totalScore: number;
-    prestigeTier: string;
-    medianResponseDays: number | null;
-    regularFeeCents: number;
-    contributorPayCents: number;
-    simultaneousPolicy: string;
-  };
+  magazine: RankedMagazinePlanningCandidate;
 }
 
 export interface PortfolioStrategyPlan {
@@ -418,25 +408,37 @@ export interface PortfolioStrategyPlan {
   slots: RecommendedMagazineTierSlot[];
 }
 
+export interface RankedMagazinePlanningCandidate {
+  profileId: string;
+  name: string;
+  slug: string;
+  websiteUrl: string | null;
+  rankPosition: number;
+  totalScore: number;
+  prestigeTier: string;
+  medianResponseDays: number | null;
+  regularFeeCents: number;
+  contributorPayCents: number;
+  simultaneousPolicy: string;
+  formatEthicsScore?: number;
+  activeOpportunity?: {
+    id: string;
+    title: string;
+    deadline: string | null;
+    status: string;
+    detailUrl: string | null;
+    officialWebsite: string | null;
+  } | null;
+  schedule?: MagazineScheduleResult | null;
+}
+
 /**
  * Deterministic Portfolio Strategy Recommender:
  * Builds an optimal multi-tier submission portfolio from a list of candidate magazines
  * based on the writer's goal (Balanced, Moonshot, or Low-Friction Velocity).
  */
 export function buildSubmissionPortfolioPlan(
-  candidates: Array<{
-    profileId: string;
-    name: string;
-    slug: string;
-    websiteUrl: string | null;
-    rankPosition: number;
-    totalScore: number;
-    prestigeTier: string;
-    medianResponseDays: number | null;
-    regularFeeCents: number;
-    contributorPayCents: number;
-    simultaneousPolicy: string;
-  }>,
+  candidates: RankedMagazinePlanningCandidate[],
   criteria: StrategyCriteria
 ): PortfolioStrategyPlan {
   // 1. Filter candidates by writer requirements

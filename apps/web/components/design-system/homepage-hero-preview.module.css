@@ -26,10 +26,12 @@
   font-weight: 650;
   text-decoration: none;
   transform: translateY(-160%);
+  clip-path: inset(50%);
 }
 
 .skipLink:focus {
   transform: translateY(0);
+  clip-path: none;
 }
 
 .stage {
@@ -38,12 +40,19 @@
   z-index: 0;
 }
 
+.stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--hero-photo-shade);
+}
+
 .plate {
   object-fit: cover;
 }
 
 .plateMobile {
-  object-position: center top;
+  object-position: left top;
 }
 
 .plateDesktop {
@@ -53,7 +62,7 @@
 
 /* Floating menu — mobile / tablet only */
 .floatNav {
-  position: fixed;
+  position: absolute;
   z-index: 50;
   top: max(12px, env(safe-area-inset-top));
   right: 16px;
@@ -229,8 +238,8 @@
 .copy {
   display: flex;
   min-width: 0;
-  min-height: calc(100svh - 88px);
-  min-height: calc(100dvh - 88px);
+  min-height: 100svh;
+  min-height: 100dvh;
   flex-direction: column;
   align-items: flex-end;
   justify-content: flex-end;
@@ -240,7 +249,7 @@
 .copyInner {
   display: flex;
   min-width: 0;
-  width: min(100%, 15.5rem);
+  width: min(100%, 20rem);
   flex-direction: column;
   align-items: flex-start;
 }
@@ -255,18 +264,18 @@
   margin: 0;
   overflow-wrap: break-word;
   font-family: var(--font-heading), Georgia, serif;
-  font-size: 18px;
-  font-weight: 500;
-  letter-spacing: -0.015em;
-  line-height: 1.25;
-  text-wrap: pretty;
+  font-size: clamp(30px, 7.4vw, 42px);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  text-wrap: balance;
 }
 
 .lede {
   margin: 8px 0 0;
   overflow-wrap: break-word;
   color: color-mix(in srgb, var(--primary-foreground) 76%, transparent);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   line-height: 1.45;
   text-wrap: pretty;
@@ -306,19 +315,19 @@
 
 .exploreMark {
   display: inline-flex;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--primary-foreground) 72%, transparent);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--primary-foreground);
+  border: 1px solid var(--hero-action-surface);
+  border-radius: var(--hero-control-radius);
+  background: var(--hero-action-surface);
+  color: var(--hero-action-ink);
   transition:
     background-color 120ms cubic-bezier(0.2, 0, 0, 1),
     border-color 120ms cubic-bezier(0.2, 0, 0, 1),
-    color 120ms cubic-bezier(0.2, 0, 1);
+    color 120ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .exploreArrow {
@@ -354,7 +363,7 @@
 }
 
 .hero ::selection {
-  background: var(--ochre-tint);
+  background: var(--hero-action-surface);
   color: var(--accent-deep);
 }
 
@@ -401,6 +410,14 @@
     gap: 8px;
   }
 
+  .signup {
+    border: 1px solid
+      color-mix(in srgb, var(--primary-foreground) 55%, transparent);
+    border-radius: var(--hero-control-radius);
+    padding-inline: 20px;
+    color: var(--primary-foreground);
+  }
+
   .barActions {
     display: flex;
     margin-inline-start: auto;
@@ -409,20 +426,22 @@
   }
 
   .copy {
+    min-height: calc(100svh - 72px);
+    min-height: calc(100dvh - 72px);
     width: min(calc(100% - 128px), 1360px);
     align-items: flex-end;
     justify-content: flex-end;
-    padding-block: 96px 80px;
+    padding-block: 96px 72px;
   }
 
   .copyInner {
-    width: min(100%, 30rem);
+    width: min(48%, 34rem);
   }
 
   .copy h1 {
-    font-size: 24px;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
+    font-size: clamp(42px, 4.5vw, 64px);
+    letter-spacing: -0.03em;
+    line-height: 1.03;
   }
 
   .lede {

@@ -58,7 +58,11 @@ export default async function OnboardingPage() {
       if (user.opportunityPreferences?.types) {
         initialInterests = mapOpportunityTypesToInterestLabels(user.opportunityPreferences.types);
       }
-      if (initialPractices.length > 0 || initialInterests.length > 0) {
+      const savedStatus = user.attributes.onboardingStatus;
+      if (savedStatus === "skipped" || savedStatus === "completed" || savedStatus === "in_progress") {
+        initialStatus = savedStatus;
+        initialStep = Number(user.attributes.onboardingStep ?? 0);
+      } else if (initialPractices.length > 0 || initialInterests.length > 0) {
         initialStatus = "completed";
       }
     }

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { cookies } from "next/headers";
 import Link from "next/link";
-import { ArrowLeft, Sparkles, BookOpen, Layers } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { SmartShortlistBuilder } from "@/components/rankings/smart-shortlist-builder";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
+import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { buildSubmissionPortfolioPlan } from "@missa/radar-engine";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +18,13 @@ export const metadata: Metadata = {
 
 export default async function SubmissionPlanPage() {
   const repository = getMagazineRankingRepository();
-  const page = await repository.listRankings({ genre: "overall", year: 2026, limit: 1000 });
+  const [page, cookieStore] = await Promise.all([
+    repository.listRankings({ genre: "overall", year: 2026, limit: 1000 }),
+    cookies(),
+  ]);
+  const session = await getSessionAccountFromToken(
+    cookieStore.get(SESSION_COOKIE)?.value,
+  );
 
   const candidates = page.items.map((item) => ({
     profileId: item.profileId,
@@ -30,6 +38,9 @@ export default async function SubmissionPlanPage() {
     regularFeeCents: item.regularFeeCents,
     contributorPayCents: item.contributorPayCents,
     simultaneousPolicy: item.simultaneousPolicy,
+    formatEthicsScore: item.formatEthicsScore,
+    activeOpportunity: item.activeOpportunity,
+    schedule: item.schedule,
   }));
 
   const initialPlan = buildSubmissionPortfolioPlan(candidates, {
@@ -71,7 +82,7 @@ export default async function SubmissionPlanPage() {
             Smart Submissions Shortlist
           </h1>
           <p className="mt-3 text-base leading-7 text-muted-foreground">
-            Don't submit in the dark. Our strategy engine evaluates hundreds of ranked literary magazines to generate an optimal portfolio of reach, target, and anchor journals customized to your manuscript, deadline horizons, and reading fee limits.
+            Do not submit in the dark. Our strategy engine evaluates hundreds of ranked literary magazines to generate an optimal portfolio of reach, target, and anchor journals customized to your manuscript, deadline horizons, and reading fee limits.
           </p>
         </header>
 
@@ -79,6 +90,7 @@ export default async function SubmissionPlanPage() {
         <SmartShortlistBuilder
           initialPlan={initialPlan}
           initialGenre="overall"
+          signedIn={Boolean(session)}
         />
       </main>
     </PublicSiteShell>

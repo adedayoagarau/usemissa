@@ -12,6 +12,8 @@ function slug(s: string): string {
 }
 
 export interface CompactSource {
+  /** Stable identity for sources referenced by an ingestion manifest. */
+  id?: string;
   name: string;
   url: string;
   verticalId: string;
@@ -47,7 +49,7 @@ export function expandSource(
   defaultOpportunityTypes?: OpportunityType[],
 ): SourceRegistryEntry {
   const tier = input.tier ?? 0;
-  const id = `src_${input.verticalId}_${slug(input.name)}_${++seq}`;
+  const id = input.id ?? `src_${input.verticalId}_${slug(input.name)}_${++seq}`;
   return {
     id,
     name: input.name,
