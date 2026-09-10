@@ -1,8 +1,8 @@
-import { chromium, type Browser } from 'playwright';
-import type { Fetcher, FetchResult, Source } from '@missa/radar-engine';
-import { stripHtml } from '@missa/radar-engine';
-import { parseDisallowForUserAgent } from './sourcePolicy.js';
-export { parseDisallowForUserAgent } from './sourcePolicy.js';
+import { chromium, type Browser } from "playwright";
+import type { Fetcher, FetchResult, Source } from "@missa/radar-engine";
+import { stripHtml } from "@missa/radar-engine";
+import { parseDisallowForUserAgent } from "./sourcePolicy.js";
+export { parseDisallowForUserAgent } from "./sourcePolicy.js";
 
 export interface PlaywrightFetcherOptions {
   userAgent?: string;
@@ -33,28 +33,65 @@ export class PlaywrightFetcher implements Fetcher {
   private readonly respectRobotsTxt: boolean;
 
   constructor(opts: PlaywrightFetcherOptions = {}) {
-    this.userAgent = opts.userAgent ?? 'MissaRadar/0.1 (+https://usemissa.com/radar)';
+    this.userAgent =
+      opts.userAgent ?? "MissaRadar/0.1 (+https://usemissa.com/radar)";
     this.timeoutMs = opts.timeoutMs ?? 15_000;
     this.respectRobotsTxt = opts.respectRobotsTxt ?? true;
   }
 
   async fetch(source: Source): Promise<FetchResult> {
-    if (this.respectRobotsTxt && !(await this.isAllowed(source.url))) {
-      return { status: 'error', content: '', failureReason: 'robots-blocked' };
+    if (this.respectRobotsTxt) {
+      try {
+        if (!(await this.isAllowed(source.url))) {
+          return {
+            status: "error",
+            content: "",
+            failureReason: "robots-blocked",
+          };
+        }
+      } catch {
+        return {
+          status: "error",
+          content: "",
+          failureReason: "robots-unavailable",
+        };
+      }
     }
     const browser = await this.ensureBrowser();
     const page = await browser.newPage({ userAgent: this.userAgent });
     try {
-      const response = await page.goto(source.url, { waitUntil: 'domcontentloaded', timeout: this.timeoutMs });
-      if (!response) return { status: 'error', content: '', failureReason: 'empty-response' };
-      if (response.status() === 404 || response.status() === 410) return { status: 'gone', content: '' };
-      if (!response.ok()) return { status: 'error', content: '', failureReason: `http-${response.status()}` };
-      await page.waitForLoadState('networkidle', { timeout: Math.min(this.timeoutMs, 2_000) }).catch(() => undefined);
+      const response = await page.goto(source.url, {
+        waitUntil: "domcontentloaded",
+        timeout: this.timeoutMs,
+      });
+      if (!response)
+        return {
+          status: "error",
+          content: "",
+          failureReason: "empty-response",
+        };
+      if (response.status() === 404 || response.status() === 410)
+        return { status: "gone", content: "" };
+      if (!response.ok())
+        return {
+          status: "error",
+          content: "",
+          failureReason: `http-${response.status()}`,
+        };
+      await page
+        .waitForLoadState("networkidle", {
+          timeout: Math.min(this.timeoutMs, 2_000),
+        })
+        .catch(() => undefined);
       const html = await page.content();
-      return { status: 'ok', content: stripHtml(html) };
+      return { status: "ok", content: stripHtml(html) };
     } catch (error) {
-      const message = error instanceof Error ? error.message.toLowerCase() : '';
-      return { status: 'error', content: '', failureReason: message.includes('timeout') ? 'timeout' : 'network' };
+      const message = error instanceof Error ? error.message.toLowerCase() : "";
+      return {
+        status: "error",
+        content: "",
+        failureReason: message.includes("timeout") ? "timeout" : "network",
+      };
     } finally {
       await page.close();
     }
@@ -83,12 +120,17 @@ export class PlaywrightFetcher implements Fetcher {
 
   private async fetchRobots(origin: string): Promise<RobotsRule> {
     try {
-      const res = await globalThis.fetch(`${origin}/robots.txt`, { headers: { 'user-agent': this.userAgent }, signal: AbortSignal.timeout(5_000) });
-      if (!res.ok) return { disallow: [] };
+      const res = await globalThis.fetch(`${origin}/robots.txt`, {
+        headers: { "user-agent": this.userAgent },
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (!res.ok) throw new Error(`robots.txt HTTP ${res.status}`);
       const text = await res.text();
       return { disallow: parseDisallowForUserAgent(text, this.userAgent) };
-    } catch {
-      return { disallow: [] };
+    } catch (error) {
+      throw new Error(`Unable to verify robots.txt for ${origin}`, {
+        cause: error,
+      });
     }
   }
 }

@@ -90,9 +90,16 @@ function dateText(value: unknown): string | null {
   return String(value).slice(0, 10);
 }
 
-function opportunityStatus(value: unknown): MagazineRankingOpportunity["status"] {
+function opportunityStatus(
+  value: unknown,
+): MagazineRankingOpportunity["status"] {
   const status = String(value ?? "unknown");
-  if (["open", "opening-soon", "closing-soon", "deadline-extended"].includes(status)) return "open";
+  if (
+    ["open", "opening-soon", "closing-soon", "deadline-extended"].includes(
+      status,
+    )
+  )
+    return "open";
   if (["closed", "archived"].includes(status)) return "closed";
   return "unknown";
 }
@@ -126,7 +133,10 @@ function rankingRow(row: Record<string, unknown>): MagazineRankingRow {
   return {
     profileId: String(row.profile_id),
     name: String(row.name),
-    slug: String(row.slug).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+    slug: String(row.slug)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, ""),
     websiteUrl: row.website_url ? String(row.website_url) : null,
     mediaUrl: row.media_url ? String(row.media_url) : null,
     rankingYear: Number(row.ranking_year),
@@ -142,7 +152,10 @@ function rankingRow(row: Record<string, unknown>): MagazineRankingRow {
     feesScore: Number(row.fees_score),
     respectScore: Number(row.respect_score),
     formatEthicsScore: Number(row.format_ethics_score),
-    medianResponseDays: row.median_response_days != null ? Number(row.median_response_days) : null,
+    medianResponseDays:
+      row.median_response_days != null
+        ? Number(row.median_response_days)
+        : null,
     regularFeeCents: Number(row.regular_fee_cents),
     contributorPayCents: Number(row.contributor_pay_cents),
     simultaneousPolicy: String(row.simultaneous_policy),
@@ -179,7 +192,9 @@ function emptyTelemetrySummary(profileId: string): MagazineTelemetrySummary {
 export class PostgresMagazineRankingRepository {
   constructor(private readonly pool: Pool) {}
 
-  async listRankings(filter: MagazineRankingsFilter = {}): Promise<MagazineRankingPage> {
+  async listRankings(
+    filter: MagazineRankingsFilter = {},
+  ): Promise<MagazineRankingPage> {
     const year = filter.year ?? 2026;
     const genre = filter.genre ?? "overall";
     const limit = Math.min(Math.max(filter.limit ?? 50, 1), 1000);
@@ -195,7 +210,7 @@ export class PostgresMagazineRankingRepository {
 
     const whereClause = whereConditions.join(" AND ");
 
-      const query = `
+    const query = `
       WITH latest_observation AS (
         SELECT DISTINCT ON (profile_id) profile_id, reading_period
         FROM gary_profile_observations
@@ -283,18 +298,17 @@ export class PostgresMagazineRankingRepository {
 
     values.push(limit, offset);
 
-    try {
-      const res = await this.pool.query(query, values);
-      const total = Number(res.rows[0]?.total_count ?? 0);
-      const items: MagazineRankingRow[] = res.rows.map((row) => rankingRow(row));
+    const res = await this.pool.query(query, values);
+    const total = Number(res.rows[0]?.total_count ?? 0);
+    const items: MagazineRankingRow[] = res.rows.map((row) => rankingRow(row));
 
-      return { items, total, year, genre };
-    } catch {
-      return { items: [], total: 0, year, genre };
-    }
+    return { items, total, year, genre };
   }
 
-  async getMagazineStanding(profileId: string, year: number = 2026): Promise<MagazineRankingRow[]> {
+  async getMagazineStanding(
+    profileId: string,
+    year: number = 2026,
+  ): Promise<MagazineRankingRow[]> {
     try {
       const res = await this.pool.query(
         `WITH latest_observation AS (
@@ -371,7 +385,7 @@ export class PostgresMagazineRankingRepository {
         ) active_opp ON true
         WHERE r.profile_id = $1 AND r.ranking_year = $2
         ORDER BY CASE WHEN r.genre = 'overall' THEN 1 ELSE 2 END, r.rank_position ASC`,
-        [profileId, year]
+        [profileId, year],
       );
 
       return res.rows.map((row) => rankingRow(row));
@@ -380,7 +394,9 @@ export class PostgresMagazineRankingRepository {
     }
   }
 
-  async getTelemetrySummary(profileId: string): Promise<MagazineTelemetrySummary> {
+  async getTelemetrySummary(
+    profileId: string,
+  ): Promise<MagazineTelemetrySummary> {
     try {
       const res = await this.pool.query(
         `SELECT
@@ -412,9 +428,14 @@ export class PostgresMagazineRankingRepository {
         profileId,
         sampleSize,
         decidedReports,
-        acceptanceRate: decidedReports > 0 ? Math.round((accepted / decidedReports) * 1000) / 10 : null,
-        medianResponseDays: row.median_days != null ? Math.round(Number(row.median_days)) : null,
-        p90ResponseDays: row.p90_days != null ? Math.round(Number(row.p90_days)) : null,
+        acceptanceRate:
+          decidedReports > 0
+            ? Math.round((accepted / decidedReports) * 1000) / 10
+            : null,
+        medianResponseDays:
+          row.median_days != null ? Math.round(Number(row.median_days)) : null,
+        p90ResponseDays:
+          row.p90_days != null ? Math.round(Number(row.p90_days)) : null,
         distribution: {
           under30: Number(row.under_30 ?? 0),
           days31To60: Number(row.days_31_60 ?? 0),
@@ -428,7 +449,9 @@ export class PostgresMagazineRankingRepository {
           withdrawn: Number(row.withdrawn ?? 0),
           pending: Number(row.pending ?? 0),
         },
-        latestReportAt: row.latest_report_at ? String(row.latest_report_at) : null,
+        latestReportAt: row.latest_report_at
+          ? String(row.latest_report_at)
+          : null,
       };
     } catch {
       return emptyTelemetrySummary(profileId);
@@ -474,7 +497,7 @@ export class PostgresMagazineRankingRepository {
           input.outcome ?? null,
           input.rejectionType ?? null,
           input.feePaidCents ?? 0,
-        ]
+        ],
       );
 
       // Compute new median response days from all telemetry for this profile
@@ -482,15 +505,25 @@ export class PostgresMagazineRankingRepository {
         `SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY response_days) as median_days
          FROM missa_submission_telemetry
          WHERE profile_id = $1 AND response_days IS NOT NULL AND response_days > 0`,
-        [input.profileId]
+        [input.profileId],
       );
 
       const rawMedian = medRes.rows[0]?.median_days;
-      const newMedian = rawMedian != null ? Math.round(Number(rawMedian)) : null;
+      const newMedian =
+        rawMedian != null ? Math.round(Number(rawMedian)) : null;
 
       if (newMedian != null) {
         // Calculate new turnaround score: Lightning (<30d)=15, Swift (<60d)=13, Standard (<90d)=10, Slow (<180d)=7, Glacial (>=180d)=4
-        const turnaroundScore = newMedian <= 30 ? 15 : (newMedian <= 60 ? 13 : (newMedian <= 90 ? 10 : (newMedian <= 180 ? 7 : 4)));
+        const turnaroundScore =
+          newMedian <= 30
+            ? 15
+            : newMedian <= 60
+              ? 13
+              : newMedian <= 90
+                ? 10
+                : newMedian <= 180
+                  ? 7
+                  : 4;
 
         await this.pool.query(
           `UPDATE missa_magazine_rankings
@@ -499,13 +532,16 @@ export class PostgresMagazineRankingRepository {
                total_score = accolades_score + pay_score + $2 + fees_score + respect_score + format_ethics_score,
                updated_at = NOW()
            WHERE profile_id = $3 AND ranking_year = 2026`,
-          [newMedian, turnaroundScore, input.profileId]
+          [newMedian, turnaroundScore, input.profileId],
         );
       }
 
       return { success: true, newMedianDays: newMedian };
     } catch (err) {
-      console.error("[PostgresMagazineRankingRepository] Error recording telemetry:", err);
+      console.error(
+        "[PostgresMagazineRankingRepository] Error recording telemetry:",
+        err,
+      );
       return { success: false, newMedianDays: null };
     }
   }

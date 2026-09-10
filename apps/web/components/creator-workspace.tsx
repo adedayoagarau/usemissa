@@ -4,16 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
-  BookOpen,
   Bookmark,
   Calendar,
-  Check,
-  Compass,
   FolderOpen,
   Library,
   Sliders,
 } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { TrackerProductItem } from "@/components/tracker-product";
 
@@ -29,8 +26,8 @@ export type CreatorWorkspaceProps = {
 };
 
 export function CreatorWorkspace({
-  displayName,
-  onboardingStatus,
+  displayName: _displayName,
+  onboardingStatus: _onboardingStatus,
   practices,
   refinements,
   interests,
@@ -62,14 +59,15 @@ export function CreatorWorkspace({
       <main className="mx-auto max-w-5xl px-6 py-8 md:py-12">
         {/* Workspace Greeting & Date */}
         <header className="mb-10">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+          <p className="text-xs font-semibold tracking-widest text-primary uppercase">
             {todayFormatted} · Your Space
           </p>
           <h1 className="mt-2 font-heading text-4xl leading-tight tracking-tight text-foreground md:text-5xl">
             A little progress changes the whole week.
           </h1>
           <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            Your work is private here. Pick up one application, one material, or one useful next step.
+            Your work is private here. Pick up one application, one material, or
+            one useful next step.
           </p>
         </header>
 
@@ -93,7 +91,7 @@ export function CreatorWorkspace({
           <section className="space-y-6 lg:col-span-2">
             <div>
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                <h2 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
                   Your next move
                 </h2>
                 {primaryOpportunity && (
@@ -108,7 +106,9 @@ export function CreatorWorkspace({
                 <article className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
                   <div className="border-t-4 border-primary p-6 md:p-8">
                     <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-primary">
-                      <span className="capitalize">{primaryOpportunity.type || "Opportunity"}</span>
+                      <span className="capitalize">
+                        {primaryOpportunity.type || "Opportunity"}
+                      </span>
                       <span>·</span>
                       <span>
                         {primaryOpportunity.deadline
@@ -121,7 +121,8 @@ export function CreatorWorkspace({
                       {primaryOpportunity.title}
                     </h3>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {primaryOpportunity.organizationName || "Official publisher"}
+                      {primaryOpportunity.organizationName ||
+                        "Official publisher"}
                     </p>
 
                     {/* Preparation Checklist */}
@@ -131,7 +132,13 @@ export function CreatorWorkspace({
                           checked={prepTasks.eligibility}
                           onCheckedChange={() => toggleTask("eligibility")}
                         />
-                        <span className={prepTasks.eligibility ? "text-muted-foreground line-through" : ""}>
+                        <span
+                          className={
+                            prepTasks.eligibility
+                              ? "text-muted-foreground line-through"
+                              : ""
+                          }
+                        >
                           Review eligibility and submission requirements
                         </span>
                       </label>
@@ -140,7 +147,13 @@ export function CreatorWorkspace({
                           checked={prepTasks.materials}
                           onCheckedChange={() => toggleTask("materials")}
                         />
-                        <span className={prepTasks.materials ? "text-muted-foreground line-through" : ""}>
+                        <span
+                          className={
+                            prepTasks.materials
+                              ? "text-muted-foreground line-through"
+                              : ""
+                          }
+                        >
                           Select reusable work sample or statement from Library
                         </span>
                       </label>
@@ -149,10 +162,18 @@ export function CreatorWorkspace({
                           checked={prepTasks.guidelines}
                           onCheckedChange={() => toggleTask("guidelines")}
                         />
-                        <span className={prepTasks.guidelines ? "text-muted-foreground line-through" : ""}>
+                        <span
+                          className={
+                            prepTasks.guidelines
+                              ? "text-muted-foreground line-through"
+                              : ""
+                          }
+                        >
                           Verify deadline timezone and guidelines before handoff
                         </span>
-                        <em className="ml-auto text-xs text-muted-foreground not-italic">Suggested</em>
+                        <em className="ml-auto text-xs text-muted-foreground not-italic">
+                          Suggested
+                        </em>
                       </label>
                     </div>
 
@@ -175,9 +196,9 @@ export function CreatorWorkspace({
                 </article>
               ) : practices.length > 0 ? (
                 /* Matching Recommendations Next Move */
-                <article className="overflow-hidden rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm">
+                <article className="overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm md:p-8">
                   <div className="border-t-4 border-primary pt-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                    <p className="text-xs font-semibold tracking-wider text-primary uppercase">
                       Curated Discovery
                     </p>
                     <h3 className="mt-2 font-heading text-2xl font-medium tracking-tight text-foreground md:text-3xl">
@@ -185,8 +206,8 @@ export function CreatorWorkspace({
                     </h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                       Based on your private practice choices (
-                      {[...practices, ...refinements].join(" · ")}). Save calls to track deadlines
-                      and prepare materials right here.
+                      {[...practices, ...refinements].join(" · ")}). Save calls
+                      to track deadlines and prepare materials right here.
                     </p>
 
                     <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -194,7 +215,10 @@ export function CreatorWorkspace({
                         Explore matching opportunities
                         <ArrowRight aria-hidden="true" className="size-4" />
                       </Link>
-                      <Link className={buttonVariants({ variant: "outline" })} href="/library">
+                      <Link
+                        className={buttonVariants({ variant: "outline" })}
+                        href="/library"
+                      >
                         Add a work to Library
                       </Link>
                     </div>
@@ -202,17 +226,18 @@ export function CreatorWorkspace({
                 </article>
               ) : (
                 /* Fresh Slate Next Move */
-                <article className="overflow-hidden rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm">
+                <article className="overflow-hidden rounded-xl border border-border bg-card p-6 shadow-sm md:p-8">
                   <div className="border-t-4 border-primary pt-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                    <p className="text-xs font-semibold tracking-wider text-primary uppercase">
                       Get started
                     </p>
                     <h3 className="mt-2 font-heading text-2xl font-medium tracking-tight text-foreground md:text-3xl">
                       Find your next opportunity
                     </h3>
                     <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                      Missa tracks grants, residencies, fellowships, and open calls with honest deadlines.
-                      Set up your practices for tailored browse, or start exploring immediately.
+                      Missa tracks grants, residencies, fellowships, and open
+                      calls with honest deadlines. Set up your practices for
+                      tailored browse, or start exploring immediately.
                     </p>
 
                     <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -220,7 +245,10 @@ export function CreatorWorkspace({
                         Browse all opportunities
                         <ArrowRight aria-hidden="true" className="size-4" />
                       </Link>
-                      <Link className={buttonVariants({ variant: "outline" })} href="/onboarding">
+                      <Link
+                        className={buttonVariants({ variant: "outline" })}
+                        href="/onboarding"
+                      >
                         Set up practice preferences
                       </Link>
                     </div>
@@ -233,18 +261,26 @@ export function CreatorWorkspace({
             {savedOpportunities.length > 1 && (
               <section className="border-t border-border pt-6">
                 <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  <h3 className="text-sm font-semibold tracking-wider text-muted-foreground uppercase">
                     Saved calls <span>({savedOpportunities.length})</span>
                   </h3>
-                  <Link href="/saved" className="text-xs text-primary hover:underline">
+                  <Link
+                    href="/saved"
+                    className="text-xs text-primary hover:underline"
+                  >
                     View all saved →
                   </Link>
                 </div>
                 <div className="divide-y divide-border rounded-lg border border-border bg-card">
                   {savedOpportunities.slice(1, 4).map((item) => (
-                    <div key={item.opportunityId} className="flex items-center justify-between p-4">
+                    <div
+                      key={item.opportunityId}
+                      className="flex items-center justify-between p-4"
+                    >
                       <div className="min-w-0 flex-1 pr-4">
-                        <h4 className="truncate font-medium text-foreground">{item.title}</h4>
+                        <h4 className="truncate font-medium text-foreground">
+                          {item.title}
+                        </h4>
                         <p className="text-xs text-muted-foreground">
                           {item.organizationName || "Publisher"} ·{" "}
                           {item.deadline
@@ -253,10 +289,14 @@ export function CreatorWorkspace({
                         </p>
                       </div>
                       <Link
-                        className={buttonVariants({ variant: "ghost", size: "sm" })}
+                        className={buttonVariants({
+                          variant: "ghost",
+                          size: "sm",
+                        })}
                         href={`/opportunities/${encodeURIComponent(item.opportunityId)}`}
                       >
-                        Prepare <ArrowRight aria-hidden="true" className="size-3" />
+                        Prepare{" "}
+                        <ArrowRight aria-hidden="true" className="size-3" />
                       </Link>
                     </div>
                   ))}
@@ -274,14 +314,19 @@ export function CreatorWorkspace({
                   <Sliders className="size-4 text-primary" aria-hidden="true" />
                   Declared preferences
                 </h3>
-                <Link href="/onboarding" className="text-xs font-medium text-primary hover:underline">
+                <Link
+                  href="/onboarding"
+                  className="text-xs font-medium text-primary hover:underline"
+                >
                   Edit
                 </Link>
               </div>
 
               <div className="mt-4 space-y-3 text-xs leading-relaxed text-muted-foreground">
                 <div>
-                  <strong className="block text-foreground font-medium">Practices:</strong>
+                  <strong className="block font-medium text-foreground">
+                    Practices:
+                  </strong>
                   {practices.length ? (
                     <span>{[...practices, ...refinements].join(" · ")}</span>
                   ) : (
@@ -290,17 +335,22 @@ export function CreatorWorkspace({
                 </div>
 
                 <div>
-                  <strong className="block text-foreground font-medium">Opportunities:</strong>
+                  <strong className="block font-medium text-foreground">
+                    Opportunities:
+                  </strong>
                   {interests.length ? (
                     <span>{interests.join(" · ")}</span>
                   ) : (
-                    <span className="italic">Open to all opportunity types</span>
+                    <span className="italic">
+                      Open to all opportunity types
+                    </span>
                   )}
                 </div>
               </div>
 
               <p className="mt-4 border-t border-border pt-3 text-[11px] leading-normal text-muted-foreground">
-                Private to you. Powers browse ordering without treating private choices as public identity.
+                Private to you. Powers browse ordering without treating private
+                choices as public identity.
               </p>
             </section>
 
@@ -311,7 +361,10 @@ export function CreatorWorkspace({
                   <Library className="size-4 text-primary" aria-hidden="true" />
                   Creative inventory
                 </h3>
-                <Link href="/library" className="text-xs font-medium text-primary hover:underline">
+                <Link
+                  href="/library"
+                  className="text-xs font-medium text-primary hover:underline"
+                >
                   Library →
                 </Link>
               </div>
@@ -337,13 +390,19 @@ export function CreatorWorkspace({
             </section>
 
             {/* Quick Navigation Links */}
-            <nav className="rounded-xl border border-border bg-card p-4 text-sm" aria-label="Workspace quick links">
+            <nav
+              className="rounded-xl border border-border bg-card p-4 text-sm"
+              aria-label="Workspace quick links"
+            >
               <Link
                 href="/saved"
                 className="flex items-center justify-between py-2 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <span className="flex items-center gap-2">
-                  <Bookmark className="size-4 text-primary" aria-hidden="true" />
+                  <Bookmark
+                    className="size-4 text-primary"
+                    aria-hidden="true"
+                  />
                   Saved opportunities
                 </span>
                 <span className="text-xs">{savedOpportunities.length}</span>
@@ -353,7 +412,10 @@ export function CreatorWorkspace({
                 className="flex items-center justify-between border-t border-border py-2 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <span className="flex items-center gap-2">
-                  <FolderOpen className="size-4 text-primary" aria-hidden="true" />
+                  <FolderOpen
+                    className="size-4 text-primary"
+                    aria-hidden="true"
+                  />
                   Application tracker
                 </span>
                 <span className="text-xs">→</span>
@@ -363,7 +425,10 @@ export function CreatorWorkspace({
                 className="flex items-center justify-between border-t border-border py-2 text-muted-foreground transition-colors hover:text-foreground"
               >
                 <span className="flex items-center gap-2">
-                  <Calendar className="size-4 text-primary" aria-hidden="true" />
+                  <Calendar
+                    className="size-4 text-primary"
+                    aria-hidden="true"
+                  />
                   Deadlines calendar
                 </span>
                 <span className="text-xs">→</span>

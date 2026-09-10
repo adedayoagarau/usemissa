@@ -6,8 +6,6 @@ import {
   mapInterestsToOpportunityTypes,
   mapTaxonomyToPracticeLabels,
   mapOpportunityTypesToInterestLabels,
-  ONBOARDING_PRACTICES,
-  ONBOARDING_INTERESTS,
 } from "./creatorOnboardingTaxonomy";
 
 test("maps Writing and Poetry refinement to canonical taxonomy terms", () => {
@@ -17,8 +15,14 @@ test("maps Writing and Poetry refinement to canonical taxonomy terms", () => {
   assert.ok(termIds.includes("taxterm_pf-writing-and-literature"));
   assert.ok(termIds.includes("taxterm_disc-poetry"));
   assert.ok(termIds.includes("taxterm_disc-fiction"));
-  assert.equal(result.every((r) => r.preference === "prefer"), true);
-  assert.equal(result.every((r) => r.weight === 100), true);
+  assert.equal(
+    result.every((r) => r.preference === "prefer"),
+    true,
+  );
+  assert.equal(
+    result.every((r) => r.weight === 100),
+    true,
+  );
 });
 
 test("maps Design & craft to design and craft families plus refinements", () => {
@@ -58,7 +62,10 @@ test("maps stored taxonomy terms back into human practice and refinement labels"
 });
 
 test("maps stored opportunity types back into interest card labels", () => {
-  const interests = mapOpportunityTypesToInterestLabels(["grant", "fellowship"]);
+  const interests = mapOpportunityTypesToInterestLabels([
+    "grant",
+    "fellowship",
+  ]);
 
   assert.ok(interests.includes("Grants & funding"));
   assert.ok(interests.includes("Fellowships & awards"));

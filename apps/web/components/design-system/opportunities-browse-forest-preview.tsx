@@ -7,12 +7,9 @@ import {
   ArrowUpRight,
   Bookmark,
   CalendarDays,
-  Check,
   ChevronDown,
-  MapPin,
   Search,
   Tag,
-  X,
 } from "lucide-react";
 
 import { MissaWordmark } from "@/components/missa-wordmark";
@@ -72,7 +69,13 @@ const fixtures: Opportunity[] = [
   },
 ];
 
-const filterLabels = ["Type", "Discipline", "Location", "Deadline", "Fee"] as const;
+const filterLabels = [
+  "Type",
+  "Discipline",
+  "Location",
+  "Deadline",
+  "Fee",
+] as const;
 
 export function OpportunitiesBrowseForestPreview() {
   const [query, setQuery] = useState("");

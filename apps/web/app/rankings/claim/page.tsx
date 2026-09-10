@@ -20,7 +20,11 @@ export default async function ClaimRankingPage({
 }) {
   const params = (await searchParams) ?? {};
   const repository = getMagazineRankingRepository();
-  const page = await repository.listRankings({ genre: "overall", year: 2026, limit: 1000 });
+  const page = await repository.listRankings({
+    genre: "overall",
+    year: 2026,
+    limit: 1000,
+  });
 
   const initialMagazines = page.items.map((item) => ({
     profileId: item.profileId,
@@ -55,7 +59,11 @@ export default async function ClaimRankingPage({
             Claim & Verify Your Literary Magazine
           </h1>
           <p className="mt-3 text-base leading-7 text-muted-foreground">
-            Are you an editor, managing editor, or publisher of a literary journal? Verify your publication's standing, confirm contributor payment rates, submit fee waiver schedules, and ensure your magazine's profile accurately reflects your editorial stewardship.
+            Are you an editor, managing editor, or publisher of a literary
+            journal? Verify your publication&apos;s standing, confirm
+            contributor payment rates, submit fee waiver schedules, and ensure
+            your magazine&apos;s profile accurately reflects your editorial
+            stewardship.
           </p>
         </header>
 

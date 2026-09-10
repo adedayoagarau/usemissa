@@ -42,7 +42,7 @@ export async function PUT(request: Request) {
   const input = {
     inAppEnabled: Boolean(body.inAppEnabled), emailEnabled: Boolean(body.emailEnabled),
     digestCadence: cadence as "off" | "daily" | "weekly", savedSearchEnabled: Boolean(body.savedSearchEnabled),
-    followEnabled: Boolean(body.followEnabled), reminderEnabled: Boolean(body.reminderEnabled), smsEnabled: Boolean(body.smsEnabled), smsPhone: typeof body.smsPhone === "string" ? body.smsPhone.trim() : null,
+    followEnabled: Boolean(body.followEnabled), reminderEnabled: Boolean(body.reminderEnabled), smsEnabled: false, smsPhone: null,
   };
   try {
     const receipt = await repository.update(

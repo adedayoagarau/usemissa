@@ -57,11 +57,11 @@ export class PostgresCreatorNotificationRepository extends CreatorRepositoryBase
     return this.executeOwnerCommand(envelope, async (client) => {
       const updated = await client.query<{ revision: number }>(
         `update notification_preferences set in_app_enabled=$3,email_enabled=$4,digest_cadence=$5,
-           saved_search_enabled=$6,follow_enabled=$7,reminder_enabled=$8,sms_enabled=$9,sms_phone=$10,
+           saved_search_enabled=$6,follow_enabled=$7,reminder_enabled=$8,sms_enabled=false,sms_phone=null,
            revision=revision+1,updated_at=now()
          where account_id=$1 and revision=$2 returning revision`,
         [envelope.accountId, envelope.expectedRevision, input.inAppEnabled, input.emailEnabled, input.digestCadence,
-          input.savedSearchEnabled, input.followEnabled, input.reminderEnabled, input.smsEnabled ?? false, input.smsPhone ?? null],
+          input.savedSearchEnabled, input.followEnabled, input.reminderEnabled],
       );
       if (!updated.rows[0]) return this.conflict(client, envelope);
       return { resourceType: "notification-preferences", resourceId: envelope.accountId, revision: updated.rows[0].revision };

@@ -1,6 +1,10 @@
 import { getProfileRepository } from "@/lib/profileRepository";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { DirectoryBrowseView } from "@/components/directory-browse-view";
+import {
+  parseDirectoryScheduleState,
+  parseDirectorySort,
+} from "@/lib/directory-filters";
 import type { ProfileKind } from "@missa/radar-adapters";
 import type { Metadata } from "next";
 
@@ -43,9 +47,9 @@ export default async function DirectoryPage({
   const repository = getProfileRepository();
   const query = params.q?.trim() ?? "";
   const kind = parseKind(params.kind);
-  const activeWindow = params.window?.trim() || undefined;
+  const activeWindow = parseDirectoryScheduleState(params.window?.trim());
   const activeCountry = params.country?.trim() || undefined;
-  const activeSort = params.sort?.trim() || undefined;
+  const activeSort = parseDirectorySort(params.sort?.trim());
   const requestedPage = Number(params.page ?? "1");
   let page =
     Number.isSafeInteger(requestedPage) &&
@@ -64,9 +68,9 @@ export default async function DirectoryPage({
       result = await repository.browse({
         query: query || undefined,
         kind,
-        scheduleState: activeWindow as any,
+        scheduleState: activeWindow,
         country: activeCountry,
-        sortBy: activeSort as any,
+        sortBy: activeSort,
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
       });
@@ -76,9 +80,9 @@ export default async function DirectoryPage({
         result = await repository.browse({
           query: query || undefined,
           kind,
-          scheduleState: activeWindow as any,
+          scheduleState: activeWindow,
           country: activeCountry,
-          sortBy: activeSort as any,
+          sortBy: activeSort,
           limit: PAGE_SIZE,
           offset: (page - 1) * PAGE_SIZE,
         });

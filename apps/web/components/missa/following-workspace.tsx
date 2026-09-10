@@ -64,9 +64,9 @@ export function FollowingWorkspace() {
   }, []);
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    setError("");
     const timer = setTimeout(() => {
+      setLoading(true);
+      setError("");
       const p = new URLSearchParams({
         kind,
         q: query,
@@ -359,8 +359,10 @@ function FollowingDetail({
     } catch {
       setError("This record could not load. Try again.");
     }
-  }, [selected.id, selected.kind]);
+  }, [selected]);
   useEffect(() => {
+    // Load the selected following record from the server.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- external fetch synchronizes detail state
     void load();
   }, [load]);
   async function toggle() {

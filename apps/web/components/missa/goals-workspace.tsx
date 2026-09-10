@@ -87,7 +87,11 @@ const localDate = () => {
 export function GoalsWorkspace() {
   const [goals, setGoals] = useState<Goal[]>([]),
     [disciplines, setDisciplines] = useState<Discipline[]>([]),
-    [selected, setSelected] = useState(""),
+    [selected, setSelected] = useState(() =>
+      typeof window === "undefined"
+        ? ""
+        : (new URLSearchParams(window.location.search).get("goal") ?? ""),
+    ),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false),
@@ -96,7 +100,7 @@ export function GoalsWorkspace() {
   const [step, setStep] = useState<number | null>(null),
     [discipline, setDiscipline] = useState(""),
     [count, setCount] = useState("12"),
-    [end, setEnd] = useState(""),
+    [end, setEnd] = useState(() => `${new Date().getFullYear()}-12-31`),
     [title, setTitle] = useState(""),
     [next, setNext] = useState(""),
     [cadence, setCadence] = useState("7"),
@@ -158,6 +162,7 @@ export function GoalsWorkspace() {
   }
   useEffect(() => {
     Promise.all([
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- external fetch synchronizes goals state
       load(),
       fetch("/api/me/goals?disciplines=1").then(async (r) => {
         const d = await r.json();
@@ -167,8 +172,6 @@ export function GoalsWorkspace() {
     ])
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-    setEnd(`${new Date().getFullYear()}-12-31`);
-    setSelected(new URLSearchParams(location.search).get("goal") ?? "");
   }, []);
   useEffect(() => {
     if (step !== null) heading.current?.focus();
@@ -176,13 +179,17 @@ export function GoalsWorkspace() {
   useEffect(() => {
     if (!picker) return;
     const c = new AbortController();
-    setResults([]);
-    setSearchError("");
-    setSearching(true);
     const timer = setTimeout(async () => {
+      setResults([]);
+      setSearchError("");
+      setSearching(true);
       try {
         const r = await fetch(
-          `/api/me/goals?search=${encodeURIComponent(query)}&kind=${picker}${discipline ? `&discipline=${encodeURIComponent(discipline)}` : ""}${selectedTypes.map((type) => `&type=${encodeURIComponent(type)}`).join("")}`,
+          `/api/me/goals?search=${encodeURIComponent(query)}&kind=${picker}${discipline ? `&discipline=${encodeURIComponent(discipline)}` : ""}${selectedTypeKey
+            .split(",")
+            .filter(Boolean)
+            .map((type) => `&type=${encodeURIComponent(type)}`)
+            .join("")}`,
           { signal: c.signal },
         );
         const d = await r.json();

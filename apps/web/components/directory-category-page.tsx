@@ -2,6 +2,10 @@ import type { ProfileKind } from "@missa/radar-adapters";
 import { getProfileRepository } from "@/lib/profileRepository";
 import { PublicSiteShell } from "./public-site-shell";
 import { DirectoryBrowseView } from "./directory-browse-view";
+import {
+  parseDirectoryScheduleState,
+  parseDirectorySort,
+} from "@/lib/directory-filters";
 
 /** Shared category directory: the route owns its identity, this owns browse behavior. */
 export async function DirectoryCategoryPage({
@@ -15,14 +19,20 @@ export async function DirectoryCategoryPage({
   basePath: string;
   title: string;
   description: string;
-  searchParams?: Promise<{ q?: string; page?: string; window?: string; country?: string; sort?: string }>;
+  searchParams?: Promise<{
+    q?: string;
+    page?: string;
+    window?: string;
+    country?: string;
+    sort?: string;
+  }>;
 }) {
   const params = (await searchParams) ?? {};
   const query = params.q?.trim() ?? "";
   const requested = Number(params.page ?? 1);
-  const activeWindow = params.window?.trim() || undefined;
+  const activeWindow = parseDirectoryScheduleState(params.window?.trim());
   const activeCountry = params.country?.trim() || undefined;
-  const activeSort = params.sort?.trim() || undefined;
+  const activeSort = parseDirectorySort(params.sort?.trim());
   let page =
     Number.isSafeInteger(requested) && requested > 0 && requested <= 100000
       ? requested
@@ -38,9 +48,9 @@ export async function DirectoryCategoryPage({
       result = await repository.browse({
         query: query || undefined,
         kind,
-        scheduleState: activeWindow as any,
+        scheduleState: activeWindow,
         country: activeCountry,
-        sortBy: activeSort as any,
+        sortBy: activeSort,
         limit: 48,
         offset: (page - 1) * 48,
       });
@@ -49,9 +59,9 @@ export async function DirectoryCategoryPage({
         result = await repository.browse({
           query: query || undefined,
           kind,
-          scheduleState: activeWindow as any,
+          scheduleState: activeWindow,
           country: activeCountry,
-          sortBy: activeSort as any,
+          sortBy: activeSort,
           limit: 48,
           offset: 0,
         });

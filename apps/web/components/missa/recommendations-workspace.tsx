@@ -98,6 +98,8 @@ export function RecommendationsWorkspace({
   }, [refresh]);
   useEffect(() => {
     const c = new AbortController();
+    // Refresh the recommendation request when route filters change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- external fetch synchronizes loading state
     setLoading(true);
     setError("");
     setUndo(null);

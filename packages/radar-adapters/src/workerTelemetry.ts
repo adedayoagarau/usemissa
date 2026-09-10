@@ -39,39 +39,93 @@ export interface SourceRunProgress {
   error?: string;
 }
 
-export async function startSourceRun(pool: Pool, lane: string, agentRunId?: string, progress: Pick<SourceRunProgress, "intervalStart" | "metadata"> = {}): Promise<string | undefined> {
+export async function startSourceRun(
+  pool: Pool,
+  lane: string,
+  agentRunId?: string,
+  progress: Pick<SourceRunProgress, "intervalStart" | "metadata"> = {},
+): Promise<string | undefined> {
   const id = randomUUID();
   try {
     await ensureAgentGraphSchema(pool);
-    await pool.query(`insert into radar_source_runs (id, agent_run_id, lane, interval_start, metadata) values ($1, $2, $3, $4, $5::jsonb)`, [id, agentRunId ?? null, lane, progress.intervalStart ?? new Date().toISOString(), JSON.stringify(progress.metadata ?? {})]);
+    await pool.query(
+      `insert into radar_source_runs (id, agent_run_id, lane, interval_start, metadata) values ($1, $2, $3, $4, $5::jsonb)`,
+      [
+        id,
+        agentRunId ?? null,
+        lane,
+        progress.intervalStart ?? new Date().toISOString(),
+        JSON.stringify(progress.metadata ?? {}),
+      ],
+    );
     return id;
   } catch {
     return undefined;
   }
 }
 
-export async function finishSourceRun(pool: Pool, runId: string | undefined, progress: SourceRunProgress): Promise<void> {
+export async function finishSourceRun(
+  pool: Pool,
+  runId: string | undefined,
+  progress: SourceRunProgress,
+): Promise<void> {
   if (!runId) return;
   try {
-    await pool.query(`update radar_source_runs set status = $2, completed_at = now(), interval_end = $3, sources_selected = $4, sources_fetched = $5, successful_fetches = $6, failed_fetches = $7, extraction_successes = $8, extraction_failures = $9, opportunities_created = $10, opportunities_updated = $11, duplicates_merged = $12, retry_categories = $13::jsonb, reconciliation = $14::jsonb, metadata = metadata || $15::jsonb, error = $16 where id = $1`, [runId, progress.status ?? "completed", progress.intervalEnd ?? new Date().toISOString(), progress.sourcesSelected ?? 0, progress.sourcesFetched ?? 0, progress.successfulFetches ?? 0, progress.failedFetches ?? 0, progress.extractionSuccesses ?? 0, progress.extractionFailures ?? 0, progress.opportunitiesCreated ?? 0, progress.opportunitiesUpdated ?? 0, progress.duplicatesMerged ?? 0, JSON.stringify(progress.retryCategories ?? {}), JSON.stringify(progress.reconciliation ?? {}), JSON.stringify(progress.metadata ?? {}), progress.error?.slice(0, 1000) ?? null]);
+    await pool.query(
+      `update radar_source_runs set status = $2, completed_at = now(), interval_end = $3, sources_selected = $4, sources_fetched = $5, successful_fetches = $6, failed_fetches = $7, extraction_successes = $8, extraction_failures = $9, opportunities_created = $10, opportunities_updated = $11, duplicates_merged = $12, retry_categories = $13::jsonb, reconciliation = $14::jsonb, metadata = metadata || $15::jsonb, error = $16 where id = $1`,
+      [
+        runId,
+        progress.status ?? "completed",
+        progress.intervalEnd ?? new Date().toISOString(),
+        progress.sourcesSelected ?? 0,
+        progress.sourcesFetched ?? 0,
+        progress.successfulFetches ?? 0,
+        progress.failedFetches ?? 0,
+        progress.extractionSuccesses ?? 0,
+        progress.extractionFailures ?? 0,
+        progress.opportunitiesCreated ?? 0,
+        progress.opportunitiesUpdated ?? 0,
+        progress.duplicatesMerged ?? 0,
+        JSON.stringify(progress.retryCategories ?? {}),
+        JSON.stringify(progress.reconciliation ?? {}),
+        JSON.stringify(progress.metadata ?? {}),
+        progress.error?.slice(0, 1000) ?? null,
+      ],
+    );
   } catch {
     // Telemetry must never stop ingestion.
   }
 }
 
-export type WorkerRunLifecycleStatus = "queued" | "running" | "paused" | "completed" | "failed" | "cancelled" | "missing";
+export type WorkerRunLifecycleStatus =
+  | "queued"
+  | "running"
+  | "paused"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "missing";
 
 function instanceId(): string | undefined {
-  return process.env.RAILWAY_REPLICA_ID ?? process.env.RAILWAY_SERVICE_ID ?? process.env.HOSTNAME;
+  return (
+    process.env.RAILWAY_REPLICA_ID ??
+    process.env.RAILWAY_SERVICE_ID ??
+    process.env.HOSTNAME
+  );
 }
 
-function metadata(workerKind: RadarWorkerKind, progress: WorkerRunProgress = {}): Record<string, unknown> {
+function metadata(
+  workerKind: RadarWorkerKind,
+  progress: WorkerRunProgress = {},
+): Record<string, unknown> {
   return {
     runType: "worker",
     workerKind,
     ...(instanceId() ? { instanceId: instanceId() } : {}),
     heartbeatAt: new Date().toISOString(),
-    ...(progress.lastError ? { lastError: progress.lastError.slice(0, 500) } : {}),
+    ...(progress.lastError
+      ? { lastError: progress.lastError.slice(0, 500) }
+      : {}),
   };
 }
 
@@ -80,7 +134,10 @@ function metadata(workerKind: RadarWorkerKind, progress: WorkerRunProgress = {})
  * best-effort: a missing target schema must not stop the ingestion lane from
  * doing its primary work.
  */
-export async function startWorkerRun(pool: Pool, workerKind: RadarWorkerKind): Promise<string | undefined> {
+export async function startWorkerRun(
+  pool: Pool,
+  workerKind: RadarWorkerKind,
+): Promise<string | undefined> {
   const id = randomUUID();
   try {
     await ensureAgentGraphSchema(pool);
@@ -101,7 +158,13 @@ export async function startWorkerRun(pool: Pool, workerKind: RadarWorkerKind): P
                   paused_at = null, cancelled_at = null, control_request_id = null,
                   metadata = metadata || $2::jsonb
             where id = $1`,
-          [queued.rows[0].id, JSON.stringify({ ...metadata(workerKind), claimedAt: new Date().toISOString() })],
+          [
+            queued.rows[0].id,
+            JSON.stringify({
+              ...metadata(workerKind),
+              claimedAt: new Date().toISOString(),
+            }),
+          ],
         );
         await client.query("commit");
         return queued.rows[0].id;
@@ -125,17 +188,16 @@ export async function startWorkerRun(pool: Pool, workerKind: RadarWorkerKind): P
   }
 }
 
-export async function readWorkerRunLifecycle(pool: Pool, runId: string | undefined): Promise<WorkerRunLifecycleStatus> {
+export async function readWorkerRunLifecycle(
+  pool: Pool,
+  runId: string | undefined,
+): Promise<WorkerRunLifecycleStatus> {
   if (!runId) return "missing";
-  try {
-    const result = await pool.query<{ status: WorkerRunLifecycleStatus }>(
-      "select status from radar_agent_runs where id = $1",
-      [runId],
-    );
-    return result.rows[0]?.status ?? "missing";
-  } catch {
-    return "missing";
-  }
+  const result = await pool.query<{ status: WorkerRunLifecycleStatus }>(
+    "select status from radar_agent_runs where id = $1",
+    [runId],
+  );
+  return result.rows[0]?.status ?? "missing";
 }
 
 export async function heartbeatWorkerRun(
@@ -154,7 +216,13 @@ export async function heartbeatWorkerRun(
            error = coalesce($4, error),
            metadata = metadata || $5::jsonb
        where id = $1 and status = 'running'`,
-      [runId, progress.inputCount ?? null, progress.outputCount ?? null, progress.lastError?.slice(0, 500) ?? null, JSON.stringify(metadata(workerKind, progress))],
+      [
+        runId,
+        progress.inputCount ?? null,
+        progress.outputCount ?? null,
+        progress.lastError?.slice(0, 500) ?? null,
+        JSON.stringify(metadata(workerKind, progress)),
+      ],
     );
   } catch {
     // Observability must not take down a productive worker tick.
@@ -178,7 +246,14 @@ export async function finishWorkerRun(
            error = coalesce($5, error),
            metadata = metadata || $6::jsonb
        where id = $1 and status in ('running', 'paused', 'queued')`,
-      [runId, status, progress.inputCount ?? null, progress.outputCount ?? null, progress.lastError?.slice(0, 500) ?? null, JSON.stringify(metadata(workerKind, progress))],
+      [
+        runId,
+        status,
+        progress.inputCount ?? null,
+        progress.outputCount ?? null,
+        progress.lastError?.slice(0, 500) ?? null,
+        JSON.stringify(metadata(workerKind, progress)),
+      ],
     );
   } catch {
     // Best-effort shutdown telemetry.

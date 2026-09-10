@@ -28,7 +28,12 @@ import {
 import { MissaWordmark } from "@/components/missa-wordmark";
 import { SocialAuthButton } from "@/components/missa/social-auth-button";
 import styles from "@/app/auth.module.css";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 
 type AuthMode = "login" | "signup";
 
@@ -343,24 +348,6 @@ export function AuthForm({
     } finally {
       setIsPending(false);
     }
-  }
-
-  function neonAuthErrorMessage(
-    authError: { message?: string } | null | undefined,
-    authMode: AuthMode,
-  ): string {
-    const message = authError?.message?.trim();
-    if (message && /invalid|credential|password/i.test(message)) {
-      return authMode === "login"
-        ? "Invalid email or password"
-        : "We could not create your account. Check your details and try again.";
-    }
-    if (message && /rate|too many|try again later/iu.test(message)) {
-      return "Too many account attempts. Wait a moment, then try again.";
-    }
-    return authMode === "login"
-      ? "We could not log you in. Check your details and try again."
-      : "We could not create your account. Check your details and try again.";
   }
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -750,14 +737,14 @@ export function AuthForm({
                 ) : null}
               </div>
               <div className={styles.field} key="password">
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="mb-1.5 flex items-center justify-between">
                   <label htmlFor="password" className={styles.label}>
                     Password
                   </label>
                   {mode === "login" && (
                     <Link
                       href="/forgot-password"
-                      className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
+                      className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
                     >
                       Forgot password?
                     </Link>
@@ -772,12 +759,18 @@ export function AuthForm({
                     autoComplete={
                       mode === "login" ? "current-password" : "new-password"
                     }
-                    placeholder={mode === "signup" ? "Choose a password" : "Enter your password"}
+                    placeholder={
+                      mode === "signup"
+                        ? "Choose a password"
+                        : "Enter your password"
+                    }
                     aria-invalid={fieldError?.field === "password"}
                     aria-describedby={
                       fieldError?.field === "password"
                         ? fieldErrorId
-                        : mode === "signup" ? "password-guidance" : undefined
+                        : mode === "signup"
+                          ? "password-guidance"
+                          : undefined
                     }
                     minLength={8}
                     required
@@ -797,7 +790,14 @@ export function AuthForm({
                     )}
                   </button>
                 </div>
-                {mode === "signup" && <p id="password-guidance" className="text-xs text-muted-foreground">Use at least 8 characters.</p>}
+                {mode === "signup" && (
+                  <p
+                    id="password-guidance"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Use at least 8 characters.
+                  </p>
+                )}
                 {fieldError?.field === "password" ? (
                   <p
                     id={fieldErrorId}
@@ -861,11 +861,21 @@ export function AuthForm({
               {mode === "signup" && !firstSaveContext && (
                 <Accordion>
                   <AccordionItem value="waitlist">
-                    <AccordionTrigger>Joined the waitlist with another email?</AccordionTrigger>
+                    <AccordionTrigger>
+                      Joined the waitlist with another email?
+                    </AccordionTrigger>
                     <AccordionContent>
                       <div className={styles.field}>
-                        <label htmlFor="waitlistEmail" className={styles.label}>Waitlist email (optional)</label>
-                        <Input id="waitlistEmail" name="waitlistEmail" type="email" autoComplete="off" className="h-11" />
+                        <label htmlFor="waitlistEmail" className={styles.label}>
+                          Waitlist email (optional)
+                        </label>
+                        <Input
+                          id="waitlistEmail"
+                          name="waitlistEmail"
+                          type="email"
+                          autoComplete="off"
+                          className="h-11"
+                        />
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -909,7 +919,8 @@ export function AuthForm({
               </Button>
               {firstSaveContext ? (
                 <p className={styles.finePrint}>
-                  You can update Profile details later. They are not required to save this Opportunity.
+                  You can update Profile details later. They are not required to
+                  save this Opportunity.
                 </p>
               ) : null}
             </form>

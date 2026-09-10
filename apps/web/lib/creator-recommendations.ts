@@ -273,7 +273,7 @@ export class CreatorRecommendationRepository extends CreatorRepositoryBase {
       ).rows;
       return {
         items: [] as RecommendationMatch[],
-        programs: rows.map(({ total, ...r }) => r),
+        programs: rows.map(({ total: _total, ...r }) => r),
         total: rows[0]?.total ?? 0,
         contextKey: key,
         notes,

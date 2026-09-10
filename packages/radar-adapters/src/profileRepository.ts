@@ -35,6 +35,9 @@ export type {
 };
 export { resolveMagazineSchedule };
 
+function isMissingRelation(error: unknown): boolean {
+  return (error as { code?: string }).code === "42P01";
+}
 
 export type ProfileKind =
   | "literary_magazine"
@@ -49,10 +52,12 @@ export interface ProfileBrowseQuery {
   kind?: ProfileKind;
   query?: string;
   nameOnly?: boolean;
-  scheduleState?: "open" | "always_open" | "closing_soon" | "opening_soon" | "closed" | "all";
+  scheduleState?:
+    "open" | "always_open" | "closing_soon" | "opening_soon" | "closed" | "all";
   country?: string;
   countryCode?: string;
-  sortBy?: "name_asc" | "opening_soonest" | "closing_soonest" | "recently_updated";
+  sortBy?:
+    "name_asc" | "opening_soonest" | "closing_soonest" | "recently_updated";
   limit?: number;
   offset?: number;
 }
@@ -77,7 +82,10 @@ export interface ProfileCard {
   mediaBundle?: OrganizationMediaBundle | null;
 }
 
-export function getSemanticUrlForProfile(kind: ProfileKind, slug: string): string {
+export function getSemanticUrlForProfile(
+  kind: ProfileKind,
+  slug: string,
+): string {
   switch (kind) {
     case "residency_center":
       return `/residency/${slug}`;
@@ -167,7 +175,6 @@ export interface ProfileDetail extends ProfileCard {
   mediaBundle?: OrganizationMediaBundle | null;
 }
 
-
 export interface ProfileBrowsePage {
   items: ProfileCard[];
   total: number;
@@ -204,7 +211,10 @@ function nullableText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-function card(row: Record<string, unknown>, extra?: { opportunities?: ProfileOpportunity[] }): ProfileCard {
+function card(
+  row: Record<string, unknown>,
+  extra?: { opportunities?: ProfileOpportunity[] },
+): ProfileCard {
   const nameSlug = String(row.name || "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/gi, "-")
@@ -212,14 +222,19 @@ function card(row: Record<string, unknown>, extra?: { opportunities?: ProfileOpp
 
   const rawKey = String(row.name_key || row.canonical_key || row.id);
   const keySlug = rawKey
-    .replace(/^(res|aca|otm|artconn|prof_org|org_resartis|org_artconn|org_aca|org_otm|profile):?_?/i, "")
+    .replace(
+      /^(res|aca|otm|artconn|prof_org|org_resartis|org_artconn|org_aca|org_otm|profile):?_?/i,
+      "",
+    )
     .replace(/[^a-z0-9]+/gi, "-")
     .toLowerCase()
     .replace(/^-+|-+$/g, "");
 
-  const cleanSlug = nameSlug.length >= 3 ? nameSlug : (keySlug || String(row.id));
+  const cleanSlug = nameSlug.length >= 3 ? nameSlug : keySlug || String(row.id);
   const readingPeriod = nullableText(row.reading_period);
-  const isPublication = row.profile_kind === "literary_magazine" || row.profile_kind === "small_press";
+  const isPublication =
+    row.profile_kind === "literary_magazine" ||
+    row.profile_kind === "small_press";
   const schedule = isPublication
     ? resolveMagazineSchedule({
         readingPeriod,
@@ -233,9 +248,12 @@ function card(row: Record<string, unknown>, extra?: { opportunities?: ProfileOpp
   const normalized = rawCountryCode
     ? {
         countryCode: rawCountryCode.toUpperCase(),
-        country: rawCountry || countryNameFromCode(rawCountryCode) || rawCountryCode,
+        country:
+          rawCountry || countryNameFromCode(rawCountryCode) || rawCountryCode,
       }
-    : (rawCountry ? normalizeCountry(rawCountry) : null);
+    : rawCountry
+      ? normalizeCountry(rawCountry)
+      : null;
   const countryCode = normalized?.countryCode ?? (rawCountryCode || null);
   const country = normalized?.country ?? (rawCountry || null);
 
@@ -245,7 +263,9 @@ function card(row: Record<string, unknown>, extra?: { opportunities?: ProfileOpp
     kind: row.profile_kind as ProfileKind,
     name: cleanTitleOrLabel(String(row.name)),
     websiteUrl: nullableText(row.website_url),
-    summary: row.source_summary ? cleanCrawledText(String(row.source_summary)) : null,
+    summary: row.source_summary
+      ? cleanCrawledText(String(row.source_summary))
+      : null,
     genres: jsonArray(row.genres_json),
     formats: jsonArray(row.formats_json),
     readingPeriod,
@@ -272,7 +292,9 @@ export class PostgresProfileRepository implements ProfileRepository {
     if (query.query?.trim()) {
       values.push(`%${query.query.trim()}%`);
       filters.push(
-        query.nameOnly ? `p.name ILIKE $${values.length}` : `(p.name ILIKE $${values.length} OR o.source_summary ILIKE $${values.length} OR o.editorial_focus ILIKE $${values.length} OR (ro.data->>'biography') ILIKE $${values.length})`,
+        query.nameOnly
+          ? `p.name ILIKE $${values.length}`
+          : `(p.name ILIKE $${values.length} OR o.source_summary ILIKE $${values.length} OR o.editorial_focus ILIKE $${values.length} OR (ro.data->>'biography') ILIKE $${values.length})`,
       );
     }
     const countryParam = query.countryCode?.trim() || query.country?.trim();
@@ -283,22 +305,32 @@ export class PostgresProfileRepository implements ProfileRepository {
         const i1 = values.length - 2;
         const i2 = values.length - 1;
         const i3 = values.length;
-        filters.push(`(p.country_code = $${i1} OR p.country ILIKE $${i2} OR (ro.data->>'country') ILIKE $${i3})`);
+        filters.push(
+          `(p.country_code = $${i1} OR p.country ILIKE $${i2} OR (ro.data->>'country') ILIKE $${i3})`,
+        );
       } else if (norm) {
         values.push(norm.countryCode, `%${norm.country}%`);
         const iCode = values.length - 1;
         const iLike = values.length;
-        filters.push(`(p.country_code = $${iCode} OR p.country ILIKE $${iLike} OR (ro.data->>'country') ILIKE $${iLike} OR (ro.data->>'country') = $${iCode})`);
+        filters.push(
+          `(p.country_code = $${iCode} OR p.country ILIKE $${iLike} OR (ro.data->>'country') ILIKE $${iLike} OR (ro.data->>'country') = $${iCode})`,
+        );
       } else {
         values.push(countryParam, `%${countryParam}%`);
         const iExact = values.length - 1;
         const iLike = values.length;
-        filters.push(`(p.country_code ILIKE $${iExact} OR p.country ILIKE $${iLike} OR (ro.data->>'country') ILIKE $${iLike})`);
+        filters.push(
+          `(p.country_code ILIKE $${iExact} OR p.country ILIKE $${iLike} OR (ro.data->>'country') ILIKE $${iLike})`,
+        );
       }
     }
     const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
-    const scheduleFilter = query.scheduleState && query.scheduleState !== "all" ? query.scheduleState : null;
-    const isScheduleSort = query.sortBy === "opening_soonest" || query.sortBy === "closing_soonest";
+    const scheduleFilter =
+      query.scheduleState && query.scheduleState !== "all"
+        ? query.scheduleState
+        : null;
+    const isScheduleSort =
+      query.sortBy === "opening_soonest" || query.sortBy === "closing_soonest";
 
     if (scheduleFilter || isScheduleSort) {
       const result = await this.pool.query({
@@ -353,7 +385,10 @@ export class PostgresProfileRepository implements ProfileRepository {
         filtered = cards.filter((item) => {
           if (!item.schedule) return false;
           if (scheduleFilter === "open") {
-            return item.schedule.state === "open" || item.schedule.state === "always_open";
+            return (
+              item.schedule.state === "open" ||
+              item.schedule.state === "always_open"
+            );
           }
           return item.schedule.state === scheduleFilter;
         });
@@ -365,12 +400,19 @@ export class PostgresProfileRepository implements ProfileRepository {
           const bOpening = b.schedule?.state === "opening_soon";
           if (aOpening && !bOpening) return -1;
           if (!aOpening && bOpening) return 1;
-          if (aOpening && bOpening && a.schedule?.nextDate && b.schedule?.nextDate) {
+          if (
+            aOpening &&
+            bOpening &&
+            a.schedule?.nextDate &&
+            b.schedule?.nextDate
+          ) {
             const cmp = a.schedule.nextDate.localeCompare(b.schedule.nextDate);
             if (cmp !== 0) return cmp;
           }
-          const aOpen = a.schedule?.state === "open" || a.schedule?.state === "always_open";
-          const bOpen = b.schedule?.state === "open" || b.schedule?.state === "always_open";
+          const aOpen =
+            a.schedule?.state === "open" || a.schedule?.state === "always_open";
+          const bOpen =
+            b.schedule?.state === "open" || b.schedule?.state === "always_open";
           if (aOpen && !bOpen) return -1;
           if (!aOpen && bOpen) return 1;
           return a.name.localeCompare(b.name);
@@ -381,7 +423,12 @@ export class PostgresProfileRepository implements ProfileRepository {
           const bClosing = b.schedule?.state === "closing_soon";
           if (aClosing && !bClosing) return -1;
           if (!aClosing && bClosing) return 1;
-          if (aClosing && bClosing && a.schedule?.nextDate && b.schedule?.nextDate) {
+          if (
+            aClosing &&
+            bClosing &&
+            a.schedule?.nextDate &&
+            b.schedule?.nextDate
+          ) {
             const cmp = a.schedule.nextDate.localeCompare(b.schedule.nextDate);
             if (cmp !== 0) return cmp;
           }
@@ -538,7 +585,8 @@ export class PostgresProfileRepository implements ProfileRepository {
     if (!row) return null;
     const actualId = String(row.id);
     const base = card(row);
-    const links = await this.pool.query({ text: `
+    const links = await this.pool.query({
+      text: `
       SELECT * FROM (
         SELECT o.id, o.title, o.organizer, o.official_website, oco.deadline, oco.source_detail_url,
           CASE WHEN oco.deadline IS NULL THEN 'unknown' WHEN oco.deadline >= CURRENT_DATE THEN 'open' ELSE 'closed' END AS status
@@ -566,7 +614,9 @@ export class PostgresProfileRepository implements ProfileRepository {
         JOIN gary_profiles p ON p.id=l.profile_id
         WHERE l.profile_id=$1 AND l.status='confirmed' AND l.verified_until > now()
           AND o.publication_state='published'
-      ) linked ORDER BY deadline NULLS LAST, title`, values: [actualId] });
+      ) linked ORDER BY deadline NULLS LAST, title`,
+      values: [actualId],
+    });
 
     let visuals: ProfileVisual[] = [];
     try {
@@ -582,8 +632,8 @@ export class PostgresProfileRepository implements ProfileRepository {
         issueYear: r.issue_year != null ? Number(r.issue_year) : null,
         season: nullableText(r.season),
       }));
-    } catch {
-      // Table may not exist yet or empty
+    } catch (error) {
+      if (!isMissingRelation(error)) throw error;
     }
 
     let prizeProvenance: ProfilePrizeWinner[] = [];
@@ -601,8 +651,8 @@ export class PostgresProfileRepository implements ProfileRepository {
         winningWorkUrl: nullableText(r.winning_work_url),
         judgeName: nullableText(r.judge_name),
       }));
-    } catch {
-      // Table may not exist yet or empty
+    } catch (error) {
+      if (!isMissingRelation(error)) throw error;
     }
 
     let intelligence: ProfileIntelligenceData | null = null;
@@ -615,20 +665,31 @@ export class PostgresProfileRepository implements ProfileRepository {
       if (intelRes.rows.length > 0) {
         const ir = intelRes.rows[0];
         intelligence = {
-          prestigeTier: String(ir.prestige_tier || "Tier 3 (Emerging & Community)"),
-          foundingYear: ir.founding_year != null ? Number(ir.founding_year) : null,
+          prestigeTier: String(
+            ir.prestige_tier || "Tier 3 (Emerging & Community)",
+          ),
+          foundingYear:
+            ir.founding_year != null ? Number(ir.founding_year) : null,
           honors: jsonArray(ir.honors),
-          editorialArchetype: String(ir.editorial_archetype || "Eclectic & Open"),
+          editorialArchetype: String(
+            ir.editorial_archetype || "Eclectic & Open",
+          ),
           sentimentTags: jsonArray(ir.sentiment_tags),
-          responseDaysMin: ir.response_days_min != null ? Number(ir.response_days_min) : null,
-          responseDaysMax: ir.response_days_max != null ? Number(ir.response_days_max) : null,
+          responseDaysMin:
+            ir.response_days_min != null ? Number(ir.response_days_min) : null,
+          responseDaysMax:
+            ir.response_days_max != null ? Number(ir.response_days_max) : null,
           responseLabel: nullableText(ir.response_label),
           queryPolicy: nullableText(ir.query_policy),
         };
-        socialLinks = (typeof ir.social_links === "object" && ir.social_links !== null ? ir.social_links : {}) as Record<string, string | null>;
+        socialLinks = (
+          typeof ir.social_links === "object" && ir.social_links !== null
+            ? ir.social_links
+            : {}
+        ) as Record<string, string | null>;
       }
-    } catch {
-      // Table may not exist yet or empty
+    } catch (error) {
+      if (!isMissingRelation(error)) throw error;
     }
 
     // Dynamic fallback if not backfilled in DB yet
@@ -650,91 +711,103 @@ export class PostgresProfileRepository implements ProfileRepository {
         responseDaysMin: computed.responseTime.minDays,
         responseDaysMax: computed.responseTime.maxDays,
         responseLabel: computed.responseTime.label,
-        queryPolicy: computed.responseTime.queryAllowedAfterDays ? `Queries allowed after ${computed.responseTime.queryAllowedAfterDays} days` : null,
+        queryPolicy: computed.responseTime.queryAllowedAfterDays
+          ? `Queries allowed after ${computed.responseTime.queryAllowedAfterDays} days`
+          : null,
       };
     }
 
     let mediaBundle: OrganizationMediaBundle | null = null;
     try {
-      mediaBundle = await getOrganizationMediaBundle(this.pool, actualId, { limitPerGroup: 12 });
-    } catch {
-      // Non-fatal if table not present
+      mediaBundle = await getOrganizationMediaBundle(this.pool, actualId, {
+        limitPerGroup: 12,
+      });
+    } catch (error) {
+      if (!isMissingRelation(error)) throw error;
     }
 
     const logoVisual = visuals.find((v) => v.assetType === "logo");
     const bannerVisual =
       visuals.find((v) => v.assetType === "banner") ??
       visuals.find((v) => v.assetType === "issue_cover");
-    
+
     // Prefer discovered mediaBundle identity if present
-    const discoveredLogo = mediaBundle?.identity.items.find((i) => i.mediaType === "logo")?.imageUrl;
+    const discoveredLogo = mediaBundle?.identity.items.find(
+      (i) => i.mediaType === "logo",
+    )?.imageUrl;
     const discoveredLead = mediaBundle?.leadPhoto?.imageUrl;
     const logoUrl = discoveredLogo ?? logoVisual?.imageUrl ?? null;
     const bannerUrl = discoveredLead ?? bannerVisual?.imageUrl ?? null;
-    const bannerAlt = mediaBundle?.leadPhoto?.altText ?? bannerVisual?.label ?? base.mediaAlt;
+    const bannerAlt =
+      mediaBundle?.leadPhoto?.altText ?? bannerVisual?.label ?? base.mediaAlt;
 
-      const opportunities: ProfileOpportunity[] = links.rows.map((item) => ({
-        id: String(item.id),
-        title: String(item.title),
-        organizer: String(item.organizer),
-        deadline: item.deadline
-          ? (item.deadline instanceof Date
-              ? item.deadline.toISOString().slice(0, 10)
-              : String(item.deadline).slice(0, 10))
-          : null,
-        detailUrl: nullableText(item.source_detail_url),
-        officialWebsite: nullableText(item.official_website),
-        status: item.status,
-      }));
-      const isPublication =
-        row.profile_kind === "literary_magazine" ||
-        row.profile_kind === "small_press";
-      const schedule = isPublication
-        ? resolveMagazineSchedule({
-            readingPeriod: nullableText(row.reading_period),
-            opportunities,
-          })
-        : base.schedule;
+    const opportunities: ProfileOpportunity[] = links.rows.map((item) => ({
+      id: String(item.id),
+      title: String(item.title),
+      organizer: String(item.organizer),
+      deadline: item.deadline
+        ? item.deadline instanceof Date
+          ? item.deadline.toISOString().slice(0, 10)
+          : String(item.deadline).slice(0, 10)
+        : null,
+      detailUrl: nullableText(item.source_detail_url),
+      officialWebsite: nullableText(item.official_website),
+      status: item.status,
+    }));
+    const isPublication =
+      row.profile_kind === "literary_magazine" ||
+      row.profile_kind === "small_press";
+    const schedule = isPublication
+      ? resolveMagazineSchedule({
+          readingPeriod: nullableText(row.reading_period),
+          opportunities,
+        })
+      : base.schedule;
 
-      return {
-        ...base,
-        schedule,
-        // Directory/cards use logo marks; never substitute a banner into the logo slot.
-        logoUrl,
-        bannerUrl,
-        bannerAlt,
-        visuals,
-        mediaBundle,
-        prizeProvenance,
-        intelligence,
-        socialLinks,
-        submissionGuidelinesUrl: nullableText(row.submission_guidelines_url),
-        subgenres: jsonArray(row.subgenres_json),
-        bookTypes: jsonArray(row.book_types_json),
-        representativeAuthors: nullableText(row.representative_authors),
-        responseTime: nullableText(row.response_time),
-        readingFee: nullableText(row.reading_fee),
-        unsolicitedSubmissions: nullableText(row.unsolicited_submissions),
-        simultaneousSubmissions: nullableText(row.simultaneous_submissions),
-        payment: nullableText(row.payment),
-        editorialFocus: row.editorial_focus ? cleanCrawledText(String(row.editorial_focus)) : null,
-        editorialTips: row.editorial_tips ? cleanCrawledText(String(row.editorial_tips)) : null,
-        contactName: nullableText(row.contact_name),
-        contactEmail: nullableText(row.contact_email),
-        contactDetails: nullableText(row.contact_details),
-        issuesPerYear: nullableText(row.issues_per_year),
-        issuePrice: nullableText(row.issue_price),
-        subscriptionPrice: nullableText(row.subscription_price),
-        circulation: nullableText(row.circulation),
-        titlesPerYear: nullableText(row.titles_per_year),
-        publishesThroughContestsOnly: nullableText(
-          row.publishes_through_contests_only,
-        ),
-        editorialProfile: (row.editorial_profile as OrganizationEditorialProfile | undefined) ?? null,
-        opportunities,
-      };
+    return {
+      ...base,
+      schedule,
+      // Directory/cards use logo marks; never substitute a banner into the logo slot.
+      logoUrl,
+      bannerUrl,
+      bannerAlt,
+      visuals,
+      mediaBundle,
+      prizeProvenance,
+      intelligence,
+      socialLinks,
+      submissionGuidelinesUrl: nullableText(row.submission_guidelines_url),
+      subgenres: jsonArray(row.subgenres_json),
+      bookTypes: jsonArray(row.book_types_json),
+      representativeAuthors: nullableText(row.representative_authors),
+      responseTime: nullableText(row.response_time),
+      readingFee: nullableText(row.reading_fee),
+      unsolicitedSubmissions: nullableText(row.unsolicited_submissions),
+      simultaneousSubmissions: nullableText(row.simultaneous_submissions),
+      payment: nullableText(row.payment),
+      editorialFocus: row.editorial_focus
+        ? cleanCrawledText(String(row.editorial_focus))
+        : null,
+      editorialTips: row.editorial_tips
+        ? cleanCrawledText(String(row.editorial_tips))
+        : null,
+      contactName: nullableText(row.contact_name),
+      contactEmail: nullableText(row.contact_email),
+      contactDetails: nullableText(row.contact_details),
+      issuesPerYear: nullableText(row.issues_per_year),
+      issuePrice: nullableText(row.issue_price),
+      subscriptionPrice: nullableText(row.subscription_price),
+      circulation: nullableText(row.circulation),
+      titlesPerYear: nullableText(row.titles_per_year),
+      publishesThroughContestsOnly: nullableText(
+        row.publishes_through_contests_only,
+      ),
+      editorialProfile:
+        (row.editorial_profile as OrganizationEditorialProfile | undefined) ??
+        null,
+      opportunities,
+    };
   }
-
 
   async getMediaByProfileId(id: string): Promise<ProfileMedia | null> {
     const result = await this.pool.query({
@@ -773,7 +846,8 @@ export class PostgresProfileRepository implements ProfileRepository {
   }
 
   async getForOpportunity(opportunityId: string): Promise<ProfileCard | null> {
-    const result = await this.pool.query({ text: `
+    const result = await this.pool.query({
+      text: `
       WITH latest AS (
         SELECT DISTINCT ON (profile_id) * FROM gary_profile_observations
         ORDER BY profile_id, observed_at DESC
@@ -800,12 +874,18 @@ export class PostgresProfileRepository implements ProfileRepository {
         LIMIT 1
       ) org_media ON true
       WHERE l.opportunity_id=$1 AND l.status='confirmed' AND l.verified_until > now()
-      ORDER BY l.confidence DESC, p.name ASC LIMIT 1`, values: [opportunityId] });
+      ORDER BY l.confidence DESC, p.name ASC LIMIT 1`,
+      values: [opportunityId],
+    });
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
     const baseCard = card(row);
     try {
-      baseCard.mediaBundle = await getOrganizationMediaBundle(this.pool, baseCard.id, { limitPerGroup: 4 });
+      baseCard.mediaBundle = await getOrganizationMediaBundle(
+        this.pool,
+        baseCard.id,
+        { limitPerGroup: 4 },
+      );
     } catch {
       // Non-fatal if media table is empty
     }
