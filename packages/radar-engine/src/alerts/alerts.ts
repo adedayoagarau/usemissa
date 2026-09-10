@@ -240,6 +240,7 @@ export function matchOrganizationByDomain(store: RadarStore, url: string): Organ
     return undefined;
   }
   for (const org of store.organizations.values()) {
+    if (!Array.isArray(org.domains)) continue;
     if (org.domains.some((d) => host === d || host.endsWith(`.${d}`))) return org;
   }
   return undefined;
