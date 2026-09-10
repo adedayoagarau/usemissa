@@ -7,17 +7,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { MissaWordmark } from "@/components/missa-wordmark";
 import { Button } from "@/components/ui/button";
+import { HOMEPAGE_NAV_LINKS } from "@/lib/homepage-navigation";
 import styles from "./homepage-hero-preview.module.css";
 import "./homepage-marketing-palette.css";
 
 const DESKTOP_PLATE = "/design-system/homepage-hero/knit-h1.jpg";
 const MOBILE_PLATE = "/design-system/homepage-hero/knit-h1-mobile.jpg";
-
-const navLinks = [
-  { href: "/opportunities", label: "Opportunities" },
-  { href: "/rankings/magazines", label: "Rankings" },
-  { href: "/directory", label: "Directory" },
-] as const;
 
 export function HomepageHeroPreview({
   exploreHref = "/opportunities",
@@ -39,7 +34,8 @@ export function HomepageHeroPreview({
     };
 
     const onPointerDown = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) {
+      const target = event.target;
+      if (!(target instanceof Node) || !menuRef.current?.contains(target)) {
         setMenuOpen(false);
       }
     };
@@ -111,7 +107,7 @@ export function HomepageHeroPreview({
                 aria-hidden={!menuOpen}
                 inert={menuOpen ? undefined : true}
               >
-                {navLinks.map((link) => (
+                {HOMEPAGE_NAV_LINKS.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
@@ -149,7 +145,7 @@ export function HomepageHeroPreview({
           className={styles.wordmark}
         />
         <nav className={styles.nav} aria-label="Primary">
-          {navLinks.map((link) => (
+          {HOMEPAGE_NAV_LINKS.map((link) => (
             <Link key={link.href} href={link.href}>
               {link.label}
             </Link>

@@ -36,6 +36,7 @@ export default async function HomepageFuturePage({
   );
 
   let tracker: TrackerBoardRecord[] = [];
+  let trackerError = false;
   if (session?.account.userId) {
     try {
       const engine = await getEngine();
@@ -63,11 +64,16 @@ export default async function HomepageFuturePage({
           href: `/opportunities/${item.opportunityId}`,
         }));
     } catch {
-      tracker = [];
+      trackerError = true;
     }
   }
 
   return (
-    <HomepageFuturePrototype accessMode={accessMode} tracker={tracker} />
+    <HomepageFuturePrototype
+      accessMode={accessMode}
+      tracker={tracker}
+      signedIn={Boolean(session)}
+      trackerError={trackerError}
+    />
   );
 }

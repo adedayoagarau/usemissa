@@ -112,6 +112,7 @@ export function HomepageContinuation({
   const [profiles, setProfiles] = useState<Profile[] | null>(null);
   const [catalogueError, setCatalogueError] = useState(false);
   const [directoryError, setDirectoryError] = useState(false);
+  const [featuredImageFailed, setFeaturedImageFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     if (!visible) return;
@@ -304,13 +305,20 @@ export function HomepageContinuation({
                   className={styles.featuredOrganizationLink}
                 >
                   <div className={styles.organizationPhoto}>
-                    <Image
-                      unoptimized
-                      fill
-                      sizes="(max-width: 760px) 100vw, 50vw"
-                      src="https://www.headlands.org/wp-content/uploads/2022/02/HCA_Campus_AndriaLo_1-1024x682.jpg"
-                      alt="Building 945 at Headlands Center for the Arts"
-                    />
+                    {featuredImageFailed ? (
+                      <span className={`${styles.organizationPhotoFallback} font-heading`}>
+                        Headlands Center for the Arts
+                      </span>
+                    ) : (
+                      <Image
+                        unoptimized
+                        fill
+                        sizes="(max-width: 760px) 100vw, 50vw"
+                        src="https://www.headlands.org/wp-content/uploads/2022/02/HCA_Campus_AndriaLo_1-1024x682.jpg"
+                        alt="Building 945 at Headlands Center for the Arts"
+                        onError={() => setFeaturedImageFailed(true)}
+                      />
+                    )}
                   </div>
                   <div className={styles.featuredOrganizationCopy}>
                     <span className={styles.organizationKind}>

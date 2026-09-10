@@ -60,13 +60,19 @@ export function HomepageCollections() {
 }
 
 /** The homepage never substitutes seed fixtures for current public records. */
-async function loadHomepageOpenings(): Promise<OpportunityBrowseProjection[]> {
+type HomepageOpeningsResult =
+  | { state: "not-configured"; items: [] }
+  | { state: "empty"; items: [] }
+  | { state: "unavailable"; items: [] }
+  | { state: "ready"; items: OpportunityBrowseProjection[] };
+
+async function loadHomepageOpenings(): Promise<HomepageOpeningsResult> {
   const relational =
     process.env.MISSA_CREATOR_RELATIONAL_AUTHORITY === "1" ||
     process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres";
-  if (!relational || !process.env.DATABASE_URL) return [];
+  if (!relational || !process.env.DATABASE_URL)
+    return { state: "not-configured", items: [] };
   let timeout: ReturnType<typeof setTimeout> | undefined;
-  let items: OpportunityBrowseProjection[] = [];
   try {
     const query = parseOpportunityBrowseQuery(
       new URLSearchParams({ limit: "12", openNow: "true" }),
@@ -77,8 +83,9 @@ async function loadHomepageOpenings(): Promise<OpportunityBrowseProjection[]> {
         timeout = setTimeout(() => resolve(null), 2500);
       }),
     ]);
+    if (!result) return { state: "unavailable", items: [] };
     const today = new Date().toISOString().slice(0, 10);
-    items = (result?.items ?? [])
+    const items = result.items
       .filter(
         (item) =>
           ["open", "closing-soon", "deadline-extended"].includes(item.status) &&
@@ -88,17 +95,58 @@ async function loadHomepageOpenings(): Promise<OpportunityBrowseProjection[]> {
           ),
       )
       .slice(0, 3);
+    return items.length ? { state: "ready", items } : { state: "empty", items: [] };
   } catch {
-    return [];
+    return { state: "unavailable", items: [] };
   } finally {
     if (timeout) clearTimeout(timeout);
   }
-  return items;
+}
+
+function HomepageOpeningsUnavailable() {
+  return (
+    <section className={styles.openings} aria-labelledby="openings-title">
+      <div className={styles.sectionHeading}>
+        <div>
+          <p className={styles.eyebrow}>Catalogue connection</p>
+          <h2 id="openings-title" className={`font-heading ${styles.sectionTitle}`}>
+            Live openings are temporarily unavailable.
+          </h2>
+          <p>Open the catalogue to try again or continue browsing.</p>
+        </div>
+        <Link className={styles.textLink} href="/opportunities">
+          Open the catalogue <ArrowUpRight aria-hidden="true" />
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function HomepageOpeningsEmpty() {
+  return (
+    <section className={styles.openings} aria-labelledby="openings-title">
+      <div className={styles.sectionHeading}>
+        <div>
+          <p className={styles.eyebrow}>Catalogue status</p>
+          <h2 id="openings-title" className={`font-heading ${styles.sectionTitle}`}>
+            No current openings to show.
+          </h2>
+          <p>Browse the catalogue for opportunities with different timelines.</p>
+        </div>
+        <Link className={styles.textLink} href="/opportunities">
+          Browse the catalogue <ArrowUpRight aria-hidden="true" />
+        </Link>
+      </div>
+    </section>
+  );
 }
 
 export async function HomepageOpenings() {
-  const items = await loadHomepageOpenings();
-  if (!items.length) return <HomepageCollections />;
+  const result = await loadHomepageOpenings();
+  if (result.state === "not-configured") return <HomepageCollections />;
+  if (result.state === "unavailable") return <HomepageOpeningsUnavailable />;
+  if (result.state === "empty") return <HomepageOpeningsEmpty />;
+  const { items } = result;
   return (
     <section className={styles.openings} aria-labelledby="openings-title">
       <div className={styles.sectionHeading}>

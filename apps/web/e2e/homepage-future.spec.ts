@@ -92,14 +92,26 @@ test.describe("Gateway + Opportunity Finder homepage review", () => {
         body: JSON.stringify({
           items: [
             {
-              id: "live-grant",
+              id: "opp_live-grant",
               slug: "live-grant",
               title: "Live Writing Grant",
               organizationName: "Missa Test Foundation",
+              status: "open",
               type: "grant",
+              genres: [],
               deadline: { kind: "exact", date: "2026-10-14" },
+              fee: { status: "unknown" },
+              submissionAvailable: true,
+              source: {
+                kind: "organization-website",
+                name: "Missa Test Foundation",
+                url: "https://example.org",
+              },
             },
           ],
+          total: 1,
+          nextCursor: null,
+          query: { category: "all", types: [], disciplines: [], genres: [], taxonomyTermIds: [], taxonomySchemeVersion: 1, taxonomyIncludeDescendants: false, locations: [], openNow: true, verifiedOnly: false, sort: "soonest-deadline", limit: 5 },
         }),
       });
     });
@@ -122,7 +134,25 @@ test.describe("Gateway + Opportunity Finder homepage review", () => {
       requestUrl = route.request().url();
       await route.fulfill({
         contentType: "application/json",
-        body: JSON.stringify({ items: [] }),
+        body: JSON.stringify({
+          items: [],
+          total: 0,
+          nextCursor: null,
+          query: {
+            category: "all",
+            types: [],
+            disciplines: [],
+            genres: [],
+            taxonomyTermIds: [],
+            taxonomySchemeVersion: 1,
+            taxonomyIncludeDescendants: false,
+            locations: [],
+            openNow: true,
+            verifiedOnly: false,
+            sort: "soonest-deadline",
+            limit: 5,
+          },
+        }),
       });
     });
     await page.goto(`${route}?access=open`);

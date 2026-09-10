@@ -93,6 +93,10 @@ const THEMES: { id: Theme; label: string }[] = [
   { id: "night", label: "Night" },
 ];
 
+function isFeature(value: string): value is Feature {
+  return FEATURES.some((item) => item.id === value);
+}
+
 function DeadlinePreview({
   opportunities,
   failed,
@@ -231,7 +235,9 @@ export function HomepageWorkspace({
       </header>
       <Tabs
         value={feature}
-        onValueChange={(value) => setFeature(value as Feature)}
+        onValueChange={(value) => {
+          if (isFeature(value)) setFeature(value);
+        }}
         className={styles.explorer}
       >
         <TabsList

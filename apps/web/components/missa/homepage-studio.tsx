@@ -33,14 +33,9 @@ import {
   studioImage,
   type StudioId,
 } from "@/lib/homepage-studio";
+import { HOMEPAGE_NAV_LINKS } from "@/lib/homepage-navigation";
 import "@/components/design-system/homepage-studio-tokens.css";
 import styles from "./homepage-studio.module.css";
-
-const nav = [
-  { href: "/opportunities", label: "Opportunities" },
-  { href: "/directory", label: "Directory" },
-  { href: "/rankings/magazines", label: "Rankings" },
-];
 
 const subscribeHydration = () => () => {};
 const clientReady = () => true;
@@ -217,7 +212,7 @@ export function HomepageStudio({
       <header className={styles.header}>
         <MissaWordmark size="app" />
         <nav aria-label="Primary" className={styles.desktopNav}>
-          {nav.map((item) => (
+          {HOMEPAGE_NAV_LINKS.map((item) => (
             <Link key={item.href} href={item.href}>
               {item.label}
             </Link>
@@ -250,7 +245,7 @@ export function HomepageStudio({
               </SheetDescription>
               <nav aria-label="Mobile navigation" className={styles.menuLinks}>
                 {[
-                  ...nav,
+                  ...HOMEPAGE_NAV_LINKS,
                   { href: "/login", label: "Log in" },
                   { href: "/signup", label: "Create account" },
                 ].map((item) => (

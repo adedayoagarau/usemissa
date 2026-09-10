@@ -131,6 +131,16 @@
   object-fit: cover;
   transition: transform var(--home-transition) var(--home-ease);
 }
+.organizationPhotoFallback {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  padding: 32px;
+  color: var(--ink-2);
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1.05;
+  text-align: center;
+}
 .featuredOrganizationLink:hover .organizationPhoto img {
   transform: scale(1.025);
 }

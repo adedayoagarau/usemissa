@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Menu, Search, X } from "lucide-react";
+import { opportunityBrowseResponseSchema } from "@missa/contracts";
 import {
   motion,
   useReducedMotion,
@@ -24,9 +25,12 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import type { PublicAccessMode } from "@/lib/publicAccess";
-import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { resolveTaxonomyPhrase } from "@missa/taxonomy";
 import styles from "./homepage-future.module.css";
+
+type FinderOpportunity = ReturnType<
+  typeof opportunityBrowseResponseSchema.parse
+>["items"][number];
 
 const heroHeadingFont = localFont({
   src: "../../fonts/fraunces.woff2",
@@ -244,22 +248,26 @@ const exampleTrackerRecord: TrackerBoardRecord = {
 
 function TrackerBoard({
   records,
+  signedIn,
+  trackerError,
   reduceMotion,
 }: {
   records: TrackerBoardRecord[];
+  signedIn: boolean;
+  trackerError: boolean;
   reduceMotion: boolean;
 }) {
-  const signedIn = records.length > 0;
   const [activeTab, setActiveTab] = useState<TrackerBoardTab>("active");
   const [focusIndex, setFocusIndex] = useState(0);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
-  const activeRecords = records.filter((item) => {
-    if (activeTab === "active") return !["submitted", "received", "in-review"].includes(item.statusLabel) || item.deadline;
-    if (activeTab === "submitted") return ["submitted", "received", "in-review"].includes(item.statusLabel);
-    return false;
+  const submittedStatuses = ["submitted", "received", "in-review"];
+  const recordsForTab = records.filter((item) => {
+    if (activeTab === "submitted") return submittedStatuses.includes(item.statusLabel);
+    if (activeTab === "archived") return item.statusLabel === "archived";
+    return !submittedStatuses.includes(item.statusLabel) && item.statusLabel !== "archived";
   });
-  const displayRecord = signedIn ? activeRecords[0] : exampleTrackerRecord;
+  const displayRecord = signedIn ? recordsForTab[0] : exampleTrackerRecord;
 
   function selectTab(index: number, focus = true) {
     setActiveTab(trackerTabs[index].id);
@@ -283,7 +291,7 @@ function TrackerBoard({
     }
   }
 
-  const deadline = formatTrackerDeadline(displayRecord);
+  const deadline = displayRecord ? formatTrackerDeadline(displayRecord) : null;
   const panelId = `tracker-board-panel-${activeTab}`;
 
   return (
@@ -318,32 +326,60 @@ function TrackerBoard({
         </div>
         <div className={styles.trackerPanelWrap}>
           <p className={styles.trackerEyebrow}>Next deadline</p>
-          <motion.div
-            key={`${activeTab}-${displayRecord.id}`}
-            id={panelId}
-            role="tabpanel"
-            aria-labelledby={`tracker-tab-${activeTab}`}
-            className={styles.trackerCard}
-            initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={reduceMotion ? { duration: 0 } : { duration: 0.18, ease: "easeOut" }}
-          >
-            <header>
-              <span className={styles.trackerStatus}>{trackerStatusLabel(displayRecord.statusLabel)}</span>
-              {deadline.day && deadline.month ? (
-                <span className={styles.trackerDateBadge}><small>{deadline.month}</small><strong>{deadline.day}</strong></span>
-              ) : null}
-            </header>
-            <h3>{displayRecord.title}</h3>
-            <p>{displayRecord.organizationName ?? "Organization not listed"}</p>
-            <hr />
-            <p className={styles.trackerTiming}>{trackerTimingLabel(displayRecord)}</p>
-            <hr />
-            <p className={styles.trackerStep}>Complete work samples</p>
-            <Link className={styles.trackerPrimaryAction} href={displayRecord.href}>
-              View application <ArrowRight aria-hidden="true" />
-            </Link>
-          </motion.div>
+          {trackerError ? (
+            <div
+              id={panelId}
+              role="tabpanel"
+              aria-labelledby={`tracker-tab-${activeTab}`}
+              className={styles.trackerCard}
+            >
+              <h3>We couldn’t load your Tracker.</h3>
+              <p>Open the Tracker to try again.</p>
+              <Link className={styles.trackerPrimaryAction} href="/tracker">
+                Open your Tracker <ArrowRight aria-hidden="true" />
+              </Link>
+            </div>
+          ) : displayRecord ? (
+            <motion.div
+              key={`${activeTab}-${displayRecord.id}`}
+              id={panelId}
+              role="tabpanel"
+              aria-labelledby={`tracker-tab-${activeTab}`}
+              className={styles.trackerCard}
+              initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.18, ease: "easeOut" }}
+            >
+              <header>
+                <span className={styles.trackerStatus}>{trackerStatusLabel(displayRecord.statusLabel)}</span>
+                {deadline?.day && deadline.month ? (
+                  <span className={styles.trackerDateBadge}><small>{deadline.month}</small><strong>{deadline.day}</strong></span>
+                ) : null}
+              </header>
+              <h3>{displayRecord.title}</h3>
+              <p>{displayRecord.organizationName ?? "Organization not listed"}</p>
+              <hr />
+              <p className={styles.trackerTiming}>{trackerTimingLabel(displayRecord)}</p>
+              <hr />
+              <p className={styles.trackerStep}>Complete work samples</p>
+              <Link className={styles.trackerPrimaryAction} href={displayRecord.href}>
+                View application <ArrowRight aria-hidden="true" />
+              </Link>
+            </motion.div>
+          ) : (
+            <div
+              id={panelId}
+              role="tabpanel"
+              aria-labelledby={`tracker-tab-${activeTab}`}
+              className={styles.trackerCard}
+            >
+              <h3>No {activeTab} applications yet.</h3>
+              <p>Save an opportunity to see it here.</p>
+              <Link className={styles.trackerPrimaryAction} href="/opportunities">
+                Browse opportunities <ArrowRight aria-hidden="true" />
+              </Link>
+            </div>
+          )}
         </div>
         <Link className={styles.trackerSecondaryAction} href="/tracker">
           Explore the Tracker <span aria-hidden="true">⟶</span>
@@ -382,15 +418,11 @@ const finderTypeAliases: Record<string, Exclude<FinderType, "all">> = {
   "open calls": "open-call",
 };
 
-type BrowseResponse = {
-  items: OpportunityBrowseProjection[];
-};
-
 function formatOpportunityType(type: string) {
   return type.replace(/-/gu, " ").replace(/^./u, (letter) => letter.toUpperCase());
 }
 
-function formatFinderDeadline(deadline: OpportunityBrowseProjection["deadline"]) {
+function formatFinderDeadline(deadline: FinderOpportunity["deadline"]) {
   if (deadline.kind === "rolling") return "Rolling";
   if (deadline.kind === "until-filled") return "Until filled";
   if (deadline.kind === "conflicting" || !deadline.date) return "Deadline not confirmed";
@@ -426,7 +458,7 @@ function OpportunityFinder({ access, accessMode }: { access: AccessCopy; accessM
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [type, setType] = useState<FinderType>("all");
-  const [items, setItems] = useState<OpportunityBrowseProjection[]>([]);
+  const [items, setItems] = useState<FinderOpportunity[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "empty" | "error">("idle");
   const [activeIndex, setActiveIndex] = useState(-1);
   const trimmedQuery = query.trim();
@@ -470,11 +502,11 @@ function OpportunityFinder({ access, accessMode }: { access: AccessCopy; accessM
           signal: controller.signal,
         });
         if (!response.ok) throw new Error(`Opportunity finder failed: ${response.status}`);
-        const result = (await response.json()) as BrowseResponse;
+        const result = opportunityBrowseResponseSchema.parse(await response.json());
         setItems(result.items);
         setStatus(result.items.length ? "ready" : "empty");
       } catch (error) {
-        if ((error as Error).name !== "AbortError") {
+        if (!(error instanceof Error && error.name === "AbortError")) {
           setItems([]);
           setStatus("error");
         }
@@ -609,9 +641,13 @@ function OpportunityFinder({ access, accessMode }: { access: AccessCopy; accessM
 export function HomepageFuturePrototype({
   accessMode,
   tracker = [],
+  signedIn = false,
+  trackerError = false,
 }: {
   accessMode: PublicAccessMode;
   tracker?: TrackerBoardRecord[];
+  signedIn?: boolean;
+  trackerError?: boolean;
 }) {
   const access = getAccessCopy(accessMode);
 
@@ -699,7 +735,12 @@ export function HomepageFuturePrototype({
         <HomepageHero access={access} />
 
         <OpportunityFinder access={access} accessMode={accessMode} />
-        <TrackerBoard records={tracker} reduceMotion={false} />
+        <TrackerBoard
+          records={tracker}
+          signedIn={signedIn}
+          trackerError={trackerError}
+          reduceMotion={false}
+        />
       </main>
 
       <footer className={styles.siteFooter}>

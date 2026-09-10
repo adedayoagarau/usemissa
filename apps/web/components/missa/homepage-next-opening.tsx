@@ -30,10 +30,17 @@ import "@/components/design-system/homepage-carousel-tokens.css";
 import "@/components/design-system/homepage-marketing-palette.css";
 import styles from "./homepage-next-opening.module.css";
 
+type HomepageCounts = {
+  open: number;
+  residencies: number;
+  grants: number;
+  organizations: number;
+};
+
 export function HomepageNextOpening() {
   const [api, setApi] = useState<CarouselApi>();
   const [selected, setSelected] = useState(2);
-  const [counts, setCounts] = useState<number[] | null>(null);
+  const [counts, setCounts] = useState<HomepageCounts | null>(null);
   const [statsError, setStatsError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const reduced = useReducedMotion();
@@ -76,9 +83,9 @@ export function HomepageNextOpening() {
         },
       ),
     ])
-      .then((values) => {
+      .then(([open, residencies, grants, organizations]) => {
         if (alive) {
-          setCounts(values);
+          setCounts({ open, residencies, grants, organizations });
           setStatsError(false);
         }
       })
@@ -118,25 +125,25 @@ export function HomepageNextOpening() {
             {[
               {
                 label: "Open opportunities",
-                value: counts[0],
+                value: counts.open,
                 copy: "Calls you can apply to now.",
                 href: `/opportunities?${categorySearch([])}`,
               },
               {
                 label: "Residencies",
-                value: counts[1],
+                value: counts.residencies,
                 copy: "Time and space to make work.",
                 href: `/opportunities?${categorySearch(["residency"])}`,
               },
               {
                 label: "Grants",
-                value: counts[2],
+                value: counts.grants,
                 copy: "Funding for your next project.",
                 href: `/opportunities?${categorySearch(["grant"])}`,
               },
               {
                 label: "Organizations",
-                value: counts[3],
+                value: counts.organizations,
                 copy: "The people and places behind the calls.",
                 href: "/directory",
               },
