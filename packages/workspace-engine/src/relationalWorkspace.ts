@@ -516,6 +516,26 @@ export class RelationalWorkspace {
     return result.rows;
   }
 
+  async reviewAssignmentsForSubmission(organizationId: string, submissionId: string): Promise<Row[]> {
+    const result = await this.pool.query<Row>(`select ra.id,ra.review_round_id "reviewRoundId",ra.submission_id "submissionId",
+      ra.reviewer_account_id "reviewerAccountId",ra.completed_at "completedAt",ra.revision,
+      case when rec.review_assignment_id is null then null else jsonb_build_object('reviewAssignmentId',rec.review_assignment_id,'score',rec.score,'notes',rec.notes,'recordedAt',rec.recorded_at) end recommendation
+      from review_assignments ra join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id
+      join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
+      left join review_recommendations rec on rec.review_assignment_id=ra.id
+      where ra.submission_id=$1 and e.organization_id=$2 order by ra.created_at,ra.id`, [submissionId, organizationId]);
+    return result.rows;
+  }
+
+  async recommendationForAssignment(assignmentId: string, organizationId?: string): Promise<Row | undefined> {
+    const result = await this.pool.query<Row>(`select rec.review_assignment_id "reviewAssignmentId",rec.score,rec.notes,rec.recorded_at "recordedAt"
+      from review_recommendations rec join review_assignments ra on ra.id=rec.review_assignment_id
+      join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id
+      join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
+      where rec.review_assignment_id=$1${organizationId ? ' and e.organization_id=$2' : ''}`, organizationId ? [assignmentId, organizationId] : [assignmentId]);
+    return result.rows[0];
+  }
+
   async publicSubmissionPath(id: string): Promise<RelationalPublicSubmissionPathView | undefined> {
     const result = await this.pool.query<{
       id: string; open_call_id: string; categories: string[]; fields: SubmissionField[]; fee_cents: number | null; revision: number;
