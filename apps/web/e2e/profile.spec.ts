@@ -1,122 +1,80 @@
-import { expect, test, type Page } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+import { expect, test, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
-async function createAccount(page: Page, name = "Profile Test User") {
+async function createAccount(page: Page, name = 'Profile Test User') {
   const email = `profile-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
-  const signup = await page.request.post("/api/auth/signup", {
-    data: { email, password: "correct-horse-battery", displayName: name },
-  });
+  const signup = await page.request.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', displayName: name } });
   expect(signup.status()).toBe(201);
   const sessionCookie = signup.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
   expect(sessionCookie).toBeTruthy();
   await page.context().addCookies([{ name: 'missa_session', value: sessionCookie!, url: new URL(signup.url()).origin, httpOnly: true, sameSite: 'Lax' }]);
   const owner = await page.request.get('/api/me/profile');
   expect(owner.ok()).toBeTruthy();
-  return {
-    email,
-    profile: (await owner.json()) as { id: string; publicUrl: string },
-  };
+  return { email, profile: (await owner.json()) as { id: string; publicUrl: string } };
 }
 
-test("owner can complete a profile and visitors only see the public projection", async ({
-  page,
-}) => {
+test('owner can complete a profile and visitors only see the public projection', async ({ page }) => {
   const { email, profile } = await createAccount(page);
 
-  await page.goto("/profile");
-  await expect(
-    page.getByRole("heading", { name: "Public identity" }),
-  ).toBeVisible();
-  await page.getByLabel("Name").fill("Rowan Example");
-  await page
-    .getByLabel("About")
-    .fill("A writer working across poetry and criticism.");
-  await page
-    .getByRole("switch", { name: "Allow messages through your Profile" })
-    .click();
-  await page.getByRole("button", { name: "Save and publish" }).click();
-  await expect(page.getByRole("status")).toHaveText(
-    "Your public Profile is updated.",
-  );
+  await page.goto('/profile');
+  await expect(page.getByRole('heading', { name: 'Profile', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Identity', exact: true }).click();
+  await page.getByLabel('Display name').fill('  Rowan Example  ');
+  await page.getByLabel('Short bio').fill('A writer working across poetry and criticism.');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.getByRole('status')).toHaveText('Identity saved');
 
-  const saved = await page.request.get("/api/me/profile");
+  const saved = await page.request.get('/api/me/profile');
   expect(saved.ok()).toBeTruthy();
   const savedBody = await saved.json();
-  expect(savedBody.displayName).toBe("Rowan Example");
-  expect(savedBody.bio).toBe("A writer working across poetry and criticism.");
+  expect(savedBody.displayName).toBe('Rowan Example');
+  expect(savedBody.bio).toBe('A writer working across poetry and criticism.');
   expect(savedBody.completeness.complete).toBe(false);
-  expect(savedBody.completeness.missing).toContain("opportunityPreferences");
+  expect(savedBody.completeness.missing).toContain('opportunityPreferences');
 
   const publicResponse = await page.request.get(`/api/profile/${profile.id}`);
   expect(publicResponse.ok()).toBeTruthy();
-  expect(publicResponse.headers()["cache-control"]).toBe("no-store");
+  expect(publicResponse.headers()['cache-control']).toBe('no-store');
   const publicBody = await publicResponse.json();
-  expect(publicBody).toMatchObject({
-    id: profile.id,
-    displayName: "Rowan Example",
-    bio: "A writer working across poetry and criticism.",
-    contactEnabled: true,
-  });
-  expect(publicBody.publishedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  expect(publicBody).toEqual({ id: profile.id, displayName: 'Rowan Example', bio: 'A writer working across poetry and criticism.' });
   expect(JSON.stringify(publicBody)).not.toContain(email);
-  expect(publicBody).not.toHaveProperty("attributes");
-  expect(publicBody).not.toHaveProperty("genres");
+  expect(publicBody).not.toHaveProperty('attributes');
+  expect(publicBody).not.toHaveProperty('genres');
 
-  await page.request.post("/api/auth/logout");
+  await page.request.post('/api/auth/logout');
   await page.goto(`/profile/${profile.id}`);
-  await expect(
-    page.getByRole("heading", { name: "Rowan Example" }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("A writer working across poetry and criticism."),
-  ).toBeVisible();
-  await expect(page.locator("body")).not.toContainText(email);
-  await expect(
-    page.getByRole("button", { name: "Get in touch" }),
-  ).toBeVisible();
-  await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Rowan Example' })).toBeVisible();
+  await expect(page.getByText('A writer working across poetry and criticism.')).toBeVisible();
+  await expect(page.locator('body')).not.toContainText(email);
+  await expect(page.getByRole('link', { name: 'Explore Opportunities' }).first()).toBeVisible();
 });
 
-test("profile validation preserves recovery and owner route redirects without a session", async ({
-  page,
-}) => {
+test('profile validation preserves recovery and owner route redirects without a session', async ({ page }) => {
   const { profile } = await createAccount(page);
-  await page.goto("/profile");
-  await page.getByLabel("Name").fill("");
-  await page.getByRole("button", { name: "Save and publish" }).click();
-  await expect(page.locator('p[role="alert"]')).toHaveText(
-    "Add your public name.",
-  );
+  await page.goto('/profile?section=identity');
+  await page.getByLabel('Display name').fill('');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.locator('p[role="alert"]')).toHaveText('Display name must be between 1 and 120 characters.');
 
-  await page.getByLabel("Name").fill("Still here");
-  await page.getByLabel("About").fill("x".repeat(1000));
-  await page.getByLabel("About").press("End");
-  await page.keyboard.type("x");
-  await expect(page.getByLabel("About")).toHaveValue("x".repeat(1000));
+  await page.getByLabel('Display name').fill('Still here');
+  await page.getByLabel('Short bio').fill('x'.repeat(1001));
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.locator('p[role="alert"]')).toHaveText('Bio must be 1,000 characters or fewer.');
 
-  const ownerAfterInvalid = await page.request.get("/api/me/profile");
+  const ownerAfterInvalid = await page.request.get('/api/me/profile');
   const ownerBody = await ownerAfterInvalid.json();
-  expect(ownerBody.displayName).toBe("Profile Test User");
+  expect(ownerBody.displayName).toBe('Profile Test User');
   expect(ownerBody.bio).toBeUndefined();
 
-  await page.request.post("/api/auth/logout");
-  await page.goto("/profile");
+  await page.request.post('/api/auth/logout');
+  await page.goto('/profile');
   await expect(page).toHaveURL(/\/login\?next=%2Fprofile$/);
   expect(profile.id).toMatch(/^user_/);
 });
 
-test("public Profile accepts photos only from the owner upload path", async ({
-  page,
-}) => {
-  await createAccount(page, "Profile Photo Boundary");
-  const response = await page.request.patch("/api/me/profile/public", {
-    data: {
-      displayName: "Profile Photo Boundary",
-      profileImageUrl: "https://images.example/profile.jpg",
-      socialLinks: [],
-      selectedWorks: [],
-    },
-  });
+test('Profile ledger keeps section URLs and exposes the full facet model progressively', async ({ page }) => {
+  await createAccount(page, 'Cross-disciplinary Creator');
+  await page.goto('/profile?section=preferences');
 
   await expect(page.getByRole('heading', { name: 'Preferences', exact: true })).toBeVisible();
   expect(new URL(page.url()).searchParams.get('section')).toBe('preferences');

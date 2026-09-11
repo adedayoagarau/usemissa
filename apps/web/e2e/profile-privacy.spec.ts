@@ -16,16 +16,7 @@ async function createAccount(page: Page) {
 
 test('owner can save privacy settings and public profile honors them', async ({ page }) => {
   const { email, password, id } = await createAccount(page);
-  const published = await page.request.patch('/api/me/profile/public', {
-    data: {
-      displayName: 'Privacy Test User',
-      bio: 'This biography should be hidden from the public Profile.',
-      socialLinks: [],
-      selectedWorks: [],
-    },
-  });
-  expect(published.ok()).toBeTruthy();
-  await page.goto('/settings?section=privacy');
+  await page.goto('/profile?section=privacy');
   await expect(page.getByRole('heading', { name: 'Privacy', exact: true })).toBeVisible();
   await expect(page.getByText('Public', { exact: true }).first()).toBeVisible();
 
@@ -44,8 +35,7 @@ test('owner can save privacy settings and public profile honors them', async ({ 
   const publicResponse = await page.request.get(`/api/profile/${id}`);
   expect(publicResponse.ok()).toBeTruthy();
   const publicBody = await publicResponse.json();
-  expect(publicBody).toMatchObject({ id, displayName: 'Privacy Test User' });
-  expect(publicBody.publishedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  expect(publicBody).toEqual({ id, displayName: 'Privacy Test User' });
   expect(JSON.stringify(publicBody)).not.toContain(email);
   await page.goto(`/profile/${id}`);
   await expect(page.getByRole('heading', { name: 'Privacy Test User' })).toBeVisible();
@@ -89,7 +79,7 @@ test.describe('mobile privacy controls', () => {
 
   test('privacy switches remain keyboard reachable without horizontal overflow', async ({ page }) => {
     await createAccount(page);
-    await page.goto('/settings?section=privacy');
+    await page.goto('/profile?section=privacy');
     expect(await page.locator('body').evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
     const switches = page.getByRole('switch');
     await expect(switches).toHaveCount(2);

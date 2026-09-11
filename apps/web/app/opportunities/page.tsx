@@ -21,8 +21,6 @@ import {
 import { OpportunitiesBrowseV2Preview } from "@/components/design-system/opportunities-browse-v2-preview";
 import styles from "./opportunities.module.css";
 
-export const dynamic = 'force-dynamic';
-
 type SearchParams = Record<string, string | string[] | undefined>;
 
 const typeLabels: Record<string, string> = {

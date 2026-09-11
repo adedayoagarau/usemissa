@@ -265,39 +265,6 @@ export async function executeShadowPipeline(
   }
 }
 
-/**
- * Stage 2: assess evidence quality and run publisher reconciliation against
- * fetched evidence. This is the stage bounded by model spend rather than
- * network I/O, so it scales on a different axis from fetching.
- */
-export async function runDecideStage(source: SourceDefinition, fetched: ShadowArtifact, store: ShadowRunStore): Promise<ShadowArtifact> {
-  const publisher = await reviewForPublication({ source, sourceSnapshot: fetched.snapshot, sourceExtraction: fetched.extraction, relatedSnapshots: fetched.relatedSnapshots ?? [], relatedFields: fetched.extraction.fields });
-  const artifact: ShadowArtifact = { ...fetched, run: { ...fetched.run, status: "completed" }, quality: assessEvidenceQuality(fetched.snapshot, fetched.extraction), publisher };
-  await store.save(artifact);
-  return artifact;
-}
-
-/** Stage 3: the canonical write. A thin name for `promoteApprovedArtifact` so the three stages read as one sequence. */
-export async function runWriteStage(pool: Pool, source: SourceDefinition, artifact: ShadowArtifact): Promise<ReturnType<typeof promoteApprovedArtifact>> {
-  return promoteApprovedArtifact(pool, source, artifact);
-}
-
-/**
- * Runs all three stages in one call. This is what the combined worker uses —
- * unchanged behaviour and unchanged callers — while a staged deployment runs
- * the same three functions from separate BullMQ workers instead.
- */
-export async function executeShadowPipeline(
-  registry: AdapterRegistry,
-  source: SourceDefinition,
-  job: PipelineJobData,
-  store: ShadowRunStore,
-  options: PipelineExecutionOptions = {},
-): Promise<ShadowArtifact> {
-  const fetched = await runFetchStage(registry, source, job, store, options);
-  return runDecideStage(source, fetched, store);
-}
-
 export interface PipelineWorkerHandle {
   worker: Worker<PipelineJobData, ShadowArtifact>;
   close(): Promise<void>;

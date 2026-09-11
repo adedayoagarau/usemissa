@@ -110,30 +110,6 @@ function extractOrganization(text: string, source: Source): string | undefined {
   return source.kind === 'organization-website' ? source.name : undefined;
 }
 
-/**
- * The first-party page for the organization running the opportunity, distinct
- * from `submissionUrl` (the apply/submit link, which may live on a third-party
- * platform). Conservative by construction: only an explicitly labeled URL is
- * accepted, and it is discarded if it resolves to the SOURCE's own host — a
- * directory mentioning itself is not evidence of a first-party destination,
- * it is the directory. An organization-website source is already first-party,
- * so it defaults to its own URL rather than requiring the page to link to
- * itself.
- */
-function extractOfficialUrl(text: string, source: Source): string | undefined {
-  const labeled = OFFICIAL_URL_LABELED_RE.exec(text)?.[1];
-  if (labeled) {
-    try {
-      const url = new URL(labeled);
-      const sourceHost = new URL(source.url).hostname.replace(/^www\./, '');
-      if (url.hostname.replace(/^www\./, '') !== sourceHost) return url.href;
-    } catch {
-      // An unparseable labeled URL is not usable evidence.
-    }
-  }
-  return source.kind === 'organization-website' ? source.url : undefined;
-}
-
 function extractPrize(text: string): string | undefined {
   const m = /(?:prize|award|grant|winner receives|stipend)[^.\n]*\$\s?\d{1,3}(?:,\d{3})*(?:\.\d{2})?[^.\n]*/i.exec(text);
   return m ? m[0].trim() : undefined;

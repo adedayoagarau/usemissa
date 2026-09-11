@@ -105,6 +105,7 @@ export interface ProfileOpportunity {
   title: string;
   organizer: string;
   deadline: string | null;
+  detailUrl: string | null;
   officialWebsite: string | null;
   status: "open" | "closed" | "unknown";
 }
@@ -200,33 +201,6 @@ export interface ProfileRepository {
   ): Promise<OrganizationMediaBundle>;
 }
 
-/**
- * Gary may have more than one row for the same publication when a later
- * observation gains the official website that an earlier observation lacked.
- * Public identity is therefore the normalized official URL plus normalized
- * name, not the ingestion row id or the source-detail URL.
- *
- * Rows without an official URL remain distinct. A shared name alone is not
- * enough evidence to merge two publications.
- */
-const PUBLIC_PROFILE_IDENTITY_KEY_SQL = `
-  CASE
-    WHEN p.normalized_website_url IS NOT NULL
-      AND btrim(p.normalized_website_url) <> ''
-      THEN 'website:' || p.normalized_website_url || '|name:' || p.name_key
-    ELSE 'profile:' || p.id
-  END`;
-
-const PUBLIC_PROFILE_CANONICAL_ORDER_SQL = `
-  (p.identity_status = 'confirmed') DESC,
-  p.identity_confidence DESC,
-  (p.normalized_website_url IS NOT NULL
-    AND btrim(p.normalized_website_url) <> '') DESC,
-  o.observed_at DESC NULLS LAST,
-  p.last_seen_at DESC,
-  p.updated_at DESC,
-  p.id ASC`;
-
 function jsonArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
@@ -313,7 +287,7 @@ export class PostgresProfileRepository implements ProfileRepository {
     const filters: string[] = [];
     if (query.kind) {
       values.push(query.kind);
-      filters.push(`c.profile_kind = $${values.length}`);
+      filters.push(`p.profile_kind = $${values.length}`);
     }
     if (query.query?.trim()) {
       values.push(`%${query.query.trim()}%`);
@@ -618,7 +592,7 @@ export class PostgresProfileRepository implements ProfileRepository {
           CASE WHEN oco.deadline IS NULL THEN 'unknown' WHEN oco.deadline >= CURRENT_DATE THEN 'open' ELSE 'closed' END AS status
         FROM gary_profile_links l JOIN gary_opportunities o ON o.id=l.opportunity_id
         LEFT JOIN LATERAL (SELECT * FROM gary_call_observations WHERE opportunity_id=o.id ORDER BY observed_at DESC LIMIT 1) oco ON TRUE
-        WHERE l.profile_id IN (SELECT id FROM profile_ids) AND l.status='confirmed'
+        WHERE l.profile_id=$1 AND l.status='confirmed'
         UNION ALL
         SELECT o.id, o.title, p.name AS organizer,
           COALESCE(o.submission_url, o.guidelines_url) AS official_website,
@@ -636,8 +610,9 @@ export class PostgresProfileRepository implements ProfileRepository {
                WHEN o.status IN ('closed', 'archived') THEN 'closed' ELSE 'unknown' END AS status
         FROM opportunity_profile_links l
         JOIN opportunities o ON o.id=l.opportunity_id
+        JOIN opportunity_sources s ON s.id=o.source_id
         JOIN gary_profiles p ON p.id=l.profile_id
-        WHERE l.profile_id IN (SELECT id FROM profile_ids) AND l.status='confirmed' AND l.verified_until > now()
+        WHERE l.profile_id=$1 AND l.status='confirmed' AND l.verified_until > now()
           AND o.publication_state='published'
       ) linked ORDER BY deadline NULLS LAST, title`,
       values: [actualId],

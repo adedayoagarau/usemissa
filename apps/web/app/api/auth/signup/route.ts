@@ -146,7 +146,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const token = issueSessionToken(account.id, account.sessionVersion ?? 0);
+  const token = issueSessionToken(account.id);
   await trackPlatformAnalytics({
     eventName: "auth.signup_succeeded",
     source: "auth-api",

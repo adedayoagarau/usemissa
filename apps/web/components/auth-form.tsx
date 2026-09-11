@@ -350,24 +350,6 @@ export function AuthForm({
     }
   }
 
-  function neonAuthErrorMessage(
-    authError: { message?: string } | null | undefined,
-    authMode: AuthMode,
-  ): string {
-    const message = authError?.message?.trim();
-    if (message && /invalid|credential|password/i.test(message)) {
-      return authMode === "login"
-        ? "Invalid email or password"
-        : "We could not create your account. Check your details and try again.";
-    }
-    if (message && /rate|too many|try again later/iu.test(message)) {
-      return "Too many account attempts. Wait a moment, then try again.";
-    }
-    return authMode === "login"
-      ? "We could not log you in. Check your details and try again."
-      : "We could not create your account. Check your details and try again.";
-  }
-
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void submitForm(event.currentTarget);

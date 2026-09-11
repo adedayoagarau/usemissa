@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import {
   PLATFORM_SUPPORT_STATUSES,
-  updateProfileIssueReport,
   updatePlatformAdminSupportCase,
   type PlatformSupportStatus,
 } from '@missa/radar-adapters';
@@ -39,7 +38,6 @@ export async function POST(request: Request) {
   if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid support case operation.' }, { status: 400, headers });
   const value = body as Record<string, unknown>;
   const caseId = typeof value.caseId === 'string' ? value.caseId.trim() : '';
-  const kind = value.kind === 'profile' ? 'profile' : value.kind === 'opportunity' ? 'opportunity' : undefined;
   const status = typeof value.status === 'string' && PLATFORM_SUPPORT_STATUSES.includes(value.status as PlatformSupportStatus)
     ? value.status as PlatformSupportStatus
     : undefined;

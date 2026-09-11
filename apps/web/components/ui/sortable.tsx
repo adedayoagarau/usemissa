@@ -97,8 +97,6 @@ export interface SortableRootProps<T> extends Omit<HTMLAttributes<HTMLDivElement
   onDragEnd?: (event: DragEndEvent) => void
   modifiers?: Modifiers
   asChild?: boolean
-  /** Stable across server and client so dnd-kit accessibility IDs hydrate cleanly. */
-  dndContextId?: string
 }
 
 function Sortable<T>({
@@ -112,7 +110,6 @@ function Sortable<T>({
   onDragStart,
   onDragEnd,
   modifiers,
-  dndContextId,
   children,
   ...props
 }: SortableRootProps<T>) {
@@ -215,7 +212,6 @@ function Sortable<T>({
   return (
     <SortableInternalContext.Provider value={contextValue}>
       <DndContext
-        id={dndContextId}
         sensors={sensors}
         modifiers={modifiers}
         measuring={{

@@ -1,5 +1,12 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from 'next'
 
-export default function ProfileDirectionsReviewRedirect() {
-  redirect("/design-system/profile-portfolio");
+import { ProfileDirections } from '@/components/design-system/profile-directions'
+
+export const metadata: Metadata = {
+  title: 'Profile directions · Missa design review',
+  robots: { index: false, follow: false },
+}
+
+export default function ProfileDirectionsPage() {
+  return <ProfileDirections />
 }

@@ -27,7 +27,6 @@ import type {
   UserProfile,
   TaxonomyPreference,
   PublicUserProfile,
-  PublicPortfolioPublishInput,
   ProfilePrivacyPatch,
   ProfilePrivacySettings,
   ProfileVisibility,
@@ -739,17 +738,6 @@ export class RadarEngine {
     if (!publicProfile.displayName && !publicProfile.bio)
       return { isPrivate: true };
     return publicProfile;
-  }
-
-  /** Publish only creator-authored Profile fields; private product state is untouched. */
-  publishUserPortfolio(userId: string, input: PublicPortfolioPublishInput): UserProfile {
-    return publishPortfolio(this.store, userId, input, this.clock.now().toISOString());
-  }
-
-  unpublishUserPortfolio(userId: string): UserProfile {
-    const user = this.store.users.get(userId);
-    if (!user) throw new Error(`Unknown user: ${userId}`);
-    return unpublishPortfolio(user);
   }
 
   profilePrivacy(userId: string): ProfilePrivacySettings | undefined {

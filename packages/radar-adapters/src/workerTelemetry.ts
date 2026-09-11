@@ -12,8 +12,7 @@ export type RadarWorkerKind =
   | "taxonomy-discovery-worker"
   | "enrichment-worker"
   | "review-worker"
-  | "content-worker"
-  | "evidence-repair-worker";
+  | "content-worker";
 
 export interface WorkerRunProgress {
   inputCount?: number;

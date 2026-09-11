@@ -65,7 +65,6 @@ export async function POST(request: Request) {
       { status: 401, headers: { "Cache-Control": "no-store" } },
     );
   }
-  await limiter.reset(LOGIN_EMAIL_LIMIT, subject);
 
   const token = issueSessionToken(account.id);
   await trackPlatformAnalytics({

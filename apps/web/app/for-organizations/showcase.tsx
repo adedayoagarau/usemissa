@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, CircleCheck, FileText, Mail, MoreHorizontal, Star } from 'lucide-react';
-import Link from 'next/link';
 import styles from './org.module.css';
 
 const modes = [

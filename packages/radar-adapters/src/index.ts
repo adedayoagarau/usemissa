@@ -167,15 +167,6 @@ export {
   type ProfileRepository,
 } from "./profileRepository.js";
 export {
-  PostgresResidencyRepository,
-  createPostgresResidencyRepositoryFromUrl,
-  type ResidencyBrowsePage,
-  type ResidencyCall,
-  type ResidencyHostCard,
-  type ResidencyHostDetail,
-  type ResidencyRepository,
-} from "./residencyRepository.js";
-export {
   PROFILE_IDENTITY_MATCHER_VERSION,
   matchOpportunityToProfiles,
   normalizeHost,
@@ -286,7 +277,6 @@ export {
   claimUserHandle,
   handleNamespaceAvailable,
   handleClaimAccessMode,
-  maintainDeletedUserHandlePolicy,
   normalizeUserHandleInput,
   readUserHandle,
   renameUserHandle,
@@ -300,20 +290,6 @@ export {
   type ResolvedHandle,
   type UserHandle,
 } from "./handleNamespace.js";
-export {
-  DIRECTORY_HANDLE_RECOMMENDATION_COLUMNS,
-  DirectoryHandleRecommendationError,
-  DirectoryHandleReservationConflictError,
-  parseDirectoryHandleRecommendationsCsv,
-  reserveDirectoryHandleCandidates,
-  selectDirectoryHandleReservations,
-  type DirectoryHandleRecommendationExclusion,
-  type DirectoryHandleRecommendationRow,
-  type DirectoryHandleRecommendationSelection,
-  type DirectoryHandleReservationApplyResult,
-  type DirectoryHandleReservationCandidate,
-  type DirectoryHandleReservationDerivation,
-} from "./directoryHandleReservations.js";
 export {
   runReviewTick,
   reviewCandidate,
@@ -389,8 +365,6 @@ export {
   type TaxonomyReviewStatus,
 } from "./taxonomyAdmin.js";
 export {
-  PLATFORM_ADMIN_DURABLE_TABLES,
-  PLATFORM_ADMIN_PROFILE_TABLES,
   readPlatformAdminDurableSummary,
   type DurableAgentRunRow,
   type DurableAuditRow,
@@ -481,20 +455,6 @@ export {
   updatePlatformCrmTaskStatus,
 } from "./platformAdminFoundations.js";
 export {
-  createMemoryRateLimitStore,
-  createRateLimiter,
-  createRedisRateLimitStore,
-  readUpstashRestCredentials,
-  type RateLimitDecision,
-  type RateLimitRedis,
-  type RateLimitRule,
-  type RateLimitStore,
-  type RateLimitStoreKind,
-  type RateLimiter,
-  type RateLimiterOptions,
-  type UpstashRestCredentials,
-} from "./rateLimit.js";
-export {
   createWaitlistSignup,
   readWaitlistAnalytics,
   readWaitlistSignups,
@@ -517,7 +477,6 @@ export {
 } from "./garyAdmin.js";
 export { GoogleGmailProvider } from "./email/gmail/google.js";
 export { MockGmailProvider } from "./email/gmail/mock.js";
-export * from "./accountDeletionQueue.js";
 export {
   RADAR_INGESTION_LOCK,
   DISCOVERY_INGESTION_LOCK,

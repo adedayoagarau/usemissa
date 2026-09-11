@@ -68,10 +68,7 @@ async function writeAccountTaxonomyPreferences(client: PoolClient, store: RadarS
     await client.query(`delete from account_taxonomy_preferences where account_id = $1 and origin = 'explicit'`, [accountId]);
   }
   for (const account of store.accounts.values()) {
-    if (!account.userId || !store.users.has(account.userId)) {
-      await client.query(`delete from account_taxonomy_preferences where account_id = $1 and origin = 'explicit'`, [account.id]);
-      continue;
-    }
+    if (!account.userId) continue;
     const user = store.users.get(account.userId);
     if (!user?.taxonomyPreferences) continue;
     await client.query(`delete from account_taxonomy_preferences where account_id = $1 and origin = 'explicit'`, [account.id]);
@@ -100,10 +97,7 @@ async function writeOpportunityPreferences(client: PoolClient, store: RadarStore
     await client.query('delete from opportunity_preferences where account_id = $1', [accountId]);
   }
   for (const account of store.accounts.values()) {
-    if (!account.userId || !store.users.has(account.userId)) {
-      await client.query('delete from opportunity_preferences where account_id = $1', [account.id]);
-      continue;
-    }
+    if (!account.userId) continue;
     const preferences = store.users.get(account.userId)?.opportunityPreferences;
     if (!preferences) {
       await client.query('delete from opportunity_preferences where account_id = $1', [account.id]);

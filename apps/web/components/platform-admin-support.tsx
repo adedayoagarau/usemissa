@@ -105,7 +105,7 @@ export default function PlatformAdminSupport({
       <DataAreaHeader
         area={area}
         title="Support cases"
-        description="A durable queue for reported Opportunity and Profile issues. Operators can move a case through its lifecycle; every status change is audited and emits a worker-readable outbox event."
+        description="A durable queue for user-reported opportunity issues. Operators can move a case through its lifecycle; every status change is audited and emits a worker-readable outbox event."
       />
       <WarningList warnings={area.warnings} />
       {error && (
@@ -181,11 +181,11 @@ export default function PlatformAdminSupport({
         <SectionHeading
           eyebrow="Queue"
           title="Reported issues"
-          description="Account, Opportunity, and Profile references are shown for authorized platform operators. Private Profile content, provider tokens, and unrelated account data are not included."
+          description="Account and opportunity references are shown for authorized platform operators. Email bodies, provider tokens, and unrelated private content are not included."
         />
         <div className="mt-4 border border-border bg-white">
           <h2 id="support-case-list-title" className="sr-only">
-            Reported issues
+            Reported opportunity issues
           </h2>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3 text-xs text-muted-foreground">
             <span>
@@ -234,7 +234,7 @@ export default function PlatformAdminSupport({
                         Reporter
                       </th>
                       <th scope="col" className="px-4 py-3 font-medium">
-                        Reported item
+                        Opportunity
                       </th>
                       <th scope="col" className="px-4 py-3 font-medium">
                         Reason
@@ -264,24 +264,18 @@ export default function PlatformAdminSupport({
                         </th>
                         <td className="max-w-[220px] px-4 py-3 text-xs text-muted-foreground">
                           <span className="block truncate text-foreground">
-                            {row.accountEmail ?? "Anonymous report"}
+                            {row.accountEmail ?? "Email unavailable"}
                           </span>
                           <span className="mt-1 block truncate font-mono text-[11px]">
-                            {row.accountId ?? "No account attached"}
+                            {row.accountId}
                           </span>
                         </td>
                         <td className="max-w-[240px] px-4 py-3 text-xs text-muted-foreground">
                           <span className="block truncate text-foreground">
-                            {row.kind === "profile"
-                              ? (row.profileDisplayName ??
-                                "Profile unavailable")
-                              : (row.opportunityTitle ??
-                                "Opportunity unavailable")}
+                            {row.opportunityTitle ?? "Opportunity unavailable"}
                           </span>
                           <span className="mt-1 block truncate font-mono text-[11px]">
-                            {row.kind === "profile"
-                              ? row.profileUserId
-                              : row.opportunityId}
+                            {row.opportunityId}
                           </span>
                         </td>
                         <td className="max-w-[300px] px-4 py-3 text-xs">
@@ -343,14 +337,10 @@ export default function PlatformAdminSupport({
                     </div>
                     <div className="text-sm">
                       <p className="font-medium text-foreground">
-                        {row.kind === "profile"
-                          ? (row.profileDisplayName ?? "Profile unavailable")
-                          : (row.opportunityTitle ?? "Opportunity unavailable")}
+                        {row.opportunityTitle ?? "Opportunity unavailable"}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {row.accountEmail ??
-                          row.accountId ??
-                          "Anonymous report"}
+                        {row.accountEmail ?? row.accountId}
                       </p>
                     </div>
                     {row.note && (

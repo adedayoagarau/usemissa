@@ -381,23 +381,6 @@
     justify-content: center;
     width: 100%;
   }
-  .changeList > div {
-    grid-template-columns: 1fr;
-    gap: 0.3rem;
-  }
-  .resolutionActions {
-    align-items: stretch;
-    flex-direction: column;
-  }
-  .resolutionActions > * {
-    justify-content: center;
-    width: 100%;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .spin {
-    animation: none;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   .spin {

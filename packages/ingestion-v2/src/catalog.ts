@@ -47,7 +47,7 @@ export function sourceDefinitionFromRegistry(entry: SourceRegistryEntry, adapter
     id: `registry-${entry.id}`,
     name: entry.name,
     url: entry.url,
-    adapterId: adapterForSource(kind, adapterId),
+    adapterId: kind === "feed" ? "feed-v2" : adapterId,
     kind,
     geography: entry.geography ?? ["global"],
     opportunityTypes: entry.opportunityTypes,

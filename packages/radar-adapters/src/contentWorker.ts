@@ -395,7 +395,6 @@ async function reviewJob(pool: Pool, runId: string, job: ContentJob): Promise<Op
     );
     await client.query(`update radar_content_review_jobs set status = $2, lease_until = null, updated_at = now() where id = $1`, [job.id, jobStatus]);
     if (result.decision === 'approved') {
-      await client.query(CONTENT_APPROVAL_HANDOFF_SQL, [job.opportunityId]);
       await writeHandoff(client, runId, job.opportunityId, 'content-review', 'publisher', 'content-approved', 'completed', { score: result.score, builderVersion: row.content.builderVersion });
     } else {
       await writeHandoff(client, runId, job.opportunityId, 'content-review', 'human-review', 'content-needs-review', 'queued', { decision: result.decision, score: result.score, reasons: result.reasons });

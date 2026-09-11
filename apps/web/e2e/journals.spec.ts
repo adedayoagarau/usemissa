@@ -21,6 +21,7 @@ type DirectoryResponse = {
 type LinkedOpportunity = {
   id: string;
   title: string;
+  detailUrl: string | null;
   officialWebsite: string | null;
 };
 
@@ -44,7 +45,7 @@ async function directory(
   return (await response.json()) as DirectoryResponse;
 }
 
-test("publishes both profile kinds, keeps filters/search real, and opens linked opportunities", async ({
+test("publishes both profile kinds, keeps filters/search real, and opens linked source details", async ({
   page,
   request,
 }) => {
@@ -101,7 +102,9 @@ test("publishes both profile kinds, keeps filters/search real, and opens linked 
     })();
   expect(profileWithOpportunity).not.toBeNull();
   const opportunity = profileWithOpportunity!.opportunity;
-  expect(opportunity.id).toBeTruthy();
+  expect(opportunity.detailUrl ?? opportunity.officialWebsite).toMatch(
+    /^https?:\/\//,
+  );
 
   for (const profileCase of [
     {
@@ -130,9 +133,10 @@ test("publishes both profile kinds, keeps filters/search real, and opens linked 
       page.getByRole("heading", { level: 2, name: "Submission details" }),
     ).toBeVisible();
     await expect(
-      page.getByText(new RegExp(profileCase.field, "i")).first(),
+      page
+        .locator('[aria-labelledby="journal-details-heading"]')
+        .getByText(profileCase.field, { exact: true }),
     ).toBeVisible();
-    await expect(page.locator('main header [role="status"]')).toBeVisible();
     if (profileCase.profile.mediaUrl) {
       const mediaResponse = await request.get(
         `/api/journals/${encodeURIComponent(profileCase.profile.id)}/media`,
@@ -147,11 +151,6 @@ test("publishes both profile kinds, keeps filters/search real, and opens linked 
           ),
         )
         .toBeGreaterThan(0);
-    } else {
-      await expect(page.locator('main header [role="img"]')).toBeVisible();
-      await expect(page.locator('main header [role="img"]')).not.toContainText(
-        "Image not available",
-      );
     }
     await expect(page.locator("body")).not.toContainText(
       /freshness|profile checked|confidence/i,
@@ -161,9 +160,6 @@ test("publishes both profile kinds, keeps filters/search real, and opens linked 
         () => document.documentElement.scrollWidth <= window.innerWidth + 1,
       ),
     ).toBeTruthy();
-    await expect(
-      page.getByText(/Original profile|Open source details/),
-    ).toHaveCount(0);
     const detailInteractiveSizes = await page
       .locator("a, button:not(#next-logo), input, select")
       .evaluateAll((elements) =>
@@ -215,9 +211,22 @@ test("publishes both profile kinds, keeps filters/search real, and opens linked 
       name: new RegExp(`Sign in to save ${opportunity.title} to Tracker`),
     }),
   ).toHaveAttribute("href", /\/login\?next=.*intent=save/);
-  await expect(
-    page.getByText(/Original profile|Open source details/),
-  ).toHaveCount(0);
+  if (opportunity.detailUrl ?? opportunity.officialWebsite) {
+    const sourceOpportunityLink = page
+      .locator('a[href^="http"]')
+      .filter({ hasText: /source details|organization website/i })
+      .first();
+    await expect(sourceOpportunityLink).toHaveAttribute("target", "_blank");
+    await expect(sourceOpportunityLink).toContainText("opens in a new site");
+    await expect(sourceOpportunityLink).toHaveAttribute(
+      "href",
+      opportunity.detailUrl ?? opportunity.officialWebsite!,
+    );
+    const linkedResponse = await request.get(
+      opportunity.detailUrl ?? opportunity.officialWebsite!,
+    );
+    expect(linkedResponse.status()).toBe(200);
+  }
   if (profileWithOpportunity!.canonicalAvailable) {
     await missaOpportunityLink.click();
     await expect(page).toHaveURL(

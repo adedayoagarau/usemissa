@@ -22,7 +22,6 @@ export interface SessionPayload {
   accountId: string;
   issuedAt: number;
   expiresAt: number;
-  sessionVersion?: number;
 }
 
 /**
@@ -30,8 +29,8 @@ export interface SessionPayload {
  * dependency for something this small). The server never needs to look up a
  * session store — verifying the signature and expiry is enough.
  */
-export function createSessionToken(accountId: string, secret: string, now: Date, ttlMs = 30 * 24 * 3_600_000, sessionVersion = 0): string {
-  const payload: SessionPayload = { accountId, issuedAt: now.getTime(), expiresAt: now.getTime() + ttlMs, sessionVersion };
+export function createSessionToken(accountId: string, secret: string, now: Date, ttlMs = 30 * 24 * 3_600_000): string {
+  const payload: SessionPayload = { accountId, issuedAt: now.getTime(), expiresAt: now.getTime() + ttlMs };
   const body = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
   const sig = sign(body, secret, 'session');
   return `${body}.${sig}`;

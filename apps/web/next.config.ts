@@ -9,10 +9,6 @@ const previewHosts = (process.env.MISSA_DEV_PREVIEW_HOST ?? "")
   .map((host) => host.trim())
   .filter(Boolean);
 
-const isProduction = process.env.VERCEL_ENV
-  ? process.env.VERCEL_ENV === 'production'
-  : process.env.NODE_ENV === 'production';
-
 const nextConfig: NextConfig = {
   experimental: {
     // Optional local-only override for slow external-drive cache compaction.

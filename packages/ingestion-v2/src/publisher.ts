@@ -6,18 +6,8 @@ import { INGESTION_V2_VERSION } from "./contracts.js";
 
 export type PublisherDecision = "approve" | "review" | "reject";
 
-/** How reconciliation was satisfied. Identity-comparison bases plus the
- * publisher-level "first-party-source": the page is the organization's own
- * site, so it is the destination rather than needing to link to one. */
-export type ReconciliationBasis = IdentityMatchBasis | "first-party-source";
-
 export interface DestinationReconciliation {
   decision: "pass" | "review" | "reject";
-  /** Records how the match was reached. Telemetry for resolution scoring; it must not
-   * be used to skip review: for followed links, the destination URL is the link we
-   * followed, so a canonical-URL match is tautological rather than independent
-   * corroboration. */
-  basis: ReconciliationBasis;
   authoritativeUrl: string | null;
   sourceIdentity: OpportunityIdentity;
   destinationIdentity: OpportunityIdentity | null;
@@ -92,24 +82,12 @@ function deterministicReconciliation(input: PublisherInput): DestinationReconcil
     if (identityDecision === "same") return { decision: "pass", authoritativeUrl, sourceIdentity, destinationIdentity, reasons: ["The source record reconciles to the fetched authoritative destination by canonical URL or title and organization."] };
     if (identityDecision === "review") return { decision: "review", authoritativeUrl, sourceIdentity, destinationIdentity, reasons: ["The linked destination was fetched, but its identity is ambiguous against the source record."] };
   }
-  // Candidates existed but none reconciled. For a directory that is a hard
-  // stop; for an organization's own page it only means the outbound links were
-  // navigation noise — the page itself still stands as the destination.
-  const pass = firstPartyPass();
-  if (pass) return pass;
-  return { decision: "reject", basis: "none", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["No fetched authoritative destination reconciled to the source record."] };
+  return { decision: "reject", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["No fetched authoritative destination reconciled to the source record."] };
 }
 
 function promptFor(input: PublisherInput, reconciliation: DestinationReconciliation): string {
   const sourceText = input.sourceSnapshot.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 8_000);
   const destinationText = input.relatedSnapshots.map((snapshot) => `${snapshot.finalUrl || snapshot.url}\n${snapshot.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").slice(0, 5_000)}`).join("\n\n");
-  // The old prompt told the model a source page "is not authoritative" — the
-  // right instruction for a followed directory link, and a guaranteed
-  // rejection for a first-party page. The question asked must match the case
-  // being reviewed.
-  if (reconciliation.basis === "first-party-source") {
-    return `You are the Missa evidence publisher reviewer. This page is the organization's own website, so it is already the first-party source. Decide only whether it presents a live, specific opportunity: a named call, residency, grant, award, or submission window with concrete details a person could act on. Reject a generic homepage, an expired or archived call, or a page that is not an opportunity at all. Never invent facts. Return JSON only: {"decision":"approve"|"review"|"reject","reason":"..."}.\n\nDeterministic reconciliation:\n${JSON.stringify(reconciliation)}\n\nPage:\n${sourceText}`;
-  }
   return `You are the Missa evidence publisher reviewer. Decide only whether a candidate is safe to move from shadow evidence to human publication review. Never invent facts. A source/landing page is not authoritative when an official detail or application page exists. Approve only when the fetched destination clearly represents the same opportunity and the source link points to it. Return JSON only: {"decision":"approve"|"review"|"reject","reason":"..."}.\n\nDeterministic reconciliation:\n${JSON.stringify(reconciliation)}\n\nSource page:\n${sourceText}\n\nFetched destinations:\n${destinationText}`;
 }
 

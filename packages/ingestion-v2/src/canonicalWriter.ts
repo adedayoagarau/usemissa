@@ -28,9 +28,7 @@ function fieldValues(fields: ExtractionResult["fields"], name: string): string[]
 function identityText(value: string): string {
   return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
-// Resource IDs have one separator underscore: `prefix_value`. Keep the v2
-// ownership marker in the prefix without introducing a second underscore.
-export function canonicalId(url: string): string { return `opp-v2_${createHash("sha256").update(url).digest("hex").slice(0, 32)}`; }
+function canonicalId(url: string): string { return `opp_v2_${createHash("sha256").update(url).digest("hex").slice(0, 32)}`; }
 function sourceId(source: SourceDefinition): string { return `v2_source_${createHash("sha256").update(source.url).digest("hex").slice(0, 24)}`; }
 function normalizedDestinationKey(value: string): string {
   const url = new URL(value);
@@ -236,7 +234,6 @@ async function writeApprovedEvidence(
   const reviewOnlyReconciliation = { ...review.reconciliation, v2ReviewOnly: true };
   const client = await pool.connect();
   try {
-    await ensurePromotionSchema(client);
     await client.query("begin");
     const semanticLock = [deadline ?? deadlineKind, ...fieldValues(extraction.fields, "title").map(identityText).sort(), ...fieldValues(extraction.fields, "organization").map(identityText).sort()].join("|");
     await client.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [semanticLock]);

@@ -10,16 +10,16 @@ export function absoluteUrl(path = '/'): string {
   return new URL(path, `${siteUrl()}/`).toString();
 }
 
-export function pageMetadata(input: { title: string; description: string; path: string; noIndex?: boolean; socialImagePath?: string; socialImageAlt?: string }): Metadata {
+export function pageMetadata(input: { title: string; description: string; path: string; noIndex?: boolean }): Metadata {
   const url = absoluteUrl(input.path);
   const cleanTitle = cleanTitleOrLabel(input.title);
   const cleanDesc = cleanCrawledNarrative(input.description);
   const socialImage = {
-    url: absoluteUrl(input.socialImagePath ?? '/brand/missa-social-share.png'),
+    url: absoluteUrl('/brand/missa-social-share.png'),
     width: 1200,
     height: 630,
     type: 'image/png',
-    alt: input.socialImageAlt ?? 'Missa, creative opportunities with their source and limits kept visible.',
+    alt: 'Missa, creative opportunities with their source and limits kept visible.',
   };
   return {
     title: cleanTitle,

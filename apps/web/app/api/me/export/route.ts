@@ -81,7 +81,6 @@ export async function GET(request: Request) {
   let compatibilityEngine: Awaited<ReturnType<typeof getEngine>> | undefined;
   let exportData: TrackerExportV1;
   let libraryData: ReturnType<typeof libraryForScope> | undefined;
-  let profileData: ReturnType<typeof profileForScope> | undefined;
   try {
     if (repository) {
       exportData = trackerForScope(await repository.trackerExport(session.account.id, userId, new Date(nowMs)), scope === 'library' ? 'all' : scope);
@@ -99,7 +98,7 @@ export async function GET(request: Request) {
 
   const body = scope === 'library'
     ? (format === 'csv' ? encodeLibraryCsv(libraryData!) : JSON.stringify(libraryData, null, 2))
-    : (format === 'csv' ? encodeTrackerCsv(exportData) : JSON.stringify(scope === 'all' ? { ...exportData, included: ['profile', 'tracker', 'library'], omitted: [], profile: profileData?.profile, library: libraryData } : exportData, null, 2));
+    : (format === 'csv' ? encodeTrackerCsv(exportData) : JSON.stringify(scope === 'all' ? { ...exportData, included: ['tracker', 'library'], omitted: [], library: libraryData } : exportData, null, 2));
   const date = new Date(nowMs).toISOString().slice(0, 10);
   const extension = format === 'csv' ? 'csv' : 'json';
   const contentType = format === 'csv' ? 'text/csv; charset=utf-8' : 'application/json; charset=utf-8';
@@ -131,7 +130,7 @@ export async function GET(request: Request) {
     headers: {
       'Cache-Control': 'private, no-store',
       'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="missa-${scope === 'library' ? 'library' : scope === 'all' && format === 'json' ? 'all-data' : 'tracker'}-${date}.${extension}"`,
+      'Content-Disposition': `attachment; filename="missa-${scope === 'library' ? 'library' : 'tracker'}-${date}.${extension}"`,
     },
   });
 }

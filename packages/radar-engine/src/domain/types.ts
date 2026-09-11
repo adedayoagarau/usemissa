@@ -598,14 +598,6 @@ export interface PublicUserProfile {
   id?: string;
   displayName?: string;
   bio?: string;
-  profileImageUrl?: string;
-  headline?: string;
-  oneLine?: string;
-  openTo?: string;
-  contactEnabled?: true;
-  socialLinks?: ProfileSocialLink[];
-  selectedWorks?: ProfileSelectedWork[];
-  publishedAt?: IsoDateTime;
   isPrivate?: true;
 }
 
@@ -645,10 +637,6 @@ export interface Account {
    */
   verifiedEmailDomain?: string;
   active?: boolean;
-  /** Incrementing this invalidates previously issued Missa session cookies. */
-  sessionVersion?: number;
-  /** Account lifecycle tombstone. The original email and auth identity are removed. */
-  deletedAt?: IsoDateTime;
 }
 
 /** Organization roles. `member` remains the compatibility role for existing workspaces. */
@@ -1043,6 +1031,4 @@ export interface Alert {
   read: boolean;
   /** Set only after the alert has been successfully included in an outbound digest. */
   emailSentAt?: IsoDateTime;
-  /** Set when the owner had email delivery turned off for this alert. */
-  emailSuppressedAt?: IsoDateTime;
 }
