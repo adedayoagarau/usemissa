@@ -101,4 +101,16 @@ fourteen days without exposing provider secrets or unrelated tenants.
 - Provider acceptance is not delivery proof.
 - Exports are portable outcomes, never submission proof.
 - Every consequential command remains idempotent, revision-aware, audited, and
-  represented in the outbox.
+represented in the outbox.
+
+## Verification record
+
+- Workspace build, 54 tests (52 passed, 2 skipped), web typecheck, design-system
+  policy, and `git diff --check` are green after the Wave 6 slices.
+- The local Neon target has all portal/Wave 6 tables and relational health
+  reports `schemaReady: true` after applying the reconciled authority schema,
+  migrations 0056/0057, and Wave 6 migrations 0059/0061–0067.
+- The live Postgres integration suite was not counted as passed on this target:
+  its safety guard requires an explicitly named disposable
+  `missa_story_16_1_*` database. Hosted tenant-isolation and device gates remain
+  separate evidence requirements.
