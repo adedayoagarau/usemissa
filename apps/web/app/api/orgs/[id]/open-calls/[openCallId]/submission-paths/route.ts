@@ -4,36 +4,59 @@ import type { SubmissionField } from '@missa/workspace-engine';
 import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
 import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
-const fieldTypes = new Set(['text', 'file-upload', 'category-select', 'fee-toggle']);
+const fieldTypes = new Set<SubmissionField['type']>(['text', 'file-upload', 'category-select', 'fee-toggle']);
 const taxonomyRules = new Set(['accepted', 'preferred', 'required', 'excluded']);
 
-function validForm(body: Record<string, unknown>): boolean {
-  if (!Array.isArray(body.categories) || body.categories.some((item) => typeof item !== 'string' || !item.trim())) return false;
-  if (!Array.isArray(body.fields) || body.fields.some((item) => {
-    if (!item || typeof item !== 'object') return true;
-    const field = item as Record<string, unknown>;
-    return (field.id !== undefined && (typeof field.id !== 'string' || !field.id.trim())) || typeof field.label !== 'string' || !field.label.trim()
-      || !fieldTypes.has(String(field.type)) || typeof field.required !== 'boolean'
-      || (field.order !== undefined && (!Number.isInteger(field.order) || Number(field.order) < 0));
-  })) return false;
-  if (body.taxonomyAssignments !== undefined && (!Array.isArray(body.taxonomyAssignments) || body.taxonomyAssignments.some((item) => {
-    if (!item || typeof item !== 'object') return true;
-    const assignment = item as Record<string, unknown>;
-    return typeof assignment.termId !== 'string' || !assignment.termId.trim() || !taxonomyRules.has(String(assignment.rule))
-      || (assignment.required !== undefined && typeof assignment.required !== 'boolean');
-  }))) return false;
-  return body.feeCents === undefined || (Number.isInteger(body.feeCents) && Number(body.feeCents) >= 0);
+interface FormFieldInput {
+  id?: string;
+  type?: SubmissionField['type'];
+  label?: string;
+  required?: boolean;
+  order?: number;
 }
 
-function normalizedFields(fields: Array<Record<string, unknown>>): SubmissionField[] {
+interface TaxonomyAssignmentInput {
+  termId?: string;
+  rule?: string;
+  required?: boolean;
+}
+
+interface SubmissionPathBody {
+  categories?: string[];
+  fields?: FormFieldInput[];
+  taxonomyAssignments?: TaxonomyAssignmentInput[];
+  feeCents?: number;
+}
+
+function validForm(body: SubmissionPathBody): boolean {
+  if (!Array.isArray(body.categories) || body.categories.some((item) => typeof item !== 'string' || !item.trim())) return false;
+  if (!Array.isArray(body.fields) || body.fields.some((field) => {
+    if (!field || typeof field !== 'object') return true;
+    return (field.id !== undefined && (typeof field.id !== 'string' || !field.id.trim()))
+      || typeof field.label !== 'string' || !field.label.trim()
+      || !field.type || !fieldTypes.has(field.type)
+      || typeof field.required !== 'boolean'
+      || (field.order !== undefined && (!Number.isInteger(field.order) || field.order < 0));
+  })) return false;
+  if (body.taxonomyAssignments !== undefined && (!Array.isArray(body.taxonomyAssignments) || body.taxonomyAssignments.some((assignment) => {
+    if (!assignment || typeof assignment !== 'object') return true;
+    return typeof assignment.termId !== 'string' || !assignment.termId.trim()
+      || !assignment.rule || !taxonomyRules.has(assignment.rule)
+      || (assignment.required !== undefined && typeof assignment.required !== 'boolean');
+  }))) return false;
+  return body.feeCents === undefined || (Number.isInteger(body.feeCents) && body.feeCents >= 0);
+}
+
+function normalizedFields(fields: FormFieldInput[]): SubmissionField[] {
   return fields.map((field, index) => ({
-    id: typeof field.id === 'string' ? field.id : `field_${randomUUID()}`,
-    type: field.type as SubmissionField['type'],
-    label: String(field.label),
+    id: typeof field.id === 'string' && field.id.trim() ? field.id : `field_${randomUUID()}`,
+    type: field.type!,
+    label: field.label!,
     required: field.required === true,
-    order: Number.isInteger(field.order) ? Number(field.order) : index,
+    order: Number.isInteger(field.order) ? field.order! : index,
   }));
 }
+
 
 /** Story 6.3: Form Builder v1. The UI never shows "Submission Path" -- users
  * see "form" and "categories" (docs/missa-naming-decisions.md). */

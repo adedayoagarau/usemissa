@@ -73,40 +73,63 @@ export async function PATCH(request: Request) {
   const session = await sessionForRequest();
   if (!session?.account.userId) return jsonError('Not authenticated', 401);
 
-  let body: unknown;
+  interface UpdateProfileBody {
+    displayName?: string;
+    bio?: string;
+    taxonomyPreferences?: TaxonomyPreference[];
+    opportunityPreferences?: OpportunityPreferences;
+    expectedRevision?: number;
+  }
+
+  let rawBody: unknown;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return jsonError('Request body must be valid JSON.', 400);
   }
-  if (!body || typeof body !== 'object' || Array.isArray(body)) return jsonError('Request body must be an object.', 400);
+  if (!rawBody || typeof rawBody !== 'object' || Array.isArray(rawBody)) {
+    return jsonError('Request body must be an object.', 400);
+  }
 
-  const entries = Object.entries(body as Record<string, unknown>);
-  if (entries.some(([key]) => key !== 'displayName' && key !== 'bio' && key !== 'taxonomyPreferences' && key !== 'opportunityPreferences' && key !== 'expectedRevision')) return jsonError('Only profile identity and opportunity preferences can be updated.', 400);
-  if (entries.some(([key, value]) => (key === 'displayName' || key === 'bio') && typeof value !== 'string')) return jsonError('Display name and bio must be strings.', 400);
-  if (Object.prototype.hasOwnProperty.call(body, 'taxonomyPreferences') && (!Array.isArray((body as Record<string, unknown>).taxonomyPreferences))) return jsonError('Taxonomy preferences must be an array.', 400);
-  if (Object.prototype.hasOwnProperty.call(body, 'opportunityPreferences')) {
-    const preferences = (body as Record<string, unknown>).opportunityPreferences;
-    if (!preferences || typeof preferences !== 'object' || Array.isArray(preferences)) return jsonError('Opportunity preferences must be an object.', 400);
+  const record = rawBody as UpdateProfileBody;
+  const entries = Object.entries(rawBody as Record<string, unknown>);
+  if (entries.some(([key]) => key !== 'displayName' && key !== 'bio' && key !== 'taxonomyPreferences' && key !== 'opportunityPreferences' && key !== 'expectedRevision')) {
+    return jsonError('Only profile identity and opportunity preferences can be updated.', 400);
+  }
+  if (entries.some(([key, value]) => (key === 'displayName' || key === 'bio') && typeof value !== 'string')) {
+    return jsonError('Display name and bio must be strings.', 400);
+  }
+  if (record.taxonomyPreferences !== undefined && !Array.isArray(record.taxonomyPreferences)) {
+    return jsonError('Taxonomy preferences must be an array.', 400);
+  }
+  if (record.opportunityPreferences !== undefined) {
+    if (!record.opportunityPreferences || typeof record.opportunityPreferences !== 'object' || Array.isArray(record.opportunityPreferences)) {
+      return jsonError('Opportunity preferences must be an object.', 400);
+    }
   }
 
   const repository = getCreatorProfileRepository();
   if (repository) {
-    if (Object.prototype.hasOwnProperty.call(body, 'taxonomyPreferences') || Object.prototype.hasOwnProperty.call(body, 'opportunityPreferences')) {
+    if (record.taxonomyPreferences !== undefined || record.opportunityPreferences !== undefined) {
       const preferenceRepository = getCreatorPreferenceRepository();
-      const record = body as Record<string, unknown>;
       if (!preferenceRepository || !Array.isArray(record.taxonomyPreferences) || !record.opportunityPreferences || typeof record.opportunityPreferences !== 'object' || Array.isArray(record.opportunityPreferences)) {
         return jsonError('Private preferences are invalid.', 400);
       }
-      if (!Number.isSafeInteger(record.expectedRevision) || (record.expectedRevision as number) < 1) return jsonError('expectedRevision must be a positive integer.', 400);
-      const taxonomyPreferences = record.taxonomyPreferences as TaxonomyPreference[];
-      if (taxonomyPreferences.some((item) => !item || typeof item.termId !== 'string' || !['include', 'prefer', 'exclude'].includes(item.preference) || !Number.isInteger(item.weight) || item.weight < 0 || item.weight > 100)) return jsonError('Taxonomy preferences are invalid.', 400);
-      if (canonicalTaxonomySelection(taxonomyPreferences.map((item) => item.termId)).invalidTermIds.length) return jsonError('Taxonomy preferences contain an unknown term.', 400);
+      if (!Number.isSafeInteger(record.expectedRevision) || record.expectedRevision! < 1) {
+        return jsonError('expectedRevision must be a positive integer.', 400);
+      }
+      const taxonomyPreferences = record.taxonomyPreferences;
+      if (taxonomyPreferences.some((item) => !item || typeof item.termId !== 'string' || !['include', 'prefer', 'exclude'].includes(item.preference) || !Number.isInteger(item.weight) || item.weight < 0 || item.weight > 100)) {
+        return jsonError('Taxonomy preferences are invalid.', 400);
+      }
+      if (canonicalTaxonomySelection(taxonomyPreferences.map((item) => item.termId)).invalidTermIds.length) {
+        return jsonError('Taxonomy preferences contain an unknown term.', 400);
+      }
       try {
         const receipt = await preferenceRepository.updatePreferences(
-          creatorCommandEnvelope(session.account.id, 'creator-preferences.update', request.headers.get('Idempotency-Key')?.trim() ?? '', { taxonomyPreferences, opportunityPreferences: record.opportunityPreferences }, record.expectedRevision as number),
+          creatorCommandEnvelope(session.account.id, 'creator-preferences.update', request.headers.get('Idempotency-Key')?.trim() ?? '', { taxonomyPreferences, opportunityPreferences: record.opportunityPreferences }, record.expectedRevision!),
           taxonomyPreferences,
-          record.opportunityPreferences as OpportunityPreferences,
+          record.opportunityPreferences,
         );
         const saved = await preferenceRepository.preferenceBundle(session.account.id);
         return NextResponse.json({
@@ -123,17 +146,19 @@ export async function PATCH(request: Request) {
       }
     }
     const idempotencyKey = request.headers.get('Idempotency-Key')?.trim() ?? '';
-    const expectedRevision = (body as Record<string, unknown>).expectedRevision;
-    if (!Number.isSafeInteger(expectedRevision) || (expectedRevision as number) < 1) return jsonError('expectedRevision must be a positive integer.', 400);
+    const expectedRevision = record.expectedRevision;
+    if (!Number.isSafeInteger(expectedRevision) || expectedRevision! < 1) {
+      return jsonError('expectedRevision must be a positive integer.', 400);
+    }
     const current = await repository.profile(session.account.id);
     if (!current) return jsonError('Profile not found', 404);
     try {
       const payload = {
-        displayName: typeof (body as Record<string, unknown>).displayName === 'string' ? (body as Record<string, unknown>).displayName as string : current.displayName,
-        bio: typeof (body as Record<string, unknown>).bio === 'string' ? (body as Record<string, unknown>).bio as string : current.bio,
+        displayName: typeof record.displayName === 'string' ? record.displayName : current.displayName,
+        bio: typeof record.bio === 'string' ? record.bio : current.bio,
       };
       const receipt = await repository.updateProfile(
-        creatorCommandEnvelope(session.account.id, 'profile.update', idempotencyKey, payload, expectedRevision as number),
+        creatorCommandEnvelope(session.account.id, 'profile.update', idempotencyKey, payload, expectedRevision!),
         payload,
       );
       const saved = await repository.profile(session.account.id);
@@ -145,6 +170,7 @@ export async function PATCH(request: Request) {
         idempotent: receipt.replayed,
         publicUrl: `/profile/${encodeURIComponent(saved?.userId ?? current.userId)}`,
       }, { headers: noStore });
+
     } catch (error) {
       if (error instanceof CreatorCommandValidationError) return jsonError(error.message, 400);
       if (error instanceof CreatorConflictError) return NextResponse.json({ error: error.message, conflict: { action: 'refresh-and-retry', expectedRevision: error.expectedRevision, actualRevision: error.actualRevision } }, { status: 409, headers: noStore });
@@ -153,7 +179,7 @@ export async function PATCH(request: Request) {
     }
   }
 
-  const patch = body as UserProfilePatch;
+  const patch = rawBody as UserProfilePatch;
   const engine = await getEngine();
   try {
     const saved = engine.updateUserProfile(session.account.userId, patch);
