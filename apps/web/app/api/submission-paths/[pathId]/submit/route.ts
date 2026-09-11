@@ -47,20 +47,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     const existing = [...workspace!.store.submissions.values()].find((candidate) => candidate.submissionPathId === pathId && candidate.submitterAccountId === session.account.id && candidate.idempotencyKey === idempotencyKey);
     if (existing) return NextResponse.json({ submission: existing, works: workspace!.worksForSubmission(existing.id), trackerLinked: false, idempotent: true }, { status: 200 });
   }
-  if (body.works.some((work: unknown) => !work || typeof work !== 'object' || typeof (work as { title?: unknown }).title !== 'string' || !(work as { title: string }).title.trim())) {
-    return NextResponse.json({ error: 'Each work needs a title' }, { status: 400 });
+  interface WorkInput {
+    title?: string;
+    fileUrl?: string;
+    fileUrls?: string[];
   }
-  if (body.works.some((work: unknown) => typeof (work as { fileUrl?: unknown }).fileUrl === 'string' && !ownedFileUrl((work as { fileUrl: string }).fileUrl))) {
-    return NextResponse.json({ error: 'Work contains an invalid upload' }, { status: 400 });
+
+  const works = body.works as WorkInput[];
+  for (const work of works) {
+    if (!work || typeof work.title !== 'string' || !work.title.trim()) {
+      return NextResponse.json({ error: 'Each work needs a title' }, { status: 400 });
+    }
+    const urls = [
+      ...(typeof work.fileUrl === 'string' ? [work.fileUrl] : []),
+      ...(Array.isArray(work.fileUrls) ? work.fileUrls.filter((u): u is string => typeof u === 'string') : []),
+    ];
+    if (urls.some((url) => !ownedFileUrl(url))) {
+      return NextResponse.json({ error: 'Work contains an invalid upload' }, { status: 400 });
+    }
   }
-  if (body.works.some((work: unknown) => {
-    const candidate = work as { fileUrl?: unknown; fileUrls?: unknown };
-    return (candidate.fileUrl !== undefined && typeof candidate.fileUrl !== 'string')
-      || (candidate.fileUrls !== undefined && (!Array.isArray(candidate.fileUrls) || candidate.fileUrls.some((value) => typeof value !== 'string')));
-  })) return NextResponse.json({ error: 'Work contains an invalid upload' }, { status: 400 });
-  if (body.works.some((work: unknown) => Array.isArray((work as { fileUrls?: unknown }).fileUrls) && (work as { fileUrls: unknown[] }).fileUrls.some((fileUrl) => typeof fileUrl !== 'string' || !ownedFileUrl(fileUrl)))) {
-    return NextResponse.json({ error: 'Work contains an invalid upload' }, { status: 400 });
-  }
+
 
   const category = typeof body.category === 'string' ? body.category.trim() : '';
   const categories = path.categories as string[];

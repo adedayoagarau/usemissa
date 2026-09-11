@@ -134,6 +134,35 @@ const PUBLIC_STATUSES = [
   "deadline-extended",
 ];
 
+const VALID_OPPORTUNITY_TYPES = new Set<OpportunityBrowseProjection["type"]>([
+  "open-call",
+  "magazine",
+  "grant",
+  "award",
+  "fellowship",
+  "residency",
+  "festival",
+  "scholarship",
+  "conference",
+  "rfp",
+  "contest",
+  "pitch",
+  "exhibition",
+  "commission",
+  "job",
+  "other",
+]);
+
+const VALID_SOURCE_KINDS = new Set<OpportunityRepositorySource["kind"]>([
+  "organization-website",
+  "directory",
+  "feed",
+  "newsletter",
+  "user-suggested",
+  "partner-feed",
+]);
+
+
 // Values provisioned from stdin can carry a trailing newline in Vercel.
 // Normalize feature flags so a valid production configuration cannot silently
 // fall back to legacy taxonomy reads.
@@ -161,14 +190,15 @@ function normalizeCallProfile(
   value: OpportunityCallProfile | null,
 ): OpportunityCallProfile | undefined {
   if (!value) return undefined;
-  const profile = stripJsonNulls(value) as unknown as Record<string, unknown>;
+  const profile = stripJsonNulls(value);
   if (profile.lastVerifiedAt !== undefined) {
-    const verifiedAt = new Date(String(profile.lastVerifiedAt));
+    const verifiedAt = new Date(profile.lastVerifiedAt);
     if (Number.isNaN(verifiedAt.getTime())) delete profile.lastVerifiedAt;
     else profile.lastVerifiedAt = verifiedAt.toISOString();
   }
-  return profile as unknown as OpportunityCallProfile;
+  return profile;
 }
+
 
 function encodeCursor(cursor: Cursor): string {
   return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
@@ -1039,7 +1069,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     identityAssetUrl: row.identity_asset_url ?? undefined,
     identityAssetAlt: row.identity_asset_alt ? cleanTitleOrLabel(row.identity_asset_alt) : undefined,
     status: row.status,
-    type: (["open-call", "magazine", "grant", "award", "fellowship", "residency", "festival", "scholarship", "conference", "rfp", "contest", "pitch", "exhibition", "commission", "job", "other"].includes(row.type) ? row.type : "other") as any,
+    type: (VALID_OPPORTUNITY_TYPES.has(row.type as OpportunityBrowseProjection["type"]) ? row.type as OpportunityBrowseProjection["type"] : "other"),
     openDate: row.open_date ?? undefined,
     discipline: row.discipline ?? undefined,
     genres: (row.genres ?? []).slice(0, 32),
@@ -1072,7 +1102,8 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     submissionAvailable:
       row.submission_state === "available" && Boolean(row.submission_url),
     source: {
-      kind: (["organization-website", "directory", "feed", "newsletter", "user-suggested", "partner-feed"].includes(row.source_kind) ? row.source_kind : "organization-website") as any,
+      kind: (VALID_SOURCE_KINDS.has(row.source_kind as OpportunityRepositorySource["kind"]) ? row.source_kind as OpportunityRepositorySource["kind"] : "organization-website"),
+
       name: cleanTitleOrLabel(row.source_name),
       url: row.source_url,
       checkedAt: asIso(row.source_checked_at) ?? new Date(0).toISOString(),
