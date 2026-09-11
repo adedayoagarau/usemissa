@@ -21,6 +21,10 @@ Reviewer groups now have a relational projection with member counts, open
 assignment counts, and optional workload limits; group creation is an audited,
 idempotent organization-admin command.
 
+Decision-linked message drafts now require an organization-scoped decision and
+recipient, remain draft-state until a future approval command, and record their
+creation through the same audit/outbox boundary.
+
 ### Review operations
 
 - Configure review stages, reviewer groups, workload limits, blind projections,

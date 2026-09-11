@@ -3,7 +3,7 @@ export type WorkspaceResourceType =
   | 'submission_draft'
   | 'work' | 'review_round' | 'review_assignment' | 'decision' | 'delivery_task'
   | 'portal_configuration' | 'form_version' | 'review_workflow_version'
-  | 'opportunity_configuration_version' | 'organization_review_settings' | 'reviewer_group';
+  | 'opportunity_configuration_version' | 'organization_review_settings' | 'reviewer_group' | 'decision_message_draft';
 
 export class WorkspaceConflictError extends Error {
   constructor(

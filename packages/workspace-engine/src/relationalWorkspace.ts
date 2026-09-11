@@ -146,6 +146,7 @@ const tenantJoins: Record<WorkspaceResourceType, { table: string; joins: string;
   opportunity_configuration_version: { table: 'opportunity_configuration_versions r', joins: '', organization: 'r.organization_id' },
   organization_review_settings: { table: 'organization_review_settings r', joins: '', organization: 'r.organization_id' },
   reviewer_group: { table: 'reviewer_groups r', joins: '', organization: 'r.organization_id' },
+  decision_message_draft: { table: 'decision_message_drafts r', joins: '', organization: 'r.organization_id' },
 };
 
 export function workspaceRequestHash(value: unknown): string {
@@ -553,6 +554,17 @@ export class RelationalWorkspace {
       const row = await client.query<{ revision: number }>('insert into reviewer_groups (id,organization_id,name,workload_limit) values ($1,$2,$3,$4) returning revision', [id, envelope.organizationId, input.name, input.workloadLimit ?? null]);
       await this.effect(client, envelope, 'reviewer_group.created', 'reviewer_group', id, row.rows[0]!.revision, input);
       return { resourceType: 'reviewer_group', resourceId: id, revision: row.rows[0]!.revision };
+    });
+  }
+
+  async createDecisionMessageDraft(envelope: WorkspaceCommandEnvelope, input: { decisionId: string; recipientAccountId: string; subject: string; body: string }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, input, async (client) => {
+      const decision = await client.query<{ id: string }>(`select d.id from decisions d join works w on w.id=d.work_id join submissions s on s.id=w.submission_id join submission_paths sp on sp.id=s.submission_path_id join open_calls o on o.id=sp.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id where d.id=$1 and e.organization_id=$2`, [input.decisionId, envelope.organizationId]);
+      if (!decision.rows[0]) throw new WorkspaceNotFoundError();
+      const id = randomUUID();
+      const row = await client.query<{ revision: number }>('insert into decision_message_drafts (id,organization_id,decision_id,recipient_account_id,subject,body) values ($1,$2,$3,$4,$5,$6) returning revision', [id, envelope.organizationId, input.decisionId, input.recipientAccountId, input.subject, input.body]);
+      await this.effect(client, envelope, 'decision_message_draft.created', 'decision_message_draft', id, row.rows[0]!.revision, { decisionId: input.decisionId });
+      return { resourceType: 'decision_message_draft', resourceId: id, revision: row.rows[0]!.revision };
     });
   }
 
