@@ -118,3 +118,5 @@ represented in the outbox.
   its safety guard requires an explicitly named disposable
   `missa_story_16_1_*` database. Hosted tenant-isolation and device gates remain
   separate evidence requirements.
+- Vercel Preview resolves to Neon database `neondb`, so the guarded live suite
+  was not run against Preview and no production database was changed.
