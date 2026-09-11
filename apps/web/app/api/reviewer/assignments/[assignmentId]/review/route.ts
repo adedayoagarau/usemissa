@@ -11,7 +11,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ ass
 
   const body = await request.json();
   const score = typeof body.score === 'number' ? body.score : undefined;
-  const notes = typeof body.notes === 'string' ? body.notes : undefined;
+  const notes = typeof body.notes === 'string' ? body.notes.trim() : undefined;
+  if (score !== undefined && (!Number.isFinite(score) || !Number.isInteger(score) || score < 0 || score > 100)) {
+    return NextResponse.json({ error: 'Score must be a whole number from 0 to 100' }, { status: 400 });
+  }
+  if (notes !== undefined && notes.length > 5_000) {
+    return NextResponse.json({ error: 'Review notes must be 5,000 characters or fewer' }, { status: 400 });
+  }
 
   if (workspaceRelationalAuthorityEnabled()) {
     try {

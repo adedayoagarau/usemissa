@@ -7,6 +7,9 @@ certification.
 
 ## Outcomes
 
+**Current slice:** reviewer completion now rejects non-finite, fractional, or
+out-of-range scores and trims/limits notes at the HTTP boundary.
+
 ### Review operations
 
 - Configure review stages, reviewer groups, workload limits, blind projections,
