@@ -11,7 +11,9 @@ certification.
 out-of-range scores and trims/limits notes at the HTTP boundary.
 
 Reviewer assignment projections now include total and open assignment counts,
-giving workload context without exposing other reviewers' submissions.
+giving workload context without exposing other reviewers' submissions. Reviewer
+and organization projections also expose group, expiry, recusal, reassignment,
+and recommendation-state metadata.
 
 Organization admins can now set the default blind-review policy. The setting is
 stored as a revisioned relational record and every change emits an audit/outbox
