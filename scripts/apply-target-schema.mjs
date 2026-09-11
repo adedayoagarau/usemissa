@@ -60,6 +60,21 @@ const migrationFiles = [
   '0035_visual_arts_organizations.sql',
   '0036_opportunity_media_enrichment.sql',
   '0041_creator_portfolios.sql',
+  // Submission portal configuration and Wave 6 operations are deliberately
+  // listed explicitly: they are the relational authority tail used by the
+  // production workspace health gate.
+  '0056_submission_portal_configuration_versions.sql',
+  '0057_submission_draft_version_pins.sql',
+  '0059_organization_review_settings.sql',
+  '0061_wave6_review_operations.sql',
+  '0062_wave6_decision_messages.sql',
+  '0063_wave6_delivery_attempts.sql',
+  '0064_wave6_retention_policies.sql',
+  '0065_wave6_inbox_views.sql',
+  '0066_wave6_review_corrections.sql',
+  '0067_wave6_review_recusal_expiry.sql',
+  '0068_wave6_review_recommendation_states.sql',
+  '0069_wave6_erasure_requests.sql',
 ];
 
 

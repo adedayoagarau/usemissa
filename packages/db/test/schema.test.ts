@@ -76,6 +76,15 @@ import {
   publicationTelemetryAnalytics,
   publicationAestheticProfiles,
   opportunityContestJudges,
+  reviewerGroups,
+  reviewerGroupMembers,
+  organizationReviewSettings,
+  organizationRetentionPolicies,
+  decisionMessageDrafts,
+  messageDeliveryAttempts,
+  organizationInboxViews,
+  reviewRecommendationCorrections,
+  organizationErasureRequests,
 } from "../src/schema.js";
 
 
@@ -338,6 +347,53 @@ test("target schema replay includes the complete registered tail through workspa
     assert.ok(position > previous, `${migration} is replayed in dependency order`);
     previous = position;
   }
+});
+
+test("target schema replay includes the submission portal and Wave 6 authority tail", () => {
+  const targetSchema = readFileSync("../../scripts/apply-target-schema.mjs", "utf8");
+  const requiredTail = [
+    "0056_submission_portal_configuration_versions.sql",
+    "0057_submission_draft_version_pins.sql",
+    "0059_organization_review_settings.sql",
+    "0061_wave6_review_operations.sql",
+    "0062_wave6_decision_messages.sql",
+    "0063_wave6_delivery_attempts.sql",
+    "0064_wave6_retention_policies.sql",
+    "0065_wave6_inbox_views.sql",
+    "0066_wave6_review_corrections.sql",
+    "0067_wave6_review_recusal_expiry.sql",
+    "0068_wave6_review_recommendation_states.sql",
+    "0069_wave6_erasure_requests.sql",
+  ];
+  let previous = targetSchema.indexOf("'0041_creator_portfolios.sql'");
+  assert.ok(previous >= 0, "replay has a stable portal insertion point");
+  for (const migration of requiredTail) {
+    const position = targetSchema.indexOf(`'${migration}'`);
+    assert.ok(position > previous, `${migration} is replayed after the authority base`);
+    previous = position;
+  }
+});
+
+test("Wave 6 schema keeps reviewer, communication, and governance records typed", () => {
+  const group = getTableConfig(reviewerGroups);
+  const members = getTableConfig(reviewerGroupMembers);
+  const settings = getTableConfig(organizationReviewSettings);
+  const retention = getTableConfig(organizationRetentionPolicies);
+  const drafts = getTableConfig(decisionMessageDrafts);
+  const attempts = getTableConfig(messageDeliveryAttempts);
+  const views = getTableConfig(organizationInboxViews);
+  const corrections = getTableConfig(reviewRecommendationCorrections);
+  const erasures = getTableConfig(organizationErasureRequests);
+
+  assert.ok(group.columns.some((column) => column.name === "workload_limit"));
+  assert.equal(members.primaryKeys.length, 1);
+  assert.ok(settings.columns.some((column) => column.name === "blind_mode"));
+  assert.ok(retention.columns.some((column) => column.name === "message_days"));
+  assert.ok(drafts.columns.some((column) => column.name === "decision_revision"));
+  assert.ok(attempts.columns.some((column) => column.name === "provider_status"));
+  assert.ok(views.columns.some((column) => column.name === "owner_account_id"));
+  assert.ok(corrections.columns.some((column) => column.name === "reason"));
+  assert.ok(erasures.columns.some((column) => column.name === "status"));
 });
 
 test("opportunity availability migration queues stale claims before restoring the deferred publication gate", () => {
@@ -629,6 +685,4 @@ test("publication aesthetic profiles and contest judges schema defines taste DNA
   assert.ok(judgesConfig.indexes.some((i) => i.config.name === "idx_opp_judges_profile"));
   assert.ok(judgesConfig.indexes.some((i) => i.config.name === "idx_opp_judges_judge_name"));
 });
-
-
 

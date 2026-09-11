@@ -17,7 +17,7 @@
  * snake_case table/column names throughout, matching
  * packages/radar-adapters/src/postgresSchema.ts's existing convention.
  */
-import { pgTable, text, timestamp, integer, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, jsonb, uuid, primaryKey } from 'drizzle-orm/pg-core';
 
 export const entities = pgTable('entities', {
   id: text('id').primaryKey(),
@@ -141,6 +141,22 @@ export const organizationReviewSettings = pgTable('organization_review_settings'
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
 });
 
+export const reviewerGroups = pgTable('reviewer_groups', {
+  id: uuid('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  name: text('name').notNull(),
+  workloadLimit: integer('workload_limit'),
+  revision: integer('revision').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+});
+
+export const reviewerGroupMembers = pgTable('reviewer_group_members', {
+  groupId: uuid('group_id').notNull().references(() => reviewerGroups.id),
+  reviewerAccountId: text('reviewer_account_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+}, (table) => [primaryKey({ columns: [table.groupId, table.reviewerAccountId] })]);
+
 export const organizationRetentionPolicies = pgTable('organization_retention_policies', {
   organizationId: text('organization_id').primaryKey(),
   draftDays: integer('draft_days').notNull().default(30),
@@ -152,7 +168,7 @@ export const organizationRetentionPolicies = pgTable('organization_retention_pol
 });
 
 export const reviewRecommendationCorrections = pgTable('review_recommendation_corrections', {
-  id: text('id').primaryKey(),
+  id: uuid('id').primaryKey(),
   organizationId: text('organization_id').notNull(),
   reviewAssignmentId: text('review_assignment_id').notNull(),
   previousScore: integer('previous_score'),
@@ -165,7 +181,7 @@ export const reviewRecommendationCorrections = pgTable('review_recommendation_co
 });
 
 export const decisionMessageDrafts = pgTable('decision_message_drafts', {
-  id: text('id').primaryKey(),
+  id: uuid('id').primaryKey(),
   organizationId: text('organization_id').notNull(),
   decisionId: text('decision_id').notNull(),
   decisionRevision: integer('decision_revision').notNull(),
@@ -178,8 +194,31 @@ export const decisionMessageDrafts = pgTable('decision_message_drafts', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
 });
 
+export const messageDeliveryAttempts = pgTable('message_delivery_attempts', {
+  id: uuid('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  messageDraftId: uuid('message_draft_id').notNull().references(() => decisionMessageDrafts.id),
+  attemptNumber: integer('attempt_number').notNull(),
+  providerStatus: text('provider_status').notNull(),
+  providerReference: text('provider_reference'),
+  errorCode: text('error_code'),
+  retryAt: timestamp('retry_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+});
+
+export const organizationInboxViews = pgTable('organization_inbox_views', {
+  id: uuid('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  ownerAccountId: text('owner_account_id').notNull(),
+  name: text('name').notNull(),
+  filter: jsonb('filter').notNull().$type<Record<string, unknown>>(),
+  revision: integer('revision').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+});
+
 export const organizationErasureRequests = pgTable('organization_erasure_requests', {
-  id: text('id').primaryKey(),
+  id: uuid('id').primaryKey(),
   organizationId: text('organization_id').notNull(),
   scope: text('scope').notNull(),
   reason: text('reason').notNull(),

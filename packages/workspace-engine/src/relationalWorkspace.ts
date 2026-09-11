@@ -15,6 +15,7 @@ export interface RelationalProgramView { id: string; entityId: string; name: str
 export interface RelationalOpenCallView { id: string; programId: string; title: string; status: string; radarOpportunityId?: string; guidelineText?: string; revision: number }
 export interface RelationalReviewRoundView { id: string; openCallId: string; name: string; revision: number }
 export interface RelationalReviewerGroupView { id: string; organizationId: string; name: string; workloadLimit?: number; memberCount: number; openAssignmentCount: number; revision: number }
+export interface RelationalOrganizationInboxView { id: string; organizationId: string; ownerAccountId: string; name: string; filter: { status?: string; openCallId?: string }; revision: number; createdAt: string; updatedAt: string }
 export interface RelationalCreatorDecisionContext {
   submitterAccountId: string;
   radarOpportunityId?: string;
@@ -201,7 +202,17 @@ export class RelationalWorkspace {
           ('submissions','portal_configuration_version_id'),('submissions','form_version_id'),
           ('submissions','opportunity_configuration_version_id'),('submissions','review_workflow_version_id'),
           ('review_rounds','revision'),('review_assignments','revision'),
+          ('review_assignments','reviewer_group_id'),('review_assignments','expires_at'),
+          ('review_assignments','recused_at'),('review_assignments','reassigned_from_assignment_id'),
           ('decisions','revision'),('delivery_tasks','revision'),
+          ('organization_review_settings','blind_mode'),('organization_review_settings','revision'),
+          ('reviewer_groups','workload_limit'),('reviewer_group_members','reviewer_account_id'),
+          ('decision_message_drafts','decision_revision'),('decision_message_drafts','status'),
+          ('message_delivery_attempts','attempt_number'),('message_delivery_attempts','provider_status'),
+          ('organization_retention_policies','draft_days'),('organization_retention_policies','message_days'),
+          ('organization_inbox_views','owner_account_id'),('organization_inbox_views','filter'),
+          ('review_recommendation_corrections','review_assignment_id'),
+          ('organization_erasure_requests','scope'),('organization_erasure_requests','status'),
           ('audit_events','correlation_id'),('outbox_events','event_key')
         ) required(table_name,column_name)
         where not exists (select 1 from information_schema.columns c
@@ -667,6 +678,26 @@ export class RelationalWorkspace {
       await this.effect(client, envelope, 'organization_inbox_view.created', 'organization_inbox_view', id, row.rows[0]!.revision, input);
       return { resourceType: 'organization_inbox_view', resourceId: id, revision: row.rows[0]!.revision };
     });
+  }
+
+  async organizationInboxViewsForOrganization(organizationId: string, ownerAccountId?: string): Promise<RelationalOrganizationInboxView[]> {
+    const result = await this.pool.query<{ id: string; organization_id: string; owner_account_id: string; name: string; filter: { status?: string; openCallId?: string }; revision: number; created_at: Date; updated_at: Date }>(
+      `select id,organization_id,owner_account_id,name,filter,revision,created_at,updated_at
+       from organization_inbox_views
+       where organization_id=$1 and ($2::text is null or owner_account_id=$2)
+       order by lower(name),id`,
+      [organizationId, ownerAccountId ?? null],
+    );
+    return result.rows.map((row) => ({
+      id: row.id,
+      organizationId: row.organization_id,
+      ownerAccountId: row.owner_account_id,
+      name: row.name,
+      filter: row.filter,
+      revision: row.revision,
+      createdAt: row.created_at.toISOString(),
+      updatedAt: row.updated_at.toISOString(),
+    }));
   }
 
   async correctReviewRecommendation(envelope: WorkspaceCommandEnvelope, assignmentId: string, input: { score?: number; notes?: string; reason: string }): Promise<WorkspaceCommandResult> {

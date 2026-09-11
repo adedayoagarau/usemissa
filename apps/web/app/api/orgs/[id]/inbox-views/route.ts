@@ -2,6 +2,20 @@ import { NextResponse } from 'next/server';
 import { requireOrganizationAccess } from '@/lib/organizationAccess';
 import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (!workspaceRelationalAuthorityEnabled()) return NextResponse.json({ error: 'Inbox views are not available yet' }, { status: 503 });
+  try {
+    const workspace = await getRelationalWorkspace();
+    const views = await workspace.organizationInboxViewsForOrganization(id, result.access.session.account.id);
+    return NextResponse.json({ views });
+  } catch {
+    return NextResponse.json({ error: 'Inbox views could not be loaded' }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });

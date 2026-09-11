@@ -297,6 +297,42 @@ export const reviewRounds = pgTable(
   ],
 );
 
+export const reviewerGroups = pgTable(
+  "reviewer_groups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    workloadLimit: integer("workload_limit"),
+    revision: revision(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("reviewer_groups_org_name_idx").on(table.organizationId, table.name),
+    check("reviewer_groups_workload_limit_check", sql`${table.workloadLimit} is null or ${table.workloadLimit} > 0`),
+    check("reviewer_groups_revision_check", sql`${table.revision} >= 1`),
+  ],
+);
+
+export const reviewerGroupMembers = pgTable(
+  "reviewer_group_members",
+  {
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => reviewerGroups.id, { onDelete: "cascade" }),
+    reviewerAccountId: text("reviewer_account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    createdAt,
+  },
+  (table) => [
+    primaryKey({ columns: [table.groupId, table.reviewerAccountId] }),
+  ],
+);
+
 export const reviewAssignments = pgTable(
   "review_assignments",
   {
@@ -310,8 +346,13 @@ export const reviewAssignments = pgTable(
     reviewerAccountId: text("reviewer_account_id")
       .notNull()
       .references(() => accounts.id, { onDelete: "restrict" }),
+    reviewerGroupId: uuid("reviewer_group_id").references(() => reviewerGroups.id, { onDelete: "set null" }),
     createdAt,
     completedAt: timestamp("completed_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    recusedAt: timestamp("recused_at", { withTimezone: true }),
+    recusalReason: text("recusal_reason"),
+    reassignedFromAssignmentId: text("reassigned_from_assignment_id"),
     revision: revision(),
     updatedAt,
   },
@@ -326,6 +367,7 @@ export const reviewAssignments = pgTable(
       table.completedAt,
     ),
     check("review_assignments_revision_check", sql`${table.revision} >= 1`),
+    index("review_assignments_expiry_idx").on(table.expiresAt),
   ],
 );
 
@@ -335,6 +377,7 @@ export const reviewRecommendations = pgTable(
     reviewAssignmentId: text("review_assignment_id")
       .primaryKey()
       .references(() => reviewAssignments.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("final"),
     score: integer("score"),
     notes: text("notes"),
     recordedAt: timestamp("recorded_at", { withTimezone: true })
@@ -398,6 +441,163 @@ export const deliveryTasks = pgTable(
       sql`${table.status} in ('pending', 'complete')`,
     ),
     check("delivery_tasks_revision_check", sql`${table.revision} >= 1`),
+  ],
+);
+
+export const organizationReviewSettings = pgTable(
+  "organization_review_settings",
+  {
+    organizationId: text("organization_id")
+      .primaryKey()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    blindMode: text("blind_mode").notNull().default("identity-redacted"),
+    revision: revision(),
+    updatedAt,
+  },
+  (table) => [
+    check("organization_review_settings_blind_mode_check", sql`${table.blindMode} in ('none', 'identity-redacted')`),
+    check("organization_review_settings_revision_check", sql`${table.revision} >= 1`),
+  ],
+);
+
+export const organizationRetentionPolicies = pgTable(
+  "organization_retention_policies",
+  {
+    organizationId: text("organization_id")
+      .primaryKey()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    draftDays: integer("draft_days").notNull().default(30),
+    uploadDays: integer("upload_days").notNull().default(365),
+    reviewDays: integer("review_days").notNull().default(730),
+    messageDays: integer("message_days").notNull().default(730),
+    revision: revision(),
+    updatedAt,
+  },
+  (table) => [
+    check("organization_retention_policies_days_check", sql`${table.draftDays} >= 1 and ${table.uploadDays} >= 1 and ${table.reviewDays} >= 1 and ${table.messageDays} >= 1`),
+    check("organization_retention_policies_revision_check", sql`${table.revision} >= 1`),
+  ],
+);
+
+export const decisionMessageDrafts = pgTable(
+  "decision_message_drafts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    decisionId: text("decision_id")
+      .notNull()
+      .references(() => decisions.id, { onDelete: "restrict" }),
+    decisionRevision: integer("decision_revision").notNull(),
+    recipientAccountId: text("recipient_account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "restrict" }),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    status: text("status").notNull().default("draft"),
+    revision: revision(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("decision_message_drafts_org_idx").on(table.organizationId, table.status),
+    check("decision_message_drafts_status_check", sql`${table.status} in ('draft', 'approved', 'scheduled', 'sending', 'sent', 'failed')`),
+    check("decision_message_drafts_revision_check", sql`${table.revision} >= 1`),
+  ],
+);
+
+export const messageDeliveryAttempts = pgTable(
+  "message_delivery_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    messageDraftId: uuid("message_draft_id")
+      .notNull()
+      .references(() => decisionMessageDrafts.id, { onDelete: "restrict" }),
+    attemptNumber: integer("attempt_number").notNull(),
+    providerStatus: text("provider_status").notNull(),
+    providerReference: text("provider_reference"),
+    errorCode: text("error_code"),
+    retryAt: timestamp("retry_at", { withTimezone: true }),
+    createdAt,
+  },
+  (table) => [
+    index("message_delivery_attempts_draft_idx").on(table.messageDraftId, table.attemptNumber),
+    check("message_delivery_attempts_status_check", sql`${table.providerStatus} in ('accepted', 'delivered', 'failed')`),
+    check("message_delivery_attempts_number_check", sql`${table.attemptNumber} >= 1`),
+  ],
+);
+
+export const organizationInboxViews = pgTable(
+  "organization_inbox_views",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    ownerAccountId: text("owner_account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    filter: jsonb("filter").notNull().$type<Record<string, unknown>>(),
+    revision: revision(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("organization_inbox_views_owner_name_idx").on(table.organizationId, table.ownerAccountId, table.name),
+    check("organization_inbox_views_revision_check", sql`${table.revision} >= 1`),
+  ],
+);
+
+export const reviewRecommendationCorrections = pgTable(
+  "review_recommendation_corrections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    reviewAssignmentId: text("review_assignment_id")
+      .notNull()
+      .references(() => reviewAssignments.id, { onDelete: "restrict" }),
+    previousScore: integer("previous_score"),
+    previousNotes: text("previous_notes"),
+    correctedScore: integer("corrected_score"),
+    correctedNotes: text("corrected_notes"),
+    reason: text("reason").notNull(),
+    createdByAccountId: text("created_by_account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "restrict" }),
+    createdAt,
+  },
+  (table) => [index("review_recommendation_corrections_assignment_idx").on(table.reviewAssignmentId)],
+);
+
+export const organizationErasureRequests = pgTable(
+  "organization_erasure_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    scope: text("scope").notNull(),
+    reason: text("reason").notNull(),
+    requestedByAccountId: text("requested_by_account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "restrict" }),
+    status: text("status").notNull().default("requested"),
+    revision: revision(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("organization_erasure_requests_org_idx").on(table.organizationId, table.status),
+    check("organization_erasure_requests_scope_check", sql`${table.scope} in ('drafts', 'uploads', 'reviews', 'messages')`),
+    check("organization_erasure_requests_status_check", sql`${table.status} in ('requested', 'approved', 'executing', 'completed', 'failed')`),
+    check("organization_erasure_requests_revision_check", sql`${table.revision} >= 1`),
   ],
 );
 
@@ -5315,5 +5515,3 @@ export const opportunityContestJudges = pgTable(
     index("idx_opp_judges_judge_name").on(table.judgeName),
   ],
 );
-
-
