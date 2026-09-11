@@ -119,7 +119,7 @@ represented in the outbox.
   policy, and `git diff --check` are green after the Wave 6 slices.
 - The local Neon target has all portal/Wave 6 tables and relational health
   reports `schemaReady: true` after applying the reconciled authority schema,
-  migrations 0056/0057, and Wave 6 migrations 0059/0061–0067.
+  migrations 0056/0057, and Wave 6 migrations 0059/0061–0068.
 - The live Postgres integration suite was not counted as passed on this target:
   its safety guard requires an explicitly named disposable
   `missa_story_16_1_*` database. Hosted tenant-isolation and device gates remain
