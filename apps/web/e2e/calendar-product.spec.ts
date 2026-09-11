@@ -26,16 +26,17 @@ test.beforeEach(async ({ page }) => {
 test('Calendar is editable, keyboard reachable, contained, and truthful about provider availability', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/calendar');
-  await expect(page.getByRole('heading', { level: 1, name: 'Your working calendar' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Google · Not configured' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Outlook · Not configured' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Connect local calendar' })).toBeVisible();
-  await page.getByRole('button', { name: 'Add event' }).click();
-  await expect(page.getByRole('heading', { name: 'Add event' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Calendar' })).toBeVisible();
+  await page.getByRole('button', { name: 'Connect a calendar' }).click();
+  await expect(page.getByRole('heading', { name: 'Connect your calendar' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Unavailable' })).toHaveCount(2);
+  await page.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: 'Add time' }).click();
+  await expect(page.getByRole('heading', { name: 'Add time' })).toBeVisible();
   await expect(page.getByLabel('Title')).toBeFocused();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('heading', { name: 'Add event' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Add event' })).toBeFocused();
+  await expect(page.getByRole('heading', { name: 'Add time' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add time' })).toBeFocused();
   await expect(page.locator('section[aria-busy]')).toHaveAttribute('aria-busy', 'false');
   await page.waitForTimeout(200);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
@@ -97,14 +98,14 @@ test('Calendar feed issue, rotation, and revocation invalidate prior private lin
   expect(revoke.ok()).toBeTruthy();
   expect((await page.request.get(`/api/users/${encodeURIComponent(profile.id)}/calendar.ics?token=${encodeURIComponent(rotated.token)}`)).status()).toBe(401);
   await page.goto('/calendar');
-  await expect(page.getByRole('button', { name: 'Connect local calendar' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Connect a calendar' })).toBeVisible();
 });
 
 test('Calendar creates and deletes a personal event through the relational UI', async ({ page }) => {
   await page.unroute('**/api/me/calendar/events?**');
   const title = `Delete proof ${Date.now()}`;
   await page.goto('/calendar');
-  await page.getByRole('button', { name: 'Add event' }).click();
+  await page.getByRole('button', { name: 'Add time' }).click();
   await page.getByLabel('Title').fill(title);
   await page.getByRole('button', { name: 'Save event' }).click();
   await expect(page.getByText('Event added.', { exact: true })).toBeAttached();

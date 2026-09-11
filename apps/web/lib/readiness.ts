@@ -12,6 +12,7 @@ export interface ReadinessReport {
   checks: {
     database: ReadinessCheck;
     session: ReadinessCheck;
+    creatorAuthority: ReadinessCheck;
     fileStorage: ReadinessCheck;
     cron: ReadinessCheck;
     email: ReadinessCheck;
@@ -55,6 +56,11 @@ export function readinessReport(
   const checks = {
     database: check(Boolean(env.DATABASE_URL), true),
     session: check(Boolean(env.MISSA_SESSION_SECRET), true),
+    creatorAuthority: check(
+      env.MISSA_OPPORTUNITY_REPOSITORY !== "postgres" ||
+        env.MISSA_CREATOR_RELATIONAL_AUTHORITY === "1",
+      true,
+    ),
     fileStorage: check(Boolean(env.BLOB_READ_WRITE_TOKEN), false),
     cron: check(Boolean(env.CRON_SECRET), false),
     email: check(Boolean(env.RESEND_API_KEY && env.RESEND_FROM), false),
@@ -80,7 +86,9 @@ export function readinessReport(
   };
 
   const requiredReady =
-    checks.database.state === "ready" && checks.session.state === "ready";
+    checks.database.state === "ready" &&
+    checks.session.state === "ready" &&
+    checks.creatorAuthority.state === "ready";
   return {
     environment: env.VERCEL_ENV ?? env.NODE_ENV ?? "unknown",
     checks,

@@ -3,6 +3,7 @@ import { creatorPoolFor, creatorRelationalAuthorityEnabled, PostgresCreatorAccou
 import { getEngine } from '@/lib/engine';
 import { createPasswordResetToken } from '@/lib/password-reset-tokens';
 import { deliverPasswordResetEmail } from '@/emails/password-reset';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,12 +15,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
   }
 
-  const { email } = (body || {}) as { email?: unknown };
-  if (typeof email !== 'string' || !email.trim()) {
+  const parsed = z.object({ email: z.string().trim().min(1) }).safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json({ error: 'Email is required.' }, { status: 400 });
   }
 
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = parsed.data.email.toLowerCase();
   const connectionString = process.env.DATABASE_URL;
 
   // Always return identical success message to prevent user enumeration

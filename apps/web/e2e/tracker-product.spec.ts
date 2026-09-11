@@ -31,44 +31,35 @@ async function trackerAccount(page: Page) {
   return opportunity!;
 }
 
-test('Tracker uses the selected next-actions composition and self-scoped mutations', async ({ page }) => {
+test('My applications records submission progress with self-scoped mutations', async ({ page }) => {
   const opportunity = await trackerAccount(page);
   await page.setViewportSize({ width: 1280, height: 900 });
   const response = await page.goto('/tracker');
   expect(response?.status()).toBe(200);
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Tracker' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Tracker views' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Active' })).toHaveAttribute('aria-current', 'page');
-  await expect(page.locator('header').getByRole('link', { name: 'Opportunities', exact: true })).toBeVisible();
-  await expect(page.locator('header').getByRole('link', { name: 'Tracker', exact: true })).toBeVisible();
-  await expect(page.locator('header').getByRole('link', { name: 'Library', exact: true })).toBeVisible();
-  await expect(page.locator('header').getByRole('link', { name: 'Submissions', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { level: 1, name: 'My applications' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Saved/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
   await expect(page.getByText(/fit score|trust|freshness|acceptance rate|source confidence|\(\d+d\)/i)).toHaveCount(0);
 
-  const status = page.getByLabel(`Update status for ${opportunity.title}`);
-  await status.selectOption('preparing');
-  await expect(page.getByRole('status')).toContainText(`${opportunity.title} is now Preparing.`);
-  await expect(status).toHaveValue('preparing');
+  await page.getByRole('button', { name: new RegExp(opportunity.title) }).click();
+  await page.getByRole('button', { name: 'Record submission' }).click();
+  await page.getByLabel('What happened?').selectOption('submitted');
+  await page.getByRole('button', { name: 'Save update' }).click();
+  await expect(page.getByRole('tab', { name: /Awaiting responses/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByLabel('Selected application').getByText('Submitted', { exact: true })).toBeVisible();
   await page.screenshot({ path: 'outputs/tracker-product-desktop.png', fullPage: true });
-
-  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
-  await expect(page).toHaveURL(/view=calendar/);
-  await expect(page.getByRole('heading', { name: 'Upcoming and recorded deadlines' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
 });
 
-test('Tracker keeps a real list fallback and accessibility at phone width', async ({ page }) => {
+test('My applications remains accessible at phone width', async ({ page }) => {
   await trackerAccount(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/tracker');
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Tracker' })).toBeVisible();
-  await page.getByRole('button', { name: 'Stage board' }).click();
-  await expect(page).toHaveURL(/layout=board/);
-  await expect(page.getByRole('heading', { name: 'Saved', exact: true })).toBeVisible();
-  await expect(page.getByLabel(/Update status for/)).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'My applications' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Saved/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('region', { name: 'Application list' })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
 
   const results = await new AxeBuilder({ page }).analyze();
@@ -112,15 +103,15 @@ test('Tracker status endpoint cannot mutate another account item', async ({ brow
   }
 });
 
-test('Tracker exposes an explicit recovery action for a stale relational edit', async ({ page }) => {
+test('My applications exposes a stale-edit recovery error', async ({ page }) => {
   const opportunity = await trackerAccount(page);
-  await page.route(`**/api/me/tracker/${encodeURIComponent(opportunity.id)}/status`, async (route) => {
-    await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'Tracker item changed' }) });
+  await page.route(`**/api/me/applications/${encodeURIComponent(opportunity.id)}`, async (route) => {
+    if (route.request().method() === 'GET') return route.continue();
+    await route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: 'This application changed in another session.' }) });
   });
   await page.goto('/tracker');
-  const status = page.getByLabel(`Update status for ${opportunity.title}`);
-  await status.selectOption('preparing');
-  await expect(page.getByRole('region', { name: 'Opportunity' }).getByRole('alert')).toContainText('changed in another session');
-  await expect(page.getByRole('button', { name: 'Reload latest Tracker state' })).toBeVisible();
-  await expect(status).toHaveValue('interested');
+  await page.getByRole('button', { name: new RegExp(opportunity.title) }).click();
+  await page.getByRole('button', { name: 'Record submission' }).click();
+  await page.getByRole('button', { name: 'Save update' }).click();
+  await expect(page.getByRole('dialog').getByRole('alert')).toContainText('changed in another session');
 });

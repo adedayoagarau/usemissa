@@ -3,6 +3,7 @@ import { creatorPoolFor, creatorRelationalAuthorityEnabled, PostgresCreatorAccou
 import { hashPassword } from '@missa/radar-engine';
 import { getEngine } from '@/lib/engine';
 import { verifyPasswordResetToken } from '@/lib/password-reset-tokens';
+import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,12 +15,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
   }
 
-  const { token, password } = (body || {}) as { token?: unknown; password?: unknown };
-  if (typeof token !== 'string' || !token.trim()) {
+  const parsed = z.object({ token: z.string().trim().min(1), password: z.string() }).safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json({ error: 'Reset token is required.' }, { status: 400 });
   }
 
-  if (typeof password !== 'string' || password.length < 8 || password.length > 200) {
+  const { token, password } = parsed.data;
+  if (password.length < 8 || password.length > 200) {
     return NextResponse.json({ error: 'Password must be between 8 and 200 characters.' }, { status: 400 });
   }
 
@@ -29,9 +31,10 @@ export async function POST(request: Request) {
     // First, decode token to find accountId
     const preCheck = verifyPasswordResetToken(token);
     if (!preCheck.valid) {
-      const errorMsg = preCheck.reason === 'expired'
-        ? 'This password reset link has expired. Please request a new one.'
-        : 'Invalid or malformed password reset link.';
+      let errorMsg = 'Invalid or malformed password reset link.';
+      if (preCheck.reason === 'expired') {
+        errorMsg = 'This password reset link has expired. Please request a new one.';
+      }
       return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
 

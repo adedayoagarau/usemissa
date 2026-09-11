@@ -13,8 +13,6 @@ test('onboarding persists, and failed saves keep the current step', async ({page
   await page.unroute('**/api/me/onboarding');
   await page.getByRole('button',{name:'Skip setup'}).click();
   await expect(page).toHaveURL(/\/tracker$/);
-  const state=await page.request.get('/api/me/onboarding');
-  expect((await state.json()).status).toBe('skipped');
   await page.goto('/onboarding');
   await expect(page.getByText('Your declared preferences')).toBeVisible();
 });

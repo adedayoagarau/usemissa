@@ -14,15 +14,13 @@ async function savedAccount(page: Page) {
   return opportunity;
 }
 
-test("Saved is a private shortlist backed by Tracker state", async ({ page }) => {
+test("Saved is a private shortlist in My applications", async ({ page }) => {
   const opportunity = await savedAccount(page);
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await page.goto("/saved"))?.status()).toBe(200);
-  await expect(page.getByRole("heading", { level: 1, name: "Saved" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "My applications" })).toBeVisible();
   await expect(page.getByRole("heading", { name: opportunity.title })).toBeVisible();
-  await page.getByRole("button", { name: "Open navigation" }).click();
-  await expect(page.getByRole("link", { name: "Saved", exact: true })).toHaveAttribute("aria-current", "page");
-  await page.keyboard.press("Escape");
+  await expect(page.getByRole("tab", { name: /Saved/ })).toHaveAttribute("aria-selected", "true");
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((violation) => ["critical", "serious"].includes(violation.impact ?? ""))).toEqual([]);
