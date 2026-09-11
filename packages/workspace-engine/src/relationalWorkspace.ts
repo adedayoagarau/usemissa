@@ -185,6 +185,13 @@ export class RelationalWorkspace {
       and to_regclass('public.review_workflow_versions') is not null
       and to_regclass('public.opportunity_configuration_versions') is not null
       and to_regclass('public.organization_review_settings') is not null
+      and to_regclass('public.reviewer_groups') is not null
+      and to_regclass('public.decision_message_drafts') is not null
+      and to_regclass('public.message_delivery_attempts') is not null
+      and to_regclass('public.organization_retention_policies') is not null
+      and to_regclass('public.organization_inbox_views') is not null
+      and to_regclass('public.review_recommendation_corrections') is not null
+      and to_regclass('public.organization_erasure_requests') is not null
       and not exists (
         select 1 from (values
           ('entities','revision'),('programs','revision'),('open_calls','revision'),
