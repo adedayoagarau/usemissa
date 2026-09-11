@@ -14,6 +14,7 @@ export interface RelationalEntityView { id: string; organizationId: string; name
 export interface RelationalProgramView { id: string; entityId: string; name: string; revision: number }
 export interface RelationalOpenCallView { id: string; programId: string; title: string; status: string; radarOpportunityId?: string; guidelineText?: string; revision: number }
 export interface RelationalReviewRoundView { id: string; openCallId: string; name: string; revision: number }
+export interface RelationalReviewerGroupView { id: string; organizationId: string; name: string; workloadLimit?: number; memberCount: number; openAssignmentCount: number; revision: number }
 export interface RelationalCreatorDecisionContext {
   submitterAccountId: string;
   radarOpportunityId?: string;
@@ -144,6 +145,7 @@ const tenantJoins: Record<WorkspaceResourceType, { table: string; joins: string;
   review_workflow_version: { table: 'review_workflow_versions r', joins: '', organization: 'r.organization_id' },
   opportunity_configuration_version: { table: 'opportunity_configuration_versions r', joins: '', organization: 'r.organization_id' },
   organization_review_settings: { table: 'organization_review_settings r', joins: '', organization: 'r.organization_id' },
+  reviewer_group: { table: 'reviewer_groups r', joins: '', organization: 'r.organization_id' },
 };
 
 export function workspaceRequestHash(value: unknown): string {
@@ -533,6 +535,25 @@ export class RelationalWorkspace {
       join open_calls o on o.id=rr.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
       where rr.open_call_id=$1 and e.organization_id=$2 order by rr.created_at,rr.id`, [openCallId, organizationId]);
     return result.rows;
+  }
+
+  async reviewerGroupsForOrganization(organizationId: string): Promise<RelationalReviewerGroupView[]> {
+    const result = await this.pool.query<{ id: string; organization_id: string; name: string; workload_limit: number | null; member_count: string; open_assignment_count: string; revision: number }>(`select rg.id,rg.organization_id,rg.name,rg.workload_limit,rg.revision,
+      count(distinct rgm.reviewer_account_id)::text member_count,
+      count(ra.id) filter (where ra.completed_at is null)::text open_assignment_count
+      from reviewer_groups rg left join reviewer_group_members rgm on rgm.group_id=rg.id
+      left join review_assignments ra on ra.reviewer_group_id=rg.id
+      where rg.organization_id=$1 group by rg.id order by rg.created_at,rg.id`, [organizationId]);
+    return result.rows.map((row) => ({ id: row.id, organizationId: row.organization_id, name: row.name, ...(row.workload_limit === null ? {} : { workloadLimit: row.workload_limit }), memberCount: Number(row.member_count), openAssignmentCount: Number(row.open_assignment_count), revision: row.revision }));
+  }
+
+  async createReviewerGroup(envelope: WorkspaceCommandEnvelope, input: { name: string; workloadLimit?: number }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, input, async (client) => {
+      const id = randomUUID();
+      const row = await client.query<{ revision: number }>('insert into reviewer_groups (id,organization_id,name,workload_limit) values ($1,$2,$3,$4) returning revision', [id, envelope.organizationId, input.name, input.workloadLimit ?? null]);
+      await this.effect(client, envelope, 'reviewer_group.created', 'reviewer_group', id, row.rows[0]!.revision, input);
+      return { resourceType: 'reviewer_group', resourceId: id, revision: row.rows[0]!.revision };
+    });
   }
 
   async organizationForReviewAssignment(reviewerAccountId: string, assignmentId: string): Promise<string | undefined> {

@@ -17,6 +17,10 @@ Organization admins can now set the default blind-review policy. The setting is
 stored as a revisioned relational record and every change emits an audit/outbox
 effect; published workflow versions remain authoritative for per-stage behavior.
 
+Reviewer groups now have a relational projection with member counts, open
+assignment counts, and optional workload limits; group creation is an audited,
+idempotent organization-admin command.
+
 ### Review operations
 
 - Configure review stages, reviewer groups, workload limits, blind projections,

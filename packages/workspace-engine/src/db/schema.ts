@@ -126,6 +126,7 @@ export const reviewAssignments = pgTable('review_assignments', {
   reviewRoundId: text('review_round_id').notNull().references(() => reviewRounds.id),
   submissionId: text('submission_id').notNull().references(() => submissions.id),
   reviewerAccountId: text('reviewer_account_id').notNull(),
+  reviewerGroupId: text('reviewer_group_id'),
   completedAt: timestamp('completed_at', { withTimezone: true }),
 });
 
