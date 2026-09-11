@@ -21,6 +21,9 @@ Reviewer groups now have a relational projection with member counts, open
 assignment counts, and optional workload limits; group creation is an audited,
 idempotent organization-admin command.
 
+Reviewer-group membership can now be added through the same organization scope
+and idempotency boundary, with duplicate membership rejected explicitly.
+
 Decision-linked message drafts now require an organization-scoped decision and
 recipient, remain draft-state until a future approval command, and record their
 creation through the same audit/outbox boundary.

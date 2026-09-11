@@ -561,6 +561,18 @@ export class RelationalWorkspace {
     });
   }
 
+  async addReviewerGroupMember(envelope: WorkspaceCommandEnvelope, input: { groupId: string; reviewerAccountId: string }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, input, async (client) => {
+      const group = await client.query<{ id: string }>('select id from reviewer_groups where id=$1 and organization_id=$2 for update', [input.groupId, envelope.organizationId]);
+      if (!group.rows[0]) throw new WorkspaceNotFoundError();
+      const member = await client.query('insert into reviewer_group_members (group_id,reviewer_account_id) values ($1,$2) on conflict do nothing', [input.groupId, input.reviewerAccountId]);
+      if (!member.rowCount) throw new WorkspaceTransitionError('Reviewer is already in this group');
+      const revision = (await client.query<{ revision: number }>('update reviewer_groups set revision=revision+1,updated_at=now() where id=$1 returning revision', [input.groupId])).rows[0]!.revision;
+      await this.effect(client, envelope, 'reviewer_group.member_added', 'reviewer_group', input.groupId, revision, { reviewerAccountId: input.reviewerAccountId });
+      return { resourceType: 'reviewer_group', resourceId: input.groupId, revision };
+    });
+  }
+
   async createDecisionMessageDraft(envelope: WorkspaceCommandEnvelope, input: { decisionId: string; recipientAccountId: string; subject: string; body: string }): Promise<WorkspaceCommandResult> {
     return this.command(envelope, input, async (client) => {
       const decision = await client.query<{ id: string }>(`select d.id from decisions d join works w on w.id=d.work_id join submissions s on s.id=w.submission_id join submission_paths sp on sp.id=s.submission_path_id join open_calls o on o.id=sp.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id where d.id=$1 and e.organization_id=$2`, [input.decisionId, envelope.organizationId]);
