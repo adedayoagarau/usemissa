@@ -1362,6 +1362,13 @@ export function CreatorPortfolioStudio({
                           >
                             <Instagram aria-hidden="true" />
                           </Button>
+                          {isPublicStage && (
+                            <>
+                              <Button variant="ghost" size="icon" aria-label="X — sample link" onClick={() => setContactDemo(true)}><span aria-hidden="true">𝕏</span></Button>
+                              <Button variant="ghost" size="icon" aria-label="Threads — sample link" onClick={() => setContactDemo(true)}><AtSign aria-hidden="true" /></Button>
+                              <Button variant="ghost" size="icon" aria-label="Facebook — sample link" onClick={() => setContactDemo(true)}><Facebook aria-hidden="true" /></Button>
+                            </>
+                          )}
                         </>
                       ) : (
                         <>
@@ -1395,7 +1402,7 @@ export function CreatorPortfolioStudio({
               </header>
               {isPublicStage ? (
                 <nav className={styles.exhibitionIndex} aria-label="Portfolio sections">
-                  <a href="#selected-work">Work</a>
+                  <a href="#selected-work">Selected work</a>
                   <a href="#about-riley">About</a>
                   <a href="#contact-riley">Contact</a>
                 </nav>
@@ -1439,8 +1446,19 @@ export function CreatorPortfolioStudio({
                       }
                       className={`${styles.project} ${filter === "Writing" || filter === "Sound" || !image ? styles.readingProject : ""}`}
                     >
+                      {isPublicStage && !image && workFormats(work).includes("Sound") && (
+                        <div className={styles.soundArtwork}>
+                          <span>Field recording · 2025</span>
+                          <div className={styles.soundLines} aria-hidden="true">
+                            {Array.from({ length: 48 }, (_, bar) => (
+                              <i key={bar} style={{ "--bar-height": `${16 + Math.round(Math.abs(Math.sin(bar * 0.53) * Math.cos(bar * 0.17)) * 88)}px` } as React.CSSProperties} />
+                            ))}
+                          </div>
+                          <span>{isSample ? "Sound & text · audio preview coming soon" : "Sound & text"}</span>
+                        </div>
+                      )}
                       {image && filter !== "Writing" && filter !== "Sound" && (
-                        <button
+                        <Button variant="ghost"
                           className={styles.imageButton}
                           aria-label={`Enlarge image from ${title}`}
                           onClick={() => {
@@ -1462,18 +1480,12 @@ export function CreatorPortfolioStudio({
                             <Expand aria-hidden="true" />
                             View image
                           </span>
-                        </button>
+                        </Button>
                       )}
                       <div className={styles.projectCopy}>
                         <p className={styles.projectIndex} aria-hidden="true">
                           <span>{String(index + 1).padStart(2, "0")}</span>
-                          {index % 4 === 0
-                            ? "Reading room"
-                            : index % 4 === 1
-                              ? "Image / text"
-                              : index % 4 === 2
-                                ? "Photographic study"
-                                : "Listening room"}
+                          {workFormats(work).join(" / ")}
                         </p>
                         <WorkHeading className="font-heading">
                           {title}
@@ -1528,7 +1540,7 @@ export function CreatorPortfolioStudio({
                               }}
                             >
                               <BookOpen aria-hidden="true" />
-                              {isSample ? "Read poem" : "Read full text"}
+                              {isSample ? (workFormats(work).includes("Sound") ? "Read accompanying text" : "Read poem") : "Read full text"}
                             </Button>
                           )}
                         {!isSample && publicWebUrl(work.url ?? "") && (
@@ -1714,7 +1726,7 @@ export function CreatorPortfolioStudio({
                     )}
                 </div>
               )}
-              {isPublicStage && (
+              {isPublicStage && isSample && (
                 <footer className={styles.colophon} id="about-riley">
                   <p className={styles.colophonLabel}>About the artist</p>
                   <div className={styles.colophonStatement}>
