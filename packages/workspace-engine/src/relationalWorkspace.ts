@@ -568,6 +568,20 @@ export class RelationalWorkspace {
     });
   }
 
+  async transitionDecisionMessageDraft(envelope: WorkspaceCommandEnvelope, id: string, status: 'approved' | 'scheduled'): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { id, status }, async (client) => {
+      const current = await client.query<{ status: string; revision: number }>('select status,revision from decision_message_drafts where id=$1 and organization_id=$2 for update', [id, envelope.organizationId]);
+      const draft = current.rows[0];
+      if (!draft) throw new WorkspaceNotFoundError();
+      if (draft.status !== 'draft' && !(draft.status === 'approved' && status === 'scheduled')) throw new WorkspaceTransitionError(`Message draft cannot transition from ${draft.status} to ${status}`);
+      if (envelope.expectedRevision !== undefined && draft.revision !== envelope.expectedRevision) throw new WorkspaceConflictError('decision_message_draft', id, envelope.expectedRevision, draft.revision);
+      const revision = draft.revision + 1;
+      await client.query('update decision_message_drafts set status=$1,revision=$2,updated_at=now() where id=$3', [status, revision, id]);
+      await this.effect(client, envelope, `decision_message_draft.${status}`, 'decision_message_draft', id, revision, {});
+      return { resourceType: 'decision_message_draft', resourceId: id, revision };
+    });
+  }
+
   async organizationForReviewAssignment(reviewerAccountId: string, assignmentId: string): Promise<string | undefined> {
     const result = await this.pool.query<{ organization_id: string }>(`select e.organization_id from review_assignments ra
       join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id

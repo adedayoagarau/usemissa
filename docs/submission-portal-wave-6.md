@@ -25,6 +25,10 @@ Decision-linked message drafts now require an organization-scoped decision and
 recipient, remain draft-state until a future approval command, and record their
 creation through the same audit/outbox boundary.
 
+Drafts can now transition through explicit approved and scheduled states with
+revision checks; no transition claims that a provider accepted or delivered a
+message.
+
 ### Review operations
 
 - Configure review stages, reviewer groups, workload limits, blind projections,
