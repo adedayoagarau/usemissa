@@ -29,6 +29,10 @@ Drafts can now transition through explicit approved and scheduled states with
 revision checks; no transition claims that a provider accepted or delivered a
 message.
 
+Delivery attempts now record accepted, delivered, or failed provider evidence
+with attempt numbers, references, error codes, and retry timestamps; provider
+acceptance remains distinct from delivery proof.
+
 ### Review operations
 
 - Configure review stages, reviewer groups, workload limits, blind projections,

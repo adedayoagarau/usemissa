@@ -147,6 +147,7 @@ const tenantJoins: Record<WorkspaceResourceType, { table: string; joins: string;
   organization_review_settings: { table: 'organization_review_settings r', joins: '', organization: 'r.organization_id' },
   reviewer_group: { table: 'reviewer_groups r', joins: '', organization: 'r.organization_id' },
   decision_message_draft: { table: 'decision_message_drafts r', joins: '', organization: 'r.organization_id' },
+  message_delivery_attempt: { table: 'message_delivery_attempts r', joins: '', organization: 'r.organization_id' },
 };
 
 export function workspaceRequestHash(value: unknown): string {
@@ -579,6 +580,19 @@ export class RelationalWorkspace {
       await client.query('update decision_message_drafts set status=$1,revision=$2,updated_at=now() where id=$3', [status, revision, id]);
       await this.effect(client, envelope, `decision_message_draft.${status}`, 'decision_message_draft', id, revision, {});
       return { resourceType: 'decision_message_draft', resourceId: id, revision };
+    });
+  }
+
+  async recordMessageDeliveryAttempt(envelope: WorkspaceCommandEnvelope, input: { messageDraftId: string; providerStatus: 'accepted' | 'delivered' | 'failed'; providerReference?: string; errorCode?: string; retryAt?: string }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, input, async (client) => {
+      const draft = await client.query<{ id: string }>('select id from decision_message_drafts where id=$1 and organization_id=$2', [input.messageDraftId, envelope.organizationId]);
+      if (!draft.rows[0]) throw new WorkspaceNotFoundError();
+      const next = await client.query<{ attempt_number: number }>('select coalesce(max(attempt_number),0)+1 attempt_number from message_delivery_attempts where message_draft_id=$1', [input.messageDraftId]);
+      const attemptNumber = next.rows[0]!.attempt_number;
+      const id = randomUUID();
+      await client.query('insert into message_delivery_attempts (id,organization_id,message_draft_id,attempt_number,provider_status,provider_reference,error_code,retry_at) values ($1,$2,$3,$4,$5,$6,$7,$8)', [id, envelope.organizationId, input.messageDraftId, attemptNumber, input.providerStatus, input.providerReference ?? null, input.errorCode ?? null, input.retryAt ?? null]);
+      await this.effect(client, envelope, 'message_delivery_attempt.recorded', 'message_delivery_attempt', id, attemptNumber, { messageDraftId: input.messageDraftId, providerStatus: input.providerStatus });
+      return { resourceType: 'message_delivery_attempt', resourceId: id, revision: attemptNumber };
     });
   }
 
