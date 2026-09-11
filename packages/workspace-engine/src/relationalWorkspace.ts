@@ -546,7 +546,7 @@ export class RelationalWorkspace {
   async reviewerGroupsForOrganization(organizationId: string): Promise<RelationalReviewerGroupView[]> {
     const result = await this.pool.query<{ id: string; organization_id: string; name: string; workload_limit: number | null; member_count: string; open_assignment_count: string; revision: number }>(`select rg.id,rg.organization_id,rg.name,rg.workload_limit,rg.revision,
       count(distinct rgm.reviewer_account_id)::text member_count,
-      count(ra.id) filter (where ra.completed_at is null)::text open_assignment_count
+      count(distinct ra.id) filter (where ra.completed_at is null and ra.recused_at is null)::text open_assignment_count
       from reviewer_groups rg left join reviewer_group_members rgm on rgm.group_id=rg.id
       left join review_assignments ra on ra.reviewer_group_id=rg.id
       where rg.organization_id=$1 group by rg.id order by rg.created_at,rg.id`, [organizationId]);
