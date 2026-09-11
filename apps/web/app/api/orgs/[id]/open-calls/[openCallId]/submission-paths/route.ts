@@ -11,6 +11,8 @@ interface FormFieldInput {
   id?: string;
   type?: SubmissionField['type'];
   label?: string;
+  helpText?: string;
+  visibleWhen?: { fieldId?: string; equals?: string };
   required?: boolean;
   order?: number;
 }
@@ -34,6 +36,8 @@ function validForm(body: SubmissionPathBody): boolean {
     if (!field || typeof field !== 'object') return true;
     return (field.id !== undefined && (typeof field.id !== 'string' || !field.id.trim()))
       || typeof field.label !== 'string' || !field.label.trim()
+      || (field.helpText !== undefined && (typeof field.helpText !== 'string' || field.helpText.length > 1_000))
+      || (field.visibleWhen !== undefined && (!field.visibleWhen || typeof field.visibleWhen.fieldId !== 'string' || !field.visibleWhen.fieldId.trim() || typeof field.visibleWhen.equals !== 'string'))
       || !field.type || !fieldTypes.has(field.type)
       || typeof field.required !== 'boolean'
       || (field.order !== undefined && (!Number.isInteger(field.order) || field.order < 0));
@@ -52,6 +56,8 @@ function normalizedFields(fields: FormFieldInput[]): SubmissionField[] {
     id: typeof field.id === 'string' && field.id.trim() ? field.id : `field_${randomUUID()}`,
     type: field.type!,
     label: field.label!,
+    ...(field.helpText?.trim() ? { helpText: field.helpText.trim() } : {}),
+    ...(field.visibleWhen?.fieldId && field.visibleWhen.equals !== undefined ? { visibleWhen: { fieldId: field.visibleWhen.fieldId.trim(), equals: field.visibleWhen.equals } } : {}),
     required: field.required === true,
     order: Number.isInteger(field.order) ? field.order! : index,
   }));

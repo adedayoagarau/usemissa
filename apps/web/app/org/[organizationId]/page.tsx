@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
+import type { RelationalPortalConfigurationView, RelationalPublicOpenCallView } from '@missa/workspace-engine';
 import { ArrowRight, Building2, CalendarDays, CircleDollarSign, ImageIcon, Info } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
@@ -11,7 +12,7 @@ import { PublicSiteShell } from '@/components/public-site-shell';
 import { InstitutionProfileView } from '@/components/institution-profile-view';
 import { organizationMonogram, publicDeadlineLabel, publicFeeLabel, publicPracticeLabels, safePublicMedia } from '@/lib/publicOrganizationProfile';
 import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { MissaSiteHeader } from '@/components/missa-site-header';
 import styles from './public-organization.module.css';
 
@@ -60,14 +61,26 @@ export default async function PublicOrganizationPage({ params }: { params: Promi
   if (!organization) {
     notFound();
   }
-  const workspace = await getWorkspaceEngine();
-  const openCalls = workspace.publishedOpenCallsForOrganization(organizationId);
+  let portal: RelationalPortalConfigurationView | undefined;
+  let openCalls: RelationalPublicOpenCallView[];
+  if (workspaceRelationalAuthorityEnabled()) {
+    const workspace = await getRelationalWorkspace();
+    portal = await workspace.publishedPortalConfiguration(organizationId);
+    openCalls = await workspace.publishedOpenCallsForPortal(organizationId);
+  } else {
+    const workspace = await getWorkspaceEngine();
+    openCalls = workspace.publishedOpenCallsForOrganization(organizationId).map((call) => ({
+        id: call.id,
+        title: call.title,
+        radarOpportunityId: call.radarOpportunityId,
+        hasHostedForm: workspace.submissionPathsForOpenCall(call.id).length > 0,
+      }));
+  }
   const opportunityRepository = await getOpportunityRepository();
   const linked = await Promise.all(openCalls.map((call) => call.radarOpportunityId ? opportunityRepository.getById(call.radarOpportunityId).catch(() => null) : null));
   const rows = openCalls.map((call, index) => {
     const opportunity = linked[index];
-    const hasHostedForm = workspace.submissionPathsForOpenCall(call.id).length > 0;
-    return { call, opportunity, hasHostedForm, image: safePublicMedia(opportunity?.identityAssetUrl) };
+    return { call, opportunity, hasHostedForm: call.hasHostedForm, image: safePublicMedia(opportunity?.identityAssetUrl) };
   });
   const practiceLabels = publicPracticeLabels(linked);
   const session = await getSessionAccountFromToken((await cookies()).get(SESSION_COOKIE)?.value);
@@ -81,9 +94,9 @@ export default async function PublicOrganizationPage({ params }: { params: Promi
       <JsonLd data={{ '@context': 'https://schema.org', '@type': 'ItemList', name: `${organization.name} published Opportunities`, numberOfItems: openCalls.length, itemListElement: openCalls.map((call, index) => ({ '@type': 'ListItem', position: index + 1, name: call.title, url: absoluteUrl(`/org/${organizationId}/${call.id}`) })) }} />
       <header className={styles.identity}>
         <span className={styles.logo} aria-hidden="true">{monogram || <Building2 />}</span>
-        <div><p className={styles.eyebrow}>Public Organization profile</p><h1>{organization.name}</h1><p>Published Opportunities from this Organization. Public profile details are currently limited, so confirm each Opportunity through its linked guidelines or source.</p></div>
+        <div><p className={styles.eyebrow}>Public Organization profile</p><h1>{portal?.configuration.name ?? organization.name}</h1><p>{portal?.configuration.introduction ?? 'Published Opportunities from this Organization. Public profile details are currently limited, so confirm each Opportunity through its linked guidelines or source.'}</p></div>
       </header>
-      <aside className={styles.identityBoundary}><Info aria-hidden="true" /><div><strong>Limited public profile</strong><p>Missa currently has the Organization name and published hosted Opportunities. A verified internal domain flag is not shown as a public endorsement, and no private or operational records appear here.</p></div></aside>
+      <aside className={styles.identityBoundary}><Info aria-hidden="true" /><div><strong>{portal ? 'Organization submission portal' : 'Limited public profile'}</strong><p>{portal ? `Application information is published in ${portal.configuration.timeZone}. Confirm each Opportunity's dates and requirements before submitting.` : 'Missa currently has the Organization name and published hosted Opportunities. A verified internal domain flag is not shown as a public endorsement, and no private or operational records appear here.'}</p></div></aside>
       <section className={styles.opportunities} aria-labelledby="published-opportunities-title">
         <header className={styles.sectionHeader}><div><p className={styles.eyebrow}>Current choices</p><h2 id="published-opportunities-title">Published Opportunities</h2><p>{rows.length} currently published {rows.length === 1 ? 'Opportunity' : 'Opportunities'}</p></div></header>
         {rows.length ? <div className={styles.grid}>{rows.map(({ call, opportunity, hasHostedForm, image }) => <article className={styles.card} key={call.id}>
@@ -95,7 +108,7 @@ export default async function PublicOrganizationPage({ params }: { params: Promi
         </article>)}</div> : <div className={styles.empty}><Building2 aria-hidden="true" /><h3>No published Opportunities</h3><p>This Organization does not currently have a published hosted Opportunity on Missa. No historical activity or future opening is inferred.</p><Link href="/opportunities">Browse all Opportunities</Link></div>}
       </section>
       <div className={styles.supporting}>
-        <section><p className={styles.eyebrow}>About</p><h2>Organization information</h2><p>This Organization has not added an allowlisted public biography, official website, location, language, contact policy, logo, or public Program description yet.</p><small>Private domains are not converted into a public website link.</small></section>
+        <section><p className={styles.eyebrow}>About</p><h2>Organization information</h2>{portal ? <><p>Questions about an application can be sent to <a href={`mailto:${portal.configuration.supportEmail}`}>{portal.configuration.supportEmail}</a>.</p><small><a href={portal.configuration.privacyPolicyUrl}>Privacy</a> · <a href={portal.configuration.termsUrl}>Terms</a>{portal.configuration.accessibilityContactUrl ? <> · <a href={portal.configuration.accessibilityContactUrl}>Accessibility</a></> : null}</small></> : <><p>This Organization has not added an allowlisted public biography, official website, location, language, contact policy, logo, or public Program description yet.</p><small>Private domains are not converted into a public website link.</small></>}</section>
         <section><p className={styles.eyebrow}>Derived from Opportunities shown</p><h2>Opportunities have included</h2>{practiceLabels.length ? <ul className={styles.labels}>{practiceLabels.map((label) => <li key={label}>{label}</li>)}</ul> : <p>No canonical field labels are available for the published Opportunities shown.</p>}<small>These labels describe the Opportunities above. They do not define, rate, or endorse the Organization.</small></section>
       </div>
       <footer className={styles.footer}><p>Public Organization profile · Confirm application details before submitting.</p><Link href="/opportunities">Browse Opportunities</Link></footer>

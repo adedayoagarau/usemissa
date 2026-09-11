@@ -2,7 +2,7 @@ import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
 import { scanSubmissionFile } from '@/lib/malwareScanner';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const BLOCKED_TYPES = new Set(['application/x-msdownload', 'application/x-dosexec', 'application/x-sh', 'text/x-shellscript', 'application/x-httpd-php']);
@@ -11,10 +11,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   const { pathId } = await params;
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  const workspace = await getWorkspaceEngine();
-  const path = workspace.store.submissionPaths.get(pathId);
+  const relational = workspaceRelationalAuthorityEnabled();
+  const relationalWorkspace = relational ? await getRelationalWorkspace() : undefined;
+  const relationalPath = relationalWorkspace ? await relationalWorkspace.publicSubmissionPath(pathId) : undefined;
+  const workspace = relational ? undefined : await getWorkspaceEngine();
+  const path = relationalPath ?? workspace?.store.submissionPaths.get(pathId);
   if (!path) return NextResponse.json({ error: 'Unknown submission form' }, { status: 404 });
-  const openCall = workspace.store.openCalls.get(path.openCallId);
+  const openCall = relationalPath
+    ? (await relationalWorkspace!.openCallsForOrganization(relationalPath.organizationId)).find((call) => call.id === relationalPath.openCallId)
+    : workspace!.store.openCalls.get(path.openCallId);
   if (!openCall || openCall.status !== 'published') return NextResponse.json({ error: 'This submission form is not open' }, { status: 409 });
   const form = await request.formData();
   const value = form.get('file');

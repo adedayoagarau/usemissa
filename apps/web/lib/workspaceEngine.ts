@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { WorkspaceEngine, WorkspaceConflictError, WorkspaceIdempotencyReuseError, WorkspaceNotFoundError, createProductionWorkspaceEngine, createRelationalWorkspace, relationalWorkspaceAuthorityEnabled, workspaceRequestHash, type ProductionWorkspaceEngine, type RelationalWorkspace, type WorkspaceCommandEnvelope } from '@missa/workspace-engine';
+import { WorkspaceEngine, WorkspaceConflictError, WorkspaceIdempotencyReuseError, WorkspaceNotFoundError, WorkspaceTransitionError, createProductionWorkspaceEngine, createRelationalWorkspace, relationalWorkspaceAuthorityEnabled, workspaceRequestHash, type ProductionWorkspaceEngine, type RelationalWorkspace, type WorkspaceCommandEnvelope } from '@missa/workspace-engine';
 
 /**
  * Shared WorkspaceEngine for apps/web's route handlers -- same two-backing
@@ -68,6 +68,7 @@ export function workspaceMutationError(error: unknown): { status: number; body: 
     body: { error: error.message, conflict: { resourceType: error.resourceType, resourceId: error.resourceId, expectedRevision: error.expectedRevision, currentRevision: error.currentRevision, action: 'refresh-and-retry' } },
   };
   if (error instanceof WorkspaceIdempotencyReuseError) return { status: 409, body: { error: error.message } };
+  if (error instanceof WorkspaceTransitionError) return { status: 409, body: { error: error.message } };
   if (error instanceof WorkspaceNotFoundError) return { status: 404, body: { error: 'Workspace resource not found' } };
   if (error instanceof Error && /^(Idempotency-Key|A valid expectedRevision|A submission needs|A complete scoped command envelope)/.test(error.message)) {
     return { status: 400, body: { error: error.message } };

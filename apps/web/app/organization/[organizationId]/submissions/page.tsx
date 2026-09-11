@@ -4,9 +4,10 @@ import { notFound, redirect } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { organizationCapabilityProjection } from '@/lib/organizationProduct';
 import { decisionSummary, paymentLane, receiptLane, reviewLane, submissionNextAction } from '@/lib/organizationWorkflow';
+import type { SubmissionStatus } from '@missa/workspace-engine';
 import styles from './submissions.module.css';
 
 type Query = { q?: string; opportunity?: string; receipt?: string; review?: string; decision?: string; selected?: string };
@@ -21,18 +22,22 @@ export default async function OrganizationSubmissionsPage({ params, searchParams
   const projection = organizationCapabilityProjection(membership.role);
   if (!projection.destinations.includes('submissions')) notFound();
 
-  const workspace = await getWorkspaceEngine();
+  const relational = workspaceRelationalAuthorityEnabled();
+  const relationalWorkspace = relational ? await getRelationalWorkspace() : undefined;
+  const workspace = relational ? undefined : await getWorkspaceEngine();
   const radar = await getEngine();
-  const all = workspace.submissionsForOrganization(organizationId);
+  const all = relationalWorkspace
+    ? await relationalWorkspace.submissionsForOrganization(organizationId)
+    : workspace!.submissionsForOrganization(organizationId);
   const fullInventory = membership.role === 'owner' || membership.role === 'admin';
   const paymentCounts = all.reduce((counts, submission) => { const label = paymentLane(submission.paymentStatus); counts.set(label, (counts.get(label) ?? 0) + 1); return counts; }, new Map<string, number>());
   if (!fullInventory) return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Organization intake</p><h1>Submissions</h1><p>Receipt, review, decision, communication, delivery, and payment remain independent.</p></div><span className={styles.role}>{projection.label}</span></header><section className={styles.limited}><h2>{membership.role === 'finance' ? 'Finance projection' : 'Scoped Submission projection unavailable'}</h2><p>{membership.role === 'finance' ? 'Only aggregate payment state is shown here. Submitter identity, Work, review, and decision material remain withheld until a server-authorized Finance projection is available.' : 'Missa does not yet have a server-enforced Team or Program assignment projection for this role. The full Organization queue is withheld rather than exposed outside your proven scope.'}</p>{membership.role === 'finance' ? <dl><div><dt>Paid</dt><dd>{paymentCounts.get('Paid') ?? 0}</dd></div><div><dt>Needs attention</dt><dd>{(paymentCounts.get('Failed') ?? 0) + (paymentCounts.get('Disputed') ?? 0)}</dd></div><div><dt>Refunded</dt><dd>{paymentCounts.get('Refunded') ?? 0}</dd></div></dl> : null}</section></main>;
 
   const rows = all.map((submission) => {
-    const works = workspace.worksForSubmission(submission.id);
-    const assignments = workspace.reviewAssignmentsForSubmission(submission.id);
-    const decisions = workspace.decisionsForSubmission(organizationId, submission.id);
-    const receipt = receiptLane(submission.status, submission.paymentStatus);
+    const works = 'works' in submission ? submission.works : workspace!.worksForSubmission(submission.id);
+    const assignments = 'assignments' in submission ? submission.assignments : workspace!.reviewAssignmentsForSubmission(submission.id);
+    const decisions = 'decisions' in submission ? submission.decisions : workspace!.decisionsForSubmission(organizationId, submission.id);
+    const receipt = receiptLane(submission.status as SubmissionStatus, submission.paymentStatus);
     const review = reviewLane(assignments);
     const decision = decisionSummary(works, decisions);
     const submitter = radar.store.accounts.get(submission.submitterAccountId);

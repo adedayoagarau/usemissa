@@ -1724,5 +1724,24 @@
     "adaptation": "Existing calendar composition retained; old raw colors and font families migrated to inherited Missa tokens. New actions use Button, NativeSelect and Collapsible. Legacy grid/editor primitive migration remains design debt.",
     "states": "Create/edit, loading, failed save/retry, empty schedule, overlap feedback, inferred deadline label, notification-off label, linked application/goal/reminder, unavailable providers.",
     "validation": "DB ownership/private continuity/link/unlink/legacy update/retry checks, timezone/DST and multi-day boundary checks, actual account browser application-to-preparation handoff, save/reopen, all-day edit, overlap, keyboard, 390px and serious/critical axe passed. Provider external delivery not verified."
+  },
+  "portalStudio": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/portal-studio.tsx",
+    "route": "/organization/[organizationId]/portal",
+    "composition": [
+      "Tabs",
+      "Button",
+      "Field",
+      "Input",
+      "Textarea",
+      "Checkbox",
+      "NativeSelect",
+      "Link"
+    ],
+    "source": "Installed Base UI controls and the existing Organization product shell; no registry installation required.",
+    "adaptation": "Compact operator editor paired with a responsive applicant preview. Controlled brand color is configuration data; Missa layout, typography, contrast boundaries, and interaction tokens remain authoritative.",
+    "states": "New draft, saved draft, in review, approved, published, empty form inventory, empty Opportunity inventory, pending, success, error and relational-authority unavailable.",
+    "boundary": "Local implementation against relational configuration APIs. Hosted migration, real logo upload, physical-device checks, and production data are not certified."
   }
 }

@@ -170,6 +170,22 @@
         "Empty"
       ]
     },
+    "composition.submission-portal-studio": {
+      "semantic": "PortalStudio",
+      "implementation": "apps/web/components/portal-studio.tsx",
+      "composition": [
+        "Tabs",
+        "Button",
+        "Field",
+        "Input",
+        "Textarea",
+        "Checkbox",
+        "NativeSelect",
+        "Link"
+      ],
+      "appearance": "compact-organization-editor-with-adjacent-applicant-preview",
+      "boundary": "Relational, versioned Organization configuration. Save and lifecycle actions use optimistic concurrency; preview is explicitly an unsaved applicant projection."
+    },
     "disclosure.organization-media": {
       "semantic": "InstitutionMediaGallery",
       "composition": [

@@ -1,6 +1,9 @@
 export type WorkspaceResourceType =
   | 'entity' | 'program' | 'open_call' | 'submission_path' | 'submission'
-  | 'work' | 'review_round' | 'review_assignment' | 'decision' | 'delivery_task';
+  | 'submission_draft'
+  | 'work' | 'review_round' | 'review_assignment' | 'decision' | 'delivery_task'
+  | 'portal_configuration' | 'form_version' | 'review_workflow_version'
+  | 'opportunity_configuration_version';
 
 export class WorkspaceConflictError extends Error {
   constructor(
@@ -25,5 +28,12 @@ export class WorkspaceNotFoundError extends Error {
   constructor() {
     super('Workspace resource not found');
     this.name = 'WorkspaceNotFoundError';
+  }
+}
+
+export class WorkspaceTransitionError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'WorkspaceTransitionError';
   }
 }

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   customType,
   check,
   boolean,
@@ -181,6 +182,10 @@ export const submissions = pgTable(
     paymentStatus: text("payment_status").notNull().default("not-required"),
     paymentSessionId: text("payment_session_id"),
     feeCents: integer("fee_cents"),
+    portalConfigurationVersionId: uuid("portal_configuration_version_id").references((): AnyPgColumn => portalConfigurationVersions.id, { onDelete: "restrict" }),
+    formVersionId: uuid("form_version_id").references((): AnyPgColumn => formVersions.id, { onDelete: "restrict" }),
+    opportunityConfigurationVersionId: uuid("opportunity_configuration_version_id").references((): AnyPgColumn => opportunityConfigurationVersions.id, { onDelete: "restrict" }),
+    reviewWorkflowVersionId: uuid("review_workflow_version_id").references((): AnyPgColumn => reviewWorkflowVersions.id, { onDelete: "restrict" }),
     revision: revision(),
     updatedAt,
   },
@@ -231,6 +236,11 @@ export const submissionDrafts = pgTable(
     workTitles: jsonb("work_titles").notNull().$type<string[]>(),
     idempotencyKey: text("idempotency_key"),
     paymentSessionId: text("payment_session_id"),
+    formVersionId: uuid("form_version_id").references((): AnyPgColumn => formVersions.id, { onDelete: "restrict" }),
+    opportunityConfigurationVersionId: uuid("opportunity_configuration_version_id").references((): AnyPgColumn => opportunityConfigurationVersions.id, { onDelete: "restrict" }),
+    sectionProgress: jsonb("section_progress").notNull().default([]).$type<string[]>(),
+    recoveryReceiptId: uuid("recovery_receipt_id").notNull().defaultRandom(),
+    revision: revision(),
     updatedAt,
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   },
@@ -240,6 +250,8 @@ export const submissionDrafts = pgTable(
       table.submissionPathId,
     ),
     index("submission_drafts_expires_idx").on(table.expiresAt),
+    uniqueIndex("submission_drafts_recovery_receipt_idx").on(table.recoveryReceiptId),
+    check("submission_drafts_revision_check", sql`${table.revision} >= 1`),
   ],
 );
 
@@ -493,6 +505,158 @@ export const outboxEvents = pgTable(
       sql`${table.status} in ('pending', 'processing', 'processed', 'failed')`,
     ),
     check("outbox_events_attempts_check", sql`${table.attempts} >= 0`),
+  ],
+);
+
+export const portalConfigurationVersions = pgTable(
+  "portal_configuration_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    status: text("status").notNull().default("draft"),
+    configuration: jsonb("configuration").notNull(),
+    supersedesVersionId: uuid("supersedes_version_id").references(
+      (): AnyPgColumn => portalConfigurationVersions.id,
+      { onDelete: "restrict" },
+    ),
+    revision: revision(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("portal_configuration_versions_org_version_idx").on(
+      table.organizationId,
+      table.version,
+    ),
+    uniqueIndex("portal_configuration_versions_one_published_idx")
+      .on(table.organizationId)
+      .where(sql`${table.status} = 'published'`),
+    check("portal_configuration_versions_version_check", sql`${table.version} >= 1`),
+    check("portal_configuration_versions_revision_check", sql`${table.revision} >= 1`),
+    check(
+      "portal_configuration_versions_status_check",
+      sql`${table.status} in ('draft', 'in-review', 'approved', 'published', 'superseded', 'archived')`,
+    ),
+  ],
+);
+
+export const formVersions = pgTable(
+  "form_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    definitionKey: text("definition_key").notNull(),
+    version: integer("version").notNull(),
+    status: text("status").notNull().default("draft"),
+    definition: jsonb("definition").notNull(),
+    supersedesVersionId: uuid("supersedes_version_id").references(
+      (): AnyPgColumn => formVersions.id,
+      { onDelete: "restrict" },
+    ),
+    revision: revision(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("form_versions_org_key_version_idx").on(
+      table.organizationId,
+      table.definitionKey,
+      table.version,
+    ),
+    uniqueIndex("form_versions_one_published_idx")
+      .on(table.organizationId, table.definitionKey)
+      .where(sql`${table.status} = 'published'`),
+    check("form_versions_version_check", sql`${table.version} >= 1`),
+    check("form_versions_revision_check", sql`${table.revision} >= 1`),
+    check(
+      "form_versions_status_check",
+      sql`${table.status} in ('draft', 'in-review', 'approved', 'published', 'superseded', 'archived')`,
+    ),
+  ],
+);
+
+export const reviewWorkflowVersions = pgTable(
+  "review_workflow_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    openCallId: text("open_call_id")
+      .notNull()
+      .references(() => openCalls.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    status: text("status").notNull().default("draft"),
+    definition: jsonb("definition").notNull(),
+    supersedesVersionId: uuid("supersedes_version_id").references(
+      (): AnyPgColumn => reviewWorkflowVersions.id,
+      { onDelete: "restrict" },
+    ),
+    revision: revision(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("review_workflow_versions_call_version_idx").on(
+      table.openCallId,
+      table.version,
+    ),
+    uniqueIndex("review_workflow_versions_one_published_idx")
+      .on(table.openCallId)
+      .where(sql`${table.status} = 'published'`),
+    check("review_workflow_versions_version_check", sql`${table.version} >= 1`),
+    check("review_workflow_versions_revision_check", sql`${table.revision} >= 1`),
+    check(
+      "review_workflow_versions_status_check",
+      sql`${table.status} in ('draft', 'in-review', 'approved', 'published', 'superseded', 'archived')`,
+    ),
+  ],
+);
+
+export const opportunityConfigurationVersions = pgTable(
+  "opportunity_configuration_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    openCallId: text("open_call_id")
+      .notNull()
+      .references(() => openCalls.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    status: text("status").notNull().default("draft"),
+    configuration: jsonb("configuration").notNull(),
+    supersedesVersionId: uuid("supersedes_version_id").references(
+      (): AnyPgColumn => opportunityConfigurationVersions.id,
+      { onDelete: "restrict" },
+    ),
+    revision: revision(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("opportunity_configuration_versions_call_version_idx").on(
+      table.openCallId,
+      table.version,
+    ),
+    uniqueIndex("opportunity_configuration_versions_one_published_idx")
+      .on(table.openCallId)
+      .where(sql`${table.status} = 'published'`),
+    check("opportunity_configuration_versions_version_check", sql`${table.version} >= 1`),
+    check("opportunity_configuration_versions_revision_check", sql`${table.revision} >= 1`),
+    check(
+      "opportunity_configuration_versions_status_check",
+      sql`${table.status} in ('draft', 'in-review', 'approved', 'published', 'superseded', 'archived')`,
+    ),
   ],
 );
 
@@ -4903,4 +5067,3 @@ export const magazineEditorialMasthead = pgTable(
     ),
   ],
 );
-

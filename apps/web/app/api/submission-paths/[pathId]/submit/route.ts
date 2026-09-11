@@ -25,10 +25,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   if (idempotencyKey && idempotencyKey.length > 200) return NextResponse.json({ error: 'Idempotency-Key must be 200 characters or fewer' }, { status: 400 });
   const relationalWorkspace = relational ? await getRelationalWorkspace() : undefined;
   const workspace = relational ? undefined : await getWorkspaceEngine();
-  const path = relational ? await relationalWorkspace!.publicSubmissionPath(pathId) : workspace!.store.submissionPaths.get(pathId);
+  const relationalPath = relationalWorkspace ? await relationalWorkspace.publicSubmissionPath(pathId) : undefined;
+  const compatibilityPath = workspace?.store.submissionPaths.get(pathId);
+  const path = relationalPath ?? compatibilityPath;
   if (!path) return NextResponse.json({ error: 'Unknown submission form' }, { status: 404 });
-  const relationalPath = path as Record<string, unknown>;
-  const openCall = relational ? { title: String(relationalPath.openCallTitle), radarOpportunityId: typeof relationalPath.radarOpportunityId === 'string' ? relationalPath.radarOpportunityId : undefined } : workspace!.store.openCalls.get(String(path.openCallId));
+  const openCall = relationalPath ? { title: relationalPath.openCallTitle, radarOpportunityId: relationalPath.radarOpportunityId } : workspace!.store.openCalls.get(path.openCallId);
   if (!openCall) return NextResponse.json({ error: 'This submission form is not open' }, { status: 409 });
 
   if (openCall.radarOpportunityId) {
@@ -73,7 +74,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   if (category && !categories.includes(category)) return NextResponse.json({ error: 'Choose a valid category' }, { status: 400 });
   const answers = body.answers && typeof body.answers === 'object' && !Array.isArray(body.answers) ? body.answers as Record<string, unknown> : {};
   const normalizedAnswers: Record<string, string | string[]> = {};
-  for (const field of path.fields as Array<{ id: string; type: string; label: string; required: boolean }>) {
+  for (const field of path.fields as Array<{ id: string; type: string; label: string; required: boolean; visibleWhen?: { fieldId: string; equals: string } }>) {
+    if (field.visibleWhen && answers[field.visibleWhen.fieldId] !== field.visibleWhen.equals) continue;
     const value = answers[field.id];
     if (field.type === 'category-select') {
       if (field.required && !category) return NextResponse.json({ error: `${field.label} is required` }, { status: 400 });

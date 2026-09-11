@@ -1,7 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
-import type { DecisionOutcome, SubmissionField } from './domain/types.js';
-import { WorkspaceConflictError, WorkspaceIdempotencyReuseError, WorkspaceNotFoundError, type WorkspaceResourceType } from './errors.js';
+import type { DecisionOutcome, SubmissionField, SubmissionStatus } from './domain/types.js';
+import { canTransitionConfiguration, portalConfigurationFromDatabase, type ConfigurationStatus, type FormDefinition, type OpportunityConfiguration, type PortalConfiguration, type ReviewWorkflowDefinition } from './portalConfiguration.js';
+import { WorkspaceConflictError, WorkspaceIdempotencyReuseError, WorkspaceNotFoundError, WorkspaceTransitionError, type WorkspaceResourceType } from './errors.js';
 import type { WorkspaceCommandEnvelope, WorkspaceCommandResult } from './repositories/contracts.js';
 import { PostgresWorkspaceTransactionRunner } from './repositories/postgres/transactionRunner.js';
 
@@ -11,7 +12,7 @@ type TaxonomyAssignment = { termId: string; rule: 'accepted' | 'preferred' | 're
 
 export interface RelationalEntityView { id: string; organizationId: string; name: string; label?: string; revision: number }
 export interface RelationalProgramView { id: string; entityId: string; name: string; revision: number }
-export interface RelationalOpenCallView { id: string; programId: string; title: string; status: string; radarOpportunityId?: string; revision: number }
+export interface RelationalOpenCallView { id: string; programId: string; title: string; status: string; radarOpportunityId?: string; guidelineText?: string; revision: number }
 export interface RelationalReviewRoundView { id: string; openCallId: string; name: string; revision: number }
 export interface RelationalCreatorDecisionContext {
   submitterAccountId: string;
@@ -23,6 +24,101 @@ export interface RelationalOwnerSubmissionView {
   radarOpportunityId?:string; paymentStatus?:string;
   works:Array<{id:string;title:string;outcome?:string}>;
 }
+export interface RelationalOrganizationSubmissionView {
+  id: string;
+  submissionPathId: string;
+  openCallId: string;
+  openCallTitle: string;
+  submitterAccountId: string;
+  status: SubmissionStatus;
+  submittedAt: string;
+  category?: string;
+  paymentStatus?: string;
+  answers?: Record<string, string | string[]>;
+  works: Array<{ id: string; title: string; fileUrl?: string; fileUrls?: string[]; order: number }>;
+  assignments: Array<{ id: string; reviewerAccountId?: string; completedAt?: string }>;
+  decisions: Array<{ workId: string; outcome: DecisionOutcome }>;
+}
+export interface RelationalPortalConfigurationView {
+  id: string;
+  organizationId: string;
+  version: number;
+  status: ConfigurationStatus;
+  configuration: PortalConfiguration;
+  revision: number;
+  createdAt: string;
+  publishedAt?: string;
+  supersedesVersionId?: string;
+}
+export interface RelationalFormVersionView {
+  id: string;
+  organizationId: string;
+  definitionKey: string;
+  version: number;
+  status: ConfigurationStatus;
+  definition: FormDefinition;
+  revision: number;
+  createdAt: string;
+  publishedAt?: string;
+  supersedesVersionId?: string;
+}
+export interface RelationalReviewWorkflowVersionView {
+  id: string;
+  organizationId: string;
+  openCallId: string;
+  version: number;
+  status: ConfigurationStatus;
+  definition: ReviewWorkflowDefinition;
+  revision: number;
+  createdAt: string;
+  publishedAt?: string;
+  supersedesVersionId?: string;
+}
+export interface RelationalOpportunityConfigurationVersionView {
+  id: string;
+  organizationId: string;
+  openCallId: string;
+  version: number;
+  status: ConfigurationStatus;
+  configuration: OpportunityConfiguration;
+  revision: number;
+  createdAt: string;
+  publishedAt?: string;
+  supersedesVersionId?: string;
+}
+export interface RelationalPublicOpenCallView {
+  id: string;
+  title: string;
+  radarOpportunityId?: string;
+  hasHostedForm: boolean;
+}
+export interface RelationalSubmissionDraftView {
+  id: string;
+  submissionPathId: string;
+  submitterAccountId: string;
+  answers: Record<string, string | string[]>;
+  workTitles: string[];
+  category?: string;
+  paymentSessionId?: string;
+  formVersionId?: string;
+  opportunityConfigurationVersionId?: string;
+  sectionProgress: string[];
+  recoveryReceiptId: string;
+  revision: number;
+  updatedAt: string;
+  expiresAt: string;
+}
+export interface RelationalPublicSubmissionPathView {
+  id: string;
+  openCallId: string;
+  openCallTitle: string;
+  organizationId: string;
+  categories: string[];
+  fields: SubmissionField[];
+  feeCents?: number;
+  radarOpportunityId?: string;
+  revision: number;
+}
 
 const tenantJoins: Record<WorkspaceResourceType, { table: string; joins: string; organization: string }> = {
   entity: { table: 'entities r', joins: '', organization: 'r.organization_id' },
@@ -30,11 +126,16 @@ const tenantJoins: Record<WorkspaceResourceType, { table: string; joins: string;
   open_call: { table: 'open_calls r', joins: 'join programs p on p.id=r.program_id join entities e on e.id=p.entity_id', organization: 'e.organization_id' },
   submission_path: { table: 'submission_paths r', joins: 'join open_calls o on o.id=r.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id', organization: 'e.organization_id' },
   submission: { table: 'submissions r', joins: 'join submission_paths sp on sp.id=r.submission_path_id join open_calls o on o.id=sp.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id', organization: 'e.organization_id' },
+  submission_draft: { table: 'submission_drafts r', joins: 'join submission_paths sp on sp.id=r.submission_path_id join open_calls o on o.id=sp.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id', organization: 'e.organization_id' },
   work: { table: 'works r', joins: 'join submissions s on s.id=r.submission_id join submission_paths sp on sp.id=s.submission_path_id join open_calls o on o.id=sp.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id', organization: 'e.organization_id' },
   review_round: { table: 'review_rounds r', joins: 'join open_calls o on o.id=r.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id', organization: 'e.organization_id' },
   review_assignment: { table: 'review_assignments r', joins: 'join review_rounds rr on rr.id=r.review_round_id join open_calls o on o.id=rr.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id', organization: 'e.organization_id' },
   decision: { table: 'decisions r', joins: 'join works w on w.id=r.work_id join submissions s on s.id=w.submission_id join submission_paths sp on sp.id=s.submission_path_id join open_calls o on o.id=sp.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id', organization: 'e.organization_id' },
   delivery_task: { table: 'delivery_tasks r', joins: 'join works w on w.id=r.work_id join submissions s on s.id=w.submission_id join submission_paths sp on sp.id=s.submission_path_id join open_calls o on o.id=sp.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id', organization: 'e.organization_id' },
+  portal_configuration: { table: 'portal_configuration_versions r', joins: '', organization: 'r.organization_id' },
+  form_version: { table: 'form_versions r', joins: '', organization: 'r.organization_id' },
+  review_workflow_version: { table: 'review_workflow_versions r', joins: '', organization: 'r.organization_id' },
+  opportunity_configuration_version: { table: 'opportunity_configuration_versions r', joins: '', organization: 'r.organization_id' },
 };
 
 export function workspaceRequestHash(value: unknown): string {
@@ -63,10 +164,18 @@ export class RelationalWorkspace {
       and to_regclass('public.delivery_tasks') is not null
       and to_regclass('public.audit_events') is not null
       and to_regclass('public.outbox_events') is not null
+      and to_regclass('public.portal_configuration_versions') is not null
+      and to_regclass('public.form_versions') is not null
+      and to_regclass('public.review_workflow_versions') is not null
+      and to_regclass('public.opportunity_configuration_versions') is not null
       and not exists (
         select 1 from (values
           ('entities','revision'),('programs','revision'),('open_calls','revision'),
           ('submission_paths','revision'),('submissions','revision'),('works','revision'),
+          ('submission_drafts','revision'),('submission_drafts','form_version_id'),
+          ('submission_drafts','opportunity_configuration_version_id'),('submission_drafts','recovery_receipt_id'),
+          ('submissions','portal_configuration_version_id'),('submissions','form_version_id'),
+          ('submissions','opportunity_configuration_version_id'),('submissions','review_workflow_version_id'),
           ('review_rounds','revision'),('review_assignments','revision'),
           ('decisions','revision'),('delivery_tasks','revision'),
           ('audit_events','correlation_id'),('outbox_events','event_key')
@@ -75,6 +184,267 @@ export class RelationalWorkspace {
           where c.table_schema='public' and c.table_name=required.table_name and c.column_name=required.column_name)
       ) as ready`);
     return { authority: 'relational', schemaReady: result.rows[0]?.ready === true };
+  }
+
+  async portalConfiguration(organizationId: string, id: string): Promise<RelationalPortalConfigurationView | undefined> {
+    const result = await this.pool.query<{
+      id: string;
+      organization_id: string;
+      version: number;
+      status: ConfigurationStatus;
+      configuration: unknown;
+      revision: number;
+      created_at: Date;
+      published_at: Date | null;
+      supersedes_version_id: string | null;
+    }>('select * from portal_configuration_versions where id=$1 and organization_id=$2', [id, organizationId]);
+    const row = result.rows[0];
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      organizationId: row.organization_id,
+      version: row.version,
+      status: row.status,
+      configuration: portalConfigurationFromDatabase(row.configuration),
+      revision: row.revision,
+      createdAt: row.created_at.toISOString(),
+      ...(row.published_at ? { publishedAt: row.published_at.toISOString() } : {}),
+      ...(row.supersedes_version_id ? { supersedesVersionId: row.supersedes_version_id } : {}),
+    };
+  }
+
+  async publishedPortalConfiguration(organizationId: string): Promise<RelationalPortalConfigurationView | undefined> {
+    const result = await this.pool.query<{ id: string }>("select id from portal_configuration_versions where organization_id=$1 and status='published'", [organizationId]);
+    return result.rows[0] ? this.portalConfiguration(organizationId, result.rows[0].id) : undefined;
+  }
+
+  async portalConfigurationsForOrganization(organizationId: string): Promise<RelationalPortalConfigurationView[]> {
+    const result = await this.pool.query<{ id: string }>('select id from portal_configuration_versions where organization_id=$1 order by version desc', [organizationId]);
+    const configurations = await Promise.all(result.rows.map((row) => this.portalConfiguration(organizationId, row.id)));
+    return configurations.filter((configuration): configuration is RelationalPortalConfigurationView => configuration !== undefined);
+  }
+
+  async formVersionsForOrganization(organizationId: string): Promise<RelationalFormVersionView[]> {
+    const result = await this.pool.query<{
+      id: string; organization_id: string; definition_key: string; version: number; status: ConfigurationStatus;
+      definition: FormDefinition; revision: number; created_at: Date; published_at: Date | null; supersedes_version_id: string | null;
+    }>('select * from form_versions where organization_id=$1 order by definition_key,version desc', [organizationId]);
+    return result.rows.map((row) => ({
+      id: row.id, organizationId: row.organization_id, definitionKey: row.definition_key, version: row.version,
+      status: row.status, definition: row.definition, revision: row.revision, createdAt: row.created_at.toISOString(),
+      ...(row.published_at ? { publishedAt: row.published_at.toISOString() } : {}),
+      ...(row.supersedes_version_id ? { supersedesVersionId: row.supersedes_version_id } : {}),
+    }));
+  }
+
+  async reviewWorkflowVersionsForOpenCall(organizationId: string, openCallId: string): Promise<RelationalReviewWorkflowVersionView[]> {
+    const result = await this.pool.query<{
+      id: string; organization_id: string; open_call_id: string; version: number; status: ConfigurationStatus;
+      definition: ReviewWorkflowDefinition; revision: number; created_at: Date; published_at: Date | null; supersedes_version_id: string | null;
+    }>('select * from review_workflow_versions where organization_id=$1 and open_call_id=$2 order by version desc', [organizationId, openCallId]);
+    return result.rows.map((row) => ({
+      id: row.id, organizationId: row.organization_id, openCallId: row.open_call_id, version: row.version,
+      status: row.status, definition: row.definition, revision: row.revision, createdAt: row.created_at.toISOString(),
+      ...(row.published_at ? { publishedAt: row.published_at.toISOString() } : {}),
+      ...(row.supersedes_version_id ? { supersedesVersionId: row.supersedes_version_id } : {}),
+    }));
+  }
+
+  async opportunityConfigurationVersionsForOpenCall(organizationId: string, openCallId: string): Promise<RelationalOpportunityConfigurationVersionView[]> {
+    const result = await this.pool.query<{
+      id: string; organization_id: string; open_call_id: string; version: number; status: ConfigurationStatus;
+      configuration: OpportunityConfiguration; revision: number; created_at: Date; published_at: Date | null; supersedes_version_id: string | null;
+    }>('select * from opportunity_configuration_versions where organization_id=$1 and open_call_id=$2 order by version desc', [organizationId, openCallId]);
+    return result.rows.map((row) => ({
+      id: row.id, organizationId: row.organization_id, openCallId: row.open_call_id, version: row.version,
+      status: row.status, configuration: row.configuration, revision: row.revision, createdAt: row.created_at.toISOString(),
+      ...(row.published_at ? { publishedAt: row.published_at.toISOString() } : {}),
+      ...(row.supersedes_version_id ? { supersedesVersionId: row.supersedes_version_id } : {}),
+    }));
+  }
+
+  async createPortalConfiguration(envelope: WorkspaceCommandEnvelope, configuration: PortalConfiguration): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, configuration, async (client) => {
+      const organizationId = envelope.organizationId!;
+      await client.query('select id from radar_organizations where id=$1 for update', [organizationId]);
+      const versionResult = await client.query<{ version: number }>('select coalesce(max(version),0)+1 version from portal_configuration_versions where organization_id=$1', [organizationId]);
+      const id = randomUUID();
+      const version = versionResult.rows[0]!.version;
+      const row = await client.query<{ revision: number }>('insert into portal_configuration_versions (id,organization_id,version,configuration) values ($1,$2,$3,$4) returning revision', [id, organizationId, version, configuration]);
+      await this.effect(client, envelope, 'portal_configuration.created', 'portal_configuration', id, row.rows[0]!.revision, { version });
+      return { resourceType: 'portal_configuration', resourceId: id, revision: row.rows[0]!.revision };
+    });
+  }
+
+  async createFormVersion(envelope: WorkspaceCommandEnvelope, input: { definitionKey: string; definition: FormDefinition }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, input, async (client) => {
+      await client.query('select id from radar_organizations where id=$1 for update', [envelope.organizationId]);
+      const next = await client.query<{ version: number }>('select coalesce(max(version),0)+1 version from form_versions where organization_id=$1 and definition_key=$2', [envelope.organizationId, input.definitionKey]);
+      const id = randomUUID();
+      const version = next.rows[0]!.version;
+      const row = await client.query<{ revision: number }>('insert into form_versions (id,organization_id,definition_key,version,definition) values ($1,$2,$3,$4,$5) returning revision', [id, envelope.organizationId, input.definitionKey, version, input.definition]);
+      await this.effect(client, envelope, 'form_version.created', 'form_version', id, row.rows[0]!.revision, { definitionKey: input.definitionKey, version });
+      return { resourceType: 'form_version', resourceId: id, revision: row.rows[0]!.revision };
+    });
+  }
+
+  async createReviewWorkflowVersion(envelope: WorkspaceCommandEnvelope, input: { openCallId: string; definition: ReviewWorkflowDefinition }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, input, async (client) => {
+      if (await this.currentRevision(client, envelope.organizationId!, 'open_call', input.openCallId) === null) throw new WorkspaceNotFoundError();
+      const next = await client.query<{ version: number }>('select coalesce(max(version),0)+1 version from review_workflow_versions where open_call_id=$1', [input.openCallId]);
+      const id = randomUUID();
+      const version = next.rows[0]!.version;
+      const row = await client.query<{ revision: number }>('insert into review_workflow_versions (id,organization_id,open_call_id,version,definition) values ($1,$2,$3,$4,$5) returning revision', [id, envelope.organizationId, input.openCallId, version, input.definition]);
+      await this.effect(client, envelope, 'review_workflow_version.created', 'review_workflow_version', id, row.rows[0]!.revision, { openCallId: input.openCallId, version });
+      return { resourceType: 'review_workflow_version', resourceId: id, revision: row.rows[0]!.revision };
+    });
+  }
+
+  async createOpportunityConfigurationVersion(envelope: WorkspaceCommandEnvelope, input: { openCallId: string; configuration: OpportunityConfiguration }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, input, async (client) => {
+      if (await this.currentRevision(client, envelope.organizationId!, 'open_call', input.openCallId) === null) throw new WorkspaceNotFoundError();
+      const next = await client.query<{ version: number }>('select coalesce(max(version),0)+1 version from opportunity_configuration_versions where open_call_id=$1', [input.openCallId]);
+      const id = randomUUID();
+      const version = next.rows[0]!.version;
+      const row = await client.query<{ revision: number }>('insert into opportunity_configuration_versions (id,organization_id,open_call_id,version,configuration) values ($1,$2,$3,$4,$5) returning revision', [id, envelope.organizationId, input.openCallId, version, input.configuration]);
+      await this.effect(client, envelope, 'opportunity_configuration_version.created', 'opportunity_configuration_version', id, row.rows[0]!.revision, { openCallId: input.openCallId, version });
+      return { resourceType: 'opportunity_configuration_version', resourceId: id, revision: row.rows[0]!.revision };
+    });
+  }
+
+  async updateFormVersion(envelope: WorkspaceCommandEnvelope, id: string, definition: FormDefinition): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { id, definition }, async (client) => {
+      const current = await client.query<{ status: ConfigurationStatus }>('select status from form_versions where id=$1 and organization_id=$2', [id, envelope.organizationId]);
+      if (!current.rows[0]) throw new WorkspaceNotFoundError();
+      if (current.rows[0].status === 'published' || current.rows[0].status === 'superseded' || current.rows[0].status === 'archived') throw new WorkspaceTransitionError('Published forms are immutable');
+      const row = await this.mutateRevision(client, envelope, 'form_version', id, 'definition=$1', [definition]);
+      const revision = row.revision;
+      await this.effect(client, envelope, 'form_version.updated', 'form_version', id, revision);
+      return { resourceType: 'form_version', resourceId: id, revision };
+    });
+  }
+
+  async transitionFormVersion(envelope: WorkspaceCommandEnvelope, id: string, status: ConfigurationStatus): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { id, status }, async (client) => {
+      const current = await client.query<{ status: ConfigurationStatus; definition_key: string }>('select status,definition_key from form_versions where id=$1 and organization_id=$2', [id, envelope.organizationId]);
+      const form = current.rows[0];
+      if (!form) throw new WorkspaceNotFoundError();
+      if (!canTransitionConfiguration(form.status, status)) throw new WorkspaceTransitionError(`Form cannot transition from ${form.status} to ${status}`);
+      if (status === 'published') {
+        const superseded = await client.query<{ id: string; revision: number }>("update form_versions set status='superseded',revision=revision+1,updated_at=now() where organization_id=$1 and definition_key=$2 and status='published' returning id,revision", [envelope.organizationId, form.definition_key]);
+        for (const prior of superseded.rows) await this.effect(client, envelope, 'form_version.superseded', 'form_version', prior.id, prior.revision);
+      }
+      const row = await this.mutateRevision(client, envelope, 'form_version', id, `status=$1${status === 'published' ? ', published_at=now()' : ''}`, [status]);
+      const revision = row.revision;
+      await this.effect(client, envelope, `form_version.${status}`, 'form_version', id, revision);
+      return { resourceType: 'form_version', resourceId: id, revision };
+    });
+  }
+
+  async updateReviewWorkflowVersion(envelope: WorkspaceCommandEnvelope, id: string, definition: ReviewWorkflowDefinition): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { id, definition }, async (client) => {
+      const current = await client.query<{ status: ConfigurationStatus }>('select status from review_workflow_versions where id=$1 and organization_id=$2', [id, envelope.organizationId]);
+      if (!current.rows[0]) throw new WorkspaceNotFoundError();
+      if (current.rows[0].status === 'published' || current.rows[0].status === 'superseded' || current.rows[0].status === 'archived') throw new WorkspaceTransitionError('Published review workflows are immutable');
+      const row = await this.mutateRevision(client, envelope, 'review_workflow_version', id, 'definition=$1', [definition]);
+      const revision = row.revision;
+      await this.effect(client, envelope, 'review_workflow_version.updated', 'review_workflow_version', id, revision);
+      return { resourceType: 'review_workflow_version', resourceId: id, revision };
+    });
+  }
+
+  async transitionReviewWorkflowVersion(envelope: WorkspaceCommandEnvelope, id: string, status: ConfigurationStatus): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { id, status }, async (client) => {
+      const current = await client.query<{ status: ConfigurationStatus; open_call_id: string }>('select status,open_call_id from review_workflow_versions where id=$1 and organization_id=$2', [id, envelope.organizationId]);
+      const workflow = current.rows[0];
+      if (!workflow) throw new WorkspaceNotFoundError();
+      if (!canTransitionConfiguration(workflow.status, status)) throw new WorkspaceTransitionError(`Review workflow cannot transition from ${workflow.status} to ${status}`);
+      if (status === 'published') {
+        const superseded = await client.query<{ id: string; revision: number }>("update review_workflow_versions set status='superseded',revision=revision+1,updated_at=now() where open_call_id=$1 and status='published' returning id,revision", [workflow.open_call_id]);
+        for (const prior of superseded.rows) await this.effect(client, envelope, 'review_workflow_version.superseded', 'review_workflow_version', prior.id, prior.revision);
+      }
+      const row = await this.mutateRevision(client, envelope, 'review_workflow_version', id, `status=$1${status === 'published' ? ', published_at=now()' : ''}`, [status]);
+      const revision = row.revision;
+      await this.effect(client, envelope, `review_workflow_version.${status}`, 'review_workflow_version', id, revision);
+      return { resourceType: 'review_workflow_version', resourceId: id, revision };
+    });
+  }
+
+  async updateOpportunityConfigurationVersion(envelope: WorkspaceCommandEnvelope, id: string, configuration: OpportunityConfiguration): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { id, configuration }, async (client) => {
+      const current = await client.query<{ status: ConfigurationStatus }>('select status from opportunity_configuration_versions where id=$1 and organization_id=$2', [id, envelope.organizationId]);
+      if (!current.rows[0]) throw new WorkspaceNotFoundError();
+      if (current.rows[0].status === 'published' || current.rows[0].status === 'superseded' || current.rows[0].status === 'archived') throw new WorkspaceTransitionError('Published opportunity configurations are immutable');
+      const row = await this.mutateRevision(client, envelope, 'opportunity_configuration_version', id, 'configuration=$1', [configuration]);
+      const revision = row.revision;
+      await this.effect(client, envelope, 'opportunity_configuration_version.updated', 'opportunity_configuration_version', id, revision);
+      return { resourceType: 'opportunity_configuration_version', resourceId: id, revision };
+    });
+  }
+
+  async transitionOpportunityConfigurationVersion(envelope: WorkspaceCommandEnvelope, id: string, status: ConfigurationStatus): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { id, status }, async (client) => {
+      const current = await client.query<{ status: ConfigurationStatus; open_call_id: string }>('select status,open_call_id from opportunity_configuration_versions where id=$1 and organization_id=$2', [id, envelope.organizationId]);
+      const configuration = current.rows[0];
+      if (!configuration) throw new WorkspaceNotFoundError();
+      if (!canTransitionConfiguration(configuration.status, status)) throw new WorkspaceTransitionError(`Opportunity configuration cannot transition from ${configuration.status} to ${status}`);
+      if (status === 'published') {
+        const superseded = await client.query<{ id: string; revision: number }>("update opportunity_configuration_versions set status='superseded',revision=revision+1,updated_at=now() where open_call_id=$1 and status='published' returning id,revision", [configuration.open_call_id]);
+        for (const prior of superseded.rows) await this.effect(client, envelope, 'opportunity_configuration_version.superseded', 'opportunity_configuration_version', prior.id, prior.revision);
+      }
+      const row = await this.mutateRevision(client, envelope, 'opportunity_configuration_version', id, `status=$1${status === 'published' ? ', published_at=now()' : ''}`, [status]);
+      const revision = row.revision;
+      await this.effect(client, envelope, `opportunity_configuration_version.${status}`, 'opportunity_configuration_version', id, revision);
+      return { resourceType: 'opportunity_configuration_version', resourceId: id, revision };
+    });
+  }
+
+  async updatePortalConfiguration(envelope: WorkspaceCommandEnvelope, id: string, configuration: PortalConfiguration): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { id, configuration }, async (client) => {
+      const current = await client.query<{ status: ConfigurationStatus }>('select status from portal_configuration_versions where id=$1 and organization_id=$2', [id, envelope.organizationId]);
+      if (!current.rows[0]) throw new WorkspaceNotFoundError();
+      if (current.rows[0].status === 'published' || current.rows[0].status === 'superseded' || current.rows[0].status === 'archived') throw new WorkspaceTransitionError('Published portal configurations are immutable');
+      const row = await this.mutateRevision(client, envelope, 'portal_configuration', id, 'configuration=$1', [configuration]);
+      const revision = row.revision;
+      await this.effect(client, envelope, 'portal_configuration.updated', 'portal_configuration', id, revision);
+      return { resourceType: 'portal_configuration', resourceId: id, revision };
+    });
+  }
+
+  async transitionPortalConfiguration(envelope: WorkspaceCommandEnvelope, id: string, status: ConfigurationStatus): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { id, status }, async (client) => {
+      const current = await client.query<{ status: ConfigurationStatus }>('select status from portal_configuration_versions where id=$1 and organization_id=$2', [id, envelope.organizationId]);
+      const from = current.rows[0]?.status;
+      if (!from) throw new WorkspaceNotFoundError();
+      if (!canTransitionConfiguration(from, status)) throw new WorkspaceTransitionError(`Portal configuration cannot transition from ${from} to ${status}`);
+      if (status === 'published') {
+        const superseded = await client.query<{ id: string; revision: number }>("update portal_configuration_versions set status='superseded',revision=revision+1,updated_at=now() where organization_id=$1 and status='published' returning id,revision", [envelope.organizationId]);
+        for (const prior of superseded.rows) await this.effect(client, envelope, 'portal_configuration.superseded', 'portal_configuration', prior.id, prior.revision);
+      }
+      const publishedSql = status === 'published' ? ', published_at=now()' : '';
+      const row = await this.mutateRevision(client, envelope, 'portal_configuration', id, `status=$1${publishedSql}`, [status]);
+      const revision = row.revision;
+      await this.effect(client, envelope, `portal_configuration.${status}`, 'portal_configuration', id, revision);
+      return { resourceType: 'portal_configuration', resourceId: id, revision };
+    });
+  }
+
+  async rollbackPortalConfiguration(envelope: WorkspaceCommandEnvelope, sourceId: string): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { sourceId }, async (client) => {
+      const source = await client.query<{ configuration: unknown; status: ConfigurationStatus }>('select configuration,status from portal_configuration_versions where id=$1 and organization_id=$2', [sourceId, envelope.organizationId]);
+      if (!source.rows[0]) throw new WorkspaceNotFoundError();
+      if (source.rows[0].status === 'draft' || source.rows[0].status === 'in-review' || source.rows[0].status === 'approved') throw new WorkspaceTransitionError('Only a previously published portal configuration can be restored');
+      await client.query('select id from radar_organizations where id=$1 for update', [envelope.organizationId]);
+      const versionResult = await client.query<{ version: number }>('select coalesce(max(version),0)+1 version from portal_configuration_versions where organization_id=$1', [envelope.organizationId]);
+      const superseded = await client.query<{ id: string; revision: number }>("update portal_configuration_versions set status='superseded',revision=revision+1,updated_at=now() where organization_id=$1 and status='published' returning id,revision", [envelope.organizationId]);
+      for (const prior of superseded.rows) await this.effect(client, envelope, 'portal_configuration.superseded', 'portal_configuration', prior.id, prior.revision);
+      const id = randomUUID();
+      const version = versionResult.rows[0]!.version;
+      const configuration = portalConfigurationFromDatabase(source.rows[0].configuration);
+      const row = await client.query<{ revision: number }>("insert into portal_configuration_versions (id,organization_id,version,status,configuration,supersedes_version_id,published_at) values ($1,$2,$3,'published',$4,$5,now()) returning revision", [id, envelope.organizationId, version, configuration, sourceId]);
+      await this.effect(client, envelope, 'portal_configuration.rollback-published', 'portal_configuration', id, row.rows[0]!.revision, { version, sourceId });
+      return { resourceType: 'portal_configuration', resourceId: id, revision: row.rows[0]!.revision };
+    });
   }
 
   async findOrganizationResource(organizationId: string, type: WorkspaceResourceType, id: string): Promise<Row | undefined> {
@@ -95,10 +465,28 @@ export class RelationalWorkspace {
   }
 
   async openCallsForOrganization(organizationId: string): Promise<RelationalOpenCallView[]> {
-    const result = await this.pool.query<RelationalOpenCallView>(`select o.id,o.program_id "programId",o.title,o.status,o.radar_opportunity_id "radarOpportunityId",o.revision
+    const result = await this.pool.query<RelationalOpenCallView>(`select o.id,o.program_id "programId",o.title,o.status,o.radar_opportunity_id "radarOpportunityId",o.guideline_text "guidelineText",o.revision
       from open_calls o join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
       where e.organization_id=$1 order by o.created_at,o.id`, [organizationId]);
     return result.rows;
+  }
+
+  async publishedOpenCallsForPortal(organizationId: string): Promise<RelationalPublicOpenCallView[]> {
+    const result = await this.pool.query<{
+      id: string;
+      title: string;
+      radar_opportunity_id: string | null;
+      has_hosted_form: boolean;
+    }>(`select o.id,o.title,o.radar_opportunity_id,
+      exists(select 1 from submission_paths sp where sp.open_call_id=o.id) has_hosted_form
+      from open_calls o join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
+      where e.organization_id=$1 and o.status='published' order by o.published_at desc nulls last,o.created_at desc,o.id`, [organizationId]);
+    return result.rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      hasHostedForm: row.has_hosted_form,
+      ...(row.radar_opportunity_id ? { radarOpportunityId: row.radar_opportunity_id } : {}),
+    }));
   }
 
   async reviewRoundsForOpenCall(organizationId: string, openCallId: string): Promise<RelationalReviewRoundView[]> {
@@ -128,12 +516,106 @@ export class RelationalWorkspace {
     return result.rows;
   }
 
-  async publicSubmissionPath(id: string): Promise<Row | undefined> {
-    const result = await this.pool.query<Row>(`select sp.id,sp.open_call_id "openCallId",sp.categories,sp.fields,sp.fee_cents "feeCents",sp.revision,
-      o.title "openCallTitle",o.radar_opportunity_id "radarOpportunityId",e.organization_id "organizationId"
+  async publicSubmissionPath(id: string): Promise<RelationalPublicSubmissionPathView | undefined> {
+    const result = await this.pool.query<{
+      id: string; open_call_id: string; categories: string[]; fields: SubmissionField[]; fee_cents: number | null; revision: number;
+      open_call_title: string; radar_opportunity_id: string | null; organization_id: string;
+    }>(`select sp.id,sp.open_call_id,sp.categories,sp.fields,sp.fee_cents,sp.revision,
+      o.title open_call_title,o.radar_opportunity_id,e.organization_id
       from submission_paths sp join open_calls o on o.id=sp.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
       where sp.id=$1 and o.status='published'`, [id]);
-    return result.rows[0];
+    const row = result.rows[0];
+    if (!row) return undefined;
+    return {
+      id: row.id, openCallId: row.open_call_id, openCallTitle: row.open_call_title, organizationId: row.organization_id,
+      categories: row.categories, fields: row.fields, revision: row.revision,
+      ...(row.fee_cents !== null ? { feeCents: row.fee_cents } : {}),
+      ...(row.radar_opportunity_id ? { radarOpportunityId: row.radar_opportunity_id } : {}),
+    };
+  }
+
+  async publicSubmissionPathForOpenCall(organizationId: string, openCallId: string): Promise<RelationalPublicSubmissionPathView | undefined> {
+    const result = await this.pool.query<{ id: string }>(`select sp.id from submission_paths sp join open_calls o on o.id=sp.open_call_id
+      join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
+      where sp.open_call_id=$1 and e.organization_id=$2 and o.status='published' order by sp.created_at,sp.id limit 1`, [openCallId, organizationId]);
+    return result.rows[0] ? this.publicSubmissionPath(result.rows[0].id) : undefined;
+  }
+
+  async submissionDraftForOwner(submissionPathId: string, submitterAccountId: string): Promise<RelationalSubmissionDraftView | undefined> {
+    const result = await this.pool.query<{
+      id: string; submission_path_id: string; submitter_account_id: string; answers: Record<string, string | string[]>;
+      category: string | null; work_titles: string[]; payment_session_id: string | null; form_version_id: string | null;
+      opportunity_configuration_version_id: string | null; section_progress: string[]; recovery_receipt_id: string;
+      revision: number; updated_at: Date; expires_at: Date;
+    }>(`select id,submission_path_id,submitter_account_id,answers,category,work_titles,payment_session_id,form_version_id,
+      opportunity_configuration_version_id,section_progress,recovery_receipt_id,revision,updated_at,expires_at
+      from submission_drafts where submission_path_id=$1 and submitter_account_id=$2 and expires_at>now()`, [submissionPathId, submitterAccountId]);
+    const row = result.rows[0];
+    if (!row) return undefined;
+    return {
+      id: row.id, submissionPathId: row.submission_path_id, submitterAccountId: row.submitter_account_id,
+      answers: row.answers, workTitles: row.work_titles, sectionProgress: row.section_progress,
+      recoveryReceiptId: row.recovery_receipt_id, revision: row.revision,
+      updatedAt: row.updated_at.toISOString(), expiresAt: row.expires_at.toISOString(),
+      ...(row.category ? { category: row.category } : {}),
+      ...(row.payment_session_id ? { paymentSessionId: row.payment_session_id } : {}),
+      ...(row.form_version_id ? { formVersionId: row.form_version_id } : {}),
+      ...(row.opportunity_configuration_version_id ? { opportunityConfigurationVersionId: row.opportunity_configuration_version_id } : {}),
+    };
+  }
+
+  async saveSubmissionDraft(envelope: WorkspaceCommandEnvelope, input: {
+    submissionPathId: string;
+    answers: Record<string, string | string[]>;
+    workTitles: string[];
+    sectionProgress: string[];
+    category?: string;
+    paymentSessionId?: string;
+  }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, input, async (client) => {
+      const path = await client.query<{ organization_id: string; opportunity_configuration_version_id: string | null; form_version_id: string | null }>(`select e.organization_id,
+        oc.id opportunity_configuration_version_id,fv.id form_version_id
+        from submission_paths sp join open_calls o on o.id=sp.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
+        left join opportunity_configuration_versions oc on oc.open_call_id=o.id and oc.status='published'
+        left join form_versions fv on fv.id=(oc.configuration->>'applicationFormVersionId')::uuid and fv.status='published'
+        where sp.id=$1 and o.status='published' for update of sp`, [input.submissionPathId]);
+      if (!path.rows[0]) throw new WorkspaceNotFoundError();
+      const existing = await client.query<{ id: string; revision: number }>('select id,revision from submission_drafts where submission_path_id=$1 and submitter_account_id=$2 for update', [input.submissionPathId, envelope.ownerAccountId]);
+      const draft = existing.rows[0];
+      if (draft && draft.revision !== envelope.expectedRevision) throw new WorkspaceConflictError('submission_draft', draft.id, envelope.expectedRevision ?? 0, draft.revision);
+      const id = draft?.id ?? randomUUID();
+      let revision: number;
+      if (draft) {
+        const changed = await client.query<{ revision: number }>(`update submission_drafts set answers=$1,category=$2,work_titles=$3,payment_session_id=$4,
+          section_progress=$5,revision=revision+1,updated_at=now(),expires_at=now()+interval '30 days' where id=$6 and revision=$7 returning revision`,
+        [JSON.stringify(input.answers), input.category ?? null, JSON.stringify(input.workTitles), input.paymentSessionId ?? null, JSON.stringify(input.sectionProgress), id, envelope.expectedRevision]);
+        revision = changed.rows[0]!.revision;
+      } else {
+        const inserted = await client.query<{ revision: number }>(`insert into submission_drafts
+          (id,submission_path_id,submitter_account_id,answers,category,work_titles,payment_session_id,form_version_id,opportunity_configuration_version_id,section_progress,updated_at,expires_at)
+          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,now(),now()+interval '30 days') returning revision`,
+        [id, input.submissionPathId, envelope.ownerAccountId, JSON.stringify(input.answers), input.category ?? null, JSON.stringify(input.workTitles), input.paymentSessionId ?? null,
+          path.rows[0].form_version_id, path.rows[0].opportunity_configuration_version_id, JSON.stringify(input.sectionProgress)]);
+        revision = inserted.rows[0]!.revision;
+      }
+      await this.effect(client, envelope, draft ? 'submission_draft.saved' : 'submission_draft.created', 'submission_draft', id, revision, { sectionProgress: input.sectionProgress }, path.rows[0].organization_id);
+      return { resourceType: 'submission_draft', resourceId: id, revision };
+    });
+  }
+
+  async deleteSubmissionDraft(envelope: WorkspaceCommandEnvelope, submissionPathId: string): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { submissionPathId }, async (client) => {
+      const current = await client.query<{ id: string; revision: number; organization_id: string }>(`select d.id,d.revision,e.organization_id from submission_drafts d
+        join submission_paths sp on sp.id=d.submission_path_id join open_calls o on o.id=sp.open_call_id
+        join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
+        where d.submission_path_id=$1 and d.submitter_account_id=$2 for update of d`, [submissionPathId, envelope.ownerAccountId]);
+      const draft = current.rows[0];
+      if (!draft) throw new WorkspaceNotFoundError();
+      if (draft.revision !== envelope.expectedRevision) throw new WorkspaceConflictError('submission_draft', draft.id, envelope.expectedRevision ?? 0, draft.revision);
+      await client.query('delete from submission_drafts where id=$1', [draft.id]);
+      await this.effect(client, envelope, 'submission_draft.deleted', 'submission_draft', draft.id, draft.revision + 1, {}, draft.organization_id);
+      return { resourceType: 'submission_draft', resourceId: draft.id, revision: draft.revision + 1 };
+    });
   }
 
   async submissionForOwner(ownerAccountId: string, id: string): Promise<Row | undefined> {
@@ -166,6 +648,18 @@ export class RelationalWorkspace {
       ...(row.payment_status ? {paymentStatus:row.payment_status}:{}) }));
   }
 
+  async submissionsForOrganization(organizationId: string): Promise<RelationalOrganizationSubmissionView[]> {
+    const result = await this.pool.query<RelationalOrganizationSubmissionView>(`select s.id,s.submission_path_id "submissionPathId",o.id "openCallId",o.title "openCallTitle",
+        s.submitter_account_id "submitterAccountId",s.status,s.submitted_at "submittedAt",s.category,s.payment_status "paymentStatus",s.answers,
+        coalesce((select jsonb_agg(jsonb_build_object('id',w.id,'title',w.title,'fileUrl',w.file_url,'fileUrls',w.file_urls,'order',w."order") order by w."order",w.id) from works w where w.submission_id=s.id),'[]'::jsonb) works,
+        coalesce((select jsonb_agg(jsonb_build_object('id',ra.id,'reviewerAccountId',ra.reviewer_account_id,'completedAt',ra.completed_at) order by ra.id) from review_assignments ra where ra.submission_id=s.id),'[]'::jsonb) assignments,
+        coalesce((select jsonb_agg(jsonb_build_object('workId',d.work_id,'outcome',d.outcome) order by d.work_id) from decisions d join works w on w.id=d.work_id where w.submission_id=s.id),'[]'::jsonb) decisions
+      from submissions s join submission_paths sp on sp.id=s.submission_path_id join open_calls o on o.id=sp.open_call_id
+      join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
+      where e.organization_id=$1 order by s.submitted_at desc,s.id desc`, [organizationId]);
+    return result.rows.map((row) => ({ ...row, submittedAt: new Date(row.submittedAt).toISOString() }));
+  }
+
   async creatorDecisionContext(organizationId: string, workId: string): Promise<RelationalCreatorDecisionContext | undefined> {
     const result = await this.pool.query<RelationalCreatorDecisionContext>(`select s.submitter_account_id "submitterAccountId",
       o.radar_opportunity_id "radarOpportunityId",w.title "workTitle"
@@ -181,21 +675,21 @@ export class RelationalWorkspace {
     return result.rows[0]?.revision ?? null;
   }
 
-  private async mutateRevision(client: PoolClient, envelope: WorkspaceCommandEnvelope, type: WorkspaceResourceType, id: string, setSql: string, values: unknown[]): Promise<Row> {
+  private async mutateRevision(client: PoolClient, envelope: WorkspaceCommandEnvelope, type: WorkspaceResourceType, id: string, setSql: string, values: unknown[]): Promise<{ revision: number }> {
     if (!envelope.organizationId || envelope.expectedRevision === undefined) throw new WorkspaceConflictError(type, id, envelope.expectedRevision ?? 0, null);
     const target = tenantJoins[type];
     const offset = values.length;
     const scopedTable = target.table.replace(/ r$/, ' r2');
     const scopedJoins = target.joins.replaceAll('r.', 'r2.');
     const scopedOrganization = target.organization.replaceAll('r.', 'r2.');
-    const result = await client.query(
+    const result = await client.query<{ revision: number }>(
       `update ${target.table} set ${setSql}, revision=r.revision+1, updated_at=now()
        where r.id=$${offset + 1} and r.revision=$${offset + 3}
        and r.id in (select r2.id from ${scopedTable} ${scopedJoins} where ${scopedOrganization}=$${offset + 2}) returning r.*`,
       [...values, id, envelope.organizationId, envelope.expectedRevision],
     );
     if (result.rowCount === 0) throw new WorkspaceConflictError(type, id, envelope.expectedRevision, await this.currentRevision(client, envelope.organizationId, type, id));
-    return result.rows[0] as Row;
+    return result.rows[0]!;
   }
 
   private async effect(client: PoolClient, envelope: WorkspaceCommandEnvelope, action: string, type: string, id: string, revision: number, metadata: Json = {}, organizationId = envelope.organizationId): Promise<void> {
@@ -269,7 +763,7 @@ export class RelationalWorkspace {
   async setOpenCallStatus(envelope: WorkspaceCommandEnvelope, id: string, status: 'published' | 'closed'): Promise<WorkspaceCommandResult> {
     return this.command(envelope, { id, status }, async (client) => {
       const row = await this.mutateRevision(client, envelope, 'open_call', id, `status=$1, published_at=case when $1='published' then coalesce(r.published_at,now()) else r.published_at end`, [status]);
-      const revision = Number(row.revision);
+      const revision = row.revision;
       await this.effect(client, envelope, `open_call.${status}`, 'open_call', id, revision);
       return { resourceType: 'open_call', resourceId: id, revision };
     });
@@ -299,7 +793,7 @@ export class RelationalWorkspace {
       if (!parent.rowCount) throw new WorkspaceNotFoundError();
       const row = await this.mutateRevision(client,envelope,'submission_path',id,'categories=$1::jsonb,fields=$2::jsonb,fee_cents=$3',[JSON.stringify(input.categories),JSON.stringify(input.fields),input.feeCents ?? null]);
       if (input.taxonomyAssignments !== undefined) await this.replaceSubmissionPathTaxonomy(client, id, input.taxonomyAssignments);
-      const revision=Number(row.revision);
+      const revision=row.revision;
       await this.effect(client,envelope,'submission_path.updated','submission_path',id,revision);
       return {resourceType:'submission_path',resourceId:id,revision};
     });
@@ -317,17 +811,34 @@ export class RelationalWorkspace {
   }): Promise<WorkspaceCommandResult> {
     if (!input.works.length) throw new Error('A submission needs at least one work');
     return this.command(envelope, input, async (client) => {
-      const path = await client.query<{ organization_id: string }>(`select e.organization_id from submission_paths sp
+      const path = await client.query<{
+        organization_id: string;
+        portal_configuration_version_id: string | null;
+        form_version_id: string | null;
+        opportunity_configuration_version_id: string | null;
+        review_workflow_version_id: string | null;
+      }>(`select e.organization_id,pc.id portal_configuration_version_id,
+        coalesce(d.form_version_id,fv.id) form_version_id,
+        coalesce(d.opportunity_configuration_version_id,oc.id) opportunity_configuration_version_id,
+        rw.id review_workflow_version_id from submission_paths sp
         join open_calls o on o.id=sp.open_call_id
         join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
-        where sp.id=$1 and o.status='published' for update of o`, [input.submissionPathId]);
+        left join submission_drafts d on d.submission_path_id=sp.id and d.submitter_account_id=$2
+        left join portal_configuration_versions pc on pc.organization_id=e.organization_id and pc.status='published'
+        left join opportunity_configuration_versions oc on oc.open_call_id=o.id and oc.status='published'
+        left join form_versions fv on fv.id=(oc.configuration->>'applicationFormVersionId')::uuid and fv.status='published'
+        left join review_workflow_versions rw on rw.id=(oc.configuration->>'reviewWorkflowVersionId')::uuid and rw.status='published'
+        where sp.id=$1 and o.status='published' for update of o`, [input.submissionPathId, envelope.ownerAccountId]);
       if (!path.rowCount) throw new WorkspaceNotFoundError();
       const id = input.id ?? randomUUID();
       const row = await client.query<{ revision: number }>(`insert into submissions
-        (id,submission_path_id,submitter_account_id,status,payment_status,payment_session_id,fee_cents,idempotency_key,answers,category)
-        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) returning revision`,
+        (id,submission_path_id,submitter_account_id,status,payment_status,payment_session_id,fee_cents,idempotency_key,answers,category,
+         portal_configuration_version_id,form_version_id,opportunity_configuration_version_id,review_workflow_version_id)
+        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) returning revision`,
       [id, input.submissionPathId, envelope.ownerAccountId, 'submitted', input.paymentStatus ?? 'not-required', input.paymentSessionId ?? null,
-        input.feeCents ?? null, envelope.idempotencyKey, input.answers ?? null, input.category ?? null]);
+        input.feeCents ?? null, envelope.idempotencyKey, input.answers ? JSON.stringify(input.answers) : null, input.category ?? null,
+        path.rows[0].portal_configuration_version_id, path.rows[0].form_version_id,
+        path.rows[0].opportunity_configuration_version_id, path.rows[0].review_workflow_version_id]);
       const works: Array<Record<string, unknown>> = [];
       for (const [order, work] of input.works.entries()) {
         const workId = work.id ?? randomUUID();
@@ -337,6 +848,7 @@ export class RelationalWorkspace {
         );
         works.push(inserted.rows[0]!);
       }
+      await client.query('delete from submission_drafts where submission_path_id=$1 and submitter_account_id=$2', [input.submissionPathId, envelope.ownerAccountId]);
       await this.effect(client, envelope, 'submission.finalized', 'submission', id, row.rows[0]!.revision, { workCount: input.works.length }, path.rows[0]!.organization_id);
       return { resourceType: 'submission', resourceId: id, revision: row.rows[0]!.revision, data: { works } };
     });
@@ -479,7 +991,7 @@ export class RelationalWorkspace {
   async updateDeliveryTask(envelope: WorkspaceCommandEnvelope, id: string, status: 'pending'|'complete'): Promise<WorkspaceCommandResult> {
     return this.command(envelope, { id, status }, async (client) => {
       const row=await this.mutateRevision(client,envelope,'delivery_task',id,`status=$1, completed_at=case when $1='complete' then now() else null end`,[status]);
-      const revision=Number(row.revision);
+      const revision=row.revision;
       await this.effect(client,envelope,'delivery.updated','delivery_task',id,revision,{status});
       return {resourceType:'delivery_task',resourceId:id,revision};
     });

@@ -1,4 +1,6 @@
 export * from "./domain/types.js";
+export * from "./portalConfiguration.js";
+export * from "./portalTemplates.js";
 export { WorkspaceEngine, type WorkspaceEngineOptions } from "./engine.js";
 export { createStore, cloneStore, type WorkspaceStore } from "./store/store.js";
 export {
@@ -52,8 +54,8 @@ export {
   createProductionWorkspaceEngine,
   type ProductionWorkspaceEngine,
 } from "./productionEngine.js";
-export { WorkspaceConflictError, WorkspaceIdempotencyReuseError, WorkspaceNotFoundError } from './errors.js';
+export { WorkspaceConflictError, WorkspaceIdempotencyReuseError, WorkspaceNotFoundError, WorkspaceTransitionError } from './errors.js';
 export type { WorkspaceCommandEnvelope, WorkspaceCommandResult, WorkspaceTransactionRunner, WorkspaceTransaction, TenantScopedWorkspaceQueries } from './repositories/contracts.js';
 export { PostgresWorkspaceTransactionRunner } from './repositories/postgres/transactionRunner.js';
-export { RelationalWorkspace, createRelationalWorkspace, relationalWorkspaceAuthorityEnabled, workspaceRequestHash, type RelationalOwnerSubmissionView } from './relationalWorkspace.js';
+export { RelationalWorkspace, createRelationalWorkspace, relationalWorkspaceAuthorityEnabled, workspaceRequestHash, type RelationalFormVersionView, type RelationalOpenCallView, type RelationalOpportunityConfigurationVersionView, type RelationalOrganizationSubmissionView, type RelationalOwnerSubmissionView, type RelationalPortalConfigurationView, type RelationalPublicOpenCallView, type RelationalPublicSubmissionPathView, type RelationalReviewWorkflowVersionView, type RelationalSubmissionDraftView } from './relationalWorkspace.js';
 export { backfillWorkspaceLaunchSlice, reconcileWorkspaceLaunchSlice, writeWorkspaceParityArtifact, type WorkspaceBackfillResult, type WorkspaceParityMismatch, type WorkspaceParityReport, type WorkspaceParityReason } from './reconciliation/workspaceParity.js';
