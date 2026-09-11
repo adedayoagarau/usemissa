@@ -164,6 +164,20 @@ export const reviewRecommendationCorrections = pgTable('review_recommendation_co
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 });
 
+export const decisionMessageDrafts = pgTable('decision_message_drafts', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  decisionId: text('decision_id').notNull(),
+  decisionRevision: integer('decision_revision').notNull(),
+  recipientAccountId: text('recipient_account_id').notNull(),
+  subject: text('subject').notNull(),
+  body: text('body').notNull(),
+  status: text('status').notNull().default('draft'),
+  revision: integer('revision').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+});
+
 export const reviewRecommendations = pgTable('review_recommendations', {
   reviewAssignmentId: text('review_assignment_id').primaryKey().references(() => reviewAssignments.id),
   status: text('status').notNull().default('final'),

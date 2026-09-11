@@ -2,6 +2,7 @@ CREATE TABLE IF NOT EXISTS "decision_message_drafts" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "organization_id" text NOT NULL REFERENCES "radar_organizations"("id") ON DELETE cascade,
   "decision_id" text NOT NULL REFERENCES "decisions"("id") ON DELETE restrict,
+  "decision_revision" integer NOT NULL,
   "recipient_account_id" text NOT NULL,
   "subject" text NOT NULL,
   "body" text NOT NULL,
