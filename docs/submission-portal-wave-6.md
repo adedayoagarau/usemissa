@@ -51,6 +51,10 @@ revision-aware command that emits an audit/outbox effect.
 Recused or expired assignments can be reassigned through a lineage-preserving
 command that links the replacement to its prior assignment.
 
+Reviewer recommendations now distinguish draft saves from final completion;
+draft saves keep the assignment open and finalization promotes the same record
+to final state.
+
 Organization submission bulk actions now expose explicit, non-mutating scope
 previews, and exports include a version, source boundary, timestamp, and
 provenance-safe submission records without file URLs.

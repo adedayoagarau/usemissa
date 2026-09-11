@@ -166,6 +166,7 @@ export const reviewRecommendationCorrections = pgTable('review_recommendation_co
 
 export const reviewRecommendations = pgTable('review_recommendations', {
   reviewAssignmentId: text('review_assignment_id').primaryKey().references(() => reviewAssignments.id),
+  status: text('status').notNull().default('final'),
   score: integer('score'),
   notes: text('notes'),
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),

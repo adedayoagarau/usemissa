@@ -1096,11 +1096,24 @@ export class RelationalWorkspace {
         where ra.id=$1 and ra.reviewer_account_id=$2 and e.organization_id=$3 and ra.completed_at is null for update of ra`,[assignmentId,envelope.actorAccountId,envelope.organizationId]);
       if (!assignment.rows[0]) throw new WorkspaceNotFoundError();
       if (assignment.rows[0].revision !== envelope.expectedRevision) throw new WorkspaceConflictError('review_assignment',assignmentId,envelope.expectedRevision ?? 0,assignment.rows[0].revision);
-      await client.query('insert into review_recommendations (review_assignment_id,score,notes,recorded_at,updated_at) values ($1,$2,$3,now(),now())',[assignmentId,input.score ?? null,input.notes ?? null]);
+      await client.query('insert into review_recommendations (review_assignment_id,score,notes,status,recorded_at,updated_at) values ($1,$2,$3,\'final\',now(),now()) on conflict (review_assignment_id) do update set score=excluded.score,notes=excluded.notes,status=\'final\',updated_at=now()',[assignmentId,input.score ?? null,input.notes ?? null]);
       const changed=await client.query<{revision:number}>('update review_assignments set completed_at=now(),revision=revision+1,updated_at=now() where id=$1 and revision=$2 returning revision',[assignmentId,envelope.expectedRevision]);
       const revision=changed.rows[0]!.revision;
       await this.effect(client,envelope,'review.completed','review_assignment',assignmentId,revision,{hasScore:input.score !== undefined});
       return {resourceType:'review_assignment',resourceId:assignmentId,revision};
+    });
+  }
+
+  async saveReviewDraft(envelope: WorkspaceCommandEnvelope, assignmentId: string, input: { score?: number; notes?: string }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { assignmentId, ...input }, async (client) => {
+      const assignment = await client.query<{ revision: number }>(`select ra.revision from review_assignments ra join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id where ra.id=$1 and ra.reviewer_account_id=$2 and e.organization_id=$3 and ra.completed_at is null and ra.recused_at is null for update of ra`, [assignmentId, envelope.actorAccountId, envelope.organizationId]);
+      if (!assignment.rows[0]) throw new WorkspaceNotFoundError();
+      if (assignment.rows[0].revision !== envelope.expectedRevision) throw new WorkspaceConflictError('review_assignment', assignmentId, envelope.expectedRevision ?? 0, assignment.rows[0].revision);
+      await client.query('insert into review_recommendations (review_assignment_id,score,notes,status,recorded_at,updated_at) values ($1,$2,$3,\'draft\',now(),now()) on conflict (review_assignment_id) do update set score=excluded.score,notes=excluded.notes,status=\'draft\',updated_at=now()', [assignmentId, input.score ?? null, input.notes ?? null]);
+      const revision = assignment.rows[0].revision + 1;
+      await client.query('update review_assignments set revision=$1,updated_at=now() where id=$2', [revision, assignmentId]);
+      await this.effect(client, envelope, 'review.draft_saved', 'review_assignment', assignmentId, revision, {});
+      return { resourceType: 'review_assignment', resourceId: assignmentId, revision };
     });
   }
 
