@@ -148,6 +148,7 @@ const tenantJoins: Record<WorkspaceResourceType, { table: string; joins: string;
   reviewer_group: { table: 'reviewer_groups r', joins: '', organization: 'r.organization_id' },
   decision_message_draft: { table: 'decision_message_drafts r', joins: '', organization: 'r.organization_id' },
   message_delivery_attempt: { table: 'message_delivery_attempts r', joins: '', organization: 'r.organization_id' },
+  organization_retention_policy: { table: 'organization_retention_policies r', joins: '', organization: 'r.organization_id' },
 };
 
 export function workspaceRequestHash(value: unknown): string {
@@ -593,6 +594,24 @@ export class RelationalWorkspace {
       await client.query('insert into message_delivery_attempts (id,organization_id,message_draft_id,attempt_number,provider_status,provider_reference,error_code,retry_at) values ($1,$2,$3,$4,$5,$6,$7,$8)', [id, envelope.organizationId, input.messageDraftId, attemptNumber, input.providerStatus, input.providerReference ?? null, input.errorCode ?? null, input.retryAt ?? null]);
       await this.effect(client, envelope, 'message_delivery_attempt.recorded', 'message_delivery_attempt', id, attemptNumber, { messageDraftId: input.messageDraftId, providerStatus: input.providerStatus });
       return { resourceType: 'message_delivery_attempt', resourceId: id, revision: attemptNumber };
+    });
+  }
+
+  async organizationRetentionPolicy(organizationId: string): Promise<{ organizationId: string; draftDays: number; uploadDays: number; reviewDays: number; messageDays: number; revision: number }> {
+    const result = await this.pool.query<{ organization_id: string; draft_days: number; upload_days: number; review_days: number; message_days: number; revision: number }>('select organization_id,draft_days,upload_days,review_days,message_days,revision from organization_retention_policies where organization_id=$1', [organizationId]);
+    const row = result.rows[0];
+    return row ? { organizationId: row.organization_id, draftDays: row.draft_days, uploadDays: row.upload_days, reviewDays: row.review_days, messageDays: row.message_days, revision: row.revision } : { organizationId, draftDays: 30, uploadDays: 365, reviewDays: 730, messageDays: 730, revision: 1 };
+  }
+
+  async updateOrganizationRetentionPolicy(envelope: WorkspaceCommandEnvelope, input: { draftDays: number; uploadDays: number; reviewDays: number; messageDays: number }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, input, async (client) => {
+      const current = await client.query<{ revision: number }>('select revision from organization_retention_policies where organization_id=$1 for update', [envelope.organizationId]);
+      const revision = current.rows[0]?.revision ?? 0;
+      if (revision > 0 && envelope.expectedRevision !== revision) throw new WorkspaceConflictError('organization_retention_policy', envelope.organizationId!, envelope.expectedRevision ?? 0, revision);
+      const nextRevision = revision + 1;
+      await client.query(`insert into organization_retention_policies (organization_id,draft_days,upload_days,review_days,message_days,revision,updated_at) values ($1,$2,$3,$4,$5,$6,now()) on conflict (organization_id) do update set draft_days=excluded.draft_days,upload_days=excluded.upload_days,review_days=excluded.review_days,message_days=excluded.message_days,revision=excluded.revision,updated_at=excluded.updated_at`, [envelope.organizationId, input.draftDays, input.uploadDays, input.reviewDays, input.messageDays, nextRevision]);
+      await this.effect(client, envelope, 'organization_retention_policy.updated', 'organization_retention_policy', envelope.organizationId!, nextRevision, input);
+      return { resourceType: 'organization_retention_policy', resourceId: envelope.organizationId!, revision: nextRevision };
     });
   }
 

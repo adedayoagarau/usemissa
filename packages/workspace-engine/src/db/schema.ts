@@ -137,6 +137,16 @@ export const organizationReviewSettings = pgTable('organization_review_settings'
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
 });
 
+export const organizationRetentionPolicies = pgTable('organization_retention_policies', {
+  organizationId: text('organization_id').primaryKey(),
+  draftDays: integer('draft_days').notNull().default(30),
+  uploadDays: integer('upload_days').notNull().default(365),
+  reviewDays: integer('review_days').notNull().default(730),
+  messageDays: integer('message_days').notNull().default(730),
+  revision: integer('revision').notNull().default(1),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+});
+
 export const reviewRecommendations = pgTable('review_recommendations', {
   reviewAssignmentId: text('review_assignment_id').primaryKey().references(() => reviewAssignments.id),
   score: integer('score'),

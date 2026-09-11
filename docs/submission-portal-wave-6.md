@@ -33,6 +33,10 @@ Delivery attempts now record accepted, delivered, or failed provider evidence
 with attempt numbers, references, error codes, and retry timestamps; provider
 acceptance remains distinct from delivery proof.
 
+Organization retention policies now have a revisioned, admin-only update
+boundary for drafts, uploads, reviews, and messages; cleanup execution remains
+separate from policy configuration.
+
 ### Review operations
 
 - Configure review stages, reviewer groups, workload limits, blind projections,
