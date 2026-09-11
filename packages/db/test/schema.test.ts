@@ -74,7 +74,10 @@ import {
   publicationEditorialSpecs,
   publicationCompensationDetails,
   publicationTelemetryAnalytics,
+  publicationAestheticProfiles,
+  opportunityContestJudges,
 } from "../src/schema.js";
+
 
 
 
@@ -611,5 +614,21 @@ test("publication editorial intelligence schema defines specs, compensation, and
   assert.ok(telemetryConfig.indexes.some((i) => i.config.name === "idx_pub_telemetry_resp_time"));
   assert.ok(telemetryConfig.indexes.some((i) => i.config.name === "idx_pub_telemetry_acc_rate"));
 });
+
+test("publication aesthetic profiles and contest judges schema defines taste DNA and lineage", () => {
+  const aestheticConfig = getTableConfig(publicationAestheticProfiles);
+  assert.equal(aestheticConfig.columns.find((c) => c.name === "profile_id")?.primary, true);
+  assert.equal(aestheticConfig.columns.find((c) => c.name === "unsolicited_slush_ratio_percent")?.notNull, true);
+  assert.ok(aestheticConfig.indexes.some((i) => i.config.name === "idx_pub_aesthetic_debut"));
+  assert.ok(aestheticConfig.indexes.some((i) => i.config.name === "idx_pub_aesthetic_slush_ratio"));
+
+  const judgesConfig = getTableConfig(opportunityContestJudges);
+  assert.equal(judgesConfig.columns.find((c) => c.name === "id")?.primary, true);
+  assert.equal(judgesConfig.columns.find((c) => c.name === "contest_name")?.notNull, true);
+  assert.equal(judgesConfig.columns.find((c) => c.name === "judge_name")?.notNull, true);
+  assert.ok(judgesConfig.indexes.some((i) => i.config.name === "idx_opp_judges_profile"));
+  assert.ok(judgesConfig.indexes.some((i) => i.config.name === "idx_opp_judges_judge_name"));
+});
+
 
 

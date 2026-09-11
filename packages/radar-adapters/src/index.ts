@@ -596,8 +596,11 @@ export {
   type PublicationCompensationDetails,
   type PublicationTelemetryAnalytics,
   type PublicationResponseBucket,
+  type PublicationAestheticProfile,
+  type OpportunityContestJudge,
   type EditorialIntelligenceFullProfile,
 } from "./ranking/editorialIntelligenceRepository.js";
+
 
 
 

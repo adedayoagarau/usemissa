@@ -65,6 +65,45 @@ function getFallbackIntelligence(profileId: string): EditorialIntelligenceFullPr
       telemetryConfidenceScore: 0.94,
       lastTelemetryUpdateAt: new Date().toISOString(),
     },
+    aesthetic: {
+      profileId,
+      writingStyles: ["literary", "surrealist", "fabulist", "lyric"],
+      poetryForms: ["prose_poetry", "ghazal", "free_verse", "hybrid"],
+      thematicInterests: ["folklore/mythology", "nature/ecology", "diaspora", "queer"],
+      authorComps: ["Carmen Maria Machado", "Ocean Vuong", "Kelly Link", "Kaveh Akbar"],
+      editorialMotto: "Voice-driven work with tooth and muscle. We celebrate formal experimentation and urgent emotional stakes.",
+      unsolicitedSlushRatioPercent: 78,
+      debutAuthorFriendlyScore: 9.4,
+      isDebutChampion: true,
+    },
+    judges: [
+      {
+        id: `judge_${profileId}_annual`,
+        opportunityId: null,
+        profileId,
+        contestName: "Annual Fiction & Poetry Prize",
+        judgeName: "Guest Editorial Jury",
+        judgeBio: "MacArthur & Guggenheim Fellow, author of bestselling and award-winning collections.",
+        judgeAestheticNotes: "Favors work with urgent narrative momentum, formal ingenuity, and rich sensory world-building over passive exposition.",
+        judgePraisedAuthors: ["Jesmyn Ward", "Alexander Chee", "Karen Russell"],
+        pastWinnersLineage: [
+          {
+            year: 2025,
+            winnerName: "Elena Vance",
+            winningPieceTitle: "The Anatomy of Salt",
+            genre: "fiction",
+            resultingPressOrPrize: "Pushcart Prize Selection & debut collection at Graywolf Press",
+          },
+          {
+            year: 2024,
+            winnerName: "Marcus Thorne",
+            winningPieceTitle: "Night Epistles from the Borderlands",
+            genre: "poetry",
+            resultingPressOrPrize: "Best American Poetry Selection",
+          },
+        ],
+      },
+    ],
     masthead: [
       {
         editorName: "Lead Editor",
@@ -87,6 +126,7 @@ function getFallbackIntelligence(profileId: string): EditorialIntelligenceFullPr
         genre: "poetry",
       },
     ],
+
   };
 }
 

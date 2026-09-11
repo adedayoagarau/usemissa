@@ -16,6 +16,10 @@ import {
   CheckCircle2,
   XCircle,
   Info,
+  Compass,
+  Gavel,
+  BookOpen,
+  HeartHandshake,
 } from "lucide-react";
 import {
   Sheet,
@@ -47,8 +51,8 @@ export function EditorialIntelligenceDrawer({
   const [error, setError] = React.useState<string | null>(null);
   const [data, setData] = React.useState<EditorialIntelligenceFullProfile | null>(null);
   const [activeTab, setActiveTab] = React.useState<
-    "telemetry" | "compensation" | "guidelines" | "masthead"
-  >("telemetry");
+    "aesthetic" | "telemetry" | "compensation" | "guidelines" | "judges"
+  >("aesthetic");
 
   const fetchIntelligence = React.useCallback(async () => {
     setLoading(true);
@@ -94,7 +98,6 @@ export function EditorialIntelligenceDrawer({
         }
       />
       <SheetContent
-
         side="right"
         className="w-full sm:max-w-xl md:max-w-2xl overflow-y-auto p-0 flex flex-col bg-background"
       >
@@ -102,6 +105,11 @@ export function EditorialIntelligenceDrawer({
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
               <RankingTierBadge tier={data?.prestigeTier ?? "Tier 1"} />
+              {data?.aesthetic.isDebutChampion && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded">
+                  <HeartHandshake className="size-3" /> Debut Champion
+                </span>
+              )}
               <span className="inline-flex items-center gap-1 text-xs font-mono text-muted-foreground">
                 <ShieldCheck className="size-3.5 text-primary" /> Verified Intel
               </span>
@@ -119,11 +127,23 @@ export function EditorialIntelligenceDrawer({
             {magazineName}
           </SheetTitle>
           <SheetDescription className="text-sm text-muted-foreground mt-1">
-            Real-time telemetry, compensation standards, manuscript specs, and response curves.
+            Aesthetic taste profile, response telemetry, author comps, manuscript specs, and prize lineage.
           </SheetDescription>
 
           {/* Tab Navigation */}
           <div className="flex items-center gap-1 border-b border-border -mb-6 mt-6 overflow-x-auto no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setActiveTab("aesthetic")}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === "aesthetic"
+                  ? "border-primary text-primary font-semibold"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Compass className="size-3.5" />
+              <span>Taste DNA & Comps</span>
+            </button>
             <button
               type="button"
               onClick={() => setActiveTab("telemetry")}
@@ -146,7 +166,7 @@ export function EditorialIntelligenceDrawer({
               }`}
             >
               <DollarSign className="size-3.5" />
-              <span>Compensation & Rights</span>
+              <span>Compensation</span>
             </button>
             <button
               type="button"
@@ -158,19 +178,19 @@ export function EditorialIntelligenceDrawer({
               }`}
             >
               <FileText className="size-3.5" />
-              <span>Manuscript Specs</span>
+              <span>Specs</span>
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("masthead")}
+              onClick={() => setActiveTab("judges")}
               className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === "masthead"
+                activeTab === "judges"
                   ? "border-primary text-primary font-semibold"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Users className="size-3.5" />
-              <span>Masthead & Awards</span>
+              <Gavel className="size-3.5" />
+              <span>Judges & Lineage</span>
             </button>
           </div>
         </SheetHeader>
@@ -180,7 +200,7 @@ export function EditorialIntelligenceDrawer({
             <div className="py-16 text-center space-y-3">
               <div className="inline-block size-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-muted-foreground">
-                Synthesizing editorial telemetry & publisher intelligence...
+                Synthesizing editorial taste DNA, telemetry & publisher intelligence...
               </p>
             </div>
           )}
@@ -205,7 +225,149 @@ export function EditorialIntelligenceDrawer({
 
           {!loading && data && (
             <>
-              {/* TAB 1: TELEMETRY & RESPONSE CURVES */}
+              {/* TAB 1: AESTHETIC TASTE DNA & COMPS */}
+              {activeTab === "aesthetic" && (
+                <div className="space-y-6">
+                  {/* Editorial Motto */}
+                  {data.aesthetic.editorialMotto && (
+                    <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-1.5">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                        Editorial Taste Profile
+                      </p>
+                      <p className="text-sm font-serif italic text-foreground leading-relaxed">
+                        &ldquo;{data.aesthetic.editorialMotto}&rdquo;
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Author Comps ("If You Write Like...") */}
+                  {data.aesthetic.authorComps.length > 0 && (
+                    <div className="p-4 rounded-lg border border-border bg-card space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                          <BookOpen className="size-4 text-primary" />
+                          <span>Author & Aesthetic Comps</span>
+                        </h4>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          Stylistic Kinship
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Writers who share tonal or structural resonance with this journal&rsquo;s published work:
+                      </p>
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {data.aesthetic.authorComps.map((author) => (
+                          <span
+                            key={author}
+                            className="px-2.5 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/20"
+                          >
+                            {author}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Slush & Debut Breakdown */}
+                  <div className="p-4 rounded-lg border border-border bg-card space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                        <HeartHandshake className="size-4 text-emerald-600" />
+                        <span>Slush Acceptance & Debut Friendliness</span>
+                      </h4>
+                      <span className="text-xs font-mono font-semibold text-emerald-600">
+                        {data.aesthetic.debutAuthorFriendlyScore} / 10 Debut Score
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          Unsolicited Slush Acceptance Share
+                        </span>
+                        <span className="font-mono font-semibold text-foreground">
+                          {data.aesthetic.unsolicitedSlushRatioPercent}% Open Slush{" "}
+                          <span className="font-normal text-muted-foreground">
+                            ({100 - data.aesthetic.unsolicitedSlushRatioPercent}% Solicited)
+                          </span>
+                        </span>
+                      </div>
+                      <div className="w-full h-2.5 rounded-full bg-muted overflow-hidden flex">
+                        <div
+                          className="h-full bg-emerald-600 transition-all duration-500"
+                          style={{ width: `${data.aesthetic.unsolicitedSlushRatioPercent}%` }}
+                        />
+                        <div
+                          className="h-full bg-muted-foreground/30 transition-all duration-500"
+                          style={{ width: `${100 - data.aesthetic.unsolicitedSlushRatioPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground leading-relaxed pt-1">
+                      {data.aesthetic.isDebutChampion
+                        ? "Verified Debut Champion: This magazine consistently publishes emerging and first-time writers directly from open slush piles."
+                        : "Selective Masthead: Significant portion of each issue is curated through solicitations and established contributors."}
+                    </p>
+                  </div>
+
+                  {/* Writing Styles & Poetry Forms Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-lg border border-border bg-card space-y-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Preferred Writing Styles
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {data.aesthetic.writingStyles.map((style) => (
+                          <span
+                            key={style}
+                            className="px-2 py-0.5 text-xs rounded bg-muted text-foreground capitalize font-mono"
+                          >
+                            {style.replace(/_/g, " ")}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-lg border border-border bg-card space-y-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Poetry Forms & Structures
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {data.aesthetic.poetryForms.map((form) => (
+                          <span
+                            key={form}
+                            className="px-2 py-0.5 text-xs rounded bg-muted text-foreground capitalize font-mono"
+                          >
+                            {form.replace(/_/g, " ")}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Thematic Interests */}
+                  {data.aesthetic.thematicInterests.length > 0 && (
+                    <div className="p-4 rounded-lg border border-border bg-card space-y-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Recurring Thematic Explorations
+                      </h4>
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {data.aesthetic.thematicInterests.map((theme) => (
+                          <span
+                            key={theme}
+                            className="px-2 py-0.5 text-xs rounded bg-primary/10 text-primary border border-primary/20 capitalize font-mono"
+                          >
+                            {theme.replace(/_/g, " ")}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: TELEMETRY & RESPONSE CURVES */}
               {activeTab === "telemetry" && (
                 <div className="space-y-6">
                   {/* Key Telemetry Numbers */}
@@ -315,7 +477,7 @@ export function EditorialIntelligenceDrawer({
                 </div>
               )}
 
-              {/* TAB 2: COMPENSATION & RIGHTS */}
+              {/* TAB 3: COMPENSATION & RIGHTS */}
               {activeTab === "compensation" && (
                 <div className="space-y-4">
                   {/* Contributor Pay Card */}
@@ -326,7 +488,7 @@ export function EditorialIntelligenceDrawer({
                         <span>Contributor Pay & Pro Rates</span>
                       </h4>
                       {data.compensation.isProRate && (
-                        <span className="px-2 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 border border-emerald-500/30 rounded">
+                        <span className="px-2 py-0.5 text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 rounded">
                           SFWA / Pro Rate
                         </span>
                       )}
@@ -418,7 +580,7 @@ export function EditorialIntelligenceDrawer({
                 </div>
               )}
 
-              {/* TAB 3: MANUSCRIPT GUIDELINES */}
+              {/* TAB 4: MANUSCRIPT GUIDELINES */}
               {activeTab === "guidelines" && (
                 <div className="space-y-4">
                   {/* Constraints Grid */}
@@ -512,48 +674,100 @@ export function EditorialIntelligenceDrawer({
                 </div>
               )}
 
-              {/* TAB 4: MASTHEAD & AWARDS */}
-              {activeTab === "masthead" && (
-                <div className="space-y-4">
-                  {/* Masthead Editors */}
-                  <div className="p-4 rounded-lg border border-border bg-card space-y-3">
-                    <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                      <Users className="size-4 text-primary" />
-                      <span>Editorial Masthead & Aesthetic Wishlist</span>
-                    </h4>
+              {/* TAB 5: CONTEST JUDGES & LINEAGE */}
+              {activeTab === "judges" && (
+                <div className="space-y-6">
+                  {/* Contest Judges */}
+                  <div className="p-4 rounded-lg border border-border bg-card space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                        <Gavel className="size-4 text-primary" />
+                        <span>Annual Contest Judges & Aesthetics</span>
+                      </h4>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        ROI Optimization
+                      </span>
+                    </div>
 
-                    {data.masthead.length === 0 ? (
+                    {data.judges.length === 0 ? (
                       <p className="text-xs text-muted-foreground">
-                        Masthead details being verified by Missa Research team.
+                        No active annual contest judge dossiers recorded for this profile.
                       </p>
                     ) : (
-                      <div className="divide-y divide-border space-y-3 pt-1">
-                        {data.masthead.map((member, idx) => (
-                          <div key={idx} className={idx > 0 ? "pt-3" : ""}>
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-semibold text-foreground">
-                                {member.editorName}
-                              </p>
-                              <span className="text-xs text-muted-foreground">
-                                {member.role}
-                              </span>
+                      <div className="space-y-4 divide-y divide-border">
+                        {data.judges.map((judge, idx) => (
+                          <div key={judge.id} className={idx > 0 ? "pt-4 space-y-3" : "space-y-3"}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-bold text-foreground">
+                                  {judge.contestName}
+                                </p>
+                                <p className="text-xs font-semibold text-primary mt-0.5">
+                                  Judge: {judge.judgeName}
+                                </p>
+                              </div>
                             </div>
-                            {member.genres.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
-                                {member.genres.map((g) => (
-                                  <span
-                                    key={g}
-                                    className="px-1.5 py-0.5 text-[10px] rounded bg-muted text-muted-foreground uppercase font-mono"
-                                  >
-                                    {g}
-                                  </span>
-                                ))}
+
+                            {judge.judgeBio && (
+                              <p className="text-xs text-muted-foreground leading-relaxed">
+                                {judge.judgeBio}
+                              </p>
+                            )}
+
+
+                            {judge.judgeAestheticNotes && (
+                              <div className="p-3 bg-muted/40 rounded-lg text-xs leading-relaxed border-l-2 border-primary">
+                                <p className="font-semibold text-foreground mb-1">
+                                  Judge Aesthetic Focus:
+                                </p>
+                                <p className="text-muted-foreground italic">
+                                  &ldquo;{judge.judgeAestheticNotes}&rdquo;
+                                </p>
                               </div>
                             )}
-                            {member.manuscriptWishlist && (
-                              <p className="text-xs text-muted-foreground mt-2 italic bg-muted/30 p-2.5 rounded border border-border/50">
-                                &ldquo;{member.manuscriptWishlist}&rdquo;
-                              </p>
+
+                            {judge.judgePraisedAuthors.length > 0 && (
+                              <div className="space-y-1 text-xs">
+                                <span className="font-semibold text-foreground">
+                                  Praised Authors & Influences:{" "}
+                                </span>
+                                <span className="text-muted-foreground font-mono">
+                                  {judge.judgePraisedAuthors.join(", ")}
+                                </span>
+                              </div>
+                            )}
+
+                            {judge.pastWinnersLineage.length > 0 && (
+                              <div className="space-y-2 pt-2">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                  Past Winners & Book Deals Lineage
+                                </p>
+                                <div className="space-y-2">
+                                  {judge.pastWinnersLineage.map((winner, wIdx) => (
+                                    <div
+                                      key={wIdx}
+                                      className="p-2.5 rounded bg-muted/40 text-xs border border-border/50 space-y-1"
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-semibold text-foreground">
+                                          {winner.winnerName} ({winner.year})
+                                        </span>
+                                        <span className="text-muted-foreground uppercase font-mono text-[10px]">
+                                          {winner.genre}
+                                        </span>
+                                      </div>
+                                      <p className="text-muted-foreground italic">
+                                        &ldquo;{winner.winningPieceTitle}&rdquo;
+                                      </p>
+                                      {winner.resultingPressOrPrize && (
+                                        <p className="text-[11px] text-primary font-medium">
+                                          Outcome: {winner.resultingPressOrPrize}
+                                        </p>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             )}
                           </div>
                         ))}
@@ -565,12 +779,12 @@ export function EditorialIntelligenceDrawer({
                   <div className="p-4 rounded-lg border border-border bg-card space-y-3">
                     <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                       <Award className="size-4 text-amber-600" />
-                      <span>Recent Major Anthology Honors</span>
+                      <span>Major Anthology Selections</span>
                     </h4>
 
                     {data.awards.length === 0 ? (
                       <p className="text-xs text-muted-foreground">
-                        No recent major anthology selections recorded in the index.
+                        No major anthology selections recorded in the index.
                       </p>
                     ) : (
                       <div className="space-y-2">

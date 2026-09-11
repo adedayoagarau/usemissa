@@ -70,12 +70,17 @@ export function MagazineRankingsInteractive({
               ? row.regularFeeCents === 0
               : filter === "paying"
                 ? row.contributorPayCents > 0
-                : filter === "simultaneous"
-                  ? row.simultaneousPolicy === "allowed"
-                  : row.medianResponseDays != null &&
-                    row.medianResponseDays <= 60,
+                : filter === "pro"
+                  ? row.contributorPayCents >= 800 || row.payScore >= 12
+                  : filter === "debut"
+                    ? row.prestigeTier !== "tier_1" || row.totalScore >= 75
+                    : filter === "simultaneous"
+                      ? row.simultaneousPolicy === "allowed"
+                      : row.medianResponseDays != null &&
+                        row.medianResponseDays <= 60,
           );
         })
+
         .sort((a, b) =>
           sort === "accolades"
             ? b.accoladesScore - a.accoladesScore
@@ -207,6 +212,8 @@ export function MagazineRankingsInteractive({
           aria-label="Submission preferences"
         >
           {[
+            ["debut", "Debut champion (slush-friendly)"],
+            ["pro", "Pro pay rates (≥ $0.08/w)"],
             ["free", "No submission fee"],
             ["paying", "Pays contributors"],
             ["simultaneous", "Allows simultaneous submissions"],
@@ -227,6 +234,7 @@ export function MagazineRankingsInteractive({
             </Button>
           ))}
         </div>
+
       )}
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
         <p role="status" aria-live="polite">

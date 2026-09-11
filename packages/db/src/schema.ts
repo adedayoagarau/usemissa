@@ -5233,3 +5233,87 @@ export const publicationTelemetryAnalytics = pgTable(
   ],
 );
 
+export const publicationAestheticProfiles = pgTable(
+  "publication_aesthetic_profiles",
+  {
+    profileId: text("profile_id")
+      .primaryKey()
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    writingStyles: text("writing_styles")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    poetryForms: text("poetry_forms")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    thematicInterests: text("thematic_interests")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    authorComps: text("author_comps")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    editorialMotto: text("editorial_motto"),
+    unsolicitedSlushRatioPercent: integer("unsolicited_slush_ratio_percent")
+      .notNull()
+      .default(65),
+    debutAuthorFriendlyScore: numeric("debut_author_friendly_score", {
+      precision: 3,
+      scale: 1,
+    })
+      .notNull()
+      .default("8.5"),
+    isDebutChampion: boolean("is_debut_champion").notNull().default(false),
+    updatedAt,
+  },
+  (table) => [
+    index("idx_pub_aesthetic_debut").on(table.isDebutChampion),
+    index("idx_pub_aesthetic_slush_ratio").on(
+      table.unsolicitedSlushRatioPercent,
+    ),
+  ],
+);
+
+export const opportunityContestJudges = pgTable(
+  "opportunity_contest_judges",
+  {
+    id: text("id").primaryKey(),
+    opportunityId: text("opportunity_id").references(() => opportunities.id, {
+      onDelete: "cascade",
+    }),
+    profileId: text("profile_id").references(() => garyProfiles.id, {
+      onDelete: "cascade",
+    }),
+    contestName: text("contest_name").notNull(),
+    judgeName: text("judge_name").notNull(),
+    judgeBio: text("judge_bio"),
+    judgeAestheticNotes: text("judge_aesthetic_notes"),
+    judgePraisedAuthors: text("judge_praised_authors")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    pastWinnersLineage: jsonb("past_winners_lineage")
+      .notNull()
+      .default(sql`'[]'::jsonb`)
+      .$type<
+        Array<{
+          year: number;
+          winnerName: string;
+          winningPieceTitle: string;
+          genre: string;
+          resultingPressOrPrize?: string;
+        }>
+      >(),
+    updatedAt,
+  },
+  (table) => [
+    index("idx_opp_judges_profile").on(table.profileId),
+    index("idx_opp_judges_opp").on(table.opportunityId),
+    index("idx_opp_judges_judge_name").on(table.judgeName),
+  ],
+);
+
+

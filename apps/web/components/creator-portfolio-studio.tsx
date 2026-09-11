@@ -536,19 +536,75 @@ export function CreatorPortfolioStudio({
   const image = isSample ? "/media/creator-preview-landscape.png" : work.image;
   const portrait = isSample ? "/media/creator-preview-portrait.png" : photo;
   const workFormats = (item: Work) =>
-    [
-      item.text.trim() && "Writing",
-      item.audio && "Sound",
-      item.image && "Images",
-    ].filter(Boolean) as string[];
+    isSample
+      ? item.formats
+      : ([
+          item.text.trim() && "Writing",
+          item.audio && "Sound",
+          item.image && "Images",
+        ].filter(Boolean) as string[]);
+  const sampleWorkDetails: Record<
+    string,
+    { summary: string; excerpt: string; alt: string }
+  > = {
+    "An atlas of small departures": {
+      summary:
+        "A study of places in transition—gathered in notebooks, recordings and photographs made while passing through.",
+      excerpt:
+        "The train carries weather from one place to the next—\ncondensing, clearing,\nchanging as we move.",
+      alt: "Landscape seen through a train window",
+    },
+    "The rooms remember us": {
+      summary:
+        "A photographic essay about domestic spaces after the people who shaped them have moved on.",
+      excerpt:
+        "Light remains on the table. A chair keeps the measure of a body that is no longer there.",
+      alt: "Sunlit objects arranged in a quiet studio",
+    },
+    "Threshold studies": {
+      summary:
+        "Images made between rehearsal and performance, when a room is holding its breath.",
+      excerpt:
+        "Six photographs, 2024–2025.",
+      alt: "An artist working inside a gallery",
+    },
+    "A frequency for the footpath": {
+      summary:
+        "Field recordings, spoken fragments and a score composed from the intervals between passing footsteps.",
+      excerpt:
+        "12 min 08 sec · stereo sound and text · 2025",
+      alt: "",
+    },
+  };
   const displayWorks: Work[] = isSample
     ? [
         {
           title,
           image,
-          text: "Sample poem",
+          text: sampleWorkDetails[title].excerpt,
           audio: "",
           formats: ["Writing", "Images"],
+        },
+        {
+          title: "The rooms remember us",
+          image: "/media/home/portfolio-still-life.webp",
+          text: sampleWorkDetails["The rooms remember us"].excerpt,
+          audio: "",
+          formats: ["Writing", "Images"],
+        },
+        {
+          title: "Threshold studies",
+          image: "/media/home/artist-at-work.webp",
+          text: sampleWorkDetails["Threshold studies"].excerpt,
+          audio: "",
+          formats: ["Images"],
+        },
+        {
+          title: "A frequency for the footpath",
+          image: "",
+          text: sampleWorkDetails["A frequency for the footpath"].excerpt,
+          audio: "",
+          formats: ["Writing", "Sound"],
         },
       ]
     : works.filter((item) => item.title.trim());
@@ -1341,12 +1397,17 @@ export function CreatorPortfolioStudio({
                 {filter === "All work" ? "All formats" : filter} selected
               </p>
               {visibleWorks.length ? (
-                visibleWorks.map((work, index) => {
+                <section className={styles.workIndex} aria-label="Selected work">
+                {visibleWorks.map((work, index) => {
                   const title = work.title;
                   const image = work.image;
+                  const sampleDetail = isSample
+                    ? sampleWorkDetails[title]
+                    : undefined;
                   return (
                     <article
                       key={`${index}-${title}`}
+                      data-work-position={index % 4}
                       className={`${styles.project} ${filter === "Writing" || filter === "Sound" || !image ? styles.readingProject : ""}`}
                     >
                       {image && filter !== "Writing" && filter !== "Sound" && (
@@ -1364,7 +1425,7 @@ export function CreatorPortfolioStudio({
                             src={image}
                             alt={
                               isSample
-                                ? "Landscape seen through a train window"
+                                ? sampleDetail?.alt
                                 : work.title
                             }
                           />
@@ -1390,17 +1451,15 @@ export function CreatorPortfolioStudio({
                               : filter === "Sound"
                                 ? "Audio"
                                 : isSample
-                                  ? "Writing, field recordings & photography"
+                                  ? workFormats(work).join(" · ")
                                   : workFormats(work).join(" · ")}
                         </p>
                         {isSample && filter === "Images" && (
-                          <p>Landscape seen through a train window.</p>
+                          <p>{sampleDetail?.alt}.</p>
                         )}
                         {isSample && !embedded && filter === "All work" && (
                           <p>
-                            A study of places in transition—gathered in
-                            notebooks, recordings and photographs made while
-                            passing through.
+                            {sampleDetail?.summary}
                           </p>
                         )}
                         {work.audio &&
@@ -1416,7 +1475,7 @@ export function CreatorPortfolioStudio({
                         {filter !== "Images" && filter !== "Sound" && (
                           <p className={styles.poem}>
                             {isSample
-                              ? "The train carries weather from one place to the next—\ncondensing, clearing,\nchanging as we move."
+                              ? sampleDetail?.excerpt
                               : work.text.slice(0, 180)}
                           </p>
                         )}
@@ -1456,7 +1515,8 @@ export function CreatorPortfolioStudio({
                       </div>
                     </article>
                   );
-                })
+                })}
+                </section>
               ) : (
                 <p className={styles.empty}>
                   {displayWorks.length

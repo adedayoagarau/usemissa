@@ -10,18 +10,25 @@ test("public portfolio has distinct formats, full reading and accessible mobile 
   ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Sound", exact: true }),
-  ).toHaveCount(0);
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Sound", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "A frequency for the footpath" }),
+  ).toBeVisible();
+  await expect(page.locator("article")).toHaveCount(1);
   await page.getByRole("button", { name: "Writing", exact: true }).click();
   await expect(page.getByRole("button", { name: /Enlarge image/ })).toHaveCount(
     0,
   );
-  await page.getByRole("button", { name: "Read poem" }).focus();
+  await page.getByRole("button", { name: "Read poem" }).first().focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog")).toContainText(
     "Each valley holds its breath",
   );
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: "Read poem" })).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Read poem" }).first(),
+  ).toBeFocused();
   await page.getByRole("button", { name: "Images", exact: true }).click();
   await expect(page.getByRole("button", { name: "Read poem" })).toHaveCount(0);
   await expect(
@@ -37,7 +44,7 @@ test("public portfolio has distinct formats, full reading and accessible mobile 
     0,
   );
 
-  await page.getByRole("button", { name: /Enlarge image/ }).click();
+  await page.getByRole("button", { name: /Enlarge image/ }).first().click();
   await expect(page.getByRole("dialog").getByRole("img")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "All work", exact: true }).click();
