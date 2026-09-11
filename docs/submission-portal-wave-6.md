@@ -48,6 +48,9 @@ an immutable correction audit record.
 Assignments now carry expiry and recusal metadata; recusal is an admin-only,
 revision-aware command that emits an audit/outbox effect.
 
+Recused or expired assignments can be reassigned through a lineage-preserving
+command that links the replacement to its prior assignment.
+
 Organization submission bulk actions now expose explicit, non-mutating scope
 previews, and exports include a version, source boundary, timestamp, and
 provenance-safe submission records without file URLs.

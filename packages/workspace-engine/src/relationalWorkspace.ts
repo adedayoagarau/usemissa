@@ -655,6 +655,18 @@ export class RelationalWorkspace {
     });
   }
 
+  async reassignReviewAssignment(envelope: WorkspaceCommandEnvelope, input: { assignmentId: string; reviewerAccountId: string }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, input, async (client) => {
+      const source = await client.query<{ review_round_id: string; submission_id: string; organization_id: string; revision: number }>(`select ra.review_round_id,ra.submission_id,e.organization_id,ra.revision from review_assignments ra join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id where ra.id=$1 and e.organization_id=$2 and (ra.recused_at is not null or ra.expires_at < now()) for update of ra`, [input.assignmentId, envelope.organizationId]);
+      const prior = source.rows[0];
+      if (!prior) throw new WorkspaceNotFoundError();
+      const id = randomUUID();
+      const row = await client.query<{ revision: number }>('insert into review_assignments (id,review_round_id,submission_id,reviewer_account_id,reassigned_from_assignment_id) values ($1,$2,$3,$4,$5) returning revision', [id, prior.review_round_id, prior.submission_id, input.reviewerAccountId, input.assignmentId]);
+      await this.effect(client, envelope, 'review_assignment.reassigned', 'review_assignment', id, row.rows[0]!.revision, { reassignedFromAssignmentId: input.assignmentId }, prior.organization_id);
+      return { resourceType: 'review_assignment', resourceId: id, revision: row.rows[0]!.revision };
+    });
+  }
+
   async organizationForReviewAssignment(reviewerAccountId: string, assignmentId: string): Promise<string | undefined> {
     const result = await this.pool.query<{ organization_id: string }>(`select e.organization_id from review_assignments ra
       join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id
