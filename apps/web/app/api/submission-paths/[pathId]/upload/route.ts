@@ -27,11 +27,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   if (value.size === 0 || value.size > MAX_FILE_BYTES) return NextResponse.json({ error: 'Files must be between 1 byte and 25 MB' }, { status: 400 });
   const contentType = (value.type || 'application/octet-stream').toLowerCase();
   if (BLOCKED_TYPES.has(contentType) || contentType === 'application/octet-stream' && /\.(exe|dll|bat|cmd|sh|php|js|msi)$/i.test(value.name)) return NextResponse.json({ error: 'This file type is not accepted' }, { status: 415 });
-  if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ error: 'File storage is not configured' }, { status: 503 });
   const bytes = Buffer.from(await value.arrayBuffer());
   const scan = await scanSubmissionFile({ bytes, filename: value.name, contentType });
   if (scan.status === 'blocked') return NextResponse.json({ error: scan.reason }, { status: 422 });
-  if (scan.status === 'unavailable') return NextResponse.json({ error: scan.reason }, { status: 503 });
+  if (scan.status === 'unavailable') return NextResponse.json({ error: scan.reason, code: 'file_scan_unavailable', retryable: true }, { status: 503, headers: { 'Retry-After': '30', 'Cache-Control': 'no-store' } });
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ error: 'File storage is not configured', code: 'file_storage_unavailable', retryable: true }, { status: 503, headers: { 'Retry-After': '30', 'Cache-Control': 'no-store' } });
   const safeName = value.name.replace(/[^a-zA-Z0-9._-]/g, '-').slice(-120) || 'submission-file';
   const blob = await put(`missa/submissions/${session.account.id}/${crypto.randomUUID()}-${safeName}`, bytes, {
     access: 'private',
