@@ -49,6 +49,10 @@ Organization submission bulk actions now expose explicit, non-mutating scope
 previews, and exports include a version, source boundary, timestamp, and
 provenance-safe submission records without file URLs.
 
+Read-only organization diagnostics now report pending outbox work, oldest
+pending event, failed delivery attempts, and review assignments open beyond
+fourteen days without exposing provider secrets or unrelated tenants.
+
 ### Review operations
 
 - Configure review stages, reviewer groups, workload limits, blind projections,
