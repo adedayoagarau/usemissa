@@ -135,7 +135,9 @@ represented in the outbox.
   replayed all 54 target migrations and reported every Wave 6 readiness table.
   The real-Postgres Workspace integration passed its tenant-isolation,
   concurrency, idempotency, and rollback assertions; the Radar adapter target
-  suite passed 263 tests with one unrelated creator-authority test skipped.
+  suite passed 263 tests with one unrelated creator-authority test skipped. The
+  disposable database was dropped after the rehearsal; no test data was
+  retained.
 - The shared local Neon target was not used for destructive integration tests:
   its safety guard requires an explicitly named disposable `missa_story_16_1_*`
   database. Hosted tenant-isolation and device gates remain separate evidence
