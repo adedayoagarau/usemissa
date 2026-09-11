@@ -1086,15 +1086,23 @@ export class RelationalWorkspace {
     });
   }
 
-  async assignReviewer(envelope: WorkspaceCommandEnvelope, input: { id?: string; reviewRoundId: string; submissionId: string; reviewerAccountId: string }): Promise<WorkspaceCommandResult> {
+  async assignReviewer(envelope: WorkspaceCommandEnvelope, input: { id?: string; reviewRoundId: string; submissionId: string; reviewerAccountId: string; reviewerGroupId?: string }): Promise<WorkspaceCommandResult> {
     return this.command(envelope, input, async (client) => {
       const valid=await client.query(`select 1 from review_rounds rr
         join open_calls o on o.id=rr.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
         join submissions s on s.id=$2 join submission_paths sp on sp.id=s.submission_path_id
         where rr.id=$1 and rr.open_call_id=sp.open_call_id and e.organization_id=$3 for update of rr,s`,[input.reviewRoundId,input.submissionId,envelope.organizationId]);
       if (!valid.rowCount) throw new WorkspaceNotFoundError();
+      if (input.reviewerGroupId) {
+        const group = await client.query<{ workload_limit: number | null }>('select rg.workload_limit from reviewer_groups rg join reviewer_group_members rgm on rgm.group_id=rg.id where rg.id=$1 and rg.organization_id=$2 and rgm.reviewer_account_id=$3', [input.reviewerGroupId, envelope.organizationId, input.reviewerAccountId]);
+        if (!group.rows[0]) throw new WorkspaceNotFoundError();
+        if (group.rows[0].workload_limit !== null) {
+          const open = await client.query<{ count: string }>('select count(*)::text count from review_assignments where reviewer_group_id=$1 and completed_at is null and recused_at is null', [input.reviewerGroupId]);
+          if (Number(open.rows[0]!.count) >= group.rows[0].workload_limit) throw new WorkspaceTransitionError('Reviewer group workload limit reached');
+        }
+      }
       const id=input.id ?? randomUUID();
-      const row=await client.query<{revision:number}>('insert into review_assignments (id,review_round_id,submission_id,reviewer_account_id) values ($1,$2,$3,$4) returning revision',[id,input.reviewRoundId,input.submissionId,input.reviewerAccountId]);
+      const row=await client.query<{revision:number}>('insert into review_assignments (id,review_round_id,submission_id,reviewer_account_id,reviewer_group_id) values ($1,$2,$3,$4,$5) returning revision',[id,input.reviewRoundId,input.submissionId,input.reviewerAccountId,input.reviewerGroupId ?? null]);
       const revision=row.rows[0]!.revision;
       await this.effect(client,envelope,'review_assignment.created','review_assignment',id,revision);
       return {resourceType:'review_assignment',resourceId:id,revision};

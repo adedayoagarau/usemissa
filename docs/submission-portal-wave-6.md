@@ -24,6 +24,9 @@ idempotent organization-admin command.
 Reviewer-group membership can now be added through the same organization scope
 and idempotency boundary, with duplicate membership rejected explicitly.
 
+Assignments can target a reviewer group; membership is checked and open-work
+limits are enforced inside the assignment transaction.
+
 Decision-linked message drafts now require an organization-scoped decision and
 recipient, remain draft-state until a future approval command, and record their
 creation through the same audit/outbox boundary.

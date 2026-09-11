@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (workspaceRelationalAuthorityEnabled()) {
     try {
       const workspace = await getRelationalWorkspace();
-      const payload = { reviewRoundId: roundId, submissionId: body.submissionId, reviewerAccountId: body.reviewerAccountId };
+      const payload = { reviewRoundId: roundId, submissionId: body.submissionId, reviewerAccountId: body.reviewerAccountId, ...(typeof body.reviewerGroupId === 'string' && body.reviewerGroupId.trim() ? { reviewerGroupId: body.reviewerGroupId.trim() } : {}) };
       const command = workspaceCommandEnvelope(request, { actorAccountId: result.access.session.account.id, organizationId: id, commandType: 'review_assignment.create', payload });
       const created = await workspace.assignReviewer(command, payload);
       return NextResponse.json({ id: created.resourceId, ...payload, revision: created.revision, receiptId: created.receiptId, idempotent: created.replayed }, { status: created.replayed ? 200 : 201 });
