@@ -410,8 +410,6 @@ async function reviewJob(pool: Pool, runId: string, job: ContentJob): Promise<Op
 }
 
 export async function runContentReviewTick(pool: Pool, limit = batchSize()): Promise<{ built: number; reviewed: number; decisions: Record<OpportunityContentDecision, number> }> {
-  await ensureAgentGraphSchema(pool);
-  await ensureContentReviewSchema(pool);
   const runId = await startWorkerRun(pool, 'content-worker');
   if (!runId) throw new Error('Unable to start the content worker run telemetry record');
   try {
@@ -446,6 +444,9 @@ async function main(): Promise<void> {
   process.once('SIGTERM', stop);
   const limit = batchSize();
   const delay = intervalMs();
+  console.log(`[missa-content-worker] initializing schema...`);
+  await ensureAgentGraphSchema(pool);
+  await ensureContentReviewSchema(pool);
   console.log(`[missa-content-worker] running every ${Math.round(delay / 60_000)} minutes, batch=${limit}`);
   try {
     while (!controller.signal.aborted) {

@@ -299,15 +299,24 @@ async function persistDecisions(client: PoolClient, opportunityId: string, decis
          jsonb_build_object('matcherVersion', $12::text, 'rule', 'exact-host-plus-call-identity',
            'identityBasis', $13::text),
          $14, $15, now(), now() + interval '7 days')
-       on conflict (profile_id, opportunity_id, relation) do update set
-         status = excluded.status, confidence = excluded.confidence,
-         matched_host = excluded.matched_host, opportunity_url = excluded.opportunity_url,
-         profile_url = excluded.profile_url, name_score = excluded.name_score,
-         matched_name_tokens = excluded.matched_name_tokens, evidence_json = excluded.evidence_json,
+       on conflict (id) do update set
+         profile_id = excluded.profile_id,
+         opportunity_id = excluded.opportunity_id,
+         relation = excluded.relation,
+         status = excluded.status,
+         confidence = excluded.confidence,
+         matched_host = excluded.matched_host,
+         opportunity_url = excluded.opportunity_url,
+         profile_url = excluded.profile_url,
+         name_score = excluded.name_score,
+         matched_name_tokens = excluded.matched_name_tokens,
+         evidence_json = excluded.evidence_json,
          profile_checked_at = excluded.profile_checked_at,
          opportunity_checked_at = excluded.opportunity_checked_at,
-         verified_at = excluded.verified_at, verified_until = excluded.verified_until,
+         verified_at = excluded.verified_at,
+         verified_until = excluded.verified_until,
          updated_at = now()`,
+
       [
         linkId(decision), decision.opportunityId, decision.profileId, decision.relation,
         decision.status, decision.confidence, decision.matchedHost, decision.opportunityUrl,

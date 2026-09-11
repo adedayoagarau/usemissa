@@ -178,8 +178,9 @@ async function routeDurableGateConflictToHuman(pool: Pool, runId: string, job: R
 async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<ReviewDecision> {
   const item = await candidate(pool, job.opportunityId);
   if (!item) {
-    await pool.query("update radar_review_jobs set status = 'blocked', last_error = 'Opportunity is no longer reviewable', lease_until = null, updated_at = now() where id = $1", [job.id]);
-    return "error";
+    // Opportunity is already published or closed - complete the review job cleanly
+    await pool.query("update radar_review_jobs set status = 'completed', last_error = null, lease_until = null, updated_at = now() where id = $1", [job.id]);
+    return "suppress";
   }
   const result = reviewCandidate(item);
   const client = await pool.connect();
@@ -222,9 +223,6 @@ async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<Re
 }
 
 export async function runReviewTick(pool: Pool, limit = batchSize()): Promise<{ claimed: number; decisions: Record<ReviewDecision, number> }> {
-  await ensureAgentGraphSchema(pool);
-  await ensureContentReviewSchema(pool);
-  await ensurePublicationRubricSchema(pool);
   // Refresh durable profile identity evidence before review. This is bounded,
   // idempotent, and fails closed if matching cannot be completed.
   await syncProfileOpportunityLinks(pool, Math.max(limit * 5, 100));
@@ -241,7 +239,10 @@ async function main(): Promise<void> {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required to run the Missa review agent.");
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   await ensureAgentGraphSchema(pool);
+  await ensureContentReviewSchema(pool);
+  await ensurePublicationRubricSchema(pool);
   const workerRunId = await startWorkerRun(pool, "review-worker");
+
   const controller = new AbortController();
   const stop = () => controller.abort();
   process.once("SIGINT", stop);
