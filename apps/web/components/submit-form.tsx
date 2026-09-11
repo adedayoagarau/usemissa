@@ -26,6 +26,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
   const [draftRevision, setDraftRevision] = useState<number>();
   const [draftMessage, setDraftMessage] = useState<string>();
   const [reviewing, setReviewing] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState<string>();
   const searchParams = useSearchParams();
   const submitLabel = feeCents && feeCents > 0 ? `Pay $${(feeCents / 100).toFixed(2)} USD and submit` : 'Submit application';
 
@@ -62,6 +63,19 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
 
   const setField = (fieldId: string, value: string) => setValues((v) => ({ ...v, [fieldId]: value }));
   const isVisible = (field: SubmissionField) => !field.visibleWhen || values[field.visibleWhen.fieldId] === field.visibleWhen.equals;
+
+  const uploadFile = async (file: File): Promise<string> => {
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      setUploadMessage(`Checking ${file.name}…${attempt === 2 ? ' retrying' : ''}`);
+      const form = new FormData();
+      form.set('file', file);
+      const response = await fetch(`/api/submission-paths/${pathId}/upload`, { method: 'POST', body: form });
+      const body = await response.json().catch(() => ({})) as { url?: string; error?: string; retryable?: boolean };
+      if (response.ok && body.url) return body.url;
+      if (!body.retryable || attempt === 2) throw new Error(body.error ?? 'File upload failed');
+    }
+    throw new Error('File upload failed');
+  };
 
   const saveDraft = () => startTransition(async () => {
     setDraftMessage(undefined);
@@ -103,12 +117,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         const input = (formElement.elements.namedItem(f.id) as HTMLInputElement) ?? undefined;
         const file = input?.files?.[0];
         if (!file) continue;
-        const form = new FormData();
-        form.set('file', file);
-        const upload = await fetch(`/api/submission-paths/${pathId}/upload`, { method: 'POST', body: form });
-        const uploadBody = await upload.json().catch(() => ({}));
-        if (!upload.ok) { setResult({ ok: false, message: uploadBody.error ?? 'File upload failed' }); return; }
-        fileUrls[f.id] = uploadBody.url;
+        try { fileUrls[f.id] = await uploadFile(file); } catch (error) { setResult({ ok: false, message: error instanceof Error ? error.message : 'File upload failed' }); return; }
       }
       const answers: Record<string, string | string[]> = { ...values, ...fileUrls };
       const nextWorkFileUrls: Record<number, string[]> = { ...workFileUrls };
@@ -117,11 +126,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         if (!files.length) continue;
         const uploaded: string[] = [];
         for (const file of files) {
-          const form = new FormData(); form.set('file', file);
-          const upload = await fetch(`/api/submission-paths/${pathId}/upload`, { method: 'POST', body: form });
-          const uploadBody = await upload.json().catch(() => ({}));
-          if (!upload.ok) { setResult({ ok: false, message: uploadBody.error ?? 'File upload failed' }); return; }
-          if (typeof uploadBody.url === 'string') uploaded.push(uploadBody.url);
+          try { const url = await uploadFile(file); uploaded.push(url); } catch (error) { setResult({ ok: false, message: error instanceof Error ? error.message : 'File upload failed' }); return; }
         }
         nextWorkFileUrls[index] = [...(nextWorkFileUrls[index] ?? []), ...uploaded];
       }
@@ -151,6 +156,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         setResult({ ok: false, message: data.error ?? 'Submission failed' });
         return;
       }
+      setUploadMessage(undefined);
       sessionStorage.removeItem(`missa_submission_draft:${pathId}`);
       const body = await res.json().catch(() => ({}));
       setResult({ ok: true, message: 'Submitted — your receipt is ready.', submissionId: body.submission?.id });
@@ -194,6 +200,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
       {reviewing ? <aside className="rounded-lg border border-[var(--green)]/40 bg-[var(--green)]/5 p-4 text-sm leading-6" aria-labelledby="application-review-title"><strong id="application-review-title" className="block text-foreground">Review your application</strong><dl className="mt-3 grid gap-2 sm:grid-cols-2"><div><dt className="text-xs text-muted-foreground">Category</dt><dd>{category || 'Not selected'}</dd></div><div><dt className="text-xs text-muted-foreground">Works</dt><dd>{workTitles.filter((title) => title.trim()).length}</dd></div><div className="sm:col-span-2"><dt className="text-xs text-muted-foreground">Questions answered</dt><dd>{Object.values(values).filter((value) => value.trim()).length} of {fields.filter((field) => field.type !== 'file-upload').length}</dd></div></dl><p className="mt-3 text-xs text-muted-foreground">Confirming submits this packet to the organization. You can no longer edit it here after submission.</p></aside> : <aside className="rounded-lg border border-border bg-muted/30 p-4 text-xs leading-5 text-muted-foreground"><strong className="block text-foreground">Before submitting</strong>Review every Work, file, category, and answer before continuing.</aside>}
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end"><Button type="button" variant="outline" disabled={isPending} onClick={saveDraft}>{isPending ? 'Saving…' : 'Save draft'}</Button>{reviewing ? <Button type="button" variant="outline" disabled={isPending} onClick={() => setReviewing(false)}>Back to edit</Button> : null}<Button type="submit" disabled={isPending}>{isPending ? 'Submitting…' : reviewing ? submitLabel : 'Review application'}</Button></div>
       {draftMessage ? <p className="text-xs text-[var(--success)]" role="status">{draftMessage}</p> : null}
+      {uploadMessage ? <p className="text-xs text-muted-foreground" role="status">{uploadMessage}</p> : null}
       {result && !result.ok && <p className="text-xs text-destructive" role="alert">{result.message}</p>}
     </form>
   );

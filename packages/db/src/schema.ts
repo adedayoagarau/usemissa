@@ -36,7 +36,6 @@ export const accounts = pgTable(
   },
   (table) => [uniqueIndex("radar_accounts_email_idx").on(table.email)],
 );
-
 export const organizations = pgTable("radar_organizations", {
   id: text("id").primaryKey(),
   data: jsonb("data").notNull(),
@@ -5065,5 +5064,56 @@ export const magazineEditorialMasthead = pgTable(
       table.profileId,
       table.role,
     ),
+  ],
+);
+
+export const missaResidencyReviews = pgTable(
+  "missa_residency_reviews",
+  {
+    id: text("id").primaryKey(),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    authorName: text("author_name"),
+    reviewTitle: text("review_title"),
+    reviewBody: text("review_body").notNull(),
+    ratingScore: numeric("rating_score", { precision: 3, scale: 1 }),
+    datePublished: text("date_published"),
+    source: text("source").notNull().default("ratemyartistresidency.com"),
+    createdAt,
+  },
+  (table) => [
+    index("idx_missa_res_reviews_profile").on(table.profileId),
+  ],
+);
+
+export const missaResidencyRankings = pgTable(
+  "missa_residency_rankings",
+  {
+    profileId: text("profile_id")
+      .primaryKey()
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    prestigeTier: text("prestige_tier").notNull(),
+    totalScore: numeric("total_score", { precision: 5, scale: 2 }).notNull(),
+    fundingScore: numeric("funding_score", { precision: 5, scale: 2 }).notNull(),
+    ratingScore: numeric("rating_score", { precision: 5, scale: 2 }).notNull(),
+    facilitiesScore: numeric("facilities_score", { precision: 5, scale: 2 }).notNull(),
+    accessScore: numeric("access_score", { precision: 5, scale: 2 }).notNull(),
+    rmarRating: numeric("rmar_rating", { precision: 3, scale: 1 }),
+    rmarRatingsCount: integer("rmar_ratings_count").notNull().default(0),
+    rmarReviewsCount: integer("rmar_reviews_count").notNull().default(0),
+    isFullyFunded: boolean("is_fully_funded").notNull().default(false),
+    hasStipend: boolean("has_stipend").notNull().default(false),
+    hasMeals: boolean("has_meals").notNull().default(false),
+    hasPrivateStudio: boolean("has_private_studio").notNull().default(false),
+    disciplines: text("disciplines"),
+    foundingYear: integer("founding_year"),
+    location: text("location"),
+    updatedAt,
+  },
+  (table) => [
+    index("idx_missa_res_rankings_score").on(table.totalScore),
+    index("idx_missa_res_rankings_tier").on(table.prestigeTier),
   ],
 );
