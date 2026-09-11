@@ -8,7 +8,8 @@ export type OrganizationSettingsSection =
   | 'security'
   | 'integrations'
   | 'data'
-  | 'billing';
+  | 'billing'
+  | 'review';
 
 export const ORGANIZATION_SETTINGS_SECTIONS: Array<{
   id: OrganizationSettingsSection;
@@ -24,6 +25,7 @@ export const ORGANIZATION_SETTINGS_SECTIONS: Array<{
   { id: 'integrations', label: 'Integrations', description: 'Connections, keys, and webhooks', implementation: 'unavailable' },
   { id: 'data', label: 'Data governance', description: 'Retention, export, and legal hold', implementation: 'unavailable' },
   { id: 'billing', label: 'Billing & payouts', description: 'Plan, seats, subscription, and payouts', implementation: 'partial' },
+  { id: 'review', label: 'Review privacy', description: 'Blind review and reviewer identity', implementation: 'current' },
 ];
 
 export function settingsSectionsForRole(role: OrgRole) {

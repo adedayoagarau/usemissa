@@ -119,6 +119,13 @@ export interface RelationalPublicSubmissionPathView {
   radarOpportunityId?: string;
   revision: number;
 }
+export type OrganizationBlindMode = 'none' | 'identity-redacted';
+export interface RelationalOrganizationReviewSettingsView {
+  organizationId: string;
+  blindMode: OrganizationBlindMode;
+  revision: number;
+  updatedAt: string;
+}
 
 const tenantJoins: Record<WorkspaceResourceType, { table: string; joins: string; organization: string }> = {
   entity: { table: 'entities r', joins: '', organization: 'r.organization_id' },
@@ -136,6 +143,7 @@ const tenantJoins: Record<WorkspaceResourceType, { table: string; joins: string;
   form_version: { table: 'form_versions r', joins: '', organization: 'r.organization_id' },
   review_workflow_version: { table: 'review_workflow_versions r', joins: '', organization: 'r.organization_id' },
   opportunity_configuration_version: { table: 'opportunity_configuration_versions r', joins: '', organization: 'r.organization_id' },
+  organization_review_settings: { table: 'organization_review_settings r', joins: '', organization: 'r.organization_id' },
 };
 
 export function workspaceRequestHash(value: unknown): string {
@@ -168,6 +176,7 @@ export class RelationalWorkspace {
       and to_regclass('public.form_versions') is not null
       and to_regclass('public.review_workflow_versions') is not null
       and to_regclass('public.opportunity_configuration_versions') is not null
+      and to_regclass('public.organization_review_settings') is not null
       and not exists (
         select 1 from (values
           ('entities','revision'),('programs','revision'),('open_calls','revision'),
@@ -184,6 +193,36 @@ export class RelationalWorkspace {
           where c.table_schema='public' and c.table_name=required.table_name and c.column_name=required.column_name)
       ) as ready`);
     return { authority: 'relational', schemaReady: result.rows[0]?.ready === true };
+  }
+
+  async organizationReviewSettings(organizationId: string): Promise<RelationalOrganizationReviewSettingsView> {
+    const result = await this.pool.query<{ organization_id: string; blind_mode: OrganizationBlindMode; revision: number; updated_at: Date }>(
+      "select organization_id,blind_mode,revision,updated_at from organization_review_settings where organization_id=$1",
+      [organizationId],
+    );
+    const row = result.rows[0];
+    if (!row) {
+      return { organizationId, blindMode: 'identity-redacted', revision: 1, updatedAt: new Date(0).toISOString() };
+    }
+    return { organizationId: row.organization_id, blindMode: row.blind_mode, revision: row.revision, updatedAt: row.updated_at.toISOString() };
+  }
+
+  async updateOrganizationReviewSettings(envelope: WorkspaceCommandEnvelope, blindMode: OrganizationBlindMode): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { blindMode }, async (client) => {
+      const organizationId = envelope.organizationId!;
+      await client.query('select id from radar_organizations where id=$1 for update', [organizationId]);
+      const current = await client.query<{ revision: number }>('select revision from organization_review_settings where organization_id=$1 for update', [organizationId]);
+      const revision = current.rows[0]?.revision ?? 0;
+      if (envelope.expectedRevision !== undefined && revision > 0 && envelope.expectedRevision !== revision) {
+        throw new WorkspaceConflictError('organization_review_settings', organizationId, envelope.expectedRevision, revision || null);
+      }
+      const nextRevision = revision + 1;
+      await client.query(`insert into organization_review_settings (organization_id,blind_mode,revision,updated_at)
+        values ($1,$2,$3,now()) on conflict (organization_id) do update set blind_mode=excluded.blind_mode,revision=excluded.revision,updated_at=excluded.updated_at`,
+      [organizationId, blindMode, nextRevision]);
+      await this.effect(client, envelope, 'organization_review_settings.updated', 'organization_review_settings', organizationId, nextRevision, { blindMode });
+      return { resourceType: 'organization_review_settings', resourceId: organizationId, revision: nextRevision };
+    });
   }
 
   async portalConfiguration(organizationId: string, id: string): Promise<RelationalPortalConfigurationView | undefined> {

@@ -129,6 +129,13 @@ export const reviewAssignments = pgTable('review_assignments', {
   completedAt: timestamp('completed_at', { withTimezone: true }),
 });
 
+export const organizationReviewSettings = pgTable('organization_review_settings', {
+  organizationId: text('organization_id').primaryKey(),
+  blindMode: text('blind_mode').notNull().default('identity-redacted'),
+  revision: integer('revision').notNull().default(1),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+});
+
 export const reviewRecommendations = pgTable('review_recommendations', {
   reviewAssignmentId: text('review_assignment_id').primaryKey().references(() => reviewAssignments.id),
   score: integer('score'),

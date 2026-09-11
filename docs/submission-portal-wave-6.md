@@ -13,6 +13,10 @@ out-of-range scores and trims/limits notes at the HTTP boundary.
 Reviewer assignment projections now include total and open assignment counts,
 giving workload context without exposing other reviewers' submissions.
 
+Organization admins can now set the default blind-review policy. The setting is
+stored as a revisioned relational record and every change emits an audit/outbox
+effect; published workflow versions remain authoritative for per-stage behavior.
+
 ### Review operations
 
 - Configure review stages, reviewer groups, workload limits, blind projections,
