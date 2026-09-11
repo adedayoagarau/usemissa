@@ -1,6 +1,7 @@
 import { getProfileRepository } from "@/lib/profileRepository";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { InstitutionProfileView } from "@/components/institution-profile-view";
+import { ResidencyIntelligenceDrawer } from "@/components/rankings/residency-intelligence-drawer";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -25,7 +26,18 @@ export default async function ResidencyDetailPage({ params }: { params: Promise<
 
   return (
     <PublicSiteShell current="Directory">
-      <InstitutionProfileView profile={profile} />
+      <InstitutionProfileView
+        profile={profile}
+        rankingSummary={
+          <div className="flex items-center gap-3 pt-2">
+            <ResidencyIntelligenceDrawer
+              profileId={profile.id}
+              residencyName={profile.name}
+              residencySlug={profile.slug}
+            />
+          </div>
+        }
+      />
     </PublicSiteShell>
   );
 }

@@ -17,6 +17,7 @@ export function getResidencyRankingRepository(): {
   listRankings: (filter?: ResidencyRankingsFilter) => Promise<ResidencyRankingPage & { dataSource: "database" | "empty" }>;
   getReviews: (profileId: string) => Promise<ResidencyReviewRow[]>;
   getDetail: (profileId: string) => Promise<(ResidencyRankingRow & { reviews: ResidencyReviewRow[] }) | null>;
+  getIntelligence: (profileId: string) => Promise<import("@missa/radar-adapters").ResidencyFullIntelligenceProfile | null>;
   recordReview: (input: SubmitResidencyReviewInput) => Promise<SubmitResidencyReviewResult>;
 } {
   const connectionString = process.env.DATABASE_URL;
@@ -29,6 +30,7 @@ export function getResidencyRankingRepository(): {
       }),
       getReviews: async () => [],
       getDetail: async () => null,
+      getIntelligence: async () => null,
       recordReview: async () => ({
         success: false,
         reviewId: "",
@@ -58,6 +60,9 @@ export function getResidencyRankingRepository(): {
     },
     getDetail: async (profileId: string) => {
       return repo.getResidencyDetail(profileId);
+    },
+    getIntelligence: async (profileId: string) => {
+      return repo.getResidencyIntelligence(profileId);
     },
     recordReview: async (input: SubmitResidencyReviewInput) => {
       return repo.recordResidencyReview(input);

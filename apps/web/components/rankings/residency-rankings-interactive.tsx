@@ -53,6 +53,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { SubmitResidencyReviewDialog } from "./submit-residency-review-dialog";
+import { ResidencyIntelligenceDrawer } from "./residency-intelligence-drawer";
 
 const PAGE_SIZE = 25;
 
@@ -553,6 +554,7 @@ export function ResidencyRankingsInteractive({
                   <TableHead scope="col" className="w-48 font-semibold">Funding & Amenities</TableHead>
                   <TableHead scope="col" className="w-36 font-semibold">Community</TableHead>
                   <TableHead scope="col" className="w-28 text-end font-semibold">MRI Index</TableHead>
+                  <TableHead scope="col" className="w-36 text-end font-semibold">Intelligence</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -683,6 +685,15 @@ export function ResidencyRankingsInteractive({
                           </span>
                         </button>
                       </TableCell>
+
+                      {/* Intelligence Dossier Drawer */}
+                      <TableCell className="text-end">
+                        <ResidencyIntelligenceDrawer
+                          profileId={row.profileId}
+                          residencyName={row.name}
+                          residencySlug={row.slug}
+                        />
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -771,41 +782,50 @@ export function ResidencyRankingsInteractive({
                   </div>
 
                   {/* Footer actions on Card */}
-                  <div className="flex items-center justify-between border-t border-border pt-3">
-                    {row.rmarRating !== null ? (
-                      <button
-                        type="button"
-                        onClick={() => openReviewsDialog(row)}
-                        className="flex items-center gap-1 text-xs font-medium text-foreground hover:text-primary transition-colors min-h-10"
-                      >
-                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-                        <span>{row.rmarRating.toFixed(1)} / 5.0</span>
-                        <span className="text-muted-foreground ml-1">
-                          ({row.rmarReviewsCount > 0 ? `${row.rmarReviewsCount} reviews` : `${row.rmarRatingsCount} ratings`})
-                        </span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setResidencyForNewReview(row)}
-                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline min-h-10"
-                      >
-                        <PenLine className="h-3 w-3" />
-                        <span>Write a Review</span>
-                      </button>
-                    )}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                    <div className="flex items-center gap-2">
+                      {row.rmarRating !== null ? (
+                        <button
+                          type="button"
+                          onClick={() => openReviewsDialog(row)}
+                          className="flex items-center gap-1 text-xs font-medium text-foreground hover:text-primary transition-colors min-h-10"
+                        >
+                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
+                          <span>{row.rmarRating.toFixed(1)} / 5.0</span>
+                          <span className="text-muted-foreground ml-1">
+                            ({row.rmarReviewsCount > 0 ? `${row.rmarReviewsCount} reviews` : `${row.rmarRatingsCount} ratings`})
+                          </span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setResidencyForNewReview(row)}
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline min-h-10"
+                        >
+                          <PenLine className="h-3 w-3" />
+                          <span>Write a Review</span>
+                        </button>
+                      )}
+                    </div>
 
-                    {row.websiteUrl && (
-                      <a
-                        href={row.websiteUrl}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline min-h-10"
-                      >
-                        <span>Official Website</span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <ResidencyIntelligenceDrawer
+                        profileId={row.profileId}
+                        residencyName={row.name}
+                        residencySlug={row.slug}
+                      />
+                      {row.websiteUrl && (
+                        <a
+                          href={row.websiteUrl}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline min-h-10"
+                        >
+                          <span>Website</span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

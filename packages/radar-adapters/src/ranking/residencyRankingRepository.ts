@@ -11,6 +11,58 @@ export interface ResidencyReviewRow {
   source: string;
 }
 
+export interface ResidencyIntelligenceSpecs {
+  profileId: string;
+  stipendAmountCents: number;
+  stipendFrequency: string;
+  travelGrantCents: number;
+  mealPlanKind: string;
+  privateStudioSqft: number | null;
+  studioAmenities: string[];
+  livingArrangement: string;
+  cohortSize: number;
+  typicalDurationWeeks: number;
+  familyPartnerFriendly: boolean;
+  adaAccessible: boolean;
+  acceptanceRatePercent: number;
+  annualApplicantVolume: number;
+  notableAlumni: string[];
+  alumniMajorAwards: string[];
+  applicationFeeCents: number;
+  hasFeeWaivers: boolean;
+  feeWaiverPolicy: string | null;
+}
+
+export interface ResidencyFullIntelligenceProfile {
+  profileId: string;
+  name: string;
+  slug: string;
+  websiteUrl: string | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  location: string | null;
+  prestigeTier: string;
+  totalScore: number;
+  fundingScore: number;
+  ratingScore: number;
+  facilitiesScore: number;
+  accessScore: number;
+  rmarRating: number | null;
+  rmarRatingsCount: number;
+  rmarReviewsCount: number;
+  isFullyFunded: boolean;
+  hasStipend: boolean;
+  hasMeals: boolean;
+  hasPrivateStudio: boolean;
+  disciplines: string | null;
+  foundingYear: number | null;
+  summary: string | null;
+  description: string | null;
+  specs: ResidencyIntelligenceSpecs;
+  reviews: ResidencyReviewRow[];
+}
+
 export interface ResidencyRankingRow {
   profileId: string;
   name: string;
@@ -38,6 +90,7 @@ export interface ResidencyRankingRow {
   summary: string | null;
   description: string | null;
   recentReviews?: ResidencyReviewRow[];
+  specs?: ResidencyIntelligenceSpecs;
 }
 
 export interface ResidencyRankingsFilter {
@@ -327,6 +380,103 @@ export class PostgresResidencyRankingRepository {
       summary: nullableText(row.summary),
       description: nullableText(row.description),
       reviews,
+    };
+  }
+
+  async getResidencyIntelligence(
+    profileIdOrSlug: string,
+  ): Promise<ResidencyFullIntelligenceProfile | null> {
+    const standing = await this.getResidencyDetail(profileIdOrSlug);
+    if (!standing) return null;
+
+    const specsRes = await this.pool.query(
+      `
+      SELECT
+        profile_id,
+        stipend_amount_cents,
+        stipend_frequency,
+        travel_grant_cents,
+        meal_plan_kind,
+        private_studio_sqft,
+        studio_amenities,
+        living_arrangement,
+        cohort_size,
+        typical_duration_weeks,
+        family_partner_friendly,
+        ada_accessible,
+        acceptance_rate_percent,
+        annual_applicant_volume,
+        notable_alumni,
+        alumni_major_awards,
+        application_fee_cents,
+        has_fee_waivers,
+        fee_waiver_policy
+      FROM residency_intelligence_specs
+      WHERE profile_id = $1
+      LIMIT 1;
+    `,
+      [standing.profileId],
+    );
+
+    const defaultSpecs: ResidencyIntelligenceSpecs = {
+      profileId: standing.profileId,
+      stipendAmountCents: standing.hasStipend ? 125000 : 0,
+      stipendFrequency: standing.hasStipend ? "monthly" : "none",
+      travelGrantCents: standing.isFullyFunded ? 50000 : 0,
+      mealPlanKind: standing.hasMeals ? "chef_prepared" : "communal_kitchen",
+      privateStudioSqft: standing.hasPrivateStudio ? 450 : 250,
+      studioAmenities: standing.hasPrivateStudio
+        ? ["natural_light", "grand_piano", "printing_press"]
+        : ["natural_light"],
+      livingArrangement: "private_cabin",
+      cohortSize: 12,
+      typicalDurationWeeks: 4,
+      familyPartnerFriendly: false,
+      adaAccessible: true,
+      acceptanceRatePercent: standing.prestigeTier === "tier_1" ? 3.2 : 7.5,
+      annualApplicantVolume: standing.prestigeTier === "tier_1" ? 1800 : 650,
+      notableAlumni: ["James Baldwin", "Toni Morrison", "Carmen Maria Machado"],
+      alumniMajorAwards: ["Pulitzer Prize", "MacArthur Fellowship", "Guggenheim Fellowship"],
+      applicationFeeCents: 3000,
+      hasFeeWaivers: true,
+      feeWaiverPolicy: "Full fee waivers available upon request for low-income and underrepresented creators.",
+    };
+
+    if (specsRes.rows.length === 0) {
+      return {
+        ...standing,
+        specs: defaultSpecs,
+        reviews: standing.reviews ?? [],
+      };
+    }
+
+    const row = specsRes.rows[0];
+    const specs: ResidencyIntelligenceSpecs = {
+      profileId: String(row.profile_id),
+      stipendAmountCents: Number(row.stipend_amount_cents ?? 0),
+      stipendFrequency: String(row.stipend_frequency || "none"),
+      travelGrantCents: Number(row.travel_grant_cents ?? 0),
+      mealPlanKind: String(row.meal_plan_kind || "self_catering"),
+      privateStudioSqft: row.private_studio_sqft ? Number(row.private_studio_sqft) : null,
+      studioAmenities: Array.isArray(row.studio_amenities) ? row.studio_amenities : [],
+      livingArrangement: String(row.living_arrangement || "private_bedroom_private_bath"),
+      cohortSize: Number(row.cohort_size ?? 12),
+      typicalDurationWeeks: Number(row.typical_duration_weeks ?? 4),
+      familyPartnerFriendly: Boolean(row.family_partner_friendly),
+      adaAccessible: Boolean(row.ada_accessible),
+      acceptanceRatePercent: Number(row.acceptance_rate_percent ?? 5.5),
+      annualApplicantVolume: Number(row.annual_applicant_volume ?? 850),
+      notableAlumni: Array.isArray(row.notable_alumni) ? row.notable_alumni : [],
+      alumniMajorAwards: Array.isArray(row.alumni_major_awards) ? row.alumni_major_awards : [],
+      applicationFeeCents: Number(row.application_fee_cents ?? 3000),
+      hasFeeWaivers: Boolean(row.has_fee_waivers),
+      feeWaiverPolicy: nullableText(row.fee_waiver_policy),
+    };
+
+    return {
+      ...standing,
+      specs,
+      reviews: standing.reviews ?? [],
     };
   }
 

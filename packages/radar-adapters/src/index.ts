@@ -588,6 +588,8 @@ export {
   type ResidencyRankingPage,
   type SubmitResidencyReviewInput,
   type SubmitResidencyReviewResult,
+  type ResidencyIntelligenceSpecs,
+  type ResidencyFullIntelligenceProfile,
 } from "./ranking/residencyRankingRepository.js";
 
 export {
