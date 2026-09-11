@@ -86,3 +86,11 @@ Wave 5 may use the disposable Neon rehearsal database for development and
 replay. It must not connect development scripts to a hosted production
 database, and a Vercel deployment is not complete until hosted data, uploads,
 receipts, and the full journey are independently verified.
+
+## Completion gate status
+
+The relational implementation and local checks are complete. Wave 5 remains
+open for external certification because this environment currently has no
+`BLOB_READ_WRITE_TOKEN` and no malware-scan provider configuration. Hosted
+upload, receipt delivery, and physical-device accessibility checks remain
+unverified.
