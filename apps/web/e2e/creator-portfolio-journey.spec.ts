@@ -1,75 +1,49 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-test("public portfolio has an intentional sequence, full reading and accessible mobile media", async ({
-  page,
-}) => {
+test("public archive filters works and opens accessible project details", async ({ page }) => {
   await page.goto("/design-system/creator-profile-v2");
-  await expect(
-    page.getByRole("button", { name: "Create your profile" }),
-  ).toHaveCount(0);
-  await expect(page.getByRole("navigation", { name: "Portfolio sections" })).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "A frequency for the footpath" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Riley Chen", level: 1 })).toBeVisible();
   await expect(page.locator("article")).toHaveCount(4);
-  await expect(page.locator('[data-scene="reading-room"]')).toHaveCount(1);
-  await expect(page.locator('[data-scene="diptych"]')).toHaveCount(1);
-  await expect(page.locator('[data-scene="bleed"]')).toHaveCount(1);
-  await expect(page.locator('[data-scene="listening-room"]')).toHaveCount(1);
-  await page.getByRole("button", { name: "Read poem" }).first().focus();
+  await page.getByRole("button", { name: "Explore An atlas of small departures", exact: true }).focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("dialog")).toContainText(
-    "Each valley holds its breath",
-  );
+  await expect(page.getByRole("dialog")).toContainText("Each valley holds its breath");
   await page.keyboard.press("Escape");
-  await expect(
-    page.getByRole("button", { name: "Read poem" }).first(),
-  ).toBeFocused();
-  await page.getByRole("button", { name: /Enlarge image/ }).first().click();
-  await expect(page.getByRole("dialog").getByRole("img")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Explore An atlas of small departures", exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "Sound", exact: true }).click();
+  await expect(page.locator("article")).toHaveCount(1);
+  await page.getByRole("button", { name: "Explore A frequency for the footpath" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Audio isn’t available");
+  await expect(page.getByRole("dialog").locator("audio")).toHaveCount(0);
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("heading", { name: "Books", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "About the artist" })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Riley Chen", level: 2 })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Threads" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Facebook" })).toBeVisible();
-  await page
-    .getByRole("button", {
-      name: "Field notes from the in-between",
-      exact: true,
-    })
-    .click();
+  await page.getByRole("button", { name: "All", exact: true }).click();
+  await expect(page.locator("article")).toHaveCount(4);
+  await page.getByRole("button", { name: "Discover the book" }).click();
   await expect(page.getByRole("dialog")).toContainText("fictional sample book");
   await page.keyboard.press("Escape");
-  await page
-    .getByRole("button", { name: "The Quiet Review", exact: true })
-    .click();
-  await expect(page.getByRole("dialog")).toContainText(
-    "fictional sample publication",
-  );
+  await page.getByRole("button", { name: "Threads", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("fictional creator");
   await page.keyboard.press("Escape");
   for (const width of [1280, 640, 390, 320]) {
-    await page.setViewportSize({ width, height: 844 });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBeTruthy();
+    await page.setViewportSize({width,height:844});
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   }
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  const audit = await new AxeBuilder({ page })
-    .include("main")
-    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
-    .analyze();
+  await page.emulateMedia({reducedMotion:"reduce"});
+  const audit = await new AxeBuilder({page}).include("main").withTags(["wcag2a","wcag2aa","wcag21aa"]).analyze();
   expect(audit.violations).toEqual([]);
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.evaluate(() => window.scrollTo(0, 0));
-  await page.getByRole("heading", { name: "Riley Chen", level: 1 }).click();
-  await page.screenshot({
-    path: "/tmp/missa-portfolio-mobile.png",
-    fullPage: true,
-  });
+  await page.setViewportSize({width:390,height:844});
+  await page.getByRole("heading", { name: "Riley Chen", level: 1 }).scrollIntoViewIfNeeded();
+  await page.screenshot({path:"/tmp/missa-archive-mobile.png",fullPage:true});
+});
+
+test("archive keeps failed media explorable", async ({page}) => {
+  await page.route("**/media/creator-preview-landscape.png", route => route.abort());
+  await page.goto("/design-system/creator-profile-v2");
+  const work = page.getByRole("button", { name: "Explore An atlas of small departures", exact: true });
+  await work.scrollIntoViewIfNeeded();
+  await expect(work).toContainText("Image unavailable");
+  await work.click();
+  await expect(page.getByRole("dialog")).toContainText("Each valley holds its breath");
 });
 
 test("full-page editor saves at the creator’s pace and previews each kind of work", async ({

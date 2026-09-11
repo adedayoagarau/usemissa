@@ -128,7 +128,7 @@
         "Dialog",
         "InstitutionSocialLinks"
       ],
-      "appearance": "editorial-public-portfolio-with-separate-owner-settings",
+      "appearance": "split-cover-asymmetric-archive-with-unified-project-viewer-and-separate-owner-settings",
       "variants": [
         "public-profile",
         "embedded-marketing-sample"

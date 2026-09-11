@@ -39,6 +39,7 @@ import "./design-system/creator-palette.css";
 import { PortfolioHandleField } from "./portfolio-handle-field";
 import type { PortfolioData } from "@/lib/creator-portfolio-schema";
 import styles from "./creator-portfolio-studio.module.css";
+import { CreatorPortfolioArchive } from "./creator-portfolio-archive";
 function MediaPicker({
   label,
   value,
@@ -561,14 +562,14 @@ export function CreatorPortfolioStudio({
         "A photographic essay about domestic spaces after the people who shaped them have moved on.",
       excerpt:
         "Light remains on the table. A chair keeps the measure of a body that is no longer there.",
-      alt: "Sunlit objects arranged in a quiet studio",
+      alt: "Layered red, black and cream prints on a studio table",
     },
     "Threshold studies": {
       summary:
         "Images made between rehearsal and performance, when a room is holding its breath.",
       excerpt:
         "Six photographs, 2024–2025.",
-      alt: "An artist working inside a gallery",
+      alt: "An artist writing at a desk beside a sunlit window",
     },
     "A frequency for the footpath": {
       summary:
@@ -625,6 +626,26 @@ export function CreatorPortfolioStudio({
       : "h4"
     : "h1";
   const WorkHeading = embedded ? "h4" : "h2";
+  if (isPublicStage) {
+    return <CreatorPortfolioArchive
+      name={displayName}
+      bio={isSample ? "Poems, images and field recordings about how places carry memory." : bio}
+      portrait={portrait}
+      practices={isSample ? ["Poet", "Sound artist", "Photographer"] : selected}
+      sample={isSample}
+      works={displayWorks.map((entry, index) => ({
+        ...entry,
+        ...(isSample ? {
+          summary: sampleWorkDetails[entry.title]?.summary,
+          alt: sampleWorkDetails[entry.title]?.alt,
+          text: index === 0 ? "The train carries weather from one place to the next—\ncondensing, clearing,\nchanging as we move.\n\nI write the names of stations\non the back of yesterday.\nEach valley holds its breath\nand lets us pass.\n\nAt home, I will remember\nnot the distance,\nbut the window—\nhow it made a room of leaving." : entry.text,
+        } : {}),
+      }))}
+      book={isSample ? { title: "Field notes from the in-between", cover: "/media/creator-preview-book.png", year: "2025", url: "" } : sections.includes("Books") ? book : { title:"",cover:"",year:"",url:"" }}
+      contact={contact}
+      credit={isSample ? { title:"Station fragments",venue:"The Quiet Review",year:"2025",url:"" } : sections.includes("Selected publications") ? credit : { title:"",venue:"",year:"",url:"" }}
+    />;
+  }
   return (
     <div
       className={`${styles.world} ${!ownerId && !embedded ? styles.stage : ""} ${embedded ? styles.embedded : ""} ${embedded && presentation === "showcase" ? styles.showcase : ""}`}
@@ -1403,8 +1424,8 @@ export function CreatorPortfolioStudio({
               {isPublicStage ? (
                 <nav className={styles.exhibitionIndex} aria-label="Portfolio sections">
                   <a href="#selected-work">Selected work</a>
-                  <a href="#about-riley">About</a>
-                  <a href="#contact-riley">Contact</a>
+                  {isSample && <a href="#about-riley">About</a>}
+                  {isSample && <a href="#contact-riley">Contact</a>}
                 </nav>
               ) : formats.length > 1 ? (
                 <nav className={styles.tabs} aria-label="Work formats">
@@ -1435,20 +1456,11 @@ export function CreatorPortfolioStudio({
                     <article
                       key={`${index}-${title}`}
                       data-work-position={index % 4}
-                      data-scene={
-                        index % 4 === 0
-                          ? "reading-room"
-                          : index % 4 === 1
-                            ? "diptych"
-                            : index % 4 === 2
-                              ? "bleed"
-                              : "listening-room"
-                      }
                       className={`${styles.project} ${filter === "Writing" || filter === "Sound" || !image ? styles.readingProject : ""}`}
                     >
                       {isPublicStage && !image && workFormats(work).includes("Sound") && (
                         <div className={styles.soundArtwork}>
-                          <span>Field recording · 2025</span>
+                          <span>{isSample ? "Field recording · 2025" : "Audio work"}</span>
                           <div className={styles.soundLines} aria-hidden="true">
                             {Array.from({ length: 48 }, (_, bar) => (
                               <i key={bar} style={{ "--bar-height": `${16 + Math.round(Math.abs(Math.sin(bar * 0.53) * Math.cos(bar * 0.17)) * 88)}px` } as React.CSSProperties} />

@@ -1418,8 +1418,8 @@
     "onboarding": "Independent sections; handle suggestion and availability below name, required on first publish; separate address change and unpublish confirmations; explicit local preview import.",
     "settings": "/profile/portfolio",
     "settingsPreview": "/design-system/creator-profile-settings",
-    "adaptations": "Public contact row; content-backed format views; outlined reading action; image disclosure; account-scoped draft keys; opt-in contact fields; optional ordered books/publications",
-    "validation": "See docs/public-creator-profile-design.md for exact checks and limitations.",
+    "adaptations": "Public presentation in creator-portfolio-archive.tsx: split cover, asymmetric work collection, responsive stack, Shadcn Button filters and unified Dialog project viewer. Skeleton loading, failed-image fallback, absent/failed audio and empty collection states. Preview social row includes X, Threads and Facebook; account fields and owner editor retained.",
+    "validation": "See docs/creator-archive-design-review.md for public presentation states and checks; docs/public-creator-profile-design.md for owner persistence boundaries.",
     "editorComponents": [
       "apps/web/components/portfolio-link-preview.tsx",
       "apps/web/components/portfolio-publication-picker.tsx",
