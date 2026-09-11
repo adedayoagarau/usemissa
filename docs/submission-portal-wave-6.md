@@ -131,9 +131,14 @@ represented in the outbox.
   after the reconciled authority base, with a database-schema regression test
   covering dependency order. This is a replay-proof improvement; it does not
   certify the shared Neon or Vercel Preview database as disposable.
-- The live Postgres integration suite was not counted as passed on this target:
-  its safety guard requires an explicitly named disposable
-  `missa_story_16_1_*` database. Hosted tenant-isolation and device gates remain
-  separate evidence requirements.
+- A fresh disposable Neon database (`missa_story_16_1_wave6_proof_1789154799149`)
+  replayed all 54 target migrations and reported every Wave 6 readiness table.
+  The real-Postgres Workspace integration passed its tenant-isolation,
+  concurrency, idempotency, and rollback assertions; the Radar adapter target
+  suite passed 263 tests with one unrelated creator-authority test skipped.
+- The shared local Neon target was not used for destructive integration tests:
+  its safety guard requires an explicitly named disposable `missa_story_16_1_*`
+  database. Hosted tenant-isolation and device gates remain separate evidence
+  requirements.
 - Vercel Preview resolves to Neon database `neondb`, so the guarded live suite
   was not run against Preview and no production database was changed.
