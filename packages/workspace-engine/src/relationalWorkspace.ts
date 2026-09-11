@@ -38,7 +38,7 @@ export interface RelationalOrganizationSubmissionView {
   paymentStatus?: string;
   answers?: Record<string, string | string[]>;
   works: Array<{ id: string; title: string; fileUrl?: string; fileUrls?: string[]; order: number }>;
-  assignments: Array<{ id: string; reviewerAccountId?: string; completedAt?: string }>;
+  assignments: Array<{ id: string; reviewerAccountId?: string; reviewerGroupId?: string; completedAt?: string; expiresAt?: string; recusedAt?: string; recusalReason?: string; reassignedFromAssignmentId?: string; revision: number }>;
   decisions: Array<{ workId: string; outcome: DecisionOutcome }>;
 }
 export interface RelationalPortalConfigurationView {
@@ -776,12 +776,13 @@ export class RelationalWorkspace {
 
   async reviewAssignmentsForReviewer(reviewerAccountId: string): Promise<Row[]> {
     const result = await this.pool.query<Row>(`select ra.id,ra.review_round_id "reviewRoundId",ra.submission_id "submissionId",
-      ra.reviewer_account_id "reviewerAccountId",ra.completed_at "completedAt",ra.revision,
+      ra.reviewer_account_id "reviewerAccountId",ra.reviewer_group_id "reviewerGroupId",ra.completed_at "completedAt",
+      ra.expires_at "expiresAt",ra.recused_at "recusedAt",ra.recusal_reason "recusalReason",ra.reassigned_from_assignment_id "reassignedFromAssignmentId",ra.revision,
       count(*) over (partition by ra.reviewer_account_id) "assignmentCount",
       count(*) filter (where ra.completed_at is null) over (partition by ra.reviewer_account_id) "openAssignmentCount",
       jsonb_build_object('id',s.id,'submissionPathId',s.submission_path_id,'status',s.status,'submittedAt',s.submitted_at,'revision',s.revision) submission,
       coalesce((select jsonb_agg(jsonb_build_object('id',w.id,'submissionId',w.submission_id,'title',w.title,'order',w."order",'revision',w.revision) order by w."order") from works w where w.submission_id=s.id),'[]'::jsonb) works,
-      case when rec.review_assignment_id is null then null else jsonb_build_object('reviewAssignmentId',rec.review_assignment_id,'score',rec.score,'notes',rec.notes,'recordedAt',rec.recorded_at) end recommendation
+      case when rec.review_assignment_id is null then null else jsonb_build_object('reviewAssignmentId',rec.review_assignment_id,'score',rec.score,'notes',rec.notes,'status',rec.status,'recordedAt',rec.recorded_at) end recommendation
       from review_assignments ra join submissions s on s.id=ra.submission_id
       left join review_recommendations rec on rec.review_assignment_id=ra.id
       where ra.reviewer_account_id=$1 order by ra.created_at,ra.id`, [reviewerAccountId]);
@@ -790,8 +791,9 @@ export class RelationalWorkspace {
 
   async reviewAssignmentsForSubmission(organizationId: string, submissionId: string): Promise<Row[]> {
     const result = await this.pool.query<Row>(`select ra.id,ra.review_round_id "reviewRoundId",ra.submission_id "submissionId",
-      ra.reviewer_account_id "reviewerAccountId",ra.completed_at "completedAt",ra.revision,
-      case when rec.review_assignment_id is null then null else jsonb_build_object('reviewAssignmentId',rec.review_assignment_id,'score',rec.score,'notes',rec.notes,'recordedAt',rec.recorded_at) end recommendation
+      ra.reviewer_account_id "reviewerAccountId",ra.reviewer_group_id "reviewerGroupId",ra.completed_at "completedAt",
+      ra.expires_at "expiresAt",ra.recused_at "recusedAt",ra.recusal_reason "recusalReason",ra.reassigned_from_assignment_id "reassignedFromAssignmentId",ra.revision,
+      case when rec.review_assignment_id is null then null else jsonb_build_object('reviewAssignmentId',rec.review_assignment_id,'score',rec.score,'notes',rec.notes,'status',rec.status,'recordedAt',rec.recorded_at) end recommendation
       from review_assignments ra join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id
       join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
       left join review_recommendations rec on rec.review_assignment_id=ra.id
@@ -800,7 +802,7 @@ export class RelationalWorkspace {
   }
 
   async recommendationForAssignment(assignmentId: string, organizationId?: string): Promise<Row | undefined> {
-    const result = await this.pool.query<Row>(`select rec.review_assignment_id "reviewAssignmentId",rec.score,rec.notes,rec.recorded_at "recordedAt"
+    const result = await this.pool.query<Row>(`select rec.review_assignment_id "reviewAssignmentId",rec.score,rec.notes,rec.status,rec.recorded_at "recordedAt"
       from review_recommendations rec join review_assignments ra on ra.id=rec.review_assignment_id
       join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id
       join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
@@ -944,7 +946,7 @@ export class RelationalWorkspace {
     const result = await this.pool.query<RelationalOrganizationSubmissionView>(`select s.id,s.submission_path_id "submissionPathId",o.id "openCallId",o.title "openCallTitle",
         s.submitter_account_id "submitterAccountId",s.status,s.submitted_at "submittedAt",s.category,s.payment_status "paymentStatus",s.answers,
         coalesce((select jsonb_agg(jsonb_build_object('id',w.id,'title',w.title,'fileUrl',w.file_url,'fileUrls',w.file_urls,'order',w."order") order by w."order",w.id) from works w where w.submission_id=s.id),'[]'::jsonb) works,
-        coalesce((select jsonb_agg(jsonb_build_object('id',ra.id,'reviewerAccountId',ra.reviewer_account_id,'completedAt',ra.completed_at) order by ra.id) from review_assignments ra where ra.submission_id=s.id),'[]'::jsonb) assignments,
+        coalesce((select jsonb_agg(jsonb_build_object('id',ra.id,'reviewerAccountId',ra.reviewer_account_id,'reviewerGroupId',ra.reviewer_group_id,'completedAt',ra.completed_at,'expiresAt',ra.expires_at,'recusedAt',ra.recused_at,'recusalReason',ra.recusal_reason,'reassignedFromAssignmentId',ra.reassigned_from_assignment_id,'revision',ra.revision) order by ra.id) from review_assignments ra where ra.submission_id=s.id),'[]'::jsonb) assignments,
         coalesce((select jsonb_agg(jsonb_build_object('workId',d.work_id,'outcome',d.outcome) order by d.work_id) from decisions d join works w on w.id=d.work_id where w.submission_id=s.id),'[]'::jsonb) decisions
       from submissions s join submission_paths sp on sp.id=s.submission_path_id join open_calls o on o.id=sp.open_call_id
       join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
