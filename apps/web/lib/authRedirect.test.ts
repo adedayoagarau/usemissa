@@ -8,7 +8,12 @@ test("keeps normalized same-origin auth destinations", () => {
     safeAuthRedirect("/opportunities/north-river?from=search#requirements"),
     "/opportunities/north-river?from=search#requirements",
   );
+  assert.equal(safeAuthRedirect("/onboarding"), "/onboarding");
+  assert.equal(safeAuthRedirect("/workspace"), "/workspace");
   assert.equal(safeAuthRedirect("/tracker"), "/tracker");
+  assert.equal(safeAuthRedirect("/saved"), "/saved");
+  assert.equal(safeAuthRedirect("/saved?sort=deadline"), "/saved?sort=deadline");
+  assert.equal(safeAuthRedirect("/calendar"), "/calendar");
   assert.equal(safeAuthRedirect("/reviews/assigned"), "/reviews/assigned");
 });
 

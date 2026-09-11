@@ -1,6 +1,8 @@
-import { buildOpportunityIdentity, compareOpportunityIdentityDetailed, type IdentityMatchBasis, type OpportunityIdentity } from "./identity.js";
-import { isPotentialDestination } from "./destinations.js";
+import { buildOpportunityIdentity, compareOpportunityIdentity, type OpportunityIdentity } from "./identity.js";
+import { isPotentialDestination, type DestinationCandidate } from "./destinations.js";
+import type { EvidenceQuality } from "./quality.js";
 import type { ExtractionResult, PageSnapshot, SourceDefinition } from "./contracts.js";
+import { INGESTION_V2_VERSION } from "./contracts.js";
 
 export type PublisherDecision = "approve" | "review" | "reject";
 
@@ -28,6 +30,34 @@ export interface PublisherReview {
   publicWrite: false;
   rationale: string[];
   reconciliation: DestinationReconciliation;
+  pipelineVersion?: string;
+  /** Per-record verdicts for bounded indexes. The aggregate verdict is never
+   * sufficient to write one canonical opportunity for a multi-record page. */
+  candidateReviews?: CandidatePublisherReview[];
+  candidateCoverage?: {
+    target: number;
+    attempted: number;
+    completed: number;
+    failed: number;
+  };
+  canonicalHandoffs?: Array<{
+    candidateKey: string;
+    opportunityId: string;
+    status: "created-reviewable" | "updated-reviewable" | "duplicate-existing";
+    publicationState: "published" | "reviewable" | "suppressed";
+  }>;
+  canonicalHandoffFailures?: Array<{
+    candidateKey: string;
+    error: string;
+  }>;
+}
+
+export interface CandidatePublisherReview {
+  candidate: DestinationCandidate;
+  snapshotId: string;
+  extraction: ExtractionResult;
+  quality: EvidenceQuality;
+  review: PublisherReview;
 }
 
 export interface PublisherInput {
@@ -36,6 +66,8 @@ export interface PublisherInput {
   sourceExtraction: ExtractionResult;
   relatedSnapshots: PageSnapshot[];
   relatedFields: ExtractionResult["fields"];
+  candidate?: DestinationCandidate;
+  candidateSnapshot?: PageSnapshot;
 }
 
 function fieldsForSnapshot(fields: ExtractionResult["fields"], snapshotId: string): ExtractionResult["fields"] {
@@ -43,51 +75,22 @@ function fieldsForSnapshot(fields: ExtractionResult["fields"], snapshotId: strin
 }
 
 function deterministicReconciliation(input: PublisherInput): DestinationReconciliation {
-  // The source's own identity comes from the page it was fetched from, never
-  // from a link it points to (see identity.ts) — isPotentialDestination widens
-  // which outbound links count as candidates, but must not touch how the
-  // source's own identity is built.
-  const sourceIdentity = buildOpportunityIdentity(input.sourceExtraction, input.sourceSnapshot.finalUrl || input.sourceSnapshot.url);
-  const candidates = input.sourceExtraction.candidateLinks.filter((candidate) => isPotentialDestination(input.source, candidate));
-
-  /**
-   * An organization's own page IS first-party: demanding it link outward to
-   * prove itself is asking the destination to link to a destination. Measured
-   * against production before this branch existed, that demand rejected 586 of
-   * 589 completed runs in a day — 98% of the registry is organization-website
-   * sources with no configured destination rules, so no link ever qualified.
-   * The demand for an external first-party destination remains exactly as
-   * strict for directories, where it is the correct test.
-   *
-   * A classified same-host candidate, when one exists, still refines the URL —
-   * so the loop below runs first and this branch is the fallback, not a
-   * bypass. The model review still runs after a first-party pass; its question
-   * becomes "is this page a live, specific opportunity", which is the risk
-   * that remains on an organization's own site.
-   */
-  const firstParty = input.source.kind === "organization-website" || input.source.kind === "profile";
-  const firstPartyPass = (): DestinationReconciliation | null => {
-    if (!firstParty) return null;
-    if (input.sourceSnapshot.statusCode < 200 || input.sourceSnapshot.statusCode >= 300) return null;
-    if (sourceIdentity.key === "unidentifiable" || !sourceIdentity.title) return null;
-    const authoritativeUrl = input.sourceSnapshot.finalUrl || input.sourceSnapshot.url;
-    return { decision: "pass", basis: "first-party-source", authoritativeUrl, sourceIdentity, destinationIdentity: sourceIdentity, reasons: ["The source is the organization's own page; it is the first-party destination for the opportunity it describes."] };
-  };
-
-  if (!candidates.length) {
-    const pass = firstPartyPass();
-    if (pass) return pass;
-    return { decision: "reject", basis: "none", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["No authoritative detail or application link was classified from the source page."] };
-  }
+  const sourceIdentity = buildOpportunityIdentity(input.sourceExtraction);
+  const candidates = input.candidate
+    ? [input.candidate]
+    : input.sourceExtraction.candidateLinks.filter((candidate) => isPotentialDestination(input.source, candidate));
+  if (!candidates.length) return { decision: "reject", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["No authoritative detail or application link was classified from the source page."] };
 
   for (const candidate of candidates) {
-    const destination = input.relatedSnapshots.find((snapshot) => snapshot.url === candidate.url || snapshot.finalUrl === candidate.url);
+    const destination = input.candidateSnapshot ?? input.relatedSnapshots.find((snapshot) => snapshot.url === candidate.url || snapshot.finalUrl === candidate.url);
     if (!destination || destination.statusCode < 200 || destination.statusCode >= 300) continue;
     const destinationExtraction: ExtractionResult = { fields: fieldsForSnapshot(input.relatedFields, destination.id), candidateLinks: [], warnings: [] };
-    const destinationIdentity = buildOpportunityIdentity(destinationExtraction, destination.finalUrl || destination.url);
-    const identity = compareOpportunityIdentityDetailed(sourceIdentity, destinationIdentity);
-    if (identity.decision === "same") return { decision: "pass", basis: identity.basis, authoritativeUrl: destination.finalUrl || destination.url, sourceIdentity, destinationIdentity, reasons: ["The source record reconciles to the fetched authoritative destination by canonical URL or title and organization."] };
-    if (identity.decision === "review") return { decision: "review", basis: identity.basis, authoritativeUrl: destination.finalUrl || destination.url, sourceIdentity, destinationIdentity, reasons: ["The linked destination was fetched, but its identity is ambiguous against the source record."] };
+    const authoritativeUrl = candidate.canonicalUrl ?? destination.finalUrl ?? destination.url;
+    const destinationIdentity = buildOpportunityIdentity(destinationExtraction, authoritativeUrl);
+    const sourceIdentityForCandidate = buildOpportunityIdentity(input.sourceExtraction, authoritativeUrl);
+    const identityDecision = compareOpportunityIdentity(sourceIdentityForCandidate.key === "unidentifiable" ? sourceIdentity : sourceIdentityForCandidate, destinationIdentity);
+    if (identityDecision === "same") return { decision: "pass", authoritativeUrl, sourceIdentity, destinationIdentity, reasons: ["The source record reconciles to the fetched authoritative destination by canonical URL or title and organization."] };
+    if (identityDecision === "review") return { decision: "review", authoritativeUrl, sourceIdentity, destinationIdentity, reasons: ["The linked destination was fetched, but its identity is ambiguous against the source record."] };
   }
   // Candidates existed but none reconciled. For a directory that is a hard
   // stop; for an organization's own page it only means the outbound links were
@@ -128,13 +131,37 @@ async function deepSeekDecision(input: PublisherInput, reconciliation: Destinati
 
 export async function reviewForPublication(input: PublisherInput, options: { apiKey?: string } = {}): Promise<PublisherReview> {
   const reconciliation = deterministicReconciliation(input);
-  if (reconciliation.decision !== "pass") return { decision: reconciliation.decision === "reject" ? "reject" : "review", model: "deterministic", publicWrite: false, rationale: reconciliation.reasons, reconciliation };
+  if (reconciliation.decision !== "pass") return { decision: reconciliation.decision === "reject" ? "reject" : "review", model: "deterministic", publicWrite: false, rationale: reconciliation.reasons, reconciliation, pipelineVersion: INGESTION_V2_VERSION };
   const apiKey = options.apiKey ?? process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) return { decision: "review", model: "deterministic", publicWrite: false, rationale: ["DeepSeek publisher review is not configured; no automatic publication decision was made."], reconciliation };
+  if (!apiKey) return { decision: "review", model: "deterministic", publicWrite: false, rationale: ["DeepSeek publisher review is not configured; no automatic publication decision was made."], reconciliation, pipelineVersion: INGESTION_V2_VERSION };
   try {
     const model = await deepSeekDecision(input, reconciliation, apiKey);
-    return { decision: model.decision, model: "deepseek", publicWrite: false, rationale: [model.reason], reconciliation };
+    return { decision: model.decision, model: "deepseek", publicWrite: false, rationale: [model.reason], reconciliation, pipelineVersion: INGESTION_V2_VERSION };
   } catch (error) {
-    return { decision: "review", model: "deepseek", publicWrite: false, rationale: [`DeepSeek publisher review failed closed: ${error instanceof Error ? error.message : String(error)}`], reconciliation };
+    return { decision: "review", model: "deepseek", publicWrite: false, rationale: [`DeepSeek publisher review failed closed: ${error instanceof Error ? error.message : String(error)}`], reconciliation, pipelineVersion: INGESTION_V2_VERSION };
+  }
+}
+
+/** A configured official publisher may authoritatively describe an opportunity
+ * on its own source card even when the linked application platform returns a
+ * crawler block. This remains review-only and still uses the model gate when
+ * configured. */
+export async function reviewOfficialSourceCard(input: PublisherInput, options: { apiKey?: string } = {}): Promise<PublisherReview> {
+  const manifest = input.source.config.sourceManifest as { role?: string } | undefined;
+  const candidateUrl = input.candidate?.canonicalUrl ?? input.candidate?.url;
+  const sourceIdentity = buildOpportunityIdentity(input.sourceExtraction, candidateUrl);
+  const authoritativeRole = manifest?.role === "official-publisher" || manifest?.role === "structured-authority";
+  if (!authoritativeRole || !candidateUrl || !candidateUrl.startsWith("https://") || !sourceIdentity.title || !sourceIdentity.organization) {
+    const reconciliation: DestinationReconciliation = { decision: "reject", authoritativeUrl: null, sourceIdentity, destinationIdentity: null, reasons: ["Authoritative-record review requires a configured official publisher or structured authority with complete source identity."] };
+    return { decision: "reject", model: "deterministic", publicWrite: false, rationale: reconciliation.reasons, reconciliation, pipelineVersion: INGESTION_V2_VERSION };
+  }
+  const reconciliation: DestinationReconciliation = { decision: "pass", authoritativeUrl: candidateUrl, sourceIdentity, destinationIdentity: null, reasons: [manifest?.role === "structured-authority" ? "The official structured record provides the opportunity identity and canonical destination URL." : "The official publisher source card provides the opportunity identity and explicitly links this application destination."] };
+  const apiKey = options.apiKey ?? process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) return { decision: "review", model: "deterministic", publicWrite: false, rationale: ["DeepSeek publisher review is not configured; no automatic review handoff was approved."], reconciliation, pipelineVersion: INGESTION_V2_VERSION };
+  try {
+    const model = await deepSeekDecision(input, reconciliation, apiKey);
+    return { decision: model.decision, model: "deepseek", publicWrite: false, rationale: [model.reason], reconciliation, pipelineVersion: INGESTION_V2_VERSION };
+  } catch (error) {
+    return { decision: "review", model: "deepseek", publicWrite: false, rationale: [`DeepSeek publisher review failed closed: ${error instanceof Error ? error.message : String(error)}`], reconciliation, pipelineVersion: INGESTION_V2_VERSION };
   }
 }

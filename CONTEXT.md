@@ -20,6 +20,18 @@ _Avoid_: Inner workspace
 A call, grant, award, residency, fellowship, contest, or other opening that can be discovered or published.
 _Avoid_: Opportunity card, open call in application navigation
 
+**Opportunity Cycle**:
+A dated or recurring intake period for an Opportunity. Closing a cycle records that intake as closed without implying that the Opportunity itself has been discontinued.
+_Avoid_: Treating every passed deadline as permanent closure
+
+**Opportunity Season**:
+The source-evidenced recurrence period associated with an Opportunity Cycle, such as Spring, Summer, Autumn, Winter, annual, or another explicitly named period. A season may schedule renewed ingestion, but it never proves that a new cycle is open.
+_Avoid_: Inferring a season from an unsupported date pattern
+
+**Opportunity Availability**:
+The evidence-backed current intake state and its timing basis: forecasted, opening soon, open on a fixed deadline, rolling, year-round, until filled, seasonally closed, closed, archived, or uncertain. A scheduled recheck returns an Opportunity to ingestion; only fresh source evidence can reopen it publicly.
+_Avoid_: Deriving public availability from a label without current source evidence
+
 **Source**:
 A monitored website, feed, directory, partner endpoint, or user-suggested URL from which Missa discovers and verifies Opportunities.
 _Avoid_: Scrape target

@@ -54,11 +54,6 @@ export function deriveStatus(opp: Opportunity, ctx: StatusContext): OpportunityS
     const days = daysBetween(today, opp.fields.openDate!);
     return days <= OPENING_SOON_DAYS ? 'opening-soon' : 'discovered';
   }
-  if (opp.prediction && daysBetween(today, opp.prediction.expectedOpenStart) > 0) {
-    const days = daysBetween(today, opp.prediction.expectedOpenStart);
-    if (days <= OPENING_SOON_DAYS) return 'opening-soon';
-  }
-
   if (deadline.date) {
     const days = daysBetween(today, deadline.date);
     return days <= CLOSING_SOON_DAYS ? 'closing-soon' : 'open';

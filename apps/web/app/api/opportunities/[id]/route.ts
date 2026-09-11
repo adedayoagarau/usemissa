@@ -4,6 +4,16 @@ import { getSessionAccount } from "@/lib/auth";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
 
 const PUBLIC_STATUSES = new Set(["opening-soon", "open", "closing-soon", "deadline-extended"]);
+const PUBLIC_CHANGE_KINDS = new Set([
+  "deadline-changed",
+  "deadline-extended",
+  "fee-changed",
+  "eligibility-changed",
+  "submission-url-changed",
+  "call-closed",
+  "call-reopened",
+  "guidelines-updated",
+]);
 
 export async function GET(
   request: Request,
@@ -26,6 +36,7 @@ export async function GET(
   const response = opportunityDetailResponseSchema.parse({
     ...result,
     createdAt: undefined,
+    changes: result.changes.filter((change) => PUBLIC_CHANGE_KINDS.has(change.kind)),
   });
 
   return NextResponse.json(response, {

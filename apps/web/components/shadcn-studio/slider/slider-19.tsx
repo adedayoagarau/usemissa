@@ -41,6 +41,7 @@ const ImageFilterDemo = () => {
       <div className='bg-muted group relative flex-1 overflow-hidden rounded-lg'>
         <img
           src='https://cdn.shadcnstudio.com/ss-assets/blocks/marketing/gallery/image-15.png'
+          alt='Landscape preview'
           className='h-full max-h-50 w-full object-cover object-center transition-[filter] duration-200 ease-out'
           style={filterStyle}
         />

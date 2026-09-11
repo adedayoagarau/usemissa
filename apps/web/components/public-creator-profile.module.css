@@ -1,0 +1,26 @@
+.main { width: min(calc(100% - 48px), 1200px); margin: auto; color: var(--foreground); }
+.identity { padding: 64px 0 40px; border-bottom: 1px solid var(--border); }
+.meta { display: flex; justify-content: space-between; gap: 16px; color: var(--primary); font-size: 13px; }
+.identity h1 { font-size: clamp(44px, 7vw, 96px); letter-spacing: -0.045em; line-height: 1.05; margin: 32px 0 24px; font-weight: 500; overflow-wrap: anywhere; }
+.bio { font-size: clamp(18px, 2vw, 23px); line-height: 1.65; max-width: 58ch; white-space: pre-line; }
+.nav { display: flex; gap: 28px; margin-top: 32px; }
+.nav a, .footer a, .identity > a { min-height: 44px; display: inline-flex; gap: 8px; align-items: center; }
+.section { padding: 40px 0; scroll-margin-top: 100px; }
+.section h2, .empty h2 { font-size: 22px; font-weight: 500; }
+.sectionHeading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.sectionHeading span, .workMeta { font-size: 12px; color: var(--muted-foreground); }
+.works { display: grid; grid-template-columns: 1.25fr 1fr; gap: 24px; }
+.work { padding: 32px; background: var(--accent-tint); border: 0; box-shadow: none; border-radius: var(--radius-md); gap: 16px; }
+.work:nth-child(even) { background: var(--mineral-blue-tint); }
+.workMeta { display: flex; justify-content: space-between; }
+.number { color: var(--primary); font-size: 40px; margin-top: 20px; }
+.work h3 { font-size: 30px; line-height: 1.2; letter-spacing: -0.025em; }
+.work p { font-size: 17px; line-height: 1.75; white-space: pre-line; }
+.credits { list-style: none; padding: 0; margin-top: 24px; }
+.credits li { display: grid; grid-template-columns: 72px 1fr 1fr; gap: 24px; padding: 24px 0; border-bottom: 1px solid var(--border); }
+.credits h3 { font-size: 16px; font-weight: 500; }
+.credits span { color: var(--muted-foreground); font-size: 14px; }
+.empty { padding: 48px 0; }
+.empty p { color: var(--muted-foreground); margin-top: 12px; }
+.footer { border-top: 1px solid var(--border); padding: 24px 0 48px; display: flex; justify-content: space-between; align-items: center; gap: 24px; font-size: 13px; color: var(--muted-foreground); }
+@media(max-width: 640px) { .main { width: calc(100% - 32px); } .identity { padding-top: 32px; } .works { grid-template-columns: 1fr; } .work { padding: 24px; } .credits li { grid-template-columns: 48px 1fr; gap: 12px; } .credits li > span:last-child { grid-column: 2; } .footer { align-items: flex-start; flex-direction: column; } }

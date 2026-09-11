@@ -96,7 +96,6 @@ const EditableTextCell = ({ getValue, row: { index }, column: { id }, table }: C
 
   useEffect(() => {
     // Keep the editable cell synchronized when the table replaces its row data.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValue(initialValue)
   }, [initialValue])
 
@@ -160,7 +159,6 @@ const EditableProgressCell = ({ getValue, row: { index }, column: { id }, table 
 
   useEffect(() => {
     // Keep the editable progress cell synchronized when the table replaces its row data.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValue(initialValue.toString())
   }, [initialValue])
 

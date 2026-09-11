@@ -15,10 +15,14 @@ export interface PlatformAdminSupportCase {
   accountId: string;
   accountEmail?: string;
   opportunityId: string;
+  subjectType?: string;
+  subjectId?: string;
   opportunityTitle?: string;
   opportunitySlug?: string;
   reason: string;
   note?: string;
+  correction?: string;
+  evidenceUrl?: string;
   status: string;
   createdAt?: string;
   updatedAt?: string;
@@ -57,6 +61,10 @@ export interface UpdatePlatformAdminSupportCaseInput {
   status: PlatformSupportStatus;
   actorAccountId: string;
   idempotencyKey: string;
+  correction?: string;
+  evidenceUrl?: string;
+  correctedField?: string;
+  correctedValue?: string;
 }
 
 export interface UpdatePlatformAdminSupportCaseResult {
@@ -72,11 +80,15 @@ interface SupportCaseRow {
   id: string;
   account_id: string;
   account_email?: string | null;
-  opportunity_id: string;
+  opportunity_id: string | null;
+  subject_type?: string | null;
+  subject_id?: string | null;
   opportunity_title?: string | null;
   opportunity_slug?: string | null;
   reason: string;
   note?: string | null;
+  correction?: string | null;
+  evidence_url?: string | null;
   status: string;
   created_at?: unknown;
   updated_at?: unknown;
@@ -108,11 +120,15 @@ export function normalizePlatformAdminSupportCase(row: SupportCaseRow): Platform
     id: row.id,
     accountId: row.account_id,
     ...(text(row.account_email, 320) ? { accountEmail: text(row.account_email, 320) } : {}),
-    opportunityId: row.opportunity_id,
+    opportunityId: row.opportunity_id ?? row.subject_id ?? "",
+    ...(text(row.subject_type, 40) ? { subjectType: text(row.subject_type, 40) } : {}),
+    ...(text(row.subject_id, 200) ? { subjectId: text(row.subject_id, 200) } : {}),
     ...(text(row.opportunity_title, 500) ? { opportunityTitle: text(row.opportunity_title, 500) } : {}),
     ...(text(row.opportunity_slug, 200) ? { opportunitySlug: text(row.opportunity_slug, 200) } : {}),
     reason: row.reason,
     ...(text(row.note) ? { note: text(row.note) } : {}),
+    ...(text(row.correction) ? { correction: text(row.correction, 2_000) } : {}),
+    ...(text(row.evidence_url, 1_000) ? { evidenceUrl: text(row.evidence_url, 1_000) } : {}),
     status: canonicalStatus(row.status),
     ...(iso(row.created_at) ? { createdAt: iso(row.created_at) } : {}),
     ...(iso(row.updated_at) ? { updatedAt: iso(row.updated_at) } : {}),
@@ -158,6 +174,18 @@ function assertCaseId(value: string): void {
     throw new Error("Invalid support case id");
   }
 }
+
+function assertEvidenceUrl(value: string | undefined): void {
+  if (value === undefined) return;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error();
+  } catch {
+    throw new Error("Evidence URL must use http or https");
+  }
+}
+
+const CORRECTABLE_FIELDS = new Set(["title", "status", "deadline_date", "fee_status", "fee_cents", "location", "guidelines_url", "submission_url"]);
 
 async function writeAudit(
   client: PoolClient,
@@ -205,6 +233,7 @@ export async function readPlatformAdminSupportQueue(
       ),
       pool.query<SupportCaseRow>(
         `select r.id, r.account_id, a.email as account_email, r.opportunity_id,
+                r.subject_type, r.subject_id, r.correction, r.evidence_url,
                 o.title as opportunity_title, o.slug as opportunity_slug,
                 r.reason, r.note, r.status, r.created_at, r.updated_at
            from opportunity_issue_reports r
@@ -257,7 +286,7 @@ export async function createOpportunityIssueReport(
     try {
       await client.query("begin");
       const replay = await client.query<SupportCaseRow>(
-        `select id, account_id, opportunity_id, reason, note, status, created_at, updated_at
+        `select id, account_id, opportunity_id, subject_type, subject_id, correction, evidence_url, reason, note, status, created_at, updated_at
            from opportunity_issue_reports
           where idempotency_key = $1
           for update`,
@@ -319,6 +348,14 @@ export async function updatePlatformAdminSupportCase(
   assertCaseId(input.caseId);
   assertIdempotencyKey(input.idempotencyKey);
   assertSupportStatus(input.status);
+  const correction = input.correction?.trim();
+  const evidenceUrl = input.evidenceUrl?.trim();
+  const correctedField = input.correctedField?.trim();
+  const correctedValue = input.correctedValue?.trim();
+  if (correctedField && !CORRECTABLE_FIELDS.has(correctedField)) throw new Error("That correction field is not supported");
+  if (correctedField && !correctedValue) throw new Error("A correction value is required");
+  if (input.status === "resolved" && (!correction || !evidenceUrl)) throw new Error("A resolved correction requires the verified detail and official source URL");
+  if (evidenceUrl) assertEvidenceUrl(evidenceUrl);
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
     for (const table of ["opportunity_issue_reports", "audit_events", "outbox_events"]) {
@@ -348,8 +385,8 @@ export async function updatePlatformAdminSupportCase(
         };
       }
 
-      const current = await client.query<{ status: string }>(
-        "select status from opportunity_issue_reports where id = $1 for update",
+      const current = await client.query<{ status: string; opportunity_id: string | null; subject_type: string; subject_id: string; correction: string | null; evidence_url: string | null }>(
+        "select status, opportunity_id, subject_type, subject_id, correction, evidence_url from opportunity_issue_reports where id = $1 for update",
         [input.caseId],
       );
       if (!current.rows[0]) {
@@ -359,10 +396,45 @@ export async function updatePlatformAdminSupportCase(
         throw error;
       }
       const previousStatus = canonicalStatus(current.rows[0].status);
+      const verifiedCorrection = correction ?? current.rows[0].correction ?? null;
+      const verifiedEvidence = evidenceUrl ?? current.rows[0].evidence_url ?? null;
+      if (correctedField && correctedValue && current.rows[0].opportunity_id) {
+        const value: string | number = correctedField === "fee_cents" ? Number(correctedValue) : correctedValue;
+        if (correctedField === "fee_cents" && (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)) throw new Error("Fee correction must be a non-negative whole number");
+        const previous = await client.query<{ value: string | null }>(`select ${correctedField}::text as value from opportunities where id=$1 for update`, [current.rows[0].opportunity_id]);
+        if (!previous.rows[0]) throw new Error("Opportunity not found");
+        await client.query(`update opportunities set ${correctedField}=$1, updated_at=now(), last_changed_at=now() where id=$2`, [value, current.rows[0].opportunity_id]);
+        await client.query(`insert into opportunity_changes (id,opportunity_id,kind,field,old_value,new_value,created_at) values($1,$2,'verified-correction',$3,$4,$5,now())`, [randomUUID(), current.rows[0].opportunity_id, correctedField, previous.rows[0].value, String(value)]);
+      }
       await client.query(
-        "update opportunity_issue_reports set status = $2, updated_at = now() where id = $1",
-        [input.caseId, input.status],
+        "update opportunity_issue_reports set status = $2, correction = coalesce($3, correction), evidence_url = coalesce($4, evidence_url), updated_at = now() where id = $1",
+        [input.caseId, input.status, verifiedCorrection, verifiedEvidence],
       );
+      if (input.status === "resolved" && previousStatus !== "resolved" && current.rows[0].opportunity_id) {
+        const tracked = await client.query<{ account_id: string; title: string }>(
+          `select t.account_id, coalesce(o.title, 'Tracked opportunity') as title
+             from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
+            where t.opportunity_id=$1`,
+          [current.rows[0].opportunity_id],
+        );
+        for (const row of tracked.rows) {
+          await client.query(
+            `insert into creator_inbox_alerts
+             (id,account_id,opportunity_id,kind,title,body,reason,dedupe_key,delivery_eligibility,action_href)
+             select $1,$2,$3,'opportunity-correction',$4,$5,$6,$7,'in-app',$8
+             where coalesce((select in_app_enabled from notification_preferences where account_id=$2),true)
+             on conflict do nothing`,
+            [
+              randomUUID(), row.account_id, current.rows[0].opportunity_id,
+              `Updated information for ${row.title}`,
+              verifiedCorrection ?? "Missa reviewed and corrected information from the official source.",
+              verifiedEvidence ? `Source: ${verifiedEvidence}` : "Source-backed correction reviewed by Missa.",
+              `opportunity-correction:${input.caseId}:${row.account_id}`,
+              `/opportunities/${encodeURIComponent(current.rows[0].opportunity_id)}`,
+            ],
+          );
+        }
+      }
       await writeAudit(client, input.actorAccountId, "platform_admin.support_case_status_updated", input.caseId, {
         idempotencyKey: input.idempotencyKey,
         previousStatus,

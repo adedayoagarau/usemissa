@@ -1,0 +1,150 @@
+.section {
+  position: relative;
+  display: grid;
+  min-height: clamp(300px, 28vw, 420px);
+  overflow: hidden;
+  align-items: center;
+  margin-inline: calc(50% - 50vw);
+  padding: 56px 40px 64px;
+  background: var(--muted);
+  color: var(--foreground);
+  isolation: isolate;
+}
+
+.art {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  background: url("/media/opportunities/opportunities-field.png") 64% 56% /
+    cover no-repeat;
+}
+
+.section::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--background) 97%, transparent) 0%,
+    color-mix(in srgb, var(--background) 92%, transparent) 38%,
+    color-mix(in srgb, var(--background) 72%, transparent) 58%,
+    transparent 82%
+  );
+  content: "";
+}
+
+.heroCopy {
+  width: min(680px, 56vw);
+}
+
+.heroCopy h1 {
+  max-width: 12ch;
+  margin: 0;
+  text-wrap: balance;
+  font-size: clamp(2.75rem, 5vw, 5rem);
+  font-weight: 420;
+  letter-spacing: -0.045em;
+  line-height: 0.96;
+}
+
+.intro {
+  max-width: 560px;
+  margin: 20px 0 0;
+  color: var(--muted-foreground);
+  font-size: clamp(1rem, 1.2vw, 1.0625rem);
+  line-height: 1.55;
+}
+
+.curatedTags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.curatedChip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-full, 9999px);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--background) 72%, transparent);
+  padding: 3px 10px;
+  color: var(--foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+
+.curatedChip:hover {
+  background: var(--background);
+  border-color: var(--border);
+}
+
+.curatedChip:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 980px) {
+  .section {
+    min-height: 380px;
+    padding-inline: 32px 32px;
+    padding-bottom: 56px;
+  }
+
+  .heroCopy {
+    width: min(620px, 72vw);
+  }
+
+  .art {
+    background-position: 61% 54%;
+  }
+}
+
+@media (max-width: 720px) {
+  .section {
+    min-height: 420px;
+    margin-inline: calc(50% - 50vw);
+    align-items: end;
+    padding: 40px 24px 48px;
+  }
+
+  .art {
+    background-position: 42% 50%;
+  }
+
+  .section::after {
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--background) 8%, transparent) 0%,
+      color-mix(in srgb, var(--background) 86%, transparent) 42%,
+      color-mix(in srgb, var(--background) 98%, transparent) 76%
+    );
+  }
+
+  .heroCopy {
+    width: 100%;
+  }
+
+  .heroCopy h1 {
+    max-width: 11ch;
+    font-size: clamp(2.5rem, 12vw, 3.75rem);
+  }
+
+  .intro {
+    max-width: 34rem;
+    margin-top: 16px;
+  }
+
+  .curatedTags {
+    margin-top: 16px;
+  }
+}
+
+@media (max-width: 360px) {
+  .section {
+    padding-inline: 16px;
+  }
+}

@@ -5,7 +5,10 @@ export type OpportunityRepositorySort =
   | "recommended"
   | "soonest-deadline"
   | "recently-verified"
-  | "recently-added";
+  | "recently-added"
+  | "recently-opened"
+  | "no-fee-first"
+  | "alphabetical";
 
 export type OpportunityRepositoryDeadlineKind =
   | "exact"
@@ -16,6 +19,8 @@ export type OpportunityRepositoryDeadlineKind =
   | "unknown";
 
 export interface OpportunityRepositoryQuery {
+  /** Internal shortlist lookup; public visibility and account exclusions still apply. */
+  ids?: string[];
   query?: string;
   category?: string;
   types?: OpportunityType[];
@@ -27,6 +32,7 @@ export interface OpportunityRepositoryQuery {
   feeStatus?: "no-fee" | "paid" | "unknown";
   maxFeeCents?: number;
   deadlineWithinDays?: number;
+  deadlineKind?: "rolling";
   openNow?: boolean;
   verifiedOnly?: boolean;
   simultaneousRequired?: boolean;
@@ -37,6 +43,13 @@ export interface OpportunityRepositoryQuery {
 
 export interface OpportunityRepositoryContext {
   accountId?: string;
+}
+
+export interface OpportunityFacetCounts {
+  total: number;
+  types: Array<{ value: OpportunityType; count: number }>;
+  disciplines: Array<{ value: string; count: number }>;
+  taxonomyTerms: Array<{ termId: string; count: number }>;
 }
 
 export interface OpportunityRepositoryDeadline {
@@ -145,6 +158,7 @@ export interface OpportunityBrowseProjection {
   identityAssetAlt?: string;
   status: "opening-soon" | "open" | "closing-soon" | "deadline-extended" | "closed" | "archived";
   type: OpportunityType;
+  openDate?: string;
   discipline?: string;
   genres: string[];
   taxonomy?: {
@@ -208,6 +222,10 @@ export interface OpportunityRepository {
     query: OpportunityRepositoryQuery,
     context?: OpportunityRepositoryContext,
   ): Promise<OpportunityBrowsePage>;
+  facetCounts(
+    query: OpportunityRepositoryQuery,
+    context?: OpportunityRepositoryContext,
+  ): Promise<OpportunityFacetCounts>;
   getById(
     opportunityId: string,
     context?: OpportunityRepositoryContext,

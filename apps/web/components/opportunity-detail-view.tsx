@@ -1,28 +1,52 @@
 import Link from "next/link";
+import { OpportunityDetailStickyActions } from "@/components/opportunity-detail-sticky-actions";
+import { AddOpportunityToCalendarButton } from "@/components/add-opportunity-to-calendar-button";
 import {
-  AlertTriangle,
   ArrowLeft,
+  Award,
+  BookOpenText,
+  Building2,
   CalendarDays,
   Check,
+  Clock3,
+  Coins,
   ExternalLink,
+  EyeOff,
   FileText,
+  Files,
   Flag,
   Globe2,
-  MapPin,
+  ShieldCheck,
+  Sparkles,
   Tag,
+  Users,
 } from "lucide-react";
 import type { OpportunityDetailProjection } from "@missa/radar-engine";
-import type { ProfileCard } from "@missa/radar-adapters";
+import {
+  type ProfileCard,
+  type ProfileDetail,
+  type EditorialIntelligenceFullProfile,
+  getSemanticUrlForProfile,
+} from "@missa/radar-adapters";
+import { EditorialIntelligenceSection } from "@/components/opportunities/editorial-intelligence-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { OpportunityIssueReport } from "@/components/opportunity-issue-report";
 import { PrepareChecklist } from "@/components/prepare-checklist";
+import { FollowButton } from "@/components/follow-button";
+import { MobileActionDock } from "@/components/mobile-action-dock";
+import {
+  cleanCrawledNarrative,
+  decodeHtmlEntities,
+  inferSubmissionChecklist,
+} from "@/lib/textUtils";
+import { cn } from "@/lib/utils";
 import styles from "./opportunity-detail.module.css";
 
-function initials(opportunity: OpportunityDetailProjection): string {
+function initials(name: string): string {
   return (
-    (opportunity.organizationName ?? opportunity.title)
+    name
       .split(/\s+/u)
       .filter(Boolean)
       .slice(0, 2)
@@ -31,102 +55,160 @@ function initials(opportunity: OpportunityDetailProjection): string {
   );
 }
 
-function typeLabel(type: OpportunityDetailProjection["type"]): string {
+function typeLabel(type: string): string {
   if (type === "open-call") return "Open call";
   return type
-    .replace(/-/gu, " ")
+    .replace(/[-_]/gu, " ")
     .replace(/^./u, (character) => character.toUpperCase());
 }
 
-function deadlineLabel(
+function getDeadlineUrgency(
   deadline: OpportunityDetailProjection["deadline"],
-): string {
-  if (deadline.date) {
-    return new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(
-      new Date(`${deadline.date}T12:00:00`),
-    );
+): {
+  label: string;
+  urgent: boolean;
+} {
+  if (!deadline.date) {
+    if (deadline.kind === "rolling")
+      return { label: "Rolling deadline", urgent: false };
+    if (deadline.kind === "until-filled")
+      return { label: "Until filled", urgent: false };
+    return { label: "Deadline not listed", urgent: false };
   }
-  if (deadline.kind === "rolling") return "Rolling deadline";
-  if (deadline.kind === "until-filled") return "Until filled";
-  if (deadline.kind === "conflicting") return "Deadline needs confirmation";
-  return "Deadline not listed";
+
+  const target = new Date(`${deadline.date}T00:00:00`);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diffMs = target.getTime() - now.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+  const formattedDate = new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+  }).format(target);
+
+  if (diffDays < 0) {
+    return { label: `Closed ${formattedDate}`, urgent: false };
+  }
+  if (diffDays === 0) {
+    return { label: "Closes today", urgent: true };
+  }
+  if (diffDays === 1) {
+    return { label: "Closes tomorrow", urgent: true };
+  }
+  if (diffDays <= 7) {
+    return {
+      label: `Closes ${formattedDate} · ${diffDays} days left`,
+      urgent: true,
+    };
+  }
+  if (diffDays <= 30) {
+    return {
+      label: `Closes ${formattedDate} · ${diffDays} days left`,
+      urgent: false,
+    };
+  }
+  return { label: `Closes ${formattedDate}`, urgent: false };
 }
 
-function feeLabel(opportunity: OpportunityDetailProjection): string {
-  if (opportunity.fee.status === "no-fee") return "No fee";
-  if (opportunity.fee.status === "unknown") return "Fee not listed";
+function getFeeBadge(opportunity: OpportunityDetailProjection): {
+  label: string;
+  isFree: boolean;
+} {
+  if (
+    opportunity.fee.status === "no-fee" ||
+    opportunity.fee.amountCents === 0
+  ) {
+    return { label: "Free to enter", isFree: true };
+  }
   if (opportunity.fee.amountCents !== undefined && opportunity.fee.currency) {
     const currency = /^[A-Z]{3}$/u.test(opportunity.fee.currency)
       ? opportunity.fee.currency
       : undefined;
-    if (currency)
-      return new Intl.NumberFormat("en", {
-        style: "currency",
-        currency,
-      }).format(opportunity.fee.amountCents / 100);
-    return `${opportunity.fee.currency}${(opportunity.fee.amountCents / 100).toFixed(2)}`;
+    const formatted = currency
+      ? new Intl.NumberFormat("en", { style: "currency", currency }).format(
+          opportunity.fee.amountCents / 100,
+        )
+      : `${opportunity.fee.currency}${(opportunity.fee.amountCents / 100).toFixed(2)}`;
+    return { label: `${formatted} fee`, isFree: false };
   }
-  return "Application fee";
+  if (opportunity.fee.status === "paid") {
+    return { label: "Entry fee required", isFree: false };
+  }
+  return { label: "Free to enter", isFree: true };
 }
 
-function statusLabel(status: OpportunityDetailProjection["status"]): string {
-  if (status === "closing-soon") return "Closing soon";
-  if (status === "deadline-extended") return "Deadline extended";
-  if (status === "opening-soon") return "Opening soon";
-  return status
-    .replace(/-/gu, " ")
-    .replace(/^./u, (character) => character.toUpperCase());
+function compactMoney(
+  amountCents?: number,
+  currency?: string,
+): string | undefined {
+  if (amountCents === undefined || !currency) return undefined;
+  if (!/^[A-Z]{3}$/u.test(currency))
+    return `${currency}${(amountCents / 100).toFixed(2)}`;
+  return new Intl.NumberFormat("en", { style: "currency", currency }).format(
+    amountCents / 100,
+  );
 }
 
-function DetailNotice({
-  opportunity,
-}: {
-  opportunity: OpportunityDetailProjection;
-}) {
-  if (opportunity.status === "closed" || opportunity.status === "archived") {
-    return (
-      <div className={styles.productNotice} data-tone="neutral">
-        <AlertTriangle aria-hidden="true" />
-        <div>
-          <strong>This opportunity is closed</strong>
-          <p>
-            The record remains available for reference. Check the Organization’s
-            official page for a future edition.
-          </p>
-        </div>
-      </div>
-    );
+function getPrizeBadge(
+  opportunity: OpportunityDetailProjection,
+): string | null {
+  const call = opportunity.callProfile;
+  if (opportunity.prize && opportunity.prize.trim()) {
+    return decodeHtmlEntities(opportunity.prize);
   }
-  if (opportunity.deadline.kind === "conflicting") {
-    return (
-      <div className={styles.productNotice} data-tone="warning">
-        <AlertTriangle aria-hidden="true" />
-        <div>
-          <strong>The deadline needs confirmation</strong>
-          <p>
-            The available source information does not agree. Confirm the
-            deadline on the official page before preparing work.
-          </p>
-        </div>
-      </div>
-    );
+  if (call?.prizeSummary && call.prizeSummary.trim()) {
+    return decodeHtmlEntities(call.prizeSummary);
   }
+  if (call?.paymentAmountCents && call.paymentCurrency) {
+    const pay = compactMoney(call.paymentAmountCents, call.paymentCurrency);
+    if (pay) return `${pay} payment`;
+  }
+  return null;
+}
+
+function getLimitsBadge(
+  call: OpportunityDetailProjection["callProfile"],
+): string | null {
+  if (!call) return null;
+  if (call.wordLimitMax) {
+    if (call.wordLimitMin)
+      return `${call.wordLimitMin.toLocaleString()}–${call.wordLimitMax.toLocaleString()} words`;
+    return `Up to ${call.wordLimitMax.toLocaleString()} words`;
+  }
+  if (call.pageLimitMax) {
+    if (call.pageLimitMin)
+      return `${call.pageLimitMin}–${call.pageLimitMax} pages`;
+    return `Up to ${call.pageLimitMax} pages`;
+  }
+  return null;
+}
+
+function getScopeBadge(location: string | undefined): string {
+  if (!location) return "Open worldwide";
+  const lower = location.toLowerCase();
   if (
-    opportunity.fee.status === "unknown" ||
-    opportunity.requiredMaterials.length === 0
+    lower.includes("international") ||
+    lower.includes("global") ||
+    lower.includes("worldwide")
   ) {
-    return (
-      <div className={styles.productNotice} data-tone="neutral">
-        <AlertTriangle aria-hidden="true" />
-        <div>
-          <strong>Some application details are not listed</strong>
-          <p>
-            Use the official source to confirm the fee and complete file
-            requirements before preparing work.
-          </p>
-        </div>
-      </div>
-    );
+    return "Open worldwide";
+  }
+  if (lower.includes("remote") || lower.includes("online")) {
+    return "Remote / Online";
+  }
+  return location;
+}
+
+function getOrganizerProfileUrl(
+  profile: ProfileCard | ProfileDetail | undefined,
+  organizationId: string | undefined,
+): string | null {
+  if (profile?.slug) {
+    return getSemanticUrlForProfile(profile.kind, profile.slug);
+  }
+  if (organizationId) {
+    return `/org/${encodeURIComponent(organizationId)}`;
   }
   return null;
 }
@@ -134,19 +216,148 @@ function DetailNotice({
 export function OpportunityDetailView({
   opportunity,
   signedIn,
+  userId,
   summary,
   practiceLabels,
   relatedProfile,
+  editorialIntelligence,
 }: {
   opportunity: OpportunityDetailProjection;
   signedIn: boolean;
+  userId?: string;
   summary: string;
   practiceLabels: string[];
-  relatedProfile?: ProfileCard;
+  relatedProfile?: ProfileCard | ProfileDetail;
+  editorialIntelligence?: EditorialIntelligenceFullProfile | null;
 }) {
   const tracked = Boolean(opportunity.personal?.tracked);
   const canonicalPath = `/opportunities/${opportunity.slug}`;
-  const sourceHref = opportunity.guidelinesUrl ?? opportunity.source.url;
+  const officialHref = opportunity.guidelinesUrl ?? opportunity.submissionUrl;
+  const destinationHref = officialHref ?? opportunity.source.url;
+  const destinationLabel = officialHref
+    ? "Open Official Application"
+    : "Open Original Listing";
+
+  const call = opportunity.callProfile;
+
+  // Photographic identity asset (if cleared/permitted)
+  const identityAssetUrl = opportunity.identityAssetUrl;
+  const identityAssetAlt = opportunity.identityAssetAlt ?? opportunity.title;
+
+  // Decoded title and organization
+  const cleanTitle = decodeHtmlEntities(opportunity.title);
+  const organizerName = decodeHtmlEntities(
+    opportunity.organizationName ?? relatedProfile?.name ?? "Host Organization",
+  );
+  const organizerUrl = getOrganizerProfileUrl(
+    relatedProfile,
+    opportunity.organizationId,
+  );
+
+  // Type identification
+  const isLiterary =
+    opportunity.type === "magazine" ||
+    (opportunity.discipline &&
+      /literature|writing|poetry|fiction|nonfiction/i.test(
+        opportunity.discipline,
+      )) ||
+    opportunity.genres.some((g) =>
+      /literature|writing|poetry|fiction|nonfiction/i.test(g),
+    ) ||
+    /poetry|fiction|nonfiction|poem|story|manuscript|essay|memoir/i.test(
+      opportunity.title,
+    );
+  const isGrant =
+    opportunity.type === "grant" ||
+    opportunity.type === "fellowship" ||
+    opportunity.type === "award" ||
+    opportunity.type === "scholarship";
+  const isResidency = opportunity.type === "residency";
+  const isExhibition =
+    !isLiterary &&
+    (opportunity.type === "exhibition" ||
+      (opportunity.type === "open-call" &&
+        /exhibit|gallery|show/i.test(opportunity.title)));
+
+  // Context-aware section titles
+  const readingHeading = "Overview";
+
+  const dossierHeading = "What you’ll need";
+
+  const deadlineUrgency = getDeadlineUrgency(opportunity.deadline);
+  const feeBadge = getFeeBadge(opportunity);
+  if (feeBadge.isFree && isGrant) feeBadge.label = "No application fee";
+  const prizeBadge = getPrizeBadge(opportunity);
+  const limitsBadge = getLimitsBadge(call);
+  const scopeBadge = getScopeBadge(opportunity.location);
+
+  // Editorial Call / Grant Narrative Text
+  const rawCallText =
+    opportunity.content?.curatorialOverview ||
+    opportunity.content?.description ||
+    opportunity.content?.summary ||
+    summary ||
+    "";
+  const cleanCallText = cleanCrawledNarrative(rawCallText);
+  const callParagraphs = cleanCallText
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+
+  // Discipline chip text
+  const disciplineChip =
+    opportunity.discipline && opportunity.discipline !== "all-disciplines"
+      ? opportunity.discipline
+      : opportunity.genres[0]
+        ? `${typeLabel(opportunity.type)} · ${opportunity.genres[0]}`
+        : typeLabel(opportunity.type);
+
+  // Blind / Anonymity detection
+  const isBlind = Boolean(
+    call?.eligibilitySummary?.toLowerCase().includes("blind") ||
+    call?.rightsSummary?.toLowerCase().includes("blind") ||
+    opportunity.requiredMaterials.some(
+      (m) =>
+        (m.label + (m.description ?? "")).toLowerCase().includes("blind") ||
+        (m.label + (m.description ?? "")).toLowerCase().includes("anonymous"),
+    ),
+  );
+
+  // Dynamic, authentic submission materials (eliminates identical boilerplate)
+  const preparationMaterials =
+    opportunity.content?.curatedChecklist &&
+    opportunity.content.curatedChecklist.length > 0
+      ? opportunity.content.curatedChecklist.map((c) => ({
+          label: decodeHtmlEntities(c.item),
+          detail: c.curatorialAdvice
+            ? decodeHtmlEntities(c.curatorialAdvice)
+            : c.requirement
+              ? decodeHtmlEntities(c.requirement)
+              : "Required submission document",
+        }))
+      : opportunity.requiredMaterials.length > 0
+        ? opportunity.requiredMaterials.map((m) => ({
+            label: decodeHtmlEntities(m.label),
+            detail: m.description
+              ? decodeHtmlEntities(m.description)
+              : m.limit
+                ? `Limit: ${m.limit}`
+                : m.required
+                  ? "Required submission document"
+                  : "Optional supporting material",
+          }))
+        : inferSubmissionChecklist({
+            isLiterary,
+            isGrant,
+            isResidency,
+            isExhibition,
+            text: rawCallText,
+            limitsBadge,
+            acceptedFormats: call?.acceptedFormats,
+          });
+
+  const hasEligibility =
+    opportunity.eligibility.length > 0 || Boolean(call?.eligibilitySummary);
 
   return (
     <main id="main-content" className={styles.main}>
@@ -156,252 +367,687 @@ export function OpportunityDetailView({
       </Link>
 
       <article aria-labelledby="opportunity-title">
-        <header className={styles.hero}>
+        {/* ==================================================================
+            1. THE FAST-SCAN LAYER (Labels, Badges & Chips)
+            ================================================================== */}
+        <header className={styles.heroCard}>
           <div
-            className={styles.identityMedia}
-            data-fallback={!opportunity.identityAssetUrl || undefined}
-          >
-            {opportunity.identityAssetUrl ? (
-              // Repository policy permits only rights-cleared/permitted media.
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={opportunity.identityAssetUrl}
-                alt={opportunity.identityAssetAlt ?? ""}
-                className={styles.identityImage}
-              />
-            ) : (
-              <span aria-hidden="true">{initials(opportunity)}</span>
+            className={cn(
+              styles.heroHeader,
+              identityAssetUrl && styles.heroHeaderWithMedia,
             )}
-          </div>
-          <div className={styles.heroCopy}>
-            <Badge variant="outline">{typeLabel(opportunity.type)}</Badge>
-            <h1 id="opportunity-title">{opportunity.title}</h1>
-            <p className={styles.organization}>
-              {opportunity.organizationName ?? "Organization not confirmed"}
-            </p>
-            <p className={styles.heroSummary}>{summary}</p>
-            {relatedProfile ? (
-              <p className={styles.organization}>
-                Journal / press profile:{" "}
-                <Link
-                  href={`/journals/${encodeURIComponent(relatedProfile.id)}`}
-                >
-                  {relatedProfile.name}
-                </Link>
-              </p>
-            ) : null}
-            <div className={styles.heroActions}>
-              {tracked ? (
-                <Button
-                  nativeButton={false}
-                  render={<Link href="/tracker" />}
-                  variant="secondary"
-                  className={styles.primaryAction}
-                >
-                  <Check aria-hidden="true" />
-                  In Tracker
-                </Button>
-              ) : (
-                <SaveToTrackerButton
-                  opportunityId={opportunity.id}
-                  signedIn={signedIn}
-                  returnTo={canonicalPath}
-                  opportunityTitle={opportunity.title}
-                />
-              )}
-              <a
-                className={styles.sourceButton}
-                href={sourceHref}
-                target="_blank"
-                rel="noreferrer"
+          >
+            <div>
+              {/* Byline & Organizer */}
+              <div className={styles.heroByline}>
+                <span className={styles.detailType}>
+                  {typeLabel(opportunity.type)}
+                </span>
+                {organizerUrl ? (
+                  <Link href={organizerUrl} className={styles.organizerLink}>
+                    {organizerName}
+                  </Link>
+                ) : (
+                  <span className="font-semibold text-foreground">
+                    {organizerName}
+                  </span>
+                )}
+                {opportunity.organizationVerified ? (
+                  <span className={styles.verifiedBadge}>
+                    <ShieldCheck aria-hidden="true" />
+                    Verified Host
+                  </span>
+                ) : null}
+                {userId &&
+                opportunity.organizationId &&
+                !opportunity.personal?.followingOrganization ? (
+                  <FollowButton
+                    userId={userId}
+                    organizationId={opportunity.organizationId}
+                    organizationName={opportunity.organizationName}
+                  />
+                ) : opportunity.personal?.followingOrganization ? (
+                  <Link href={`/following?organization=${encodeURIComponent(opportunity.organizationId ?? "")}`} className="text-sm text-primary underline underline-offset-4">
+                    Following
+                  </Link>
+                ) : null}
+              </div>
+
+              {/* Title */}
+              <h1
+                id="opportunity-title"
+                className={cn(styles.heroTitle, "font-sans")}
               >
-                Official source <ExternalLink aria-hidden="true" />
-              </a>
+                {cleanTitle}
+              </h1>
+
+              {/* Scannable Signal Badges (Chips) */}
+              <div
+                className={styles.badgeCluster}
+                aria-label="Key signals at a glance"
+              >
+                {/* 1. Fee */}
+                <span
+                  className={styles.signalChip}
+                  data-tone={feeBadge.isFree ? "free" : undefined}
+                >
+                  <Tag aria-hidden="true" />
+                  {feeBadge.label}
+                </span>
+
+                {/* 2. Prize / Award / Funding */}
+                {prizeBadge ? (
+                  <span className={styles.signalChip} data-tone="prize">
+                    <Award aria-hidden="true" />
+                    {prizeBadge}
+                  </span>
+                ) : null}
+
+                {/* 3. Deadline Countdown */}
+                <span
+                  className={styles.signalChip}
+                  data-tone={deadlineUrgency.urgent ? "urgent" : undefined}
+                >
+                  <Clock3 aria-hidden="true" />
+                  {deadlineUrgency.label}
+                </span>
+
+                {/* 4. Discipline / Type */}
+                <span className={styles.signalChip}>
+                  <BookOpenText aria-hidden="true" />
+                  {disciplineChip
+                    .replace(/[-_]/g, " ")
+                    .replace(/\b\w/g, (letter) => letter.toUpperCase())}
+                </span>
+
+                {/* 5. Limits (if literary / specified) */}
+                {limitsBadge ? (
+                  <span className={styles.signalChip}>
+                    <FileText aria-hidden="true" />
+                    {limitsBadge}
+                  </span>
+                ) : null}
+
+                {/* 6. Simultaneous Submissions (only if relevant) */}
+                {isLiterary && opportunity.simultaneousAllowed !== undefined ? (
+                  <span className={styles.signalChip}>
+                    <Files aria-hidden="true" />
+                    {opportunity.simultaneousAllowed
+                      ? "Simultaneous OK"
+                      : "No simultaneous"}
+                  </span>
+                ) : null}
+
+                {/* 7. Blind Reading */}
+                {isBlind ? (
+                  <span className={styles.signalChip} data-tone="primary">
+                    <EyeOff aria-hidden="true" />
+                    Blind review
+                  </span>
+                ) : null}
+
+                {/* 8. Scope / Reach */}
+                <span className={styles.signalChip}>
+                  <Globe2 aria-hidden="true" />
+                  {scopeBadge}
+                </span>
+              </div>
             </div>
+
+            {/* Optional Authentic Photography Banner */}
+            {identityAssetUrl ? (
+              <div className={styles.heroVisual}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={identityAssetUrl}
+                  alt={identityAssetAlt}
+                  className={styles.heroImage}
+                />
+              </div>
+            ) : null}
+          </div>
+
+          {/* Hero Two-Way Action Bar */}
+          <div id="opportunity-summary-actions" className={styles.heroActions}>
+            {tracked ? (
+              <Button
+                nativeButton={false}
+                render={<Link href="/tracker" />}
+                variant="secondary"
+                className={styles.primaryAction}
+              >
+                <Check aria-hidden="true" />
+                View in Tracker
+              </Button>
+            ) : (
+              <SaveToTrackerButton
+                opportunityId={opportunity.id}
+                signedIn={signedIn}
+                returnTo={canonicalPath}
+                opportunityTitle={cleanTitle}
+              />
+            )}
+            <a
+              className={styles.sourceButton}
+              href={destinationHref}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {destinationLabel} <ExternalLink aria-hidden="true" />
+            </a>
+            <AddOpportunityToCalendarButton item={opportunity} showLabel />
           </div>
         </header>
 
-        <DetailNotice opportunity={opportunity} />
-
+        {/* ==================================================================
+            Content Grid (Reading Column + Aside Rail)
+            ================================================================== */}
         <div className={styles.contentGrid}>
-          <aside
-            className={styles.decisionRail}
-            aria-labelledby="decision-facts-title"
-          >
-            <p className={styles.kicker}>Decide with</p>
-            <h2 id="decision-facts-title">Key facts</h2>
-            <dl className={styles.factList}>
-              <div
-                data-warning={
-                  opportunity.deadline.kind === "conflicting" || undefined
-                }
+          {/* Main Reading Column */}
+          <div className={styles.readingColumn}>
+            {/* 2. THE READING LAYER (Call / Overview) */}
+            <section
+              className={styles.callSection}
+              aria-labelledby="call-title"
+            >
+              <div className={styles.sectionHeader}>
+                <h2 id="call-title" className="font-sans">
+                  {readingHeading}
+                </h2>
+              </div>
+
+              {/* Theme Callout */}
+              {call?.issueTheme ? (
+                <div className={styles.themeCallout}>
+                  <span className={styles.themeLabel}>Theme & Prompt</span>
+                  <p className={cn(styles.themeText, "font-sans")}>
+                    {decodeHtmlEntities(call.issueTheme)}
+                  </p>
+                </div>
+              ) : null}
+
+              {/* Narrative Text */}
+              <div className={styles.callBody}>
+                {callParagraphs.length ? (
+                  callParagraphs.map((para, index) => (
+                    <p
+                      key={index}
+                      className={cn(styles.callParagraph, "font-sans")}
+                    >
+                      {para}
+                    </p>
+                  ))
+                ) : (
+                  <p className={cn(styles.callParagraph, "font-sans")}>
+                    Review the official listing for complete details and
+                    guidelines.
+                  </p>
+                )}
+              </div>
+
+              {/* Target Audience & Conceptual Fit */}
+              {opportunity.content?.targetAudience ? (
+                <div className={styles.targetAudienceCard}>
+                  <span className={styles.themeLabel}>
+                    Target Audience & Candidate Profile
+                  </span>
+                  {opportunity.content.targetAudience.careerStages &&
+                  opportunity.content.targetAudience.careerStages.length > 0 ? (
+                    <div className={styles.targetAudienceStages}>
+                      {opportunity.content.targetAudience.careerStages.map(
+                        (stage) => (
+                          <span
+                            key={stage}
+                            className={styles.targetAudienceStageBadge}
+                          >
+                            {stage.replace(/-/g, " ")}
+                          </span>
+                        ),
+                      )}
+                    </div>
+                  ) : null}
+                  {opportunity.content.targetAudience.idealCandidate ? (
+                    <p className={styles.targetAudienceText}>
+                      {opportunity.content.targetAudience.idealCandidate}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Insider Curatorial & Submission Guidance */}
+              {opportunity.content?.insiderTips &&
+              opportunity.content.insiderTips.length > 0 ? (
+                <div className={styles.insiderTipsCard}>
+                  <div className={styles.insiderTipsHeader}>
+                    <Sparkles
+                      className="size-4 text-primary"
+                      aria-hidden="true"
+                    />
+                    <h3 className={styles.insiderTipsTitle}>
+                      Curatorial & Submission Guidance
+                    </h3>
+                  </div>
+                  <ul className={styles.insiderTipsList}>
+                    {opportunity.content.insiderTips.map((tip, idx) => (
+                      <li key={idx} className={styles.insiderTipItem}>
+                        <span
+                          className={styles.insiderTipBullet}
+                          aria-hidden="true"
+                        />
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </section>
+
+            {/* 3. ELIGIBILITY & CRITERIA (Who Can Apply) */}
+            {hasEligibility ? (
+              <section
+                className={styles.eligibilitySection}
+                aria-labelledby="eligibility-title"
               >
-                <dt>
-                  <CalendarDays aria-hidden="true" />
-                  Deadline
-                </dt>
-                <dd>{deadlineLabel(opportunity.deadline)}</dd>
+                <div className={styles.sectionHeader}>
+                  <h2 id="eligibility-title" className="font-sans">
+                    Who can apply
+                  </h2>
+                </div>
+
+                {call?.eligibilitySummary ? (
+                  <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+                    {decodeHtmlEntities(call.eligibilitySummary)}
+                  </p>
+                ) : null}
+
+                {opportunity.eligibility.length ? (
+                  <div className={styles.eligibilityGrid}>
+                    {opportunity.eligibility.map((rule) => (
+                      <div key={rule.key} className={styles.eligibilityItem}>
+                        <span className={styles.eligibilityCheck}>
+                          <span aria-hidden="true">•</span>
+                        </span>
+                        <div className={styles.eligibilityContent}>
+                          <span className={styles.eligibilityLabel}>
+                            {decodeHtmlEntities(rule.description)}
+                          </span>
+                          {rule.value &&
+                          !decodeHtmlEntities(rule.description)
+                            .toLowerCase()
+                            .includes(
+                              decodeHtmlEntities(rule.value).toLowerCase(),
+                            ) ? (
+                            <span className={styles.eligibilityDetail}>
+                              {decodeHtmlEntities(rule.value)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+            ) : null}
+
+            {/* 4. WHAT TO PREPARE (Concrete Submission / Application Checklist) */}
+            <section
+              className={styles.dossierSection}
+              aria-labelledby="dossier-title"
+            >
+              <div className={styles.sectionHeader}>
+                <h2 id="dossier-title" className="font-sans">
+                  {dossierHeading}
+                </h2>
               </div>
-              <div>
-                <dt>
-                  <Tag aria-hidden="true" />
-                  Fee
-                </dt>
-                <dd>{feeLabel(opportunity)}</dd>
+
+              <div className={styles.dossierGrid}>
+                {preparationMaterials.map((item) => (
+                  <div key={item.label} className={styles.dossierItem}>
+                    <span className={styles.dossierCheck}>
+                      <FileText aria-hidden="true" />
+                    </span>
+                    <div className={styles.dossierContent}>
+                      <span className={styles.dossierLabel}>{item.label}</span>
+                      <span className={styles.dossierDetail}>
+                        {item.detail}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div>
-                <dt>
-                  <Globe2 aria-hidden="true" />
-                  Reach
-                </dt>
-                <dd>{opportunity.location ?? "Location not listed"}</dd>
+
+              {/* Interactive tracker checklist if tracked & signed in */}
+              <div className="mt-6">
+                <PrepareChecklist
+                  opportunityId={opportunity.id}
+                  enabled={signedIn && tracked}
+                />
               </div>
-              <div>
-                <dt>
-                  <MapPin aria-hidden="true" />
-                  Status
-                </dt>
-                <dd>{statusLabel(opportunity.status)}</dd>
+            </section>
+
+            {editorialIntelligence && (
+              <div className="mb-8">
+                <EditorialIntelligenceSection
+                  intelligence={editorialIntelligence}
+                />
               </div>
-            </dl>
-            <div className={styles.railActions}>
+            )}
+
+            <section
+              className={styles.applicationSection}
+              aria-labelledby="application-title"
+            >
+              <h2 id="application-title" className="font-sans">
+                How to apply
+              </h2>
+              <p>
+                Review the organization’s current instructions and submit
+                through its official website.
+              </p>
               <a
                 className={styles.sourceButton}
-                href={sourceHref}
+                href={destinationHref}
                 target="_blank"
                 rel="noreferrer"
               >
-                Official source <ExternalLink aria-hidden="true" />
+                {destinationLabel} <ExternalLink aria-hidden="true" />
               </a>
-            </div>
-          </aside>
-
-          <div className={styles.readingColumn}>
-            <section aria-labelledby="about-title">
-              <p className={styles.kicker}>The opportunity</p>
-              <h2 id="about-title">What this opportunity is asking for</h2>
-              <p className={styles.lede}>{summary}</p>
-              <p>
-                Use this overview to orient yourself, then rely on the official
-                source for the final rules and submission destination.
-              </p>
-            </section>
-
-            <section aria-labelledby="eligibility-title">
-              <p className={styles.sectionNumber}>01 · Decide</p>
-              <h2 id="eligibility-title">Eligibility</h2>
-              {opportunity.eligibility.length ? (
-                <ul className={styles.eligibilityList}>
-                  {opportunity.eligibility.map((rule) => (
-                    <li key={rule.key}>
-                      <Check aria-hidden="true" />
-                      <span>
-                        {rule.description}
-                        {rule.value ? ` — ${rule.value}` : ""}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+              {signedIn ? (
+                <OpportunityIssueReport
+                  opportunityId={opportunity.id}
+                  opportunityName={cleanTitle}
+                  signedIn={signedIn}
+                  subjectPath={canonicalPath}
+                />
               ) : (
-                <p>
-                  Eligibility is not fully listed in the current record. Confirm
-                  it on the official source before applying.
-                </p>
+                <Link
+                  className={styles.reportQuietLink}
+                  href={`/login?next=${encodeURIComponent(canonicalPath)}`}
+                >
+                  <Flag aria-hidden="true" />
+                  Report incorrect information
+                </Link>
               )}
-              <p className={styles.boundaryNote}>
-                Eligibility describes the call’s stated rules. It is not a
-                promise that an applicant qualifies.
-              </p>
             </section>
 
-            <section aria-labelledby="prepare-title">
-              <p className={styles.sectionNumber}>02 · Prepare</p>
-              <h2 id="prepare-title">What to prepare</h2>
-              {opportunity.requiredMaterials.length ? (
-                <dl className={styles.requirementList}>
-                  {opportunity.requiredMaterials.map((material) => (
-                    <div key={material.label}>
-                      <dt>
-                        <FileText aria-hidden="true" />
-                        {material.label}
-                      </dt>
-                      <dd>
-                        {material.description ??
-                          material.limit ??
-                          (material.required ? "Required" : "Optional")}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              ) : (
-                <p>
-                  Required materials are not fully listed. Review the official
-                  source before preparing files.
-                </p>
-              )}
-              <PrepareChecklist
-                opportunityId={opportunity.id}
-                enabled={signedIn && tracked}
-              />
-            </section>
-
-            <section aria-labelledby="categories-title">
-              <p className={styles.sectionNumber}>03 · Understand the call</p>
-              <h2 id="categories-title">Categories named in this call</h2>
-              {practiceLabels.length ? (
-                <div className={styles.practiceList}>
-                  {practiceLabels.map((practice) => (
-                    <Badge key={practice} variant="secondary">
-                      {practice}
+            {/* Categories and Practice Tags */}
+            {practiceLabels.length ? (
+              <section
+                className={styles.categoriesSection}
+                aria-labelledby="tags-title"
+              >
+                <h3 id="tags-title">Tags</h3>
+                <div className={styles.tagCluster}>
+                  {practiceLabels.map((tag) => (
+                    <Badge key={tag} variant="secondary">
+                      {tag}
                     </Badge>
                   ))}
                 </div>
-              ) : (
-                <p>Categories are not yet listed for this record.</p>
-              )}
-              <p className={styles.boundaryNote}>
-                Categories describe the work. They remain separate from
-                eligibility and geography.
-              </p>
-            </section>
-
-            <section
-              className={styles.sourceSection}
-              aria-labelledby="source-title"
-            >
-              <p className={styles.sectionNumber}>04 · Apply</p>
-              <h2 id="source-title">Finish on the official source</h2>
-              <p>
-                Missa helps you understand and track the opportunity. The
-                Organization’s page carries the final rules and application
-                destination.
-              </p>
-              <div className={styles.sourceSectionActions}>
-                <a
-                  className={styles.sourceButton}
-                  href={sourceHref}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Official source <ExternalLink aria-hidden="true" />
-                </a>
-                {signedIn ? (
-                  <div className={styles.productReport}>
-                    <OpportunityIssueReport opportunityId={opportunity.id} />
-                  </div>
-                ) : (
-                  <Link
-                    className={styles.reportTrigger}
-                    href={`/login?next=${encodeURIComponent(canonicalPath)}`}
-                  >
-                    <Flag aria-hidden="true" />
-                    Sign in to report an issue
-                  </Link>
-                )}
-              </div>
-            </section>
+              </section>
+            ) : null}
           </div>
+
+          {/* ==================================================================
+              Aside Decision Rail (Host Intelligence & Key Facts)
+              ================================================================== */}
+          <aside
+            className={styles.decisionRail}
+            aria-label="Organization and opportunity facts"
+          >
+            {/* Quick Fact Snapshot */}
+            <div className={styles.factCard}>
+              <h3>At a glance</h3>
+              <dl className={styles.factList}>
+                <div className={styles.factRow}>
+                  <dt className={styles.factTerm}>
+                    <CalendarDays aria-hidden="true" />
+                    Deadline
+                  </dt>
+                  <dd className={styles.factDefinition}>
+                    {opportunity.deadline.date
+                      ? new Intl.DateTimeFormat("en", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        }).format(
+                          new Date(`${opportunity.deadline.date}T12:00:00`),
+                        )
+                      : opportunity.deadline.kind === "rolling"
+                        ? "Rolling"
+                        : opportunity.deadline.kind === "until-filled"
+                          ? "Until filled"
+                          : "Not listed"}
+                  </dd>
+                </div>
+                <div className={styles.factRow}>
+                  <dt className={styles.factTerm}>
+                    <Tag aria-hidden="true" />
+                    Fee
+                  </dt>
+                  <dd className={styles.factDefinition}>{feeBadge.label}</dd>
+                </div>
+                {prizeBadge ? (
+                  <div className={styles.factRow}>
+                    <dt className={styles.factTerm}>
+                      <Coins aria-hidden="true" />
+                      Award / Pay
+                    </dt>
+                    <dd className={styles.factDefinition}>{prizeBadge}</dd>
+                  </div>
+                ) : null}
+                <div className={styles.factRow}>
+                  <dt className={styles.factTerm}>
+                    <Globe2 aria-hidden="true" />
+                    Reach
+                  </dt>
+                  <dd className={styles.factDefinition}>{scopeBadge}</dd>
+                </div>
+                <div className={styles.factRow}>
+                  <dt className={styles.factTerm}>
+                    <Users aria-hidden="true" />
+                    Type
+                  </dt>
+                  <dd className={styles.factDefinition}>
+                    {typeLabel(opportunity.type)}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            {/* 4. THE ORGANIZER & HONEST ODDS */}
+            <div className={styles.organizerCard}>
+              <div className={styles.organizerCardHeader}>
+                {relatedProfile?.mediaUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={relatedProfile.mediaUrl}
+                    alt=""
+                    className={styles.organizerMedia}
+                  />
+                ) : (
+                  <div
+                    className={styles.organizerAvatarFallback}
+                    aria-hidden="true"
+                  >
+                    {initials(organizerName)}
+                  </div>
+                )}
+                <div>
+                  <h3 className={styles.organizerName}>{organizerName}</h3>
+                  <span className={styles.organizerKind}>
+                    {relatedProfile?.kind
+                      ? typeLabel(relatedProfile.kind)
+                      : typeLabel(opportunity.type)}
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.organizerSignals}>
+                {call?.responseTimeDays ? (
+                  <div className={styles.signalRow}>
+                    <span className={styles.signalLabel}>
+                      <Clock3 aria-hidden="true" />
+                      Response time
+                    </span>
+                    <span className={styles.signalValue}>
+                      About {call.responseTimeDays} days
+                    </span>
+                  </div>
+                ) : null}
+
+                {/* Reading Period */}
+                {call?.readingPeriodLabel ? (
+                  <div className={styles.signalRow}>
+                    <span className={styles.signalLabel}>
+                      <CalendarDays aria-hidden="true" />
+                      Organization window
+                    </span>
+                    <span className={styles.signalValue}>
+                      {call.readingPeriodLabel}
+                    </span>
+                  </div>
+                ) : null}
+
+                {/* Other Opportunities */}
+                {opportunity.relatedOpportunityIds.length ? (
+                  <div className={styles.signalRow}>
+                    <span className={styles.signalLabel}>
+                      <Building2 aria-hidden="true" />
+                      Other calls
+                    </span>
+                    <span className={styles.signalValue}>
+                      {opportunity.relatedOpportunityIds.length} other{" "}
+                      {opportunity.relatedOpportunityIds.length === 1
+                        ? "call"
+                        : "calls"}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Authentic Discovered Media Showcase */}
+              {relatedProfile?.mediaBundle ? (() => {
+                const mb = relatedProfile.mediaBundle;
+                const isShelf = relatedProfile.kind === "small_press" || relatedProfile.kind === "literary_magazine";
+                const displayItems = (
+                  relatedProfile.kind === "small_press"
+                    ? mb.books.items
+                    : relatedProfile.kind === "literary_magazine"
+                      ? mb.issues.items
+                      : relatedProfile.kind === "residency_center"
+                        ? mb.photos.items
+                        : mb.exhibitions.items.length > 0
+                          ? mb.exhibitions.items
+                          : mb.photos.items
+                ).slice(0, 3);
+
+                if (!displayItems.length) return null;
+
+                const heading =
+                  relatedProfile.kind === "small_press"
+                    ? "Recent Books"
+                    : relatedProfile.kind === "literary_magazine"
+                      ? "Past Issues"
+                      : relatedProfile.kind === "residency_center"
+                        ? "Studios & Campus"
+                        : "Exhibitions & Space";
+
+                return (
+                  <div className={styles.orgMediaSection}>
+                    <h4 className={styles.orgMediaTitle}>{heading}</h4>
+                    <div className={styles.orgMediaGrid}>
+                      {displayItems.map((item) => (
+                        <a
+                          key={item.id}
+                          href={item.officialUrl || item.readingUrl || item.purchaseUrl || organizerUrl || "#"}
+                          target={item.officialUrl || item.readingUrl || item.purchaseUrl ? "_blank" : undefined}
+                          rel="noreferrer"
+                          className={styles.orgMediaItem}
+                          data-shelf={isShelf || undefined}
+                          title={item.title}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.imageUrl}
+                            alt={item.altText || item.title}
+                            className={styles.orgMediaThumb}
+                            loading="lazy"
+                          />
+                          <div className={styles.orgMediaMeta}>
+                            <span className={styles.orgMediaItemTitle}>{item.title}</span>
+                            {item.subtitle ? (
+                              <span className={styles.orgMediaItemSub}>{item.subtitle}</span>
+                            ) : null}
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })() : null}
+
+              {organizerUrl ? (
+                <div className={styles.organizerCardActions}>
+                  <Link href={organizerUrl} className={styles.profileButton}>
+                    View organization profile →
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+          </aside>
         </div>
+
+        <OpportunityDetailStickyActions title={cleanTitle}>
+          {tracked ? (
+            <Button
+              nativeButton={false}
+              render={<Link href="/tracker" />}
+              variant="secondary"
+            >
+              <Check aria-hidden="true" />
+              View in Tracker
+            </Button>
+          ) : (
+            <SaveToTrackerButton
+              opportunityId={opportunity.id}
+              signedIn={signedIn}
+              returnTo={canonicalPath}
+              opportunityTitle={cleanTitle}
+            />
+          )}
+          <a
+            className={styles.sourceButton}
+            href={destinationHref}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {destinationLabel}
+            <ExternalLink aria-hidden="true" />
+          </a>
+        </OpportunityDetailStickyActions>
+
+        {/* Mobile Sticky Action Bar */}
+        <MobileActionDock className={styles.mobileActions}>
+          {tracked ? (
+            <Button
+              nativeButton={false}
+              render={<Link href="/tracker" />}
+              variant="secondary"
+            >
+              <Check aria-hidden="true" /> View in Tracker
+            </Button>
+          ) : (
+            <SaveToTrackerButton
+              opportunityId={opportunity.id}
+              signedIn={signedIn}
+              returnTo={canonicalPath}
+              opportunityTitle={cleanTitle}
+            />
+          )}
+          <a href={destinationHref} target="_blank" rel="noreferrer">
+            Apply ↗
+          </a>
+        </MobileActionDock>
       </article>
     </main>
   );

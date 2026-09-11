@@ -2,7 +2,7 @@ import type { OrgMembership, OrgRole, RadarEngine } from "@missa/radar-engine";
 import type { OrganizationScope, WorkspaceEngine } from "@missa/workspace-engine";
 import { getSessionAccount, type SessionAccount } from "./auth";
 import { getEngine, persistRadar } from "./engine";
-import { getWorkspaceEngine, persistWorkspace } from "./workspaceEngine";
+import { getCompatibilityWorkspaceEngine, persistWorkspace, workspaceRelationalAuthorityEnabled } from "./workspaceEngine";
 
 /** Requested elevated capabilities intentionally map legacy `admin` routes to
  * owner/admin, so existing links keep working while new workspaces can use
@@ -48,7 +48,9 @@ export async function requireOrganizationAccess(
     return { ok: false, status: 403, error: "Your organization role cannot perform this action" };
   }
 
-  const workspace = await getWorkspaceEngine();
+  const workspace = workspaceRelationalAuthorityEnabled()
+    ? undefined
+    : await getCompatibilityWorkspaceEngine();
   return {
     ok: true,
     access: {
@@ -56,8 +58,9 @@ export async function requireOrganizationAccess(
       session,
       membership,
       radar,
-      workspace,
-      scope: workspace.organizationScope(organizationId),
+      // Supported relational routes branch before accessing these compatibility-only fields.
+      workspace: workspace as WorkspaceEngine,
+      scope: workspace?.organizationScope(organizationId) as OrganizationScope,
     },
   };
 }

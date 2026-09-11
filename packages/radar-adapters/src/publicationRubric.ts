@@ -1,3 +1,5 @@
+import { projectOpportunityAvailability } from "@missa/radar-engine";
+
 export type PublicationGate = "pass" | "fail" | "review";
 export type PublicationDecision = "publish" | "needs-human" | "suppress";
 
@@ -27,8 +29,6 @@ export type PublicationRubricResult = {
   checks: Record<string, unknown>;
 };
 
-const ACTIVE_STATUSES = new Set(["opening-soon", "open", "closing-soon", "deadline-extended"]);
-
 function identityValid(title: string): boolean {
   const normalized = title.toLowerCase().trim();
   return ![
@@ -37,26 +37,10 @@ function identityValid(title: string): boolean {
 }
 
 function aggregateIdentity(title: string): boolean {
-  const normalized = title.toLowerCase();
-  return normalized.includes("directory") || normalized.includes("roundup") || normalized.includes("list of");
-}
-
-function projectOpportunityAvailability(params: {
-  lifecycleStatus: string;
-  openDate?: string | null;
-  deadlineDate?: string | null;
-  deadlineKind?: string | null;
-  readingPeriodKind?: string | null;
-}) {
-  const active = ACTIVE_STATUSES.has(params.lifecycleStatus) || params.lifecycleStatus === "open";
-  return {
-    availableNow: active,
-    upcoming: params.lifecycleStatus === "opening-soon",
-    timingEvidenceKnown: Boolean(params.deadlineDate || params.readingPeriodKind),
-    publicationTimingReady: active || Boolean(params.deadlineDate),
-    state: active ? "active" : "inactive",
-    intakeMode: "standard",
-  };
+  const normalized = title.toLowerCase().trim();
+  return /\b(?:directory|round[ -]?up|list of)\b/.test(normalized) ||
+    (/\b(?:best|top)\b/.test(normalized) && /\b(?:magazines?|journals?|contests?|places|opportunities|markets?)\b/.test(normalized)) ||
+    /\b\d{2,}\+?\s+(?:places|magazines?|journals?|contests?|opportunities|markets?)\b/.test(normalized);
 }
 
 /** Autonomous fail-closed decision used by every canonical publication transition (0 human-in-loop). */

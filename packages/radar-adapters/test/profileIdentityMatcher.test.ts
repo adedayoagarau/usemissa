@@ -44,7 +44,16 @@ test("profile link retirement binds every SQL placeholder", () => {
   const statement = profileLinkRetirementStatement("opp_1");
   const placeholders = [...statement.text.matchAll(/\$(\d+)/g)].map((match) => Number(match[1]));
   assert.equal(Math.max(...placeholders), statement.values.length);
-  assert.deepEqual(statement.values, ["opp_1", "profile-host-name-v3"]);
+  assert.deepEqual(statement.values, ["opp_1", "profile-host-name-v4"]);
+});
+
+test("confirms a direct organization match by organizationId", () => {
+  const decisions = matchOpportunityToProfiles(
+    opportunity({ organizationId: "profile_1" }),
+    [profile({ profileId: "profile_1" })],
+    NOW,
+  );
+  assert.ok(decisions.some((decision) => decision.profileId === "profile_1" && decision.status === "confirmed"));
 });
 
 test("confirms an unambiguous exact-host plus name match", () => {

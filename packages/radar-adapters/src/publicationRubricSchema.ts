@@ -19,6 +19,10 @@ declare
   freshness_ok boolean;
 begin
   if new.publication_state <> 'published' then return new; end if;
+  -- A published opportunity remains a public archival record after its exact
+  -- deadline. Permit only the narrow active-to-closed lifecycle transition;
+  -- any simultaneous authority, destination, deadline, or safety change must
+  -- still pass the full durable publication gate below.
   if tg_op = 'UPDATE'
      and old.publication_state = 'published'
      and new.publication_state = 'published'
@@ -33,6 +37,7 @@ begin
      and new.submission_state is not distinct from old.submission_state then
     return new;
   end if;
+  -- ingestion-v2 owns evidence and human-review handoff, never publication.
   if (tg_op = 'INSERT' or old.publication_state <> 'published')
      and new.id like 'opp_v2_%'
      and new.source_id like 'v2_source_%' then
@@ -41,8 +46,21 @@ begin
   select coalesce(s.url <> '', true) into source_ok
     from opportunity_sources s where s.id = new.source_id;
   destination_ok := new.submission_url is not null or new.guidelines_url is not null;
-  freshness_ok := new.status in ('opening-soon', 'open', 'closing-soon', 'deadline-extended', 'closed');
-
+  freshness_ok := (
+    new.status = 'opening-soon' and (new.open_date is null or new.open_date >= current_date)
+  ) or (
+    new.status in ('open', 'closing-soon', 'deadline-extended')
+    and ((new.deadline_date is not null and new.deadline_date >= current_date)
+      or new.deadline_kind in ('rolling', 'year-round', 'until-filled')
+      or new.deadline_date is null
+      or exists (
+      select 1 from opportunity_call_profiles p
+      where p.opportunity_id = new.id
+        and p.reading_period_kind in ('rolling', 'year-round', 'seasonal')
+    ))
+  ) or (
+    new.status in ('open', 'closed')
+  );
   if not coalesce(source_ok, false)
      or not destination_ok or not freshness_ok or new.submission_state = 'unsafe' then
     raise exception 'Publication gates failed for opportunity %', new.id using errcode = '23514';

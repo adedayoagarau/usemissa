@@ -65,7 +65,7 @@ The order of work is deliberate:
 5. only then compare premium components against that contract;
 6. keep all selected references in the local design library until a page is approved for implementation.
 
-The completed July UX specification remains historical evidence. It is not the authority for this redesign where it conflicts with Style Guide 2.0, the Aubergine color direction, current code, current taxonomy, or the decisions in this plan.
+The completed July UX specification remains historical evidence. It is not the authority for this redesign where it conflicts with Style Guide 2.0, the Forest color direction, current code, current taxonomy, or the decisions in this plan.
 
 Current page-family contracts:
 
@@ -103,7 +103,7 @@ Current page-family contracts:
 
 - Design for the user's task, not for the component catalogue.
 - Use **Profile**, **Opportunities**, **Tracker**, **Library**, and **Organization** in rendered product language. Do not render Passport, Workspace, Radar, or Trust Layer to customers.
-- Use a true-white canvas and the semantic Aubergine system in `docs/missa-color-direction.md`.
+- Use a true-white canvas and the semantic Forest system in `docs/missa-color-direction.md`. Legacy Aubergine is not a current action token.
 - Use canonical taxonomy IDs behind ordinary labels. Never store a display label when a stable term ID exists.
 - Practice taxonomy, opportunity type, eligibility, geography, fee, deadline, and source evidence answer different questions. Never collapse them into one filter or score.
 - Opportunity imagery is optional context. Show a useful source-provided image directly, without a visible media heading or caption added by Missa; use a quiet neutral fallback when no useful image exists.

@@ -93,13 +93,7 @@ export async function POST(request: Request) {
 }
 
 function isPublicPath(path: string): boolean {
-  const handle = path.startsWith("/@") ? path.slice(2) : "";
-  const publicProfile =
-    handle.length >= 3 &&
-    handle.length <= 30 &&
-    /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u.test(handle);
   return (
-    publicProfile ||
     path === "/" ||
     [
       "/about",
@@ -107,10 +101,12 @@ function isPublicPath(path: string): boolean {
       "/waitlist",
       "/for-organizations",
       "/opportunities",
-      "/guides",
-      "/discover/",
-      "/org/",
-      "/profile/",
+      "/rankings",
+      "/journal",
+      "/journals",
+      "/discover",
+      "/org",
+      "/profile",
       "/login",
       "/signup",
     ].some((prefix) => path === prefix || path.startsWith(`${prefix}/`))

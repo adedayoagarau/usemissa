@@ -1,5 +1,6 @@
 import { getRegistry, trustedSource, type SourceRegistryEntry } from "@missa/radar-engine";
 import type { SourceDefinition, SourceLane, SourceSchedule } from "./contracts.js";
+import { FIRST_TRANCHE_SOURCE_MANIFEST, validateSourceManifest, type SourceManifestEntry } from "./sourceManifest.js";
 
 export type IngestionCatalogEntry = SourceDefinition & {
   registryTier: SourceRegistryEntry["tier"];
@@ -34,16 +35,9 @@ function sourceKind(entry: SourceRegistryEntry): SourceDefinition["kind"] {
   return "organization-website";
 }
 
-/**
- * A directory page is a structured list of links. Deterministic parsing reads it
- * completely, so spending a model call there buys nothing — and directories are
- * the highest-volume source kind we have. The model is reserved for host pages,
- * where prose has to be understood rather than enumerated.
- */
-export function adapterForSource(kind: SourceDefinition["kind"], modelAdapterId: string): string {
-  if (kind === "feed") return "feed-v2";
-  if (kind === "directory") return "generic-html-v2";
-  return modelAdapterId;
+function sourceNameKey(value: string): string[] {
+  return value.toLowerCase().replace(/[^a-z0-9]+/gu, " ").trim().split(/\s+/u)
+    .filter((token) => token.length > 2 && !["open", "calls", "call", "opportunities", "opportunity", "funding"].includes(token));
 }
 
 export function sourceDefinitionFromRegistry(entry: SourceRegistryEntry, adapterId = "generic-html-v2"): SourceDefinition {
@@ -87,6 +81,50 @@ export function createIngestionCatalog(adapterId = "generic-html-v2"): Ingestion
   });
 }
 
-export function createWorkerSources(adapterId = "generic-html-v2"): SourceDefinition[] {
-  return createIngestionCatalog(adapterId).filter((source) => source.eligible);
+export type WorkerSourceSet = "first-tranche" | "all-registry";
+
+function applyManifest(entry: SourceManifestEntry, registryEntry: SourceRegistryEntry, adapterId: string): SourceDefinition {
+  const base = sourceDefinitionFromRegistry(registryEntry, adapterId);
+  const sourceManifest = {
+    id: entry.id, desk: entry.desk, role: entry.role, structure: entry.structure, access: entry.access,
+    stableItemId: entry.stableItemId, artFormVerticalIds: entry.artFormVerticalIds, coverageSegments: entry.coverageSegments,
+    firstPartyDestinationRequired: entry.firstPartyDestinationRequired, publicationAuthority: entry.publicationAuthority,
+    maxIndexPages: entry.maxIndexPages, maxChangedChildrenPerRun: entry.maxChangedChildrenPerRun, refresh: entry.refresh,
+  };
+  return {
+    ...base,
+    name: entry.name,
+    url: entry.urlOverride ?? base.url,
+    adapterId: entry.adapterId ?? (entry.kindOverride ? adapterId : base.adapterId),
+    kind: entry.kindOverride ?? base.kind,
+    schedule: { ...base.schedule, lane: "core-daily", cadenceHours: entry.refresh.baseCadenceHours },
+    config: { ...base.config, ...entry.configOverride, sourceManifest },
+  };
+}
+
+export function createFirstTrancheSources(adapterId = "generic-html-v2"): SourceDefinition[] {
+  const errors = validateSourceManifest();
+  if (errors.length) throw new Error(`Invalid ingestion v2 source manifest: ${errors.join("; ")}`);
+  const registrySources = getRegistry().sources;
+  const byId = new Map(registrySources.map((entry) => [entry.id, entry]));
+  const byUrl = new Map(registrySources.map((entry) => [entry.url.replace(/\/$/u, '').toLowerCase(), entry]));
+  return FIRST_TRANCHE_SOURCE_MANIFEST
+    .filter((entry) => entry.runnable && entry.access !== "blocked" && entry.access !== "partner-required")
+    .map((entry) => {
+      const nameCandidates = registrySources.filter((candidate) => {
+        const wanted = sourceNameKey(entry.name);
+        const available = new Set(sourceNameKey(candidate.name));
+        return wanted.some((token) => available.has(token));
+      });
+      const registryEntry = byId.get(entry.registrySourceId)
+        ?? (entry.urlOverride ? byUrl.get(entry.urlOverride.replace(/\/$/u, '').toLowerCase()) : undefined)
+        ?? (nameCandidates.length === 1 ? nameCandidates[0] : undefined)
+        ?? registrySources.find((candidate) => candidate.name === entry.name);
+      if (!registryEntry) throw new Error(`Missing registry source for manifest entry ${entry.id}: ${entry.registrySourceId}`);
+      return applyManifest(entry, registryEntry, adapterId);
+    });
+}
+
+export function createWorkerSources(adapterId = "generic-html-v2", sourceSet: WorkerSourceSet = "first-tranche"): SourceDefinition[] {
+  return sourceSet === "all-registry" ? createIngestionCatalog(adapterId).filter((source) => source.eligible) : createFirstTrancheSources(adapterId);
 }

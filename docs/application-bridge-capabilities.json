@@ -1,0 +1,668 @@
+[
+  {
+    "destination": "submittable",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 2373,
+      "percentage": "48.49%",
+      "distinctOrganizations": 766
+    },
+    "formScope": [
+      "https://wildsoundwritingfestival.submittable.com/submit/314694/womens-fiction-full-novel-festival",
+      "https://tahomaliteraryreview.submittable.com/submit/334115/graphic-narratives",
+      "https://artscouncilofneworleans.submittable.com/submit/29473/arts-market-new-orleans-artist-application"
+    ],
+    "authorizationRole": "organizer_only",
+    "mode": "companion_assisted_external",
+    "capabilities": {
+      "readRequirements": "partial",
+      "prefillText": "blocked",
+      "uploadMedia": "blocked",
+      "resumeDraft": "destination_authoritative",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "creator_confirmed"
+    },
+    "devices": {
+      "desktopChrome": "supported_via_sidecar_or_clipboard",
+      "desktopSafari": "supported_via_sidecar_or_clipboard",
+      "desktopFirefox": "supported_via_sidecar_or_clipboard",
+      "iosSafari": "supported_via_mobile_drawer",
+      "androidChrome": "supported_via_mobile_drawer"
+    },
+    "manualSteps": [
+      "Sign in or register with personal Submittable account at destination",
+      "Paste text blocks from Missa companion drawer or clipboard",
+      "Attach downloaded files/work samples from device picker",
+      "Accept declarations, agree to fee terms, and click final Submit",
+      "Return to Missa and acknowledge submission milestone"
+    ],
+    "evidence": [
+      "Submittable API v4 uses Basic Auth with organizer API key; no applicant OAuth exists.",
+      "Response header X-Frame-Options: DENY and CSP frame-ancestors block all iframe embedding.",
+      "Session cookies are HttpOnly with SameSite=Lax; cross-origin POST requests blocked by CORS and CSRF tokens.",
+      "Draft state is stored exclusively in Submittable applicant account database; no public draft query API."
+    ],
+    "blockers": [
+      "Third-party programmatic submission without credentials is mathematically blocked by platform architecture.",
+      "Collecting applicant Submittable passwords or session tokens violates Missa security policy and platform Terms of Service."
+    ]
+  },
+  {
+    "destination": "org_owned_web_form",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 1317,
+      "percentage": "26.91%",
+      "distinctOrganizations": 903
+    },
+    "formScope": [
+      "https://documentaryfamilyawards.com/open-categories/",
+      "https://arts.princeton.edu/fellowships/hodder-fellowship/",
+      "https://www.sejongculturalsociety.org/isijo/"
+    ],
+    "authorizationRole": "none",
+    "mode": "companion_assisted_external",
+    "capabilities": {
+      "readRequirements": "partial",
+      "prefillText": "blocked",
+      "uploadMedia": "blocked",
+      "resumeDraft": "unsupported",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "unsupported"
+    },
+    "devices": {
+      "desktopChrome": "supported_via_clipboard",
+      "desktopSafari": "supported_via_clipboard",
+      "desktopFirefox": "supported_via_clipboard",
+      "iosSafari": "supported_via_mobile_drawer",
+      "androidChrome": "supported_via_mobile_drawer"
+    },
+    "manualSteps": [
+      "Navigate to organization destination URL",
+      "Review custom form structure and requirements",
+      "Paste creator materials using companion clipboard bridge",
+      "Upload files using system file picker",
+      "Complete destination CAPTCHA / verification",
+      "Submit and record confirmation receipt in Missa"
+    ],
+    "evidence": [
+      "Extreme DOM divergence across WordPress Gravity Forms, Contact Form 7, Formstack, and bespoke HTML forms.",
+      "Ubiquitous presence of Cloudflare Turnstile, Google reCAPTCHA v2/v3, and hCaptcha blocking headless automation.",
+      "Forms lack uniform field naming, autocomplete attributes, or stable schema identifiers."
+    ],
+    "blockers": [
+      "No universal autofill or programmatic submission API exists for arbitrary third-party web domains.",
+      "Unsupervised DOM injection risks submitting truncated or corrupt data."
+    ]
+  },
+  {
+    "destination": "email_application",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 12,
+      "percentage": "0.25%",
+      "distinctOrganizations": 12
+    },
+    "formScope": [
+      "mailto:submissions@example.org?subject=Application",
+      "https://substack.com/@shitbuttquarterly/p-204416776",
+      "https://medium.com/@guardian.music/how-to-pitch-the-guardians-music-section-e068eabf381a"
+    ],
+    "authorizationRole": "creator_controlled",
+    "mode": "package_export_and_mailto",
+    "capabilities": {
+      "readRequirements": "pass",
+      "prefillText": "pass",
+      "uploadMedia": "download_and_manual_attach",
+      "resumeDraft": "local_creator_email_client",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "creator_confirmed"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Click 'Launch Email Application' to trigger OS mailto handler with prefilled subject and body",
+      "Download pre-formatted PDF/DOCX application package from Missa",
+      "Attach downloaded package to the opened email draft",
+      "Perform final review in mail client and click Send",
+      "Confirm sent action in Missa tracker"
+    ],
+    "evidence": [
+      "RFC 6068 governs mailto: URI scheme. Subject and body parameters reliably prefill native and web mail clients.",
+      "RFC 6068 intentionally omits file attachments for security; browsers and OS handlers reject attachment= parameters.",
+      "Missa cannot verify email delivery without outbound SMTP relay access or creator receipt confirmation."
+    ],
+    "blockers": [
+      "Direct file attachment via mailto: URL is prohibited by OS/browser security protocols."
+    ]
+  },
+  {
+    "destination": "google_forms",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 78,
+      "percentage": "1.59%",
+      "distinctOrganizations": 44
+    },
+    "formScope": [
+      "https://forms.gle/3VHwvmKrL1Ar9zs58",
+      "https://docs.google.com/forms/d/e/1FAIpQLSd1Y6yykA7SIhceRab29P-tIeRoLiNfXdTCyl0qJp8OT4IHow/viewform",
+      "https://docs.google.com/forms/d/1vgYznbdRprKx6q0INYhzsmTafonKo9ZBmcMi1BycFn4/viewform"
+    ],
+    "authorizationRole": "creator_google_account",
+    "mode": "url_prefill_and_manual_upload",
+    "capabilities": {
+      "readRequirements": "partial",
+      "prefillText": "pass",
+      "uploadMedia": "blocked",
+      "resumeDraft": "destination_authoritative",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "unsupported"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Open prefilled Google Form URL generated by Missa",
+      "Verify pre-populated contact information and statements",
+      "Sign in to personal Google account if file uploads or account gating are required",
+      "Manually select and upload files from device",
+      "Click Submit and acknowledge completion in Missa"
+    ],
+    "evidence": [
+      "Google Forms supports URL query prefill (?usp=pp_url&entry.XXXX=Value) for text, radio, and checkboxes.",
+      "File upload questions cannot be prefilled via URL; Google requires direct interactive file selection.",
+      "Forms with file uploads mandate respondent Google sign-in.",
+      "Programmatic formResponse POSTs trigger automated bot detection and CAPTCHAs."
+    ],
+    "blockers": [
+      "File upload prefill is strictly impossible via Google Forms architecture."
+    ]
+  },
+  {
+    "destination": "duosuma",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 28,
+      "percentage": "0.57%",
+      "distinctOrganizations": 13
+    },
+    "formScope": [
+      "https://duotrope.com/duosuma/submit/form.aspx?id=Nr6mbfH-OGqkp-D0t2uFm",
+      "https://duotrope.com/duosuma/submit/loblolly-press-hJgJP",
+      "https://duotrope.com/duosuma/submit/form.aspx?id=OaHg9J3-DJjXb-6aIQ56A"
+    ],
+    "authorizationRole": "submitter_duotrope_account",
+    "mode": "companion_assisted_external",
+    "capabilities": {
+      "readRequirements": "partial",
+      "prefillText": "blocked",
+      "uploadMedia": "download_and_manual_attach",
+      "resumeDraft": "unsupported",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "creator_confirmed"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Sign in to Duotrope/Duosuma account",
+      "Select submission category",
+      "Paste manuscript title, author bio, and cover letter using Missa companion",
+      "Upload manuscript document (PDF/DOCX/RTF)",
+      "Submit and confirm in Missa"
+    ],
+    "evidence": [
+      "Duosuma has no public developer or applicant API.",
+      "ASP.NET WebForms architecture uses __VIEWSTATE, __EVENTVALIDATION, and CSRF session cookies.",
+      "Submissions are tracked internally within the submitter's Duotrope dashboard."
+    ],
+    "blockers": [
+      "No programmatic API; platform terms prohibit scraping and automated submission."
+    ]
+  },
+  {
+    "destination": "slideroom",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 0,
+      "percentage": "0.00%",
+      "distinctOrganizations": 0
+    },
+    "formScope": [
+      "https://slideroom.com"
+    ],
+    "authorizationRole": "organization_admin_only",
+    "mode": "companion_assisted_external",
+    "capabilities": {
+      "readRequirements": "blocked",
+      "prefillText": "blocked",
+      "uploadMedia": "blocked",
+      "resumeDraft": "destination_authoritative",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "creator_confirmed"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Sign in to SlideRoom applicant portal",
+      "Reuse media items already present in SlideRoom portfolio or upload fresh assets",
+      "Paste responses to institution custom questions",
+      "Order media portfolio items",
+      "Complete payment checkout and submit"
+    ],
+    "evidence": [
+      "SlideRoom Developer API documentation explicitly specifies it is for recipient organization exports only.",
+      "SlideRoom applicant UI uses X-Frame-Options: DENY and strict CSP.",
+      "No applicant submission API exists in the platform architecture."
+    ],
+    "blockers": [
+      "Zero representation in current published Missa catalogue (0 calls).",
+      "No applicant API available."
+    ]
+  },
+  {
+    "destination": "cafe",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 2,
+      "percentage": "0.04%",
+      "distinctOrganizations": 1
+    },
+    "formScope": [
+      "https://www.callforentry.org/artist-opportunities"
+    ],
+    "authorizationRole": "artist_cafe_account",
+    "mode": "companion_assisted_external",
+    "capabilities": {
+      "readRequirements": "partial",
+      "prefillText": "blocked",
+      "uploadMedia": "blocked",
+      "resumeDraft": "destination_authoritative",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "creator_confirmed"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Log in via Creative West / Clerk authentication on CallForEntry.org",
+      "Attach works from CaFÉ 'My Portfolio' or upload new artwork with metadata",
+      "Answer juror/call-specific questionnaire",
+      "Process checkout / entry fee",
+      "Acknowledge submission in Missa"
+    ],
+    "evidence": [
+      "Platform uses Clerk identity transition and internal closed APIs.",
+      "X-Frame-Options: SAMEORIGIN and frame-ancestors 'self' block embedding.",
+      "Juried artwork submissions depend on CaFÉ's internal media repository."
+    ],
+    "blockers": [
+      "Extremely low catalogue volume (2 opportunities, 0.04%).",
+      "No public applicant API."
+    ]
+  },
+  {
+    "destination": "jotform",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 7,
+      "percentage": "0.14%",
+      "distinctOrganizations": 4
+    },
+    "formScope": [
+      "https://form.jotform.com/261934178865370",
+      "https://www.jotform.com/form/242961613995569",
+      "https://form.jotform.com/253346186009155"
+    ],
+    "authorizationRole": "none",
+    "mode": "url_prefill_and_manual_upload",
+    "capabilities": {
+      "readRequirements": "partial",
+      "prefillText": "pass",
+      "uploadMedia": "blocked",
+      "resumeDraft": "destination_authoritative",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "unsupported"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Open prefilled Jotform URL",
+      "Verify text field pre-population",
+      "Select files for upload questions",
+      "Submit form"
+    ],
+    "evidence": [
+      "Jotform supports URL query prefill (?name[first]=...&email=...).",
+      "File upload fields cannot be populated via URL parameter due to browser input[type=file] security.",
+      "Cross-origin iframe embedding blocked from script manipulation by browser sandbox."
+    ],
+    "blockers": [
+      "File uploads cannot be prefilled."
+    ]
+  },
+  {
+    "destination": "tally",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 1,
+      "percentage": "0.02%",
+      "distinctOrganizations": 1
+    },
+    "formScope": [
+      "https://tally.so/r/VLy5vg"
+    ],
+    "authorizationRole": "none",
+    "mode": "url_prefill_and_manual_upload",
+    "capabilities": {
+      "readRequirements": "partial",
+      "prefillText": "pass",
+      "uploadMedia": "blocked",
+      "resumeDraft": "destination_authoritative",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "unsupported"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Open prefilled Tally URL",
+      "Verify text values",
+      "Upload files",
+      "Submit"
+    ],
+    "evidence": [
+      "Tally supports query parameter prefill (?fieldName=value).",
+      "File upload blocks cannot be populated via URL parameter."
+    ],
+    "blockers": [
+      "Low volume; file upload cannot be automated via URL."
+    ]
+  },
+  {
+    "destination": "typeform",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 0,
+      "percentage": "0.00%",
+      "distinctOrganizations": 0
+    },
+    "formScope": [
+      "https://typeform.com"
+    ],
+    "authorizationRole": "none",
+    "mode": "url_prefill_and_manual_upload",
+    "capabilities": {
+      "readRequirements": "partial",
+      "prefillText": "pass",
+      "uploadMedia": "blocked",
+      "resumeDraft": "destination_authoritative",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "unsupported"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Open Typeform link with hidden fields in URL hash (#field=value)",
+      "Step through multi-step screens",
+      "Upload required files",
+      "Submit"
+    ],
+    "evidence": [
+      "Typeform supports hidden fields via URL hash or query parameters.",
+      "File upload questions require interactive file selection."
+    ],
+    "blockers": [
+      "Zero representation in published Missa catalogue (0 calls)."
+    ]
+  },
+  {
+    "destination": "moksha",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 1,
+      "percentage": "0.02%",
+      "distinctOrganizations": 1
+    },
+    "formScope": [
+      "https://apexbookcompany.moksha.io/publication/apex-magazine"
+    ],
+    "authorizationRole": "none",
+    "mode": "companion_assisted_external",
+    "capabilities": {
+      "readRequirements": "partial",
+      "prefillText": "blocked",
+      "uploadMedia": "download_and_manual_attach",
+      "resumeDraft": "unsupported",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "creator_confirmed"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Open Moksha magazine submission page",
+      "Paste author contact info, title, word count, and cover letter using Missa companion",
+      "Upload manuscript document",
+      "Submit form and acknowledge in Missa"
+    ],
+    "evidence": [
+      "Moksha has no public API for applicants.",
+      "Single-page multi-field form with client-side validation and CSRF protection."
+    ],
+    "blockers": [
+      "1 call in published catalogue."
+    ]
+  },
+  {
+    "destination": "filmfreeway",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 1,
+      "percentage": "0.02%",
+      "distinctOrganizations": 1
+    },
+    "formScope": [
+      "https://filmfreeway.com"
+    ],
+    "authorizationRole": "filmmaker_account",
+    "mode": "companion_assisted_external",
+    "capabilities": {
+      "readRequirements": "partial",
+      "prefillText": "blocked",
+      "uploadMedia": "blocked",
+      "resumeDraft": "destination_authoritative",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "creator_confirmed"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Sign in to FilmFreeway",
+      "Select registered project (video link, synopsis, credits)",
+      "Select festival category",
+      "Complete festival entry payment",
+      "Confirm submission in Missa"
+    ],
+    "evidence": [
+      "FilmFreeway API is organizer-scoped only.",
+      "Terms of Service prohibit automated third-party project submissions."
+    ],
+    "blockers": [
+      "1 call in published catalogue."
+    ]
+  },
+  {
+    "destination": "surveymonkey_apply",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 0,
+      "percentage": "0.00%",
+      "distinctOrganizations": 0
+    },
+    "formScope": [
+      "https://smapply.io"
+    ],
+    "authorizationRole": "organization_admin_only",
+    "mode": "companion_assisted_external",
+    "capabilities": {
+      "readRequirements": "blocked",
+      "prefillText": "blocked",
+      "uploadMedia": "blocked",
+      "resumeDraft": "destination_authoritative",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "creator_confirmed"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Sign in to SMApply institution portal",
+      "Complete multi-stage application tasks",
+      "Upload requested verification files",
+      "Submit application"
+    ],
+    "evidence": [
+      "Apply Connect API is administrator-scoped.",
+      "Zero calls in published Missa catalogue (0.00%)."
+    ],
+    "blockers": [
+      "No representation in catalogue; no applicant API."
+    ]
+  },
+  {
+    "destination": "discovery_aggregator",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 986,
+      "percentage": "20.15%",
+      "distinctOrganizations": 357
+    },
+    "formScope": [
+      "https://www.artconnect.com/opportunity/VRXxhGlDyPmluRot0Pjhk",
+      "https://resartis.org/open-call/call-for-artists-2027-atelier-tremplin-residencies-a-i-r-vallauris/",
+      "https://curatorspace.com/opportunities/detail/..."
+    ],
+    "authorizationRole": "none",
+    "mode": "directory_handoff_only",
+    "capabilities": {
+      "readRequirements": "partial",
+      "prefillText": "not_applicable",
+      "uploadMedia": "not_applicable",
+      "resumeDraft": "not_applicable",
+      "confirmSubmission": "creator_confirmed",
+      "readStatus": "unsupported"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Open aggregator profile page",
+      "Locate outbound application link or contact email on page",
+      "Click through to terminal application destination",
+      "Complete application at terminal destination"
+    ],
+    "evidence": [
+      "20.15% of the published catalogue currently contains directory listings rather than terminal submission forms.",
+      "Missa ingestion workers capture the discovery page URL as both guidelinesUrl and submissionUrl."
+    ],
+    "blockers": [
+      "Aggregator URLs are intermediate discovery pages, not application submission endpoints. Requires automated link reconciliation to resolve terminal destinations."
+    ]
+  },
+  {
+    "destination": "missa_hosted_control",
+    "verifiedAt": "2026-09-04T22:13:00.000Z",
+    "catalogueShare": {
+      "count": 0,
+      "percentage": "Control",
+      "distinctOrganizations": 0
+    },
+    "formScope": [
+      "https://missa.app/calls/[id]/apply"
+    ],
+    "authorizationRole": "creator_missa_account",
+    "mode": "native_missa_application",
+    "capabilities": {
+      "readRequirements": "pass",
+      "prefillText": "pass",
+      "uploadMedia": "pass",
+      "resumeDraft": "pass",
+      "confirmSubmission": "pass",
+      "readStatus": "pass"
+    },
+    "devices": {
+      "desktopChrome": "pass",
+      "desktopSafari": "pass",
+      "desktopFirefox": "pass",
+      "iosSafari": "pass",
+      "androidChrome": "pass"
+    },
+    "manualSteps": [
+      "Select saved work and materials from Missa Library",
+      "Answer call-specific questions",
+      "Review unified preview",
+      "Click Submit"
+    ],
+    "evidence": [
+      "Complete 1-entry submission with relational database persistence (openCalls, submissionDrafts, submissions).",
+      "Instant materials reuse from creator Library and Portfolio without re-uploading.",
+      "Cryptographic receipts, transactional idempotency, and reliable status webhooks."
+    ],
+    "blockers": []
+  }
+]

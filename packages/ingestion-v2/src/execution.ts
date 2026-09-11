@@ -1,14 +1,16 @@
 import { Worker, type Job } from "bullmq";
 import type { AdapterRegistry } from "./registry.js";
-import type { AdapterContext, IngestionRun, PageSnapshot, ExtractionResult, SourceDefinition, IngestionFailureCode } from "./contracts.js";
-import { classifyIngestionFailure, createRunId, type IngestionMode, type IngestionTrigger } from "./contracts.js";
+import type { IngestionRun, PageSnapshot, ExtractionResult, SourceDefinition, IngestionFailureCode } from "./contracts.js";
+import { classifyIngestionFailure, createRunId, INGESTION_V2_VERSION, type IngestionMode, type IngestionTrigger } from "./contracts.js";
 import type { PipelineJobData, QueueBundle } from "./queues.js";
 import { destinationConfig, isPotentialDestination } from "./destinations.js";
 import { assessEvidenceQuality, type EvidenceQuality } from "./quality.js";
-import { reviewForPublication, type PublisherReview } from "./publisher.js";
+import { reviewForPublication, reviewOfficialSourceCard, type CandidatePublisherReview, type PublisherReview } from "./publisher.js";
 import { promoteApprovedArtifact } from "./canonicalWriter.js";
-import { renderIfNeeded, type RenderClient } from "./render.js";
+import { hasCurrentDeadlineOrWindow } from "./deadline.js";
 import type { Pool } from "pg";
+
+export const UNCHANGED_ROOT_WARNING = "Source root unchanged; extraction and child destination fetches skipped";
 
 export interface ShadowArtifact {
   run: IngestionRun;
@@ -17,12 +19,14 @@ export interface ShadowArtifact {
   extraction: ExtractionResult;
   quality?: EvidenceQuality;
   publisher?: PublisherReview;
+  unchanged?: boolean;
   published: false;
 }
 
 export interface ShadowRunStore {
   save(artifact: ShadowArtifact): Promise<void> | void;
   saveFailure?(run: IngestionRun, error: string, code?: IngestionFailureCode): Promise<void> | void;
+  latestRootContentHash?(sourceId: string, processingVersion?: string): Promise<string | undefined> | string | undefined;
   get(runId: string): Promise<ShadowArtifact | undefined> | ShadowArtifact | undefined;
 }
 
@@ -36,6 +40,12 @@ export class MemoryShadowRunStore implements ShadowRunStore {
 
   get(runId: string): ShadowArtifact | undefined {
     return this.artifacts.get(runId);
+  }
+
+  latestRootContentHash(sourceId: string, processingVersion = INGESTION_V2_VERSION): string | undefined {
+    return [...this.artifacts.values()]
+      .filter((artifact) => artifact.run.sourceId === sourceId && artifact.run.status === "completed" && artifact.publisher?.pipelineVersion === processingVersion)
+      .sort((left, right) => right.run.createdAt.localeCompare(left.run.createdAt))[0]?.snapshot.contentHash;
   }
 
   saveFailure(run: IngestionRun, error: string, code = classifyIngestionFailure(error)): void {
@@ -59,39 +69,23 @@ export interface PipelineExecutionOptions {
   now?: () => Date;
   logger?: Pick<Console, "info" | "warn">;
   promotionPool?: Pool;
-  renderClient?: RenderClient;
-}
-
-/**
- * Fetch, then escalate to a rendered document only when the static response
- * cannot answer the question. Re-extraction runs against whichever document won.
- */
-async function fetchAndExtract(
-  adapter: { fetch: (context: AdapterContext) => Promise<PageSnapshot>; extract: (context: AdapterContext, snapshot: PageSnapshot) => Promise<ExtractionResult> },
-  context: { run: IngestionRun; source: SourceDefinition },
-  options: PipelineExecutionOptions,
-): Promise<{ snapshot: PageSnapshot; extraction: ExtractionResult }> {
-  const logger = options.logger ?? console;
-  const staticSnapshot = await adapter.fetch(context);
-  const staticExtraction = await adapter.extract({ ...context, snapshot: staticSnapshot }, staticSnapshot);
-  const escalation = await renderIfNeeded(staticSnapshot, options.renderClient, staticExtraction.fields.length, logger);
-  if (!escalation.rendered) return { snapshot: staticSnapshot, extraction: staticExtraction };
-  logger.info(`[missa-ingestion-v2] rendered ${staticSnapshot.url}: ${escalation.reason}`);
-  const rendered = await adapter.extract({ ...context, snapshot: escalation.snapshot }, escalation.snapshot);
-  return { snapshot: escalation.snapshot, extraction: rendered };
+  forceReprocess?: boolean;
 }
 
 function runFromJob(job: PipelineJobData, now: Date): IngestionRun {
   return { id: job.runId, sourceId: job.sourceId, trigger: job.trigger, mode: job.mode, status: "running", createdAt: now.toISOString() };
 }
 
-/**
- * Stage 1: fetch the source page, escalate to a render when needed, follow
- * classified destination links. Produces evidence with no decision made yet —
- * the artifact is saved with `quality` and `publisher` absent so a staged
- * deployment can hand it to the decide stage over the run id alone.
- */
-export async function runFetchStage(
+function sameHost(left: string, right: string): boolean {
+  try {
+    return new URL(left).hostname.replace(/^www\./, "") === new URL(right).hostname.replace(/^www\./, "");
+  } catch {
+    return false;
+  }
+}
+
+/** Execute v2's first shadow slice without touching Gary/Radar public records. */
+export async function executeShadowPipeline(
   registry: AdapterRegistry,
   source: SourceDefinition,
   job: PipelineJobData,
@@ -105,24 +99,163 @@ export async function runFetchStage(
   if (!adapter.canHandle(source)) throw new Error(`Adapter ${source.adapterId} cannot handle source ${source.id}`);
   logger.info(`[missa-ingestion-v2] shadow run ${run.id} fetching ${source.url}`);
   try {
-    const { snapshot, extraction: sourceExtraction } = await fetchAndExtract(adapter, { run, source }, options);
+    const snapshot = await adapter.fetch({ run, source });
+    const previousContentHash = await store.latestRootContentHash?.(source.id, INGESTION_V2_VERSION);
+    if (!options.forceReprocess && previousContentHash && previousContentHash === snapshot.contentHash) {
+      const extraction: ExtractionResult = { fields: [], candidateLinks: [], warnings: [UNCHANGED_ROOT_WARNING] };
+      const artifact: ShadowArtifact = { run: { ...run, status: "completed" }, snapshot, relatedSnapshots: [], extraction, quality: assessEvidenceQuality(snapshot, extraction), unchanged: true, published: false };
+      await store.save(artifact);
+      logger.info(`[missa-ingestion-v2] shadow run ${run.id} unchanged; skipped child fetches`);
+      return artifact;
+    }
+    const sourceExtraction = await adapter.extract({ run, source, snapshot }, snapshot);
     const extraction: ExtractionResult = { fields: [...sourceExtraction.fields], candidateLinks: [...sourceExtraction.candidateLinks], warnings: [...sourceExtraction.warnings] };
     const relatedSnapshots: PageSnapshot[] = [];
-    const detailLimit = Math.min(destinationConfig(source).detailLimit ?? 5, 5);
-    const details = extraction.candidateLinks.filter((candidate) => isPotentialDestination(source, candidate)).slice(0, detailLimit);
+    const candidateReviews: CandidatePublisherReview[] = [];
+    const destination = destinationConfig(source);
+    const detailLimit = Math.min(destination.detailLimit ?? 5, 5);
+    const scanLimit = Math.min(Math.max(destination.scanLimit ?? detailLimit, detailLimit), 15);
+    const details = extraction.candidateLinks.filter((candidate) => isPotentialDestination(source, candidate)).slice(0, scanLimit);
+    const candidateTarget = Math.min(detailLimit, details.length);
+    let attemptedDetails = 0;
+    let failedDetails = 0;
     for (const candidate of details) {
+      if (candidateReviews.length >= candidateTarget) break;
+      attemptedDetails += 1;
+      const candidateRecordId = candidate.stableId ?? candidate.canonicalUrl ?? candidate.url;
+      const scopedSourceFields = sourceExtraction.fields.filter((field) =>
+        field.provenance.recordId === candidateRecordId ||
+        (!field.provenance.recordId && (field.provenance.sourceUrl === candidate.url || field.provenance.sourceUrl === candidate.canonicalUrl))
+      );
       try {
-      const destinationSource = { ...source, id: `${source.id}:destination:${candidate.url}`, url: candidate.url, config: { ...source.config, ...(candidate.request ? { request: candidate.request } : {}), destination: { ...destinationConfig(source), pageRole: "detail" as const } } };
-        const { snapshot: destinationSnapshot, extraction: destinationExtraction } = await fetchAndExtract(adapter, { run, source: destinationSource }, options);
+        const destinationSource = {
+          ...source,
+          id: `${source.id}:destination:${candidate.stableId ?? candidate.url}`,
+          url: candidate.url,
+          config: {
+            ...source.config,
+            ...(candidate.request ? { request: candidate.request } : {}),
+            ...(candidate.canonicalUrl ? { canonicalUrl: candidate.canonicalUrl } : {}),
+            destination: { ...destinationConfig(source), pageRole: "detail" as const },
+          },
+        };
+        const destinationAdapter = destination.destinationAdapterId
+          ? registry.get(destination.destinationAdapterId)
+          : adapter;
+        const destinationSnapshot = await destinationAdapter.fetch({ run, source: destinationSource });
+        const destinationExtraction = await destinationAdapter.extract({ run, source: destinationSource, snapshot: destinationSnapshot }, destinationSnapshot);
         relatedSnapshots.push(destinationSnapshot);
         extraction.fields.push(...destinationExtraction.fields);
         extraction.warnings.push(...destinationExtraction.warnings.map((warning) => `Destination ${candidate.url}: ${warning}`));
+        const firstPartyHop = destinationConfig(source).firstPartyHop;
+        if (firstPartyHop && sameHost(source.url, candidate.url)) {
+          const firstPartyCandidate = destinationExtraction.candidateLinks.find((outbound) => !sameHost(destinationSnapshot.finalUrl, outbound.url));
+          if (!firstPartyCandidate) {
+            extraction.warnings.push(`Destination ${candidate.url} failed: no first-party organizer destination was classified`);
+            failedDetails += 1;
+            continue;
+          }
+          const firstPartySource = {
+            ...destinationSource,
+            id: `${destinationSource.id}:first-party:${firstPartyCandidate.url}`,
+            url: firstPartyCandidate.url,
+            config: {
+              ...destinationSource.config,
+              destination: { ...destinationConfig(source), pageRole: "detail" as const, firstPartyHop: undefined },
+            },
+          };
+          const firstPartySnapshot = await destinationAdapter.fetch({ run, source: firstPartySource });
+          const firstPartyExtraction = await destinationAdapter.extract({ run, source: firstPartySource, snapshot: firstPartySnapshot }, firstPartySnapshot);
+          relatedSnapshots.push(firstPartySnapshot);
+          extraction.fields.push(...firstPartyExtraction.fields);
+          extraction.warnings.push(...firstPartyExtraction.warnings.map((warning) => `First-party destination ${firstPartyCandidate.url}: ${warning}`));
+          const candidateExtraction: ExtractionResult = {
+            fields: [...scopedSourceFields, ...destinationExtraction.fields, ...firstPartyExtraction.fields],
+            candidateLinks: [firstPartyCandidate],
+            warnings: [...destinationExtraction.warnings, ...firstPartyExtraction.warnings],
+          };
+          if (destination.requireCurrentDeadlineBeforeReview && !hasCurrentDeadlineOrWindow(candidateExtraction.fields, firstPartyCandidate.url)) {
+            extraction.warnings.push(`Destination ${candidate.url} skipped because its bounded chain has no current deadline or declared rolling window`);
+            failedDetails += 1;
+            continue;
+          }
+          const review = await reviewForPublication({
+            source,
+            sourceSnapshot: destinationSnapshot,
+            sourceExtraction: { fields: destinationExtraction.fields, candidateLinks: [firstPartyCandidate], warnings: destinationExtraction.warnings },
+            relatedSnapshots: [firstPartySnapshot],
+            relatedFields: firstPartyExtraction.fields,
+            candidate: firstPartyCandidate,
+            candidateSnapshot: firstPartySnapshot,
+          });
+          candidateReviews.push({
+            candidate: firstPartyCandidate,
+            snapshotId: firstPartySnapshot.id,
+            extraction: candidateExtraction,
+            quality: assessEvidenceQuality(firstPartySnapshot, candidateExtraction),
+            review,
+          });
+          continue;
+        }
+        const candidateExtraction: ExtractionResult = {
+          fields: [...scopedSourceFields, ...destinationExtraction.fields],
+          candidateLinks: [candidate],
+          warnings: [...destinationExtraction.warnings],
+        };
+        if (destination.requireCurrentDeadlineBeforeReview && !hasCurrentDeadlineOrWindow(candidateExtraction.fields, candidate.canonicalUrl ?? candidate.url)) {
+          extraction.warnings.push(`Destination ${candidate.url} skipped because its bounded chain has no current deadline or declared rolling window`);
+          failedDetails += 1;
+          continue;
+        }
+        const publisherInput = {
+          source,
+          sourceSnapshot: snapshot,
+          sourceExtraction: { fields: scopedSourceFields, candidateLinks: [candidate], warnings: [] },
+          relatedSnapshots: [destinationSnapshot],
+          relatedFields: destinationExtraction.fields,
+          candidate,
+          candidateSnapshot: destinationSnapshot,
+        };
+        const review = destination.structuredRecordAuthority
+          ? await reviewOfficialSourceCard(publisherInput)
+          : await reviewForPublication(publisherInput);
+        candidateReviews.push({
+          candidate,
+          snapshotId: destinationSnapshot.id,
+          extraction: candidateExtraction,
+          quality: assessEvidenceQuality(destinationSnapshot, candidateExtraction),
+          review,
+        });
       } catch (error) {
+        const sourceCard = destinationConfig(source).sourceCard;
+        if (sourceCard?.allowBlockedDestination && scopedSourceFields.length) {
+          const candidateExtraction: ExtractionResult = { fields: scopedSourceFields, candidateLinks: [candidate], warnings: ["External application destination was unavailable; configured official source-card evidence was retained"] };
+          const review = await reviewOfficialSourceCard({ source, sourceSnapshot: snapshot, sourceExtraction: candidateExtraction, relatedSnapshots: [], relatedFields: [], candidate });
+          candidateReviews.push({ candidate, snapshotId: snapshot.id, extraction: candidateExtraction, quality: assessEvidenceQuality(snapshot, candidateExtraction), review });
+          extraction.warnings.push(`Destination ${candidate.url} unavailable; configured official source-card evidence was used for review`);
+          continue;
+        }
+        failedDetails += 1;
         extraction.warnings.push(`Destination ${candidate.url} failed: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
-    if (details.length) extraction.warnings.push(`Fetched ${relatedSnapshots.length} of ${details.length} classified detail destinations; destination evidence remains shadow-only`);
-    const artifact: ShadowArtifact = { run: { ...run, status: "running" }, snapshot, relatedSnapshots, extraction, published: false };
+    const candidateCoverage = { target: candidateTarget, attempted: attemptedDetails, completed: candidateReviews.length, failed: failedDetails };
+    if (details.length) extraction.warnings.push(`Completed ${candidateCoverage.completed} of ${candidateCoverage.target} bounded candidate chains after ${candidateCoverage.attempted} attempts; destination evidence remains shadow-only`);
+    const publisher: PublisherReview = candidateReviews.length > 1
+      ? {
+          ...candidateReviews[0]!.review,
+          decision: "review",
+          model: "deterministic",
+          rationale: [
+            `This source produced ${candidateReviews.length} distinct opportunity candidates; only candidate-scoped verdicts may enter canonical review.`,
+          ],
+          candidateReviews,
+          candidateCoverage,
+        }
+      : candidateReviews.length === 1
+        ? { ...candidateReviews[0]!.review, candidateReviews, candidateCoverage }
+        : { ...await reviewForPublication({ source, sourceSnapshot: snapshot, sourceExtraction, relatedSnapshots, relatedFields: extraction.fields }), candidateCoverage };
+    const artifact: ShadowArtifact = { run: { ...run, status: "completed" }, snapshot, relatedSnapshots, extraction, quality: assessEvidenceQuality(snapshot, extraction), publisher, published: false };
     await store.save(artifact);
     return artifact;
   } catch (error) {
@@ -185,7 +318,7 @@ export function createPipelineWorker(
       if (!source) throw new Error(`Unknown v2 source: ${job.data.sourceId}`);
       if (job.data.mode !== "shadow" && !options.promotionPool) throw new Error("v2 promotion requires a canonical database pool");
       const artifact = await executeShadowPipeline(registry, source, job.data, store, options);
-      if (job.data.mode === "promote") await promoteApprovedArtifact(options.promotionPool!, source, artifact);
+      if (job.data.mode === "promote" && !artifact.unchanged) await promoteApprovedArtifact(options.promotionPool!, source, artifact);
       return artifact;
     },
     { connection: queues.connection, prefix: "missa-ingestion-v2", concurrency: 1 },
@@ -193,6 +326,6 @@ export function createPipelineWorker(
   return { worker, close: () => worker.close() };
 }
 
-export function shadowJob(source: SourceDefinition, options: { trigger?: IngestionTrigger; runId?: string } = {}): PipelineJobData {
-  return { runId: options.runId ?? createRunId(source.id), sourceId: source.id, trigger: options.trigger ?? "shadow", mode: "shadow" as IngestionMode };
+export function shadowJob(source: SourceDefinition, options: { trigger?: IngestionTrigger; runId?: string; mode?: IngestionMode } = {}): PipelineJobData {
+  return { runId: options.runId ?? createRunId(source.id), sourceId: source.id, trigger: options.trigger ?? "shadow", mode: options.mode ?? "shadow" };
 }

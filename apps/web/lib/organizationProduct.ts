@@ -1,6 +1,6 @@
 import type { OrgRole } from '@missa/radar-engine';
 
-export type OrganizationDestination = 'overview' | 'opportunities' | 'submissions' | 'reviews' | 'decisions' | 'messages' | 'delivery' | 'insights' | 'people' | 'settings';
+export type OrganizationDestination = 'overview' | 'portal' | 'opportunities' | 'submissions' | 'reviews' | 'decisions' | 'messages' | 'delivery' | 'insights' | 'people' | 'settings';
 
 export interface OrganizationCapabilityProjection {
   role: OrgRole;
@@ -14,7 +14,7 @@ export interface OrganizationCapabilityProjection {
   canCreateOpportunity: boolean;
 }
 
-const allDestinations: OrganizationDestination[] = ['overview', 'opportunities', 'submissions', 'reviews', 'decisions', 'messages', 'delivery', 'insights', 'people', 'settings'];
+const allDestinations: OrganizationDestination[] = ['overview', 'portal', 'opportunities', 'submissions', 'reviews', 'decisions', 'messages', 'delivery', 'insights', 'people', 'settings'];
 
 const projections: Record<OrgRole, OrganizationCapabilityProjection> = {
   owner: { role: 'owner', label: 'Owner', destinations: allDestinations, canSeeAllSubmissions: true, canSeeAllReviews: true, canSeeDecisions: true, canSeeDelivery: true, canSeeBilling: true, canCreateOpportunity: true },
@@ -33,11 +33,12 @@ export function organizationCapabilityProjection(role: OrgRole): OrganizationCap
   return projections[role];
 }
 
-const labels: Record<OrganizationDestination, string> = { overview: 'Overview', opportunities: 'Opportunities', submissions: 'Submissions', reviews: 'Reviews', decisions: 'Decisions', messages: 'Messages', delivery: 'Delivery', insights: 'Insights', people: 'People', settings: 'Settings & billing' };
+const labels: Record<OrganizationDestination, string> = { overview: 'Overview', portal: 'Submission portal', opportunities: 'Opportunities', submissions: 'Submissions', reviews: 'Reviews', decisions: 'Decisions', messages: 'Messages', delivery: 'Delivery', insights: 'Insights', people: 'People', settings: 'Settings & billing' };
 
 export function organizationDestinationHref(destination: OrganizationDestination, organizationId: string): string {
   const id = encodeURIComponent(organizationId);
   if (destination === 'overview') return `/organization/${id}/overview`;
+  if (destination === 'portal') return `/organization/${id}/portal`;
   if (destination === 'opportunities') return `/organization/${id}/opportunities`;
   if (destination === 'submissions') return `/organization/${id}/submissions`;
   if (destination === 'reviews') return `/organization/${id}/reviews`;

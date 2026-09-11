@@ -15,6 +15,8 @@ export function SaveToTrackerButton({
   signedIn = true,
   returnTo,
   opportunityTitle,
+  label = "Save opportunity",
+  pendingLabel = "Saving...",
 }: {
   opportunityId: string;
   tracked?: boolean;
@@ -22,6 +24,8 @@ export function SaveToTrackerButton({
   signedIn?: boolean;
   returnTo?: string;
   opportunityTitle?: string;
+  label?: string;
+  pendingLabel?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -51,9 +55,13 @@ export function SaveToTrackerButton({
       aria-label={
         pending
           ? "Saving Opportunity"
-          : opportunityTitle
-            ? `Save ${opportunityTitle} privately`
-            : "Save Opportunity privately"
+          : !signedIn
+            ? opportunityTitle
+              ? `Save ${opportunityTitle} privately — sign in required`
+              : "Save this Opportunity privately — sign in required"
+            : opportunityTitle
+              ? `Save ${opportunityTitle} privately`
+              : "Save Opportunity privately"
       }
       onClick={() => {
         startTransition(async () => {
@@ -92,6 +100,7 @@ export function SaveToTrackerButton({
             const body = (await response.json().catch(() => ({}))) as {
               status?: string;
               receipt?: FirstSaveReceipt;
+              calendar?: { status?: "added" | "no-deadline" | "pending" };
               error?: string;
             };
             if (!response.ok || !body.receipt) {
@@ -101,8 +110,12 @@ export function SaveToTrackerButton({
             rememberFirstSaveReceipt(body.receipt);
             toast.success(
               body.status === "already-present"
-                ? "Already in Tracker"
-                : "Opportunity saved",
+                ? body.calendar?.status === "added" ? "Saved · Deadline is on your calendar" : "Already in Tracker"
+                : body.calendar?.status === "added"
+                  ? "Saved · Deadline added to Calendar"
+                  : body.calendar?.status === "pending"
+                    ? "Saved · Calendar update pending"
+                    : "Opportunity saved",
             );
             router.push("/tracker");
           } catch {
@@ -114,7 +127,7 @@ export function SaveToTrackerButton({
       }}
     >
       <Bookmark aria-hidden="true" />
-      {!compact ? (pending ? "Saving…" : "Save opportunity") : null}
+      {!compact ? (pending ? pendingLabel : label) : null}
     </Button>
   );
 }

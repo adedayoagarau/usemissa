@@ -158,8 +158,8 @@ export default function PlatformAdminCrm({
     try {
       const response = await fetch("/api/admin/crm", {
         method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ taskId, status }),
+        headers: { "content-type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({ taskId, status, expectedStatus: area.data.tasks.find((task) => task.id === taskId)?.status, expectedVersion: area.data.tasks.find((task) => task.id === taskId)?.version }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok)

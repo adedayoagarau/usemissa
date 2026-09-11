@@ -28,6 +28,7 @@ export type OpportunityType =
   | "pitch"
   | "exhibition"
   | "commission"
+  | "job"
   | "other";
 
 /** Statuses exactly as enumerated in the strategy doc. "Claimed by Organization"
@@ -462,90 +463,15 @@ export interface UserProfile {
   publicProfilePublishedAt?: IsoDateTime;
   /** Durable dismissal for the optional first-Profile handle prompt. */
   handlePromptDismissedAt?: IsoDateTime;
-  /** Private rotation key for the owner-controlled calendar subscription. */
-  calendarFeedKey?: string;
-  calendarFeedConnectedAt?: IsoDateTime;
-  /** Private delivery defaults. Inbox alerts remain available when email is off. */
-  notificationSettings?: ProfileNotificationSettings;
-  /** Content explicitly saved to the public portfolio surface. */
-  publicPortfolio?: PublicPortfolio;
+  /** Durable once-per-account consequence motion events for public Profile. */
+  profileMotion?: Partial<Record<ProfileMotionEvent, IsoDateTime>>;
 }
 
-export interface ProfileNotificationSettings {
-  emailAlerts: boolean;
-  deadlineReminderDays: Array<1 | 3 | 7>;
-  timezone: string;
-}
-
-export type ProfileSocialService =
-  | "website"
-  | "instagram"
-  | "linkedin"
-  | "youtube"
-  | "tiktok"
-  | "bluesky"
-  | "x"
-  | "mastodon"
-  | "substack"
-  | "medium"
-  | "behance"
-  | "vimeo"
-  | "soundcloud"
-  | "bandcamp"
-  | "other";
-
-export interface ProfileSocialLink {
-  id: string;
-  service: ProfileSocialService;
-  url: string;
-}
-
-export type ProfileSampleKind = "text" | "image" | "audio" | "video";
-
-export interface ProfileWorkSample {
-  /** Frozen at publication so later Library taxonomy edits cannot change rendering. */
-  kind: ProfileSampleKind;
-  /** Text samples publish only this creator-chosen passage. */
-  excerpt?: string;
-  /** Public copy of a private Library file. Never a private storage key. */
-  publicAssetUrl?: string;
-  contentType?: string;
-  /** Required for images and video; useful for any media sample. */
-  accessibilityText?: string;
-  /** Optional transcript for audio; required for video in this first release. */
-  transcript?: string;
-  rightsConfirmedAt: IsoDateTime;
-}
-
-export interface ProfileSelectedWork {
-  id: string;
-  /** Stable link to the private Library source. Omitted only for legacy or external entries. */
-  workId?: string;
-  /** Public snapshot. Library edits do not silently rewrite a published Profile. */
-  title: string;
-  publication?: string;
-  year?: number;
-  url?: string;
-  description?: string;
-  sample?: ProfileWorkSample;
-}
-
-/** A creator-authored public snapshot. Presence here is an explicit publish act. */
-export interface PublicPortfolio {
-  profileImageUrl?: string;
-  headline?: string;
-  oneLine?: string;
-  openTo?: string;
-  /** Explicit opt-in to the Missa contact relay. The account email stays private. */
-  contactEnabled?: boolean;
-  socialLinks: ProfileSocialLink[];
-  selectedWorks: ProfileSelectedWork[];
-}
-
-export interface PublicPortfolioPublishInput extends PublicPortfolio {
-  displayName: string;
-  bio?: string;
-}
+export type ProfileMotionEvent =
+  | "first-sample-published"
+  | "recorded-credit"
+  | "indexability-threshold"
+  | "handle-claimed";
 
 export interface TaxonomyPreference {
   termId: string;

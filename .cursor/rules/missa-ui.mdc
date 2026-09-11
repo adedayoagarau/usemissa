@@ -1,0 +1,11 @@
+---
+description: Binding Missa design-system and component-selection instructions
+globs: apps/web/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+Follow `AGENTS.md`. Before changing UI, read `DESIGN.md`,
+`apps/web/component-policy.json`, `apps/web/component-catalogue.json`, and
+`docs/ai-ui-build-directive.md`. Select primitives and semantic components by
+intent through the policy, preserve Missa tokens and accessibility behavior,
+and run `npm run check:design-system` before handoff.

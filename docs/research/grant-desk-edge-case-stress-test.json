@@ -1,0 +1,260 @@
+[
+  {
+    "location": "grant-application-desk-feasibility.md:38-49",
+    "trigger_condition": "Applicant is an informal collective without legal identity",
+    "guard_snippet": "require applicantMode and fiscalSponsorMode before starting eligibility review",
+    "potential_consequence": "Project data maps to the wrong legal applicant"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:38-49",
+    "trigger_condition": "Organization user lacks authority to make certifications",
+    "guard_snippet": "record preparer and authorizedSubmitter as separate roles",
+    "potential_consequence": "An unauthorized person approves legally binding declarations"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:38-49",
+    "trigger_condition": "One project has multiple lead applicants across grants",
+    "guard_snippet": "snapshot applicant identity per application instead of inheriting Project owner",
+    "potential_consequence": "Exports contain the wrong applicant identity"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:53-72",
+    "trigger_condition": "Creator begins work before eligibility can be verified",
+    "guard_snippet": "allow preparation with a persistent eligibility-unresolved state",
+    "potential_consequence": "Users abandon useful work or assume eligibility"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:53-72",
+    "trigger_condition": "Creator is eligible only through a fiscal sponsor",
+    "guard_snippet": "model sponsor requirements deadlines fees and approval as dependencies",
+    "potential_consequence": "Application reaches deadline without an eligible submitter"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:78-90",
+    "trigger_condition": "Official page contradicts downloadable guidelines",
+    "guard_snippet": "store conflicting facts and require source-priority review before publication",
+    "potential_consequence": "Missa confidently presents the wrong requirement"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:78-90",
+    "trigger_condition": "Grant page disappears after applications open",
+    "guard_snippet": "retain lawful source snapshot and mark live verification unavailable",
+    "potential_consequence": "Applicants lose the requirements used for preparation"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:78-90",
+    "trigger_condition": "Recurring programme reuses URL with changed rules",
+    "guard_snippet": "key calls by cycle and effective dates not URL alone",
+    "potential_consequence": "Old requirements silently contaminate a new cycle"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:78-90",
+    "trigger_condition": "Source forbids crawling or derivative storage",
+    "guard_snippet": "enforce per-source acquisition retention and quotation policy",
+    "potential_consequence": "Coverage creates legal or relationship risk"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:92-112",
+    "trigger_condition": "Requirement exists only inside scanned image",
+    "guard_snippet": "route OCR output to page-linked human verification",
+    "potential_consequence": "A mandatory condition is omitted"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:92-112",
+    "trigger_condition": "Conditional question depends on multiple earlier answers",
+    "guard_snippet": "model condition expressions and test every reachable branch",
+    "potential_consequence": "The preparation checklist is incomplete"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:92-112",
+    "trigger_condition": "Word limit and portal character limit disagree",
+    "guard_snippet": "store both constraints with source and destination verification",
+    "potential_consequence": "Prepared answers cannot be pasted intact"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:92-112",
+    "trigger_condition": "Deadline is local time without named timezone",
+    "guard_snippet": "mark timezone unknown and block converted countdown claims",
+    "potential_consequence": "A creator misses the true deadline"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:92-112",
+    "trigger_condition": "Funder changes requirements after draft creation",
+    "guard_snippet": "diff guideline versions and require explicit draft migration",
+    "potential_consequence": "Completed status masks newly required work"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:114-124",
+    "trigger_condition": "Reused answer contains another funder's name",
+    "guard_snippet": "scan snapshots for stale funder programme currency and date tokens",
+    "potential_consequence": "Application appears careless or misleading"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:114-124",
+    "trigger_condition": "Project changes after one application is submitted",
+    "guard_snippet": "fork new application versions without mutating submitted snapshots",
+    "potential_consequence": "Submission history no longer reflects what was sent"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:126-143",
+    "trigger_condition": "Budget mixes currencies or exchange-rate dates",
+    "guard_snippet": "require currency per line and versioned conversion assumptions",
+    "potential_consequence": "Totals are arithmetically correct but financially false"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:126-143",
+    "trigger_condition": "Match funding allows only non-federal cash sources",
+    "guard_snippet": "type funding sources and validate scheme-specific match eligibility",
+    "potential_consequence": "Application fails a mandatory cost-share rule"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:126-143",
+    "trigger_condition": "Award is taxable or paid in arrears",
+    "guard_snippet": "capture tax cashflow payment schedule and bridge-finance warnings",
+    "potential_consequence": "Winning creates an unaffordable delivery obligation"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:126-143",
+    "trigger_condition": "Funder awards less than requested amount",
+    "guard_snippet": "support conditional scope and revised-budget scenarios",
+    "potential_consequence": "Creator cannot responsibly accept the award"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:145-160",
+    "trigger_condition": "PDF pagination splits a question from its answer",
+    "guard_snippet": "define print keep rules and test long multilingual fixtures",
+    "potential_consequence": "Review packet becomes difficult to evaluate"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:145-160",
+    "trigger_condition": "Generated DOCX changes layout in Microsoft Word",
+    "guard_snippet": "round-trip outputs in target applications before promising fidelity",
+    "potential_consequence": "Submission document exceeds limits or becomes unreadable"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:145-160",
+    "trigger_condition": "Export succeeds after application changed concurrently",
+    "guard_snippet": "generate strictly from immutable versionId and return its checksum",
+    "potential_consequence": "Downloaded files disagree with the reviewed draft"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:145-160",
+    "trigger_condition": "ZIP exceeds destination or device storage limits",
+    "guard_snippet": "preflight compressed and uncompressed sizes with per-file alternatives",
+    "potential_consequence": "Creator cannot transfer the packet near deadline"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:162-173",
+    "trigger_condition": "Portal field truncates pasted Unicode text",
+    "guard_snippet": "verify normalized clipboard length after destination paste",
+    "potential_consequence": "Submitted answer loses meaningful content"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:162-173",
+    "trigger_condition": "Portal reveals new fields after file upload",
+    "guard_snippet": "require destination final-review checklist after all conditional actions",
+    "potential_consequence": "Creator submits an incomplete external application"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:162-173",
+    "trigger_condition": "Submission succeeds but return navigation fails",
+    "guard_snippet": "support receipt upload email evidence and manual confirmation separately",
+    "potential_consequence": "Missa incorrectly leaves the application unsubmitted"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:162-173",
+    "trigger_condition": "Creator falsely or accidentally marks application submitted",
+    "guard_snippet": "make status reversible and preserve evidence level with correction history",
+    "potential_consequence": "Reminders and outcome data become misleading"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:175-195",
+    "trigger_condition": "Funder policy changes after application preparation begins",
+    "guard_snippet": "version policy evidence and warn before transformative operations",
+    "potential_consequence": "Creator unknowingly violates current application rules"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:175-195",
+    "trigger_condition": "Invisible backend service materially rewrites creator text",
+    "guard_snippet": "classify processing by effect and preserve creator-visible diffs",
+    "potential_consequence": "Interface conceals a disclosure-relevant transformation"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:175-195",
+    "trigger_condition": "Machine extraction sends restricted guidelines externally",
+    "guard_snippet": "apply source and processor policy before any external transmission",
+    "potential_consequence": "Missa violates source terms or confidentiality"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:197-216",
+    "trigger_condition": "Shared application exposes sensitive demographic answers",
+    "guard_snippet": "scope collaborator access by section and mask sensitive fields",
+    "potential_consequence": "Private eligibility information reaches unauthorized collaborators"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:197-216",
+    "trigger_condition": "Account deletion conflicts with immutable submission records",
+    "guard_snippet": "define deletion anonymization retention and legal-hold behavior per object",
+    "potential_consequence": "Missa either loses evidence or retains data unlawfully"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:197-216",
+    "trigger_condition": "Uploaded document contains malware or active content",
+    "guard_snippet": "quarantine scan sanitize and fail closed before preview or export",
+    "potential_consequence": "Missa distributes harmful files in application packets"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:218-243",
+    "trigger_condition": "Internal dogfooding overrepresents founder grant needs",
+    "guard_snippet": "pair internal pilots with diverse external observational research",
+    "potential_consequence": "Product fits Missa but not ordinary creators"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:218-243",
+    "trigger_condition": "Users report only successful outcomes",
+    "guard_snippet": "measure reporting bias and avoid success-rate claims",
+    "potential_consequence": "Recommendations learn from a distorted sample"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:245-273",
+    "trigger_condition": "Existing Library model and Project model duplicate materials",
+    "guard_snippet": "define ownership identity and version boundaries before schema implementation",
+    "potential_consequence": "Files and answers diverge across product surfaces"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:335-345",
+    "trigger_condition": "Document generation consumes unreviewed source facts",
+    "guard_snippet": "accept only published requirementVersion and frozen applicationVersion inputs",
+    "potential_consequence": "Exports canonize extraction mistakes"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:349-358",
+    "trigger_condition": "Pilot grants are too similar to expose model gaps",
+    "guard_snippet": "sample across applicant portal geography currency stages and attachment complexity",
+    "potential_consequence": "Pilot passes while real grant diversity remains unsupported"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:360-370",
+    "trigger_condition": "Release One promises too many exports simultaneously",
+    "guard_snippet": "contract PDF text CSV JSON first and measure actual demand",
+    "potential_consequence": "Format maintenance delays the core application workflow"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:411-428",
+    "trigger_condition": "Free applicant tooling has no sustainable operating model",
+    "guard_snippet": "validate who pays before scaling editorial requirement review",
+    "potential_consequence": "Accuracy costs grow faster than revenue"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:411-428",
+    "trigger_condition": "Creators blame Missa after an ineligible or rejected application",
+    "guard_snippet": "state evidence boundaries and never market completion as success probability",
+    "potential_consequence": "Trust collapses despite technically correct tooling"
+  },
+  {
+    "location": "grant-application-desk-feasibility.md:411-428",
+    "trigger_condition": "Grant preparation increases low-fit application volume",
+    "guard_snippet": "optimize for informed go-no-go decisions not submission count",
+    "potential_consequence": "Funders resist Missa and applicants waste more time"
+  }
+]

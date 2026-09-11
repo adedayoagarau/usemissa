@@ -8,7 +8,12 @@ dist/
 .next/
 apps/web/next-env.d.ts
 .env*.local
+.env*.production
+.env*.staging
 .env
+.env.*
 apps/web/playwright-report/
 apps/web/test-results/
 test-results/
+.impeccable/
+*.impeccable/

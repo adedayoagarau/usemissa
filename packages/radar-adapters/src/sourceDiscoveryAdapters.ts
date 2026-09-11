@@ -61,6 +61,8 @@ const APPLICATION_ONLY_HOSTS = [
 const ARCHIVE_LINK_WORDS = /(?:first|previous|past)\s+(?:volume|issue)|\barchive\b|\bsample\s+(?:issue|work)\b/i;
 const STRONG_CALL_WORDS =
   /(?:apply|application|submit|submission|open[- ]?call|call[- ]?for|deadline|entry|fellowship|grant|award|contest|prize)/i;
+const GENERIC_DIRECTORY_LINK_LABEL =
+  /^(?:about|apply|apply here|click here|contact|donate|email|facebook|find out more|here|home|instagram|learn more|linkedin|mastodon|more|more info|newsletter|read more|rss|submit|submit here|support|tiktok|twitter|x|youtube)$/i;
 const CONTEXT_STOP_WORDS = new Set([
   "and", "are", "artist", "artists", "call", "for", "from", "http", "https",
   "open", "org", "the", "this", "with", "www", "writer", "writers",
@@ -314,6 +316,21 @@ function normalizedHost(url: string): string {
   return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
 }
 
+function titleFromDirectoryLink(link: HtmlLink): string {
+  const label = decodeHtmlText(link.title ?? "");
+  if (label && !GENERIC_DIRECTORY_LINK_LABEL.test(label)) {
+    return label.slice(0, 160);
+  }
+  const url = new URL(link.url);
+  return normalizedHost(url.href)
+    .split(".")
+    .slice(0, -1)
+    .join(" ")
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .slice(0, 160);
+}
+
 function isNonCallHost(host: string): boolean {
   return NON_CALL_HOSTS.some(
     (blocked) => host === blocked || host.endsWith(`.${blocked}`),
@@ -436,6 +453,49 @@ function inArticleExternalLinks(
     .slice(0, limit);
 }
 
+function africanLiteraryDirectoryIndex(
+  source: Source,
+  html: string,
+  finalUrl: string,
+): DiscoveredSourceLink[] {
+  const sourceHost = normalizedHost(finalUrl);
+  const byHost = new Map<string, DiscoveredSourceLink>();
+  for (const link of htmlLinks(mainContent(html), finalUrl)) {
+    const url = new URL(link.url);
+    const host = normalizedHost(link.url);
+    if (host === sourceHost || isNonCallHost(host)) continue;
+    if (/\.(?:pdf|docx?|xlsx?)(?:$|[?#])/i.test(link.url)) continue;
+
+    const title = titleFromDirectoryLink(link);
+    const isSubmissionPlatform =
+      host === "submittable.com" || host.endsWith(".submittable.com");
+    const candidate: DiscoveredSourceLink = {
+      url: link.url,
+      title,
+      kind: isSubmissionPlatform ? "partner-feed" : "organization-website",
+      registryTier: isSubmissionPlatform ? 1 : 0,
+      followsOutboundLinks: false,
+      discoveredFromSourceId: source.id,
+      registryOrganizationName: isSubmissionPlatform ? title : undefined,
+      registryTrust: {
+        status: "needs-review",
+        authorityKind: isSubmissionPlatform ? "platform" : "other",
+        score: 40,
+        evidenceUrl: finalUrl,
+        reviewNote:
+          "Discovered from a Phase 3 African literary directory; verify the official publisher page before publication.",
+      },
+    };
+
+    if (!byHost.has(host)) {
+      byHost.set(host, candidate);
+    }
+  }
+  return [...byHost.values()].sort((left, right) =>
+    (left.title ?? left.url).localeCompare(right.title ?? right.url),
+  );
+}
+
 /** Convert a source page into canonical follow-up sources using its explicit site schema. */
 export function discoverSourceLinks(
   source: Source,
@@ -546,5 +606,7 @@ export function discoverSourceLinks(
     return filmIndependentIndex(source, html, finalUrl);
   if (source.discoveryAdapterId === "film-independent-detail")
     return filmIndependentDetail(source, html, finalUrl);
+  if (source.discoveryAdapterId === "african-literary-directory")
+    return africanLiteraryDirectoryIndex(source, html, finalUrl);
   return [];
 }

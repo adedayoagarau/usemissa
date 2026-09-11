@@ -14,20 +14,17 @@ export type HeaderSession = {
 
 const signedInLinks = [
   { href: "/opportunities", label: "Opportunities" },
-  { href: "/journals", label: "Journals & presses" },
-  { href: "/residencies", label: "Residencies" },
+  { href: "/directory", label: "Directory" },
+  { href: "/rankings/magazines", label: "Rankings" },
   { href: "/tracker", label: "Tracker" },
   { href: "/library", label: "Library" },
-  { href: "/guides", label: "Guides" },
 ] as const;
 
 const publicLinks = [
-  { href: "/", label: "Home" },
   { href: "/opportunities", label: "Opportunities" },
-  { href: "/journals", label: "Journals & presses" },
-  { href: "/residencies", label: "Residencies" },
-  { href: "/guides", label: "Guides" },
-  { href: "/for-organizations", label: "For organizations" },
+  { href: "/directory", label: "Directory" },
+  { href: "/rankings/magazines", label: "Rankings" },
+  { href: "/about", label: "About" },
 ] as const;
 
 export function MissaSiteHeader({
@@ -49,17 +46,13 @@ export function MissaSiteHeader({
         Skip to content
       </a>
       <div className={styles.inner}>
-        <MissaWordmark
-          href={session ? "/home" : "/"}
-          size="app"
-          className={styles.brandLink}
-        />
+        <MissaWordmark href="/" size="app" className={styles.brandLink} />
         <nav className={styles.desktopNav} aria-label="Primary navigation">
           {visibleLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              aria-current={link.label === current ? "page" : undefined}
+              aria-current={link.label === (current === "Magazine rankings" ? "Rankings" : current) ? "page" : undefined}
             >
               {link.label}
             </Link>
@@ -88,14 +81,6 @@ export function MissaSiteHeader({
           ) : (
             <div className={styles.authActions}>
               <Link href="/login?next=%2Fopportunities">Log in</Link>
-              <Button
-                nativeButton={false}
-                render={<Link href="/signup?next=%2Fopportunities" />}
-                size="sm"
-                className={styles.createButton}
-              >
-                Create account
-              </Button>
             </div>
           )}
           <Button
@@ -121,7 +106,7 @@ export function MissaSiteHeader({
             <Link
               key={link.href}
               href={link.href}
-              aria-current={link.label === current ? "page" : undefined}
+              aria-current={link.label === (current === "Magazine rankings" ? "Rankings" : current) ? "page" : undefined}
               onClick={() => setMobileOpen(false)}
             >
               {link.label}
@@ -134,12 +119,6 @@ export function MissaSiteHeader({
                 onClick={() => setMobileOpen(false)}
               >
                 Log in
-              </Link>
-              <Link
-                href="/signup?next=%2Fopportunities"
-                onClick={() => setMobileOpen(false)}
-              >
-                Create account
               </Link>
             </>
           ) : null}

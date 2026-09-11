@@ -1,0 +1,38 @@
+/* Approved homepage colour extension, 2026-09-07. Product UI retains its palette. */
+.missa-homepage-hero,
+.missa-opportunity-carousel,
+.missa-homepage-continuation {
+  --marketing-citron-400: #ddf45b;
+  --marketing-sky-200: #c6e8f4;
+  --marketing-highlight: var(--marketing-citron-400);
+  --marketing-workspace-ground: var(--marketing-sky-200);
+  --marketing-quiet-ground: color-mix(
+    in srgb,
+    var(--marketing-highlight) 14%,
+    var(--surface)
+  );
+  --marketing-ink: var(--accent-deep);
+  --marketing-secondary: color-mix(
+    in srgb,
+    var(--accent-deep) 85%,
+    var(--surface)
+  );
+  --hero-control-radius: 9999px;
+  --hero-action-surface: var(--marketing-highlight);
+  --hero-action-ink: var(--marketing-ink);
+  --hero-photo-shade: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--accent-deep) 42%, transparent),
+    transparent 64%
+  );
+}
+
+@media (max-width: 1023px) {
+  .missa-homepage-hero {
+    --hero-photo-shade: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--accent-deep) 92%, transparent),
+      transparent 65%
+    );
+  }
+}

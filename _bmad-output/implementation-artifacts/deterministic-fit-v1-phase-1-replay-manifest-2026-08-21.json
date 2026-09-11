@@ -1,0 +1,66 @@
+{
+  "manifestId": "deterministic-fit-v1-phase-1-replay-2026-08-21",
+  "status": "pre-production-replay-complete-promotion-blocked",
+  "environment": "pre-production",
+  "servingMode": "replay-only",
+  "productionVerification": "catalogue-read-verified",
+  "policyVersion": "deterministic-fit-v1",
+  "featureVersion": "deterministic-fit-features-v1",
+  "gateVersion": "deterministic-fit-gates-v1",
+  "explanationVersion": "deterministic-fit-explanations-v1",
+  "corpus": {
+    "corpusId": "deterministic-fit-v1-phase-0-global-2026-08-20",
+    "sha256": "0a65f17533b195ef159b046b8253b9e2a4211b800dfbc92969040a0e48e168d2",
+    "goldenCaseCount": 14,
+    "creatorFixtureCount": 10,
+    "opportunityFixtureCount": 18
+  },
+  "baselineFixtures": {
+    "compatibilitySha256": "8d3eba101d96d27d551575243fab6ae0a171a9997b3b9b03f774dda651244d8d",
+    "postgresSha256": "363924c1237b060ac2588aebc718296caf860da56ce91dbb87c886a34e4c8335"
+  },
+  "initialHypotheses": {
+    "groupWeights": {
+      "explicit-intent": 45,
+      "feasibility": 25,
+      "affinity": 15,
+      "value-timing": 15
+    },
+    "maxOrganizationCountInFirstTen": 2,
+    "maxConsecutiveSameType": 3,
+    "maxDiscoverySlotsInFirstTen": 1,
+    "interpretation": "Testable starting hypotheses; not calibrated truth and not acceptance probability."
+  },
+  "replayResults": {
+    "goldenCasesDeterministic": true,
+    "confirmedEligibilityViolations": 0,
+    "explanationFaithfulnessFailures": 0,
+    "accountIsolationFailures": 0,
+    "fallbackInvariantFailures": 0,
+    "paginationSnapshotInvariantFailures": 0,
+    "productionCatalogueCandidates": 679,
+    "productionCatalogueScenariosDeterministic": true,
+    "productionCatalogueConfirmedEligibilityViolations": 0,
+    "productionCatalogueExplanationFailures": 0
+  },
+  "fallback": {
+    "policyVersion": "baseline",
+    "servingOrderAuthority": "existing compatibility or PostgreSQL catalogue order",
+    "activation": "independent; no recommendation evidence or analytics dependency"
+  },
+  "activation": {
+    "enabled": false,
+    "liveRequestOrderingChanged": false,
+    "shadowInvocationEnabled": false,
+    "harness": "implemented-baseline-preserving-active-rejected",
+    "rollbackTarget": "baseline"
+  },
+  "promotionBlockers": [
+    "Canonical dispute/removal/safety authority is not version-bound in the verified database schema.",
+    "Transactional Opportunity-version protection between revalidation and Tracker creation remains unresolved.",
+    "Durable production recommendation provenance and customer undo storage remain unresolved.",
+    "Real Neon Auth and Tracker behavior for accounts without completed Profiles remains unverified.",
+    "Curator approval is a separate human gate and is not inferred from automated tests."
+  ],
+  "sourceCommitAtCapture": "d88e0e3f4"
+}

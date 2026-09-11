@@ -8,7 +8,7 @@ import {
   TRACKER_IMPORT_MAX_BYTES,
   type ImportMapping,
 } from '@missa/radar-engine';
-import { trackerImportCandidateHash, trackerImportStateHash, TrackerImportPersistenceError } from '@missa/radar-adapters';
+import { creatorPoolFor, creatorRelationalAuthorityEnabled, loadCanonicalTrackerImportStore, consumeTrackerImportPreviewRateLimit, trackerImportCandidateHash, trackerImportStateHash, TrackerImportPersistenceError } from '@missa/radar-adapters';
 import { getSessionAccount } from '@/lib/auth';
 import { consumeTrackerImportPreview, getEngine } from '@/lib/engine';
 import { signTrackerImportPreviewToken, stableMappingHash } from '@/lib/tracker-import-token';
@@ -71,7 +71,8 @@ export async function POST(request: Request) {
   if (!session) return jsonError('Not authenticated', 401);
   if (!session.account.userId) return jsonError('Profile not found', 404);
   try {
-    await consumeTrackerImportPreview(session.account.id);
+    if (creatorRelationalAuthorityEnabled(process.env) && process.env.DATABASE_URL) await consumeTrackerImportPreviewRateLimit(creatorPoolFor(process.env.DATABASE_URL),{accountId:session.account.id,limit:5,windowMs:10*60_000});
+    else await consumeTrackerImportPreview(session.account.id);
   } catch (error) {
     if (error instanceof TrackerImportPersistenceError && error.code === 'rate-limit') return jsonError('Too many previews. Try again later.', 429, { 'Retry-After': String(error.retryAfter ?? 60) });
     return jsonError('We could not start this preview. Please try again.', 500);
@@ -98,11 +99,13 @@ export async function POST(request: Request) {
   try {
     const parsed = parseTrackerCsv(bytes);
     const mapping = parseMapping(form.get('mapping'), parsed.columns);
-    const engine = await getEngine();
-    const plan = planTrackerImport(engine.store, session.account.userId, parsed, mapping);
+    const store=creatorRelationalAuthorityEnabled(process.env) && process.env.DATABASE_URL
+      ? await loadCanonicalTrackerImportStore(creatorPoolFor(process.env.DATABASE_URL),session.account.id,session.account.userId)
+      : (await getEngine()).store;
+    const plan = planTrackerImport(store, session.account.userId, parsed, mapping);
     const sourceHashValue = sourceHash(bytes);
     const expiresAtSeconds = Math.floor(Date.now() / 1000) + PREVIEW_WINDOW_SECONDS;
-    const token = signTrackerImportPreviewToken({ v: 1, userId: session.account.userId, sourceHash: sourceHashValue, mappingHash: stableMappingHash(mapping), candidateHash: trackerImportCandidateHash(plan.candidateSet), trackerHash: trackerImportStateHash(engine.store, session.account.userId), exp: expiresAtSeconds });
+    const token = signTrackerImportPreviewToken({ v: 1, userId: session.account.userId, sourceHash: sourceHashValue, mappingHash: stableMappingHash(mapping), candidateHash: trackerImportCandidateHash(plan.candidateSet), trackerHash: trackerImportStateHash(store, session.account.userId), exp: expiresAtSeconds });
     return NextResponse.json(previewResponse(plan, token, new Date(expiresAtSeconds * 1000).toISOString()), { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     if (error instanceof TrackerImportError) return jsonError(error.message, error.code === 'limit' ? 413 : 400);

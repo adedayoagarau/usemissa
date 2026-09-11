@@ -8,6 +8,7 @@ test('readiness probe reports configuration presence without leaking secrets', a
   expect(['ready', 'degraded']).toContain(body.status);
   expect(body.checks.database).toMatchObject({ required: true });
   expect(body.checks.session).toMatchObject({ required: true });
+  expect(body.checks.creatorAuthority).toMatchObject({ required: true });
   expect(body.checks.malwareScanning).toHaveProperty('required', false);
   expect(JSON.stringify(body)).not.toContain('postgres://');
   expect(JSON.stringify(body)).not.toContain('secret');

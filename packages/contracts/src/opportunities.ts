@@ -18,6 +18,7 @@ export const opportunityTypeSchema = z.enum([
   "pitch",
   "exhibition",
   "commission",
+  "job",
   "other",
 ]);
 
@@ -59,6 +60,9 @@ export const opportunitySortSchema = z.enum([
   "soonest-deadline",
   "recently-verified",
   "recently-added",
+  "recently-opened",
+  "no-fee-first",
+  "alphabetical",
 ]);
 
 export const opportunityCategorySchema = z.enum([
@@ -72,8 +76,17 @@ export const opportunityCategorySchema = z.enum([
   "more",
 ]);
 
+export const opportunityDomainSchema = z.enum([
+  "visual_arts",
+  "multidisciplinary",
+  "residencies",
+  "literature",
+]);
+export type OpportunityDomain = z.infer<typeof opportunityDomainSchema>;
+
 export const opportunityBrowseQuerySchema = z.object({
   query: z.string().trim().max(200).optional(),
+  domain: opportunityDomainSchema.or(z.string().trim().max(80)).optional(),
   category: opportunityCategorySchema.default("all"),
   types: z.array(opportunityTypeSchema).max(16).default([]),
   disciplines: z.array(z.string().trim().min(1).max(80)).max(16).default([]),
@@ -82,9 +95,12 @@ export const opportunityBrowseQuerySchema = z.object({
   taxonomySchemeVersion: z.number().int().min(1).default(1),
   taxonomyIncludeDescendants: z.boolean().default(false),
   locations: z.array(z.string().trim().min(1).max(120)).max(32).default([]),
+  country: z.string().trim().max(80).optional(),
+  countryCode: z.string().trim().max(10).optional(),
   feeStatus: feeStatusSchema.optional(),
   maxFeeCents: z.number().int().min(0).max(10_000_000).optional(),
   deadlineWithinDays: z.number().int().min(0).max(366).optional(),
+  deadlineKind: z.enum(["rolling"]).optional(),
   openNow: z.boolean().default(true),
   verifiedOnly: z.boolean().default(false),
   simultaneousRequired: z.boolean().optional(),
@@ -274,6 +290,7 @@ const opportunityIdentitySchema = z.object({
 export const opportunityBrowseItemSchema = opportunityIdentitySchema.extend({
   status: opportunityStatusSchema,
   type: opportunityTypeSchema,
+  openDate: z.iso.date().optional(),
   discipline: z.string().trim().max(80).optional(),
   genres: z.array(z.string().trim().min(1).max(80)).max(32),
   taxonomy: z
@@ -287,6 +304,8 @@ export const opportunityBrowseItemSchema = opportunityIdentitySchema.extend({
   fee: opportunityFeeSchema,
   prize: z.string().trim().max(300).optional(),
   location: z.string().trim().max(160).optional(),
+  countryCode: z.string().trim().max(10).optional(),
+  country: z.string().trim().max(120).optional(),
   submissionAvailable: z.boolean(),
   source: opportunitySourceEvidenceSchema,
   personal: opportunityPersonalStateSchema.optional(),

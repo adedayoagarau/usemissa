@@ -1,10 +1,13 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { Alert, AlertKind } from '@missa/radar-engine';
+import type { CreatorInboxAlertView } from '@missa/radar-adapters';
 
 import { InboxProduct, type InboxProductGroup, type InboxProductItem } from '@/components/inbox-product';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
+import { CreatorReminderRepository } from '@/lib/creator-reminders';
 import { getEngine } from '@/lib/engine';
+import { getCreatorInboxRepository, getCreatorNotificationRepository } from '@/lib/creatorRepositories';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -37,7 +40,15 @@ function groupFor(kind: AlertKind): InboxProductGroup {
   return 'discovery';
 }
 
-function safeSummary(alert: Alert): string {
+type InboxSourceAlert = Pick<Alert, 'id' | 'kind' | 'title' | 'body' | 'reason' | 'createdAt' | 'opportunityId'> & { read: boolean; revision?: number };
+
+function goalHref(alert: InboxSourceAlert): string | undefined {
+  const id = /^Goal check-in · \/goals\?goal=([0-9a-f-]{36})$/i.exec(alert.reason)?.[1];
+  return id ? `/goals?goal=${id}` : undefined;
+}
+
+function safeSummary(alert: InboxSourceAlert): string {
+  if (goalHref(alert)) return alert.body;
   if (alert.kind === 'new-match') return 'This Opportunity may fit the preferences you saved.';
   if (alert.kind === 'followed-org-new-call') return 'A new Opportunity is available from an Organization you follow.';
   if (alert.kind === 'opening-soon') return 'Review the opening window before you begin preparing.';
@@ -50,7 +61,8 @@ function safeSummary(alert: Alert): string {
   return 'Open the related record to review this update.';
 }
 
-function safeReason(alert: Alert): string {
+function safeReason(alert: InboxSourceAlert): string {
+  if (goalHref(alert)) return "You scheduled a check-in for this goal.";
   if (alert.kind === 'new-match') return 'It matches a search or preference you saved.';
   if (alert.kind === 'followed-org-new-call') return 'You follow this Organization.';
   if (alert.kind === 'submission-receipt' || alert.kind === 'submission-decision') return 'This belongs to a submission you made through Missa.';
@@ -61,24 +73,27 @@ function safeReason(alert: Alert): string {
   return 'This Opportunity is in your Tracker.';
 }
 
-function actionFor(alert: Alert): Pick<InboxProductItem, 'actionHref' | 'actionLabel'> {
+function actionFor(alert: InboxSourceAlert): Pick<InboxProductItem, 'actionHref' | 'actionLabel'> {
+  const goal = goalHref(alert);
+  if (goal) return { actionHref: goal, actionLabel: 'Open goal' };
   if (alert.kind === 'submission-receipt' || alert.kind === 'submission-decision') return { actionHref: '/tracker?view=submissions', actionLabel: alert.kind === 'submission-decision' ? 'View decision' : 'View submissions' };
   if (['deadline-reminder', 'response-overdue', 'withdrawal-suggested'].includes(alert.kind)) return { actionHref: '/tracker', actionLabel: 'Open Tracker' };
   if (alert.opportunityId) return { actionHref: `/opportunities/${encodeURIComponent(alert.opportunityId)}`, actionLabel: 'View Opportunity' };
   return { actionHref: '/opportunities', actionLabel: 'Browse Opportunities' };
 }
 
-function toProductItem(alert: Alert): InboxProductItem {
+function toProductItem(alert: InboxSourceAlert): InboxProductItem {
   return {
     id: alert.id,
     kind: alert.kind,
     group: groupFor(alert.kind),
-    category: categories[alert.kind],
+    category: goalHref(alert) ? "Goal check-in" : categories[alert.kind],
     title: alert.title,
     summary: safeSummary(alert),
     reason: safeReason(alert),
     createdAt: alert.createdAt,
     unread: !alert.read,
+    revision: alert.revision,
     ...actionFor(alert),
   };
 }
@@ -90,11 +105,23 @@ export default async function InboxPage({ searchParams }: { searchParams?: Promi
 
   const raw = searchParams ? await searchParams : {};
   const requestedView = Array.isArray(raw.view) ? raw.view[0] : raw.view;
-  const engine = await getEngine();
-  const items = [...engine.store.alerts.values()]
-    .filter((alert) => alert.audience === 'user' && alert.userId === session.account.userId)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .map(toProductItem);
+  const repository = getCreatorInboxRepository();
+  const items = repository
+    ? (await repository.alerts(session.account.id)).map((alert: CreatorInboxAlertView) => toProductItem({ ...alert, read: Boolean(alert.readAt) }))
+    : [...(await getEngine()).store.alerts.values()]
+        .filter((alert) => alert.audience === 'user' && alert.userId === session.account.userId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .map(toProductItem);
 
-  return <InboxProduct initialItems={items} initialView={requestedView === 'email' ? 'email' : 'briefing'} />;
+  if (repository) {
+    const links = await new CreatorReminderRepository().inboxLinks(session.account.id);
+    for (const item of items) {
+      const link = links.find(l => l.id === item.id);
+      if (link?.href.startsWith('/tracker?')) { item.actionHref = link.href; item.actionLabel = 'Open application'; item.reminderId = link.reminderId ?? undefined; item.reason = 'You scheduled this reminder.'; item.category = item.kind === 'response-overdue' ? 'Response check-in' : 'Application reminder'; }
+      if (link?.href.startsWith('/opportunities/') && item.kind === 'followed-org-new-call') { item.actionHref = link.href; item.actionLabel = 'View opportunity'; item.reason = link.reason; item.summary = link.body; item.category = 'Following'; }
+    }
+  }
+  const notificationRepository = getCreatorNotificationRepository();
+  const initialPreferences = notificationRepository ? await notificationRepository.preferences(session.account.id) : undefined;
+  return <InboxProduct initialItems={items} initialPreferences={initialPreferences} initialView={requestedView === 'email' ? 'email' : requestedView === 'reminders' ? 'reminders' : 'briefing'} />;
 }

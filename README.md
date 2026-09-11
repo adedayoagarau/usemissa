@@ -1,9 +1,15 @@
 # Missa
 
-Missa is a source-first opportunity library and submission workspace for
-creators and organizations. It helps people find grants, magazines,
-residencies, fellowships, contests, awards, and other submission opportunities,
-then compare the source details before deciding where to spend their time.
+Missa is building the trusted opportunity layer for creative work. It starts as
+a source-first opportunity library and submission workspace for creators and
+organizations: people find grants, magazines, residencies, fellowships,
+contests, awards, and other submission opportunities, then compare the source
+details before deciding where to spend their time.
+
+The larger product connects discovery to preparation, submission, review,
+decisions, and outcomes. The public product description must stay grounded in
+the current route, data, and deployment state; the strategic thesis and future
+platform direction are documented in [Missa value and positioning](docs/missa-value-and-positioning.md).
 
 ## Public discovery
 

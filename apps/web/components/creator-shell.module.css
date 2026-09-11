@@ -1,0 +1,50 @@
+.shell { min-height: 100vh; background: var(--background); }
+.skipLink { position: fixed; z-index: 60; inset-block-start: 8px; inset-inline-start: 8px; translate: 0 -160%; padding: 12px 16px; border-radius: 8px; background: var(--foreground); color: var(--background); text-decoration: none; }.skipLink:focus { translate: 0; }
+.rail { position: fixed; z-index: 30; inset-block: 0; inset-inline-start: 0; display: none; width: 248px; flex-direction: column; padding: 24px 16px; border-inline-end: 1px solid var(--border); background: color-mix(in srgb, var(--background) 94%, var(--mineral-blue-tint)); transition:width 220ms ease, padding 220ms ease; }
+.railHeader { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0 4px 42px 8px; }
+.wordmark { color: var(--foreground); transition:opacity 140ms ease, width 220ms ease; }
+.collapseButton { display:grid; width:36px; height:36px; flex:0 0 36px; place-items:center; border:1px solid var(--border); border-radius:9px; background:var(--background); color:var(--muted-foreground); }
+.collapseButton:hover { color:var(--foreground); border-color:var(--border-strong); }
+.collapseButton svg { width:17px; }
+.navigation { display: grid; gap: 4px; }
+.navigation p { margin: 0 12px 8px; color: var(--muted-foreground); font-size: 12px; font-weight: 650; }
+.navigation a, .organization { display: flex; min-height: 44px; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; color: var(--muted-foreground); font-size: 14px; font-weight: 550; text-decoration: none; }
+.navigation a svg, .organization svg { width: 18px; height: 18px; flex: 0 0 auto; stroke-width: 1.75; }
+.navigation a:hover, .organization:hover { background: var(--muted); color: var(--foreground); }
+.navigation a[aria-current="page"] { background: var(--accent-tint); color: var(--accent-deep); }
+.navigation a:focus-visible, .organization:focus-visible, .account button:focus-visible, .mobileLogout:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.organization { margin-top: 24px; border-top: 1px solid var(--border); border-radius: 0; padding-top: 16px; }
+.organization span { display: grid; }
+.organization small { font-size: 12px; font-weight: 400; }
+.account { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 10px; align-items: center; margin-top: auto; padding: 16px 8px 0; border-top: 1px solid var(--border); }
+.account > span { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 999px; background: var(--accent-deep); color: white; font-size: 13px; font-weight: 700; }
+.account div { display: grid; min-width: 0; }
+.account b, .account small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account b { font-size: 13px; }.account small { color: var(--muted-foreground); font-size: 11px; }
+.account button { grid-column: 2; justify-self: start; border: 0; background: transparent; color: var(--muted-foreground); font-size: 12px; }
+.account p { grid-column: 1 / -1; margin: 0; color: var(--destructive); font-size: 12px; }
+.mobileHeader { position: sticky; z-index: 20; top: 0; display: flex; height: 68px; align-items: center; justify-content: space-between; padding-inline: 24px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 96%, transparent); }
+.drawer { width: min(88vw, 320px); padding: 24px 16px; }
+.drawer .navigation { margin-top: 24px; }
+.mobileLogout { min-height: 44px; margin: 24px 12px 0; border: 0; background: transparent; color: var(--destructive); font: inherit; }
+.content { min-width: 0; transition:padding-inline-start 220ms ease; }
+@media (min-width: 1200px) {
+  .rail { display: flex; }
+  .mobileHeader { display: none; }
+  .content { padding-inline-start: 248px; }
+  .shell[data-rail-collapsed] .rail { width:76px; padding-inline:10px; }
+  .shell[data-rail-collapsed] .content { padding-inline-start:76px; }
+  .shell[data-rail-collapsed] .railHeader { justify-content:center; margin-inline:0; }
+  .shell[data-rail-collapsed] .wordmark { position:absolute; width:0; opacity:0; pointer-events:none; }
+  .shell[data-rail-collapsed] .navigation p,
+  .shell[data-rail-collapsed] .navigation a span,
+  .shell[data-rail-collapsed] .organization span,
+  .shell[data-rail-collapsed] .account div,
+  .shell[data-rail-collapsed] .account button,
+  .shell[data-rail-collapsed] .account p { display:none; }
+  .shell[data-rail-collapsed] .navigation a,
+  .shell[data-rail-collapsed] .organization { justify-content:center; padding-inline:0; }
+  .shell[data-rail-collapsed] .organization { border-top:0; }
+  .shell[data-rail-collapsed] .account { display:flex; justify-content:center; padding-inline:0; }
+}
+@media (prefers-reduced-motion: reduce) { .navigation a, .organization { transition: none; } }

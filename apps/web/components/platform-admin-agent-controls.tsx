@@ -36,6 +36,7 @@ export default function PlatformAdminAgentControls({
   const [targetId, setTargetId] = useState("");
   const [action, setAction] = useState<(typeof actions)[number]>("requeue");
   const [reason, setReason] = useState("");
+  const [confirmation, setConfirmation] = useState("");
   const [message, setMessage] = useState<string>();
   const [saving, setSaving] = useState(false);
 
@@ -50,7 +51,7 @@ export default function PlatformAdminAgentControls({
           "content-type": "application/json",
           "Idempotency-Key": crypto.randomUUID(),
         },
-        body: JSON.stringify({ targetType, targetId, action, reason }),
+        body: JSON.stringify({ targetType, targetId, action, reason, confirmation }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok)
@@ -64,6 +65,7 @@ export default function PlatformAdminAgentControls({
       });
       setTargetId("");
       setReason("");
+      setConfirmation("");
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Unable to request control",
@@ -389,6 +391,11 @@ export default function PlatformAdminAgentControls({
                 placeholder="Why is this safe and necessary?"
                 className="mt-1 w-full resize-y border border-border px-3 py-2 text-sm leading-6 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-foreground">Exact confirmation</span>
+              <span className="mt-1 block break-all font-mono text-[11px] text-muted-foreground">CONFIRM {targetType} {targetId || "<target-id>"} {action}</span>
+              <input required value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoComplete="off" className="mt-2 h-10 w-full border border-border px-3 font-mono text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" />
             </label>
             <button
               type="submit"

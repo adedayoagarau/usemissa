@@ -1,0 +1,146 @@
+# Submission portal — Wave 6 plan
+
+Wave 6 moves the portal from a complete relational applicant foundation into
+an organization operating system. It starts only after Wave 5's provider and
+device evidence is recorded; local green checks do not substitute for hosted
+certification.
+
+## Outcomes
+
+**Current slice:** reviewer completion now rejects non-finite, fractional, or
+out-of-range scores and trims/limits notes at the HTTP boundary.
+
+Reviewer assignment projections now include total and open assignment counts,
+giving workload context without exposing other reviewers' submissions. Reviewer
+and organization projections also expose group, expiry, recusal, reassignment,
+and recommendation-state metadata.
+
+Organization admins can now set the default blind-review policy. The setting is
+stored as a revisioned relational record and every change emits an audit/outbox
+effect; published workflow versions remain authoritative for per-stage behavior.
+
+Reviewer groups now have a relational projection with member counts, open
+assignment counts, and optional workload limits; group creation is an audited,
+idempotent organization-admin command.
+
+Reviewer-group membership can now be added through the same organization scope
+and idempotency boundary, with duplicate membership rejected explicitly.
+
+Assignments can target a reviewer group; membership is checked and open-work
+limits are enforced inside the assignment transaction.
+
+Decision-linked message drafts now require an organization-scoped decision and
+recipient, begin in draft state, and record their creation through the same
+audit/outbox boundary.
+
+Drafts can now transition through explicit approved and scheduled states with
+revision checks; no transition claims that a provider accepted or delivered a
+message.
+
+Delivery attempts now record accepted, delivered, or failed provider evidence
+with attempt numbers, references, error codes, and retry timestamps; provider
+acceptance remains distinct from delivery proof.
+
+Organization retention policies now have a revisioned, admin-only update
+boundary for drafts, uploads, reviews, and messages; cleanup execution remains
+separate from policy configuration.
+
+Erasure requests now have an explicit admin request and owner approval
+workflow, scoped to drafts, uploads, reviews, or messages, with revision checks
+and audit/outbox evidence before any destructive executor runs.
+
+Organization admins can now save named inbox views with bounded status and
+opportunity filters; each view is owner-scoped and can be listed, revised with
+an `If-Match` revision, or deleted through the command and audit/outbox
+boundary.
+
+Reviewer recommendations now support an admin-controlled correction path that
+records previous and corrected values, a required reason, revision checks, and
+an immutable correction audit record.
+
+Assignments now carry expiry and recusal metadata; recusal is an admin-only,
+revision-aware command that emits an audit/outbox effect.
+
+Recused or expired assignments can be reassigned through a lineage-preserving
+command that links the replacement to its prior assignment.
+
+Reviewer recommendations now distinguish draft saves from final completion;
+draft saves keep the assignment open and finalization promotes the same record
+to final state.
+
+Organization submission bulk actions now expose explicit, non-mutating scope
+previews, and exports include a version, source boundary, timestamp, and
+provenance-safe submission records without file URLs.
+
+Read-only organization diagnostics now report pending outbox work, oldest
+pending event, failed delivery attempts, and review assignments open beyond
+fourteen days without exposing provider secrets or unrelated tenants.
+
+### Review operations
+
+- Configure review stages, reviewer groups, workload limits, blind projections,
+  conflicts, recusal, expiry, and reassignment.
+- Support review-form version pinning and draft/final recommendations without
+  converting scores directly into decisions.
+- Add organization-safe reviewer and submission projections with server-enforced
+  scope.
+
+### Communication and outcomes
+
+- Build recipient-specific message drafts tied to immutable decision versions.
+- Add preview, approval, scheduling, sending, retry, and delivered/failed
+  evidence as independent states.
+- Expose applicant-visible outcomes without leaking internal notes or reviewer
+  identity.
+
+### Operations and governance
+
+- Add saved inbox views, bulk actions with explicit scope previews, and
+  provenance-preserving exports.
+- Add retention/erasure workflows for drafts, uploads, reviews, and messages.
+- Add operator diagnostics for outbox lag, provider failures, and stuck review
+  stages.
+
+## Ordered build slices
+
+1. Lock review-stage, conflict, and workload contracts.
+2. Add relational reviewer-group and assignment projections.
+3. Add review-form draft/final version pins and correction history.
+4. Implement decision-linked message drafts and approval gates.
+5. Add delivery/retry telemetry and customer-safe receipts.
+6. Add inbox saved views, scoped bulk actions, and exports.
+7. Add retention and erasure jobs with audit evidence.
+8. Run hosted, tenant-isolation, accessibility, and recovery gates.
+
+## Boundaries
+
+- Decisions remain per Work; communication never changes a decision.
+- Provider acceptance is not delivery proof.
+- Exports are portable outcomes, never submission proof.
+- Every consequential command remains idempotent, revision-aware, audited, and
+represented in the outbox.
+
+## Verification record
+
+- Workspace build, 54 tests (52 passed, 2 skipped), web typecheck, design-system
+  policy, and `git diff --check` are green after the Wave 6 slices.
+- The local Neon target has all portal/Wave 6 tables and relational health
+  reports `schemaReady: true` after applying the reconciled authority schema,
+  migrations 0056/0057, and Wave 6 migrations 0059/0061–0069.
+- The clean target-schema replay script now includes the portal/Wave 6 tail
+  after the reconciled authority base, with a database-schema regression test
+  covering dependency order. This is a replay-proof improvement; it does not
+  certify the shared Neon or Vercel Preview database as disposable.
+- A fresh disposable Neon database (`missa_story_16_1_wave6_proof_1789154799149`)
+  replayed all 54 target migrations and reported every Wave 6 readiness table.
+  The real-Postgres Workspace integration passed its tenant-isolation,
+  concurrency, idempotency, and rollback assertions; the Radar adapter target
+  suite passed 263 tests with one unrelated creator-authority test skipped. The
+  disposable database was dropped after the rehearsal; no test data was
+  retained.
+- The shared local Neon target was not used for destructive integration tests:
+  its safety guard requires an explicitly named disposable `missa_story_16_1_*`
+  database. Hosted tenant-isolation and device gates remain separate evidence
+  requirements.
+- Vercel Preview resolves to Neon database `neondb`, so the guarded live suite
+  was not run against Preview and no production database was changed.

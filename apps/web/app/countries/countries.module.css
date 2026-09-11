@@ -1,0 +1,141 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--s4) var(--s3) var(--s10);
+}
+
+.hero {
+  padding: var(--s6) 0 var(--s5);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--s5);
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin-bottom: var(--s1);
+}
+
+.headline {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--foreground);
+  margin-bottom: var(--s2);
+  line-height: 1.2;
+}
+
+.subheadline {
+  font-size: 1rem;
+  color: var(--muted-foreground);
+  max-width: 540px;
+  line-height: 1.6;
+}
+
+.region {
+  margin-bottom: var(--s6);
+}
+
+.regionHeading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--s3);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--s2);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.card:hover {
+  border-color: var(--primary);
+  background: var(--accent);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.cardFlag {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.cardName {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.cardMeta {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+.globalBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: var(--s5);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.globalBanner:hover {
+  border-color: var(--primary);
+  background: var(--accent);
+}
+
+.globalBannerText {
+  flex: 1;
+}
+
+.globalBannerTitle {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.globalBannerDesc {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding: var(--s3) var(--s2) var(--s8);
+  }
+
+  .headline {
+    font-size: 1.5rem;
+  }
+
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -23,6 +23,10 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
   const [workTitles, setWorkTitles] = useState(['']);
   const [workFileInputs, setWorkFileInputs] = useState<Record<number, File[]>>({});
   const [workFileUrls, setWorkFileUrls] = useState<Record<number, string[]>>({});
+  const [draftRevision, setDraftRevision] = useState<number>();
+  const [draftMessage, setDraftMessage] = useState<string>();
+  const [reviewing, setReviewing] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState<string>();
   const searchParams = useSearchParams();
   const submitLabel = feeCents && feeCents > 0 ? `Pay $${(feeCents / 100).toFixed(2)} USD and submit` : 'Submit application';
 
@@ -45,22 +49,59 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         });
       } catch { /* ignore malformed local draft */ }
     }
-    void fetch(`/api/submission-paths/${pathId}/draft`).then((response) => response.ok ? response.json() as Promise<{ draft?: { category?: string; answers?: Record<string, string | string[]>; workTitles?: string[] } | null }> : null).then((body) => {
+    void fetch(`/api/submission-paths/${pathId}/draft`).then((response) => response.ok ? response.json() as Promise<{ draft?: { category?: string; answers?: Record<string, string | string[]>; workTitles?: string[]; revision?: number } | null }> : null).then((body) => {
       const draft = body?.draft;
       if (!draft) return;
       queueMicrotask(() => {
         if (draft.category) setCategory(draft.category);
         if (draft.answers) { setValues(Object.fromEntries(Object.entries(draft.answers).filter(([key]) => !key.startsWith('__work_files_')).map(([key, value]) => [key, Array.isArray(value) ? value[0] ?? '' : value]))); setWorkFileUrls(extractWorkFileUrls(draft.answers)); }
         if (draft.workTitles?.length) setWorkTitles(draft.workTitles);
+        if (draft.revision) setDraftRevision(draft.revision);
       });
     }).catch(() => undefined);
   }, [pathId]);
 
   const setField = (fieldId: string, value: string) => setValues((v) => ({ ...v, [fieldId]: value }));
+  const isVisible = (field: SubmissionField) => !field.visibleWhen || values[field.visibleWhen.fieldId] === field.visibleWhen.equals;
+
+  const uploadFile = async (file: File): Promise<string> => {
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      setUploadMessage(`Checking ${file.name}…${attempt === 2 ? ' retrying' : ''}`);
+      const form = new FormData();
+      form.set('file', file);
+      const response = await fetch(`/api/submission-paths/${pathId}/upload`, { method: 'POST', body: form });
+      const body = await response.json().catch(() => ({})) as { url?: string; error?: string; retryable?: boolean };
+      if (response.ok && body.url) return body.url;
+      if (!body.retryable || attempt === 2) throw new Error(body.error ?? 'File upload failed');
+    }
+    throw new Error('File upload failed');
+  };
+
+  const saveDraft = () => startTransition(async () => {
+    setDraftMessage(undefined);
+    const answers: Record<string, string | string[]> = { ...values };
+    for (const [index, urls] of Object.entries(workFileUrls)) answers[`__work_files_${index}`] = urls;
+    const response = await fetch(`/api/submission-paths/${pathId}/draft`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() },
+      body: JSON.stringify({ category: category || undefined, answers, workTitles, sectionProgress: ['works', ...(fields.length ? ['questions'] : [])], expectedRevision: draftRevision }),
+    });
+    const body = await response.json() as { draft?: { revision: number }; error?: string };
+    if (!response.ok || !body.draft) {
+      setResult({ ok: false, message: body.error ?? 'Could not save your application draft' });
+      return;
+    }
+    setDraftRevision(body.draft.revision);
+    setDraftMessage('Draft saved and ready to restore on another device.');
+  });
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setResult(null);
+    if (!reviewing) {
+      setReviewing(true);
+      return;
+    }
     const formElement = e.currentTarget;
 
     const fileFields = fields.filter((f) => f.type === 'file-upload');
@@ -76,12 +117,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         const input = (formElement.elements.namedItem(f.id) as HTMLInputElement) ?? undefined;
         const file = input?.files?.[0];
         if (!file) continue;
-        const form = new FormData();
-        form.set('file', file);
-        const upload = await fetch(`/api/submission-paths/${pathId}/upload`, { method: 'POST', body: form });
-        const uploadBody = await upload.json().catch(() => ({}));
-        if (!upload.ok) { setResult({ ok: false, message: uploadBody.error ?? 'File upload failed' }); return; }
-        fileUrls[f.id] = uploadBody.url;
+        try { fileUrls[f.id] = await uploadFile(file); } catch (error) { setResult({ ok: false, message: error instanceof Error ? error.message : 'File upload failed' }); return; }
       }
       const answers: Record<string, string | string[]> = { ...values, ...fileUrls };
       const nextWorkFileUrls: Record<number, string[]> = { ...workFileUrls };
@@ -90,11 +126,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         if (!files.length) continue;
         const uploaded: string[] = [];
         for (const file of files) {
-          const form = new FormData(); form.set('file', file);
-          const upload = await fetch(`/api/submission-paths/${pathId}/upload`, { method: 'POST', body: form });
-          const uploadBody = await upload.json().catch(() => ({}));
-          if (!upload.ok) { setResult({ ok: false, message: uploadBody.error ?? 'File upload failed' }); return; }
-          if (typeof uploadBody.url === 'string') uploaded.push(uploadBody.url);
+          try { const url = await uploadFile(file); uploaded.push(url); } catch (error) { setResult({ ok: false, message: error instanceof Error ? error.message : 'File upload failed' }); return; }
         }
         nextWorkFileUrls[index] = [...(nextWorkFileUrls[index] ?? []), ...uploaded];
       }
@@ -104,8 +136,10 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         sessionStorage.setItem(draftKey, JSON.stringify({ ...current, category, values: answers, workTitles, submissionKey, checkoutKey }));
       } catch { /* submission still works if storage is unavailable */ }
       if (feeCents && feeCents > 0 && !paymentSessionId) {
-        const saveDraft = await fetch(`/api/submission-paths/${pathId}/draft`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ category, answers, workTitles, idempotencyKey: submissionKey }) });
-        if (!saveDraft.ok) { setResult({ ok: false, message: 'Could not save your application draft' }); return; }
+        const savedDraft = await fetch(`/api/submission-paths/${pathId}/draft`, { method: 'PUT', headers: { 'content-type': 'application/json', 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ category, answers, workTitles, sectionProgress: ['works', 'questions', 'payment'], idempotencyKey: submissionKey, expectedRevision: draftRevision }) });
+        if (!savedDraft.ok) { setResult({ ok: false, message: 'Could not save your application draft' }); return; }
+        const savedDraftBody = await savedDraft.json() as { draft?: { revision: number } };
+        if (savedDraftBody.draft) setDraftRevision(savedDraftBody.draft.revision);
         const checkout = await fetch(`/api/submission-paths/${pathId}/checkout`, { method: 'POST', headers: { 'Idempotency-Key': checkoutKey } });
         const checkoutBody = await checkout.json().catch(() => ({}));
         if (!checkout.ok || !checkoutBody.url) { setResult({ ok: false, message: checkoutBody.error ?? 'Payment could not be started' }); return; }
@@ -122,6 +156,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         setResult({ ok: false, message: data.error ?? 'Submission failed' });
         return;
       }
+      setUploadMessage(undefined);
       sessionStorage.removeItem(`missa_submission_draft:${pathId}`);
       const body = await res.json().catch(() => ({}));
       setResult({ ok: true, message: 'Submitted — your receipt is ready.', submissionId: body.submission?.id });
@@ -155,16 +190,17 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 id="application-works-title" className="text-sm font-semibold">Works — At least one required</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Titles and selected files become a submission snapshot. Files stay private until submission.</p></div><Button type="button" variant="outline" size="sm" onClick={() => setWorkTitles((current) => [...current, ''])}>Add another Work</Button></div>
         {workTitles.map((workTitle, index) => <div key={index} className="rounded-md border border-border p-3"><div className="flex flex-wrap gap-2"><Input aria-label={`Work ${index + 1} title`} placeholder={`Work ${index + 1} title`} value={workTitle} required={index === 0} onChange={(e) => setWorkTitles((current) => current.map((value, i) => i === index ? e.target.value : value))} />{index > 0 && <Button type="button" variant="ghost" size="sm" onClick={() => { setWorkTitles((current) => current.filter((_, i) => i !== index)); setWorkFileInputs((current) => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value]))); setWorkFileUrls((current) => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value]))); }}>Remove Work</Button>}</div><label className="mt-3 block text-xs leading-5 text-muted-foreground">Files for Work {index + 1} — Optional · 25 MB per file<input type="file" multiple className="mt-2 block min-h-11 w-full text-sm" aria-label={`Files for work ${index + 1}`} onChange={(event) => setWorkFileInputs((current) => ({ ...current, [index]: Array.from(event.target.files ?? []) }))} />{workFileUrls[index]?.length ? <span className="mt-1 block">{workFileUrls[index].length} uploaded file{workFileUrls[index].length === 1 ? '' : 's'} saved</span> : null}</label></div>)}
       </section>
-      {fields.length ? <section className="space-y-5" aria-labelledby="application-questions-title"><div><h3 id="application-questions-title" className="text-sm font-semibold">Organization questions</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Required and Optional are stated in text. Answers remain private until submission.</p></div>{fields.map((f) => (
+      {fields.length ? <section className="space-y-5" aria-labelledby="application-questions-title"><div><h3 id="application-questions-title" className="text-sm font-semibold">Organization questions</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Required and Optional are stated in text. Answers remain private until submission.</p></div>{fields.filter(isVisible).map((f) => (
         <div key={f.id}>
           <Label htmlFor={f.id}>{f.label} — {f.required ? 'Required' : 'Optional'}</Label>
+          {f.helpText ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{f.helpText}</p> : null}
           {f.type === 'file-upload' ? <><input id={f.id} name={f.id} type="file" required={f.required && !values[f.id]} className="mt-2 block min-h-11 w-full text-sm" /><p className="mt-1 text-xs text-muted-foreground">Maximum 25 MB. The current form does not yet show upload progress or retry.</p></> : f.type === 'category-select' ? <select id={f.id} name={f.id} required={f.required} value={values[f.id] ?? category} onChange={(e) => { setField(f.id, e.target.value); setCategory(e.target.value); }} className="mt-2 min-h-11 w-full rounded-md border border-input bg-white px-3 py-2 text-sm"><option value="">Choose a category</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select> : f.type === 'fee-toggle' ? <p className="mt-2 text-sm text-muted-foreground">The application fee is reviewed before external checkout. Payment and submission receipt remain separate states.</p> : <Input id={f.id} name={f.id} required={f.required} className="mt-2 min-h-11" onChange={(e) => setField(f.id, e.target.value)} />}
         </div>
       ))}</section> : <section aria-labelledby="application-questions-title"><h3 id="application-questions-title" className="text-sm font-semibold">No Organization questions</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">This published form requires the Work packet only.</p></section>}
-      <aside className="rounded-lg border border-border bg-muted/30 p-4 text-xs leading-5 text-muted-foreground"><strong className="block text-foreground">Before submitting</strong>The current form has no separate recipient-visible Review step. Check every Work, file, category, and answer above before continuing.</aside>
-      <Button type="submit" disabled={isPending}>
-        {isPending ? 'Submitting…' : submitLabel}
-      </Button>
+      {reviewing ? <aside className="rounded-lg border border-[var(--green)]/40 bg-[var(--green)]/5 p-4 text-sm leading-6" aria-labelledby="application-review-title"><strong id="application-review-title" className="block text-foreground">Review your application</strong><dl className="mt-3 grid gap-2 sm:grid-cols-2"><div><dt className="text-xs text-muted-foreground">Category</dt><dd>{category || 'Not selected'}</dd></div><div><dt className="text-xs text-muted-foreground">Works</dt><dd>{workTitles.filter((title) => title.trim()).length}</dd></div><div className="sm:col-span-2"><dt className="text-xs text-muted-foreground">Questions answered</dt><dd>{Object.values(values).filter((value) => value.trim()).length} of {fields.filter((field) => field.type !== 'file-upload').length}</dd></div></dl><p className="mt-3 text-xs text-muted-foreground">Confirming submits this packet to the organization. You can no longer edit it here after submission.</p></aside> : <aside className="rounded-lg border border-border bg-muted/30 p-4 text-xs leading-5 text-muted-foreground"><strong className="block text-foreground">Before submitting</strong>Review every Work, file, category, and answer before continuing.</aside>}
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end"><Button type="button" variant="outline" disabled={isPending} onClick={saveDraft}>{isPending ? 'Saving…' : 'Save draft'}</Button>{reviewing ? <Button type="button" variant="outline" disabled={isPending} onClick={() => setReviewing(false)}>Back to edit</Button> : null}<Button type="submit" disabled={isPending}>{isPending ? 'Submitting…' : reviewing ? submitLabel : 'Review application'}</Button></div>
+      {draftMessage ? <p className="text-xs text-[var(--success)]" role="status">{draftMessage}</p> : null}
+      {uploadMessage ? <p className="text-xs text-muted-foreground" role="status">{uploadMessage}</p> : null}
       {result && !result.ok && <p className="text-xs text-destructive" role="alert">{result.message}</p>}
     </form>
   );

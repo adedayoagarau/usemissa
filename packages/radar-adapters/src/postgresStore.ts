@@ -1,5 +1,5 @@
 import type { Pool, PoolClient } from 'pg';
-import { createStore, type OpportunityType, type RadarStore } from '@missa/radar-engine';
+import { createStore, type Opportunity, type OpportunityType, type RadarStore, type Source } from '@missa/radar-engine';
 import { postgresSchema } from './postgresSchema.js';
 import { saveOpportunityProjectionToPostgres } from './opportunityRelationalStore.js';
 
@@ -19,9 +19,22 @@ export class SnapshotConflictError extends Error {
   }
 }
 
+let schemaEnsured = false;
+
 /** Creates the Radar tables (idempotent — safe to call on every boot). */
 export async function ensurePostgresSchema(pool: Pool): Promise<void> {
+  if (schemaEnsured) return;
+  try {
+    const check = await pool.query("select 1 from missa_snapshot_versions where domain = 'radar' limit 1");
+    if (check.rowCount && check.rowCount > 0) {
+      schemaEnsured = true;
+      return;
+    }
+  } catch {
+    // table doesn't exist yet, proceed to create
+  }
   await pool.query(postgresSchema);
+  schemaEnsured = true;
 }
 
 async function hasColumn(client: PoolClient, table: string, column: string): Promise<boolean> {
@@ -388,6 +401,25 @@ function mapRowDelta<T extends { id: string }>(before: Map<string, T>, after: Ma
   return rowDelta([...before.values()], [...after.values()], (value) => value.id);
 }
 
+function sourceChangeAffectsOpportunityProjection(previous: Source, current: Source): boolean {
+  return previous.name !== current.name
+    || previous.url !== current.url
+    || previous.kind !== current.kind
+    || previous.organizationId !== current.organizationId
+    || !jsonEqual(previous.registryDisciplines ?? [], current.registryDisciplines ?? [])
+    || !jsonEqual(previous.registryGeography ?? [], current.registryGeography ?? []);
+}
+
+function opportunityChangeAffectsProjection(previous: Opportunity, current: Opportunity): boolean {
+  return previous.status !== current.status
+    || previous.sourceId !== current.sourceId
+    || previous.claimedByOrganizationId !== current.claimedByOrganizationId
+    || previous.createdAt !== current.createdAt
+    || previous.lastCheckedAt !== current.lastCheckedAt
+    || previous.lastChangedAt !== current.lastChangedAt
+    || !jsonEqual(previous.fields, current.fields);
+}
+
 /** Applies only changed Radar rows and rebases the write against the current
  * snapshot version. Canonical opportunity projections are dual-written when
  * an opportunity/source/version/change row changes. */
@@ -442,6 +474,7 @@ export async function saveRadarStoreDeltaToPostgres(
     const versionRow = await client.query<{ version: string }>('select version from missa_snapshot_versions where domain = $1 for update', [RADAR_SNAPSHOT_DOMAIN]);
     const currentVersion = Number(versionRow.rows[0]?.version ?? 0);
     if (expectedVersion !== undefined && expectedVersion !== currentVersion) throw new SnapshotConflictError(RADAR_SNAPSHOT_DOMAIN, expectedVersion, currentVersion);
+    const creatorInboxReady = Boolean((await client.query<{ present: string | null }>("select to_regclass('public.creator_inbox_alerts') as present")).rows[0]?.present);
 
     const deleteRows = async (table: string, column: string, ids: string[]) => {
       for (const id of ids) await client.query(`delete from ${table} where ${column} = $1`, [id]);
@@ -481,9 +514,39 @@ export async function saveRadarStoreDeltaToPostgres(
     await deleteRows('radar_organizations', 'id', maps.organizations.deletes);
     await deleteRows('radar_audit_log', 'id', current.auditLog.length ? [] : previous.auditLog.map((entry) => entry.id));
 
-    for (const row of maps.sources.upserts) { const value = row.value; await client.query('insert into radar_sources (id, organization_id, active, data) values ($1, $2, $3, $4) on conflict (id) do update set organization_id = excluded.organization_id, active = excluded.active, data = excluded.data', [value.id, value.organizationId ?? null, value.active, value]); }
+    if (maps.sources.upserts.length) {
+      const chunkSize = 500;
+      for (let i = 0; i < maps.sources.upserts.length; i += chunkSize) {
+        const chunk = maps.sources.upserts.slice(i, i + chunkSize);
+        await client.query(
+          `insert into radar_sources (id, organization_id, active, data)
+           select value->>'id', value->>'organizationId', coalesce((value->>'active')::boolean, true), value
+           from jsonb_array_elements($1::jsonb) as incoming(value)
+           on conflict (id) do update set
+             organization_id = excluded.organization_id,
+             active = excluded.active,
+             data = excluded.data`,
+          [JSON.stringify(chunk.map((row) => row.value))],
+        );
+      }
+    }
     for (const row of maps.snapshots.upserts) { const value = row.value; await client.query('insert into radar_snapshots (id, source_id, data) values ($1, $2, $3) on conflict (id) do update set source_id = excluded.source_id, data = excluded.data', [value.id, value.sourceId, value]); }
-    for (const row of maps.opportunities.upserts) { const value = row.value; await client.query('insert into radar_opportunities (id, status, claimed_by_organization_id, data) values ($1, $2, $3, $4) on conflict (id) do update set status = excluded.status, claimed_by_organization_id = excluded.claimed_by_organization_id, data = excluded.data', [value.id, value.status, value.claimedByOrganizationId ?? null, value]); }
+    if (maps.opportunities.upserts.length) {
+      const chunkSize = 500;
+      for (let i = 0; i < maps.opportunities.upserts.length; i += chunkSize) {
+        const chunk = maps.opportunities.upserts.slice(i, i + chunkSize);
+        await client.query(
+          `insert into radar_opportunities (id, status, claimed_by_organization_id, data)
+           select value->>'id', value->>'status', value->>'claimedByOrganizationId', value
+           from jsonb_array_elements($1::jsonb) as incoming(value)
+           on conflict (id) do update set
+             status = excluded.status,
+             claimed_by_organization_id = excluded.claimed_by_organization_id,
+             data = excluded.data`,
+          [JSON.stringify(chunk.map((row) => row.value))],
+        );
+      }
+    }
     for (const row of maps.versions.upserts) { const value = row.value; await client.query('insert into radar_opportunity_versions (id, opportunity_id, data) values ($1, $2, $3) on conflict (id) do update set opportunity_id = excluded.opportunity_id, data = excluded.data', [value.id, value.opportunityId, value]); }
     for (const row of maps.changes.upserts) { const value = row.value; await client.query('insert into radar_opportunity_changes (id, opportunity_id, data) values ($1, $2, $3) on conflict (id) do update set opportunity_id = excluded.opportunity_id, data = excluded.data', [value.id, value.opportunityId, value]); }
     for (const row of maps.organizations.upserts) { const value = row.value; await client.query('insert into radar_organizations (id, data) values ($1, $2) on conflict (id) do update set data = excluded.data', [value.id, value]); }
@@ -506,9 +569,32 @@ export async function saveRadarStoreDeltaToPostgres(
     for (const row of maps.checklistItems.upserts) { const value = row.value; await client.query('insert into radar_checklist_items (id, checklist_id, data) values ($1, $2, $3) on conflict (id) do update set checklist_id = excluded.checklist_id, data = excluded.data', [value.id, value.checklistId, value]); }
     for (const row of maps.customLists.upserts) { const value = row.value; await client.query('insert into radar_custom_lists (id, user_id, data) values ($1, $2, $3) on conflict (id) do update set user_id = excluded.user_id, data = excluded.data', [value.id, value.userId, value]); }
     for (const row of maps.customListMemberships.upserts) { const value = row.value; await client.query('insert into radar_custom_list_memberships (user_id, list_id, opportunity_id, data) values ($1, $2, $3, $4) on conflict (user_id, list_id, opportunity_id) do update set data = excluded.data', [value.userId, value.listId, value.opportunityId, value]); }
-    for (const row of maps.alerts.upserts) { const value = row.value; await client.query('insert into radar_alerts (id, data) values ($1, $2) on conflict (id) do update set data = excluded.data', [value.id, value]); }
-    for (const key of alertKeys.upserts) await client.query('insert into radar_emitted_alert_keys (key) values ($1) on conflict (key) do nothing', [key.value]);
     for (const row of maps.accounts.upserts) { const value = row.value; await client.query('insert into radar_accounts (id, email, data) values ($1, $2, $3) on conflict (id) do update set email = excluded.email, data = excluded.data', [value.id, value.email, value]); }
+    const accountByUserId = new Map([...current.accounts.values()].flatMap((account) => account.userId ? [[account.userId, account.id] as const] : []));
+    for (const row of maps.alerts.upserts) {
+      const value = row.value;
+      await client.query('insert into radar_alerts (id, data) values ($1, $2) on conflict (id) do update set data = excluded.data', [value.id, value]);
+      const accountId = value.audience === 'user' && value.userId ? accountByUserId.get(value.userId) : undefined;
+      if (creatorInboxReady && accountId) {
+        const dedupeKey = [...current.emittedAlertKeys].find((key) => key.endsWith(`:${value.userId}:${value.opportunityId ?? ''}`)) ?? `alert:${value.id}`;
+        await client.query(
+          `insert into creator_inbox_alerts
+             (id,account_id,opportunity_id,kind,title,body,reason,dedupe_key,delivery_eligibility,read_at,created_at,updated_at)
+           select $1,$2,$3,$4,$5,$6,$7,$8,'in-app',$9,$10,$10
+           where $3::text is null or exists (
+             select 1 from opportunities opportunity
+             where opportunity.id=$3 and opportunity.publication_state='published'
+           )
+           on conflict (id) do update set
+             opportunity_id=excluded.opportunity_id,kind=excluded.kind,title=excluded.title,body=excluded.body,
+             reason=excluded.reason,read_at=coalesce(creator_inbox_alerts.read_at,excluded.read_at),updated_at=now(),
+             revision=case when creator_inbox_alerts.read_at is distinct from coalesce(creator_inbox_alerts.read_at,excluded.read_at)
+                           then creator_inbox_alerts.revision+1 else creator_inbox_alerts.revision end`,
+          [value.id, accountId, value.opportunityId ?? null, value.kind, value.title, value.body, value.reason, dedupeKey, value.read ? value.createdAt : null, value.createdAt],
+        );
+      }
+    }
+    for (const key of alertKeys.upserts) await client.query('insert into radar_emitted_alert_keys (key) values ($1) on conflict (key) do nothing', [key.value]);
     if (maps.users.upserts.length || maps.users.deletes.length || maps.accounts.upserts.length || maps.accounts.deletes.length) {
       await writeAccountTaxonomyPreferences(client, current, maps.accounts.deletes);
       await writeOpportunityPreferences(client, current, maps.accounts.deletes);
@@ -518,11 +604,22 @@ export async function saveRadarStoreDeltaToPostgres(
 
     if (maps.sources.upserts.length || maps.opportunities.upserts.length || maps.versions.upserts.length || maps.changes.upserts.length) {
       const opportunityIds = new Set<string>([
-        ...maps.opportunities.upserts.map((row) => row.key),
+        ...maps.opportunities.upserts
+          .filter(({ key, value }) => {
+            const previousOpportunity = previous.opportunities.get(key);
+            return !previousOpportunity || opportunityChangeAffectsProjection(previousOpportunity, value);
+          })
+          .map((row) => row.key),
         ...maps.versions.upserts.map((row) => row.value.opportunityId),
         ...maps.changes.upserts.map((row) => row.value.opportunityId),
       ]);
-      for (const sourceId of maps.sources.upserts.map((row) => row.key)) {
+      const opportunityAffectingSourceIds = maps.sources.upserts
+        .filter(({ key, value }) => {
+          const previousSource = previous.sources.get(key);
+          return !previousSource || sourceChangeAffectsOpportunityProjection(previousSource, value);
+        })
+        .map((row) => row.key);
+      for (const sourceId of opportunityAffectingSourceIds) {
         for (const opportunity of current.opportunities.values()) {
           if (opportunity.sourceId === sourceId) opportunityIds.add(opportunity.id);
         }
@@ -600,7 +697,43 @@ export async function loadStoreFromPostgres(pool: Pool): Promise<RadarStore> {
 
   for (const row of sources.rows) store.sources.set(row.data.id, row.data);
   for (const row of snapshots.rows) store.snapshots.set(row.data.id, row.data);
-  for (const row of opportunities.rows) store.opportunities.set(row.data.id, row.data);
+  for (const row of opportunities.rows) {
+    const opp = row.data;
+    if (!opp || !opp.id) continue;
+    if (!opp.fields) {
+      opp.fields = {
+        title: opp.title ?? "",
+        organizationName: opp.organizationName ?? "",
+        organizationId: opp.organizationId,
+        type: opp.opportunityType ?? "open-call",
+        genres: Array.isArray(opp.genres) ? opp.genres : [],
+        taxonomyAssignments: Array.isArray(opp.taxonomyAssignments) ? opp.taxonomyAssignments : [],
+        openDate: opp.openDate ?? undefined,
+        deadline: {
+          kind: opp.deadlineDate ? "exact" : "unknown",
+          date: opp.deadlineDate ?? undefined,
+        },
+        fee: {
+          status: opp.feeStatus === "fee" || opp.feeCents ? "fixed" : "none",
+          amountCents: opp.feeCents ?? undefined,
+          disclosed: Boolean(opp.feeStatus && opp.feeStatus !== "unknown"),
+        },
+        prize: opp.prize ? { text: String(opp.prize), amountUsd: opp.prizeAmountUsd ?? undefined } : undefined,
+        eligibility: opp.eligibility ?? undefined,
+        requiredMaterials: Array.isArray(opp.requiredMaterials) ? opp.requiredMaterials : [],
+        submissionUrl: opp.submissionUrl ?? undefined,
+        guidelinesUrl: opp.guidelinesUrl ?? undefined,
+      };
+    }
+    opp.scores ??= { freshness: 100, confidence: 100, trust: 0 };
+    opp.trustSignals ??= [];
+    opp.pastCycles ??= [];
+    opp.conflicts ??= [];
+    opp.alternateSourceIds ??= [];
+    opp.sourceId ??= opp.id;
+    opp.sourceUrl ??= opp.guidelinesUrl ?? opp.submissionUrl ?? "";
+    store.opportunities.set(opp.id, opp);
+  }
   for (const row of versions.rows) store.versions.set(row.data.id, row.data);
   for (const row of changes.rows) store.changes.set(row.data.id, row.data);
   for (const row of organizations.rows) store.organizations.set(row.data.id, row.data);

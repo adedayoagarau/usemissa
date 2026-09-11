@@ -30,9 +30,12 @@ export async function POST(request: Request) {
 
   try {
     const { account, created } = await provisionNeonAuthAccount();
-    const token = issueSessionToken(account.id, account.sessionVersion ?? 0);
-    await trackPlatformAnalytics({
-      eventName: mode === 'signup' ? 'auth.signup_succeeded' : 'auth.login_succeeded',
+    const token = issueSessionToken(account.id);
+    void trackPlatformAnalytics({
+      eventName:
+        created || mode === 'signup'
+          ? 'auth.signup_succeeded'
+          : 'auth.login_succeeded',
       source: 'neon-auth-bridge',
       accountId: account.id,
       properties: { method: 'neon-auth', linked: !created },

@@ -13,29 +13,21 @@ test("anonymous page views are accepted without exposing private event writes", 
   assert.equal(response.status, 202);
 });
 
-test("anonymous Profile page views are accepted for the public handle route", async () => {
-  const response = await POST(
-    new Request("http://localhost/api/analytics/events", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ eventName: "page_view", path: "/@amaka" }),
-    }),
-  );
-  assert.equal(response.status, 202);
-});
-
-test("anonymous page views cannot use a handle prefix for a private path", async () => {
-  const response = await POST(
-    new Request("http://localhost/api/analytics/events", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        eventName: "page_view",
-        path: "/@amaka/private",
+test("anonymous page views cover every nested public beta surface", async () => {
+  for (const path of [
+    "/discover/emerging-writers-artists",
+    "/journal/cincinnati-review",
+    "/rankings/magazines",
+  ]) {
+    const response = await POST(
+      new Request("http://localhost/api/analytics/events", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ eventName: "page_view", path }),
       }),
-    }),
-  );
-  assert.equal(response.status, 403);
+    );
+    assert.equal(response.status, 202, path);
+  }
 });
 
 test("anonymous visitors cannot write private analytics event names", async () => {

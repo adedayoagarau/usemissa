@@ -1,9 +1,11 @@
 import { randomBytes } from 'node:crypto';
 
 import { membershipsFor, type Account } from '@missa/radar-engine';
+import { CreatorAccountProvisionError } from '@missa/radar-adapters';
 
 import { getEngine, persistRadar } from '@/lib/engine';
 import type { SessionAccount } from '@/lib/auth';
+import { getCreatorAccountRepository } from '@/lib/creatorRepositories';
 
 import { getNeonAuth } from './server';
 
@@ -94,6 +96,30 @@ async function resolveNeonAuthAccount(
   }
 
   const email = user.email.trim().toLowerCase();
+  const relational = getCreatorAccountRepository();
+  if (relational) {
+    if (!provision) {
+      const account = await relational.accountByAuthIdentity('neon-auth', user.id);
+      if (!account || account.active === false) return undefined;
+      return { account, memberships: await relational.memberships(account.id) };
+    }
+    try {
+      return await relational.provisionNeonAccount({
+        authUserId: user.id,
+        email,
+        displayName: user.name?.trim().slice(0, 120) || email.split('@')[0]?.slice(0, 120) || 'Missa creator',
+        passwordHash: `${randomBytes(16).toString('hex')}:${randomBytes(32).toString('hex')}`,
+        emailVerified: isVerifiedEmail(user),
+      });
+    } catch (error) {
+      if (error instanceof CreatorAccountProvisionError) {
+        if (error.code === 'inactive') throw new NeonAuthAccountError(403, 'This account is no longer active.');
+        if (error.code === 'identity-conflict') throw new NeonAuthAccountError(409, 'This email is already connected to another auth identity.');
+        throw new NeonAuthAccountError(409, 'Verify your email before connecting this existing Missa account.');
+      }
+      throw error;
+    }
+  }
   const engine = await getEngine();
   const mapped = [...engine.store.accounts.values()].find(
     (account) => account.authProvider === 'neon-auth' && account.authUserId === user.id,

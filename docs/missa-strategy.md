@@ -1,4 +1,4 @@
-# Missa — Product Strategy & Idea Dump
+# Missa — Product Strategy
 
 > **Terminology note (July 2026):** product naming in this document was globally updated to match
 > [`missa-naming-decisions.md`](./missa-naming-decisions.md) — e.g. Submission Package → Submission,
@@ -8,10 +8,22 @@
 > retained here as engineering vocabulary; their UI labels are **Team**, *(hidden)*, and
 > **Organization** respectively. Names quoted from competitors are unchanged.
 
-Below is a strong feature map for your product as an **end-to-end submission platform** — not just applications, not just magazines, not just grants.
-Think of the product as:
-**Discovery → Submission → Intake → Review → Decision → Communication → Delivery → Archive/Analytics**
-Competitors already cover pieces of this: Submittable supports publishing/journal submission workflows, review collaboration, and post-submission editing; SurveyMonkey Apply emphasizes workflow stages, labels, auto-bucketing, audit trails, review portals, and automations; OpenWater positions around awards, grants, scholarships, abstracts, reviews, automation, and reporting. Your opportunity is to connect the full lifecycle more elegantly. ([Submittable](https://www.submittable.com/solutions/publishing-and-journals?utm_source=chatgpt.com))
+Missa is building the trusted opportunity layer for creative work. It starts
+with source-first discovery and connects that discovery to preparation,
+submission, review, decisions, delivery, and outcomes.
+
+This document is a feature map and product strategy, not the authority for
+public positioning. The current value narrative, audience-specific messages,
+venture thesis, and current-versus-future boundary live in
+[`missa-value-and-positioning.md`](./missa-value-and-positioning.md).
+
+The platform direction is:
+**Discovery → Preparation → Submission → Intake → Review → Decision → Communication → Delivery → Archive/Insights**
+
+The first product wedge remains creative opportunities. The long-term category
+can include other open-call markets, but expansion must preserve source
+provenance, ordinary language, privacy, and clear permission boundaries.
+Competitors already cover pieces of this: Submittable supports publishing/journal submission workflows, review collaboration, and post-submission editing; SurveyMonkey Apply emphasizes workflow stages, labels, auto-bucketing, audit trails, review portals, and automations; OpenWater positions around awards, grants, scholarships, abstracts, reviews, automation, and reporting. Missa's opportunity is to connect the full lifecycle more elegantly. ([Submittable](https://www.submittable.com/solutions/publishing-and-journals?utm_source=chatgpt.com))
 -----
 # **Product Feature Set**
 ## **1. Discovery Layer**
@@ -414,11 +426,11 @@ Features:
   - Audit trails
 -----
 # **One-Line Product Definition**
-**Missa is an end-to-end platform for discovering, collecting, reviewing, deciding, communicating, and delivering submissions of any kind.**
+**Missa is the discovery and submission layer for creative opportunities, helping people find the call worth their time and helping organizations carry the work through to an outcome.**
 # **Strong Homepage Positioning**
-**Manage every submission from open call to final outcome.**
+**Find the call worth your time.**
 Subheadline:
-**Missa helps magazines, grantmakers, awards programs, festivals, fellowships, and organizations collect submissions, manage review, send decisions, and deliver final outcomes in one workflow.**
+**Missa helps you compare the facts, open the official source, save your decision, and keep track of what comes next. Organizations can publish opportunities, receive work, review it, record decisions, and complete the next step.**
   
 Yes — for an **enterprise-grade submission platform**, the product should not be designed as “one organization, one account.” It should be designed as a **multi-entity enterprise system** where each customer can manage multiple brands, departments, programs, legal entities, and reviewer groups under one enterprise account.
 Also, on the screenshot: you do **not** need the legal Delaware company name to exactly match the product name. You can form as something like **Missa Flow, Inc.**, **Missa Platform, Inc.**, or a more neutral parent-company name, while marketing the product as **Missa**. Trademark and domain clearance should be checked separately.
@@ -8621,5 +8633,3 @@ Cloud credits first
 → NSF SBIR pitch for Radar fourth
 → Public-interest pilot grants fifth
 Your best grant target is **NSF SBIR** if you frame Missa as AI opportunity intelligence, not just submission SaaS. Your fastest practical funding is **cloud credits + small founder grants + paid pilots**.
-
-

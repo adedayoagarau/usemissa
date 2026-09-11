@@ -3,6 +3,7 @@ import { createPlatformCrmContact, createPlatformCrmNote, createPlatformCrmTask,
 import { getPlatformAdminCrm } from '@/lib/platformAdminFoundations';
 import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 import { platformAdminAuthResponse, requirePlatformAdmin } from '@/lib/platformAdmin';
+import { crmWriteError } from '@/lib/governedOperationRoutes';
 
 const headers = { 'cache-control': 'private, no-store' };
 
@@ -48,9 +49,8 @@ export async function POST(request: Request) {
     await trackPlatformAnalytics({ eventName: 'admin.crm_note_created', source: 'admin-api', accountId: auth.session.account.id, organizationId, properties: { idempotent: result.idempotent } });
     return NextResponse.json(result, { headers, status: result.idempotent ? 200 : 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'CRM note unavailable';
-    const clientError = message === 'Invalid idempotency key' || message.startsWith('Invalid CRM') || message.startsWith('Exactly one CRM') || message === 'Invalid CRM contact email' || message === 'Invalid CRM contact status';
-    return NextResponse.json({ error: clientError ? message : 'CRM write unavailable.' }, { status: clientError ? 400 : 503, headers });
+    const mapped = crmWriteError(error);
+    return NextResponse.json({ error: mapped.message }, { status: mapped.status, headers });
   }
 }
 
@@ -63,14 +63,16 @@ export async function PATCH(request: Request) {
   const value = body as Record<string, unknown>;
   const taskId = typeof value.taskId === 'string' ? value.taskId.trim() : '';
   const status = value.status === 'open' || value.status === 'in-progress' || value.status === 'done' || value.status === 'snoozed' || value.status === 'cancelled' ? value.status : undefined;
-  if (!taskId || !status) return NextResponse.json({ error: 'taskId and a valid status are required.' }, { status: 400, headers });
+  const expectedStatus = typeof value.expectedStatus === 'string' ? value.expectedStatus : '';
+  const expectedVersion = typeof value.expectedVersion === 'number' ? value.expectedVersion : 0;
+  const idempotencyKey = request.headers.get('Idempotency-Key')?.trim() ?? '';
+  if (!taskId || !status || !expectedStatus || !expectedVersion || !idempotencyKey) return NextResponse.json({ error: 'taskId, status, expectedStatus, expectedVersion, and Idempotency-Key are required.' }, { status: 400, headers });
   try {
-    const task = await updatePlatformCrmTaskStatus({ connectionString: process.env.DATABASE_URL, actorAccountId: auth.session.account.id, taskId, status });
+    const task = await updatePlatformCrmTaskStatus({ connectionString: process.env.DATABASE_URL, actorAccountId: auth.session.account.id, taskId, status, expectedStatus, expectedVersion, idempotencyKey, confirmation: typeof value.confirmation === 'string' ? value.confirmation : undefined });
     await trackPlatformAnalytics({ eventName: 'admin.crm_task_status_changed', source: 'admin-api', accountId: auth.session.account.id, organizationId: task.organizationId, properties: { status } });
     return NextResponse.json({ task }, { headers });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'CRM task update unavailable';
-    const statusCode = message === 'CRM task not found' ? 404 : message.startsWith('Invalid') ? 400 : 503;
-    return NextResponse.json({ error: statusCode === 503 ? 'CRM task update unavailable.' : message }, { status: statusCode, headers });
+    const mapped = crmWriteError(error);
+    return NextResponse.json({ error: mapped.status === 503 ? 'CRM task update unavailable.' : mapped.message }, { status: mapped.status, headers });
   }
 }

@@ -76,6 +76,41 @@ Vercel cron route is a bounded fallback and shares the Radar worker tick.
 Never put `DATABASE_URL`, session secrets, cron secrets, provider tokens, or
 private message/file content in admin responses, logs, or this document.
 
+### Submission malware scanning
+
+Hosted-application files are scanned before they are written to private Blob
+storage. Production fails closed if scanning is absent, invalid, unavailable,
+times out, or returns an ambiguous result. Configure one explicit adapter; the
+runtime never infers the provider from the URL.
+
+For Cloudmersive advanced virus scanning:
+
+```sh
+MALWARE_SCAN_PROVIDER=cloudmersive
+MALWARE_SCAN_URL=https://api.cloudmersive.com/virus/scan/file/advanced
+MALWARE_SCAN_TOKEN=<Cloudmersive API key>
+```
+
+This adapter sends multipart field `inputFile`, authenticates with the
+`Apikey` header, and explicitly rejects executables, scripts, macros, encrypted
+files, invalid files, unsafe XML/deserialization content, and HTML. Keep the API
+key only in the deployment secret store.
+
+For a compatible private or self-hosted scanner:
+
+```sh
+MALWARE_SCAN_PROVIDER=generic
+MALWARE_SCAN_URL=https://scanner.example.internal/scan
+MALWARE_SCAN_TOKEN=<optional bearer token>
+```
+
+The generic adapter posts the raw file body with `Content-Type` and
+`X-Filename` headers, plus `Authorization: Bearer …` when the token is present.
+It accepts only an explicit `{ "clean": true }` / `{ "status": "clean" }`
+result and treats malicious, blocked, unreadable, and failed responses
+conservatively. Demo environments with no scanner configuration use the local
+executable-signature policy; any partially configured adapter fails closed.
+
 ## Start-here files
 
 - `apps/web/lib/platformAdmin.ts` — admin read model and server boundary.

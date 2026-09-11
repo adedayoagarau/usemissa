@@ -19,7 +19,7 @@ export default async function SignupPage({
     cookieStore.get(SESSION_COOKIE)?.value,
   );
   const { next, invite } = await searchParams;
-  const redirectTo = safeAuthRedirect(next);
+  const redirectTo = next ? safeAuthRedirect(next) : "/onboarding";
   const firstSaveToken = cookieStore.get(FIRST_SAVE_INTENT_COOKIE)?.value;
   const firstSaveIntent = verifyFirstSaveIntent(firstSaveToken);
   if (session && !firstSaveIntent) redirect(redirectTo);

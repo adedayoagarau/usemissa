@@ -34,7 +34,6 @@ const CarouselDots = () => {
   useEffect(() => {
     if (!api) return
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrent(api.selectedScrollSnap())
 
     api.on('select', () => {

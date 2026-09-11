@@ -1,12 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { reviewCandidate, SEED_REVIEW_JOBS_SQL, type ReviewCandidate } from "../src/reviewWorker.js";
-
-test("review jobs requeue after fresh high-confidence lifecycle evidence", () => {
-  assert.match(SEED_REVIEW_JOBS_SQL, /opportunity_lifecycle_evidence/);
-  assert.match(SEED_REVIEW_JOBS_SQL, /decision = 'apply' and confidence = 'high'/);
-  assert.match(SEED_REVIEW_JOBS_SQL, /input_version is distinct from excluded.input_version/);
-});
+import { isDurablePublicationGateError, reviewCandidate, type ReviewCandidate } from "../src/reviewWorker.js";
+import { publicationRubricSchema } from "../src/publicationRubricSchema.js";
+import { evaluatePublicationRubric } from "../src/publicationRubric.js";
 
 function candidate(overrides: Partial<ReviewCandidate> = {}): ReviewCandidate {
   return {
@@ -14,7 +10,7 @@ function candidate(overrides: Partial<ReviewCandidate> = {}): ReviewCandidate {
     title: "Verified call",
     status: "open",
     submissionState: "available",
-    deadlineDate: "2026-09-01",
+    deadlineDate: "2026-10-01",
     submissionUrl: "https://example.com/submit",
     guidelinesUrl: "https://example.com/guidelines",
     sourceUrl: "https://example.com/call",
@@ -41,9 +37,27 @@ test("review routes unconfirmed organizations to human review", () => {
   assert.match(result.reasons.join(" "), /confirmation/);
 });
 
+test("review never auto-publishes an explicitly review-only ingestion record", () => {
+  const result = reviewCandidate(candidate({ reviewOnly: true }));
+  assert.equal(result.decision, "needs-human");
+  assert.match(result.reasons.join(" "), /explicitly held for human review/i);
+  assert.equal(result.checks.reviewOnly, true);
+});
+
 test("review suppresses unsafe destinations", () => {
   const result = reviewCandidate(candidate({ submissionState: "unsafe" }));
   assert.equal(result.decision, "suppress");
+});
+
+test("review suppresses directories and roundup pages as aggregate evidence", () => {
+  const result = reviewCandidate(candidate({ title: "Best Literary Magazines: 100+ Places to Submit in 2026" }));
+  assert.equal(result.decision, "suppress");
+  assert.match(result.reasons.join(" "), /directory or roundup/i);
+  assert.equal(result.checks.aggregateIdentity, true);
+});
+
+test("review does not mistake an individual magazine submission call for a roundup", () => {
+  assert.equal(reviewCandidate(candidate({ title: "Utopia Science Fiction Magazine Submissions" })).decision, "publish");
 });
 
 test("review never auto-publishes a placeholder opportunity identity", () => {
@@ -60,4 +74,53 @@ test("review requires explicit destination reconciliation and approved content",
   assert.match(result.reasons.join(" "), /content review/i);
   assert.equal((result.checks.gates as Record<string, string>).authorityDestination, "review");
   assert.equal((result.checks.gates as Record<string, string>).completeness, "review");
+});
+
+test("recognizes only the durable publication constraint as a human-review conflict", () => {
+  assert.equal(isDurablePublicationGateError({ code: "23514", message: "Publication gates failed for opportunity opp_test" }), true);
+  assert.equal(isDurablePublicationGateError({ code: "23514", message: "A different check constraint failed" }), false);
+  assert.equal(isDurablePublicationGateError(new Error("Publication gates failed for opportunity opp_test")), false);
+});
+
+test("durable publication schema permits only a fact-preserving published-to-closed transition", () => {
+  assert.match(publicationRubricSchema, /old\.publication_state = 'published'/);
+  assert.match(publicationRubricSchema, /new\.status = 'closed'/);
+  assert.match(publicationRubricSchema, /new\.deadline_date is not distinct from old\.deadline_date/);
+  assert.match(publicationRubricSchema, /new\.open_date is not distinct from old\.open_date/);
+  assert.match(publicationRubricSchema, /new\.deadline_kind is not distinct from old\.deadline_kind/);
+  assert.match(publicationRubricSchema, /new\.submission_state is not distinct from old\.submission_state/);
+  assert.match(publicationRubricSchema, /new\.id like 'opp_v2_%'/);
+  assert.match(publicationRubricSchema, /new\.source_id like 'v2_source_%'/);
+  assert.match(publicationRubricSchema, /ingestion-v2 is review-only/);
+});
+
+test("publication availability distinguishes upcoming from available now", () => {
+  const openingSoon = evaluatePublicationRubric({
+    ...candidate(),
+    status: "opening-soon",
+    openDate: "2099-09-01",
+    deadlineDate: null,
+    deadlineKind: "unknown",
+    readingPeriodKind: "unknown",
+  });
+  assert.equal(openingSoon.decision, "publish");
+  assert.equal(openingSoon.checks.availabilityState, "opening-soon");
+
+  const unsupported = evaluatePublicationRubric({
+    ...candidate(),
+    status: "opening-soon",
+    openDate: null,
+    deadlineDate: null,
+    deadlineKind: "unknown",
+    readingPeriodKind: "unknown",
+  });
+  assert.equal(unsupported.decision, "needs-human");
+  assert.equal(unsupported.checks.availabilityState, "uncertain");
+});
+
+test("durable publication schema accepts verified opening dates and open-ended intake modes", () => {
+  assert.match(publicationRubricSchema, /new\.status = 'opening-soon'.*new\.open_date/s);
+  assert.match(publicationRubricSchema, /new\.deadline_date >= current_date/);
+  assert.match(publicationRubricSchema, /new\.deadline_kind in \('rolling', 'year-round', 'until-filled'\)/);
+  assert.match(publicationRubricSchema, /update of publication_state, source_id, status, open_date, deadline_date, deadline_kind/);
 });

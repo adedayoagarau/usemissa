@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { TrackerExportV1 } from '@missa/radar-engine';
 import { getSessionAccount } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
+import { getCreatorLibraryRepository } from '@/lib/creatorRepositories';
 import { encodeTrackerCsv } from '@/lib/tracker-export';
 
 const COOLDOWN_MS = 60_000;
@@ -41,25 +42,8 @@ function libraryForScope(engine: Awaited<ReturnType<typeof getEngine>>, userId: 
   };
 }
 
-function profileForScope(engine: Awaited<ReturnType<typeof getEngine>>, userId: string) {
-  const user = engine.store.users.get(userId);
-  if (!user) return undefined;
-  return {
-    exportVersion: 1 as const,
-    included: ['profile'] as const,
-    profile: {
-      id: user.id,
-      displayName: user.displayName,
-      ...(user.bio ? { bio: user.bio } : {}),
-      privacy: engine.profilePrivacy(userId),
-      attributes: { ...user.attributes },
-      genres: [...user.genres],
-      taxonomyPreferences: user.taxonomyPreferences?.map((item) => ({ ...item })) ?? [],
-      ...(user.opportunityPreferences ? { opportunityPreferences: { ...user.opportunityPreferences } } : {}),
-      ...(user.publicProfilePublishedAt ? { publicProfilePublishedAt: user.publicProfilePublishedAt } : {}),
-      ...(user.publicPortfolio ? { publicPortfolio: structuredClone(user.publicPortfolio) } : {}),
-    },
-  };
+function relationalLibraryForScope(library: Awaited<ReturnType<NonNullable<ReturnType<typeof getCreatorLibraryRepository>>['library']>>) {
+  return { exportVersion: 1 as const, included: ['library'] as const, works: library.works, files: library.files, savedAnswers: library.savedAnswers };
 }
 
 function encodeLibraryCsv(library: ReturnType<typeof libraryForScope>): string {
@@ -93,14 +77,20 @@ export async function GET(request: Request) {
     return errorResponse('Export cooldown active. Try again in a moment.', 429, { 'Retry-After': '60' });
   }
 
-  const engine = await getEngine();
+  const repository = getCreatorLibraryRepository();
+  let compatibilityEngine: Awaited<ReturnType<typeof getEngine>> | undefined;
   let exportData: TrackerExportV1;
   let libraryData: ReturnType<typeof libraryForScope> | undefined;
   let profileData: ReturnType<typeof profileForScope> | undefined;
   try {
-    exportData = trackerForScope(engine.exportTracker(userId, new Date(nowMs)), scope === 'library' ? 'all' : scope);
-    libraryData = libraryForScope(engine, userId);
-    profileData = profileForScope(engine, userId);
+    if (repository) {
+      exportData = trackerForScope(await repository.trackerExport(session.account.id, userId, new Date(nowMs)), scope === 'library' ? 'all' : scope);
+      libraryData = relationalLibraryForScope(await repository.library(session.account.id, userId));
+    } else {
+      compatibilityEngine = await getEngine();
+      exportData = trackerForScope(compatibilityEngine.exportTracker(userId, new Date(nowMs)), scope === 'library' ? 'all' : scope);
+      libraryData = libraryForScope(compatibilityEngine, userId);
+    }
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('Unknown user:')) return errorResponse('Profile not found', 404);
     console.error('Tracker export projection failed', error);
@@ -116,15 +106,20 @@ export async function GET(request: Request) {
 
   // The audit is written only after projection and encoding succeeded. Failed
   // validation, unavailable scopes, cooldowns, and encoding errors emit none.
-  engine.recordAudit(
-    session.account.id,
-    'data.exported',
-    'user_profile',
-    userId,
-    JSON.stringify({ format, scope, rowCount: exportData.tracker.length, libraryRows: (libraryData?.works.length ?? 0) + (libraryData?.files.length ?? 0) + (libraryData?.savedAnswers.length ?? 0) }),
-  );
+  const libraryRows = (libraryData?.works.length ?? 0) + (libraryData?.files.length ?? 0) + (libraryData?.savedAnswers.length ?? 0);
   try {
-    await persistRadar();
+    if (repository) {
+      await repository.recordExportAudit({ accountId: session.account.id, userId, format, scope, trackerRows: exportData.tracker.length, libraryRows });
+    } else {
+      compatibilityEngine!.recordAudit(
+        session.account.id,
+        'data.exported',
+        'user_profile',
+        userId,
+        JSON.stringify({ format, scope, rowCount: exportData.tracker.length, libraryRows }),
+      );
+      await persistRadar();
+    }
   } catch (error) {
     console.error('Tracker export audit persistence failed', error);
     return errorResponse('We could not prepare your export. Please try again.', 500);

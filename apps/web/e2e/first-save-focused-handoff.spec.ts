@@ -1,8 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-const slug = "north-river-review-call-for-submissions";
-const title = "North River Review — Call for Submissions";
+const slug = "story-16-2-browser-fixture";
+const title = "Story 16.2 Browser Fixture";
 const password = "correct-horse-battery";
 
 async function beginSignedOutSave(page: Page) {
@@ -23,7 +23,22 @@ async function createAccount(page: Page, email: string, includeName = true) {
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Confirm password").fill(password);
+  const signupResponse = page.waitForResponse((response) =>
+    response.url().endsWith("/api/auth/signup") && response.request().method() === "POST"
+  );
   await page.getByRole("button", { name: "Create account" }).click();
+  const signup = await signupResponse;
+  if (signup.status() === 201) {
+    const sessionCookie = (await signup.allHeaders())["set-cookie"]?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
+    expect(sessionCookie).toBeTruthy();
+    await page.context().addCookies([{
+      name: "missa_session",
+      value: sessionCookie!,
+      url: new URL(signup.url()).origin,
+      httpOnly: true,
+      sameSite: "Lax",
+    }]);
+  }
 }
 
 test("new creator gets private value before optional Tracker guidance", async ({
@@ -244,7 +259,9 @@ test("an interrupted response retries safely and a repeated Save returns one ite
   expect((await repeated.json()).status).toBe("already-present");
   await page.goto("/tracker");
   await expect(
-    page.getByRole("heading", { name: opportunity.title, exact: true }),
+    page.getByRole("article").filter({
+      has: page.getByRole("heading", { name: opportunity.title, exact: true }),
+    }),
   ).toHaveCount(1);
 });
 

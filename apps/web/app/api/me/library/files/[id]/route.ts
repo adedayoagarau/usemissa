@@ -3,19 +3,29 @@ import { NextResponse } from 'next/server';
 import { LibraryConflictError, LibraryValidationError, libraryFileReferences } from '@missa/radar-engine';
 import { getSessionAccount } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
+import { getCreatorLibraryRepository } from '@/lib/creatorRepositories';
+import { creatorLibraryError, creatorLibraryJson, libraryEnvelope } from '@/lib/creatorLibraryRoute';
+import { creatorFileStorageReady, localCreatorFileStorageEnabled, readLocalCreatorFile, deleteLocalCreatorFile } from '@/lib/creator-file-storage';
+export const runtime='nodejs';
 
 const headers = { 'Cache-Control': 'private, no-store' };
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session?.account.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers });
-  const engine = await getEngine();
   const id = (await context.params).id;
-  const file = engine.library(session.account.userId).files.find((item) => item.id === id);
+  const repository = getCreatorLibraryRepository();
+  const file = repository
+    ? (await repository.library(session.account.id, session.account.userId)).files.find((item) => item.id === id)
+    : (await getEngine()).library(session.account.userId).files.find((item) => item.id === id);
   if (!file) return NextResponse.json({ error: 'File not found.' }, { status: 404, headers });
   const token = process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token && !(process.env.VERCEL_OIDC_TOKEN && process.env.BLOB_STORE_ID)) return NextResponse.json({ error: 'File storage is not configured.' }, { status: 503, headers });
+  if (!creatorFileStorageReady()) return NextResponse.json({ error: 'File storage is not configured.' }, { status: 503, headers });
   try {
+    if(localCreatorFileStorageEnabled()){
+      const bytes=await readLocalCreatorFile(file.storageKey);
+      return new NextResponse(bytes,{headers:{...headers,'content-type':file.contentType,'content-length':String(bytes.byteLength),'content-disposition':`inline; filename*=UTF-8''${encodeURIComponent(file.filename)}`}});
+    }
     const blob = await get(file.storageKey, { access: 'private', useCache: true, ...(token ? { token } : {}) });
     if (!blob || blob.statusCode !== 200) return NextResponse.json({ error: 'File bytes are unavailable.' }, { status: 404, headers });
     const disposition = `inline; filename*=UTF-8''${encodeURIComponent(file.filename)}`;
@@ -28,6 +38,23 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session?.account.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers });
+  const repository = getCreatorLibraryRepository();
+  if (repository) {
+    const id = (await context.params).id;
+    const body = await request.json().catch(() => ({})) as { expectedRevision?: unknown };
+    const envelope = libraryEnvelope(request, session.account.id, 'library-file.delete', { id }, body.expectedRevision);
+    if (!envelope) return creatorLibraryJson({ error: 'Refresh this file before deleting it.' }, 400);
+    try {
+      const result = await repository.deleteFile(envelope, id);
+      const token = process.env.BLOB_READ_WRITE_TOKEN;
+      let bytesDeletion: 'deleted' | 'cleanup-pending' = 'cleanup-pending';
+      if (creatorFileStorageReady()) {
+        try { if(localCreatorFileStorageEnabled())await deleteLocalCreatorFile(result.storageKey);else await del(result.storageKey, { ...(token ? { token } : {}) }); bytesDeletion = 'deleted'; await repository.settleFileDeletion(session.account.id, result.cleanupId, 'deleted'); }
+        catch (error) { await repository.settleFileDeletion(session.account.id, result.cleanupId, 'failed', error instanceof Error ? error.message : 'Provider deletion failed'); }
+      }
+      return creatorLibraryJson({ deleted: true, bytesDeletion, receipt: result.receipt });
+    } catch (error) { return creatorLibraryError(error); }
+  }
   try {
     const engine = await getEngine(); const id = (await context.params).id; const file = engine.library(session.account.userId).files.find((item) => item.id === id);
     if (!file) throw new LibraryValidationError('File not found.');

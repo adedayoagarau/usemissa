@@ -87,6 +87,8 @@ export interface SubmissionField {
   id: string;
   type: SubmissionFieldType;
   label: string;
+  helpText?: string;
+  visibleWhen?: { fieldId: string; equals: string };
   required: boolean;
   order: number;
 }

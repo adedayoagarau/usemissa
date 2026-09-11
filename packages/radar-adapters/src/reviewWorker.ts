@@ -13,7 +13,8 @@ type ReviewDecision = "publish" | "needs-human" | "suppress" | "error";
 type ReviewJob = { id: string; opportunityId: string; inputVersion: string };
 
 const ACTIVE_STATUSES = ["opening-soon", "open", "closing-soon", "deadline-extended"];
-const REVIEW_INTERVAL_MINUTES = 10;
+const REVIEW_INTERVAL_MINUTES = 2;
+const BACKLOG_DRAIN_DELAY_MS = 2_000;
 
 export const SEED_REVIEW_JOBS_SQL = `
   insert into radar_review_jobs (id, opportunity_id, priority, input_version)
@@ -38,13 +39,13 @@ export const SEED_REVIEW_JOBS_SQL = `
 `;
 
 function batchSize(): number {
-  const value = Number(process.env.RADAR_REVIEW_BATCH_SIZE ?? 20);
-  return Number.isFinite(value) ? Math.max(1, Math.min(50, Math.floor(value))) : 20;
+  const value = Number(process.env.RADAR_REVIEW_BATCH_SIZE ?? 50);
+  return Number.isFinite(value) ? Math.max(1, Math.min(200, Math.floor(value))) : 50;
 }
 
 function intervalMs(): number {
   const value = Number(process.env.RADAR_REVIEW_INTERVAL_MINUTES ?? REVIEW_INTERVAL_MINUTES);
-  return Number.isFinite(value) && value > 0 ? Math.max(60_000, Math.round(value * 60_000)) : REVIEW_INTERVAL_MINUTES * 60_000;
+  return Number.isFinite(value) && value > 0 ? Math.max(15_000, Math.round(value * 60_000)) : REVIEW_INTERVAL_MINUTES * 60_000;
 }
 
 async function startRun(pool: Pool): Promise<string> {
@@ -92,6 +93,7 @@ export type ReviewCandidate = PublicationRubricCandidate & {
   status: string;
   submissionState: string;
   deadlineDate: string | null;
+  openDate?: string | null;
   submissionUrl: string | null;
   guidelinesUrl: string | null;
   sourceUrl: string | null;
@@ -101,11 +103,13 @@ export type ReviewCandidate = PublicationRubricCandidate & {
 async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandidate | null> {
   const result = await pool.query<ReviewCandidate>(
     `select o.id as "opportunityId", o.title, o.status, o.submission_state as "submissionState",
-       o.deadline_date::text as "deadlineDate", o.submission_url as "submissionUrl",
+       o.deadline_date::text as "deadlineDate", o.open_date::text as "openDate", o.deadline_kind as "deadlineKind", o.submission_url as "submissionUrl",
        o.guidelines_url as "guidelinesUrl", s.url as "sourceUrl",
        evidence.processing_succeeded_at as "processingSucceededAt",
-       (coalesce(evidence.organization_confirmed, false) or profile_identity.confirmed) as "organizationConfirmed",
+       (coalesce(evidence.organization_confirmed, false) or profile_identity.confirmed or (o.organization_id is not null and exists(select 1 from gary_profiles p where p.id = o.organization_id))) as "organizationConfirmed",
        coalesce(evidence.destination_reconciled, false) as "destinationReconciled",
+       (coalesce((evidence.destination_reconciliation->>'v2ReviewOnly')::boolean, false)
+         or (o.id like 'opp_v2_%' and o.source_id like 'v2_source_%')) as "reviewOnly",
        coalesce(content.review_status = 'approved', false) as "contentApproved",
        (profile.opportunity_id is not null) as "callProfilePresent",
        profile.reading_period_kind as "readingPeriodKind",
@@ -113,7 +117,7 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
      from opportunities o
      left join opportunity_sources s on s.id = o.source_id
      left join lateral (
-       select checked_at, processing_succeeded_at, organization_confirmed, destination_reconciled
+       select checked_at, processing_succeeded_at, organization_confirmed, destination_reconciled, destination_reconciliation
        from opportunity_source_evidence
        where opportunity_id = o.id order by checked_at desc limit 1
      ) evidence on true
@@ -144,6 +148,12 @@ export function reviewCandidate(candidate: ReviewCandidate): { decision: ReviewD
   return evaluatePublicationRubric(candidate);
 }
 
+export function isDurablePublicationGateError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { code?: unknown; message?: unknown };
+  return candidate.code === "23514" && typeof candidate.message === "string" && candidate.message.includes("Publication gates failed for opportunity");
+}
+
 async function writeHandoff(client: PoolClient, runId: string, opportunityId: string, toAgent: string, kind: string, status: string, payload: Record<string, unknown>): Promise<void> {
   await client.query(
     `insert into radar_agent_handoffs (id, run_id, opportunity_id, from_agent, to_agent, kind, status, payload)
@@ -153,11 +163,35 @@ async function writeHandoff(client: PoolClient, runId: string, opportunityId: st
   );
 }
 
+async function routeDurableGateConflictToHuman(pool: Pool, runId: string, job: ReviewJob, result: ReturnType<typeof reviewCandidate>, error: unknown): Promise<void> {
+  const message = error instanceof Error ? error.message : String(error);
+  const reasons = [...result.reasons, "The durable database publication gate requires human review."];
+  const checks = { ...result.checks, durablePublicationGate: "review" };
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query(
+      `insert into radar_review_decisions (id, job_id, opportunity_id, run_id, decision, score, reasons, checks)
+       values ($1, $2, $3, $4, 'needs-human', $5, $6::jsonb, $7::jsonb)`,
+      [randomUUID(), job.id, job.opportunityId, runId, result.score, JSON.stringify(reasons), JSON.stringify(checks)],
+    );
+    await client.query("update radar_review_jobs set status = 'needs-human', last_error = $2, lease_until = null, updated_at = now() where id = $1", [job.id, message.slice(0, 500)]);
+    await writeHandoff(client, runId, job.opportunityId, "human-review", "durable-publication-gate", "queued", { score: result.score, reasons, checks });
+    await client.query("commit");
+  } catch (fallbackError) {
+    await client.query("rollback");
+    throw fallbackError;
+  } finally {
+    client.release();
+  }
+}
+
 async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<ReviewDecision> {
   const item = await candidate(pool, job.opportunityId);
   if (!item) {
-    await pool.query("update radar_review_jobs set status = 'blocked', last_error = 'Opportunity is no longer reviewable', lease_until = null, updated_at = now() where id = $1", [job.id]);
-    return "error";
+    // Opportunity is already published or closed - complete the review job cleanly
+    await pool.query("update radar_review_jobs set status = 'completed', last_error = null, lease_until = null, updated_at = now() where id = $1", [job.id]);
+    return "suppress";
   }
   const result = reviewCandidate(item);
   const client = await pool.connect();
@@ -184,6 +218,14 @@ async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<Re
     return result.decision;
   } catch (error) {
     await client.query("rollback");
+    if (isDurablePublicationGateError(error)) {
+      try {
+        await routeDurableGateConflictToHuman(pool, runId, job, result, error);
+        return "needs-human";
+      } catch {
+        // Fall through to the bounded retry path if the human-review handoff fails.
+      }
+    }
     await pool.query("update radar_review_jobs set status = 'failed', last_error = $2, next_attempt_at = now() + interval '10 minutes', lease_until = null, updated_at = now() where id = $1", [job.id, error instanceof Error ? error.message.slice(0, 500) : String(error)]);
     return "error";
   } finally {
@@ -192,9 +234,6 @@ async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<Re
 }
 
 export async function runReviewTick(pool: Pool, limit = batchSize()): Promise<{ claimed: number; decisions: Record<ReviewDecision, number> }> {
-  await ensureAgentGraphSchema(pool);
-  await ensureContentReviewSchema(pool);
-  await ensurePublicationRubricSchema(pool);
   // Refresh durable profile identity evidence before review. This is bounded,
   // idempotent, and fails closed if matching cannot be completed.
   await syncProfileOpportunityLinks(pool, Math.max(limit * 5, 100));
@@ -211,7 +250,10 @@ async function main(): Promise<void> {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required to run the Missa review agent.");
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   await ensureAgentGraphSchema(pool);
+  await ensureContentReviewSchema(pool);
+  await ensurePublicationRubricSchema(pool);
   const workerRunId = await startWorkerRun(pool, "review-worker");
+
   const controller = new AbortController();
   const stop = () => controller.abort();
   process.once("SIGINT", stop);
@@ -219,18 +261,21 @@ async function main(): Promise<void> {
   console.log(`[missa-review-agent] running every ${Math.round(intervalMs() / 60_000)} minutes, batch=${batchSize()}`);
   try {
     while (!controller.signal.aborted) {
+      let hasMore = false;
       try {
         await heartbeatWorkerRun(pool, workerRunId, "review-worker");
         const result = await runReviewTick(pool);
         const outputs = Object.values(result.decisions).reduce((sum, count) => sum + count, 0);
         await heartbeatWorkerRun(pool, workerRunId, "review-worker", { inputCount: result.claimed, outputCount: outputs });
         console.log(`[missa-review-agent] tick: claimed=${result.claimed} decisions=${JSON.stringify(result.decisions)}`);
+        hasMore = result.claimed >= batchSize();
       } catch (error) {
         await heartbeatWorkerRun(pool, workerRunId, "review-worker", { lastError: error instanceof Error ? error.message : String(error) });
         console.error("[missa-review-agent] tick failed; retrying after interval", error);
       }
+      const sleepDuration = hasMore ? BACKLOG_DRAIN_DELAY_MS : intervalMs();
       await new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, intervalMs());
+        const timer = setTimeout(resolve, sleepDuration);
         controller.signal.addEventListener("abort", () => { clearTimeout(timer); resolve(); }, { once: true });
       });
     }

@@ -10,7 +10,7 @@ test('Resend webhook event selection covers outbound delivery and engagement sta
   ]);
 });
 
-test('Resend webhook records omit recipient, subject, click, and IP data', () => {
+test('Resend webhook records omit recipient, subject, click, and IP data on engagement events', () => {
   const record = resendProviderEventRecord({
     type: 'email.clicked',
     created_at: '2026-08-12T00:00:00.000Z',
@@ -22,7 +22,7 @@ test('Resend webhook records omit recipient, subject, click, and IP data', () =>
   assert.deepEqual(record, { eventType: 'email.clicked', providerMessageId: 'email_123', occurredAt: '2026-08-12T00:00:00.000Z', metadata: {} });
 });
 
-test('Resend webhook records retain bounded terminal failure facts', () => {
+test('Resend webhook records retain bounded terminal failure facts and suppression email', () => {
   const record = resendProviderEventRecord({
     type: 'email.bounced',
     created_at: '2026-08-12T00:00:00.000Z',
@@ -31,5 +31,10 @@ test('Resend webhook records retain bounded terminal failure facts', () => {
       to: ['private@example.com'], subject: 'Private subject', bounce: { message: 'Mailbox unavailable', type: 'Permanent', subType: 'General' },
     },
   } as WebhookEventPayload);
-  assert.deepEqual(record?.metadata, { reason: 'Mailbox unavailable', failureType: 'Permanent', failureSubtype: 'General' });
+  assert.deepEqual(record?.metadata, {
+    reason: 'Mailbox unavailable',
+    failureType: 'Permanent',
+    failureSubtype: 'General',
+    email: 'private@example.com',
+  });
 });

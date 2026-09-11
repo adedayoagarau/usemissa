@@ -91,8 +91,22 @@ export {
 } from './gmail/gmailSync.js';
 export { freshnessScore, confidenceScore, computeTrustSignals, trustScore, STALE_FRESHNESS_THRESHOLD } from './scoring/scores.js';
 export { deriveStatus, displayStatus, CLOSING_SOON_DAYS, OPENING_SOON_DAYS, NEEDS_VERIFICATION_CONFIDENCE } from './status/statusEngine.js';
+export { internalRecheckFromHistory, normalizeOpportunityIntakeMode, projectOpportunityAvailability, type HistoricalOpeningWindow, type OpportunityAvailability, type OpportunityAvailabilityInput, type OpportunityAvailabilityState, type OpportunityIntakeMode } from './availability/opportunityAvailability.js';
+export {
+  resolveMagazineSchedule,
+  parseReadingWindows,
+  type MagazineScheduleState,
+  type MagazineScheduleTone,
+  type MagazineWindowKind,
+  type MagazineScheduleResult,
+  type MagazineScheduleInput,
+  type LinkedOpportunitySummary,
+  type ParsedWindow,
+} from './availability/magazineSchedule.js';
 export { predictNextOpening, recordCycle } from './prediction/prediction.js';
 export { matchesCriteria, matchesOpportunityPreferences, matchProfiles, type MatchResult } from './matching/matching.js';
+export * from './recommendation/index.js';
+export * from './onboarding/creatorOnboarding.js';
 export {
   assessCoverage,
   buildCoverageQueries,
@@ -105,6 +119,16 @@ export {
   type TaxonomyAssignmentMetricInput,
   type TaxonomyOperationalMetrics,
 } from './coverage/coverage.js';
+export {
+  evaluateOperationalCoverage,
+  WRITING_COVERAGE_SEGMENTS,
+  WRITING_COVERAGE_THRESHOLDS,
+  type CoverageContractCheck,
+  type CoverageContractStatus,
+  type CoverageContractThresholds,
+  type OperationalCoverageAssessment,
+  type OperationalCoverageInput,
+} from './coverage/contract.js';
 export { fitScore, formatFee } from './matching/fit.js';
 export { buildInboxDigest, matchOrganizationByDomain, type InboxDigest } from './alerts/alerts.js';
 export { verificationQueue } from './verification/verification.js';
@@ -232,3 +256,19 @@ export type {
   RegistryCoverageSummary,
 } from './registry/types.js';
 export type { RegistryTaxonomyAudit, RegistryVerticalCompatibility } from './registry/taxonomy.js';
+export {
+  OpportunitySearchEngine,
+  searchOpportunities,
+  detectOpportunityDomain,
+  matchesDomain,
+  VISUAL_ARTS_MEDIUMS,
+  MULTIDISCIPLINARY_TERMS,
+  LITERATURE_TERMS,
+  type OpportunitySearchDomain,
+  type OpportunitySearchOptions,
+  type OpportunitySearchHit,
+  type OpportunitySearchResult,
+} from './search/opportunitySearchEngine.js';
+
+export * from './ranking/magazineRankingEngine.js';
+

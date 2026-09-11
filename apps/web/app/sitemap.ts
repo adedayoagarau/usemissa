@@ -3,10 +3,19 @@ import { readUserHandle } from '@missa/radar-adapters';
 import { isPublicProfileIndexable } from '@missa/radar-engine';
 import { getEngine } from '@/lib/engine';
 import { siteUrl } from '@/lib/siteUrl';
+import { discoveryCollections } from '@/lib/discoveryGuides';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = siteUrl();
-  const staticEntries: MetadataRoute.Sitemap = [
+  const collectionEntries = discoveryCollections.map((col) => ({
+    url: `${baseUrl}/discover/${col.slug}`,
+    changeFrequency: 'weekly' as const,
+    priority: 0.8,
+  }));
+
+  return [
+    { url: `${baseUrl}/opportunities`, changeFrequency: 'daily', priority: 0.9 },
+    ...collectionEntries,
     { url: `${baseUrl}/waitlist`, changeFrequency: 'monthly', priority: 1 },
     { url: `${baseUrl}/privacy`, changeFrequency: 'yearly', priority: 0.25 },
   ];
@@ -30,3 +39,4 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   );
   return [...staticEntries, ...profiles.filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))];
 }
+

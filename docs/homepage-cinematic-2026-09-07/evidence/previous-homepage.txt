@@ -1,0 +1,12 @@
+import { HomepageHeroPreview } from "@/components/design-system/homepage-hero-preview";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Missa — Opportunities for every creator",
+  description: "Find open calls, grants, residencies, and literary magazines for your creative practice.",
+  path: "/",
+});
+
+export default function HomePage() {
+  return <HomepageHeroPreview />;
+}

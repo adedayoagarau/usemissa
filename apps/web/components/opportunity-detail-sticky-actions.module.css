@@ -1,0 +1,5 @@
+.bar { position: fixed; top: 72px; left: 0; right: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 12px max(24px, calc((100% - 1240px) / 2)); border-bottom: 1px solid var(--border); background: var(--bg); }
+.bar[hidden] { display: none; }
+.title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 600; }
+.actions { display: flex; flex-shrink: 0; gap: 12px; align-items: center; }
+@media (max-width: 767px) { .bar { display: none; } }

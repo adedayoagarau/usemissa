@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
-import { redeemWaitlistInvite } from "@missa/radar-adapters";
+import { AuthError } from "@missa/radar-engine";
+import { CreatorAccountProvisionError, redeemWaitlistInvite } from "@missa/radar-adapters";
 import { getEngine, persistRadar } from "@/lib/engine";
+import { getCreatorAccountRepository } from "@/lib/creatorRepositories";
 import {
   issueSessionToken,
   sessionCookieOptions,
   SESSION_COOKIE,
 } from "@/lib/auth";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
-import {
-  getRateLimiter,
-  readClientIp,
-  SIGNUP_IP_LIMIT,
-  tooManyRequests,
-} from "@/lib/rate-limit";
+import { clientAddress, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
 import {
   FIRST_SAVE_INTENT_COOKIE,
   verifyFirstSaveIntent,
 } from "@/lib/firstSaveIntent";
+import { deliverWelcomeEmail } from "@/emails/welcome";
 
 function cookieValue(request: Request): string | undefined {
   const encoded = request.headers
@@ -62,12 +60,6 @@ export async function POST(request: Request) {
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
-  if (email.length > 320) {
-    return NextResponse.json(
-      { error: "Use an email address up to 320 characters." },
-      { status: 400, headers: { "Cache-Control": "no-store" } },
-    );
-  }
   const normalizedName = displayName.trim();
   const firstSaveIntent = verifyFirstSaveIntent(cookieValue(request));
   if ((!normalizedName && !firstSaveIntent) || normalizedName.length > 120) {
@@ -80,46 +72,54 @@ export async function POST(request: Request) {
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
-  if (password.length < 8 || password.length > 200) {
+  if (email.length > 320 || password.length < 8 || password.length > 200) {
     return NextResponse.json(
       { error: "Use a password between 8 and 200 characters." },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
 
-  /**
-   * Charged only once the payload is well formed, so malformed noise stays cheap
-   * to reject and cannot spend a real visitor's window on their behalf.
-   */
-  const limiter = await getRateLimiter();
-  const decision = await limiter.consume(
-    SIGNUP_IP_LIMIT,
-    readClientIp(request),
-  );
-  if (!decision.allowed) {
-    return tooManyRequests(
-      decision,
-      "Too many sign up attempts. Please wait before trying again.",
+  const retryAfter = await consumeAuthRateLimit({
+    ip: clientAddress(request),
+    email,
+  });
+  if (retryAfter !== undefined) {
+    return NextResponse.json(
+      { error: "Too many account attempts. Try again later." },
+      {
+        status: 429,
+        headers: {
+          "Cache-Control": "no-store",
+          "Retry-After": String(retryAfter),
+        },
+      },
     );
   }
 
-  const engine = await getEngine();
   let account;
   try {
-    ({ account } = engine.signUp(email, password, normalizedName));
+    const repository = getCreatorAccountRepository();
+    if (repository) ({ account } = await repository.provisionPasswordAccount({ email, password, displayName: normalizedName }));
+    else {
+      const engine = await getEngine();
+      ({ account } = engine.signUp(email, password, normalizedName));
+      await persistRadar();
+    }
   } catch (err) {
     const accountExists =
-      err instanceof Error &&
-      err.message.toLowerCase().includes("already exists");
+      (err instanceof CreatorAccountProvisionError && err.code === "account-exists") ||
+      (err instanceof Error && err.message.toLowerCase().includes("already exists"));
     const message = accountExists
       ? "An account already uses this email. Log in instead."
-      : "We could not create your account. Check your details and try again.";
+      : err instanceof AuthError
+        ? err.message
+        : "We could not create your account. Check your details and try again.";
+    if (!accountExists && !(err instanceof AuthError)) console.error("Account signup failed", err);
     return NextResponse.json(
       { error: message, ...(accountExists ? { code: "account_exists" } : {}) },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
-  await persistRadar();
 
   // Invite redemption is deliberately best-effort for account creation. An
   // expired, replayed, or not-yet-migrated invite must not prevent a person
@@ -152,6 +152,16 @@ export async function POST(request: Request) {
     source: "auth-api",
     accountId: account.id,
     properties: { method: "password" },
+  });
+  void deliverWelcomeEmail(
+    {
+      accountId: account.id,
+      email: account.email,
+      displayName: normalizedName,
+    },
+    process.env.DATABASE_URL
+  ).catch((err) => {
+    console.error("Welcome email delivery failed", err);
   });
   const response = NextResponse.json(
     {

@@ -1,0 +1,9 @@
+.tier { border-radius: var(--radius-md); height: auto; min-height: 24px; white-space: normal; text-align: left; font-weight: 650; }
+.tier[data-tier="1"] { color: var(--ranking-tier-1-foreground); background: var(--ranking-tier-1-background); }
+.tier[data-tier="2"] { color: var(--ranking-tier-2-foreground); background: var(--ranking-tier-2-background); }
+.tier[data-tier="3"] { color: var(--ranking-tier-3-foreground); background: var(--ranking-tier-3-background); }
+.tier[data-tier="4"] { color: var(--muted-foreground); background: var(--muted); }
+.movement { display: flex; align-items: center; gap: 2px; margin-top: 8px; font-size: 12px; }
+.movement svg { width: 12px; height: 12px; }
+.movement[data-direction="up"] { color: var(--ranking-up); }
+.movement[data-direction="down"] { color: var(--ranking-down); }

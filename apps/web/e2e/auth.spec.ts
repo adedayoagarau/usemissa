@@ -28,7 +28,10 @@ test('people can create an account, recover from a bad login, and log in', async
   await page.getByLabel('Password', { exact: true }).fill('correct-horse-battery');
   await page.getByLabel('Confirm password').fill('correct-horse-battery');
   await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page).toHaveURL(/\/opportunities$/);
+  await expect(page.getByRole('heading', { name: 'Find your next opportunity.' })).toBeVisible({ timeout: 30_000 });
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 30_000 })
+    .toBe('/opportunities');
 
   await page.request.post('/api/auth/logout');
   await page.goto('/login');
@@ -39,5 +42,8 @@ test('people can create an account, recover from a bad login, and log in', async
 
   await page.getByLabel('Password', { exact: true }).fill('correct-horse-battery');
   await page.getByRole('button', { name: 'Log in' }).click();
-  await expect(page).toHaveURL(/\/opportunities$/);
+  await expect(page.getByRole('heading', { name: 'Find your next opportunity.' })).toBeVisible({ timeout: 30_000 });
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 30_000 })
+    .toBe('/opportunities');
 });

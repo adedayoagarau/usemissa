@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 /** Story 7.2: "the assigned reviewer sees only their assigned Submissions."
  * reviewerAccountId is the caller's own Account.id, not the :id route-param
@@ -10,6 +10,7 @@ export async function GET(request: Request) {
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
+  if (workspaceRelationalAuthorityEnabled()) return NextResponse.json(await (await getRelationalWorkspace()).reviewAssignmentsForReviewer(session.account.id));
   const engine = await getWorkspaceEngine();
   const assignments = engine.reviewAssignmentsForReviewer(session.account.id).map((a) => ({
     ...a,

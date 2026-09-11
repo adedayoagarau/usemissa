@@ -9,6 +9,10 @@ import {
   type OpportunityContentBuildInput,
   type OpportunityContentDecision,
 } from '@missa/radar-engine';
+import {
+  writeOpportunityEditorial,
+  writeOrganizationEditorial,
+} from './editorialWriter.js';
 import { ensureAgentGraphSchema } from './agentGraphSchema.js';
 import { ensureContentReviewSchema } from './contentReviewSchema.js';
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from './workerTelemetry.js';
@@ -21,7 +25,9 @@ interface ContentRow extends QueryResultRow {
   title: string;
   type: string;
   status: string;
+  organization_id: string | null;
   organization_name: string | null;
+  organization_data: Record<string, unknown> | null;
   discipline: string | null;
   genres: string[] | null;
   deadline_kind: string;
@@ -40,6 +46,17 @@ interface ContentRow extends QueryResultRow {
   organization_confirmed: boolean;
   accepted_formats: string[] | null;
   required_materials: unknown;
+  description: string | null;
+  guidelines_text: string | null;
+  editorial_focus: string | null;
+  eligibility_summary: string | null;
+  reading_period_kind: string | null;
+}
+
+interface ContentInputResult {
+  input: OpportunityContentBuildInput;
+  organizationId: string | null;
+  organizationData: Record<string, unknown> | null;
 }
 
 interface ReviewRow extends QueryResultRow {
@@ -50,65 +67,17 @@ interface ReviewRow extends QueryResultRow {
   submission_state: string;
 }
 
-const CONTENT_INTERVAL_MINUTES = 10;
-const CONTENT_REVIEW_POLICY_VERSION = 'opportunity-content-review.v2';
-
-export const SEED_CONTENT_JOBS_SQL = `
-  with candidates as (
-    select o.id, o.deadline_date,
-      greatest(
-        coalesce(o.last_changed_at, o.updated_at, o.created_at),
-        coalesce(lifecycle.created_at, '-infinity'::timestamptz)
-      )::text as input_version
-    from opportunities o
-    left join lateral (
-      select created_at
-      from opportunity_lifecycle_evidence
-      where opportunity_id = o.id and decision = 'apply' and confidence = 'high'
-      order by created_at desc limit 1
-    ) lifecycle on true
-    where o.publication_state in ('published', 'reviewable')
-  )
-  insert into radar_content_review_jobs (id, opportunity_id, priority, input_version)
-  select md5('content:' || candidate.id), candidate.id,
-    case when candidate.deadline_date is not null and candidate.deadline_date <= current_date + 30 then 20 else 0 end,
-    candidate.input_version
-  from candidates candidate
-  where not exists (
-    select 1 from opportunity_contents content
-    where content.opportunity_id = candidate.id and content.input_version = candidate.input_version
-  )
-  on conflict (opportunity_id) do update
-    set status = 'queued', input_version = excluded.input_version,
-        next_attempt_at = now(), lease_until = null, last_error = null, updated_at = now()
-    where radar_content_review_jobs.input_version is distinct from excluded.input_version
-`;
-
-export const REQUEUE_LEGACY_CONTENT_SQL = `
-  update radar_content_review_jobs job
-  set status = 'pending-review', next_attempt_at = now(), lease_until = null,
-      last_error = null, updated_at = now()
-  from opportunity_contents content
-  where content.opportunity_id = job.opportunity_id
-    and content.review_status = 'needs-human'
-    and coalesce(content.review_checks->>'reviewPolicyVersion', '') <> $1
-    and job.status = 'needs-human'
-`;
-
-export const CONTENT_APPROVAL_HANDOFF_SQL = `
-  update opportunities
-  set last_changed_at = now(), updated_at = now()
-  where id = $1 and publication_state = 'reviewable'
-`;
+const CONTENT_INTERVAL_MINUTES = 2;
+const BACKLOG_DRAIN_DELAY_MS = 2_000;
 
 function batchSize(): number {
-  const value = Number(process.env.RADAR_CONTENT_BATCH_SIZE ?? 20);
-  return Number.isFinite(value) ? Math.max(1, Math.min(50, Math.floor(value))) : 20;
+  const value = Number(process.env.RADAR_CONTENT_BATCH_SIZE ?? 50);
+  return Number.isFinite(value) ? Math.max(1, Math.min(200, Math.floor(value))) : 50;
 }
 
 function intervalMs(): number {
   const value = Number(process.env.RADAR_CONTENT_INTERVAL_MINUTES ?? CONTENT_INTERVAL_MINUTES);
-  return Number.isFinite(value) && value > 0 ? Math.max(60_000, Math.round(value * 60_000)) : CONTENT_INTERVAL_MINUTES * 60_000;
+  return Number.isFinite(value) && value > 0 ? Math.max(15_000, Math.round(value * 60_000)) : CONTENT_INTERVAL_MINUTES * 60_000;
 }
 
 function iso(value: Date | string | null | undefined): string | undefined {
@@ -127,8 +96,37 @@ function materialArray(value: unknown): Array<{ label: string; limit?: string }>
 }
 
 async function seedContentJobs(pool: Pool): Promise<void> {
-  await pool.query(SEED_CONTENT_JOBS_SQL);
-  await pool.query(REQUEUE_LEGACY_CONTENT_SQL, [CONTENT_REVIEW_POLICY_VERSION]);
+  await pool.query(
+    `insert into radar_content_review_jobs (id, opportunity_id, priority, input_version)
+     select md5('content:' || o.id), o.id,
+       case 
+         when o.deadline_date is not null and o.deadline_date between current_date and current_date + 30 then 30
+         when o.deadline_date is not null and o.deadline_date >= current_date then 20
+         when o.deadline_date is null then 10
+         else 0 
+       end,
+       coalesce(o.last_changed_at, o.updated_at, o.created_at)::text
+     from opportunities o
+     where o.publication_state in ('published', 'reviewable')
+       and not exists (
+         select 1 from opportunity_contents c
+         where c.opportunity_id = o.id
+           and c.input_version = coalesce(o.last_changed_at, o.updated_at, o.created_at)::text
+           and c.builder_version = 'editorial-writer.v2'
+       )
+     on conflict (opportunity_id) do update
+       set status = case when radar_content_review_jobs.status in ('building', 'processing') and radar_content_review_jobs.lease_until > now() then radar_content_review_jobs.status else 'queued' end,
+           priority = excluded.priority,
+           input_version = excluded.input_version,
+           next_attempt_at = now(), lease_until = case when radar_content_review_jobs.status in ('building', 'processing') and radar_content_review_jobs.lease_until > now() then radar_content_review_jobs.lease_until else null end,
+           last_error = null, updated_at = now()
+       where radar_content_review_jobs.input_version is distinct from excluded.input_version
+          or not exists (
+            select 1 from opportunity_contents c
+            where c.opportunity_id = radar_content_review_jobs.opportunity_id
+              and c.builder_version = 'editorial-writer.v2'
+          )`,
+  );
   await pool.query(
     `update radar_content_review_jobs j
      set status = 'pending-review', next_attempt_at = now(), lease_until = null,
@@ -182,10 +180,13 @@ async function claimReviewJobs(pool: Pool, limit: number): Promise<ContentJob[]>
   return result.rows;
 }
 
-async function contentInput(pool: Pool, opportunityId: string): Promise<OpportunityContentBuildInput | null> {
+async function contentInput(pool: Pool, opportunityId: string): Promise<ContentInputResult | null> {
   const result = await pool.query<ContentRow>(
     `select o.id, o.title, o.type, o.status, o.discipline, o.genres,
+       coalesce(c.content->>'description', (select obs.description from gary_call_observations obs where obs.opportunity_id = o.id and obs.description is not null order by obs.observed_at desc limit 1)) as description,
+       o.organization_id,
        org.data->>'name' as organization_name,
+       org.data as organization_data,
        o.deadline_kind, o.deadline_date::text as deadline_date,
        nullif(o.deadline_date::text, '') as deadline_raw,
        o.fee_status, o.fee_cents, o.fee_currency, o.prize, o.location,
@@ -195,10 +196,14 @@ async function contentInput(pool: Pool, opportunityId: string): Promise<Opportun
        coalesce(evidence.organization_confirmed, false) as organization_confirmed,
        coalesce(profile.accepted_formats, '{}') as accepted_formats,
        coalesce((select jsonb_agg(jsonb_build_object('label', m.label, 'limit', m."limit") order by m.sort_order)
-                 from opportunity_required_materials m where m.opportunity_id = o.id), '[]'::jsonb) as required_materials
+                 from opportunity_required_materials m where m.opportunity_id = o.id), '[]'::jsonb) as required_materials,
+       profile.eligibility_summary,
+       profile.reading_period_kind,
+       org.data->>'description' as editorial_focus
      from opportunities o
      join opportunity_sources s on s.id = o.source_id
      left join radar_organizations org on org.id = o.organization_id
+     left join opportunity_contents c on c.opportunity_id = o.id
      left join lateral (
        select e.processing_succeeded_at, e.organization_confirmed
        from opportunity_source_evidence e
@@ -211,25 +216,35 @@ async function contentInput(pool: Pool, opportunityId: string): Promise<Opportun
   const row = result.rows[0];
   if (!row) return null;
   return {
-    title: row.title,
-    type: row.type,
-    status: row.status,
-    organizationName: row.organization_name ?? undefined,
-    discipline: row.discipline ?? undefined,
-    genres: row.genres ?? [],
-    deadline: { kind: row.deadline_kind, date: row.deadline_date ?? undefined, raw: row.deadline_raw ?? undefined },
-    fee: { status: row.fee_status, amountCents: row.fee_cents ?? undefined, currency: row.fee_currency ?? undefined },
-    prize: row.prize ?? undefined,
-    location: row.location ?? undefined,
-    submissionUrl: row.submission_url ?? undefined,
-    guidelinesUrl: row.guidelines_url ?? undefined,
-    submissionState: row.submission_state,
-    requiredMaterials: materialArray(row.required_materials),
-    acceptedFormats: row.accepted_formats ?? [],
-    sourceUrl: row.source_url,
-    sourceProcessedAt: iso(row.processing_succeeded_at),
-    organizationConfirmed: row.organization_confirmed,
-    generatedAt: new Date().toISOString(),
+    organizationId: row.organization_id,
+    organizationData: row.organization_data,
+    input: {
+      title: row.title,
+      type: row.type,
+      status: row.status,
+      organizationName: row.organization_name ?? undefined,
+      discipline: row.discipline ?? undefined,
+      genres: row.genres ?? [],
+      deadline: { kind: row.deadline_kind, date: row.deadline_date ?? undefined, raw: row.deadline_raw ?? undefined },
+      fee: { status: row.fee_status, amountCents: row.fee_cents ?? undefined, currency: row.fee_currency ?? undefined },
+      prize: row.prize ?? undefined,
+      location: row.location ?? undefined,
+      submissionUrl: row.submission_url ?? undefined,
+      guidelinesUrl: row.guidelines_url ?? undefined,
+      submissionState: row.submission_state,
+      requiredMaterials: materialArray(row.required_materials),
+      acceptedFormats: row.accepted_formats ?? [],
+      sourceUrl: row.source_url,
+      sourceProcessedAt: iso(row.processing_succeeded_at),
+      organizationConfirmed: row.organization_confirmed,
+      generatedAt: new Date().toISOString(),
+      description: row.description ?? undefined,
+      guidelinesText: row.guidelines_text ?? undefined,
+      editorialFocus: row.editorial_focus ?? undefined,
+      organizationSummary: typeof row.organization_data?.description === 'string' ? row.organization_data.description : undefined,
+      eligibilitySummary: row.eligibility_summary ?? undefined,
+      readingPeriodKind: row.reading_period_kind ?? undefined,
+    },
   };
 }
 
@@ -258,12 +273,40 @@ async function writeHandoff(client: PoolClient, runId: string, opportunityId: st
 }
 
 async function buildJob(pool: Pool, runId: string, job: ContentJob): Promise<boolean> {
-  const input = await contentInput(pool, job.opportunityId);
-  if (!input) {
+  const fetched = await contentInput(pool, job.opportunityId);
+  if (!fetched) {
     await pool.query(`update radar_content_review_jobs set status = 'blocked', last_error = 'Opportunity is no longer content-buildable', lease_until = null, updated_at = now() where id = $1`, [job.id]);
     return false;
   }
-  const content = buildOpportunityContent(input);
+  const { input, organizationId, organizationData } = fetched;
+
+  // 1. Synthesize curatorial dossier using AI (DeepSeek / OpenAI) or elevated deterministic writer
+  const content = await writeOpportunityEditorial(input);
+
+  // 2. If the host institution has not had an editorial profile written yet, craft one
+  if (organizationId && organizationData && !organizationData.editorialProfile) {
+    try {
+      const orgEditorial = await writeOrganizationEditorial({
+        name: input.organizationName || String(organizationData.name || ''),
+        websiteUrl: String(organizationData.website_url || organizationData.websiteUrl || ''),
+        kind: String(organizationData.kind || ''),
+        location: input.location,
+        rawDescription: String(organizationData.description || organizationData.biography || ''),
+        editorialFocus: input.editorialFocus,
+        sampleCalls: [input.title],
+      });
+      await pool.query(
+        `update radar_organizations
+         set data = jsonb_set(data, '{editorialProfile}', $2::jsonb),
+             updated_at = now()
+         where id = $1`,
+        [organizationId, JSON.stringify(orgEditorial)],
+      );
+    } catch (orgErr) {
+      console.warn(`[content-worker] Failed to generate organization editorial profile for ${organizationId}:`, orgErr);
+    }
+  }
+
   const client = await pool.connect();
   try {
     await client.query('begin');
@@ -368,8 +411,6 @@ async function reviewJob(pool: Pool, runId: string, job: ContentJob): Promise<Op
 }
 
 export async function runContentReviewTick(pool: Pool, limit = batchSize()): Promise<{ built: number; reviewed: number; decisions: Record<OpportunityContentDecision, number> }> {
-  await ensureAgentGraphSchema(pool);
-  await ensureContentReviewSchema(pool);
   const runId = await startWorkerRun(pool, 'content-worker');
   if (!runId) throw new Error('Unable to start the content worker run telemetry record');
   try {
@@ -404,17 +445,23 @@ async function main(): Promise<void> {
   process.once('SIGTERM', stop);
   const limit = batchSize();
   const delay = intervalMs();
+  console.log(`[missa-content-worker] initializing schema...`);
+  await ensureAgentGraphSchema(pool);
+  await ensureContentReviewSchema(pool);
   console.log(`[missa-content-worker] running every ${Math.round(delay / 60_000)} minutes, batch=${limit}`);
   try {
     while (!controller.signal.aborted) {
+      let hasMore = false;
       try {
         const result = await runContentReviewTick(pool, limit);
         console.log(`[missa-content-worker] tick: built=${result.built} reviewed=${result.reviewed} decisions=${JSON.stringify(result.decisions)}`);
+        hasMore = result.built >= limit || result.reviewed >= limit;
       } catch (error) {
         console.error('[missa-content-worker] tick failed; retrying after interval', error);
       }
+      const sleepDuration = hasMore ? BACKLOG_DRAIN_DELAY_MS : delay;
       await new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, delay);
+        const timer = setTimeout(resolve, sleepDuration);
         controller.signal.addEventListener('abort', () => { clearTimeout(timer); resolve(); }, { once: true });
       });
     }

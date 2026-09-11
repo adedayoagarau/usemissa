@@ -4,6 +4,8 @@ Read `prd/index.md` first if you're new to this project — it links every PRD s
 
 ## Files
 
+- **[opportunity-layer-master-plan.md](./opportunity-layer-master-plan.md)** - Proof-gated programs for the Opportunity Contract, canonical graph, trust operations, creator and publisher loops, distribution infrastructure, and continent-by-continent expansion; supplements the existing epics
+- **[opportunity-layer-current-state-ledger.md](./opportunity-layer-current-state-ledger.md)** - P0 evidence ledger separating Backend/Data, Frontend/Product, Shared/Ops, and production-verification boundaries
 - **[epics.md](./epics.md)** - 13 epics, 37 detailed MVP stories + 3 Growth stubs, with FR coverage map
 - **[ux-design-specification.md](./ux-design-specification.md)** - Design system, components, journeys, and provisional answers to the handoff doc's open design questions
 - **[opportunities-product-design-scope.md](./opportunities-product-design-scope.md)** - Comprehensive scope for tailored Opportunities discovery, factual explanations, deadline urgency, quick/full detail, official submission handoff, tracking, saved searches, interaction states, delivery phases, and acceptance criteria

@@ -18,7 +18,6 @@ const PopoverDownloadDemo = () => {
   useEffect(() => {
     if (open && !hasStarted && !isCanceled) {
       // Start the premium progress demo when its popover opens.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHasStarted(true)
     }
   }, [open, hasStarted, isCanceled])

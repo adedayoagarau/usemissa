@@ -10,6 +10,7 @@ import {
 } from '@missa/radar-engine';
 import {
   createProductionEngine,
+  creatorRelationalAuthorityHealth,
   trackerImportCandidateHash,
   trackerImportStateHash,
   TrackerImportPersistenceError,
@@ -98,6 +99,10 @@ function getProductionEngine(): Promise<ProductionEngine> {
 }
 
 export async function getEngine(): Promise<RadarEngine> {
+  const creatorAuthority = creatorRelationalAuthorityHealth(process.env);
+  if (creatorAuthority.mode === 'relational' && !creatorAuthority.ready) {
+    throw new Error('Creator relational authority is unavailable');
+  }
   if (process.env.DATABASE_URL) return (await getProductionEngine()).engine;
   return (await getDemoWorld()).engine;
 }

@@ -1,0 +1,42 @@
+.missa-homepage-continuation {
+  --home-story-surface: var(--accent-deep);
+  --home-story-ink: var(--primary-foreground);
+  --home-story-secondary: color-mix(
+    in srgb,
+    var(--primary-foreground) 82%,
+    var(--accent-deep)
+  );
+  --home-portfolio-canvas: var(--marketing-highlight);
+  --home-workspace-ground: var(--marketing-workspace-ground);
+  --home-questions-ground: var(--marketing-quiet-ground);
+  --home-theme-white: var(--surface);
+  --home-applications-canvas: var(--mineral-blue-tint);
+  --home-notifications-canvas: var(--lichen-tint);
+  --home-goals-canvas: var(--mineral-blue);
+  --home-feature-shadow: 0 16px 40px
+    color-mix(in srgb, var(--ink) 12%, transparent);
+  --home-panel-radius: 32px;
+  --home-card-radius: 20px;
+  --home-control-radius: 16px;
+  --home-pill-radius: 9999px;
+  --home-preview-surface: var(--accent-tint);
+  --home-active-surface: var(--accent-deep);
+  --home-active-ink: var(--primary-foreground);
+  --home-theme-sage: var(--accent-tint);
+  --home-theme-paper: var(--ochre-tint);
+  --home-theme-mineral: var(--mineral-blue-tint);
+  --home-theme-night: var(--ink);
+  --home-notification-secondary: color-mix(
+    in srgb,
+    var(--home-active-ink) 82%,
+    var(--home-active-surface)
+  );
+  --home-soft-surface: color-mix(
+    in srgb,
+    var(--accent-tint) 38%,
+    var(--surface)
+  );
+  --home-card-shadow: 0 12px 32px color-mix(in srgb, var(--ink) 6%, transparent);
+  --home-transition: 180ms;
+  --home-ease: cubic-bezier(0.2, 0, 0, 1);
+}

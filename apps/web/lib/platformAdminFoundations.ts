@@ -47,10 +47,11 @@ const emptyMessage: PlatformAdminMessageHistory = {
 const emptyCrm: PlatformAdminCrmData = {
   available: false,
   generatedAt: new Date(0).toISOString(),
-  source: 'platform_crm_timeline_events + audit_events + contacts + tasks',
+  source: 'platform_crm_timeline_events + contacts + tasks',
   warnings: [],
   summary: { timelineEvents: 0, notes: 0, accountsWithActivity: 0, organizationsWithActivity: 0, contacts: 0, tasks: 0, openTasks: 0 },
   rows: [],
+  compatibilityRows: [],
   contacts: [],
   tasks: [],
 };

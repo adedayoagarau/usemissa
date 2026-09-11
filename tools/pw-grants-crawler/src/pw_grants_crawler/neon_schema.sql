@@ -568,3 +568,53 @@ CREATE UNIQUE INDEX IF NOT EXISTS gary_harness_audit_events_idempotency_idx
 
 CREATE INDEX IF NOT EXISTS gary_harness_audit_events_target_idx
     ON gary_harness_audit_events(target_type, target_id, created_at DESC);
+
+-- Creative Preparation Backfill: Visuals, Prize Provenance, Intelligence & Socials
+CREATE TABLE IF NOT EXISTS gary_profile_visuals (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES gary_profiles(id) ON DELETE CASCADE,
+    asset_type TEXT NOT NULL CHECK (asset_type IN ('logo', 'banner', 'issue_cover')),
+    image_url TEXT NOT NULL,
+    label TEXT,
+    issue_year INTEGER,
+    season TEXT,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS gary_profile_visuals_profile_idx
+    ON gary_profile_visuals(profile_id, asset_type);
+
+CREATE TABLE IF NOT EXISTS gary_prize_provenance (
+    id TEXT PRIMARY KEY,
+    profile_id TEXT NOT NULL REFERENCES gary_profiles(id) ON DELETE CASCADE,
+    opportunity_id TEXT,
+    contest_name TEXT NOT NULL,
+    award_year INTEGER NOT NULL,
+    winner_name TEXT NOT NULL,
+    winning_title TEXT,
+    winning_work_url TEXT,
+    judge_name TEXT,
+    source_url TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS gary_prize_provenance_profile_idx
+    ON gary_prize_provenance(profile_id, award_year DESC);
+
+CREATE TABLE IF NOT EXISTS gary_profile_intelligence (
+    profile_id TEXT PRIMARY KEY REFERENCES gary_profiles(id) ON DELETE CASCADE,
+    prestige_tier TEXT NOT NULL DEFAULT 'Tier 3 (Emerging)',
+    founding_year INTEGER,
+    honors JSONB NOT NULL DEFAULT '[]'::jsonb,
+    editorial_archetype TEXT NOT NULL DEFAULT 'Unspecified',
+    sentiment_tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+    response_days_min INTEGER,
+    response_days_max INTEGER,
+    response_label TEXT,
+    query_policy TEXT,
+    social_links JSONB NOT NULL DEFAULT '{}'::jsonb,
+    popularity_metrics JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+

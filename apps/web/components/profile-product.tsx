@@ -29,7 +29,6 @@ import { EmailForwardingCard } from "@/components/email-forwarding-card";
 import { CalendarFeedCard } from "@/components/calendar-feed-card";
 import { FollowingList } from "@/components/following-list";
 import { GmailSyncCard } from "@/components/gmail-sync-card";
-import { HandleClaimCard } from "@/components/handle-claim-card";
 import { SavedSearches } from "@/components/saved-searches";
 import {
   TaxonomyBrowsePicker,
@@ -104,14 +103,8 @@ export type ProfileProductData = {
   privacy: PrivacySettings;
   taxonomyPreferences: TaxonomyPreferenceSelection[];
   opportunityPreferences: OpportunityPreferences;
-  accountDeletion: {
-    passwordRequired: boolean;
-    blockers: string[];
-  };
-  integrations: {
-    calendarConnected: boolean;
-  };
-  notifications: NotificationSettings;
+  revision?: number;
+  preferencesRevision?: number;
 };
 
 type Following = {
@@ -376,6 +369,14 @@ export function ProfileProduct({
   const router = useRouter();
   const [active, setActive] = useState(initialSection);
   const [profile, setProfile] = useState(initialProfile);
+  const [revision, setRevision] = useState(initialProfile.revision);
+  const [preferencesRevision, setPreferencesRevision] = useState(initialProfile.preferencesRevision);
+  const [displayName, setDisplayName] = useState(initialProfile.displayName);
+  const [bio, setBio] = useState(initialProfile.bio ?? "");
+  const [savedIdentity, setSavedIdentity] = useState({
+    displayName: initialProfile.displayName,
+    bio: initialProfile.bio ?? "",
+  });
   const [taxonomyPreferences, setTaxonomyPreferences] = useState(
     initialProfile.taxonomyPreferences,
   );
@@ -399,14 +400,9 @@ export function ProfileProduct({
   const [message, setMessage] = useState<string>();
   const [error, setError] = useState<string>();
   const [confirmedExclusions, setConfirmedExclusions] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState("");
-  const [deletePassword, setDeletePassword] = useState("");
-  const [deleteError, setDeleteError] = useState<string>();
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [passwordStatus, setPasswordStatus] = useState<string>();
+  const [closeAccountOpen, setCloseAccountOpen] = useState(false);
+  const [closeAccountText, setCloseAccountText] = useState("");
+  const [closingAccount, setClosingAccount] = useState(false);
   const [isPending, startTransition] = useTransition();
   const timezones = useMemo(() => {
     const fallback = [
@@ -501,6 +497,60 @@ export function ProfileProduct({
     setError(undefined);
   }
 
+  function saveIdentity(event: React.FormEvent) {
+    event.preventDefault();
+    setMessage(undefined);
+    setError(undefined);
+    const name = displayName.trim();
+    const cleanBio = bio.trim();
+    if (!name || name.length > 120) {
+      setError("Display name must be between 1 and 120 characters.");
+      return;
+    }
+    if (cleanBio.length > 1_000) {
+      setError("Bio must be 1,000 characters or fewer.");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/me/profile", {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+            ...(revision ? { "Idempotency-Key": crypto.randomUUID() } : {}),
+          },
+          body: JSON.stringify({ displayName: name, bio: cleanBio, ...(revision ? { expectedRevision: revision } : {}) }),
+        });
+        const body = (await response
+          .json()
+          .catch(() => ({}))) as Partial<ProfileProductData> & {
+          error?: string;
+        };
+        if (!response.ok || typeof body.displayName !== "string")
+          throw new Error(body.error ?? "We could not save your identity.");
+        setDisplayName(body.displayName);
+        setBio(body.bio ?? "");
+        setSavedIdentity({
+          displayName: body.displayName,
+          bio: body.bio ?? "",
+        });
+        if (typeof body.revision === "number") setRevision(body.revision);
+        setProfile((current) => ({
+          ...current,
+          displayName: body.displayName!,
+          bio: body.bio,
+        }));
+        setMessage("Identity saved");
+      } catch (cause) {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "We could not save your identity.",
+        );
+      }
+    });
+  }
+
   function savePreferences(event: React.FormEvent) {
     event.preventDefault();
     setMessage(undefined);
@@ -519,8 +569,11 @@ export function ProfileProduct({
       try {
         const response = await fetch("/api/me/profile", {
           method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ taxonomyPreferences, opportunityPreferences }),
+          headers: {
+            "content-type": "application/json",
+            ...(preferencesRevision ? { "Idempotency-Key": crypto.randomUUID() } : {}),
+          },
+          body: JSON.stringify({ taxonomyPreferences, opportunityPreferences, ...(preferencesRevision ? { expectedRevision: preferencesRevision } : {}) }),
         });
         const body = (await response
           .json()
@@ -538,6 +591,7 @@ export function ProfileProduct({
           taxonomyPreferences: nextTaxonomy,
           opportunityPreferences: nextOpportunity,
         });
+        if (typeof body.preferencesRevision === "number") setPreferencesRevision(body.preferencesRevision);
         setMessage("Private preferences saved");
         setConfirmedExclusions(false);
       } catch (cause) {
@@ -557,11 +611,15 @@ export function ProfileProduct({
       try {
         const response = await fetch("/api/me/profile/privacy", {
           method: "PATCH",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(privacy),
+          headers: {
+            "content-type": "application/json",
+            ...(revision ? { "Idempotency-Key": crypto.randomUUID() } : {}),
+          },
+          body: JSON.stringify({ ...privacy, ...(revision ? { expectedRevision: revision } : {}) }),
         });
         const body = (await response.json().catch(() => ({}))) as {
           settings?: PrivacySettings;
+          revision?: number;
           error?: string;
         };
         if (!response.ok || !body.settings)
@@ -575,6 +633,7 @@ export function ProfileProduct({
         setPrivacy(next);
         setSavedPrivacy(next);
         setProfile((current) => ({ ...current, privacy: next }));
+        if (typeof body.revision === "number") setRevision(body.revision);
         setMessage("Privacy settings saved");
       } catch (cause) {
         setError(
@@ -750,27 +809,20 @@ export function ProfileProduct({
           </div>
         </div>
         <Link
-          href={profile.publicUrl ?? "/profile"}
-          aria-label={
-            profile.publicUrl
-              ? "Preview public Profile"
-              : "Set up public Profile"
-          }
+          href="/profile/portfolio"
+          aria-label="Manage public profile"
           className={cn(
             buttonVariants({ variant: "outline" }),
             styles.previewLink,
           )}
         >
           <Eye aria-hidden="true" />
-          <span>
-            {profile.publicUrl
-              ? "Preview public Profile"
-              : "Set up public Profile"}
-          </span>
+          <span>Manage public profile</span>
         </Link>
       </header>
 
       <nav className={styles.sectionNav} aria-label="Profile sections">
+        <Link href="/profile/portfolio" className={buttonVariants({ variant: "ghost" })}><Eye aria-hidden="true" />Public profile</Link>
         {SECTION_DEFINITIONS.map((item) => {
           const Icon = item.icon;
           return (
@@ -789,6 +841,10 @@ export function ProfileProduct({
 
       <div className={styles.contentLayout}>
         <aside aria-label="Profile section index">
+          <Link href="/profile/portfolio">
+            <Eye aria-hidden="true" />
+            <span><strong>Public profile</strong><small>Build and preview your portfolio</small></span>
+          </Link>
           {SECTION_DEFINITIONS.map((item) => {
             const Icon = item.icon;
             return (
@@ -813,14 +869,7 @@ export function ProfileProduct({
           <SectionHeading section={active} />
           {active === "overview" ? (
             <div className={styles.overview}>
-              <HandleClaimCard
-                initialHandle={profile.handle.current}
-                initialNamespaceAvailable={profile.handle.namespaceAvailable}
-                claimingOpen={profile.handle.claimingOpen}
-                promptDismissed={profile.handle.promptDismissed}
-                displayName={profile.displayName}
-                published={profile.handle.published}
-              />
+              <Link href="/profile/portfolio" className={buttonVariants({variant:"outline"})}>Manage your public profile and handle</Link>
               <Alert>
                 <CircleUserRound aria-hidden="true" />
                 <AlertTitle>{nextStep.title}</AlertTitle>
@@ -1275,12 +1324,10 @@ export function ProfileProduct({
                   </Button>
                 ) : null}
                 <Link
-                  href={profile.publicUrl ?? "/profile"}
+                  href="/profile/portfolio"
                   className={buttonVariants({ variant: "outline" })}
                 >
-                  {profile.publicUrl
-                    ? "Preview public Profile"
-                    : "Set up public Profile"}
+                  Manage public profile
                 </Link>
               </div>
             </div>
@@ -1447,90 +1494,15 @@ export function ProfileProduct({
                   Open Tracker import
                 </Link>
               </div>
-              <form className={styles.accountForm} onSubmit={changePassword}>
+              <div className={styles.importCallout}>
                 <div>
-                  <h3>Change password</h3>
+                  <h3>Close your account</h3>
                   <p>
-                    Changing your password signs out Missa on your other
-                    devices.
+                    Your private workspace will stop accepting sign-ins. Published profiles are removed from public view; audit records are retained where required.
                   </p>
                 </div>
-                <div className={styles.deleteFields}>
-                  <div>
-                    <Label htmlFor="current-password">Current password</Label>
-                    <Input
-                      id="current-password"
-                      type="password"
-                      autoComplete="current-password"
-                      value={currentPassword}
-                      onChange={(event) =>
-                        setCurrentPassword(event.target.value)
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="new-password">New password</Label>
-                    <Input
-                      id="new-password"
-                      type="password"
-                      autoComplete="new-password"
-                      value={newPassword}
-                      onChange={(event) => setNewPassword(event.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="confirm-new-password">
-                      Confirm new password
-                    </Label>
-                    <Input
-                      id="confirm-new-password"
-                      type="password"
-                      autoComplete="new-password"
-                      value={confirmPassword}
-                      onChange={(event) =>
-                        setConfirmPassword(event.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-                <div className={styles.formActions}>
-                  <Button
-                    type="submit"
-                    disabled={
-                      isPending ||
-                      !currentPassword ||
-                      !newPassword ||
-                      !confirmPassword
-                    }
-                  >
-                    {isPending ? "Changing…" : "Change password"}
-                  </Button>
-                  {passwordStatus ? (
-                    <p role="status">{passwordStatus}</p>
-                  ) : null}
-                </div>
-              </form>
-              <div className={styles.deleteAccount}>
-                <div>
-                  <h3>Delete your account</h3>
-                  <p>
-                    Remove your Profile and private creator data. Applications
-                    you submitted and reviews you completed stay with the
-                    receiving Organization.
-                  </p>
-                  {profile.accountDeletion.blockers.map((blocker) => (
-                    <p key={blocker} className={styles.blocker}>
-                      {blocker}
-                    </p>
-                  ))}
-                </div>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={Boolean(profile.accountDeletion.blockers.length)}
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  Delete account
+                <Button variant="outline" onClick={() => setCloseAccountOpen(true)}>
+                  Close account
                 </Button>
               </div>
             </div>
@@ -1561,64 +1533,35 @@ export function ProfileProduct({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+      <AlertDialog open={closeAccountOpen} onOpenChange={(open) => { if (!closingAccount) setCloseAccountOpen(open); }}>
         <AlertDialogContent>
-          <form onSubmit={deleteAccount}>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Your public Profile, Library, Tracker, saved searches,
-                connections, and drafts will be removed. This cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className={styles.deleteFields}>
-              <div>
-                <Label htmlFor="delete-confirmation">
-                  Type DELETE MY ACCOUNT
-                </Label>
-                <Input
-                  id="delete-confirmation"
-                  autoComplete="off"
-                  value={deleteConfirmation}
-                  onChange={(event) =>
-                    setDeleteConfirmation(event.target.value)
-                  }
-                />
-              </div>
-              {profile.accountDeletion.passwordRequired ? (
-                <div>
-                  <Label htmlFor="delete-password">Current password</Label>
-                  <Input
-                    id="delete-password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={deletePassword}
-                    onChange={(event) => setDeletePassword(event.target.value)}
-                  />
-                </div>
-              ) : null}
-              {deleteError ? (
-                <p className={styles.error} role="alert">
-                  {deleteError}
-                </p>
-              ) : null}
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel type="button">Keep account</AlertDialogCancel>
-              <Button
-                type="submit"
-                variant="destructive"
-                disabled={
-                  isPending ||
-                  deleteConfirmation !== "DELETE MY ACCOUNT" ||
-                  (profile.accountDeletion.passwordRequired && !deletePassword)
-                }
-              >
-                {isPending ? "Deleting…" : "Delete account"}
-              </Button>
-            </AlertDialogFooter>
-          </form>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Close your Missa account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This signs you out and removes your public profile. Your exported data and required audit history are retained. This cannot be undone from Missa.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Label htmlFor="close-account-confirmation">Type CLOSE MY ACCOUNT</Label>
+          <Input id="close-account-confirmation" value={closeAccountText} onChange={(event) => setCloseAccountText(event.target.value)} autoComplete="off" />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={closingAccount}>Keep account</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={closingAccount || closeAccountText !== "CLOSE MY ACCOUNT"}
+              onClick={(event) => {
+                event.preventDefault();
+                setClosingAccount(true);
+                fetch("/api/me/account/close", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmation: closeAccountText }) })
+                  .then(async (response) => {
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(data.error || "Could not close your account.");
+                    window.location.href = "/";
+                  })
+                  .catch((reason: unknown) => { setError(reason instanceof Error ? reason.message : "Could not close your account."); setClosingAccount(false); });
+              }}
+            >
+              {closingAccount ? "Closing…" : "Close account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

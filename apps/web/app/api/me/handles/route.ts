@@ -10,6 +10,7 @@ import {
   renameUserHandle,
 } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
+import { getEngine, persistRadar } from "@/lib/engine";
 
 const headers = { "Cache-Control": "private, no-store" };
 function json(body: unknown, status = 200) {
@@ -52,8 +53,38 @@ export async function POST(request: Request) {
     userId: session.account.userId,
     requestedHandle,
   });
-  if (result.state === "claimed") return json(result, 201);
-  if (result.state === "already-claimed") return json(result);
+  if (result.state === "claimed") {
+    const claimedHandle = result.handle;
+    if (!claimedHandle)
+      return NextResponse.json(
+        { error: "Handle claim completed without a claim timestamp." },
+        { status: 500 },
+      );
+    if (!claimedHandle.claimedAt)
+      return NextResponse.json(
+        { error: "Handle claim completed without a claim timestamp." },
+        { status: 500 },
+      );
+    const engine = await getEngine();
+    const motion = engine.markProfileMotion(
+      session.account.userId,
+      "handle-claimed",
+      claimedHandle.claimedAt,
+    );
+    if (motion.recorded) {
+      engine.recordAudit(
+        session.account.id,
+        "profile.motion_recorded",
+        "user_profile",
+        session.account.userId,
+        JSON.stringify({ event: "handle-claimed" }),
+      );
+      await persistRadar();
+    }
+    return NextResponse.json(result, { status: 201 });
+  }
+  if (result.state === "already-claimed")
+    return NextResponse.json(result, { status: 200 });
   if (result.state === "invalid")
     return json(
       { error: "Choose a handle with 3–30 letters, numbers, or hyphens." },

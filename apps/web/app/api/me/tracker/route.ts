@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import {
+  creatorRelationalAuthorityEnabled,
+  CreatorIdempotencyConflictError,
+} from "@missa/radar-adapters";
 
 import { getSessionAccount } from "@/lib/auth";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
@@ -15,6 +19,7 @@ import {
   saveOpportunityForAccount,
 } from "@/lib/saveOpportunityToTracker";
 import type { FirstSaveReceipt } from "@/lib/firstSaveTypes";
+import { getCreatorCalendarRepository } from "@/lib/creatorRepositories";
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -27,7 +32,7 @@ export async function POST(request: Request) {
     );
   }
   const postgresTracker =
-    process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" &&
+    creatorRelationalAuthorityEnabled(process.env) &&
     Boolean(process.env.DATABASE_URL);
   if (!session.account.userId && !postgresTracker) {
     return NextResponse.json(
@@ -100,7 +105,16 @@ export async function POST(request: Request) {
       }),
     ]);
 
-    const saved = await saveOpportunityForAccount(session, opportunity);
+    const saved = await saveOpportunityForAccount(session, opportunity, journeyId);
+    let calendar: { status: "added" | "no-deadline" | "pending"; eventId?: string } = { status: "no-deadline" };
+    const calendarRepository = getCreatorCalendarRepository();
+    if (calendarRepository) {
+      try {
+        calendar = await calendarRepository.ensureOpportunityDeadline(session.account.id, opportunity.id);
+      } catch {
+        calendar = { status: "pending" };
+      }
+    }
     const nextAction = firstSaveNextAction(opportunity);
     const completion = createFirstSaveCompletionToken({
       journeyId,
@@ -152,12 +166,24 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         status: saved.status,
-        tracked: { opportunityId: opportunity.id },
+        tracked: { opportunityId: opportunity.id, ...(saved.revision ? { revision: saved.revision } : {}) },
+        replayed: saved.replayed ?? false,
+        calendar,
+        ...(saved.receiptId ? { receiptId: saved.receiptId } : {}),
         receipt,
       },
-      { status: saved.status === "created" ? 201 : 200, headers: noStore },
+      {
+        status: saved.status === "created" && !saved.replayed ? 201 : 200,
+        headers: noStore,
+      },
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof CreatorIdempotencyConflictError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 409, headers: noStore },
+      );
+    }
     return NextResponse.json(
       {
         error:

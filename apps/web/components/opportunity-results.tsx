@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { OpportunityBrowseProjection } from '@missa/radar-engine';
 import { ChevronDown, LoaderCircle } from 'lucide-react';
 import { OpportunityCatalogueCard } from '@/components/opportunity-catalogue-card';
@@ -21,17 +21,17 @@ export function OpportunityResults({
   initialNextCursor,
   baseQuery,
   signedIn,
+  previewMode = false,
+  total,
 }: {
   initialItems: OpportunityBrowseProjection[];
   initialNextCursor: string | null;
   baseQuery: string;
   signedIn: boolean;
+  previewMode?: boolean;
+  total: number;
 }) {
-  const snapshots = useRef(
-    new Map<string, Snapshot>([
-      ['first', { items: initialItems, nextCursor: initialNextCursor }],
-    ]),
-  );
+  const [snapshots] = useState(() => new Map<string, Snapshot>([['first', { items: initialItems, nextCursor: initialNextCursor }]]));
   const [items, setItems] = useState(initialItems);
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
   const [loading, setLoading] = useState(false);
@@ -44,7 +44,7 @@ export function OpportunityResults({
     }
     const onPopState = (event: PopStateEvent) => {
       const key = event.state?.missaOpportunityPage ?? (new URL(window.location.href).searchParams.get('cursor') || 'first');
-      const snapshot = snapshots.current.get(key);
+      const snapshot = snapshots.get(key);
       if (snapshot) {
         setItems(snapshot.items);
         setNextCursor(snapshot.nextCursor);
@@ -56,7 +56,7 @@ export function OpportunityResults({
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+  }, [snapshots]);
 
   async function loadMore() {
     if (!nextCursor || loading) return;
@@ -71,7 +71,7 @@ export function OpportunityResults({
       const merged = [...items, ...page.items];
       const pageKey = nextCursor;
       const snapshot = { items: merged, nextCursor: page.nextCursor };
-      snapshots.current.set(pageKey, snapshot);
+      snapshots.set(pageKey, snapshot);
       setItems(merged);
       setNextCursor(page.nextCursor);
       const url = new URL(window.location.href);
@@ -87,7 +87,10 @@ export function OpportunityResults({
   return (
     <>
       <div className={styles.grid}>
-        {items.map((item) => <OpportunityCatalogueCard key={item.id} item={item} signedIn={signedIn} />)}
+        {items.map((item) => <OpportunityCatalogueCard key={item.id} item={item} signedIn={signedIn} previewMode={previewMode} />)}
+      </div>
+      <div className={styles.resultProgress} aria-live="polite">
+        Showing {items.length.toLocaleString()} of {total.toLocaleString()} opportunities
       </div>
       {nextCursor ? (
         <div className={styles.loadMore}>

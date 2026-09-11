@@ -1,0 +1,42 @@
+.product { width: min(100%, 1240px); margin: 0 auto; color: var(--foreground); }
+.header { display: flex; align-items: end; justify-content: space-between; gap: 32px; padding: 24px 0 32px; border-bottom: 1px solid var(--border); }
+.header h1 { margin: 0; font-family: var(--font-heading), sans-serif; font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 600; letter-spacing: -.045em; line-height: .95; }
+.header p { max-width: 620px; margin: 16px 0 0; color: var(--muted-foreground); font-size: 1rem; line-height: 1.55; }
+.header > a, .actions a, .empty a { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; font-weight: 650; }
+.header > a { padding: 0 16px; background: var(--primary); color: var(--primary-foreground); }
+.header svg, .actions svg { width: 16px; height: 16px; }
+.tools { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px 0; }
+.tools label { display: flex; min-height: 44px; width: min(100%, 420px); align-items: center; gap: 10px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+.tools label:focus-within { border-color: var(--ring); outline: 3px solid color-mix(in srgb, var(--ring) 20%, transparent); }
+.tools label svg { width: 18px; color: var(--muted-foreground); }
+.tools input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--foreground); font: inherit; }
+.tools > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.tools button { min-height: 44px; padding: 0 14px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--muted-foreground); font: inherit; font-size: .875rem; }
+.tools button[aria-pressed='true'] { border-color: var(--primary); background: var(--accent); color: var(--accent-foreground); font-weight: 650; }
+.resultHeading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 8px 0 20px; }
+.resultHeading h2 { margin: 0; font-size: 1.125rem; }
+.resultHeading span { color: var(--muted-foreground); font-size: .8125rem; }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.card { display: grid; min-width: 0; gap: 24px; padding: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.cardTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mark { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 8px; background: var(--accent); color: var(--accent-foreground); }
+.mark svg { width: 18px; height: 18px; }
+.cardTop > span:last-child { color: var(--muted-foreground); font-size: .75rem; font-weight: 650; }
+.cardTop > span[data-urgent='true'] { color: var(--ochre-deep); }
+.card h3 { margin: 0; font-family: var(--font-heading), sans-serif; font-size: 1.5rem; letter-spacing: -.025em; line-height: 1.15; overflow-wrap: anywhere; }
+.card > div > p { margin: 7px 0 0; color: var(--muted-foreground); }
+.card dl { display: grid; margin: 0; border-top: 1px solid var(--border); grid-template-columns: 1fr 1fr; }
+.card dl > div { padding: 16px 12px 0 0; }
+.card dt { display: flex; align-items: center; gap: 6px; color: var(--muted-foreground); font-size: .75rem; }
+.card dt svg { width: 14px; height: 14px; }
+.card dd { margin: 6px 0 0; font-size: .875rem; font-weight: 650; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.actions a:first-child { padding: 0 14px; background: var(--primary); color: var(--primary-foreground); }
+.actions a:last-child { padding: 0 12px; color: var(--primary); }
+.empty { display: grid; min-height: 360px; place-items: center; align-content: center; gap: 12px; padding: 48px 24px; border: 1px dashed var(--border); border-radius: 12px; text-align: center; }
+.empty > svg { width: 28px; height: 28px; color: var(--primary); }
+.empty h2, .empty p { margin: 0; }
+.empty p { max-width: 500px; color: var(--muted-foreground); line-height: 1.55; }
+.empty a, .empty button { min-height: 44px; margin-top: 8px; padding: 0 16px; border: 0; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font: inherit; font-weight: 650; }
+@media (max-width: 760px) { .header, .tools { align-items: stretch; flex-direction: column; } .header > a { width: 100%; } .tools label { width: 100%; } .tools > div { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; } .tools button { flex: 0 0 auto; } .grid { grid-template-columns: 1fr; } }
+@media (max-width: 440px) { .header { padding-top: 8px; } .header h1 { font-size: 2.75rem; } .card { padding: 20px; } .card dl { grid-template-columns: 1fr; } .actions { align-items: stretch; flex-direction: column; } .actions a { width: 100%; } }

@@ -50,6 +50,7 @@
         "email": "${EMAIL}",
         "license_key": "${LICENSE_KEY}"
       }
-    }
+    },
+    "@uitripled": "https://ui.tripled.work/r/{name}.json"
   }
 }

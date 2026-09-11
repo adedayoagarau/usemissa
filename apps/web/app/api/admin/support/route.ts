@@ -16,6 +16,7 @@ function errorResponse(error: unknown): NextResponse {
   if (error instanceof Error && error.message === 'Invalid support case id') return NextResponse.json({ error: error.message }, { status: 400, headers });
   if (error instanceof Error && error.message === 'Invalid idempotency key') return NextResponse.json({ error: error.message }, { status: 400, headers });
   if (error instanceof Error && error.message === 'Invalid support case status') return NextResponse.json({ error: error.message }, { status: 400, headers });
+  if (error instanceof Error && (error.message === 'A resolved correction requires the verified detail and official source URL' || error.message === 'Evidence URL must use http or https' || error.message === 'That correction field is not supported' || error.message === 'A correction value is required' || error.message === 'Fee correction must be a non-negative whole number')) return NextResponse.json({ error: error.message }, { status: 400, headers });
   return NextResponse.json({ error: 'The support case operation is unavailable.' }, { status: 503, headers });
 }
 
@@ -42,12 +43,23 @@ export async function POST(request: Request) {
   const status = typeof value.status === 'string' && PLATFORM_SUPPORT_STATUSES.includes(value.status as PlatformSupportStatus)
     ? value.status as PlatformSupportStatus
     : undefined;
-  if (!caseId || !kind || !status) return NextResponse.json({ error: 'caseId, kind, and a supported status are required.' }, { status: 400, headers });
+  if (!caseId || !status) return NextResponse.json({ error: 'caseId and a supported status are required.' }, { status: 400, headers });
+  const correction = typeof value.correction === 'string' ? value.correction.trim().slice(0, 2_000) : undefined;
+  const evidenceUrl = typeof value.evidenceUrl === 'string' ? value.evidenceUrl.trim().slice(0, 1_000) : undefined;
+  const correctedField = typeof value.correctedField === 'string' ? value.correctedField.trim() : undefined;
+  const correctedValue = typeof value.correctedValue === 'string' ? value.correctedValue.trim().slice(0, 500) : undefined;
 
   try {
-    const result = kind === 'profile'
-      ? await updateProfileIssueReport(process.env.DATABASE_URL, { reportId: caseId, status, actorAccountId: auth.session.account.id, idempotencyKey })
-      : await updatePlatformAdminSupportCase(process.env.DATABASE_URL, { caseId, status, actorAccountId: auth.session.account.id, idempotencyKey });
+    const result = await updatePlatformAdminSupportCase(process.env.DATABASE_URL, {
+      caseId,
+      status,
+      actorAccountId: auth.session.account.id,
+      idempotencyKey,
+      ...(correction ? { correction } : {}),
+      ...(evidenceUrl ? { evidenceUrl } : {}),
+      ...(correctedField ? { correctedField } : {}),
+      ...(correctedValue ? { correctedValue } : {}),
+    });
     return NextResponse.json(result, { headers });
   } catch (error) {
     return errorResponse(error);

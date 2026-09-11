@@ -9,17 +9,21 @@
  */
 export { LlmExtractor, type LlmExtractorOptions } from "./llmExtractor.js";
 export {
-  createProfileIssueReport,
-  readProfileIssueReportQueue,
-  updateProfileIssueReport,
-  PROFILE_ISSUE_REASONS,
-  type CreateProfileIssueReportInput,
-  type CreateProfileIssueReportResult,
-  type ProfileIssueReason,
-  type ProfileIssueReportCase,
-  type ProfileIssueReportQueue,
-  type UpdateProfileIssueReportInput,
-} from "./profileIssueReports.js";
+  cleanCrawledText,
+  cleanTitleOrLabel,
+  decodeHtmlEntities,
+} from "./cleanText.js";
+export * from "./governedOperations.js";
+export {
+  classifyLifecycleEvidence,
+  runLifecycleReconcilerBatch,
+  LIFECYCLE_CLASSIFIER_VERSION,
+} from "./lifecycleReconciler.js";
+export type {
+  LifecycleDecision,
+  LifecycleFetchResult,
+  LifecycleReconcilerOptions,
+} from "./lifecycleReconciler.js";
 export {
   ensurePostgresSchema,
   saveStoreToPostgres,
@@ -29,6 +33,93 @@ export {
   SnapshotConflictError,
 } from "./postgresStore.js";
 export { uuidIds } from "./uuidIds.js";
+export { canonicalOpportunityIsPublic, canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+export {
+  creatorRelationalAuthorityEnabled,
+  creatorRelationalAuthorityHealth,
+  type CreatorAuthorityEnvironment,
+  type CreatorAuthorityHealth,
+} from "./creatorAuthority.js";
+export {
+  boundedCreatorReceipt,
+  canonicalCreatorRequestHash,
+  creatorCommandEnvelope,
+  creatorPoolFor,
+  CreatorCommandValidationError,
+  CreatorConflictError,
+  CreatorIdempotencyConflictError,
+  CreatorRepositoryBase,
+  type CreatorCommandEnvelope,
+  type CreatorAggregateCommand,
+  type CreatorAggregateKind,
+  type CreatorAggregateView,
+  type CreatorRepositoryPort,
+  type CreatorReceipt,
+} from "./creatorRepository.js";
+export {
+  normalizeCreatorProfileInput,
+  normalizeCreatorPrivacyInput,
+  PostgresCreatorProfileRepository,
+  type CreatorProfileInput,
+  type CreatorProfileView,
+  type CreatorPrivacyInput,
+} from "./creatorProfileRepository.js";
+export {
+  CreatorAccountProvisionError,
+  PostgresCreatorAccountRepository,
+} from "./creatorAccountRepository.js";
+export {
+  PostgresCreatorPreferenceRepository,
+  type CreatorFollowView,
+  type CreatorPreferenceBundle,
+  type CreatorSavedSearchView,
+} from "./creatorPreferenceRepository.js";
+export {
+  PostgresCreatorTrackerRepository,
+  type CreatorTrackerList,
+  type CreatorTrackerListMembership,
+} from "./creatorTrackerRepository.js";
+export {
+  PostgresCreatorInboxRepository,
+  type CreatorInboxAlertView,
+} from "./creatorInboxRepository.js";
+export {
+  PostgresCreatorNotificationRepository,
+  type CreatorNotificationPreferences,
+  type NotificationDigestCadence,
+} from "./creatorNotificationRepository.js";
+export {
+  CreatorEmailReviewError,
+  PostgresCreatorEmailReviewRepository,
+  type CreatorEmailCandidateView,
+  type CreatorEmailReviewResult,
+} from "./creatorEmailReviewRepository.js";
+export {
+  CreatorLibraryConflictError,
+  CreatorLibraryValidationError,
+  PostgresCreatorLibraryRepository,
+  type CreatorLibraryFile,
+  type CreatorLibraryView,
+  type CreatorLibraryWork,
+  type CreatorSavedAnswer,
+  type CreatorWorkConnections,
+} from "./creatorLibraryRepository.js";
+export {
+  CreatorCalendarError,
+  PostgresCreatorCalendarRepository,
+  type CreatorCalendarItem,
+  type CreatorCalendarEvent,
+  type CreatorCalendarTokenResult,
+  type CreatorCalendarTokenState,
+  type CalendarConnectionView,
+  type CalendarProvider,
+  type CalendarSyncLease,
+} from "./creatorCalendarRepository.js";
+export {
+  encryptCalendarCredential,
+  decryptCalendarCredential,
+} from "./calendarCredentialCrypto.js";
+export { loadCanonicalTrackerImportStore } from "./canonicalTrackerImport.js";
 export {
   createProductionEngine,
   seedRegistryIfEmpty,
@@ -39,22 +130,33 @@ export {
   createPostgresOpportunityRepository,
   createPostgresOpportunityRepositoryFromUrl,
   buildOpportunityBrowseQuery,
+  buildOpportunityFacetCountsQuery,
   type SqlQuery,
 } from "./opportunityRepository.js";
+export * from "./recommendation/index.js";
 export { saveOpportunityProjectionToPostgres } from "./opportunityRelationalStore.js";
 export {
   canonicalTrackerStatus,
   listCanonicalTrackedOpportunities,
   saveCanonicalOpportunityToTracker,
+  removeCanonicalTrackedOpportunity,
+  updateCanonicalTrackerReminder,
   updateCanonicalTrackerStatus,
   type CanonicalTrackerSave,
   type CanonicalTrackerItem,
   type CanonicalTrackerStatus,
   type CanonicalTrackerStatusUpdate,
+  type CanonicalTrackerReminderUpdate,
+  type CanonicalTrackerRemoval,
 } from "./canonicalTracker.js";
 export {
   PostgresProfileRepository,
   createPostgresProfileRepositoryFromUrl,
+  getSemanticUrlForProfile,
+  resolveMagazineSchedule,
+  type MagazineScheduleResult,
+  type MagazineScheduleState,
+  type MagazineScheduleTone,
   type ProfileBrowsePage,
   type ProfileBrowseQuery,
   type ProfileCard,
@@ -86,6 +188,7 @@ export {
 } from "./profileIdentityMatcher.js";
 export {
   commitTrackerImportTransaction,
+  commitRelationalTrackerImportTransaction,
   consumeTrackerImportPreviewRateLimit,
   trackerImportCandidateHash,
   trackerImportRequestHash,
@@ -93,6 +196,7 @@ export {
   TrackerImportPersistenceError,
   type DurableTrackerImportInput,
   type DurableTrackerImportResult,
+  type RelationalTrackerImportInput,
   type TrackerImportPersistenceErrorCode,
 } from "./trackerImportPersistence.js";
 export {
@@ -139,6 +243,14 @@ export {
   type ContentReviewQueueRow,
   type HumanContentReviewDecision,
 } from "./contentReviewAdmin.js";
+export {
+  classifyPublicationCandidate,
+  publicationReviewMembershipHash,
+  readPublicationReviewPreview,
+  type PublicationReviewLane,
+  type PublicationReviewPreview,
+  type PublicationReviewRow,
+} from "./publicationReview.js";
 export {
   RADAR_AGENT_GRAPH,
   agentGraphSnapshot,
@@ -327,6 +439,7 @@ export {
   completePlatformMessageEffect,
   providerEventEffectStatus,
   recordPlatformMessageProviderEvent,
+  sanitizePlatformMessageProviderMetadata,
   createPlatformCrmContact,
   createPlatformCrmNote,
   createPlatformCrmTask,
@@ -336,6 +449,7 @@ export {
   readPlatformAdminBilling,
   readPlatformAdminCrm,
   readPlatformAdminMessageHistory,
+  readOrganizationMessageHistory,
   processPlatformAgentControlRequests,
   recordPlatformBillingEvent,
   recordPlatformAnalyticsEvent,
@@ -415,3 +529,130 @@ export {
   type RadarWorkerOptions,
   type RadarWorkerTickResult,
 } from "./radarWorker.js";
+export {
+  parseResponseTime,
+  extractPrestigeSignals,
+  classifyEditorialDemeanor,
+  extractProfileIntelligence,
+  type ParsedResponseTime,
+  type ExtractedPrestige,
+  type EditorialDemeanor,
+  type ProfileIntelligenceResult,
+} from "./profileIntelligenceExtractor.js";
+export {
+  extractSocialLinks,
+  extractLogo,
+  extractGalleryCovers,
+  extractPrizeWinners,
+  extractProfileEnrichment,
+  type ExtractedSocialLinks,
+  type ExtractedVisual,
+  type ExtractedPrizeWinner,
+  type SinglePassExtractionResult,
+} from "./profileEnrichmentWorker.js";
+export {
+  extractArtsOpportunity,
+  ARTS_MARKERS,
+  RECOGNIZED_MEDIUMS,
+  type ArtsOpportunityKind,
+  type ArtsExtractedOpportunity,
+} from "./arts/artsOpportunityExtractor.js";
+export {
+  runArtsDiscovery,
+  computeWindowState,
+  windowStateToOpportunityStatus,
+  ARTS_DISCOVERY_REGISTRY,
+  type WindowState,
+  type ArtsDiscoveryTarget,
+  type RunArtsDiscoveryOptions,
+  type RunArtsDiscoveryResult,
+} from "./scripts/runArtsDiscovery.js";
+export {
+  reconcileExpiredOpportunitiesInDatabase,
+  type ReconciliationResult,
+} from "./databaseReconciliation.js";
+export * from "./mediaExtractionContracts.js";
+export * from "./mediaFetcher.js";
+export * from "./mediaExtractor.js";
+export * from "./mediaReviewService.js";
+export { inferSourceRole } from "./enrichmentWorker.js";
+// The media dry-run CLI is intentionally not exported from this runtime
+// barrel. It imports node:fs and path resolution for offline fixtures; a
+// barrel export makes Next trace the whole repository into every web route.
+// Import `./mediaDryRunCli.js` directly from the CLI entrypoint instead.
+export * from "./editorialWriter.js";
+export {
+  extractVolumeAndNumber,
+  extractPublicationDate,
+  findIssueArchiveUrls,
+  extractIssuesFromHtml,
+  issueDeterministicId,
+  discoverAndStoreProfileIssues,
+  getProfileIssuesFromDb,
+  type ExtractedIssue,
+  type ProfileIssueRecord,
+  type IssueRefreshState,
+  type IssueRefreshResult,
+  type ProfileIssuesResponse,
+} from "./profileIssueDiscovery.js";
+export {
+  extractIdentityMedia,
+  extractPressBooks,
+  extractResidencyPhotos,
+  extractGalleryExhibitions,
+  extractFoundationProjects,
+  findNavigationTargetUrls,
+  discoverOrganizationMedia,
+  getOrganizationMediaBundle,
+  orgMediaDeterministicId,
+  type MediaGroup,
+  type DiscoveredMediaItem,
+  type OrganizationMediaRecord,
+  type OrganizationMediaBundle,
+  type MediaDiscoveryResult,
+} from "./organizationMediaDiscovery.js";
+
+export {
+  PostgresMagazineRankingRepository,
+  type MagazineRankingOpportunity,
+  type MagazineRankingRow,
+  type MagazineRankingsFilter,
+  type MagazineRankingPage,
+  type MagazineTelemetrySummary,
+} from "./ranking/magazineRankingRepository.js";
+
+export {
+  PostgresResidencyRankingRepository,
+  type ResidencyRankingRow,
+  type ResidencyReviewRow,
+  type ResidencyRankingsFilter,
+  type ResidencyRankingPage,
+  type SubmitResidencyReviewInput,
+  type SubmitResidencyReviewResult,
+  type ResidencyIntelligenceSpecs,
+  type ResidencyFullIntelligenceProfile,
+} from "./ranking/residencyRankingRepository.js";
+
+export {
+  PostgresEditorialIntelligenceRepository,
+  type PublicationEditorialSpecs,
+  type PublicationCompensationDetails,
+  type PublicationTelemetryAnalytics,
+  type PublicationResponseBucket,
+  type PublicationAestheticProfile,
+  type OpportunityContestJudge,
+  type EditorialIntelligenceFullProfile,
+} from "./ranking/editorialIntelligenceRepository.js";
+
+export {
+  ManuscriptMatchEngine,
+  type ManuscriptMatchInput,
+  type ManuscriptMatchCard,
+  type ManuscriptMatchResponse,
+  type MatchCategory,
+} from "./ranking/manuscriptMatchEngine.js";
+
+
+
+
+

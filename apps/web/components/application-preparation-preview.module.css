@@ -1,0 +1,31 @@
+.page { max-width: 1120px; margin: auto; padding: 24px; color: var(--foreground); background: var(--background); }
+.top { display: flex; justify-content: space-between; gap: 24px; align-items: center; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.top a { color: var(--primary); font-weight: 700; letter-spacing: .12em; }
+.top span, .source { color: var(--muted-foreground); font-size: 13px; line-height: 1.6; }
+.header { padding: 48px 0; max-width: 720px; }
+.kicker { color: var(--primary); font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+.header h1 { font-size: clamp(36px, 5vw, 56px); line-height: 1.1; margin-bottom: 16px; }
+.header > p:last-child { color: var(--muted-foreground); font-size: 18px; line-height: 1.6; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 64px; align-items: start; }
+.section { border-top: 1px solid var(--border); padding: 24px 0; display: grid; gap: 24px; }
+.section > button { justify-self: start; }
+.sectionHeading { display: flex; gap: 16px; align-items: baseline; }
+.sectionHeading span { color: var(--primary); font-size: 13px; }
+.sectionHeading h2, .aside h2 { font-size: 24px; font-weight: 600; }
+.select { width: 100%; }
+.select select { min-height: 44px; font-size: 16px; }
+.manuscript { display: flex; align-items: center; gap: 16px; background: var(--muted); padding: 24px; }
+.manuscript > svg { color: var(--primary); flex-shrink: 0; }
+.manuscript div { flex: 1; min-width: 0; }
+.manuscript h3 { font-size: 24px; overflow-wrap: anywhere; }
+.manuscript p, .muted { color: var(--muted-foreground); line-height: 1.6; }
+.section textarea { font-size: 16px; line-height: 1.6; }
+.aside { border-top: 3px solid var(--primary); padding-top: 24px; }
+.aside ul { padding-left: 20px; margin: 24px 0; display: grid; gap: 16px; list-style: disc; line-height: 1.6; }
+.handoff { border-top: 1px solid var(--border); margin-top: 32px; padding-top: 24px; display: grid; gap: 16px; }
+.handoff h3 { font-size: 18px; font-weight: 600; }
+.handoff > p { line-height: 1.6; }
+.feedback { min-height: 24px; color: var(--primary); line-height: 1.5; }
+.top a:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+@media (max-width: 760px) { .layout { grid-template-columns: 1fr; gap: 24px; } .top { align-items: start; } .top span { max-width: 220px; } .header { padding: 32px 0; } .manuscript { flex-wrap: wrap; padding: 16px; } .manuscript button { width: 100%; } .aside { padding-bottom: 32px; } }
+@media (prefers-reduced-motion: reduce) { .page *, .page *::before, .page *::after { transition: none !important; animation: none !important; } }

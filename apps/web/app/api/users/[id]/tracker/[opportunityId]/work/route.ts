@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { creatorRelationalAuthorityEnabled } from '@missa/radar-adapters';
 import { requireSelf } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
 
@@ -8,6 +9,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const { id, opportunityId } = await params;
   const auth = await requireSelf(request, id);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status, headers });
+  if (creatorRelationalAuthorityEnabled(process.env)) return NextResponse.json({ error: 'Use the account-scoped Tracker Work endpoint.' }, { status: 410, headers });
   const body = await request.json().catch(() => ({}));
   if (!body || typeof body.workId !== 'string' || !body.workId.trim()) return NextResponse.json({ error: 'workId required' }, { status: 400, headers });
   try {
@@ -25,6 +27,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const { id, opportunityId } = await params;
   const auth = await requireSelf(request, id);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status, headers });
+  if (creatorRelationalAuthorityEnabled(process.env)) return NextResponse.json({ error: 'Use the account-scoped Tracker Work endpoint.' }, { status: 410, headers });
   try {
     const engine = await getEngine();
     const tracked = engine.linkTrackedOpportunityToWork(id, opportunityId);

@@ -1,24 +1,261 @@
-.main { width: min(100% - 48px, 1180px); margin: 0 auto; }
-.hero { max-width: 840px; padding: 64px 0 42px; }
-.back { display: inline-flex; min-height: 44px; align-items: center; color: var(--muted-foreground); font-size: .84rem; text-decoration: none; }
-.eyebrow { margin: 18px 0 0; color: var(--accent-deep); font-size: .7rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
-.hero h1 { margin: 12px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(3rem, 6vw, 5.8rem); font-weight: 520; letter-spacing: -.055em; line-height: .98; }
-.hero > p:not(.eyebrow) { max-width: 760px; margin: 20px 0 0; color: var(--muted-foreground); font-size: 1rem; line-height: 1.65; }
-.definition { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 32px 0 48px; border-top: 1px solid var(--border); }
-.definition section { padding: 24px; border: 1px solid var(--border); border-radius: 12px; }
-.definition h2 { margin: 0; font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; }
-.definition p { margin: 10px 0 0; line-height: 1.65; }
-.definition ul { display: grid; gap: 10px; margin: 14px 0 0; padding-left: 18px; color: var(--muted-foreground); font-size: .88rem; line-height: 1.5; }
-.results { padding: 42px 0; border-top: 1px solid var(--border); }
-.resultsHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
-.resultsHeader h2 { margin: 7px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(2rem, 4vw, 3.5rem); font-weight: 540; letter-spacing: -.04em; }
-.resultsHeader > a, .guide a { display: inline-flex; min-height: 44px; align-items: center; gap: 7px; color: var(--primary); font-size: .86rem; font-weight: 700; text-decoration: none; }
-.resultsHeader svg, .guide svg { width: 16px; height: 16px; }
-.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 26px; }
-.empty { margin-top: 26px; padding: 28px; border: 1px dashed var(--border); border-radius: 12px; }
-.empty h3 { margin: 0; font-family: var(--font-heading), Georgia, serif; font-size: 1.5rem; }
-.empty p { max-width: 680px; margin: 8px 0 0; color: var(--muted-foreground); line-height: 1.55; }
-.guide { margin-top: 28px; padding: 24px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--primary) 4%, white); }
-.guide h2 { margin: 7px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: 1.6rem; }
-.guide p { max-width: 720px; color: var(--muted-foreground); line-height: 1.55; }
-@media (max-width: 720px) { .main { width: min(100% - 32px, 640px); } .definition, .grid { grid-template-columns: 1fr; } .resultsHeader { display: grid; } }
+.main {
+  --collection-tint: var(--mineral-blue-tint);
+  --collection-ink: var(--mineral-blue);
+  width: 100%;
+  padding: 0 0 64px;
+  background: color-mix(in srgb, var(--cover-surface) 12%, var(--bg));
+}
+.main[data-theme="contests"] {
+  --cover-surface: var(--collection-contests-surface);
+  --cover-text: var(--collection-contests-text);
+  --cover-graphic: var(--collection-contests-graphic);
+}
+.main[data-theme="magazines"] {
+  --cover-surface: var(--collection-magazines-surface);
+  --cover-text: var(--collection-magazines-text);
+  --cover-graphic: var(--collection-magazines-graphic);
+}
+.main[data-theme="poetry"] {
+  --cover-surface: var(--collection-poetry-surface);
+  --cover-text: var(--collection-poetry-text);
+  --cover-graphic: var(--collection-poetry-graphic);
+}
+.main[data-theme="grants"] {
+  --cover-surface: var(--collection-grants-surface);
+  --cover-text: var(--collection-grants-text);
+  --cover-graphic: var(--collection-grants-graphic);
+}
+.main[data-theme="residencies"] {
+  --cover-surface: var(--collection-residencies-surface);
+  --cover-text: var(--collection-residencies-text);
+  --cover-graphic: var(--collection-residencies-graphic);
+}
+.main[data-theme="fellowships"] {
+  --cover-surface: var(--collection-fellowships-surface);
+  --cover-text: var(--collection-fellowships-text);
+  --cover-graphic: var(--collection-fellowships-graphic);
+}
+.main[data-theme="queer-lgbtq-opportunities"] {
+  --cover-surface: var(--collection-queer-lgbtq-opportunities-surface);
+  --cover-text: var(--collection-queer-lgbtq-opportunities-text);
+  --cover-graphic: var(--collection-queer-lgbtq-opportunities-graphic);
+}
+.main[data-theme="bipoc-opportunities"] {
+  --cover-surface: var(--collection-bipoc-opportunities-surface);
+  --cover-text: var(--collection-bipoc-opportunities-text);
+  --cover-graphic: var(--collection-bipoc-opportunities-graphic);
+}
+.main[data-theme="women-nonbinary-opportunities"] {
+  --cover-surface: var(--collection-women-nonbinary-opportunities-surface);
+  --cover-text: var(--collection-women-nonbinary-opportunities-text);
+  --cover-graphic: var(--collection-women-nonbinary-opportunities-graphic);
+}
+.main[data-theme="disabled-neurodivergent-opportunities"] {
+  --cover-surface: var(
+    --collection-disabled-neurodivergent-opportunities-surface
+  );
+  --cover-text: var(--collection-disabled-neurodivergent-opportunities-text);
+  --cover-graphic: var(
+    --collection-disabled-neurodivergent-opportunities-graphic
+  );
+}
+.main[data-theme="emerging-writers-artists"] {
+  --cover-surface: var(--collection-emerging-writers-artists-surface);
+  --cover-text: var(--collection-emerging-writers-artists-text);
+  --cover-graphic: var(--collection-emerging-writers-artists-graphic);
+}
+.main[data-theme="jobs-for-creators"] {
+  --cover-surface: var(--collection-jobs-for-creators-surface);
+  --cover-text: var(--collection-jobs-for-creators-text);
+  --cover-graphic: var(--collection-jobs-for-creators-graphic);
+}
+.hero {
+  padding: 24px max(24px, calc((100% - 1360px) / 2)) 40px;
+  background: var(--cover-surface);
+  color: var(--cover-text);
+}
+.back {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  color: var(--cover-text);
+  font-size: 13px;
+  text-decoration: none;
+}
+.eyebrow {
+  margin: 0 0 20px;
+  color: var(--cover-text);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  max-width: 900px;
+  margin: 0;
+  font-size: clamp(44px, 6vw, 80px);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.description {
+  max-width: 680px;
+  margin: 16px 0 0;
+  color: var(--cover-text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.results {
+  width: min(calc(100% - 48px), 1360px);
+  margin: 0 auto;
+  padding: 16px 0 32px;
+  scroll-margin-top: 24px;
+}
+.resultsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+}
+.resultsHeader h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.empty {
+  margin-top: 16px;
+  padding: 32px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+.empty h3 {
+  margin: 0;
+  font-size: 20px;
+}
+.empty p {
+  max-width: 680px;
+  margin: 8px 0 0;
+  color: var(--muted-foreground);
+  line-height: 1.6;
+}
+.pagination {
+  margin-top: 32px;
+}
+.main a:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 767px) {
+  .results {
+    width: calc(100% - 32px);
+  }
+  .hero {
+    padding: 16px 16px 32px;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .resultsHeader {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
+
+.hero a:focus-visible {
+  outline-color: var(--cover-text);
+}
+
+.coverLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  align-items: center;
+  gap: 48px;
+  padding: 32px 0 8px;
+}
+.coverCopy {
+  max-width: 850px;
+}
+.description {
+  max-width: 600px;
+}
+.artwork {
+  color: var(--cover-graphic);
+  aspect-ratio: 1;
+}
+.artwork svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.explore {
+  display: inline-flex;
+  align-items: center;
+  gap: 20px;
+  min-height: 44px;
+  margin-top: 24px;
+  border-bottom: 1px solid currentColor;
+  color: var(--cover-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+@media (max-width: 767px) {
+  .coverLayout {
+    grid-template-columns: minmax(0, 1fr) 72px;
+    gap: 12px;
+    padding-top: 24px;
+    align-items: start;
+  }
+  .coverCopy {
+    display: contents;
+  }
+  .eyebrow {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+  .hero h1 {
+    grid-column: 1;
+  }
+  .artwork {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+  }
+  .description,
+  .explore {
+    grid-column: 1 / -1;
+  }
+  .explore {
+    justify-self: start;
+    margin-top: 8px;
+  }
+}
+
+.main[data-theme="women-nonbinary-opportunities"] .coverLayout { grid-template-columns: 1fr; }
+.main[data-theme="women-nonbinary-opportunities"] .coverCopy { max-width: none; }
+.main[data-theme="women-nonbinary-opportunities"] .hero h1 { max-width: none; font-size: clamp(56px, 10vw, 136px); letter-spacing: -0.055em; line-height: 1; }
+@media (max-width: 767px) {
+  .hero { padding-bottom: 24px; }
+  .coverLayout { padding-top: 12px; gap: 8px; grid-template-columns: 1fr; }
+  .artwork { display: none; }
+  .hero h1, .description, .explore { grid-column: 1; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .description { margin-top: 8px; }
+  .explore { margin-top: 8px; }
+  .main[data-theme="women-nonbinary-opportunities"] .hero h1 { font-size: clamp(52px, 14vw, 72px); }
+}

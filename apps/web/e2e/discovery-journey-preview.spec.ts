@@ -1,0 +1,25 @@
+import { test, expect } from '@playwright/test';
+test('connected preview preserves pages and simulates signup', async ({page})=>{
+  test.setTimeout(120000);
+  await page.goto('/design-system/discovery-journey/home');
+  await expect(page.getByRole('heading',{name:'Opportunities and grants for every creator'})).toBeVisible();
+  await page.getByRole('navigation',{name:'Review sequence'}).getByRole('link',{name:'Opportunities',exact:true}).click();
+  await expect(page).toHaveURL(/discovery-journey\/opportunities/);
+  await page.screenshot({path:'/private/tmp/missa-current-opportunities.png'});
+  await page.getByRole('navigation',{name:'Proposed primary navigation'}).getByRole('link',{name:'Rankings',exact:true}).click();
+  await expect(page.getByLabel('Find a magazine')).toBeVisible();
+  await page.screenshot({path:'/private/tmp/missa-connected-rankings.png'});
+  await page.getByRole('navigation',{name:'Review sequence'}).getByRole('link',{name:'Directory',exact:true}).click();
+  await expect(page).toHaveURL(/discovery-journey\/directory/);
+  await page.screenshot({path:'/private/tmp/missa-current-directory.png'});
+  await page.getByRole('navigation',{name:'Review sequence'}).getByRole('link',{name:'Signup',exact:true}).click();
+  await page.getByRole('button',{name:'Create account',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'What do you make?'})).toBeVisible();
+  await page.getByRole('button',{name:'Skip setup'}).click();
+  await page.getByRole('link',{name:'Explore matching opportunities',exact:true}).click();
+  await expect(page).toHaveURL(/discovery-journey\/opportunities/);
+  await page.setViewportSize({width:390,height:844});
+  await page.goto('/design-system/discovery-journey/signup');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+  await page.screenshot({path:'/private/tmp/missa-connected-signup-mobile.png',fullPage:true});
+});

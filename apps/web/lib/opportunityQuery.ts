@@ -32,19 +32,23 @@ export function parseOpportunityBrowseQuery(params: URLSearchParams): Opportunit
   const taxonomySelection = canonicalTaxonomySelection(params.getAll("taxonomy").flatMap((value) => value.split(",")));
   const candidate = {
     query: params.get("q") ?? undefined,
+    domain: params.get("domain") ?? undefined,
     category: params.get("category") ?? "all",
-    types: listParam(params, "type"),
-    disciplines: listParam(params, "discipline"),
-    genres: listParam(params, "genre"),
+    types: [...listParam(params, "type"), ...listParam(params, "types")],
+    disciplines: [...listParam(params, "discipline"), ...listParam(params, "disciplines")],
+    genres: [...listParam(params, "genre"), ...listParam(params, "genres")],
     taxonomyTermIds: taxonomySelection.termIds,
     taxonomySchemeVersion: numberParam(params, "taxonomyVersion") ?? MISSA_TAXONOMY.scheme.version,
     taxonomyIncludeDescendants: params.has("taxonomyDescendants")
       ? booleanParam(params, "taxonomyDescendants", false)
       : listParam(params, "taxonomy").length > 0,
     locations: listParam(params, "location"),
+    country: params.get("country") ?? undefined,
+    countryCode: params.get("countryCode") ?? undefined,
     feeStatus: booleanParam(params, "feeToggle", false) ? "no-fee" : params.get("fee") ?? undefined,
     maxFeeCents: numberParam(params, "maxFeeCents"),
     deadlineWithinDays: numberParam(params, "deadlineWithinDays"),
+    deadlineKind: params.get("deadline") ?? undefined,
     openNow: booleanParam(params, "openNow", true),
     verifiedOnly: booleanParam(params, "verified", false),
     simultaneousRequired: params.has("simultaneous")

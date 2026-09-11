@@ -1,6 +1,7 @@
 import { verifySessionToken, createSessionToken, membershipsFor, type Account } from '@missa/radar-engine';
 import { getEngine } from './engine';
 import { getNeonSessionAccount } from './neon-auth/account';
+import { getCreatorAccountRepository } from './creatorRepositories';
 
 export const SESSION_COOKIE = 'missa_session';
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 3_600;
@@ -57,10 +58,16 @@ export async function getSessionAccountFromToken(token: string | undefined): Pro
     const payload = verifySessionToken(token, sessionSecret(), new Date());
     if (!payload) return getNeonSessionAccount();
 
+    const creatorAccounts = getCreatorAccountRepository();
+    if (creatorAccounts) {
+      const account = await creatorAccounts.account(payload.accountId);
+      if (!account || account.active === false) return getNeonSessionAccount();
+      return { account, memberships: await creatorAccounts.memberships(account.id) };
+    }
+
     const engine = await getEngine();
     const account = engine.store.accounts.get(payload.accountId);
     if (!account || account.active === false) return getNeonSessionAccount();
-    if ((payload.sessionVersion ?? 0) !== (account.sessionVersion ?? 0)) return getNeonSessionAccount();
 
     return { account, memberships: membershipsFor(engine.store, account.id) };
   } catch {

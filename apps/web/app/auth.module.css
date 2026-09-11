@@ -11,29 +11,9 @@
   flex-direction: column;
   overflow: hidden;
   border-right: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--muted);
   padding: clamp(2rem, 6vw, 6rem);
   color: var(--ink);
-}
-.story::before {
-  position: absolute;
-  right: -12rem;
-  top: -12rem;
-  width: 34rem;
-  height: 34rem;
-  border: 1px solid color-mix(in oklab, var(--brand-accent) 35%, var(--border));
-  border-radius: 999px;
-  content: "";
-}
-.story::after {
-  position: absolute;
-  right: 3rem;
-  top: 4rem;
-  width: 16rem;
-  height: 16rem;
-  border: 1px solid color-mix(in oklab, var(--brand-accent) 24%, transparent);
-  border-radius: 999px;
-  content: "";
 }
 .storyContent {
   position: relative;
@@ -104,7 +84,7 @@
   margin-top: 0.8rem;
   font-size: 2.15rem;
   font-weight: 650;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.025em;
   line-height: 1.05;
 }
 .formDescription {
@@ -116,7 +96,16 @@
 .form {
   display: grid;
   gap: 1rem;
-  margin-top: 2rem;
+  margin-top: 1.75rem;
+}
+.authDivider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--ink-2);
+  font-size: 0.72rem;
+  margin: 0.15rem 0;
 }
 .field {
   display: grid;
@@ -130,7 +119,7 @@
 }
 .label {
   color: var(--ink);
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 .optional {
@@ -346,9 +335,8 @@
   line-height: 1.5;
 }
 .switchMode {
-  margin-top: 1.5rem;
-  border-top: 1px solid var(--border);
-  padding-top: 1.25rem;
+  margin-top: 1.35rem;
+  padding-top: 0;
   text-align: center;
   color: var(--ink-2);
   font-size: 0.82rem;
@@ -379,7 +367,19 @@
   }
   .formPane {
     align-items: flex-start;
-    padding: 2rem 1.5rem 3rem;
+    padding: 1.5rem 1.25rem 3rem;
+  }
+  .changeList > div {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+  }
+  .resolutionActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .resolutionActions > * {
+    justify-content: center;
+    width: 100%;
   }
   .changeList > div {
     grid-template-columns: 1fr;
@@ -399,3 +399,10 @@
     animation: none;
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+}
+
+.form input { font-size: 1rem; }

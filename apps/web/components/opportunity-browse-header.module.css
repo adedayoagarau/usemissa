@@ -1,0 +1,17 @@
+.header {
+  display: grid;
+  gap: 16px;
+  padding-block: 28px 0;
+}
+
+.search {
+  display: grid;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .header {
+    padding-block: 20px 0;
+    gap: 12px;
+  }
+}

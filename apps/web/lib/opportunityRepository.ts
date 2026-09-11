@@ -5,11 +5,12 @@ import {
   type OpportunityBrowsePage,
   type OpportunityBrowseProjection,
   type OpportunityDetailProjection,
+  type OpportunityFacetCounts,
   type OpportunityRepository,
   type OpportunityRepositoryContext,
   type OpportunityRepositoryQuery,
 } from "@missa/radar-engine";
-import { createPostgresOpportunityRepositoryFromUrl } from "@missa/radar-adapters";
+import { createPostgresOpportunityRepositoryFromUrl, creatorRelationalAuthorityEnabled } from "@missa/radar-adapters";
 import { MISSA_TAXONOMY, taxonomyDescendantIds, taxonomyLabelFor } from "@missa/taxonomy";
 import { getEngine } from "./engine";
 
@@ -24,7 +25,19 @@ const CATEGORY_TYPES: Record<string, string[]> = {
   residencies: ["residency"],
   fellowships: ["fellowship"],
   contests: ["contest"],
+  jobs: ["job"],
 };
+
+function canonicalLegacyDiscipline(value: string): string {
+  const normalized = value.trim().toLowerCase().replaceAll("_", " ");
+  if (["visual art", "visual arts", "visual-arts"].includes(normalized))
+    return "visual-arts";
+  if (["short story", "flash fiction", "fiction"].includes(normalized))
+    return "fiction";
+  if (["theater", "theatre", "theatre and performance"].includes(normalized))
+    return "theatre";
+  return normalized.replaceAll(" ", "-");
+}
 
 function feeStatus(opp: Opportunity): "no-fee" | "paid" | "unknown" {
   if (!opp.fields.fee.disclosed) return "unknown";
@@ -165,6 +178,7 @@ function excludedByPrivatePreferences(engine: Awaited<ReturnType<typeof getEngin
 }
 
 function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepositoryQuery): boolean {
+  if (query.ids && !query.ids.includes(item.id)) return false;
   if (query.query) {
     const taxonomyLabels = (item.taxonomy?.termIds ?? [])
       .map((termId) => MISSA_TAXONOMY.terms.find((term) => term.id === termId)?.preferredLabel ?? "")
@@ -175,8 +189,34 @@ function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepos
   const categoryTypes = query.category ? CATEGORY_TYPES[query.category] ?? [] : [];
   if (categoryTypes.length && !categoryTypes.includes(item.type)) return false;
   if (query.types?.length && !query.types.includes(item.type)) return false;
-  if (query.disciplines?.length && (!item.discipline || !query.disciplines.includes(item.discipline))) return false;
-  if (query.genres?.length && !item.genres.some((genre) => query.genres?.includes(genre))) return false;
+  if (
+    query.disciplines?.length &&
+    (!item.discipline ||
+      !query.disciplines.includes(canonicalLegacyDiscipline(item.discipline)))
+  )
+    return false;
+  if (query.genres?.length && !item.genres.some((genre) => query.genres?.some((g) => g.toLowerCase() === genre.toLowerCase() || genre.toLowerCase().includes(g.toLowerCase()) || g.toLowerCase().includes(genre.toLowerCase())))) return false;
+  if ((query as { domain?: string }).domain) {
+    const domain = (query as { domain?: string }).domain!.toLowerCase();
+    const VISUAL_ARTS = ["painting", "sculpture", "photography", "film", "video", "film/video", "printmaking", "digital art", "sound art", "performance", "ceramics", "installation", "drawing", "textiles", "mixed media", "public art", "visual art"];
+    const MULTI = ["multidisciplinary", "interdisciplinary", "cross-disciplinary"];
+    const LIT = ["poetry", "fiction", "nonfiction", "creative nonfiction", "essay", "short story", "memoir", "literature", "literary", "writing"];
+    const itemHaystack = `${item.title} ${item.genres.join(" ")} ${item.discipline ?? ""} ${item.type}`.toLowerCase();
+
+    if (domain === "visual_arts" || domain === "visual-arts") {
+      const match = item.type === "exhibition" || item.type === "commission" || VISUAL_ARTS.some((m) => itemHaystack.includes(m));
+      if (!match) return false;
+    } else if (domain === "residencies" || domain === "residency") {
+      const match = item.type === "residency" || itemHaystack.includes("residency");
+      if (!match) return false;
+    } else if (domain === "multidisciplinary") {
+      const match = MULTI.some((m) => itemHaystack.includes(m));
+      if (!match) return false;
+    } else if (domain === "literature") {
+      const match = item.type === "magazine" || LIT.some((l) => itemHaystack.includes(l));
+      if (!match) return false;
+    }
+  }
   if (query.taxonomyTermIds?.length) {
     const matchesRequested = (requestedId: string): boolean => {
       if (item.taxonomy?.termIds.includes(requestedId)) return true;
@@ -207,8 +247,10 @@ function matchesQuery(item: OpportunityBrowseProjection, query: OpportunityRepos
 class EngineOpportunityRepository implements OpportunityRepository {
   async browse(query: OpportunityRepositoryQuery, context?: OpportunityRepositoryContext): Promise<OpportunityBrowsePage> {
     const engine = await getEngine();
+    const nowIso = new Date().toISOString().slice(0, 10);
     const items = [...engine.store.opportunities.values()]
       .filter((opp) => !opp.duplicateOfId && !["archived", "closed", "duplicate", "uncertain"].includes(opp.status))
+      .filter((opp) => !query.openNow || !opp.fields.deadline?.date || opp.fields.deadline.date >= nowIso)
       .filter((opp) => !excludedByPrivatePreferences(engine, opp, context))
       .map((opp) => project(engine, opp, context))
       .filter((item) => matchesQuery(item, query));
@@ -223,6 +265,58 @@ class EngineOpportunityRepository implements OpportunityRepository {
     const page = items.slice(offset, offset + query.limit);
     const nextOffset = offset + query.limit < items.length ? Buffer.from(String(offset + query.limit)).toString("base64url") : null;
     return { items: page, nextCursor: nextOffset, total: items.length };
+  }
+
+  async facetCounts(query: OpportunityRepositoryQuery, context?: OpportunityRepositoryContext): Promise<OpportunityFacetCounts> {
+    const engine = await getEngine();
+    const nowIso = new Date().toISOString().slice(0, 10);
+    const candidates = [...engine.store.opportunities.values()]
+      .filter((opp) => !opp.duplicateOfId && !["archived", "closed", "duplicate", "uncertain"].includes(opp.status))
+      .filter((opp) => !query.openNow || !opp.fields.deadline?.date || opp.fields.deadline.date >= nowIso)
+      .filter((opp) => !excludedByPrivatePreferences(engine, opp, context))
+      .map((opp) => project(engine, opp, context));
+    const withoutPage = { ...query, cursor: undefined };
+    const matching = candidates.filter((item) => matchesQuery(item, withoutPage));
+    const typeBase = candidates.filter((item) => matchesQuery(item, { ...withoutPage, types: [], category: undefined }));
+    const disciplineBase = candidates.filter((item) => matchesQuery(item, { ...withoutPage, disciplines: [] }));
+    const taxonomyBase = candidates.filter((item) => matchesQuery(item, { ...withoutPage, taxonomyTermIds: [] }));
+
+    const typeCounts = new Map<string, number>();
+    for (const item of typeBase) typeCounts.set(item.type, (typeCounts.get(item.type) ?? 0) + 1);
+
+    const taxonomyCounts = new Map<string, number>();
+    for (const item of taxonomyBase) {
+      const ancestors = new Set(item.taxonomy?.termIds ?? []);
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (const term of MISSA_TAXONOMY.terms) {
+          if (!ancestors.has(term.id)) continue;
+          for (const parent of term.broaderTermIds) {
+            if (!ancestors.has(parent)) {
+              ancestors.add(parent);
+              changed = true;
+            }
+          }
+        }
+      }
+      for (const termId of ancestors) taxonomyCounts.set(termId, (taxonomyCounts.get(termId) ?? 0) + 1);
+    }
+
+    const disciplineCounts = new Map<string, number>();
+    for (const item of disciplineBase) {
+      if (!item.discipline) continue;
+      const value = canonicalLegacyDiscipline(item.discipline);
+      if (!value || value === "all-disciplines") continue;
+      disciplineCounts.set(value, (disciplineCounts.get(value) ?? 0) + 1);
+    }
+
+    return {
+      total: matching.length,
+      types: [...typeCounts].map(([value, count]) => ({ value: value as OpportunityBrowseProjection["type"], count })),
+      disciplines: [...disciplineCounts].map(([value, count]) => ({ value, count })),
+      taxonomyTerms: [...taxonomyCounts].map(([termId, count]) => ({ termId, count })),
+    };
   }
 
   async getById(opportunityId: string, context?: OpportunityRepositoryContext): Promise<OpportunityDetailProjection | null> {
@@ -262,7 +356,12 @@ class EngineOpportunityRepository implements OpportunityRepository {
 }
 
 export function getOpportunityRepository(): OpportunityRepository {
-  if (process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres" && process.env.DATABASE_URL) {
+  const relationalCreatorAuthority = creatorRelationalAuthorityEnabled(process.env);
+  const postgresRequested = process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres";
+  if ((relationalCreatorAuthority || postgresRequested) && !process.env.DATABASE_URL) {
+    throw new Error("Canonical Opportunity repository is unavailable");
+  }
+  if ((relationalCreatorAuthority || postgresRequested) && process.env.DATABASE_URL) {
     if (!globalThis.__missaOpportunityRepository) {
       globalThis.__missaOpportunityRepository = createPostgresOpportunityRepositoryFromUrl(process.env.DATABASE_URL);
     }

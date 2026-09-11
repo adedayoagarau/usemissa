@@ -1,6 +1,7 @@
+import { tickGoals } from '@/lib/goal-engine';
 import { NextResponse } from 'next/server';
 import { radarWorkerBatchSize, runRadarWorkerTick, runCoverageWorkerTick, runTaxonomyDiscoveryWorkerTick } from '@missa/radar-adapters';
-import { deliverPendingAlertEmails } from '@/lib/alert-delivery';
+import { deliverPendingAlertEmails, deliverPendingDeadlineEmails } from '@/lib/alert-delivery';
 
 /**
  * Vercel Cron target (Story 1.5) -- replaces the manual "Check for updates"
@@ -27,10 +28,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  const goals = await tickGoals();
   let emailDelivery: Awaited<ReturnType<typeof deliverPendingAlertEmails>> | undefined;
-  const result = await runRadarWorkerTick({ maxSources: radarWorkerBatchSize(), afterTick: async (engine) => { emailDelivery = await deliverPendingAlertEmails(engine); } });
+  let deadlineDelivery: Awaited<ReturnType<typeof deliverPendingDeadlineEmails>> | undefined;
+  const result = await runRadarWorkerTick({
+    maxSources: radarWorkerBatchSize(),
+    afterTick: async (engine) => {
+      emailDelivery = await deliverPendingAlertEmails(engine);
+      deadlineDelivery = await deliverPendingDeadlineEmails(engine);
+    },
+  });
   if (result.status === 'skipped') {
-    return NextResponse.json({ status: 'skipped', reason: 'another ingestion tick is running' }, { status: 202 });
+    return NextResponse.json({ status: 'skipped', reason: 'another ingestion tick is running', goals }, { status: 202 });
   }
 
   const report = result.report!;
@@ -38,11 +47,13 @@ export async function GET(request: Request) {
   const discovery = await runTaxonomyDiscoveryWorkerTick({ logger: console });
   return NextResponse.json({
     status: 'completed',
+    goals,
     sourcesChecked: report.sourcesChecked,
     sourcesFailed: report.sourcesFailed,
     changes: report.changes.length,
     alerts: report.alerts.length,
     emailDelivery,
+    deadlineDelivery,
     coverage,
     discovery,
   });

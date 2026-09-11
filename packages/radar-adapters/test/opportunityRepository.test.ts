@@ -4,6 +4,7 @@ import { opportunityDetailResponseSchema } from "@missa/contracts";
 import {
   PostgresOpportunityRepository,
   buildOpportunityBrowseQuery,
+  buildOpportunityFacetCountsQuery,
 } from "../src/opportunityRepository.js";
 
 const baseQuery = {
@@ -32,6 +33,8 @@ test("browse SQL is parameterized and keeps public publication boundaries", () =
   assert.match(built.text, /o\.publication_state = 'published'/);
   assert.match(built.text, /o\.deadline_date is null or o\.deadline_date >= current_date/);
   assert.match(built.text, /o\.status = any\(\$1::text\[\]\)/);
+  assert.match(built.text, /o\.deadline_date is null or o\.deadline_date >= current_date/);
+  assert.deepEqual(built.values[0], ["open", "closing-soon", "deadline-extended"]);
   assert.match(built.text, /o\.search_document ilike/);
   assert.match(
     built.text,
@@ -70,6 +73,85 @@ test("canonical taxonomy filters require every selected hierarchy root", () => {
     if (previous === undefined) delete process.env.MISSA_TAXONOMY_READS;
     else process.env.MISSA_TAXONOMY_READS = previous;
   }
+});
+
+test("facet SQL applies every filter except the facet being counted", () => {
+  const built = buildOpportunityFacetCountsQuery(
+    {
+      ...baseQuery,
+      types: ["grant"],
+      disciplines: ["visual-arts"],
+      taxonomyTermIds: ["taxterm_pf-writing-and-literature"],
+      taxonomyIncludeDescendants: true,
+      feeStatus: "no-fee",
+    },
+    undefined,
+    { taxonomyReads: true },
+  );
+
+  assert.match(built.text, /matched as materialized/);
+  assert.match(built.text, /type_base as materialized/);
+  assert.match(built.text, /taxonomy_base as materialized/);
+  assert.match(built.text, /discipline_base as materialized/);
+  assert.match(built.text, /count\(distinct base\.id\)/);
+  assert.equal(built.values.filter((value) => value === "no-fee").length, 4);
+  assert.equal(
+    built.values.filter(
+      (value) => Array.isArray(value) && value.length === 1 && value[0] === "grant",
+    ).length,
+    3,
+  );
+  assert.equal(
+    built.values.filter(
+      (value) =>
+        Array.isArray(value) &&
+        value.length === 1 &&
+        value[0] === "taxterm_pf-writing-and-literature",
+    ).length,
+    3,
+  );
+  assert.equal(
+    built.values.filter(
+      (value) =>
+        Array.isArray(value) &&
+        value.length === 1 &&
+        value[0] === "visual-arts",
+    ).length,
+    3,
+  );
+});
+
+test("facet repository executes one aggregate query and normalizes counts", async () => {
+  const calls: string[] = [];
+  const pool = {
+    async query(text: string) {
+      calls.push(text);
+      return {
+        rows: [
+          {
+            total: "4",
+            types: [{ value: "grant", count: "3" }],
+            taxonomy_terms: [
+              { termId: "taxterm_pf-writing-and-literature", count: "2" },
+            ],
+          },
+        ],
+      };
+    },
+  } as never;
+  const repository = new PostgresOpportunityRepository(pool);
+  const counts = await repository.facetCounts(baseQuery);
+
+  assert.equal(calls.length, 1);
+  assert.match(calls[0] ?? "", /jsonb_agg/);
+  assert.deepEqual(counts, {
+    total: 4,
+    types: [{ value: "grant", count: 3 }],
+    disciplines: [],
+    taxonomyTerms: [
+      { termId: "taxterm_pf-writing-and-literature", count: 2 },
+    ],
+  });
 });
 
 test("authenticated taxonomy reads explain matches from explicit profile preferences", () => {
@@ -157,6 +239,56 @@ test("keyset cursor allocates independent key and id parameters", () => {
   assert.equal(next.values[1], "2026-08-01");
   assert.equal(next.values[2], "opp_0001");
   assert.equal(first.values.at(-1), 2);
+});
+
+test("browse filters normalize legacy discipline, fee, and rolling values", () => {
+  const built = buildOpportunityBrowseQuery({
+    ...baseQuery,
+    disciplines: ["Visual Arts", "short story", "theater"],
+    feeStatus: "unknown",
+    deadlineKind: "rolling",
+  });
+
+  assert.match(built.text, /when 'visual arts' then 'visual-arts'/);
+  assert.match(built.text, /when 'short story' then 'fiction'/);
+  assert.match(built.text, /when 'theater' then 'theatre'/);
+  assert.match(built.text, /coalesce\(o\.fee_status, 'unknown'\) not in/);
+  assert.match(built.text, /o\.deadline_kind in \('rolling', 'year-round', 'until-filled'\)/);
+  assert.deepEqual(built.values[1], ["visual-arts", "fiction", "theatre"]);
+  assert.equal(built.values[2], "unknown");
+});
+
+test("alphabetical and free-first sorts use matching keyset cursors", () => {
+  const alphabeticalCursor = Buffer.from(
+    JSON.stringify({ sort: "alphabetical", key: "zine call", id: "opp_0001" }),
+    "utf8",
+  ).toString("base64url");
+  const alphabetical = buildOpportunityBrowseQuery({
+    ...baseQuery,
+    sort: "alphabetical",
+    cursor: alphabeticalCursor,
+  });
+  assert.match(alphabetical.text, /order by lower\(o\.title\) asc, o\.id asc/);
+  assert.match(alphabetical.text, /lower\(o\.title\) > \$2/);
+  assert.deepEqual(alphabetical.values.slice(1, 3), ["zine call", "opp_0001"]);
+
+  const freeFirstCursor = Buffer.from(
+    JSON.stringify({
+      sort: "no-fee-first",
+      key: JSON.stringify({ rank: 0, feeCents: 0, deadline: "2026-09-10" }),
+      id: "opp_0002",
+    }),
+    "utf8",
+  ).toString("base64url");
+  const freeFirst = buildOpportunityBrowseQuery({
+    ...baseQuery,
+    sort: "no-fee-first",
+    cursor: freeFirstCursor,
+  });
+  assert.match(freeFirst.text, /order by case when o\.fee_status in \('no-fee', 'free'\) then 0/);
+  assert.match(freeFirst.text, /coalesce\(o\.fee_cents, 2147483647\)/);
+  assert.match(freeFirst.text, /date '9999-12-31'/);
+  assert.deepEqual(freeFirst.values.slice(1, 5), [0, 0, "2026-09-10", "opp_0002"]);
 });
 
 test("repository maps rows and returns a continuation cursor", async () => {
@@ -448,4 +580,19 @@ test("detail projection strips nullable call profile fields before contract vali
   assert.equal(result.callProfile?.readingPeriodLabel, undefined);
   assert.equal(result.callProfile?.lastVerifiedAt, "2026-07-30T00:00:00.000Z");
   assert.equal(result.callProfile?.prizes[0]?.title, undefined);
+});
+
+
+test("account-aware facet queries bind only referenced parameters", () => {
+  for (const taxonomyReads of [false, true]) {
+    const built = buildOpportunityFacetCountsQuery(
+      { ...baseQuery, query: "poetry", types: ["grant"] },
+      { accountId: "account-facet-regression" },
+      { taxonomyReads },
+    );
+    const referenced = [...new Set([...built.text.matchAll(/\$(\d+)/g)].map(match => Number(match[1])))].sort((a, b) => a - b);
+    assert.deepEqual(referenced, built.values.map((_, index) => index + 1));
+    assert.equal(built.values.includes("account-facet-regression"), taxonomyReads);
+    assert.equal(built.values.filter(value => value === "%poetry%").length, 4);
+  }
 });

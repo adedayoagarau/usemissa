@@ -50,15 +50,47 @@ const migrationFiles = [
   '0025_publication_gate_defaults.sql',
   '0026_handle_namespace.sql',
   '0027_waitlist_invites.sql',
-  '0028_profile_issue_reports.sql',
-  '0029_account_deletion_requests.sql',
+  '0028_durable_message_effect_ledger.sql',
+  '0029_governed_operations.sql',
+  '0030_workspace_relational_authority.sql',
+  '0031_creator_relational_authority.sql',
+  '0032_opportunity_availability.sql',
+  '0033_aggregate_record_publication_guard.sql',
+  '0034_creative_preparation_backfill.sql',
+  '0035_visual_arts_organizations.sql',
+  '0036_opportunity_media_enrichment.sql',
+  '0041_creator_portfolios.sql',
+  // Submission portal configuration and Wave 6 operations are deliberately
+  // listed explicitly: they are the relational authority tail used by the
+  // production workspace health gate.
+  '0056_submission_portal_configuration_versions.sql',
+  '0057_submission_draft_version_pins.sql',
+  '0059_organization_review_settings.sql',
+  '0061_wave6_review_operations.sql',
+  '0062_wave6_decision_messages.sql',
+  '0063_wave6_delivery_attempts.sql',
+  '0064_wave6_retention_policies.sql',
+  '0065_wave6_inbox_views.sql',
+  '0066_wave6_review_corrections.sql',
+  '0067_wave6_review_recusal_expiry.sql',
+  '0068_wave6_review_recommendation_states.sql',
+  '0069_wave6_erasure_requests.sql',
 ];
+
+
+const through = process.env.MISSA_TARGET_SCHEMA_THROUGH;
+const selectedMigrationFiles = through
+  ? migrationFiles.slice(0, migrationFiles.findIndex((file) => file === through) + 1)
+  : migrationFiles;
+if (through && !migrationFiles.includes(through)) {
+  throw new Error(`Unknown MISSA_TARGET_SCHEMA_THROUGH migration: ${through}`);
+}
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 
 try {
-  for (const fileName of migrationFiles) {
+  for (const fileName of selectedMigrationFiles) {
     const sql = await readFile(join(migrationsRoot, fileName), 'utf8');
     await client.query('BEGIN');
     try {
@@ -75,7 +107,7 @@ try {
     from information_schema.tables
     where table_schema = 'public'
   `);
-  console.log(JSON.stringify({ applied: migrationFiles.length, publicTables: result.rows[0].table_count }));
+  console.log(JSON.stringify({ applied: selectedMigrationFiles.length, through: selectedMigrationFiles.at(-1), publicTables: result.rows[0].table_count }));
 } finally {
   await client.end();
 }

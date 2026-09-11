@@ -1,7 +1,6 @@
-import { Resend } from 'resend';
-import { beginPlatformMessageEffect, completePlatformMessageEffect } from '@missa/radar-adapters';
 import { renderWaitlistConfirmationEmail, WAITLIST_CONFIRMATION_SUBJECT, waitlistConfirmationText } from '@/emails/waitlist-confirmation';
 import { absoluteUrl } from '@/lib/seo';
+import { sendMail } from '@/lib/mail-service';
 
 export interface WaitlistConfirmationEmailContent {
   subject: string;
@@ -38,53 +37,28 @@ export function buildWaitlistConfirmationEmail(): WaitlistConfirmationEmailConte
 export async function deliverWaitlistConfirmationEmail(
   input: WaitlistConfirmationDeliveryInput,
 ): Promise<WaitlistConfirmationDeliveryReport> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM;
-  if (!apiKey || !from) return { status: 'skipped', reason: 'RESEND_API_KEY/RESEND_FROM not configured' };
+  const content = buildWaitlistConfirmationEmail();
+  const report = await sendMail({
+    recipientEmail: input.email,
+    recipientAccountId: input.signupId,
+    kind: 'waitlist-confirmation',
+    category: 'notification_digest',
+    idempotencyKey: `waitlist-confirmation:${input.signupId}`,
+    subject: content.subject,
+    html: content.html,
+    text: content.text,
+    templateKey: 'waitlist-confirmation',
+    templateVersion: 'waitlist-confirmation.v1',
+    metadata: { signupId: input.signupId },
+    connectionString: input.connectionString,
+    retryFailed: true,
+  });
 
-  const idempotencyKey = `waitlist-confirmation:${input.signupId}`;
-  let effect: Awaited<ReturnType<typeof beginPlatformMessageEffect>> | undefined;
-  try {
-    effect = await beginPlatformMessageEffect(input.connectionString, {
-      idempotencyKey,
-      kind: 'waitlist-confirmation',
-      provider: 'resend',
-      metadata: { signupId: input.signupId },
-      retryFailed: true,
-    });
-    if (!effect.shouldDeliver) return { status: 'sent' };
-
-    const content = buildWaitlistConfirmationEmail();
-    const result = await new Resend(apiKey).emails.send(
-      {
-        from,
-        to: input.email,
-        subject: content.subject,
-        html: content.html,
-        text: content.text,
-        tags: [{ name: 'email_type', value: 'waitlist_confirmation' }],
-      },
-      { idempotencyKey },
-    );
-    if (result.error) throw new Error(result.error.message);
-
-    await completePlatformMessageEffect({
-      connectionString: input.connectionString,
-      effectId: effect.effectId,
-      attemptNumber: effect.attemptNumber,
-      status: 'sent',
-      providerMessageId: result.data?.id,
-    });
-    return { status: 'sent', providerMessageId: result.data?.id };
-  } catch (error) {
-    if (effect)
-      await completePlatformMessageEffect({
-        connectionString: input.connectionString,
-        effectId: effect.effectId,
-        attemptNumber: effect.attemptNumber,
-        status: 'failed',
-        error: error instanceof Error ? error.message : 'Provider send failed',
-      }).catch(() => undefined);
-    return { status: 'failed', reason: error instanceof Error ? error.message : 'Provider send failed' };
+  if (report.status === 'sent' || report.status === 'replayed') {
+    return { status: 'sent', providerMessageId: report.providerMessageId };
   }
+  if (report.status === 'skipped') {
+    return { status: 'skipped', reason: report.reason };
+  }
+  return { status: 'failed', reason: report.reason || 'Provider send failed' };
 }

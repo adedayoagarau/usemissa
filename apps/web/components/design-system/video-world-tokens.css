@@ -1,0 +1,12 @@
+/* Scoped cinematic study: the existing palette supplies the glass material. */
+.missa-video-world {
+  --world-ink: var(--surface);
+  --world-ground: var(--ink);
+  --world-glass: color-mix(in srgb, var(--mineral-blue) 42%, transparent);
+  --world-highlight: color-mix(in srgb, var(--surface) 24%, transparent);
+  --world-edge: color-mix(in srgb, var(--surface) 45%, transparent);
+  --world-radius: var(--radius-full, 9999px);
+  --world-ease: cubic-bezier(0.65, 0, 0.35, 1);
+  --world-collapse: 980ms;
+  --world-type: 64px;
+}

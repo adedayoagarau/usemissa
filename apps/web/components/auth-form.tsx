@@ -10,9 +10,10 @@ import {
   LockKeyhole,
   RefreshCw,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import type {
@@ -25,7 +26,14 @@ import {
   neonAuthClient,
 } from "@/lib/neon-auth/client";
 import { MissaWordmark } from "@/components/missa-wordmark";
+import { SocialAuthButton } from "@/components/missa/social-auth-button";
 import styles from "@/app/auth.module.css";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 
 type AuthMode = "login" | "signup";
 
@@ -45,7 +53,7 @@ export function AuthForm({
   inviteToken?: string;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +168,7 @@ export function AuthForm({
     queueMicrotask(() => document.getElementById(field)?.focus());
   }
 
-  function submitForm(form: HTMLFormElement) {
+  async function submitForm(form: HTMLFormElement) {
     setError(null);
     setAccountExists(false);
     setFieldError(null);
@@ -183,7 +191,8 @@ export function AuthForm({
     if (mode === "signup" && password !== confirmation)
       return showFieldError("confirmation", "The passwords do not match.");
 
-    startTransition(async () => {
+    setIsPending(true);
+    try {
       const usingNeonAuth =
         isNeonAuthClientConfigured && neonAuthClient !== null;
       let response: Response;
@@ -206,17 +215,54 @@ export function AuthForm({
               setError("An account already uses this email. Log in instead.");
               return;
             }
-            setError(neonAuthErrorMessage(result.error, mode));
-            return;
+            // Neon Auth can reject local origins before it reaches the
+            // provider (currently a 403 from the local integration). Keep
+            // password auth usable while that origin configuration is fixed;
+            // social sign-in remains Neon-only.
+            // The compatibility endpoint is also the recovery path for a
+            // rejected Neon request. This covers local origin restrictions
+            // and keeps existing password accounts usable during migration.
+            response = await fetch(`/api/auth/${mode}`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(
+                mode === "login"
+                  ? { email, password }
+                  : {
+                      email,
+                      password,
+                      displayName,
+                      inviteToken,
+                      waitlistEmail: waitlistEmail || undefined,
+                    },
+              ),
+            });
+          } else {
+            response = await fetch("/api/auth/missa-session", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ mode }),
+            });
           }
-          response = await fetch("/api/auth/missa-session", {
+        } catch {
+          // A Neon Auth origin rejection can surface as a thrown client
+          // error instead of a result error. Use the same compatibility
+          // path so email auth still completes while Neon is configured.
+          response = await fetch(`/api/auth/${mode}`, {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ mode }),
+            body: JSON.stringify(
+              mode === "login"
+                ? { email, password }
+                : {
+                    email,
+                    password,
+                    displayName,
+                    inviteToken,
+                    waitlistEmail: waitlistEmail || undefined,
+                  },
+            ),
           });
-        } catch {
-          setError("Authentication is temporarily unavailable. Try again.");
-          return;
         }
       } else {
         response = await fetch(`/api/auth/${mode}`, {
@@ -296,9 +342,12 @@ export function AuthForm({
         router.refresh();
         return;
       }
-      router.push(redirectTo);
-      router.refresh();
-    });
+      // Cross the authentication boundary with a document navigation so the
+      // next server render always receives the newly issued session cookie.
+      window.location.assign(redirectTo);
+    } finally {
+      setIsPending(false);
+    }
   }
 
   function neonAuthErrorMessage(
@@ -321,7 +370,24 @@ export function AuthForm({
 
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    submitForm(event.currentTarget);
+    void submitForm(event.currentTarget);
+  }
+
+  async function continueWithGoogle() {
+    setError(null);
+    if (!isNeonAuthClientConfigured || !neonAuthClient) {
+      setError("Google sign-in is not available in this environment yet.");
+      return;
+    }
+    const callbackURL = `/auth/callback?next=${encodeURIComponent(redirectTo)}`;
+    const result = await neonAuthClient.signIn.social({
+      provider: "google",
+      callbackURL,
+    });
+    if (result?.error) {
+      setError("We could not connect to Google. Please try again.");
+      throw new Error(result.error.message);
+    }
   }
 
   async function abandonFirstSave() {
@@ -388,7 +454,7 @@ export function AuthForm({
           <MissaWordmark size="marketing" className={styles.mark} />
           <div className={styles.storyCopy}>
             <p className={styles.storyTitle}>
-              A clearer way to send your work out into the world.
+              Your next opportunity starts here.
             </p>
             <p className={styles.storyBody}>
               Missa brings the right opportunities, requirements, and next steps
@@ -415,7 +481,7 @@ export function AuthForm({
       >
         <div className={styles.formCard}>
           <MissaWordmark
-            href={null}
+            href="/"
             size="compact"
             className={styles.formKicker}
           />
@@ -425,7 +491,7 @@ export function AuthForm({
               ? "Your account keeps this Opportunity in your private Tracker and brings you back to its current details."
               : mode === "login"
                 ? "Pick up where you left off."
-                : "Find source-linked opportunities, understand what they ask, and track what happens next."}
+                : "Save opportunities and keep track of your applications."}
           </p>
 
           {firstSaveContext ? (
@@ -618,6 +684,19 @@ export function AuthForm({
             </section>
           ) : (
             <form onSubmit={onSubmit} className={styles.form} noValidate>
+              {isNeonAuthClientConfigured ? (
+                <>
+                  <SocialAuthButton
+                    disabled={isPending}
+                    onGoogle={continueWithGoogle}
+                  />
+                  <div className={styles.authDivider} aria-hidden="true">
+                    <Separator />
+                    <span>or use email</span>
+                    <Separator />
+                  </div>
+                </>
+              ) : null}
               {mode === "signup" && (
                 <div className={styles.field} key="display-name">
                   <label htmlFor="displayName" className={styles.label}>
@@ -648,22 +727,6 @@ export function AuthForm({
                   ) : null}
                 </div>
               )}
-              {mode === "signup" && !firstSaveContext && (
-                <div className={styles.field} key="waitlist-email">
-                  <label htmlFor="waitlistEmail" className={styles.label}>
-                    Were you on the waitlist? Enter that email{" "}
-                    <span className={styles.optional}>(optional)</span>
-                  </label>
-                  <Input
-                    className="h-11"
-                    id="waitlistEmail"
-                    name="waitlistEmail"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="waitlist@example.com"
-                  />
-                </div>
-              )}
               <div className={styles.field} key="account-email">
                 <label htmlFor="email" className={styles.label}>
                   Email address
@@ -692,9 +755,19 @@ export function AuthForm({
                 ) : null}
               </div>
               <div className={styles.field} key="password">
-                <label htmlFor="password" className={styles.label}>
-                  Password
-                </label>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <label htmlFor="password" className={styles.label}>
+                    Password
+                  </label>
+                  {mode === "login" && (
+                    <Link
+                      href="/forgot-password"
+                      className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                    >
+                      Forgot password?
+                    </Link>
+                  )}
+                </div>
                 <div className={styles.passwordWrap}>
                   <Input
                     className="h-11"
@@ -704,12 +777,18 @@ export function AuthForm({
                     autoComplete={
                       mode === "login" ? "current-password" : "new-password"
                     }
-                    placeholder="At least 8 characters"
+                    placeholder={
+                      mode === "signup"
+                        ? "Choose a password"
+                        : "Enter your password"
+                    }
                     aria-invalid={fieldError?.field === "password"}
                     aria-describedby={
                       fieldError?.field === "password"
                         ? fieldErrorId
-                        : undefined
+                        : mode === "signup"
+                          ? "password-guidance"
+                          : undefined
                     }
                     minLength={8}
                     required
@@ -729,6 +808,14 @@ export function AuthForm({
                     )}
                   </button>
                 </div>
+                {mode === "signup" && (
+                  <p
+                    id="password-guidance"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Use at least 8 characters.
+                  </p>
+                )}
                 {fieldError?.field === "password" ? (
                   <p
                     id={fieldErrorId}
@@ -789,6 +876,29 @@ export function AuthForm({
                   ) : null}
                 </div>
               )}
+              {mode === "signup" && !firstSaveContext && (
+                <Accordion>
+                  <AccordionItem value="waitlist">
+                    <AccordionTrigger>
+                      Joined the waitlist with another email?
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className={styles.field}>
+                        <label htmlFor="waitlistEmail" className={styles.label}>
+                          Waitlist email (optional)
+                        </label>
+                        <Input
+                          id="waitlistEmail"
+                          name="waitlistEmail"
+                          type="email"
+                          autoComplete="off"
+                          className="h-11"
+                        />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              )}
               {error && (
                 <p className={styles.error} role="alert">
                   {error}
@@ -825,13 +935,12 @@ export function AuthForm({
                     : "Create account"}
                 <ArrowRight className="size-4" />
               </Button>
-              <p className={styles.finePrint}>
-                {firstSaveContext
-                  ? "You can update Profile details later. They are not required to save this Opportunity."
-                  : mode === "signup"
-                    ? "Update your Profile and preferences whenever your work changes."
-                    : "Use the account that holds your Tracker and Library."}
-              </p>
+              {firstSaveContext ? (
+                <p className={styles.finePrint}>
+                  You can update Profile details later. They are not required to
+                  save this Opportunity.
+                </p>
+              ) : null}
             </form>
           )}
 
@@ -863,11 +972,11 @@ export function AuthForm({
             >
               Return without saving <ArrowRight className="size-3.5" />
             </button>
-          ) : (
+          ) : firstSaveContext ? (
             <Link href="/opportunities" className={styles.backLink}>
               Browse public opportunities <ArrowRight className="size-3.5" />
             </Link>
-          )}
+          ) : null}
         </div>
       </section>
     </div>

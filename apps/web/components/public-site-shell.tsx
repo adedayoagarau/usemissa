@@ -9,9 +9,11 @@ import styles from "./public-site-shell.module.css";
 export async function PublicSiteShell({
   children,
   current,
+  collectionLinks,
 }: {
   children: ReactNode;
   current?: string;
+  collectionLinks?: Array<{ slug: string; title: string }>;
 }) {
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(
@@ -28,22 +30,46 @@ export async function PublicSiteShell({
     <div className={styles.site}>
       <MissaSiteHeader session={headerSession} current={current} />
       {children}
-      <footer className={styles.footer}>
+      <footer
+        className={styles.footer}
+        data-collections={Boolean(collectionLinks?.length) || undefined}
+      >
+        {collectionLinks?.length ? (
+          <nav
+            className={styles.collections}
+            aria-labelledby="footer-collections-title"
+          >
+            <h2 id="footer-collections-title" className="font-sans">
+              Keep exploring
+            </h2>
+            <div>
+              {collectionLinks.map((collection) => (
+                <Link
+                  key={collection.slug}
+                  href={`/discover/${collection.slug}`}
+                >
+                  {collection.title}
+                </Link>
+              ))}
+            </div>
+          </nav>
+        ) : null}
         <div>
           <MissaWordmark size="compact" className={styles.wordmark} />
           <p>
-            Creative Opportunities with the source, facts, and limits kept
-            visible.
+            Missa is in beta. Discover opportunities for your creative practice.
           </p>
         </div>
         <nav aria-label="Footer navigation">
           <Link href="/about">About</Link>
           <Link href="/methodology">Methodology</Link>
-          <Link href="/guides">Guides</Link>
-          <Link href="/journals">Journals & presses</Link>
+          <Link href="/directory">Directory</Link>
           <Link href="/residencies">Residencies</Link>
-          <Link href="/for-organizations">For organizations</Link>
-          <a href="mailto:hello@usemissa.com">Contact</a>
+          <Link href="/journals">Journals</Link>
+          <Link href="/grants">Grants</Link>
+          <Link href="/rankings/magazines">Magazine rankings</Link>
+          <Link href="/rankings/residencies">Residency rankings</Link>
+          <a href="mailto:hello@usemissa.com">Share feedback</a>
         </nav>
       </footer>
     </div>

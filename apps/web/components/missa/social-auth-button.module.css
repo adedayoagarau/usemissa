@@ -1,0 +1,16 @@
+.button {
+  position: relative;
+  width: 100%;
+  justify-content: center;
+}
+
+.mark,
+.spinner {
+  position: absolute;
+  left: 1rem;
+}
+
+.mark {
+  width: 1.125rem;
+  height: 1.125rem;
+}

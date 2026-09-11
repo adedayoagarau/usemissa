@@ -14,7 +14,6 @@ const InputSearchLoaderDemo = () => {
   useEffect(() => {
     if (value) {
       // The loading indicator intentionally starts when the search value changes.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsLoading(true)
 
       const timer = setTimeout(() => {
@@ -24,7 +23,6 @@ const InputSearchLoaderDemo = () => {
       return () => clearTimeout(timer)
     }
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(false)
   }, [value])
 

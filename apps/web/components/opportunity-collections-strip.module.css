@@ -1,0 +1,9 @@
+.strip { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.track { display: flex; flex: 1; align-items: center; gap: 24px; min-width: 0; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; padding: 4px; }
+.track a { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 44px; color: var(--muted-foreground); font-size: 13px; font-weight: 500; text-decoration: none; scroll-snap-align: start; }
+.track a:hover { color: var(--foreground); }
+.track a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: var(--radius-sm); }
+.reveal { flex: 0 0 auto; min-height: 44px; color: var(--accent-deep); }
+@media (max-width: 767px) { .track { gap: 16px; } .strip { gap: 4px; } }
+
+.track::-webkit-scrollbar { display: none; }

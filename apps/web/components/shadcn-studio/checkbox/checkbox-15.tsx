@@ -33,15 +33,12 @@ const CheckboxTreeDemo = () => {
 
   useEffect(() => {
     if (selected.length === items.length) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChecked(true)
       setIndeterminate(false)
     } else if (selected.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChecked(false)
       setIndeterminate(true)
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setChecked(false)
       setIndeterminate(false)
     }

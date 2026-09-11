@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://missa.design/schemas/component-policy.schema.json",
+  "type": "object",
+  "required": [
+    "version",
+    "status",
+    "instructionEntrypoints",
+    "sources",
+    "sourcePriority",
+    "typography",
+    "intents",
+    "semanticComponents",
+    "productCompositions",
+    "motion",
+    "importPolicy"
+  ],
+  "properties": {
+    "version": { "type": "string" },
+    "status": { "enum": ["draft", "binding-for-new-ui", "binding"] },
+    "instructionEntrypoints": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "sourcePriority": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "typography": {
+      "type": "object",
+      "required": ["editorial", "interface", "data"],
+      "additionalProperties": { "type": "string" }
+    },
+    "tokens": { "type": "object" },
+    "intents": { "type": "object", "minProperties": 1 },
+    "semanticComponents": { "type": "object", "minProperties": 1 },
+    "productCompositions": { "type": "object", "minProperties": 1 },
+    "motion": { "type": "object" },
+    "importPolicy": { "type": "object" }
+  },
+  "additionalProperties": false
+}

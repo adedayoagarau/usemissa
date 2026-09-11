@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRight,
+  Bell,
+  BellOff,
   CalendarDays,
   Check,
   ChevronDown,
@@ -15,6 +17,7 @@ import {
   Library,
   ListFilter,
   Search,
+  Trash2,
 } from "lucide-react";
 import type { MyStatus, OpportunityType } from "@missa/radar-engine";
 import { CalendarFeedButton } from "@/components/calendar-feed-button";
@@ -35,6 +38,8 @@ export type TrackerProductItem = {
   myStatus: MyStatus;
   deadline?: string;
   deadlineKind: string;
+  revision?: number;
+  notify?: boolean;
   daysToDeadline?: number;
   expectedResponseBy?: string;
   daysOverdue?: number;
@@ -312,8 +317,11 @@ function TrackerCard({
   busy,
   error,
   highlighted,
+  stale,
   onStatus,
   onWork,
+  onReminder,
+  onRemove,
 }: {
   item: TrackerProductItem;
   works: Array<{ id: string; title: string }>;
@@ -321,8 +329,11 @@ function TrackerCard({
   busy: boolean;
   error?: string;
   highlighted?: boolean;
+  stale?: boolean;
   onStatus: (item: TrackerProductItem, status: MyStatus) => void;
   onWork: (item: TrackerProductItem, workId?: string) => void;
+  onReminder: (item: TrackerProductItem, notify: boolean) => void;
+  onRemove: (item: TrackerProductItem) => void;
 }) {
   const action = itemAction(item, hosted);
   const stage = stageFor(item.myStatus);
@@ -412,13 +423,35 @@ function TrackerCard({
             </select>
           </label>
         ) : null}
+        {!item.isManual && item.revision ? (
+          <button
+            type="button"
+            className={styles.quietButton}
+            disabled={busy}
+            aria-pressed={Boolean(item.notify)}
+            onClick={() => onReminder(item, !item.notify)}
+          >
+            {item.notify ? <Bell aria-hidden="true" /> : <BellOff aria-hidden="true" />}
+            {item.notify ? "Deadline reminders on" : "Deadline reminders off"}
+          </button>
+        ) : null}
+        {!item.isManual && item.revision ? (
+          <button
+            type="button"
+            className={styles.quietButton}
+            disabled={busy}
+            onClick={() => onRemove(item)}
+          >
+            <Trash2 aria-hidden="true" />
+            Remove from Tracker
+          </button>
+        ) : null}
       </div>
 
-      {error ? (
-        <p className={styles.itemError} role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <div className={styles.itemError} role="alert">
+        <p>{error}</p>
+        {stale ? <button type="button" className={styles.quietButton} onClick={() => window.location.reload()}>Reload latest Tracker state</button> : null}
+      </div> : null}
       <Link href={action.href} className={styles.rowAction}>
         {action.label}
         <ArrowRight aria-hidden="true" />
@@ -499,6 +532,7 @@ export function TrackerProduct({
   const [query, setQuery] = useState(initialQuery);
   const [busyId, setBusyId] = useState<string>();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [staleItems, setStaleItems] = useState<Set<string>>(() => new Set());
   const [announcement, setAnnouncement] = useState("");
   const [firstSaveReceipt, setFirstSaveReceipt] = useState<FirstSaveReceipt>();
   const [firstSaveDismissed, setFirstSaveDismissed] = useState(false);
@@ -608,6 +642,11 @@ export function TrackerProduct({
     const previous = item.myStatus;
     setBusyId(item.opportunityId);
     setErrors((current) => ({ ...current, [item.opportunityId]: "" }));
+    setStaleItems((current) => {
+      const next = new Set(current);
+      next.delete(item.opportunityId);
+      return next;
+    });
     setItems((current) =>
       current.map((candidate) =>
         candidate.opportunityId === item.opportunityId
@@ -620,9 +659,15 @@ export function TrackerProduct({
         `/api/me/tracker/${encodeURIComponent(item.opportunityId)}/status`,
         {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            ...(item.revision
+              ? { "Idempotency-Key": crypto.randomUUID() }
+              : {}),
+          },
           body: JSON.stringify({
             status,
+            ...(item.revision ? { expectedRevision: item.revision } : {}),
             completionToken:
               firstSaveReceipt?.opportunityId === item.opportunityId
                 ? firstSaveReceipt.completionToken
@@ -632,9 +677,23 @@ export function TrackerProduct({
       );
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        tracked?: { revision?: number };
       };
+      if (response.status === 409) {
+        setStaleItems((current) => new Set(current).add(item.opportunityId));
+        throw new Error("This Tracker item changed in another session. Reload its latest state before trying again.");
+      }
       if (!response.ok)
         throw new Error(payload.error ?? "Status could not be updated");
+      if (payload.tracked?.revision) {
+        setItems((current) =>
+          current.map((candidate) =>
+            candidate.opportunityId === item.opportunityId
+              ? { ...candidate, revision: payload.tracked?.revision }
+              : candidate,
+          ),
+        );
+      }
       setAnnouncement(`${item.title} is now ${STATUS_LABELS[status]}.`);
     } catch (error) {
       setItems((current) =>
@@ -673,12 +732,13 @@ export function TrackerProduct({
         `/api/me/tracker/${encodeURIComponent(item.opportunityId)}/work`,
         {
           method: workId ? "PUT" : "DELETE",
-          headers: workId ? { "content-type": "application/json" } : undefined,
-          body: workId ? JSON.stringify({ workId }) : undefined,
+          headers: item.revision ? { "content-type": "application/json", "Idempotency-Key": crypto.randomUUID() } : workId ? { "content-type": "application/json" } : undefined,
+          body: item.revision ? JSON.stringify({ ...(workId ? { workId } : {}), expectedRevision: item.revision }) : workId ? JSON.stringify({ workId }) : undefined,
         },
       );
       const payload = (await response.json().catch(() => ({}))) as {
         error?: string;
+        receipt?: { revision?: number };
       };
       if (!response.ok)
         throw new Error(payload.error ?? "Work link could not be updated");
@@ -687,6 +747,7 @@ export function TrackerProduct({
           ? `${work.title} linked to ${item.title}.`
           : `Work link removed from ${item.title}.`,
       );
+      if (payload.receipt?.revision) setItems((current) => current.map((candidate) => candidate.opportunityId === item.opportunityId ? { ...candidate, revision: payload.receipt?.revision } : candidate));
     } catch (error) {
       setItems((current) =>
         current.map((candidate) =>
@@ -707,6 +768,52 @@ export function TrackerProduct({
     }
   }
 
+  async function updateReminder(item: TrackerProductItem, notify: boolean) {
+    if (!item.revision) return;
+    const previous = Boolean(item.notify);
+    setBusyId(item.opportunityId);
+    setErrors((current) => ({ ...current, [item.opportunityId]: "" }));
+    setItems((current) => current.map((candidate) =>
+      candidate.opportunityId === item.opportunityId ? { ...candidate, notify } : candidate));
+    try {
+      const response = await fetch(`/api/me/tracker/${encodeURIComponent(item.opportunityId)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({ notify, expectedRevision: item.revision }),
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string; tracked?: { revision?: number } };
+      if (!response.ok) throw new Error(payload.error ?? "Reminder preference could not be updated");
+      setItems((current) => current.map((candidate) =>
+        candidate.opportunityId === item.opportunityId
+          ? { ...candidate, notify, revision: payload.tracked?.revision ?? candidate.revision }
+          : candidate));
+      setAnnouncement(`${item.title} deadline reminders are ${notify ? "on" : "off"}.`);
+    } catch (error) {
+      setItems((current) => current.map((candidate) =>
+        candidate.opportunityId === item.opportunityId ? { ...candidate, notify: previous } : candidate));
+      setErrors((current) => ({ ...current, [item.opportunityId]: error instanceof Error ? error.message : "Reminder preference could not be updated" }));
+    } finally { setBusyId(undefined); }
+  }
+
+  async function removeItem(item: TrackerProductItem) {
+    if (!item.revision || !window.confirm(`Remove ${item.title} from your Tracker? Its private status history and checklist will also be removed.`)) return;
+    setBusyId(item.opportunityId);
+    setErrors((current) => ({ ...current, [item.opportunityId]: "" }));
+    try {
+      const response = await fetch(`/api/me/tracker/${encodeURIComponent(item.opportunityId)}`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+        body: JSON.stringify({ expectedRevision: item.revision }),
+      });
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Tracker item could not be removed");
+      setItems((current) => current.filter((candidate) => candidate.opportunityId !== item.opportunityId));
+      setAnnouncement(`${item.title} was removed from your Tracker.`);
+    } catch (error) {
+      setErrors((current) => ({ ...current, [item.opportunityId]: error instanceof Error ? error.message : "Tracker item could not be removed" }));
+    } finally { setBusyId(undefined); }
+  }
+
   function renderItem(item: TrackerProductItem) {
     return (
       <TrackerCard
@@ -717,8 +824,11 @@ export function TrackerProduct({
         busy={busyId === item.opportunityId}
         error={errors[item.opportunityId]}
         highlighted={firstSaveReceipt?.opportunityId === item.opportunityId}
+        stale={staleItems.has(item.opportunityId)}
         onStatus={updateStatus}
         onWork={updateWork}
+        onReminder={updateReminder}
+        onRemove={removeItem}
       />
     );
   }

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { LibraryConflictError, LibraryValidationError } from '@missa/radar-engine';
 import { getSessionAccount } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
+import { getCreatorLibraryRepository } from '@/lib/creatorRepositories';
+import { creatorLibraryError, creatorLibraryJson, libraryEnvelope } from '@/lib/creatorLibraryRoute';
 
 const headers = { 'Cache-Control': 'private, no-store' };
 
@@ -10,6 +12,18 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!session?.account.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers });
   const body = await request.json().catch(() => undefined);
   if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Request body must be an object.' }, { status: 400, headers });
+  const repository = getCreatorLibraryRepository();
+  if (repository) {
+    const id = (await context.params).id;
+    const input = body as { title?: unknown; description?: unknown; fileId?: unknown | null; taxonomyTermIds?: unknown; expectedRevision?: unknown };
+    const envelope = libraryEnvelope(request, session.account.id, 'library-work.update', { id, ...input }, input.expectedRevision);
+    if (!envelope) return creatorLibraryJson({ error: 'Refresh this Work before saving again.' }, 400);
+    try {
+      const receipt = await repository.updateWork(envelope, id, input);
+      const work = (await repository.library(session.account.id, session.account.userId)).works.find((item) => item.id === id)!;
+      return creatorLibraryJson({ ...work, receipt });
+    } catch (error) { return creatorLibraryError(error); }
+  }
   try {
     const engine = await getEngine(); const work = engine.updateLibraryWork(session.account.userId, (await context.params).id, body as { title?: unknown; description?: unknown; fileId?: unknown | null; taxonomyTermIds?: unknown });
     engine.recordAudit(session.account.id, 'library.work_updated', 'library_work', work.id); await persistRadar();
@@ -23,6 +37,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session?.account.userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401, headers });
+  const repository = getCreatorLibraryRepository();
+  if (repository) {
+    const id = (await context.params).id;
+    const body = await request.json().catch(() => ({})) as { expectedRevision?: unknown };
+    const envelope = libraryEnvelope(request, session.account.id, 'library-work.delete', { id }, body.expectedRevision);
+    if (!envelope) return creatorLibraryJson({ error: 'Refresh this Work before deleting it.' }, 400);
+    try { return creatorLibraryJson({ deleted: true, receipt: await repository.deleteWork(envelope, id) }); }
+    catch (error) { return creatorLibraryError(error); }
+  }
   try {
     const engine = await getEngine(); const id = (await context.params).id; engine.deleteLibraryWork(session.account.userId, id); engine.recordAudit(session.account.id, 'library.work_deleted', 'library_work', id); await persistRadar(); return NextResponse.json({ deleted: true }, { headers });
   } catch (error) {

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
 import { getProfileRepository } from '@/lib/profileRepository';
+import { getEditorialIntelligenceRepository } from '@/lib/editorialIntelligenceRepository';
 import { taxonomyLabelFor } from '@/lib/opportunityTaxonomy';
 import { MissaSiteHeader } from '@/components/missa-site-header';
 import { OpportunityDetailView } from '@/components/opportunity-detail-view';
@@ -56,7 +57,8 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   const taxonomyLabels = (opportunity.taxonomy?.termIds ?? []).map(taxonomyLabelFor);
   const profileRepository = getProfileRepository();
   const profileMatch = profileRepository
-    ? await profileRepository.getForOpportunity(opportunity.id)
+    ? (await profileRepository.getForOpportunity(opportunity.id)) ??
+      (opportunity.organizationId ? await profileRepository.getById(opportunity.organizationId) : null)
     : null;
   const practiceLabels = Array.from(
     [...taxonomyLabels, ...opportunity.genres].reduce((labels, label) => {
@@ -67,6 +69,12 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
   ).slice(0, 8);
   const headerSession = session
     ? { email: session.account.email, hasOrganization: session.memberships.length > 0 }
+    : null;
+
+  const profileId = profileMatch?.id ?? opportunity.organizationId;
+  const profileName = profileMatch?.name ?? opportunity.organizationName;
+  const editorialIntelligence = profileId
+    ? await getEditorialIntelligenceRepository().getIntelligenceForProfile(profileId, profileName)
     : null;
 
   return (
@@ -94,9 +102,11 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
       <OpportunityDetailView
         opportunity={opportunity}
         signedIn={Boolean(session)}
+        userId={session?.account.userId}
         summary={summary}
         practiceLabels={practiceLabels}
         relatedProfile={profileMatch ?? undefined}
+        editorialIntelligence={editorialIntelligence}
       />
     </div>
   );

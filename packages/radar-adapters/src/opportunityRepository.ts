@@ -4,6 +4,7 @@ import type {
   OpportunityBrowsePage,
   OpportunityBrowseProjection,
   OpportunityDetailProjection,
+  OpportunityFacetCounts,
   OpportunityRepository,
   OpportunityRepositoryContext,
   OpportunityRepositoryDeadline,
@@ -13,6 +14,12 @@ import type {
   OpportunityCallProfile,
   OpportunityContent,
 } from "@missa/radar-engine";
+import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import {
+  cleanCrawledText,
+  cleanTitleOrLabel,
+  decodeHtmlEntities,
+} from "./cleanText.js";
 
 export interface SqlQuery {
   text: string;
@@ -40,7 +47,9 @@ interface OpportunityRow extends QueryResultRow {
   deadline_time: Date | string | null;
   deadline_timezone: string | null;
   deadline_raw: string | null;
-  fee_status: OpportunityRepositoryFee["status"];
+  // The canonical public contract has three values, while older crawler rows
+  // may still contain `free` or `fee` until migration 0037 is applied.
+  fee_status: OpportunityRepositoryFee["status"] | "free" | "fee";
   fee_cents: number | null;
   fee_currency: string | null;
   fee_raw: string | null;
@@ -96,6 +105,13 @@ interface RelatedRow extends QueryResultRow {
   id: string;
 }
 
+interface FacetCountsRow extends QueryResultRow {
+  total: number | string;
+  types: Array<{ value: OpportunityBrowseProjection["type"]; count: number | string }> | null;
+  disciplines: Array<{ value: string; count: number | string }> | null;
+  taxonomy_terms: Array<{ termId: string; count: number | string }> | null;
+}
+
 interface Cursor {
   sort: OpportunityRepositoryQuery["sort"];
   key: string | null;
@@ -109,14 +125,43 @@ const CATEGORY_TYPES: Record<string, string[]> = {
   residencies: ["residency"],
   fellowships: ["fellowship"],
   contests: ["contest"],
+  jobs: ["job"],
 };
 
 const PUBLIC_STATUSES = [
-  "opening-soon",
   "open",
   "closing-soon",
   "deadline-extended",
 ];
+
+const VALID_OPPORTUNITY_TYPES = new Set<OpportunityBrowseProjection["type"]>([
+  "open-call",
+  "magazine",
+  "grant",
+  "award",
+  "fellowship",
+  "residency",
+  "festival",
+  "scholarship",
+  "conference",
+  "rfp",
+  "contest",
+  "pitch",
+  "exhibition",
+  "commission",
+  "job",
+  "other",
+]);
+
+const VALID_SOURCE_KINDS = new Set<OpportunityRepositorySource["kind"]>([
+  "organization-website",
+  "directory",
+  "feed",
+  "newsletter",
+  "user-suggested",
+  "partner-feed",
+]);
+
 
 // Values provisioned from stdin can carry a trailing newline in Vercel.
 // Normalize feature flags so a valid production configuration cannot silently
@@ -145,14 +190,15 @@ function normalizeCallProfile(
   value: OpportunityCallProfile | null,
 ): OpportunityCallProfile | undefined {
   if (!value) return undefined;
-  const profile = stripJsonNulls(value) as unknown as Record<string, unknown>;
+  const profile = stripJsonNulls(value);
   if (profile.lastVerifiedAt !== undefined) {
-    const verifiedAt = new Date(String(profile.lastVerifiedAt));
+    const verifiedAt = new Date(profile.lastVerifiedAt);
     if (Number.isNaN(verifiedAt.getTime())) delete profile.lastVerifiedAt;
     else profile.lastVerifiedAt = verifiedAt.toISOString();
   }
-  return profile as unknown as OpportunityCallProfile;
+  return profile;
 }
+
 
 function encodeCursor(cursor: Cursor): string {
   return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
@@ -206,7 +252,7 @@ function browseSummary(
   max = 300,
 ): string | undefined {
   if (!value) return undefined;
-  const normalized = value.trim();
+  const normalized = cleanTitleOrLabel(value);
   if (!normalized) return undefined;
   return normalized.length <= max
     ? normalized
@@ -373,10 +419,51 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
     join opportunity_sources source on source.id = o.source_id
     left join radar_organizations org on org.id = o.organization_id
     left join lateral (
-      select a.url, a.alt
-      from opportunity_identity_assets a
-      where a.opportunity_id = o.id
-      order by a.created_at desc
+      select asset_candidate.url, asset_candidate.alt
+      from (
+        select a.url, a.alt,
+          case a.kind
+            when 'opportunity-artwork' then 1
+            when 'opportunity-cover' then 2
+            else 3
+          end as priority,
+          1 as tier,
+          a.created_at
+        from opportunity_identity_assets a
+        where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')
+          and a.kind in ('opportunity-artwork', 'opportunity-cover')
+        union all
+        select a.url, a.alt,
+          case a.kind
+            when 'opportunity-artwork' then 1
+            when 'opportunity-cover' then 2
+            else 3
+          end as priority,
+          2 as tier,
+          a.created_at
+        from opportunity_identity_assets a
+        where o.organization_id is not null
+          and a.linked_organization_id = o.organization_id
+          and a.rights_status in ('cleared', 'permitted')
+          and a.kind in ('opportunity-artwork', 'opportunity-cover', 'organization-banner')
+        union all
+        select v.image_url as url, coalesce(v.label, org.data->>'name') as alt,
+          case v.asset_type
+            when 'banner' then 1
+            when 'issue_cover' then 2
+            else 3
+          end as priority,
+          3 as tier,
+          v.created_at
+        from gary_profile_visuals v
+        where o.organization_id is not null
+          and v.profile_id = o.organization_id
+          and v.asset_type in ('banner', 'issue_cover', 'logo')
+      ) asset_candidate
+      order by
+        asset_candidate.tier asc,
+        asset_candidate.priority asc,
+        asset_candidate.created_at desc
       limit 1
     ) asset on true
     left join lateral (
@@ -449,12 +536,41 @@ function categoryTypes(category: string | undefined): string[] {
   return category ? (CATEGORY_TYPES[category] ?? []) : [];
 }
 
+/** Legacy crawls used spelling and separator variants. The database migration
+ * makes these durable; this read-time boundary keeps old deployments and
+ * partial backfills truthful in the meantime. */
+function canonicalLegacyDiscipline(value: string): string {
+  const normalized = value.trim().toLowerCase().replaceAll("_", " ");
+  if (["visual art", "visual arts", "visual-arts"].includes(normalized))
+    return "visual-arts";
+  if (["short story", "flash fiction", "fiction"].includes(normalized))
+    return "fiction";
+  if (["theater", "theatre", "theatre and performance"].includes(normalized))
+    return "theatre";
+  return normalized.replaceAll(" ", "-");
+}
+
+const legacyDisciplineSql = `case lower(replace(trim(coalesce(o.discipline, '')), '_', ' '))
+  when 'visual art' then 'visual-arts'
+  when 'visual arts' then 'visual-arts'
+  when 'short story' then 'fiction'
+  when 'flash fiction' then 'fiction'
+  when 'theater' then 'theatre'
+  else replace(lower(trim(coalesce(o.discipline, ''))), ' ', '-')
+end`;
+
 function buildOrder(sort: OpportunityRepositoryQuery["sort"]): string {
   switch (sort) {
     case "recently-verified":
       return "o.processing_succeeded_at desc nulls last, o.id asc";
     case "recently-added":
       return "o.created_at desc, o.id asc";
+    case "recently-opened":
+      return "coalesce(o.open_date, o.created_at::date) desc nulls last, o.id asc";
+    case "alphabetical":
+      return "lower(o.title) asc, o.id asc";
+    case "no-fee-first":
+      return "case when o.fee_status in ('no-fee', 'free') then 0 when o.fee_status in ('paid', 'fee') then 1 else 2 end asc, coalesce(o.fee_cents, 2147483647) asc, o.deadline_date asc nulls last, o.id asc";
     case "recommended":
       return "case when evidence.verified_until > now() then 0 else 1 end, o.deadline_date asc nulls last, o.processing_succeeded_at desc nulls last, o.id asc";
     case "soonest-deadline":
@@ -493,6 +609,59 @@ function addCursorCondition(
     return;
   }
 
+  if (query.sort === "recently-opened" && cursor.key) {
+    const keyPlaceholder = `$${values.length + 1}`;
+    values.push(cursor.key);
+    const idPlaceholder = `$${values.length + 1}`;
+    values.push(cursor.id);
+    conditions.push(
+      `(coalesce(o.open_date, o.created_at::date) < ${keyPlaceholder}::date or (coalesce(o.open_date, o.created_at::date) = ${keyPlaceholder}::date and o.id > ${idPlaceholder}))`,
+    );
+    return;
+  }
+
+  if (query.sort === "alphabetical" && cursor.key) {
+    const keyPlaceholder = `$${values.length + 1}`;
+    values.push(cursor.key);
+    const idPlaceholder = `$${values.length + 1}`;
+    values.push(cursor.id);
+    conditions.push(
+      `(lower(o.title) > ${keyPlaceholder} or (lower(o.title) = ${keyPlaceholder} and o.id > ${idPlaceholder}))`,
+    );
+    return;
+  }
+
+  if (query.sort === "no-fee-first" && cursor.key) {
+    try {
+      const key = JSON.parse(cursor.key) as {
+        rank?: number;
+        feeCents?: number;
+        deadline?: string;
+      };
+      if (
+        typeof key.rank === "number" &&
+        typeof key.feeCents === "number" &&
+        typeof key.deadline === "string"
+      ) {
+        const rankPlaceholder = `$${values.length + 1}`;
+        values.push(key.rank);
+        const feePlaceholder = `$${values.length + 1}`;
+        values.push(key.feeCents);
+        const deadlinePlaceholder = `$${values.length + 1}`;
+        values.push(key.deadline);
+        const idPlaceholder = `$${values.length + 1}`;
+        values.push(cursor.id);
+        const rank = "case when o.fee_status in ('no-fee', 'free') then 0 when o.fee_status in ('paid', 'fee') then 1 else 2 end";
+        conditions.push(
+          `((${rank}, coalesce(o.fee_cents, 2147483647), coalesce(o.deadline_date, date '9999-12-31'), o.id) > (${rankPlaceholder}::int, ${feePlaceholder}::int, ${deadlinePlaceholder}::date, ${idPlaceholder}))`,
+        );
+        return;
+      }
+    } catch {
+      // A malformed cursor is ignored, matching the existing safe fallback.
+    }
+  }
+
   if (cursor.key) {
     const keyPlaceholder = `$${values.length + 1}`;
     values.push(cursor.key);
@@ -519,15 +688,13 @@ export function buildOpportunityBrowseQuery(
   const taxonomyReads = options.taxonomyReads ?? taxonomyReadsEnabled();
   const values: unknown[] = [];
   const conditions: string[] = [
-    "o.publication_state = 'published'",
-    query.openNow ? `o.status = any($${values.length + 1}::text[])` : "true",
+    canonicalPublicOpportunityPredicate("o"),
+    query.openNow
+      ? `(o.status = any($${values.length + 1}::text[]) and (o.deadline_date is null or o.deadline_date >= current_date))`
+      : "true",
   ];
-  if (query.openNow) {
-    values.push(PUBLIC_STATUSES);
-    // A stale status must not make an expired exact-deadline call look open.
-    // Rolling and until-filled calls have no exact deadline and remain eligible.
-    conditions.push("(o.deadline_date is null or o.deadline_date >= current_date)");
-  }
+  if (query.openNow) values.push(PUBLIC_STATUSES);
+  if (query.ids) addCondition(conditions, values, "o.id = any($VALUE::text[])", query.ids);
 
   const types = [...(query.types ?? []), ...categoryTypes(query.category)];
   if (types.length)
@@ -538,8 +705,8 @@ export function buildOpportunityBrowseQuery(
     addCondition(
       conditions,
       values,
-      "o.discipline = any($VALUE::text[])",
-      query.disciplines,
+      `${legacyDisciplineSql} = any($VALUE::text[])`,
+      query.disciplines.map(canonicalLegacyDiscipline),
     );
   if (query.genres?.length)
     addCondition(
@@ -548,6 +715,26 @@ export function buildOpportunityBrowseQuery(
       "o.genres && $VALUE::text[]",
       query.genres,
     );
+  if ((query as { domain?: string }).domain) {
+    const domain = (query as { domain?: string }).domain!.toLowerCase();
+    if (domain === "visual_arts" || domain === "visual-arts") {
+      conditions.push(
+        "(o.discipline in ('visual_arts', 'visual art') or o.type in ('exhibition', 'commission') or o.genres && ARRAY['Painting', 'Sculpture', 'Photography', 'Film/Video', 'Printmaking', 'Digital Art', 'Sound Art', 'Performance', 'Ceramics', 'Installation', 'Drawing', 'Textiles', 'Mixed Media', 'Public Art', 'Visual Art']::text[] or o.search_document ~* '(painting|sculpture|photography|visual art|printmaking|exhibition|call for artists)')"
+      );
+    } else if (domain === "residencies" || domain === "residency") {
+      conditions.push(
+        "(o.type = 'residency' or o.genres && ARRAY['Residency']::text[] or o.search_document ~* 'residency')"
+      );
+    } else if (domain === "multidisciplinary") {
+      conditions.push(
+        "(o.discipline = 'multidisciplinary' or o.genres && ARRAY['Multidisciplinary', 'Interdisciplinary']::text[] or o.search_document ~* 'multidisciplinary')"
+      );
+    } else if (domain === "literature") {
+      conditions.push(
+        "(o.type = 'magazine' or o.discipline in ('literature', 'writing') or o.genres && ARRAY['Poetry', 'Fiction', 'Nonfiction', 'Literary Magazine']::text[] or o.search_document ~* '(poetry|fiction|nonfiction|literary|magazine)')"
+      );
+    }
+  }
   if (query.taxonomyTermIds?.length) {
     if (taxonomyReads) {
       const taxonomyPredicate = query.taxonomyIncludeDescendants
@@ -591,8 +778,43 @@ export function buildOpportunityBrowseQuery(
       "o.location = any($VALUE::text[])",
       query.locations,
     );
+  // Country-scoped filtering:
+  // - geographicScope === "headquartered": publisher based in that country
+  // - default (eligible): opportunities open to writers in that country (including GLOBAL)
+  const countryParam = (query as { countryCode?: string; country?: string; geographicScope?: string }).countryCode?.trim()
+    || (query as { countryCode?: string; country?: string; geographicScope?: string }).country?.trim();
+  if (countryParam) {
+    const geographicScope = (query as { geographicScope?: string }).geographicScope;
+    if (countryParam.toUpperCase() === "GLOBAL") {
+      conditions.push(
+        "(o.country_code = 'GLOBAL' or o.location ilike '%worldwide%' or o.location ilike '%global%' or o.location is null)"
+      );
+    } else {
+      const codeUpper = countryParam.toUpperCase();
+      if (geographicScope === "headquartered") {
+        values.push(codeUpper, `%${countryParam}%`);
+        const iCode = values.length - 1;
+        const iLike = values.length;
+        conditions.push(
+          `(o.country_code = $${iCode} or o.country ilike $${iLike})`
+        );
+      } else {
+        values.push(codeUpper, `%${countryParam}%`);
+        const iCode = values.length - 1;
+        const iLike = values.length;
+        conditions.push(
+          `(o.country_code = $${iCode} or o.country ilike $${iLike} or o.country_code = 'GLOBAL' or o.location ilike '%worldwide%' or o.location ilike '%global%' or o.country_code is null)`
+        );
+      }
+    }
+  }
   if (query.feeStatus)
-    addCondition(conditions, values, "o.fee_status = $VALUE", query.feeStatus);
+    addCondition(
+      conditions,
+      values,
+      "case when $VALUE = 'no-fee' then o.fee_status in ('no-fee', 'free') when $VALUE = 'paid' then o.fee_status in ('paid', 'fee') else coalesce(o.fee_status, 'unknown') not in ('no-fee', 'free', 'paid', 'fee') end",
+      query.feeStatus,
+    );
   if (query.maxFeeCents !== undefined)
     addCondition(
       conditions,
@@ -607,6 +829,9 @@ export function buildOpportunityBrowseQuery(
       "o.deadline_date between current_date and current_date + ($VALUE::int)",
       query.deadlineWithinDays,
     );
+  }
+  if (query.deadlineKind === "rolling") {
+    conditions.push("o.deadline_kind in ('rolling', 'year-round', 'until-filled')");
   }
   if (query.simultaneousRequired !== undefined) {
     addCondition(
@@ -688,6 +913,129 @@ export function buildOpportunityBrowseQuery(
   return { text, values };
 }
 
+function facetFilterQuery(
+  query: OpportunityRepositoryQuery,
+  context: OpportunityRepositoryContext | undefined,
+  taxonomyReads: boolean,
+  parameterOffset: number,
+): SqlQuery {
+  const built = buildOpportunityBrowseQuery(
+    { ...query, cursor: undefined, limit: 1 },
+    context,
+    { taxonomyReads },
+  );
+  const whereStart = built.text.lastIndexOf("\n    where ");
+  const orderStart = built.text.lastIndexOf("\n    order by ");
+  if (whereStart < 0 || orderStart < 0) {
+    throw new Error("Opportunity browse query is missing its filter boundary");
+  }
+  // SELECT-only account parameters disappear when extracting WHERE. Keep only
+  // referenced bindings and renumber them, otherwise PostgreSQL cannot infer
+  // the type of an unused placeholder (for example $2 on signed-in browse).
+  const values: unknown[] = [];
+  const bindings = new Map<number, number>();
+  const text = built.text
+    .slice(whereStart + "\n    where ".length, orderStart)
+    .replace(/\$(\d+)/g, (_, value: string) => {
+      const original = Number(value);
+      if (!bindings.has(original)) {
+        values.push(built.values[original - 1]);
+        bindings.set(original, values.length + parameterOffset);
+      }
+      return `$${bindings.get(original)}`;
+    });
+  return { text, values };
+}
+
+export function buildOpportunityFacetCountsQuery(
+  query: OpportunityRepositoryQuery,
+  context?: OpportunityRepositoryContext,
+  options: { taxonomyReads?: boolean } = {},
+): SqlQuery {
+  const taxonomyReads = options.taxonomyReads ?? taxonomyReadsEnabled();
+  const values: unknown[] = [];
+  const matched = facetFilterQuery(query, context, taxonomyReads, values.length);
+  values.push(...matched.values);
+  const typeBase = facetFilterQuery(
+    { ...query, category: undefined, types: [] },
+    context,
+    taxonomyReads,
+    values.length,
+  );
+  values.push(...typeBase.values);
+  const taxonomyBase = facetFilterQuery(
+    { ...query, taxonomyTermIds: [] },
+    context,
+    taxonomyReads,
+    values.length,
+  );
+  values.push(...taxonomyBase.values);
+  const disciplineBase = facetFilterQuery(
+    { ...query, disciplines: [] },
+    context,
+    taxonomyReads,
+    values.length,
+  );
+  values.push(...disciplineBase.values);
+
+  const evidenceJoin = `left join lateral (
+    select e.verified_until
+    from opportunity_source_evidence e
+    where e.opportunity_id = o.id
+    order by e.checked_at desc
+    limit 1
+  ) evidence on true`;
+  const taxonomyCtes = taxonomyReads
+    ? `, taxonomy_ancestors(term_id, ancestor_id) as (
+        select id, id from taxonomy_terms
+        union
+        select ancestors.term_id, relation.object_term_id
+        from taxonomy_ancestors ancestors
+        join taxonomy_term_relations relation
+          on relation.subject_term_id = ancestors.ancestor_id
+        where relation.relation_type = 'broader'
+      ), taxonomy_counts as (
+        select ancestors.ancestor_id as term_id,
+          count(distinct base.id)::int as count
+        from taxonomy_base base
+        join opportunity_taxonomy_terms assignment
+          on assignment.opportunity_id = base.id
+          and assignment.certainty <> 'rejected'
+        join taxonomy_ancestors ancestors on ancestors.term_id = assignment.term_id
+        group by ancestors.ancestor_id
+      )`
+    : `, taxonomy_counts as (
+        select null::text as term_id, 0::int as count where false
+      )`;
+
+  return {
+    text: `with recursive matched as materialized (
+      select o.id from opportunities o ${evidenceJoin} where ${matched.text}
+    ), type_base as materialized (
+      select o.id, o.type from opportunities o ${evidenceJoin} where ${typeBase.text}
+    ), taxonomy_base as materialized (
+      select o.id from opportunities o ${evidenceJoin} where ${taxonomyBase.text}
+    ), discipline_base as materialized (
+      select o.id, ${legacyDisciplineSql} as value
+      from opportunities o ${evidenceJoin} where ${disciplineBase.text}
+    ), type_counts as (
+      select type as value, count(distinct id)::int as count
+      from type_base group by type
+    ), discipline_counts as (
+      select value, count(distinct id)::int as count
+      from discipline_base
+      where value <> '' and value <> 'all-disciplines'
+      group by value
+    )${taxonomyCtes}
+    select
+      (select count(*)::int from matched) as total,
+      coalesce((select jsonb_agg(type_counts order by value) from type_counts), '[]'::jsonb) as types,
+      coalesce((select jsonb_agg(discipline_counts order by value) from discipline_counts), '[]'::jsonb) as disciplines,
+      coalesce((select jsonb_agg(jsonb_build_object('termId', term_id, 'count', count) order by term_id) from taxonomy_counts), '[]'::jsonb) as taxonomy_terms`,
+    values,
+  };
+}
+
 function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
   const callProfile = normalizeCallProfile(row.call_profile);
   const tailoringReasons = Array.isArray(row.tailoring_reasons)
@@ -711,19 +1059,20 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
         .slice(0, 4)
     : [];
   return {
-    id: row.id,
+    id: row.id.includes("_") ? row.id : `opp_${row.id}`,
     slug: boundedSlug(row.slug, row.id),
     createdAt: asIso(row.created_at),
-    title: row.title,
-    organizationId: row.organization_id ?? undefined,
-    organizationName: row.organization_name ?? undefined,
+    title: cleanTitleOrLabel(row.title),
+    organizationId: row.organization_id ? (row.organization_id.includes("_") ? row.organization_id : `org_${row.organization_id}`) : undefined,
+    organizationName: row.organization_name ? cleanTitleOrLabel(row.organization_name) : undefined,
     organizationVerified: row.organization_verified === "true",
     identityAssetUrl: row.identity_asset_url ?? undefined,
-    identityAssetAlt: row.identity_asset_alt ?? undefined,
+    identityAssetAlt: row.identity_asset_alt ? cleanTitleOrLabel(row.identity_asset_alt) : undefined,
     status: row.status,
-    type: row.type,
+    type: (VALID_OPPORTUNITY_TYPES.has(row.type as OpportunityBrowseProjection["type"]) ? row.type as OpportunityBrowseProjection["type"] : "other"),
+    openDate: row.open_date ?? undefined,
     discipline: row.discipline ?? undefined,
-    genres: row.genres ?? [],
+    genres: (row.genres ?? []).slice(0, 32),
     taxonomy: row.taxonomy ?? {
       schemeVersion: 1,
       termIds: [],
@@ -737,19 +1086,25 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
       raw: row.deadline_raw ?? undefined,
     },
     fee: {
-      status: row.fee_status,
+      status:
+        row.fee_status === "no-fee" || row.fee_status === "free"
+          ? "no-fee"
+          : row.fee_status === "paid" || row.fee_status === "fee"
+            ? "paid"
+            : "unknown",
       amountCents: row.fee_cents ?? undefined,
       currency: row.fee_currency ?? undefined,
       raw: row.fee_raw ?? undefined,
     },
     prize: browseSummary(row.prize),
-    location: row.location ?? undefined,
+    location: row.location ? cleanTitleOrLabel(row.location) : undefined,
     simultaneousAllowed: row.simultaneous_allowed ?? undefined,
     submissionAvailable:
       row.submission_state === "available" && Boolean(row.submission_url),
     source: {
-      kind: row.source_kind,
-      name: row.source_name,
+      kind: (VALID_SOURCE_KINDS.has(row.source_kind as OpportunityRepositorySource["kind"]) ? row.source_kind as OpportunityRepositorySource["kind"] : "organization-website"),
+
+      name: cleanTitleOrLabel(row.source_name),
       url: row.source_url,
       checkedAt: asIso(row.source_checked_at) ?? new Date(0).toISOString(),
       processingSucceededAt: asIso(row.processing_succeeded_at),
@@ -761,7 +1116,15 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
       followingOrganization: row.following_organization,
       tailoringReasons,
     },
-    ...(row.content ? { content: row.content } : {}),
+    ...(row.content
+      ? {
+          content: {
+            ...row.content,
+            ...(row.content.summary ? { summary: cleanCrawledText(row.content.summary) } : {}),
+            ...(row.content.description ? { description: cleanCrawledText(row.content.description) } : {}),
+          },
+        }
+      : {}),
     ...(callProfile ? { callProfile } : {}),
   };
 }
@@ -773,8 +1136,18 @@ function cursorFor(
   const key =
     sort === "recently-added"
       ? (row.createdAt ?? null)
-      : sort === "recently-verified"
-        ? (row.source.processingSucceededAt ?? null)
+      : sort === "recently-opened"
+        ? (row.openDate ?? (row.createdAt ? row.createdAt.slice(0, 10) : null))
+        : sort === "recently-verified"
+          ? (row.source.processingSucceededAt ?? null)
+        : sort === "alphabetical"
+          ? row.title.toLocaleLowerCase()
+          : sort === "no-fee-first"
+            ? JSON.stringify({
+                rank: row.fee.status === "no-fee" ? 0 : row.fee.status === "paid" ? 1 : 2,
+                feeCents: row.fee.amountCents ?? 2147483647,
+                deadline: row.deadline.date ?? "9999-12-31",
+              })
         : (row.deadline.date ?? null);
   return encodeCursor({ sort, key, id: row.id });
 }
@@ -836,6 +1209,23 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
         rows[0]?.total_count == null
           ? items.length
           : Number(rows[0].total_count),
+    };
+  }
+
+  async facetCounts(
+    query: OpportunityRepositoryQuery,
+    context?: OpportunityRepositoryContext,
+  ): Promise<OpportunityFacetCounts> {
+    const built = buildOpportunityFacetCountsQuery(query, context, {
+      taxonomyReads: await this.taxonomyReadsAvailable(),
+    });
+    const result = await this.pool.query<FacetCountsRow>(built.text, built.values);
+    const row = result.rows[0];
+    return {
+      total: Number(row?.total ?? 0),
+      types: (row?.types ?? []).map((item) => ({ ...item, count: Number(item.count) })),
+      disciplines: (row?.disciplines ?? []).map((item) => ({ ...item, count: Number(item.count) })),
+      taxonomyTerms: (row?.taxonomy_terms ?? []).map((item) => ({ ...item, count: Number(item.count) })),
     };
   }
 

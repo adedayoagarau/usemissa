@@ -49,3 +49,5 @@ export type OutboxEvent = z.infer<typeof outboxEventSchema>;
 export * from "./opportunities.js";
 export * from "./chat.js";
 export * from "./taxonomy.js";
+export * from "./onboarding.js";
+export * from "./countries.js";

@@ -1,0 +1,23 @@
+{
+  "101-outdoor-arts-creation-space": {
+    "source": "https://101outdoorarts.com/residencies",
+    "checked": "2026-09-04",
+    "images": [
+      {
+        "url": "https://outdoor-base.transforms.svdcdn.com/production/outdoors/Residencies-Sharings/2025/Puppets-with-Guts/Website-Banners.png?w=2600&q=85&auto=format&fit=crop&dm=1785405566&s=19d04adef59eb59a7aa3c24a9259b296",
+        "label": "Residencies at 101",
+        "cover": false
+      },
+      {
+        "url": "https://outdoor-base.transforms.svdcdn.com/production/outdoors/Residencies-Sharings/Tit-for-Tat.jpg?w=800&h=533&q=85&auto=format&fit=crop&dm=1785405589&s=fc8c2e8092d7e0ec903d2ed78fc68172",
+        "label": "Past residencies at 101",
+        "cover": false
+      },
+      {
+        "url": "https://outdoor-base.transforms.svdcdn.com/production/outdoors/IMG_0813.png?w=800&h=533&q=85&auto=format&fit=crop&dm=1785405675&s=6caa99a1e6132144b0c8bf66905564c5",
+        "label": "Staying at 101",
+        "cover": false
+      }
+    ]
+  }
+}

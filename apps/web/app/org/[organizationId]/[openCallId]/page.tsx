@@ -8,7 +8,7 @@ import { getEngine } from '@/lib/engine';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
 import { publicDeadlineLabel, publicFeeLabel, safePublicMedia } from '@/lib/publicOrganizationProfile';
 import { JsonLd, absoluteUrl, breadcrumbJsonLd, pageMetadata } from '@/lib/seo';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { MissaSiteHeader } from '@/components/missa-site-header';
 import { SubmitForm } from '@/components/submit-form';
 import styles from './hosted-application.module.css';
@@ -18,7 +18,9 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ params }: { params: Promise<{ organizationId: string; openCallId: string }> }): Promise<Metadata> {
   const { organizationId, openCallId } = await params;
   try {
-    const call = (await getWorkspaceEngine()).store.openCalls.get(openCallId);
+    const call = workspaceRelationalAuthorityEnabled()
+      ? (await (await getRelationalWorkspace()).openCallsForOrganization(organizationId)).find((item) => item.id === openCallId)
+      : (await getWorkspaceEngine()).store.openCalls.get(openCallId);
     if (!call || call.status !== 'published') return pageMetadata({ title: 'Opportunity not found', description: 'This public Missa Opportunity is not available.', path: `/org/${organizationId}/${openCallId}`, noIndex: true });
     return pageMetadata({ title: call.title, description: `Read the published details and application path for ${call.title}.`, path: `/org/${organizationId}/${openCallId}` });
   } catch {
@@ -31,13 +33,21 @@ export default async function HostedOpportunityPage({ params }: { params: Promis
   const radar = await getEngine();
   const organization = radar.store.organizations.get(organizationId);
   if (!organization) notFound();
-  const workspace = await getWorkspaceEngine();
-  const call = workspace.store.openCalls.get(openCallId);
+  const relational = workspaceRelationalAuthorityEnabled();
+  const relationalWorkspace = relational ? await getRelationalWorkspace() : undefined;
+  const compatibilityWorkspace = relational ? undefined : await getWorkspaceEngine();
+  const call = relationalWorkspace
+    ? (await relationalWorkspace.openCallsForOrganization(organizationId)).find((item) => item.id === openCallId)
+    : compatibilityWorkspace!.store.openCalls.get(openCallId);
   if (!call || call.status !== 'published') notFound();
-  const program = workspace.store.programs.get(call.programId);
-  const team = program ? workspace.store.entities.get(program.entityId) : undefined;
-  if (!team || team.organizationId !== organizationId) notFound();
-  const path = workspace.submissionPathsForOpenCall(openCallId)[0];
+  if (compatibilityWorkspace) {
+    const program = compatibilityWorkspace.store.programs.get(call.programId);
+    const team = program ? compatibilityWorkspace.store.entities.get(program.entityId) : undefined;
+    if (!team || team.organizationId !== organizationId) notFound();
+  }
+  const path = relationalWorkspace
+    ? await relationalWorkspace.publicSubmissionPathForOpenCall(organizationId, openCallId)
+    : compatibilityWorkspace!.submissionPathsForOpenCall(openCallId)[0];
   const opportunity = call.radarOpportunityId ? await getOpportunityRepository().getById(call.radarOpportunityId).catch(() => null) : null;
   const media = safePublicMedia(opportunity?.identityAssetUrl);
   const session = await getSessionAccountFromToken((await cookies()).get(SESSION_COOKIE)?.value);

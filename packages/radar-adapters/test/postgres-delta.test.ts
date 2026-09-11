@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { Pool, QueryResult } from 'pg';
-import { createStore } from '@missa/radar-engine';
+import { createStore, type Opportunity, type Source } from '@missa/radar-engine';
 import { saveRadarStoreDeltaToPostgres } from '../src/postgresStore.js';
 
 function fakePool(initialVersion = '0', taxonomyReady = false, opportunityPreferencesReady = false): { pool: Pool; calls: string[] } {
@@ -69,6 +69,110 @@ test('Radar delta persistence ignores object key order', async () => {
 
   assert.equal(nextVersion, 3);
   assert.deepEqual(calls, []);
+});
+
+test('Radar delta persistence does not rewrite opportunities for source scheduling metadata', async () => {
+  const previous = createStore();
+  const current = createStore();
+  const source: Source = {
+    id: 'source_1',
+    name: 'Source',
+    url: 'https://example.org/calls',
+    kind: 'directory',
+    active: true,
+    checkIntervalHours: 24,
+    consecutiveFailures: 0,
+  };
+  previous.sources.set(source.id, source);
+  current.sources.set(source.id, { ...source, nextCheckAt: '2026-08-18T00:00:00.000Z' });
+  const opportunity: Opportunity = {
+    id: 'opp_1',
+    createdAt: '2026-08-01T00:00:00.000Z',
+    status: 'open',
+    fields: {
+      title: 'Open call',
+      type: 'grant',
+      genres: [],
+      deadline: { kind: 'rolling' },
+      fee: { disclosed: false },
+      eligibility: [],
+      requiredMaterials: [],
+      contactEmailPresent: false,
+    },
+    sourceId: source.id,
+    sourceUrl: source.url,
+    alternateSourceIds: [],
+    scores: { freshness: 100, confidence: 80, trust: 70 },
+    trustSignals: [],
+    lastCheckedAt: '2026-08-01T00:00:00.000Z',
+    lastChangedAt: '2026-08-01T00:00:00.000Z',
+    lastExtractionConfidence: 80,
+    lastOpenSignal: true,
+    lastClosedSignal: false,
+    lastSuspiciousSignals: [],
+    pastCycles: [],
+    conflicts: [],
+  };
+  previous.opportunities.set(opportunity.id, opportunity);
+  current.opportunities.set(opportunity.id, opportunity);
+  const { pool, calls } = fakePool('3');
+
+  await saveRadarStoreDeltaToPostgres(current, previous, pool, 3);
+
+  assert.ok(calls.some((sql) => sql.startsWith('insert into radar_sources')));
+  assert.ok(!calls.some((sql) => sql.startsWith('insert into opportunities')));
+});
+
+test('Radar delta persistence bulk-writes score changes without re-projecting canonical opportunities', async () => {
+  const previous = createStore();
+  const current = createStore();
+  const source: Source = {
+    id: 'source_1',
+    name: 'Source',
+    url: 'https://example.org/calls',
+    kind: 'directory',
+    active: true,
+    checkIntervalHours: 24,
+    consecutiveFailures: 0,
+  };
+  previous.sources.set(source.id, source);
+  current.sources.set(source.id, source);
+  const opportunity: Opportunity = {
+    id: 'opp_1',
+    createdAt: '2026-08-01T00:00:00.000Z',
+    status: 'open',
+    fields: {
+      title: 'Open call',
+      type: 'grant',
+      genres: [],
+      deadline: { kind: 'rolling' },
+      fee: { disclosed: false },
+      eligibility: [],
+      requiredMaterials: [],
+      contactEmailPresent: false,
+    },
+    sourceId: source.id,
+    sourceUrl: source.url,
+    alternateSourceIds: [],
+    scores: { freshness: 100, confidence: 80, trust: 70 },
+    trustSignals: [],
+    lastCheckedAt: '2026-08-01T00:00:00.000Z',
+    lastChangedAt: '2026-08-01T00:00:00.000Z',
+    lastExtractionConfidence: 80,
+    lastOpenSignal: true,
+    lastClosedSignal: false,
+    lastSuspiciousSignals: [],
+    pastCycles: [],
+    conflicts: [],
+  };
+  previous.opportunities.set(opportunity.id, opportunity);
+  current.opportunities.set(opportunity.id, { ...opportunity, scores: { ...opportunity.scores, freshness: 99 } });
+  const { pool, calls } = fakePool('3');
+
+  await saveRadarStoreDeltaToPostgres(current, previous, pool, 3);
+
+  assert.ok(calls.some((sql) => sql.startsWith('insert into radar_opportunities')));
+  assert.ok(!calls.some((sql) => sql.startsWith('insert into opportunities')));
 });
 
 test('Radar delta persistence dual-writes changed taxonomy exclusions', async () => {

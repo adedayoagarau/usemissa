@@ -14,6 +14,14 @@ Missa is **plain, specific, and familiar**.
 
 ## Five rules
 
+Read the whole page aloud. Use words a person would say. If one clear sentence
+does the job, keep that sentence and delete the rest. Check adjacent sections:
+do not explain something the heading, control, image, or earlier section has
+already explained. Eyebrows and supporting paragraphs are optional.
+
+Homepage discovery example: “Your next opportunity is one click away.”
+It needs no eyebrow or paragraph repeating that opportunities are gathered here.
+
 1. Give each message one job.
 2. Put the answer, state, or action first.
 3. Add another sentence only for a fact, consequence, reason, source, next action, or recovery step.
@@ -62,15 +70,19 @@ Remove **successfully** when the verb already shows success.
 
 ## Canonical homepage copy
 
-> # Find your next opportunity.
+> # Find the call worth your time.
 >
-> Discover grants, residencies, fellowships, commissions, and open calls that fit your work.
+> Missa helps you compare the facts, open the official source, save your decision, and keep track of what comes next.
 >
-> **Join the waitlist**
+> **Browse Opportunities**
 >
-> We’ll send you an invite when Missa is ready.
+> **How Missa handles evidence**
 
 Do not add an eyebrow unless it gives information.
+
+For waitlist or invitation surfaces, use the same value in a shorter form:
+
+> Find the calls that fit your work, prepare what you need, and stay on top of every deadline—with the original source close at hand.
 
 ## Product patterns
 

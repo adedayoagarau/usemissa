@@ -96,6 +96,11 @@ test('status derivation follows the strategy state machine', () => {
     deriveStatus(makeOpp({ fields: { openDate: '2026-01-20', deadline: { kind: 'unknown' } } }), { ...ctx, openSignalPresent: false }),
     'opening-soon',
   );
+  // Historical recurrence schedules verification but cannot create a public state.
+  assert.equal(
+    deriveStatus(makeOpp({ fields: { deadline: { kind: 'unknown' } }, prediction: { expectedOpenStart: '2026-01-20', expectedOpenEnd: '2026-02-03', confidence: 'high', basedOnCycles: 3 } }), { ...ctx, openSignalPresent: false }),
+    'discovered',
+  );
   // Rolling deadline stays open.
   assert.equal(deriveStatus(makeOpp({ fields: { deadline: { kind: 'rolling' } } }), ctx), 'open');
   // Conflicts force needs-verification.

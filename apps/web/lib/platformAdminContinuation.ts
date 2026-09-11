@@ -291,7 +291,7 @@ function buildMessagingData(stores: RuntimeStores, history: PlatformAdminMessage
     },
     {
       id: 'decision-email', label: 'Decision email', status: process.env.RESEND_API_KEY && process.env.RESEND_FROM ? 'configured' : 'unconfigured', pending: 0, completed: decisionEmailSent.length,
-      lastObservedAt: latest(decisionEmailSent.map((entry) => entry.at)), detail: 'Organization-triggered decision email sends recorded in the compatibility audit; there is no durable delivery log yet.', source: 'Decision activity + Resend configuration', maturity: channelMaturity,
+      lastObservedAt: latest(decisionEmailSent.map((entry) => entry.at)), detail: 'Decision email effects are reported by the durable ledger below; accepted is not a delivery receipt.', source: 'Durable message-effect ledger + Resend configuration', maturity: channelMaturity,
     },
     {
       id: 'workspace-delivery', label: 'Organization delivery', status: pendingDelivery > 0 ? 'attention' : deliveryTasks.length > 0 ? 'idle' : 'unknown', pending: pendingDelivery, completed: deliveryTasks.filter((task) => task.status === 'complete').length,

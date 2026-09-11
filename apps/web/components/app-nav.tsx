@@ -14,6 +14,7 @@ import { MissaWordmark } from '@/components/missa-wordmark';
  * Inbox and Profile remain utilities rather than competing primary products. */
 const NAV_LINKS = [
   { href: '/opportunities', label: 'Opportunities' },
+  { href: '/saved', label: 'Saved' },
   { href: '/tracker', label: 'Tracker' },
   { href: '/library', label: 'Library' },
 ] as const;

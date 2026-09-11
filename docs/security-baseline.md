@@ -5,13 +5,14 @@ claim of ISO 27001, SOC 2, or HIPAA compliance.
 
 ## Implemented in the web app
 
-- Sign-in and sign-up use the existing shared sliding-window limiter. It uses
-  hashed subjects, Upstash Redis when configured, and a bounded in-process
-  fallback when the shared store is unavailable.
-- Login failures use a generic response, and sign-up failures do not reveal
-  whether an email address already has an account.
+- Authentication requests are bounded by IP and normalized-email buckets. The
+  hosted path uses Upstash Redis; local development has a bounded in-process
+  fallback. `/api/health/readiness` reports whether the shared limiter is
+  configured.
 - Authenticated-session responses use `private, no-store`, preventing browser
   and intermediary caches from retaining account or membership data.
+- Password-login failures return a generic message, avoiding accidental
+  disclosure of internal error details.
 - Production responses include HSTS, `nosniff`, frame denial, a restrictive
   referrer policy, a minimal Permissions Policy, disabled DNS prefetch, and no
   cross-domain policy.
@@ -20,19 +21,33 @@ claim of ISO 27001, SOC 2, or HIPAA compliance.
   inbound webhook signatures, private object storage for user files, and
   append-only audit entries for many mutations.
 
-## Operational boundary
+## Dependency scan status
 
-The shared limiter is stronger than an in-memory-only guard only when the
-shared Redis path is healthy. If Redis is unavailable, the application keeps a
-bounded local guard for availability and logs the degradation. Production
-verification must therefore include a controlled rate-limit check against the
-exact deployed host; configuration presence alone is not proof of
-cross-instance enforcement.
+`npm audit --omit=dev` on 2026-08-15 reported 29 production-tree advisories (7
+moderate and 22 high). The report includes findings in the Next.js
+`postcss`/`sharp` chain, Workflow transitive dependencies, `fast-uri`, and
+`xlsx` (which had no available fix in the report). Remediation is pending as a
+separate dependency tranche; `npm audit fix --force` was not run because it
+proposes breaking upgrades in the current checkout.
 
-On 2026-08-15, the configured production Redis service returned its provider
-maximum-request error during a direct probe. The production variables were
-present, but shared enforcement was not proven operational until that quota is
-restored.
+## Hosted verification status
+
+Vercel production has the session secret plus both Vercel KV-compatible Redis
+variables and a native `REDIS_URL`. On 2026-08-15, direct commands through both
+Redis paths returned `ERR max requests limit exceeded` with usage `500001` of
+`500000`. The shared limiter therefore could not be proven operational; the
+local fallback was used by the non-production probe. No application records or
+schemas were changed, and no deployment was made from this checkout.
+
+## Production activation
+
+Set `MISSA_SESSION_SECRET` and one shared Redis configuration in the production
+web service: explicit `UPSTASH_REDIS_REST_URL` plus
+`UPSTASH_REDIS_REST_TOKEN`, Vercel KV-compatible `KV_REST_API_URL` plus
+`KV_REST_API_TOKEN`, or a credentialed `REDIS_URL`. Confirm the readiness report
+shows `session` and `sharedRateLimiting` as `ready`, then exercise login, logout,
+re-login, and a controlled rate-limit check against the exact deployed host.
+The local fallback is not evidence of a multi-instance production control.
 
 ## Still required before a compliance claim
 

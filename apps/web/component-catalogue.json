@@ -1,0 +1,1747 @@
+{
+  "liquidGlassWelcome": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/liquid-glass-welcome.tsx",
+    "route": "/welcome",
+    "composition": [
+      "Button",
+      "Link",
+      "DecorativeCanvas"
+    ],
+    "source": "Installed Base UI Button; original WebGL scene informed by Appllama interaction study. No upstream code/assets copied.",
+    "tokens": "components/design-system/welcome-tokens.css and welcome-motion.ts",
+    "evidence": "docs/design-references/liquid-glass-welcome.md",
+    "boundary": "Optional entry screen with real navigation. Does not save preferences or replace /onboarding."
+  },
+  "applicationTrackerPreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/application-tracker-preview.tsx",
+    "route": "/design-system/my-applications",
+    "composition": [
+      "Button",
+      "Field",
+      "Input",
+      "Textarea",
+      "NativeSelect"
+    ]
+  },
+  "applicationPreparationPreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/application-preparation-preview.tsx",
+    "route": "/design-system/application-preparation",
+    "composition": [
+      "Button",
+      "Field",
+      "Textarea",
+      "NativeSelect"
+    ],
+    "boundary": "Sample materials, local React state; no persistence, upload, or submission integration."
+  },
+  "creatorWorkspacePreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/creator-workspace-preview.tsx",
+    "route": "/design-system/creator-workspace",
+    "composition": [
+      "Button",
+      "Checkbox",
+      "Link"
+    ],
+    "boundary": "Interactive local-state workspace preview. It does not create applications, save materials, set reminders, or claim external submission status."
+  },
+  "creatorOnboardingPreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/creator-onboarding-preview.tsx",
+    "route": "/design-system/creator-onboarding",
+    "composition": [
+      "Checkbox",
+      "Button",
+      "Link"
+    ],
+    "boundary": "Two optional questions; local React state only; no account persistence"
+  },
+  "opportunityDetail": {
+    "persistentActions": "OpportunityDetailStickyActions observes summary exit; desktop only, existing mobile dock retained",
+    "status": "approved",
+    "implementation": "apps/web/components/opportunity-detail-view.tsx",
+    "adaptation": "White-index detail layout, interface typography, unboxed reading sections, organizer and facts rail; public reputation scores and unknown turnaround removed",
+    "actions": [
+      "SaveToTrackerButton",
+      "AddOpportunityToCalendarButton",
+      "MobileActionDock",
+      "OpportunityDetailStickyActions",
+      "official destination link"
+    ],
+    "mobile": "Single-column reading; Save and Apply stay in existing dock, calendar remains in summary"
+  },
+  "collectionBrowse": {
+    "status": "approved",
+    "implementation": "apps/web/app/discover/[slug]/page.tsx",
+    "composition": [
+      "OpportunityBrowseProjectCard",
+      "OpportunitySort",
+      "OpportunityBrowsePagination"
+    ],
+    "themes": "Twelve individual editorial palettes in components/design-system/collection-palette.css; cover copy and motifs in lib/collectionArtDirection.ts; shared white cards",
+    "state": "Collection constraints retained; URL sorting and cursor history; 48 results per page"
+  },
+  "generatedFrom": "apps/web/components/shadcn-studio",
+  "verifiedAgainst": "https://shadcnstudio.com/components",
+  "observedAt": "2026-09-03",
+  "note": "WebMCP was advertised but exposed no tools; category identity was verified from the authenticated rendered DOM and exact variants were inventoried from checked-in source.",
+  "familyCount": 58,
+  "variantCount": 790,
+  "studioObservedVariantCount": 902,
+  "families": [
+    {
+      "family": "accordion",
+      "count": 15,
+      "studioObservedCount": 16,
+      "notInstalledCount": 1,
+      "variants": [
+        "accordion-01",
+        "accordion-02",
+        "accordion-03",
+        "accordion-04",
+        "accordion-05",
+        "accordion-06",
+        "accordion-07",
+        "accordion-08",
+        "accordion-09",
+        "accordion-10",
+        "accordion-11",
+        "accordion-12",
+        "accordion-13",
+        "accordion-14",
+        "accordion-15"
+      ]
+    },
+    {
+      "family": "alert",
+      "count": 25,
+      "studioObservedCount": 30,
+      "notInstalledCount": 5,
+      "variants": [
+        "alert-01",
+        "alert-02",
+        "alert-03",
+        "alert-04",
+        "alert-05",
+        "alert-06",
+        "alert-07",
+        "alert-08",
+        "alert-09",
+        "alert-10",
+        "alert-11",
+        "alert-12",
+        "alert-13",
+        "alert-14",
+        "alert-15",
+        "alert-16",
+        "alert-17",
+        "alert-18",
+        "alert-19",
+        "alert-20",
+        "alert-21",
+        "alert-22",
+        "alert-23",
+        "alert-24",
+        "alert-25"
+      ]
+    },
+    {
+      "family": "aspect-ratio",
+      "count": 7,
+      "studioObservedCount": 7,
+      "notInstalledCount": 0,
+      "variants": [
+        "aspect-ratio-01",
+        "aspect-ratio-02",
+        "aspect-ratio-03",
+        "aspect-ratio-04",
+        "aspect-ratio-05",
+        "aspect-ratio-06",
+        "aspect-ratio-07"
+      ]
+    },
+    {
+      "family": "autocomplete",
+      "count": 10,
+      "studioObservedCount": 10,
+      "notInstalledCount": 0,
+      "variants": [
+        "autocomplete-01",
+        "autocomplete-02",
+        "autocomplete-03",
+        "autocomplete-04",
+        "autocomplete-05",
+        "autocomplete-06",
+        "autocomplete-07",
+        "autocomplete-08",
+        "autocomplete-09",
+        "autocomplete-10"
+      ]
+    },
+    {
+      "family": "avatar",
+      "count": 20,
+      "studioObservedCount": 21,
+      "notInstalledCount": 1,
+      "variants": [
+        "avatar-01",
+        "avatar-02",
+        "avatar-03",
+        "avatar-04",
+        "avatar-05",
+        "avatar-06",
+        "avatar-07",
+        "avatar-08",
+        "avatar-09",
+        "avatar-10",
+        "avatar-11",
+        "avatar-12",
+        "avatar-13",
+        "avatar-14",
+        "avatar-15",
+        "avatar-16",
+        "avatar-17",
+        "avatar-18",
+        "avatar-19",
+        "avatar-20"
+      ]
+    },
+    {
+      "family": "badge",
+      "count": 24,
+      "studioObservedCount": 24,
+      "notInstalledCount": 0,
+      "variants": [
+        "badge-01",
+        "badge-02",
+        "badge-03",
+        "badge-04",
+        "badge-05",
+        "badge-06",
+        "badge-07",
+        "badge-08",
+        "badge-09",
+        "badge-10",
+        "badge-11",
+        "badge-12",
+        "badge-13",
+        "badge-14",
+        "badge-15",
+        "badge-16",
+        "badge-17",
+        "badge-18",
+        "badge-19",
+        "badge-20",
+        "badge-21",
+        "badge-22",
+        "badge-23",
+        "badge-24"
+      ]
+    },
+    {
+      "family": "breadcrumb",
+      "count": 8,
+      "studioObservedCount": 8,
+      "notInstalledCount": 0,
+      "variants": [
+        "breadcrumb-01",
+        "breadcrumb-02",
+        "breadcrumb-03",
+        "breadcrumb-04",
+        "breadcrumb-05",
+        "breadcrumb-06",
+        "breadcrumb-07",
+        "breadcrumb-08"
+      ]
+    },
+    {
+      "family": "button",
+      "count": 2,
+      "studioObservedCount": 55,
+      "notInstalledCount": 53,
+      "variants": [
+        "button-01",
+        "button-41"
+      ]
+    },
+    {
+      "family": "button-group",
+      "count": 16,
+      "studioObservedCount": 16,
+      "notInstalledCount": 0,
+      "variants": [
+        "button-group-01",
+        "button-group-02",
+        "button-group-03",
+        "button-group-04",
+        "button-group-05",
+        "button-group-06",
+        "button-group-07",
+        "button-group-08",
+        "button-group-09",
+        "button-group-10",
+        "button-group-11",
+        "button-group-12",
+        "button-group-13",
+        "button-group-14",
+        "button-group-15",
+        "button-group-16"
+      ]
+    },
+    {
+      "family": "calendar",
+      "count": 20,
+      "studioObservedCount": 25,
+      "notInstalledCount": 5,
+      "variants": [
+        "calendar-01",
+        "calendar-02",
+        "calendar-03",
+        "calendar-04",
+        "calendar-05",
+        "calendar-06",
+        "calendar-07",
+        "calendar-08",
+        "calendar-09",
+        "calendar-10",
+        "calendar-11",
+        "calendar-12",
+        "calendar-13",
+        "calendar-14",
+        "calendar-15",
+        "calendar-16",
+        "calendar-17",
+        "calendar-18",
+        "calendar-19",
+        "calendar-20"
+      ]
+    },
+    {
+      "family": "card",
+      "count": 17,
+      "studioObservedCount": 17,
+      "notInstalledCount": 0,
+      "variants": [
+        "card-01",
+        "card-02",
+        "card-03",
+        "card-04",
+        "card-05",
+        "card-06",
+        "card-07",
+        "card-08",
+        "card-09",
+        "card-10",
+        "card-11",
+        "card-12",
+        "card-13",
+        "card-14",
+        "card-15",
+        "card-16",
+        "card-17"
+      ]
+    },
+    {
+      "family": "carousel",
+      "count": 12,
+      "studioObservedCount": 12,
+      "notInstalledCount": 0,
+      "variants": [
+        "carousel-01",
+        "carousel-02",
+        "carousel-03",
+        "carousel-04",
+        "carousel-05",
+        "carousel-06",
+        "carousel-07",
+        "carousel-08",
+        "carousel-09",
+        "carousel-10",
+        "carousel-11",
+        "carousel-12"
+      ]
+    },
+    {
+      "family": "checkbox",
+      "count": 15,
+      "studioObservedCount": 19,
+      "notInstalledCount": 4,
+      "variants": [
+        "checkbox-01",
+        "checkbox-02",
+        "checkbox-03",
+        "checkbox-04",
+        "checkbox-05",
+        "checkbox-06",
+        "checkbox-07",
+        "checkbox-08",
+        "checkbox-09",
+        "checkbox-10",
+        "checkbox-11",
+        "checkbox-12",
+        "checkbox-13",
+        "checkbox-14",
+        "checkbox-15"
+      ]
+    },
+    {
+      "family": "code-block",
+      "count": 7,
+      "studioObservedCount": 7,
+      "notInstalledCount": 0,
+      "variants": [
+        "code-block-01",
+        "code-block-02",
+        "code-block-03",
+        "code-block-04",
+        "code-block-05",
+        "code-block-06",
+        "code-block-07"
+      ]
+    },
+    {
+      "family": "collapsible",
+      "count": 10,
+      "studioObservedCount": 10,
+      "notInstalledCount": 0,
+      "variants": [
+        "collapsible-01",
+        "collapsible-02",
+        "collapsible-03",
+        "collapsible-04",
+        "collapsible-05",
+        "collapsible-06",
+        "collapsible-07",
+        "collapsible-08",
+        "collapsible-09",
+        "collapsible-10"
+      ]
+    },
+    {
+      "family": "combobox",
+      "count": 10,
+      "studioObservedCount": 14,
+      "notInstalledCount": 4,
+      "variants": [
+        "combobox-01",
+        "combobox-02",
+        "combobox-03",
+        "combobox-04",
+        "combobox-05",
+        "combobox-06",
+        "combobox-07",
+        "combobox-08",
+        "combobox-09",
+        "combobox-10"
+      ]
+    },
+    {
+      "family": "command",
+      "count": 14,
+      "studioObservedCount": 14,
+      "notInstalledCount": 0,
+      "variants": [
+        "command-01",
+        "command-02",
+        "command-03",
+        "command-04",
+        "command-05",
+        "command-06",
+        "command-07",
+        "command-08",
+        "command-09",
+        "command-10",
+        "command-11",
+        "command-12",
+        "command-13",
+        "command-14"
+      ]
+    },
+    {
+      "family": "context-menu",
+      "count": 9,
+      "studioObservedCount": 9,
+      "notInstalledCount": 0,
+      "variants": [
+        "context-menu-01",
+        "context-menu-02",
+        "context-menu-03",
+        "context-menu-04",
+        "context-menu-05",
+        "context-menu-06",
+        "context-menu-07",
+        "context-menu-08",
+        "context-menu-09"
+      ]
+    },
+    {
+      "family": "data-table",
+      "count": 13,
+      "studioObservedCount": 13,
+      "notInstalledCount": 0,
+      "variants": [
+        "data-table-01",
+        "data-table-02",
+        "data-table-03",
+        "data-table-04",
+        "data-table-05",
+        "data-table-06",
+        "data-table-07",
+        "data-table-08",
+        "data-table-09",
+        "data-table-10",
+        "data-table-11",
+        "data-table-12",
+        "data-table-13"
+      ]
+    },
+    {
+      "family": "date-picker",
+      "count": 10,
+      "studioObservedCount": 13,
+      "notInstalledCount": 3,
+      "variants": [
+        "date-picker-01",
+        "date-picker-02",
+        "date-picker-03",
+        "date-picker-04",
+        "date-picker-05",
+        "date-picker-06",
+        "date-picker-07",
+        "date-picker-08",
+        "date-picker-09",
+        "date-picker-10"
+      ]
+    },
+    {
+      "family": "dialog",
+      "count": 20,
+      "studioObservedCount": 26,
+      "notInstalledCount": 6,
+      "variants": [
+        "dialog-01",
+        "dialog-02",
+        "dialog-03",
+        "dialog-04",
+        "dialog-05",
+        "dialog-06",
+        "dialog-07",
+        "dialog-08",
+        "dialog-09",
+        "dialog-10",
+        "dialog-11",
+        "dialog-12",
+        "dialog-13",
+        "dialog-14",
+        "dialog-15",
+        "dialog-16",
+        "dialog-17",
+        "dialog-18",
+        "dialog-19",
+        "dialog-20"
+      ]
+    },
+    {
+      "family": "drawer",
+      "count": 15,
+      "studioObservedCount": 15,
+      "notInstalledCount": 0,
+      "variants": [
+        "drawer-01",
+        "drawer-02",
+        "drawer-03",
+        "drawer-04",
+        "drawer-05",
+        "drawer-06",
+        "drawer-07",
+        "drawer-08",
+        "drawer-09",
+        "drawer-10",
+        "drawer-11",
+        "drawer-12",
+        "drawer-13",
+        "drawer-14",
+        "drawer-15"
+      ]
+    },
+    {
+      "family": "dropdown-menu",
+      "count": 15,
+      "studioObservedCount": 16,
+      "notInstalledCount": 1,
+      "variants": [
+        "dropdown-menu-01",
+        "dropdown-menu-02",
+        "dropdown-menu-03",
+        "dropdown-menu-04",
+        "dropdown-menu-05",
+        "dropdown-menu-06",
+        "dropdown-menu-07",
+        "dropdown-menu-08",
+        "dropdown-menu-09",
+        "dropdown-menu-10",
+        "dropdown-menu-11",
+        "dropdown-menu-12",
+        "dropdown-menu-13",
+        "dropdown-menu-14",
+        "dropdown-menu-15"
+      ]
+    },
+    {
+      "family": "form",
+      "count": 10,
+      "studioObservedCount": 10,
+      "notInstalledCount": 0,
+      "variants": [
+        "form-01",
+        "form-02",
+        "form-03",
+        "form-04",
+        "form-05",
+        "form-06",
+        "form-07",
+        "form-08",
+        "form-09",
+        "form-10"
+      ]
+    },
+    {
+      "family": "input",
+      "count": 45,
+      "studioObservedCount": 46,
+      "notInstalledCount": 1,
+      "variants": [
+        "input-01",
+        "input-02",
+        "input-03",
+        "input-04",
+        "input-05",
+        "input-06",
+        "input-07",
+        "input-08",
+        "input-09",
+        "input-10",
+        "input-11",
+        "input-12",
+        "input-13",
+        "input-14",
+        "input-15",
+        "input-16",
+        "input-17",
+        "input-18",
+        "input-19",
+        "input-20",
+        "input-21",
+        "input-22",
+        "input-23",
+        "input-24",
+        "input-25",
+        "input-26",
+        "input-27",
+        "input-28",
+        "input-29",
+        "input-30",
+        "input-31",
+        "input-32",
+        "input-33",
+        "input-34",
+        "input-35",
+        "input-36",
+        "input-37",
+        "input-38",
+        "input-39",
+        "input-40",
+        "input-41",
+        "input-42",
+        "input-43",
+        "input-44",
+        "input-45"
+      ]
+    },
+    {
+      "family": "input-mask",
+      "count": 6,
+      "studioObservedCount": 6,
+      "notInstalledCount": 0,
+      "variants": [
+        "input-mask-01",
+        "input-mask-02",
+        "input-mask-03",
+        "input-mask-04",
+        "input-mask-05",
+        "input-mask-06"
+      ]
+    },
+    {
+      "family": "input-otp",
+      "count": 10,
+      "studioObservedCount": 10,
+      "notInstalledCount": 0,
+      "variants": [
+        "input-otp-01",
+        "input-otp-02",
+        "input-otp-03",
+        "input-otp-04",
+        "input-otp-05",
+        "input-otp-06",
+        "input-otp-07",
+        "input-otp-08",
+        "input-otp-09",
+        "input-otp-10"
+      ]
+    },
+    {
+      "family": "kanban",
+      "count": 4,
+      "studioObservedCount": 4,
+      "notInstalledCount": 0,
+      "variants": [
+        "kanban-01",
+        "kanban-02",
+        "kanban-03",
+        "kanban-04"
+      ]
+    },
+    {
+      "family": "kbd",
+      "count": 8,
+      "studioObservedCount": 8,
+      "notInstalledCount": 0,
+      "variants": [
+        "kbd-01",
+        "kbd-02",
+        "kbd-03",
+        "kbd-04",
+        "kbd-05",
+        "kbd-06",
+        "kbd-07",
+        "kbd-08"
+      ]
+    },
+    {
+      "family": "label",
+      "count": 9,
+      "studioObservedCount": 9,
+      "notInstalledCount": 0,
+      "variants": [
+        "label-01",
+        "label-02",
+        "label-03",
+        "label-04",
+        "label-05",
+        "label-06",
+        "label-07",
+        "label-08",
+        "label-09"
+      ]
+    },
+    {
+      "family": "list",
+      "count": 10,
+      "studioObservedCount": 10,
+      "notInstalledCount": 0,
+      "variants": [
+        "list-01",
+        "list-02",
+        "list-03",
+        "list-04",
+        "list-05",
+        "list-06",
+        "list-07",
+        "list-08",
+        "list-09",
+        "list-10"
+      ]
+    },
+    {
+      "family": "menubar",
+      "count": 8,
+      "studioObservedCount": 8,
+      "notInstalledCount": 0,
+      "variants": [
+        "menubar-01",
+        "menubar-02",
+        "menubar-03",
+        "menubar-04",
+        "menubar-05",
+        "menubar-06",
+        "menubar-07",
+        "menubar-08"
+      ]
+    },
+    {
+      "family": "navigation-menu",
+      "count": 9,
+      "studioObservedCount": 9,
+      "notInstalledCount": 0,
+      "variants": [
+        "navigation-menu-01",
+        "navigation-menu-02",
+        "navigation-menu-03",
+        "navigation-menu-04",
+        "navigation-menu-05",
+        "navigation-menu-06",
+        "navigation-menu-07",
+        "navigation-menu-08",
+        "navigation-menu-09"
+      ]
+    },
+    {
+      "family": "pagination",
+      "count": 10,
+      "studioObservedCount": 15,
+      "notInstalledCount": 5,
+      "variants": [
+        "pagination-01",
+        "pagination-02",
+        "pagination-03",
+        "pagination-04",
+        "pagination-05",
+        "pagination-06",
+        "pagination-07",
+        "pagination-08",
+        "pagination-09",
+        "pagination-10"
+      ]
+    },
+    {
+      "family": "phone-input",
+      "count": 9,
+      "studioObservedCount": 9,
+      "notInstalledCount": 0,
+      "variants": [
+        "phone-input-01",
+        "phone-input-02",
+        "phone-input-03",
+        "phone-input-04",
+        "phone-input-05",
+        "phone-input-06",
+        "phone-input-07",
+        "phone-input-08",
+        "phone-input-09"
+      ]
+    },
+    {
+      "family": "popover",
+      "count": 10,
+      "studioObservedCount": 15,
+      "notInstalledCount": 5,
+      "variants": [
+        "popover-01",
+        "popover-02",
+        "popover-03",
+        "popover-04",
+        "popover-05",
+        "popover-06",
+        "popover-07",
+        "popover-08",
+        "popover-09",
+        "popover-10"
+      ]
+    },
+    {
+      "family": "progress",
+      "count": 23,
+      "studioObservedCount": 23,
+      "notInstalledCount": 0,
+      "variants": [
+        "progress-01",
+        "progress-02",
+        "progress-03",
+        "progress-04",
+        "progress-05",
+        "progress-06",
+        "progress-07",
+        "progress-08",
+        "progress-09",
+        "progress-10",
+        "progress-11",
+        "progress-12",
+        "progress-13",
+        "progress-14",
+        "progress-15",
+        "progress-16",
+        "progress-17",
+        "progress-18",
+        "progress-19",
+        "progress-20",
+        "progress-21",
+        "progress-22",
+        "progress-23"
+      ]
+    },
+    {
+      "family": "radio-group",
+      "count": 10,
+      "studioObservedCount": 15,
+      "notInstalledCount": 5,
+      "variants": [
+        "radio-group-01",
+        "radio-group-02",
+        "radio-group-03",
+        "radio-group-04",
+        "radio-group-05",
+        "radio-group-06",
+        "radio-group-07",
+        "radio-group-08",
+        "radio-group-09",
+        "radio-group-10"
+      ]
+    },
+    {
+      "family": "rating",
+      "count": 8,
+      "studioObservedCount": 8,
+      "notInstalledCount": 0,
+      "variants": [
+        "rating-01",
+        "rating-02",
+        "rating-03",
+        "rating-04",
+        "rating-05",
+        "rating-06",
+        "rating-07",
+        "rating-08"
+      ]
+    },
+    {
+      "family": "resizable",
+      "count": 9,
+      "studioObservedCount": 9,
+      "notInstalledCount": 0,
+      "variants": [
+        "resizable-01",
+        "resizable-02",
+        "resizable-03",
+        "resizable-04",
+        "resizable-05",
+        "resizable-06",
+        "resizable-07",
+        "resizable-08",
+        "resizable-09"
+      ]
+    },
+    {
+      "family": "scroll-area",
+      "count": 6,
+      "studioObservedCount": 6,
+      "notInstalledCount": 0,
+      "variants": [
+        "scroll-area-01",
+        "scroll-area-02",
+        "scroll-area-03",
+        "scroll-area-04",
+        "scroll-area-05",
+        "scroll-area-06"
+      ]
+    },
+    {
+      "family": "select",
+      "count": 35,
+      "studioObservedCount": 38,
+      "notInstalledCount": 3,
+      "variants": [
+        "select-01",
+        "select-02",
+        "select-03",
+        "select-04",
+        "select-05",
+        "select-06",
+        "select-07",
+        "select-08",
+        "select-09",
+        "select-10",
+        "select-11",
+        "select-12",
+        "select-13",
+        "select-14",
+        "select-15",
+        "select-16",
+        "select-17",
+        "select-18",
+        "select-19",
+        "select-20",
+        "select-21",
+        "select-22",
+        "select-23",
+        "select-24",
+        "select-25",
+        "select-26",
+        "select-27",
+        "select-28",
+        "select-29",
+        "select-30",
+        "select-31",
+        "select-32",
+        "select-33",
+        "select-34",
+        "select-35"
+      ]
+    },
+    {
+      "family": "separator",
+      "count": 14,
+      "studioObservedCount": 14,
+      "notInstalledCount": 0,
+      "variants": [
+        "separator-01",
+        "separator-02",
+        "separator-03",
+        "separator-04",
+        "separator-05",
+        "separator-06",
+        "separator-07",
+        "separator-08",
+        "separator-09",
+        "separator-10",
+        "separator-11",
+        "separator-12",
+        "separator-13",
+        "separator-14"
+      ]
+    },
+    {
+      "family": "sheet",
+      "count": 5,
+      "studioObservedCount": 7,
+      "notInstalledCount": 2,
+      "variants": [
+        "sheet-01",
+        "sheet-02",
+        "sheet-03",
+        "sheet-04",
+        "sheet-05"
+      ]
+    },
+    {
+      "family": "skeleton",
+      "count": 12,
+      "studioObservedCount": 12,
+      "notInstalledCount": 0,
+      "variants": [
+        "skeleton-01",
+        "skeleton-02",
+        "skeleton-03",
+        "skeleton-04",
+        "skeleton-05",
+        "skeleton-06",
+        "skeleton-07",
+        "skeleton-08",
+        "skeleton-09",
+        "skeleton-10",
+        "skeleton-11",
+        "skeleton-12"
+      ]
+    },
+    {
+      "family": "slider",
+      "count": 19,
+      "studioObservedCount": 19,
+      "notInstalledCount": 0,
+      "variants": [
+        "slider-01",
+        "slider-02",
+        "slider-03",
+        "slider-04",
+        "slider-05",
+        "slider-06",
+        "slider-07",
+        "slider-08",
+        "slider-09",
+        "slider-10",
+        "slider-11",
+        "slider-12",
+        "slider-13",
+        "slider-14",
+        "slider-15",
+        "slider-16",
+        "slider-17",
+        "slider-18",
+        "slider-19"
+      ]
+    },
+    {
+      "family": "sonner",
+      "count": 20,
+      "studioObservedCount": 20,
+      "notInstalledCount": 0,
+      "variants": [
+        "sonner-01",
+        "sonner-02",
+        "sonner-03",
+        "sonner-04",
+        "sonner-05",
+        "sonner-06",
+        "sonner-07",
+        "sonner-08",
+        "sonner-09",
+        "sonner-10",
+        "sonner-11",
+        "sonner-12",
+        "sonner-13",
+        "sonner-14",
+        "sonner-15",
+        "sonner-16",
+        "sonner-17",
+        "sonner-18",
+        "sonner-19",
+        "sonner-20"
+      ]
+    },
+    {
+      "family": "sortable",
+      "count": 5,
+      "studioObservedCount": 5,
+      "notInstalledCount": 0,
+      "variants": [
+        "sortable-01",
+        "sortable-02",
+        "sortable-03",
+        "sortable-04",
+        "sortable-05"
+      ]
+    },
+    {
+      "family": "spinner",
+      "count": 10,
+      "studioObservedCount": 10,
+      "notInstalledCount": 0,
+      "variants": [
+        "spinner-01",
+        "spinner-02",
+        "spinner-03",
+        "spinner-04",
+        "spinner-05",
+        "spinner-06",
+        "spinner-07",
+        "spinner-08",
+        "spinner-09",
+        "spinner-10"
+      ]
+    },
+    {
+      "family": "stepper",
+      "count": 12,
+      "studioObservedCount": 12,
+      "notInstalledCount": 0,
+      "variants": [
+        "stepper-01",
+        "stepper-02",
+        "stepper-03",
+        "stepper-04",
+        "stepper-05",
+        "stepper-06",
+        "stepper-07",
+        "stepper-08",
+        "stepper-09",
+        "stepper-10",
+        "stepper-11",
+        "stepper-12"
+      ]
+    },
+    {
+      "family": "switch",
+      "count": 20,
+      "studioObservedCount": 20,
+      "notInstalledCount": 0,
+      "variants": [
+        "switch-01",
+        "switch-02",
+        "switch-03",
+        "switch-04",
+        "switch-05",
+        "switch-06",
+        "switch-07",
+        "switch-08",
+        "switch-09",
+        "switch-10",
+        "switch-11",
+        "switch-12",
+        "switch-13",
+        "switch-14",
+        "switch-15",
+        "switch-16",
+        "switch-17",
+        "switch-18",
+        "switch-19",
+        "switch-20"
+      ]
+    },
+    {
+      "family": "table",
+      "count": 15,
+      "studioObservedCount": 16,
+      "notInstalledCount": 1,
+      "variants": [
+        "table-01",
+        "table-02",
+        "table-03",
+        "table-04",
+        "table-05",
+        "table-06",
+        "table-07",
+        "table-08",
+        "table-09",
+        "table-10",
+        "table-11",
+        "table-12",
+        "table-13",
+        "table-14",
+        "table-15"
+      ]
+    },
+    {
+      "family": "tabs",
+      "count": 25,
+      "studioObservedCount": 29,
+      "notInstalledCount": 4,
+      "variants": [
+        "tabs-01",
+        "tabs-02",
+        "tabs-03",
+        "tabs-04",
+        "tabs-05",
+        "tabs-06",
+        "tabs-07",
+        "tabs-08",
+        "tabs-09",
+        "tabs-10",
+        "tabs-11",
+        "tabs-12",
+        "tabs-13",
+        "tabs-14",
+        "tabs-15",
+        "tabs-16",
+        "tabs-17",
+        "tabs-18",
+        "tabs-19",
+        "tabs-20",
+        "tabs-21",
+        "tabs-22",
+        "tabs-23",
+        "tabs-24",
+        "tabs-25"
+      ]
+    },
+    {
+      "family": "textarea",
+      "count": 20,
+      "studioObservedCount": 21,
+      "notInstalledCount": 1,
+      "variants": [
+        "textarea-01",
+        "textarea-02",
+        "textarea-03",
+        "textarea-04",
+        "textarea-05",
+        "textarea-06",
+        "textarea-07",
+        "textarea-08",
+        "textarea-09",
+        "textarea-10",
+        "textarea-11",
+        "textarea-12",
+        "textarea-13",
+        "textarea-14",
+        "textarea-15",
+        "textarea-16",
+        "textarea-17",
+        "textarea-18",
+        "textarea-19",
+        "textarea-20"
+      ]
+    },
+    {
+      "family": "toggle",
+      "count": 14,
+      "studioObservedCount": 14,
+      "notInstalledCount": 0,
+      "variants": [
+        "toggle-01",
+        "toggle-02",
+        "toggle-03",
+        "toggle-04",
+        "toggle-05",
+        "toggle-06",
+        "toggle-07",
+        "toggle-08",
+        "toggle-09",
+        "toggle-10",
+        "toggle-11",
+        "toggle-12",
+        "toggle-13",
+        "toggle-14"
+      ]
+    },
+    {
+      "family": "toggle-group",
+      "count": 16,
+      "studioObservedCount": 16,
+      "notInstalledCount": 0,
+      "variants": [
+        "toggle-group-01",
+        "toggle-group-02",
+        "toggle-group-03",
+        "toggle-group-04",
+        "toggle-group-05",
+        "toggle-group-06",
+        "toggle-group-07",
+        "toggle-group-08",
+        "toggle-group-09",
+        "toggle-group-10",
+        "toggle-group-11",
+        "toggle-group-12",
+        "toggle-group-13",
+        "toggle-group-14",
+        "toggle-group-15",
+        "toggle-group-16"
+      ]
+    },
+    {
+      "family": "tooltip",
+      "count": 15,
+      "studioObservedCount": 17,
+      "notInstalledCount": 2,
+      "variants": [
+        "tooltip-01",
+        "tooltip-02",
+        "tooltip-03",
+        "tooltip-04",
+        "tooltip-05",
+        "tooltip-06",
+        "tooltip-07",
+        "tooltip-08",
+        "tooltip-09",
+        "tooltip-10",
+        "tooltip-11",
+        "tooltip-12",
+        "tooltip-13",
+        "tooltip-14",
+        "tooltip-15"
+      ]
+    },
+    {
+      "family": "typography",
+      "count": 15,
+      "studioObservedCount": 15,
+      "notInstalledCount": 0,
+      "variants": [
+        "typography-01",
+        "typography-02",
+        "typography-03",
+        "typography-04",
+        "typography-05",
+        "typography-06",
+        "typography-07",
+        "typography-08",
+        "typography-09",
+        "typography-10",
+        "typography-11",
+        "typography-12",
+        "typography-13",
+        "typography-14",
+        "typography-15"
+      ]
+    }
+  ],
+  "opportunityBrowseProjectCard": {
+    "status": "approved",
+    "implementation": "apps/web/components/design-system/opportunity-browse-project-card.tsx",
+    "registrySource": "@uitripled/project-card-shadcnui",
+    "actions": {
+      "image": "SaveToTrackerButton on /opportunities, using account tracked state and first-save authentication flow",
+      "footer": "AddOpportunityToCalendarButton, labelled, fixed deadlines only"
+    },
+    "adaptation": "Missa tokens, deduplicated practices, compact facts, organization-name identity plates for missing or failed images, three-column desktop and single-column mobile",
+    "imageBadges": "Opaque Missa canvas and Ochre urgency surfaces; no photo-dependent transparency",
+    "routes": [
+      "/opportunities",
+      "/design-system/opportunities-browse-v2"
+    ]
+  },
+  "browsePatterns": {
+    "status": "approved",
+    "pagination": "apps/web/components/opportunity-browse-pagination.tsx",
+    "collections": "apps/web/components/opportunity-collections-strip.tsx",
+    "sort": "apps/web/components/opportunity-sort.tsx",
+    "state": "URL cursor history, query, filters and sort; six initial collection links with scroll reveal",
+    "dropdownStyle": "apps/web/components/opportunity-dropdown.module.css; shared row spacing, hover, selected and focus states for filters and sorting",
+    "canonicalFilters": "OpportunityCatalogueFilters index appearance retains full taxonomy and facet counts"
+  },
+  "directoryBrowse": {
+    "categoryLoader": "apps/web/components/directory-category-page.tsx",
+    "documentation": "docs/discovery-design-system-2026-09-04.md",
+    "status": "approved",
+    "implementation": "apps/web/components/directory-browse-view.tsx",
+    "source": "Installed Card, Input, Button, Empty and Pagination; native navigation links",
+    "adaptation": "White index with organization images and Avatar category-icon fallbacks, URL-preserved category/search/page state, repository totals, no blanket verification claims",
+    "routes": [
+      "/directory",
+      "/residencies",
+      "/journals",
+      "/presses",
+      "/grants",
+      "/organizations"
+    ]
+  },
+  "organizationProfile": {
+    "status": "approved",
+    "implementation": "apps/web/components/institution-profile-view.tsx",
+    "gallery": "apps/web/components/institution-media-gallery.tsx",
+    "source": "Installed Avatar, Button, Card, Empty and Dialog",
+    "adaptation": "Token-themed shared profile; publication typography; three initial media cards with disclosure and accessible image dialog; actual media only; missing data omitted",
+    "documentation": "docs/organization-profile-design-2026-09-04.md",
+    "kindLayout": "apps/web/components/institution-profile-layout.ts",
+    "variants": [
+      "literary_magazine",
+      "small_press",
+      "residency_center",
+      "grant_foundation",
+      "gallery",
+      "visual_arts_organization",
+      "organization"
+    ],
+    "journalMedia": "Past issues: three initial portrait issue covers, preview dialog, reveal, and explicit unavailable state with official website link",
+    "pressMedia": "Books: portrait cover shelf, three initially, View all books, preview dialog, press-specific empty state",
+    "spatialMedia": "Large lead photo plus supporting grid for residency, gallery, foundation and arts profiles; mobile stack; full-image dialog; sourced editorial fallback and missing-photo state",
+    "socialLinks": "apps/web/components/institution-social-links.tsx \u2014 header identity, stored URLs, Button ghost/icon"
+  },
+  "publicCreatorProfile": {
+    "status": "review",
+    "implementation": "apps/web/components/creator-portfolio-studio.tsx",
+    "source": "Installed ui/Button (primary, outline, ghost), Input, Textarea, Dialog; InstitutionSocialLinks; native audio and accessible file selection through labelled Add/Replace/Remove buttons",
+    "preview": "/design-system/creator-profile-v2",
+    "boundary": "Account-scoped confirmed draft saving, private media, revision conflicts and explicit published snapshots. Design previews remain local-only. No deployment performed by this slice; connected schema inspected separately.",
+    "onboarding": "Independent sections; handle suggestion and availability below name, required on first publish; separate address change and unpublish confirmations; explicit local preview import.",
+    "settings": "/profile/portfolio",
+    "settingsPreview": "/design-system/creator-profile-settings",
+    "adaptations": "Public contact row; content-backed format views; outlined reading action; image disclosure; account-scoped draft keys; opt-in contact fields; optional ordered books/publications",
+    "validation": "See docs/public-creator-profile-design.md for exact checks and limitations.",
+    "editorComponents": [
+      "apps/web/components/portfolio-link-preview.tsx",
+      "apps/web/components/portfolio-publication-picker.tsx",
+      "apps/web/components/design-system/creator-palette.css",
+      "apps/web/components/portfolio-handle-field.tsx"
+    ],
+    "states": "Loading/retry, saving/confirmed/error/conflict, private draft, publish confirmation, published, unpublish, rename, handle checking/available/taken/invalid/unavailable, media selected/replaced/removed/unsupported/quota.",
+    "publicRoute": "/@handle"
+  },
+  "discoveryBeta": {
+    "status": "review",
+    "implementation": "apps/web/components/ui/beta-badge.tsx",
+    "source": "Installed Badge outline; Studio badge-10 inspected",
+    "adaptation": "Static inherited-color Beta badge beside canonical wordmark; discovery-focused public navigation and homepage",
+    "validation": "docs/discovery-beta-and-rankings-2026-09-06.md"
+  },
+  "magazineIndex": {
+    "status": "review",
+    "implementation": "apps/web/components/rankings/magazine-rankings-interactive.tsx",
+    "source": "Installed Table, Field, Input, NativeSelect, Button, Empty; Studio table-01 inspected",
+    "adaptation": "Comfortable public page with compact table, responsive row actions, labelled filters, 25-row pagination; retains existing tracking and reporting integrations",
+    "validation": "docs/discovery-beta-and-rankings-2026-09-06.md"
+  },
+  "discoveryJourneyPreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/design-system/discovery-journey-preview.tsx",
+    "route": "/design-system/discovery-journey/home",
+    "source": "Existing public page components, HomepageHeroPreview, AuthForm, CreatorOnboarding, installed Button",
+    "adaptation": "Connected review sequence and proposed navigation; user-referenced teal only on ranking previews; signup never calls auth APIs."
+  },
+  "rankingIndicators": {
+    "implementation": "apps/web/components/missa/ranking-indicators.tsx",
+    "source": "Installed Badge and Lucide arrows",
+    "intent": "Ranking tier and year-over-year movement",
+    "tokens": "Shared ranking tier and movement semantic tokens in globals.css",
+    "states": "Four tier colors; positive, negative, zero and absent movement; static indicators",
+    "adaptation": "Amber, blue, green and neutral tiers matching the user reference; visible arrows and accessible movement labels"
+  },
+  "contentIssueReport": {
+    "status": "approved",
+    "implementation": "apps/web/components/content-issue-report-dialog.tsx",
+    "source": "Installed Dialog, Button, Input and Textarea with policy-selected NativeSelect",
+    "intent": "Focused correction report from an opportunity or journal profile",
+    "states": "Signed out, idle, disabled, sending, error and success",
+    "boundary": "Authenticated reports enter the support review queue and never edit public records automatically"
+  },
+  "socialAuthentication": {
+    "status": "review",
+    "implementation": "apps/web/components/missa/social-auth-button.tsx",
+    "source": "Installed ui/Button; local Google brand mark and Lucide LoaderCircle",
+    "intent": "Configured third-party authentication entry",
+    "states": "Unavailable omitted, idle, connecting, provider failure returned to form, callback linking failure",
+    "adaptation": "Full-width outline action and explicit connecting text; rendered only when Neon Auth is configured."
+  },
+  "homepageFocused": {
+    "status": "experimental",
+    "implementation": "apps/web/app/design-system/homepage-focused/page.tsx",
+    "route": "/design-system/homepage-focused",
+    "composition": [
+      "HomepageHeroPreview",
+      "HomepageNextOpening",
+      "HomepageContinuation",
+      "HomepagePortfolio",
+      "HomepageFooter"
+    ],
+    "source": "Existing Missa homepage compositions, installed Button, canonical CreatorPortfolioStudio, opportunity cards and native navigation links.",
+    "boundary": "Review composition: compact live discovery and a full-width portfolio showcase with labeled local theme choices. Public catalogue data; no simulated account persistence. Footer artwork fades into the footer navigation."
+  },
+  "homepageStudio": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/homepage-studio.tsx",
+    "route": "/design-system/homepage-studio",
+    "composition": [
+      "Button",
+      "Link",
+      "Switch",
+      "Sheet",
+      "Alert",
+      "Item",
+      "ResponsiveImage"
+    ],
+    "source": "Installed Base UI controls; Studio button-01 inspected; original composed photographic stage. No missing interaction primitive or registry install.",
+    "tokens": "components/design-system/homepage-studio-tokens.css",
+    "evidence": "docs/homepage-cinematic-2026-09-07/evidence/implementation-checkpoint.md",
+    "boundary": "Local studio selection only; no account preference, submission, or reminder claim."
+  },
+  "videoWorld": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/video-world.tsx",
+    "route": "/design-system/video-world",
+    "composition": [
+      "Button",
+      "Link",
+      "NativeVideo"
+    ],
+    "source": "Installed Base UI Button and native video. Reference footage: Amir Music, CC BY 4.0. Player authored locally from documented requirements.",
+    "tokens": "components/design-system/video-world-tokens.css",
+    "evidence": "docs/homepage-cinematic-2026-09-07/06-reference-correction.md"
+  },
+  "applicationsDesignPreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/missa/applications-design-preview.tsx",
+    "route": "/design-system/applications-v2",
+    "composition": [
+      "Tabs",
+      "Button",
+      "Field",
+      "Input",
+      "Textarea",
+      "Dialog",
+      "NativeSelect",
+      "Empty",
+      "Alert",
+      "Skeleton",
+      "Link",
+      "CreatorShell",
+      "ApplicationLabels"
+    ],
+    "source": "Installed Base UI primitives; original Missa composition",
+    "evidence": "docs/my-applications/product-journey.md",
+    "boundary": "Fictional records and memory-only interactions; does not replace live tracker."
+  },
+  "homepageNextOpening": {
+    "implementation": "apps/web/components/missa/homepage-next-opening.tsx",
+    "route": "/design-system/homepage-hero",
+    "source": "Installed ui/carousel.tsx (Embla), Studio carousel-08 controls and card/card-05.tsx image-content pattern, composed with ui/card.tsx. Six original generated campaign images.",
+    "tokens": "components/design-system/homepage-carousel-tokens.css",
+    "boundary": "Introduction and compact live-count row precede six overlapping portrait category cards. Active card exposes category-specific search; inactive cards retain visible labels. User-driven motion, no account mutation.",
+    "evidence": "docs/homepage-cinematic-2026-09-07/19-homepage-colour-and-painting.md",
+    "adaptation": "Four live metrics with plus suffixes and directory navigation; staggered desktop row and mobile two-column layout. Embla horizontal wheel gestures and looping slides; Card-05 content-card pattern, generated imagery, raised active card, tokenized motion and loading placeholders. Citron full-width discovery surface. Selection controls wait for the carousel API before accepting input."
+  },
+  "applicationLabels": {
+    "implementation": "apps/web/components/missa/application-labels.tsx",
+    "source": "Installed Badge outline and secondary variants",
+    "evidence": "docs/my-applications/product-journey.md"
+  },
+  "goalsPreview": {
+    "semantic": "GoalsPreview",
+    "implementation": "apps/web/components/missa/goals-preview.tsx",
+    "composition": [
+      "CreatorShell",
+      "Button",
+      "Input",
+      "NativeSelect",
+      "Dialog",
+      "ApplicationLabels",
+      "Progress"
+    ],
+    "boundary": "Fictional local-state goals. No persistence, recommendation ranking or reminder delivery.",
+    "evidence": "docs/my-applications/goals.md",
+    "route": "/design-system/goals",
+    "source": "Existing Missa shell and installed Base UI controls"
+  },
+  "goalsWorkspace": {
+    "semantic": "GoalsWorkspace",
+    "implementation": "apps/web/components/missa/goals-workspace.tsx",
+    "composition": [
+      "CreatorShell",
+      "Button",
+      "Input",
+      "NativeSelect",
+      "Sheet",
+      "Dialog",
+      "GoalSubmissionProgress"
+    ],
+    "boundary": "Account-owned persisted goals using canonical catalogue IDs and server scheduling",
+    "route": "/goals",
+    "evidence": "docs/my-applications/connected-goal-journey.md",
+    "typedGoals": "Direction, discipline, optional owned Library work, typed progress, program targets, explicit fee currency and separate attendance preferences."
+  },
+  "goalSubmissionProgress": {
+    "implementation": "apps/web/components/missa/goal-submission-progress.tsx",
+    "source": "Installed Progress and Lucide Check; decorative circles accompany numeric data",
+    "evidence": "docs/my-applications/connected-goal-journey.md"
+  },
+  "homepageContinuation": {
+    "implementation": "apps/web/components/missa/homepage-continuation.tsx",
+    "routes": [
+      "/",
+      "/design-system/homepage-hero"
+    ],
+    "source": "OpportunityBrowseProjectCard from data.display.opportunity-card, also rendered on /opportunities. Installed Accordion, Button, Skeleton and canonical MissaWordmark. No separate homepage opportunity card markup.",
+    "tokens": "components/design-system/homepage-continuation-tokens.css",
+    "adaptation": "Canonical opportunity cards unchanged. Directory uses exact backend profile names, kinds, routes and media. Headlands is featured with a credited official campus image, followed by installed Avatar organization rows with fallbacks. Approved full-width marketing colour bands; shared operational cards unchanged.",
+    "evidence": "docs/homepage-cinematic-2026-09-07/19-homepage-colour-and-painting.md"
+  },
+  "homepageWorkspace": {
+    "implementation": "apps/web/components/missa/homepage-workspace.tsx",
+    "routes": [
+      "/",
+      "/design-system/homepage-hero"
+    ],
+    "source": "Installed Tabs/Studio tabs-09, Table/table-01, Switch/switch-01, Button and Skeleton. Actual CreatorPortfolioStudio embedded variant and GoalSubmissionProgress reused.",
+    "tokens": "components/design-system/homepage-continuation-tokens.css",
+    "adaptation": "Photographic feature stories beside interactive product views. Original fictional campaign artwork, distinct existing palette tokens and large editorial titles. Portfolio themes and format filters, actual public deadlines, local notification switches and resettable sample submission goals. No account writes or notification delivery. Approved full-width marketing colour bands; shared operational cards unchanged. White is the initial local portfolio preview theme.",
+    "evidence": "docs/homepage-cinematic-2026-09-07/19-homepage-colour-and-painting.md"
+  },
+  "ApplicationsWorkspace": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/missa/applications-workspace.tsx",
+    "route": "/tracker",
+    "composition": [
+      "Button",
+      "Tabs",
+      "Dialog",
+      "Collapsible",
+      "Field",
+      "Input",
+      "Textarea",
+      "NativeSelect",
+      "ApplicationLabels",
+      "Skeleton",
+      "ApplicationPreparation"
+    ],
+    "source": "Installed Base UI components and Missa ApplicationLabels",
+    "evidence": "docs/my-applications/creator-build-1-7.md",
+    "boundary": "Real API data; materials captured on explicit submission. Validation in progress."
+  },
+  "ApplicationPreparation": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/missa/application-preparation.tsx",
+    "route": "/tracker",
+    "composition": [
+      "Button",
+      "Checkbox",
+      "Progress",
+      "Dialog",
+      "Field",
+      "Input",
+      "NativeSelect",
+      "Skeleton"
+    ],
+    "source": "Installed Base UI components and Missa ApplicationLabels",
+    "evidence": "docs/my-applications/creator-build-1-7.md",
+    "boundary": "Real API data; materials captured on explicit submission. Validation in progress."
+  },
+  "LibraryMaterialSheet": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/missa/library-material-sheet.tsx",
+    "route": "/library",
+    "composition": [
+      "Sheet",
+      "Button",
+      "Collapsible",
+      "Field",
+      "Input",
+      "Textarea",
+      "Skeleton"
+    ],
+    "source": "Installed Base UI Sheet and form components",
+    "adaptation": "Current Library content with linked applications and preserved submission versions. Responsive full-width mobile drawer.",
+    "evidence": "docs/my-applications/creator-build-1-7.md"
+  },
+  "ApplicationReminders": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/missa/application-reminders.tsx",
+    "routes": [
+      "/tracker",
+      "/inbox?view=reminders"
+    ],
+    "composition": [
+      "Button",
+      "Dialog",
+      "Field",
+      "Input",
+      "NativeSelect",
+      "Skeleton"
+    ],
+    "source": "Installed Base UI Dialog and form patterns",
+    "adaptation": "Date and recurrence adapt to preparation, confirmed deadlines or response follow-ups. Scheduled data persisted in PostgreSQL.",
+    "evidence": "docs/my-applications/creator-build-1-7.md"
+  },
+  "FollowingWorkspace": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/missa/following-workspace.tsx",
+    "route": "/following",
+    "composition": [
+      "Tabs",
+      "Button",
+      "Sheet",
+      "Avatar",
+      "Field",
+      "Input",
+      "NativeSelect",
+      "Skeleton",
+      "ApplicationLabels"
+    ],
+    "source": "Installed Base UI and Missa semantic application labels",
+    "adaptation": "Organization drawer shows programs; program drawer shows actual rounds. Private follow state persists across open and closed calls.",
+    "evidence": "docs/my-applications/creator-build-1-7.md"
+  },
+  "RecommendationsWorkspace": {
+    "implementation": "apps/web/components/missa/recommendations-workspace.tsx",
+    "source": "Existing OpportunityBrowseProjectCard and installed Base UI primitives",
+    "policy": "composition.creator-recommendations",
+    "states": "Loading, empty, error/retry, contextual selection, collapsed/expanded reasons, feedback saving/error/hidden/restored, current calls and programs between rounds.",
+    "validation": "Database ownership, goal constraints, work snapshots, edit/retry/correction tests passed. Browser create/edit/reload, real cards, failed feedback retry, hide/restore, plan-ahead, 390px, 200% text and serious/critical axe checks passed; reduced motion enabled."
+  },
+  "calendarPlanning": {
+    "implementation": "apps/web/components/calendar-workspace.tsx",
+    "policy": "composition.calendar-planning",
+    "adaptation": "Existing calendar composition retained; old raw colors and font families migrated to inherited Missa tokens. New actions use Button, NativeSelect and Collapsible. Legacy grid/editor primitive migration remains design debt.",
+    "states": "Create/edit, loading, failed save/retry, empty schedule, overlap feedback, inferred deadline label, notification-off label, linked application/goal/reminder, unavailable providers.",
+    "validation": "DB ownership/private continuity/link/unlink/legacy update/retry checks, timezone/DST and multi-day boundary checks, actual account browser application-to-preparation handoff, save/reopen, all-day edit, overlap, keyboard, 390px and serious/critical axe passed. Provider external delivery not verified."
+  },
+  "portalStudio": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/portal-studio.tsx",
+    "route": "/organization/[organizationId]/portal",
+    "composition": [
+      "Tabs",
+      "Button",
+      "Field",
+      "Input",
+      "Textarea",
+      "Checkbox",
+      "NativeSelect",
+      "Link"
+    ],
+    "source": "Installed Base UI controls and the existing Organization product shell; no registry installation required.",
+    "adaptation": "Compact operator editor paired with a responsive applicant preview. Controlled brand color is configuration data; Missa layout, typography, contrast boundaries, and interaction tokens remain authoritative.",
+    "states": "New draft, saved draft, in review, approved, published, empty form inventory, empty Opportunity inventory, pending, success, error and relational-authority unavailable.",
+    "boundary": "Local implementation against relational configuration APIs. Hosted migration, real logo upload, physical-device checks, and production data are not certified."
+  }
+}
