@@ -178,6 +178,18 @@ export const decisionMessageDrafts = pgTable('decision_message_drafts', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
 });
 
+export const organizationErasureRequests = pgTable('organization_erasure_requests', {
+  id: text('id').primaryKey(),
+  organizationId: text('organization_id').notNull(),
+  scope: text('scope').notNull(),
+  reason: text('reason').notNull(),
+  requestedByAccountId: text('requested_by_account_id').notNull(),
+  status: text('status').notNull().default('requested'),
+  revision: integer('revision').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+});
+
 export const reviewRecommendations = pgTable('review_recommendations', {
   reviewAssignmentId: text('review_assignment_id').primaryKey().references(() => reviewAssignments.id),
   status: text('status').notNull().default('final'),

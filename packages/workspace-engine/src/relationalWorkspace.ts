@@ -151,6 +151,7 @@ const tenantJoins: Record<WorkspaceResourceType, { table: string; joins: string;
   organization_retention_policy: { table: 'organization_retention_policies r', joins: '', organization: 'r.organization_id' },
   organization_inbox_view: { table: 'organization_inbox_views r', joins: '', organization: 'r.organization_id' },
   review_recommendation_correction: { table: 'review_recommendation_corrections r', joins: '', organization: 'r.organization_id' },
+  organization_erasure_request: { table: 'organization_erasure_requests r', joins: '', organization: 'r.organization_id' },
 };
 
 export function workspaceRequestHash(value: unknown): string {
@@ -626,6 +627,29 @@ export class RelationalWorkspace {
       await client.query(`insert into organization_retention_policies (organization_id,draft_days,upload_days,review_days,message_days,revision,updated_at) values ($1,$2,$3,$4,$5,$6,now()) on conflict (organization_id) do update set draft_days=excluded.draft_days,upload_days=excluded.upload_days,review_days=excluded.review_days,message_days=excluded.message_days,revision=excluded.revision,updated_at=excluded.updated_at`, [envelope.organizationId, input.draftDays, input.uploadDays, input.reviewDays, input.messageDays, nextRevision]);
       await this.effect(client, envelope, 'organization_retention_policy.updated', 'organization_retention_policy', envelope.organizationId!, nextRevision, input);
       return { resourceType: 'organization_retention_policy', resourceId: envelope.organizationId!, revision: nextRevision };
+    });
+  }
+
+  async createErasureRequest(envelope: WorkspaceCommandEnvelope, input: { scope: 'drafts' | 'uploads' | 'reviews' | 'messages'; reason: string }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, input, async (client) => {
+      const id = randomUUID();
+      const row = await client.query<{ revision: number }>('insert into organization_erasure_requests (id,organization_id,scope,reason,requested_by_account_id) values ($1,$2,$3,$4,$5) returning revision', [id, envelope.organizationId, input.scope, input.reason, envelope.actorAccountId]);
+      await this.effect(client, envelope, 'organization_erasure_request.created', 'organization_erasure_request', id, row.rows[0]!.revision, input);
+      return { resourceType: 'organization_erasure_request', resourceId: id, revision: row.rows[0]!.revision };
+    });
+  }
+
+  async approveErasureRequest(envelope: WorkspaceCommandEnvelope, id: string): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { id }, async (client) => {
+      const current = await client.query<{ status: string; revision: number }>('select status,revision from organization_erasure_requests where id=$1 and organization_id=$2 for update', [id, envelope.organizationId]);
+      const request = current.rows[0];
+      if (!request) throw new WorkspaceNotFoundError();
+      if (request.status !== 'requested') throw new WorkspaceTransitionError(`Erasure request cannot transition from ${request.status} to approved`);
+      if (envelope.expectedRevision !== request.revision) throw new WorkspaceConflictError('organization_erasure_request', id, envelope.expectedRevision ?? 0, request.revision);
+      const revision = request.revision + 1;
+      await client.query('update organization_erasure_requests set status=\'approved\',revision=$1,updated_at=now() where id=$2', [revision, id]);
+      await this.effect(client, envelope, 'organization_erasure_request.approved', 'organization_erasure_request', id, revision, {});
+      return { resourceType: 'organization_erasure_request', resourceId: id, revision };
     });
   }
 

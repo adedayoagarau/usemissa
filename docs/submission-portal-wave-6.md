@@ -43,6 +43,10 @@ Organization retention policies now have a revisioned, admin-only update
 boundary for drafts, uploads, reviews, and messages; cleanup execution remains
 separate from policy configuration.
 
+Erasure requests now have an explicit admin request and owner approval
+workflow, scoped to drafts, uploads, reviews, or messages, with revision checks
+and audit/outbox evidence before any destructive executor runs.
+
 Organization admins can now save named inbox views with bounded status and
 opportunity filters; each view is owner-scoped and created through the command
 and audit/outbox boundary.
