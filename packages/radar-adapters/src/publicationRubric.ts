@@ -82,10 +82,10 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
   const timingReady = availability.publicationTimingReady || active;
 
   const gates = {
-    authorityDestination: sourcePresent && destinationPresent && !candidate.reviewOnly ? "pass" : "fail",
-    identity: validIdentity && organizationConfident ? "pass" : "fail",
-    freshness: timingReady ? "pass" : "fail",
-    completeness: validIdentity && destinationPresent ? "pass" : "fail",
+    authorityDestination: sourcePresent && destinationPresent && candidate.destinationReconciled && !candidate.reviewOnly ? "pass" : "review",
+    identity: validIdentity && candidate.organizationConfirmed ? "pass" : "review",
+    freshness: active && deadlineOrWindow ? "pass" : "review",
+    completeness: candidate.contentApproved && validIdentity && destinationPresent ? "pass" : "review",
     safety: unsafe ? "fail" : "pass",
   } satisfies Record<string, PublicationGate>;
 
@@ -110,16 +110,22 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
 
   if (unsafe) return { decision: "suppress", score: 0, reasons: ["Submission destination was marked unsafe."], checks };
   if (aggregate) return { decision: "suppress", score: 0, reasons: ["This record is a directory or roundup, not one opportunity."], checks };
-  if (!destinationPresent) return { decision: "suppress", score: 0, reasons: ["Submission or guidelines destination is missing."], checks };
-  if (!validIdentity) return { decision: "suppress", score: 0, reasons: ["Opportunity identity is a placeholder or invalid."], checks };
-  if (!active && !timingReady) return { decision: "suppress", score: 0, reasons: ["Opportunity is not currently active."], checks };
+  if (!validIdentity) reasons.push("Opportunity identity is invalid or a placeholder.");
+  if (!destinationPresent) reasons.push("Submission or guidelines destination is missing.");
+  if (!candidate.organizationConfirmed) reasons.push("Opportunity host organization requires confirmation.");
+  if (!candidate.destinationReconciled) reasons.push("Destination reconciliation is required.");
+  if (!candidate.contentApproved) reasons.push("Content review is required.");
+  if (candidate.reviewOnly) reasons.push("Candidate is explicitly held for human review.");
+  if (!active && !timingReady) reasons.push("Opportunity is not currently active.");
+  if (!deadlineOrWindow) reasons.push("Opportunity timing evidence is uncertain.");
 
   const passed = Object.values(gates).filter((gate) => gate === "pass").length;
   const score = Math.round((passed / 5) * 100);
 
-  if (passed >= 4 && !candidate.reviewOnly) {
-    return { decision: "publish", score, reasons: ["All autonomous publication criteria passed."], checks };
+  if (passed === 5 && !candidate.reviewOnly) {
+    return { decision: "publish", score: 100, reasons: ["All five publication gates passed."], checks };
   }
 
-  return { decision: "suppress", score, reasons: ["Autonomous review criteria not met."], checks };
+  return { decision: "needs-human", score, reasons, checks };
 }
+
