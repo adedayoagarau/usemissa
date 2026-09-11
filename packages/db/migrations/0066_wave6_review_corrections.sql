@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS "review_recommendation_corrections" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "organization_id" text NOT NULL REFERENCES "radar_organizations"("id") ON DELETE cascade,
-  "review_assignment_id" uuid NOT NULL REFERENCES "review_assignments"("id") ON DELETE restrict,
+  "review_assignment_id" text NOT NULL REFERENCES "review_assignments"("id") ON DELETE restrict,
   "previous_score" integer,
   "previous_notes" text,
   "corrected_score" integer,
