@@ -816,6 +816,416 @@
 .embedded {
   min-height: 0;
 }
+
+/* Public creator stage: work establishes the world before profile furniture. */
+.stage .main {
+  max-width: none;
+  padding: 0;
+}
+.stage .top {
+  position: absolute;
+  z-index: 4;
+  top: 28px;
+  left: clamp(24px, 5vw, 80px);
+  min-height: 0;
+  border: 0;
+  color: var(--background);
+}
+.stage .identity {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: end;
+  min-height: calc(100svh - 72px);
+  padding: 80px clamp(24px, 5vw, 80px) 56px;
+  border: 0;
+  overflow: hidden;
+  color: var(--background);
+}
+.stage .identity::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--ink) 82%, transparent),
+    transparent 72%
+  );
+}
+.stageBackdrop {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.015);
+}
+.stage .portrait {
+  grid-column: 11 / -1;
+  grid-row: 1;
+  align-self: end;
+  width: 100%;
+  height: auto;
+  max-height: 210px;
+  aspect-ratio: 4 / 5;
+  border: 1px solid var(--background);
+  filter: grayscale(1);
+}
+.stage .identity > div {
+  display: grid;
+  grid-column: 1 / span 10;
+  grid-row: 1;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  align-items: end;
+}
+.stage .identity h1 {
+  grid-column: 1 / span 6;
+  max-width: 7ch;
+  margin: 0;
+  font-size: clamp(80px, 12vw, 176px);
+  line-height: 0.78;
+  letter-spacing: -0.065em;
+  color: inherit;
+}
+.stage .identity .disciplines {
+  grid-column: 7 / -1;
+  align-self: start;
+  padding-top: 12px;
+  color: inherit;
+}
+.stage .identity .bio {
+  grid-column: 7 / span 3;
+  align-self: end;
+  max-width: 28ch;
+  margin-bottom: 64px;
+  color: inherit;
+}
+.stage .identity .contactActions {
+  grid-column: 7 / -1;
+  justify-content: flex-end;
+  margin: 0;
+}
+.stage .identity .contactActions button {
+  background: var(--background);
+  color: var(--foreground);
+  border-color: var(--background);
+}
+.stage .exhibitionIndex {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px clamp(24px, 5vw, 80px);
+  background: var(--background);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.stage .exhibitionIndex a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  text-underline-offset: 5px;
+}
+.stage .exhibitionIndex a:hover,
+.stage .exhibitionIndex a:focus-visible {
+  text-decoration: underline;
+}
+.stage .workIndex {
+  display: block;
+  padding: 0;
+}
+.stage .project {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 24px;
+  margin: 0;
+  padding: clamp(88px, 11vw, 168px) clamp(24px, 5vw, 80px);
+  border-bottom: 1px solid var(--border);
+}
+.stage .project .imageButton {
+  grid-column: 1 / span 7;
+}
+.stage .projectCopy {
+  grid-column: 9 / -1;
+  align-self: center;
+  padding: 0;
+}
+.stage .project[data-scene="diptych"] {
+  background: var(--muted);
+}
+.stage .project[data-scene="diptych"] .imageButton {
+  grid-column: 7 / -1;
+  grid-row: 1;
+}
+.stage .project[data-scene="diptych"] .projectCopy {
+  grid-column: 1 / span 4;
+  grid-row: 1;
+}
+.stage .project[data-scene="bleed"] {
+  position: relative;
+  min-height: 90svh;
+  align-items: end;
+  color: var(--background);
+  overflow: hidden;
+}
+.stage .project[data-scene="bleed"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, var(--overlay), transparent 70%);
+  pointer-events: none;
+}
+.stage .project[data-scene="bleed"] .imageButton {
+  position: absolute;
+  inset: 0;
+}
+.stage .project[data-scene="bleed"] .art {
+  height: 100%;
+}
+.stage .project[data-scene="bleed"] .projectCopy {
+  position: relative;
+  z-index: 1;
+  grid-column: 1 / span 5;
+  color: inherit;
+}
+.stage .project[data-scene="bleed"] .disciplines,
+.stage .project[data-scene="bleed"] .projectIndex {
+  color: inherit;
+  border-color: color-mix(in srgb, var(--background) 45%, transparent);
+}
+.stage .project[data-scene="listening-room"] {
+  min-height: 76svh;
+  align-content: center;
+  background: var(--foreground);
+  color: var(--background);
+}
+.stage .project[data-scene="listening-room"] .projectCopy {
+  grid-column: 3 / span 8;
+}
+.stage .project[data-scene="listening-room"] h2 {
+  max-width: 12ch;
+  font-size: clamp(64px, 8vw, 112px);
+}
+.stage .project[data-scene="listening-room"] .disciplines,
+.stage .project[data-scene="listening-room"] .projectIndex {
+  color: inherit;
+  border-color: color-mix(in srgb, var(--background) 28%, transparent);
+}
+.stage .project[data-scene="listening-room"] .poem {
+  max-width: 48ch;
+  border-color: color-mix(in srgb, var(--background) 28%, transparent);
+}
+.stage .lower {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.stage .lower > section {
+  min-height: 70svh;
+  padding: clamp(96px, 12vw, 176px) clamp(24px, 5vw, 80px);
+}
+.stage .lower > section:first-child {
+  padding-left: clamp(24px, 14vw, 220px);
+  background: var(--muted);
+}
+.stage .lower > section:last-child {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: clamp(24px, 54vw, 820px);
+  background: var(--background);
+}
+.stage .lower > section:last-child .credit {
+  max-width: 420px;
+}
+.colophon {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 64px 24px;
+  padding: clamp(96px, 12vw, 176px) clamp(24px, 5vw, 80px) 64px;
+}
+.colophonLabel {
+  grid-column: 1 / span 2;
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+.colophonStatement {
+  grid-column: 4 / span 6;
+}
+.colophonStatement h2 {
+  margin: 0 0 32px;
+  font-size: clamp(56px, 7vw, 104px);
+  font-weight: 400;
+  line-height: 0.88;
+  letter-spacing: -0.05em;
+}
+.colophonStatement p {
+  max-width: 42ch;
+  font-size: clamp(20px, 2vw, 28px);
+  line-height: 1.5;
+}
+.colophonMeta {
+  grid-column: 4 / span 4;
+  color: var(--muted-foreground);
+}
+.colophonContact {
+  grid-column: 9 / -1;
+}
+.socialList {
+  display: grid;
+  margin: 16px 0 32px;
+  border-top: 1px solid var(--border);
+}
+.socialList button {
+  justify-content: flex-start;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+}
+.socialList svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 640px) {
+  .stage .top {
+    top: 20px;
+    left: 16px;
+    max-width: 22ch;
+    color: var(--background);
+  }
+  .stage .identity {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: calc(100svh - 64px);
+    padding: 88px 16px 24px;
+  }
+  .stage .identity::after {
+    background: linear-gradient(
+      to top,
+      color-mix(in srgb, var(--ink) 88%, transparent),
+      transparent 58%
+    );
+  }
+  .stage .portrait {
+    display: none;
+  }
+  .stage .identity > div {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 12px;
+  }
+  .stage .identity h1 {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    margin: 0 0 8px;
+    font-size: clamp(72px, 25vw, 104px);
+    line-height: 0.78;
+  }
+  .stage .identity .disciplines,
+  .stage .identity .bio,
+  .stage .identity .contactActions {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+  .stage .identity .disciplines {
+    padding-top: 0;
+  }
+  .stage .identity .bio {
+    max-width: 31ch;
+    font-size: 16px;
+    margin-bottom: 0;
+  }
+  .stage .identity .contactActions {
+    justify-content: flex-start;
+  }
+  .stage .exhibitionIndex {
+    padding: 10px 16px;
+  }
+  .stage .workIndex {
+    padding: 0;
+  }
+  .stage .lower {
+    padding: 0;
+  }
+  .stage .project,
+  .stage .project[data-work-position] {
+    display: block;
+    min-height: 0;
+    padding: 80px 16px;
+  }
+  .stage .project .imageButton,
+  .stage .project .projectCopy,
+  .stage .project[data-scene] .imageButton,
+  .stage .project[data-scene] .projectCopy {
+    position: relative;
+    inset: auto;
+    display: block;
+    margin: 0;
+  }
+  .stage .project .imageButton {
+    margin-bottom: 40px;
+  }
+  .stage .project[data-scene="bleed"] {
+    display: block;
+    min-height: 0;
+    padding: 80px 16px;
+    color: var(--foreground);
+  }
+  .stage .project[data-scene="bleed"]::after {
+    display: none;
+  }
+  .stage .project[data-scene="bleed"] .imageButton {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    margin: 0 0 40px;
+  }
+  .stage .project[data-scene="bleed"] .art {
+    width: 100%;
+    height: 420px;
+  }
+  .stage .project[data-scene="bleed"] .disciplines,
+  .stage .project[data-scene="bleed"] .projectIndex {
+    color: var(--muted-foreground);
+    border-color: var(--border);
+  }
+  .stage .project[data-scene="listening-room"] button {
+    background: var(--background);
+    color: var(--foreground);
+    border-color: var(--background);
+  }
+  .stage .project[data-scene="listening-room"] h2 {
+    font-size: 56px;
+  }
+  .stage .lower > section:first-child,
+  .stage .lower > section:last-child {
+    display: block;
+    min-height: 0;
+    padding: 80px 16px;
+  }
+  .colophon {
+    grid-template-columns: 1fr;
+    gap: 48px;
+    padding: 88px 16px 48px;
+  }
+  .colophonLabel,
+  .colophonStatement,
+  .colophonMeta,
+  .colophonContact {
+    grid-column: 1;
+  }
+}
 .embedded .main {
   padding: 20px 24px 28px;
 }

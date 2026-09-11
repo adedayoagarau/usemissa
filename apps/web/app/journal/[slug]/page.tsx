@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
+import { getEditorialIntelligenceRepository } from "@/lib/editorialIntelligenceRepository";
 import { JournalProfileDetails } from "@/components/journal-profile-details";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
@@ -12,6 +13,8 @@ import { PublicSiteShell } from "@/components/public-site-shell";
 import { InstitutionProfileView } from "@/components/institution-profile-view";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
+
+import { type MagazineRankingRow } from "@missa/radar-adapters";
 
 export const dynamic = "force-dynamic";
 
@@ -37,10 +40,12 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
   const seen = new Set<string>();
   const displayProfile = {...profile, opportunities: profile.opportunities.filter(item => { const key=JSON.stringify(item); if (seen.has(key)) return false; seen.add(key); return true; })};
   const rankingRepo = getMagazineRankingRepository();
-  const [rankings, telemetrySummary] = await Promise.all([
-    rankingRepo.getMagazineStanding(profile.id), rankingRepo.getTelemetrySummary(profile.id),
+  const [rankings, telemetrySummary, editorialIntelligence] = await Promise.all([
+    rankingRepo.getMagazineStanding(profile.id),
+    rankingRepo.getTelemetrySummary(profile.id),
+    getEditorialIntelligenceRepository().getIntelligenceForProfile(profile.id, profile.name),
   ]);
-  const primary = rankings.find(r => r.genre === "overall") ?? rankings[0];
+  const primary = (rankings as MagazineRankingRow[]).find((r: MagazineRankingRow) => r.genre === "overall") ?? rankings[0];
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
   const opportunityActions: Record<string, ReactNode> = {};
@@ -57,7 +62,7 @@ export default async function JournalDetailPage({ params }: { params: Promise<{ 
           <Link href="#profile-rankings">#{primary.rankPosition} {primary.genre === "overall" ? "Overall" : primary.genre} · {primary.totalScore} pts</Link>
           <RankingTierBadge tier={primary.prestigeTier} />
         </div> : undefined}
-        journalDetails={<JournalProfileDetails profile={profile} rankings={rankings} telemetrySummary={telemetrySummary} signedIn={Boolean(session)} />}
+        journalDetails={<JournalProfileDetails profile={profile} rankings={rankings} telemetrySummary={telemetrySummary} editorialIntelligence={editorialIntelligence} signedIn={Boolean(session)} />}
       />
     </PublicSiteShell>
   );

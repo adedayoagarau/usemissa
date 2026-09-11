@@ -1,25 +1,22 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-test("public portfolio has distinct formats, full reading and accessible mobile media", async ({
+test("public portfolio has an intentional sequence, full reading and accessible mobile media", async ({
   page,
 }) => {
   await page.goto("/design-system/creator-profile-v2");
   await expect(
     page.getByRole("button", { name: "Create your profile" }),
   ).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: "Sound", exact: true }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Sound", exact: true }).click();
+  await expect(page.getByRole("navigation", { name: "Portfolio sections" })).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "A frequency for the footpath" }),
   ).toBeVisible();
-  await expect(page.locator("article")).toHaveCount(1);
-  await page.getByRole("button", { name: "Writing", exact: true }).click();
-  await expect(page.getByRole("button", { name: /Enlarge image/ })).toHaveCount(
-    0,
-  );
+  await expect(page.locator("article")).toHaveCount(4);
+  await expect(page.locator('[data-scene="reading-room"]')).toHaveCount(1);
+  await expect(page.locator('[data-scene="diptych"]')).toHaveCount(1);
+  await expect(page.locator('[data-scene="bleed"]')).toHaveCount(1);
+  await expect(page.locator('[data-scene="listening-room"]')).toHaveCount(1);
   await page.getByRole("button", { name: "Read poem" }).first().focus();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("dialog")).toContainText(
@@ -29,25 +26,14 @@ test("public portfolio has distinct formats, full reading and accessible mobile 
   await expect(
     page.getByRole("button", { name: "Read poem" }).first(),
   ).toBeFocused();
-  await page.getByRole("button", { name: "Images", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Read poem" })).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", { name: "Books", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByRole("heading", { name: "Selected publications", exact: true }),
-  ).toHaveCount(0);
-  await expect(
-    page.getByText("Writing, field recordings & photography", { exact: true }),
-  ).toHaveCount(0);
-  await expect(page.getByText(/A study of places in transition/)).toHaveCount(
-    0,
-  );
-
   await page.getByRole("button", { name: /Enlarge image/ }).first().click();
   await expect(page.getByRole("dialog").getByRole("img")).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "All work", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Books", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "About the artist" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Riley Chen", level: 2 })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Threads" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Facebook" })).toBeVisible();
   await page
     .getByRole("button", {
       name: "Field notes from the in-between",
@@ -79,7 +65,7 @@ test("public portfolio has distinct formats, full reading and accessible mobile 
   expect(audit.violations).toEqual([]);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.getByRole("heading", { name: "Riley Chen" }).click();
+  await page.getByRole("heading", { name: "Riley Chen", level: 1 }).click();
   await page.screenshot({
     path: "/tmp/missa-portfolio-mobile.png",
     fullPage: true,

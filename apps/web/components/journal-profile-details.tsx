@@ -1,14 +1,33 @@
 import Link from "next/link";
-import type { ProfileDetail, MagazineRankingRow, MagazineTelemetrySummary } from "@missa/radar-adapters";
+import type { ProfileDetail, MagazineRankingRow, MagazineTelemetrySummary, EditorialIntelligenceFullProfile } from "@missa/radar-adapters";
 import { Award, Clock, Trophy } from "lucide-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { ReportResponseDialog } from "@/components/rankings/report-response-dialog";
 import { JournalTelemetryPanel } from "@/components/rankings/journal-telemetry-panel";
 import { ContentIssueReportDialog } from "@/components/content-issue-report-dialog";
-export function JournalProfileDetails({profile, rankings, telemetrySummary, signedIn}: {profile: ProfileDetail; rankings: MagazineRankingRow[]; telemetrySummary: MagazineTelemetrySummary; signedIn: boolean}) {
+import { EditorialIntelligenceSection } from "@/components/opportunities/editorial-intelligence-section";
+
+export function JournalProfileDetails({
+  profile,
+  rankings,
+  telemetrySummary,
+  editorialIntelligence,
+  signedIn,
+}: {
+  profile: ProfileDetail;
+  rankings: MagazineRankingRow[];
+  telemetrySummary: MagazineTelemetrySummary;
+  editorialIntelligence?: EditorialIntelligenceFullProfile | null;
+  signedIn: boolean;
+}) {
 const primaryRank = rankings.find(r => r.genre === "overall") ?? rankings[0];
 return <section id="profile-rankings" aria-label="Magazine rankings and response reports">
+            {editorialIntelligence && (
+              <div className="mt-6 mb-8">
+                <EditorialIntelligenceSection intelligence={editorialIntelligence} />
+              </div>
+            )}
             {profile.intelligence || rankings.length > 0 ? (
               <Accordion className="mt-8"><AccordionItem value="editorial-details"><AccordionTrigger>Editorial details and rankings</AccordionTrigger><AccordionContent>
                 {profile.intelligence?.prestigeTier && <p>{profile.intelligence?.prestigeTier}</p>}

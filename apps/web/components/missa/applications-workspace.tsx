@@ -44,6 +44,7 @@ import {
 import { ApplicationLabels } from "./application-labels";
 import { ApplicationReminders } from "./application-reminders";
 import { ApplicationPreparation } from "./application-preparation";
+import { TrackerResponseForecaster } from "@/components/tracker/tracker-response-forecaster";
 import type { TrackerHostedSubmission } from "@/components/tracker-product";
 import { toast } from "sonner";
 
@@ -664,6 +665,16 @@ function ApplicationPanel({
               </div>
             </div>
           )}
+
+          <div className="pt-2">
+            <TrackerResponseForecaster
+              opportunityId={id}
+              organizationName={data.organizationName}
+              submittedAt={data.submittedAt}
+              myStatus={data.myStatus}
+            />
+          </div>
+
           <section className="space-y-3 border-t border-border pt-6">
             <div className="flex items-center justify-between gap-3">
               <h3 className="font-sans text-lg font-semibold">Your notes</h3>

@@ -25,8 +25,10 @@ import type { OpportunityDetailProjection } from "@missa/radar-engine";
 import {
   type ProfileCard,
   type ProfileDetail,
+  type EditorialIntelligenceFullProfile,
   getSemanticUrlForProfile,
 } from "@missa/radar-adapters";
+import { EditorialIntelligenceSection } from "@/components/opportunities/editorial-intelligence-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
@@ -218,6 +220,7 @@ export function OpportunityDetailView({
   summary,
   practiceLabels,
   relatedProfile,
+  editorialIntelligence,
 }: {
   opportunity: OpportunityDetailProjection;
   signedIn: boolean;
@@ -225,6 +228,7 @@ export function OpportunityDetailView({
   summary: string;
   practiceLabels: string[];
   relatedProfile?: ProfileCard | ProfileDetail;
+  editorialIntelligence?: EditorialIntelligenceFullProfile | null;
 }) {
   const tracked = Boolean(opportunity.personal?.tracked);
   const canonicalPath = `/opportunities/${opportunity.slug}`;
@@ -720,6 +724,14 @@ export function OpportunityDetailView({
                 />
               </div>
             </section>
+
+            {editorialIntelligence && (
+              <div className="mb-8">
+                <EditorialIntelligenceSection
+                  intelligence={editorialIntelligence}
+                />
+              </div>
+            )}
 
             <section
               className={styles.applicationSection}

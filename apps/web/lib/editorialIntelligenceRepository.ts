@@ -133,12 +133,14 @@ function getFallbackIntelligence(profileId: string): EditorialIntelligenceFullPr
 export function getEditorialIntelligenceRepository(): {
   getIntelligenceByProfileId: (profileId: string) => Promise<EditorialIntelligenceFullProfile | null>;
   getIntelligenceBySlug: (slug: string) => Promise<EditorialIntelligenceFullProfile | null>;
+  getIntelligenceForProfile: (profileId: string, profileName?: string) => Promise<EditorialIntelligenceFullProfile | null>;
 } {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     return {
       getIntelligenceByProfileId: async (profileId: string) => getFallbackIntelligence(profileId),
       getIntelligenceBySlug: async (slug: string) => getFallbackIntelligence(slug),
+      getIntelligenceForProfile: async (profileId: string) => getFallbackIntelligence(profileId),
     };
   }
 
@@ -159,6 +161,13 @@ export function getEditorialIntelligenceRepository(): {
       const result = await repo.getIntelligenceBySlug(slug);
       if (result) return result;
       return getFallbackIntelligence(slug);
+    },
+    getIntelligenceForProfile: async (profileId: string) => {
+      const result = await repo.getIntelligenceByProfileId(profileId);
+      if (result) return result;
+      const slugResult = await repo.getIntelligenceBySlug(profileId);
+      if (slugResult) return slugResult;
+      return getFallbackIntelligence(profileId);
     },
   };
 }

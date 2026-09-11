@@ -10,8 +10,10 @@ import {
   BookOpen,
   ArrowUp,
   ArrowDown,
+  AtSign,
 } from "lucide-react";
 import Instagram from "@/assets/svg/instagram-icon";
+import Facebook from "@/assets/svg/facebook-icon";
 import { InstitutionSocialLinks } from "./institution-social-links";
 import {
   portfolioDraft,
@@ -610,8 +612,12 @@ export function CreatorPortfolioStudio({
     : works.filter((item) => item.title.trim());
   const formats = [...new Set(displayWorks.flatMap(workFormats))];
   const visibleWorks = displayWorks.filter(
-    (item) => filter === "All work" || workFormats(item).includes(filter),
+    (item) =>
+      (!ownerId && !embedded) ||
+      filter === "All work" ||
+      workFormats(item).includes(filter),
   );
+  const isPublicStage = !ownerId && !embedded;
   const PortfolioContainer = embedded ? "section" : "main";
   const IdentityHeading = embedded
     ? presentation === "showcase"
@@ -621,7 +627,7 @@ export function CreatorPortfolioStudio({
   const WorkHeading = embedded ? "h4" : "h2";
   return (
     <div
-      className={`${styles.world} ${embedded ? styles.embedded : ""} ${embedded && presentation === "showcase" ? styles.showcase : ""}`}
+      className={`${styles.world} ${!ownerId && !embedded ? styles.stage : ""} ${embedded ? styles.embedded : ""} ${embedded && presentation === "showcase" ? styles.showcase : ""}`}
       data-creator-theme={publicData || embedded ? theme : undefined}
     >
       <PortfolioContainer
@@ -1295,6 +1301,14 @@ export function CreatorPortfolioStudio({
             )}
             <>
               <header className={styles.identity}>
+                {!ownerId && !embedded && image && (
+                  <img
+                    className={styles.stageBackdrop}
+                    src={image}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                )}
                 {portrait && (
                   <img
                     className={styles.portrait}
@@ -1317,7 +1331,7 @@ export function CreatorPortfolioStudio({
                       {isSample
                         ? embedded
                           ? "I make poems, photographs and sound recordings."
-                          : "I work across text, field recordings and photography to trace the quiet geographies that hold us and the ones we leave behind."
+                          : "Poems, images and field recordings about how places carry memory."
                         : bio ||
                           (ownerId
                             ? "A few words about you and what you make."
@@ -1379,7 +1393,13 @@ export function CreatorPortfolioStudio({
                   )}
                 </div>
               </header>
-              {formats.length > 1 && (
+              {isPublicStage ? (
+                <nav className={styles.exhibitionIndex} aria-label="Portfolio sections">
+                  <a href="#selected-work">Work</a>
+                  <a href="#about-riley">About</a>
+                  <a href="#contact-riley">Contact</a>
+                </nav>
+              ) : formats.length > 1 ? (
                 <nav className={styles.tabs} aria-label="Work formats">
                   {["All work", ...formats].map((f) => (
                     <Button
@@ -1392,12 +1412,12 @@ export function CreatorPortfolioStudio({
                     </Button>
                   ))}
                 </nav>
-              )}
+              ) : null}
               <p className="sr-only" role="status">
                 {filter === "All work" ? "All formats" : filter} selected
               </p>
               {visibleWorks.length ? (
-                <section className={styles.workIndex} aria-label="Selected work">
+                <section id="selected-work" className={styles.workIndex} aria-label="Selected work">
                 {visibleWorks.map((work, index) => {
                   const title = work.title;
                   const image = work.image;
@@ -1408,6 +1428,15 @@ export function CreatorPortfolioStudio({
                     <article
                       key={`${index}-${title}`}
                       data-work-position={index % 4}
+                      data-scene={
+                        index % 4 === 0
+                          ? "reading-room"
+                          : index % 4 === 1
+                            ? "diptych"
+                            : index % 4 === 2
+                              ? "bleed"
+                              : "listening-room"
+                      }
                       className={`${styles.project} ${filter === "Writing" || filter === "Sound" || !image ? styles.readingProject : ""}`}
                     >
                       {image && filter !== "Writing" && filter !== "Sound" && (
@@ -1438,7 +1467,13 @@ export function CreatorPortfolioStudio({
                       <div className={styles.projectCopy}>
                         <p className={styles.projectIndex} aria-hidden="true">
                           <span>{String(index + 1).padStart(2, "0")}</span>
-                          Selected work
+                          {index % 4 === 0
+                            ? "Reading room"
+                            : index % 4 === 1
+                              ? "Image / text"
+                              : index % 4 === 2
+                                ? "Photographic study"
+                                : "Listening room"}
                         </p>
                         <WorkHeading className="font-heading">
                           {title}
@@ -1472,7 +1507,9 @@ export function CreatorPortfolioStudio({
                               aria-label={work.title}
                             />
                           )}
-                        {filter !== "Images" && filter !== "Sound" && (
+                        {filter !== "Images" &&
+                          filter !== "Sound" &&
+                          (!isPublicStage || workFormats(work).includes("Writing")) && (
                           <p className={styles.poem}>
                             {isSample
                               ? sampleDetail?.excerpt
@@ -1481,6 +1518,7 @@ export function CreatorPortfolioStudio({
                         )}
                         {filter !== "Images" &&
                           filter !== "Sound" &&
+                          (!isPublicStage || workFormats(work).includes("Writing")) &&
                           (isSample || work.text) && (
                             <Button
                               variant="outline"
@@ -1675,6 +1713,49 @@ export function CreatorPortfolioStudio({
                       </section>
                     )}
                 </div>
+              )}
+              {isPublicStage && (
+                <footer className={styles.colophon} id="about-riley">
+                  <p className={styles.colophonLabel}>About the artist</p>
+                  <div className={styles.colophonStatement}>
+                    <h2 className="font-heading">Riley Chen</h2>
+                    <p>
+                      I work across text, field recordings and photography to
+                      trace the quiet geographies that hold us and the ones we
+                      leave behind. My practice begins with listening: to rooms,
+                      footpaths, weather and the language people leave in them.
+                    </p>
+                  </div>
+                  <div className={styles.colophonMeta}>
+                    <p>Poet · sound artist · photographer</p>
+                    <p>Based between Vancouver and Taipei</p>
+                  </div>
+                  <div className={styles.colophonContact} id="contact-riley">
+                    <p>Elsewhere</p>
+                    <div className={styles.socialList}>
+                      {[
+                        ["Website", Globe],
+                        ["Instagram", Instagram],
+                        ["X", null],
+                        ["Threads", AtSign],
+                        ["Facebook", Facebook],
+                      ].map(([label, Icon]) => (
+                        <Button
+                          key={String(label)}
+                          variant="ghost"
+                          onClick={() => setContactDemo(true)}
+                        >
+                          {Icon ? <Icon aria-hidden="true" /> : <span aria-hidden="true">𝕏</span>}
+                          {label as string}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button onClick={() => setContactDemo(true)}>
+                      <Mail aria-hidden="true" />
+                      Contact Riley
+                    </Button>
+                  </div>
+                </footer>
               )}
             </>
           </div>

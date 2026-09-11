@@ -601,6 +601,15 @@ export {
   type EditorialIntelligenceFullProfile,
 } from "./ranking/editorialIntelligenceRepository.js";
 
+export {
+  ManuscriptMatchEngine,
+  type ManuscriptMatchInput,
+  type ManuscriptMatchCard,
+  type ManuscriptMatchResponse,
+  type MatchCategory,
+} from "./ranking/manuscriptMatchEngine.js";
+
+
 
 
 
