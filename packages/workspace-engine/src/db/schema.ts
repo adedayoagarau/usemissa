@@ -127,6 +127,10 @@ export const reviewAssignments = pgTable('review_assignments', {
   submissionId: text('submission_id').notNull().references(() => submissions.id),
   reviewerAccountId: text('reviewer_account_id').notNull(),
   reviewerGroupId: text('reviewer_group_id'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  recusedAt: timestamp('recused_at', { withTimezone: true }),
+  recusalReason: text('recusal_reason'),
+  reassignedFromAssignmentId: text('reassigned_from_assignment_id'),
   completedAt: timestamp('completed_at', { withTimezone: true }),
 });
 

@@ -45,6 +45,9 @@ Reviewer recommendations now support an admin-controlled correction path that
 records previous and corrected values, a required reason, revision checks, and
 an immutable correction audit record.
 
+Assignments now carry expiry and recusal metadata; recusal is an admin-only,
+revision-aware command that emits an audit/outbox effect.
+
 Organization submission bulk actions now expose explicit, non-mutating scope
 previews, and exports include a version, source boundary, timestamp, and
 provenance-safe submission records without file URLs.

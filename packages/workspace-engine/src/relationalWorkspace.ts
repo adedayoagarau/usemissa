@@ -642,6 +642,19 @@ export class RelationalWorkspace {
     });
   }
 
+  async recuseReviewAssignment(envelope: WorkspaceCommandEnvelope, assignmentId: string, reason: string): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { assignmentId, reason }, async (client) => {
+      const current = await client.query<{ revision: number; organization_id: string }>(`select ra.revision,e.organization_id from review_assignments ra join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id where ra.id=$1 and e.organization_id=$2 and ra.completed_at is null and ra.recused_at is null for update of ra`, [assignmentId, envelope.organizationId]);
+      const assignment = current.rows[0];
+      if (!assignment) throw new WorkspaceNotFoundError();
+      if (envelope.expectedRevision !== assignment.revision) throw new WorkspaceConflictError('review_assignment', assignmentId, envelope.expectedRevision ?? 0, assignment.revision);
+      const revision = assignment.revision + 1;
+      await client.query('update review_assignments set recused_at=now(),recusal_reason=$1,revision=$2,updated_at=now() where id=$3', [reason, revision, assignmentId]);
+      await this.effect(client, envelope, 'review_assignment.recused', 'review_assignment', assignmentId, revision, { reason }, assignment.organization_id);
+      return { resourceType: 'review_assignment', resourceId: assignmentId, revision };
+    });
+  }
+
   async organizationForReviewAssignment(reviewerAccountId: string, assignmentId: string): Promise<string | undefined> {
     const result = await this.pool.query<{ organization_id: string }>(`select e.organization_id from review_assignments ra
       join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id
