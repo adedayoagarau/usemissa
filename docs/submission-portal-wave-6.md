@@ -45,6 +45,10 @@ Reviewer recommendations now support an admin-controlled correction path that
 records previous and corrected values, a required reason, revision checks, and
 an immutable correction audit record.
 
+Organization submission bulk actions now expose explicit, non-mutating scope
+previews, and exports include a version, source boundary, timestamp, and
+provenance-safe submission records without file URLs.
+
 ### Review operations
 
 - Configure review stages, reviewer groups, workload limits, blind projections,
