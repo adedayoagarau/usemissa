@@ -5117,3 +5117,119 @@ export const missaResidencyRankings = pgTable(
     index("idx_missa_res_rankings_tier").on(table.prestigeTier),
   ],
 );
+
+export const publicationEditorialSpecs = pgTable(
+  "publication_editorial_specs",
+  {
+    profileId: text("profile_id")
+      .primaryKey()
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    maxWordCount: integer("max_word_count"),
+    minWordCount: integer("min_word_count"),
+    maxPoemsPerSubmission: integer("max_poems_per_submission"),
+    maxPages: integer("max_pages"),
+    allowsSimultaneous: boolean("allows_simultaneous").notNull().default(true),
+    requiresBlindReview: boolean("requires_blind_review")
+      .notNull()
+      .default(false),
+    allowsReprints: boolean("allows_reprints").notNull().default(false),
+    coverLetterPolicy: text("cover_letter_policy").notNull().default("optional"),
+    acceptedFileFormats: text("accepted_file_formats")
+      .array()
+      .notNull()
+      .default(sql`ARRAY['pdf', 'docx']::text[]`),
+    specificGuidelines: text("specific_guidelines"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("idx_pub_editorial_specs_blind").on(table.requiresBlindReview),
+    index("idx_pub_editorial_specs_simul").on(table.allowsSimultaneous),
+  ],
+);
+
+export const publicationCompensationDetails = pgTable(
+  "publication_compensation_details",
+  {
+    profileId: text("profile_id")
+      .primaryKey()
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    paysContributors: boolean("pays_contributors").notNull().default(false),
+    payRateKind: text("pay_rate_kind").notNull().default("unpaid"),
+    rateCentsPerWord: numeric("rate_cents_per_word", { precision: 6, scale: 2 }),
+    flatRateCents: integer("flat_rate_cents"),
+    isProRate: boolean("is_pro_rate").notNull().default(false),
+    rightsAcquired: text("rights_acquired").notNull().default("fnasr"),
+    rightsReversionMonths: integer("rights_reversion_months"),
+    hasFeeWaivers: boolean("has_fee_waivers").notNull().default(false),
+    feeWaiverPolicy: text("fee_waiver_policy"),
+    submissionFeeCents: integer("submission_fee_cents").notNull().default(0),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("idx_pub_comp_pays").on(table.paysContributors),
+    index("idx_pub_comp_pro").on(table.isProRate),
+    index("idx_pub_comp_waiver").on(table.hasFeeWaivers),
+  ],
+);
+
+export const publicationTelemetryAnalytics = pgTable(
+  "publication_telemetry_analytics",
+  {
+    profileId: text("profile_id")
+      .primaryKey()
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    avgResponseDays: integer("avg_response_days").notNull().default(45),
+    medianResponseDays: integer("median_response_days").notNull().default(30),
+    fastestResponseDays: integer("fastest_response_days").notNull().default(3),
+    slowestResponseDays: integer("slowest_response_days").notNull().default(180),
+    acceptanceRatePercent: numeric("acceptance_rate_percent", {
+      precision: 5,
+      scale: 2,
+    })
+      .notNull()
+      .default("1.50"),
+    tieredRejectionRatePercent: numeric("tiered_rejection_rate_percent", {
+      precision: 5,
+      scale: 2,
+    })
+      .notNull()
+      .default("12.00"),
+    submittableFreeCapDepletionDays: integer(
+      "submittable_free_cap_depletion_days",
+    ),
+    freeCapStatus: text("free_cap_status").notNull().default("unlimited"),
+    responseCurveDistribution: jsonb("response_curve_distribution")
+      .notNull()
+      .default(sql`'[]'::jsonb`)
+      .$type<
+        Array<{
+          bucketDays: string;
+          percentage: number;
+          count: number;
+        }>
+      >(),
+    currentQueueDepth: integer("current_queue_depth").notNull().default(0),
+    telemetryConfidenceScore: numeric("telemetry_confidence_score", {
+      precision: 4,
+      scale: 2,
+    })
+      .notNull()
+      .default("0.90"),
+    lastTelemetryUpdateAt: timestamp("last_telemetry_update_at", {
+      withTimezone: true,
+    }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("idx_pub_telemetry_resp_time").on(table.medianResponseDays),
+    index("idx_pub_telemetry_acc_rate").on(table.acceptanceRatePercent),
+    index("idx_pub_telemetry_cap_status").on(table.freeCapStatus),
+  ],
+);
+

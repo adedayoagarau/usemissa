@@ -402,6 +402,32 @@
       "appearance": "white-editorial-index",
       "boundary": "Explicit seed preview; server-derived scores; no inferred submission or response."
     },
+    "composition.residency-index": {
+      "semantic": "ResidencyRankingsInteractive",
+      "composition": [
+        "Table",
+        "Field",
+        "Input",
+        "NativeSelect",
+        "Button",
+        "Empty",
+        "Dialog",
+        "Checkbox",
+        "Textarea"
+      ],
+      "appearance": "white-editorial-index",
+      "boundary": "Community reviews, funding badges, MRI scores, and multi-factor filtering."
+    },
+    "composition.residency-comparison": {
+      "semantic": "ResidencyComparisonView",
+      "composition": [
+        "Button",
+        "Link",
+        "Badge"
+      ],
+      "appearance": "white-editorial-comparison",
+      "boundary": "Side-by-side residency comparison across funding, solitude, meals, and community feedback."
+    },
     "composition.discovery-journey-preview": {
       "semantic": "JourneyPreview",
       "composition": [

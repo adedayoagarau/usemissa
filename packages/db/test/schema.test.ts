@@ -71,7 +71,11 @@ import {
   missaLiteraryAwards,
   missaSubmissionTelemetry,
   missaMagazineRankings,
+  publicationEditorialSpecs,
+  publicationCompensationDetails,
+  publicationTelemetryAnalytics,
 } from "../src/schema.js";
+
 
 
 test("platform schema carries tenant, audit, outbox, and reviewer indexes", () => {
@@ -589,4 +593,23 @@ test("missa literary magazine index schema defines awards, telemetry, and rankin
   assert.ok(rankingsConfig.indexes.some((i) => i.config.name === "idx_missa_rankings_lookup"));
   assert.ok(rankingsConfig.checks.some((constraint) => constraint.name === "missa_rankings_genre_check"));
 });
+
+test("publication editorial intelligence schema defines specs, compensation, and telemetry", () => {
+  const specsConfig = getTableConfig(publicationEditorialSpecs);
+  assert.equal(specsConfig.columns.find((c) => c.name === "profile_id")?.primary, true);
+  assert.equal(specsConfig.columns.find((c) => c.name === "allows_simultaneous")?.notNull, true);
+  assert.ok(specsConfig.indexes.some((i) => i.config.name === "idx_pub_editorial_specs_blind"));
+
+  const compConfig = getTableConfig(publicationCompensationDetails);
+  assert.equal(compConfig.columns.find((c) => c.name === "profile_id")?.primary, true);
+  assert.equal(compConfig.columns.find((c) => c.name === "pays_contributors")?.notNull, true);
+  assert.ok(compConfig.indexes.some((i) => i.config.name === "idx_pub_comp_pro"));
+
+  const telemetryConfig = getTableConfig(publicationTelemetryAnalytics);
+  assert.equal(telemetryConfig.columns.find((c) => c.name === "profile_id")?.primary, true);
+  assert.equal(telemetryConfig.columns.find((c) => c.name === "avg_response_days")?.notNull, true);
+  assert.ok(telemetryConfig.indexes.some((i) => i.config.name === "idx_pub_telemetry_resp_time"));
+  assert.ok(telemetryConfig.indexes.some((i) => i.config.name === "idx_pub_telemetry_acc_rate"));
+});
+
 

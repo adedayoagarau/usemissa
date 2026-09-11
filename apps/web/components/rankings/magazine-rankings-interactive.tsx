@@ -28,8 +28,10 @@ import {
 import { MagazineScheduleBadge } from "@/components/ui/magazine-schedule-badge";
 import { ReportResponseDialog } from "./report-response-dialog";
 import { MagazineTrackerAction } from "./magazine-tracker-action";
+import { EditorialIntelligenceDrawer } from "./editorial-intelligence-drawer";
 
 const genres = ["overall", "poetry", "fiction", "nonfiction"] as const;
+
 const pageSize = 25;
 type Sort = "rank" | "accolades" | "pay" | "turnaround";
 
@@ -123,6 +125,13 @@ export function MagazineRankingsInteractive({
         </nav>
         {!preview && (
           <div className="flex flex-wrap gap-3 pb-3">
+            <Button
+              variant="ghost"
+              nativeButton={false}
+              render={<Link href="/rankings/residencies" />}
+            >
+              Residency rankings
+            </Button>
             <Button
               variant="ghost"
               nativeButton={false}
@@ -328,6 +337,11 @@ export function MagazineRankingsInteractive({
                   )}
                   {!preview && (
                     <div className="mt-3 flex flex-wrap gap-3 xl:hidden">
+                      <EditorialIntelligenceDrawer
+                        profileId={row.profileId}
+                        magazineName={row.name}
+                        magazineSlug={row.slug}
+                      />
                       <MagazineTrackerAction
                         magazineName={row.name}
                         magazineSlug={row.slug}
@@ -380,27 +394,35 @@ export function MagazineRankingsInteractive({
                 </TableCell>
                 {!preview && (
                   <TableCell className="hidden py-6 xl:table-cell">
-                    <div className="flex flex-col items-end gap-3">
-                      <MagazineTrackerAction
+                    <div className="flex flex-col items-end gap-2.5">
+                      <EditorialIntelligenceDrawer
+                        profileId={row.profileId}
                         magazineName={row.name}
                         magazineSlug={row.slug}
-                        activeOpportunity={row.activeOpportunity}
-                        signedIn={signedIn}
-                        returnTo={`/rankings/magazines?genre=${currentGenre}`}
                       />
-                      {signedIn && (
-                        <ReportResponseDialog
-                          profileId={row.profileId}
+                      <div className="flex items-center gap-2">
+                        <MagazineTrackerAction
                           magazineName={row.name}
-                          onSuccess={() => router.refresh()}
-                          trigger={
-                            <Button variant="ghost">Report a response</Button>
-                          }
+                          magazineSlug={row.slug}
+                          activeOpportunity={row.activeOpportunity}
+                          signedIn={signedIn}
+                          returnTo={`/rankings/magazines?genre=${currentGenre}`}
                         />
-                      )}
+                        {signedIn && (
+                          <ReportResponseDialog
+                            profileId={row.profileId}
+                            magazineName={row.name}
+                            onSuccess={() => router.refresh()}
+                            trigger={
+                              <Button variant="ghost">Report</Button>
+                            }
+                          />
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                 )}
+
               </TableRow>
             ))}
           </TableBody>

@@ -1,109 +1,177 @@
 .world {
-  background: var(--accent-tint);
+  background: var(--creator-canvas, var(--background));
   color: var(--foreground);
   min-height: 100vh;
 }
 .main {
-  max-width: 1200px;
+  max-width: 1440px;
   margin: auto;
-  padding: 24px 32px 64px;
+  padding: 28px clamp(24px, 5vw, 80px) 96px;
 }
 .top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  min-height: 44px;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted-foreground);
 }
 .identity {
-  display: flex;
-  gap: 32px;
-  align-items: center;
-  padding: 32px 0 40px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.34fr);
+  gap: clamp(40px, 8vw, 128px);
+  align-items: end;
+  min-height: min(620px, 72vh);
+  padding: clamp(72px, 10vw, 152px) 0 56px;
+  border-bottom: 1px solid var(--border);
 }
 .portrait {
-  width: 160px;
-  height: 160px;
-  border-radius: var(--radius-full, 9999px);
+  grid-column: 2;
+  grid-row: 1;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  max-height: 430px;
+  border-radius: 0;
   object-fit: cover;
+  filter: grayscale(1);
+}
+.identity > div {
+  grid-column: 1;
+  grid-row: 1;
 }
 .identity h1 {
-  font-size: clamp(36px, 5vw, 64px);
-  line-height: 1.1;
-  letter-spacing: -0.035em;
-  margin: 0 0 12px;
+  max-width: 8ch;
+  font-size: clamp(72px, 11vw, 168px);
+  font-weight: 400;
+  line-height: 0.82;
+  letter-spacing: -0.065em;
+  margin: 0 0 40px;
 }
 .disciplines {
   color: var(--primary);
-  margin: 16px 0;
+  margin: 0 0 20px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .bio {
-  max-width: 55ch;
-  line-height: 1.7;
+  max-width: 47ch;
+  margin: 0;
+  font-size: clamp(18px, 1.65vw, 24px);
+  line-height: 1.55;
 }
 .tabs {
   display: flex;
-  gap: 32px;
+  justify-content: flex-end;
+  gap: 4px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 32px;
+  margin: 0 0 64px;
+  padding: 16px 0;
   overflow: auto;
 }
 .tabs button {
   min-height: 44px;
   white-space: nowrap;
-  border-bottom: 2px solid transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--muted-foreground);
 }
 .tabs button[aria-pressed="true"] {
-  border-color: var(--primary);
+  color: var(--foreground);
+  background: var(--muted);
 }
 .project {
   display: grid;
-  grid-template-columns: 1.3fr 1fr;
-  gap: 40px;
-  padding-bottom: 40px;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.65fr);
+  gap: clamp(40px, 7vw, 112px);
+  align-items: start;
+  padding-bottom: 112px;
 }
 .art {
   width: 100%;
-  height: 480px;
+  height: clamp(480px, 62vw, 760px);
   object-fit: cover;
 }
+.projectCopy {
+  position: sticky;
+  top: 40px;
+  padding-top: 4px;
+}
+.projectIndex {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 72px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
 .project h2 {
-  font-size: 32px;
-  line-height: 1.2;
-  margin: 0 0 20px;
+  max-width: 12ch;
+  font-size: clamp(42px, 5vw, 72px);
+  font-weight: 400;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+  margin: 0 0 32px;
 }
 .project p {
-  line-height: 1.7;
+  max-width: 44ch;
+  line-height: 1.65;
 }
 .poem {
   white-space: pre-wrap;
-  line-height: 1.8;
-  margin: 24px 0;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+  font-size: 19px;
+  line-height: 1.65;
+  margin: 32px 0;
 }
 .lower {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 24px;
   border-top: 1px solid var(--border);
-  padding-top: 32px;
+  padding-top: 24px;
+}
+.lower > section:first-child {
+  grid-column: 1 / span 7;
+}
+.lower > section:last-child {
+  grid-column: 9 / -1;
 }
 .lower h2 {
-  font-size: 14px;
-  color: var(--primary);
-  margin-bottom: 24px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin: 0 0 48px;
 }
 .lower h3 {
-  font-size: 22px;
+  max-width: 22ch;
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
 }
 .cover {
-  width: 180px;
-  height: 240px;
+  width: min(300px, 72%);
+  height: 400px;
   object-fit: contain;
-  margin-bottom: 16px;
+  object-position: left center;
+  margin-bottom: 32px;
 }
 .credit {
+  border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  padding: 16px 0;
+  padding: 24px 0 32px;
 }
 .empty {
   padding: 48px 0;
@@ -133,23 +201,71 @@
 }
 @media (max-width: 640px) {
   .main {
-    padding: 16px;
+    padding: 16px 16px 72px;
   }
   .identity {
-    align-items: flex-start;
-    flex-direction: column;
-    padding: 24px 0 32px;
+    grid-template-columns: 1fr 104px;
+    gap: 24px 16px;
+    align-items: start;
+    min-height: 0;
+    padding: 48px 0 40px;
   }
   .portrait {
-    width: 100px;
-    height: 100px;
+    grid-column: 2;
+    width: 104px;
+    height: 132px;
   }
-  .project,
-  .lower {
+  .identity > div {
+    display: contents;
+  }
+  .identity h1 {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-width: 7ch;
+    margin: 8px 0 16px;
+    font-size: clamp(64px, 23vw, 92px);
+  }
+  .identity .disciplines {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: end;
+    margin: 0;
+  }
+  .identity .bio,
+  .identity .contactActions {
+    grid-column: 1 / -1;
+  }
+  .tabs {
+    justify-content: flex-start;
+    margin-bottom: 40px;
+  }
+  .project {
     grid-template-columns: 1fr;
+    gap: 40px;
+    padding-bottom: 72px;
   }
   .art {
-    height: 300px;
+    height: 460px;
+  }
+  .projectCopy {
+    position: static;
+  }
+  .projectIndex {
+    margin-bottom: 40px;
+  }
+  .project h2 {
+    font-size: 48px;
+  }
+  .lower {
+    grid-template-columns: 1fr;
+    gap: 72px;
+  }
+  .lower > section:first-child,
+  .lower > section:last-child {
+    grid-column: 1;
+  }
+  .lower h2 {
+    margin-bottom: 32px;
   }
   .top {
     align-items: flex-start;
@@ -197,6 +313,9 @@
   cursor: zoom-in;
   align-self: start;
 }
+.imageButton:hover .art {
+  filter: contrast(1.04);
+}
 .imageButton:focus-visible {
   outline: 3px solid var(--ring);
   outline-offset: 4px;
@@ -212,7 +331,7 @@
   background: var(--background);
   color: var(--foreground);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   font-size: 14px;
 }
 .imageAffordance svg {
@@ -345,13 +464,16 @@
   border-radius: var(--radius-lg);
 }
 .livePreview .identity {
+  display: flex;
   flex-direction: column;
   align-items: flex-start;
+  min-height: 0;
   gap: 16px;
 }
 .livePreview .portrait {
   width: 100px;
   height: 100px;
+  aspect-ratio: 1;
 }
 .livePreview .identity h1 {
   font-size: 36px;
@@ -359,6 +481,12 @@
 .livePreview .project,
 .livePreview .lower {
   grid-template-columns: 1fr;
+}
+.livePreview .projectCopy {
+  position: static;
+}
+.livePreview .lower > section {
+  grid-column: 1;
 }
 .livePreview .art {
   height: 260px;

@@ -107,7 +107,7 @@ export function CreatorPortfolioStudio({
   publicData,
   initialName = "",
   embedded = false,
-  sampleTheme = "sage",
+  sampleTheme = "white",
   presentation = "compact",
 }: {
   ownerId?: string;
@@ -1374,7 +1374,11 @@ export function CreatorPortfolioStudio({
                           </span>
                         </button>
                       )}
-                      <div>
+                      <div className={styles.projectCopy}>
+                        <p className={styles.projectIndex} aria-hidden="true">
+                          <span>{String(index + 1).padStart(2, "0")}</span>
+                          Selected work
+                        </p>
                         <WorkHeading className="font-heading">
                           {title}
                         </WorkHeading>

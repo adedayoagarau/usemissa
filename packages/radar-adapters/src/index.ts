@@ -579,3 +579,25 @@ export {
   type MagazineRankingPage,
   type MagazineTelemetrySummary,
 } from "./ranking/magazineRankingRepository.js";
+
+export {
+  PostgresResidencyRankingRepository,
+  type ResidencyRankingRow,
+  type ResidencyReviewRow,
+  type ResidencyRankingsFilter,
+  type ResidencyRankingPage,
+  type SubmitResidencyReviewInput,
+  type SubmitResidencyReviewResult,
+} from "./ranking/residencyRankingRepository.js";
+
+export {
+  PostgresEditorialIntelligenceRepository,
+  type PublicationEditorialSpecs,
+  type PublicationCompensationDetails,
+  type PublicationTelemetryAnalytics,
+  type PublicationResponseBucket,
+  type EditorialIntelligenceFullProfile,
+} from "./ranking/editorialIntelligenceRepository.js";
+
+
+

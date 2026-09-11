@@ -363,21 +363,100 @@ export default function RankingsMethodologyPage() {
             </div>
           </div>
 
-          {/* Section 5: How Writers Can Use This */}
-          <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8">
-            <h2 className="text-xl font-semibold tracking-tight text-foreground">
-              How to Use the Index in Your Writing Life
+          {/* Section: The Missa Residency Index */}
+          <div className="pt-8">
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+              The Missa Residency Index (MRI)
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              For artists and writers, taking time away for an immersive residency is one of the most transformative commitments in a creative life. Yet the landscape has long suffered from information asymmetry: hidden program fees, ambiguous accommodations, and unpredictable fellowship support.
+            </p>
+            <p className="mt-3 text-muted-foreground">
+              The Missa Residency Index unifies over 530+ residency programs across North America and beyond, synthesizing data from the Artist Communities Alliance (ACA), resident feedback from the historic Rate My Artist Residency (RMAR) archive, and live institutional intake records into an objective 100-point index.
+            </p>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-border bg-card/60 p-5">
+                <div className="flex items-center gap-2 font-semibold text-foreground">
+                  <DollarSign className="size-4 text-primary" />
+                  Funding Support (35 pts)
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  Programs providing 100% free residencies (25 pts) and living stipends (10 pts) receive top weight to ensure economic access.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card/60 p-5">
+                <div className="flex items-center gap-2 font-semibold text-foreground">
+                  <Sparkles className="size-4 text-primary" />
+                  Community Rating (30 pts)
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  Normalized aggregate scores derived from verified resident evaluations and community feedback from artists who stayed on site.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card/60 p-5">
+                <div className="flex items-center gap-2 font-semibold text-foreground">
+                  <CheckCircle2 className="size-4 text-primary" />
+                  Facilities & Solitude (20 pts)
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  Rewards dedicated private studio space (10 pts) and chef-prepared or provided meals (10 pts) essential for uninterrupted focus.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-border bg-card/60 p-5">
+                <div className="flex items-center gap-2 font-semibold text-foreground">
+                  <Award className="size-4 text-primary" />
+                  Prestige & Access (15 pts)
+                </div>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                  Recognizes institutional longevity, multi-directory provenance, and active verified open calls.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4 rounded-xl border border-border bg-card p-6">
+              <h3 className="font-semibold text-foreground">Residency Prestige Tiers</h3>
+              <div className="grid gap-4 sm:grid-cols-3 text-sm">
+                <div>
+                  <RankingTierBadge tier="Tier 1">Tier 1: Flagship Fellowships</RankingTierBadge>
+                  <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                    Nationally renowned, highly selective programs with full funding, private studios, meals, and stipends (e.g. MacDowell, Headlands, Yaddo, FAWC, VCCA, Skowhegan).
+                  </p>
+                </div>
+                <div>
+                  <RankingTierBadge tier="Tier 2">Tier 2: High Distinction</RankingTierBadge>
+                  <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                    Celebrated institutions offering high-quality facilities, competitive financial aid, or dedicated seasonal fellowship cohorts.
+                  </p>
+                </div>
+                <div>
+                  <RankingTierBadge tier="Tier 3">Tier 3: Emerging & Regional</RankingTierBadge>
+                  <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                    Vital incubator spaces, specialized medium retreats, and regional sanctuaries nurturing local and international creators.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Practical Strategy for Creators */}
+          <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              A Strategic Compass, Not a Gatekeeper
             </h2>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Rankings should serve your craft, not intimidate it. We encourage
-              writers to build a balanced portfolio strategy for each
-              manuscript:
+              writers and artists to build a balanced portfolio strategy for each
+              manuscript and residency cycle:
             </p>
             <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
               <li>
                 <strong>Send to a spread of tiers:</strong> Combine a couple of
-                Tier 1 &quot;reach&quot; journals with Tier 2 targets and Tier 3
-                venues whose editorial voices you personally admire.
+                Tier 1 &quot;reach&quot; journals or flagship residencies with Tier 2 targets and Tier 3
+                venues whose creative communities you personally admire.
               </li>
               <li>
                 <strong>Batch simultaneous submissions:</strong> Filter for
@@ -385,8 +464,8 @@ export default function RankingsMethodologyPage() {
                 under 60 days to avoid having your work locked up for seasons.
               </li>
               <li>
-                <strong>Protect your budget:</strong> Use the &quot;$0 Fee&quot;
-                toggle to ensure you are never priced out of submitting your
+                <strong>Protect your budget:</strong> Use the &quot;100% Free&quot; and &quot;$0 Fee&quot;
+                toggles to ensure you are never priced out of submitting your
                 work.
               </li>
             </ul>
@@ -395,13 +474,13 @@ export default function RankingsMethodologyPage() {
                 href="/rankings/magazines"
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent-deep"
               >
-                Explore the Rankings Index <ArrowRight className="size-4" />
+                Magazine Rankings <ArrowRight className="size-4" />
               </Link>
               <Link
-                href="/rankings/compare"
+                href="/rankings/residencies"
                 className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
               >
-                Compare Journals Side-by-Side
+                Residency Rankings & Reviews
               </Link>
             </div>
           </div>
