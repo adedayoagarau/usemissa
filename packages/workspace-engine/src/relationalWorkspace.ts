@@ -700,6 +700,31 @@ export class RelationalWorkspace {
     }));
   }
 
+  async updateOrganizationInboxView(envelope: WorkspaceCommandEnvelope, viewId: string, input: { name: string; filter: { status?: string; openCallId?: string } }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { viewId, ...input }, async (client) => {
+      const current = await client.query<{ revision: number }>('select revision from organization_inbox_views where id=$1 and organization_id=$2 and owner_account_id=$3 for update', [viewId, envelope.organizationId, envelope.actorAccountId]);
+      const row = current.rows[0];
+      if (!row) throw new WorkspaceNotFoundError();
+      if (envelope.expectedRevision !== row.revision) throw new WorkspaceConflictError('organization_inbox_view', viewId, envelope.expectedRevision ?? 0, row.revision);
+      const revision = row.revision + 1;
+      await client.query('update organization_inbox_views set name=$1,filter=$2,revision=$3,updated_at=now() where id=$4', [input.name, JSON.stringify(input.filter), revision, viewId]);
+      await this.effect(client, envelope, 'organization_inbox_view.updated', 'organization_inbox_view', viewId, revision, input);
+      return { resourceType: 'organization_inbox_view', resourceId: viewId, revision };
+    });
+  }
+
+  async deleteOrganizationInboxView(envelope: WorkspaceCommandEnvelope, viewId: string): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { viewId }, async (client) => {
+      const current = await client.query<{ revision: number }>('select revision from organization_inbox_views where id=$1 and organization_id=$2 and owner_account_id=$3 for update', [viewId, envelope.organizationId, envelope.actorAccountId]);
+      const row = current.rows[0];
+      if (!row) throw new WorkspaceNotFoundError();
+      if (envelope.expectedRevision !== row.revision) throw new WorkspaceConflictError('organization_inbox_view', viewId, envelope.expectedRevision ?? 0, row.revision);
+      await client.query('delete from organization_inbox_views where id=$1', [viewId]);
+      await this.effect(client, envelope, 'organization_inbox_view.deleted', 'organization_inbox_view', viewId, row.revision + 1, {});
+      return { resourceType: 'organization_inbox_view', resourceId: viewId, revision: row.revision + 1 };
+    });
+  }
+
   async correctReviewRecommendation(envelope: WorkspaceCommandEnvelope, assignmentId: string, input: { score?: number; notes?: string; reason: string }): Promise<WorkspaceCommandResult> {
     return this.command(envelope, { assignmentId, ...input }, async (client) => {
       const current = await client.query<{ revision: number; score: number | null; notes: string | null }>(`select ra.revision,rec.score,rec.notes from review_assignments ra join review_recommendations rec on rec.review_assignment_id=ra.id join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id where ra.id=$1 and e.organization_id=$2 for update of ra,rec`, [assignmentId, envelope.organizationId]);

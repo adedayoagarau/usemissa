@@ -66,7 +66,6 @@ export const memberships = pgTable(
     ),
   ],
 );
-
 export const entities = pgTable(
   "entities",
   {
@@ -5513,5 +5512,61 @@ export const opportunityContestJudges = pgTable(
     index("idx_opp_judges_profile").on(table.profileId),
     index("idx_opp_judges_opp").on(table.opportunityId),
     index("idx_opp_judges_judge_name").on(table.judgeName),
+  ],
+);
+
+export const residencyIntelligenceSpecs = pgTable(
+  "residency_intelligence_specs",
+  {
+    profileId: text("profile_id")
+      .primaryKey()
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    stipendAmountCents: integer("stipend_amount_cents").notNull().default(0),
+    stipendFrequency: text("stipend_frequency").notNull().default("none"),
+    travelGrantCents: integer("travel_grant_cents").notNull().default(0),
+    mealPlanKind: text("meal_plan_kind").notNull().default("self_catering"),
+    privateStudioSqft: integer("private_studio_sqft"),
+    studioAmenities: text("studio_amenities")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    livingArrangement: text("living_arrangement")
+      .notNull()
+      .default("private_bedroom_private_bath"),
+    cohortSize: integer("cohort_size").notNull().default(12),
+    typicalDurationWeeks: integer("typical_duration_weeks").notNull().default(4),
+    familyPartnerFriendly: boolean("family_partner_friendly")
+      .notNull()
+      .default(false),
+    adaAccessible: boolean("ada_accessible").notNull().default(true),
+    acceptanceRatePercent: numeric("acceptance_rate_percent", {
+      precision: 4,
+      scale: 2,
+    })
+      .notNull()
+      .default("5.50"),
+    annualApplicantVolume: integer("annual_applicant_volume")
+      .notNull()
+      .default(850),
+    notableAlumni: text("notable_alumni")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    alumniMajorAwards: text("alumni_major_awards")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    applicationFeeCents: integer("application_fee_cents")
+      .notNull()
+      .default(3000),
+    hasFeeWaivers: boolean("has_fee_waivers").notNull().default(true),
+    feeWaiverPolicy: text("fee_waiver_policy"),
+    updatedAt,
+  },
+  (table) => [
+    index("idx_res_intel_specs_profile").on(table.profileId),
+    index("idx_res_intel_stipend").on(table.stipendAmountCents),
+    index("idx_res_intel_acceptance").on(table.acceptanceRatePercent),
   ],
 );

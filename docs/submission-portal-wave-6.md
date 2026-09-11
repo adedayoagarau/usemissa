@@ -48,8 +48,9 @@ workflow, scoped to drafts, uploads, reviews, or messages, with revision checks
 and audit/outbox evidence before any destructive executor runs.
 
 Organization admins can now save named inbox views with bounded status and
-opportunity filters; each view is owner-scoped and created through the command
-and audit/outbox boundary.
+opportunity filters; each view is owner-scoped and can be listed, revised with
+an `If-Match` revision, or deleted through the command and audit/outbox
+boundary.
 
 Reviewer recommendations now support an admin-controlled correction path that
 records previous and corrected values, a required reason, revision checks, and
@@ -124,6 +125,10 @@ represented in the outbox.
 - The local Neon target has all portal/Wave 6 tables and relational health
   reports `schemaReady: true` after applying the reconciled authority schema,
   migrations 0056/0057, and Wave 6 migrations 0059/0061–0069.
+- The clean target-schema replay script now includes the portal/Wave 6 tail
+  after the reconciled authority base, with a database-schema regression test
+  covering dependency order. This is a replay-proof improvement; it does not
+  certify the shared Neon or Vercel Preview database as disposable.
 - The live Postgres integration suite was not counted as passed on this target:
   its safety guard requires an explicitly named disposable
   `missa_story_16_1_*` database. Hosted tenant-isolation and device gates remain

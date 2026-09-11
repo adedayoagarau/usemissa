@@ -25,7 +25,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (!name || name.length > 120) return NextResponse.json({ error: 'A view name is required' }, { status: 400 });
   const filter = body.filter;
-  if (!filter || typeof filter !== 'object' || Array.isArray(filter) || (filter.status !== undefined && typeof filter.status !== 'string') || (filter.openCallId !== undefined && typeof filter.openCallId !== 'string')) return NextResponse.json({ error: 'Provide a valid inbox filter' }, { status: 400 });
+  const allowedStatuses = new Set(['submitted', 'in-review', 'decided', 'withdrawn']);
+  if (!filter || typeof filter !== 'object' || Array.isArray(filter) || (filter.status !== undefined && (typeof filter.status !== 'string' || !allowedStatuses.has(filter.status))) || (filter.openCallId !== undefined && typeof filter.openCallId !== 'string')) return NextResponse.json({ error: 'Provide a valid inbox filter' }, { status: 400 });
   try {
     const workspace = await getRelationalWorkspace();
     const payload = { name, filter: { ...(filter.status ? { status: filter.status } : {}), ...(filter.openCallId ? { openCallId: filter.openCallId } : {}) } };

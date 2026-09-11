@@ -76,6 +76,7 @@ import {
   publicationTelemetryAnalytics,
   publicationAestheticProfiles,
   opportunityContestJudges,
+  residencyIntelligenceSpecs,
   reviewerGroups,
   reviewerGroupMembers,
   organizationReviewSettings,
@@ -686,3 +687,13 @@ test("publication aesthetic profiles and contest judges schema defines taste DNA
   assert.ok(judgesConfig.indexes.some((i) => i.config.name === "idx_opp_judges_judge_name"));
 });
 
+test("residency intelligence specs schema defines stipends, amenities, cohort, and alumni", () => {
+  const resIntelConfig = getTableConfig(residencyIntelligenceSpecs);
+  assert.equal(resIntelConfig.columns.find((c) => c.name === "profile_id")?.primary, true);
+  assert.equal(resIntelConfig.columns.find((c) => c.name === "stipend_amount_cents")?.notNull, true);
+  assert.equal(resIntelConfig.columns.find((c) => c.name === "cohort_size")?.notNull, true);
+  assert.equal(resIntelConfig.columns.find((c) => c.name === "acceptance_rate_percent")?.notNull, true);
+  assert.ok(resIntelConfig.indexes.some((i) => i.config.name === "idx_res_intel_specs_profile"));
+  assert.ok(resIntelConfig.indexes.some((i) => i.config.name === "idx_res_intel_stipend"));
+  assert.ok(resIntelConfig.indexes.some((i) => i.config.name === "idx_res_intel_acceptance"));
+});
