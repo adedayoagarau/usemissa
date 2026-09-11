@@ -1,3 +1,105 @@
+.compact {
+  background: var(--marketing-highlight);
+  color: var(--marketing-ink);
+  container-type: inline-size;
+  container-name: compact-discovery;
+}
+.compactInner {
+  max-width: 1240px;
+  margin-inline: auto;
+  /* Spacious: section stack 64; shared desktop inset 64. */
+  padding: 64px;
+}
+.compactHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 32px;
+}
+.compactHeading h2 {
+  max-width: 20ch;
+  font-size: clamp(36px, 4.2vw, 56px);
+  line-height: 1.06;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+}
+.compactTotal {
+  min-width: 200px;
+}
+.compactTotal a {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-block: 16px;
+}
+.compactTotal strong {
+  font-size: clamp(40px, 5vw, 64px);
+  line-height: 1.1;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+.compactTotal span {
+  font-size: 14px;
+}
+.compactSkeleton {
+  height: 96px;
+  width: 200px;
+}
+.categoryLinks {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 24px;
+  margin-block-start: 32px;
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--marketing-ink);
+}
+.categoryLinks a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 14px;
+}
+.compact a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.compact a:focus-visible {
+  outline: 2px solid var(--marketing-ink);
+  outline-offset: 4px;
+}
+@container compact-discovery (max-width: 1024px) {
+  .compactInner {
+    padding-inline: 40px;
+  }
+  .categoryLinks {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 24px;
+  }
+}
+@container compact-discovery (max-width: 639px) {
+  .compactInner {
+    padding: 48px 24px;
+  }
+  .compactHeading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 24px;
+  }
+  .compactTotal a {
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
+    padding-block: 0;
+  }
+  .compactTotal strong {
+    font-size: 40px;
+  }
+  .categoryLinks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .context {
   container-type: inline-size;
   container-name: homepage-context;

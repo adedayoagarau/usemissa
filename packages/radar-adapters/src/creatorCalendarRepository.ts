@@ -27,6 +27,8 @@ export type CreatorCalendarItem = {
   title: string;
   organizationName?: string;
   myStatus: string;
+  oppStatus?: string;
+  openDate?: string;
   deadline?: string;
   deadlineKind?: string;
   expectedResponseBy?: string;
@@ -864,12 +866,14 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       title: string;
       organization_name: string | null;
       status: string;
+      opp_status: string;
+      open_date: string | null;
       deadline_date: string | null;
       deadline_kind: string;
       submitted_at: Date | string | null;
       response_time_days: number | null;
     }>(
-      `select t.opportunity_id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,t.status,o.deadline_date::text as deadline_date,o.deadline_kind,t.submitted_at,cp.response_time_days
+      `select t.opportunity_id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,t.status,o.status as opp_status,o.open_date::text as open_date,o.deadline_date::text as deadline_date,o.deadline_kind,t.submitted_at,cp.response_time_days
        from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
        left join radar_organizations org on org.id=o.organization_id
        left join opportunity_call_profiles cp on cp.opportunity_id=o.id
@@ -881,6 +885,8 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       title: row.title,
       organizationName: row.organization_name ?? undefined,
       myStatus: row.status,
+      oppStatus: row.opp_status,
+      openDate: row.open_date ?? undefined,
       deadline: [
         "interested",
         "saved",

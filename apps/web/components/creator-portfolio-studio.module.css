@@ -563,6 +563,49 @@
 }
 
 /* Embedded marketing preview reuses the public portfolio without account controls. */
+.embedded.showcase .main {
+  max-width: none;
+  padding: 32px;
+}
+.embedded.showcase .identity {
+  padding-block: 32px;
+}
+.embedded.showcase .identity h3 {
+  font-size: clamp(36px, 4.5vw, 56px);
+}
+.embedded.showcase .portrait {
+  width: 96px;
+  height: 96px;
+}
+.embedded.showcase .bio,
+.embedded.showcase .disciplines,
+.embedded.showcase .project p {
+  font-size: 16px;
+}
+.embedded.showcase .project {
+  gap: 32px;
+}
+.embedded.showcase .project h4 {
+  font-size: clamp(28px, 3.2vw, 40px);
+}
+.embedded.showcase .art {
+  height: 360px;
+}
+@media (max-width: 639px) {
+  .embedded.showcase .main {
+    padding: 24px;
+  }
+  .embedded.showcase .identity {
+    align-items: start;
+  }
+  .embedded.showcase .portrait {
+    width: 64px;
+    height: 64px;
+  }
+  .embedded.showcase .art {
+    height: 280px;
+  }
+}
 .embedded {
   min-height: 0;
 }

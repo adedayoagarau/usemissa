@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionAccount } from '@/lib/auth';
 import { getRelationalWorkspace, getWorkspaceEngine, persistWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { getEngine, persistRadar } from '@/lib/engine';
+import { checkOpportunitySubmissionCap, recordSubmissionAgainstCap } from '@/lib/submission-caps';
 
 /**
  * Story 6.5: submitter file upload against a Submission Path.
@@ -29,6 +30,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   const relationalPath = path as Record<string, unknown>;
   const openCall = relational ? { title: String(relationalPath.openCallTitle), radarOpportunityId: typeof relationalPath.radarOpportunityId === 'string' ? relationalPath.radarOpportunityId : undefined } : workspace!.store.openCalls.get(String(path.openCallId));
   if (!openCall) return NextResponse.json({ error: 'This submission form is not open' }, { status: 409 });
+
+  if (openCall.radarOpportunityId) {
+    const capCheck = await checkOpportunitySubmissionCap(openCall.radarOpportunityId, false);
+    if (!capCheck.allowed) {
+      return NextResponse.json({ error: capCheck.reason || 'This submission call has reached its capacity.' }, { status: 409 });
+    }
+  }
   const ownedFileUrl = (value: string): boolean => {
     try {
       const parsed = new URL(value);
@@ -123,6 +131,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
         radarDirty = true;
       }
       if (radarDirty) await persistRadar();
+      if (!created.replayed && openCall.radarOpportunityId) {
+        await recordSubmissionAgainstCap(openCall.radarOpportunityId);
+      }
       return NextResponse.json({ submission: { id: created.resourceId, submissionPathId: pathId, submitterAccountId: session.account.id, status: 'submitted', revision: created.revision, receiptId: created.receiptId }, works: created.data?.works ?? [], trackerLinked: Boolean(userId && linkedOpportunityId), idempotent: created.replayed }, { status: created.replayed ? 200 : 201 });
     } catch (error) {
       const mapped = workspaceMutationError(error);
@@ -156,6 +167,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
       radarDirty = true;
     }
     if (radarDirty) await persistRadar();
+    if (linkedOpportunityId) {
+      await recordSubmissionAgainstCap(linkedOpportunityId);
+    }
     return NextResponse.json({ submission, works: engine.worksForSubmission(submission.id), trackerLinked: Boolean(userId && linkedOpportunityId), idempotent: false }, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'failed' }, { status: 404 });

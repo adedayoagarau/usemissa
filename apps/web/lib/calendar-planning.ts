@@ -83,8 +83,32 @@ export function calendarSourceEvents(
   goals: GoalDate[] = [],
 ): PlanningEvent[] {
   const result: PlanningEvent[] = [];
+  const todayIso = new Date().toISOString().slice(0, 10);
   for (const item of items) {
     const href = `/tracker?application=${encodeURIComponent(item.opportunityId)}`;
+
+    // 1. Opening date event for scheduled/upcoming opportunities
+    if (
+      item.openDate &&
+      (item.oppStatus === "opening-soon" || item.openDate >= todayIso) &&
+      preparing.has(item.myStatus)
+    ) {
+      result.push(
+        day(
+          `opens:${item.opportunityId}`,
+          `Opens: ${item.title}`,
+          item.openDate,
+          "tracker",
+          "Submissions opening date",
+          href,
+          undefined,
+          undefined,
+          item.opportunityId,
+        ),
+      );
+    }
+
+    // 2. Closing deadline event
     if (item.deadline && preparing.has(item.myStatus))
       result.push(
         day(

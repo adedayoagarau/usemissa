@@ -1,7 +1,41 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import pg from 'pg';
 import { resolveMagazineSchedule } from '../packages/radar-engine/dist/src/index.js';
 
 const { Client } = pg;
+
+// Load DATABASE_URL from .env files if not already in process.env
+if (!process.env.DATABASE_URL) {
+  const possibleEnvFiles = [
+    '/Volumes/Crucial X10/usemissa/.env.local',
+    path.resolve('.env.local'),
+    path.resolve('../.env.local'),
+  ];
+  for (const envFile of possibleEnvFiles) {
+    if (fs.existsSync(envFile)) {
+      const envContent = fs.readFileSync(envFile, 'utf8');
+      for (const line of envContent.split('\n')) {
+        const match = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
+        if (match) {
+          process.env.DATABASE_URL = match[1].trim().replace(/^["']|["']$/g, '');
+          break;
+        }
+      }
+      if (process.env.DATABASE_URL) break;
+    }
+  }
+}
+
+function slugify(text) {
+  return String(text || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 100);
+}
 
 async function run() {
   const isDryRun = process.argv.includes('--dry-run');
@@ -9,7 +43,6 @@ async function run() {
   if (!process.env.DATABASE_URL) {
     console.log('\n[MAGAZINE SCHEDULE] Notice: DATABASE_URL is not set.');
     console.log('[MAGAZINE SCHEDULE] Usage: node scripts/backfill-magazine-schedules.mjs [--dry-run]');
-    console.log('[MAGAZINE SCHEDULE] Or with env: DATABASE_URL=postgres://... node scripts/backfill-magazine-schedules.mjs\n');
     return;
   }
 
@@ -22,6 +55,17 @@ async function run() {
     await client.connect();
     console.log('=== MISSA MAGAZINE SCHEDULE AUDIT & BACKFILL ===');
     console.log(`Mode: ${isDryRun ? 'DRY-RUN (Audit only)' : 'PERSIST (Updating database)'}\n`);
+
+    // Ensure default curated magazine source exists
+    if (!isDryRun) {
+      await client.query(`
+        INSERT INTO opportunity_sources (
+          id, name, kind, url, authority_kind, health_status, trust_status, trust_score, active, created_at, updated_at
+        ) VALUES (
+          'src_missa_magazines', 'Missa Magazine Directory', 'directory', 'https://usemissa.com/directory', 'directory', 'healthy', 'curated', 100, true, now(), now()
+        ) ON CONFLICT (id) DO UPDATE SET updated_at = now();
+      `);
+    }
 
     // 1. Fetch magazine and press profiles with their latest observation
     const res = await client.query(`
@@ -42,6 +86,8 @@ async function run() {
         p.name,
         p.profile_kind,
         o.reading_period,
+        o.reading_fee,
+        o.payment,
         o.source_detail_url,
         COALESCE(o.submission_guidelines_url, o.website_url, 'https://usemissa.com') as source_url
       FROM gary_profiles p
@@ -61,6 +107,7 @@ async function run() {
       openingSoon: 0,
       closed: 0,
       unknown: 0,
+      autoMaterialized: 0,
       callWindowsCreated: 0,
       callProfilesUpdated: 0,
     };
@@ -75,6 +122,7 @@ async function run() {
     };
 
     const now = new Date();
+    const todayIso = now.toISOString().slice(0, 10);
 
     function toIsoDateString(val) {
       if (!val) return null;
@@ -114,7 +162,7 @@ async function run() {
       const readingPeriod = row.reading_period ? row.reading_period.trim() : null;
       if (readingPeriod) stats.withReadingPeriod++;
 
-      const opportunities = oppsByProfileId.get(String(row.id)) || [];
+      let opportunities = oppsByProfileId.get(String(row.id)) || [];
 
       const schedule = resolveMagazineSchedule({
         readingPeriod,
@@ -150,6 +198,101 @@ async function run() {
           badge: schedule.badgeLabel,
           detail: schedule.detailLabel || '',
         });
+      }
+
+      const shouldBeFindable =
+        schedule.state === 'always_open' ||
+        schedule.state === 'open' ||
+        schedule.state === 'closing_soon' ||
+        schedule.state === 'opening_soon';
+
+      // Auto-materialize opportunity if none exists and publication is open/opening
+      if (!isDryRun && opportunities.length === 0 && shouldBeFindable) {
+        try {
+          const rawId = String(row.id).replace(/[^a-zA-Z0-9_-]/g, '');
+          const oppId = `opp_mag_${rawId}`;
+          const oppSlug = `${slugify(row.name)}-submissions`.slice(0, 140);
+          const oppTitle = `${row.name} – Submissions`;
+          const targetStatus =
+            schedule.state === 'opening_soon' ? 'opening-soon' :
+            schedule.state === 'closing_soon' ? 'closing-soon' : 'open';
+          const deadlineDate = schedule.state === 'always_open' ? null : toIsoDateString(schedule.nextDate);
+          const deadlineKind =
+            schedule.windowKind === 'year-round' || schedule.windowKind === 'rolling'
+              ? 'rolling'
+              : (deadlineDate ? 'exact' : 'unknown');
+
+          let feeStatus = 'unknown';
+          let feeCents = null;
+          const feeStr = String(row.reading_fee || '').toLowerCase();
+          if (feeStr.includes('no fee') || feeStr.includes('free') || feeStr === '0' || feeStr === '$0') {
+            feeStatus = 'no-fee';
+            feeCents = 0;
+          } else if (feeStr.includes('$') || feeStr.includes('fee')) {
+            feeStatus = 'paid';
+            const numMatch = feeStr.match(/\$(\d+)/);
+            if (numMatch) feeCents = parseInt(numMatch[1], 10) * 100;
+          }
+
+          const searchDoc = `${row.name} literary magazine poetry fiction nonfiction essay writing submission calls reading period ${schedule.badgeLabel}`;
+
+          await client.query(`
+            INSERT INTO opportunities (
+              id, slug, title, source_id, status, publication_state, type, discipline, genres,
+              open_date, deadline_date, deadline_kind, fee_status, fee_cents, guidelines_url, submission_url,
+              submission_state, search_document, created_at, updated_at
+            ) VALUES (
+              $1, $2, $3, 'src_missa_magazines', $4, 'published', 'magazine', 'literature',
+              ARRAY['Fiction', 'Poetry', 'Nonfiction', 'Literary Magazine']::text[],
+              $5::date, $6::date, $7, $8, $9, $10, $10,
+              'available', $11, now(), now()
+            ) ON CONFLICT (id) DO UPDATE SET
+              status = EXCLUDED.status,
+              publication_state = 'published',
+              open_date = EXCLUDED.open_date,
+              deadline_date = EXCLUDED.deadline_date,
+              deadline_kind = EXCLUDED.deadline_kind,
+              fee_status = EXCLUDED.fee_status,
+              fee_cents = COALESCE(EXCLUDED.fee_cents, opportunities.fee_cents),
+              guidelines_url = COALESCE(EXCLUDED.guidelines_url, opportunities.guidelines_url),
+              submission_url = COALESCE(EXCLUDED.submission_url, opportunities.submission_url),
+              updated_at = now();
+          `, [
+            oppId,
+            oppSlug,
+            oppTitle,
+            targetStatus,
+            todayIso,
+            deadlineDate,
+            deadlineKind,
+            feeStatus,
+            feeCents,
+            row.source_url,
+            searchDoc,
+          ]);
+
+          const linkId = `link_${row.id}_${oppId}`.slice(0, 120);
+          await client.query(`
+            INSERT INTO opportunity_profile_links (
+              id, profile_id, opportunity_id, status, confidence, verified_at, created_at, updated_at
+            ) VALUES (
+              $1, $2, $3, 'confirmed', 'confirmed', now(), now(), now()
+            ) ON CONFLICT (profile_id, opportunity_id) DO UPDATE SET
+              status = 'confirmed',
+              updated_at = now();
+          `, [linkId, row.id, oppId]);
+
+          opportunities = [{
+            id: oppId,
+            title: oppTitle,
+            status: targetStatus,
+            deadline: deadlineDate,
+          }];
+          oppsByProfileId.set(String(row.id), opportunities);
+          stats.autoMaterialized++;
+        } catch (err) {
+          // Continue
+        }
       }
 
       // If persisting and we have linked opportunities
@@ -251,7 +394,7 @@ async function run() {
                 windowId,
                 opp.id,
                 `Reading Window: ${schedule.badgeLabel}`,
-                now.toISOString().slice(0, 10),
+                todayIso,
                 closesAt,
                 schedule.windowKind,
                 row.source_url,
@@ -277,8 +420,9 @@ async function run() {
 
     if (!isDryRun) {
       console.log('=== PERSISTENCE STATS ===');
-      console.log(`Call Profiles Updated:        ${stats.callProfilesUpdated}`);
-      console.log(`Opening Windows Created/Sync: ${stats.callWindowsCreated}\n`);
+      console.log(`Auto-Materialized Opportunities: ${stats.autoMaterialized}`);
+      console.log(`Call Profiles Updated:          ${stats.callProfilesUpdated}`);
+      console.log(`Opening Windows Created/Sync:   ${stats.callWindowsCreated}\n`);
     }
 
     console.log('=== REPRESENTATIVE SAMPLES ===');

@@ -398,12 +398,22 @@
   display: flex;
   align-items: center;
 }
+.footerScene {
+  background: var(--surface);
+  isolation: isolate;
+}
+.footerScene .footer {
+  position: relative;
+  z-index: 1;
+}
 .footerPainting {
   position: relative;
   width: 100%;
   aspect-ratio: 3808 / 1280;
   overflow: hidden;
   background: var(--surface);
+  margin-block-start: -64px;
+  mask-image: linear-gradient(to bottom, transparent, black 48%);
 }
 .footerPainting img {
   object-fit: cover;

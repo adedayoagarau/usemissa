@@ -60,6 +60,7 @@ export const opportunitySortSchema = z.enum([
   "soonest-deadline",
   "recently-verified",
   "recently-added",
+  "recently-opened",
   "no-fee-first",
   "alphabetical",
 ]);
@@ -289,6 +290,7 @@ const opportunityIdentitySchema = z.object({
 export const opportunityBrowseItemSchema = opportunityIdentitySchema.extend({
   status: opportunityStatusSchema,
   type: opportunityTypeSchema,
+  openDate: z.iso.date().optional(),
   discipline: z.string().trim().max(80).optional(),
   genres: z.array(z.string().trim().min(1).max(80)).max(32),
   taxonomy: z

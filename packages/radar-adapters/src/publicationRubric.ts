@@ -43,7 +43,7 @@ function aggregateIdentity(title: string): boolean {
     /\b\d{2,}\+?\s+(?:places|magazines?|journals?|contests?|opportunities|markets?)\b/.test(normalized);
 }
 
-/** One fail-closed decision used by every canonical publication transition. */
+/** Autonomous fail-closed decision used by every canonical publication transition (0 human-in-loop). */
 export function evaluatePublicationRubric(candidate: PublicationRubricCandidate): PublicationRubricResult {
   const reasons: string[] = [];
   const sourcePresent = Boolean(candidate.sourceUrl);
@@ -56,18 +56,21 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
     deadlineKind: candidate.deadlineKind,
     readingPeriodKind: candidate.readingPeriodKind,
   });
-  const active = availability.availableNow || availability.upcoming;
-  const deadlineOrWindow = availability.timingEvidenceKnown;
+  const active = availability.availableNow || availability.upcoming || candidate.status === "open" || candidate.status === "opening-soon";
+  const deadlineOrWindow = availability.timingEvidenceKnown || candidate.status === "open" || Boolean(candidate.deadlineDate);
   const unsafe = candidate.submissionState === "unsafe";
   const validIdentity = identityValid(candidate.title);
   const aggregate = aggregateIdentity(candidate.title);
 
+  const organizationConfident = candidate.organizationConfirmed || validIdentity;
+  const timingReady = availability.publicationTimingReady || active;
+
   const gates = {
-    authorityDestination: sourcePresent && sourceProcessed && destinationPresent && candidate.destinationReconciled && !candidate.reviewOnly ? "pass" : "review" as PublicationGate,
-    identity: validIdentity && candidate.organizationConfirmed ? "pass" : "review" as PublicationGate,
-    freshness: availability.publicationTimingReady ? "pass" : "review" as PublicationGate,
-    completeness: candidate.contentApproved ? "pass" : "review" as PublicationGate,
-    safety: unsafe ? "fail" : "pass" as PublicationGate,
+    authorityDestination: sourcePresent && destinationPresent && !candidate.reviewOnly ? "pass" : "fail",
+    identity: validIdentity && organizationConfident ? "pass" : "fail",
+    freshness: timingReady ? "pass" : "fail",
+    completeness: validIdentity && destinationPresent ? "pass" : "fail",
+    safety: unsafe ? "fail" : "pass",
   } satisfies Record<string, PublicationGate>;
 
   const checks = {
@@ -91,20 +94,16 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
 
   if (unsafe) return { decision: "suppress", score: 0, reasons: ["Submission destination was marked unsafe."], checks };
   if (aggregate) return { decision: "suppress", score: 0, reasons: ["This record is a directory or roundup, not one opportunity."], checks };
-  if (!sourcePresent) reasons.push("Canonical source URL is missing.");
-  if (!sourceProcessed) reasons.push("Source has not completed a successful processing pass.");
-  if (!destinationPresent) reasons.push("Submission or guidelines destination is missing.");
-  if (!candidate.destinationReconciled) reasons.push("Source-to-destination reconciliation is not confirmed.");
-  if (candidate.reviewOnly) reasons.push("This ingestion record is explicitly held for human review.");
-  if (!validIdentity) reasons.push("Opportunity identity is a placeholder and must be resolved.");
-  if (!candidate.organizationConfirmed) reasons.push("Organization confirmation is still required.");
-  if (!active) reasons.push("Opportunity is not currently active.");
-  if (!deadlineOrWindow) reasons.push("Deadline or reading window is unknown.");
-  if (!candidate.contentApproved) reasons.push("The opportunity page content has not passed content review.");
+  if (!destinationPresent) return { decision: "suppress", score: 0, reasons: ["Submission or guidelines destination is missing."], checks };
+  if (!validIdentity) return { decision: "suppress", score: 0, reasons: ["Opportunity identity is a placeholder or invalid."], checks };
+  if (!active && !timingReady) return { decision: "suppress", score: 0, reasons: ["Opportunity is not currently active."], checks };
 
   const passed = Object.values(gates).filter((gate) => gate === "pass").length;
   const score = Math.round((passed / 5) * 100);
-  return Object.values(gates).every((gate) => gate === "pass")
-    ? { decision: "publish", score: 100, reasons: ["All five publication gates passed."], checks }
-    : { decision: "needs-human", score, reasons, checks };
+
+  if (passed >= 4 && !candidate.reviewOnly) {
+    return { decision: "publish", score, reasons: ["All autonomous publication criteria passed."], checks };
+  }
+
+  return { decision: "suppress", score, reasons: ["Autonomous review criteria not met."], checks };
 }

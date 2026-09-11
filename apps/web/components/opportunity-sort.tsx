@@ -14,6 +14,7 @@ export function OpportunitySort({ className, signedIn = false }: { className?: s
 
   const labels: Record<string, string> = {
     'soonest-deadline': 'Soonest deadline',
+    'recently-opened': 'Recently opened',
     'recently-added': 'Recently added',
     recommended: 'Recommended for you',
     'no-fee-first': 'Free to apply first',
@@ -40,6 +41,7 @@ export function OpportunitySort({ className, signedIn = false }: { className?: s
         <SelectContent align="end" alignItemWithTrigger={false} sideOffset={4} className="w-52 p-1">
           <SelectGroup className={dropdownStyles.list}>
           <SelectItem className={dropdownStyles.option} value="soonest-deadline">Soonest deadline</SelectItem>
+          <SelectItem className={dropdownStyles.option} value="recently-opened">Recently opened</SelectItem>
           <SelectItem className={dropdownStyles.option} value="recently-added">Recently added</SelectItem>
           <SelectItem className={dropdownStyles.option} value="no-fee-first">Free to apply first</SelectItem>
           <SelectItem className={dropdownStyles.option} value="alphabetical">Alphabetical (A–Z)</SelectItem>

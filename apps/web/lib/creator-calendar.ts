@@ -36,6 +36,23 @@ export function relationalCalendarFeed(
 ): string {
   const events: string[] = [];
   for (const item of items) {
+    // 1. Upcoming opening window event
+    if (
+      item.openDate &&
+      (item.oppStatus === "opening-soon" || item.openDate >= generatedAt.toISOString().slice(0, 10)) &&
+      preSubmission.has(item.myStatus)
+    ) {
+      events.push(
+        event(
+          `${item.opportunityId}-opens`,
+          item.openDate,
+          `Opens: ${item.title}`,
+          `${item.organizationName ?? "Publisher"} opens for submissions on this date. Saved in your Missa radar.`,
+        ),
+      );
+    }
+
+    // 2. Upcoming closing deadline event
     if (
       item.deadline &&
       ["exact", "fixed"].includes(item.deadlineKind ?? "") &&

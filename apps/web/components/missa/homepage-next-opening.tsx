@@ -37,7 +37,11 @@ type HomepageCounts = {
   organizations: number;
 };
 
-export function HomepageNextOpening() {
+export function HomepageNextOpening({
+  layout = "carousel",
+}: {
+  layout?: "carousel" | "compact";
+}) {
   const [api, setApi] = useState<CarouselApi>();
   const [selected, setSelected] = useState(2);
   const [counts, setCounts] = useState<HomepageCounts | null>(null);
@@ -101,6 +105,73 @@ export function HomepageNextOpening() {
   }, [attempt]);
 
   const select = (index: number) => api?.scrollTo(index, Boolean(reduced));
+  if (layout === "compact") {
+    return (
+      <section
+        className={`missa-opportunity-carousel ${styles.compact}`}
+        id="next-opening"
+        aria-labelledby="compact-discovery-heading"
+      >
+        <div className={styles.compactInner}>
+          <div className={styles.compactHeading}>
+            <div>
+              <h2 id="compact-discovery-heading" className="font-heading">
+                Your next opportunity is one click away.
+              </h2>
+            </div>
+            <div
+              className={styles.compactTotal}
+              role="status"
+              aria-busy={!counts && !statsError}
+            >
+              {counts ? (
+                <Link href={`/opportunities?${categorySearch([])}`}>
+                  <strong className="font-mono">
+                    {new Intl.NumberFormat("en").format(counts.open)}
+                  </strong>
+                  <span>
+                    Open opportunities <span aria-hidden="true">↗</span>
+                  </span>
+                </Link>
+              ) : statsError ? (
+                <>
+                  <p>Totals are unavailable.</p>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setStatsError(false);
+                      setAttempt((value) => value + 1);
+                    }}
+                  >
+                    Try again
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="sr-only">Loading opportunity total…</span>
+                  <Skeleton className={styles.compactSkeleton} />
+                </>
+              )}
+            </div>
+          </div>
+          <nav
+            className={styles.categoryLinks}
+            aria-label="Explore opportunity categories"
+          >
+            {HOMEPAGE_CATEGORIES.map((category) => (
+              <Link
+                key={category.title}
+                href={`/opportunities?${categorySearch(category.types)}`}
+              >
+                {category.title}
+                <span aria-hidden="true">↗</span>
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </section>
+    );
+  }
   return (
     <div className="missa-opportunity-carousel">
       <section

@@ -108,12 +108,14 @@ export function CreatorPortfolioStudio({
   initialName = "",
   embedded = false,
   sampleTheme = "sage",
+  presentation = "compact",
 }: {
   ownerId?: string;
   publicData?: PortfolioData;
   initialName?: string;
   embedded?: boolean;
   sampleTheme?: "white" | "sage" | "paper" | "mineral" | "night";
+  presentation?: "compact" | "showcase";
 }) {
   const isAccount = Boolean(ownerId && ownerId !== "design-preview-only");
   const [handle, setHandle] = useState(publicData?.handle ?? "");
@@ -555,11 +557,15 @@ export function CreatorPortfolioStudio({
     (item) => filter === "All work" || workFormats(item).includes(filter),
   );
   const PortfolioContainer = embedded ? "section" : "main";
-  const IdentityHeading = embedded ? "h4" : "h1";
+  const IdentityHeading = embedded
+    ? presentation === "showcase"
+      ? "h3"
+      : "h4"
+    : "h1";
   const WorkHeading = embedded ? "h4" : "h2";
   return (
     <div
-      className={`${styles.world} ${embedded ? styles.embedded : ""}`}
+      className={`${styles.world} ${embedded ? styles.embedded : ""} ${embedded && presentation === "showcase" ? styles.showcase : ""}`}
       data-creator-theme={publicData || embedded ? theme : undefined}
     >
       <PortfolioContainer
@@ -1250,16 +1256,18 @@ export function CreatorPortfolioStudio({
                       : selected.join(" / ") ||
                         (ownerId ? "Your creative practice" : "")}
                   </p>
-                  <p className={styles.bio}>
-                    {isSample
-                      ? embedded
-                        ? "I make poems, photographs and sound recordings."
-                        : "I work across text, field recordings and photography to trace the quiet geographies that hold us and the ones we leave behind."
-                      : bio ||
-                        (ownerId
-                          ? "A few words about you and what you make."
-                          : "")}
-                  </p>
+                  {!(isSample && presentation === "showcase") && (
+                    <p className={styles.bio}>
+                      {isSample
+                        ? embedded
+                          ? "I make poems, photographs and sound recordings."
+                          : "I work across text, field recordings and photography to trace the quiet geographies that hold us and the ones we leave behind."
+                        : bio ||
+                          (ownerId
+                            ? "A few words about you and what you make."
+                            : "")}
+                    </p>
+                  )}
                   {!embedded && (
                     <div className={styles.contactActions}>
                       {isSample ? (

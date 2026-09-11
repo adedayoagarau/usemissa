@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/accordion";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import { HomepageWorkspace } from "./homepage-workspace";
+import { HomepagePortfolio } from "./homepage-portfolio";
 import { categorySearch } from "@/lib/homepage-opportunity-categories";
 import "@/components/design-system/homepage-continuation-tokens.css";
 import "@/components/design-system/homepage-marketing-palette.css";
@@ -54,8 +55,8 @@ const PROFILE_KINDS: Record<string, { label: string; path: string }> = {
 };
 const QUESTIONS = [
   {
-    q: "Can I build a portfolio on Missa?",
-    a: "Yes. Add your writing, images, audio and publication credits. Choose a theme, preview your profile and publish it when you’re ready to share a link. Your draft stays private until you publish.",
+    q: "Is my portfolio public?",
+    a: "Your draft stays private until you publish it.",
   },
   {
     q: "Do I need an account?",
@@ -101,8 +102,10 @@ function ActionLink({
 
 export function HomepageContinuation({
   signedIn = false,
+  layout = "full",
 }: {
   signedIn?: boolean;
+  layout?: "full" | "focused";
 }) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const visible = useInView(sectionRef, { once: true, margin: "300px" });
@@ -217,7 +220,6 @@ export function HomepageContinuation({
         <div className={styles.sectionHeading}>
           <div>
             <h2 id="how-heading">Current calls</h2>
-            <p>Browse what is open and decide what fits your work.</p>
           </div>
           <Link className={styles.textLink} href="/opportunities">
             Browse all calls <ArrowUpRight size={18} aria-hidden="true" />
@@ -264,11 +266,15 @@ export function HomepageContinuation({
       </section>
 
       <div className={styles.workspaceBand}>
-        <HomepageWorkspace
-          opportunities={opportunities}
-          failed={catalogueError}
-          onRetry={retry}
-        />
+        {layout === "focused" ? (
+          <HomepagePortfolio />
+        ) : (
+          <HomepageWorkspace
+            opportunities={opportunities}
+            failed={catalogueError}
+            onRetry={retry}
+          />
+        )}
       </div>
 
       <section
@@ -278,8 +284,7 @@ export function HomepageContinuation({
       >
         <div className={styles.sectionHeading}>
           <div>
-            <h2 id="places-heading">Meet the organizations behind the calls</h2>
-            <p>Find publishers, residency hosts and arts organizations.</p>
+            <h2 id="places-heading">The organizations behind the calls</h2>
           </div>
           <Link className={styles.textLink} href="/directory">
             Browse organizations <ArrowUpRight size={18} />
@@ -306,7 +311,9 @@ export function HomepageContinuation({
                 >
                   <div className={styles.organizationPhoto}>
                     {featuredImageFailed ? (
-                      <span className={`${styles.organizationPhotoFallback} font-heading`}>
+                      <span
+                        className={`${styles.organizationPhotoFallback} font-heading`}
+                      >
                         Headlands Center for the Arts
                       </span>
                     ) : (
@@ -418,25 +425,19 @@ export function HomepageContinuation({
         className={styles.invitation}
         aria-labelledby="invitation-heading"
       >
-        <span className={styles.invitationMark} aria-hidden="true">
-          <ArrowUpRight size={44} />
-        </span>
-        <h2 id="invitation-heading">
-          Find the right call
-          <br />
-          for your work.
-        </h2>
-        <p>
-          Browse calls for the work you want to make, then share it when you’re
-          ready.
-        </p>
+        <h2 id="invitation-heading">Save calls and share your work.</h2>
         <div className={styles.invitationActions}>
-          <ActionLink href={signedIn ? "/profile/portfolio" : "/signup"} inverse>
+          <ActionLink
+            href={signedIn ? "/profile/portfolio" : "/signup"}
+            inverse
+          >
             {signedIn ? "Open your portfolio" : "Create an account"}
           </ActionLink>
-          <Link href="/opportunities">
-            Browse opportunities <ArrowUpRight size={17} aria-hidden="true" />
-          </Link>
+          {layout === "full" && (
+            <Link href="/opportunities">
+              Browse opportunities <ArrowUpRight size={17} aria-hidden="true" />
+            </Link>
+          )}
         </div>
       </section>
     </div>
@@ -446,70 +447,75 @@ export function HomepageContinuation({
 export function HomepageFooter() {
   return (
     <div className={`missa-homepage-continuation ${styles.root}`}>
-      <footer className={styles.footer}>
-        <div className={styles.footerMain}>
-          <div>
-            <MissaWordmark size="marketing" />
-            <p>Find open calls and share the work you want to make.</p>
+      <footer className={styles.footerScene}>
+        <div className={styles.footer}>
+          <div className={styles.footerMain}>
+            <div>
+              <MissaWordmark size="marketing" />
+            </div>
+            <nav aria-label="Homepage footer navigation">
+              <div>
+                <span>Calls</span>
+                <Link href="/opportunities">Opportunities</Link>
+                <Link href={`/opportunities?${categorySearch(["residency"])}`}>
+                  Residencies
+                </Link>
+                <Link href={`/opportunities?${categorySearch(["grant"])}`}>
+                  Grants
+                </Link>
+                <Link
+                  href={`/opportunities?${categorySearch(["magazine", "pitch"])}`}
+                >
+                  Publications
+                </Link>
+              </div>
+              <div>
+                <span>Explore</span>
+                <Link
+                  href={`/opportunities?${categorySearch(["award", "contest"])}`}
+                >
+                  Prizes
+                </Link>
+                <Link href={`/opportunities?${categorySearch(["exhibition"])}`}>
+                  Exhibitions
+                </Link>
+                <Link href={`/opportunities?${categorySearch(["festival"])}`}>
+                  Festivals
+                </Link>
+                <Link href="/directory">Organizations</Link>
+              </div>
+              <div>
+                <span>Your work</span>
+                <Link href="/profile/portfolio">Portfolio</Link>
+              </div>
+              <div>
+                <span>Tools &amp; guides</span>
+                <Link href="/rankings/magazines">Magazine rankings</Link>
+                <Link href="/methodology">How Missa works</Link>
+                <Link href="/about">About us</Link>
+                <a href="mailto:hello@usemissa.com">Get in touch</a>
+              </div>
+              <div>
+                <span>Account</span>
+                <Link href="/login">Log in</Link>
+                <Link href="/signup">Create an account</Link>
+              </div>
+            </nav>
           </div>
-          <nav aria-label="Homepage footer navigation">
-            <div>
-              <span>Calls</span>
-              <Link href="/opportunities">Opportunities</Link>
-              <Link href={`/opportunities?${categorySearch(["residency"])}`}>
-                Residencies
-              </Link>
-              <Link href={`/opportunities?${categorySearch(["grant"])}`}>
-                Grants
-              </Link>
-              <Link href={`/opportunities?${categorySearch(["magazine", "pitch"])}`}>
-                Publications
-              </Link>
-            </div>
-            <div>
-              <span>Explore</span>
-              <Link href={`/opportunities?${categorySearch(["award", "contest"])}`}>
-                Prizes
-              </Link>
-              <Link href={`/opportunities?${categorySearch(["exhibition"])}`}>
-                Exhibitions
-              </Link>
-              <Link href={`/opportunities?${categorySearch(["festival"])}`}>
-                Festivals
-              </Link>
-              <Link href="/directory">Organizations</Link>
-            </div>
-            <div>
-              <span>Your work</span>
-              <Link href="/profile/portfolio">Portfolio</Link>
-            </div>
-            <div>
-              <span>Tools &amp; guides</span>
-              <Link href="/rankings/magazines">Magazine rankings</Link>
-              <Link href="/methodology">How Missa works</Link>
-              <Link href="/about">About us</Link>
-              <a href="mailto:hello@usemissa.com">Get in touch</a>
-            </div>
-            <div>
-              <span>Account</span>
-              <Link href="/login">Log in</Link>
-              <Link href="/signup">Create an account</Link>
-            </div>
-          </nav>
+          <div className={styles.footerBottom}>
+            <span>© {new Date().getFullYear()} Missa</span>
+            <Link href="/privacy">Privacy</Link>
+          </div>
         </div>
-        <div className={styles.footerBottom}>
-          <span>© {new Date().getFullYear()} Missa</span>
-          <Link href="/privacy">Privacy</Link>
+        <div className={styles.footerPainting}>
+          <Image
+            src="/media/home/generated/missa-coastal-village.webp"
+            alt="Watercolour painting of a coastal village with artists’ studios, green hills, blue water and small boats"
+            fill
+            sizes="100vw"
+          />
         </div>
       </footer>
-      <div className={styles.footerPainting}>
-        <Image
-          src="/media/home/generated/missa-coastal-village.webp"
-          alt="Watercolour painting of a coastal village with artists’ studios, green hills, blue water and small boats"
-          fill
-          sizes="100vw"
-        />
-      </div>
     </div>
   );
 }

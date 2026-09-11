@@ -398,6 +398,17 @@
       ],
       "boundary": "Isolated local review route; signup is simulated; opportunity page reused unchanged; teal scoped to rankings preview."
     },
+    "composition.homepage-focused": {
+      "semantic": "HomepageFocusedPreview",
+      "composition": [
+        "HomepageHeroPreview",
+        "HomepageNextOpening",
+        "HomepageContinuation",
+        "HomepagePortfolio",
+        "HomepageFooter"
+      ],
+      "boundary": "Experimental review route. Navigation uses descriptive category links; live totals retain loading and retry states. HomepagePortfolio presents the canonical portfolio with installed Button theme choices; no account writes. Existing marketing tokens only. Footer painting shares one semantic footer with navigation and fades into its surface."
+    },
     "composition.homepage-studio": {
       "semantic": "HomepageStudio",
       "composition": [

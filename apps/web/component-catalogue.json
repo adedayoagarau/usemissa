@@ -1474,6 +1474,20 @@
     "states": "Unavailable omitted, idle, connecting, provider failure returned to form, callback linking failure",
     "adaptation": "Full-width outline action and explicit connecting text; rendered only when Neon Auth is configured."
   },
+  "homepageFocused": {
+    "status": "experimental",
+    "implementation": "apps/web/app/design-system/homepage-focused/page.tsx",
+    "route": "/design-system/homepage-focused",
+    "composition": [
+      "HomepageHeroPreview",
+      "HomepageNextOpening",
+      "HomepageContinuation",
+      "HomepagePortfolio",
+      "HomepageFooter"
+    ],
+    "source": "Existing Missa homepage compositions, installed Button, canonical CreatorPortfolioStudio, opportunity cards and native navigation links.",
+    "boundary": "Review composition: compact live discovery and a full-width portfolio showcase with labeled local theme choices. Public catalogue data; no simulated account persistence. Footer artwork fades into the footer navigation."
+  },
   "homepageStudio": {
     "status": "experimental",
     "implementation": "apps/web/components/missa/homepage-studio.tsx",

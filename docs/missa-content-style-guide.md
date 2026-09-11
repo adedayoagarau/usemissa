@@ -13,6 +13,12 @@ applies_to: Marketing, product, opportunity records, organizations, editorial, s
 
 This is the rule behind every word Missa publishes.
 
+Read each page aloud before handing it off. Write the way a person speaks. If
+one clear sentence explains the section, remove the extra copy. Check the whole
+page for repeated meaning, including headings, eyebrows, descriptions, and
+controls. Keep text that explains an action, a requirement, a consequence, or a
+state; remove text that only repeats what the person already knows.
+
 Missa does not perform warmth. It does not turn routine actions into journeys, milestones, or moments of possibility. The care should be visible in the product: useful matches, accurate details, clear decisions, and respect for people's time.
 
 ## 1. What this guide is for

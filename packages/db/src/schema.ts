@@ -4763,3 +4763,144 @@ export const missaMagazineRankings = pgTable(
     ),
   ],
 );
+
+export const opportunitySubmissionCaps = pgTable(
+  "opportunity_submission_caps",
+  {
+    id: text("id").primaryKey(),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    windowId: text("window_id").references(() => opportunityCallWindows.id, {
+      onDelete: "cascade",
+    }),
+    capType: text("cap_type").notNull().default("free_submissions_pool"),
+    limitCount: integer("limit_count").notNull(),
+    currentCount: integer("current_count").notNull().default(0),
+    fallbackFeeCents: integer("fallback_fee_cents"),
+    resetsAt: timestamp("resets_at", { withTimezone: true }),
+    capReachedAt: timestamp("cap_reached_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("opportunity_submission_caps_opp_idx").on(
+      table.opportunityId,
+      table.windowId,
+    ),
+    check(
+      "opportunity_submission_caps_type_check",
+      sql`${table.capType} in ('free_submissions_pool', 'total_submissions_cap', 'daily_quota', 'monthly_quota')`,
+    ),
+    check(
+      "opportunity_submission_caps_limit_check",
+      sql`${table.limitCount} >= 0 and ${table.currentCount} >= 0`,
+    ),
+  ],
+);
+
+export const opportunityRecurringRules = pgTable(
+  "opportunity_recurring_rules",
+  {
+    id: text("id").primaryKey(),
+    opportunityId: text("opportunity_id")
+      .notNull()
+      .references(() => opportunities.id, { onDelete: "cascade" }),
+    frequency: text("frequency").notNull().default("monthly"),
+    openMonth: integer("open_month"),
+    openDay: integer("open_day"),
+    durationDays: integer("duration_days").notNull().default(30),
+    autoScheduleNextMonths: integer("auto_schedule_next_months")
+      .notNull()
+      .default(12),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("opportunity_recurring_rules_opp_idx").on(
+      table.opportunityId,
+      table.frequency,
+    ),
+    check(
+      "opportunity_recurring_rules_freq_check",
+      sql`${table.frequency} in ('monthly', 'quarterly', 'biannual', 'annual')`,
+    ),
+    check(
+      "opportunity_recurring_rules_month_check",
+      sql`(${table.openMonth} is null or (${table.openMonth} >= 1 and ${table.openMonth} <= 12)) and (${table.openDay} is null or (${table.openDay} >= 1 and ${table.openDay} <= 31))`,
+    ),
+  ],
+);
+
+export const creatorOpportunityAlerts = pgTable(
+  "creator_opportunity_alerts",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    opportunityId: text("opportunity_id").references(() => opportunities.id, {
+      onDelete: "cascade",
+    }),
+    profileId: text("profile_id").references(() => garyProfiles.id, {
+      onDelete: "cascade",
+    }),
+    triggerKind: text("trigger_kind").notNull().default("on_open"),
+    leadDays: integer("lead_days").notNull().default(0),
+    channel: text("channel").notNull().default("in_app_and_email"),
+    triggeredAt: timestamp("triggered_at", { withTimezone: true }),
+    createdAt,
+  },
+  (table) => [
+    index("creator_opportunity_alerts_acc_idx").on(
+      table.accountId,
+      table.triggerKind,
+    ),
+    index("creator_opportunity_alerts_opp_idx").on(
+      table.opportunityId,
+      table.triggeredAt,
+    ),
+    index("creator_opportunity_alerts_profile_idx").on(
+      table.profileId,
+      table.triggeredAt,
+    ),
+    check(
+      "creator_opportunity_alerts_trigger_check",
+      sql`${table.triggerKind} in ('on_open', 'days_before_open', 'days_before_deadline')`,
+    ),
+    check(
+      "creator_opportunity_alerts_channel_check",
+      sql`${table.channel} in ('in_app', 'email', 'in_app_and_email')`,
+    ),
+  ],
+);
+
+export const magazineEditorialMasthead = pgTable(
+  "magazine_editorial_masthead",
+  {
+    id: text("id").primaryKey(),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    editorName: text("editor_name").notNull(),
+    role: text("role").notNull().default("Editor"),
+    genres: text("genres")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[]::text[]`),
+    manuscriptWishlist: text("manuscript_wishlist"),
+    activeWindowId: text("active_window_id").references(
+      () => opportunityCallWindows.id,
+      { onDelete: "set null" },
+    ),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    index("magazine_editorial_masthead_profile_idx").on(
+      table.profileId,
+      table.role,
+    ),
+  ],
+);
+

@@ -6,6 +6,7 @@ export type OpportunityRepositorySort =
   | "soonest-deadline"
   | "recently-verified"
   | "recently-added"
+  | "recently-opened"
   | "no-fee-first"
   | "alphabetical";
 
@@ -157,6 +158,7 @@ export interface OpportunityBrowseProjection {
   identityAssetAlt?: string;
   status: "opening-soon" | "open" | "closing-soon" | "deadline-extended" | "closed" | "archived";
   type: OpportunityType;
+  openDate?: string;
   discipline?: string;
   genres: string[];
   taxonomy?: {

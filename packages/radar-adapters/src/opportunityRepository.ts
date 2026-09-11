@@ -535,6 +535,8 @@ function buildOrder(sort: OpportunityRepositoryQuery["sort"]): string {
       return "o.processing_succeeded_at desc nulls last, o.id asc";
     case "recently-added":
       return "o.created_at desc, o.id asc";
+    case "recently-opened":
+      return "coalesce(o.open_date, o.created_at::date) desc nulls last, o.id asc";
     case "alphabetical":
       return "lower(o.title) asc, o.id asc";
     case "no-fee-first":
@@ -573,6 +575,17 @@ function addCursorCondition(
     values.push(cursor.id);
     conditions.push(
       `(o.created_at < ${keyPlaceholder}::timestamptz or (o.created_at = ${keyPlaceholder}::timestamptz and o.id > ${idPlaceholder}))`,
+    );
+    return;
+  }
+
+  if (query.sort === "recently-opened" && cursor.key) {
+    const keyPlaceholder = `$${values.length + 1}`;
+    values.push(cursor.key);
+    const idPlaceholder = `$${values.length + 1}`;
+    values.push(cursor.id);
+    conditions.push(
+      `(coalesce(o.open_date, o.created_at::date) < ${keyPlaceholder}::date or (coalesce(o.open_date, o.created_at::date) = ${keyPlaceholder}::date and o.id > ${idPlaceholder}))`,
     );
     return;
   }
@@ -1027,6 +1040,7 @@ function mapRow(row: OpportunityRow): OpportunityBrowseProjection {
     identityAssetAlt: row.identity_asset_alt ? cleanTitleOrLabel(row.identity_asset_alt) : undefined,
     status: row.status,
     type: (["open-call", "magazine", "grant", "award", "fellowship", "residency", "festival", "scholarship", "conference", "rfp", "contest", "pitch", "exhibition", "commission", "job", "other"].includes(row.type) ? row.type : "other") as any,
+    openDate: row.open_date ?? undefined,
     discipline: row.discipline ?? undefined,
     genres: (row.genres ?? []).slice(0, 32),
     taxonomy: row.taxonomy ?? {
@@ -1091,8 +1105,10 @@ function cursorFor(
   const key =
     sort === "recently-added"
       ? (row.createdAt ?? null)
-      : sort === "recently-verified"
-        ? (row.source.processingSucceededAt ?? null)
+      : sort === "recently-opened"
+        ? (row.openDate ?? (row.createdAt ? row.createdAt.slice(0, 10) : null))
+        : sort === "recently-verified"
+          ? (row.source.processingSucceededAt ?? null)
         : sort === "alphabetical"
           ? row.title.toLocaleLowerCase()
           : sort === "no-fee-first"
