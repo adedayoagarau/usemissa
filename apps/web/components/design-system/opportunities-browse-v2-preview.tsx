@@ -82,6 +82,7 @@ const feeOptions: Record<string, string> = {
 };
 
 const collections = [
+  { href: "/discover/match", label: "✨ Where Should I Submit?" },
   { href: "/discover/queer-lgbtq-opportunities", label: "Queer & LGBTQ+" },
   { href: "/discover/bipoc-opportunities", label: "BIPOC Creators" },
   {

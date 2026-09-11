@@ -853,6 +853,15 @@
   object-position: center 54%;
   border-radius: var(--radius-lg);
 }
+.stage .identity:not(:has(.stageBackdrop)) {
+  padding-block-start: 48px;
+}
+.stage .identity:not(:has(.portrait)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.stage .identity:not(:has(.portrait)) > div {
+  grid-column: 1;
+}
 .stage .portrait {
   grid-column: 1;
   grid-row: 1;
@@ -982,9 +991,7 @@
   margin: 0 0 12px;
 }
 .stage .project .disciplines {
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  color: var(--muted-foreground);
+  display: none;
 }
 .stage .projectCopy > p:not(.projectIndex):not(.disciplines):not(.poem) {
   font-size: 14px;
@@ -1171,7 +1178,19 @@
   .stage .identity .contactActions {
     grid-column: 1 / -1;
     grid-row: 4;
+    display: grid;
+    grid-template-columns: repeat(5, 44px);
     margin: 0;
+  }
+  .stage .identity .contactActions > button:first-child {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .stage .identity .contactActions > nav {
+    grid-column: 1 / -1;
+  }
+  .stage .identity:not(:has(.portrait)) h1 {
+    grid-column: 1 / -1;
   }
   .stage .workIndex,
   .stage .lower,
