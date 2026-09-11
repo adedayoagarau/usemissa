@@ -150,6 +150,7 @@ const tenantJoins: Record<WorkspaceResourceType, { table: string; joins: string;
   message_delivery_attempt: { table: 'message_delivery_attempts r', joins: '', organization: 'r.organization_id' },
   organization_retention_policy: { table: 'organization_retention_policies r', joins: '', organization: 'r.organization_id' },
   organization_inbox_view: { table: 'organization_inbox_views r', joins: '', organization: 'r.organization_id' },
+  review_recommendation_correction: { table: 'review_recommendation_corrections r', joins: '', organization: 'r.organization_id' },
 };
 
 export function workspaceRequestHash(value: unknown): string {
@@ -622,6 +623,22 @@ export class RelationalWorkspace {
       const row = await client.query<{ revision: number }>('insert into organization_inbox_views (id,organization_id,owner_account_id,name,filter) values ($1,$2,$3,$4,$5) returning revision', [id, envelope.organizationId, envelope.actorAccountId, input.name, JSON.stringify(input.filter)]);
       await this.effect(client, envelope, 'organization_inbox_view.created', 'organization_inbox_view', id, row.rows[0]!.revision, input);
       return { resourceType: 'organization_inbox_view', resourceId: id, revision: row.rows[0]!.revision };
+    });
+  }
+
+  async correctReviewRecommendation(envelope: WorkspaceCommandEnvelope, assignmentId: string, input: { score?: number; notes?: string; reason: string }): Promise<WorkspaceCommandResult> {
+    return this.command(envelope, { assignmentId, ...input }, async (client) => {
+      const current = await client.query<{ revision: number; score: number | null; notes: string | null }>(`select ra.revision,rec.score,rec.notes from review_assignments ra join review_recommendations rec on rec.review_assignment_id=ra.id join review_rounds rr on rr.id=ra.review_round_id join open_calls o on o.id=rr.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id where ra.id=$1 and e.organization_id=$2 for update of ra,rec`, [assignmentId, envelope.organizationId]);
+      const recommendation = current.rows[0];
+      if (!recommendation) throw new WorkspaceNotFoundError();
+      if (envelope.expectedRevision !== recommendation.revision) throw new WorkspaceConflictError('review_assignment', assignmentId, envelope.expectedRevision ?? 0, recommendation.revision);
+      const correctionId = randomUUID();
+      const nextRevision = recommendation.revision + 1;
+      await client.query('insert into review_recommendation_corrections (id,organization_id,review_assignment_id,previous_score,previous_notes,corrected_score,corrected_notes,reason,created_by_account_id) values ($1,$2,$3,$4,$5,$6,$7,$8,$9)', [correctionId, envelope.organizationId, assignmentId, recommendation.score, recommendation.notes, input.score ?? null, input.notes ?? null, input.reason, envelope.actorAccountId]);
+      await client.query('update review_recommendations set score=$1,notes=$2,updated_at=now() where review_assignment_id=$3', [input.score ?? null, input.notes ?? null, assignmentId]);
+      await client.query('update review_assignments set revision=$1,updated_at=now() where id=$2', [nextRevision, assignmentId]);
+      await this.effect(client, envelope, 'review_recommendation.corrected', 'review_recommendation_correction', correctionId, nextRevision, { reviewAssignmentId: assignmentId });
+      return { resourceType: 'review_recommendation_correction', resourceId: correctionId, revision: nextRevision };
     });
   }
 

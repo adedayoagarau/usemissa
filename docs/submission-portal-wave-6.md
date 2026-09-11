@@ -41,6 +41,10 @@ Organization admins can now save named inbox views with bounded status and
 opportunity filters; each view is owner-scoped and created through the command
 and audit/outbox boundary.
 
+Reviewer recommendations now support an admin-controlled correction path that
+records previous and corrected values, a required reason, revision checks, and
+an immutable correction audit record.
+
 ### Review operations
 
 - Configure review stages, reviewer groups, workload limits, blind projections,
