@@ -507,6 +507,8 @@ export class RelationalWorkspace {
   async reviewAssignmentsForReviewer(reviewerAccountId: string): Promise<Row[]> {
     const result = await this.pool.query<Row>(`select ra.id,ra.review_round_id "reviewRoundId",ra.submission_id "submissionId",
       ra.reviewer_account_id "reviewerAccountId",ra.completed_at "completedAt",ra.revision,
+      count(*) over (partition by ra.reviewer_account_id) "assignmentCount",
+      count(*) filter (where ra.completed_at is null) over (partition by ra.reviewer_account_id) "openAssignmentCount",
       jsonb_build_object('id',s.id,'submissionPathId',s.submission_path_id,'status',s.status,'submittedAt',s.submitted_at,'revision',s.revision) submission,
       coalesce((select jsonb_agg(jsonb_build_object('id',w.id,'submissionId',w.submission_id,'title',w.title,'order',w."order",'revision',w.revision) order by w."order") from works w where w.submission_id=s.id),'[]'::jsonb) works,
       case when rec.review_assignment_id is null then null else jsonb_build_object('reviewAssignmentId',rec.review_assignment_id,'score',rec.score,'notes',rec.notes,'recordedAt',rec.recorded_at) end recommendation

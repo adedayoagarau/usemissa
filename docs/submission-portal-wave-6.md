@@ -10,6 +10,9 @@ certification.
 **Current slice:** reviewer completion now rejects non-finite, fractional, or
 out-of-range scores and trims/limits notes at the HTTP boundary.
 
+Reviewer assignment projections now include total and open assignment counts,
+giving workload context without exposing other reviewers' submissions.
+
 ### Review operations
 
 - Configure review stages, reviewer groups, workload limits, blind projections,
