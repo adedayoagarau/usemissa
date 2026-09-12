@@ -6,6 +6,7 @@
  * production RadarEngine look like", not two.
  */
 import { Pool } from "pg";
+import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import {
   RadarEngine,
   HttpFetcher,
@@ -189,7 +190,7 @@ export async function createProductionEngine(): Promise<ProductionEngine> {
     );
   }
 
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = createMissaPostgresPool(databaseUrl, "catalogue");
   await ensurePostgresSchema(pool);
   const store = await loadStoreFromPostgres(pool);
   let snapshotVersion = await readSnapshotVersion(pool);

@@ -4,7 +4,7 @@ import { notFound, redirect } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { organizationCapabilityProjection } from '@/lib/organizationProduct';
 import styles from '../workflow.module.css';
 
@@ -19,6 +19,23 @@ export default async function OrganizationReviewsPage({ params, searchParams }: 
   if (!projection.destinations.includes('reviews')) notFound();
   if (membership.role === 'reviewer') return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Assigned review</p><h1>Reviews</h1><p>Your reviewer experience is a private cross-Organization queue, not the Organization operations ledger.</p></div><span className={styles.role}>{projection.label}</span></header><section className={styles.limited}><h2>Open your assigned Reviews</h2><p>Only assignments projected to your account belong in the reviewer experience. Organization membership, other reviewers, and unrelated Submissions stay hidden.</p><Link className={styles.reviewerLink} href="/reviewer">Open assigned Reviews</Link></section></main>;
   if (membership.role !== 'owner' && membership.role !== 'admin') return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Review operations</p><h1>Reviews</h1><p>Rounds, assignments, recommendations, conflicts, and completion need a server-enforced Program projection.</p></div><span className={styles.role}>{projection.label}</span></header><section className={styles.limited}><h2>Scoped review projection unavailable</h2><p>The full Organization review ledger is withheld until Team and Program assignment scope is enforced by the server.</p></section></main>;
+
+  if (workspaceRelationalAuthorityEnabled()) {
+    const relational = await getRelationalWorkspace();
+    const radar = await getEngine();
+    const calls = await relational.openCallsForOrganization(organizationId);
+    const submissions = await relational.submissionsForOrganization(organizationId);
+    const rounds = (await Promise.all(calls.map((call) => relational.reviewRoundsForOpenCall(organizationId, call.id)))).flat();
+    const records = rounds.map((round) => {
+      const opportunity = calls.find((call) => call.id === round.openCallId)!;
+      const assignments = submissions.flatMap((submission) => submission.openCallId === opportunity.id ? submission.assignments.filter((assignment) => assignment.reviewRoundId === round.id).map((assignment) => ({ ...assignment, submissionId: submission.id, works: submission.works })) : []);
+      return { round, opportunity, assignments, complete: assignments.filter((assignment) => Boolean(assignment.completedAt)).length };
+    });
+    const selected = records.find((record) => record.round.id === query.selected) ?? records[0];
+    const totalAssignments = records.reduce((sum, record) => sum + record.assignments.length, 0);
+    const completedAssignments = records.reduce((sum, record) => sum + record.complete, 0);
+    return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Evidence desk</p><h1>Reviews</h1><p>Round health and permitted recommendation evidence from the relational Organization projection.</p></div><span className={styles.role}>{projection.label}</span></header><dl className={styles.summary}><div><dt>Rounds</dt><dd>{records.length}</dd></div><div><dt>Assignments</dt><dd>{totalAssignments}</dd></div><div><dt>Complete</dt><dd>{completedAssignments}</dd></div><div><dt>In progress</dt><dd>{totalAssignments - completedAssignments}</dd></div></dl>{records.length && selected ? <div className={styles.layout}><section><header className={styles.sectionHeader}><div><p className={styles.eyebrow}>Review rounds</p><h2>Operational ledger</h2></div><span>{records.length} {records.length === 1 ? 'round' : 'rounds'}</span></header><div className={styles.list}>{records.map((record) => <article className={styles.row} key={record.round.id}><div><h3>{record.round.name}</h3><p>{record.opportunity.title}</p><p>{record.complete} of {record.assignments.length} assignments complete</p></div><Link aria-current={record.round.id === selected.round.id ? 'true' : undefined} href={`/organization/${encodeURIComponent(organizationId)}/reviews?selected=${encodeURIComponent(record.round.id)}`}>{record.round.id === selected.round.id ? 'Selected' : 'Open'}<ArrowRight aria-hidden="true" /></Link></article>)}</div></section><aside className={styles.selected} aria-labelledby="selected-round-title"><p className={styles.eyebrow}>Selected round</p><h2 id="selected-round-title">{selected.round.name}</h2><p>{selected.opportunity.title}</p><dl className={styles.facts}><div><dt>Assignments</dt><dd>{selected.assignments.length}</dd></div><div><dt>Complete</dt><dd>{selected.complete}</dd></div></dl><section className={styles.evidence}>{selected.assignments.map((assignment) => { const reviewer = radar.store.accounts.get(assignment.reviewerAccountId ?? ''); return <article key={assignment.id}><h3>{assignment.works.map((work) => work.title).join(', ') || 'Submission material'}</h3><p>{reviewer?.displayName || reviewer?.email || 'Reviewer'} · {assignment.completedAt ? 'Review complete' : 'In progress'}</p><p>{assignment.recusedAt ? 'Recused' : assignment.expiresAt ? `Expires ${new Date(assignment.expiresAt).toLocaleDateString('en')}` : 'Active assignment'}</p></article>; })}{selected.assignments.length ? null : <div className={styles.boundary}><h3>No assignments yet</h3><p>This round has no active review assignments.</p></div>}</section><div className={styles.boundary}><h3>Relational controls</h3><p>Assignment, recusal, reassignment, and recommendation commands are available only through their audited, revision-aware endpoints.</p></div></aside></div> : <section className={styles.empty}><h2>No review rounds yet</h2><p>Create a round before assigning reviewers.</p></section>}</main>;
+  }
 
   const workspace = await getWorkspaceEngine();
   const radar = await getEngine();

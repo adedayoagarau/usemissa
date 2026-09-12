@@ -39,6 +39,7 @@ test('relational submission route preserves private payload and reports new vers
   let replayed = false;
   globalThis.__missaRelationalWorkspacePromise = Promise.resolve({
     publicSubmissionPath: async () => ({ id: 'path-one', openCallId: 'call-one', openCallTitle: 'Open Call', radarOpportunityId: opportunity.id, categories: ['Poetry'], fields: [{ id: 'statement', type: 'text', label: 'Statement', required: true }], feeCents: null }),
+    opportunityConfigurationVersionsForOpenCall: async () => [],
     finalizeSubmission: async (_envelope: unknown, payload: unknown) => { requests.push(payload); return { resourceType: 'submission', resourceId: 'submission-one', revision: 1, receiptId: 'receipt-one', replayed }; },
   } as unknown as RelationalWorkspace);
   const invoke = (payload: unknown) => POST(new Request(request.url, { method: 'POST', headers: request.headers, body: JSON.stringify(payload) }), { params: Promise.resolve({ pathId: 'path-one' }) });

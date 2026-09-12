@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { assessCoverage, buildCoverageQueries, type CoverageCellInput, type CoverageMembershipInput } from '@missa/radar-engine';
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from './workerTelemetry.js';
+import { createMissaPostgresPool } from './postgresPoolPolicy.js';
 
 const LOCK_KEY = 1947350012;
 const DEFAULT_TYPES = ['open-call', 'magazine', 'grant', 'award', 'fellowship', 'residency', 'festival', 'scholarship', 'conference', 'rfp', 'contest', 'pitch', 'exhibition', 'commission', 'other'] as const;
@@ -93,7 +94,7 @@ export async function enqueueCoverageQueries(client: PoolClient, maxCells = 128,
 }
 
 export async function runCoverageWorkerTick(options: CoverageWorkerOptions = {}): Promise<CoverageTickResult> {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = createMissaPostgresPool(process.env.DATABASE_URL!, 'worker');
   const client = await pool.connect();
   try {
     if (!(await taxonomyTablesPresent(client))) return { status: 'unavailable', cellsMaterialized: 0, cellsAssessed: 0, queriesQueued: 0 };
@@ -117,7 +118,7 @@ export async function runCoverageWorkerTick(options: CoverageWorkerOptions = {})
 
 async function main(): Promise<void> {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required to run the Missa coverage worker.');
-  const telemetryPool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1 });
+  const telemetryPool = createMissaPostgresPool(process.env.DATABASE_URL, 'worker', { max: 1 });
   const workerRunId = await startWorkerRun(telemetryPool, 'coverage-worker');
   try {
     const result = await runCoverageWorkerTick({ logger: console });

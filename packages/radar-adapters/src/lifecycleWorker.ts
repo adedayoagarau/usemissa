@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { Pool } from "pg";
 import { runLifecycleReconcilerBatch } from "./lifecycleReconciler.js";
+import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
-const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
+const pool = createMissaPostgresPool(process.env.DATABASE_URL, "worker", { max: 4 });
 const batchSize = Number(process.env.MISSA_LIFECYCLE_BATCH_SIZE ?? 25);
 const intervalMs = Math.max(60_000, Number(process.env.MISSA_LIFECYCLE_INTERVAL_MINUTES ?? 5) * 60_000);
 

@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
+import { createMissaPostgresPool } from '@missa/db';
 import type { DecisionOutcome, SubmissionField, SubmissionStatus } from './domain/types.js';
 import { canTransitionConfiguration, portalConfigurationFromDatabase, type ConfigurationStatus, type FormDefinition, type OpportunityConfiguration, type PortalConfiguration, type ReviewWorkflowDefinition } from './portalConfiguration.js';
 import { WorkspaceConflictError, WorkspaceIdempotencyReuseError, WorkspaceNotFoundError, WorkspaceTransitionError, type WorkspaceResourceType } from './errors.js';
@@ -38,7 +39,7 @@ export interface RelationalOrganizationSubmissionView {
   paymentStatus?: string;
   answers?: Record<string, string | string[]>;
   works: Array<{ id: string; title: string; fileUrl?: string; fileUrls?: string[]; order: number }>;
-  assignments: Array<{ id: string; reviewerAccountId?: string; reviewerGroupId?: string; completedAt?: string; expiresAt?: string; recusedAt?: string; recusalReason?: string; reassignedFromAssignmentId?: string; revision: number }>;
+  assignments: Array<{ id: string; reviewRoundId: string; reviewerAccountId?: string; reviewerGroupId?: string; completedAt?: string; expiresAt?: string; recusedAt?: string; recusalReason?: string; reassignedFromAssignmentId?: string; revision: number }>;
   decisions: Array<{ workId: string; outcome: DecisionOutcome }>;
 }
 export interface RelationalPortalConfigurationView {
@@ -120,6 +121,24 @@ export interface RelationalPublicSubmissionPathView {
   feeCents?: number;
   radarOpportunityId?: string;
   revision: number;
+}
+export interface RelationalOwnerSubmissionDetail {
+  id: string;
+  submissionPathId: string;
+  status: SubmissionStatus;
+  submittedAt: string;
+  revision: number;
+  paymentStatus?: string;
+  feeCents?: number;
+  category?: string;
+  answers?: Record<string, string | string[]>;
+  openCallId: string;
+  openCallTitle: string;
+  radarOpportunityId?: string;
+  organizationId: string;
+  path: Pick<RelationalPublicSubmissionPathView, 'id' | 'openCallId' | 'categories' | 'fields' | 'revision'> & { feeCents?: number };
+  works: Array<{ id: string; submissionId: string; title: string; fileUrl?: string; fileUrls?: string[]; order: number; revision: number }>;
+  decisions: Array<{ id: string; workId: string; outcome: DecisionOutcome; decidedAt: string; revision: number }>;
 }
 export type OrganizationBlindMode = 'none' | 'identity-redacted';
 export interface RelationalOrganizationReviewSettingsView {
@@ -912,16 +931,32 @@ export class RelationalWorkspace {
     });
   }
 
-  async submissionForOwner(ownerAccountId: string, id: string): Promise<Row | undefined> {
-    const result = await this.pool.query<Row>(`select s.id,s.submission_path_id "submissionPathId",s.status,s.submitted_at "submittedAt",s.revision,
+  async submissionForOwner(ownerAccountId: string, id: string): Promise<RelationalOwnerSubmissionDetail | undefined> {
+    const result = await this.pool.query<{
+      id: string; submissionPathId: string; status: SubmissionStatus; submittedAt: Date; revision: number;
+      paymentStatus: string | null; feeCents: number | null; category: string | null; answers: Record<string, string | string[]> | null;
+      openCallId: string; openCallTitle: string; radarOpportunityId: string | null; organizationId: string;
+      path: Omit<RelationalOwnerSubmissionDetail['path'], 'feeCents'> & { feeCents: number | null }; works: RelationalOwnerSubmissionDetail['works']; decisions: Array<{ id: string; workId: string; outcome: DecisionOutcome; decidedAt: Date; revision: number }>;
+    }>(`select s.id,s.submission_path_id "submissionPathId",s.status,s.submitted_at "submittedAt",s.revision,s.payment_status "paymentStatus",s.fee_cents "feeCents",s.category,s.answers,
       sp.open_call_id "openCallId",o.title "openCallTitle",o.radar_opportunity_id "radarOpportunityId",e.organization_id "organizationId",
       jsonb_build_object('id',sp.id,'openCallId',sp.open_call_id,'categories',sp.categories,'fields',sp.fields,'feeCents',sp.fee_cents,'revision',sp.revision) path,
-      coalesce((select jsonb_agg(jsonb_build_object('id',w.id,'submissionId',w.submission_id,'title',w.title,'order',w."order",'revision',w.revision) order by w."order") from works w where w.submission_id=s.id),'[]'::jsonb) works,
+      coalesce((select jsonb_agg(jsonb_build_object('id',w.id,'submissionId',w.submission_id,'title',w.title,'fileUrl',w.file_url,'fileUrls',w.file_urls,'order',w."order",'revision',w.revision) order by w."order") from works w where w.submission_id=s.id),'[]'::jsonb) works,
       coalesce((select jsonb_agg(jsonb_build_object('id',d.id,'workId',d.work_id,'outcome',d.outcome,'decidedAt',d.decided_at,'revision',d.revision) order by d.decided_at,d.id) from decisions d join works w on w.id=d.work_id where w.submission_id=s.id),'[]'::jsonb) decisions
       from submissions s join submission_paths sp on sp.id=s.submission_path_id join open_calls o on o.id=sp.open_call_id
       join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
       where s.id=$1 and s.submitter_account_id=$2`, [id, ownerAccountId]);
-    return result.rows[0];
+    const row = result.rows[0];
+    if (!row) return undefined;
+    return {
+      id: row.id, submissionPathId: row.submissionPathId, status: row.status, submittedAt: row.submittedAt.toISOString(),
+      revision: row.revision, openCallId: row.openCallId, openCallTitle: row.openCallTitle, organizationId: row.organizationId,
+      ...(row.paymentStatus ? { paymentStatus: row.paymentStatus } : {}), ...(row.feeCents !== null ? { feeCents: row.feeCents } : {}),
+      ...(row.category ? { category: row.category } : {}), ...(row.answers ? { answers: row.answers } : {}),
+      ...(row.radarOpportunityId ? { radarOpportunityId: row.radarOpportunityId } : {}),
+      path: { id: row.path.id, openCallId: row.path.openCallId, categories: row.path.categories, fields: row.path.fields, revision: row.path.revision, ...(row.path.feeCents !== null ? { feeCents: row.path.feeCents } : {}) },
+      works: row.works.map((work) => ({ ...work, ...(work.fileUrl ? { fileUrl: work.fileUrl } : {}), ...(work.fileUrls?.length ? { fileUrls: work.fileUrls } : {}) })),
+      decisions: row.decisions.map((decision) => ({ ...decision, decidedAt: decision.decidedAt.toISOString() })),
+    };
   }
 
   async submissionsForOwner(ownerAccountId:string):Promise<RelationalOwnerSubmissionView[]> {
@@ -946,7 +981,7 @@ export class RelationalWorkspace {
     const result = await this.pool.query<RelationalOrganizationSubmissionView>(`select s.id,s.submission_path_id "submissionPathId",o.id "openCallId",o.title "openCallTitle",
         s.submitter_account_id "submitterAccountId",s.status,s.submitted_at "submittedAt",s.category,s.payment_status "paymentStatus",s.answers,
         coalesce((select jsonb_agg(jsonb_build_object('id',w.id,'title',w.title,'fileUrl',w.file_url,'fileUrls',w.file_urls,'order',w."order") order by w."order",w.id) from works w where w.submission_id=s.id),'[]'::jsonb) works,
-        coalesce((select jsonb_agg(jsonb_build_object('id',ra.id,'reviewerAccountId',ra.reviewer_account_id,'reviewerGroupId',ra.reviewer_group_id,'completedAt',ra.completed_at,'expiresAt',ra.expires_at,'recusedAt',ra.recused_at,'recusalReason',ra.recusal_reason,'reassignedFromAssignmentId',ra.reassigned_from_assignment_id,'revision',ra.revision) order by ra.id) from review_assignments ra where ra.submission_id=s.id),'[]'::jsonb) assignments,
+        coalesce((select jsonb_agg(jsonb_build_object('id',ra.id,'reviewRoundId',ra.review_round_id,'reviewerAccountId',ra.reviewer_account_id,'reviewerGroupId',ra.reviewer_group_id,'completedAt',ra.completed_at,'expiresAt',ra.expires_at,'recusedAt',ra.recused_at,'recusalReason',ra.recusal_reason,'reassignedFromAssignmentId',ra.reassigned_from_assignment_id,'revision',ra.revision) order by ra.id) from review_assignments ra where ra.submission_id=s.id),'[]'::jsonb) assignments,
         coalesce((select jsonb_agg(jsonb_build_object('workId',d.work_id,'outcome',d.outcome) order by d.work_id) from decisions d join works w on w.id=d.work_id where w.submission_id=s.id),'[]'::jsonb) decisions
       from submissions s join submission_paths sp on sp.id=s.submission_path_id join open_calls o on o.id=sp.open_call_id
       join programs p on p.id=o.program_id join entities e on e.id=p.entity_id
@@ -1315,7 +1350,7 @@ export class RelationalWorkspace {
 
 export async function createRelationalWorkspace(databaseUrl = process.env.DATABASE_URL): Promise<RelationalWorkspace> {
   if (!databaseUrl) throw new Error('DATABASE_URL is required when relational Workspace authority is enabled');
-  const workspace = new RelationalWorkspace(new Pool({ connectionString: databaseUrl }));
+  const workspace = new RelationalWorkspace(createMissaPostgresPool(databaseUrl, 'creator'));
   const health = await workspace.health();
   if (!health.schemaReady) {
     await workspace.pool.end();

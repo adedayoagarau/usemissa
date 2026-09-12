@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { missaPostgresPoolConfig } from "@missa/radar-adapters";
 import {
   PostgresEditorialIntelligenceRepository,
   type EditorialIntelligenceFullProfile,
@@ -145,7 +146,7 @@ export function getEditorialIntelligenceRepository(): {
   }
 
   if (!globalThis.__missaEditorialIntelRepo) {
-    const pool = new Pool({ connectionString });
+    const pool = new Pool(missaPostgresPoolConfig(connectionString, "creator"));
     globalThis.__missaEditorialIntelRepo = new PostgresEditorialIntelligenceRepository(pool);
   }
 

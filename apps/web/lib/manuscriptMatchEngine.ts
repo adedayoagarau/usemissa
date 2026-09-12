@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import { ManuscriptMatchEngine } from "@missa/radar-adapters";
+import { missaPostgresPoolConfig } from "@missa/radar-adapters";
 
 declare global {
   var __missaManuscriptMatchEngine: ManuscriptMatchEngine | undefined;
@@ -15,7 +16,7 @@ export function getManuscriptMatchEngine(): ManuscriptMatchEngine {
 
   if (databaseUrl) {
     pool = new Pool({
-      connectionString: databaseUrl,
+      ...missaPostgresPoolConfig(databaseUrl, "creator"),
       ssl: databaseUrl.includes("localhost")
         ? undefined
         : { rejectUnauthorized: false },

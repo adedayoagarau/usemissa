@@ -32,6 +32,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
   const openCall = relationalPath ? { title: relationalPath.openCallTitle, radarOpportunityId: relationalPath.radarOpportunityId } : workspace!.store.openCalls.get(path.openCallId);
   if (!openCall) return NextResponse.json({ error: 'This submission form is not open' }, { status: 409 });
 
+  if (relationalPath) {
+    const publishedConfiguration = (await relationalWorkspace!.opportunityConfigurationVersionsForOpenCall(relationalPath.organizationId, relationalPath.openCallId)).find((version) => version.status === 'published');
+    if (publishedConfiguration) {
+      const now = Date.now();
+      const opensAt = publishedConfiguration.configuration.opensAt ? Date.parse(publishedConfiguration.configuration.opensAt) : undefined;
+      const closesAt = publishedConfiguration.configuration.closesAt ? Date.parse(publishedConfiguration.configuration.closesAt) : undefined;
+      const gracePeriod = publishedConfiguration.configuration.gracePeriodMinutes * 60_000;
+      if (opensAt !== undefined && now < opensAt) return NextResponse.json({ error: 'This application is not open yet', code: 'application_not_open' }, { status: 409 });
+      if (closesAt !== undefined && now > closesAt + gracePeriod) return NextResponse.json({ error: 'The application deadline has passed', code: 'application_closed' }, { status: 409 });
+    }
+  }
+
   if (openCall.radarOpportunityId) {
     const capCheck = await checkOpportunitySubmissionCap(openCall.radarOpportunityId, false);
     if (!capCheck.allowed) {

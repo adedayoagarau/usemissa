@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
 import { ensureEnrichmentSchema } from "./enrichmentSchema.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
+import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import { fetchWithPolicy, USER_AGENT } from "./mediaFetcher.js";
 import { extractMediaCandidates } from "./mediaExtractor.js";
 import type { SourceRole } from "./mediaExtractionContracts.js";
@@ -492,7 +493,7 @@ async function tick(pool: Pool, limit: number): Promise<{ claimed: number; compl
 async function main(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is required to run the Missa enrichment worker.");
-  const pool = new Pool({ connectionString: databaseUrl, max: 4 });
+  const pool = createMissaPostgresPool(databaseUrl, "worker", { max: 4 });
   await ensureEnrichmentSchema(pool);
   const workerRunId = await startWorkerRun(pool, "enrichment-worker");
   const controller = new AbortController();

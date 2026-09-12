@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { missaPostgresPoolConfig } from '@missa/radar-adapters';
 
 const { Pool } = pg;
 let poolInstance: pg.Pool | null = null;
@@ -9,7 +10,7 @@ function getPool(): pg.Pool {
       throw new Error('DATABASE_URL is not set');
     }
     poolInstance = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      ...missaPostgresPoolConfig(process.env.DATABASE_URL, 'creator'),
       ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
     });
   }

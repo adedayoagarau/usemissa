@@ -8,6 +8,7 @@ import { ensurePublicationRubricSchema } from "./publicationRubricSchema.js";
 import { evaluatePublicationRubric, type PublicationRubricCandidate } from "./publicationRubric.js";
 import { syncProfileOpportunityLinks } from "./profileIdentityMatcher.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
+import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 
 type ReviewDecision = "publish" | "needs-human" | "suppress" | "error";
 type ReviewJob = { id: string; opportunityId: string; inputVersion: string };
@@ -237,7 +238,7 @@ export async function runReviewTick(pool: Pool, limit = batchSize()): Promise<{ 
 
 async function main(): Promise<void> {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required to run the Missa review agent.");
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = createMissaPostgresPool(process.env.DATABASE_URL, "worker");
   await ensureAgentGraphSchema(pool);
   await ensureContentReviewSchema(pool);
   await ensurePublicationRubricSchema(pool);
