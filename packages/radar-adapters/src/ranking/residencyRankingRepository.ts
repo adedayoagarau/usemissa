@@ -166,7 +166,7 @@ export class PostgresResidencyRankingRepository {
     if (filter.query && filter.query.trim()) {
       const q = `%${filter.query.trim()}%`;
       conditions.push(
-        `(p.name ILIKE $${idx} OR p.city ILIKE $${idx} OR p.region ILIKE $${idx} OR p.country ILIKE $${idx} OR r.location ILIKE $${idx} OR r.disciplines ILIKE $${idx})`,
+        `(p.name ILIKE $${idx} OR (to_jsonb(p)->>'city') ILIKE $${idx} OR (to_jsonb(p)->>'region') ILIKE $${idx} OR (to_jsonb(p)->>'country') ILIKE $${idx} OR r.location ILIKE $${idx} OR r.disciplines ILIKE $${idx})`,
       );
       values.push(q);
       idx++;
@@ -175,7 +175,7 @@ export class PostgresResidencyRankingRepository {
     if (filter.location && filter.location.trim()) {
       const loc = `%${filter.location.trim()}%`;
       conditions.push(
-        `(p.city ILIKE $${idx} OR p.region ILIKE $${idx} OR p.country ILIKE $${idx} OR r.location ILIKE $${idx})`,
+        `((to_jsonb(p)->>'city') ILIKE $${idx} OR (to_jsonb(p)->>'region') ILIKE $${idx} OR (to_jsonb(p)->>'country') ILIKE $${idx} OR r.location ILIKE $${idx})`,
       );
       values.push(loc);
       idx++;
@@ -212,11 +212,11 @@ export class PostgresResidencyRankingRepository {
         p.name,
         p.name_key AS slug,
         p.website_url,
-        p.city,
-        p.region,
-        p.country,
-        p.summary,
-        p.description,
+        to_jsonb(p)->>'city' AS city,
+        to_jsonb(p)->>'region' AS region,
+        to_jsonb(p)->>'country' AS country,
+        to_jsonb(p)->>'summary' AS summary,
+        to_jsonb(p)->>'description' AS description,
         r.location,
         r.prestige_tier,
         r.total_score,
@@ -317,11 +317,11 @@ export class PostgresResidencyRankingRepository {
         p.name,
         p.name_key AS slug,
         p.website_url,
-        p.city,
-        p.region,
-        p.country,
-        p.summary,
-        p.description,
+        to_jsonb(p)->>'city' AS city,
+        to_jsonb(p)->>'region' AS region,
+        to_jsonb(p)->>'country' AS country,
+        to_jsonb(p)->>'summary' AS summary,
+        to_jsonb(p)->>'description' AS description,
         r.location,
         r.prestige_tier,
         r.total_score,
