@@ -71,3 +71,25 @@ code. No login, Save, Apply, upload, or submit action was activated.
 The production public catalogue is repaired and smoke-tested. The submission
 portal itself is not launch-certified until the provider, tenant, seeded
 journey, worker, and device gates above have receipts.
+
+## Visual backfill correction
+
+The production safeguard `MISSA_GARY_PROFILE_VISUALS_READS=0` was a
+fail-closed runtime setting for a missing relation; it did not delete
+opportunities or profiles. The local Neon `main` database was checked before
+and after the backfill: opportunities remained at 7,267 and profiles at
+11,265. The terminal backfill inserted/upserted 13,031 verified visual source
+rows into `gary_profile_visuals`, increasing that projection from 11,562 to
+24,593 rows. It is available as:
+
+```sh
+set -a; . apps/web/.env.production.local; set +a
+npm run backfill:profile-visuals --workspace=@missa/radar-adapters
+```
+
+The command is transactional and upsert-only. It maps verified organization
+marks to logos, canonical representative images to banners, and verified
+issue covers to issue-cover visuals. The Vercel production database identity
+still needs to be matched to this Neon branch before the production read flag
+can be safely restored; no production data was deleted while that identity is
+unresolved.
