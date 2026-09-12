@@ -114,7 +114,7 @@ export class ManuscriptMatchEngine {
           pta.median_response_days,
           pta.acceptance_rate_percent,
           pta.free_cap_status,
-          pta.submittableFreeCapDepletionDays,
+          pta.submittable_free_cap_depletion_days,
           pap.writing_styles,
           pap.poetry_forms,
           pap.thematic_interests,
