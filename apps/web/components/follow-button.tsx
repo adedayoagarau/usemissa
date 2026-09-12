@@ -10,10 +10,12 @@ export function FollowButton({
   userId,
   organizationId,
   organizationName,
+  returnTo,
 }: {
-  userId: string;
+  userId?: string;
   organizationId: string;
   organizationName?: string;
+  returnTo?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -29,6 +31,21 @@ export function FollowButton({
         Following
       </Link>
     );
+
+  if (!userId) {
+    const authPath = `/signup?next=${encodeURIComponent(returnTo ?? "/opportunities")}`;
+    return (
+      <Button
+        nativeButton={false}
+        render={<Link href={authPath} />}
+        variant="ghost"
+        className="text-primary"
+        aria-label={`Sign up to follow ${organizationName ?? "this organization"}`}
+      >
+        Sign up to follow
+      </Button>
+    );
+  }
 
   return (
     <Button

@@ -152,12 +152,10 @@ export function OpportunityDetailPanel({ opportunity, userId, closeHref, mobileO
           </div>
         </div>
 
-        {userId && (
-          <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
-            {!opportunity.personal?.tracked && <TrackButton userId={userId} opportunityId={opportunity.id} />}
-            {opportunity.organizationId && !opportunity.personal?.followingOrganization && <FollowButton userId={userId} organizationId={opportunity.organizationId} organizationName={opportunity.organizationName} />}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
+          {userId && !opportunity.personal?.tracked && <TrackButton userId={userId} opportunityId={opportunity.id} />}
+          {opportunity.organizationId && !opportunity.personal?.followingOrganization && <FollowButton userId={userId} organizationId={opportunity.organizationId} organizationName={opportunity.organizationName} returnTo={`/opportunities/${opportunity.slug}`} />}
+        </div>
       </div>
 
       <div id="eligibility" className="sr-only">

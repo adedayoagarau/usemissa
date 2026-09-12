@@ -338,36 +338,6 @@ function deadlineSortValue(item: Opportunity) {
   return Number.MAX_SAFE_INTEGER
 }
 
-function nextCalendarDate(dateIso: string) {
-  const date = new Date(dateIso + 'T00:00:00Z')
-  date.setUTCDate(date.getUTCDate() + 1)
-  return date.toISOString().slice(0, 10).replaceAll('-', '')
-}
-
-function escapeCalendarText(value: string) {
-  return value.replace(/\\/gu, '\\\\').replace(/,/gu, '\\,').replace(/;/gu, '\\;').replace(/\n/gu, '\\n')
-}
-
-function calendarHref(item: Opportunity) {
-  if (!item.deadlineIso) return undefined
-  const start = item.deadlineIso.replaceAll('-', '')
-  const organization = item.organization ?? 'Organization not confirmed'
-  const calendar = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Missa//Opportunity deadline//EN',
-    'BEGIN:VEVENT',
-    'UID:' + item.id + '@usemissa.com',
-    'DTSTART;VALUE=DATE:' + start,
-    'DTEND;VALUE=DATE:' + nextCalendarDate(item.deadlineIso),
-    'SUMMARY:' + escapeCalendarText(item.title),
-    'DESCRIPTION:' + escapeCalendarText(organization + ' opportunity deadline'),
-    'END:VEVENT',
-    'END:VCALENDAR',
-  ].join('\r\n')
-  return 'data:text/calendar;charset=utf-8,' + encodeURIComponent(calendar)
-}
-
 function FilterSection({
   title,
   defaultOpen = false,
@@ -569,7 +539,6 @@ function OpportunityCard({
   onSave: () => void
 }) {
   const detailHref = '/opportunities/' + item.slug
-  const calendar = item.deadlineKind === 'exact' ? calendarHref(item) : undefined
 
   return (
     <Card role="article" variant="interactive" className={styles.opportunityCard} data-opportunity-id={item.id}>
@@ -630,16 +599,15 @@ function OpportunityCard({
             {saved ? <Check aria-hidden="true" /> : <Bookmark aria-hidden="true" />}
             {saved ? 'Saved' : 'Save'}
           </button>
-          {calendar ? (
-            <a
-              href={calendar}
-              download={item.slug + '-deadline.ics'}
+          {item.deadlineKind === 'exact' ? (
+            <Link
+              href={'/signup?next=' + encodeURIComponent(detailHref)}
               className={styles.cardAction}
               aria-label={'Add ' + item.title + ' deadline to Calendar'}
             >
               <CalendarDays aria-hidden="true" />
-              Add to Calendar
-            </a>
+              Sign up to add deadline
+            </Link>
           ) : null}
         </div>
         <Link href={detailHref} className={styles.openAction}>

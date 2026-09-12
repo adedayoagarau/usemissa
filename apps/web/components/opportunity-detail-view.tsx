@@ -398,13 +398,13 @@ export function OpportunityDetailView({
                     Verified Host
                   </span>
                 ) : null}
-                {userId &&
-                opportunity.organizationId &&
+                {opportunity.organizationId &&
                 !opportunity.personal?.followingOrganization ? (
                   <FollowButton
                     userId={userId}
                     organizationId={opportunity.organizationId}
                     organizationName={opportunity.organizationName}
+                    returnTo={`/opportunities/${opportunity.slug}`}
                   />
                 ) : opportunity.personal?.followingOrganization ? (
                   <Link href={`/following?organization=${encodeURIComponent(opportunity.organizationId ?? "")}`} className="text-sm text-primary underline underline-offset-4">
@@ -535,7 +535,13 @@ export function OpportunityDetailView({
             >
               {destinationLabel} <ExternalLink aria-hidden="true" />
             </a>
-            <AddOpportunityToCalendarButton item={opportunity} showLabel />
+            <AddOpportunityToCalendarButton
+              item={opportunity}
+              signedIn={signedIn}
+              tracked={Boolean(opportunity.personal?.tracked)}
+              returnTo={`/opportunities/${opportunity.slug}`}
+              showLabel
+            />
           </div>
         </header>
 
