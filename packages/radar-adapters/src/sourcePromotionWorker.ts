@@ -435,15 +435,16 @@ export async function runSourcePromotionWorkerTick(options: Omit<SourcePromotion
   let client: PoolClient | undefined;
   let locked = false;
   try {
-    client = await pool.connect();
-    const tables = await client.query<{ ready: boolean }>(`select to_regclass('public.source_discovery_candidates') is not null and to_regclass('public.radar_sources') is not null and to_regclass('public.opportunity_sources') is not null as ready`);
+    const connectedClient = await pool.connect();
+    client = connectedClient;
+    const tables = await connectedClient.query<{ ready: boolean }>(`select to_regclass('public.source_discovery_candidates') is not null and to_regclass('public.radar_sources') is not null and to_regclass('public.opportunity_sources') is not null as ready`);
     if (!tables.rows[0]?.ready) return { status: "unavailable", candidatesClaimed: 0, accepted: 0, rejected: 0, needsHuman: 0, promoted: 0, failures: 0 };
-    await client.query("begin");
-    const lock = await client.query<{ locked: boolean }>("select pg_try_advisory_xact_lock($1, $2) as locked", [SOURCE_PROMOTION_LOCK.namespace, SOURCE_PROMOTION_LOCK.key]);
+    await connectedClient.query("begin");
+    const lock = await connectedClient.query<{ locked: boolean }>("select pg_try_advisory_xact_lock($1, $2) as locked", [SOURCE_PROMOTION_LOCK.namespace, SOURCE_PROMOTION_LOCK.key]);
     locked = lock.rows[0]?.locked === true;
-    if (!locked) { await client.query("rollback"); return { status: "skipped", candidatesClaimed: 0, accepted: 0, rejected: 0, needsHuman: 0, promoted: 0, failures: 0 }; }
-    const candidates = await claimCandidates(client, sourcePromotionBatchSize(options.maxCandidates));
-    await client.query("commit");
+    if (!locked) { await connectedClient.query("rollback"); return { status: "skipped", candidatesClaimed: 0, accepted: 0, rejected: 0, needsHuman: 0, promoted: 0, failures: 0 }; }
+    const candidates = await claimCandidates(connectedClient, sourcePromotionBatchSize(options.maxCandidates));
+    await connectedClient.query("commit");
 
     const results = await mapConcurrent(candidates, sourcePromotionConcurrency(options.concurrency), async (candidate) => {
       try { return { candidate, result: await verifySourceCandidate(candidate) }; }
@@ -457,11 +458,11 @@ export async function runSourcePromotionWorkerTick(options: Omit<SourcePromotion
       else if (item.result.decision === "rejected") counts.rejected++;
       else counts.needsHuman++;
       try {
-        await client.query("begin");
-        if (await persistResult(client, item.candidate, item.result, options.promotionMode === "promote")) counts.promoted++;
-        await client.query("commit");
+        await connectedClient.query("begin");
+        if (await persistResult(connectedClient, item.candidate, item.result, options.promotionMode === "promote")) counts.promoted++;
+        await connectedClient.query("commit");
       } catch (error) {
-        await client.query("rollback").catch(() => undefined);
+        await connectedClient.query("rollback").catch(() => undefined);
         counts.failures++;
         logger.warn("[missa-source-promotion] failed to persist candidate", item.candidate.id, error);
       }

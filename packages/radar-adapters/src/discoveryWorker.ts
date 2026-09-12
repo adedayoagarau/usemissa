@@ -531,11 +531,12 @@ async function persistDiscoveryResults(fetched: FetchedDirectory[], maxNewSource
   let lockClient: PoolClient | undefined;
   let locked = false;
   try {
-    lockClient = await pool.connect();
-    locked = await tryAdvisoryLock(lockClient, DISCOVERY_INGESTION_LOCK);
+    const connectedClient = await pool.connect();
+    lockClient = connectedClient;
+    locked = await tryAdvisoryLock(connectedClient, DISCOVERY_INGESTION_LOCK);
     if (!locked) return { linksFound: 0, sourcesAdded: 0 };
 
-    const currentRows = await lockClient.query<{ data: Source }>("select data from radar_sources");
+    const currentRows = await connectedClient.query<{ data: Source }>("select data from radar_sources");
     const currentByIdentity = new Map(currentRows.rows.map((row) => [discoveryIdentityKey(row.data), row.data] as const));
     const existing = new Set(currentByIdentity.keys());
     const linksFound = fetched.reduce((sum, item) => sum + item.links.length, 0);
@@ -606,7 +607,7 @@ async function persistDiscoveryResults(fetched: FetchedDirectory[], maxNewSource
     ];
     if (updatedSources.length) {
       const updateValues = updatedSources.flatMap((source) => [source.id, source.active, JSON.stringify(source)]);
-      await lockClient.query(
+      await connectedClient.query(
         `update radar_sources as target set active = incoming.active, data = incoming.data
          from (values ${discoverySourceUpdatePlaceholders(updatedSources.length).join(",")}) as incoming(id, active, data)
          where target.id = incoming.id`,
@@ -615,7 +616,7 @@ async function persistDiscoveryResults(fetched: FetchedDirectory[], maxNewSource
     }
     if (newSources.length) {
       const insertValues = newSources.flatMap((source) => [source.id, source.organizationId ?? null, source.active, JSON.stringify(source)]);
-      await lockClient.query(
+      await connectedClient.query(
         `insert into radar_sources (id, organization_id, active, data)
          values ${discoverySourceInsertPlaceholders(newSources.length).join(",")}
          on conflict (id) do update set active = excluded.active, data = excluded.data`,
