@@ -93,3 +93,43 @@ issue covers to issue-cover visuals. The Vercel production database identity
 still needs to be matched to this Neon branch before the production read flag
 can be safely restored; no production data was deleted while that identity is
 unresolved.
+
+## Opportunity organization and artwork reconciliation
+
+The terminal reconciliation ran against the local Neon `main` branch using
+only deterministic evidence: a unique confirmed profile link or a unique exact
+official-host match. It created or reused organization records and updated
+opportunity ownership without deleting or rewriting opportunity rows.
+
+- Opportunities: 7,267 before and after.
+- Missing organization links: 1,100 → 343.
+- Published opportunities missing an organization: 1,074 → 323.
+- Deterministic matches applied: 1,222 (107 confirmed links and 1,115 exact
+  official-host matches).
+- A post-run dry run found no further deterministic organization matches; the
+  remaining 323 published rows are intentionally unresolved rather than
+  guessed from names.
+
+The source-page media backfill exhausted every published opportunity that had
+an authoritative source URL and no existing media candidate. Across the
+follow-up passes it processed 2,439 source pages and auto-cleared 1,076
+rights-gated assets (413 in the initial pass, 528 in the second pass, and 135
+in the final partition). The resulting local coverage is:
+
+- Published opportunities: 6,026.
+- With an authoritative direct, linked-organization, or profile visual:
+  4,865 (80.7%).
+- Without an authoritative visual: 1,161 (19.3%).
+- Cleared media candidates: 1,172; rejected candidates are retained for audit.
+- No published opportunity remains uncrawled by the safe source-page worker;
+  residuals are blocked, failed, rejected by rights/quality gates, or have no
+  deterministic organization visual to inherit.
+
+No opportunity, organization, profile, or candidate records were deleted by
+these reconciliation runs. The scripts are repeatable and upsert-only:
+
+```sh
+set -a; . apps/web/.env.production.local; set +a
+npm run reconcile:opportunity-organizations --workspace=@missa/radar-adapters
+node scripts/backfill-opportunity-media.mjs --published-only --apply --auto-clear-verified --limit 250
+```
