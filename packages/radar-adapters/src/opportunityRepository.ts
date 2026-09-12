@@ -175,6 +175,10 @@ function contentReadsEnabled(): boolean {
   return process.env.MISSA_OPPORTUNITY_CONTENT_READS?.trim() === "1";
 }
 
+function garyVisualsReadsEnabled(): boolean {
+  return process.env.MISSA_GARY_PROFILE_VISUALS_READS?.trim() !== "0";
+}
+
 function stripJsonNulls<T>(value: T): T {
   if (Array.isArray(value)) return value.map(stripJsonNulls) as T;
   if (value && typeof value === "object") {
@@ -403,7 +407,10 @@ function baseSelect(
   `;
 }
 
-function baseFrom(context?: OpportunityRepositoryContext): string {
+function baseFrom(
+  context?: OpportunityRepositoryContext,
+  garyVisualsReads = true,
+): string {
   const accountPlaceholder = context?.accountId ? "" : "";
   const contentJoin = contentReadsEnabled()
     ? `
@@ -414,6 +421,22 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
       order by c.reviewed_at desc nulls last, c.updated_at desc
       limit 1
     ) intelligence on true`
+    : "";
+  const garyVisualsSelect = garyVisualsReads
+    ? `
+        union all
+        select v.image_url as url, coalesce(v.label, org.data->>'name') as alt,
+          case v.asset_type
+            when 'banner' then 1
+            when 'issue_cover' then 2
+            else 3
+          end as priority,
+          3 as tier,
+          v.created_at
+        from gary_profile_visuals v
+        where o.organization_id is not null
+          and v.profile_id = o.organization_id
+          and v.asset_type in ('banner', 'issue_cover', 'logo')`
     : "";
   return `
     from opportunities o
@@ -447,19 +470,7 @@ function baseFrom(context?: OpportunityRepositoryContext): string {
           and a.linked_organization_id = o.organization_id
           and a.rights_status in ('cleared', 'permitted')
           and a.kind in ('opportunity-artwork', 'opportunity-cover', 'organization-banner')
-        union all
-        select v.image_url as url, coalesce(v.label, org.data->>'name') as alt,
-          case v.asset_type
-            when 'banner' then 1
-            when 'issue_cover' then 2
-            else 3
-          end as priority,
-          3 as tier,
-          v.created_at
-        from gary_profile_visuals v
-        where o.organization_id is not null
-          and v.profile_id = o.organization_id
-          and v.asset_type in ('banner', 'issue_cover', 'logo')
+        ${garyVisualsSelect}
       ) asset_candidate
       order by
         asset_candidate.tier asc,
@@ -684,9 +695,10 @@ function addCursorCondition(
 export function buildOpportunityBrowseQuery(
   query: OpportunityRepositoryQuery,
   context?: OpportunityRepositoryContext,
-  options: { taxonomyReads?: boolean } = {},
+  options: { taxonomyReads?: boolean; garyVisualsReads?: boolean } = {},
 ): SqlQuery {
   const taxonomyReads = options.taxonomyReads ?? taxonomyReadsEnabled();
+  const garyVisualsReads = options.garyVisualsReads ?? garyVisualsReadsEnabled();
   const values: unknown[] = [];
   const conditions: string[] = [
     canonicalPublicOpportunityPredicate("o"),
@@ -905,7 +917,7 @@ export function buildOpportunityBrowseQuery(
 
   const text = `
     select ${baseSelect(context, taxonomyReads).replaceAll("$ACCOUNT_ID", accountValue ?? "null")}
-    ${baseFrom(context)}
+    ${baseFrom(context, garyVisualsReads)}
     where ${conditions.join(" and ")}
     order by ${buildOrder(query.sort)}
     limit $${values.length + 1}::int
@@ -918,12 +930,13 @@ function facetFilterQuery(
   query: OpportunityRepositoryQuery,
   context: OpportunityRepositoryContext | undefined,
   taxonomyReads: boolean,
+  garyVisualsReads: boolean,
   parameterOffset: number,
 ): SqlQuery {
   const built = buildOpportunityBrowseQuery(
     { ...query, cursor: undefined, limit: 1 },
     context,
-    { taxonomyReads },
+    { taxonomyReads, garyVisualsReads },
   );
   const whereStart = built.text.lastIndexOf("\n    where ");
   const orderStart = built.text.lastIndexOf("\n    order by ");
@@ -951,16 +964,18 @@ function facetFilterQuery(
 export function buildOpportunityFacetCountsQuery(
   query: OpportunityRepositoryQuery,
   context?: OpportunityRepositoryContext,
-  options: { taxonomyReads?: boolean } = {},
+  options: { taxonomyReads?: boolean; garyVisualsReads?: boolean } = {},
 ): SqlQuery {
   const taxonomyReads = options.taxonomyReads ?? taxonomyReadsEnabled();
+  const garyVisualsReads = options.garyVisualsReads ?? garyVisualsReadsEnabled();
   const values: unknown[] = [];
-  const matched = facetFilterQuery(query, context, taxonomyReads, values.length);
+  const matched = facetFilterQuery(query, context, taxonomyReads, garyVisualsReads, values.length);
   values.push(...matched.values);
   const typeBase = facetFilterQuery(
     { ...query, category: undefined, types: [] },
     context,
     taxonomyReads,
+    garyVisualsReads,
     values.length,
   );
   values.push(...typeBase.values);
@@ -968,6 +983,7 @@ export function buildOpportunityFacetCountsQuery(
     { ...query, taxonomyTermIds: [] },
     context,
     taxonomyReads,
+    garyVisualsReads,
     values.length,
   );
   values.push(...taxonomyBase.values);
@@ -975,6 +991,7 @@ export function buildOpportunityFacetCountsQuery(
     { ...query, disciplines: [] },
     context,
     taxonomyReads,
+    garyVisualsReads,
     values.length,
   );
   values.push(...disciplineBase.values);
@@ -1191,6 +1208,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
   ): Promise<OpportunityBrowsePage> {
     const built = buildOpportunityBrowseQuery(query, context, {
       taxonomyReads: await this.taxonomyReadsAvailable(),
+      garyVisualsReads: garyVisualsReadsEnabled(),
     });
     const result = await this.pool.query<OpportunityRow>(
       built.text,
@@ -1219,6 +1237,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
   ): Promise<OpportunityFacetCounts> {
     const built = buildOpportunityFacetCountsQuery(query, context, {
       taxonomyReads: await this.taxonomyReadsAvailable(),
+      garyVisualsReads: garyVisualsReadsEnabled(),
     });
     const result = await this.pool.query<FacetCountsRow>(built.text, built.values);
     const row = result.rows[0];
@@ -1245,6 +1264,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     };
     const built = buildOpportunityBrowseQuery(query, context, {
       taxonomyReads: await this.taxonomyReadsAvailable(),
+      garyVisualsReads: garyVisualsReadsEnabled(),
     });
     // The browse query's final value is the page-size sentinel. Detail lookup
     // replaces that LIMIT with a literal, so do not send an unused parameter

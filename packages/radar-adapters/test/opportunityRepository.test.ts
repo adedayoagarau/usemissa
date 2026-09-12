@@ -222,6 +222,18 @@ test("opportunity content reads are fail-closed and expose approved content only
   }
 });
 
+test("optional Gary visual reads can be disabled when the additive table is absent", () => {
+  const previous = process.env.MISSA_GARY_PROFILE_VISUALS_READS;
+  process.env.MISSA_GARY_PROFILE_VISUALS_READS = "0";
+  try {
+    const built = buildOpportunityBrowseQuery(baseQuery);
+    assert.doesNotMatch(built.text, /gary_profile_visuals/);
+  } finally {
+    if (previous === undefined) delete process.env.MISSA_GARY_PROFILE_VISUALS_READS;
+    else process.env.MISSA_GARY_PROFILE_VISUALS_READS = previous;
+  }
+});
+
 test("keyset cursor allocates independent key and id parameters", () => {
   const first = buildOpportunityBrowseQuery(baseQuery);
   const cursor = Buffer.from(
