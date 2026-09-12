@@ -8,6 +8,34 @@ function positiveInteger(value: string | undefined): number | undefined {
 
 export type MissaPoolRole = "creator" | "catalogue" | "worker" | "short-lived";
 
+export type MissaPoolStats = Readonly<{
+  role: MissaPoolRole;
+  connects: number;
+  acquires: number;
+  releases: number;
+  removes: number;
+  errors: number;
+}>;
+
+const poolStats = new WeakMap<Pool, { role: MissaPoolRole; connects: number; acquires: number; releases: number; removes: number; errors: number }>();
+
+/** Attach opt-in, secret-free lifecycle metrics to a pool. */
+export function observeMissaPostgresPool(pool: Pool, role: MissaPoolRole): Pool {
+  const stats = { role, connects: 0, acquires: 0, releases: 0, removes: 0, errors: 0 };
+  poolStats.set(pool, stats);
+  pool.on("connect", () => { stats.connects += 1; });
+  pool.on("acquire", () => { stats.acquires += 1; });
+  pool.on("release", () => { stats.releases += 1; });
+  pool.on("remove", () => { stats.removes += 1; });
+  pool.on("error", () => { stats.errors += 1; });
+  return pool;
+}
+
+export function missaPostgresPoolStats(pool: Pool): MissaPoolStats | undefined {
+  const stats = poolStats.get(pool);
+  return stats ? { ...stats } : undefined;
+}
+
 /** Shared pool-policy seam. Defaults preserve existing runtime behavior. */
 export function missaPostgresPoolConfig(
   connectionString: string,
@@ -27,5 +55,5 @@ export function missaPostgresPoolConfig(
 }
 
 export function createMissaPostgresPool(connectionString: string, role: MissaPoolRole, defaults: Pick<PoolConfig, "max"> = {}): Pool {
-  return new Pool(missaPostgresPoolConfig(connectionString, role, defaults));
+  return observeMissaPostgresPool(new Pool(missaPostgresPoolConfig(connectionString, role, defaults)), role);
 }

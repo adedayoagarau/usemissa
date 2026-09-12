@@ -2,5 +2,7 @@
 export {
   createMissaPostgresPool,
   missaPostgresPoolConfig,
+  missaPostgresPoolStats,
+  observeMissaPostgresPool,
   type MissaPoolRole,
 } from "@missa/db";
