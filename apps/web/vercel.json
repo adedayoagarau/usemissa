@@ -1,6 +1,6 @@
 {
   "buildCommand": "npm run build",
-  "ignoreCommand": "bash scripts/vercel-ignore-build.sh || bash ../../scripts/vercel-ignore-build.sh || exit 0",
+  "ignoreCommand": "if [ -f scripts/vercel-ignore-build.sh ]; then bash scripts/vercel-ignore-build.sh; else bash ../../scripts/vercel-ignore-build.sh; fi",
   "crons": [
     { "path": "/api/cron/tick", "schedule": "*/15 * * * *" },
     { "path": "/api/cron/gmail-sync", "schedule": "*/15 * * * *" },
