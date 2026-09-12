@@ -89,10 +89,13 @@ npm run backfill:profile-visuals --workspace=@missa/radar-adapters
 
 The command is transactional and upsert-only. It maps verified organization
 marks to logos, canonical representative images to banners, and verified
-issue covers to issue-cover visuals. The Vercel production database identity
-still needs to be matched to this Neon branch before the production read flag
-can be safely restored; no production data was deleted while that identity is
-unresolved.
+issue covers to issue-cover visuals. The live Vercel catalogue was matched to
+Neon `ingestion-v2-staging` by a 10-of-10 opportunity-ID fingerprint. That
+branch uses the older `gary_profile_media_assets` schema, so the backfill maps
+only confirmed profile-to-organization links into the canonical
+`radar_organizations` key. The hosted projection was created with 1,396
+verified visuals and production `MISSA_GARY_PROFILE_VISUALS_READS=1` was
+restored only after the relation existed. No production data was deleted.
 
 ## Opportunity organization and artwork reconciliation
 
@@ -133,3 +136,10 @@ set -a; . apps/web/.env.production.local; set +a
 npm run reconcile:opportunity-organizations --workspace=@missa/radar-adapters
 node scripts/backfill-opportunity-media.mjs --published-only --apply --auto-clear-verified --limit 250
 ```
+
+Hosted apply on the Vercel-backed branch completed with 9,247 total
+opportunities and 2,901 published. It created the visual projection with 1,396
+rows and applied 1,309 deterministic organization mappings; 258 published
+opportunities remain without a deterministic organization match. The
+production deployment containing the projection guard and reader is
+`dpl_28ZqKGD479U8mHBbNfGvFZvGxrqq` and is Ready on all canonical aliases.
