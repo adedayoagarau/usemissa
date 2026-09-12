@@ -12,6 +12,7 @@ import { Pool, type PoolClient } from "pg";
 import type { Source, SourceKind } from "@missa/radar-engine";
 import { robotsAllowsPath } from "./sourcePolicy.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
+import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 
 const USER_AGENT = "MissaRadar/1.0 (+https://www.usemissa.com; source-verification; evidence-only)";
 const DEFAULT_BATCH_SIZE = 50;
@@ -430,7 +431,7 @@ async function persistResult(client: PoolClient, candidate: CandidateRow, result
 
 export async function runSourcePromotionWorkerTick(options: Omit<SourcePromotionWorkerOptions, "intervalMs" | "signal"> = {}): Promise<SourcePromotionTickResult> {
   const logger = options.logger ?? console;
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = createMissaPostgresPool(process.env.DATABASE_URL!, "worker");
   let client: PoolClient | undefined;
   let locked = false;
   try {
@@ -480,7 +481,7 @@ export async function runSourcePromotionWorker(options: SourcePromotionWorkerOpt
   const logger = options.logger ?? console;
   const intervalMs = options.intervalMs ?? Math.max(60_000, Number(process.env.MISSA_SOURCE_PROMOTION_INTERVAL_MINUTES ?? 5) * 60_000);
   const workerKind = options.workerKind ?? "source-promotion-worker";
-  const telemetryPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, max: 1 }) : undefined;
+  const telemetryPool = process.env.DATABASE_URL ? createMissaPostgresPool(process.env.DATABASE_URL, "worker", { max: 1 }) : undefined;
   const runId = telemetryPool ? await startWorkerRun(telemetryPool, workerKind) : undefined;
   try {
     while (!options.signal?.aborted) {

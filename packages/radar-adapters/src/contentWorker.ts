@@ -15,6 +15,7 @@ import {
 } from './editorialWriter.js';
 import { ensureAgentGraphSchema } from './agentGraphSchema.js';
 import { ensureContentReviewSchema } from './contentReviewSchema.js';
+import { createMissaPostgresPool } from './postgresPoolPolicy.js';
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from './workerTelemetry.js';
 
 type ContentJobStatus = 'queued' | 'building' | 'pending-review' | 'processing' | 'completed' | 'failed' | 'needs-human' | 'blocked';
@@ -437,7 +438,7 @@ export async function runContentReviewTick(pool: Pool, limit = batchSize()): Pro
 
 async function main(): Promise<void> {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required to run the Missa content worker.');
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
+  const pool = createMissaPostgresPool(process.env.DATABASE_URL, 'worker', { max: 4 });
   const controller = new AbortController();
   const stop = () => controller.abort();
   process.once('SIGINT', stop);

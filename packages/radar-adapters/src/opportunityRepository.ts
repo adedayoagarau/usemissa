@@ -15,6 +15,7 @@ import type {
   OpportunityContent,
 } from "@missa/radar-engine";
 import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import {
   cleanCrawledText,
   cleanTitleOrLabel,
@@ -1324,5 +1325,5 @@ export function createPostgresOpportunityRepository(
 export function createPostgresOpportunityRepositoryFromUrl(
   connectionString: string,
 ): OpportunityRepository {
-  return new PostgresOpportunityRepository(new Pool({ connectionString }));
+  return new PostgresOpportunityRepository(createMissaPostgresPool(connectionString, "catalogue"));
 }

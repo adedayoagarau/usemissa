@@ -11,6 +11,7 @@
 import { contentHash, type Source } from "@missa/radar-engine";
 import { DISCOVERY_INGESTION_LOCK, releaseAdvisoryLock, tryAdvisoryLock } from "./radarWorker.js";
 import { Pool, type PoolClient } from "pg";
+import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import { randomUUID } from "node:crypto";
 import { finishSourceRun, finishWorkerRun, heartbeatWorkerRun, startSourceRun, startWorkerRun, type RadarWorkerKind } from "./workerTelemetry.js";
 import {
@@ -526,7 +527,7 @@ function sourceName(link: DiscoveryLink, parent: Source): string {
 }
 
 async function persistDiscoveryResults(fetched: FetchedDirectory[], maxNewSources: number, logger: Pick<Console, "info" | "warn">): Promise<{ linksFound: number; sourcesAdded: number }> {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = createMissaPostgresPool(process.env.DATABASE_URL!, "worker");
   let lockClient: PoolClient | undefined;
   let locked = false;
   try {
@@ -661,7 +662,7 @@ export async function runDiscoveryWorkerTick(options: Pick<DiscoveryWorkerOption
   const maxSources = discoveryBatchSize(options.maxSources);
   const linkLimit = discoveryLinkLimit(options.maxLinksPerSource);
   const maxNewSources = bounded(options.maxNewSources, MAX_NEW_SOURCES_PER_TICK, MAX_NEW_SOURCES_PER_TICK);
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = createMissaPostgresPool(process.env.DATABASE_URL!, "worker");
   const sourceRunId = await startSourceRun(pool, "directory-discovery", undefined, { intervalStart: new Date().toISOString(), metadata: { maxSources, linkLimit, maxNewSources } });
   const sourceRows = await pool.query<{ data: Source }>("select data from radar_sources");
   const now = new Date();
@@ -711,7 +712,7 @@ export async function runDiscoveryWorker(options: DiscoveryWorkerOptions = {}): 
   const logger = options.logger ?? console;
   const intervalMs = options.intervalMs ?? Math.max(60_000, Number(process.env.RADAR_DISCOVERY_INTERVAL_MINUTES ?? 5) * 60_000);
   const workerKind = options.workerKind ?? "discovery-worker";
-  const telemetryPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, max: 1 }) : undefined;
+  const telemetryPool = process.env.DATABASE_URL ? createMissaPostgresPool(process.env.DATABASE_URL, "worker", { max: 1 }) : undefined;
   const workerRunId = telemetryPool ? await startWorkerRun(telemetryPool, workerKind) : undefined;
   try {
     while (!options.signal?.aborted) {

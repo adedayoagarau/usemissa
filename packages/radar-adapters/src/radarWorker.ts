@@ -1,11 +1,12 @@
 import type { PoolClient } from "pg";
-import { Pool } from "pg";
+import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import type { TickReport } from "@missa/radar-engine";
 import type { RadarEngine } from "@missa/radar-engine";
 import { createProductionEngine } from "./productionEngine.js";
 import { finishSourceRun, finishWorkerRun, heartbeatWorkerRun, readWorkerRunLifecycle, startSourceRun, startWorkerRun } from "./workerTelemetry.js";
 import { processPlatformAgentControlRequests } from "./platformAdminFoundations.js";
 import { reconcileExpiredOpportunitiesInDatabase } from "./databaseReconciliation.js";
+import { ensurePublicationRubricSchema } from "./publicationRubricSchema.js";
 
 /**
  * Postgres advisory-lock key for the single Radar ingestion lane. Advisory
@@ -118,6 +119,7 @@ export async function runRadarWorkerTick(
     await options.afterTick?.(production.engine);
     await production.persist();
     try {
+      await ensurePublicationRubricSchema(production.pool);
       const reconciled = await reconcileExpiredOpportunitiesInDatabase(production.pool);
       if (reconciled.canonicalClosed > 0 || reconciled.radarClosed > 0) {
         logger.info(`[missa-radar-worker] reconciled expired calls: canonical=${reconciled.canonicalClosed}, radar=${reconciled.radarClosed}`);
@@ -197,7 +199,7 @@ export async function runRadarWorker(
     positiveInteger(Number(process.env.TICK_MINUTES) * 60_000, 15 * 60_000),
   );
   const maxRegistryTier = maxRegistryTierFromEnv();
-  const telemetryPool = process.env.DATABASE_URL ? new Pool({ connectionString: process.env.DATABASE_URL, max: 1 }) : undefined;
+  const telemetryPool = process.env.DATABASE_URL ? createMissaPostgresPool(process.env.DATABASE_URL, "worker", { max: 1 }) : undefined;
   const workerRunId = telemetryPool ? await startWorkerRun(telemetryPool, "radar-worker") : undefined;
 
   try {

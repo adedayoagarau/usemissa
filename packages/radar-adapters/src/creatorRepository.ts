@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import type { PoolClient, QueryResult, QueryResultRow } from "pg";
+import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 
 export type CreatorReceipt = Readonly<{
   resourceType: string;
@@ -137,7 +138,7 @@ const creatorPools = new Map<string, Pool>();
 export function creatorPoolFor(connectionString: string): Pool {
   const existing = creatorPools.get(connectionString);
   if (existing) return existing;
-  const pool = new Pool({ connectionString, max: 10 });
+  const pool = createMissaPostgresPool(connectionString, "creator", { max: 10 });
   creatorPools.set(connectionString, pool);
   return pool;
 }
