@@ -9,6 +9,7 @@ import {
 } from '@missa/radar-adapters';
 import { getEngine } from './engine';
 import { getWorkspaceEngine } from './workspaceEngine';
+import { ANALYTICS_EVENT_NAMES, SERVER_ANALYTICS_EVENT_NAMES } from './analytics-contract';
 import { getPlatformAdminOverview, type AdminArea, type AdminMaturity, type PlatformAdminOverview } from './platformAdmin';
 
 export interface PlatformAdminContentRow {
@@ -71,6 +72,11 @@ const emptyDurableAnalytics: PlatformAdminAnalyticsEventsData = {
   byEvent: [],
   daily: [],
   recent: [],
+  journeyFunnel: [],
+  segments: [],
+  retention: [],
+  dimensions: [],
+  quality: { missingActor: 0, anonymousEvents: 0, unregisteredEvents: 0, authorityMismatches: 0 },
 };
 
 function area<T>(data: T, source: string, maturity: AdminMaturity, generatedAt: string, warnings: string[] = []): AdminArea<T> {
@@ -226,7 +232,9 @@ function buildAnalyticsData(radar: RadarStore, workspace: WorkspaceStore, overvi
       'Active organizations require at least one observed membership. Account activity uses the explicit active flag; missing flags are treated as active for compatibility.',
       'Acceptance and delivery rates show an em dash when their denominator is zero; no zero-denominator success is implied.',
       'Worker liveness, source freshness, and productive throughput remain separate measures.',
-      'Retention, cohorts, attribution, experiment results, revenue recognition, and scheduled reports are not persisted by this view.',
+      'Behavioral segments and week-one retention use authenticated account events. Anonymous visitors remain session-scoped and are excluded from creator retention.',
+      'The creator journey is a strict observed sequence. An outbound official-destination open is an Apply interaction, never submission evidence.',
+      'Experiment results, revenue recognition, and scheduled reports are not persisted by this view.',
     ],
     durable,
   };
@@ -248,7 +256,12 @@ export async function getPlatformAdminAnalytics(): Promise<AdminArea<PlatformAdm
   const [stores, overview, durable] = await Promise.all([
     readRuntimeStores(),
     getPlatformAdminOverview(),
-    process.env.DATABASE_URL ? readPlatformAdminAnalyticsEvents(process.env.DATABASE_URL) : Promise.resolve(emptyDurableAnalytics),
+    process.env.DATABASE_URL
+      ? readPlatformAdminAnalyticsEvents(process.env.DATABASE_URL, {
+          knownEventNames: ANALYTICS_EVENT_NAMES,
+          serverEventNames: SERVER_ANALYTICS_EVENT_NAMES,
+        })
+      : Promise.resolve(emptyDurableAnalytics),
   ]);
   const maturity = stores.maturity === 'unavailable' ? 'unavailable' : stores.maturity === 'partial' ? 'partial' : 'derived';
   return area(buildAnalyticsData(stores.radar, stores.workspace, overview, durable), 'Compatibility workflow records + platform_analytics_events', maturity, generatedAt, [...stores.warnings, ...overview.warnings, ...durable.warnings, 'Historical analytics are bounded by the records available in the current runtime stores and first-party event ledger.']);

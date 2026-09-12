@@ -1539,6 +1539,16 @@ export interface PlatformAdminAnalyticsEventsData {
   byEvent: Array<{ eventName: string; count: number; lastAt?: string }>;
   daily: Array<{ day: string; count: number }>;
   recent: PlatformAnalyticsEvent[];
+  journeyFunnel: Array<{ key: string; label: string; actors: number; conversionFromPrevious: number | null }>;
+  segments: Array<{ key: string; label: string; accounts: number; definition: string }>;
+  retention: Array<{ cohortWeek: string; accounts: number; returnedWeekOne: number; rate: number | null }>;
+  dimensions: Array<{ dimension: string; value: string; actors: number; events: number }>;
+  quality: {
+    missingActor: number;
+    anonymousEvents: number;
+    unregisteredEvents: number;
+    authorityMismatches: number;
+  };
 }
 
 interface AnalyticsEventRow extends QueryResultRow {
@@ -1564,12 +1574,26 @@ function normalizeAnalyticsEvent(row: AnalyticsEventRow): PlatformAnalyticsEvent
 }
 
 function emptyAnalyticsEvents(generatedAt: string, warnings: string[]): PlatformAdminAnalyticsEventsData {
-  return { available: false, generatedAt, source: "platform_analytics_events", warnings, summary: { events: 0, last24h: 0, last7d: 0, uniqueAccounts: 0, uniqueOrganizations: 0 }, byEvent: [], daily: [], recent: [] };
+  return {
+    available: false,
+    generatedAt,
+    source: "platform_analytics_events",
+    warnings,
+    summary: { events: 0, last24h: 0, last7d: 0, uniqueAccounts: 0, uniqueOrganizations: 0 },
+    byEvent: [],
+    daily: [],
+    recent: [],
+    journeyFunnel: [],
+    segments: [],
+    retention: [],
+    dimensions: [],
+    quality: { missingActor: 0, anonymousEvents: 0, unregisteredEvents: 0, authorityMismatches: 0 },
+  };
 }
 
 export async function readPlatformAdminAnalyticsEvents(
   connectionString: string,
-  options: { limit?: number; days?: number } = {},
+  options: { limit?: number; days?: number; knownEventNames?: readonly string[]; serverEventNames?: readonly string[] } = {},
 ): Promise<PlatformAdminAnalyticsEventsData> {
   const generatedAt = new Date().toISOString();
   const limit = Math.min(Math.max(options.limit ?? 100, 1), 500);
@@ -1577,7 +1601,7 @@ export async function readPlatformAdminAnalyticsEvents(
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
     if (!(await tablePresent(pool, "platform_analytics_events"))) return emptyAnalyticsEvents(generatedAt, ["platform_analytics_events is not deployed; first-party analytics are unavailable."]);
-    const [summary, byEvent, daily, recent] = await Promise.all([
+    const [summary, byEvent, daily, recent, funnel, segments, retention, dimensions, quality] = await Promise.all([
       pool.query<{ events: number | string; last_24h: number | string; last_7d: number | string; unique_accounts: number | string; unique_organizations: number | string }>(
         `select count(*)::int as events,
                 count(*) filter (where occurred_at >= now() - interval '24 hours')::int as last_24h,
@@ -1608,8 +1632,178 @@ export async function readPlatformAdminAnalyticsEvents(
            from platform_analytics_events order by occurred_at desc limit $1`,
         [limit],
       ),
+      pool.query<{
+        discovered: number | string;
+        evaluated: number | string;
+        saved: number | string;
+        prepared: number | string;
+        applied: number | string;
+        confirmed: number | string;
+        tracked: number | string;
+        outcome: number | string;
+      }>(
+        `with session_accounts as (
+           select session_id, min(account_id) as account_id
+             from platform_analytics_events
+            where session_id is not null and account_id is not null
+              and occurred_at >= now() - ($1::int * interval '1 day')
+            group by session_id
+         ), scoped as (
+           select coalesce(e.account_id, sa.account_id, case when e.session_id is not null then 'session:' || e.session_id end) as actor,
+                  e.event_name, e.occurred_at
+             from platform_analytics_events e
+             left join session_accounts sa on sa.session_id=e.session_id
+            where e.occurred_at >= now() - ($1::int * interval '1 day')
+         ), discovered as (
+           select actor, min(occurred_at) as at from scoped
+            where actor is not null and event_name = any($2::text[]) group by actor
+         ), evaluated as (
+           select d.actor, min(s.occurred_at) as at from discovered d join scoped s on s.actor=d.actor
+            where s.event_name = any($3::text[]) and s.occurred_at >= d.at group by d.actor
+         ), saved as (
+           select e.actor, min(s.occurred_at) as at from evaluated e join scoped s on s.actor=e.actor
+            where s.event_name = any($4::text[]) and s.occurred_at >= e.at group by e.actor
+         ), prepared as (
+           select v.actor, min(s.occurred_at) as at from saved v join scoped s on s.actor=v.actor
+            where s.event_name = any($5::text[]) and s.occurred_at >= v.at group by v.actor
+         ), applied as (
+           select p.actor, min(s.occurred_at) as at from prepared p join scoped s on s.actor=p.actor
+            where s.event_name = any($6::text[]) and s.occurred_at >= p.at group by p.actor
+         ), confirmed as (
+           select a.actor, min(s.occurred_at) as at from applied a join scoped s on s.actor=a.actor
+            where s.event_name = any($7::text[]) and s.occurred_at >= a.at group by a.actor
+         ), tracked as (
+           select c.actor, min(s.occurred_at) as at from confirmed c join scoped s on s.actor=c.actor
+            where s.event_name = any($8::text[]) and s.occurred_at >= c.at group by c.actor
+         ), outcome as (
+           select t.actor, min(s.occurred_at) as at from tracked t join scoped s on s.actor=t.actor
+            where s.event_name = any($9::text[]) and s.occurred_at >= t.at group by t.actor
+         )
+         select (select count(*) from discovered)::int as discovered,
+                (select count(*) from evaluated)::int as evaluated,
+                (select count(*) from saved)::int as saved,
+                (select count(*) from prepared)::int as prepared,
+                (select count(*) from applied)::int as applied,
+                (select count(*) from confirmed)::int as confirmed,
+                (select count(*) from tracked)::int as tracked,
+                (select count(*) from outcome)::int as outcome`,
+        [
+          days,
+          ["public.discovery_view", "public.collection_view", "opportunity_search_submitted"],
+          ["public.opportunity_view"],
+          ["discovery.opportunity_saved"],
+          ["workspace.preparation_started"],
+          ["application.official_destination_opened"],
+          ["application.submission_marked_by_user", "application.provider_receipt_recorded"],
+          ["application.status_recorded"],
+          ["outcome.response_recorded"],
+        ],
+      ),
+      pool.query<{
+        searched_no_save: number | string;
+        saved_no_prepare: number | string;
+        prepared_no_export: number | string;
+        new_accounts: number | string;
+        newly_activated: number | string;
+        activated: number | string;
+        returning: number | string;
+      }>(
+        `with account_behavior as (
+           select account_id,
+                  bool_or(event_name = any($2::text[])) as searched,
+                  bool_or(event_name = 'discovery.opportunity_saved') as saved,
+                  bool_or(event_name = 'workspace.preparation_started') as prepared,
+                  bool_or(event_name = 'workspace.export_created') as exported,
+                  min(occurred_at) filter (where event_name = 'auth.signup_succeeded') as signup_at,
+                  min(occurred_at) filter (where event_name = 'discovery.opportunity_saved') as first_save_at,
+                  count(distinct date_trunc('day', occurred_at at time zone 'UTC')) as active_days
+             from platform_analytics_events
+            where account_id is not null and occurred_at >= now() - ($1::int * interval '1 day')
+            group by account_id
+         )
+         select count(*) filter (where searched and not saved)::int as searched_no_save,
+                count(*) filter (where saved and not prepared)::int as saved_no_prepare,
+                count(*) filter (where prepared and not exported)::int as prepared_no_export,
+                count(*) filter (where signup_at is not null)::int as new_accounts,
+                count(*) filter (where signup_at is not null and first_save_at >= signup_at and first_save_at < signup_at + interval '14 days')::int as newly_activated,
+                count(*) filter (where saved)::int as activated,
+                count(*) filter (where active_days >= 2)::int as returning
+           from account_behavior`,
+        [days, ["opportunity_search_submitted", "public.discovery_view", "public.collection_view"]],
+      ),
+      pool.query<{ cohort_week: string; accounts: number | string; returned_week_one: number | string }>(
+        `with first_activity as (
+           select account_id, min(occurred_at) as first_at
+             from platform_analytics_events
+            where account_id is not null
+            group by account_id
+         )
+         select to_char(date_trunc('week', f.first_at at time zone 'UTC'), 'YYYY-MM-DD') as cohort_week,
+                count(*)::int as accounts,
+                count(*) filter (where exists (
+                  select 1 from platform_analytics_events e
+                   where e.account_id=f.account_id
+                     and e.occurred_at >= f.first_at + interval '7 days'
+                     and e.occurred_at < f.first_at + interval '14 days'
+                ))::int as returned_week_one
+           from first_activity f
+          where f.first_at >= now() - interval '90 days'
+            and f.first_at < now() - interval '14 days'
+          group by 1 order by 1 asc limit 12`,
+      ),
+      pool.query<{ dimension: string; value: string; actors: number | string; events: number | string }>(
+        `with session_accounts as (
+           select session_id, min(account_id) as account_id
+             from platform_analytics_events
+            where session_id is not null and account_id is not null
+              and occurred_at >= now() - ($1::int * interval '1 day')
+            group by session_id
+         ), scoped as (
+           select coalesce(e.account_id, sa.account_id, case when e.session_id is not null then 'session:' || e.session_id end) as actor,
+                  e.properties
+             from platform_analytics_events e
+             left join session_accounts sa on sa.session_id=e.session_id
+            where e.occurred_at >= now() - ($1::int * interval '1 day')
+         ), values_by_dimension as (
+           select actor, 'Device'::text as dimension, nullif(properties->>'device_class','') as value from scoped
+           union all select actor, 'Source', nullif(properties->>'utm_source','') from scoped
+           union all select actor, 'Campaign', nullif(properties->>'utm_campaign','') from scoped
+           union all select actor, 'Referrer', nullif(properties->>'referrer_host','') from scoped
+         )
+         select dimension, left(value, 120) as value,
+                count(distinct actor) filter (where actor is not null)::int as actors,
+                count(*)::int as events
+           from values_by_dimension
+          where value is not null
+          group by dimension, left(value, 120)
+          order by dimension asc, actors desc, value asc
+          limit 80`,
+        [days],
+      ),
+      pool.query<{ missing_actor: number | string; anonymous_events: number | string; unregistered_events: number | string; authority_mismatches: number | string }>(
+        `select count(*) filter (where account_id is null and session_id is null)::int as missing_actor,
+                count(*) filter (where account_id is null and session_id is not null)::int as anonymous_events,
+                count(*) filter (where not (event_name = any($2::text[])))::int as unregistered_events,
+                count(*) filter (where source = 'web-client' and event_name = any($3::text[]))::int as authority_mismatches
+           from platform_analytics_events
+          where occurred_at >= now() - ($1::int * interval '1 day')`,
+        [days, [...(options.knownEventNames ?? [])], [...(options.serverEventNames ?? [])]],
+      ),
     ]);
     const row = summary.rows[0];
+    const funnelRow = funnel.rows[0];
+    const funnelCounts = [
+      ["discover", "Discover", numberValue(funnelRow?.discovered)],
+      ["evaluate", "Evaluate", numberValue(funnelRow?.evaluated)],
+      ["save", "Save", numberValue(funnelRow?.saved)],
+      ["prepare", "Prepare", numberValue(funnelRow?.prepared)],
+      ["apply", "Apply", numberValue(funnelRow?.applied)],
+      ["confirm", "Confirm", numberValue(funnelRow?.confirmed)],
+      ["track", "Track", numberValue(funnelRow?.tracked)],
+      ["outcome", "Outcome", numberValue(funnelRow?.outcome)],
+    ] as const;
+    const segmentRow = segments.rows[0];
+    const qualityRow = quality.rows[0];
     return {
       available: true,
       generatedAt,
@@ -1619,6 +1813,31 @@ export async function readPlatformAdminAnalyticsEvents(
       byEvent: byEvent.rows.map((item) => ({ eventName: item.event_name, count: numberValue(item.count), ...(iso(item.last_at) ? { lastAt: iso(item.last_at) } : {}) })),
       daily: daily.rows.map((item) => ({ day: item.day, count: numberValue(item.count) })),
       recent: recent.rows.map(normalizeAnalyticsEvent),
+      journeyFunnel: funnelCounts.map(([key, label, actors], index) => {
+        const previous = index > 0 ? funnelCounts[index - 1]?.[2] ?? 0 : 0;
+        return { key, label, actors, conversionFromPrevious: index === 0 || previous === 0 ? null : Math.round((actors / previous) * 1_000) / 10 };
+      }),
+      segments: [
+        { key: "searched-no-save", label: "Searched, not saved", accounts: numberValue(segmentRow?.searched_no_save), definition: "Authenticated accounts that searched in the window but recorded no durable Save." },
+        { key: "saved-no-prepare", label: "Saved, not preparing", accounts: numberValue(segmentRow?.saved_no_prepare), definition: "Accounts with a durable Save and no recorded preparation start in the window." },
+        { key: "prepared-no-export", label: "Prepared, not exported", accounts: numberValue(segmentRow?.prepared_no_export), definition: "Accounts that started preparation and created no portable export in the window." },
+        { key: "new-accounts", label: "New accounts", accounts: numberValue(segmentRow?.new_accounts), definition: "Accounts with a successful signup event in the selected window." },
+        { key: "newly-activated", label: "Newly activated", accounts: numberValue(segmentRow?.newly_activated), definition: "New accounts that recorded a durable Opportunity Save within 14 days of signup." },
+        { key: "activated", label: "Activated creators", accounts: numberValue(segmentRow?.activated), definition: "Authenticated accounts with at least one durable Opportunity Save in the window." },
+        { key: "returning", label: "Returning creators", accounts: numberValue(segmentRow?.returning), definition: "Authenticated accounts active on at least two distinct UTC days in the window." },
+      ],
+      retention: retention.rows.map((item) => {
+        const accounts = numberValue(item.accounts);
+        const returnedWeekOne = numberValue(item.returned_week_one);
+        return { cohortWeek: item.cohort_week, accounts, returnedWeekOne, rate: accounts ? Math.round((returnedWeekOne / accounts) * 1_000) / 10 : null };
+      }),
+      dimensions: dimensions.rows.map((item) => ({ dimension: item.dimension, value: item.value, actors: numberValue(item.actors), events: numberValue(item.events) })),
+      quality: {
+        missingActor: numberValue(qualityRow?.missing_actor),
+        anonymousEvents: numberValue(qualityRow?.anonymous_events),
+        unregisteredEvents: numberValue(qualityRow?.unregistered_events),
+        authorityMismatches: numberValue(qualityRow?.authority_mismatches),
+      },
     };
   } catch {
     return emptyAnalyticsEvents(generatedAt, ["First-party analytics could not be read; no product behavior is inferred."]);

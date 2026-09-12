@@ -4,6 +4,7 @@ import { getSessionAccount } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
 import { getCreatorLibraryRepository } from '@/lib/creatorRepositories';
 import { encodeTrackerCsv } from '@/lib/tracker-export';
+import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 
 const COOLDOWN_MS = 60_000;
 const MAX_COOLDOWN_ENTRIES = 1_000;
@@ -124,6 +125,18 @@ export async function GET(request: Request) {
     return errorResponse('We could not prepare your export. Please try again.', 500);
   }
   lastExportByAccount.set(session.account.id, nowMs);
+  await trackPlatformAnalytics({
+    eventName: 'workspace.export_created',
+    source: 'creator-export-api',
+    accountId: session.account.id,
+    properties: {
+      format,
+      scope,
+      tracker_rows: exportData.tracker.length,
+      library_rows: libraryRows,
+    },
+    idempotencyKey: `creator-export:${session.account.id}:${nowMs}`,
+  });
 
   return new Response(body, {
     status: 200,

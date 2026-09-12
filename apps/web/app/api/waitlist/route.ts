@@ -38,11 +38,12 @@ export async function POST(request: Request) {
       campaign: readCampaign(value.campaign),
     });
 
+    const campaign = readCampaign(value.campaign);
     await trackPlatformAnalytics({
       eventName: 'public.waitlist_joined',
       source: 'web-waitlist',
       path: '/waitlist',
-      properties: { waitlist: 'creator', created: result.created, campaign: readCampaign(value.campaign) },
+      properties: { waitlist: 'creator', created: result.created, ...campaign },
     });
     const emailDelivery = await deliverWaitlistConfirmationEmail({
       connectionString: process.env.DATABASE_URL,
