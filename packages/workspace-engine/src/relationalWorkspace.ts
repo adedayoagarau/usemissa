@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
+import { createMissaPostgresPool } from '@missa/db';
 import type { DecisionOutcome, SubmissionField, SubmissionStatus } from './domain/types.js';
 import { canTransitionConfiguration, portalConfigurationFromDatabase, type ConfigurationStatus, type FormDefinition, type OpportunityConfiguration, type PortalConfiguration, type ReviewWorkflowDefinition } from './portalConfiguration.js';
 import { WorkspaceConflictError, WorkspaceIdempotencyReuseError, WorkspaceNotFoundError, WorkspaceTransitionError, type WorkspaceResourceType } from './errors.js';
@@ -1349,7 +1350,7 @@ export class RelationalWorkspace {
 
 export async function createRelationalWorkspace(databaseUrl = process.env.DATABASE_URL): Promise<RelationalWorkspace> {
   if (!databaseUrl) throw new Error('DATABASE_URL is required when relational Workspace authority is enabled');
-  const workspace = new RelationalWorkspace(new Pool({ connectionString: databaseUrl }));
+  const workspace = new RelationalWorkspace(createMissaPostgresPool(databaseUrl, 'creator'));
   const health = await workspace.health();
   if (!health.schemaReady) {
     await workspace.pool.end();
