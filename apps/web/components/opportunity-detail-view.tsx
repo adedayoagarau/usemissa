@@ -17,7 +17,6 @@ import {
   Flag,
   Globe2,
   ShieldCheck,
-  Sparkles,
   Tag,
   Users,
 } from "lucide-react";
@@ -25,10 +24,8 @@ import type { OpportunityDetailProjection } from "@missa/radar-engine";
 import {
   type ProfileCard,
   type ProfileDetail,
-  type EditorialIntelligenceFullProfile,
   getSemanticUrlForProfile,
 } from "@missa/radar-adapters";
-import { EditorialIntelligenceSection } from "@/components/opportunities/editorial-intelligence-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
@@ -220,7 +217,6 @@ export function OpportunityDetailView({
   summary,
   practiceLabels,
   relatedProfile,
-  editorialIntelligence,
 }: {
   opportunity: OpportunityDetailProjection;
   signedIn: boolean;
@@ -228,7 +224,6 @@ export function OpportunityDetailView({
   summary: string;
   practiceLabels: string[];
   relatedProfile?: ProfileCard | ProfileDetail;
-  editorialIntelligence?: EditorialIntelligenceFullProfile | null;
 }) {
   const tracked = Boolean(opportunity.personal?.tracked);
   const canonicalPath = `/opportunities/${opportunity.slug}`;
@@ -323,19 +318,9 @@ export function OpportunityDetailView({
     ),
   );
 
-  // Dynamic, authentic submission materials (eliminates identical boilerplate)
+  // Show extracted requirements; infer a small fallback only when none are available.
   const preparationMaterials =
-    opportunity.content?.curatedChecklist &&
-    opportunity.content.curatedChecklist.length > 0
-      ? opportunity.content.curatedChecklist.map((c) => ({
-          label: decodeHtmlEntities(c.item),
-          detail: c.curatorialAdvice
-            ? decodeHtmlEntities(c.curatorialAdvice)
-            : c.requirement
-              ? decodeHtmlEntities(c.requirement)
-              : "Required submission document",
-        }))
-      : opportunity.requiredMaterials.length > 0
+    opportunity.requiredMaterials.length > 0
         ? opportunity.requiredMaterials.map((m) => ({
             label: decodeHtmlEntities(m.label),
             detail: m.description
@@ -591,61 +576,6 @@ export function OpportunityDetailView({
                 )}
               </div>
 
-              {/* Target Audience & Conceptual Fit */}
-              {opportunity.content?.targetAudience ? (
-                <div className={styles.targetAudienceCard}>
-                  <span className={styles.themeLabel}>
-                    Target Audience & Candidate Profile
-                  </span>
-                  {opportunity.content.targetAudience.careerStages &&
-                  opportunity.content.targetAudience.careerStages.length > 0 ? (
-                    <div className={styles.targetAudienceStages}>
-                      {opportunity.content.targetAudience.careerStages.map(
-                        (stage) => (
-                          <span
-                            key={stage}
-                            className={styles.targetAudienceStageBadge}
-                          >
-                            {stage.replace(/-/g, " ")}
-                          </span>
-                        ),
-                      )}
-                    </div>
-                  ) : null}
-                  {opportunity.content.targetAudience.idealCandidate ? (
-                    <p className={styles.targetAudienceText}>
-                      {opportunity.content.targetAudience.idealCandidate}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {/* Insider Curatorial & Submission Guidance */}
-              {opportunity.content?.insiderTips &&
-              opportunity.content.insiderTips.length > 0 ? (
-                <div className={styles.insiderTipsCard}>
-                  <div className={styles.insiderTipsHeader}>
-                    <Sparkles
-                      className="size-4 text-primary"
-                      aria-hidden="true"
-                    />
-                    <h3 className={styles.insiderTipsTitle}>
-                      Curatorial & Submission Guidance
-                    </h3>
-                  </div>
-                  <ul className={styles.insiderTipsList}>
-                    {opportunity.content.insiderTips.map((tip, idx) => (
-                      <li key={idx} className={styles.insiderTipItem}>
-                        <span
-                          className={styles.insiderTipBullet}
-                          aria-hidden="true"
-                        />
-                        <span>{tip}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
             </section>
 
             {/* 3. ELIGIBILITY & CRITERIA (Who Can Apply) */}
@@ -730,14 +660,6 @@ export function OpportunityDetailView({
                 />
               </div>
             </section>
-
-            {editorialIntelligence && (
-              <div className="mb-8">
-                <EditorialIntelligenceSection
-                  intelligence={editorialIntelligence}
-                />
-              </div>
-            )}
 
             <section
               className={styles.applicationSection}

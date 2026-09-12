@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
 import { getProfileRepository } from '@/lib/profileRepository';
-import { getEditorialIntelligenceRepository } from '@/lib/editorialIntelligenceRepository';
 import { taxonomyLabelFor } from '@/lib/opportunityTaxonomy';
 import { MissaSiteHeader } from '@/components/missa-site-header';
 import { OpportunityDetailView } from '@/components/opportunity-detail-view';
@@ -71,12 +70,6 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
     ? { email: session.account.email, hasOrganization: session.memberships.length > 0 }
     : null;
 
-  const profileId = profileMatch?.id ?? opportunity.organizationId;
-  const profileName = profileMatch?.name ?? opportunity.organizationName;
-  const editorialIntelligence = profileId
-    ? await getEditorialIntelligenceRepository().getIntelligenceForProfile(profileId, profileName)
-    : null;
-
   return (
     <div className="min-h-screen bg-white">
       <MissaSiteHeader session={headerSession} />
@@ -106,7 +99,6 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
         summary={summary}
         practiceLabels={practiceLabels}
         relatedProfile={profileMatch ?? undefined}
-        editorialIntelligence={editorialIntelligence}
       />
     </div>
   );
