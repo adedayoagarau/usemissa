@@ -324,7 +324,13 @@ export class PostgresProfileRepository implements ProfileRepository {
         );
       }
     }
-    const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+    // Multiple ingestion paths can describe the same publication with
+    // different profile IDs. Browse is a public projection, so collapse exact
+    // website/name identities while retaining distinct profile kinds and
+    // letting detail lookups address the underlying canonical ID directly.
+    const where = filters.length
+      ? `WHERE p.profile_rank = 1 AND ${filters.join(" AND ")}`
+      : "WHERE p.profile_rank = 1";
     const scheduleFilter =
       query.scheduleState && query.scheduleState !== "all"
         ? query.scheduleState
@@ -347,6 +353,18 @@ export class PostgresProfileRepository implements ProfileRepository {
           FROM gary_profile_visuals
           WHERE asset_type = 'logo'
           ORDER BY profile_id, created_at DESC
+        ), profiles AS (
+          SELECT p.*,
+            row_number() OVER (
+              PARTITION BY p.profile_kind,
+                CASE
+                  WHEN NULLIF(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '') IS NOT NULL
+                    THEN lower(regexp_replace(regexp_replace(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '^https?://(www\\.)?', ''), '/$', ''))
+                  ELSE 'name:' || lower(regexp_replace(BTRIM(p.name), '[^a-z0-9]+', '-', 'g'))
+                END
+              ORDER BY p.created_at ASC NULLS LAST, p.id ASC
+            ) AS profile_rank
+          FROM gary_profiles p
         )
         SELECT p.id, p.profile_kind, p.name, p.website_url,
           to_jsonb(p)->>'country_code' AS country_code, to_jsonb(p)->>'country' AS country, to_jsonb(p)->>'city' AS city,
@@ -358,7 +376,7 @@ export class PostgresProfileRepository implements ProfileRepository {
           o.source_detail_url,
           COALESCE(visuals.visual_url, m.media_url) as media_url,
           COALESCE(visuals.visual_alt, m.media_alt, p.name) as media_alt
-        FROM gary_profiles p
+        FROM profiles p
         LEFT JOIN radar_organizations ro ON ro.id = p.id
         LEFT JOIN latest o ON o.profile_id = p.id
         LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
@@ -469,6 +487,18 @@ export class PostgresProfileRepository implements ProfileRepository {
         FROM gary_profile_visuals
         WHERE asset_type = 'logo'
         ORDER BY profile_id, created_at DESC
+      ), profiles AS (
+        SELECT p.*,
+          row_number() OVER (
+            PARTITION BY p.profile_kind,
+              CASE
+                WHEN NULLIF(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '') IS NOT NULL
+                  THEN lower(regexp_replace(regexp_replace(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '^https?://(www\\.)?', ''), '/$', ''))
+                ELSE 'name:' || lower(regexp_replace(BTRIM(p.name), '[^a-z0-9]+', '-', 'g'))
+              END
+            ORDER BY p.created_at ASC NULLS LAST, p.id ASC
+          ) AS profile_rank
+        FROM gary_profiles p
       )
       SELECT p.id, p.profile_kind, p.name, p.website_url,
         to_jsonb(p)->>'country_code' AS country_code, to_jsonb(p)->>'country' AS country, to_jsonb(p)->>'city' AS city,
@@ -481,7 +511,7 @@ export class PostgresProfileRepository implements ProfileRepository {
         COALESCE(visuals.visual_url, m.media_url) as media_url,
         COALESCE(visuals.visual_alt, m.media_alt, p.name) as media_alt,
         count(*) OVER() AS total_count
-      FROM gary_profiles p
+      FROM profiles p
       LEFT JOIN radar_organizations ro ON ro.id = p.id
       LEFT JOIN latest o ON o.profile_id = p.id
       LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
@@ -497,8 +527,7 @@ export class PostgresProfileRepository implements ProfileRepository {
   }
 
   async getById(idOrSlug: string): Promise<ProfileDetail | null> {
-    const result = await this.pool.query({
-      text: `
+    const profileDetailText = `
       WITH latest AS (
         SELECT DISTINCT ON (profile_id) * FROM gary_profile_observations
         ORDER BY profile_id, observed_at DESC
@@ -536,7 +565,6 @@ export class PostgresProfileRepository implements ProfileRepository {
       LEFT JOIN media m ON m.profile_page_id = pg.id
       LEFT JOIN visuals ON visuals.profile_id = p.id
       WHERE p.id = $1 
-         OR p.id = (SELECT target_profile_id FROM gary_profile_redirects WHERE source_id_or_slug = $1 LIMIT 1)
          OR p.name_key = $1
          OR p.name_key = replace($1, '-', ' ')
          OR p.name_key = replace($1, '-', '_')
@@ -548,9 +576,31 @@ export class PostgresProfileRepository implements ProfileRepository {
          OR p.canonical_key = 'rivet:' || replace($1, '-', '_')
          OR p.canonical_key = 'trans:' || replace($1, '-', '_')
          OR regexp_replace(lower(p.name), '[^a-z0-9]+', '-', 'g') = $1
-      LIMIT 1;`,
+      LIMIT 1;`;
+    // Redirects are an optional additive relation. The hosted catalogue may
+    // not have that migration yet, so resolve the canonical profile first and
+    // consult redirects only when the direct identity match is absent.
+    let result = await this.pool.query({
+      text: profileDetailText,
       values: [idOrSlug],
     });
+    if (result.rows.length === 0) {
+      try {
+        const redirect = await this.pool.query({
+          text: "SELECT target_profile_id FROM gary_profile_redirects WHERE source_id_or_slug = $1 LIMIT 1",
+          values: [idOrSlug],
+        });
+        const targetId = redirect.rows[0]?.target_profile_id;
+        if (targetId) {
+          result = await this.pool.query({
+            text: profileDetailText,
+            values: [String(targetId)],
+          });
+        }
+      } catch (error) {
+        if (!isMissingRelation(error)) throw error;
+      }
+    }
     const row = result.rows[0] as Record<string, unknown> | undefined;
     if (!row) return null;
     const actualId = String(row.id);

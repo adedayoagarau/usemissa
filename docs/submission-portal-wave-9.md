@@ -160,3 +160,15 @@ general and literary-magazine queries; the radar-adapters suite (265 passing,
 3 skipped), web production build, design-system check, language check, and
 `git diff --check` all pass. This patch must be included in the next canonical
 Vercel deployment before the mobile totals error is considered resolved.
+
+## Hosted duplicate profile projection
+
+The same Neon branch contains duplicate ingestion identities: 3,130 Gary
+profiles (2,371 literary magazines and 759 small presses) include 475 exact
+website collisions and 840 repeated names. The duplicate rows came from
+profile records carrying different canonical-key shapes, not from repeated
+opportunity rows. Public directory browse now uses a deterministic projection
+that keeps one oldest profile per profile kind and exact website (or normalized
+name when no website exists), while preserving the underlying IDs for detail
+and audit work. A later data migration can merge references after a reviewed
+identity map; no production rows were deleted as part of this fix.
