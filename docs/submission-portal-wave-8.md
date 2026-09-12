@@ -81,6 +81,10 @@ deployment returned HTTP 200 using that code.
 Production therefore needs a deliberate deployment of the current fix plus a
 production-data verification. A green Preview route is not production proof.
 
+Wave 9 completed that correction: the optional visual-read guard and the
+production relational-authority setting were deployed, and the production
+alias subsequently returned HTTP 200 for `/api/opportunities`.
+
 ## Remaining launch gates
 
 1. Verify a dedicated Preview Neon database identity and seed a disposable test
