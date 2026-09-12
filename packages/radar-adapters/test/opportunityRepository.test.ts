@@ -512,7 +512,7 @@ test("repository maps rows and returns a continuation cursor", async () => {
   assert.ok(result.nextCursor);
 });
 
-test("detail lookup removes the browse limit bind parameter", async () => {
+test("detail lookup accepts durable aliases and removes the browse limit bind parameter", async () => {
   const calls: Array<{ text: string; values: unknown[] }> = [];
   const pool = {
     async query(text: string, values: unknown[]) {
@@ -522,7 +522,9 @@ test("detail lookup removes the browse limit bind parameter", async () => {
   } as never;
   const repository = new PostgresOpportunityRepository(pool);
   assert.equal(await repository.getById("opp_missing"), null);
-  assert.match(calls[0]?.text ?? "", /where \(o\.id = \$1 or o\.slug = \$1\)/);
+  assert.match(calls[0]?.text ?? "", /where \(o\.id = \$1 or o\.slug = \$1 or exists/);
+  assert.match(calls[0]?.text ?? "", /from opportunity_slug_aliases osa/);
+  assert.match(calls[0]?.text ?? "", /osa\.slug = \$1/);
   assert.deepEqual(calls[0]?.values, ["opp_missing"]);
 });
 

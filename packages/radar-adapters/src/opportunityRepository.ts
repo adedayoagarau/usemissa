@@ -1361,9 +1361,15 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     const detailValues = built.values.slice(0, -1);
     const idPlaceholder = `$${detailValues.length + 1}`;
     const mainWhereIndex = built.text.lastIndexOf("\n    where ");
+    const identityPredicate = `(o.id = ${idPlaceholder} or o.slug = ${idPlaceholder} or exists (
+      select 1
+      from opportunity_slug_aliases osa
+      where osa.opportunity_id = o.id
+        and osa.slug = ${idPlaceholder}
+    ))`;
     const detailText =
       mainWhereIndex >= 0
-        ? `${built.text.slice(0, mainWhereIndex)}\n    where (o.id = ${idPlaceholder} or o.slug = ${idPlaceholder}) and ${built.text.slice(mainWhereIndex + "\n    where ".length)}`
+        ? `${built.text.slice(0, mainWhereIndex)}\n    where ${identityPredicate} and ${built.text.slice(mainWhereIndex + "\n    where ".length)}`
         : built.text;
     const detailResult = await this.pool.query<OpportunityRow>(
       detailText.replace(/limit \$\d+/, "limit 1"),
