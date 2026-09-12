@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
+import type { OpportunityDetailProjection } from '@missa/radar-engine';
+import type { ProfileCard } from '@missa/radar-adapters';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getOpportunityRepository } from '@/lib/opportunityRepository';
 import { getProfileRepository } from '@/lib/profileRepository';
@@ -13,11 +16,28 @@ import { JsonLd, absoluteUrl, breadcrumbJsonLd, opportunityDescription, pageMeta
 export const dynamic = 'force-dynamic';
 
 const PUBLIC_STATUSES = new Set(['opening-soon', 'open', 'closing-soon', 'deadline-extended']);
+const getPublicOpportunity = cache((id: string) => getOpportunityRepository().getById(id));
+
+async function getRelatedProfile(
+  opportunity: OpportunityDetailProjection,
+): Promise<ProfileCard | null> {
+  const repository = getProfileRepository();
+  if (!repository) return null;
+
+  try {
+    return opportunity.organizationId
+      ? await repository.getById(opportunity.organizationId)
+      : await repository.getForOpportunity(opportunity.id);
+  } catch (error) {
+    console.warn('Related Organization profile is unavailable; rendering the Opportunity without it.', error);
+    return null;
+  }
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   try {
-    const opportunity = await getOpportunityRepository().getById(id);
+    const opportunity = await getPublicOpportunity(id);
     if (!opportunity || !PUBLIC_STATUSES.has(opportunity.status)) {
       return pageMetadata({
         title: 'Opportunity not found',
@@ -42,23 +62,17 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default async function OpportunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const cookieStore = await cookies();
+  const [cookieStore, { id }] = await Promise.all([cookies(), params]);
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
-  const { id } = await params;
-  const opportunity = await getOpportunityRepository().getById(
-    id,
-    session?.account.id ? { accountId: session.account.id } : undefined,
-  );
+  const opportunity = session?.account.id
+    ? await getOpportunityRepository().getById(id, { accountId: session.account.id })
+    : await getPublicOpportunity(id);
   if (!opportunity || (!session && !PUBLIC_STATUSES.has(opportunity.status))) notFound();
 
   const path = `/opportunities/${opportunity.slug}`;
   const summary = opportunity.content?.summary ?? opportunityDescription(opportunity);
   const taxonomyLabels = (opportunity.taxonomy?.termIds ?? []).map(taxonomyLabelFor);
-  const profileRepository = getProfileRepository();
-  const profileMatch = profileRepository
-    ? (await profileRepository.getForOpportunity(opportunity.id)) ??
-      (opportunity.organizationId ? await profileRepository.getById(opportunity.organizationId) : null)
-    : null;
+  const profileMatch = await getRelatedProfile(opportunity);
   const practiceLabels = Array.from(
     [...taxonomyLabels, ...opportunity.genres].reduce((labels, label) => {
       const normalized = label.trim().toLocaleLowerCase('en');

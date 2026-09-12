@@ -9,9 +9,11 @@ import {
   type SubmitResidencyReviewInput,
   type SubmitResidencyReviewResult,
 } from "@missa/radar-adapters";
+import { catalogueReadDatabaseUrl } from "./catalogueDatabase";
 
 declare global {
-  var __missaResidencyRankingRepo: PostgresResidencyRankingRepository | undefined;
+  var __missaResidencyRankingReadRepo: PostgresResidencyRankingRepository | undefined;
+  var __missaResidencyRankingWriteRepo: PostgresResidencyRankingRepository | undefined;
 }
 
 type PostgresError = Error & { code?: string };
@@ -27,8 +29,8 @@ export function getResidencyRankingRepository(): {
   getIntelligence: (profileId: string) => Promise<import("@missa/radar-adapters").ResidencyFullIntelligenceProfile | null>;
   recordReview: (input: SubmitResidencyReviewInput) => Promise<SubmitResidencyReviewResult>;
 } {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
+  const readConnectionString = catalogueReadDatabaseUrl();
+  if (!readConnectionString) {
     return {
       listRankings: async () => ({
         items: [],
@@ -47,20 +49,29 @@ export function getResidencyRankingRepository(): {
     };
   }
 
-  if (!globalThis.__missaResidencyRankingRepo) {
+  if (!globalThis.__missaResidencyRankingReadRepo) {
     const pool = new Pool({
-      ...missaPostgresPoolConfig(connectionString, "catalogue"),
+      ...missaPostgresPoolConfig(readConnectionString, "catalogue"),
       ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
     });
-    globalThis.__missaResidencyRankingRepo = new PostgresResidencyRankingRepository(pool);
+    globalThis.__missaResidencyRankingReadRepo = new PostgresResidencyRankingRepository(pool);
   }
 
-  const repo = globalThis.__missaResidencyRankingRepo;
+  const readRepo = globalThis.__missaResidencyRankingReadRepo;
+  const applicationConnectionString = process.env.DATABASE_URL?.trim();
+  if (applicationConnectionString && !globalThis.__missaResidencyRankingWriteRepo) {
+    const pool = new Pool({
+      ...missaPostgresPoolConfig(applicationConnectionString, "creator"),
+      ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+    });
+    globalThis.__missaResidencyRankingWriteRepo = new PostgresResidencyRankingRepository(pool);
+  }
+  const writeRepo = globalThis.__missaResidencyRankingWriteRepo;
 
   return {
     listRankings: async (filter = {}) => {
       try {
-        const page = await repo.listResidencyRankings(filter);
+        const page = await readRepo.listResidencyRankings(filter);
         return { ...page, dataSource: page.items.length > 0 ? "database" : "empty" };
       } catch (error) {
         if (!isUndefinedTableError(error)) throw error;
@@ -71,16 +82,19 @@ export function getResidencyRankingRepository(): {
       }
     },
     getReviews: async (profileId: string) => {
-      return repo.getResidencyReviews(profileId);
+      return readRepo.getResidencyReviews(profileId);
     },
     getDetail: async (profileId: string) => {
-      return repo.getResidencyDetail(profileId);
+      return readRepo.getResidencyDetail(profileId);
     },
     getIntelligence: async (profileId: string) => {
-      return repo.getResidencyIntelligence(profileId);
+      return readRepo.getResidencyIntelligence(profileId);
     },
     recordReview: async (input: SubmitResidencyReviewInput) => {
-      return repo.recordResidencyReview(input);
+      if (!writeRepo) {
+        return { success: false, reviewId: "", newRating: 0, newTotalScore: 0 };
+      }
+      return writeRepo.recordResidencyReview(input);
     },
   };
 }

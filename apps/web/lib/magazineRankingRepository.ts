@@ -9,9 +9,11 @@ import {
 } from "@missa/radar-adapters";
 import { rankMagazines, type RankingGenre, type ScoreBreakdown } from "@missa/radar-engine";
 import { SEED_MAGAZINES } from "@missa/radar-adapters/dist/src/ranking/data/seedRankings.js";
+import { catalogueReadDatabaseUrl } from "./catalogueDatabase";
 
 declare global {
-  var __missaRankingRepo: PostgresMagazineRankingRepository | undefined;
+  var __missaRankingReadRepo: PostgresMagazineRankingRepository | undefined;
+  var __missaRankingWriteRepo: PostgresMagazineRankingRepository | undefined;
 }
 
 let memoryCache: MagazineRankingRow[] | null = null;
@@ -116,8 +118,8 @@ export function getMagazineRankingRepository(): {
     feePaidCents?: number;
   }) => Promise<{ success: boolean; newMedianDays: number | null }>;
 } {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
+  const readConnectionString = catalogueReadDatabaseUrl();
+  if (!readConnectionString) {
     return {
       listRankings: async (filter = {}) => {
         const genre = filter.genre ?? "overall";
@@ -160,17 +162,23 @@ export function getMagazineRankingRepository(): {
     };
   }
 
-  if (!globalThis.__missaRankingRepo) {
-    const pool = new Pool(missaPostgresPoolConfig(connectionString, "catalogue"));
-    globalThis.__missaRankingRepo = new PostgresMagazineRankingRepository(pool);
+  if (!globalThis.__missaRankingReadRepo) {
+    const pool = new Pool(missaPostgresPoolConfig(readConnectionString, "catalogue"));
+    globalThis.__missaRankingReadRepo = new PostgresMagazineRankingRepository(pool);
   }
 
-  const repo = globalThis.__missaRankingRepo;
+  const readRepo = globalThis.__missaRankingReadRepo;
+  const applicationConnectionString = process.env.DATABASE_URL?.trim();
+  if (applicationConnectionString && !globalThis.__missaRankingWriteRepo) {
+    const pool = new Pool(missaPostgresPoolConfig(applicationConnectionString, "creator"));
+    globalThis.__missaRankingWriteRepo = new PostgresMagazineRankingRepository(pool);
+  }
+  const writeRepo = globalThis.__missaRankingWriteRepo;
 
   return {
     listRankings: async (filter = {}) => {
       try {
-        const page = await repo.listRankings(filter);
+        const page = await readRepo.listRankings(filter);
         if (page.items.length > 0) return { ...page, dataSource: "database" };
       } catch (error) {
         if (!isUndefinedTableError(error)) throw error;
@@ -192,7 +200,7 @@ export function getMagazineRankingRepository(): {
     },
     getMagazineStanding: async (profileId: string) => {
       try {
-        const standing = await repo.getMagazineStanding(profileId);
+        const standing = await readRepo.getMagazineStanding(profileId);
         if (standing.length > 0) return standing;
       } catch (error) {
         if (!isUndefinedTableError(error)) throw error;
@@ -205,10 +213,11 @@ export function getMagazineRankingRepository(): {
       return all.filter((r) => r.profileId === profileId);
     },
     getTelemetrySummary: async (profileId: string) => {
-      return repo.getTelemetrySummary(profileId);
+      return readRepo.getTelemetrySummary(profileId);
     },
     recordSubmissionTelemetry: async (input) => {
-      return repo.recordSubmissionTelemetry(input);
+      if (!writeRepo) return { success: false, newMedianDays: null };
+      return writeRepo.recordSubmissionTelemetry(input);
     },
   };
 }

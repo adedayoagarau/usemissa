@@ -95,6 +95,7 @@
 }
 .ledger p {
   margin: 0;
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 .ledger strong {
@@ -256,7 +257,13 @@
     gap: 20px;
   }
   .ledger {
+    align-items: flex-start;
+    flex-direction: column;
     font-size: 12px;
+  }
+  .ledgerActions {
+    width: 100%;
+    flex-wrap: wrap;
   }
   .grid .card {
     padding: 20px;
@@ -340,4 +347,3 @@
   flex-shrink: 0;
   color: var(--muted-foreground);
 }
-
