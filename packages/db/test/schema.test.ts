@@ -467,6 +467,8 @@ test("admin operations schema carries CRM ownership, follow-up, and analytics in
   assert.ok(contacts.indexes.some((index) => index.config.name === "platform_crm_contacts_org_idx"));
   assert.ok(tasks.indexes.some((index) => index.config.name === "platform_crm_tasks_org_due_idx"));
   assert.ok(events.indexes.some((index) => index.config.name === "platform_analytics_events_name_time_idx"));
+  assert.ok(events.indexes.some((index) => index.config.name === "platform_analytics_events_time_idx"));
+  assert.ok(events.indexes.some((index) => index.config.name === "platform_analytics_events_session_time_idx"));
 });
 
 test("opportunity intelligence keeps generated content and review history durable", () => {

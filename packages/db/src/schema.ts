@@ -4761,6 +4761,10 @@ export const platformAnalyticsEvents = pgTable(
       table.organizationId,
       table.occurredAt,
     ),
+    index("platform_analytics_events_time_idx").on(table.occurredAt),
+    index("platform_analytics_events_session_time_idx")
+      .on(table.sessionId, table.occurredAt)
+      .where(sql`${table.sessionId} is not null`),
   ],
 );
 

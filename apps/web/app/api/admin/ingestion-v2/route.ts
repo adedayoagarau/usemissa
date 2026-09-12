@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       runs.push({ runId: run.id, sourceId: run.sourceId, status: run.status });
       await recordPlatformAdminAudit(process.env.DATABASE_URL, auth.session.account.id, 'platform_admin.ingestion_v2_run', 'ingestion_v2_run', run.id, { sourceId: run.sourceId, mode: run.mode, scope }).catch(() => undefined);
     }
-    await trackPlatformAnalytics({ eventName: scope === 'eligible' ? 'ingestion_shadow_batch_requested' : 'ingestion_shadow_run_requested', source: 'admin-api', accountId: auth.session.account.id, path: '/admin/ingestion-v2', properties: { scope, queued_count: runs.length, request_result: 'accepted' }, idempotencyKey: `ingestion-shadow-batch:${runs[0]?.runId ?? Date.now()}` });
+    await trackPlatformAnalytics({ eventName: scope === 'eligible' ? 'admin.ingestion_shadow_batch_requested' : 'admin.ingestion_shadow_run_requested', source: 'admin-api', accountId: auth.session.account.id, path: '/admin/ingestion-v2', properties: { scope, queued_count: runs.length, request_result: 'accepted' }, idempotencyKey: `ingestion-shadow-batch:${runs[0]?.runId ?? Date.now()}` });
     return NextResponse.json({ batchId: `ingbatch_${Date.now().toString(36)}`, scope, queuedCount: runs.length, runs }, { status: 202, headers: { 'cache-control': 'no-store' } });
   } catch (error) {
     console.error('[admin/ingestion-v2] queue failed', error instanceof Error ? error.message : error);

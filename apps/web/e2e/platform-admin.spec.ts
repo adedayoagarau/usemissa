@@ -71,6 +71,10 @@ test("admin can open the control room and operational loop", async ({
   await expect(
     page.getByRole("heading", { name: "Analytics", exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Creator journey" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Behavioral segments" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Week-one retention" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Analytics quality" })).toBeVisible();
 
   await page.goto("/admin/organizations");
   await expect(
@@ -158,6 +162,7 @@ test("admin can open the control room and operational loop", async ({
       "/admin",
       "/admin/operations",
       "/admin/radar",
+      "/admin/analytics",
       "/admin/support",
       "/admin/crm",
       "/admin/agents",

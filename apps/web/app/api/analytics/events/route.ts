@@ -1,22 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSessionAccount } from "@/lib/auth";
+import {
+  analyticsEventDefinition,
+  isAnalyticsEventName,
+  validateAnalyticsEventProperties,
+} from "@/lib/analytics-contract";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
-
-const FIRST_SAVE_SERVER_EVENTS = new Set([
-  "discovery.opportunity_save_intent_created",
-  "discovery.opportunity_saved",
-  "auth.authentication_required",
-  "auth.authentication_succeeded",
-  "journey.intent_revalidated",
-  "journey.material_change_presented",
-  "journey.state_recovered",
-  "journey.abandoned",
-  "tracker.opportunity_created",
-  "tracker.opportunity_already_saved",
-  "tracker.next_action_presented",
-  "tracker.next_action_completed",
-  "journey.guidance_dismissed",
-]);
 
 export async function POST(request: Request) {
   const session = await getSessionAccount(request.headers.get("cookie"));
@@ -36,6 +25,8 @@ export async function POST(request: Request) {
   const path = typeof value.path === "string" ? value.path : undefined;
   const idempotencyKey =
     typeof value.idempotencyKey === "string" ? value.idempotencyKey : undefined;
+  const sessionId =
+    typeof value.sessionId === "string" ? value.sessionId : undefined;
   const properties =
     value.properties &&
     typeof value.properties === "object" &&
@@ -68,20 +59,35 @@ export async function POST(request: Request) {
       { status: 403 },
     );
   }
+  if (!isAnalyticsEventName(eventName)) {
+    return NextResponse.json(
+      { error: "eventName is not registered in the analytics tracking plan" },
+      { status: 400 },
+    );
+  }
+  const definition = analyticsEventDefinition(eventName)!;
   if (path && path.length > 500)
     return NextResponse.json({ error: "path is too long." }, { status: 400 });
-  if (FIRST_SAVE_SERVER_EVENTS.has(eventName)) {
+  if (definition.authority === "server") {
     return NextResponse.json(
       {
-        error: "this transition must be recorded by its authoritative service",
+        error: "this event must be recorded by its authoritative service",
       },
       { status: 403 },
     );
+  }
+  if (sessionId && !/^[A-Za-z0-9_.:-]{8,240}$/.test(sessionId)) {
+    return NextResponse.json({ error: "sessionId is invalid" }, { status: 400 });
+  }
+  const propertyError = validateAnalyticsEventProperties(eventName, properties);
+  if (propertyError) {
+    return NextResponse.json({ error: propertyError }, { status: 400 });
   }
   await trackPlatformAnalytics({
     eventName,
     source: "web-client",
     ...(session?.account.id ? { accountId: session.account.id } : {}),
+    ...(sessionId ? { sessionId } : {}),
     path,
     properties,
     idempotencyKey,

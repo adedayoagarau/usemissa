@@ -33,6 +33,7 @@ import { OpportunityIssueReport } from "@/components/opportunity-issue-report";
 import { PrepareChecklist } from "@/components/prepare-checklist";
 import { FollowButton } from "@/components/follow-button";
 import { MobileActionDock } from "@/components/mobile-action-dock";
+import { OfficialDestinationLink } from "@/components/missa/official-destination-link";
 import {
   cleanCrawledNarrative,
   decodeHtmlEntities,
@@ -943,15 +944,15 @@ export function OpportunityDetailView({
               opportunityTitle={cleanTitle}
             />
           )}
-          <a
+          <OfficialDestinationLink
             className={styles.sourceButton}
             href={destinationHref}
-            target="_blank"
-            rel="noreferrer"
+            opportunityId={opportunity.id}
+            surface="detail-sticky"
           >
             {destinationLabel}
             <ExternalLink aria-hidden="true" />
-          </a>
+          </OfficialDestinationLink>
         </OpportunityDetailStickyActions>
 
         {/* Mobile Sticky Action Bar */}
@@ -972,9 +973,13 @@ export function OpportunityDetailView({
               opportunityTitle={cleanTitle}
             />
           )}
-          <a href={destinationHref} target="_blank" rel="noreferrer">
+          <OfficialDestinationLink
+            href={destinationHref}
+            opportunityId={opportunity.id}
+            surface="mobile-dock"
+          >
             Apply ↗
-          </a>
+          </OfficialDestinationLink>
         </MobileActionDock>
       </article>
     </main>

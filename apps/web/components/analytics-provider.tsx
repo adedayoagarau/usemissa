@@ -3,6 +3,10 @@
 import posthog from "posthog-js";
 import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
+import {
+  type ClientAnalyticsEventName,
+  validateAnalyticsEventProperties,
+} from "@/lib/analytics-contract";
 
 let initialized = false;
 
@@ -15,6 +19,8 @@ function ensurePostHog(): boolean {
         process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
       capture_pageview: false,
       capture_pageleave: true,
+      autocapture: false,
+      disable_session_recording: true,
       persistence: "localStorage",
       person_profiles: "identified_only",
     });
@@ -23,11 +29,47 @@ function ensurePostHog(): boolean {
   return true;
 }
 
-export function captureProductEvent(
-  eventName: string,
+function analyticsSessionId(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const key = "missa.analytics.session.v1";
+    const existing = window.sessionStorage.getItem(key);
+    if (existing) return existing;
+    const created = window.crypto.randomUUID();
+    window.sessionStorage.setItem(key, created);
+    return created;
+  } catch {
+    return undefined;
+  }
+}
+
+function recordFirstPartyEvent(
+  eventName: ClientAnalyticsEventName,
+  path: string,
   properties?: Record<string, unknown>,
 ): void {
+  if (validateAnalyticsEventProperties(eventName, properties)) return;
+  void fetch("/api/analytics/events", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      eventName,
+      path,
+      sessionId: analyticsSessionId(),
+      properties,
+    }),
+    keepalive: true,
+  }).catch(() => undefined);
+}
+
+export function captureProductEvent(
+  eventName: ClientAnalyticsEventName,
+  properties?: Record<string, unknown>,
+): void {
+  if (typeof window === "undefined") return;
+  if (validateAnalyticsEventProperties(eventName, properties)) return;
   if (ensurePostHog()) posthog.capture(eventName, properties);
+  recordFirstPartyEvent(eventName, window.location.pathname, properties);
 }
 
 /**
@@ -74,7 +116,7 @@ export function browserAttributionProperties(): Record<string, string> {
 }
 
 export function recordPublicAnalyticsEvent(
-  eventName: `public.${string}`,
+  eventName: Extract<ClientAnalyticsEventName, `public.${string}`>,
   properties?: Record<string, unknown>,
 ): void {
   if (typeof window === "undefined") return;
@@ -82,19 +124,8 @@ export function recordPublicAnalyticsEvent(
   const payload = {
     ...browserAttributionProperties(),
     ...(properties ?? {}),
-    path: window.location.pathname,
   };
   captureProductEvent(eventName, payload);
-  void fetch("/api/analytics/events", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      eventName,
-      path: window.location.pathname,
-      properties: payload,
-    }),
-    keepalive: true,
-  }).catch(() => undefined);
 }
 
 export function AnalyticsProvider({ children }: { children: ReactNode }) {
@@ -102,16 +133,7 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const attribution = browserAttributionProperties();
-    void fetch("/api/analytics/events", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        eventName: "page_view",
-        path: pathname,
-        properties: attribution,
-      }),
-      keepalive: true,
-    }).catch(() => undefined);
+    recordFirstPartyEvent("page_view", pathname, attribution);
     if (ensurePostHog())
       posthog.capture("$pageview", { path: pathname, ...attribution });
   }, [pathname]);

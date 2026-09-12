@@ -3,6 +3,7 @@ import { getSessionAccount } from '@/lib/auth';
 import { getRelationalWorkspace, getWorkspaceEngine, persistWorkspace, workspaceCommandEnvelope, workspaceMutationError, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { getEngine, persistRadar } from '@/lib/engine';
 import { checkOpportunitySubmissionCap, recordSubmissionAgainstCap } from '@/lib/submission-caps';
+import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 
 /**
  * Story 6.5: submitter file upload against a Submission Path.
@@ -154,6 +155,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
       if (!created.replayed && openCall.radarOpportunityId) {
         await recordSubmissionAgainstCap(openCall.radarOpportunityId);
       }
+      await trackPlatformAnalytics({
+        eventName: 'application.provider_receipt_recorded',
+        source: 'hosted-submission-api',
+        accountId: session.account.id,
+        properties: {
+          submission_id: created.resourceId,
+          provider: 'missa-hosted',
+          ...(linkedOpportunityId ? { opportunity_id: linkedOpportunityId } : {}),
+        },
+        idempotencyKey: `hosted-submission:${created.resourceId}:analytics`,
+      });
       return NextResponse.json({ submission: { id: created.resourceId, submissionPathId: pathId, submitterAccountId: session.account.id, status: 'submitted', revision: created.revision, receiptId: created.receiptId }, works: created.data?.works ?? [], trackerLinked: Boolean(userId && linkedOpportunityId), idempotent: created.replayed }, { status: created.replayed ? 200 : 201 });
     } catch (error) {
       const mapped = workspaceMutationError(error);
@@ -190,6 +202,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     if (linkedOpportunityId) {
       await recordSubmissionAgainstCap(linkedOpportunityId);
     }
+    await trackPlatformAnalytics({
+      eventName: 'application.provider_receipt_recorded',
+      source: 'hosted-submission-api',
+      accountId: session.account.id,
+      properties: {
+        submission_id: submission.id,
+        provider: 'missa-hosted',
+        ...(linkedOpportunityId ? { opportunity_id: linkedOpportunityId } : {}),
+      },
+      idempotencyKey: `hosted-submission:${submission.id}:analytics`,
+    });
     return NextResponse.json({ submission, works: engine.worksForSubmission(submission.id), trackerLinked: Boolean(userId && linkedOpportunityId), idempotent: false }, { status: 201 });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'failed' }, { status: 404 });
