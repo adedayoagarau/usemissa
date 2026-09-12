@@ -7,6 +7,8 @@ const discoveryRoots = [
   "/library",
   "/calendar",
   "/inbox",
+  "/following",
+  "/goals",
   "/opportunities",
   "/directory",
   "/residencies",

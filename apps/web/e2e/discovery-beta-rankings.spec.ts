@@ -90,6 +90,9 @@ test("production discovery gate admits only intended public routes", () => {
     "/tracker",
     "/calendar",
     "/library",
+    "/following",
+    "/goals",
+    "/inbox",
     "/signup",
     "/onboarding",
   ])

@@ -14,6 +14,8 @@ test("keeps normalized same-origin auth destinations", () => {
   assert.equal(safeAuthRedirect("/saved"), "/saved");
   assert.equal(safeAuthRedirect("/saved?sort=deadline"), "/saved?sort=deadline");
   assert.equal(safeAuthRedirect("/calendar"), "/calendar");
+  assert.equal(safeAuthRedirect("/following"), "/following");
+  assert.equal(safeAuthRedirect("/goals?goal=goal-1"), "/goals?goal=goal-1");
   assert.equal(safeAuthRedirect("/reviews/assigned"), "/reviews/assigned");
 });
 
