@@ -183,6 +183,22 @@ export type OpportunityConfiguration = {
   amendmentPolicy: 'not-allowed' | 'organization-opens';
   withdrawalPolicy: 'not-allowed' | 'before-final-decision';
   fee: { type: 'none' } | { type: 'fixed'; amountMinor: number; currency: string; waiversAllowed: boolean };
+  eligibility?: {
+    summary: string;
+    applicantTypes: readonly string[];
+  };
+  place?: {
+    reach: 'worldwide' | 'countries' | 'region';
+    participation: 'remote' | 'in-person' | 'hybrid';
+    location?: string;
+  };
+  terms?: {
+    award?: string;
+    expenses?: string;
+    rights?: string;
+    paymentPolicy?: string;
+    refundPolicy?: string;
+  };
   applicationFormVersionId: string;
   eligibilityFormVersionId?: string;
   reviewWorkflowVersionId?: string;

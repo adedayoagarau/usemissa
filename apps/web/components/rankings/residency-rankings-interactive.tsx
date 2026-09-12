@@ -20,7 +20,6 @@ import {
   SlidersHorizontal,
   X,
   Compass,
-  Layers,
   Award,
   PenLine,
   Scale,

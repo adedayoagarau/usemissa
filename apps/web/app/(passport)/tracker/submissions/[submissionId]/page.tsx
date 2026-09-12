@@ -4,7 +4,8 @@ import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, ArrowUpRight, FileCheck2, FileText, Landmark, ReceiptText } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
+import type { Decision, OpenCall, SubmissionField, SubmissionPath, Work } from '@missa/workspace-engine';
 import { WithdrawSubmissionButton } from '@/components/withdraw-submission-button';
 import styles from './submission-detail.module.css';
 
@@ -45,23 +46,51 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
   if (!session) redirect(`/login?next=${encodeURIComponent(`/tracker/submissions/${submissionId}`)}`);
 
-  const workspace = await getWorkspaceEngine();
-  const submission = workspace.store.submissions.get(submissionId);
-  if (!submission || submission.submitterAccountId !== session.account.id) notFound();
-
-  const path = workspace.store.submissionPaths.get(submission.submissionPathId);
-  const call = path ? workspace.store.openCalls.get(path.openCallId) : undefined;
-  const program = call ? workspace.store.programs.get(call.programId) : undefined;
-  const entity = program ? workspace.store.entities.get(program.entityId) : undefined;
   const radar = await getEngine();
-  const organization = entity ? radar.store.organizations.get(entity.organizationId) : undefined;
-  const works = workspace.worksForSubmission(submission.id);
-  const decisions = workspace.decisionsForSubmission(entity?.organizationId ?? '', submission.id);
-  const fields = new Map((path?.fields ?? []).map((field) => [field.id, field]));
+  type ReceiptSubmission = { id: string; status: string; submittedAt: string; category?: string; paymentStatus?: string; feeCents?: number; answers?: Record<string, string | string[]>; revision?: number };
+  type ReceiptPath = Pick<SubmissionPath, 'fields' | 'feeCents'>;
+  type ReceiptCall = Pick<OpenCall, 'title' | 'radarOpportunityId' | 'guidelineUrl'>;
+  type ReceiptWork = Pick<Work, 'id' | 'title' | 'fileUrl' | 'fileUrls' | 'order'>;
+  type ReceiptDecision = Pick<Decision, 'id' | 'workId' | 'outcome' | 'decidedAt'>;
+  let submission: ReceiptSubmission;
+  let path: ReceiptPath;
+  let call: ReceiptCall;
+  let organizationName: string | undefined;
+  let works: ReceiptWork[];
+  let decisions: ReceiptDecision[];
+
+  if (workspaceRelationalAuthorityEnabled()) {
+    const detail = await (await getRelationalWorkspace()).submissionForOwner(session.account.id, submissionId);
+    if (!detail) notFound();
+    submission = { id: detail.id, status: detail.status, submittedAt: detail.submittedAt, revision: detail.revision, ...(detail.category ? { category: detail.category } : {}), ...(detail.paymentStatus ? { paymentStatus: detail.paymentStatus } : {}), ...(detail.feeCents !== undefined ? { feeCents: detail.feeCents } : {}), ...(detail.answers ? { answers: detail.answers } : {}) };
+    path = detail.path;
+    call = { title: detail.openCallTitle, ...(detail.radarOpportunityId ? { radarOpportunityId: detail.radarOpportunityId } : {}) };
+    organizationName = radar.store.organizations.get(detail.organizationId)?.name;
+    works = detail.works;
+    decisions = detail.decisions;
+  } else {
+    const workspace = await getWorkspaceEngine();
+    const found = workspace.store.submissions.get(submissionId);
+    if (!found || found.submitterAccountId !== session.account.id) notFound();
+    const foundPath = workspace.store.submissionPaths.get(found.submissionPathId);
+    const foundCall = foundPath ? workspace.store.openCalls.get(foundPath.openCallId) : undefined;
+    const program = foundCall ? workspace.store.programs.get(foundCall.programId) : undefined;
+    const entity = program ? workspace.store.entities.get(program.entityId) : undefined;
+    if (!foundPath || !foundCall) notFound();
+    submission = { id: found.id, status: found.status, submittedAt: found.submittedAt, ...(found.category ? { category: found.category } : {}), ...(found.paymentStatus ? { paymentStatus: found.paymentStatus } : {}), ...(found.feeCents !== undefined ? { feeCents: found.feeCents } : {}), ...(found.answers ? { answers: found.answers } : {}) };
+    path = foundPath;
+    call = foundCall;
+    organizationName = entity ? radar.store.organizations.get(entity.organizationId)?.name ?? entity.name : undefined;
+    works = workspace.worksForSubmission(found.id);
+    decisions = workspace.decisionsForSubmission(entity?.organizationId ?? '', found.id);
+  }
+
+  const organization = organizationName;
+  const fields = new Map((path.fields ?? []).map((field: SubmissionField) => [field.id, field]));
   const answers = Object.entries(submission.answers ?? {});
   const paymentLabel = submission.paymentStatus
     ? statusLabel(submission.paymentStatus)
-    : path?.feeCents
+      : path.feeCents
       ? 'Payment not recorded'
       : 'No payment required';
 
@@ -72,12 +101,12 @@ export default async function SubmissionDetailPage({ params }: { params: Promise
       <header className={styles.header}>
         <div>
           <p>Submission receipt</p>
-          <h1>{call?.title ?? 'Submission'}</h1>
-          <span>{organization?.name ?? entity?.name ?? 'Organization not listed'} · submitted {formatDate(submission.submittedAt)}</span>
+          <h1>{call.title}</h1>
+          <span>{organization ?? 'Organization not listed'} · submitted {formatDate(submission.submittedAt)}</span>
         </div>
         <div className={styles.headerActions}>
-          {call?.radarOpportunityId ? <Link href={`/opportunities/${call.radarOpportunityId}`}>View Opportunity<ArrowUpRight aria-hidden="true" /></Link> : null}
-          {call?.guidelineUrl && safeFileHref(call.guidelineUrl) ? <a href={call.guidelineUrl} target="_blank" rel="noreferrer">Guidelines<ArrowUpRight aria-hidden="true" /></a> : null}
+          {call.radarOpportunityId ? <Link href={`/opportunities/${call.radarOpportunityId}`}>View Opportunity<ArrowUpRight aria-hidden="true" /></Link> : null}
+          {call.guidelineUrl && safeFileHref(call.guidelineUrl) ? <a href={call.guidelineUrl} target="_blank" rel="noreferrer">Guidelines<ArrowUpRight aria-hidden="true" /></a> : null}
         </div>
       </header>
 

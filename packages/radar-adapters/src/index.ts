@@ -33,6 +33,11 @@ export {
   SnapshotConflictError,
 } from "./postgresStore.js";
 export { uuidIds } from "./uuidIds.js";
+export {
+  createMissaPostgresPool,
+  missaPostgresPoolConfig,
+  type MissaPoolRole,
+} from "./postgresPoolPolicy.js";
 export { canonicalOpportunityIsPublic, canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
 export {
   creatorRelationalAuthorityEnabled,
@@ -610,7 +615,6 @@ export {
   type ManuscriptMatchResponse,
   type MatchCategory,
 } from "./ranking/manuscriptMatchEngine.js";
-
 
 
 

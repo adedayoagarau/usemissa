@@ -5,6 +5,7 @@
  * like."
  */
 import { Pool } from "pg";
+import { createMissaPostgresPool } from "@missa/db";
 import { WorkspaceEngine } from "./engine.js";
 import { cloneStore } from "./store/store.js";
 import { uuidWorkspaceIds } from "./ids.js";
@@ -32,7 +33,7 @@ export async function createProductionWorkspaceEngine(): Promise<ProductionWorks
     );
   }
 
-  const pool = new Pool({ connectionString: databaseUrl });
+  const pool = createMissaPostgresPool(databaseUrl, "creator");
   await ensurePostgresSchema(pool);
   const store = await loadStoreFromPostgres(pool);
   let snapshotVersion = await readSnapshotVersion(pool);

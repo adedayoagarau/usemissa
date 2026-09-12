@@ -1,4 +1,5 @@
 import pg, { type Pool as PgPool, type PoolClient } from "pg";
+import { createMissaPostgresPool } from "@missa/db";
 import { classifyIngestionFailure, INGESTION_V2_VERSION, type ExtractionResult, type IngestionFailureCode, type IngestionRun, type PageSnapshot, type SourceDefinition } from "./contracts.js";
 import type { PublisherReview } from "./publisher.js";
 import { UNCHANGED_ROOT_WARNING, type ShadowArtifact, type ShadowRunStore } from "./execution.js";
@@ -319,7 +320,7 @@ export async function readRecentCandidateArtifacts(
 
 export function createIngestionV2Pool(databaseUrl = process.env.DATABASE_URL): PgPool {
   if (!databaseUrl) throw new Error("DATABASE_URL is required for durable ingestion v2 persistence");
-  return new Pool({ connectionString: databaseUrl, max: 4 });
+  return createMissaPostgresPool(databaseUrl, "worker", { max: 4 });
 }
 
 export interface IngestionV2RunSummary {

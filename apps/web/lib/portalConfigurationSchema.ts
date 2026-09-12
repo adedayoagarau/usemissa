@@ -102,6 +102,22 @@ export const opportunityConfigurationSchema = z.object({
     z.object({ type: z.literal('none') }).strict(),
     z.object({ type: z.literal('fixed'), amountMinor: z.number().int().positive(), currency: z.string().trim().length(3).transform((currency) => currency.toUpperCase()), waiversAllowed: z.boolean() }).strict(),
   ]),
+  eligibility: z.object({
+    summary: z.string().trim().min(1).max(2_000),
+    applicantTypes: z.array(z.string().trim().min(1).max(160)).max(50),
+  }).strict().optional(),
+  place: z.object({
+    reach: z.enum(['worldwide', 'countries', 'region']),
+    participation: z.enum(['remote', 'in-person', 'hybrid']),
+    location: z.string().trim().max(240).optional(),
+  }).strict().optional(),
+  terms: z.object({
+    award: z.string().trim().max(1_000).optional(),
+    expenses: z.string().trim().max(1_000).optional(),
+    rights: z.string().trim().max(1_000).optional(),
+    paymentPolicy: z.string().trim().max(1_000).optional(),
+    refundPolicy: z.string().trim().max(1_000).optional(),
+  }).strict().optional(),
   applicationFormVersionId: z.string().trim().min(1),
   eligibilityFormVersionId: z.string().trim().min(1).optional(),
   reviewWorkflowVersionId: z.string().trim().min(1).optional(),

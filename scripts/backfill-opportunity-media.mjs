@@ -20,6 +20,7 @@ function parseArgs(args) {
     verbose: false,
     workerIndex: null,
     totalWorkers: null,
+    publishedOnly: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -38,6 +39,8 @@ function parseArgs(args) {
       options.autoClearVerified = true;
     } else if (arg === "--verbose") {
       options.verbose = true;
+    } else if (arg === "--published-only") {
+      options.publishedOnly = true;
     }
   }
   return options;
@@ -109,6 +112,7 @@ async function runBackfill() {
             left join opportunity_sources s on s.id = o.source_id
             where o.publication_state in ('published', 'reviewable')
               and coalesce(o.guidelines_url, o.submission_url, s.url) is not null
+              ${options.publishedOnly ? "and o.publication_state = 'published'" : ""}
               and not exists (
                 select 1 from opportunity_identity_assets a
                 where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')

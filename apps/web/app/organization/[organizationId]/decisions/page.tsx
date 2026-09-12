@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
-import { getWorkspaceEngine } from '@/lib/workspaceEngine';
+import { getRelationalWorkspace, getWorkspaceEngine, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 import { organizationCapabilityProjection } from '@/lib/organizationProduct';
 import { decisionSummary, reviewLane } from '@/lib/organizationWorkflow';
 import styles from '../workflow.module.css';
@@ -18,6 +18,22 @@ export default async function OrganizationDecisionsPage({ params, searchParams }
   const projection = organizationCapabilityProjection(membership.role);
   if (!projection.destinations.includes('decisions')) notFound();
   if (membership.role !== 'owner' && membership.role !== 'admin') return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Decision evidence</p><h1>Decisions</h1><p>Per-Work outcomes and review evidence need a server-enforced Program projection.</p></div><span className={styles.role}>{projection.label}</span></header><section className={styles.limited}><h2>Scoped decision projection unavailable</h2><p>The Organization-wide decision desk is withheld until this role’s Team and Program scope is enforced by the server.</p></section></main>;
+
+  if (workspaceRelationalAuthorityEnabled()) {
+    const relational = await getRelationalWorkspace();
+    const submissions = await relational.submissionsForOrganization(organizationId);
+    const packets = submissions.map((submission) => {
+      const outcomes = new Map(submission.decisions.map((decision) => [decision.workId, decision.outcome]));
+      const decided = submission.works.filter((work) => outcomes.has(work.id)).length;
+      const accepted = submission.works.filter((work) => outcomes.get(work.id) === 'accepted').length;
+      const summary = decided === 0 ? 'No decisions' : decided < submission.works.length ? 'Partially decided' : accepted === submission.works.length ? 'Accepted' : accepted > 0 ? 'Partially accepted' : submission.decisions.every((decision) => decision.outcome === 'waitlisted') ? 'Waitlisted' : 'Declined';
+      return { submission, outcomes, summary };
+    });
+    const selected = packets.find((packet) => packet.submission.id === query.selected) ?? packets[0];
+    const allWorks = submissions.flatMap((submission) => submission.works);
+    const allDecisions = submissions.flatMap((submission) => submission.decisions);
+    return <main id="organization-main" className={styles.main}><header className={styles.header}><div><p className={styles.eyebrow}>Decision evidence</p><h1>Decisions</h1><p>Per-Work outcomes from the relational projection. Saving a decision never sends a message.</p></div><span className={styles.role}>{projection.label}</span></header><dl className={styles.summary}><div><dt>Works</dt><dd>{allWorks.length}</dd></div><div><dt>Decided</dt><dd>{allDecisions.length}</dd></div><div><dt>Accepted</dt><dd>{allDecisions.filter((item) => item.outcome === 'accepted').length}</dd></div><div><dt>Undecided</dt><dd>{allWorks.length - allDecisions.length}</dd></div></dl>{packets.length && selected ? <div className={styles.layout}><section><header className={styles.sectionHeader}><div><p className={styles.eyebrow}>Submission packets</p><h2>Decision preparation</h2></div><span>{packets.length} {packets.length === 1 ? 'packet' : 'packets'}</span></header><div className={styles.list}>{packets.map((packet) => <article className={styles.row} key={packet.submission.id}><div><h3>{packet.submission.works.map((work) => work.title).join(', ') || 'Untitled Work'}</h3><p>{packet.submission.openCallTitle} · {packet.submission.works.length} {packet.submission.works.length === 1 ? 'Work' : 'Works'}</p><span className={styles.outcome}>{packet.summary}</span></div><Link aria-current={packet.submission.id === selected.submission.id ? 'true' : undefined} href={`/organization/${encodeURIComponent(organizationId)}/decisions?selected=${encodeURIComponent(packet.submission.id)}`}>{packet.submission.id === selected.submission.id ? 'Selected' : 'Open'}<ArrowRight aria-hidden="true" /></Link></article>)}</div></section><aside className={styles.selected} aria-labelledby="selected-decision-packet"><p className={styles.eyebrow}>Selected packet</p><h2 id="selected-decision-packet">{selected.submission.openCallTitle}</h2><p>{selected.submission.works.length} {selected.submission.works.length === 1 ? 'Work' : 'Works'} · {selected.summary}</p><section className={styles.evidence}>{selected.submission.works.map((work) => <article key={work.id}><h3>{work.title}</h3><span className={styles.outcome}>{selected.outcomes.get(work.id) ?? 'No decision'}</span></article>)}</section><div className={styles.boundary}><h3>Finalization boundary</h3><p>Use the audited decision endpoints to draft, review, and finalize outcomes. Communication and delivery remain independent states.</p></div></aside></div> : <section className={styles.empty}><h2>No decision packets yet</h2><p>Decision preparation begins from received Work and valid review evidence.</p></section>}</main>;
+  }
 
   const workspace = await getWorkspaceEngine();
   const submissions = workspace.submissionsForOrganization(organizationId).map((submission) => {

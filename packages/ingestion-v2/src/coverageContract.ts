@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { createMissaPostgresPool } from '@missa/db';
 import {
   evaluateOperationalCoverage,
   WRITING_COVERAGE_SEGMENTS,
@@ -48,7 +49,7 @@ interface InventoryRow {
 
 export async function readWritingCoverageContract(connectionString: string, now = new Date()): Promise<WritingCoverageContractReport> {
   const sources = createFirstTrancheSources().filter((source) => source.config.sourceManifest && (source.config.sourceManifest as { desk?: string }).desk === 'writing');
-  const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 5_000 });
+  const pool = createMissaPostgresPool(connectionString, 'worker', { max: 1 });
   try {
     const [runResult, inventoryResult] = await Promise.all([
       pool.query<{ source_id: string; status: string; completed_at: Date | string | null }>(

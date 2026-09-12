@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { missaPostgresPoolConfig } from "@missa/radar-adapters";
 import {
   PostgresMagazineRankingRepository,
   type MagazineRankingRow,
@@ -154,7 +155,7 @@ export function getMagazineRankingRepository(): {
   }
 
   if (!globalThis.__missaRankingRepo) {
-    const pool = new Pool({ connectionString });
+    const pool = new Pool(missaPostgresPoolConfig(connectionString, "catalogue"));
     globalThis.__missaRankingRepo = new PostgresMagazineRankingRepository(pool);
   }
 

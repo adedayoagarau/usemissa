@@ -8,7 +8,6 @@ import {
   DollarSign,
   Clock,
   FileText,
-  Users,
   Award,
   ShieldCheck,
   AlertCircle,
@@ -79,6 +78,8 @@ export function EditorialIntelligenceDrawer({
 
   React.useEffect(() => {
     if (open && !data && !loading) {
+      // The fetch callback owns loading/error state for this user-triggered disclosure.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       void fetchIntelligence();
     }
   }, [open, data, loading, fetchIntelligence]);

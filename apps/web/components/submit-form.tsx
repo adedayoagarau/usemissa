@@ -27,6 +27,8 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
   const [draftMessage, setDraftMessage] = useState<string>();
   const [reviewing, setReviewing] = useState(false);
   const [uploadMessage, setUploadMessage] = useState<string>();
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [draftConflict, setDraftConflict] = useState(false);
   const searchParams = useSearchParams();
   const submitLabel = feeCents && feeCents > 0 ? `Pay $${(feeCents / 100).toFixed(2)} USD and submit` : 'Submit application';
 
@@ -65,20 +67,43 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
   const isVisible = (field: SubmissionField) => !field.visibleWhen || values[field.visibleWhen.fieldId] === field.visibleWhen.equals;
 
   const uploadFile = async (file: File): Promise<string> => {
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
-      setUploadMessage(`Checking ${file.name}…${attempt === 2 ? ' retrying' : ''}`);
+    type Attempt = { ok: true; url: string } | { ok: false; message: string; retryable: boolean };
+    const uploadOnce = (): Promise<Attempt> => new Promise((resolve) => {
+      const request = new XMLHttpRequest();
+      request.open('POST', `/api/submission-paths/${pathId}/upload`);
+      request.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const progress = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress((current) => ({ ...current, [file.name]: progress }));
+        setUploadMessage(`Uploading ${file.name}… ${progress}%`);
+      };
+      request.onload = () => {
+        let body: { url?: string; error?: string; retryable?: boolean } = {};
+        try { body = JSON.parse(request.responseText) as typeof body; } catch { /* use the neutral fallback below */ }
+        if (request.status >= 200 && request.status < 300 && body.url) {
+          setUploadProgress((current) => ({ ...current, [file.name]: 100 }));
+          return resolve({ ok: true, url: body.url });
+        }
+        resolve({ ok: false, message: body.error ?? 'File upload failed', retryable: body.retryable === true });
+      };
+      request.onerror = () => resolve({ ok: false, message: 'The upload connection was interrupted.', retryable: true });
       const form = new FormData();
       form.set('file', file);
-      const response = await fetch(`/api/submission-paths/${pathId}/upload`, { method: 'POST', body: form });
-      const body = await response.json().catch(() => ({})) as { url?: string; error?: string; retryable?: boolean };
-      if (response.ok && body.url) return body.url;
-      if (!body.retryable || attempt === 2) throw new Error(body.error ?? 'File upload failed');
+      request.send(form);
+    });
+
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      setUploadMessage(`${attempt === 1 ? 'Checking' : 'Retrying'} ${file.name}…`);
+      const result = await uploadOnce();
+      if (result.ok) return result.url;
+      if (!result.retryable || attempt === 2) throw new Error(result.message);
     }
     throw new Error('File upload failed');
   };
 
   const saveDraft = () => startTransition(async () => {
     setDraftMessage(undefined);
+    setDraftConflict(false);
     const answers: Record<string, string | string[]> = { ...values };
     for (const [index, urls] of Object.entries(workFileUrls)) answers[`__work_files_${index}`] = urls;
     const response = await fetch(`/api/submission-paths/${pathId}/draft`, {
@@ -88,6 +113,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
     });
     const body = await response.json() as { draft?: { revision: number }; error?: string };
     if (!response.ok || !body.draft) {
+      if (response.status === 409) setDraftConflict(true);
       setResult({ ok: false, message: body.error ?? 'Could not save your application draft' });
       return;
     }
@@ -153,6 +179,7 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
+        if (res.status === 409) setDraftConflict(true);
         setResult({ ok: false, message: data.error ?? 'Submission failed' });
         return;
       }
@@ -167,8 +194,15 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
     return <div className="mt-4 space-y-3 text-sm"><p className="text-[var(--green)]">{result.message}</p>{result.submissionId && <a className="inline-flex min-h-11 items-center rounded-md border border-border px-3 py-2 font-medium hover:bg-muted" href={`/tracker/submissions/${result.submissionId}`}>View submission receipt</a>}</div>;
   }
 
+  const visibleFields = fields.filter(isVisible);
+  const answeredFields = visibleFields.filter((field) => {
+    const value = values[field.id];
+    return Array.isArray(value) ? value.length > 0 : Boolean(value?.trim());
+  });
+
   return (
     <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-6">
+      {draftConflict ? <aside className="rounded-lg border border-[var(--ochre)]/50 bg-[var(--ochre)]/10 p-4 text-sm leading-6" role="alert"><strong className="block text-foreground">This draft changed elsewhere</strong><p className="mt-1 text-muted-foreground">Your local answers are still here. Open the latest draft in another tab or device before trying to save again.</p></aside> : null}
       {categories.length > 0 && (
         <div>
           <Label htmlFor="category">Category — Required</Label>
@@ -190,17 +224,18 @@ export function SubmitForm({ pathId, categories, fields, feeCents }: { pathId: s
         <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 id="application-works-title" className="text-sm font-semibold">Works — At least one required</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Titles and selected files become a submission snapshot. Files stay private until submission.</p></div><Button type="button" variant="outline" size="sm" onClick={() => setWorkTitles((current) => [...current, ''])}>Add another Work</Button></div>
         {workTitles.map((workTitle, index) => <div key={index} className="rounded-md border border-border p-3"><div className="flex flex-wrap gap-2"><Input aria-label={`Work ${index + 1} title`} placeholder={`Work ${index + 1} title`} value={workTitle} required={index === 0} onChange={(e) => setWorkTitles((current) => current.map((value, i) => i === index ? e.target.value : value))} />{index > 0 && <Button type="button" variant="ghost" size="sm" onClick={() => { setWorkTitles((current) => current.filter((_, i) => i !== index)); setWorkFileInputs((current) => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value]))); setWorkFileUrls((current) => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) !== index).map(([key, value]) => [Number(key) > index ? Number(key) - 1 : Number(key), value]))); }}>Remove Work</Button>}</div><label className="mt-3 block text-xs leading-5 text-muted-foreground">Files for Work {index + 1} — Optional · 25 MB per file<input type="file" multiple className="mt-2 block min-h-11 w-full text-sm" aria-label={`Files for work ${index + 1}`} onChange={(event) => setWorkFileInputs((current) => ({ ...current, [index]: Array.from(event.target.files ?? []) }))} />{workFileUrls[index]?.length ? <span className="mt-1 block">{workFileUrls[index].length} uploaded file{workFileUrls[index].length === 1 ? '' : 's'} saved</span> : null}</label></div>)}
       </section>
-      {fields.length ? <section className="space-y-5" aria-labelledby="application-questions-title"><div><h3 id="application-questions-title" className="text-sm font-semibold">Organization questions</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Required and Optional are stated in text. Answers remain private until submission.</p></div>{fields.filter(isVisible).map((f) => (
+      {fields.length ? <section className="space-y-5" aria-labelledby="application-questions-title"><div><h3 id="application-questions-title" className="text-sm font-semibold">Organization questions</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">Required and Optional are stated in text. Answers remain private until submission.</p></div>{visibleFields.map((f) => (
         <div key={f.id}>
           <Label htmlFor={f.id}>{f.label} — {f.required ? 'Required' : 'Optional'}</Label>
           {f.helpText ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{f.helpText}</p> : null}
-          {f.type === 'file-upload' ? <><input id={f.id} name={f.id} type="file" required={f.required && !values[f.id]} className="mt-2 block min-h-11 w-full text-sm" /><p className="mt-1 text-xs text-muted-foreground">Maximum 25 MB. The current form does not yet show upload progress or retry.</p></> : f.type === 'category-select' ? <select id={f.id} name={f.id} required={f.required} value={values[f.id] ?? category} onChange={(e) => { setField(f.id, e.target.value); setCategory(e.target.value); }} className="mt-2 min-h-11 w-full rounded-md border border-input bg-white px-3 py-2 text-sm"><option value="">Choose a category</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select> : f.type === 'fee-toggle' ? <p className="mt-2 text-sm text-muted-foreground">The application fee is reviewed before external checkout. Payment and submission receipt remain separate states.</p> : <Input id={f.id} name={f.id} required={f.required} className="mt-2 min-h-11" onChange={(e) => setField(f.id, e.target.value)} />}
+          {f.type === 'file-upload' ? <><input id={f.id} name={f.id} type="file" required={f.required && !values[f.id]} className="mt-2 block min-h-11 w-full text-sm" /><p className="mt-1 text-xs text-muted-foreground">Maximum 25 MB. Files are checked before they are attached to your packet; interrupted uploads can retry.</p></> : f.type === 'category-select' ? <select id={f.id} name={f.id} required={f.required} value={values[f.id] ?? category} onChange={(e) => { setField(f.id, e.target.value); setCategory(e.target.value); }} className="mt-2 min-h-11 w-full rounded-md border border-input bg-white px-3 py-2 text-sm"><option value="">Choose a category</option>{categories.map((item) => <option key={item} value={item}>{item}</option>)}</select> : f.type === 'fee-toggle' ? <p className="mt-2 text-sm text-muted-foreground">The application fee is reviewed before external checkout. Payment and submission receipt remain separate states.</p> : <Input id={f.id} name={f.id} required={f.required} className="mt-2 min-h-11" onChange={(e) => setField(f.id, e.target.value)} />}
         </div>
       ))}</section> : <section aria-labelledby="application-questions-title"><h3 id="application-questions-title" className="text-sm font-semibold">No Organization questions</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">This published form requires the Work packet only.</p></section>}
-      {reviewing ? <aside className="rounded-lg border border-[var(--green)]/40 bg-[var(--green)]/5 p-4 text-sm leading-6" aria-labelledby="application-review-title"><strong id="application-review-title" className="block text-foreground">Review your application</strong><dl className="mt-3 grid gap-2 sm:grid-cols-2"><div><dt className="text-xs text-muted-foreground">Category</dt><dd>{category || 'Not selected'}</dd></div><div><dt className="text-xs text-muted-foreground">Works</dt><dd>{workTitles.filter((title) => title.trim()).length}</dd></div><div className="sm:col-span-2"><dt className="text-xs text-muted-foreground">Questions answered</dt><dd>{Object.values(values).filter((value) => value.trim()).length} of {fields.filter((field) => field.type !== 'file-upload').length}</dd></div></dl><p className="mt-3 text-xs text-muted-foreground">Confirming submits this packet to the organization. You can no longer edit it here after submission.</p></aside> : <aside className="rounded-lg border border-border bg-muted/30 p-4 text-xs leading-5 text-muted-foreground"><strong className="block text-foreground">Before submitting</strong>Review every Work, file, category, and answer before continuing.</aside>}
+      {reviewing ? <aside className="rounded-lg border border-[var(--green)]/40 bg-[var(--green)]/5 p-4 text-sm leading-6" aria-labelledby="application-review-title"><strong id="application-review-title" className="block text-foreground">Review your application</strong><dl className="mt-3 grid gap-2 sm:grid-cols-2"><div><dt className="text-xs text-muted-foreground">Category</dt><dd>{category || 'Not selected'}</dd></div><div><dt className="text-xs text-muted-foreground">Works</dt><dd>{workTitles.filter((title) => title.trim()).length}</dd></div><div className="sm:col-span-2"><dt className="text-xs text-muted-foreground">Questions answered</dt><dd>{answeredFields.length} of {visibleFields.filter((field) => field.type !== 'file-upload').length}</dd></div></dl><div className="mt-4 space-y-2 border-t border-[var(--green)]/20 pt-3"><strong className="block text-xs uppercase tracking-[.08em] text-muted-foreground">Packet check</strong><ul className="space-y-1 text-sm"><li>{workTitles.filter((title) => title.trim()).length} titled Work{workTitles.filter((title) => title.trim()).length === 1 ? '' : 's'}</li><li>{Object.values(workFileUrls).flat().length + Object.values(workFileInputs).reduce((count, files) => count + files.length, 0)} Work file{Object.values(workFileUrls).flat().length + Object.values(workFileInputs).reduce((count, files) => count + files.length, 0) === 1 ? '' : 's'} attached</li><li>{answeredFields.length} visible question{answeredFields.length === 1 ? '' : 's'} answered</li></ul></div><p className="mt-3 text-xs text-muted-foreground">Confirming submits this exact packet to the organization. After submission, the receipt is immutable and edits are no longer available here.</p></aside> : <aside className="rounded-lg border border-border bg-muted/30 p-4 text-xs leading-5 text-muted-foreground"><strong className="block text-foreground">Before submitting</strong>Review every Work, file, category, and answer before continuing.</aside>}
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end"><Button type="button" variant="outline" disabled={isPending} onClick={saveDraft}>{isPending ? 'Saving…' : 'Save draft'}</Button>{reviewing ? <Button type="button" variant="outline" disabled={isPending} onClick={() => setReviewing(false)}>Back to edit</Button> : null}<Button type="submit" disabled={isPending}>{isPending ? 'Submitting…' : reviewing ? submitLabel : 'Review application'}</Button></div>
       {draftMessage ? <p className="text-xs text-[var(--success)]" role="status">{draftMessage}</p> : null}
       {uploadMessage ? <p className="text-xs text-muted-foreground" role="status">{uploadMessage}</p> : null}
+      {Object.entries(uploadProgress).map(([filename, progress]) => <div key={filename} className="space-y-1" aria-label={`${filename} upload progress`}><div className="flex justify-between text-xs text-muted-foreground"><span className="truncate">{filename}</span><span>{progress}%</span></div><progress className="h-2 w-full" max={100} value={progress}>{progress}%</progress></div>)}
       {result && !result.ok && <p className="text-xs text-destructive" role="alert">{result.message}</p>}
     </form>
   );

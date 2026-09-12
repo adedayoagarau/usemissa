@@ -4,22 +4,17 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Building,
   DollarSign,
   Star,
   Home,
-  Utensils,
-  Sparkles,
   MapPin,
   ExternalLink,
   X,
   Search,
-  Check,
   Award,
 } from "lucide-react";
 import type { ResidencyRankingRow } from "@missa/radar-adapters";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
-import { Button } from "@/components/ui/button";
 
 interface ResidencyComparisonViewProps {
   allResidencies: ResidencyRankingRow[];
@@ -30,7 +25,7 @@ interface ResidencyComparisonViewProps {
 export function ResidencyComparisonView({
   allResidencies,
   initialSelectedIds,
-  signedIn = false,
+  signedIn: _signedIn = false,
 }: ResidencyComparisonViewProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>(
     initialSelectedIds.length > 0

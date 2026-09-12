@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { missaPostgresPoolConfig } from "@missa/radar-adapters";
 import {
   PostgresResidencyRankingRepository,
   type ResidencyRankingRow,
@@ -42,7 +43,7 @@ export function getResidencyRankingRepository(): {
 
   if (!globalThis.__missaResidencyRankingRepo) {
     const pool = new Pool({
-      connectionString,
+      ...missaPostgresPoolConfig(connectionString, "catalogue"),
       ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
     });
     globalThis.__missaResidencyRankingRepo = new PostgresResidencyRankingRepository(pool);
