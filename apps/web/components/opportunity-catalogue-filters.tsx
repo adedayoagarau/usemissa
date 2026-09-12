@@ -137,7 +137,7 @@ function DesktopFilters({
         <CommandList><CommandEmpty>No types found.</CommandEmpty><CommandGroup>
           <CommandItem value="All opportunity types" data-checked={selectedTypes.length === 0} onSelect={() => setValue("type")}>
             <Checkbox checked={selectedTypes.length === 0} aria-hidden="true" tabIndex={-1} />
-            <span>All opportunity types</span><span className={styles.optionCount}>{facetCounts.total.toLocaleString()}</span>
+            <span>All opportunity types</span>
           </CommandItem>
           {facetCounts.types.map((option) => <CommandItem key={option.value} value={option.label} data-checked={selectedTypes.includes(option.value)} onSelect={() => toggle("type", option.value)}>
             <Checkbox checked={selectedTypes.includes(option.value)} aria-hidden="true" tabIndex={-1} />
