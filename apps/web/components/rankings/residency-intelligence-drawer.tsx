@@ -85,6 +85,8 @@ export function ResidencyIntelligenceDrawer({
 
   React.useEffect(() => {
     if (open && !data && !loading) {
+      // The fetch callback owns loading/error state for this user-triggered disclosure.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchIntelligence();
     }
   }, [open, data, loading, fetchIntelligence]);
@@ -197,18 +199,18 @@ export function ResidencyIntelligenceDrawer({
 
             {/* Custom Tab Navigation */}
             <div className="flex border-b border-[var(--border-subtle)]">
-              {[
+              {([
                 { id: "funding", label: "Funding & Stipends", icon: DollarSign },
                 { id: "facilities", label: "Studio & Facilities", icon: Building },
                 { id: "cohort", label: "Selectivity & Cohort", icon: Users },
                 { id: "alumni", label: "Alumni & Reviews", icon: Award },
-              ].map((tab) => {
+              ] as const).map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
+                    onClick={() => setActiveTab(tab.id)}
                     className={cn(
                       "flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 font-sans text-xs font-medium border-b-2 transition",
                       isActive
