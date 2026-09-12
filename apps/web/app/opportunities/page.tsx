@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { X } from "lucide-react";
+import { unstable_cache } from "next/cache";
+import type {
+  OpportunityRepositoryContext,
+  OpportunityRepositoryQuery,
+} from "@missa/radar-engine";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import { parseOpportunityBrowseQuery } from "@/lib/opportunityQuery";
@@ -38,6 +43,22 @@ const typeLabels: Record<string, string> = {
   rfp: "RFP / Public Commission",
   job: "Job / Employment",
 };
+
+async function loadOpportunityBrowse(
+  query: OpportunityRepositoryQuery,
+  context?: OpportunityRepositoryContext,
+) {
+  return Promise.all([
+    getOpportunityRepository().browse(query, context),
+    getOpportunityFacetCounts(query, context),
+  ]);
+}
+
+const getCachedPublicOpportunityBrowse = unstable_cache(
+  async (query: OpportunityRepositoryQuery) => loadOpportunityBrowse(query),
+  ["public-opportunity-browse-v1"],
+  { revalidate: 60, tags: ["opportunities"] },
+);
 
 export async function generateMetadata({
   searchParams,
@@ -130,21 +151,12 @@ export default async function OpportunitiesPage({
   const publicPreview = rawParams.preview === "public";
   const activeSession = publicPreview ? null : session;
   const urlParams = toUrlSearchParams(rawParams);
-  const query = { ...parseOpportunityBrowseQuery(urlParams), limit: 48 };
-  const [result, facetCounts] = await Promise.all([
-    getOpportunityRepository().browse(
-      query,
-      activeSession?.account.id
-        ? { accountId: activeSession.account.id }
-        : undefined,
-    ),
-    getOpportunityFacetCounts(
-      query,
-      activeSession?.account.id
-        ? { accountId: activeSession.account.id }
-        : undefined,
-    ),
-  ]);
+  const query = { ...parseOpportunityBrowseQuery(urlParams), limit: 24 };
+  const [result, facetCounts] = activeSession?.account.id
+    ? await loadOpportunityBrowse(query, {
+        accountId: activeSession.account.id,
+      })
+    : await getCachedPublicOpportunityBrowse(query);
   const usePreviewFixtures = publicPreview && result.items.length === 0;
   const previewItems = usePreviewFixtures ? previewItemsForQuery(query) : [];
   const displayResult = usePreviewFixtures

@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { z } from "zod";
-import { useInView } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { opportunityBrowseResponseSchema } from "@missa/contracts";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -18,12 +18,19 @@ import {
   AccordionContent,
 } from "@/components/ui/accordion";
 import { MissaWordmark } from "@/components/missa-wordmark";
-import { HomepageWorkspace } from "./homepage-workspace";
-import { HomepagePortfolio } from "./homepage-portfolio";
 import { categorySearch } from "@/lib/homepage-opportunity-categories";
 import "@/components/design-system/homepage-continuation-tokens.css";
 import "@/components/design-system/homepage-marketing-palette.css";
 import styles from "./homepage-continuation.module.css";
+
+const HomepageWorkspace = dynamic(
+  () => import("./homepage-workspace").then((module) => module.HomepageWorkspace),
+  { ssr: false },
+);
+const HomepagePortfolio = dynamic(
+  () => import("./homepage-portfolio").then((module) => module.HomepagePortfolio),
+  { ssr: false },
+);
 
 type Opportunity = ReturnType<
   typeof opportunityBrowseResponseSchema.parse
@@ -107,7 +114,7 @@ export function HomepageContinuation({
   layout?: "full" | "focused";
 }) {
   const sectionRef = useRef<HTMLDivElement>(null);
-  const visible = useInView(sectionRef, { once: true, margin: "300px" });
+  const [visible, setVisible] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[] | null>(
     null,
   );
@@ -116,6 +123,20 @@ export function HomepageContinuation({
   const [directoryError, setDirectoryError] = useState(false);
   const [featuredImageFailed, setFeaturedImageFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section || visible) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        setVisible(true);
+        observer.disconnect();
+      },
+      { rootMargin: "300px" },
+    );
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [visible]);
   useEffect(() => {
     if (!visible) return;
     const controller = new AbortController();
@@ -265,7 +286,9 @@ export function HomepageContinuation({
       </section>
 
       <div className={styles.workspaceBand}>
-        {layout === "focused" ? (
+        {!visible ? (
+          <div className={styles.workspaceDeferred} aria-hidden="true" />
+        ) : layout === "focused" ? (
           <HomepagePortfolio />
         ) : (
           <HomepageWorkspace

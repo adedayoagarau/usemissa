@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { ResidencyRankingsInteractive } from "@/components/rankings/residency-rankings-interactive";
 import { getResidencyRankingRepository } from "@/lib/residencyRankingRepository";
+import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -13,20 +14,25 @@ export const metadata: Metadata = {
     "Explore and filter top artist residencies evaluated by funding, resident community reviews, private studio facilities, and institutional prestige.",
 };
 
+const getCachedResidencyRankings = unstable_cache(
+  async () => getResidencyRankingRepository().listRankings({ limit: 100 }),
+  ["public-residency-rankings-v1"],
+  { revalidate: 300, tags: ["residency-rankings"] },
+);
+
 export default async function ResidencyRankingsPage() {
-  const repository = getResidencyRankingRepository();
-  const page = await repository.listRankings({ limit: 1000 });
+  const page = await getCachedResidencyRankings();
 
   return (
-    <PublicSiteShell current="Residencies">
+    <PublicSiteShell current="Rankings">
       <main id="main-content" className={catalogueStyles.main}>
         <header className={`${catalogueStyles.pageIntro} mb-8`}>
-          <p className={catalogueStyles.eyebrow}>Residencies Index · 2026</p>
+          <p className={catalogueStyles.eyebrow}>Rankings · 2026</p>
           <div className={catalogueStyles.introRow}>
             <div className={catalogueStyles.introCopy}>
-              <h1>Residency rankings & reviews</h1>
+              <h1>Residency rankings</h1>
               <p className={catalogueStyles.lede}>
-                Residency programs ranked by funding, solitude, community feedback, and institutional prestige.
+                Artist residencies and fellowships. Ranked by Missa across funding, facilities, community reporting, and institutional evidence.
               </p>
             </div>
           </div>

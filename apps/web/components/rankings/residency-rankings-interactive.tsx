@@ -17,12 +17,9 @@ import {
   MessageSquare,
   Check,
   Building,
-  SlidersHorizontal,
   X,
-  Compass,
   Award,
   PenLine,
-  Scale,
 } from "lucide-react";
 import type { ResidencyRankingRow, ResidencyReviewRow } from "@missa/radar-adapters";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
@@ -93,6 +90,8 @@ export function ResidencyRankingsInteractive({
   const [discipline, setDiscipline] = useState(paramDiscipline);
   const [filters, setFilters] = useState<string[]>(paramFilters);
   const [page, setPage] = useState(Math.max(0, isNaN(paramPage) ? 0 : paramPage));
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
 
   // Review modal state
   const [activeResidencyForReviews, setActiveResidencyForReviews] = useState<ResidencyRankingRow | null>(null);
@@ -165,29 +164,6 @@ export function ResidencyRankingsInteractive({
       ),
     );
   };
-
-  // Compute summary stats across complete dataset
-  const stats = useMemo(() => {
-    let fullyFundedCount = 0;
-    let stipendCount = 0;
-    let reviewsCount = 0;
-    let tier1Count = 0;
-
-    for (const item of items) {
-      if (item.isFullyFunded) fullyFundedCount++;
-      if (item.hasStipend) stipendCount++;
-      if (item.rmarReviewsCount > 0 || item.rmarRatingsCount > 0) reviewsCount++;
-      if (item.prestigeTier.startsWith("Tier 1")) tier1Count++;
-    }
-
-    return {
-      indexedTotal: total,
-      fullyFundedCount,
-      stipendCount,
-      reviewsCount,
-      tier1Count,
-    };
-  }, [items, total]);
 
   const filtered = useMemo(() => {
     return items
@@ -282,89 +258,69 @@ export function ResidencyRankingsInteractive({
     updateUrl({ filter: next, page: 0 });
   };
 
+  const loadMore = async () => {
+    if (loadingMore || items.length >= total) return;
+    setLoadingMore(true);
+    setLoadMoreError(false);
+    try {
+      const params = new URLSearchParams({
+        offset: String(items.length),
+        limit: "250",
+      });
+      const response = await fetch(`/api/rankings/residencies?${params}`);
+      if (!response.ok) throw new Error("Residency rankings request failed");
+      const payload = (await response.json()) as {
+        items: ResidencyRankingRow[];
+      };
+      setItems((current) => {
+        const known = new Set(current.map((item) => item.profileId));
+        return [
+          ...current,
+          ...payload.items.filter((item) => !known.has(item.profileId)),
+        ];
+      });
+    } catch {
+      setLoadMoreError(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Top Rankings Navigation Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-4">
-        <nav aria-label="Ranking categories" className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-6 border-b border-border">
+        <nav aria-label="Ranking categories" className="flex flex-wrap gap-6">
           <Link
             href="/rankings/residencies"
             aria-current="page"
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-colors"
+            className="inline-flex min-h-12 items-center border-b-2 border-primary text-sm font-medium text-primary outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
           >
-            <Building className="h-4 w-4" />
-            <span>Artist Residencies</span>
+            Artist residencies
           </Link>
           <Link
             href="/rankings/magazines"
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted"
+            className="inline-flex min-h-12 items-center border-b-2 border-transparent text-sm font-medium text-muted-foreground outline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
           >
-            <Compass className="h-4 w-4" />
-            <span>Literary Magazines</span>
+            Literary magazines
           </Link>
           <Link
             href="/rankings/compare?kind=residencies"
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted"
+            className="inline-flex min-h-12 items-center border-b-2 border-transparent text-sm font-medium text-muted-foreground outline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
           >
-            <Scale className="h-4 w-4" />
-            <span>Compare Side-by-Side</span>
+            Compare
           </Link>
         </nav>
 
         <Link
           href="/rankings/methodology"
-          className="inline-flex min-h-10 items-center text-xs font-medium text-muted-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
+          className="inline-flex min-h-12 items-center text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
         >
-          MRI Scoring Methodology →
+          Methodology
         </Link>
       </div>
 
-      {/* Metric Counters Banner */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            <Building className="h-3.5 w-3.5 text-primary" />
-            <span>Programs Ranked</span>
-          </div>
-          <p className="mt-1 font-mono text-2xl font-bold text-foreground">
-            {stats.indexedTotal.toLocaleString()}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>100% Fully Funded</span>
-          </div>
-          <p className="mt-1 font-mono text-2xl font-bold text-foreground">
-            {stats.fullyFundedCount}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            <span>Stipends Provided</span>
-          </div>
-          <p className="mt-1 font-mono text-2xl font-bold text-foreground">
-            {stats.stipendCount}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-400" />
-            <span>Community Reviews</span>
-          </div>
-          <p className="mt-1 font-mono text-2xl font-bold text-foreground">
-            {stats.reviewsCount}
-          </p>
-        </div>
-      </div>
-
-      {/* Main Filter Bar */}
-      <div className="rounded-2xl border border-border bg-card p-5 space-y-4 shadow-sm">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="col-span-2 grid gap-4 sm:grid-cols-2">
           {/* Keyword Search */}
           <Field className="sm:col-span-2">
             <FieldLabel htmlFor="residency-search">Search by name, state, country, or keyword</FieldLabel>
@@ -399,7 +355,6 @@ export function ResidencyRankingsInteractive({
             </div>
           </Field>
 
-          {/* Discipline Selector */}
           <Field>
             <FieldLabel htmlFor="residency-discipline">Artistic discipline</FieldLabel>
             <NativeSelect
@@ -420,7 +375,6 @@ export function ResidencyRankingsInteractive({
             </NativeSelect>
           </Field>
 
-          {/* Sort Selector */}
           <Field>
             <FieldLabel htmlFor="residency-sort">Sort standings</FieldLabel>
             <NativeSelect
@@ -441,29 +395,42 @@ export function ResidencyRankingsInteractive({
           </Field>
         </div>
 
-        {/* Second Row: Prestige Tier & Feature Pills */}
-        <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between border-t border-border">
-          {/* Feature Toggle Pills */}
-          <div className="flex flex-wrap items-center gap-2" aria-label="Funding & facility toggles">
-            <span className="text-xs font-medium text-muted-foreground mr-1 flex items-center gap-1">
-              <SlidersHorizontal className="h-3 w-3" /> Filters:
-            </span>
+        <Field>
+          <FieldLabel htmlFor="tier-select">Ranking tier</FieldLabel>
+          <NativeSelect
+            id="tier-select"
+            value={tier}
+            onChange={(e) => {
+              setTier(e.target.value);
+              setPage(0);
+              updateUrl({ tier: e.target.value, page: 0 });
+            }}
+            className="w-full [&_select]:h-11"
+          >
+            <option value="all">All tiers</option>
+            <option value="Tier 1">Tier 1</option>
+            <option value="Tier 2">Tier 2</option>
+            <option value="Tier 3">Tier 3</option>
+          </NativeSelect>
+        </Field>
+      </div>
+
+      <div className="flex flex-wrap gap-3" aria-label="Residency preferences">
             {[
-              { id: "funded", label: "100% Free / Fellowship", icon: DollarSign },
-              { id: "stipend", label: "Stipend Provided", icon: Sparkles },
-              { id: "meals", label: "Meals Included", icon: Utensils },
-              { id: "studio", label: "Private Studio", icon: Home },
-              { id: "reviews", label: "With Reviews", icon: MessageSquare },
+              { id: "funded", label: "Fully funded", icon: DollarSign },
+              { id: "stipend", label: "Stipend", icon: Sparkles },
+              { id: "meals", label: "Meals included", icon: Utensils },
+              { id: "studio", label: "Private studio", icon: Home },
+              { id: "reviews", label: "Community reviews", icon: MessageSquare },
             ].map(({ id, label, icon: Icon }) => {
               const isActive = filters.includes(id);
               return (
                 <Button
                   key={id}
                   variant={isActive ? "default" : "outline"}
-                  size="sm"
                   aria-pressed={isActive}
                   onClick={() => toggleFilter(id)}
-                  className="gap-1.5 min-h-9 text-xs"
+                  className="text-sm"
                 >
                   <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                   <span>{label}</span>
@@ -471,30 +438,6 @@ export function ResidencyRankingsInteractive({
                 </Button>
               );
             })}
-          </div>
-
-          {/* Prestige Tier Dropdown */}
-          <div className="flex items-center gap-2">
-            <label htmlFor="tier-select" className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-              Tier:
-            </label>
-            <NativeSelect
-              id="tier-select"
-              value={tier}
-              onChange={(e) => {
-                setTier(e.target.value);
-                setPage(0);
-                updateUrl({ tier: e.target.value, page: 0 });
-              }}
-              className="[&_select]:h-9 [&_select]:text-xs [&_select]:py-1"
-            >
-              <option value="all">All Tiers</option>
-              <option value="Tier 1">Tier 1: Flagships</option>
-              <option value="Tier 2">Tier 2: Distinction</option>
-              <option value="Tier 3">Tier 3: Emerging</option>
-            </NativeSelect>
-          </div>
-        </div>
       </div>
 
       {/* Results Counter Header */}
@@ -871,6 +814,19 @@ export function ResidencyRankingsInteractive({
           </div>
         </div>
       )}
+
+      {items.length < total ? (
+        <div className="flex flex-col items-center gap-2 border-t border-border pt-6">
+          <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? "Loading more residencies…" : "Load more residencies"}
+          </Button>
+          {loadMoreError ? (
+            <p role="alert" className="text-sm text-destructive">
+              More residencies could not load. Try again.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* Community Reviews Modal */}
       <Dialog

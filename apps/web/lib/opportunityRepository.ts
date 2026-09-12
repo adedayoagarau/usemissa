@@ -13,6 +13,7 @@ import {
 import { createPostgresOpportunityRepositoryFromUrl, creatorRelationalAuthorityEnabled } from "@missa/radar-adapters";
 import { MISSA_TAXONOMY, taxonomyDescendantIds, taxonomyLabelFor } from "@missa/taxonomy";
 import { getEngine } from "./engine";
+import { catalogueReadDatabaseUrl } from "./catalogueDatabase";
 
 declare global {
   var __missaOpportunityRepository: OpportunityRepository | undefined;
@@ -358,12 +359,13 @@ class EngineOpportunityRepository implements OpportunityRepository {
 export function getOpportunityRepository(): OpportunityRepository {
   const relationalCreatorAuthority = creatorRelationalAuthorityEnabled(process.env);
   const postgresRequested = process.env.MISSA_OPPORTUNITY_REPOSITORY?.trim() === "postgres";
-  if ((relationalCreatorAuthority || postgresRequested) && !process.env.DATABASE_URL) {
+  const catalogueDatabaseUrl = catalogueReadDatabaseUrl();
+  if ((relationalCreatorAuthority || postgresRequested) && !catalogueDatabaseUrl) {
     throw new Error("Canonical Opportunity repository is unavailable");
   }
-  if ((relationalCreatorAuthority || postgresRequested) && process.env.DATABASE_URL) {
+  if ((relationalCreatorAuthority || postgresRequested) && catalogueDatabaseUrl) {
     if (!globalThis.__missaOpportunityRepository) {
-      globalThis.__missaOpportunityRepository = createPostgresOpportunityRepositoryFromUrl(process.env.DATABASE_URL);
+      globalThis.__missaOpportunityRepository = createPostgresOpportunityRepositoryFromUrl(catalogueDatabaseUrl);
     }
     return globalThis.__missaOpportunityRepository;
   }

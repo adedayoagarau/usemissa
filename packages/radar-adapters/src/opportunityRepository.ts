@@ -28,7 +28,6 @@ export interface SqlQuery {
 }
 
 interface OpportunityRow extends QueryResultRow {
-  total_count: number | string | null;
   id: string;
   slug: string;
   title: string;
@@ -162,6 +161,13 @@ const VALID_SOURCE_KINDS = new Set<OpportunityRepositorySource["kind"]>([
   "user-suggested",
   "partner-feed",
 ]);
+
+// A submission portal is an action destination, not an opportunity's visual
+// identity. This is deliberately a second line of defence after media
+// extraction/review: historical imports may have incorrectly marked portal
+// chrome as cleared, but it must never reach a public projection.
+const APPLICATION_PLATFORM_MEDIA_PATTERN =
+  "submittable|slideroom|callforentry|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|powered[+%20_-]*by|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite|curatorspace";
 
 
 // Values provisioned from stdin can carry a trailing newline in Vercel.
@@ -402,8 +408,7 @@ function baseSelect(
     ${contentSelect}
     call_profile.profile as call_profile,
     ${tailoringSelect}
-    o.created_at,
-    count(*) over() as total_count
+    o.created_at
   `;
 }
 
@@ -436,7 +441,9 @@ function baseFrom(
         from gary_profile_visuals v
         where o.organization_id is not null
           and v.profile_id = o.organization_id
-          and v.asset_type in ('banner', 'issue_cover', 'logo')`
+          and v.asset_type in ('banner', 'issue_cover', 'logo')
+          and coalesce(v.image_url, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
+          and coalesce(v.label, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'`
     : "";
   return `
     from opportunities o
@@ -456,6 +463,9 @@ function baseFrom(
         from opportunity_identity_assets a
         where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')
           and a.kind in ('opportunity-artwork', 'opportunity-cover')
+          and coalesce(a.url, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
+          and coalesce(a.alt, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
+          and coalesce(a.source_url, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
         union all
         select a.url, a.alt,
           case a.kind
@@ -470,6 +480,9 @@ function baseFrom(
           and a.linked_organization_id = o.organization_id
           and a.rights_status in ('cleared', 'permitted')
           and a.kind in ('opportunity-artwork', 'opportunity-cover', 'organization-banner')
+          and coalesce(a.url, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
+          and coalesce(a.alt, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
+          and coalesce(a.source_url, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
         ${garyVisualsSelect}
       ) asset_candidate
       order by
@@ -961,6 +974,68 @@ function facetFilterQuery(
   return { text, values };
 }
 
+export function buildOpportunityCountQuery(
+  query: OpportunityRepositoryQuery,
+  context?: OpportunityRepositoryContext,
+  options: { taxonomyReads?: boolean; garyVisualsReads?: boolean } = {},
+): SqlQuery {
+  const taxonomyReads = options.taxonomyReads ?? taxonomyReadsEnabled();
+  const garyVisualsReads = options.garyVisualsReads ?? garyVisualsReadsEnabled();
+  const matched = facetFilterQuery(
+    { ...query, cursor: undefined },
+    context,
+    taxonomyReads,
+    garyVisualsReads,
+    0,
+  );
+  const evidenceJoin = query.verifiedOnly ? `left join lateral (
+    select e.verified_until
+    from opportunity_source_evidence e
+    where e.opportunity_id = o.id
+    order by e.checked_at desc
+    limit 1
+  ) evidence on true` : "";
+  return {
+    text: `select count(*)::int as total
+      from opportunities o
+      ${evidenceJoin}
+      where ${matched.text}`,
+    values: matched.values,
+  };
+}
+
+export function buildOpportunityCandidateQuery(
+  query: OpportunityRepositoryQuery,
+  context?: OpportunityRepositoryContext,
+  options: { taxonomyReads?: boolean; garyVisualsReads?: boolean } = {},
+): SqlQuery {
+  const taxonomyReads = options.taxonomyReads ?? taxonomyReadsEnabled();
+  const garyVisualsReads = options.garyVisualsReads ?? garyVisualsReadsEnabled();
+  const matched = facetFilterQuery(
+    query,
+    context,
+    taxonomyReads,
+    garyVisualsReads,
+    0,
+  );
+  const evidenceJoin = query.verifiedOnly ? `left join lateral (
+    select e.verified_until
+    from opportunity_source_evidence e
+    where e.opportunity_id = o.id
+    order by e.checked_at desc
+    limit 1
+  ) evidence on true` : "";
+  return {
+    text: `select o.id
+      from opportunities o
+      ${evidenceJoin}
+      where ${matched.text}
+      order by ${buildOrder(query.sort)}
+      limit $${matched.values.length + 1}::int`,
+    values: [...matched.values, query.limit + 1],
+  };
+}
+
 export function buildOpportunityFacetCountsQuery(
   query: OpportunityRepositoryQuery,
   context?: OpportunityRepositoryContext,
@@ -1206,14 +1281,31 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
     query: OpportunityRepositoryQuery,
     context?: OpportunityRepositoryContext,
   ): Promise<OpportunityBrowsePage> {
-    const built = buildOpportunityBrowseQuery(query, context, {
-      taxonomyReads: await this.taxonomyReadsAvailable(),
+    const taxonomyReads = await this.taxonomyReadsAvailable();
+    const options = {
+      taxonomyReads,
       garyVisualsReads: garyVisualsReadsEnabled(),
-    });
-    const result = await this.pool.query<OpportunityRow>(
-      built.text,
-      built.values,
+    };
+    const candidates = buildOpportunityCandidateQuery(query, context, options);
+    const count = buildOpportunityCountQuery(query, context, options);
+    const [candidateResult, countResult] = await Promise.all([
+      this.pool.query<{ id: string }>(candidates.text, candidates.values),
+      this.pool.query<{ total: number | string }>(count.text, count.values),
+    ]);
+    const candidateIds = candidateResult.rows.map((row) => row.id);
+    if (candidateIds.length === 0) {
+      return {
+        items: [],
+        nextCursor: null,
+        total: Number(countResult.rows[0]?.total ?? 0),
+      };
+    }
+    const built = buildOpportunityBrowseQuery(
+      { ...query, ids: candidateIds },
+      context,
+      options,
     );
+    const result = await this.pool.query<OpportunityRow>(built.text, built.values);
     const rows = result.rows;
     const hasNext = rows.length > query.limit;
     const visibleRows = hasNext ? rows.slice(0, query.limit) : rows;
@@ -1224,10 +1316,7 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
         hasNext && items.length
           ? cursorFor(items[items.length - 1], query.sort)
           : null,
-      total:
-        rows[0]?.total_count == null
-          ? items.length
-          : Number(rows[0].total_count),
+      total: Number(countResult.rows[0]?.total ?? items.length),
     };
   }
 

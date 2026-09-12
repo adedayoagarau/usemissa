@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowUpRight } from "lucide-react";
-import Image from "next/image";
+import { getImageProps } from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -18,6 +18,22 @@ export function HomepageHeroPreview({
 }: {
   exploreHref?: string;
 }) {
+  const mobileImage = getImageProps({
+    src: MOBILE_PLATE,
+    alt: "",
+    width: 652,
+    height: 1024,
+    sizes: "100vw",
+    fetchPriority: "high",
+  }).props;
+  const desktopImage = getImageProps({
+    src: DESKTOP_PLATE,
+    alt: "",
+    width: 1024,
+    height: 573,
+    sizes: "100vw",
+    fetchPriority: "high",
+  }).props;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -58,22 +74,14 @@ export function HomepageHeroPreview({
       </a>
 
       <div className={styles.stage} aria-hidden="true">
-        <Image
-          src={MOBILE_PLATE}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className={`${styles.plate} ${styles.plateMobile}`}
-        />
-        <Image
-          src={DESKTOP_PLATE}
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className={`${styles.plate} ${styles.plateDesktop}`}
-        />
+        <picture>
+          <source
+            media="(min-width: 1024px)"
+            srcSet={desktopImage.srcSet}
+            sizes={desktopImage.sizes}
+          />
+          <img {...mobileImage} alt="" className={styles.plate} />
+        </picture>
       </div>
 
       <div className={styles.floatNav}>

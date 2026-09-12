@@ -4,6 +4,8 @@ import { opportunityDetailResponseSchema } from "@missa/contracts";
 import {
   PostgresOpportunityRepository,
   buildOpportunityBrowseQuery,
+  buildOpportunityCandidateQuery,
+  buildOpportunityCountQuery,
   buildOpportunityFacetCountsQuery,
 } from "../src/opportunityRepository.js";
 
@@ -45,9 +47,39 @@ test("browse SQL is parameterized and keeps public publication boundaries", () =
   );
   assert.match(built.text, /a\.rights_status in \('cleared', 'permitted'\)/);
   assert.doesNotMatch(built.text, /a\.rights_status in \([^)]*'unknown'/);
+  assert.match(
+    built.text,
+    /coalesce\(a\.url, ''\) !~\* 'submittable\|slideroom\|callforentry/,
+  );
+  assert.match(
+    built.text,
+    /coalesce\(a\.source_url, ''\) !~\* 'submittable\|slideroom\|callforentry/,
+  );
+  assert.match(
+    built.text,
+    /coalesce\(v\.image_url, ''\) !~\* 'submittable\|slideroom\|callforentry/,
+  );
   assert.doesNotMatch(built.text, /poetry.*1=1/);
   assert.deepEqual(built.values[1], ["poetry"]);
   assert.equal(built.values.at(-1), 2);
+});
+
+test("browse count is computed before rich opportunity joins", () => {
+  const built = buildOpportunityCountQuery(baseQuery);
+
+  assert.match(built.text, /select count\(\*\)::int as total/);
+  assert.match(built.text, /from opportunities o/);
+  assert.doesNotMatch(built.text, /opportunity_identity_assets/);
+  assert.doesNotMatch(built.text, /count\(\*\) over\(\)/);
+});
+
+test("browse candidates apply ordering and limit before enrichment", () => {
+  const built = buildOpportunityCandidateQuery(baseQuery);
+
+  assert.match(built.text, /^select o\.id/m);
+  assert.match(built.text, /order by o\.deadline_date/);
+  assert.doesNotMatch(built.text, /opportunity_identity_assets/);
+  assert.equal(built.values.at(-1), baseQuery.limit + 1);
 });
 
 test("canonical taxonomy filters require every selected hierarchy root", () => {
@@ -193,9 +225,11 @@ test("repository disables taxonomy SQL when the additive schema is not ready", a
       },
       { accountId: "acct_0001" },
     );
-    assert.equal(calls.length, 2);
+    assert.equal(calls.length, 3);
     assert.match(calls[1] ?? "", /false/);
     assert.doesNotMatch(calls[1] ?? "", /taxonomy_terms/);
+    assert.match(calls[2] ?? "", /false/);
+    assert.doesNotMatch(calls[2] ?? "", /taxonomy_terms/);
   } finally {
     if (previous === undefined) delete process.env.MISSA_TAXONOMY_READS;
     else process.env.MISSA_TAXONOMY_READS = previous;
@@ -437,7 +471,11 @@ test("repository maps rows and returns a continuation cursor", async () => {
     },
   ];
   const pool = {
-    async query() {
+    async query(text: string) {
+      if (text.includes("count(*)::int as total"))
+        return { rows: [{ total: "2" }] };
+      if (text.includes("select o.id"))
+        return { rows: rows.map(({ id }) => ({ id })) };
       return { rows };
     },
   } as never;

@@ -7,6 +7,7 @@ import { MagazineRankingsInteractive } from "@/components/rankings/magazine-rank
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import type { RankingGenre } from "@missa/radar-engine";
+import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,17 @@ export const metadata: Metadata = {
   description:
     "The independent literary magazine rankings evaluated across anthology accolades, contributor compensation, turnaround speed, and submission access.",
 };
+
+const getCachedMagazineRankings = unstable_cache(
+  async (genre: RankingGenre) =>
+    getMagazineRankingRepository().listRankings({
+      genre,
+      year: 2026,
+      limit: 100,
+    }),
+  ["public-magazine-rankings-v1"],
+  { revalidate: 300, tags: ["magazine-rankings"] },
+);
 
 export default async function MagazineRankingsPage({
   searchParams,
@@ -30,9 +42,8 @@ export default async function MagazineRankingsPage({
       ? requestedGenre
       : "overall";
 
-  const repository = getMagazineRankingRepository();
   const [page, cookieStore] = await Promise.all([
-    repository.listRankings({ genre, year: 2026, limit: 1000 }),
+    getCachedMagazineRankings(genre),
     cookies(),
   ]);
   const session = await getSessionAccountFromToken(

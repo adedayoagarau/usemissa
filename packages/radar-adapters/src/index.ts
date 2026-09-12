@@ -135,6 +135,8 @@ export {
   createPostgresOpportunityRepository,
   createPostgresOpportunityRepositoryFromUrl,
   buildOpportunityBrowseQuery,
+  buildOpportunityCandidateQuery,
+  buildOpportunityCountQuery,
   buildOpportunityFacetCountsQuery,
   type SqlQuery,
 } from "./opportunityRepository.js";
@@ -615,7 +617,5 @@ export {
   type ManuscriptMatchResponse,
   type MatchCategory,
 } from "./ranking/manuscriptMatchEngine.js";
-
-
 
 

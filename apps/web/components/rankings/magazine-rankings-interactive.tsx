@@ -49,14 +49,17 @@ export function MagazineRankingsInteractive({
   preview?: boolean;
 }) {
   const router = useRouter();
+  const [items, setItems] = useState(initialItems);
   const [search, setSearch] = useState("");
   const [tier, setTier] = useState("all");
   const [sort, setSort] = useState<Sort>("rank");
   const [filters, setFilters] = useState<string[]>([]);
   const [page, setPage] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
   const filtered = useMemo(
     () =>
-      initialItems
+      items
         .filter((row) => {
           if (
             !row.name.toLowerCase().includes(search.trim().toLowerCase()) &&
@@ -91,7 +94,7 @@ export function MagazineRankingsInteractive({
                   (b.medianResponseDays ?? Infinity)
                 : a.rankPosition - b.rankPosition,
         ),
-    [initialItems, search, tier, filters, sort],
+    [items, search, tier, filters, sort],
   );
   const currentPage = Math.min(
     page,
@@ -107,6 +110,35 @@ export function MagazineRankingsInteractive({
     setTier("all");
     setFilters([]);
     setPage(0);
+  }
+
+  async function loadMore() {
+    if (loadingMore || items.length >= total) return;
+    setLoadingMore(true);
+    setLoadMoreError(false);
+    try {
+      const params = new URLSearchParams({
+        genre: currentGenre,
+        offset: String(items.length),
+        limit: "250",
+      });
+      const response = await fetch(`/api/rankings/magazines?${params}`);
+      if (!response.ok) throw new Error("Magazine rankings request failed");
+      const payload = (await response.json()) as {
+        items: MagazineRankingRow[];
+      };
+      setItems((current) => {
+        const known = new Set(current.map((item) => item.profileId));
+        return [
+          ...current,
+          ...payload.items.filter((item) => !known.has(item.profileId)),
+        ];
+      });
+    } catch {
+      setLoadMoreError(true);
+    } finally {
+      setLoadingMore(false);
+    }
   }
 
   return (
@@ -241,8 +273,8 @@ export function MagazineRankingsInteractive({
           {filtered.length.toLocaleString()}{" "}
           {filtered.length === 1 ? "magazine" : "magazines"}
           {hasFilters ? " matching your search" : " in this index"}
-          {total > initialItems.length
-            ? ` · searching ${initialItems.length} of ${total} entries`
+          {total > items.length
+            ? ` · searching ${items.length} of ${total} entries`
             : ""}
         </p>
         {hasFilters && (
@@ -464,6 +496,18 @@ export function MagazineRankingsInteractive({
           </div>
         </nav>
       )}
+      {items.length < total && !preview ? (
+        <div className="flex flex-col items-center gap-2 border-t border-border pt-6">
+          <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? "Loading more rankings…" : "Load more rankings"}
+          </Button>
+          {loadMoreError ? (
+            <p role="alert" className="text-sm text-destructive">
+              More rankings could not load. Try again.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -6,7 +6,6 @@ import Image from "next/image";
 import { z } from "zod";
 import { WheelGesturesPlugin } from "embla-carousel-wheel-gestures";
 import { useReducedMotion } from "framer-motion";
-import { opportunityBrowseResponseSchema } from "@missa/contracts";
 import {
   Card,
   CardHeader,
@@ -68,26 +67,19 @@ export function HomepageNextOpening({
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000);
     let alive = true;
-    Promise.all([
-      ...[[], ["residency"], ["grant"]].map(async (types) => {
-        const response = await fetch(
-          `/api/opportunities?${categorySearch(types)}&limit=1`,
-          { signal: controller.signal },
-        );
-        if (!response.ok) throw new Error("Catalogue unavailable");
-        return opportunityBrowseResponseSchema.parse(await response.json())
-          .total;
-      }),
-      fetch("/api/journals?limit=1", { signal: controller.signal }).then(
-        async (response) => {
-          if (!response.ok) throw new Error("Directory unavailable");
-          return z
-            .object({ total: z.number().int().nonnegative() })
-            .parse(await response.json()).total;
-        },
-      ),
-    ])
-      .then(([open, residencies, grants, organizations]) => {
+    fetch("/api/homepage/stats", { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Homepage statistics unavailable");
+        return z
+          .object({
+            open: z.number().int().nonnegative(),
+            residencies: z.number().int().nonnegative(),
+            grants: z.number().int().nonnegative(),
+            organizations: z.number().int().nonnegative(),
+          })
+          .parse(await response.json());
+      })
+      .then(({ open, residencies, grants, organizations }) => {
         if (alive) {
           setCounts({ open, residencies, grants, organizations });
           setStatsError(false);

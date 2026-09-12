@@ -48,16 +48,12 @@
 }
 
 .plate {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-}
-
-.plateMobile {
   object-position: left top;
-}
-
-.plateDesktop {
-  display: none;
-  object-position: left center;
 }
 
 /* Floating menu — mobile / tablet only */
@@ -376,12 +372,8 @@
 }
 
 @media (min-width: 1024px) {
-  .plateMobile {
-    display: none;
-  }
-
-  .plateDesktop {
-    display: block;
+  .plate {
+    object-position: left center;
   }
 
   .floatNav {
