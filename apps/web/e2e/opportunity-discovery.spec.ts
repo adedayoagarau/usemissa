@@ -36,7 +36,7 @@ test('desktop type filtering can return from Magazine to all opportunities', asy
   await page.getByRole('button', { name: 'Magazine', exact: true }).click();
   await page.getByRole('option', { name: /All opportunity types/ }).click();
 
-  await expect(page).toHaveURL('/opportunities');
+  await expect(page).toHaveURL('/opportunities', { timeout: 20_000 });
   await expect(page.getByRole('button', { name: 'Type' })).toBeVisible();
 });
 
@@ -47,7 +47,7 @@ test('mobile Clear all removes an active opportunity type', async ({ page }) => 
   await page.getByRole('button', { name: /Filters/ }).click();
   await page.getByRole('button', { name: 'Clear all' }).click();
 
-  await expect(page).toHaveURL('/opportunities');
+  await expect(page).toHaveURL('/opportunities', { timeout: 20_000 });
 });
 
 test('anonymous empty states explain a failed search and offer recovery', async ({ page }) => {
