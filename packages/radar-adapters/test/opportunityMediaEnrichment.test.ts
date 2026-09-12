@@ -137,6 +137,46 @@ test("4. Rejection heuristics eliminate tracking pixels, favicons, avatars, ads,
   assert.equal(authentic?.rightsStatus, "unknown");
 });
 
+test("default WordPress webclip icons are rejected without rejecting WordPress-hosted artwork", () => {
+  const context = {
+    opportunityId: "opp_wordpress_media",
+    title: "WordPress-hosted opportunity",
+    pageUrl: "https://publisher.example/call",
+    sourceRole: "official-opportunity-page" as const,
+  };
+  const baseCandidate = {
+    candidateKind: "organization-logo" as const,
+    sourceRole: "official-opportunity-page" as const,
+    inheritanceLevel: "organization" as const,
+    width: 512,
+    height: 512,
+  };
+
+  assert.ok(
+    evaluateRejection(
+      {
+        ...baseCandidate,
+        resolvedUrl: "https://s2.wp.com/i/webclip.png?m=1713868326i",
+        alt: "Publisher logo",
+      },
+      context,
+    ).includes("favicon-or-icon"),
+  );
+  assert.deepEqual(
+    evaluateRejection(
+      {
+        ...baseCandidate,
+        candidateKind: "opportunity-artwork",
+        inheritanceLevel: "opportunity",
+        resolvedUrl: "https://publisher.example/wp-content/uploads/2026/09/call-cover.jpg",
+        alt: "2026 call cover",
+      },
+      context,
+    ),
+    [],
+  );
+});
+
 test("5. Directory branding is rejected when source role is discovery-directory", () => {
   const result = extractMediaCandidates(DISCOVERY_DIRECTORY_PAGE_HTML, {
     opportunityId: "opp_dir",
