@@ -25,7 +25,7 @@ export default async function HomePage() {
   return (
     <>
       <main>
-        <HomepageHeroPreview exploreHref="#next-opening" />
+        <HomepageHeroPreview />
         <HomepageNextOpening />
         <HomepageContinuation signedIn={Boolean(session)} />
       </main>
