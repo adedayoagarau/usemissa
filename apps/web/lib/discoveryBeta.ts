@@ -16,6 +16,7 @@ const discoveryRoots = [
   "/journal",
   "/presses",
   "/grants",
+  "/org",
   "/organizations",
   "/discover",
   "/guides",

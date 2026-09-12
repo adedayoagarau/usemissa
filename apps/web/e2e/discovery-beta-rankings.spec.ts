@@ -84,6 +84,7 @@ test("production discovery gate admits only intended public routes", () => {
     "/opportunities/a-call",
     "/directory",
     "/discover/poetry",
+    "/org/org_example",
     "/rankings/magazines",
     "/rankings/residencies",
     "/rankings/compare",
