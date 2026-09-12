@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookmarkPlus, ExternalLink, Building } from "lucide-react";
+import { ExternalLink, Building } from "lucide-react";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { Button } from "@/components/ui/button";
 

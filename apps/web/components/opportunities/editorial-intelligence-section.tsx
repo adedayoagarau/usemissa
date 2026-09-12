@@ -22,7 +22,7 @@ export function EditorialIntelligenceSection({
   intelligence,
   className,
 }: EditorialIntelligenceSectionProps) {
-  const { aesthetic, telemetry, specs, compensation, judges, prestigeTier } =
+  const { aesthetic, telemetry, compensation, judges, prestigeTier } =
     intelligence;
 
   return (

@@ -1,24 +1,14 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   Sparkles,
   ExternalLink,
   DollarSign,
   Clock,
   Award,
-  ShieldCheck,
-  CheckCircle2,
-  XCircle,
-  Info,
   Users,
   Building,
-  Utensils,
-  Home,
-  Star,
-  Layers,
-  Flame,
   Check,
 } from "lucide-react";
 import {
@@ -47,7 +37,7 @@ interface ResidencyIntelligenceDrawerProps {
 export function ResidencyIntelligenceDrawer({
   profileId,
   residencyName,
-  residencySlug,
+  residencySlug: _residencySlug,
   trigger,
 }: ResidencyIntelligenceDrawerProps) {
   const [open, setOpen] = React.useState(false);

@@ -8,7 +8,6 @@ import {
   DollarSign,
   Clock,
   FileText,
-  Users,
   Award,
   ShieldCheck,
   AlertCircle,

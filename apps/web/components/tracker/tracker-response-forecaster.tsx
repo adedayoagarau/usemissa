@@ -3,12 +3,8 @@
 import { useEffect, useState } from "react";
 import {
   Clock,
-  Sparkles,
   ShieldAlert,
   CheckCircle,
-  AlertTriangle,
-  Send,
-  Mail,
   Copy,
   Check,
 } from "lucide-react";

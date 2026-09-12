@@ -3,9 +3,6 @@ import { missaPostgresPoolConfig } from "@missa/radar-adapters";
 import {
   PostgresEditorialIntelligenceRepository,
   type EditorialIntelligenceFullProfile,
-  type PublicationEditorialSpecs,
-  type PublicationCompensationDetails,
-  type PublicationTelemetryAnalytics,
 } from "@missa/radar-adapters";
 
 declare global {

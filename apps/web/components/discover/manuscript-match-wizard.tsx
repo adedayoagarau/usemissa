@@ -4,20 +4,13 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Sparkles,
-  BookOpen,
   Send,
   Layers,
   Flame,
   Clock,
-  Coins,
   CheckCircle2,
   ExternalLink,
-  ChevronRight,
-  Filter,
-  ArrowRight,
   Check,
-  ShieldCheck,
-  Plus,
 } from "lucide-react";
 import type {
   ManuscriptMatchInput,
@@ -128,7 +121,7 @@ export function ManuscriptMatchWizard({
         const data = (await res.json()) as ManuscriptMatchResponse;
         setResults(data);
         toast.success(`Matched across ${data.totalAnalyzed.toLocaleString()} publication profiles`);
-      } catch (err) {
+      } catch {
         toast.error("Failed to generate manuscript strategy matches");
       }
     });
