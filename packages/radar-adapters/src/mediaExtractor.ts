@@ -569,7 +569,7 @@ export function evaluateRejection(
 
   // 2. Favicons and generic icons
   if (
-    /\.ico(?:[?#]|$)|favicon|apple-touch-icon|\/icons?\/|social-icon|icon-/i.test(urlLower) ||
+    /\.ico(?:[?#]|$)|favicon|apple-touch-icon|webclip(?:[._/?-]|$)|\/icons?\/|social-icon|icon-/i.test(urlLower) ||
     /^favicon/i.test(altLower)
   ) {
     reasons.push("favicon-or-icon");

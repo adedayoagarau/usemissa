@@ -166,9 +166,8 @@ const VALID_SOURCE_KINDS = new Set<OpportunityRepositorySource["kind"]>([
 // identity. This is deliberately a second line of defence after media
 // extraction/review: historical imports may have incorrectly marked portal
 // chrome as cleared, but it must never reach a public projection.
-const APPLICATION_PLATFORM_MEDIA_PATTERN =
-  "submittable|slideroom|callforentry|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|powered[+%20_-]*by|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite|curatorspace";
-
+const NON_EDITORIAL_MEDIA_PATTERN =
+  "submittable|slideroom|callforentry|typeform|airtable|entrythingy|duotrope|duosuma|submit[-_]?button|powered[+%20_-]*by|wordpress[-_]?logo|automattic|wix.*(?:badge|banner)|squarespace.*logo|placeholder|editmysite|curatorspace|webclip([._/?-]|$)";
 
 // Values provisioned from stdin can carry a trailing newline in Vercel.
 // Normalize feature flags so a valid production configuration cannot silently
@@ -442,8 +441,8 @@ function baseFrom(
         where o.organization_id is not null
           and v.profile_id = o.organization_id
           and v.asset_type in ('banner', 'issue_cover', 'logo')
-          and coalesce(v.image_url, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
-          and coalesce(v.label, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'`
+          and coalesce(v.image_url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+          and coalesce(v.label, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'`
     : "";
   return `
     from opportunities o
@@ -463,9 +462,9 @@ function baseFrom(
         from opportunity_identity_assets a
         where a.opportunity_id = o.id and a.rights_status in ('cleared', 'permitted')
           and a.kind in ('opportunity-artwork', 'opportunity-cover')
-          and coalesce(a.url, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
-          and coalesce(a.alt, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
-          and coalesce(a.source_url, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
+          and coalesce(a.url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+          and coalesce(a.alt, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+          and coalesce(a.source_url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
         union all
         select a.url, a.alt,
           case a.kind
@@ -480,9 +479,9 @@ function baseFrom(
           and a.linked_organization_id = o.organization_id
           and a.rights_status in ('cleared', 'permitted')
           and a.kind in ('opportunity-artwork', 'opportunity-cover', 'organization-banner')
-          and coalesce(a.url, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
-          and coalesce(a.alt, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
-          and coalesce(a.source_url, '') !~* '${APPLICATION_PLATFORM_MEDIA_PATTERN}'
+          and coalesce(a.url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+          and coalesce(a.alt, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
+          and coalesce(a.source_url, '') !~* '${NON_EDITORIAL_MEDIA_PATTERN}'
         ${garyVisualsSelect}
       ) asset_candidate
       order by

@@ -59,6 +59,7 @@ test("browse SQL is parameterized and keeps public publication boundaries", () =
     built.text,
     /coalesce\(v\.image_url, ''\) !~\* 'submittable\|slideroom\|callforentry/,
   );
+  assert.match(built.text, /webclip\(\[\._\/\?-\]\|\$\)/);
   assert.doesNotMatch(built.text, /poetry.*1=1/);
   assert.deepEqual(built.values[1], ["poetry"]);
   assert.equal(built.values.at(-1), 2);
