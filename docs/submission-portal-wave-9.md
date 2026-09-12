@@ -143,3 +143,20 @@ rows and applied 1,309 deterministic organization mappings; 258 published
 opportunities remain without a deterministic organization match. The
 production deployment containing the projection guard and reader is
 `dpl_28ZqKGD479U8mHBbNfGvFZvGxrqq` and is Ready on all canonical aliases.
+
+## Hosted journal totals incident
+
+On 2026-09-11 the homepage shell loaded but displayed “We couldn’t load the
+totals.” The opportunities requests were healthy; `/api/journals?limit=1`
+returned HTTP 500 because the hosted `ingestion-v2-staging` schema does not
+include the legacy `gary_organization_media` and `gary_profile_intelligence`
+relations, and its `gary_profiles` table does not expose the newer location
+columns directly. The profile repository now uses the hosted visual/media
+projection, defaults intelligence fields safely, and reads optional location
+fields through `to_jsonb` so the same query works across both schemas.
+
+The direct repository browse was verified against the live Neon branch for
+general and literary-magazine queries; the radar-adapters suite (265 passing,
+3 skipped), web production build, design-system check, language check, and
+`git diff --check` all pass. This patch must be included in the next canonical
+Vercel deployment before the mobile totals error is considered resolved.

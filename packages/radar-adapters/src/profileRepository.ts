@@ -306,21 +306,21 @@ export class PostgresProfileRepository implements ProfileRepository {
         const i2 = values.length - 1;
         const i3 = values.length;
         filters.push(
-          `(p.country_code = $${i1} OR p.country ILIKE $${i2} OR (ro.data->>'country') ILIKE $${i3})`,
+          `((to_jsonb(p)->>'country_code') = $${i1} OR (to_jsonb(p)->>'country') ILIKE $${i2} OR (ro.data->>'country') ILIKE $${i3})`,
         );
       } else if (norm) {
         values.push(norm.countryCode, `%${norm.country}%`);
         const iCode = values.length - 1;
         const iLike = values.length;
         filters.push(
-          `(p.country_code = $${iCode} OR p.country ILIKE $${iLike} OR (ro.data->>'country') ILIKE $${iLike} OR (ro.data->>'country') = $${iCode})`,
+          `((to_jsonb(p)->>'country_code') = $${iCode} OR (to_jsonb(p)->>'country') ILIKE $${iLike} OR (ro.data->>'country') ILIKE $${iLike} OR (ro.data->>'country') = $${iCode})`,
         );
       } else {
         values.push(countryParam, `%${countryParam}%`);
         const iExact = values.length - 1;
         const iLike = values.length;
         filters.push(
-          `(p.country_code ILIKE $${iExact} OR p.country ILIKE $${iLike} OR (ro.data->>'country') ILIKE $${iLike})`,
+          `((to_jsonb(p)->>'country_code') ILIKE $${iExact} OR (to_jsonb(p)->>'country') ILIKE $${iLike} OR (ro.data->>'country') ILIKE $${iLike})`,
         );
       }
     }
@@ -347,33 +347,23 @@ export class PostgresProfileRepository implements ProfileRepository {
           FROM gary_profile_visuals
           WHERE asset_type = 'logo'
           ORDER BY profile_id, created_at DESC
-        ), intel AS (
-          SELECT profile_id, sentiment_tags FROM gary_profile_intelligence
         )
         SELECT p.id, p.profile_kind, p.name, p.website_url,
-          p.country_code, p.country, p.city,
+          to_jsonb(p)->>'country_code' AS country_code, to_jsonb(p)->>'country' AS country, to_jsonb(p)->>'city' AS city,
           (ro.data->>'country') as org_country,
           (ro.data->>'city') as org_city,
           COALESCE(o.source_summary, (ro.data->>'biography')) as source_summary,
-          COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
+          COALESCE(o.genres_json, '[]'::jsonb) as genres_json,
           o.formats_json, o.reading_period,
           o.source_detail_url,
-          COALESCE(org_media.lead_url, visuals.visual_url, m.media_url) as media_url,
-          COALESCE(org_media.lead_alt, visuals.visual_alt, m.media_alt, p.name) as media_alt
+          COALESCE(visuals.visual_url, m.media_url) as media_url,
+          COALESCE(visuals.visual_alt, m.media_alt, p.name) as media_alt
         FROM gary_profiles p
         LEFT JOIN radar_organizations ro ON ro.id = p.id
         LEFT JOIN latest o ON o.profile_id = p.id
         LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
         LEFT JOIN media m ON m.profile_page_id = pg.id
         LEFT JOIN visuals ON visuals.profile_id = p.id
-        LEFT JOIN intel ON intel.profile_id = p.id
-        LEFT JOIN LATERAL (
-          SELECT image_url AS lead_url, COALESCE(NULLIF(BTRIM(alt_text), ''), NULLIF(BTRIM(title), ''), p.name) AS lead_alt
-          FROM gary_organization_media
-          WHERE profile_id = p.id AND review_status = 'verified'
-          ORDER BY is_lead DESC, (media_group = 'identity') DESC, display_order ASC, created_at DESC
-          LIMIT 1
-        ) org_media ON true
         ${where} ORDER BY p.name ASC`,
         values,
       });
@@ -479,19 +469,17 @@ export class PostgresProfileRepository implements ProfileRepository {
         FROM gary_profile_visuals
         WHERE asset_type = 'logo'
         ORDER BY profile_id, created_at DESC
-      ), intel AS (
-        SELECT profile_id, sentiment_tags FROM gary_profile_intelligence
       )
       SELECT p.id, p.profile_kind, p.name, p.website_url,
-        p.country_code, p.country, p.city,
+        to_jsonb(p)->>'country_code' AS country_code, to_jsonb(p)->>'country' AS country, to_jsonb(p)->>'city' AS city,
         (ro.data->>'country') as org_country,
         (ro.data->>'city') as org_city,
         COALESCE(o.source_summary, (ro.data->>'biography')) as source_summary,
-        COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
+        COALESCE(o.genres_json, '[]'::jsonb) as genres_json,
         o.formats_json, o.reading_period,
         o.source_detail_url,
-        COALESCE(org_media.lead_url, visuals.visual_url, m.media_url) as media_url,
-        COALESCE(org_media.lead_alt, visuals.visual_alt, m.media_alt, p.name) as media_alt,
+        COALESCE(visuals.visual_url, m.media_url) as media_url,
+        COALESCE(visuals.visual_alt, m.media_alt, p.name) as media_alt,
         count(*) OVER() AS total_count
       FROM gary_profiles p
       LEFT JOIN radar_organizations ro ON ro.id = p.id
@@ -499,14 +487,6 @@ export class PostgresProfileRepository implements ProfileRepository {
       LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
       LEFT JOIN media m ON m.profile_page_id = pg.id
       LEFT JOIN visuals ON visuals.profile_id = p.id
-      LEFT JOIN intel ON intel.profile_id = p.id
-      LEFT JOIN LATERAL (
-        SELECT image_url AS lead_url, COALESCE(NULLIF(BTRIM(alt_text), ''), NULLIF(BTRIM(title), ''), p.name) AS lead_alt
-        FROM gary_organization_media
-        WHERE profile_id = p.id AND review_status = 'verified'
-        ORDER BY is_lead DESC, (media_group = 'identity') DESC, display_order ASC, created_at DESC
-        LIMIT 1
-      ) org_media ON true
       ${where} ${orderClause} LIMIT $${limit} OFFSET $${offset}`,
       values,
     });
@@ -531,18 +511,16 @@ export class PostgresProfileRepository implements ProfileRepository {
         FROM gary_profile_visuals
         WHERE asset_type = 'logo'
         ORDER BY profile_id, created_at DESC
-      ), intel AS (
-        SELECT profile_id, sentiment_tags FROM gary_profile_intelligence
       )
       SELECT p.id, p.profile_kind, p.name, p.website_url, p.name_key, p.canonical_key,
-        p.country_code, p.country, p.city,
+        to_jsonb(p)->>'country_code' AS country_code, to_jsonb(p)->>'country' AS country, to_jsonb(p)->>'city' AS city,
         (ro.data->>'country') as org_country,
         (ro.data->>'city') as org_city,
         COALESCE(o.source_summary, (ro.data->>'biography')) as source_summary,
-        COALESCE(o.genres_json, intel.sentiment_tags, '[]'::jsonb) as genres_json,
+        COALESCE(o.genres_json, '[]'::jsonb) as genres_json,
         o.formats_json, o.reading_period, o.source_detail_url,
-        COALESCE(org_media.lead_url, visuals.visual_url, m.media_url) as media_url,
-        COALESCE(org_media.lead_alt, visuals.visual_alt, m.media_alt, p.name) as media_alt,
+        COALESCE(visuals.visual_url, m.media_url) as media_url,
+        COALESCE(visuals.visual_alt, m.media_alt, p.name) as media_alt,
         o.submission_guidelines_url, o.subgenres_json, o.book_types_json,
         o.representative_authors, o.response_time, o.reading_fee,
         o.unsolicited_submissions, o.simultaneous_submissions, o.payment,
@@ -557,14 +535,6 @@ export class PostgresProfileRepository implements ProfileRepository {
       LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
       LEFT JOIN media m ON m.profile_page_id = pg.id
       LEFT JOIN visuals ON visuals.profile_id = p.id
-      LEFT JOIN intel ON intel.profile_id = p.id
-      LEFT JOIN LATERAL (
-        SELECT image_url AS lead_url, COALESCE(NULLIF(BTRIM(alt_text), ''), NULLIF(BTRIM(title), ''), p.name) AS lead_alt
-        FROM gary_organization_media
-        WHERE profile_id = p.id AND review_status = 'verified'
-        ORDER BY is_lead DESC, (media_group = 'identity') DESC, display_order ASC, created_at DESC
-        LIMIT 1
-      ) org_media ON true
       WHERE p.id = $1 
          OR p.id = (SELECT target_profile_id FROM gary_profile_redirects WHERE source_id_or_slug = $1 LIMIT 1)
          OR p.name_key = $1
@@ -859,20 +829,13 @@ export class PostgresProfileRepository implements ProfileRepository {
       SELECT p.id, p.profile_kind, p.name, p.website_url,
         o.source_summary, o.genres_json, o.formats_json, o.reading_period,
         o.last_updated, o.source_detail_url, o.observed_at,
-        COALESCE(org_media.lead_url, m.media_url) as media_url,
-        COALESCE(org_media.lead_alt, p.name) as media_alt
+        m.media_url as media_url,
+        p.name as media_alt
       FROM opportunity_profile_links l
       JOIN gary_profiles p ON p.id=l.profile_id
       JOIN latest o ON o.profile_id=p.id
       LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id=o.id AND pg.role='profile'
       LEFT JOIN media m ON m.profile_page_id=pg.id
-      LEFT JOIN LATERAL (
-        SELECT image_url AS lead_url, COALESCE(NULLIF(BTRIM(alt_text), ''), NULLIF(BTRIM(title), ''), p.name) AS lead_alt
-        FROM gary_organization_media
-        WHERE profile_id = p.id AND review_status = 'verified'
-        ORDER BY is_lead DESC, (media_group = 'identity') DESC, display_order ASC, created_at DESC
-        LIMIT 1
-      ) org_media ON true
       WHERE l.opportunity_id=$1 AND l.status='confirmed' AND l.verified_until > now()
       ORDER BY l.confidence DESC, p.name ASC LIMIT 1`,
       values: [opportunityId],

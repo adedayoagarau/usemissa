@@ -48,8 +48,8 @@ test("PostgresProfileRepository browse incorporates country filtering and select
 
   assert.ok(capturedQuery);
   const queryObj = capturedQuery as { text: string; values: unknown[] };
-  assert.match(queryObj.text, /p\.country_code/);
-  assert.match(queryObj.text, /p\.country/);
+  assert.match(queryObj.text, /to_jsonb\(p\)->>'country_code'/);
+  assert.match(queryObj.text, /to_jsonb\(p\)->>'country'/);
   assert.match(queryObj.text, /ro\.data->>'country'/);
   assert.equal(result.items.length, 1);
   assert.equal(result.items[0].countryCode, "NG");
