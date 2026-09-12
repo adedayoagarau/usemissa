@@ -14,6 +14,12 @@ declare global {
   var __missaResidencyRankingRepo: PostgresResidencyRankingRepository | undefined;
 }
 
+type PostgresError = Error & { code?: string };
+
+function isUndefinedTableError(error: unknown): error is PostgresError {
+  return error instanceof Error && (error as PostgresError).code === "42P01";
+}
+
 export function getResidencyRankingRepository(): {
   listRankings: (filter?: ResidencyRankingsFilter) => Promise<ResidencyRankingPage & { dataSource: "database" | "empty" }>;
   getReviews: (profileId: string) => Promise<ResidencyReviewRow[]>;
@@ -53,8 +59,16 @@ export function getResidencyRankingRepository(): {
 
   return {
     listRankings: async (filter = {}) => {
-      const page = await repo.listResidencyRankings(filter);
-      return { ...page, dataSource: page.items.length > 0 ? "database" : "empty" };
+      try {
+        const page = await repo.listResidencyRankings(filter);
+        return { ...page, dataSource: page.items.length > 0 ? "database" : "empty" };
+      } catch (error) {
+        if (!isUndefinedTableError(error)) throw error;
+        console.warn(
+          "Residency rankings table is unavailable; serving the intentional empty state.",
+        );
+        return { items: [], total: 0, dataSource: "empty" };
+      }
     },
     getReviews: async (profileId: string) => {
       return repo.getResidencyReviews(profileId);

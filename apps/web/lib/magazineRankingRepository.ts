@@ -16,6 +16,12 @@ declare global {
 
 let memoryCache: MagazineRankingRow[] | null = null;
 
+type PostgresError = Error & { code?: string };
+
+function isUndefinedTableError(error: unknown): error is PostgresError {
+  return error instanceof Error && (error as PostgresError).code === "42P01";
+}
+
 function getFallbackRankings(genre: RankingGenre = "overall"): MagazineRankingRow[] {
   if (!memoryCache) {
     const computed = rankMagazines(SEED_MAGAZINES, 2026);
@@ -163,8 +169,15 @@ export function getMagazineRankingRepository(): {
 
   return {
     listRankings: async (filter = {}) => {
-      const page = await repo.listRankings(filter);
-      if (page.items.length > 0) return { ...page, dataSource: "database" };
+      try {
+        const page = await repo.listRankings(filter);
+        if (page.items.length > 0) return { ...page, dataSource: "database" };
+      } catch (error) {
+        if (!isUndefinedTableError(error)) throw error;
+        console.warn(
+          "Magazine rankings table is unavailable; serving the verified preview dataset.",
+        );
+      }
 
       // Graceful fallback to seeded engine computations if DB isn't hydrated yet
       const genre = filter.genre ?? "overall";
@@ -178,8 +191,15 @@ export function getMagazineRankingRepository(): {
       };
     },
     getMagazineStanding: async (profileId: string) => {
-      const standing = await repo.getMagazineStanding(profileId);
-      if (standing.length > 0) return standing;
+      try {
+        const standing = await repo.getMagazineStanding(profileId);
+        if (standing.length > 0) return standing;
+      } catch (error) {
+        if (!isUndefinedTableError(error)) throw error;
+        console.warn(
+          "Magazine rankings table is unavailable; serving the verified preview dataset.",
+        );
+      }
 
       const all = getFallbackRankings("overall");
       return all.filter((r) => r.profileId === profileId);

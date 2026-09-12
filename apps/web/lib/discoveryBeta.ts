@@ -28,6 +28,7 @@ const discoveryPages = new Set([
   "/methodology",
   "/terms",
   "/rankings/magazines",
+  "/rankings/residencies",
   "/rankings/methodology",
   "/rankings/compare",
 ]);
