@@ -166,7 +166,7 @@ export class PostgresResidencyRankingRepository {
     if (filter.query && filter.query.trim()) {
       const q = `%${filter.query.trim()}%`;
       conditions.push(
-        `(p.name ILIKE $${idx} OR (to_jsonb(p)->>'city') ILIKE $${idx} OR (to_jsonb(p)->>'region') ILIKE $${idx} OR (to_jsonb(p)->>'country') ILIKE $${idx} OR r.location ILIKE $${idx} OR r.disciplines ILIKE $${idx})`,
+        `(r.name ILIKE $${idx} OR r.city ILIKE $${idx} OR r.region ILIKE $${idx} OR r.country ILIKE $${idx} OR r.location ILIKE $${idx} OR r.disciplines ILIKE $${idx})`,
       );
       values.push(q);
       idx++;
@@ -175,7 +175,7 @@ export class PostgresResidencyRankingRepository {
     if (filter.location && filter.location.trim()) {
       const loc = `%${filter.location.trim()}%`;
       conditions.push(
-        `((to_jsonb(p)->>'city') ILIKE $${idx} OR (to_jsonb(p)->>'region') ILIKE $${idx} OR (to_jsonb(p)->>'country') ILIKE $${idx} OR r.location ILIKE $${idx})`,
+        `(r.city ILIKE $${idx} OR r.region ILIKE $${idx} OR r.country ILIKE $${idx} OR r.location ILIKE $${idx})`,
       );
       values.push(loc);
       idx++;
@@ -184,39 +184,87 @@ export class PostgresResidencyRankingRepository {
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+    const canonicalRankingsCte = `
+      WITH canonical_rankings AS (
+        SELECT DISTINCT ON (
+          COALESCE(
+            NULLIF(
+              LOWER(
+                REGEXP_REPLACE(
+                  REGEXP_REPLACE(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '^https?://(www\\.)?', ''),
+                  '/$',
+                  ''
+                )
+              ),
+              ''
+            ),
+            'name:' || LOWER(REGEXP_REPLACE(BTRIM(p.name), '[^a-z0-9]+', '-', 'g'))
+          )
+        )
+          r.*,
+          p.name,
+          p.name_key AS slug,
+          p.website_url,
+          to_jsonb(p)->>'city' AS city,
+          to_jsonb(p)->>'region' AS region,
+          to_jsonb(p)->>'country' AS country,
+          to_jsonb(p)->>'summary' AS summary,
+          to_jsonb(p)->>'description' AS description
+        FROM missa_residency_rankings r
+        JOIN gary_profiles p ON r.profile_id = p.id
+        ORDER BY
+          COALESCE(
+            NULLIF(
+              LOWER(
+                REGEXP_REPLACE(
+                  REGEXP_REPLACE(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '^https?://(www\\.)?', ''),
+                  '/$',
+                  ''
+                )
+              ),
+              ''
+            ),
+            'name:' || LOWER(REGEXP_REPLACE(BTRIM(p.name), '[^a-z0-9]+', '-', 'g'))
+          ),
+          r.total_score DESC,
+          r.rmar_rating DESC NULLS LAST,
+          r.profile_id ASC
+      )`;
+
     const countSql = `
+      ${canonicalRankingsCte}
       SELECT COUNT(*) AS total
-      FROM missa_residency_rankings r
-      JOIN gary_profiles p ON r.profile_id = p.id
+      FROM canonical_rankings r
       ${whereClause};
     `;
 
     const countRes = await this.pool.query(countSql, values);
     const total = parseInt(countRes.rows[0]?.total ?? "0", 10);
 
-    let orderBy = "r.total_score DESC, r.rmar_rating DESC NULLS LAST, p.name ASC";
+    let orderBy = "r.total_score DESC, r.rmar_rating DESC NULLS LAST, r.name ASC";
     if (filter.sortBy === "rating") {
       orderBy = `r.rmar_rating ${filter.sortOrder === "asc" ? "ASC NULLS LAST" : "DESC NULLS LAST"}, r.total_score DESC`;
     } else if (filter.sortBy === "reviews") {
       orderBy = `r.rmar_reviews_count ${filter.sortOrder === "asc" ? "ASC" : "DESC"}, r.total_score DESC`;
     } else if (filter.sortBy === "name") {
-      orderBy = `p.name ${filter.sortOrder === "desc" ? "DESC" : "ASC"}`;
+      orderBy = `r.name ${filter.sortOrder === "desc" ? "DESC" : "ASC"}`;
     }
 
     const limit = Math.min(Math.max(filter.limit ?? 50, 1), 1000);
     const offset = Math.max(filter.offset ?? 0, 0);
 
     const listSql = `
+      ${canonicalRankingsCte}
       SELECT
-        p.id AS profile_id,
-        p.name,
-        p.name_key AS slug,
-        p.website_url,
-        to_jsonb(p)->>'city' AS city,
-        to_jsonb(p)->>'region' AS region,
-        to_jsonb(p)->>'country' AS country,
-        to_jsonb(p)->>'summary' AS summary,
-        to_jsonb(p)->>'description' AS description,
+        r.profile_id,
+        r.name,
+        r.slug,
+        r.website_url,
+        r.city,
+        r.region,
+        r.country,
+        r.summary,
+        r.description,
         r.location,
         r.prestige_tier,
         r.total_score,
@@ -233,8 +281,7 @@ export class PostgresResidencyRankingRepository {
         r.has_private_studio,
         r.disciplines,
         r.founding_year
-      FROM missa_residency_rankings r
-      JOIN gary_profiles p ON r.profile_id = p.id
+      FROM canonical_rankings r
       ${whereClause}
       ORDER BY ${orderBy}
       LIMIT $${idx++} OFFSET $${idx++};

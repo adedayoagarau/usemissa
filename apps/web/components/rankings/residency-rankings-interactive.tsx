@@ -181,13 +181,13 @@ export function ResidencyRankingsInteractive({
     }
 
     return {
-      total: items.length,
+      indexedTotal: total,
       fullyFundedCount,
       stipendCount,
       reviewsCount,
       tier1Count,
     };
-  }, [items]);
+  }, [items, total]);
 
   const filtered = useMemo(() => {
     return items
@@ -327,7 +327,7 @@ export function ResidencyRankingsInteractive({
             <span>Programs Ranked</span>
           </div>
           <p className="mt-1 font-mono text-2xl font-bold text-foreground">
-            {stats.total.toLocaleString()}
+            {stats.indexedTotal.toLocaleString()}
           </p>
         </div>
 

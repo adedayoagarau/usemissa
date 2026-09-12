@@ -26,7 +26,7 @@ export default async function ResidencyRankingsPage() {
             <div className={catalogueStyles.introCopy}>
               <h1>Residency rankings & reviews</h1>
               <p className={catalogueStyles.lede}>
-                530+ residency programs ranked by funding, solitude, community feedback, and institutional prestige.
+                Residency programs ranked by funding, solitude, community feedback, and institutional prestige.
               </p>
             </div>
           </div>

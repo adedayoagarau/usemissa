@@ -215,6 +215,36 @@ export class PostgresMagazineRankingRepository {
         SELECT DISTINCT ON (profile_id) profile_id, reading_period
         FROM gary_profile_observations
         ORDER BY profile_id, observed_at DESC
+      ), ranking_candidates AS (
+        SELECT
+          r.*,
+          COALESCE(
+            NULLIF(
+              LOWER(
+                REGEXP_REPLACE(
+                  REGEXP_REPLACE(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '^https?://(www\\.)?', ''),
+                  '/$',
+                  ''
+                )
+              ),
+              ''
+            ),
+            'name:' || LOWER(REGEXP_REPLACE(BTRIM(p.name), '[^a-z0-9]+', '-', 'g'))
+          ) AS identity_key
+        FROM missa_magazine_rankings r
+        JOIN gary_profiles p ON p.id = r.profile_id
+      ), canonical_rankings AS (
+        SELECT *
+        FROM (
+          SELECT
+            candidate.*,
+            ROW_NUMBER() OVER (
+              PARTITION BY candidate.ranking_year, candidate.genre, candidate.identity_key
+              ORDER BY candidate.total_score DESC, candidate.rank_position ASC, candidate.profile_id ASC
+            ) AS identity_position
+          FROM ranking_candidates candidate
+        ) ranked
+        WHERE ranked.identity_position = 1
       )
       SELECT
         r.profile_id,
@@ -251,7 +281,7 @@ export class PostgresMagazineRankingRepository {
         r.contributor_pay_cents,
         r.simultaneous_policy,
         COUNT(*) OVER() as total_count
-      FROM missa_magazine_rankings r
+      FROM canonical_rankings r
       JOIN gary_profiles p ON p.id = r.profile_id
       LEFT JOIN latest_observation ON latest_observation.profile_id = p.id
       LEFT JOIN missa_magazine_rankings prev
