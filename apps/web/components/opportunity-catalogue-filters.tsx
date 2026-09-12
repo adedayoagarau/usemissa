@@ -124,12 +124,21 @@ function DesktopFilters({
   const deadlineKind = searchParams.get("deadline");
   const fee = searchParams.get("fee");
   const location = searchParams.get("location");
+  const selectedTypeLabel =
+    selectedTypes.length === 1
+      ? facetCounts.types.find((option) => option.value === selectedTypes[0])
+          ?.label
+      : undefined;
 
   return (
     <div className={styles.desktopFilterBar} aria-label="Opportunity filters">
-      {menu("Type", selectedTypes.length, <Command>
+      {menu(selectedTypeLabel ?? "Type", selectedTypeLabel ? 0 : selectedTypes.length, <Command>
         <CommandInput placeholder="Find a type…" />
         <CommandList><CommandEmpty>No types found.</CommandEmpty><CommandGroup>
+          <CommandItem value="All opportunity types" data-checked={selectedTypes.length === 0} onSelect={() => setValue("type")}>
+            <Checkbox checked={selectedTypes.length === 0} aria-hidden="true" tabIndex={-1} />
+            <span>All opportunity types</span><span className={styles.optionCount}>{facetCounts.total.toLocaleString()}</span>
+          </CommandItem>
           {facetCounts.types.map((option) => <CommandItem key={option.value} value={option.label} data-checked={selectedTypes.includes(option.value)} onSelect={() => toggle("type", option.value)}>
             <Checkbox checked={selectedTypes.includes(option.value)} aria-hidden="true" tabIndex={-1} />
             <span>{option.label}</span><span className={styles.optionCount}>{option.count.toLocaleString()}</span>

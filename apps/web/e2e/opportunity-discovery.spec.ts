@@ -28,6 +28,28 @@ test('anonymous opportunities keep canonical taxonomy state across search', asyn
   expect(new URL(page.url()).searchParams.get('taxonomy')).toBe(selectedTaxonomy);
 });
 
+test('desktop type filtering can return from Magazine to all opportunities', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/opportunities?type=magazine');
+
+  await expect(page.getByRole('button', { name: 'Magazine', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Magazine', exact: true }).click();
+  await page.getByRole('option', { name: /All opportunity types/ }).click();
+
+  await expect(page).toHaveURL('/opportunities');
+  await expect(page.getByRole('button', { name: 'Type' })).toBeVisible();
+});
+
+test('mobile Clear all removes an active opportunity type', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/opportunities?type=magazine');
+
+  await page.getByRole('button', { name: /Filters/ }).click();
+  await page.getByRole('button', { name: 'Clear all' }).click();
+
+  await expect(page).toHaveURL('/opportunities');
+});
+
 test('anonymous empty states explain a failed search and offer recovery', async ({ page }) => {
   await page.goto('/opportunities?q=definitely-no-missa-opportunity-9f3d');
 
