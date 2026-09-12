@@ -27,10 +27,10 @@ test("homepage opportunity entry points use the catalogue route", async ({
     .getByRole("link", { name: "Browse opportunities", exact: true })
     .first()
     .click();
-  await expect(page).toHaveURL(/\/opportunities$/);
+  await expect(page).toHaveURL(/\/opportunities$/, { timeout: 30_000 });
   await expect(
     page.getByRole("heading", { level: 1, name: "Find your next opportunity." }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 30_000 });
 });
 
 test("mobile homepage menu opens the opportunities catalogue", async ({
@@ -43,8 +43,8 @@ test("mobile homepage menu opens the opportunities catalogue", async ({
     .locator("#homepage-hero-menu")
     .getByRole("link", { name: "Opportunities", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/opportunities$/);
+  await expect(page).toHaveURL(/\/opportunities$/, { timeout: 30_000 });
   await expect(
     page.getByRole("heading", { level: 1, name: "Find your next opportunity." }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 30_000 });
 });

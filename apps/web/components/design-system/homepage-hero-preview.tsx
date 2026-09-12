@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { MissaWordmark } from "@/components/missa-wordmark";
-import { Button } from "@/components/ui/button";
 import { HOMEPAGE_NAV_LINKS } from "@/lib/homepage-navigation";
 import styles from "./homepage-hero-preview.module.css";
 import "./homepage-marketing-palette.css";
@@ -169,17 +168,12 @@ export function HomepageHeroPreview({
           <p className={styles.lede}>
             Find open calls, grants, residencies and places to share your work.
           </p>
-          <Button
-            nativeButton={false}
-            render={<Link href={exploreHref} />}
-            variant="ghost"
-            className={styles.explore}
-          >
+          <Link href={exploreHref} className={styles.explore}>
             <span className={styles.exploreMark} aria-hidden="true">
               <ArrowUpRight className={styles.exploreArrow} />
             </span>
             Browse opportunities
-          </Button>
+          </Link>
         </div>
       </div>
     </section>

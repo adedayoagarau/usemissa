@@ -8,7 +8,7 @@ import { z } from "zod";
 import { useInView } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { opportunityBrowseResponseSchema } from "@missa/contracts";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { OpportunityBrowseProjectCard } from "@/components/design-system/opportunity-browse-project-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -89,14 +89,13 @@ function ActionLink({
   inverse?: boolean;
 }) {
   return (
-    <Button
-      nativeButton={false}
-      render={<Link href={href} />}
-      className={`${styles.action} ${inverse ? styles.inverseAction : ""}`}
+    <Link
+      href={href}
+      className={`${buttonVariants()} ${styles.action} ${inverse ? styles.inverseAction : ""}`}
     >
       {children}
       <ArrowUpRight aria-hidden="true" size={17} />
-    </Button>
+    </Link>
   );
 }
 
