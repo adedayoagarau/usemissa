@@ -14,7 +14,9 @@ interface BackfillCounts {
 const CREATE_VISUALS_TABLE = `
   CREATE TABLE IF NOT EXISTS gary_profile_visuals (
     id TEXT PRIMARY KEY,
-    profile_id TEXT NOT NULL REFERENCES gary_profiles(id) ON DELETE CASCADE,
+    -- profile_id is the canonical organization projection key. It may be an
+    -- org_* radar organization id or an older Gary profile_* id.
+    profile_id TEXT NOT NULL,
     asset_type TEXT NOT NULL CHECK (asset_type IN ('logo', 'banner', 'issue_cover')),
     image_url TEXT NOT NULL,
     label TEXT,
@@ -25,9 +27,11 @@ const CREATE_VISUALS_TABLE = `
   );
   CREATE INDEX IF NOT EXISTS gary_profile_visuals_profile_idx
     ON gary_profile_visuals(profile_id, asset_type);
+  ALTER TABLE gary_profile_visuals
+    DROP CONSTRAINT IF EXISTS gary_profile_visuals_profile_id_fkey;
 `;
 
-const SOURCE_ROWS = `
+const IDENTITY_SOURCE_ROWS = `
   SELECT
     'identity-asset:' || a.id AS source_id,
     a.linked_organization_id AS profile_id,
@@ -43,12 +47,14 @@ const SOURCE_ROWS = `
       'rightsStatus', a.rights_status
     ) AS metadata
   FROM opportunity_identity_assets a
-  JOIN gary_profiles p ON p.id = a.linked_organization_id
+  JOIN radar_organizations org ON org.id = a.linked_organization_id
   WHERE a.linked_organization_id IS NOT NULL
     AND a.rights_status IN ('cleared', 'permitted')
     AND a.url ~* '^https?://'
     AND a.kind = 'organization-mark'
-  UNION ALL
+`;
+
+const ORGANIZATION_MEDIA_SOURCE_ROWS = `
   SELECT
     'organization-media:' || m.id AS source_id,
     m.profile_id,
@@ -69,7 +75,7 @@ const SOURCE_ROWS = `
       'reviewStatus', m.review_status
     ) AS metadata
   FROM gary_organization_media m
-  JOIN gary_profiles p ON p.id = m.profile_id
+  JOIN radar_organizations org ON org.id = m.profile_id
   WHERE m.review_status = 'verified'
     AND m.image_url ~* '^https?://'
     AND (
@@ -77,6 +83,40 @@ const SOURCE_ROWS = `
       OR (m.media_group = 'issues' AND m.media_type = 'issue_cover')
     )
 `;
+
+const PROFILE_MEDIA_SOURCE_ROWS = `
+  SELECT
+    'profile-media:' || m.id AS source_id,
+    l.organization_id AS profile_id,
+    'logo' AS asset_type,
+    COALESCE(NULLIF(BTRIM(m.final_url), ''), NULLIF(BTRIM(m.original_url), '')) AS image_url,
+    NULLIF(BTRIM(m.alt_text), '') AS label,
+    m.created_at,
+    jsonb_build_object(
+      'source', 'gary_profile_media_assets',
+      'sourceId', m.id,
+      'profileId', po.profile_id,
+      'relation', m.relation,
+      'statusCode', m.status_code
+    ) AS metadata
+  FROM gary_profile_media_assets m
+  JOIN gary_profile_pages pp ON pp.id = m.profile_page_id
+  JOIN gary_profile_observations po ON po.id = pp.profile_observation_id
+  JOIN gary_profile_organization_links l
+    ON l.profile_id = po.profile_id
+   AND l.status = 'confirmed'
+  JOIN radar_organizations org ON org.id = l.organization_id
+  WHERE m.relation = 'profile.image'
+    AND COALESCE(NULLIF(BTRIM(m.final_url), ''), NULLIF(BTRIM(m.original_url), '')) ~* '^https?://'
+`;
+
+async function tableExists(client: pg.PoolClient, table: string): Promise<boolean> {
+  const result = await client.query<{ exists: boolean }>(
+    "SELECT to_regclass('public.' || $1) IS NOT NULL AS exists",
+    [table],
+  );
+  return Boolean(result.rows[0]?.exists);
+}
 
 async function countRows(pool: pg.Pool, table: string): Promise<number> {
   const result = await pool.query<{ count: string }>(`SELECT count(*)::text AS count FROM ${table}`);
@@ -95,8 +135,18 @@ async function run(): Promise<void> {
     const profileCountBefore = await countRows(pool, "gary_profiles");
     const visualCountBefore = await countRows(pool, "gary_profile_visuals").catch(() => 0);
     if (!dryRun) await client.query(CREATE_VISUALS_TABLE);
+    const sourceParts = [IDENTITY_SOURCE_ROWS];
+    if (await tableExists(client, "gary_organization_media")) {
+      sourceParts.push(ORGANIZATION_MEDIA_SOURCE_ROWS);
+    } else if (
+      (await tableExists(client, "gary_profile_media_assets")) &&
+      (await tableExists(client, "gary_profile_organization_links"))
+    ) {
+      sourceParts.push(PROFILE_MEDIA_SOURCE_ROWS);
+    }
+    const sourceRows = sourceParts.join(" UNION ALL ");
     const eligible = await client.query<{ count: string }>(
-      `SELECT count(*)::text AS count FROM (${SOURCE_ROWS}) source_rows`,
+      `SELECT count(*)::text AS count FROM (${sourceRows}) source_rows`,
     );
     const eligibleSourceRows = Number(eligible.rows[0]?.count ?? 0);
 
@@ -118,7 +168,7 @@ async function run(): Promise<void> {
           source_rows.label,
           source_rows.metadata,
           source_rows.created_at
-        FROM (${SOURCE_ROWS}) source_rows
+        FROM (${sourceRows}) source_rows
         ON CONFLICT (id) DO UPDATE SET
           image_url = EXCLUDED.image_url,
           label = COALESCE(EXCLUDED.label, gary_profile_visuals.label),
