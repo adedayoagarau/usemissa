@@ -105,8 +105,8 @@ try {
 
   // 1. Ensure source exists
   await client.query(`
-    INSERT INTO opportunity_sources (id, name, url, kind, active, created_at, updated_at)
-    VALUES ($1, 'Submittable Discover', 'https://manager.submittable.com/opportunities/discover', 'directory', true, now(), now())
+    INSERT INTO opportunity_sources (id, name, url, kind, active, check_interval_hours, created_at, updated_at)
+    VALUES ($1, 'Submittable Discover', 'https://manager.submittable.com/opportunities/discover', 'directory', true, 24, now(), now())
     ON CONFLICT (id) DO NOTHING;
   `, [sourceId]);
 

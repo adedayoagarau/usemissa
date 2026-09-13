@@ -155,8 +155,8 @@ console.log(`\n   Successfully parsed ${harvestedGrants.length} grants & mobilit
 
 // 3. Ensure On The Move Source Exists
 await client.query(`
-  INSERT INTO opportunity_sources (id, name, url, kind, created_at, updated_at)
-  VALUES ('src_on_the_move_directory', 'On The Move Mobility Guide', 'https://on-the-move.org', 'directory', NOW(), NOW())
+  INSERT INTO opportunity_sources (id, name, url, kind, check_interval_hours, created_at, updated_at)
+  VALUES ('src_on_the_move_directory', 'On The Move Mobility Guide', 'https://on-the-move.org', 'directory', 24, NOW(), NOW())
   ON CONFLICT (id) DO NOTHING;
 `);
 
