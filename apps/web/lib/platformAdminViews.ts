@@ -61,6 +61,16 @@ export interface PlatformAdminAnalyticsData {
   trends: PlatformAdminAnalyticsTrend[];
   quality: Array<{ label: string; value: number; detail: string }>;
   definitions: string[];
+  backend: {
+    workerStatus: string;
+    runningWorkers: number;
+    failedWorkers: number;
+    lastHeartbeatAt?: string;
+    queueAttention: number;
+    staleSources: number;
+    deployedTables: number;
+    observedTables: number;
+  };
   durable: PlatformAdminAnalyticsEventsData;
 }
 
@@ -69,6 +79,7 @@ const emptyDurableAnalytics: PlatformAdminAnalyticsEventsData = {
   generatedAt: new Date(0).toISOString(),
   source: 'platform_analytics_events',
   warnings: [],
+  windowDays: 30,
   summary: { events: 0, last24h: 0, last7d: 0, uniqueAccounts: 0, uniqueOrganizations: 0 },
   byEvent: [],
   daily: [],
@@ -77,6 +88,7 @@ const emptyDurableAnalytics: PlatformAdminAnalyticsEventsData = {
   segments: [],
   retention: [],
   dimensions: [],
+  users: [],
   quality: { missingActor: 0, anonymousEvents: 0, unregisteredEvents: 0, authorityMismatches: 0 },
 };
 
@@ -237,6 +249,16 @@ function buildAnalyticsData(radar: RadarStore, workspace: WorkspaceStore, overvi
       'The creator journey is a strict observed sequence. An outbound official-destination open is an Apply interaction, never submission evidence.',
       'Experiment results, revenue recognition, and scheduled reports are not persisted by this view.',
     ],
+    backend: {
+      workerStatus: overview.operations.data.worker.status,
+      runningWorkers: overview.operations.data.worker.running,
+      failedWorkers: overview.operations.data.worker.failed,
+      ...(overview.operations.data.worker.latestAt ? { lastHeartbeatAt: overview.operations.data.worker.latestAt } : {}),
+      queueAttention: overview.operations.data.queue.summary.attention,
+      staleSources: overview.radar.data.sourceHealth.summary.stale,
+      deployedTables: overview.system.data.durableTables.filter((table) => table.status === 'deployed').length,
+      observedTables: overview.system.data.durableTables.length,
+    },
     durable,
   };
 }
@@ -252,14 +274,15 @@ export async function getPlatformAdminContent(): Promise<AdminArea<PlatformAdmin
   return area(buildContentData(stores.radar, stores.workspace, reviewQueue), 'Opportunities, organization open calls, and durable content review', stores.maturity, generatedAt, [...stores.warnings, ...reviewQueue.warnings]);
 }
 
-export async function getPlatformAdminAnalytics(): Promise<AdminArea<PlatformAdminAnalyticsData>> {
+export async function getPlatformAdminAnalytics(options: { days?: number } = {}): Promise<AdminArea<PlatformAdminAnalyticsData>> {
   const generatedAt = new Date().toISOString();
   const analyticsDatabaseUrl = platformAnalyticsDatabaseUrl();
   const [stores, overview, durable] = await Promise.all([
     readRuntimeStores(),
-    getPlatformAdminOverview(),
+    getPlatformAdminOverview({ readDatabaseUrl: analyticsDatabaseUrl }),
     analyticsDatabaseUrl
       ? readPlatformAdminAnalyticsEvents(analyticsDatabaseUrl, {
+          days: options.days,
           knownEventNames: ANALYTICS_EVENT_NAMES,
           serverEventNames: SERVER_ANALYTICS_EVENT_NAMES,
         })

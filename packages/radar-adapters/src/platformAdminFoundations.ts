@@ -1530,11 +1530,25 @@ export interface PlatformAnalyticsEvent {
   occurredAt?: string;
 }
 
+export interface PlatformAnalyticsUserActivity {
+  accountId: string;
+  email?: string;
+  events: number;
+  activeDays: number;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  latestEventName: string;
+  latestPath?: string;
+  journeyStage: string;
+  segment: string;
+}
+
 export interface PlatformAdminAnalyticsEventsData {
   available: boolean;
   generatedAt: string;
   source: string;
   warnings: string[];
+  windowDays: number;
   summary: { events: number; last24h: number; last7d: number; uniqueAccounts: number; uniqueOrganizations: number };
   byEvent: Array<{ eventName: string; count: number; lastAt?: string }>;
   daily: Array<{ day: string; count: number }>;
@@ -1543,6 +1557,7 @@ export interface PlatformAdminAnalyticsEventsData {
   segments: Array<{ key: string; label: string; accounts: number; definition: string }>;
   retention: Array<{ cohortWeek: string; accounts: number; returnedWeekOne: number; rate: number | null }>;
   dimensions: Array<{ dimension: string; value: string; actors: number; events: number }>;
+  users: PlatformAnalyticsUserActivity[];
   quality: {
     missingActor: number;
     anonymousEvents: number;
@@ -1573,12 +1588,13 @@ function normalizeAnalyticsEvent(row: AnalyticsEventRow): PlatformAnalyticsEvent
   };
 }
 
-function emptyAnalyticsEvents(generatedAt: string, warnings: string[]): PlatformAdminAnalyticsEventsData {
+function emptyAnalyticsEvents(generatedAt: string, warnings: string[], windowDays = 30): PlatformAdminAnalyticsEventsData {
   return {
     available: false,
     generatedAt,
     source: "platform_analytics_events",
     warnings,
+    windowDays,
     summary: { events: 0, last24h: 0, last7d: 0, uniqueAccounts: 0, uniqueOrganizations: 0 },
     byEvent: [],
     daily: [],
@@ -1587,6 +1603,7 @@ function emptyAnalyticsEvents(generatedAt: string, warnings: string[]): Platform
     segments: [],
     retention: [],
     dimensions: [],
+    users: [],
     quality: { missingActor: 0, anonymousEvents: 0, unregisteredEvents: 0, authorityMismatches: 0 },
   };
 }
@@ -1600,8 +1617,9 @@ export async function readPlatformAdminAnalyticsEvents(
   const days = Math.min(Math.max(options.days ?? 30, 1), 90);
   const pool = new Pool({ connectionString, max: 1, connectionTimeoutMillis: 3_000 });
   try {
-    if (!(await tablePresent(pool, "platform_analytics_events"))) return emptyAnalyticsEvents(generatedAt, ["platform_analytics_events is not deployed; first-party analytics are unavailable."]);
-    const [summary, byEvent, daily, recent, funnel, segments, retention, dimensions, quality] = await Promise.all([
+    if (!(await tablePresent(pool, "platform_analytics_events"))) return emptyAnalyticsEvents(generatedAt, ["platform_analytics_events is not deployed; first-party analytics are unavailable."], days);
+    const accountsAvailable = await tablePresent(pool, "radar_accounts");
+    const [summary, byEvent, daily, recent, funnel, segments, retention, dimensions, quality, users] = await Promise.all([
       pool.query<{ events: number | string; last_24h: number | string; last_7d: number | string; unique_accounts: number | string; unique_organizations: number | string }>(
         `select count(*)::int as events,
                 count(*) filter (where occurred_at >= now() - interval '24 hours')::int as last_24h,
@@ -1789,6 +1807,47 @@ export async function readPlatformAdminAnalyticsEvents(
           where occurred_at >= now() - ($1::int * interval '1 day')`,
         [days, [...(options.knownEventNames ?? [])], [...(options.serverEventNames ?? [])]],
       ),
+      pool.query<{
+        account_id: string; email?: string | null; events: number | string; active_days: number | string;
+        first_seen_at?: unknown; last_seen_at?: unknown; latest_event_name: string; latest_path?: string | null;
+        journey_stage: string; segment: string;
+      }>(
+        `with activity as (
+           select account_id,
+                  count(*)::int as events,
+                  count(distinct date_trunc('day', occurred_at at time zone 'UTC'))::int as active_days,
+                  min(occurred_at) as first_seen_at,
+                  max(occurred_at) as last_seen_at,
+                  (array_agg(event_name order by occurred_at desc))[1] as latest_event_name,
+                  (array_agg(path order by occurred_at desc) filter (where path is not null))[1] as latest_path,
+                  case
+                    when bool_or(event_name = 'outcome.response_recorded') then 'Outcome'
+                    when bool_or(event_name = 'application.status_recorded') then 'Track'
+                    when bool_or(event_name = any(array['application.submission_marked_by_user','application.provider_receipt_recorded'])) then 'Confirm'
+                    when bool_or(event_name = 'application.official_destination_opened') then 'Apply'
+                    when bool_or(event_name = 'workspace.preparation_started') then 'Prepare'
+                    when bool_or(event_name = 'discovery.opportunity_saved') then 'Save'
+                    when bool_or(event_name = 'public.opportunity_view') then 'Evaluate'
+                    else 'Discover'
+                  end as journey_stage,
+                  case
+                    when bool_or(event_name = 'auth.signup_succeeded') then 'New'
+                    when count(distinct date_trunc('day', occurred_at at time zone 'UTC')) >= 2 then 'Returning'
+                    when bool_or(event_name = 'discovery.opportunity_saved') then 'Activated'
+                    when bool_or(event_name = any(array['opportunity_search_submitted','public.discovery_view','public.collection_view'])) then 'Exploring'
+                    else 'Active'
+                  end as segment
+             from platform_analytics_events
+            where account_id is not null
+              and occurred_at >= now() - ($1::int * interval '1 day')
+            group by account_id
+         )
+         select a.*, ${accountsAvailable ? "r.email" : "null::text as email"}
+           from activity a
+           ${accountsAvailable ? "left join radar_accounts r on r.id = a.account_id" : ""}
+          order by a.last_seen_at desc limit 50`,
+        [days],
+      ),
     ]);
     const row = summary.rows[0];
     const funnelRow = funnel.rows[0];
@@ -1809,6 +1868,7 @@ export async function readPlatformAdminAnalyticsEvents(
       generatedAt,
       source: "platform_analytics_events",
       warnings: [],
+      windowDays: days,
       summary: { events: numberValue(row?.events), last24h: numberValue(row?.last_24h), last7d: numberValue(row?.last_7d), uniqueAccounts: numberValue(row?.unique_accounts), uniqueOrganizations: numberValue(row?.unique_organizations) },
       byEvent: byEvent.rows.map((item) => ({ eventName: item.event_name, count: numberValue(item.count), ...(iso(item.last_at) ? { lastAt: iso(item.last_at) } : {}) })),
       daily: daily.rows.map((item) => ({ day: item.day, count: numberValue(item.count) })),
@@ -1832,6 +1892,18 @@ export async function readPlatformAdminAnalyticsEvents(
         return { cohortWeek: item.cohort_week, accounts, returnedWeekOne, rate: accounts ? Math.round((returnedWeekOne / accounts) * 1_000) / 10 : null };
       }),
       dimensions: dimensions.rows.map((item) => ({ dimension: item.dimension, value: item.value, actors: numberValue(item.actors), events: numberValue(item.events) })),
+      users: users.rows.map((item) => ({
+        accountId: item.account_id,
+        ...(text(item.email, 320) ? { email: text(item.email, 320) } : {}),
+        events: numberValue(item.events),
+        activeDays: numberValue(item.active_days),
+        ...(iso(item.first_seen_at) ? { firstSeenAt: iso(item.first_seen_at) } : {}),
+        ...(iso(item.last_seen_at) ? { lastSeenAt: iso(item.last_seen_at) } : {}),
+        latestEventName: item.latest_event_name,
+        ...(text(item.latest_path, 500) ? { latestPath: text(item.latest_path, 500) } : {}),
+        journeyStage: item.journey_stage,
+        segment: item.segment,
+      })),
       quality: {
         missingActor: numberValue(qualityRow?.missing_actor),
         anonymousEvents: numberValue(qualityRow?.anonymous_events),
@@ -1840,7 +1912,7 @@ export async function readPlatformAdminAnalyticsEvents(
       },
     };
   } catch {
-    return emptyAnalyticsEvents(generatedAt, ["First-party analytics could not be read; no product behavior is inferred."]);
+    return emptyAnalyticsEvents(generatedAt, ["First-party analytics could not be read; no product behavior is inferred."], days);
   } finally {
     await pool.end();
   }
