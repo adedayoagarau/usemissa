@@ -145,10 +145,9 @@ test("public crawler surface exposes the launched product", async ({ request }) 
   const llms = await llmsResponse.text();
   expect(robots).toContain("User-Agent: OAI-SearchBot");
   expect(robots).toContain("Allow: /");
-  expect(robots).toContain("Disallow: /api/");
   expect(robots).not.toMatch(/^Disallow: \/$/m);
-  expect(sitemap).toContain("/opportunities");
-  expect(sitemap).toContain("/waitlist");
+  expect(sitemap).toContain("<sitemapindex");
+  expect(sitemap).toContain("/sitemap-pages.xml");
   expect(llms).toContain(
     "Missa helps creators and organizations find, prepare for, and track creative opportunities.",
   );

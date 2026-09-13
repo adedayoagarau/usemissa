@@ -73,18 +73,10 @@ async function resolveHandleRedirect(
 function shouldRedirectToWaitlist(request: NextRequest): boolean {
   const { pathname } = request.nextUrl;
   if (DISCOVERY_BETA && isDiscoveryBetaPath(pathname)) return false;
-  // Only routes that exist but are deliberately not public yet are sent to the
-  // waitlist. Anything else falls through so the app renders its own 404 page
-  // instead of turning a mistyped URL into an invitation capture.
-  return isGatedPreviewPath(pathname);
-}
-
-const gatedPreviewPaths = ["/rankings/claim", "/rankings/plan"];
-
-function isGatedPreviewPath(pathname: string): boolean {
-  return gatedPreviewPaths.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`),
-  );
+  // Nothing is held back behind the waitlist any more. Public routes render,
+  // and unknown paths fall through to the app's own 404 instead of turning a
+  // mistyped URL into an invitation capture.
+  return false;
 }
 
 export const config = {

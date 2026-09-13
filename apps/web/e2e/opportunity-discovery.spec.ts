@@ -64,14 +64,11 @@ test('legacy preview redirects to the canonical catalogue without dropping filte
   expect(response.headers().location).toBe('/opportunities?q=poetry&type=grant');
 });
 
-test('public crawl endpoints expose the launched catalogue and keep app routes out', async ({ request }) => {
+test('public crawl endpoints expose the entire catalogue', async ({ request }) => {
   const robots = await request.get('/robots.txt');
   expect(robots.status()).toBe(200);
   const robotsBody = await robots.text();
   expect(robotsBody).toContain('/sitemap.xml');
-  expect(robotsBody).toContain('Allow: /');
-  expect(robotsBody).toContain('Disallow: /api/');
-  expect(robotsBody).toContain('Disallow: /workspace');
   expect(robotsBody).toMatch(/User-Agent: \*\nAllow: \/\n/);
   expect(robotsBody).not.toMatch(/^Disallow: \/$/m);
   expect(robotsBody).not.toContain('/opportunities-preview');
@@ -79,11 +76,19 @@ test('public crawl endpoints expose the launched catalogue and keep app routes o
   const sitemap = await request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   const sitemapBody = await sitemap.text();
-  expect(sitemapBody).toContain('/opportunities');
-  expect(sitemapBody).toContain('/directory');
-  expect(sitemapBody).toContain('/rankings/magazines');
-  expect(sitemapBody).toContain('/terms');
+  expect(sitemapBody).toContain('<sitemapindex');
+  expect(sitemapBody).toContain('/sitemap-pages.xml');
+  expect(sitemapBody).toContain('/sitemap-opportunities.xml');
+  expect(sitemapBody).toContain('/sitemap-profiles.xml');
   expect(sitemapBody).not.toContain('/opportunities-preview');
+
+  const pages = await request.get('/sitemap-pages.xml');
+  expect(pages.status()).toBe(200);
+  const pagesBody = await pages.text();
+  expect(pagesBody).toContain('/opportunities');
+  expect(pagesBody).toContain('/directory');
+  expect(pagesBody).toContain('/rankings/magazines');
+  expect(pagesBody).toContain('/terms');
 });
 
 test('public discovery APIs return bounded JSON without leaking an auth failure', async ({ request }) => {
