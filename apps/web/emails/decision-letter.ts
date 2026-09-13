@@ -1,4 +1,4 @@
-import { renderBaseEmailLayout, escapeHtml, EMAIL_COLORS } from './components/base-layout';
+import { renderBaseEmailLayout, escapeHtml, EMAIL_COLORS, EMAIL_FONTS } from './components/base-layout';
 import { siteUrl } from '../lib/siteUrl';
 import { sendMail, type SendMailReport } from '../lib/mail-service';
 
@@ -19,14 +19,24 @@ export function renderDecisionLetter(props: DecisionLetterProps): { subject: str
   const workTitle = escapeHtml(props.workTitle);
   const outcomeKey = props.outcome.toLowerCase();
 
-  const outcomeBadge =
-    outcomeKey === 'accepted'
-      ? `<span style="display:inline-block;padding:4px 10px;background-color:#edf3f0;color:#1d4037;border-radius:6px;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">Accepted</span>`
-      : outcomeKey === 'waitlisted' || outcomeKey === 'shortlisted'
-      ? `<span style="display:inline-block;padding:4px 10px;background-color:#f5ecd9;color:#78551e;border-radius:6px;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">${escapeHtml(props.outcome)}</span>`
-      : `<span style="display:inline-block;padding:4px 10px;background-color:#f7f7f7;color:#45413d;border-radius:6px;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">Decision</span>`;
-
   const subject = `Update regarding "${props.workTitle}" — ${props.organizationName}`;
+
+  // An acceptance is the one moment in this product that earns the loud
+  // register. A rejection gets the quiet one — no citron, no celebration.
+  const isAcceptance = outcomeKey === 'accepted';
+  const isHold = outcomeKey === 'waitlisted' || outcomeKey === 'shortlisted';
+
+  const statusWord = isAcceptance
+    ? 'Accepted'
+    : isHold
+      ? `${props.outcome.charAt(0).toUpperCase()}${props.outcome.slice(1).toLowerCase()}`
+      : '';
+
+  const title = isAcceptance
+    ? `Accepted by ${props.organizationName}.`
+    : isHold
+      ? `${statusWord} at ${props.organizationName}.`
+      : `A decision from ${props.organizationName}.`;
 
   let outcomeStatement = '';
   if (outcomeKey === 'accepted') {
@@ -39,28 +49,24 @@ export function renderDecisionLetter(props: DecisionLetterProps): { subject: str
     outcomeStatement = `We have completed our review of <strong>"${workTitle}"</strong> for <strong>${orgName}</strong>.`;
   }
 
+  // The editors' own words are the most valuable thing in this email, so they
+  // are set in Newsreader as a quotation rather than boxed as a notice.
   const editorialNoteHtml = props.editorialNote
-    ? `<div style="margin:20px 0;padding:16px 18px;background-color:#ffffff;border:1px solid ${EMAIL_COLORS.border};border-left:3px solid ${EMAIL_COLORS.forest600};border-radius:4px;">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${EMAIL_COLORS.forest600};margin-bottom:6px;">Note from the editors:</div>
-        <div style="font-size:14px;line-height:22px;color:${EMAIL_COLORS.inkSecondary};white-space:pre-wrap;">${escapeHtml(props.editorialNote)}</div>
-      </div>`
+    ? `<blockquote style="margin:26px 0;padding:0 0 0 20px;border-left:2px solid ${EMAIL_COLORS.forest600};">
+        <div class="m-text" style="font-family:${EMAIL_FONTS.editorial};font-size:19px;font-weight:400;line-height:30px;letter-spacing:-0.01em;color:${EMAIL_COLORS.ink};white-space:pre-wrap;">${escapeHtml(props.editorialNote)}</div>
+        <div class="m-muted" style="margin-top:10px;font-family:${EMAIL_FONTS.interface};font-size:13px;line-height:19px;color:${EMAIL_COLORS.inkMuted};">The editors at ${orgName}</div>
+      </blockquote>`
     : '';
 
   const nextStepsHtml = props.nextSteps
-    ? `<div style="margin:16px 0;font-size:14px;line-height:22px;color:${EMAIL_COLORS.ink};">
-        <strong>Next Steps:</strong> ${escapeHtml(props.nextSteps)}
-      </div>`
+    ? `<p style="margin:0 0 18px;"><strong>What happens next.</strong> ${escapeHtml(props.nextSteps)}</p>`
     : '';
 
   const bodyHtml = `
-    <div style="margin-bottom:18px;">${outcomeBadge}</div>
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">${greeting}</p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">${outcomeStatement}</p>
+    <p style="margin:0 0 18px;">${greeting}</p>
+    <p style="margin:0 0 18px;">${outcomeStatement}</p>
     ${editorialNoteHtml}
     ${nextStepsHtml}
-    <p style="margin:16px 0 0;font-size:14px;line-height:22px;color:${EMAIL_COLORS.inkMuted};">
-      Thank you for your time, trust, and creative contribution.
-    </p>
   `;
 
   const submissionUrl = props.submissionId
@@ -69,9 +75,11 @@ export function renderDecisionLetter(props: DecisionLetterProps): { subject: str
 
   const html = renderBaseEmailLayout({
     subject,
+    register: isAcceptance ? 'expressive' : 'operational',
     preheader: `Decision update on your submission to ${props.organizationName}.`,
-    eyebrow: props.organizationName,
-    title: 'Submission Decision',
+    title,
+    titleHighlight: statusWord || undefined,
+    lede: isAcceptance ? `“${props.workTitle}” has been taken for publication.` : undefined,
     bodyHtml,
     callToAction: {
       label: 'View in Tracker',

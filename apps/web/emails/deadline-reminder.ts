@@ -1,4 +1,4 @@
-import { renderBaseEmailLayout, escapeHtml, EMAIL_COLORS } from './components/base-layout';
+import { renderBaseEmailLayout, renderRecordRow, escapeHtml } from './components/base-layout';
 import { buildUnsubscribeUrl } from '../lib/email-tokens';
 import { siteUrl } from '../lib/siteUrl';
 import { sendMail, type SendMailReport } from '../lib/mail-service';
@@ -26,49 +26,57 @@ export function renderDeadlineReminderEmail(props: DeadlineReminderEmailProps): 
     ? `Deadline approaching: ${single.title} (${single.daysRemaining} days left)`
     : `Missa: ${count} submission deadlines approaching`;
 
-  const title = single ? 'Deadline countdown' : 'Upcoming deadlines';
+  // The countdown carries the urgency, so it goes in the headline highlight and
+  // is repeated per record as a Fragment Mono flag.
+  const countdownPhrase = single
+    ? single.daysRemaining <= 1
+      ? 'within 24 hours'
+      : `in ${single.daysRemaining} days`
+    : `${count} calls`;
+
+  const title = single
+    ? `One call closes ${countdownPhrase}.`
+    : `${countdownPhrase} are closing.`;
+
   const preheader = single
     ? `${single.title} closes in ${single.daysRemaining} days.`
     : `You have ${count} opportunities closing soon.`;
 
   const bodyHtml = props.opportunities
-    .map((opp) => {
-      const remainingLabel =
+    .map((opp, index) => {
+      const urgent = opp.daysRemaining <= 2;
+      const flag =
         opp.daysRemaining <= 1
-          ? 'Closes in 24 hours'
-          : `Closes in ${opp.daysRemaining} days`;
+          ? '24 hours left'
+          : `${opp.daysRemaining} days left`;
 
-      return `
-        <div style="margin-bottom:18px;padding:16px 18px;background-color:#ffffff;border:1px solid ${EMAIL_COLORS.border};border-radius:8px;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-            <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${EMAIL_COLORS.forest600};">
-              ${escapeHtml(opp.organizationName)}
-            </span>
-            <span style="font-size:12px;font-weight:600;background-color:#edf3f0;color:#1d4037;padding:3px 8px;border-radius:4px;">
-              ${escapeHtml(remainingLabel)}
-            </span>
-          </div>
-          <div style="font-size:16px;font-weight:600;color:${EMAIL_COLORS.ink};margin-bottom:6px;">
-            ${escapeHtml(opp.title)}
-          </div>
-          <div style="font-size:13px;color:${EMAIL_COLORS.inkMuted};">
-            Deadline: ${escapeHtml(opp.deadlineFormatted)} ${opp.categoryLabel ? `• ${escapeHtml(opp.categoryLabel)}` : ''}
-          </div>
-        </div>
-      `;
+      const meta = [opp.deadlineFormatted, opp.categoryLabel]
+        .filter(Boolean)
+        .map((value) => escapeHtml(value as string))
+        .join('&nbsp;&nbsp;·&nbsp;&nbsp;');
+
+      return renderRecordRow({
+        kicker: opp.organizationName,
+        title: opp.title,
+        flag,
+        flagUrgent: urgent,
+        meta,
+        last: index === count - 1,
+      });
     })
     .join('');
 
   const noteHtml = `
-    <strong>Tip:</strong> Submissions often experience higher traffic during closing hours. We recommend submitting your work well in advance to avoid deadline-day technical issues.
+    <strong>Submit before the last day.</strong> Most magazines see their heaviest traffic in the closing hours, and a submission portal that times out at 11:58pm counts as a missed deadline.
   `;
 
   const html = renderBaseEmailLayout({
     subject,
+    register: 'operational',
     preheader,
-    eyebrow: 'Deadline alert',
     title,
-    bodyHtml: `<p style="margin:0 0 16px;font-size:15px;line-height:24px;color:${EMAIL_COLORS.inkSecondary};">The following opportunities in your saved list or tracker are closing soon:</p>${bodyHtml}`,
+    titleHighlight: countdownPhrase,
+    bodyHtml: `<p style="margin:0 0 4px;">From your saved list and tracker:</p>${bodyHtml}`,
     noteHtml,
     callToAction: {
       label: 'Open Tracker',

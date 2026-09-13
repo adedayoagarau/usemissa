@@ -21,7 +21,7 @@ test('renderDeadlineReminderEmail handles single opportunity countdown', () => {
   assert.ok(rendered.subject.includes('Spring Poetry Prize'));
   assert.ok(rendered.subject.includes('2 days left'));
   assert.ok(rendered.html.includes('The Kenyon Review'));
-  assert.ok(rendered.html.includes('Closes in 2 days'));
+  assert.ok(rendered.html.includes('2 days left'));
   assert.ok(rendered.html.includes('/tracker'));
   assert.ok(rendered.text.includes('Spring Poetry Prize'));
 });
