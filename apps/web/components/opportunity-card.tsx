@@ -83,7 +83,11 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
               </Badge>
             )}
           </div>
-          <h2 className="mt-2 line-clamp-2 text-[0.95rem] leading-snug font-semibold text-foreground">{cleanTitleOrLabel(item.title)}</h2>
+          <h2 className="mt-2 line-clamp-2 text-[0.95rem] leading-snug font-semibold text-foreground">
+            <span title={cleanTitleOrLabel(item.title)}>
+              {cleanTitleOrLabel(item.title)}
+            </span>
+          </h2>
           <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{cleanTitleOrLabel(item.organizationName) || 'Organization not confirmed'}</p>
           <p className="mt-2 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
             {practiceLabels.map((label) => (

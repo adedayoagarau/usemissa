@@ -259,7 +259,9 @@ export function OpportunityCatalogueCard({
           </div>
 
           <h2 id={titleId} className={`${styles.title} font-heading`}>
-            <Link href={detailHref}>{cleanTitle}</Link>
+            <Link href={detailHref} title={cleanTitle}>
+              {cleanTitle}
+            </Link>
           </h2>
 
           <p className={styles.organization}>

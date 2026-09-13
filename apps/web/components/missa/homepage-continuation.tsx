@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/accordion";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import { categorySearch } from "@/lib/homepage-opportunity-categories";
+import { selectHomepageCalls, type HomepageCall } from "@/lib/homepageCalls";
 import "@/components/design-system/homepage-continuation-tokens.css";
 import "@/components/design-system/homepage-marketing-palette.css";
 import styles from "./homepage-continuation.module.css";
@@ -109,20 +110,33 @@ function ActionLink({
 export function HomepageContinuation({
   signedIn = false,
   layout = "full",
+  initialCalls = null,
+  initialOrganizations = null,
 }: {
   signedIn?: boolean;
   layout?: "full" | "focused";
+  initialCalls?: HomepageCall[] | null;
+  initialOrganizations?: Profile[] | null;
 }) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[] | null>(
-    null,
+    initialCalls?.length ? initialCalls : null,
   );
-  const [profiles, setProfiles] = useState<Profile[] | null>(null);
+  // The server already sent the strip and the organization cards, so the first
+  // paint skips both skeletons and the client only refetches after an explicit
+  // retry.
+  const [useInitialCalls, setUseInitialCalls] = useState(
+    Boolean(initialCalls?.length || initialOrganizations?.length),
+  );
+  const [profiles, setProfiles] = useState<Profile[] | null>(
+    initialOrganizations?.length ? initialOrganizations : null,
+  );
   const [catalogueError, setCatalogueError] = useState(false);
   const [directoryError, setDirectoryError] = useState(false);
   const [featuredImageFailed, setFeaturedImageFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const hasInitialOrganizations = Boolean(initialOrganizations?.length);
   useEffect(() => {
     const section = sectionRef.current;
     if (!section || visible) return;
@@ -156,49 +170,40 @@ export function HomepageContinuation({
         controller.signal.removeEventListener("abort", abort);
       }
     }
-    const catalogue = json("/api/opportunities?openNow=true&limit=12")
-      .then((data) => {
-        const items = opportunityBrowseResponseSchema.parse(data).items;
-        const actionable = items.filter(
-          (item) => item.submissionAvailable && item.type !== "other",
-        );
-        const candidates = actionable.length ? actionable : items;
-        const types = new Set<string>();
-        const varied = candidates.filter((item) => {
-          if (types.has(item.type)) return false;
-          types.add(item.type);
-          return true;
-        });
-        if (alive) {
-          setOpportunities(
-            [
-              ...varied,
-              ...candidates.filter((item) => !varied.includes(item)),
-            ].slice(0, 3),
-          );
-          setCatalogueError(false);
-        }
-      })
-      .catch(() => {
-        if (alive) setCatalogueError(true);
-      });
+    const catalogue = useInitialCalls
+      ? Promise.resolve()
+      : json("/api/opportunities?openNow=true&limit=12")
+          .then((data) => {
+            const items = opportunityBrowseResponseSchema.parse(data).items;
+            if (alive) {
+              setOpportunities(selectHomepageCalls(items, 3));
+              setCatalogueError(false);
+            }
+          })
+          .catch(() => {
+            if (alive) setCatalogueError(true);
+          });
     const directory = catalogue
       .then(() =>
-        Promise.allSettled(
-          DIRECTORY_NAMES.map(async (name) => {
-            const data = await json(
-              `/api/journals?limit=48&q=${encodeURIComponent(name)}`,
-            );
-            const rows = z
-              .object({ items: z.array(profileSchema) })
-              .parse(data).items;
-            return rows.find(
-              (profile) => profile.name.toLowerCase() === name.toLowerCase(),
-            );
-          }),
-        ),
+        useInitialCalls && hasInitialOrganizations
+          ? undefined
+          : Promise.allSettled(
+              DIRECTORY_NAMES.map(async (name) => {
+                const data = await json(
+                  `/api/journals?limit=48&q=${encodeURIComponent(name)}`,
+                );
+                const rows = z
+                  .object({ items: z.array(profileSchema) })
+                  .parse(data).items;
+                return rows.find(
+                  (profile) =>
+                    profile.name.toLowerCase() === name.toLowerCase(),
+                );
+              }),
+            ),
       )
       .then((results) => {
+        if (results === undefined) return;
         const rows = results.flatMap((result) =>
           result.status === "fulfilled" && result.value ? [result.value] : [],
         );
@@ -212,7 +217,7 @@ export function HomepageContinuation({
       alive = false;
       controller.abort();
     };
-  }, [attempt, visible]);
+  }, [attempt, visible, useInitialCalls, hasInitialOrganizations]);
   const featuredProfile = profiles?.find(
     (profile) => profile.slug === "headlands-center-for-the-arts",
   );
@@ -224,6 +229,8 @@ export function HomepageContinuation({
     setProfiles(null);
     setCatalogueError(false);
     setDirectoryError(false);
+    // A retry must hit the network rather than reuse the server-rendered strip.
+    setUseInitialCalls(false);
     setAttempt((value) => value + 1);
   };
 
