@@ -39,10 +39,10 @@ test('Opportunity detail exposes the horizontal builder without unsafe publicati
   await expect(page.getByRole('heading', { name: fixture.title })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Opportunity builder sections' })).toBeVisible();
   await page.getByRole('button', { name: 'Dates' }).click();
-  await expect(page.getByRole('heading', { name: 'Dates are not represented safely yet' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Opening and deadline' })).toBeVisible();
   await page.getByRole('button', { name: 'Review and publish' }).click();
-  await expect(page.getByRole('heading', { name: 'Publication is blocked in this screen' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Publish|Close|Reopen/u })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Review and publish' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Publish Opportunity' })).toBeDisabled();
 });
 
 test('Program ledger remains composed on a phone and foreign records reveal nothing', async ({ page }) => {

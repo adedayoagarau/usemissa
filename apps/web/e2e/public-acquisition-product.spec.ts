@@ -9,16 +9,20 @@ test("public Home leads with useful Opportunities and no operational theatre", a
 }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Find the call worth your time." }),
+    page.getByRole("heading", {
+      level: 1,
+      name: "Opportunities and grants for every creator",
+    }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Open something useful now" }),
+    page.getByRole("heading", {
+      name: "Opportunities are scattered across the web.",
+    }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Browse Opportunities" }),
+    page.getByRole("link", { name: "Browse opportunities" }).first(),
   ).toBeVisible();
   await expect(page.locator("main")).not.toContainText(bannedPublicCopy);
-  await expect(page.locator('img[src*="/media/home/"]')).toHaveCount(0);
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(
     accessibility.violations.filter((violation) =>
@@ -34,7 +38,9 @@ test("selected public pages keep evidence language customer-safe", async ({
     await page.goto(path);
     await expect(page.locator("main")).toBeVisible();
     await expect(page.locator("main")).not.toContainText(bannedPublicCopy);
-    await expect(page.getByRole("link", { name: "Missa home" })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Missa beta home" }).first(),
+    ).toBeVisible();
   }
   await page.goto("/methodology");
   await expect(
