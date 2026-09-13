@@ -123,12 +123,6 @@ export function HomepageContinuation({
   const [opportunities, setOpportunities] = useState<Opportunity[] | null>(
     initialCalls?.length ? initialCalls : null,
   );
-  // The server already sent the strip and the organization cards, so the first
-  // paint skips both skeletons and the client only refetches after an explicit
-  // retry.
-  const [useInitialCalls, setUseInitialCalls] = useState(
-    Boolean(initialCalls?.length || initialOrganizations?.length),
-  );
   const [profiles, setProfiles] = useState<Profile[] | null>(
     initialOrganizations?.length ? initialOrganizations : null,
   );
@@ -136,7 +130,6 @@ export function HomepageContinuation({
   const [directoryError, setDirectoryError] = useState(false);
   const [featuredImageFailed, setFeaturedImageFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const hasInitialOrganizations = Boolean(initialOrganizations?.length);
   useEffect(() => {
     const section = sectionRef.current;
     if (!section || visible) return;
@@ -170,40 +163,37 @@ export function HomepageContinuation({
         controller.signal.removeEventListener("abort", abort);
       }
     }
-    const catalogue = useInitialCalls
-      ? Promise.resolve()
-      : json("/api/opportunities?openNow=true&limit=12")
-          .then((data) => {
-            const items = opportunityBrowseResponseSchema.parse(data).items;
-            if (alive) {
-              setOpportunities(selectHomepageCalls(items, 3));
-              setCatalogueError(false);
-            }
-          })
-          .catch(() => {
-            if (alive) setCatalogueError(true);
-          });
+    // The server sends the first paint, but the client still owns the refresh:
+    // a failed or empty response must announce itself and retry, exactly as it
+    // did before the strip was server-rendered.
+    const catalogue = json("/api/opportunities?openNow=true&limit=12")
+      .then((data) => {
+        const items = opportunityBrowseResponseSchema.parse(data).items;
+        if (alive) {
+          setOpportunities(selectHomepageCalls(items, 3));
+          setCatalogueError(false);
+        }
+      })
+      .catch(() => {
+        if (alive) setCatalogueError(true);
+      });
     const directory = catalogue
       .then(() =>
-        useInitialCalls && hasInitialOrganizations
-          ? undefined
-          : Promise.allSettled(
-              DIRECTORY_NAMES.map(async (name) => {
-                const data = await json(
-                  `/api/journals?limit=48&q=${encodeURIComponent(name)}`,
-                );
-                const rows = z
-                  .object({ items: z.array(profileSchema) })
-                  .parse(data).items;
-                return rows.find(
-                  (profile) =>
-                    profile.name.toLowerCase() === name.toLowerCase(),
-                );
-              }),
-            ),
+        Promise.allSettled(
+          DIRECTORY_NAMES.map(async (name) => {
+            const data = await json(
+              `/api/journals?limit=48&q=${encodeURIComponent(name)}`,
+            );
+            const rows = z
+              .object({ items: z.array(profileSchema) })
+              .parse(data).items;
+            return rows.find(
+              (profile) => profile.name.toLowerCase() === name.toLowerCase(),
+            );
+          }),
+        ),
       )
       .then((results) => {
-        if (results === undefined) return;
         const rows = results.flatMap((result) =>
           result.status === "fulfilled" && result.value ? [result.value] : [],
         );
@@ -217,7 +207,7 @@ export function HomepageContinuation({
       alive = false;
       controller.abort();
     };
-  }, [attempt, visible, useInitialCalls, hasInitialOrganizations]);
+  }, [attempt, visible]);
   const featuredProfile = profiles?.find(
     (profile) => profile.slug === "headlands-center-for-the-arts",
   );
@@ -229,8 +219,6 @@ export function HomepageContinuation({
     setProfiles(null);
     setCatalogueError(false);
     setDirectoryError(false);
-    // A retry must hit the network rather than reuse the server-rendered strip.
-    setUseInitialCalls(false);
     setAttempt((value) => value + 1);
   };
 
