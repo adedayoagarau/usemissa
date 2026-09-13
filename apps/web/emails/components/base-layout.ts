@@ -124,6 +124,16 @@ export function dataValue(value: string, options: { color?: string; size?: numbe
   return `<span class="m-text" style="font-family:${EMAIL_FONTS.data};font-size:${size}px;line-height:1.4;color:${color};">${escapeHtml(value)}</span>`;
 }
 
+/**
+ * A heading inside the body, for emails that carry more than one list.
+ *
+ * Sentence case at body weight — not a tracked uppercase label. Those read as
+ * eyebrows, and the system does not use eyebrows.
+ */
+export function renderSectionHeading(text: string, options: { first?: boolean } = {}): string {
+  return `<div class="m-text" style="margin:${options.first ? '0' : '32px'} 0 2px;font-family:${EMAIL_FONTS.interface};font-size:15px;font-weight:700;line-height:22px;letter-spacing:-0.008em;color:${EMAIL_COLORS.ink};">${escapeHtml(text)}</div>`;
+}
+
 export interface RecordRowOptions {
   /** Opportunity, magazine, or org name — the quiet line above the title. */
   kicker?: string;
@@ -364,9 +374,9 @@ export function renderBaseEmailLayout(props: BaseEmailLayoutProps): string {
             <tr>
               <td class="m-pad" style="padding:26px 36px 30px;background-color:${EMAIL_COLORS.ink};font-family:${EMAIL_FONTS.interface};font-size:12px;line-height:19px;color:${EMAIL_COLORS.onInkMuted};">
                 <div style="color:${EMAIL_COLORS.onInk};font-size:13px;font-weight:600;margin-bottom:5px;">Missa</div>
-                <div style="margin-bottom:12px;">Creative opportunities with source &amp; limits kept visible.</div>
+                <div style="margin-bottom:12px;">Open calls for writers, kept in one place.</div>
                 <div>
-                  <a href="${safePreferencesUrl}" style="color:${EMAIL_COLORS.onInkMuted};text-decoration:underline;">Notification preferences</a>${unsubscribeLink}
+                  <a href="${safePreferencesUrl}" style="color:${EMAIL_COLORS.onInkMuted};text-decoration:underline;">Email settings</a>${unsubscribeLink}
                 </div>
               </td>
             </tr>

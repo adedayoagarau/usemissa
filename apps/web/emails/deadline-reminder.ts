@@ -23,8 +23,8 @@ export function renderDeadlineReminderEmail(props: DeadlineReminderEmailProps): 
   const single = count === 1 ? props.opportunities[0] : undefined;
 
   const subject = single
-    ? `Deadline approaching: ${single.title} (${single.daysRemaining} days left)`
-    : `Missa: ${count} submission deadlines approaching`;
+    ? `${single.title} closes in ${single.daysRemaining} days`
+    : `${count} of your calls close soon`;
 
   // The countdown carries the urgency, so it goes in the headline highlight and
   // is repeated per record as a Fragment Mono flag.
@@ -40,7 +40,7 @@ export function renderDeadlineReminderEmail(props: DeadlineReminderEmailProps): 
 
   const preheader = single
     ? `${single.title} closes in ${single.daysRemaining} days.`
-    : `You have ${count} opportunities closing soon.`;
+    : `${count} calls you saved are closing soon.`;
 
   const bodyHtml = props.opportunities
     .map((opp, index) => {
@@ -67,7 +67,7 @@ export function renderDeadlineReminderEmail(props: DeadlineReminderEmailProps): 
     .join('');
 
   const noteHtml = `
-    <strong>Submit before the last day.</strong> Most magazines see their heaviest traffic in the closing hours, and a submission portal that times out at 11:58pm counts as a missed deadline.
+    <strong>Send it a day early if you can.</strong> Submission portals get slow on the closing day, and a few go down. A form that times out at 11:58pm still counts as a missed deadline.
   `;
 
   const html = renderBaseEmailLayout({
@@ -76,10 +76,10 @@ export function renderDeadlineReminderEmail(props: DeadlineReminderEmailProps): 
     preheader,
     title,
     titleHighlight: countdownPhrase,
-    bodyHtml: `<p style="margin:0 0 4px;">From your saved list and tracker:</p>${bodyHtml}`,
+    bodyHtml: `<p style="margin:0 0 22px;">These are from your saved list and your Tracker.</p>${bodyHtml}`,
     noteHtml,
     callToAction: {
-      label: 'Open Tracker',
+      label: 'Open your Tracker',
       url: new URL('/tracker', `${siteUrl()}/`).toString(),
     },
     unsubscribeUrl: buildUnsubscribeUrl({
@@ -90,10 +90,19 @@ export function renderDeadlineReminderEmail(props: DeadlineReminderEmailProps): 
   });
 
   const textLines = props.opportunities
-    .map((opp) => `• ${opp.title} (${opp.organizationName}) — Deadline: ${opp.deadlineFormatted} (${opp.daysRemaining} days left)`)
+    .map((opp) => `- ${opp.title} (${opp.organizationName}) - closes ${opp.deadlineFormatted}, ${opp.daysRemaining} days left`)
     .join('\n');
 
-  const text = `${title}\n\n${subject}\n\nOpportunities closing soon:\n${textLines}\n\nReview your Tracker: ${siteUrl()}/tracker\nManage notifications: ${siteUrl()}/profile`;
+  const text = [
+    title,
+    '',
+    'These are from your saved list and your Tracker.',
+    '',
+    textLines,
+    '',
+    `Open your Tracker: ${siteUrl()}/tracker`,
+    `Manage these emails: ${siteUrl()}/profile`,
+  ].join('\n');
 
   return { subject, html, text };
 }
@@ -118,7 +127,7 @@ export async function deliverDeadlineReminderEmail(
     html,
     text,
     templateKey: 'deadline-reminder',
-    templateVersion: 'deadline.v1',
+    templateVersion: 'deadline.v2',
     metadata: { opportunityCount: props.opportunities.length },
     connectionString,
     retryFailed: true,

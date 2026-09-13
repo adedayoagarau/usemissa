@@ -14,11 +14,11 @@ test('renderDecisionLetter renders accepted decision letter with editorial notes
 
   assert.ok(rendered.subject.includes('Three Seasons'));
   assert.ok(rendered.subject.includes('The Paris Review'));
-  assert.ok(rendered.html.includes('Dear Jane Doe,'));
-  assert.ok(rendered.html.includes('We are delighted to inform you'));
+  assert.ok(rendered.html.includes('Hi Jane Doe,'));
+  assert.ok(rendered.html.includes('wants to publish'));
   assert.ok(rendered.html.includes('We loved the closing stanza in particular.'));
   assert.ok(rendered.html.includes('Our managing editor will contact you'));
-  assert.ok(rendered.text.includes('Dear Jane Doe,'));
+  assert.ok(rendered.text.includes('Hi Jane Doe,'));
 });
 
 test('renderDecisionLetter renders polite decline letter', () => {
@@ -29,7 +29,7 @@ test('renderDecisionLetter renders polite decline letter', () => {
     outcome: 'declined',
   });
 
-  assert.ok(rendered.html.includes('it is not the right fit for <strong>Granta</strong>'));
+  assert.ok(rendered.html.includes('decided not to take it this time'));
 });
 
 test('deliverDecisionEmail dispatches actionable email idempotently', async () => {

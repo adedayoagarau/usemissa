@@ -23,10 +23,10 @@ export function renderWaitlistConfirmationEmail({ logoUrl }: WaitlistConfirmatio
     logoUrl,
     bodyHtml: `
       <p style="margin:0 0 18px;">
-        Missa helps you find the calls that fit your work, prepare what you need, and stay on top of every deadline — with the original source close at hand.
+        Missa gathers the calls worth your work — magazines, grants, residencies — and shows you the entry fee, the word limit, and a link to the original page, so you can decide quickly whether it is worth your time.
       </p>
       <p style="margin:0;">
-        We’re building a clearer way to move from finding an opportunity to being ready for it.
+        Then it keeps track of what you saved and tells you before the deadline.
       </p>
     `,
     noteHtml: '<strong>Questions?</strong> Reply to this email — we read every response.',
@@ -39,9 +39,9 @@ export function waitlistConfirmationText(): string {
     '',
     'We’ll send you an invite when Missa is ready.',
     '',
-    'Missa helps you find the calls that fit your work, prepare what you need, and stay on top of every deadline—with the original source close at hand.',
+    'Missa gathers the calls worth your work—magazines, grants, residencies—and shows you the entry fee, the word limit, and a link to the original page, so you can decide quickly whether it is worth your time.',
     '',
-    'We’re building a clearer way to move from finding an opportunity to being ready for it.',
+    'Then it keeps track of what you saved and tells you before the deadline.',
     '',
     'Questions? Reply to this email—we read every response.',
     '',

@@ -33,7 +33,7 @@ export function renderAlertDigestEmail(props: AlertDigestEmailProps): { subject:
     titleHighlight: countLabel,
     bodyHtml,
     callToAction: {
-      label: 'Review in Missa',
+      label: 'Open Missa',
       url: new URL('/inbox', `${siteUrl()}/`).toString(),
     },
     unsubscribeUrl: buildUnsubscribeUrl({

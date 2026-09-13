@@ -14,7 +14,7 @@ export interface DecisionLetterProps {
 
 export function renderDecisionLetter(props: DecisionLetterProps): { subject: string; html: string; text: string } {
   const name = props.submitterName?.trim() || '';
-  const greeting = name ? `Dear ${escapeHtml(name)},` : 'Dear Submitter,';
+  const greeting = name ? `Hi ${escapeHtml(name)},` : 'Hello,';
   const orgName = escapeHtml(props.organizationName);
   const workTitle = escapeHtml(props.workTitle);
   const outcomeKey = props.outcome.toLowerCase();
@@ -40,13 +40,13 @@ export function renderDecisionLetter(props: DecisionLetterProps): { subject: str
 
   let outcomeStatement = '';
   if (outcomeKey === 'accepted') {
-    outcomeStatement = `We are delighted to inform you that <strong>"${workTitle}"</strong> has been accepted for publication with <strong>${orgName}</strong>.`;
+    outcomeStatement = `<strong>${orgName}</strong> wants to publish <strong>“${workTitle}”</strong>.`;
   } else if (outcomeKey === 'declined') {
-    outcomeStatement = `Thank you for giving us the opportunity to consider <strong>"${workTitle}"</strong>. While we gave your work careful thought, it is not the right fit for <strong>${orgName}</strong> at this time.`;
+    outcomeStatement = `<strong>${orgName}</strong> read <strong>“${workTitle}”</strong> and decided not to take it this time. They thanked you for sending it.`;
   } else if (outcomeKey === 'waitlisted') {
-    outcomeStatement = `Thank you for submitting <strong>"${workTitle}"</strong> to <strong>${orgName}</strong>. We would like to place your piece on our waitlist as we finalize our selections.`;
+    outcomeStatement = `<strong>${orgName}</strong> has put <strong>“${workTitle}”</strong> on the waitlist while they finish choosing.`;
   } else {
-    outcomeStatement = `We have completed our review of <strong>"${workTitle}"</strong> for <strong>${orgName}</strong>.`;
+    outcomeStatement = `<strong>${orgName}</strong> has finished reading <strong>“${workTitle}”</strong>.`;
   }
 
   // The editors' own words are the most valuable thing in this email, so they
@@ -79,15 +79,28 @@ export function renderDecisionLetter(props: DecisionLetterProps): { subject: str
     preheader: `Decision update on your submission to ${props.organizationName}.`,
     title,
     titleHighlight: statusWord || undefined,
-    lede: isAcceptance ? `“${props.workTitle}” has been taken for publication.` : undefined,
+    lede: isAcceptance ? `They are taking “${props.workTitle}”.` : undefined,
     bodyHtml,
     callToAction: {
-      label: 'View in Tracker',
+      label: 'Open your Tracker',
       url: submissionUrl,
     },
   });
 
-  const text = `Decision: ${props.workTitle} — ${props.organizationName}\n\n${name ? `Dear ${name},\n\n` : 'Dear Submitter,\n\n'}${outcomeKey === 'accepted' ? `We are delighted to inform you that "${props.workTitle}" has been accepted with ${props.organizationName}.` : `Thank you for submitting "${props.workTitle}" to ${props.organizationName}.`}\n\n${props.editorialNote ? `Note from editors:\n${props.editorialNote}\n\n` : ''}${props.nextSteps ? `Next steps:\n${props.nextSteps}\n\n` : ''}View your submission record: ${submissionUrl}`;
+  // Same words as the HTML, without the markup.
+  const plainStatement = outcomeStatement.replace(/<[^>]+>/g, '');
+
+  const text = [
+    title,
+    '',
+    name ? `Hi ${name},` : 'Hello,',
+    '',
+    plainStatement,
+    ...(props.editorialNote ? ['', `From the editors at ${props.organizationName}:`, props.editorialNote] : []),
+    ...(props.nextSteps ? ['', `What happens next. ${props.nextSteps}`] : []),
+    '',
+    `Open your Tracker: ${submissionUrl}`,
+  ].join('\n');
 
   return { subject, html, text };
 }
@@ -119,7 +132,7 @@ export async function deliverDecisionEmail(
     html,
     text,
     templateKey: 'decision-letter',
-    templateVersion: 'decision-letter.v1',
+    templateVersion: 'decision-letter.v2',
     metadata: { workId: props.workId, decisionId: props.decisionId },
     connectionString,
     retryFailed: false,

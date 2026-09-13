@@ -11,7 +11,7 @@ test('renderWelcomeEmail generates valid HTML and plain text with personalized g
 
   assert.equal(rendered.subject, 'Welcome to Missa');
   assert.ok(rendered.html.includes('Hello Adedayo,'));
-  assert.ok(rendered.html.includes('Explore Opportunities'));
+  assert.ok(rendered.html.includes('See what\u2019s open'));
   assert.ok(rendered.text.includes('Hello Adedayo,'));
   assert.ok(rendered.text.includes('/opportunities'));
 });

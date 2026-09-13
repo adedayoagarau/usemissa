@@ -15,9 +15,9 @@ export function renderWelcomeEmail(props: WelcomeEmailProps): { subject: string;
   const greeting = name ? `Hello ${escapeHtml(name)},` : 'Hello,';
 
   const steps: Array<{ title: string; detail: string }> = [
-    { title: 'Browse calls', detail: 'Vetted literary magazines, grants, and residencies — with the source and the entry limits kept visible.' },
-    { title: 'Save to Tracker', detail: 'Keep drafts and deadlines organised through clear status stages.' },
-    { title: 'Set preferences', detail: 'Choose when deadline alerts and digest updates reach you, and how often.' },
+    { title: 'Look through the calls', detail: 'Magazines, grants, and residencies. We show you the entry fee and the word limit up front, and we link to the original page so you can check it yourself.' },
+    { title: 'Save the ones you want', detail: 'Anything you save goes to your Tracker, along with the deadline and where your draft stands.' },
+    { title: 'Tell us when to write', detail: 'Pick how often you hear from us, and how early you want the warning before a deadline.' },
   ];
 
   const stepsHtml = steps
@@ -27,7 +27,7 @@ export function renderWelcomeEmail(props: WelcomeEmailProps): { subject: string;
   const bodyHtml = `
     <p style="margin:0 0 18px;">${greeting}</p>
     <p style="margin:0 0 26px;">
-      Missa keeps the calls worth your work in one place — so the deadline never arrives before you hear about it.
+      Here is how to get started.
     </p>
     ${stepsHtml}
   `;
@@ -35,17 +35,17 @@ export function renderWelcomeEmail(props: WelcomeEmailProps): { subject: string;
   const html = renderBaseEmailLayout({
     subject,
     register: 'expressive',
-    preheader: 'Discover creative opportunities with source and limits kept visible.',
-    title: 'Your creative calls, in view.',
-    titleHighlight: 'in view',
-    lede: 'Somewhere out there is a magazine still open, a grant still taking entries, and a residency that closes on Tuesday. Here is where they live now.',
+    preheader: 'Find the calls worth your work, and keep track of them.',
+    title: 'Now you can stop hunting.',
+    titleHighlight: 'stop hunting',
+    lede: 'Open calls are scattered across a few hundred websites, and most of them close quietly. Missa keeps them in one place and tells you before the deadline, not after.',
     bodyHtml,
     callToAction: {
-      label: 'Explore Opportunities',
+      label: 'See what’s open',
       url: new URL('/opportunities', `${siteUrl()}/`).toString(),
     },
     secondaryAction: {
-      label: 'Visit your profile',
+      label: 'Choose how often we write',
       url: new URL('/profile', `${siteUrl()}/`).toString(),
     },
     unsubscribeUrl: buildUnsubscribeUrl({
@@ -55,7 +55,20 @@ export function renderWelcomeEmail(props: WelcomeEmailProps): { subject: string;
     }),
   });
 
-  const text = `Welcome to Missa\n\n${name ? `Hello ${name},\n\n` : ''}Welcome to Missa — a platform designed to help you discover creative opportunities, track submissions with confidence, and keep every deadline in view.\n\nHere is how to get started:\n• Browse calls: Explore vetted literary magazines, grants, and residencies.\n• Save to Tracker: Keep drafts and deadlines organized with clear status stages.\n• Set preferences: Choose when and how you want deadline alerts and digest updates delivered.\n\nExplore Opportunities: ${siteUrl()}/opportunities\nManage preferences: ${siteUrl()}/profile`;
+  const text = [
+    'Now you can stop hunting.',
+    '',
+    name ? `Hello ${name},` : 'Hello,',
+    '',
+    'Open calls are scattered across a few hundred websites, and most of them close quietly. Missa keeps them in one place and tells you before the deadline, not after.',
+    '',
+    'Here is how to get started.',
+    '',
+    ...steps.map((step) => `- ${step.title}: ${step.detail}`),
+    '',
+    `See what's open: ${siteUrl()}/opportunities`,
+    `Choose how often we write: ${siteUrl()}/profile`,
+  ].join('\n');
 
   return { subject, html, text };
 }
