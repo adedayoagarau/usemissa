@@ -76,7 +76,9 @@ test("mobile swipe, reduced motion, stats and zoom", async ({ page }) => {
 test("failed counts never become invented zeros; retry recovers", async ({
   page,
 }) => {
-  await page.route("**/api/opportunities?**", (route) =>
+  // The totals come from /api/homepage/stats; mocking /api/opportunities here
+  // never reached the request under test.
+  await page.route("**/api/homepage/stats", (route) =>
     route.fulfill({ status: 503, body: "unavailable" }),
   );
   await page.goto("/#next-opening");
@@ -84,7 +86,7 @@ test("failed counts never become invented zeros; retry recovers", async ({
   await expect(
     page.getByRole("button", { name: "Browse publications" }),
   ).toBeVisible();
-  await page.unroute("**/api/opportunities?**");
+  await page.unroute("**/api/homepage/stats");
   await page
     .locator("#next-opening")
     .getByRole("button", { name: "Try again", exact: true })
