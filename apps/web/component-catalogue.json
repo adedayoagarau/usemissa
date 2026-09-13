@@ -84,6 +84,18 @@
     "themes": "Twelve individual editorial palettes in components/design-system/collection-palette.css; cover copy and motifs in lib/collectionArtDirection.ts; shared white cards",
     "state": "Collection constraints retained; URL sorting and cursor history; 48 results per page"
   },
+  "manuscriptMatch": {
+    "status": "approved",
+    "implementation": "apps/web/components/discover/manuscript-match-wizard.tsx",
+    "composition": [
+      "Button",
+      "Card",
+      "Field",
+      "NativeSelect"
+    ],
+    "adaptation": "The manuscript brief uses the same control hierarchy as the literary magazine index. Match cards retain the deterministic reasons, reported timing, compensation, and source-linked journal dossier.",
+    "boundary": "A match is not eligibility, readiness, or submission confirmation."
+  },
   "generatedFrom": "apps/web/components/shadcn-studio",
   "verifiedAgainst": "https://shadcnstudio.com/components",
   "observedAt": "2026-09-03",

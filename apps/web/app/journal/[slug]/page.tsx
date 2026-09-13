@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const repo = getProfileRepository();
   const profile = repo ? await repo.getById(slug) : null;
-  if (!profile) return { title: "Journal Not Found — Missa" };
+  if (!profile) return { title: "Journal Not Found" };
   return {
     alternates: { canonical: `/journal/${encodeURIComponent(profile.slug)}` },
     title: `${profile.name} — Literary Journal Profile`,

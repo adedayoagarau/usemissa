@@ -527,6 +527,7 @@ export function HomepageFooter() {
           <div className={styles.footerBottom}>
             <span>© {new Date().getFullYear()} Missa</span>
             <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
           </div>
         </div>
         <div className={styles.footerPainting}>

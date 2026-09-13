@@ -1,25 +1,20 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams, usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Search,
-  Star,
-  MapPin,
-  ExternalLink,
+  Award,
+  Building,
   ChevronLeft,
   ChevronRight,
-  Sparkles,
   DollarSign,
-  Utensils,
+  ExternalLink,
   Home,
-  MessageSquare,
-  Check,
-  Building,
-  X,
-  Award,
+  MapPin,
   PenLine,
+  Search,
+  Star,
 } from "lucide-react";
 import type { ResidencyRankingRow, ResidencyReviewRow } from "@missa/radar-adapters";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
@@ -50,6 +45,7 @@ import {
 } from "@/components/ui/dialog";
 import { SubmitResidencyReviewDialog } from "./submit-residency-review-dialog";
 import { ResidencyIntelligenceDrawer } from "./residency-intelligence-drawer";
+import styles from "./residency-index.module.css";
 
 const PAGE_SIZE = 25;
 
@@ -65,6 +61,41 @@ const DISCIPLINES_LIST = [
   { id: "performance", label: "Dance & Performing Arts", keywords: ["dance", "performance", "theater", "choreography"] },
 ] as const;
 
+const FUNDING_FILTERS = [
+  { id: "funded", label: "Fully funded" },
+  { id: "stipend", label: "Stipend" },
+  { id: "meals", label: "Meals included" },
+  { id: "studio", label: "Private studio" },
+  { id: "reviews", label: "Community reviews" },
+] as const;
+
+function locationLabel(row: ResidencyRankingRow): string {
+  return (
+    row.location ||
+    [row.city, row.region, row.country].filter(Boolean).join(", ") ||
+    "Location unlisted"
+  );
+}
+
+function fundingFacts(row: ResidencyRankingRow): string[] {
+  const facts: string[] = [];
+  if (row.isFullyFunded) facts.push("Fully funded");
+  if (row.hasStipend) facts.push("Stipend");
+  if (row.hasMeals) facts.push("Meals included");
+  if (row.hasPrivateStudio) facts.push("Private studio");
+  return facts.length > 0 ? facts : ["Subsidized or self-funded"];
+}
+
+function communityLabel(row: ResidencyRankingRow): string {
+  if (row.rmarReviewsCount > 0) {
+    return `${row.rmarReviewsCount} ${row.rmarReviewsCount === 1 ? "review" : "reviews"}`;
+  }
+  if (row.rmarRatingsCount > 0) {
+    return `${row.rmarRatingsCount} ratings`;
+  }
+  return "No ratings yet";
+}
+
 export function ResidencyRankingsInteractive({
   initialItems,
   total,
@@ -75,12 +106,13 @@ export function ResidencyRankingsInteractive({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Read initial values from URL params
   const paramQ = searchParams?.get("q") ?? "";
   const paramTier = searchParams?.get("tier") ?? "all";
   const paramSort = (searchParams?.get("sort") as SortOption) ?? "score";
   const paramDiscipline = searchParams?.get("discipline") ?? "all";
-  const paramFilters = searchParams?.get("filter") ? searchParams.get("filter")!.split(",").filter(Boolean) : [];
+  const paramFilters = searchParams?.get("filter")
+    ? searchParams.get("filter")!.split(",").filter(Boolean)
+    : [];
   const paramPage = parseInt(searchParams?.get("page") ?? "1", 10) - 1;
 
   const [items, setItems] = useState<ResidencyRankingRow[]>(initialItems);
@@ -93,26 +125,30 @@ export function ResidencyRankingsInteractive({
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
 
-  // Review modal state
-  const [activeResidencyForReviews, setActiveResidencyForReviews] = useState<ResidencyRankingRow | null>(null);
+  const [activeResidencyForReviews, setActiveResidencyForReviews] =
+    useState<ResidencyRankingRow | null>(null);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsData, setReviewsData] = useState<ResidencyReviewRow[]>([]);
+  const [residencyForNewReview, setResidencyForNewReview] =
+    useState<ResidencyRankingRow | null>(null);
+  const [activeResidencyForScore, setActiveResidencyForScore] =
+    useState<ResidencyRankingRow | null>(null);
 
-  // Write review dialog state
-  const [residencyForNewReview, setResidencyForNewReview] = useState<ResidencyRankingRow | null>(null);
-
-  // Score breakdown modal state
-  const [activeResidencyForScore, setActiveResidencyForScore] = useState<ResidencyRankingRow | null>(null);
-
-  // Sync state to URL
   const updateUrl = useCallback(
-    (newParams: { q?: string; tier?: string; sort?: string; discipline?: string; filter?: string[]; page?: number }) => {
-      const q = newParams.q !== undefined ? newParams.q : search;
-      const t = newParams.tier !== undefined ? newParams.tier : tier;
-      const s = newParams.sort !== undefined ? newParams.sort : sort;
-      const d = newParams.discipline !== undefined ? newParams.discipline : discipline;
-      const f = newParams.filter !== undefined ? newParams.filter : filters;
-      const p = newParams.page !== undefined ? newParams.page : page;
+    (next: {
+      q?: string;
+      tier?: string;
+      sort?: string;
+      discipline?: string;
+      filter?: string[];
+      page?: number;
+    }) => {
+      const q = next.q !== undefined ? next.q : search;
+      const t = next.tier !== undefined ? next.tier : tier;
+      const s = next.sort !== undefined ? next.sort : sort;
+      const d = next.discipline !== undefined ? next.discipline : discipline;
+      const f = next.filter !== undefined ? next.filter : filters;
+      const p = next.page !== undefined ? next.page : page;
 
       const urlParams = new URLSearchParams();
       if (q.trim()) urlParams.set("q", q.trim());
@@ -123,52 +159,18 @@ export function ResidencyRankingsInteractive({
       if (p > 0) urlParams.set("page", String(p + 1));
 
       const queryStr = urlParams.toString();
-      const newUrl = queryStr ? `${pathname}?${queryStr}` : pathname;
-      window.history.replaceState(null, "", newUrl);
+      window.history.replaceState(
+        null,
+        "",
+        queryStr ? `${pathname}?${queryStr}` : pathname,
+      );
     },
     [pathname, search, tier, sort, discipline, filters, page],
   );
 
-  const openReviewsDialog = async (residency: ResidencyRankingRow) => {
-    setActiveResidencyForReviews(residency);
-    setReviewsLoading(true);
-    try {
-      const res = await fetch(`/api/rankings/residencies/${encodeURIComponent(residency.profileId)}/reviews`);
-      if (res.ok) {
-        const json = await res.json();
-        setReviewsData(json.reviews || []);
-      } else {
-        setReviewsData([]);
-      }
-    } catch {
-      setReviewsData([]);
-    } finally {
-      setReviewsLoading(false);
-    }
-  };
-
-  const handleReviewSubmitted = (newRating: number, newTotalScore: number) => {
-    if (!residencyForNewReview) return;
-    const targetId = residencyForNewReview.profileId;
-    setItems((prev) =>
-      prev.map((r) =>
-        r.profileId === targetId
-          ? {
-              ...r,
-              rmarRating: newRating,
-              totalScore: newTotalScore,
-              rmarReviewsCount: r.rmarReviewsCount + 1,
-              rmarRatingsCount: r.rmarRatingsCount + 1,
-            }
-          : r,
-      ),
-    );
-  };
-
   const filtered = useMemo(() => {
     return items
       .filter((row) => {
-        // Keyword Search
         if (search.trim()) {
           const q = search.trim().toLowerCase();
           const matchesName = row.name.toLowerCase().includes(q);
@@ -184,45 +186,45 @@ export function ResidencyRankingsInteractive({
           }
         }
 
-        // Tier Filter
-        if (tier !== "all" && !row.prestigeTier.startsWith(tier)) {
+        if (tier !== "all" && !row.prestigeTier.toLowerCase().includes(tier.toLowerCase())) {
           return false;
         }
 
-        // Discipline Filter
         if (discipline !== "all") {
           const matchedCategory = DISCIPLINES_LIST.find((d) => d.id === discipline);
           if (matchedCategory && "keywords" in matchedCategory) {
             const discText = (row.disciplines || "").toLowerCase();
-            const matchesDiscipline = matchedCategory.keywords.some((kw) =>
-              discText.includes(kw),
-            );
-            if (!matchesDiscipline) return false;
+            if (!matchedCategory.keywords.some((kw) => discText.includes(kw))) {
+              return false;
+            }
           }
         }
 
-        // Feature / Funding Filters
         return filters.every((filter) => {
           if (filter === "funded") return row.isFullyFunded;
           if (filter === "stipend") return row.hasStipend;
           if (filter === "meals") return row.hasMeals;
           if (filter === "studio") return row.hasPrivateStudio;
-          if (filter === "reviews") return row.rmarReviewsCount > 0 || row.rmarRatingsCount > 0;
+          if (filter === "reviews") {
+            return row.rmarReviewsCount > 0 || row.rmarRatingsCount > 0;
+          }
           return true;
         });
       })
       .sort((a, b) => {
         if (sort === "rating") {
-          const rA = a.rmarRating ?? 0;
-          const rB = b.rmarRating ?? 0;
-          return rB - rA || b.totalScore - a.totalScore;
+          return (
+            (b.rmarRating ?? 0) - (a.rmarRating ?? 0) ||
+            b.totalScore - a.totalScore
+          );
         }
         if (sort === "reviews") {
-          return b.rmarReviewsCount - a.rmarReviewsCount || b.totalScore - a.totalScore;
+          return (
+            b.rmarReviewsCount - a.rmarReviewsCount ||
+            b.totalScore - a.totalScore
+          );
         }
-        if (sort === "name") {
-          return a.name.localeCompare(b.name);
-        }
+        if (sort === "name") return a.name.localeCompare(b.name);
         return b.totalScore - a.totalScore;
       });
   }, [items, search, tier, discipline, filters, sort]);
@@ -235,7 +237,6 @@ export function ResidencyRankingsInteractive({
     currentPage * PAGE_SIZE,
     (currentPage + 1) * PAGE_SIZE,
   );
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const hasFilters = Boolean(
     search || tier !== "all" || discipline !== "all" || filters.length > 0,
   );
@@ -249,16 +250,49 @@ export function ResidencyRankingsInteractive({
     updateUrl({ q: "", tier: "all", discipline: "all", filter: [], page: 0 });
   }
 
-  const toggleFilter = (filterId: string) => {
+  function toggleFilter(filterId: string) {
     const next = filters.includes(filterId)
       ? filters.filter((f) => f !== filterId)
       : [...filters, filterId];
     setFilters(next);
     setPage(0);
     updateUrl({ filter: next, page: 0 });
-  };
+  }
 
-  const loadMore = async () => {
+  async function openReviewsDialog(residency: ResidencyRankingRow) {
+    setActiveResidencyForReviews(residency);
+    setReviewsLoading(true);
+    try {
+      const res = await fetch(
+        `/api/rankings/residencies/${encodeURIComponent(residency.profileId)}/reviews`,
+      );
+      setReviewsData(res.ok ? ((await res.json()).reviews ?? []) : []);
+    } catch {
+      setReviewsData([]);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }
+
+  function handleReviewSubmitted(newRating: number, newTotalScore: number) {
+    if (!residencyForNewReview) return;
+    const targetId = residencyForNewReview.profileId;
+    setItems((previous) =>
+      previous.map((row) =>
+        row.profileId === targetId
+          ? {
+              ...row,
+              rmarRating: newRating,
+              totalScore: newTotalScore,
+              rmarReviewsCount: row.rmarReviewsCount + 1,
+              rmarRatingsCount: row.rmarRatingsCount + 1,
+            }
+          : row,
+      ),
+    );
+  }
+
+  async function loadMore() {
     if (loadingMore || items.length >= total) return;
     setLoadingMore(true);
     setLoadMoreError(false);
@@ -284,121 +318,90 @@ export function ResidencyRankingsInteractive({
     } finally {
       setLoadingMore(false);
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-6 border-b border-border">
-        <nav aria-label="Ranking categories" className="flex flex-wrap gap-6">
-          <Link
-            href="/rankings/residencies"
-            aria-current="page"
-            className="inline-flex min-h-12 items-center border-b-2 border-primary text-sm font-medium text-primary outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            Artist residencies
-          </Link>
-          <Link
-            href="/rankings/magazines"
-            className="inline-flex min-h-12 items-center border-b-2 border-transparent text-sm font-medium text-muted-foreground outline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            Literary magazines
-          </Link>
-          <Link
-            href="/rankings/compare?kind=residencies"
-            className="inline-flex min-h-12 items-center border-b-2 border-transparent text-sm font-medium text-muted-foreground outline-offset-4 hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
-          >
-            Compare
-          </Link>
+        <nav aria-label="Ranking kind" className="flex flex-wrap gap-6">
+          {[
+            { href: "/rankings/residencies", label: "Artist residencies", current: true },
+            { href: "/rankings/magazines", label: "Literary magazines", current: false },
+            { href: "/rankings/compare?kind=residencies", label: "Compare", current: false },
+          ].map((tab) => (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              aria-current={tab.current ? "page" : undefined}
+              className={`inline-flex min-h-12 items-center border-b-2 text-sm font-medium outline-offset-4 focus-visible:outline-2 focus-visible:outline-ring ${tab.current ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              {tab.label}
+            </Link>
+          ))}
         </nav>
-
-        <Link
-          href="/rankings/methodology"
-          className="inline-flex min-h-12 items-center text-sm text-muted-foreground underline-offset-4 hover:text-primary hover:underline"
-        >
-          Methodology
-        </Link>
+        <div className="flex flex-wrap gap-3 pb-3">
+          <Button
+            variant="ghost"
+            nativeButton={false}
+            render={<Link href="/residencies" />}
+          >
+            Residency directory
+          </Button>
+          <Button
+            variant="ghost"
+            nativeButton={false}
+            render={<Link href="/rankings/methodology" />}
+          >
+            Methodology
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="col-span-2 grid gap-4 sm:grid-cols-2">
-          {/* Keyword Search */}
-          <Field className="sm:col-span-2">
-            <FieldLabel htmlFor="residency-search">Search by name, state, country, or keyword</FieldLabel>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="residency-search"
-                type="search"
-                placeholder="e.g. MacDowell, Vermont, New York, Poetry, Ceramics…"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(0);
-                  updateUrl({ q: e.target.value, page: 0 });
-                }}
-                className="pl-9 h-11"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearch("");
-                    setPage(0);
-                    updateUrl({ q: "", page: 0 });
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  aria-label="Clear search input"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="residency-discipline">Artistic discipline</FieldLabel>
-            <NativeSelect
-              id="residency-discipline"
-              value={discipline}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <Field className="col-span-2">
+          <FieldLabel htmlFor="residency-search">Find a residency</FieldLabel>
+          <div className="relative">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute start-3 top-3 size-5 text-muted-foreground"
+            />
+            <Input
+              id="residency-search"
+              type="search"
+              value={search}
               onChange={(e) => {
-                setDiscipline(e.target.value);
+                setSearch(e.target.value);
                 setPage(0);
-                updateUrl({ discipline: e.target.value, page: 0 });
+                updateUrl({ q: e.target.value, page: 0 });
               }}
-              className="w-full [&_select]:h-11"
-            >
-              {DISCIPLINES_LIST.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-
-          <Field>
-            <FieldLabel htmlFor="residency-sort">Sort standings</FieldLabel>
-            <NativeSelect
-              id="residency-sort"
-              value={sort}
-              onChange={(e) => {
-                setSort(e.target.value as SortOption);
-                setPage(0);
-                updateUrl({ sort: e.target.value, page: 0 });
-              }}
-              className="w-full [&_select]:h-11"
-            >
-              <option value="score">Missa Residency Index (MRI Score)</option>
-              <option value="rating">Resident Star Rating (Highest)</option>
-              <option value="reviews">Most Community Reviews</option>
-              <option value="name">Alphabetical (A–Z)</option>
-            </NativeSelect>
-          </Field>
-        </div>
-
+              placeholder="Search by name, discipline, or location"
+              className="h-11 ps-10"
+            />
+          </div>
+        </Field>
         <Field>
-          <FieldLabel htmlFor="tier-select">Ranking tier</FieldLabel>
+          <FieldLabel htmlFor="residency-discipline">Artistic discipline</FieldLabel>
           <NativeSelect
-            id="tier-select"
+            id="residency-discipline"
+            value={discipline}
+            onChange={(e) => {
+              setDiscipline(e.target.value);
+              setPage(0);
+              updateUrl({ discipline: e.target.value, page: 0 });
+            }}
+            className="w-full [&_select]:h-11"
+          >
+            {DISCIPLINES_LIST.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="residency-tier">Ranking tier</FieldLabel>
+          <NativeSelect
+            id="residency-tier"
             value={tier}
             onChange={(e) => {
               setTier(e.target.value);
@@ -408,427 +411,312 @@ export function ResidencyRankingsInteractive({
             className="w-full [&_select]:h-11"
           >
             <option value="all">All tiers</option>
-            <option value="Tier 1">Tier 1</option>
-            <option value="Tier 2">Tier 2</option>
-            <option value="Tier 3">Tier 3</option>
+            {[1, 2, 3, 4].map((n) => (
+              <option key={n} value={`Tier ${n}`}>
+                Tier {n}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+        <Field>
+          <FieldLabel htmlFor="residency-sort">Sort by</FieldLabel>
+          <NativeSelect
+            id="residency-sort"
+            value={sort}
+            onChange={(e) => {
+              setSort(e.target.value as SortOption);
+              setPage(0);
+              updateUrl({ sort: e.target.value, page: 0 });
+            }}
+            className="w-full [&_select]:h-11"
+          >
+            <option value="score">Missa Residency Index</option>
+            <option value="rating">Resident star rating</option>
+            <option value="reviews">Most community reviews</option>
+            <option value="name">Alphabetical (A–Z)</option>
           </NativeSelect>
         </Field>
       </div>
 
       <div className="flex flex-wrap gap-3" aria-label="Residency preferences">
-            {[
-              { id: "funded", label: "Fully funded", icon: DollarSign },
-              { id: "stipend", label: "Stipend", icon: Sparkles },
-              { id: "meals", label: "Meals included", icon: Utensils },
-              { id: "studio", label: "Private studio", icon: Home },
-              { id: "reviews", label: "Community reviews", icon: MessageSquare },
-            ].map(({ id, label, icon: Icon }) => {
-              const isActive = filters.includes(id);
-              return (
-                <Button
-                  key={id}
-                  variant={isActive ? "default" : "outline"}
-                  aria-pressed={isActive}
-                  onClick={() => toggleFilter(id)}
-                  className="text-sm"
-                >
-                  <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{label}</span>
-                  {isActive && <Check className="h-3 w-3 ml-0.5" />}
-                </Button>
-              );
-            })}
+        {FUNDING_FILTERS.map(({ id, label }) => (
+          <Button
+            key={id}
+            variant={filters.includes(id) ? "default" : "outline"}
+            aria-pressed={filters.includes(id)}
+            onClick={() => toggleFilter(id)}
+          >
+            {label}
+          </Button>
+        ))}
       </div>
 
-      {/* Results Counter Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground border-b border-border pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
         <p role="status" aria-live="polite">
-          Showing <strong className="text-foreground">{filtered.length.toLocaleString()}</strong>{" "}
-          {filtered.length === 1 ? "residency program" : "residency programs"}
-          {hasFilters ? " matching your active criteria" : " across the index"}
-          {total > items.length ? ` · searching ${items.length} of ${total}` : ""}
+          {filtered.length.toLocaleString()}{" "}
+          {filtered.length === 1 ? "residency" : "residencies"}
+          {hasFilters ? " matching your search" : " in this index"}
+          {total > items.length
+            ? ` · searching ${items.length} of ${total} entries`
+            : ""}
         </p>
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={reset} className="h-8 text-xs gap-1">
-            <X className="h-3.5 w-3.5" />
-            <span>Reset filters</span>
+          <Button variant="ghost" onClick={reset}>
+            Clear filters
           </Button>
         )}
       </div>
 
-      {/* Content: Responsive Desktop Table & Mobile Cards */}
       {visible.length === 0 ? (
-        <Empty className="border border-border py-16 bg-card">
+        <Empty className="border border-border py-16">
           <EmptyHeader>
-            <EmptyTitle>No residencies match your criteria</EmptyTitle>
+            <EmptyTitle>No residencies found</EmptyTitle>
             <EmptyDescription>
-              We couldn&apos;t find any programs matching this specific combination of search terms, discipline, and funding filters.
+              Try a different name, discipline, or funding filter to broaden
+              your search.
             </EmptyDescription>
           </EmptyHeader>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <Button variant="outline" onClick={reset}>
-              Clear all filters
-            </Button>
-            <Button
-              variant="default"
-              onClick={() => {
-                reset();
-                toggleFilter("funded");
-              }}
-            >
-              Show all 100% Free Fellowships
-            </Button>
-          </div>
+          <Button variant="outline" onClick={reset}>
+            Clear filters
+          </Button>
         </Empty>
       ) : (
-        <>
-          {/* Desktop Data Table */}
-          <div className="hidden md:block overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-            <Table className="w-full">
-              <caption className="sr-only">
-                2026 Artist Residency rankings, MRI scores, and community reviews.
-              </caption>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead scope="col" className="w-16 font-semibold">Rank</TableHead>
-                  <TableHead scope="col" className="font-semibold">Residency & Location</TableHead>
-                  <TableHead scope="col" className="w-40 font-semibold">Prestige Tier</TableHead>
-                  <TableHead scope="col" className="w-48 font-semibold">Funding & Amenities</TableHead>
-                  <TableHead scope="col" className="w-36 font-semibold">Community</TableHead>
-                  <TableHead scope="col" className="w-28 text-end font-semibold">MRI Index</TableHead>
-                  <TableHead scope="col" className="w-36 text-end font-semibold">Intelligence</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visible.map((row, idx) => {
-                  const globalRank = currentPage * PAGE_SIZE + idx + 1;
-                  return (
-                    <TableRow key={row.profileId} className="transition-colors hover:bg-muted/40">
-                      {/* Rank */}
-                      <TableCell className="font-mono text-sm font-medium text-muted-foreground">
-                        #{globalRank}
-                      </TableCell>
-
-                      {/* Residency Name & Location */}
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={`/residency/${row.slug}`}
-                              className="font-medium text-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
-                            >
-                              {row.name}
-                            </Link>
-                            {row.websiteUrl && (
-                              <a
-                                href={row.websiteUrl}
-                                target="_blank"
-                                rel="noreferrer noopener"
-                                className="text-muted-foreground hover:text-foreground inline-flex items-center p-0.5"
-                                title={`Visit official website for ${row.name}`}
-                                aria-label={`Visit official website for ${row.name}`}
-                              >
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </a>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <MapPin className="h-3 w-3 shrink-0 text-muted-foreground/80" />
-                            <span>{row.location || [row.city, row.region, row.country].filter(Boolean).join(", ") || "Location unlisted"}</span>
-                            {row.foundingYear && (
-                              <span className="text-muted-foreground/60">· Est. {row.foundingYear}</span>
-                            )}
-                          </div>
-                          {row.disciplines && (
-                            <p className="text-xs text-muted-foreground line-clamp-1 italic">
-                              {row.disciplines}
-                            </p>
-                          )}
-                        </div>
-                      </TableCell>
-
-                      {/* Tier */}
-                      <TableCell>
-                        <RankingTierBadge tier={row.prestigeTier} />
-                      </TableCell>
-
-                      {/* Amenities / Funding Badges */}
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1.5">
-                          {row.isFullyFunded && (
-                            <span className="inline-flex items-center rounded-md border border-emerald-500/20 px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                              100% Free
-                            </span>
-                          )}
-                          {row.hasStipend && (
-                            <span className="inline-flex items-center rounded-md border border-amber-500/20 px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                              Stipend
-                            </span>
-                          )}
-                          {row.hasMeals && (
-                            <span className="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs font-normal bg-muted/40 text-foreground">
-                              Meals
-                            </span>
-                          )}
-                          {row.hasPrivateStudio && (
-                            <span className="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs font-normal bg-muted/40 text-foreground">
-                              Studio
-                            </span>
-                          )}
-                          {!row.isFullyFunded && !row.hasStipend && !row.hasMeals && !row.hasPrivateStudio && (
-                            <span className="text-xs text-muted-foreground">Subsidized / Self-funded</span>
-                          )}
-                        </div>
-                      </TableCell>
-
-                      {/* Community Reviews */}
-                      <TableCell>
-                        {row.rmarRating !== null ? (
-                          <button
-                            type="button"
-                            onClick={() => openReviewsDialog(row)}
-                            className="group flex flex-col items-start gap-0.5 text-left hover:opacity-80 transition-opacity"
-                          >
-                            <div className="flex items-center gap-1 text-xs font-medium text-foreground">
-                              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-                              <span>{row.rmarRating.toFixed(1)} / 5.0</span>
-                            </div>
-                            <span className="text-[11px] text-muted-foreground group-hover:text-primary group-hover:underline">
-                              {row.rmarReviewsCount > 0
-                                ? `${row.rmarReviewsCount} ${row.rmarReviewsCount === 1 ? "review" : "reviews"}`
-                                : `${row.rmarRatingsCount} ratings`}
-                            </span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setResidencyForNewReview(row)}
-                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                          >
-                            <PenLine className="h-3 w-3" />
-                            <span>Be first to review</span>
-                          </button>
-                        )}
-                      </TableCell>
-
-                      {/* MRI Score Button */}
-                      <TableCell className="text-end">
-                        <button
-                          type="button"
-                          onClick={() => setActiveResidencyForScore(row)}
-                          className="inline-flex flex-col items-end gap-0.5 group text-right min-h-10 justify-center"
-                          title="Click to view full score breakdown"
-                        >
-                          <span className="font-mono text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
-                            {row.totalScore.toFixed(1)}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground group-hover:underline">
-                            Breakdown
-                          </span>
-                        </button>
-                      </TableCell>
-
-                      {/* Intelligence Dossier Drawer */}
-                      <TableCell className="text-end">
-                        <ResidencyIntelligenceDrawer
-                          profileId={row.profileId}
-                          residencyName={row.name}
-                          residencySlug={row.slug}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Mobile Card Layout */}
-          <div className="grid gap-4 md:hidden">
-            {visible.map((row, idx) => {
-              const globalRank = currentPage * PAGE_SIZE + idx + 1;
+        <Table className="table-fixed">
+          <caption className="sr-only">
+            2026 artist residency rankings. Scores are Missa Residency Index
+            points; community ratings come from resident reporting.
+          </caption>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead scope="col" className="w-12 text-start sm:w-20">
+                Rank
+              </TableHead>
+              <TableHead scope="col" className="text-start">
+                Residency
+              </TableHead>
+              <TableHead scope="col" className="w-16 text-end sm:w-24">
+                Score
+              </TableHead>
+              <TableHead
+                scope="col"
+                className="hidden w-24 text-end lg:table-cell"
+              >
+                Funding / 35
+              </TableHead>
+              <TableHead
+                scope="col"
+                className="hidden w-28 text-end lg:table-cell"
+              >
+                Community / 30
+              </TableHead>
+              <TableHead
+                scope="col"
+                className="hidden w-28 text-end xl:table-cell"
+              >
+                Facilities / 20
+              </TableHead>
+              <TableHead
+                scope="col"
+                className="hidden w-24 text-end xl:table-cell"
+              >
+                Access / 15
+              </TableHead>
+              <TableHead
+                scope="col"
+                className="hidden w-48 text-end xl:table-cell"
+              >
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {visible.map((row, index) => {
+              const rank = currentPage * PAGE_SIZE + index + 1;
               return (
-                <div
-                  key={row.profileId}
-                  className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-sm"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs font-semibold text-muted-foreground">
-                          #{globalRank}
-                        </span>
-                        <RankingTierBadge tier={row.prestigeTier} />
-                      </div>
-                      <Link
-                        href={`/residency/${row.slug}`}
-                        className="font-medium text-base text-foreground hover:text-primary transition-colors block"
-                      >
-                        {row.name}
-                      </Link>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveResidencyForScore(row)}
-                      className="flex flex-col items-end gap-0.5 p-1 rounded-md hover:bg-muted/50 transition-colors"
-                      title="View score breakdown"
+                <TableRow key={row.profileId}>
+                  <TableCell className="py-6 align-top font-mono text-base text-muted-foreground tabular-nums">
+                    {rank}
+                  </TableCell>
+                  <TableCell className="py-6 whitespace-normal">
+                    <Link
+                      href={`/residency/${encodeURIComponent(row.slug)}`}
+                      className="inline-flex min-h-11 items-center text-base leading-snug font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring sm:text-lg"
                     >
-                      <span className="font-mono text-base font-bold text-foreground">
-                        {row.totalScore.toFixed(1)}
+                      {row.name}
+                    </Link>
+                    {row.websiteUrl ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Open the ${row.name} website`}
+                        title={`Open the ${row.name} website`}
+                        nativeButton={false}
+                        render={
+                          <a
+                            href={row.websiteUrl}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                          />
+                        }
+                      >
+                        <ExternalLink aria-hidden="true" />
+                      </Button>
+                    ) : null}
+                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                      <RankingTierBadge tier={row.prestigeTier} />
+                      <span className="inline-flex items-center gap-1.5">
+                        <MapPin aria-hidden="true" className="size-3" />
+                        {locationLabel(row)}
+                        {row.foundingYear ? ` · Est. ${row.foundingYear}` : ""}
                       </span>
-                      <span className="text-[10px] text-muted-foreground underline">
-                        MRI Score
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Location & Est */}
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <MapPin className="h-3 w-3 shrink-0" />
-                    <span>{row.location || [row.city, row.region, row.country].filter(Boolean).join(", ") || "Location unlisted"}</span>
-                    {row.foundingYear && (
-                      <span>· Est. {row.foundingYear}</span>
-                    )}
-                  </div>
-
-                  {/* Disciplines */}
-                  {row.disciplines && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 italic">
-                      {row.disciplines}
-                    </p>
-                  )}
-
-                  {/* Amenities */}
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {row.isFullyFunded && (
-                      <span className="inline-flex items-center rounded-md border border-emerald-500/20 px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                        100% Free
-                      </span>
-                    )}
-                    {row.hasStipend && (
-                      <span className="inline-flex items-center rounded-md border border-amber-500/20 px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                        Stipend
-                      </span>
-                    )}
-                    {row.hasMeals && (
-                      <span className="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs font-normal bg-muted/40 text-foreground">
-                        Meals
-                      </span>
-                    )}
-                    {row.hasPrivateStudio && (
-                      <span className="inline-flex items-center rounded-md border border-border px-2 py-0.5 text-xs font-normal bg-muted/40 text-foreground">
-                        Studio
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Footer actions on Card */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-                    <div className="flex items-center gap-2">
-                      {row.rmarRating !== null ? (
-                        <button
-                          type="button"
-                          onClick={() => openReviewsDialog(row)}
-                          className="flex items-center gap-1 text-xs font-medium text-foreground hover:text-primary transition-colors min-h-10"
-                        >
-                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-                          <span>{row.rmarRating.toFixed(1)} / 5.0</span>
-                          <span className="text-muted-foreground ml-1">
-                            ({row.rmarReviewsCount > 0 ? `${row.rmarReviewsCount} reviews` : `${row.rmarRatingsCount} ratings`})
-                          </span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setResidencyForNewReview(row)}
-                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline min-h-10"
-                        >
-                          <PenLine className="h-3 w-3" />
-                          <span>Write a Review</span>
-                        </button>
-                      )}
                     </div>
-
-                    <div className="flex items-center gap-2">
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                      {fundingFacts(row).join(" · ")}
+                    </p>
+                    {row.disciplines ? (
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground italic line-clamp-1">
+                        {row.disciplines}
+                      </p>
+                    ) : null}
+                    <div className="mt-3 flex flex-wrap gap-3 xl:hidden">
                       <ResidencyIntelligenceDrawer
                         profileId={row.profileId}
                         residencyName={row.name}
                         residencySlug={row.slug}
                       />
-                      {row.websiteUrl && (
-                        <a
-                          href={row.websiteUrl}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline min-h-10"
-                        >
-                          <span>Website</span>
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
+                      <Button
+                        variant="ghost"
+                        onClick={() => void openReviewsDialog(row)}
+                      >
+                        {row.rmarRating !== null ? "Resident reviews" : "Add review"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setActiveResidencyForScore(row)}
+                      >
+                        Score breakdown
+                      </Button>
                     </div>
-                  </div>
-                </div>
+                  </TableCell>
+                  <TableCell className="py-6 text-end align-top">
+                    <span className="font-mono text-lg font-medium text-primary tabular-nums">
+                      {row.totalScore.toFixed(1)}
+                    </span>
+                    <span className="mt-2 block text-xs text-muted-foreground">
+                      / 100
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden py-6 text-end font-mono tabular-nums lg:table-cell">
+                    {row.fundingScore.toFixed(1)}
+                  </TableCell>
+                  <TableCell className="hidden py-6 text-end lg:table-cell">
+                    {row.rmarRating !== null ? (
+                      <>
+                        <span className="font-mono tabular-nums">
+                          {row.ratingScore.toFixed(1)}
+                        </span>
+                        <span className="mt-2 block text-xs text-muted-foreground">
+                          {row.rmarRating.toFixed(1)} / 5.0 ·{" "}
+                          {communityLabel(row)}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-mono tabular-nums">
+                          {row.ratingScore.toFixed(1)}
+                        </span>
+                        <span className="mt-2 block text-xs text-muted-foreground">
+                          {communityLabel(row)}
+                        </span>
+                      </>
+                    )}
+                  </TableCell>
+                  <TableCell className="hidden py-6 text-end font-mono tabular-nums xl:table-cell">
+                    {row.facilitiesScore.toFixed(1)}
+                  </TableCell>
+                  <TableCell className="hidden py-6 text-end font-mono tabular-nums xl:table-cell">
+                    {row.accessScore.toFixed(1)}
+                  </TableCell>
+                  <TableCell className="hidden py-6 xl:table-cell">
+                    <div className="flex flex-col items-end gap-2.5">
+                      <ResidencyIntelligenceDrawer
+                        profileId={row.profileId}
+                        residencyName={row.name}
+                        residencySlug={row.slug}
+                      />
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          onClick={() => void openReviewsDialog(row)}
+                        >
+                          Reviews
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setActiveResidencyForScore(row)}
+                        >
+                          Breakdown
+                        </Button>
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </div>
-        </>
+          </TableBody>
+        </Table>
       )}
 
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4">
-          <p className="text-sm text-muted-foreground">
-            Page {currentPage + 1} of {totalPages} ({filtered.length} total matching programs)
-          </p>
-          <div className="flex items-center gap-2">
+      {filtered.length > PAGE_SIZE && (
+        <nav
+          aria-label="Ranking pages"
+          className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6"
+        >
+          <span className="text-sm text-muted-foreground">
+            Page {currentPage + 1} of {Math.ceil(filtered.length / PAGE_SIZE)}
+          </span>
+          <div className="flex gap-3">
             <Button
               variant="outline"
-              size="sm"
-              onClick={() => {
-                const nextP = Math.max(0, page - 1);
-                setPage(nextP);
-                updateUrl({ page: nextP });
-              }}
               disabled={currentPage === 0}
-              className="gap-1 min-h-10"
+              onClick={() => {
+                const next = currentPage - 1;
+                setPage(next);
+                updateUrl({ page: next });
+              }}
             >
-              <ChevronLeft className="h-4 w-4" />
-              <span>Previous</span>
+              <ChevronLeft aria-hidden="true" />
+              Previous
             </Button>
             <Button
               variant="outline"
-              size="sm"
+              disabled={(currentPage + 1) * PAGE_SIZE >= filtered.length}
               onClick={() => {
-                const nextP = Math.min(totalPages - 1, page + 1);
-                setPage(nextP);
-                updateUrl({ page: nextP });
+                const next = currentPage + 1;
+                setPage(next);
+                updateUrl({ page: next });
               }}
-              disabled={currentPage >= totalPages - 1}
-              className="gap-1 min-h-10"
             >
-              <span>Next</span>
-              <ChevronRight className="h-4 w-4" />
+              Next
+              <ChevronRight aria-hidden="true" />
             </Button>
           </div>
-        </div>
+        </nav>
       )}
 
       {items.length < total ? (
         <div className="flex flex-col items-center gap-2 border-t border-border pt-6">
           <Button variant="outline" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? "Loading more residencies…" : "Load more residencies"}
+            {loadingMore ? "Loading more rankings…" : "Load more rankings"}
           </Button>
           {loadMoreError ? (
             <p role="alert" className="text-sm text-destructive">
-              More residencies could not load. Try again.
+              More rankings could not load. Try again.
             </p>
           ) : null}
         </div>
       ) : null}
 
-      {/* Community Reviews Modal */}
       <Dialog
         open={Boolean(activeResidencyForReviews)}
         onOpenChange={(open) => {
@@ -838,36 +726,33 @@ export function ResidencyRankingsInteractive({
           }
         }}
       >
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <div className="flex items-center justify-between gap-2 pr-6">
-              <DialogTitle className="flex items-center gap-2 text-xl font-semibold">
-                <Building className="h-5 w-5 text-primary" />
-                <span>{activeResidencyForReviews?.name} Reviews</span>
-              </DialogTitle>
-            </div>
+            <DialogTitle className="flex items-center gap-2 text-xl font-semibold">
+              <Building aria-hidden="true" className="size-5" />
+              <span>{activeResidencyForReviews?.name} reviews</span>
+            </DialogTitle>
             <DialogDescription>
-              Community ratings and artist testimonials sourced from verified resident archives.
+              Community ratings and resident testimonials sourced from
+              publicly reported accounts. Missa does not verify residency
+              outcomes.
             </DialogDescription>
           </DialogHeader>
 
-          {/* Action to Write New Review */}
-          <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3">
             <div className="text-xs text-muted-foreground">
               Have you been a resident at {activeResidencyForReviews?.name}?
             </div>
             <Button
               size="sm"
-              variant="default"
               onClick={() => {
                 const target = activeResidencyForReviews;
                 setActiveResidencyForReviews(null);
                 setResidencyForNewReview(target);
               }}
-              className="gap-1.5 h-8 text-xs"
             >
-              <PenLine className="h-3.5 w-3.5" />
-              <span>Write a Review</span>
+              <PenLine aria-hidden="true" />
+              Write a review
             </Button>
           </div>
 
@@ -877,49 +762,63 @@ export function ResidencyRankingsInteractive({
                 Loading resident reviews…
               </div>
             ) : reviewsData.length === 0 ? (
-              <div className="rounded-xl border border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground space-y-2">
+              <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
                 <p>No full-text written reviews available yet for this program.</p>
-                {activeResidencyForReviews?.rmarRating && (
+                {activeResidencyForReviews?.rmarRating ? (
                   <p className="font-medium text-foreground">
-                    Aggregate rating: {activeResidencyForReviews.rmarRating.toFixed(1)} / 5.0 across {activeResidencyForReviews.rmarRatingsCount} community reports.
+                    Aggregate rating:{" "}
+                    {activeResidencyForReviews.rmarRating.toFixed(1)} / 5.0
+                    across {activeResidencyForReviews.rmarRatingsCount} community
+                    reports.
                   </p>
-                )}
-                {activeResidencyForReviews?.websiteUrl && (
+                ) : null}
+                {activeResidencyForReviews?.websiteUrl ? (
                   <div className="pt-3">
                     <a
                       href={activeResidencyForReviews.websiteUrl}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+                      className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary hover:underline"
                     >
-                      Visit Official Program Website <ExternalLink className="h-3 w-3" />
+                      Visit official program website
+                      <ExternalLink aria-hidden="true" className="size-3" />
                     </a>
                   </div>
-                )}
+                ) : null}
               </div>
             ) : (
-              reviewsData.map((rev) => (
-                <div key={rev.id} className="rounded-xl border border-border bg-card p-4 space-y-2.5 shadow-sm">
+              reviewsData.map((review) => (
+                <div
+                  key={review.id}
+                  className="space-y-2.5 rounded-xl border border-border bg-card p-4"
+                >
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="font-semibold text-foreground">
-                      {rev.authorName || "Anonymous Resident"}
+                      {review.authorName || "Anonymous resident"}
                     </span>
-                    {rev.datePublished && <span>{rev.datePublished}</span>}
+                    {review.datePublished ? (
+                      <span>{review.datePublished}</span>
+                    ) : null}
                   </div>
-                  {rev.ratingScore !== null && (
+                  {review.ratingScore !== null ? (
                     <div className="flex items-center gap-1 text-xs font-semibold text-foreground">
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-500" />
-                      <span>{rev.ratingScore.toFixed(1)} / 5.0</span>
+                      <Star
+                        aria-hidden="true"
+                        className={`size-3.5 ${styles.communityStar}`}
+                      />
+                      <span>{review.ratingScore.toFixed(1)} / 5.0</span>
                     </div>
-                  )}
-                  {rev.reviewTitle && (
-                    <h4 className="text-sm font-semibold text-foreground">{rev.reviewTitle}</h4>
-                  )}
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                    {rev.reviewBody}
+                  ) : null}
+                  {review.reviewTitle ? (
+                    <h3 className="text-sm font-semibold text-foreground">
+                      {review.reviewTitle}
+                    </h3>
+                  ) : null}
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                    {review.reviewBody}
                   </p>
-                  <div className="pt-2 text-[11px] text-muted-foreground/80 flex items-center justify-between">
-                    <span>Source: {rev.source}</span>
+                  <div className="pt-2 text-xs text-muted-foreground">
+                    Source: {review.source}
                   </div>
                 </div>
               ))
@@ -928,7 +827,6 @@ export function ResidencyRankingsInteractive({
         </DialogContent>
       </Dialog>
 
-      {/* Score Breakdown Modal with Visual Meters */}
       <Dialog
         open={Boolean(activeResidencyForScore)}
         onOpenChange={(open) => {
@@ -938,129 +836,154 @@ export function ResidencyRankingsInteractive({
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
-              Missa Residency Index (MRI) Breakdown
+              Missa Residency Index breakdown
             </DialogTitle>
             <DialogDescription>
-              {activeResidencyForScore?.name} ({activeResidencyForScore?.prestigeTier})
+              {activeResidencyForScore?.name}
             </DialogDescription>
           </DialogHeader>
 
-          {activeResidencyForScore && (
+          {activeResidencyForScore ? (
             <div className="mt-4 space-y-5">
-              {/* Total Score Banner */}
               <div className="rounded-xl border border-border bg-muted/40 p-5 text-center">
-                <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                  Composite Index Score
+                <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                  Composite index score
                 </span>
                 <div className="mt-1 font-mono text-4xl font-bold text-foreground">
                   {activeResidencyForScore.totalScore.toFixed(1)}
-                  <span className="text-sm font-normal text-muted-foreground"> / 100</span>
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {" "}
+                    / 100
+                  </span>
                 </div>
                 <div className="mt-2">
                   <RankingTierBadge tier={activeResidencyForScore.prestigeTier} />
                 </div>
               </div>
 
-              {/* Dimension Meters */}
               <div className="space-y-4 text-sm">
-                {/* Funding */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 font-medium text-foreground">
-                      <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      <span>Funding & Financial Support</span>
+                      <DollarSign
+                        aria-hidden="true"
+                        className={`size-4 ${styles.fundingAccent}`}
+                      />
+                      <span>Funding &amp; financial support</span>
                     </div>
                     <span className="font-mono font-semibold text-foreground">
                       {activeResidencyForScore.fundingScore.toFixed(1)} / 35 pts
                     </span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div className={styles.meterTrack}>
                     <div
-                      className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                      style={{ width: `${(activeResidencyForScore.fundingScore / 35) * 100}%` }}
+                      className={`${styles.meterFill} ${styles.fundingMeter}`}
+                      style={{
+                        width: `${(activeResidencyForScore.fundingScore / 35) * 100}%`,
+                      }}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {activeResidencyForScore.isFullyFunded ? "100% Free residency fellowship (25 pts) + " : "Self-funded / subsidized + "}
-                    {activeResidencyForScore.hasStipend ? "Living stipend provided (10 pts)" : "No stipend reported"}
+                    {activeResidencyForScore.isFullyFunded
+                      ? "Fully funded fellowship"
+                      : "Self-funded or subsidized"}
+                    {activeResidencyForScore.hasStipend
+                      ? " · Living stipend provided"
+                      : " · No stipend reported"}
                   </p>
                 </div>
 
-                {/* Community */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 font-medium text-foreground">
-                      <Star className="h-4 w-4 text-amber-500 fill-amber-400" />
-                      <span>Resident Community Rating</span>
+                      <Star
+                        aria-hidden="true"
+                        className={`size-4 ${styles.communityStar}`}
+                      />
+                      <span>Resident community rating</span>
                     </div>
                     <span className="font-mono font-semibold text-foreground">
                       {activeResidencyForScore.ratingScore.toFixed(1)} / 30 pts
                     </span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div className={styles.meterTrack}>
                     <div
-                      className="h-full rounded-full bg-amber-500 transition-all duration-500"
-                      style={{ width: `${(activeResidencyForScore.ratingScore / 30) * 100}%` }}
+                      className={`${styles.meterFill} ${styles.communityMeter}`}
+                      style={{
+                        width: `${(activeResidencyForScore.ratingScore / 30) * 100}%`,
+                      }}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {activeResidencyForScore.rmarRating !== null
-                      ? `Normalized from ${activeResidencyForScore.rmarRating.toFixed(1)} / 5.0 star community rating`
-                      : "Default baseline score prior to community review"}
+                      ? `Normalized from ${activeResidencyForScore.rmarRating.toFixed(1)} / 5.0 resident reporting`
+                      : "Baseline score prior to community reporting"}
                   </p>
                 </div>
 
-                {/* Facilities */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 font-medium text-foreground">
-                      <Home className="h-4 w-4 text-sky-500" />
-                      <span>Facilities & Solitude</span>
+                      <Home
+                        aria-hidden="true"
+                        className={`size-4 ${styles.facilitiesAccent}`}
+                      />
+                      <span>Facilities &amp; solitude</span>
                     </div>
                     <span className="font-mono font-semibold text-foreground">
                       {activeResidencyForScore.facilitiesScore.toFixed(1)} / 20 pts
                     </span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div className={styles.meterTrack}>
                     <div
-                      className="h-full rounded-full bg-sky-500 transition-all duration-500"
-                      style={{ width: `${(activeResidencyForScore.facilitiesScore / 20) * 100}%` }}
+                      className={`${styles.meterFill} ${styles.facilitiesMeter}`}
+                      style={{
+                        width: `${(activeResidencyForScore.facilitiesScore / 20) * 100}%`,
+                      }}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {activeResidencyForScore.hasMeals ? "Meals included (10 pts) + " : "Meals self-catered + "}
-                    {activeResidencyForScore.hasPrivateStudio ? "Private dedicated studio (10 pts)" : "Shared or unlisted studio"}
+                    {activeResidencyForScore.hasMeals
+                      ? "Meals included"
+                      : "Meals self-catered"}
+                    {activeResidencyForScore.hasPrivateStudio
+                      ? " · Private dedicated studio"
+                      : " · Shared or unlisted studio"}
                   </p>
                 </div>
 
-                {/* Prestige */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 font-medium text-foreground">
-                      <Award className="h-4 w-4 text-primary" />
-                      <span>Prestige & Institutional Access</span>
+                      <Award
+                        aria-hidden="true"
+                        className={`size-4 ${styles.accessAccent}`}
+                      />
+                      <span>Prestige &amp; institutional access</span>
                     </div>
                     <span className="font-mono font-semibold text-foreground">
                       {activeResidencyForScore.accessScore.toFixed(1)} / 15 pts
                     </span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div className={styles.meterTrack}>
                     <div
-                      className="h-full rounded-full bg-primary transition-all duration-500"
-                      style={{ width: `${(activeResidencyForScore.accessScore / 15) * 100}%` }}
+                      className={`${styles.meterFill} ${styles.accessMeter}`}
+                      style={{
+                        width: `${(activeResidencyForScore.accessScore / 15) * 100}%`,
+                      }}
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Historical longevity, multi-directory provenance, and active verified calls
+                    Historical longevity, multi-directory provenance, and
+                    active verified calls
                   </p>
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
 
-      {/* Write a Review Dialog */}
       <SubmitResidencyReviewDialog
         residency={residencyForNewReview}
         isOpen={Boolean(residencyForNewReview)}

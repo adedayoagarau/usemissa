@@ -184,23 +184,56 @@ export class PostgresResidencyRankingRepository {
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+    // A profile's identity is its own domain, or its name when no domain is
+    // known. Listing platforms (ArtConnect, ResArtis, CuratorSpace, TransArtists,
+    // RateMyArtistResidency) are directories, not institutions: a bare host such
+    // as `curatorspace.com` would otherwise collapse every program listed there
+    // into one row, and a per-listing path would duplicate a program that also
+    // has a curated profile.
+    //
+    // The domain form varies by source, so the scheme and `www.` are stripped
+    // independently and an empty string falls back to the normalized domain.
+    // Both matter: `www.albeefoundation.org` and `albeefoundation.org` are the
+    // same institution, and an empty `website_url` must not hide the domain.
+    const canonicalDomainSql = `
+      REGEXP_REPLACE(
+        BTRIM(COALESCE(NULLIF(BTRIM(p.website_url), ''), p.normalized_website_url)),
+        '^(https?://)?(www\\.)?',
+        '',
+        'i'
+      )
+    `;
+    const canonicalIdentitySql = `
+      COALESCE(
+        NULLIF(
+          CASE
+            WHEN LOWER(
+              SPLIT_PART(
+                ${canonicalDomainSql},
+                '/',
+                1
+              )
+            ) = ANY (ARRAY[
+              'artconnect.com',
+              'resartis.org',
+              'transartists.org',
+              'curatorspace.com',
+              'ratemyartistresidency.com'
+            ])
+            THEN ''
+            ELSE LOWER(
+              REGEXP_REPLACE(${canonicalDomainSql}, '/$', '')
+            )
+          END,
+          ''
+        ),
+        'name:' || TRIM(BOTH '-' FROM REGEXP_REPLACE(LOWER(BTRIM(p.name)), '[^a-z0-9]+', '-', 'g'))
+      )
+    `;
+
     const canonicalRankingsCte = `
       WITH canonical_rankings AS (
-        SELECT DISTINCT ON (
-          COALESCE(
-            NULLIF(
-              LOWER(
-                REGEXP_REPLACE(
-                  REGEXP_REPLACE(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '^https?://(www\\.)?', ''),
-                  '/$',
-                  ''
-                )
-              ),
-              ''
-            ),
-            'name:' || LOWER(REGEXP_REPLACE(BTRIM(p.name), '[^a-z0-9]+', '-', 'g'))
-          )
-        )
+        SELECT DISTINCT ON (${canonicalIdentitySql})
           r.*,
           p.name,
           p.name_key AS slug,
@@ -213,19 +246,7 @@ export class PostgresResidencyRankingRepository {
         FROM missa_residency_rankings r
         JOIN gary_profiles p ON r.profile_id = p.id
         ORDER BY
-          COALESCE(
-            NULLIF(
-              LOWER(
-                REGEXP_REPLACE(
-                  REGEXP_REPLACE(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '^https?://(www\\.)?', ''),
-                  '/$',
-                  ''
-                )
-              ),
-              ''
-            ),
-            'name:' || LOWER(REGEXP_REPLACE(BTRIM(p.name), '[^a-z0-9]+', '-', 'g'))
-          ),
+          ${canonicalIdentitySql},
           r.total_score DESC,
           r.rmar_rating DESC NULLS LAST,
           r.profile_id ASC

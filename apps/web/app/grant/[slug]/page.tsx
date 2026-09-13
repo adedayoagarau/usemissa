@@ -10,7 +10,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const repo = getProfileRepository();
   const profile = repo ? await repo.getById(slug) : null;
-  if (!profile) return { title: "Grant Foundation Not Found — Missa" };
+  if (!profile) return { title: "Grant Foundation Not Found" };
   return {
     title: `${profile.name} — Grant Foundation & Funding`,
     description: profile.summary || `Explore awards, fellowships, and grant applications from ${profile.name}.`,

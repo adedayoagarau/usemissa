@@ -3,9 +3,30 @@ import { siteUrl } from '@/lib/siteUrl';
 
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = siteUrl();
+  // The public catalogue, directory and rankings are launched surfaces and
+  // should be discoverable. Account, workspace and API routes stay out of
+  // the index.
+  const disallow = [
+    '/api/',
+    '/admin',
+    '/workspace',
+    '/tracker',
+    '/calendar',
+    '/submissions',
+    '/settings',
+    '/profile',
+    '/onboarding',
+    '/reviews',
+    '/organization',
+    '/org/',
+    '/login',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+  ];
   const crawlerRules = {
-    allow: ['/waitlist', '/privacy', '/llms.txt'],
-    disallow: ['/'],
+    allow: '/',
+    disallow,
   };
   return {
     rules: [

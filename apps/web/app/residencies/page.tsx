@@ -9,7 +9,7 @@ import catalogueStyles from "@/components/design-system/opportunities-browse-v2-
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Artist residencies & retreats | Missa",
+  title: "Artist residencies & retreats",
   description:
     "Explore artist residency centers, studios, fellowships, and retreat programs worldwide.",
 };

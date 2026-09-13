@@ -10,8 +10,11 @@
 export { LlmExtractor, type LlmExtractorOptions } from "./llmExtractor.js";
 export {
   cleanCrawledText,
+  cleanCrawledNarrative,
   cleanTitleOrLabel,
   decodeHtmlEntities,
+  fixTitleCasing,
+  stripHtmlTags,
 } from "./cleanText.js";
 export * from "./governedOperations.js";
 export {

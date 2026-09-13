@@ -64,23 +64,25 @@ test('legacy preview redirects to the canonical catalogue without dropping filte
   expect(response.headers().location).toBe('/opportunities?q=poetry&type=grant');
 });
 
-test('public crawl endpoints expose only the waitlist acquisition surface', async ({ request }) => {
+test('public crawl endpoints expose the launched catalogue and keep app routes out', async ({ request }) => {
   const robots = await request.get('/robots.txt');
   expect(robots.status()).toBe(200);
   const robotsBody = await robots.text();
   expect(robotsBody).toContain('/sitemap.xml');
-  expect(robotsBody).toContain('/waitlist');
-  expect(robotsBody).toContain('/privacy');
-  expect(robotsBody).toContain('/llms.txt');
-  expect(robotsBody).not.toContain('/opportunities');
+  expect(robotsBody).toContain('Allow: /');
+  expect(robotsBody).toContain('Disallow: /api/');
+  expect(robotsBody).toContain('Disallow: /workspace');
+  expect(robotsBody).toMatch(/User-Agent: \*\nAllow: \/\n/);
+  expect(robotsBody).not.toMatch(/^Disallow: \/$/m);
   expect(robotsBody).not.toContain('/opportunities-preview');
 
   const sitemap = await request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   const sitemapBody = await sitemap.text();
-  expect(sitemapBody).toContain('/waitlist');
-  expect(sitemapBody).toContain('/privacy');
-  expect(sitemapBody).not.toContain('/opportunities');
+  expect(sitemapBody).toContain('/opportunities');
+  expect(sitemapBody).toContain('/directory');
+  expect(sitemapBody).toContain('/rankings/magazines');
+  expect(sitemapBody).toContain('/terms');
   expect(sitemapBody).not.toContain('/opportunities-preview');
 });
 

@@ -2,8 +2,18 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, Search, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Bookmark, LogOut, Menu, Search, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import styles from "./missa-site-header.module.css";
 
@@ -35,10 +45,24 @@ export function MissaSiteHeader({
   current?: string;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState(false);
+  const router = useRouter();
   const links = session ? signedInLinks : publicLinks;
   const visibleLinks = session?.hasOrganization
     ? [...links, { href: "/workspace", label: "Organization" }]
     : links;
+
+  async function signOut() {
+    setLogoutError(false);
+    const response = await fetch("/api/auth/logout", { method: "POST" });
+    if (!response.ok) {
+      setLogoutError(true);
+      return;
+    }
+    setMobileOpen(false);
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <header className={styles.header}>
@@ -70,13 +94,33 @@ export function MissaSiteHeader({
               >
                 <Search aria-hidden="true" />
               </Button>
-              <Link
-                href="/profile"
-                className={styles.avatar}
-                aria-label="Open Profile"
-              >
-                {session.email.slice(0, 1).toUpperCase()}
-              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={<Button variant="ghost" size="icon" />}
+                  className={styles.avatar}
+                  aria-label={`Open account menu for ${session.email}`}
+                >
+                  {session.email.slice(0, 1).toUpperCase()}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className={styles.accountMenu}>
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>
+                      <span className={styles.accountName}>{session.email.split("@")[0]}</span>
+                      <span>{session.email}</span>
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem render={<Link href="/profile" />}>
+                      <UserRound aria-hidden="true" /> Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem render={<Link href="/tracker" />}>
+                      <Bookmark aria-hidden="true" /> My applications
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => void signOut()}>
+                    <LogOut aria-hidden="true" /> Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <div className={styles.authActions}>
@@ -120,6 +164,24 @@ export function MissaSiteHeader({
               >
                 Log in
               </Link>
+            </>
+          ) : null}
+          {session ? (
+            <>
+              <Link href="/profile" onClick={() => setMobileOpen(false)}>
+                Profile
+              </Link>
+              <Link href="/tracker" onClick={() => setMobileOpen(false)}>
+                My applications
+              </Link>
+              <button
+                type="button"
+                className={styles.mobileLogout}
+                onClick={() => void signOut()}
+              >
+                Log out
+              </button>
+              {logoutError ? <p className={styles.mobileError} role="alert">Could not log out. Try again.</p> : null}
             </>
           ) : null}
         </nav>

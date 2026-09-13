@@ -1,10 +1,15 @@
 import { verifySessionToken, createSessionToken, membershipsFor, type Account } from '@missa/radar-engine';
+import { randomBytes } from 'node:crypto';
 import { getEngine } from './engine';
 import { getNeonSessionAccount } from './neon-auth/account';
 import { getCreatorAccountRepository } from './creatorRepositories';
 
 export const SESSION_COOKIE = 'missa_session';
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 3_600;
+
+declare global {
+  var __missaLocalSessionSecret: string | undefined;
+}
 
 export function sessionCookieOptions(maxAge = SESSION_MAX_AGE_SECONDS) {
   return {
@@ -21,13 +26,15 @@ export function sessionCookieOptions(maxAge = SESSION_MAX_AGE_SECONDS) {
  * during the migration period from the old server to apps/web. */
 export function sessionSecret(): string {
   const secret = process.env.MISSA_SESSION_SECRET;
-  if (!secret) {
-    throw new Error(
-      'MISSA_SESSION_SECRET is not set. Required for apps/web to verify session cookies -- ' +
-        'set it to the same value used by any other Missa surface sharing sessions.'
-    );
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'development') {
+    globalThis.__missaLocalSessionSecret ??= randomBytes(32).toString('hex');
+    return globalThis.__missaLocalSessionSecret;
   }
-  return secret;
+  throw new Error(
+    'MISSA_SESSION_SECRET is not set. Required for apps/web to verify session cookies -- ' +
+      'set it to the same value used by any other Missa surface sharing sessions.'
+  );
 }
 
 export interface SessionAccount {

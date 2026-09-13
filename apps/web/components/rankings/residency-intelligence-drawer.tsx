@@ -82,13 +82,9 @@ export function ResidencyIntelligenceDrawer({
   }, [open, data, loading, fetchIntelligence]);
 
   const defaultTrigger = (
-    <Button
-      variant="outline"
-      size="sm"
-      className="inline-flex items-center gap-1.5 font-sans text-xs font-medium border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--surface-secondary)]"
-    >
-      <Sparkles className="size-3.5 text-[var(--text-primary)]" />
-      Residency Intelligence
+    <Button variant="outline" size="sm" className="gap-1.5">
+      <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
+      <span>Intelligence</span>
     </Button>
   );
 

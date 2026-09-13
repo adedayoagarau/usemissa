@@ -19,7 +19,10 @@ import type {
 } from "@missa/radar-adapters";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { EditorialIntelligenceDrawer } from "@/components/rankings/editorial-intelligence-drawer";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { NativeSelect } from "@/components/ui/native-select";
 import { toast } from "sonner";
 
 const PRESET_STYLES = [
@@ -138,9 +141,8 @@ export function ManuscriptMatchWizard({
     : [];
 
   return (
-    <div className="space-y-8">
-      {/* 1. Manuscript Strategy Configuration Box */}
-      <section className="rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-6 shadow-sm">
+    <div className="space-y-10">
+      <section className="border border-border bg-card p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border-subtle)] pb-5">
           <div>
             <div className="flex items-center gap-2">
@@ -150,15 +152,14 @@ export function ManuscriptMatchWizard({
               </h2>
             </div>
             <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              Input your piece specs and style markers to calculate fit scores across 8,300+ indexed journals.
+              Input your piece specs and style markers to calculate fit scores across the Missa magazine index.
             </p>
           </div>
 
-          <button
+          <Button
             type="button"
             onClick={handleRunMatch}
             disabled={isPending}
-            className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--text-primary)] px-5 py-2.5 font-sans text-sm font-medium text-[var(--surface-primary)] transition hover:opacity-90 disabled:opacity-50 shadow-sm"
           >
             {isPending ? (
               <Clock className="size-4 animate-spin" />
@@ -166,33 +167,31 @@ export function ManuscriptMatchWizard({
               <Send className="size-4" />
             )}
             {isPending ? "Calculating fit..." : "Find Matching Journals"}
-          </button>
+          </Button>
         </div>
 
         <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {/* Genre & Specs */}
           <div className="space-y-4">
             <div>
-              <label className="block font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+              <p className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
                 Genre / Form
-              </label>
+              </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {(
                   ["fiction", "poetry", "nonfiction", "flash", "hybrid"] as const
                 ).map((g) => (
-                  <button
+                  <Button
                     key={g}
                     type="button"
                     onClick={() => setGenre(g)}
-                    className={cn(
-                      "rounded-[var(--radius-sm)] border px-3 py-1 text-xs font-medium capitalize transition",
-                      genre === g
-                        ? "border-[var(--text-primary)] bg-[var(--surface-secondary)] text-[var(--text-primary)] font-semibold"
-                        : "border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)]/50",
-                    )}
+                    variant={genre === g ? "default" : "outline"}
+                    size="xs"
+                    aria-pressed={genre === g}
+                    className="capitalize"
                   >
                     {g}
-                  </button>
+                  </Button>
                 ))}
               </div>
             </div>
@@ -209,6 +208,7 @@ export function ManuscriptMatchWizard({
                   step={1}
                   value={poemCount}
                   onChange={(e) => setPoemCount(Number(e.target.value))}
+                  aria-label="Poem count in submission"
                   className="mt-2 w-full accent-[var(--text-primary)]"
                 />
               </div>
@@ -229,6 +229,7 @@ export function ManuscriptMatchWizard({
                   step={250}
                   value={wordCount}
                   onChange={(e) => setWordCount(Number(e.target.value))}
+                  aria-label="Manuscript word count"
                   className="mt-2 w-full accent-[var(--text-primary)]"
                 />
               </div>
@@ -237,26 +238,23 @@ export function ManuscriptMatchWizard({
 
           {/* Aesthetic Styles & Forms */}
           <div className="space-y-4">
-            <label className="block font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
               Aesthetic Tone & Markers
-            </label>
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {PRESET_STYLES.map((style) => {
                 const isSelected = selectedStyles.includes(style);
                 return (
-                  <button
+                  <Button
                     key={style}
                     type="button"
                     onClick={() => toggleStyle(style)}
-                    className={cn(
-                      "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium transition",
-                      isSelected
-                        ? "border-[var(--text-primary)] bg-[var(--text-primary)] text-[var(--surface-primary)]"
-                        : "border-[var(--border-subtle)] bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
-                    )}
+                    variant={isSelected ? "default" : "outline"}
+                    size="xs"
+                    aria-pressed={isSelected}
                   >
                     #{style}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -264,27 +262,24 @@ export function ManuscriptMatchWizard({
 
           {/* Author Comps */}
           <div className="space-y-4">
-            <label className="block font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
               Comp Author Influences
-            </label>
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {PRESET_COMPS.map((comp) => {
                 const isSelected = selectedComps.includes(comp);
                 return (
-                  <button
+                  <Button
                     key={comp}
                     type="button"
                     onClick={() => toggleComp(comp)}
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-[var(--radius-sm)] border px-2 py-0.5 text-xs font-medium transition",
-                      isSelected
-                        ? "border-[var(--text-primary)] bg-[var(--surface-secondary)] text-[var(--text-primary)] font-semibold"
-                        : "border-[var(--border-subtle)] text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)]/50",
-                    )}
+                    variant={isSelected ? "secondary" : "outline"}
+                    size="xs"
+                    aria-pressed={isSelected}
                   >
                     {isSelected && <Check className="size-3" />}
                     {comp}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -317,39 +312,39 @@ export function ManuscriptMatchWizard({
             </span>
           </label>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--text-muted)]">Fee Policy:</span>
-            <select
+          <Field className="min-w-56 gap-1">
+            <FieldLabel htmlFor="match-fee-policy">Fee policy</FieldLabel>
+            <NativeSelect
+              id="match-fee-policy"
               value={feeTolerance}
               onChange={(e) =>
                 setFeeTolerance(
                   e.target.value as ManuscriptMatchInput["feeTolerance"],
                 )
               }
-              className="rounded border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-2 py-0.5 text-xs text-[var(--text-primary)]"
             >
               <option value="free_only">No fee / Fee-waiver required</option>
               <option value="fee_ok_with_waivers">Fee OK with waivers</option>
               <option value="any">Any fee policy</option>
-            </select>
-          </div>
+            </NativeSelect>
+          </Field>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--text-muted)]">Pay Rates:</span>
-            <select
+          <Field className="min-w-52 gap-1">
+            <FieldLabel htmlFor="match-pay-rate">Contributor pay</FieldLabel>
+            <NativeSelect
+              id="match-pay-rate"
               value={minPayRate}
               onChange={(e) =>
                 setMinPayRate(
                   e.target.value as ManuscriptMatchInput["minPayRate"],
                 )
               }
-              className="rounded border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-2 py-0.5 text-xs text-[var(--text-primary)]"
             >
               <option value="all">All magazines</option>
               <option value="any_paying">Paying contributors only</option>
               <option value="pro_rates_only">Pro Rates Only (≥ $0.08/w)</option>
-            </select>
-          </div>
+            </NativeSelect>
+          </Field>
         </div>
       </section>
 
@@ -358,61 +353,49 @@ export function ManuscriptMatchWizard({
         <section className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border-subtle)] pb-4">
             <div className="flex flex-wrap gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={() => setActiveTab("debut_champions")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border px-3 py-1.5 font-sans text-xs font-medium transition",
-                  activeTab === "debut_champions"
-                    ? "border-[var(--text-primary)] bg-[var(--surface-secondary)] text-[var(--text-primary)] font-semibold"
-                    : "border-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)]/50",
-                )}
+                variant={activeTab === "debut_champions" ? "default" : "ghost"}
+                size="sm"
+                aria-pressed={activeTab === "debut_champions"}
               >
                 <Flame className="size-3.5" />
                 Debut & Slush Champions ({results.debutChampions.length})
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
                 onClick={() => setActiveTab("dream_reach")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border px-3 py-1.5 font-sans text-xs font-medium transition",
-                  activeTab === "dream_reach"
-                    ? "border-[var(--text-primary)] bg-[var(--surface-secondary)] text-[var(--text-primary)] font-semibold"
-                    : "border-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)]/50",
-                )}
+                variant={activeTab === "dream_reach" ? "default" : "ghost"}
+                size="sm"
+                aria-pressed={activeTab === "dream_reach"}
               >
                 <Sparkles className="size-3.5" />
                 Prestige / Dream Reach ({results.dreamReach.length})
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
                 onClick={() => setActiveTab("rapid_pro")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border px-3 py-1.5 font-sans text-xs font-medium transition",
-                  activeTab === "rapid_pro"
-                    ? "border-[var(--text-primary)] bg-[var(--surface-secondary)] text-[var(--text-primary)] font-semibold"
-                    : "border-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)]/50",
-                )}
+                variant={activeTab === "rapid_pro" ? "default" : "ghost"}
+                size="sm"
+                aria-pressed={activeTab === "rapid_pro"}
               >
                 <Clock className="size-3.5" />
                 Rapid Response & Pro Pay ({results.rapidPro.length})
-              </button>
+              </Button>
 
-              <button
+              <Button
                 type="button"
                 onClick={() => setActiveTab("packet_builder")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border px-3 py-1.5 font-sans text-xs font-medium transition",
-                  activeTab === "packet_builder"
-                    ? "border-[var(--text-primary)] bg-[var(--surface-secondary)] text-[var(--text-primary)] font-semibold"
-                    : "border-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)]/50",
-                )}
+                variant={activeTab === "packet_builder" ? "default" : "ghost"}
+                size="sm"
+                aria-pressed={activeTab === "packet_builder"}
               >
                 <Layers className="size-3.5" />
                 Simultaneous Packets ({results.simultaneousPackets.length})
-              </button>
+              </Button>
             </div>
 
             <p className="text-xs text-[var(--text-muted)]">
@@ -423,11 +406,11 @@ export function ManuscriptMatchWizard({
           {/* Cards Grid */}
           <div className="grid gap-4 md:grid-cols-2">
             {currentCards.map((card) => (
-              <div
+              <Card
                 key={card.profileId}
-                className="flex flex-col justify-between rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-5 shadow-sm transition hover:border-[var(--border-strong)]"
+                className="justify-between"
               >
-                <div>
+                <CardContent>
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <h3 className="font-serif text-lg font-medium text-[var(--text-primary)]">
@@ -491,9 +474,9 @@ export function ManuscriptMatchWizard({
                       </p>
                     </div>
                   </div>
-                </div>
+                </CardContent>
 
-                <div className="mt-5 flex items-center justify-between border-t border-[var(--border-subtle)] pt-3 text-xs">
+                <CardFooter className="mt-5 justify-between pt-3 text-xs">
                   <EditorialIntelligenceDrawer
                     profileId={card.profileId}
                     magazineName={card.name}
@@ -514,8 +497,8 @@ export function ManuscriptMatchWizard({
                   >
                     View Journal <ExternalLink className="size-3" />
                   </Link>
-                </div>
-              </div>
+                </CardFooter>
+              </Card>
             ))}
           </div>
         </section>

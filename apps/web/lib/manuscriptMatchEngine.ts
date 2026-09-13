@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { ManuscriptMatchEngine } from "@missa/radar-adapters";
 import { missaPostgresPoolConfig } from "@missa/radar-adapters";
+import { catalogueReadDatabaseUrl } from "./catalogueDatabase";
 
 declare global {
   var __missaManuscriptMatchEngine: ManuscriptMatchEngine | undefined;
@@ -11,7 +12,11 @@ export function getManuscriptMatchEngine(): ManuscriptMatchEngine {
     return global.__missaManuscriptMatchEngine;
   }
 
-  const databaseUrl = process.env.DATABASE_URL;
+  // Prefer the same catalogue read connection the rest of the public site
+  // uses. Reading only DATABASE_URL left the matcher without a pool in
+  // environments where the catalogue URL is the configured one, so every
+  // request silently fell back to the hardcoded sample publications.
+  const databaseUrl = catalogueReadDatabaseUrl();
   let pool: Pool | null = null;
 
   if (databaseUrl) {

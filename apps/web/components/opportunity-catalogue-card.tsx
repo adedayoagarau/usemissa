@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { CalendarDays, MapPin, Tag } from "lucide-react";
+import { calendarDaysUntil } from "@/lib/deadlineLabel";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardFooter } from "@/components/ui/card";
+import { cleanTitleOrLabel } from "@/lib/textUtils";
 import styles from "./opportunity-catalogue-card.module.css";
 
 const EDITORIAL_PLATES = [
@@ -74,16 +76,18 @@ function statusLabel(
 ): string | null {
   if (status === "closed") return "Closed";
   if (status === "archived") return "Archived";
-  if (deadline.date) {
-    const today = new Date().toISOString().slice(0, 10);
-    if (deadline.date < today) return "Closed";
-  }
   if (status === "closing-soon" && deadline.date) {
-    const deadlineTime = new Date(`${deadline.date}T23:59:59`).getTime();
-    const msDiff = deadlineTime - Date.now();
-    if (msDiff < 0) return "Closed";
-    const days = Math.ceil(msDiff / 86_400_000);
-    return days <= 1 ? "Closes today" : `Closes in ${days} days`;
+    // Compare calendar days in the reader's timezone. An instant-based
+    // comparison made a deadline read "today" during the evening west of UTC.
+    const days = calendarDaysUntil(deadline.date);
+    if (days === null) return "Closing soon";
+    if (days < 0) return "Closed";
+    if (days === 0) return "Closes today";
+    if (days === 1) return "Closes tomorrow";
+    return `Closes in ${days} days`;
+  }
+  if (deadline.date && (calendarDaysUntil(deadline.date) ?? 0) < 0) {
+    return "Closed";
   }
   if (status === "closing-soon") return "Closing soon";
   if (status === "deadline-extended") return "Deadline extended";
@@ -106,7 +110,8 @@ const currencySymbols: Record<string, string> = {
 };
 
 function compactPrizeLabel(prize: string): string | null {
-  const trimmed = prize.replace(/\s+/gu, " ").trim();
+  const cleaned = cleanTitleOrLabel(prize);
+  const trimmed = cleaned.replace(/\s+/gu, " ").trim();
   if (!trimmed) return null;
 
   const symbolAmount = trimmed.match(
@@ -172,7 +177,7 @@ export function OpportunityCatalogueCard({
       ),
     ),
   )
-    .map(titleCasePractice)
+    .map((p) => cleanTitleOrLabel(titleCasePractice(p)))
     .slice(0, 2);
   const publicStatus = statusLabel(item.status, item.deadline);
   const titleId = `opportunity-${item.id}-title`;
@@ -182,6 +187,8 @@ export function OpportunityCatalogueCard({
       ? item.identityAssetUrl
       : editorialPlate(item);
   const prizeChip = item.prize ? compactPrizeLabel(item.prize) : null;
+  const cleanTitle = cleanTitleOrLabel(item.title);
+  const cleanOrg = cleanTitleOrLabel(item.organizationName);
 
   function rejectNonPhotographicCover(image: HTMLImageElement) {
     if (!image.naturalWidth || !image.naturalHeight) return;
@@ -216,14 +223,14 @@ export function OpportunityCatalogueCard({
           className={styles.media}
           tabIndex={-1}
           aria-hidden={officialMedia ? undefined : true}
-          aria-label={officialMedia ? `Open ${item.title}` : undefined}
+          aria-label={officialMedia ? `Open ${cleanTitle}` : undefined}
         >
           {/* Official plates are rights-cleared. Editorial plates are decorative atmosphere only. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             ref={handleMediaRef}
             src={mediaSrc}
-            alt={officialMedia ? (item.identityAssetAlt ?? "") : ""}
+            alt={officialMedia ? cleanTitleOrLabel(item.identityAssetAlt) : ""}
             onLoad={handleMediaLoad}
             onError={() => {
               if (officialMedia) setOfficialFailed(true);
@@ -251,12 +258,12 @@ export function OpportunityCatalogueCard({
             ) : null}
           </div>
 
-          <h3 id={titleId} className={`${styles.title} font-heading`}>
-            <Link href={detailHref}>{item.title}</Link>
-          </h3>
+          <h2 id={titleId} className={`${styles.title} font-heading`}>
+            <Link href={detailHref}>{cleanTitle}</Link>
+          </h2>
 
           <p className={styles.organization}>
-            {item.organizationName ?? "Organization not confirmed"}
+            {cleanOrg || "Organization not confirmed"}
           </p>
 
           {practices.length ? (
@@ -283,7 +290,7 @@ export function OpportunityCatalogueCard({
                 <dt>Location</dt>
                 <dd>
                   <MapPin aria-hidden="true" />
-                  {item.location}
+                  {cleanTitleOrLabel(item.location)}
                 </dd>
               </div>
             ) : null}
@@ -298,7 +305,7 @@ export function OpportunityCatalogueCard({
               compact={false}
               signedIn={signedIn}
               returnTo={returnTo}
-              opportunityTitle={item.title}
+              opportunityTitle={cleanTitle}
             />
           </div>
           <Link href={detailHref} className={styles.openAction}>

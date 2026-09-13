@@ -575,7 +575,13 @@ export class PostgresProfileRepository implements ProfileRepository {
          OR p.canonical_key = 'artconn:' || replace($1, '-', '_')
          OR p.canonical_key = 'rivet:' || replace($1, '-', '_')
          OR p.canonical_key = 'trans:' || replace($1, '-', '_')
-         OR regexp_replace(lower(p.name), '[^a-z0-9]+', '-', 'g') = $1
+         -- Slug identity must match the public slug rule used by browse/card,
+         -- which strips leading/trailing separators. Without the trim, a name
+         -- like "*365 Tomorrows" resolves to "-365-tomorrows" here and the
+         -- profile page 404s even though the directory links to it.
+         OR trim(both '-' from regexp_replace(lower(p.name), '[^a-z0-9]+', '-', 'g')) = $1
+         OR trim(both '-' from regexp_replace(lower(COALESCE(p.name_key, '')), '[^a-z0-9]+', '-', 'g')) = $1
+         OR trim(both '-' from regexp_replace(lower(COALESCE(p.canonical_key, '')), '[^a-z0-9]+', '-', 'g')) = $1
       LIMIT 1;`;
     // Redirects are an optional additive relation. The hosted catalogue may
     // not have that migration yet, so resolve the canonical profile first and

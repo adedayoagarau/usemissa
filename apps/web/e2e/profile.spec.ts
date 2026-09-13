@@ -72,6 +72,23 @@ test('profile validation preserves recovery and owner route redirects without a 
   expect(profile.id).toMatch(/^user_/);
 });
 
+test('a signed-in creator keeps their private opportunity state and can open the account menu', async ({ page }) => {
+  const { email } = await createAccount(page, 'Account Menu User');
+
+  await page.goto('/discover/match');
+  const accountMenu = page.getByRole('button', { name: `Open account menu for ${email}` });
+  await expect(accountMenu).toBeVisible();
+  await accountMenu.click();
+  await expect(page.getByRole('menuitem', { name: /Profile/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /My applications/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /Log out/ })).toBeVisible();
+
+  await page.goto('/opportunities');
+  await expect(page.getByText(email, { exact: true })).toBeVisible();
+  const session = await page.request.get('/api/auth/me');
+  expect(session.ok()).toBeTruthy();
+});
+
 test('Profile ledger keeps section URLs and exposes the full facet model progressively', async ({ page }) => {
   await createAccount(page, 'Cross-disciplinary Creator');
   await page.goto('/profile?section=preferences');

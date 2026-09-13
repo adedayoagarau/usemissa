@@ -5,6 +5,7 @@ import { getEngine } from '@/lib/engine';
 import { getWorkspaceEngine } from '@/lib/workspaceEngine';
 import { SubmissionCard } from '@/components/submission-card';
 import Link from 'next/link';
+import { loginRedirectForCurrentRequest } from '@/lib/serverAuthRedirect';
 
 const STATUS_LABEL: Record<string, string> = {
   submitted: 'Submitted',
@@ -32,7 +33,7 @@ export default async function SubmissionsPage({
 }) {
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!session) redirect('/login');
+  if (!session) redirect(await loginRedirectForCurrentRequest());
 
   if (session.memberships.length === 0) {
     return (

@@ -71,35 +71,20 @@ async function resolveHandleRedirect(
 }
 
 function shouldRedirectToWaitlist(request: NextRequest): boolean {
-  const { pathname, searchParams } = request.nextUrl;
+  const { pathname } = request.nextUrl;
   if (DISCOVERY_BETA && isDiscoveryBetaPath(pathname)) return false;
-  if (
-    pathname === "/waitlist" ||
-    pathname === "/waitlist/opengraph-image" ||
-    pathname === "/privacy"
-  )
-    return false;
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) return false;
-  if (
-    pathname === "/login" ||
-    pathname === "/profile" ||
-    pathname.startsWith("/profile/")
-  )
-    return false;
-  if (
-    pathname === "/publication-claim" ||
-    pathname.startsWith("/publication-claim/")
-  )
-    return false;
-  if (pathname === "/journals" || pathname.startsWith("/journals/"))
-    return false;
-  if (pathname.startsWith("/@")) return false;
-  if (
-    pathname === "/signup" &&
-    /^[A-Za-z0-9_-]{32,128}$/u.test(searchParams.get("invite") ?? "")
-  )
-    return false;
-  return true;
+  // Only routes that exist but are deliberately not public yet are sent to the
+  // waitlist. Anything else falls through so the app renders its own 404 page
+  // instead of turning a mistyped URL into an invitation capture.
+  return isGatedPreviewPath(pathname);
+}
+
+const gatedPreviewPaths = ["/rankings/claim", "/rankings/plan"];
+
+function isGatedPreviewPath(pathname: string): boolean {
+  return gatedPreviewPaths.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
 }
 
 export const config = {

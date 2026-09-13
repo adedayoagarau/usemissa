@@ -1,6 +1,9 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { ManuscriptMatchEngine } from "../src/ranking/manuscriptMatchEngine.js";
+import {
+  ManuscriptMatchEngine,
+  manuscriptMatchProfileSlug,
+} from "../src/ranking/manuscriptMatchEngine.js";
 
 describe("ManuscriptMatchEngine", () => {
   it("computes matches and groups into tiers without pool", async () => {
@@ -24,4 +27,10 @@ describe("ManuscriptMatchEngine", () => {
     assert.ok(splitLip.matchScore >= 80, "Match score should reflect strong alignment");
     assert.strictEqual(splitLip.aesthetic.isDebutChampion, true);
   });
+});
+
+it("uses the same URL-safe publication slug as public profile routes", () => {
+  assert.equal(manuscriptMatchProfileSlug("A Public Space", "a public space"), "a-public-space");
+  assert.equal(manuscriptMatchProfileSlug("Adroit Journal", "adroit journal"), "adroit-journal");
+  assert.equal(manuscriptMatchProfileSlug("Cincinnati Review", "cincinnati review"), "cincinnati-review");
 });

@@ -10,6 +10,15 @@ test("keeps normalized same-origin auth destinations", () => {
   );
   assert.equal(safeAuthRedirect("/onboarding"), "/onboarding");
   assert.equal(safeAuthRedirect("/workspace"), "/workspace");
+  assert.equal(safeAuthRedirect("/home"), "/home");
+  assert.equal(
+    safeAuthRedirect("/submissions?status=submitted"),
+    "/submissions?status=submitted",
+  );
+  assert.equal(
+    safeAuthRedirect("/organization/org-1/messages"),
+    "/organization/org-1/messages",
+  );
   assert.equal(safeAuthRedirect("/tracker"), "/tracker");
   assert.equal(safeAuthRedirect("/saved"), "/saved");
   assert.equal(safeAuthRedirect("/saved?sort=deadline"), "/saved?sort=deadline");
@@ -17,6 +26,11 @@ test("keeps normalized same-origin auth destinations", () => {
   assert.equal(safeAuthRedirect("/following"), "/following");
   assert.equal(safeAuthRedirect("/goals?goal=goal-1"), "/goals?goal=goal-1");
   assert.equal(safeAuthRedirect("/reviews/assigned"), "/reviews/assigned");
+  assert.equal(safeAuthRedirect("/reviewer"), "/reviewer");
+  assert.equal(safeAuthRedirect("/ask"), "/ask");
+  assert.equal(safeAuthRedirect("/insights"), "/insights");
+  assert.equal(safeAuthRedirect("/messages"), "/messages");
+  assert.equal(safeAuthRedirect("/my-submissions/packet-1"), "/my-submissions/packet-1");
 });
 
 test("rejects external, encoded-external, control, backslash, and admin destinations", () => {
@@ -31,7 +45,6 @@ test("rejects external, encoded-external, control, backslash, and admin destinat
     "/a%64min",
     "/admin%2Faccounts",
     "/api/auth/session",
-    "/organization/org_1",
     "/design-system",
   ]) {
     assert.equal(safeAuthRedirect(value), "/opportunities");

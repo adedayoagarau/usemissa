@@ -13,6 +13,7 @@ import { OrganizationBilling } from '@/components/organization-billing';
 import { OpenCallControls } from '@/components/open-call-controls';
 import { CreatorWorkspace } from '@/components/creator-workspace';
 import type { TrackerProductItem } from '@/components/tracker-product';
+import { loginRedirectForCurrentRequest } from '@/lib/serverAuthRedirect';
 import {
   mapOpportunityTypesToInterestLabels,
   mapTaxonomyToPracticeLabels,
@@ -21,7 +22,7 @@ import {
 export default async function WorkspacePage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!session) redirect('/login');
+  if (!session) redirect(await loginRedirectForCurrentRequest());
 
   const requestedOrganizationId = (await searchParams).organizationId;
   const targetOrg = session.memberships.find((membership) => membership.organizationId === requestedOrganizationId);

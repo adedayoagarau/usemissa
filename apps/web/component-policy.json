@@ -211,6 +211,18 @@
         "Link"
       ]
     },
+    "composition.manuscript-match": {
+      "semantic": "ManuscriptMatchWizard",
+      "implementation": "apps/web/components/discover/manuscript-match-wizard.tsx",
+      "composition": [
+        "Button",
+        "Card",
+        "Field",
+        "NativeSelect"
+      ],
+      "appearance": "editorial-submission-brief-with-index-style-filters-and-evidence-led-match-cards",
+      "boundary": "Fit is a deterministic comparison aid, not eligibility or a submission claim. Journal destinations remain source-linked and external."
+    },
     "action.primary": {
       "primitive": "Button",
       "variant": "default"

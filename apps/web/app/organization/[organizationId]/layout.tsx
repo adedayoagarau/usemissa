@@ -4,12 +4,13 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { getEngine } from '@/lib/engine';
 import { organizationCapabilityProjection, organizationNavigation } from '@/lib/organizationProduct';
 import { OrganizationProductShell } from '@/components/organization-product-shell';
+import { loginRedirectForCurrentRequest } from '@/lib/serverAuthRedirect';
 
 export default async function OrganizationLayout({ children, params }: { children: React.ReactNode; params: Promise<{ organizationId: string }> }) {
   const { organizationId } = await params;
   const cookieStore = await cookies();
   const session = await getSessionAccountFromToken(cookieStore.get(SESSION_COOKIE)?.value);
-  if (!session) redirect(`/login?next=${encodeURIComponent(`/organization/${organizationId}/overview`)}`);
+  if (!session) redirect(await loginRedirectForCurrentRequest());
   const membership = session.memberships.find((item) => item.organizationId === organizationId);
   if (!membership) notFound();
   const radar = await getEngine();
