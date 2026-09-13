@@ -70,6 +70,14 @@ function searchDocument(opportunity: Opportunity): string {
 
 async function upsertSources(client: PoolClient, sources: Source[]): Promise<void> {
   if (sources.length === 0) return;
+  // opportunity_sources.check_interval_hours is NOT NULL with no default, but
+  // not every Source projection supplies one. Default at the write boundary so
+  // the hourly worker tick cannot fail on a missing schedule.
+  const checkIntervalHours = (source: Source) =>
+    Number.isFinite(source.checkIntervalHours) &&
+    (source.checkIntervalHours as number) > 0
+      ? source.checkIntervalHours
+      : 24;
   const values = sources.flatMap((source) => [
     source.id,
     source.organizationId ?? null,
@@ -79,7 +87,7 @@ async function upsertSources(client: PoolClient, sources: Source[]): Promise<voi
     source.active,
     source.registryTier ?? 0,
     source.followsOutboundLinks ?? false,
-    source.checkIntervalHours,
+    checkIntervalHours(source),
     source.firstVerifiedAt ?? null,
     source.nextCheckAt ?? null,
     source.lastCheckedAt ?? null,
