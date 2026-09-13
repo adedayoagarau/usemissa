@@ -1,5 +1,6 @@
 import { recordPlatformAnalyticsEvent } from '@missa/radar-adapters';
 import { type AnalyticsEventName, validateAnalyticsEventProperties } from './analytics-contract';
+import { platformAnalyticsDatabaseUrl } from './platformAnalyticsDatabase';
 
 export async function trackPlatformAnalytics(input: {
   eventName: AnalyticsEventName;
@@ -11,11 +12,12 @@ export async function trackPlatformAnalytics(input: {
   properties?: Record<string, unknown>;
   idempotencyKey?: string;
 }): Promise<void> {
-  if (!process.env.DATABASE_URL) return;
+  const connectionString = platformAnalyticsDatabaseUrl();
+  if (!connectionString) return;
   const contractError = validateAnalyticsEventProperties(input.eventName, input.properties);
   if (contractError) {
     console.error('Analytics event rejected by tracking plan', { eventName: input.eventName, reason: contractError });
     return;
   }
-  await recordPlatformAnalyticsEvent({ connectionString: process.env.DATABASE_URL, ...input }).catch(() => undefined);
+  await recordPlatformAnalyticsEvent({ connectionString, ...input }).catch(() => undefined);
 }
