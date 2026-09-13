@@ -39,6 +39,7 @@ let redisClient: Redis | undefined;
 export async function consumeAuthRateLimit(
   input: AuthRateLimitInput,
 ): Promise<number | undefined> {
+  if (process.env.MISSA_DISABLE_AUTH_RATE_LIMIT === "1") return undefined;
   const now = Date.now();
   const scopes = [
     { name: "ip", value: input.ip, limit: IP_LIMIT },

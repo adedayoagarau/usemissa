@@ -52,6 +52,55 @@ jobs:
       - name: Check one-way package dependency (workspace-engine must never be imported by radar-engine)
         run: ./scripts/check-package-boundaries.sh
 
+  e2e-relational:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: missa
+          POSTGRES_PASSWORD: missa
+          POSTGRES_DB: missa_story_16_2_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Apply reconciled target schema
+        run: node scripts/apply-target-schema.mjs
+        env:
+          DATABASE_URL: postgres://missa:missa@localhost:5432/missa_story_16_2_ci
+
+      - name: Seed Story 16.2 relational fixture
+        run: node scripts/seed-story-16-2-e2e-opportunity.mjs
+        env:
+          DISPOSABLE_CREATOR_DATABASE_URL: postgres://missa:missa@localhost:5432/missa_story_16_2_ci
+
+      - name: Install Playwright Chromium
+        run: npm exec --workspace=@missa/web -- playwright install --with-deps chromium
+
+      - name: Test relational surfaces against Postgres
+        run: npm run test:e2e --workspace=@missa/web
+        env:
+          DATABASE_URL: postgres://missa:missa@localhost:5432/missa_story_16_2_ci
+          MISSA_E2E_RELATIONAL: "1"
+
   target-schema:
     runs-on: ubuntu-latest
     services:
