@@ -1,5 +1,6 @@
 import { readWaitlistAnalytics, readWaitlistSignups, type WaitlistAnalyticsReadModel, type WaitlistSignupReadModel } from '@missa/radar-adapters';
 import type { AdminArea } from './platformAdmin';
+import { platformAnalyticsDatabaseUrl } from './platformAnalyticsDatabase';
 
 export interface PlatformAdminWaitlistData extends WaitlistSignupReadModel {
   analytics: WaitlistAnalyticsReadModel;
@@ -26,16 +27,17 @@ const emptyAnalytics: WaitlistAnalyticsReadModel = {
 };
 
 export async function getPlatformAdminWaitlist(): Promise<AdminArea<PlatformAdminWaitlistData>> {
-  if (!process.env.DATABASE_URL) {
+  const readDatabaseUrl = platformAnalyticsDatabaseUrl();
+  if (!readDatabaseUrl) {
     return {
-      provenance: { maturity: 'unavailable', source: emptySignups.source, freshness: 'DATABASE_URL is not configured' },
+      provenance: { maturity: 'unavailable', source: emptySignups.source, freshness: 'No admin analytics database is configured' },
       data: { ...emptySignups, analytics: emptyAnalytics },
-      warnings: ['DATABASE_URL is not configured; waitlist records and analytics cannot be read.'],
+      warnings: ['Waitlist records and analytics are unavailable because no admin analytics database is configured.'],
     };
   }
   const [signups, analytics] = await Promise.all([
-    readWaitlistSignups(process.env.DATABASE_URL),
-    readWaitlistAnalytics(process.env.DATABASE_URL),
+    readWaitlistSignups(readDatabaseUrl),
+    readWaitlistAnalytics(readDatabaseUrl),
   ]);
   return {
     provenance: { maturity: signups.available && analytics.available ? 'durable' : 'partial', source: `${signups.source} + ${analytics.source}`, freshness: `read at ${signups.generatedAt}` },

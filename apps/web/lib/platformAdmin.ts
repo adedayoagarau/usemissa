@@ -1166,13 +1166,14 @@ export function buildPlatformAdminReadModel(input: BuildPlatformAdminReadModelIn
   };
 }
 
-export async function getPlatformAdminOverview(): Promise<PlatformAdminOverview> {
+export async function getPlatformAdminOverview(options: { readDatabaseUrl?: string } = {}): Promise<PlatformAdminOverview> {
   const generatedAt = new Date().toISOString();
+  const readDatabaseUrl = options.readDatabaseUrl ?? process.env.DATABASE_URL;
   const [radarResult, workspaceResult, durableResult] = await Promise.all([
     getEngine().then((engine) => engine.store).catch(() => undefined),
     getWorkspaceEngine().then((engine) => engine.store).catch(() => undefined),
-    process.env.DATABASE_URL
-      ? readPlatformAdminDurableSummary(process.env.DATABASE_URL).catch(() => emptyPlatformAdminDurableSummary(generatedAt))
+    readDatabaseUrl
+      ? readPlatformAdminDurableSummary(readDatabaseUrl).catch(() => emptyPlatformAdminDurableSummary(generatedAt))
       : Promise.resolve(emptyPlatformAdminDurableSummary(generatedAt)),
   ]);
   const warnings: string[] = [];
