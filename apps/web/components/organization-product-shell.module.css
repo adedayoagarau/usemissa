@@ -4,8 +4,8 @@
 .topbar { position: sticky; z-index: 50; top: 0; display: flex; min-height: 64px; align-items: center; gap: 18px; padding: 0 22px; border-bottom: 1px solid var(--border); background: rgb(255 255 255 / 96%); backdrop-filter: blur(12px); }
 .wordmark { color: var(--foreground); font-family: var(--font-heading), Georgia, serif; font-size: 1.35rem; font-weight: 650; text-decoration: none; }
 .productSwitch { display: flex; align-items: center; gap: 3px; padding: 3px; border: 1px solid var(--border); border-radius: 9px; background: var(--muted); }
-.productSwitch a, .productSwitch span { display: inline-flex; min-height: 34px; align-items: center; gap: 6px; padding: 0 10px; border-radius: 6px; color: var(--muted-foreground); font-size: .75rem; font-weight: 650; text-decoration: none; }
-.productSwitch span { background: white; color: var(--foreground); }
+.productSwitch > a, .productSwitch > span { display: inline-flex; min-height: 34px; align-items: center; gap: 6px; padding: 0 10px; border-radius: 6px; color: var(--muted-foreground); font-size: .75rem; font-weight: 650; text-decoration: none; }
+.productSwitch > span { background: white; color: var(--foreground); }
 .productSwitch svg { width: 14px; height: 14px; }
 .commandButton { display: inline-flex; min-height: 40px; align-items: center; gap: 8px; margin-left: auto; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; color: var(--muted-foreground); font-size: .78rem; }
 .commandButton svg { width: 15px; }
@@ -44,4 +44,4 @@
 .command > div a span { color: var(--muted-foreground); font-size: .68rem; }
 .command > div p { padding: 14px; color: var(--muted-foreground); }
 @media (max-width: 860px) { .topbar { padding-inline: 16px; } .commandButton { display: none; } .mobileButton { display: grid; margin-left: auto; } .avatar { display: none; } .shell { grid-template-columns: 1fr; } .rail { position: fixed; z-index: 45; top: 64px; right: 0; left: 0; height: auto; max-height: calc(100vh - 64px); overflow: auto; border-right: 0; border-bottom: 1px solid var(--border); transform: translateY(-120%); transition: transform 150ms ease; } .rail[data-open='true'] { transform: translateY(0); } .rail nav { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .productSwitch { margin-left: auto; } .productSwitch a, .productSwitch span { padding-inline: 7px; } .mobileButton { margin-left: 0; } }
+@media (max-width: 520px) { .productSwitch { margin-left: auto; } .productSwitch > a, .productSwitch > span { padding-inline: 7px; } .productSwitchLabel { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; } .mobileButton { margin-left: 0; } }

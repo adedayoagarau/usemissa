@@ -43,7 +43,7 @@ export function OrganizationProductShell({ children, organization, organizations
     <a href="#organization-main" className={styles.skip}>Skip to Organization content</a>
     <header className={styles.topbar}>
       <MissaWordmark size="app" className={styles.wordmark} />
-      <div className={styles.productSwitch}><Link href="/profile"><UserRound aria-hidden="true" />Profile</Link><span aria-current="page"><Building2 aria-hidden="true" />Organization</span></div>
+      <div className={styles.productSwitch}><Link href="/profile"><UserRound aria-hidden="true" /><span className={styles.productSwitchLabel}>Profile</span></Link><span aria-current="page"><Building2 aria-hidden="true" /><span className={styles.productSwitchLabel}>Organization</span></span></div>
       <button ref={commandButtonRef} type="button" className={styles.commandButton} onClick={() => setCommandOpen(true)}><Search aria-hidden="true" />Search Organization</button>
       <Link href="/profile" className={styles.avatar} aria-label="Open Profile">P</Link>
       <button type="button" className={styles.mobileButton} aria-expanded={mobileOpen} aria-label={mobileOpen ? 'Close Organization navigation' : 'Open Organization navigation'} onClick={() => setMobileOpen((value) => !value)}>{mobileOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}</button>
