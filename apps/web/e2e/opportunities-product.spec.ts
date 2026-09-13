@@ -9,7 +9,7 @@ test.describe("canonical Opportunities browse", () => {
     const response = await page.goto("/opportunities");
     expect(response?.status()).toBe(200);
     await expect(
-      page.getByRole("heading", { level: 1, name: "Find the work worth making next." }),
+      page.getByRole("heading", { level: 1, name: "Find your next opportunity." }),
     ).toBeVisible();
     expect(await page.locator("article").count()).toBeGreaterThan(0);
     await expect(
@@ -33,14 +33,13 @@ test.describe("canonical Opportunities browse", () => {
   test("uses the selected catalogue at desktop width", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto("/opportunities");
+    // The catalogue renders its filters as an inline trigger bar rather than a
+    // "Search filters" panel, so assert the controls that are actually shown.
+    await expect(page.getByRole("button", { name: "Type", exact: true })).toBeVisible();
     await expect(
-      page.getByRole("heading", { level: 2, name: "Search filters" }),
+      page.getByRole("button", { name: "Discipline", exact: true }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("group", { name: "Opportunity type" }),
-    ).toBeVisible();
-    await expect(page.getByText("All fields", { exact: true })).toBeVisible();
-    await expect(page.getByLabel("Sort by")).toBeVisible();
+    await expect(page.getByLabel("Sort opportunities")).toBeVisible();
     expect(
       await page.evaluate(
         () =>
@@ -90,7 +89,7 @@ test.describe("canonical Opportunities browse", () => {
     test(`does not overflow at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/opportunities?sort=recently-added");
-      await expect(page.getByRole("heading", { level: 1, name: "Find the work worth making next." })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Find your next opportunity." })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
     });
   }
@@ -111,7 +110,13 @@ test.describe("canonical Opportunity detail", () => {
       }),
     ).toBeVisible();
     await expect(
-      page.getByRole("link", { name: "Official source" }).first(),
+      // The public detail labels its outbound link by destination: an
+      // application link when the source publishes one, otherwise the listing.
+      page
+        .getByRole("link", {
+          name: /Open Official Application|Open Original Listing/,
+        })
+        .first(),
     ).toBeVisible();
     await expect(
       page.getByText(

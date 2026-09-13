@@ -71,9 +71,16 @@ test("admin can open the control room and operational loop", async ({
   await expect(
     page.getByRole("heading", { name: "Analytics", exact: true }),
   ).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What needs attention" })).toBeVisible();
+  await page.getByRole("tab", { name: "Users" }).click();
+  await expect(page.getByRole("heading", { name: "Recent user activity" })).toBeVisible();
+  await page.getByRole("tab", { name: "Journey" }).click();
   await expect(page.getByRole("heading", { name: "Creator journey" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Behavioral segments" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Week-one retention" })).toBeVisible();
+  await page.getByRole("tab", { name: "System" }).click();
+  await expect(page.getByRole("heading", { name: "Backend health" })).toBeVisible();
+  await page.getByRole("tab", { name: "Data quality" }).click();
   await expect(page.getByRole("heading", { name: "Analytics quality" })).toBeVisible();
 
   await page.goto("/admin/organizations");

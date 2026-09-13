@@ -55,26 +55,39 @@ export default async function PublicOrganizationPage({ params }: { params: Promi
   }
 
   // 2. Fallback to Radar in-memory store
-  const radar = await getEngine();
-  const organization = radar.store.organizations.get(organizationId);
+  let organization: ReturnType<Awaited<ReturnType<typeof getEngine>>["store"]["organizations"]["get"]> | undefined;
+  try {
+    const radar = await getEngine();
+    organization = radar.store.organizations.get(organizationId);
+  } catch {
+    // The relational workspace authority is unavailable in this environment.
+    // A public Organization page that cannot resolve is a 404, not a 500.
+    organization = undefined;
+  }
 
   if (!organization) {
     notFound();
   }
   let portal: RelationalPortalConfigurationView | undefined;
-  let openCalls: RelationalPublicOpenCallView[];
-  if (workspaceRelationalAuthorityEnabled()) {
-    const workspace = await getRelationalWorkspace();
-    portal = await workspace.publishedPortalConfiguration(organizationId);
-    openCalls = await workspace.publishedOpenCallsForPortal(organizationId);
-  } else {
-    const workspace = await getWorkspaceEngine();
-    openCalls = workspace.publishedOpenCallsForOrganization(organizationId).map((call) => ({
-        id: call.id,
-        title: call.title,
-        radarOpportunityId: call.radarOpportunityId,
-        hasHostedForm: workspace.submissionPathsForOpenCall(call.id).length > 0,
-      }));
+  let openCalls: RelationalPublicOpenCallView[] = [];
+  try {
+    if (workspaceRelationalAuthorityEnabled()) {
+      const workspace = await getRelationalWorkspace();
+      portal = await workspace.publishedPortalConfiguration(organizationId);
+      openCalls = await workspace.publishedOpenCallsForPortal(organizationId);
+    } else {
+      const workspace = await getWorkspaceEngine();
+      openCalls = workspace.publishedOpenCallsForOrganization(organizationId).map((call) => ({
+          id: call.id,
+          title: call.title,
+          radarOpportunityId: call.radarOpportunityId,
+          hasHostedForm: workspace.submissionPathsForOpenCall(call.id).length > 0,
+        }));
+    }
+  } catch {
+    // The relational workspace authority is not reachable for this identifier.
+    // A public Organization page that cannot resolve is a 404, not a 500.
+    notFound();
   }
   const opportunityRepository = await getOpportunityRepository();
   const linked = await Promise.all(openCalls.map((call) => call.radarOpportunityId ? opportunityRepository.getById(call.radarOpportunityId).catch(() => null) : null));

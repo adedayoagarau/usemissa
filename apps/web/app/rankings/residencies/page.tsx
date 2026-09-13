@@ -52,18 +52,12 @@ export default async function ResidencyRankingsPage() {
           total={page.total}
         />
 
-        <footer className="mt-8 border-t border-border pt-4 flex items-center justify-between text-sm text-muted-foreground">
+        <footer className="mt-8 border-t border-border pt-4">
           <Link
             href="/rankings/methodology"
-            className="inline-flex min-h-11 items-center text-primary underline underline-offset-4"
+            className="inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4"
           >
-            Methodology & Index Scoring
-          </Link>
-          <Link
-            href="/residencies"
-            className="inline-flex min-h-11 items-center text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
-          >
-            Standard Directory View
+            Methodology
           </Link>
         </footer>
       </main>

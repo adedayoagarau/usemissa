@@ -63,8 +63,8 @@ try {
 
   // Ensure opportunity_sources has record
   await client.query(`
-    INSERT INTO opportunity_sources (id, name, url, kind, active)
-    VALUES ($1, $2, $3, $4, true)
+    INSERT INTO opportunity_sources (id, name, url, kind, active, check_interval_hours)
+    VALUES ($1, $2, $3, $4, true, 24)
     ON CONFLICT (id) DO NOTHING;
   `, [sourceId, "TransArtists DutchCulture AIR Radar", "https://www.transartists.org", "directory"]);
 

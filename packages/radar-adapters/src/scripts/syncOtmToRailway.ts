@@ -45,9 +45,9 @@ try {
   // Ensure OTM source exists in opportunity_sources
   const sourceId = "source_otm_directory";
   await client.query(`
-    INSERT INTO opportunity_sources (id, name, url, kind, active, created_at, updated_at)
+    INSERT INTO opportunity_sources (id, name, url, kind, active, check_interval_hours, created_at, updated_at)
     VALUES (
-      $1, 'On The Move', 'https://on-the-move.org', 'directory', true, now(), now()
+      $1, 'On The Move', 'https://on-the-move.org', 'directory', true, 24, now(), now()
     )
     ON CONFLICT (id) DO NOTHING;
   `, [sourceId]);

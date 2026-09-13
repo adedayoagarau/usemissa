@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { OpportunityDetailStickyActions } from "@/components/opportunity-detail-sticky-actions";
+import { OpportunityDeadlineChip } from "@/components/opportunity-deadline-chip";
 import { AddOpportunityToCalendarButton } from "@/components/add-opportunity-to-calendar-button";
 import {
   ArrowLeft,
@@ -36,7 +37,7 @@ import { MobileActionDock } from "@/components/mobile-action-dock";
 import { OfficialDestinationLink } from "@/components/missa/official-destination-link";
 import {
   cleanCrawledNarrative,
-  decodeHtmlEntities,
+  cleanTitleOrLabel,
   inferSubmissionChecklist,
 } from "@/lib/textUtils";
 import { cn } from "@/lib/utils";
@@ -153,10 +154,10 @@ function getPrizeBadge(
 ): string | null {
   const call = opportunity.callProfile;
   if (opportunity.prize && opportunity.prize.trim()) {
-    return decodeHtmlEntities(opportunity.prize);
+    return cleanTitleOrLabel(opportunity.prize);
   }
   if (call?.prizeSummary && call.prizeSummary.trim()) {
-    return decodeHtmlEntities(call.prizeSummary);
+    return cleanTitleOrLabel(call.prizeSummary);
   }
   if (call?.paymentAmountCents && call.paymentCurrency) {
     const pay = compactMoney(call.paymentAmountCents, call.paymentCurrency);
@@ -184,7 +185,8 @@ function getLimitsBadge(
 
 function getScopeBadge(location: string | undefined): string {
   if (!location) return "Open worldwide";
-  const lower = location.toLowerCase();
+  const cleaned = cleanTitleOrLabel(location);
+  const lower = cleaned.toLowerCase();
   if (
     lower.includes("international") ||
     lower.includes("global") ||
@@ -195,7 +197,7 @@ function getScopeBadge(location: string | undefined): string {
   if (lower.includes("remote") || lower.includes("online")) {
     return "Remote / Online";
   }
-  return location;
+  return cleaned;
 }
 
 function getOrganizerProfileUrl(
@@ -241,8 +243,8 @@ export function OpportunityDetailView({
   const identityAssetAlt = opportunity.identityAssetAlt ?? opportunity.title;
 
   // Decoded title and organization
-  const cleanTitle = decodeHtmlEntities(opportunity.title);
-  const organizerName = decodeHtmlEntities(
+  const cleanTitle = cleanTitleOrLabel(opportunity.title);
+  const organizerName = cleanTitleOrLabel(
     opportunity.organizationName ?? relatedProfile?.name ?? "Host Organization",
   );
   const organizerUrl = getOrganizerProfileUrl(
@@ -323,11 +325,11 @@ export function OpportunityDetailView({
   const preparationMaterials =
     opportunity.requiredMaterials.length > 0
         ? opportunity.requiredMaterials.map((m) => ({
-            label: decodeHtmlEntities(m.label),
+            label: cleanTitleOrLabel(m.label),
             detail: m.description
-              ? decodeHtmlEntities(m.description)
+              ? cleanCrawledNarrative(m.description)
               : m.limit
-                ? `Limit: ${m.limit}`
+                ? `Limit: ${cleanTitleOrLabel(m.limit)}`
                 : m.required
                   ? "Required submission document"
                   : "Optional supporting material",
@@ -430,13 +432,11 @@ export function OpportunityDetailView({
                 ) : null}
 
                 {/* 3. Deadline Countdown */}
-                <span
-                  className={styles.signalChip}
-                  data-tone={deadlineUrgency.urgent ? "urgent" : undefined}
-                >
-                  <Clock3 aria-hidden="true" />
-                  {deadlineUrgency.label}
-                </span>
+                <OpportunityDeadlineChip
+                  date={opportunity.deadline.date}
+                  fallbackLabel={deadlineUrgency.label}
+                  fallbackUrgent={deadlineUrgency.urgent}
+                />
 
                 {/* 4. Discipline / Type */}
                 <span className={styles.signalChip}>
@@ -553,7 +553,7 @@ export function OpportunityDetailView({
                 <div className={styles.themeCallout}>
                   <span className={styles.themeLabel}>Theme & Prompt</span>
                   <p className={cn(styles.themeText, "font-sans")}>
-                    {decodeHtmlEntities(call.issueTheme)}
+                    {cleanCrawledNarrative(call.issueTheme)}
                   </p>
                 </div>
               ) : null}
@@ -593,7 +593,7 @@ export function OpportunityDetailView({
 
                 {call?.eligibilitySummary ? (
                   <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
-                    {decodeHtmlEntities(call.eligibilitySummary)}
+                    {cleanCrawledNarrative(call.eligibilitySummary)}
                   </p>
                 ) : null}
 
@@ -606,16 +606,16 @@ export function OpportunityDetailView({
                         </span>
                         <div className={styles.eligibilityContent}>
                           <span className={styles.eligibilityLabel}>
-                            {decodeHtmlEntities(rule.description)}
+                            {cleanTitleOrLabel(rule.description)}
                           </span>
                           {rule.value &&
-                          !decodeHtmlEntities(rule.description)
+                          !cleanTitleOrLabel(rule.description)
                             .toLowerCase()
                             .includes(
-                              decodeHtmlEntities(rule.value).toLowerCase(),
+                              cleanTitleOrLabel(rule.value).toLowerCase(),
                             ) ? (
                             <span className={styles.eligibilityDetail}>
-                              {decodeHtmlEntities(rule.value)}
+                              {cleanTitleOrLabel(rule.value)}
                             </span>
                           ) : null}
                         </div>

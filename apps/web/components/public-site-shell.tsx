@@ -70,6 +70,8 @@ export async function PublicSiteShell({
           <Link href="/rankings/magazines">Magazine rankings</Link>
           <Link href="/rankings/residencies">Residency rankings</Link>
           <Link href="/discover/match">Manuscript matcher</Link>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
           <a href="mailto:hello@usemissa.com">Share feedback</a>
         </nav>
       </footer>

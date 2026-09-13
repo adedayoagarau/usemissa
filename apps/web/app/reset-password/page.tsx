@@ -151,9 +151,7 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen bg-background flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center mb-6">
-          <Link href="/" aria-label="Missa home">
-            <MissaWordmark className="h-6 w-auto text-foreground" />
-          </Link>
+          <MissaWordmark className="h-6 w-auto text-foreground" />
         </div>
         <h1 className="text-center text-2xl font-serif font-medium text-foreground">
           Choose a new password

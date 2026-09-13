@@ -211,6 +211,17 @@ function nullableText(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+/**
+ * Alphabetical order that ignores a leading punctuation run.
+ *
+ * Names like "*365 Tomorrows" and "#EnbyLife" sorted ahead of every letter
+ * because their first character is punctuation, which made the directory open
+ * on a block of symbols instead of publications. The trailing p.name term
+ * keeps a stable order when two names normalize to the same key.
+ */
+const ALPHABETICAL_PROFILE_ORDER =
+  "lower(regexp_replace(btrim(p.name), '^[^a-z0-9]+', '', 'i')) ASC, p.name ASC";
+
 function card(
   row: Record<string, unknown>,
   extra?: { opportunities?: ProfileOpportunity[] },
@@ -382,7 +393,7 @@ export class PostgresProfileRepository implements ProfileRepository {
         LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
         LEFT JOIN media m ON m.profile_page_id = pg.id
         LEFT JOIN visuals ON visuals.profile_id = p.id
-        ${where} ORDER BY p.name ASC`,
+        ${where} ORDER BY ${ALPHABETICAL_PROFILE_ORDER}`,
         values,
       });
 
@@ -467,7 +478,7 @@ export class PostgresProfileRepository implements ProfileRepository {
     const orderClause =
       query.sortBy === "recently_updated"
         ? "ORDER BY o.observed_at DESC NULLS LAST, p.name ASC"
-        : "ORDER BY p.name ASC";
+        : `ORDER BY ${ALPHABETICAL_PROFILE_ORDER}`;
 
     values.push(Math.min(Math.max(query.limit ?? 24, 1), 100));
     const limit = values.length;
@@ -575,7 +586,13 @@ export class PostgresProfileRepository implements ProfileRepository {
          OR p.canonical_key = 'artconn:' || replace($1, '-', '_')
          OR p.canonical_key = 'rivet:' || replace($1, '-', '_')
          OR p.canonical_key = 'trans:' || replace($1, '-', '_')
-         OR regexp_replace(lower(p.name), '[^a-z0-9]+', '-', 'g') = $1
+         -- Slug identity must match the public slug rule used by browse/card,
+         -- which strips leading/trailing separators. Without the trim, a name
+         -- like "*365 Tomorrows" resolves to "-365-tomorrows" here and the
+         -- profile page 404s even though the directory links to it.
+         OR trim(both '-' from regexp_replace(lower(p.name), '[^a-z0-9]+', '-', 'g')) = $1
+         OR trim(both '-' from regexp_replace(lower(COALESCE(p.name_key, '')), '[^a-z0-9]+', '-', 'g')) = $1
+         OR trim(both '-' from regexp_replace(lower(COALESCE(p.canonical_key, '')), '[^a-z0-9]+', '-', 'g')) = $1
       LIMIT 1;`;
     // Redirects are an optional additive relation. The hosted catalogue may
     // not have that migration yet, so resolve the canonical profile first and

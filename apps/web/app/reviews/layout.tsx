@@ -4,10 +4,11 @@ import { redirect } from 'next/navigation';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { MissaWordmark } from '@/components/missa-wordmark';
 import styles from './reviews.module.css';
+import { loginRedirectForCurrentRequest } from '@/lib/serverAuthRedirect';
 
 export default async function ReviewsLayout({ children }: { children: React.ReactNode }) {
   const session = await getSessionAccountFromToken((await cookies()).get(SESSION_COOKIE)?.value);
-  if (!session) redirect(`/login?next=${encodeURIComponent('/reviews')}`);
+  if (!session) redirect(await loginRedirectForCurrentRequest());
 
   return <div className={styles.shell}>
     <a className={styles.skipLink} href="#reviews-main">Skip to review content</a>

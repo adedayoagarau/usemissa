@@ -88,7 +88,7 @@
 .contentLayout > aside strong,
 .contentLayout > aside small { display: block; }
 .contentLayout > aside strong { font-size: .88rem; font-weight: 650; }
-.contentLayout > aside small { margin-top: .12rem; overflow: hidden; color: var(--muted-foreground); font-size: .72rem; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.contentLayout > aside small { display: -webkit-box; margin-top: .12rem; overflow: hidden; color: var(--muted-foreground); font-size: .72rem; line-height: 1.3; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .contentLayout > aside [data-slot='badge'] { max-width: 6.25rem; overflow: hidden; font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
 .sectionSurface { min-width: 0; }
 .sectionHeading { margin-bottom: 1.75rem; border-bottom: 1px solid var(--border); padding-bottom: 1.4rem; }

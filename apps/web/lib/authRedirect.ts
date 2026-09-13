@@ -26,8 +26,13 @@ export function safeAuthRedirect(value: string | undefined): string {
     }
     const allowed = [
       "/onboarding",
+      "/home",
       "/workspace",
+      "/submissions",
+      "/organization",
+      "/reviewer",
       "/opportunities",
+      "/ask",
       "/tracker",
       "/saved",
       "/calendar",
@@ -37,6 +42,9 @@ export function safeAuthRedirect(value: string | undefined): string {
       "/profile",
       "/import",
       "/inbox",
+      "/insights",
+      "/messages",
+      "/my-submissions",
       "/reviews",
       "/org",
       "/publication-claim",

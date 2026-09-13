@@ -22,7 +22,9 @@ export function pageMetadata(input: { title: string; description: string; path: 
     alt: 'Missa, creative opportunities with their source and limits kept visible.',
   };
   return {
-    title: cleanTitle,
+    // Callers pass a complete, human title (often already naming Missa), so
+    // opt out of the root "%s | Missa" template instead of repeating the brand.
+    title: { absolute: cleanTitle },
     description: cleanDesc,
     alternates: { canonical: url },
     robots: input.noIndex ? { index: false, follow: true } : { index: true, follow: true },
@@ -72,4 +74,3 @@ export function opportunityDescription(item: { title: string; organizationName?:
   const location = item.location ? ` Location: ${cleanTitleOrLabel(item.location)}.` : '';
   return `${title}${organization} is listed as ${article} ${type}. ${deadline} ${fee}${location} Confirm the official source before applying.`.slice(0, 300);
 }
-

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/accordion";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import { categorySearch } from "@/lib/homepage-opportunity-categories";
+import { selectHomepageCalls, type HomepageCall } from "@/lib/homepageCalls";
 import "@/components/design-system/homepage-continuation-tokens.css";
 import "@/components/design-system/homepage-marketing-palette.css";
 import styles from "./homepage-continuation.module.css";
@@ -109,16 +110,22 @@ function ActionLink({
 export function HomepageContinuation({
   signedIn = false,
   layout = "full",
+  initialCalls = null,
+  initialOrganizations = null,
 }: {
   signedIn?: boolean;
   layout?: "full" | "focused";
+  initialCalls?: HomepageCall[] | null;
+  initialOrganizations?: Profile[] | null;
 }) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[] | null>(
-    null,
+    initialCalls?.length ? initialCalls : null,
   );
-  const [profiles, setProfiles] = useState<Profile[] | null>(null);
+  const [profiles, setProfiles] = useState<Profile[] | null>(
+    initialOrganizations?.length ? initialOrganizations : null,
+  );
   const [catalogueError, setCatalogueError] = useState(false);
   const [directoryError, setDirectoryError] = useState(false);
   const [featuredImageFailed, setFeaturedImageFailed] = useState(false);
@@ -156,26 +163,14 @@ export function HomepageContinuation({
         controller.signal.removeEventListener("abort", abort);
       }
     }
+    // The server sends the first paint, but the client still owns the refresh:
+    // a failed or empty response must announce itself and retry, exactly as it
+    // did before the strip was server-rendered.
     const catalogue = json("/api/opportunities?openNow=true&limit=12")
       .then((data) => {
         const items = opportunityBrowseResponseSchema.parse(data).items;
-        const actionable = items.filter(
-          (item) => item.submissionAvailable && item.type !== "other",
-        );
-        const candidates = actionable.length ? actionable : items;
-        const types = new Set<string>();
-        const varied = candidates.filter((item) => {
-          if (types.has(item.type)) return false;
-          types.add(item.type);
-          return true;
-        });
         if (alive) {
-          setOpportunities(
-            [
-              ...varied,
-              ...candidates.filter((item) => !varied.includes(item)),
-            ].slice(0, 3),
-          );
+          setOpportunities(selectHomepageCalls(items, 3));
           setCatalogueError(false);
         }
       })
@@ -527,6 +522,7 @@ export function HomepageFooter() {
           <div className={styles.footerBottom}>
             <span>© {new Date().getFullYear()} Missa</span>
             <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
           </div>
         </div>
         <div className={styles.footerPainting}>

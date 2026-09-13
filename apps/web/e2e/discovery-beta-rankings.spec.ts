@@ -62,7 +62,9 @@ for (const width of [1440, 390]) {
     }
     await page.goto("/");
     await expect(
-      page.getByRole("button", { name: "Explore", exact: true }),
+      page
+        .getByRole("link", { name: "Browse opportunities", exact: true })
+        .first(),
     ).toBeVisible();
     expect(
       await page.evaluate(
@@ -83,24 +85,45 @@ test("production discovery gate admits only intended public routes", () => {
     "/opportunities",
     "/opportunities/a-call",
     "/directory",
+    "/countries",
+    "/countries/nigeria",
     "/discover/poetry",
     "/org/org_example",
+    "/residency/example-residency",
+    "/grant/example-foundation",
+    "/press/example-press",
     "/rankings/magazines",
     "/rankings/residencies",
     "/rankings/compare",
     "/rankings/methodology",
     "/tracker",
     "/calendar",
+    "/ask",
     "/library",
     "/following",
     "/goals",
     "/inbox",
+    "/insights",
+    "/messages",
+    "/my-submissions/submission-1",
+    "/workspace",
+    "/submissions",
+    "/reviews/assignment-1",
+    "/reviewer",
+    "/organization/org-1/overview",
+    "/import",
+    "/home",
+    "/auth/callback",
+    "/forgot-password",
+    "/reset-password",
+    "/unsubscribe",
+    "/welcome",
+    "/for-organizations",
     "/signup",
     "/onboarding",
   ])
     expect(isDiscoveryBetaPath(route)).toBe(true);
   for (const route of [
-    "/workspace",
     "/rankings/plan",
     "/rankings/claim",
     "/opportunities-private",

@@ -64,24 +64,31 @@ test('legacy preview redirects to the canonical catalogue without dropping filte
   expect(response.headers().location).toBe('/opportunities?q=poetry&type=grant');
 });
 
-test('public crawl endpoints expose only the waitlist acquisition surface', async ({ request }) => {
+test('public crawl endpoints expose the entire catalogue', async ({ request }) => {
   const robots = await request.get('/robots.txt');
   expect(robots.status()).toBe(200);
   const robotsBody = await robots.text();
   expect(robotsBody).toContain('/sitemap.xml');
-  expect(robotsBody).toContain('/waitlist');
-  expect(robotsBody).toContain('/privacy');
-  expect(robotsBody).toContain('/llms.txt');
-  expect(robotsBody).not.toContain('/opportunities');
+  expect(robotsBody).toMatch(/User-Agent: \*\nAllow: \/\n/);
+  expect(robotsBody).not.toMatch(/^Disallow: \/$/m);
   expect(robotsBody).not.toContain('/opportunities-preview');
 
   const sitemap = await request.get('/sitemap.xml');
   expect(sitemap.status()).toBe(200);
   const sitemapBody = await sitemap.text();
-  expect(sitemapBody).toContain('/waitlist');
-  expect(sitemapBody).toContain('/privacy');
-  expect(sitemapBody).not.toContain('/opportunities');
+  expect(sitemapBody).toContain('<sitemapindex');
+  expect(sitemapBody).toContain('/sitemap-pages.xml');
+  expect(sitemapBody).toContain('/sitemap-opportunities.xml');
+  expect(sitemapBody).toContain('/sitemap-profiles.xml');
   expect(sitemapBody).not.toContain('/opportunities-preview');
+
+  const pages = await request.get('/sitemap-pages.xml');
+  expect(pages.status()).toBe(200);
+  const pagesBody = await pages.text();
+  expect(pagesBody).toContain('/opportunities');
+  expect(pagesBody).toContain('/directory');
+  expect(pagesBody).toContain('/rankings/magazines');
+  expect(pagesBody).toContain('/terms');
 });
 
 test('public discovery APIs return bounded JSON without leaking an auth failure', async ({ request }) => {

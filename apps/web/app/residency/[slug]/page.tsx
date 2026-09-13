@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const repo = getProfileRepository();
   const profile = repo ? await repo.getById(slug) : null;
-  if (!profile) return { title: "Residency Not Found — Missa" };
+  if (!profile) return { title: "Residency Not Found" };
   return {
     title: `${profile.name} — Artist Residency Program`,
     description: profile.summary || `Explore residency opportunities, open calls, and facilities at ${profile.name}.`,

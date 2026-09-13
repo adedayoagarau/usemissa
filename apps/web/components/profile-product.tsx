@@ -729,7 +729,7 @@ export function ProfileProduct({
           <SectionHeading section={active} />
           {active === "overview" ? (
             <div className={styles.overview}>
-              <Link href="/profile/portfolio" className={buttonVariants({variant:"outline"})}>Manage your public profile and handle</Link>
+              <Link href="/profile/portfolio" className={buttonVariants({variant:"outline"})}>Manage your public profile</Link>
               <Alert>
                 <CircleUserRound aria-hidden="true" />
                 <AlertTitle>{nextStep.title}</AlertTitle>

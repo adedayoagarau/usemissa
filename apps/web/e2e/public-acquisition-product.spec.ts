@@ -131,7 +131,7 @@ test("waitlist includes its FAQ answers in the initial HTML response", async ({
   expect(html).toContain("FAQPage");
 });
 
-test("waitlist exposes its public crawler surface", async ({ request }) => {
+test("public crawler surface exposes the launched product", async ({ request }) => {
   const [robotsResponse, sitemapResponse, llmsResponse] = await Promise.all([
     request.get("/robots.txt"),
     request.get("/sitemap.xml"),
@@ -144,10 +144,10 @@ test("waitlist exposes its public crawler surface", async ({ request }) => {
   const sitemap = await sitemapResponse.text();
   const llms = await llmsResponse.text();
   expect(robots).toContain("User-Agent: OAI-SearchBot");
-  expect(robots).toContain("Allow: /waitlist");
-  expect(robots).toContain("Allow: /llms.txt");
-  expect(robots).toContain("Disallow: /");
-  expect(sitemap).toContain("/waitlist");
+  expect(robots).toContain("Allow: /");
+  expect(robots).not.toMatch(/^Disallow: \/$/m);
+  expect(sitemap).toContain("<sitemapindex");
+  expect(sitemap).toContain("/sitemap-pages.xml");
   expect(llms).toContain(
     "Missa helps creators and organizations find, prepare for, and track creative opportunities.",
   );
@@ -258,7 +258,7 @@ test("public system reflows cleanly at phone width", async ({ page }) => {
       `${path} overflowed`,
     ).toBeTruthy();
     await expect(
-      page.getByRole("button", { name: "Open navigation" }),
+      page.getByRole("button", { name: /Open (?:navigation|menu)/u }),
     ).toBeVisible();
   }
   await page.goto("/");

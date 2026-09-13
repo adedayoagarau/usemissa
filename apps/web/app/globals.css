@@ -383,3 +383,19 @@ body {
   --ranking-up: var(--color-emerald-300);
   --ranking-down: var(--color-red-300);
 }
+
+/* Residency index dimensions, shared by the ranking surface and its score
+   breakdown so both read the same evidence in the same colors. */
+:root {
+  --index-funding: var(--color-emerald-600);
+  --index-community: var(--color-amber-500);
+  --index-facilities: var(--color-sky-600);
+  --index-access: var(--primary);
+  --index-star: var(--color-amber-400);
+}
+.dark {
+  --index-funding: var(--color-emerald-400);
+  --index-community: var(--color-amber-400);
+  --index-facilities: var(--color-sky-400);
+  --index-star: var(--color-amber-400);
+}

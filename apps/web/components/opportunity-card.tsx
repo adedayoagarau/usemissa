@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { opportunityFreshness } from '@/lib/opportunityFreshness';
+import { cleanTitleOrLabel } from '@/lib/textUtils';
 
 function deadlineCopy(deadline: OpportunityBrowseProjection['deadline']): {
   label: string;
@@ -17,7 +18,7 @@ function deadlineCopy(deadline: OpportunityBrowseProjection['deadline']): {
   if (!deadline.date)
     return {
       label: deadline.kind === 'rolling' ? 'Rolling' : deadline.kind === 'until-filled' ? 'Until filled' : 'Date unconfirmed',
-      detail: deadline.raw ?? 'Check the guidelines',
+      detail: deadline.raw ? cleanTitleOrLabel(deadline.raw) : 'Check the guidelines',
       urgent: false,
     };
   const date = new Date(`${deadline.date}T12:00:00`);
@@ -51,7 +52,7 @@ function typeLabel(type: OpportunityBrowseProjection['type']): string {
 
 export function OpportunityCard({ item, userId, selected, selectionHref }: { item: OpportunityBrowseProjection; userId?: string; selected?: boolean; selectionHref: string }) {
   const deadline = deadlineCopy(item.deadline);
-  const sourceName = item.organizationName ?? item.source.name ?? 'Missa source';
+  const sourceName = cleanTitleOrLabel(item.organizationName ?? item.source.name ?? 'Missa source');
   const reasons = item.personal?.tailoringReasons ?? [];
   const practiceLabels = Array.from(new Set([item.discipline, ...item.genres].filter((value): value is string => Boolean(value)))).slice(0, 2);
   // A failed fetch updates checkedAt but must not make a public card look
@@ -66,7 +67,7 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
         <div className="relative flex h-28 w-[4.75rem] shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border bg-[linear-gradient(145deg,#e9f0f2,#b9cdd2)] text-center text-[10px] font-semibold tracking-[0.12em] text-slate-700 uppercase">
           {item.identityAssetUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={item.identityAssetUrl} alt={item.identityAssetAlt ?? sourceName} className="h-full w-full object-cover" />
+            <img src={item.identityAssetUrl} alt={cleanTitleOrLabel(item.identityAssetAlt) || sourceName} className="h-full w-full object-cover" />
           ) : (
             <span className="px-2">{sourceInitials(sourceName)}</span>
           )}
@@ -82,16 +83,20 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
               </Badge>
             )}
           </div>
-          <h2 className="mt-2 line-clamp-2 text-[0.95rem] leading-snug font-semibold text-foreground">{item.title}</h2>
-          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{item.organizationName ?? 'Organization not confirmed'}</p>
+          <h2 className="mt-2 line-clamp-2 text-[0.95rem] leading-snug font-semibold text-foreground">
+            <span title={cleanTitleOrLabel(item.title)}>
+              {cleanTitleOrLabel(item.title)}
+            </span>
+          </h2>
+          <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{cleanTitleOrLabel(item.organizationName) || 'Organization not confirmed'}</p>
           <p className="mt-2 flex flex-wrap gap-x-2 text-[11px] text-muted-foreground">
             {practiceLabels.map((label) => (
-              <span key={label}>{label}</span>
+              <span key={label}>{cleanTitleOrLabel(label)}</span>
             ))}
             {item.location && (
               <span className="inline-flex items-center gap-0.5">
                 <MapPin className="size-3" />
-                {item.location}
+                {cleanTitleOrLabel(item.location)}
               </span>
             )}
           </p>
@@ -113,7 +118,7 @@ export function OpportunityCard({ item, userId, selected, selectionHref }: { ite
           <Tag className="mt-0.5 size-3.5 text-muted-foreground" />
           <div>
             <p className="font-medium text-foreground">{item.fee.status === 'no-fee' ? 'No fee' : item.fee.status === 'paid' ? 'Application fee' : 'Fee unclear'}</p>
-            <p className="line-clamp-1 text-muted-foreground">{item.prize ?? 'Check the source for details'}</p>
+            <p className="line-clamp-1 text-muted-foreground">{item.prize ? cleanTitleOrLabel(item.prize) : 'Check the source for details'}</p>
           </div>
         </div>
       </div>

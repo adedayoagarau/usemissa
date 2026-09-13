@@ -148,8 +148,8 @@ console.log(`\n\n   Harvested ${collectedItems.length} active literary magazine 
 
 // 4. Ensure Chill Subs source in DB
 await pool.query(`
-  INSERT INTO opportunity_sources (id, name, url, kind, created_at, updated_at)
-  VALUES ('src_chill_subs_directory', 'Chill Subs Magazine Directory', 'https://www.chillsubs.com', 'directory', NOW(), NOW())
+  INSERT INTO opportunity_sources (id, name, url, kind, check_interval_hours, created_at, updated_at)
+  VALUES ('src_chill_subs_directory', 'Chill Subs Magazine Directory', 'https://www.chillsubs.com', 'directory', 24, NOW(), NOW())
   ON CONFLICT (id) DO NOTHING;
 `);
 

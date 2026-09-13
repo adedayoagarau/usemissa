@@ -77,6 +77,18 @@ export interface ManuscriptMatchResponse {
   simultaneousPackets: ManuscriptMatchCard[];
 }
 
+/** Match the canonical, human-readable slug emitted by ProfileRepository. */
+export function manuscriptMatchProfileSlug(
+  name: unknown,
+  fallback: unknown,
+): string {
+  const nameSlug = String(name ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return nameSlug.length >= 3 ? nameSlug : String(fallback ?? "");
+}
+
 export class ManuscriptMatchEngine {
   constructor(private pool: Pool | null) {}
 
@@ -124,7 +136,14 @@ export class ManuscriptMatchEngine {
           pap.debut_author_friendly_score,
           pap.is_debut_champion
         FROM gary_profiles gp
-        LEFT JOIN missa_magazine_rankings mr ON mr.profile_id = gp.id AND mr.ranking_year = 2026
+        LEFT JOIN LATERAL (
+          SELECT ranking_rows.*
+          FROM missa_magazine_rankings ranking_rows
+          WHERE ranking_rows.profile_id = gp.id
+            AND ranking_rows.ranking_year = 2026
+          ORDER BY (ranking_rows.genre = 'overall') DESC, ranking_rows.total_score DESC
+          LIMIT 1
+        ) mr ON TRUE
         LEFT JOIN publication_editorial_specs pes ON pes.profile_id = gp.id
         LEFT JOIN publication_compensation_details pcd ON pcd.profile_id = gp.id
         LEFT JOIN publication_telemetry_analytics pta ON pta.profile_id = gp.id
@@ -301,7 +320,7 @@ export class ManuscriptMatchEngine {
       scoredCards.push({
         profileId: row.profile_id,
         name: row.name,
-        slug: row.slug,
+        slug: manuscriptMatchProfileSlug(row.name, row.slug ?? row.profile_id),
         websiteUrl: row.website_url,
         prestigeTier: row.prestige_tier,
         matchScore: normalizedScore,

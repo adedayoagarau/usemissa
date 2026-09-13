@@ -6,6 +6,7 @@ import { FollowButton } from '@/components/follow-button';
 import { Button } from '@/components/ui/button';
 import styles from '@/app/(passport)/opportunities/opportunities.module.css';
 import { opportunityFreshness } from '@/lib/opportunityFreshness';
+import { cleanCrawledNarrative, cleanTitleOrLabel } from '@/lib/textUtils';
 
 function typeLabel(type: OpportunityDetailProjection['type']): string {
   return type === 'open-call' ? 'Open call' : type.charAt(0).toUpperCase() + type.slice(1);
@@ -18,7 +19,7 @@ function deadlineLabel(item: OpportunityDetailProjection['deadline']): string {
       day: 'numeric',
       year: 'numeric',
     }).format(new Date(`${item.date}T12:00:00`));
-  return item.raw ?? (item.kind === 'rolling' ? 'Rolling deadline' : 'Deadline needs confirmation');
+  return item.raw ? cleanTitleOrLabel(item.raw) : (item.kind === 'rolling' ? 'Rolling deadline' : 'Deadline needs confirmation');
 }
 
 function sourceInitials(name: string): string {
@@ -35,8 +36,9 @@ function sourceInitials(name: string): string {
 
 export function OpportunityDetailPanel({ opportunity, userId, closeHref, mobileOpen = false }: { opportunity: OpportunityDetailProjection; userId?: string; closeHref: string; mobileOpen?: boolean }) {
   const reasons = opportunity.personal?.tailoringReasons ?? [];
-  const sourceName = opportunity.organizationName ?? opportunity.source.name;
-  const summary = opportunity.content?.summary ?? opportunity.organizationSummary ?? `A ${typeLabel(opportunity.type).toLowerCase()} from ${opportunity.organizationName ?? 'this organization'}. Review the requirements and source notes before submitting.`;
+  const sourceName = cleanTitleOrLabel(opportunity.organizationName ?? opportunity.source.name);
+  const rawSummary = opportunity.content?.summary ?? opportunity.organizationSummary ?? `A ${typeLabel(opportunity.type).toLowerCase()} from ${opportunity.organizationName ?? 'this organization'}. Review the requirements and source notes before submitting.`;
+  const summary = cleanCrawledNarrative(rawSummary);
   const freshness = opportunityFreshness(opportunity.source.processingSucceededAt);
   const sourceConfirmed = opportunity.source.organizationConfirmed;
   const sourceLabel = sourceConfirmed ? 'Organization confirmed' : 'Organization not confirmed';
@@ -50,14 +52,14 @@ export function OpportunityDetailPanel({ opportunity, userId, closeHref, mobileO
           <div className="relative flex h-28 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-[linear-gradient(145deg,#eaf0f2,#c6d6dc)] text-center text-[10px] font-semibold tracking-[0.14em] text-slate-700 uppercase">
             {opportunity.identityAssetUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={opportunity.identityAssetUrl} alt={opportunity.identityAssetAlt ?? sourceName} className="h-full w-full object-cover" />
+              <img src={opportunity.identityAssetUrl} alt={cleanTitleOrLabel(opportunity.identityAssetAlt) || sourceName} className="h-full w-full object-cover" />
             ) : (
               <span className="px-2">{sourceInitials(sourceName)}</span>
             )}
           </div>
           <div className="min-w-0 pt-1">
-            <h2 className="text-lg leading-snug font-semibold text-foreground">{opportunity.title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{opportunity.organizationName ?? 'Organization not confirmed'}</p>
+            <h2 className="text-lg leading-snug font-semibold text-foreground">{cleanTitleOrLabel(opportunity.title)}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{cleanTitleOrLabel(opportunity.organizationName) || 'Organization not confirmed'}</p>
             <p className="mt-3 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
               <span className={`inline-flex items-center gap-1 ${sourceLabelClass}`}>
                 <SourceIcon className="size-3.5" aria-hidden="true" />
@@ -107,7 +109,7 @@ export function OpportunityDetailPanel({ opportunity, userId, closeHref, mobileO
               opportunity.requiredMaterials.map((material) => (
                 <li key={material.label} className="flex items-start gap-2 text-xs text-foreground">
                   <Check className="mt-0.5 size-3.5 shrink-0 text-green" />
-                  {material.label}
+                  {cleanTitleOrLabel(material.label)}
                 </li>
               ))
             ) : (
@@ -123,7 +125,7 @@ export function OpportunityDetailPanel({ opportunity, userId, closeHref, mobileO
               {reasons.map((reason, index) => (
                 <li key={`${reason.code}-${index}`} className="flex items-start gap-2 text-sm leading-6 text-muted-foreground">
                   <Check className="mt-1 size-4 shrink-0 text-green" />
-                  {reason.label}
+                  {cleanTitleOrLabel(reason.label)}
                 </li>
               ))}
             </ul>

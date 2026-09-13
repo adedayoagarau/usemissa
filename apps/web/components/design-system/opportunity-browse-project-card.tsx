@@ -200,7 +200,9 @@ export function OpportunityBrowseProjectCard({
       </div>
       <div className={styles.body}>
         <h3 className={styles.title}>
-          <Link href={`/opportunities/${item.id}`}>{item.title}</Link>
+          <Link href={`/opportunities/${item.id}`} title={item.title}>
+            {item.title}
+          </Link>
         </h3>
         {item.organizationName && cardImage ? (
           <p className={styles.org}>{item.organizationName}</p>
@@ -226,7 +228,13 @@ export function OpportunityBrowseProjectCard({
         </div>
       </div>
       <div className={styles.footer}>
-        <AddOpportunityToCalendarButton item={item} showLabel />
+        <AddOpportunityToCalendarButton
+          item={item}
+          showLabel
+          signedIn={Boolean(signedIn)}
+          tracked={item.personal?.tracked}
+          returnTo={`/opportunities/${item.id}`}
+        />
         <Link href={`/opportunities/${item.id}`} className={styles.view}>
           View opportunity
         </Link>

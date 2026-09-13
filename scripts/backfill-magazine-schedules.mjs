@@ -60,9 +60,9 @@ async function run() {
     if (!isDryRun) {
       await client.query(`
         INSERT INTO opportunity_sources (
-          id, name, kind, url, authority_kind, health_status, trust_status, trust_score, active, created_at, updated_at
+          id, name, kind, url, authority_kind, health_status, trust_status, trust_score, active, check_interval_hours, created_at, updated_at
         ) VALUES (
-          'src_missa_magazines', 'Missa Magazine Directory', 'directory', 'https://usemissa.com/directory', 'directory', 'healthy', 'curated', 100, true, now(), now()
+          'src_missa_magazines', 'Missa Magazine Directory', 'directory', 'https://usemissa.com/directory', 'directory', 'healthy', 'curated', 100, true, 24, now(), now()
         ) ON CONFLICT (id) DO UPDATE SET updated_at = now();
       `);
     }

@@ -6,9 +6,9 @@ import { getManuscriptMatchEngine } from "@/lib/manuscriptMatchEngine";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Manuscript Strategy & Submission Matcher — Missa",
+  title: "Manuscript Strategy & Submission Matcher",
   description:
-    "Match your short story, essay, or poetry packet against 8,300+ indexed literary magazines with taste DNA comps, debut friendliness ratings, and payout verification.",
+    "Match your short story, essay, or poetry packet against the Missa magazine index with taste DNA comps, debut friendliness ratings, and payout verification.",
 };
 
 export default async function ManuscriptMatchPage() {
@@ -33,7 +33,7 @@ export default async function ManuscriptMatchPage() {
             Where Should I Submit My Piece?
           </h1>
           <p className="mt-2 text-sm text-[var(--text-secondary)] sm:max-w-2xl">
-            Find the right literary magazines for your manuscript. Calculate fit scores across 8,300+ journals based on word count limits, author comps, debut acceptance ratios, and payment rates.
+            Find the right literary magazines for your manuscript. Calculate fit scores across the Missa magazine index based on word count limits, author comps, debut acceptance ratios, and payment rates.
           </p>
         </header>
 

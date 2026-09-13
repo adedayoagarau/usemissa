@@ -55,7 +55,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { country } = await params;
   const normalized = normalizeCountry(country);
-  if (!normalized) return { title: "Country Not Found — Missa" };
+  if (!normalized) return { title: "Country Not Found" };
 
   const isGlobal = normalized.countryCode === "GLOBAL";
   const displayName = isGlobal ? "Worldwide" : normalized.country;
