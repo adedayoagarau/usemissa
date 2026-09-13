@@ -11,6 +11,7 @@ import { getEngine } from './engine';
 import { getWorkspaceEngine } from './workspaceEngine';
 import { ANALYTICS_EVENT_NAMES, SERVER_ANALYTICS_EVENT_NAMES } from './analytics-contract';
 import { getPlatformAdminOverview, type AdminArea, type AdminMaturity, type PlatformAdminOverview } from './platformAdmin';
+import { platformAnalyticsDatabaseUrl } from './platformAnalyticsDatabase';
 
 export interface PlatformAdminContentRow {
   id: string;
@@ -253,18 +254,24 @@ export async function getPlatformAdminContent(): Promise<AdminArea<PlatformAdmin
 
 export async function getPlatformAdminAnalytics(): Promise<AdminArea<PlatformAdminAnalyticsData>> {
   const generatedAt = new Date().toISOString();
+  const analyticsDatabaseUrl = platformAnalyticsDatabaseUrl();
   const [stores, overview, durable] = await Promise.all([
     readRuntimeStores(),
     getPlatformAdminOverview(),
-    process.env.DATABASE_URL
-      ? readPlatformAdminAnalyticsEvents(process.env.DATABASE_URL, {
+    analyticsDatabaseUrl
+      ? readPlatformAdminAnalyticsEvents(analyticsDatabaseUrl, {
           knownEventNames: ANALYTICS_EVENT_NAMES,
           serverEventNames: SERVER_ANALYTICS_EVENT_NAMES,
         })
       : Promise.resolve(emptyDurableAnalytics),
   ]);
   const maturity = stores.maturity === 'unavailable' ? 'unavailable' : stores.maturity === 'partial' ? 'partial' : 'derived';
-  return area(buildAnalyticsData(stores.radar, stores.workspace, overview, durable), 'Compatibility workflow records + platform_analytics_events', maturity, generatedAt, [...stores.warnings, ...overview.warnings, ...durable.warnings, 'Historical analytics are bounded by the records available in the current runtime stores and first-party event ledger.']);
+  const overviewWarnings = analyticsDatabaseUrl && !process.env.DATABASE_URL
+    ? overview.warnings.map((warning) => warning.startsWith('DATABASE_URL is not configured')
+      ? 'Application persistence is demo-scoped in this preview; the durable analytics ledger uses MISSA_ANALYTICS_DATABASE_URL.'
+      : warning)
+    : overview.warnings;
+  return area(buildAnalyticsData(stores.radar, stores.workspace, overview, durable), 'Compatibility workflow records + platform_analytics_events', maturity, generatedAt, [...stores.warnings, ...overviewWarnings, ...durable.warnings, 'Historical analytics are bounded by the records available in the current runtime stores and first-party event ledger.']);
 }
 
 export { buildAnalyticsData, buildContentData };
