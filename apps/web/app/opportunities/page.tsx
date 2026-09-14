@@ -54,10 +54,32 @@ async function loadOpportunityBrowse(
   ]);
 }
 
+type PublicBrowseResult = Awaited<ReturnType<typeof loadOpportunityBrowse>>;
+
+// Coalesce concurrent cold-cache misses into one database pass. Without this,
+// a burst of first-hit requests after the 60s (now 300s) window expires each
+// opens a fresh catalogue query and pile onto the Neon pooler, stalling the
+// whole page for several seconds.
+const inFlightBrowse = new Map<string, Promise<PublicBrowseResult>>();
+
+function loadOpportunityBrowseOnce(
+  query: OpportunityRepositoryQuery,
+  context?: OpportunityRepositoryContext,
+): Promise<PublicBrowseResult> {
+  const key = `${JSON.stringify(query)}|${context?.accountId ?? ""}`;
+  const existing = inFlightBrowse.get(key);
+  if (existing) return existing;
+  const promise = loadOpportunityBrowse(query, context).finally(() => {
+    inFlightBrowse.delete(key);
+  });
+  inFlightBrowse.set(key, promise);
+  return promise;
+}
+
 const getCachedPublicOpportunityBrowse = unstable_cache(
-  async (query: OpportunityRepositoryQuery) => loadOpportunityBrowse(query),
+  async (query: OpportunityRepositoryQuery) => loadOpportunityBrowseOnce(query),
   ["public-opportunity-browse-v1"],
-  { revalidate: 60, tags: ["opportunities"] },
+  { revalidate: 300, tags: ["opportunities"] },
 );
 
 export async function generateMetadata({
@@ -153,7 +175,7 @@ export default async function OpportunitiesPage({
   const urlParams = toUrlSearchParams(rawParams);
   const query = { ...parseOpportunityBrowseQuery(urlParams), limit: 24 };
   const [result, facetCounts] = activeSession?.account.id
-    ? await loadOpportunityBrowse(query, {
+    ? await loadOpportunityBrowseOnce(query, {
         accountId: activeSession.account.id,
       })
     : await getCachedPublicOpportunityBrowse(query);
