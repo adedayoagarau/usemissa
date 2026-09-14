@@ -1,5 +1,9 @@
 import { Pool } from "pg";
-import { normalizeCountry, countryNameFromCode } from "@missa/contracts";
+import {
+  CANONICAL_COUNTRIES,
+  normalizeCountry,
+  countryNameFromCode,
+} from "@missa/contracts";
 import { extractProfileIntelligence } from "./profileIntelligenceExtractor.js";
 import { cleanCrawledText, cleanTitleOrLabel } from "./cleanText.js";
 import type { OrganizationEditorialProfile } from "./editorialWriter.js";
@@ -21,6 +25,7 @@ import {
   type MagazineScheduleState,
   type MagazineScheduleTone,
 } from "@missa/radar-engine";
+import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 
 export type {
   ProfileIssueRecord,
@@ -180,6 +185,11 @@ export interface ProfileBrowsePage {
   total: number;
 }
 
+export interface ProfileCountryCount {
+  countryCode: string;
+  count: number;
+}
+
 export interface ProfileMedia {
   payload: Buffer;
   contentType: string;
@@ -188,6 +198,8 @@ export interface ProfileMedia {
 
 export interface ProfileRepository {
   browse(query: ProfileBrowseQuery): Promise<ProfileBrowsePage>;
+  countryCounts(): Promise<ProfileCountryCount[]>;
+  findByNames(names: readonly string[]): Promise<ProfileCard[]>;
   getById(id: string): Promise<ProfileDetail | null>;
   getForOpportunity(opportunityId: string): Promise<ProfileCard | null>;
   getMediaByProfileId(id: string): Promise<ProfileMedia | null>;
@@ -292,6 +304,138 @@ function card(
 
 export class PostgresProfileRepository implements ProfileRepository {
   constructor(private readonly pool: Pool) {}
+
+  /**
+   * Country navigation needs one aggregate read, not one full catalogue browse
+   * per ISO code. Keep legacy organization geography as a fallback while the
+   * native gary_profiles columns remain the indexed primary source.
+   */
+  async countryCounts(): Promise<ProfileCountryCount[]> {
+    const result = await this.pool.query<{
+      country_code: string | null;
+      country: string | null;
+      org_country: string | null;
+      profile_count: number | string;
+    }>({
+      text: `
+        WITH profiles AS (
+          SELECT p.*,
+            row_number() OVER (
+              PARTITION BY p.profile_kind,
+                CASE
+                  WHEN NULLIF(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '') IS NOT NULL
+                    THEN lower(regexp_replace(regexp_replace(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '^https?://(www\\.)?', ''), '/$', ''))
+                  ELSE 'name:' || lower(regexp_replace(BTRIM(p.name), '[^a-z0-9]+', '-', 'g'))
+                END
+              ORDER BY p.created_at ASC NULLS LAST, p.id ASC
+            ) AS profile_rank
+          FROM gary_profiles p
+        )
+        SELECT
+          to_jsonb(p)->>'country_code' AS country_code,
+          to_jsonb(p)->>'country' AS country,
+          ro.data->>'country' AS org_country,
+          count(*)::int AS profile_count
+        FROM profiles p
+        LEFT JOIN radar_organizations ro ON ro.id = p.id
+        WHERE p.profile_rank = 1
+        GROUP BY
+          to_jsonb(p)->>'country_code',
+          to_jsonb(p)->>'country',
+          ro.data->>'country'`,
+      values: [],
+    });
+
+    const counts = new Map<string, number>();
+    for (const row of result.rows) {
+      const rawCode = nullableText(row.country_code);
+      const rawCountry = nullableText(row.country) ?? nullableText(row.org_country);
+      const normalized = rawCode
+        ? normalizeCountry(rawCode)
+        : rawCountry
+          ? normalizeCountry(rawCountry)
+          : null;
+      const countryCode = normalized?.countryCode ?? rawCode?.toUpperCase();
+      if (
+        !countryCode ||
+        countryCode === "GLOBAL" ||
+        !CANONICAL_COUNTRIES[countryCode]
+      )
+        continue;
+      counts.set(
+        countryCode,
+        (counts.get(countryCode) ?? 0) + Number(row.profile_count),
+      );
+    }
+
+    return [...counts]
+      .map(([countryCode, count]) => ({ countryCode, count }))
+      .sort((a, b) => b.count - a.count || a.countryCode.localeCompare(b.countryCode));
+  }
+
+  /** Resolve a curated set of exact organization names with one database pass. */
+  async findByNames(names: readonly string[]): Promise<ProfileCard[]> {
+    const normalizedNames = [
+      ...new Set(
+        names
+          .map((name) => name.trim().toLocaleLowerCase("en"))
+          .filter(Boolean),
+      ),
+    ];
+    if (normalizedNames.length === 0) return [];
+
+    const result = await this.pool.query({
+      text: `
+        WITH latest AS (
+          SELECT DISTINCT ON (profile_id) * FROM gary_profile_observations
+          ORDER BY profile_id, observed_at DESC
+        ), media AS (
+          SELECT DISTINCT ON (profile_page_id) profile_page_id, COALESCE(final_url, original_url) AS media_url, NULLIF(BTRIM(alt_text), '') AS media_alt
+          FROM gary_profile_media_assets WHERE kind = 'image' AND error IS NULL
+          ORDER BY profile_page_id, created_at
+        ), visuals AS (
+          SELECT DISTINCT ON (profile_id) profile_id, image_url AS visual_url, label AS visual_alt
+          FROM gary_profile_visuals
+          WHERE asset_type = 'logo'
+          ORDER BY profile_id, created_at DESC
+        ), profiles AS (
+          SELECT p.*,
+            row_number() OVER (
+              PARTITION BY p.profile_kind,
+                CASE
+                  WHEN NULLIF(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '') IS NOT NULL
+                    THEN lower(regexp_replace(regexp_replace(BTRIM(COALESCE(p.website_url, p.normalized_website_url)), '^https?://(www\\.)?', ''), '/$', ''))
+                  ELSE 'name:' || lower(regexp_replace(BTRIM(p.name), '[^a-z0-9]+', '-', 'g'))
+                END
+              ORDER BY p.created_at ASC NULLS LAST, p.id ASC
+            ) AS profile_rank
+          FROM gary_profiles p
+          WHERE lower(p.name) = ANY($1::text[])
+        )
+        SELECT p.id, p.profile_kind, p.name, p.website_url,
+          to_jsonb(p)->>'country_code' AS country_code,
+          to_jsonb(p)->>'country' AS country,
+          to_jsonb(p)->>'city' AS city,
+          ro.data->>'country' AS org_country,
+          ro.data->>'city' AS org_city,
+          COALESCE(o.source_summary, ro.data->>'biography') AS source_summary,
+          COALESCE(o.genres_json, '[]'::jsonb) AS genres_json,
+          o.formats_json, o.reading_period, o.source_detail_url,
+          COALESCE(visuals.visual_url, m.media_url) AS media_url,
+          COALESCE(visuals.visual_alt, m.media_alt, p.name) AS media_alt
+        FROM profiles p
+        LEFT JOIN radar_organizations ro ON ro.id = p.id
+        LEFT JOIN latest o ON o.profile_id = p.id
+        LEFT JOIN gary_profile_pages pg ON pg.profile_observation_id = o.id AND pg.role = 'profile'
+        LEFT JOIN media m ON m.profile_page_id = pg.id
+        LEFT JOIN visuals ON visuals.profile_id = p.id
+        WHERE p.profile_rank = 1
+        ORDER BY ${ALPHABETICAL_PROFILE_ORDER}`,
+      values: [normalizedNames],
+    });
+
+    return result.rows.map((row) => card(row));
+  }
 
   async browse(query: ProfileBrowseQuery): Promise<ProfileBrowsePage> {
     const values: unknown[] = [];
@@ -940,5 +1084,7 @@ export class PostgresProfileRepository implements ProfileRepository {
 export function createPostgresProfileRepositoryFromUrl(
   connectionString: string,
 ): ProfileRepository {
-  return new PostgresProfileRepository(new Pool({ connectionString, max: 4 }));
+  return new PostgresProfileRepository(
+    createMissaPostgresPool(connectionString, "catalogue", { max: 4 }),
+  );
 }

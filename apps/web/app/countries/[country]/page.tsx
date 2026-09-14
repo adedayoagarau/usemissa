@@ -6,8 +6,8 @@ import { PublicSiteShell } from "@/components/public-site-shell";
 import { pageMetadata, JsonLd, breadcrumbJsonLd, absoluteUrl } from "@/lib/seo";
 import { normalizeCountry } from "@missa/contracts";
 import { getSemanticUrlForProfile } from "@missa/radar-adapters";
-import { getProfileRepository } from "@/lib/profileRepository";
-import { getOpportunityRepository } from "@/lib/opportunityRepository";
+import { getPublicProfileBrowse } from "@/lib/publicProfileReads";
+import { getPublicOpportunityPage } from "@/lib/publicOpportunityReads";
 import styles from "./country-hub.module.css";
 
 export const dynamic = "force-dynamic";
@@ -85,29 +85,22 @@ export default async function CountryHubPage({
   const displayName = isGlobal ? "Worldwide" : countryName;
   const emoji = isGlobal ? "🌐" : (COUNTRY_EMOJI[countryCode] ?? "🌐");
 
-  const profileRepo = getProfileRepository();
-  const opportunityRepo = getOpportunityRepository();
-
   // Fetch both in parallel
   const [profileResult, opportunityResult] = await Promise.all([
-    profileRepo
-      ? profileRepo.browse({
-          countryCode: isGlobal ? "GLOBAL" : countryCode,
-          limit: 24,
-          offset: 0,
-        })
-      : Promise.resolve({ items: [], total: 0 }),
-    opportunityRepo
-      .browse({
-        // Pass countryCode in the query — repository picks up geographicScope
-        ...(countryCode
-          ? { countryCode, geographicScope: isGlobal ? "global" : undefined }
-          : {}),
-        openNow: true,
-        sort: "soonest-deadline",
-        limit: 24,
-      } as Parameters<typeof opportunityRepo.browse>[0])
-      .catch(() => ({ items: [], total: 0, nextCursor: null })),
+    getPublicProfileBrowse({
+      countryCode: isGlobal ? "GLOBAL" : countryCode,
+      limit: 24,
+      offset: 0,
+    }).catch(() => ({ items: [], total: 0 })),
+    getPublicOpportunityPage({
+      // Pass countryCode in the query — repository picks up geographicScope
+      ...(countryCode
+        ? { countryCode, geographicScope: isGlobal ? "global" : undefined }
+        : {}),
+      openNow: true,
+      sort: "soonest-deadline",
+      limit: 24,
+    }).catch(() => ({ items: [], total: 0, nextCursor: null })),
   ]);
 
   const publishers = profileResult.items;

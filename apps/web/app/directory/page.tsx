@@ -1,4 +1,4 @@
-import { getProfileRepository } from "@/lib/profileRepository";
+import { getPublicProfileBrowse } from "@/lib/publicProfileReads";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { DirectoryBrowseView } from "@/components/directory-browse-view";
 import {
@@ -44,7 +44,6 @@ export default async function DirectoryPage({
   }>;
 }) {
   const params = searchParams ? await searchParams : {};
-  const repository = getProfileRepository();
   const query = params.q?.trim() ?? "";
   const kind = parseKind(params.kind);
   const activeWindow = parseDirectoryScheduleState(params.window?.trim());
@@ -57,15 +56,26 @@ export default async function DirectoryPage({
     requestedPage <= 100000
       ? requestedPage
       : 1;
-  let loadFailed = !repository;
+  let loadFailed = false;
 
-  let result: Awaited<ReturnType<NonNullable<typeof repository>["browse"]>> = {
+  let result: Awaited<ReturnType<typeof getPublicProfileBrowse>> = {
     items: [],
     total: 0,
   };
-  if (repository) {
-    try {
-      result = await repository.browse({
+  try {
+    result = await getPublicProfileBrowse({
+      query: query || undefined,
+      kind,
+      scheduleState: activeWindow,
+      country: activeCountry,
+      sortBy: activeSort,
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    });
+    const lastPage = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
+    if (page > lastPage) {
+      page = lastPage;
+      result = await getPublicProfileBrowse({
         query: query || undefined,
         kind,
         scheduleState: activeWindow,
@@ -74,22 +84,9 @@ export default async function DirectoryPage({
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
       });
-      const lastPage = Math.max(1, Math.ceil(result.total / PAGE_SIZE));
-      if (page > lastPage) {
-        page = lastPage;
-        result = await repository.browse({
-          query: query || undefined,
-          kind,
-          scheduleState: activeWindow,
-          country: activeCountry,
-          sortBy: activeSort,
-          limit: PAGE_SIZE,
-          offset: (page - 1) * PAGE_SIZE,
-        });
-      }
-    } catch {
-      loadFailed = true;
     }
+  } catch {
+    loadFailed = true;
   }
 
   return (

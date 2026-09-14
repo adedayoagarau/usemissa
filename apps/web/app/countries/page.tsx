@@ -5,9 +5,8 @@ import { PublicSiteShell } from "@/components/public-site-shell";
 import { pageMetadata, JsonLd, absoluteUrl } from "@/lib/seo";
 import {
   CANONICAL_COUNTRIES,
-  PRIMARY_PUBLISHING_COUNTRIES,
 } from "@missa/contracts";
-import { getProfileRepository } from "@/lib/profileRepository";
+import { getPublicProfileCountryCounts } from "@/lib/publicProfileReads";
 import styles from "./countries.module.css";
 
 export const dynamic = "force-dynamic";
@@ -109,50 +108,14 @@ interface CountryCount {
   publisherCount: number;
 }
 
-async function getCountryCounts(): Promise<CountryCount[]> {
-  const repo = getProfileRepository();
-  if (!repo) return [];
-
-  // Fetch counts for each known country in parallel batches
-  const primaryCodes = PRIMARY_PUBLISHING_COUNTRIES
-    .filter((c) => c.code && c.code !== "GLOBAL")
-    .map((c) => c.code);
-
-  const allCodes = [
-    ...new Set([
-      ...primaryCodes,
-      ...Object.keys(CANONICAL_COUNTRIES),
-    ]),
-  ];
-
-  const results = await Promise.allSettled(
-    allCodes.map(async (code) => {
-      const result = await repo.browse({
-        countryCode: code,
-        limit: 1,
-        offset: 0,
-      });
-      return { code, count: result.total };
-    }),
-  );
-
-  return results
-    .flatMap((r) =>
-      r.status === "fulfilled" && r.value.count > 0
-        ? [
-            {
-              code: r.value.code,
-              name: CANONICAL_COUNTRIES[r.value.code] ?? r.value.code,
-              publisherCount: r.value.count,
-            },
-          ]
-        : [],
-    )
-    .sort((a, b) => b.publisherCount - a.publisherCount);
-}
-
 export default async function CountriesPage() {
-  const countryCounts = await getCountryCounts();
+  const countryCounts: CountryCount[] = (
+    await getPublicProfileCountryCounts()
+  ).map(({ countryCode, count }) => ({
+    code: countryCode,
+    name: CANONICAL_COUNTRIES[countryCode] ?? countryCode,
+    publisherCount: count,
+  }));
   const countByCode = new Map(countryCounts.map((c) => [c.code, c]));
 
   // Build region sections, filtering to only countries that have data

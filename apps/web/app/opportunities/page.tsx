@@ -2,15 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { X } from "lucide-react";
-import { unstable_cache } from "next/cache";
-import type {
-  OpportunityRepositoryContext,
-  OpportunityRepositoryQuery,
-} from "@missa/radar-engine";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
-import { getOpportunityRepository } from "@/lib/opportunityRepository";
 import { parseOpportunityBrowseQuery } from "@/lib/opportunityQuery";
-import { getOpportunityFacetCounts } from "@/lib/opportunityFacetCounts";
+import {
+  getPersonalizedOpportunityBrowse,
+  getPublicOpportunityBrowse,
+} from "@/lib/publicOpportunityReads";
 import { getEngine } from "@/lib/engine";
 import { countryNameFromCode } from "@missa/contracts";
 import { LOCATION_OPTIONS, taxonomyLabelFor } from "@/lib/opportunityTaxonomy";
@@ -43,44 +40,6 @@ const typeLabels: Record<string, string> = {
   rfp: "RFP / Public Commission",
   job: "Job / Employment",
 };
-
-async function loadOpportunityBrowse(
-  query: OpportunityRepositoryQuery,
-  context?: OpportunityRepositoryContext,
-) {
-  return Promise.all([
-    getOpportunityRepository().browse(query, context),
-    getOpportunityFacetCounts(query, context),
-  ]);
-}
-
-type PublicBrowseResult = Awaited<ReturnType<typeof loadOpportunityBrowse>>;
-
-// Coalesce concurrent cold-cache misses into one database pass. Without this,
-// a burst of first-hit requests after the 60s (now 300s) window expires each
-// opens a fresh catalogue query and pile onto the Neon pooler, stalling the
-// whole page for several seconds.
-const inFlightBrowse = new Map<string, Promise<PublicBrowseResult>>();
-
-function loadOpportunityBrowseOnce(
-  query: OpportunityRepositoryQuery,
-  context?: OpportunityRepositoryContext,
-): Promise<PublicBrowseResult> {
-  const key = `${JSON.stringify(query)}|${context?.accountId ?? ""}`;
-  const existing = inFlightBrowse.get(key);
-  if (existing) return existing;
-  const promise = loadOpportunityBrowse(query, context).finally(() => {
-    inFlightBrowse.delete(key);
-  });
-  inFlightBrowse.set(key, promise);
-  return promise;
-}
-
-const getCachedPublicOpportunityBrowse = unstable_cache(
-  async (query: OpportunityRepositoryQuery) => loadOpportunityBrowseOnce(query),
-  ["public-opportunity-browse-v1"],
-  { revalidate: 300, tags: ["opportunities"] },
-);
 
 export async function generateMetadata({
   searchParams,
@@ -175,10 +134,10 @@ export default async function OpportunitiesPage({
   const urlParams = toUrlSearchParams(rawParams);
   const query = { ...parseOpportunityBrowseQuery(urlParams), limit: 24 };
   const [result, facetCounts] = activeSession?.account.id
-    ? await loadOpportunityBrowseOnce(query, {
+    ? await getPersonalizedOpportunityBrowse(query, {
         accountId: activeSession.account.id,
       })
-    : await getCachedPublicOpportunityBrowse(query);
+    : await getPublicOpportunityBrowse(query);
   const usePreviewFixtures = publicPreview && result.items.length === 0;
   const previewItems = usePreviewFixtures ? previewItemsForQuery(query) : [];
   const displayResult = usePreviewFixtures

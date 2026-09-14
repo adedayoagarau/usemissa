@@ -1,4 +1,4 @@
-import { getProfileRepository } from "@/lib/profileRepository";
+import { getPublicProfilesByNames } from "@/lib/publicProfileReads";
 
 /**
  * Organizations the homepage features. Kept here so the server prefetch and
@@ -24,40 +24,19 @@ export interface HomepageOrganization {
 }
 
 /**
- * Resolve the featured organizations server-side. Each name is an exact
- * match, so one query per name is enough and they run in parallel; the client
- * previously made the same six requests after hydration.
+ * Resolve the featured organizations server-side in one cached database pass.
  */
 export async function getHomepageOrganizations(): Promise<
   HomepageOrganization[]
 > {
-  const repository = getProfileRepository();
-  if (!repository) return [];
-  const settled = await Promise.allSettled(
-    HOMEPAGE_ORGANIZATION_NAMES.map(async (name) => {
-      const result = await repository.browse({
-        query: name,
-        nameOnly: true,
-        limit: 48,
-      });
-      return result.items.find(
-        (profile) => profile.name.toLowerCase() === name.toLowerCase(),
-      );
-    }),
-  );
-  return settled.flatMap((entry) => {
-    if (entry.status !== "fulfilled" || !entry.value) return [];
-    const profile = entry.value;
-    return [
-      {
-        name: profile.name,
-        slug: profile.slug,
-        kind: profile.kind,
-        mediaUrl: profile.mediaUrl,
-        mediaAlt: profile.mediaAlt,
-        city: profile.city,
-        country: profile.country,
-      },
-    ];
-  });
+  const profiles = await getPublicProfilesByNames(HOMEPAGE_ORGANIZATION_NAMES);
+  return profiles.map((profile) => ({
+    name: profile.name,
+    slug: profile.slug,
+    kind: profile.kind,
+    mediaUrl: profile.mediaUrl,
+    mediaAlt: profile.mediaAlt,
+    city: profile.city,
+    country: profile.country,
+  }));
 }

@@ -101,8 +101,11 @@ interface ChangeRow extends QueryResultRow {
   new_value: string | null;
 }
 
-interface RelatedRow extends QueryResultRow {
-  id: string;
+interface OpportunityDetailRow extends OpportunityRow {
+  detail_eligibility: EligibilityRow[] | null;
+  detail_materials: MaterialRow[] | null;
+  detail_changes: ChangeRow[] | null;
+  detail_related_ids: string[] | null;
 }
 
 interface FacetCountsRow extends QueryResultRow {
@@ -1370,43 +1373,88 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       mainWhereIndex >= 0
         ? `${built.text.slice(0, mainWhereIndex)}\n    where ${identityPredicate} and ${built.text.slice(mainWhereIndex + "\n    where ".length)}`
         : built.text;
-    const detailResult = await this.pool.query<OpportunityRow>(
-      detailText.replace(/limit \$\d+/, "limit 1"),
+    const detailProjectionText = detailText.replace(
+      "\n    o.created_at\n",
+      `
+    coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'rule_key', rule.rule_key,
+        'description', rule.description,
+        'value', rule.value,
+        'certainty', rule.certainty
+      ) order by rule.sort_order asc, rule.id asc)
+      from opportunity_eligibility_rules rule
+      where rule.opportunity_id = o.id
+    ), '[]'::jsonb) as detail_eligibility,
+    coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'label', material.label,
+        'description', material.description,
+        'required', material.required,
+        'limit', material."limit"
+      ) order by material.sort_order asc, material.id asc)
+      from opportunity_required_materials material
+      where material.opportunity_id = o.id
+    ), '[]'::jsonb) as detail_materials,
+    coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'kind', recent_change.kind,
+        'created_at', recent_change.created_at,
+        'old_value', recent_change.old_value,
+        'new_value', recent_change.new_value
+      ) order by recent_change.created_at desc)
+      from (
+        select change.kind, change.created_at, change.old_value, change.new_value
+        from opportunity_changes change
+        where change.opportunity_id = o.id
+        order by change.created_at desc
+        limit 32
+      ) recent_change
+    ), '[]'::jsonb) as detail_changes,
+    coalesce((
+      select jsonb_agg(related.id order by related.deadline_date asc nulls last, related.id asc)
+      from (
+        select candidate.id, candidate.deadline_date
+        from opportunities candidate
+        where candidate.organization_id = o.organization_id
+          and candidate.id <> o.id
+          and candidate.publication_state = 'published'
+          and candidate.status in ('opening-soon', 'open', 'closing-soon', 'deadline-extended')
+        order by candidate.deadline_date asc nulls last, candidate.id asc
+        limit 24
+      ) related
+    ), '[]'::jsonb) as detail_related_ids,
+    o.created_at
+`,
+    );
+    const detailResult = await this.pool.query<OpportunityDetailRow>(
+      detailProjectionText.replace(/limit \$\d+/, "limit 1"),
       [...detailValues, opportunityId],
     );
     const row = detailResult.rows[0];
     if (!row) return null;
 
-    const canonicalId = row.id;
-    const [eligibility, materials, changes, related] = await Promise.all([
-      this.pool.query<EligibilityRow>(
-        "select rule_key, description, value, certainty from opportunity_eligibility_rules where opportunity_id = $1 order by sort_order asc",
-        [canonicalId],
-      ),
-      this.pool.query<MaterialRow>(
-        'select label, description, required, "limit" from opportunity_required_materials where opportunity_id = $1 order by sort_order asc',
-        [canonicalId],
-      ),
-      this.pool.query<ChangeRow>(
-        "select kind, created_at, old_value, new_value from opportunity_changes where opportunity_id = $1 order by created_at desc limit 32",
-        [canonicalId],
-      ),
-      this.pool.query<RelatedRow>(
-        "select id from opportunities where organization_id = $1 and id <> $2 and publication_state = 'published' and status in ('opening-soon', 'open', 'closing-soon', 'deadline-extended') order by deadline_date asc nulls last, id asc limit 24",
-        [row.organization_id, canonicalId],
-      ),
-    ]);
+    const eligibility = Array.isArray(row.detail_eligibility)
+      ? row.detail_eligibility
+      : [];
+    const materials = Array.isArray(row.detail_materials)
+      ? row.detail_materials
+      : [];
+    const changes = Array.isArray(row.detail_changes) ? row.detail_changes : [];
+    const relatedOpportunityIds = Array.isArray(row.detail_related_ids)
+      ? row.detail_related_ids
+      : [];
 
     return {
       ...mapRow(row),
       openDate: row.open_date ?? undefined,
-      eligibility: eligibility.rows.map((item) => ({
+      eligibility: eligibility.map((item) => ({
         key: item.rule_key,
         description: item.description,
         value: item.value ?? undefined,
         certainty: item.certainty,
       })),
-      requiredMaterials: materials.rows.map((item) => ({
+      requiredMaterials: materials.map((item) => ({
         label: item.label,
         description: item.description ?? undefined,
         required: item.required,
@@ -1415,13 +1463,13 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
       guidelinesUrl: row.guidelines_url ?? undefined,
       submissionUrl: row.submission_url ?? undefined,
       simultaneousAllowed: row.simultaneous_allowed ?? undefined,
-      changes: changes.rows.map((item) => ({
+      changes: changes.map((item) => ({
         kind: item.kind,
         at: asIso(item.created_at) ?? new Date(0).toISOString(),
         oldValue: item.old_value ?? undefined,
         newValue: item.new_value ?? undefined,
       })),
-      relatedOpportunityIds: related.rows.map((item) => item.id),
+      relatedOpportunityIds,
     };
   }
 }

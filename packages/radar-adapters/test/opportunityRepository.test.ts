@@ -616,8 +616,10 @@ test("detail projection strips nullable call profile fields before contract vali
       windows: [],
     },
   };
+  const detailQueries: string[] = [];
   const pool = {
     async query(text: string) {
+      detailQueries.push(text);
       if (text.includes("where (o.id =")) return { rows: [detailRow] };
       return { rows: [] };
     },
@@ -626,6 +628,11 @@ test("detail projection strips nullable call profile fields before contract vali
   const result = await repository.getById("opp_0001");
 
   assert.ok(result);
+  assert.equal(detailQueries.length, 1);
+  assert.match(detailQueries[0], /as detail_eligibility/);
+  assert.match(detailQueries[0], /as detail_materials/);
+  assert.match(detailQueries[0], /as detail_changes/);
+  assert.match(detailQueries[0], /as detail_related_ids/);
   assert.equal(result.deadline.kind, "exact");
   assert.doesNotThrow(() =>
     opportunityDetailResponseSchema.parse({ ...result, createdAt: undefined }),

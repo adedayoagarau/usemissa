@@ -170,6 +170,7 @@ export {
   type ProfileBrowsePage,
   type ProfileBrowseQuery,
   type ProfileCard,
+  type ProfileCountryCount,
   type ProfileDetail,
   type ProfileKind,
   type ProfileMedia,
@@ -620,5 +621,4 @@ export {
   type ManuscriptMatchResponse,
   type MatchCategory,
 } from "./ranking/manuscriptMatchEngine.js";
-
 

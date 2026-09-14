@@ -7,7 +7,7 @@ import {
 import { HomepageHeroPreview } from "@/components/design-system/homepage-hero-preview";
 import { HomepageNextOpening } from "@/components/missa/homepage-next-opening";
 import { pageMetadata } from "@/lib/seo";
-import { getOpportunityRepository } from "@/lib/opportunityRepository";
+import { getPublicOpportunityPage } from "@/lib/publicOpportunityReads";
 import { selectHomepageCalls, type HomepageCall } from "@/lib/homepageCalls";
 import {
   getHomepageOrganizations,
@@ -31,7 +31,7 @@ export const dynamic = "force-dynamic";
  */
 async function currentCalls(): Promise<HomepageCall[] | null> {
   try {
-    const result = await getOpportunityRepository().browse({
+    const result = await getPublicOpportunityPage({
       openNow: true,
       sort: "soonest-deadline",
       limit: 12,

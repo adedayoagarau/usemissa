@@ -1,5 +1,5 @@
 import type { ProfileKind } from "@missa/radar-adapters";
-import { getProfileRepository } from "@/lib/profileRepository";
+import { getPublicProfileBrowse } from "@/lib/publicProfileReads";
 import { PublicSiteShell } from "./public-site-shell";
 import { DirectoryBrowseView } from "./directory-browse-view";
 import {
@@ -37,38 +37,35 @@ export async function DirectoryCategoryPage({
     Number.isSafeInteger(requested) && requested > 0 && requested <= 100000
       ? requested
       : 1;
-  const repository = getProfileRepository();
-  let loadFailed = !repository;
-  let result: Awaited<ReturnType<NonNullable<typeof repository>["browse"]>> = {
+  let loadFailed = false;
+  let result: Awaited<ReturnType<typeof getPublicProfileBrowse>> = {
     items: [],
     total: 0,
   };
-  if (repository) {
-    try {
-      result = await repository.browse({
+  try {
+    result = await getPublicProfileBrowse({
+      query: query || undefined,
+      kind,
+      scheduleState: activeWindow,
+      country: activeCountry,
+      sortBy: activeSort,
+      limit: 48,
+      offset: (page - 1) * 48,
+    });
+    if (page > 1 && !result.items.length) {
+      page = 1;
+      result = await getPublicProfileBrowse({
         query: query || undefined,
         kind,
         scheduleState: activeWindow,
         country: activeCountry,
         sortBy: activeSort,
         limit: 48,
-        offset: (page - 1) * 48,
+        offset: 0,
       });
-      if (page > 1 && !result.items.length) {
-        page = 1;
-        result = await repository.browse({
-          query: query || undefined,
-          kind,
-          scheduleState: activeWindow,
-          country: activeCountry,
-          sortBy: activeSort,
-          limit: 48,
-          offset: 0,
-        });
-      }
-    } catch {
-      loadFailed = true;
     }
+  } catch {
+    loadFailed = true;
   }
   return (
     <PublicSiteShell
