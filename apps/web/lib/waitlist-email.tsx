@@ -24,7 +24,7 @@ export function buildWaitlistConfirmationEmail(): WaitlistConfirmationEmailConte
   const logoUrl = absoluteUrl('/brand/missa-wordmark-240.svg');
   return {
     subject: WAITLIST_CONFIRMATION_SUBJECT,
-    html: `<!DOCTYPE html>${renderWaitlistConfirmationEmail({ logoUrl })}`,
+    html: renderWaitlistConfirmationEmail({ logoUrl }),
     text: waitlistConfirmationText(),
   };
 }

@@ -19,9 +19,9 @@ test('renderDeadlineReminderEmail handles single opportunity countdown', () => {
   });
 
   assert.ok(rendered.subject.includes('Spring Poetry Prize'));
-  assert.ok(rendered.subject.includes('2 days left'));
+  assert.ok(rendered.subject.includes('closes in 2 days'));
   assert.ok(rendered.html.includes('The Kenyon Review'));
-  assert.ok(rendered.html.includes('Closes in 2 days'));
+  assert.ok(rendered.html.includes('2 days left'));
   assert.ok(rendered.html.includes('/tracker'));
   assert.ok(rendered.text.includes('Spring Poetry Prize'));
 });
@@ -48,7 +48,7 @@ test('renderDeadlineReminderEmail handles multiple opportunity countdowns', () =
     ],
   });
 
-  assert.ok(rendered.subject.includes('2 submission deadlines approaching'));
+  assert.ok(rendered.subject.includes('2 of your calls close soon'));
   assert.ok(rendered.html.includes('Spring Poetry Prize'));
   assert.ok(rendered.html.includes('Nonfiction Fellowship'));
 });

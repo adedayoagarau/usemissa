@@ -1,4 +1,4 @@
-import { renderBaseEmailLayout, escapeHtml } from './components/base-layout';
+import { renderBaseEmailLayout, dataValue, escapeHtml } from './components/base-layout';
 import { siteUrl } from '../lib/siteUrl';
 import { sendMail, type SendMailReport } from '../lib/mail-service';
 
@@ -16,23 +16,23 @@ export function renderPasswordResetEmail(props: PasswordResetEmailProps): { subj
   const resetUrl = new URL(`/reset-password?token=${encodeURIComponent(props.resetToken)}`, `${siteUrl()}/`).toString();
 
   const bodyHtml = `
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">${greeting}</p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">
-      We received a request to reset the password for your Missa account (<strong>${escapeHtml(props.email)}</strong>).
+    <p style="margin:0 0 18px;">${greeting}</p>
+    <p style="margin:0 0 18px;">
+      Someone asked to reset the password for <strong>${escapeHtml(props.email)}</strong>. The link below works once, and expires ${dataValue('1 hour')} from now.
     </p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">
-      This password reset link will expire in <strong>1 hour</strong>. If you did not request a password reset, you can safely ignore this email — your password will remain unchanged.
+    <p style="margin:0;">
+      If that was not you, ignore this email — your password stays as it is.
     </p>
   `;
 
   const noteHtml = `
-    <strong>Security reminder:</strong> Missa will never ask for your password or verification codes over email or chat.
+    <strong>Missa will never ask for your password</strong> or a verification code, by email or in chat.
   `;
 
   const html = renderBaseEmailLayout({
     subject,
+    register: 'operational',
     preheader: 'Reset your password for your Missa account.',
-    eyebrow: 'Account security',
     title: 'Reset your password',
     bodyHtml,
     noteHtml,

@@ -91,7 +91,7 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       .digest('hex')
       .slice(0, 24)}`;
 
-    const { subject, html } = renderAlertDigestEmail({
+    const { subject, html, text } = renderAlertDigestEmail({
       alerts: eligibleAlerts,
       accountId: account.id,
       email: account.email,
@@ -105,8 +105,9 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       idempotencyKey: effectKey,
       subject,
       html,
+      text,
       templateKey: 'alert-digest',
-      templateVersion: 'alert-digest.v2',
+      templateVersion: 'alert-digest.v3',
       metadata: { alertCount: eligibleAlerts.length },
       connectionString,
       retryFailed: true,

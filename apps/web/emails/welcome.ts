@@ -1,4 +1,4 @@
-import { renderBaseEmailLayout, escapeHtml } from './components/base-layout';
+import { renderBaseEmailLayout, renderRecordRow, escapeHtml } from './components/base-layout';
 import { buildUnsubscribeUrl } from '../lib/email-tokens';
 import { siteUrl } from '../lib/siteUrl';
 import { sendMail, type SendMailReport } from '../lib/mail-service';
@@ -14,36 +14,38 @@ export function renderWelcomeEmail(props: WelcomeEmailProps): { subject: string;
   const name = props.displayName?.trim() || '';
   const greeting = name ? `Hello ${escapeHtml(name)},` : 'Hello,';
 
+  const steps: Array<{ title: string; detail: string }> = [
+    { title: 'Look through the calls', detail: 'Magazines, grants, and residencies. We show you the entry fee and the word limit up front, and we link to the original page so you can check it yourself.' },
+    { title: 'Save the ones you want', detail: 'Anything you save goes to your Tracker, along with the deadline and where your draft stands.' },
+    { title: 'Tell us when to write', detail: 'Pick how often you hear from us, and how early you want the warning before a deadline.' },
+  ];
+
+  const stepsHtml = steps
+    .map((step, index) => renderRecordRow({ title: step.title, meta: escapeHtml(step.detail), last: index === steps.length - 1 }))
+    .join('');
+
   const bodyHtml = `
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">${greeting}</p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">
-      Welcome to Missa — a platform designed to help you discover creative opportunities, track submissions with confidence, and keep every deadline in view.
+    <p style="margin:0 0 18px;">${greeting}</p>
+    <p style="margin:0 0 26px;">
+      Here is how to get started.
     </p>
-    <div style="margin:20px 0;padding:16px 20px;background-color:#edf3f0;border-left:3px solid #285649;border-radius:6px;">
-      <div style="font-weight:600;font-size:14px;color:#1d4037;margin-bottom:6px;">Here is how to get started:</div>
-      <ul style="margin:0;padding-left:20px;font-size:14px;line-height:22px;color:#285649;">
-        <li style="margin-bottom:6px;"><strong>Browse calls:</strong> Explore vetted literary magazines, grants, and residencies.</li>
-        <li style="margin-bottom:6px;"><strong>Save to Tracker:</strong> Keep drafts and deadlines organized with clear status stages.</li>
-        <li><strong>Set preferences:</strong> Choose when and how you want deadline alerts and digest updates delivered.</li>
-      </ul>
-    </div>
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">
-      Whenever you are ready, browse the open calls or start by saving your first opportunity.
-    </p>
+    ${stepsHtml}
   `;
 
   const html = renderBaseEmailLayout({
     subject,
-    preheader: 'Discover creative opportunities with source and limits kept visible.',
-    eyebrow: 'Getting started',
-    title: 'Your creative calls, in view.',
+    register: 'expressive',
+    preheader: 'Find the calls worth your work, and keep track of them.',
+    title: 'Now you can stop hunting.',
+    titleHighlight: 'stop hunting',
+    lede: 'Open calls are scattered across a few hundred websites, and most of them close quietly. Missa keeps them in one place and tells you before the deadline, not after.',
     bodyHtml,
     callToAction: {
-      label: 'Explore Opportunities',
+      label: 'See what’s open',
       url: new URL('/opportunities', `${siteUrl()}/`).toString(),
     },
     secondaryAction: {
-      label: 'Visit your profile',
+      label: 'Choose how often we write',
       url: new URL('/profile', `${siteUrl()}/`).toString(),
     },
     unsubscribeUrl: buildUnsubscribeUrl({
@@ -53,7 +55,20 @@ export function renderWelcomeEmail(props: WelcomeEmailProps): { subject: string;
     }),
   });
 
-  const text = `Welcome to Missa\n\n${name ? `Hello ${name},\n\n` : ''}Welcome to Missa — a platform designed to help you discover creative opportunities, track submissions with confidence, and keep every deadline in view.\n\nHere is how to get started:\n• Browse calls: Explore vetted literary magazines, grants, and residencies.\n• Save to Tracker: Keep drafts and deadlines organized with clear status stages.\n• Set preferences: Choose when and how you want deadline alerts and digest updates delivered.\n\nExplore Opportunities: ${siteUrl()}/opportunities\nManage preferences: ${siteUrl()}/profile`;
+  const text = [
+    'Now you can stop hunting.',
+    '',
+    name ? `Hello ${name},` : 'Hello,',
+    '',
+    'Open calls are scattered across a few hundred websites, and most of them close quietly. Missa keeps them in one place and tells you before the deadline, not after.',
+    '',
+    'Here is how to get started.',
+    '',
+    ...steps.map((step) => `- ${step.title}: ${step.detail}`),
+    '',
+    `See what's open: ${siteUrl()}/opportunities`,
+    `Choose how often we write: ${siteUrl()}/profile`,
+  ].join('\n');
 
   return { subject, html, text };
 }
