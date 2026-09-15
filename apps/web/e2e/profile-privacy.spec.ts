@@ -3,7 +3,9 @@ import { expect, test, type Page } from '@playwright/test';
 async function createAccount(page: Page) {
   const email = `privacy-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
   const password = 'correct-horse-battery';
-  const signup = await page.request.post('/api/auth/signup', { data: { email, password, displayName: 'Privacy Test User' } });
+  const signup = await page.request.post('/api/auth/signup', {
+    data: { email, password, givenName: 'Privacy', familyName: 'Test User' },
+  });
   expect(signup.status()).toBe(201);
   const sessionCookie = signup.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
   expect(sessionCookie).toBeTruthy();

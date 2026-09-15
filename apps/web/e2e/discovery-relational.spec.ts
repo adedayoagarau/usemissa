@@ -4,7 +4,12 @@ import AxeBuilder from '@axe-core/playwright';
 async function createDiscoveryAccount(page: Page) {
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const signup = await page.request.post('/api/auth/signup', {
-    data: { email: `discovery-${suffix}@example.com`, password: 'correct-horse-battery', displayName: 'Discovery User' },
+    data: {
+      email: `discovery-${suffix}@example.com`,
+      password: 'correct-horse-battery',
+      givenName: 'Discovery',
+      familyName: 'User',
+    },
   });
   expect(signup.status()).toBe(201);
   const sessionCookie = signup.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
