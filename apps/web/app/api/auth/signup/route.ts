@@ -15,6 +15,7 @@ import {
   verifyFirstSaveIntent,
 } from "@/lib/firstSaveIntent";
 import { deliverWelcomeEmail } from "@/emails/welcome";
+import { isNeonAuthConfigured } from "@/lib/neon-auth/server";
 
 function cookieValue(request: Request): string | undefined {
   const encoded = request.headers
@@ -32,6 +33,19 @@ function cookieValue(request: Request): string | undefined {
 }
 
 export async function POST(request: Request) {
+  // Production password signup belongs to Neon Auth so email ownership cannot
+  // be bypassed by posting directly to the compatibility endpoint. Local and
+  // test environments without Neon keep the existing deterministic flow.
+  if (isNeonAuthConfigured()) {
+    return NextResponse.json(
+      {
+        error: "Verify your email through the Missa signup form.",
+        code: "email_verification_required",
+      },
+      { status: 409, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();
