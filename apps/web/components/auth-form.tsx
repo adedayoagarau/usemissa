@@ -8,13 +8,27 @@ import {
   Eye,
   EyeOff,
   LockKeyhole,
+  MailCheck,
   RefreshCw,
 } from "lucide-react";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { toast } from "sonner";
 import type {
   FirstSaveContext,
@@ -25,6 +39,10 @@ import {
   isNeonAuthClientConfigured,
   neonAuthClient,
 } from "@/lib/neon-auth/client";
+import {
+  isEmailVerificationRequired,
+  isInvalidEmailVerificationCode,
+} from "@/lib/neon-auth/emailVerification";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import { SocialAuthButton } from "@/components/missa/social-auth-button";
 import styles from "@/app/auth.module.css";
@@ -36,6 +54,12 @@ import {
 } from "@/components/ui/accordion";
 
 type AuthMode = "login" | "signup";
+
+type PendingEmailVerification = {
+  email: string;
+  waitlistEmail?: string;
+  codeSent: boolean;
+};
 
 export function AuthForm({
   initialMode = "login",
@@ -58,6 +82,13 @@ export function AuthForm({
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accountExists, setAccountExists] = useState(false);
+  const [pendingVerification, setPendingVerification] =
+    useState<PendingEmailVerification | null>(null);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationError, setVerificationError] = useState<string | null>(
+    null,
+  );
+  const [isResending, setIsResending] = useState(false);
   const [fieldError, setFieldError] = useState<{
     field: "displayName" | "email" | "password" | "confirmation";
     message: string;
@@ -70,6 +101,7 @@ export function AuthForm({
   const [resumeState, setResumeState] =
     useState<FirstSaveResumeResponse | null>(null);
   const resolutionRef = useRef<HTMLElement>(null);
+  const verificationCodeRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<AuthMode>(initialMode);
 
   const resumeFirstSave = useCallback(
@@ -160,12 +192,216 @@ export function AuthForm({
     return () => window.clearTimeout(timer);
   }, [authenticated, firstSaveContext, resumeFirstSave]);
 
+  useEffect(() => {
+    if (!pendingVerification || isPending || isResending) return;
+    const timer = window.setTimeout(
+      () => verificationCodeRef.current?.focus(),
+      0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [isPending, isResending, pendingVerification]);
+
   function showFieldError(
     field: "displayName" | "email" | "password" | "confirmation",
     message: string,
   ) {
     setFieldError({ field, message });
     queueMicrotask(() => document.getElementById(field)?.focus());
+  }
+
+  async function finishAuthentication({
+    redeemInvite,
+    waitlistEmail,
+  }: {
+    redeemInvite: boolean;
+    waitlistEmail?: string;
+  }) {
+    if (redeemInvite && (inviteToken || waitlistEmail)) {
+      try {
+        const redemption = await fetch("/api/waitlist/invite/redeem", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            token: inviteToken,
+            waitlistEmail: waitlistEmail || undefined,
+          }),
+        });
+        const redemptionBody = (await redemption
+          .json()
+          .catch(() => ({}))) as {
+          redeemed?: boolean;
+          message?: string;
+        };
+        if (redemptionBody.redeemed) {
+          toast.success(
+            "Your waitlist priority is connected to this account.",
+          );
+        } else if (redemptionBody.message) {
+          toast.message(redemptionBody.message);
+        }
+      } catch {
+        toast.message(
+          "Your account is ready. Waitlist status could not be checked now.",
+        );
+      }
+    }
+
+    setPendingVerification(null);
+    setVerificationCode("");
+    setVerificationError(null);
+    setSessionReady(true);
+    if (firstSaveContext) {
+      setIsResuming(true);
+      // Let the authenticated server render become the single resume owner.
+      // Calling resume here as well races with Next's cookie-driven refresh
+      // and can turn a newly created receipt into misleading "already saved"
+      // copy even though Tracker itself remains deduplicated.
+      router.refresh();
+      return;
+    }
+    // Cross the authentication boundary with a document navigation so the
+    // next server render always receives the newly issued session cookie.
+    window.location.assign(redirectTo);
+  }
+
+  async function sendVerificationCode(
+    email: string,
+    waitlistEmail?: string,
+  ) {
+    if (!neonAuthClient) {
+      setError("Email verification is not available in this environment.");
+      return false;
+    }
+
+    setPendingVerification({
+      email,
+      waitlistEmail: waitlistEmail || undefined,
+      codeSent: false,
+    });
+    setVerificationCode("");
+    setVerificationError(null);
+    try {
+      const result = await neonAuthClient.emailOtp.sendVerificationOtp({
+        email,
+        type: "email-verification",
+      });
+      if (!result.error) {
+        setPendingVerification((current) =>
+          current?.email === email ? { ...current, codeSent: true } : current,
+        );
+        return true;
+      }
+      setVerificationError(
+        /too many|rate limit/iu.test(result.error.message ?? "")
+          ? "Too many codes were requested. Wait a moment, then choose Resend code."
+          : "We could not send the code. Choose Resend code to try again.",
+      );
+      return false;
+    } catch (problem) {
+      const message =
+        problem && typeof problem === "object" && "message" in problem
+          ? String(problem.message)
+          : "";
+      setVerificationError(
+        /too many|rate limit/iu.test(message)
+          ? "Too many codes were requested. Wait a moment, then choose Resend code."
+          : "We could not send the code. Choose Resend code to try again.",
+      );
+      return false;
+    }
+  }
+
+  async function verifyEmailCode() {
+    if (!neonAuthClient || !pendingVerification) return;
+    if (verificationCode.length !== 6) {
+      setVerificationError("Enter the six-digit code from your email.");
+      return;
+    }
+
+    setIsPending(true);
+    setVerificationError(null);
+    try {
+      const result = await neonAuthClient.emailOtp.verifyEmail({
+        email: pendingVerification.email,
+        otp: verificationCode,
+      });
+      if (result.error || result.data?.user?.emailVerified !== true) {
+        setVerificationError(
+          "That code is incorrect or expired. Check the email and try again.",
+        );
+        return;
+      }
+
+      const response = await fetch("/api/auth/missa-session", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mode: "signup" }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        setVerificationError(
+          body.error ??
+            "Your email is verified, but we could not open your Missa account. Try again.",
+        );
+        return;
+      }
+
+      await finishAuthentication({
+        redeemInvite: true,
+        waitlistEmail: pendingVerification.waitlistEmail,
+      });
+    } catch (problem) {
+      setVerificationError(
+        isInvalidEmailVerificationCode(
+          problem && typeof problem === "object"
+            ? (problem as { code?: string; message?: string })
+            : null,
+        )
+          ? "That code is incorrect or expired. Check the email and try again."
+          : "We could not verify that code. Check your connection and try again.",
+      );
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  async function resendVerificationCode() {
+    if (!neonAuthClient || !pendingVerification || isResending) return;
+    setIsResending(true);
+    setVerificationError(null);
+    setVerificationCode("");
+    try {
+      const result = await neonAuthClient.emailOtp.sendVerificationOtp({
+        email: pendingVerification.email,
+        type: "email-verification",
+      });
+      if (result.error) {
+        setVerificationError(
+          /too many|rate limit/iu.test(result.error.message ?? "")
+            ? "Too many codes were requested. Wait a moment, then try again."
+            : "We could not resend the code. Try again.",
+        );
+        return;
+      }
+      setPendingVerification((current) =>
+        current ? { ...current, codeSent: true } : current,
+      );
+      toast.success("A new verification code is on its way.");
+    } catch {
+      setVerificationError("We could not resend the code. Try again.");
+    } finally {
+      setIsResending(false);
+    }
+  }
+
+  function useAnotherEmail() {
+    setPendingVerification(null);
+    setVerificationCode("");
+    setVerificationError(null);
+    void neonAuthClient?.signOut().catch(() => undefined);
+    window.setTimeout(() => document.getElementById("email")?.focus(), 0);
   }
 
   async function submitForm(form: HTMLFormElement) {
@@ -195,77 +431,9 @@ export function AuthForm({
     try {
       const usingNeonAuth =
         isNeonAuthClientConfigured && neonAuthClient !== null;
-      let response: Response;
-      if (usingNeonAuth && neonAuthClient) {
-        try {
-          const result =
-            mode === "login"
-              ? await neonAuthClient.signIn.email({ email, password })
-              : await neonAuthClient.signUp.email({
-                  email,
-                  password,
-                  name: displayName || "Missa creator",
-                });
-          if (result.error) {
-            if (
-              mode === "signup" &&
-              /already|exists|registered/iu.test(result.error.message ?? "")
-            ) {
-              setAccountExists(true);
-              setError("An account already uses this email. Log in instead.");
-              return;
-            }
-            // Neon Auth can reject local origins before it reaches the
-            // provider (currently a 403 from the local integration). Keep
-            // password auth usable while that origin configuration is fixed;
-            // social sign-in remains Neon-only.
-            // The compatibility endpoint is also the recovery path for a
-            // rejected Neon request. This covers local origin restrictions
-            // and keeps existing password accounts usable during migration.
-            response = await fetch(`/api/auth/${mode}`, {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify(
-                mode === "login"
-                  ? { email, password }
-                  : {
-                      email,
-                      password,
-                      displayName,
-                      inviteToken,
-                      waitlistEmail: waitlistEmail || undefined,
-                    },
-              ),
-            });
-          } else {
-            response = await fetch("/api/auth/missa-session", {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ mode }),
-            });
-          }
-        } catch {
-          // A Neon Auth origin rejection can surface as a thrown client
-          // error instead of a result error. Use the same compatibility
-          // path so email auth still completes while Neon is configured.
-          response = await fetch(`/api/auth/${mode}`, {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(
-              mode === "login"
-                ? { email, password }
-                : {
-                    email,
-                    password,
-                    displayName,
-                    inviteToken,
-                    waitlistEmail: waitlistEmail || undefined,
-                  },
-            ),
-          });
-        }
-      } else {
-        response = await fetch(`/api/auth/${mode}`, {
+
+      const missaPasswordRequest = () =>
+        fetch(`/api/auth/${mode}`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(
@@ -280,71 +448,115 @@ export function AuthForm({
                 },
           ),
         });
+
+      const failed = (status: number, error: string, code?: string) =>
+        new Response(JSON.stringify({ error, ...(code ? { code } : {}) }), {
+          status,
+          headers: { "content-type": "application/json" },
+        });
+
+      let response: Response;
+      let neonRejected = false;
+      if (usingNeonAuth && neonAuthClient) {
+        // Neon Auth is the account authority. Google already resolves through
+        // /auth/callback; email+password resolves here and then links the Neon
+        // identity to a Missa account through the session bridge.
+        try {
+          const result =
+            mode === "login"
+              ? await neonAuthClient.signIn.email({ email, password })
+              : await neonAuthClient.signUp.email({
+                  email,
+                  password,
+                  name: displayName || "Missa creator",
+                });
+          if (result.error) {
+            if (
+              mode === "login" &&
+              isEmailVerificationRequired(result.error)
+            ) {
+              await sendVerificationCode(email);
+              return;
+            }
+            neonRejected = true;
+            response = /already|exists|registered/iu.test(
+              result.error.message ?? "",
+            )
+              ? failed(
+                  409,
+                  "An account already uses this email. Log in instead.",
+                  "account_exists",
+                )
+              : failed(400, result.error.message ?? "");
+          } else if (mode === "signup") {
+            // Neon owns the pending identity. Missa does not provision product
+            // data or issue its session until the emailed code is accepted.
+            await sendVerificationCode(email, waitlistEmail);
+            return;
+          } else {
+            response = await fetch("/api/auth/missa-session", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ mode }),
+            });
+          }
+        } catch {
+          neonRejected = true;
+          response = failed(
+            503,
+            "We could not reach the authentication provider. Try again.",
+          );
+        }
+        // Availability bridge. It fires only when Neon itself refused the
+        // request, which also covers passwords that predate Neon, and never
+        // after Neon accepted the credentials, so an account cannot be
+        // duplicated. Neon must trust this deployment origin before it will
+        // accept credentials. New signup never crosses this compatibility
+        // bridge because doing so would bypass email ownership verification.
+        if (!response.ok && neonRejected && mode === "login") {
+          response = await missaPasswordRequest();
+        }
+        if (!response.ok && !neonRejected) {
+          const problem = (await response.clone().json().catch(() => ({}))) as {
+            code?: string;
+          };
+          if (problem.code === "email_verification_required") {
+            await sendVerificationCode(email);
+            return;
+          }
+        }
+      } else {
+        response = await missaPasswordRequest();
       }
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as {
           error?: string;
           code?: string;
         };
-        setAccountExists(body.code === "account_exists");
+        // A 409 on sign-up means this email already has a Missa account: either
+        // in Neon, or as a pre-Neon account the bridge will not silently adopt.
+        const alreadyRegistered = body.code === "account_exists";
+        setAccountExists(alreadyRegistered);
         setError(
-          mode === "login" &&
-            /^Invalid email or password\.?$/u.test(body.error ?? "")
-            ? "Invalid email or password"
-            : (body.error ??
+          alreadyRegistered
+            ? "An account already uses this email. Log in instead."
+            : mode === "login" &&
+                /^Invalid email or password\.?$/u.test(body.error ?? "")
+              ? "Invalid email or password"
+              : (body.error ??
                 (mode === "login"
                   ? "We could not log you in. Check your details and try again."
                   : "We could not create your account. Check your details and try again.")),
         );
         return;
       }
-      // The legacy signup endpoint redeems its invite as part of account
-      // creation. Neon Auth needs the authenticated follow-up request because
-      // its account creation happens outside Missa's compatibility engine.
-      if (
-        (usingNeonAuth || mode === "login") &&
-        (inviteToken || waitlistEmail)
-      ) {
-        try {
-          const redemption = await fetch("/api/waitlist/invite/redeem", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              token: inviteToken,
-              waitlistEmail: waitlistEmail || undefined,
-            }),
-          });
-          const redemptionBody = (await redemption
-            .json()
-            .catch(() => ({}))) as {
-            redeemed?: boolean;
-            message?: string;
-          };
-          if (redemptionBody.redeemed)
-            toast.success(
-              "Your waitlist priority is connected to this account.",
-            );
-          else if (redemptionBody.message)
-            toast.message(redemptionBody.message);
-        } catch {
-          toast.message(
-            "Your account is ready. Waitlist status could not be checked now.",
-          );
-        }
-      }
-      setSessionReady(true);
-      if (firstSaveContext) {
-        setIsResuming(true);
-        // Let the authenticated server render become the single resume owner.
-        // Calling resume here as well races with Next's cookie-driven refresh
-        // and can turn a newly created receipt into misleading "already saved"
-        // copy even though Tracker itself remains deduplicated.
-        router.refresh();
-        return;
-      }
-      // Cross the authentication boundary with a document navigation so the
-      // next server render always receives the newly issued session cookie.
-      window.location.assign(redirectTo);
+      // Missa's own signup endpoint redeems its invite as part of account
+      // creation. Neon Auth and login complete that follow-up after the session
+      // bridge succeeds.
+      await finishAuthentication({
+        redeemInvite: usingNeonAuth || mode === "login",
+        waitlistEmail: waitlistEmail || undefined,
+      });
     } finally {
       setIsPending(false);
     }
@@ -421,13 +633,15 @@ export function AuthForm({
   const fieldErrorId = fieldError
     ? `auth-${fieldError.field}-error`
     : undefined;
-  const heading = firstSaveContext
-    ? mode === "login"
-      ? "Log in to save this Opportunity"
-      : "Create an account to save this Opportunity"
-    : mode === "login"
-      ? "Welcome back."
-      : "Create your account.";
+  const heading = pendingVerification
+    ? "Check your email."
+    : firstSaveContext
+      ? mode === "login"
+        ? "Log in to save this Opportunity"
+        : "Create an account to save this Opportunity"
+      : mode === "login"
+        ? "Welcome back."
+        : "Create your account.";
 
   return (
     <div className={styles.page}>
@@ -459,7 +673,13 @@ export function AuthForm({
 
       <section
         className={styles.formPane}
-        aria-label={mode === "login" ? "Log in" : "Create an account"}
+        aria-label={
+          pendingVerification
+            ? "Verify your email"
+            : mode === "login"
+              ? "Log in"
+              : "Create an account"
+        }
       >
         <div className={styles.formCard}>
           <MissaWordmark
@@ -469,7 +689,11 @@ export function AuthForm({
           />
           <h1 className={styles.formTitle}>{heading}</h1>
           <p className={styles.formDescription}>
-            {firstSaveContext
+            {pendingVerification
+              ? pendingVerification.codeSent
+                ? `We sent a six-digit code to ${pendingVerification.email}. Enter it to finish creating your account.`
+                : `Verify ${pendingVerification.email} to finish creating your account. Choose Resend code to request a new code.`
+              : firstSaveContext
               ? "Your account keeps this Opportunity in your private Tracker and brings you back to its current details."
               : mode === "login"
                 ? "Pick up where you left off."
@@ -516,7 +740,104 @@ export function AuthForm({
             </section>
           ) : null}
 
-          {sessionReady && firstSaveContext ? (
+          {pendingVerification ? (
+            <form
+              className={styles.form}
+              onSubmit={(event) => {
+                event.preventDefault();
+                void verifyEmailCode();
+              }}
+              noValidate
+            >
+              <p className={styles.intentEyebrow}>
+                <MailCheck aria-hidden="true" /> Email verification
+              </p>
+              <Field data-invalid={Boolean(verificationError)}>
+                <FieldLabel htmlFor="verification-code">
+                  Verification code
+                </FieldLabel>
+                <InputOTP
+                  ref={verificationCodeRef}
+                  id="verification-code"
+                  maxLength={6}
+                  pattern={REGEXP_ONLY_DIGITS}
+                  value={verificationCode}
+                  onChange={setVerificationCode}
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                  autoFocus
+                  disabled={isPending || isResending}
+                  aria-invalid={Boolean(verificationError)}
+                  aria-describedby={
+                    verificationError
+                      ? "verification-guidance verification-error"
+                      : "verification-guidance"
+                  }
+                  containerClassName="w-full justify-center"
+                >
+                  <InputOTPGroup>
+                    {[0, 1, 2].map((index) => (
+                      <InputOTPSlot
+                        key={index}
+                        index={index}
+                        className="size-11 text-base"
+                      />
+                    ))}
+                  </InputOTPGroup>
+                  <InputOTPSeparator />
+                  <InputOTPGroup>
+                    {[3, 4, 5].map((index) => (
+                      <InputOTPSlot
+                        key={index}
+                        index={index}
+                        className="size-11 text-base"
+                      />
+                    ))}
+                  </InputOTPGroup>
+                </InputOTP>
+                <FieldDescription id="verification-guidance">
+                  Paste or type the six digits from the email. We will not open
+                  the account until the address is verified.
+                </FieldDescription>
+                {verificationError ? (
+                  <FieldError id="verification-error">
+                    {verificationError}
+                  </FieldError>
+                ) : null}
+              </Field>
+              <Button
+                type="submit"
+                size="lg"
+                disabled={isPending || verificationCode.length !== 6}
+                aria-busy={isPending}
+                className="h-11 justify-between"
+              >
+                {isPending ? "Verifying…" : "Verify email"}
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isPending || isResending}
+                  aria-busy={isResending}
+                  className="h-11 flex-1"
+                  onClick={() => void resendVerificationCode()}
+                >
+                  {isResending ? "Sending…" : "Resend code"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={isPending || isResending}
+                  className="h-11 flex-1"
+                  onClick={useAnotherEmail}
+                >
+                  Use another email
+                </Button>
+              </div>
+            </form>
+          ) : sessionReady && firstSaveContext ? (
             <section
               ref={resolutionRef}
               className={styles.resolution}
@@ -744,7 +1065,7 @@ export function AuthForm({
                   {mode === "login" && (
                     <Link
                       href="/forgot-password"
-                      className="text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                      className="inline-flex min-h-11 items-center text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
                     >
                       Forgot password?
                     </Link>
@@ -926,7 +1247,7 @@ export function AuthForm({
             </form>
           )}
 
-          {!sessionReady ? (
+          {!sessionReady && !pendingVerification ? (
             <p className={styles.switchMode}>
               {mode === "login"
                 ? "New to Missa? "
