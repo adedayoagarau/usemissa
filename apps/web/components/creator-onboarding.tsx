@@ -536,7 +536,7 @@ export function CreatorOnboarding({
 
               <div className="mt-4">
                 <Button
-                  variant="account"
+                  variant="ghost"
                   onClick={handleSkip}
                   disabled={saving}
                 >
