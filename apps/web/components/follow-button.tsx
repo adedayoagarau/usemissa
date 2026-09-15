@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -17,7 +16,6 @@ export function FollowButton({
   organizationName?: string;
   returnTo?: string;
 }) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [followed, setFollowed] = useState(false);
   const requestKey = useRef<string | null>(null);
@@ -68,7 +66,6 @@ export function FollowButton({
               toast.success(
                 `Following ${organizationName ?? "this organization"}`,
               );
-              router.refresh();
             } else {
               toast.error("Following could not be saved. Try again.");
             }

@@ -7,7 +7,9 @@ const password = "correct-horse-battery";
 
 async function beginSignedOutSave(page: Page) {
   await page.goto(`/opportunities/${slug}`);
-  const save = page.getByRole("button", { name: /Save .* privately/ });
+  const save = page
+    .locator("#opportunity-summary-actions")
+    .getByRole("button", { name: /Save .* privately/ });
   await save.focus();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/signup\?next=/);
@@ -277,7 +279,9 @@ test("declining signup returns to public reading without saving", async ({
   await expect(page).toHaveURL(new RegExp(`/opportunities/${slug}$`));
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: /Save .* privately/ }),
+    page
+      .locator("#opportunity-summary-actions")
+      .getByRole("button", { name: /Save .* privately/ }),
   ).toBeVisible();
 });
 
