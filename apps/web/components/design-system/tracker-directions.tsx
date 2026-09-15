@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   ArrowRight,
   CalendarDays,
-  ChevronDown,
   CircleDot,
   Clock3,
   Ellipsis,
@@ -120,7 +119,7 @@ function ReviewBar({ direction, setDirection, fixture, setFixture }: {
       <label>
         <span>Edge state</span>
         <select value={fixture} onChange={(event) => setFixture(event.target.value as Fixture)}>
-          <option value='active'>Active Tracker</option>
+          <option value='active'>Current tracker activity</option>
           <option value='imported'>Imported unmatched row</option>
           <option value='conflict'>Status conflict</option>
           <option value='mixed'>Mixed Work decision</option>
@@ -175,15 +174,14 @@ function PageHeading({ headingLevel = 'h2' }: { headingLevel?: 'h1' | 'h2' }) {
 
 function PrimaryViews({ active }: { active: 'active' | 'submissions' | 'calendar' | 'works' }) {
   const views = [
-    { id: 'active', label: 'Active' },
-    { id: 'submissions', label: 'Submissions' },
-    { id: 'calendar', label: 'Calendar' },
-    { id: 'works', label: 'Works' },
+    { id: 'active', label: 'Next actions' },
+    { id: 'submissions', label: 'Submission records' },
+    { id: 'calendar', label: 'Deadlines' },
+    { id: 'works', label: 'By Work' },
   ] as const
   return (
     <nav className={styles.primaryViews} aria-label='Tracker views'>
       {views.map((view) => <button key={view.id} type='button' data-active={active === view.id}>{view.label}</button>)}
-      <button type='button' className={styles.moreViews}>More views <ChevronDown aria-hidden='true' /></button>
     </nav>
   )
 }
@@ -305,7 +303,7 @@ function AttentionDirection({ fixture, onAction, sectionHeadingLevel = 'h3' }: {
     <div className={styles.attentionLayout}>
       {urgent.length ? (
         <section className={styles.attentionPanel} aria-labelledby='attention-title'>
-          <div className={styles.sectionLabel}><span>Now</span><SectionHeading id='attention-title'>Needs attention</SectionHeading></div>
+          <div className={styles.sectionLabel}><span>Priority</span><SectionHeading id='attention-title'>Needs attention</SectionHeading></div>
           {urgent.map((item) => (
             <div key={item.id} className={styles.attentionRow}>
               <div><Clock3 aria-hidden='true' /><span><strong>{item.title}</strong><small>{item.note}</small></span></div>
@@ -316,7 +314,7 @@ function AttentionDirection({ fixture, onAction, sectionHeadingLevel = 'h3' }: {
       ) : null}
       <section aria-labelledby='active-title'>
         <div className={styles.listHeading}>
-          <div className={styles.sectionLabel}><span>Active</span><SectionHeading id='active-title'>{items.length} opportunities</SectionHeading></div>
+          <div className={styles.sectionLabel}><span>Tracker</span><SectionHeading id='active-title'>{items.length} opportunities</SectionHeading></div>
           <label className={styles.searchField}><Search aria-hidden='true' /><span className={styles.srOnly}>Search Tracker</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder='Search Tracker' /></label>
         </div>
         <div className={styles.itemList}>{items.map((item) => <ItemCard key={item.id} item={item} onAction={onAction} />)}</div>
@@ -420,7 +418,7 @@ function SelectedReviewBar({ fixture, setFixture }: { fixture: Fixture; setFixtu
       <label>
         <span>Edge state</span>
         <select value={fixture} onChange={(event) => setFixture(event.target.value as Fixture)}>
-          <option value='active'>Active Tracker</option>
+          <option value='active'>Current tracker activity</option>
           <option value='imported'>Imported unmatched row</option>
           <option value='conflict'>Status conflict</option>
           <option value='mixed'>Mixed Work decision</option>
@@ -434,10 +432,10 @@ function SelectedReviewBar({ fixture, setFixture }: { fixture: Fixture; setFixtu
 
 function SelectedViews({ active, onChange }: { active: TrackerView; onChange: (view: TrackerView) => void }) {
   const views: Array<{ id: TrackerView; label: string }> = [
-    { id: 'active', label: 'Active' },
-    { id: 'submissions', label: 'Submissions' },
-    { id: 'calendar', label: 'Calendar' },
-    { id: 'works', label: 'Works' },
+    { id: 'active', label: 'Next actions' },
+    { id: 'submissions', label: 'Submission records' },
+    { id: 'calendar', label: 'Deadlines' },
+    { id: 'works', label: 'By Work' },
   ]
 
   return (
@@ -447,7 +445,6 @@ function SelectedViews({ active, onChange }: { active: TrackerView; onChange: (v
           {view.label}
         </button>
       ))}
-      <button type='button' className={styles.moreViews}>More views <ChevronDown aria-hidden='true' /></button>
     </nav>
   )
 }
@@ -461,7 +458,7 @@ function SubmissionView({ fixture, onAction }: { fixture: Fixture; onAction: (it
         <Inbox aria-hidden='true' />
         <h2>No submission records yet</h2>
         <p>Submitted opportunities will keep their receipt, Work snapshot, messages, and decisions here.</p>
-        <Button type='button'>Open active Tracker</Button>
+        <Button type='button'>Open current Tracker</Button>
       </div>
     )
   }
@@ -529,7 +526,7 @@ export function TrackerSelected() {
 
         {view === 'active' ? (
           <>
-            <div className={styles.layoutSwitch} aria-label='Active Tracker layout'>
+            <div className={styles.layoutSwitch} aria-label='Current Tracker layout'>
               <button type='button' data-active={activeLayout === 'list'} aria-pressed={activeLayout === 'list'} onClick={() => setActiveLayout('list')}>Next actions</button>
               <button type='button' data-active={activeLayout === 'board'} aria-pressed={activeLayout === 'board'} onClick={() => setActiveLayout('board')}>Stage board</button>
             </div>

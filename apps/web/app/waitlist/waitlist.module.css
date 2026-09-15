@@ -3,7 +3,7 @@
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
-  background: #fff;
+  background: var(--background);
   color: var(--foreground);
 }
 
@@ -258,7 +258,7 @@
   padding: 4px;
   border: 1px solid var(--border-strong, #d4d3d0);
   border-radius: 12px;
-  background: #fff;
+  background: var(--background);
   box-shadow: 0 8px 24px rgba(28, 24, 21, .045);
 }
 

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import catalogueStyles from "@/components/design-system/opportunities-browse-v2-preview.module.css";
+import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";

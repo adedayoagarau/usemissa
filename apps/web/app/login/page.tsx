@@ -3,11 +3,19 @@ import { cookies } from "next/headers";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { AuthForm } from "@/components/auth-form";
 import { safeAuthRedirect } from "@/lib/authRedirect";
+import { pageMetadata } from "@/lib/seo";
 import {
   FIRST_SAVE_INTENT_COOKIE,
   firstSaveContext,
   verifyFirstSaveIntent,
 } from "@/lib/firstSaveIntent";
+
+export const metadata = pageMetadata({
+  title: "Log in to Missa",
+  description:
+    "Log in to save opportunities, prepare applications, and keep every deadline in view.",
+  path: "/login",
+});
 
 export default async function LoginPage({
   searchParams,
@@ -34,15 +42,17 @@ export default async function LoginPage({
       ? invite
       : undefined;
   return (
-    <AuthForm
-      initialMode={initialMode}
-      redirectTo={redirectTo}
-      firstSaveContext={
-        firstSaveIntent ? firstSaveContext(firstSaveIntent) : undefined
-      }
-      authenticated={Boolean(session)}
-      firstSaveUnavailable={Boolean(firstSaveToken && !firstSaveIntent)}
-      inviteToken={inviteToken}
-    />
+    <main id="main-content">
+      <AuthForm
+        initialMode={initialMode}
+        redirectTo={redirectTo}
+        firstSaveContext={
+          firstSaveIntent ? firstSaveContext(firstSaveIntent) : undefined
+        }
+        authenticated={Boolean(session)}
+        firstSaveUnavailable={Boolean(firstSaveToken && !firstSaveIntent)}
+        inviteToken={inviteToken}
+      />
+    </main>
   );
 }

@@ -1,4 +1,4 @@
-import catalogueStyles from "@/components/design-system/opportunities-browse-v2-preview.module.css";
+import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -15,6 +15,7 @@ import {
   HeartHandshake,
 } from "lucide-react";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { BetaBadge } from "@/components/ui/beta-badge";
 
 export const metadata: Metadata = {
   title: "Ranking Methodology · Missa Literary Magazine Index",
@@ -46,6 +47,22 @@ export default function RankingsMethodologyPage() {
             rankings.
           </p>
         </header>
+
+        <aside className="mb-8 rounded-xl border border-border bg-muted p-4 sm:p-6">
+          <div className="flex flex-wrap items-center gap-3">
+            <BetaBadge />
+            <p className="font-mono text-xs text-foreground tabular-nums">
+              Method version: 2026 beta
+            </p>
+          </div>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
+            These rankings are a testing tool, not a publisher or residency
+            endorsement. Scores reflect the fields currently available to the
+            index and may change as records are corrected or refreshed. Confirm
+            fees, deadlines, policies, and benefits on the organization&apos;s
+            official site before acting.
+          </p>
+        </aside>
 
         {/* Section 1: The Philosophy */}
         <section className="space-y-8 text-base leading-7 text-foreground/90">
@@ -144,8 +161,9 @@ export default function RankingsMethodologyPage() {
               The 100-Point Scoring Architecture
             </h2>
             <p className="mt-2 text-muted-foreground">
-              Every magazine receives an objective, transparent score out of 100
-              points, calculated across six pillars:
+              Missa applies a published, rule-based model to produce a score out
+              of 100 points across six pillars. The result depends on the
+              completeness and freshness of the records available to the index:
             </p>
 
             <div className="mt-6 space-y-4">
@@ -234,7 +252,7 @@ export default function RankingsMethodologyPage() {
                   Reading fees create steep financial barriers for emerging and
                   working-class writers.{" "}
                   <strong>100% Free regular submissions</strong> receive 15
-                  points. Journals that provide verified fee waivers or free
+                  points. Journals with documented fee waivers or free
                   submission periods receive 11 points. Modest platform
                   pass-through costs (≤$3.50) receive 7 points, while steep
                   reading fees (&gt;$5) for general submissions receive 0
@@ -276,7 +294,7 @@ export default function RankingsMethodologyPage() {
                 </div>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   Measures the permanence and care given to accepted work:
-                  verified digital archives and print libraries (2 points),
+                  documented digital archives and print libraries (2 points),
                   blind reading practices that reduce unconscious bias (1.5
                   points), and intentional space reserved for debut and emerging
                   voices (1.5 points).
@@ -369,10 +387,18 @@ export default function RankingsMethodologyPage() {
               The Missa Residency Index (MRI)
             </h2>
             <p className="mt-2 text-muted-foreground">
-              For artists and writers, taking time away for an immersive residency is one of the most transformative commitments in a creative life. Yet the landscape has long suffered from information asymmetry: hidden program fees, ambiguous accommodations, and unpredictable fellowship support.
+              For artists and writers, taking time away for an immersive
+              residency is one of the most transformative commitments in a
+              creative life. Yet the landscape has long suffered from
+              information asymmetry: hidden program fees, ambiguous
+              accommodations, and unpredictable fellowship support.
             </p>
             <p className="mt-3 text-muted-foreground">
-              The Missa Residency Index unifies over 530+ residency programs across North America and beyond, synthesizing data from the Artist Communities Alliance (ACA), resident feedback from the historic Rate My Artist Residency (RMAR) archive, and live institutional intake records into an objective 100-point index.
+              The Missa Residency Index applies a rule-based 100-point model to
+              program records, community reporting, and institutional intake
+              fields held in the current index. Coverage and field completeness
+              vary by program, so the score is a comparison aid rather than a
+              certification of program quality or current terms.
             </p>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -382,7 +408,9 @@ export default function RankingsMethodologyPage() {
                   Funding Support (35 pts)
                 </div>
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Programs providing 100% free residencies (25 pts) and living stipends (10 pts) receive top weight to ensure economic access.
+                  Programs providing 100% free residencies (25 pts) and living
+                  stipends (10 pts) receive top weight to ensure economic
+                  access.
                 </p>
               </div>
 
@@ -392,7 +420,8 @@ export default function RankingsMethodologyPage() {
                   Community Rating (30 pts)
                 </div>
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Normalized aggregate scores derived from verified resident evaluations and community feedback from artists who stayed on site.
+                  Normalized aggregate scores derived from the resident and
+                  community reports currently attached to each program record.
                 </p>
               </div>
 
@@ -402,7 +431,9 @@ export default function RankingsMethodologyPage() {
                   Facilities & Solitude (20 pts)
                 </div>
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Rewards dedicated private studio space (10 pts) and chef-prepared or provided meals (10 pts) essential for uninterrupted focus.
+                  Rewards dedicated private studio space (10 pts) and
+                  chef-prepared or provided meals (10 pts) essential for
+                  uninterrupted focus.
                 </p>
               </div>
 
@@ -412,30 +443,46 @@ export default function RankingsMethodologyPage() {
                   Prestige & Access (15 pts)
                 </div>
                 <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Recognizes institutional longevity, multi-directory provenance, and active verified open calls.
+                  Recognizes institutional longevity, multi-directory
+                  provenance, and linked open calls where a current
+                  source-backed record is available.
                 </p>
               </div>
             </div>
 
             <div className="mt-6 space-y-4 rounded-xl border border-border bg-card p-6">
-              <h3 className="font-semibold text-foreground">Residency Prestige Tiers</h3>
-              <div className="grid gap-4 sm:grid-cols-3 text-sm">
+              <h3 className="font-semibold text-foreground">
+                Residency Prestige Tiers
+              </h3>
+              <div className="grid gap-4 text-sm sm:grid-cols-3">
                 <div>
-                  <RankingTierBadge tier="Tier 1">Tier 1: Flagship Fellowships</RankingTierBadge>
-                  <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                    Nationally renowned, highly selective programs with full funding, private studios, meals, and stipends (e.g. MacDowell, Headlands, Yaddo, FAWC, VCCA, Skowhegan).
+                  <RankingTierBadge tier="Tier 1">
+                    Tier 1: Flagship Fellowships
+                  </RankingTierBadge>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    Nationally renowned, highly selective programs with full
+                    funding, private studios, meals, and stipends (e.g.
+                    MacDowell, Headlands, Yaddo, FAWC, VCCA, Skowhegan).
                   </p>
                 </div>
                 <div>
-                  <RankingTierBadge tier="Tier 2">Tier 2: High Distinction</RankingTierBadge>
-                  <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                    Celebrated institutions offering high-quality facilities, competitive financial aid, or dedicated seasonal fellowship cohorts.
+                  <RankingTierBadge tier="Tier 2">
+                    Tier 2: High Distinction
+                  </RankingTierBadge>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    Celebrated institutions offering high-quality facilities,
+                    competitive financial aid, or dedicated seasonal fellowship
+                    cohorts.
                   </p>
                 </div>
                 <div>
-                  <RankingTierBadge tier="Tier 3">Tier 3: Emerging & Regional</RankingTierBadge>
-                  <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                    Vital incubator spaces, specialized medium retreats, and regional sanctuaries nurturing local and international creators.
+                  <RankingTierBadge tier="Tier 3">
+                    Tier 3: Emerging & Regional
+                  </RankingTierBadge>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    Vital incubator spaces, specialized medium retreats, and
+                    regional sanctuaries nurturing local and international
+                    creators.
                   </p>
                 </div>
               </div>
@@ -449,14 +496,15 @@ export default function RankingsMethodologyPage() {
             </h2>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
               Rankings should serve your craft, not intimidate it. We encourage
-              writers and artists to build a balanced portfolio strategy for each
-              manuscript and residency cycle:
+              writers and artists to build a balanced portfolio strategy for
+              each manuscript and residency cycle:
             </p>
             <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
               <li>
                 <strong>Send to a spread of tiers:</strong> Combine a couple of
-                Tier 1 &quot;reach&quot; journals or flagship residencies with Tier 2 targets and Tier 3
-                venues whose creative communities you personally admire.
+                Tier 1 &quot;reach&quot; journals or flagship residencies with
+                Tier 2 targets and Tier 3 venues whose creative communities you
+                personally admire.
               </li>
               <li>
                 <strong>Batch simultaneous submissions:</strong> Filter for
@@ -464,9 +512,9 @@ export default function RankingsMethodologyPage() {
                 under 60 days to avoid having your work locked up for seasons.
               </li>
               <li>
-                <strong>Protect your budget:</strong> Use the &quot;100% Free&quot; and &quot;$0 Fee&quot;
-                toggles to ensure you are never priced out of submitting your
-                work.
+                <strong>Protect your budget:</strong> Use the &quot;100%
+                Free&quot; and &quot;$0 Fee&quot; toggles to ensure you are
+                never priced out of submitting your work.
               </li>
             </ul>
             <div className="mt-6 flex flex-wrap items-center gap-3">

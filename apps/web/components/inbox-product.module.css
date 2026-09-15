@@ -31,7 +31,7 @@
 .itemCopy small { display: flex; gap: 7px; margin-top: 11px; color: var(--muted-foreground); font-size: 10px; line-height: 1.45; }
 .itemCopy small strong { flex: 0 0 auto; color: var(--foreground); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; }
 .rows article > button { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; align-self: center; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--primary); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
-.rows article > button:hover { background: color-mix(in srgb, #fff 94%, var(--primary) 6%); }
+.rows article > button:hover { background: color-mix(in srgb, var(--background) 94%, var(--primary) 6%); }
 .rows article > button svg { width: 15px; }
 .unread { position: absolute; overflow: hidden; width: 1px; height: 1px; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .empty { display: grid; justify-items: center; padding: 86px 24px; text-align: center; }

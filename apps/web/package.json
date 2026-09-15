@@ -8,6 +8,7 @@
     "build": "npm run build --workspace=@missa/contracts --prefix ../.. && npm run build --workspace=@missa/taxonomy --prefix ../.. && npm run build --workspace=@missa/db --prefix ../.. && npm run build --workspace=@missa/radar-engine --prefix ../.. && npm run build --workspace=@missa/radar-adapters --prefix ../.. && npm run build --workspace=@missa/ingestion-v2 --prefix ../.. && npm run build --workspace=@missa/workspace-engine --prefix ../.. && next build",
     "start": "next start",
     "lint": "eslint . --max-warnings 0",
+    "lint:design-system:review": "eslint app components --rule 'shadcn/no-restyle: warn' --ignore-pattern app/design-system --ignore-pattern components/design-system --ignore-pattern components/shadcn-studio --ignore-pattern components/ui --ignore-pattern '**/*preview*.tsx'",
     "typecheck": "tsc --noEmit --incremental false",
     "test:e2e": "playwright test"
   },
@@ -76,6 +77,7 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.62.0",
+    "@shadcn/lint": "^0.1.0",
     "@tailwindcss/postcss": "^4.3.2",
     "@types/node": "^22.10.0",
     "@types/papaparse": "^5.5.2",

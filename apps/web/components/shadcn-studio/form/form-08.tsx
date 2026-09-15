@@ -48,7 +48,7 @@ const ComboboxFormDemo = () => {
     const selectedMethod = paymentMethod.find(method => method === data.method)
 
     toast.custom(() => (
-      <Alert className='border-green-600 text-green-600 dark:border-green-400 dark:text-green-400 *:[svg]:row-span-1'>
+      <Alert className='border-success text-success dark:border-success dark:text-success *:[svg]:row-span-1'>
         <CheckCheckIcon
         />
         <AlertTitle>You selected &quot;{selectedMethod}&quot; for payment</AlertTitle>

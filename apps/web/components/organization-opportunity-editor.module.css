@@ -10,7 +10,7 @@
 .form { display: grid; gap: 22px; margin-top: 26px; }
 .form > div { display: grid; gap: 7px; }
 .form label { font-size: .78rem; font-weight: 700; }
-.form input, .form textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; background: white; color: var(--foreground); font: inherit; font-size: .82rem; }
+.form input, .form textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); font: inherit; font-size: .82rem; }
 .form input { min-height: 46px; padding: 0 12px; }
 .form textarea { min-height: 180px; padding: 12px; resize: vertical; }
 .form p { margin: 0; color: var(--muted-foreground); font-size: .72rem; line-height: 1.5; }

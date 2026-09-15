@@ -31,6 +31,8 @@ export type CreatorCalendarItem = {
   openDate?: string;
   deadline?: string;
   deadlineKind?: string;
+  deadlineTime?: string;
+  deadlineTimezone?: string;
   expectedResponseBy?: string;
 };
 export type CreatorCalendarEvent = {
@@ -870,10 +872,12 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       open_date: string | null;
       deadline_date: string | null;
       deadline_kind: string;
+      deadline_time: Date | string | null;
+      deadline_timezone: string | null;
       submitted_at: Date | string | null;
       response_time_days: number | null;
     }>(
-      `select t.opportunity_id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,t.status,o.status as opp_status,o.open_date::text as open_date,o.deadline_date::text as deadline_date,o.deadline_kind,t.submitted_at,cp.response_time_days
+      `select t.opportunity_id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,t.status,o.status as opp_status,o.open_date::text as open_date,o.deadline_date::text as deadline_date,o.deadline_kind,o.deadline_time,o.deadline_timezone,t.submitted_at,cp.response_time_days
        from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
        left join radar_organizations org on org.id=o.organization_id
        left join opportunity_call_profiles cp on cp.opportunity_id=o.id
@@ -897,6 +901,8 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
         ? (row.deadline_date ?? undefined)
         : undefined,
       deadlineKind: row.deadline_kind,
+      ...(row.deadline_time ? { deadlineTime: iso(row.deadline_time) } : {}),
+      ...(row.deadline_timezone ? { deadlineTimezone: row.deadline_timezone } : {}),
       expectedResponseBy:
         [
           "submitted",

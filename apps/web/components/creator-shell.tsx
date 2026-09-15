@@ -33,7 +33,7 @@ import styles from "./creator-shell.module.css";
 const primary = [
   { href: "/opportunities", label: "Opportunities", icon: Search },
   { href: "/following", label: "Following", icon: Bell },
-  { href: "/tracker", label: "My applications", icon: BookOpen },
+  { href: "/tracker", label: "Tracker", icon: BookOpen },
   { href: "/goals", label: "Goals", icon: Target },
   { href: "/library", label: "Library", icon: Archive },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
@@ -103,6 +103,7 @@ export function CreatorShell({
             <Link
               key={href}
               href={href}
+              aria-label={label}
               aria-current={current ? "page" : undefined}
               onClick={() => setOpen(false)}
             >

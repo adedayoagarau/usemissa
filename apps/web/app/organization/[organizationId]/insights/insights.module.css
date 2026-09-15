@@ -7,7 +7,7 @@
 .role { flex: 0 0 auto; padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-deep); font-size: .7rem; font-weight: 700; }
 .scope { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr) minmax(180px, 1fr) auto; gap: 10px; align-items: end; margin-top: 22px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--muted) 48%, white); }
 .scope label { display: grid; gap: 6px; color: var(--muted-foreground); font-size: .66rem; font-weight: 680; }
-.scope select { min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: white; color: var(--foreground); font: inherit; font-size: .76rem; }
+.scope select { min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); font: inherit; font-size: .76rem; }
 .scope button, .clear { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 14px; border-radius: 8px; font-size: .73rem; font-weight: 700; text-decoration: none; }
 .scope button { background: var(--foreground); color: white; }
 .clear { border: 1px solid var(--border); color: var(--foreground); }
@@ -17,7 +17,7 @@
 .scopeNote strong { font-size: .76rem; }
 .scopeNote p { margin-top: 4px; color: var(--muted-foreground); font-size: .7rem; line-height: 1.5; }
 .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
-.metric { display: grid; min-height: 190px; align-content: space-between; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: white; }
+.metric { display: grid; min-height: 190px; align-content: space-between; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--background); }
 .metric h2, .metric p { margin: 0; }
 .metric h2 { font-size: .76rem; font-weight: 720; }
 .metric .value { margin-top: 18px; font-family: var(--font-mono), monospace; font-size: 2rem; line-height: 1; }
@@ -30,7 +30,7 @@
 .sectionHeader h2 { margin-top: 5px; font-family: var(--font-heading), Georgia, serif; font-size: 1.65rem; font-weight: 560; }
 .sectionHeader > span { color: var(--muted-foreground); font-size: .69rem; text-align: right; }
 .drivers { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 16px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--border); }
-.drivers div { padding: 16px; background: white; }
+.drivers div { padding: 16px; background: var(--background); }
 .drivers dt { color: var(--muted-foreground); font-size: .64rem; }
 .drivers dd { margin: 7px 0 0; font-family: var(--font-mono), monospace; font-size: 1.12rem; }
 .drivers small { display: block; margin-top: 6px; color: var(--muted-foreground); font-size: .62rem; line-height: 1.35; }
@@ -65,7 +65,7 @@
 .empty h2, .limited h2 { font-family: var(--font-heading), Georgia, serif; font-size: 1.55rem; }
 .empty p, .limited p { max-width: 760px; margin-top: 8px; color: var(--muted-foreground); font-size: .78rem; line-height: 1.6; }
 .finance { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 24px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--border); }
-.finance div { padding: 18px; background: white; }
+.finance div { padding: 18px; background: var(--background); }
 .finance dt { color: var(--muted-foreground); font-size: .65rem; }
 .finance dd { margin: 8px 0 0; font-family: var(--font-mono), monospace; font-size: 1.2rem; }
 @media (max-width: 980px) { .scope { grid-template-columns: 1fr 1fr; } .metrics { grid-template-columns: 1fr; } .metric { min-height: 0; } .drivers { grid-template-columns: 1fr 1fr; } .opportunityRow { grid-template-columns: minmax(0, 1fr) 1fr; } .opportunityRow dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-column: 1 / -1; gap: 10px; } .next { grid-column: 2; grid-row: 1; } .practiceLayout { grid-template-columns: 1fr; } }

@@ -35,7 +35,7 @@ const DatePickerFormDemo = () => {
 
   function onSubmit() {
     toast.custom(() => (
-      <Alert className='border-green-600 text-green-600 sm:w-100 dark:border-green-400 dark:text-green-400 *:[svg]:row-span-1'>
+      <Alert className='border-success text-success sm:w-100 dark:border-success dark:text-success *:[svg]:row-span-1'>
         <CheckCheckIcon
         />
         <AlertTitle>Great we send you a personalized outfit suggestion!</AlertTitle>

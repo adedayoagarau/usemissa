@@ -6,6 +6,14 @@ import { organizationCapabilityProjection, organizationNavigation } from '@/lib/
 import { OrganizationProductShell } from '@/components/organization-product-shell';
 import { loginRedirectForCurrentRequest } from '@/lib/serverAuthRedirect';
 
+/** Private organization administration: never index, but name it for tabs. */
+export const metadata = {
+  title: 'Organization administration',
+  description:
+    "Manage your organization's opportunities, submissions, reviews, and settings in Missa.",
+  robots: { index: false, follow: false },
+};
+
 export default async function OrganizationLayout({ children, params }: { children: React.ReactNode; params: Promise<{ organizationId: string }> }) {
   const { organizationId } = await params;
   const cookieStore = await cookies();

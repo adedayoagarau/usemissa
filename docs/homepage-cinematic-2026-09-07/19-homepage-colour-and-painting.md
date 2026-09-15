@@ -1,27 +1,27 @@
 # Homepage colour, hero and painted footer direction
 
-7 September 2026. Local homepage and `/design-system/homepage-hero` only.
+7 September 2026. Local homepage and `/design-system/homepage-hero` only. Updated 14 September 2026 after the user found the cumulative site too green.
 
 ## User direction and scope
 
-The user rejected the black caption panel, cream surround and sage portfolio preview. They approved forest, bright citron and white, then asked for colour beyond the hero and further hero styling. Their new reference shows a watercolour landscape fading into a white footer. That reference supplies composition and material, not copy, product facts or permission to reuse its artwork.
+The user rejected the black caption panel, cream surround and sage portfolio preview. They initially approved forest, bright citron and white, then later found the cumulative site too green. The current direction keeps Forest as Missa's action color while removing it as the full-viewport photographic field. Their watercolour reference supplies composition and material, not copy, product facts or permission to reuse its artwork.
 
-This is a local extension of the accepted photographic homepage. The green portrait, real catalogue cards and interactive feature composition remain. No new identity selection or replacement comp round is needed. The stale Impeccable comp state for a different Opportunities study does not describe this surface.
+This is a local extension of the accepted photographic homepage. The full-bleed composition, real catalogue cards and interactive feature composition remain; the hero plate now balances cobalt, terracotta, daylight and natural color. The stale Impeccable comp state for a different Opportunities study does not describe this surface.
 
 ## Built colour rhythm
 
-- Green portrait hero, larger Newsreader heading and citron arrow action. An outlined account action separates navigation from conversion. The subtle bottom shade supports text over the photograph.
+- Cobalt-and-terracotta studio hero, larger Newsreader heading and citron arrow action. An outlined account action separates navigation from conversion. Neutral ink scrims support text over the photograph without adding another green cast.
 - Citron across the full discovery section, including category carousel; white and forest count cards keep figures legible.
 - White behind actual opportunity listings. The exact shared `OpportunityBrowseProjectCard` remains unchanged.
 - Sky blue across the full feature section; forest selected tabs and photo captions. Citron surrounds the portfolio, which opens with a new White sample theme. Sage, Paper, Mineral and Night remain selectable.
 - White directory with citron behind the featured organization's name; the photograph and source credit remain intact.
 - A light citron FAQ ground followed by a full-width forest invitation. Footer links remain on white to meet the eventual painting cleanly.
 
-The dominant relationship is forest and citron, with sky blue as a distinct feature ground. Sky is an implementation choice within the request for brighter, more varied full-page colour; the user did not separately select that exact blue. Photographs supply coral and cobalt. Colour occupies deliberate regions rather than being spread across every operational control.
+The dominant homepage relationship is photographic cobalt and terracotta with citron highlights and a distinct sky-blue feature ground. Forest identifies actions and selected emphasis instead of occupying the viewport. Colour occupies deliberate regions rather than being spread across every operational control.
 
 ## Component and source evidence
 
-Intents: composition, navigation, selection and data display. Policy entries: `composition.homepage-workspace`, `composition.homepage-continuation` and `composition.homepage-next-opening`. The retained photographic hero is `HomepageHeroPreview`.
+Intents: composition, navigation, selection and data display. Policy entries: `composition.homepage-workspace`, `composition.homepage-continuation` and `composition.homepage-next-opening`. The retained full-bleed hero structure is `HomepageHeroPreview`; its campaign plate is the licensed documentary photograph `/media/home/hero-artist-studio.webp`, credited to Sandro Lopes Art with source and license details in the adjacent JSON sidecar.
 
 Installed components: Button, Tabs/Studio tabs-09, Table/table-01, Switch/switch-01, Accordion, Avatar and Skeleton. Existing semantic components: CreatorPortfolioStudio, GoalSubmissionProgress, OpportunityBrowseProjectCard and MissaWordmark. No registry installation or vendor theme was necessary.
 

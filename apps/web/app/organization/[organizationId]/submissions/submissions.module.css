@@ -6,7 +6,7 @@
 .role { flex: 0 0 auto; padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-deep); font-size: .7rem; font-weight: 700; }
 .filters { display: grid; grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(135px, .45fr)) auto; gap: 9px; align-items: end; margin-top: 24px; padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--muted) 52%, white); }
 .filters label { display: grid; gap: 6px; color: var(--muted-foreground); font-size: .68rem; font-weight: 650; }
-.filters input, .filters select { width: 100%; min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: white; color: var(--foreground); font: inherit; font-size: .76rem; }
+.filters input, .filters select { width: 100%; min-height: 44px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); font: inherit; font-size: .76rem; }
 .filterActions { display: flex; gap: 7px; }
 .apply, .clear, .open, .full, .opportunitiesLink { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 6px; padding: 0 13px; border-radius: 8px; font-size: .76rem; font-weight: 700; text-decoration: none; }
 .apply { border: 0; background: var(--foreground); color: white; }
@@ -30,7 +30,7 @@
 .open { color: var(--primary); }
 .open svg, .full svg { width: 14px; }
 .mobileOpen { display: none; }
-.dossier { position: sticky; top: 84px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: white; }
+.dossier { position: sticky; top: 84px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--background); }
 .dossierHeader { padding: 20px; border-bottom: 1px solid var(--border); }
 .dossierHeader h2, .dossierHeader p { margin: 0; }
 .dossierHeader h2 { margin-top: 6px; font-family: var(--font-heading), Georgia, serif; font-size: 1.55rem; font-weight: 560; }

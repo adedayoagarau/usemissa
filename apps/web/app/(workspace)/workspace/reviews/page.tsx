@@ -23,16 +23,16 @@ export default async function WorkspaceReviewsPage({ searchParams }: { searchPar
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">See which submissions are in review and how many assignments are attached. Reviewers record recommendations in their assigned queue.</p>
       </header>
       <section className="mt-6 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-border bg-white p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Submissions in review</p>
           <p className="mt-2 font-mono text-2xl text-foreground">{submissions.length}</p>
         </div>
-        <div className="rounded-xl border border-border bg-white p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Assignments</p>
           <p className="mt-2 font-mono text-2xl text-foreground">{assignments.length}</p>
         </div>
       </section>
-      <section className="mt-8 rounded-xl border border-border bg-white p-5">
+      <section className="mt-8 rounded-xl border border-border bg-card p-5">
         <ul className="divide-y divide-border">
           {submissions.map((submission) => (
             <li key={submission.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">

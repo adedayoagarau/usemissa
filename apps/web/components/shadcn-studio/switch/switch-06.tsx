@@ -14,7 +14,7 @@ const SwitchOutlineDemo = () => {
         defaultChecked
       />
       <Switch
-        className='data-checked:[&_span]:border-background focus-visible:border-green-600 focus-visible:ring-green-600/20 data-checked:border-green-600 data-checked:bg-transparent dark:focus-visible:border-green-400 dark:focus-visible:ring-green-400/40 dark:data-checked:border-green-400 [&_span]:border data-checked:[&_span]:bg-green-600 dark:data-checked:[&_span]:bg-green-400'
+        className='data-checked:[&_span]:border-background focus-visible:border-success focus-visible:ring-green-600/20 data-checked:border-success data-checked:bg-transparent dark:focus-visible:border-success dark:focus-visible:ring-green-400/40 dark:data-checked:border-success [&_span]:border data-checked:[&_span]:bg-success dark:data-checked:[&_span]:bg-success'
         aria-label='Success outline Switch'
         defaultChecked
       />
@@ -24,7 +24,7 @@ const SwitchOutlineDemo = () => {
         defaultChecked
       />
       <Switch
-        className='data-checked:[&_span]:border-background focus-visible:border-amber-600 focus-visible:ring-amber-600/20 data-checked:border-amber-600 data-checked:bg-transparent dark:focus-visible:border-amber-400 dark:focus-visible:ring-amber-400/40 dark:data-checked:border-amber-400 [&_span]:border data-checked:[&_span]:bg-amber-600 dark:data-checked:[&_span]:bg-amber-400'
+        className='data-checked:[&_span]:border-background focus-visible:border-warning focus-visible:ring-amber-600/20 data-checked:border-warning data-checked:bg-transparent dark:focus-visible:border-warning dark:focus-visible:ring-amber-400/40 dark:data-checked:border-warning [&_span]:border data-checked:[&_span]:bg-warning dark:data-checked:[&_span]:bg-warning'
         aria-label='Warning outline Switch'
         defaultChecked
       />

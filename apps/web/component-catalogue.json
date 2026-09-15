@@ -1,13 +1,53 @@
 {
+  "primitiveContracts": {
+    "status": "approved",
+    "implementation": [
+      "apps/web/components/ui/button.tsx",
+      "apps/web/components/ui/avatar.tsx",
+      "apps/web/components/ui/badge.tsx",
+      "apps/web/components/ui/card.tsx",
+      "apps/web/components/ui/collapsible.tsx",
+      "apps/web/components/ui/empty.tsx",
+      "apps/web/components/ui/input.tsx",
+      "apps/web/components/ui/navigation-menu.tsx",
+      "apps/web/components/ui/select.tsx",
+      "apps/web/components/ui/sheet.tsx",
+      "apps/web/components/ui/table.tsx",
+      "apps/web/components/ui/tabs.tsx"
+    ],
+    "variants": {
+      "AvatarFallback": ["organization"],
+      "Badge": ["compact"],
+      "Button": ["account", "accentOutline", "choice"],
+      "Card": ["empty"],
+      "Collapsible": ["section", "sectionSpacious", "divided"],
+      "Empty": ["bordered", "spacious"],
+      "Input": ["compact", "large"],
+      "NavigationMenuList": ["app"],
+      "NavigationMenuLink": ["app"],
+      "SelectTrigger": ["quiet", "touch"],
+      "SheetContent": ["card", "canvas"],
+      "SheetHeader": ["section", "muted"],
+      "TableCell": ["muted"],
+      "TableRow": ["static"],
+      "TabsList": ["responsive", "section"],
+      "TabsTrigger": ["touch"]
+    },
+    "adaptation": "Missa-owned semantic component APIs for authenticated navigation, quiet sorting, empty states, drawer surfaces, choice tiles, compact data controls, and coarse-pointer targets. Product-wide shadcn/no-restyle enforcement is enabled; layout and title-typography contracts remain deliberately narrow. Existing theme tokens, focus states, and reduced-motion behavior remain authoritative.",
+    "evidence": "Product-wide shadcn/lint review, 2026-09-14"
+  },
+  "countBadge": {
+    "status": "approved",
+    "implementation": "apps/web/components/missa/count-badge.tsx",
+    "composition": ["Badge"],
+    "adaptation": "Compact semantic count for unread or selected totals. It supplies an explicit accessible label and does not communicate state through color alone.",
+    "evidence": "Creator Inbox information-architecture redesign, 2026-09-14"
+  },
   "liquidGlassWelcome": {
     "status": "experimental",
     "implementation": "apps/web/components/missa/liquid-glass-welcome.tsx",
     "route": "/welcome",
-    "composition": [
-      "Button",
-      "Link",
-      "DecorativeCanvas"
-    ],
+    "composition": ["Button", "Link", "DecorativeCanvas"],
     "source": "Installed Base UI Button; original WebGL scene informed by Appllama interaction study. No upstream code/assets copied.",
     "tokens": "components/design-system/welcome-tokens.css and welcome-motion.ts",
     "evidence": "docs/design-references/liquid-glass-welcome.md",
@@ -17,46 +57,27 @@
     "status": "experimental",
     "implementation": "apps/web/components/application-tracker-preview.tsx",
     "route": "/design-system/my-applications",
-    "composition": [
-      "Button",
-      "Field",
-      "Input",
-      "Textarea",
-      "NativeSelect"
-    ]
+    "composition": ["Button", "Field", "Input", "Textarea", "NativeSelect"]
   },
   "applicationPreparationPreview": {
     "status": "experimental",
     "implementation": "apps/web/components/application-preparation-preview.tsx",
     "route": "/design-system/application-preparation",
-    "composition": [
-      "Button",
-      "Field",
-      "Textarea",
-      "NativeSelect"
-    ],
+    "composition": ["Button", "Field", "Textarea", "NativeSelect"],
     "boundary": "Sample materials, local React state; no persistence, upload, or submission integration."
   },
   "creatorWorkspacePreview": {
     "status": "experimental",
     "implementation": "apps/web/components/creator-workspace-preview.tsx",
     "route": "/design-system/creator-workspace",
-    "composition": [
-      "Button",
-      "Checkbox",
-      "Link"
-    ],
+    "composition": ["Button", "Checkbox", "Link"],
     "boundary": "Interactive local-state workspace preview. It does not create applications, save materials, set reminders, or claim external submission status."
   },
   "creatorOnboardingPreview": {
     "status": "experimental",
     "implementation": "apps/web/components/creator-onboarding-preview.tsx",
     "route": "/design-system/creator-onboarding",
-    "composition": [
-      "Checkbox",
-      "Button",
-      "Link"
-    ],
+    "composition": ["Checkbox", "Button", "Link"],
     "boundary": "Two optional questions; local React state only; no account persistence"
   },
   "opportunityDetail": {
@@ -87,12 +108,7 @@
   "manuscriptMatch": {
     "status": "approved",
     "implementation": "apps/web/components/discover/manuscript-match-wizard.tsx",
-    "composition": [
-      "Button",
-      "Card",
-      "Field",
-      "NativeSelect"
-    ],
+    "composition": ["Button", "Card", "Field", "NativeSelect"],
     "adaptation": "The manuscript brief uses the same control hierarchy as the literary magazine index. Match cards retain the deterministic reasons, reported timing, compensation, and source-linked journal dossier.",
     "boundary": "A match is not eligibility, readiness, or submission confirmation."
   },
@@ -274,10 +290,7 @@
       "count": 2,
       "studioObservedCount": 55,
       "notInstalledCount": 53,
-      "variants": [
-        "button-01",
-        "button-41"
-      ]
+      "variants": ["button-01", "button-41"]
     },
     {
       "family": "button-group",
@@ -710,12 +723,7 @@
       "count": 4,
       "studioObservedCount": 4,
       "notInstalledCount": 0,
-      "variants": [
-        "kanban-01",
-        "kanban-02",
-        "kanban-03",
-        "kanban-04"
-      ]
+      "variants": ["kanban-01", "kanban-02", "kanban-03", "kanban-04"]
     },
     {
       "family": "kbd",
@@ -1020,13 +1028,7 @@
       "count": 5,
       "studioObservedCount": 7,
       "notInstalledCount": 2,
-      "variants": [
-        "sheet-01",
-        "sheet-02",
-        "sheet-03",
-        "sheet-04",
-        "sheet-05"
-      ]
+      "variants": ["sheet-01", "sheet-02", "sheet-03", "sheet-04", "sheet-05"]
     },
     {
       "family": "skeleton",
@@ -1359,6 +1361,43 @@
       ]
     }
   ],
+  "homepageHero": {
+    "status": "approved",
+    "implementation": "apps/web/components/missa/homepage-hero.tsx",
+    "legacyImplementation": "apps/web/components/design-system/homepage-hero-preview.tsx",
+    "routes": ["/"],
+    "reviewRoutes": [
+      "/design-system/homepage-hero",
+      "/design-system/homepage-focused"
+    ],
+    "boundary": "Production imports the semantic HomepageHero entry. Review routes retain the preview-named implementation. Responsive desktop and mobile campaign plates keep a creator visible while using cobalt, terracotta and natural color, so Forest remains an action accent rather than a full-viewport field."
+  },
+  "opportunitiesBrowse": {
+    "status": "approved",
+    "implementation": "apps/web/components/missa/opportunities-browse.tsx",
+    "legacyImplementation": "apps/web/components/design-system/opportunities-browse-v2-preview.tsx",
+    "routes": ["/opportunities"],
+    "boundary": "Production imports the semantic OpportunitiesBrowse entry without duplicating the reviewed implementation."
+  },
+  "opportunitiesBrowsePreview": {
+    "status": "experimental",
+    "implementation": "apps/web/components/design-system/opportunities-browse-v2-preview.tsx",
+    "route": "/design-system/opportunities-browse-v2",
+    "boundary": "Design-review entry; representative fixtures remain explicitly labelled and do not publish records."
+  },
+  "publicIndexLayout": {
+    "status": "approved",
+    "implementation": "apps/web/components/missa/public-index-layout.ts",
+    "legacyStylesheet": "apps/web/components/design-system/opportunities-browse-v2-preview.module.css",
+    "routes": [
+      "/residencies",
+      "/rankings/compare",
+      "/rankings/magazines",
+      "/rankings/methodology",
+      "/rankings/residencies"
+    ],
+    "boundary": "Production routes import a semantic style contract while the legacy stylesheet is retained for behavior-preserving migration."
+  },
   "opportunityBrowseProjectCard": {
     "status": "approved",
     "implementation": "apps/web/components/design-system/opportunity-browse-project-card.tsx",
@@ -1369,10 +1408,7 @@
     },
     "adaptation": "Missa tokens, deduplicated practices, compact facts, organization-name identity plates for missing or failed images, three-column desktop and single-column mobile",
     "imageBadges": "Opaque Missa canvas and Ochre urgency surfaces; no photo-dependent transparency",
-    "routes": [
-      "/opportunities",
-      "/design-system/opportunities-browse-v2"
-    ]
+    "routes": ["/opportunities", "/design-system/opportunities-browse-v2"]
   },
   "browsePatterns": {
     "status": "approved",
@@ -1522,11 +1558,7 @@
     "status": "experimental",
     "implementation": "apps/web/components/missa/video-world.tsx",
     "route": "/design-system/video-world",
-    "composition": [
-      "Button",
-      "Link",
-      "NativeVideo"
-    ],
+    "composition": ["Button", "Link", "NativeVideo"],
     "source": "Installed Base UI Button and native video. Reference footage: Amir Music, CC BY 4.0. Player authored locally from documented requirements.",
     "tokens": "components/design-system/video-world-tokens.css",
     "evidence": "docs/homepage-cinematic-2026-09-07/06-reference-correction.md"
@@ -1609,10 +1641,7 @@
   },
   "homepageContinuation": {
     "implementation": "apps/web/components/missa/homepage-continuation.tsx",
-    "routes": [
-      "/",
-      "/design-system/homepage-hero"
-    ],
+    "routes": ["/", "/design-system/homepage-hero"],
     "source": "OpportunityBrowseProjectCard from data.display.opportunity-card, also rendered on /opportunities. Installed Accordion, Button, Skeleton and canonical MissaWordmark. No separate homepage opportunity card markup.",
     "tokens": "components/design-system/homepage-continuation-tokens.css",
     "adaptation": "Canonical opportunity cards unchanged. Directory uses exact backend profile names, kinds, routes and media. Headlands is featured with a credited official campus image, followed by installed Avatar organization rows with fallbacks. Approved full-width marketing colour bands; shared operational cards unchanged.",
@@ -1620,13 +1649,10 @@
   },
   "homepageWorkspace": {
     "implementation": "apps/web/components/missa/homepage-workspace.tsx",
-    "routes": [
-      "/",
-      "/design-system/homepage-hero"
-    ],
+    "routes": ["/", "/design-system/homepage-hero"],
     "source": "Installed Tabs/Studio tabs-09, Table/table-01, Switch/switch-01, Button and Skeleton. Actual CreatorPortfolioStudio embedded variant and GoalSubmissionProgress reused.",
     "tokens": "components/design-system/homepage-continuation-tokens.css",
-    "adaptation": "Photographic feature stories beside interactive product views. Original fictional campaign artwork, distinct existing palette tokens and large editorial titles. Portfolio themes and format filters, actual public deadlines, local notification switches and resettable sample submission goals. No account writes or notification delivery. Approved full-width marketing colour bands; shared operational cards unchanged. White is the initial local portfolio preview theme.",
+    "adaptation": "Photographic feature stories beside interactive product views. Original fictional campaign artwork, distinct existing palette tokens and large editorial titles. The portfolio view is a compact one-work teaser with theme and format controls; actual public deadlines, local notification switches and resettable sample submission goals remain interactive. No account writes or notification delivery. Approved full-width marketing colour bands; shared operational cards unchanged. White is the initial local portfolio preview theme.",
     "evidence": "docs/homepage-cinematic-2026-09-07/19-homepage-colour-and-painting.md"
   },
   "ApplicationsWorkspace": {
@@ -1688,10 +1714,7 @@
   "ApplicationReminders": {
     "status": "approved-adapt",
     "implementation": "apps/web/components/missa/application-reminders.tsx",
-    "routes": [
-      "/tracker",
-      "/inbox?view=reminders"
-    ],
+    "routes": ["/tracker", "/inbox?view=reminders"],
     "composition": [
       "Button",
       "Dialog",

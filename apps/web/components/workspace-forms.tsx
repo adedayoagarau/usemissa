@@ -85,7 +85,7 @@ export function CreateOpenCallForm({ organizationId, programId, radarOpportuniti
       </label>
       <input id={`new-opportunity-title-${programId}`} name="title" placeholder="Opportunity title" required className="rounded-md border border-input px-2 py-1 text-sm" />
       {radarOpportunities.length > 0 && (
-        <select name="radarOpportunityId" defaultValue="" className="min-h-9 rounded-md border border-input bg-white px-2 py-1 text-xs">
+        <select name="radarOpportunityId" defaultValue="" className="min-h-9 rounded-md border border-input bg-card px-2 py-1 text-xs">
           <option value="">Link a claimed opportunity (optional)</option>
           {radarOpportunities.map((opportunity) => (
             <option key={opportunity.id} value={opportunity.id}>

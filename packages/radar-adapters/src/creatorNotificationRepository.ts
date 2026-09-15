@@ -33,10 +33,13 @@ export class PostgresCreatorNotificationRepository extends CreatorRepositoryBase
 
   async preferences(accountId: string): Promise<CreatorNotificationPreferences> {
     const result = await this.query<PreferenceRow>(
-      `select in_app_enabled,email_enabled,digest_cadence,saved_search_enabled,
-              follow_enabled,reminder_enabled,provider_state,revision
-              ,sms_enabled,sms_phone,sms_phone_verified_at,sms_provider_state
-       from notification_preferences where account_id=$1`,
+      `select p.in_app_enabled,p.email_enabled,p.digest_cadence,p.saved_search_enabled,
+              p.follow_enabled,p.reminder_enabled,p.provider_state,p.revision,
+              coalesce((to_jsonb(p)->>'sms_enabled')::boolean,false) as sms_enabled,
+              to_jsonb(p)->>'sms_phone' as sms_phone,
+              (to_jsonb(p)->>'sms_phone_verified_at')::timestamptz as sms_phone_verified_at,
+              coalesce(to_jsonb(p)->>'sms_provider_state','unavailable') as sms_provider_state
+       from notification_preferences p where p.account_id=$1`,
       [accountId],
     );
     const row = result.rows[0];
@@ -55,9 +58,18 @@ export class PostgresCreatorNotificationRepository extends CreatorRepositoryBase
 
   async update(envelope: CreatorCommandEnvelope, input: Omit<CreatorNotificationPreferences, "providerState" | "revision" | "smsProviderState" | "smsPhoneVerifiedAt" | "smsEnabled" | "smsPhone"> & Partial<Pick<CreatorNotificationPreferences, "smsEnabled" | "smsPhone">>): Promise<CreatorReceipt> {
     return this.executeOwnerCommand(envelope, async (client) => {
+      const smsSchema = await client.query<{ ready: boolean }>(
+        `select count(*) = 4 as ready
+         from information_schema.columns
+         where table_schema=current_schema() and table_name='notification_preferences'
+           and column_name in ('sms_enabled','sms_phone','sms_phone_verified_at','sms_provider_state')`,
+      );
+      const smsReset = smsSchema.rows[0]?.ready
+        ? ",sms_enabled=false,sms_phone=null"
+        : "";
       const updated = await client.query<{ revision: number }>(
         `update notification_preferences set in_app_enabled=$3,email_enabled=$4,digest_cadence=$5,
-           saved_search_enabled=$6,follow_enabled=$7,reminder_enabled=$8,sms_enabled=false,sms_phone=null,
+           saved_search_enabled=$6,follow_enabled=$7,reminder_enabled=$8${smsReset},
            revision=revision+1,updated_at=now()
          where account_id=$1 and revision=$2 returning revision`,
         [envelope.accountId, envelope.expectedRevision, input.inAppEnabled, input.emailEnabled, input.digestCadence,

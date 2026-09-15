@@ -89,7 +89,7 @@ export function ContentIssueReportDialog({
     <Dialog open={open} onOpenChange={reset}>
       <DialogTrigger
         render={
-          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" />
+        <Button type="button" variant="account" size="sm" />
         }
       >
         <Flag aria-hidden="true" className="size-4" />

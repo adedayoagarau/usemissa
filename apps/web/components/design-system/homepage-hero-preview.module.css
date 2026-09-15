@@ -4,7 +4,7 @@
   min-height: 100svh;
   min-height: 100dvh;
   overflow: clip;
-  background: var(--accent-deep);
+  background: var(--ink);
   color: var(--primary-foreground);
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
@@ -53,7 +53,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: left top;
+  object-position: 48% center;
 }
 
 /* Floating menu — mobile / tablet only */
@@ -64,7 +64,7 @@
   right: 16px;
   left: 16px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   pointer-events: none;
@@ -359,6 +359,38 @@
   transform: scale(0.96);
 }
 
+.photoCredit {
+  margin: 18px 0 0;
+  color: color-mix(in srgb, var(--primary-foreground) 64%, transparent);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.photoCredit a {
+  color: inherit;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--primary-foreground) 36%,
+    transparent
+  );
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.photoCredit a:hover,
+.photoCredit a:focus-visible {
+  color: var(--primary-foreground);
+  text-decoration-color: currentColor;
+}
+
+.photoCredit a:focus-visible {
+  outline: 2px solid var(--primary-foreground);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+
 .hero ::selection {
   background: var(--hero-action-surface);
   color: var(--accent-deep);
@@ -373,7 +405,7 @@
 
 @media (min-width: 1024px) {
   .plate {
-    object-position: left center;
+    object-position: center 42%;
   }
 
   .floatNav {

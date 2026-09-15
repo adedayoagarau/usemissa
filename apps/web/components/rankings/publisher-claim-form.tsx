@@ -246,7 +246,7 @@ export function PublisherClaimForm({
         >
           Cancel
         </Link>
-        <Button type="submit" disabled={isPending} className="gap-2">
+        <Button type="submit" disabled={isPending}>
           <ShieldCheck className="size-4" />
           <span>
             {isPending ? "Submitting..." : "Submit Verification Claim"}

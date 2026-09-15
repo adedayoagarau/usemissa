@@ -442,7 +442,7 @@ export function CreatorPortfolioArchive({
                   <X aria-hidden="true" />
                 </DialogClose>
               </div>
-              <DialogTitle className={`${styles.viewerTitle} font-heading`}>
+            <DialogTitle className={styles.viewerTitle}>
                 {opened.title}
               </DialogTitle>
               <DialogDescription>

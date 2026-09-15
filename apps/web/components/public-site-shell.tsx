@@ -5,6 +5,7 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { MissaSiteHeader } from "@/components/missa-site-header";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import styles from "./public-site-shell.module.css";
+import { contactMailto } from "@/lib/legalContact";
 
 export async function PublicSiteShell({
   children,
@@ -72,7 +73,7 @@ export async function PublicSiteShell({
           <Link href="/discover/match">Manuscript matcher</Link>
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
-          <a href="mailto:hello@usemissa.com">Share feedback</a>
+          <a href={contactMailto()}>Share feedback</a>
         </nav>
       </footer>
     </div>

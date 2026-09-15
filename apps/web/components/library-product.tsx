@@ -444,7 +444,7 @@ export function LibraryProduct({
                 ["answers", "Reusable text", answers.length],
               ] as const
             ).map(([id, title, n]) => (
-              <TabsTrigger key={id} value={id} className="min-h-11 px-1">
+              <TabsTrigger key={id} value={id} size="touch">
                 {title}
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {n}

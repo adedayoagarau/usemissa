@@ -17,6 +17,12 @@ export type CreatorProfileView = Readonly<{
   userId: string;
   displayName: string;
   bio: string | null;
+  givenName: string | null;
+  familyName: string | null;
+  usesSingleName: boolean;
+  countryCode: string | null;
+  city: string | null;
+  timezone: string | null;
   privacy: Readonly<{
     displayName: "public" | "private";
     bio: "public" | "private";
@@ -34,6 +40,12 @@ type ProfileRow = {
   user_id: string;
   display_name: string;
   bio: string | null;
+  given_name: string | null;
+  family_name: string | null;
+  uses_single_name: boolean;
+  country_code: string | null;
+  city: string | null;
+  timezone: string | null;
   display_name_visibility: "public" | "private";
   bio_visibility: "public" | "private";
   tracked_opportunity_count_visibility: "public" | "private";
@@ -68,6 +80,12 @@ function profileView(row: ProfileRow): CreatorProfileView {
     userId: row.user_id,
     displayName: row.display_name,
     bio: row.bio,
+    givenName: row.given_name,
+    familyName: row.family_name,
+    usesSingleName: row.uses_single_name,
+    countryCode: row.country_code,
+    city: row.city,
+    timezone: row.timezone,
     privacy: {
       displayName: row.display_name_visibility,
       bio: row.bio_visibility,
@@ -84,7 +102,8 @@ export class PostgresCreatorProfileRepository extends CreatorRepositoryBase {
 
   async profile(accountId: string): Promise<CreatorProfileView | undefined> {
     const result = await this.query<ProfileRow>(
-      `select account_id, user_id, display_name, bio, display_name_visibility, bio_visibility,
+      `select account_id, user_id, display_name, bio, given_name, family_name, uses_single_name,
+              country_code, city, timezone, display_name_visibility, bio_visibility,
               tracked_opportunity_count_visibility,
               reduce_motion, revision, updated_at
        from creator_profiles where account_id = $1`,
@@ -95,7 +114,8 @@ export class PostgresCreatorProfileRepository extends CreatorRepositoryBase {
 
   async publicProfile(userId: string): Promise<{ id?: string; displayName?: string; bio?: string; isPrivate?: true } | undefined> {
     const result = await this.query<ProfileRow>(
-      `select account_id, user_id, display_name, bio, display_name_visibility, bio_visibility,
+      `select account_id, user_id, display_name, bio, given_name, family_name, uses_single_name,
+              country_code, city, timezone, display_name_visibility, bio_visibility,
               tracked_opportunity_count_visibility, reduce_motion, revision, updated_at
        from creator_profiles where user_id=$1`, [userId],
     );

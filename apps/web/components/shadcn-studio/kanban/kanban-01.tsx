@@ -38,7 +38,7 @@ const COLUMN_META: Record<ColumnId, { title: string; subtitle: string; accent: s
   inProgress: {
     title: 'In Progress',
     subtitle: 'Being worked',
-    accent: 'bg-blue-500'
+    accent: 'bg-information'
   },
   done: {
     title: 'Done',
@@ -49,7 +49,7 @@ const COLUMN_META: Record<ColumnId, { title: string; subtitle: string; accent: s
 
 const PRIORITY_STYLES: Record<Priority, string> = {
   low: 'bg-emerald-500',
-  medium: 'bg-amber-500',
+  medium: 'bg-warning',
   high: 'bg-rose-500'
 }
 

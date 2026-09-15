@@ -6,7 +6,7 @@ test("renderWelcomeEmail is personal, concise, and uses complete sentences", () 
   const rendered = renderWelcomeEmail({
     accountId: "acc_welcome_1",
     email: "writer@example.com",
-    displayName: "Adedayo",
+    givenName: "Adedayo",
   });
 
   assert.equal(rendered.subject, "Welcome to Missa");

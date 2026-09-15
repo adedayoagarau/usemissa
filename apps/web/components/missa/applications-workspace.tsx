@@ -190,7 +190,7 @@ export function ApplicationsWorkspace({
                 ["history", "History"],
               ] as const
             ).map(([v, title]) => (
-              <TabsTrigger key={v} value={v} className="min-h-11 px-1">
+              <TabsTrigger key={v} value={v} size="touch">
                 {title}
                 <span className="text-xs text-muted-foreground tabular-nums">
                   {items.filter((i) => applicationView(i.myStatus) === v)
@@ -735,7 +735,7 @@ function ApplicationPanel({
               <ArrowRight className="size-4" />
             </Link>
           )}
-          <Collapsible className="border-t border-border pt-3">
+          <Collapsible variant="section">
             <CollapsibleTrigger
               render={
                 <Button variant="ghost" className="w-full justify-between" />
@@ -782,7 +782,7 @@ function ApplicationPanel({
             </CollapsibleContent>
           </Collapsible>
           {data.materials.length ? (
-            <Collapsible className="border-t border-border pt-3">
+            <Collapsible variant="section">
               <CollapsibleTrigger
                 render={
                   <Button variant="ghost" className="w-full justify-between" />
@@ -845,7 +845,7 @@ function ApplicationPanel({
         }}
       >
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
-          <DialogTitle className="font-sans text-xl font-semibold">
+          <DialogTitle className="text-xl">
             {dialog === "notes"
               ? "Your application notes"
               : "Record an application update"}

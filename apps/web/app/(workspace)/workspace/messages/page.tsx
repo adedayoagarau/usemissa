@@ -20,22 +20,22 @@ export default async function WorkspaceMessagesPage({ searchParams }: { searchPa
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">See organization updates and decision-email activity. This view records when a batch was created; it does not display message text, recipients, or delivery-provider details.</p>
       </header>
       <section className="mt-6 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-white p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Organization updates</p>
           <p className="mt-2 font-mono text-2xl text-foreground">{alerts.length}</p>
         </div>
-        <div className="rounded-xl border border-border bg-white p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Decision-email batches</p>
           <p className="mt-2 font-mono text-2xl text-foreground">{batches.length}</p>
         </div>
-        <div className="rounded-xl border border-border bg-white p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Delivery detail</p>
-          <p className="mt-2 text-sm font-medium text-amber-700">Limited</p>
+          <p className="mt-2 text-sm font-medium text-warning">Limited</p>
           <p className="mt-1 text-xs text-muted-foreground">Provider delivery history is not shown here</p>
         </div>
       </section>
       <section className="mt-8 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-white">
+        <div className="rounded-xl border border-border bg-card">
           <div className="border-b border-border px-4 py-4">
             <h2 className="font-heading text-xl font-medium text-foreground">Decision-email activity</h2>
             <p className="mt-1 text-xs text-muted-foreground">Date and batch reference.</p>
@@ -52,7 +52,7 @@ export default async function WorkspaceMessagesPage({ searchParams }: { searchPa
             {batches.length === 0 && <li className="px-4 py-8 text-sm text-muted-foreground">No decision-email activity yet. Batches will appear here after your team sends decisions.</li>}
           </ul>
         </div>
-        <div className="rounded-xl border border-border bg-white">
+        <div className="rounded-xl border border-border bg-card">
           <div className="border-b border-border px-4 py-4">
             <h2 className="font-heading text-xl font-medium text-foreground">Organization updates</h2>
             <p className="mt-1 text-xs text-muted-foreground">Updates created for your organization.</p>

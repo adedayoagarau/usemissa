@@ -7,7 +7,7 @@ const ProgressColorDemo = () => {
       {/* Green */}
       <Progress
         value={40}
-        className='gap-2 **:data-[slot=progress-indicator]:bg-green-600 *:data-[slot=progress-track]:h-2 *:data-[slot=progress-track]:bg-green-600/20 dark:**:data-[slot=progress-indicator]:bg-green-400 dark:*:data-[slot=progress-track]:bg-green-400/20'
+        className='gap-2 **:data-[slot=progress-indicator]:bg-success *:data-[slot=progress-track]:h-2 *:data-[slot=progress-track]:bg-success/20 dark:**:data-[slot=progress-indicator]:bg-success dark:*:data-[slot=progress-track]:bg-success/20'
       >
         <ProgressLabel>Green</ProgressLabel>
         <ProgressValue className='text-foreground font-medium' />
@@ -16,7 +16,7 @@ const ProgressColorDemo = () => {
       {/* Amber */}
       <Progress
         value={60}
-        className='gap-2 **:data-[slot=progress-indicator]:bg-amber-600 *:data-[slot=progress-track]:h-2 *:data-[slot=progress-track]:bg-amber-600/20 dark:**:data-[slot=progress-indicator]:bg-amber-400 dark:*:data-[slot=progress-track]:bg-amber-400/20'
+        className='gap-2 **:data-[slot=progress-indicator]:bg-warning *:data-[slot=progress-track]:h-2 *:data-[slot=progress-track]:bg-warning/20 dark:**:data-[slot=progress-indicator]:bg-warning dark:*:data-[slot=progress-track]:bg-warning/20'
       >
         <ProgressLabel>Amber</ProgressLabel>
         <ProgressValue className='text-foreground font-medium' />

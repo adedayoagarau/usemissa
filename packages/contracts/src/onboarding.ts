@@ -23,7 +23,9 @@ export const creativePracticeFamilySchema = z.enum([
   "interdisciplinary-practice",
 ]);
 
-export type CreativePracticeFamily = z.infer<typeof creativePracticeFamilySchema>;
+export type CreativePracticeFamily = z.infer<
+  typeof creativePracticeFamilySchema
+>;
 
 /**
  * Writing vertical facet preferences (launch pilot).
@@ -31,7 +33,9 @@ export type CreativePracticeFamily = z.infer<typeof creativePracticeFamilySchema
 export const writingFacetsSchema = z.object({
   genres: z.array(z.string().trim().min(1).max(80)).default([]),
   subgenres: z.array(z.string().trim().min(1).max(80)).default([]),
-  preferredFormats: z.array(z.enum(["Print", "Digital", "Chapbook", "Book", "Audio"])).default([]),
+  preferredFormats: z
+    .array(z.enum(["Print", "Digital", "Chapbook", "Book", "Audio"]))
+    .default([]),
   simultaneousRequired: z.boolean().default(true),
 });
 
@@ -75,15 +79,23 @@ export type MusicAndSoundFacets = z.infer<typeof musicAndSoundFacetsSchema>;
  * Universal cross-discipline preferences.
  */
 export const universalCreatorPreferencesSchema = z.object({
-  feePreference: z.enum(["free_only", "low_fee_acceptable", "any"]).default("any"),
+  feePreference: z
+    .enum(["free_only", "low_fee_acceptable", "any"])
+    .default("any"),
   maxFeeCents: z.number().int().min(0).max(10_000_000).optional(),
   opportunityTypes: z.array(opportunityTypeSchema).default([]),
-  careerStage: z.enum(["emerging", "mid-career", "established", "student", "any"]).default("any"),
+  careerStage: z
+    .enum(["emerging", "mid-career", "established", "student", "any"])
+    .default("any"),
   locations: z.array(z.string().trim().min(1).max(120)).default([]),
-  travelWillingness: z.enum(["remote-only", "willing-to-travel", "local-only", "any"]).default("any"),
+  travelWillingness: z
+    .enum(["remote-only", "willing-to-travel", "local-only", "any"])
+    .default("any"),
 });
 
-export type UniversalCreatorPreferences = z.infer<typeof universalCreatorPreferencesSchema>;
+export type UniversalCreatorPreferences = z.infer<
+  typeof universalCreatorPreferencesSchema
+>;
 
 /**
  * Creator onboarding mutation payload.
@@ -110,7 +122,9 @@ export const creatorOnboardingInputSchema = z.object({
   }),
 });
 
-export type CreatorOnboardingInput = z.infer<typeof creatorOnboardingInputSchema>;
+export type CreatorOnboardingInput = z.infer<
+  typeof creatorOnboardingInputSchema
+>;
 
 /**
  * Structured response returned upon onboarding completion.
@@ -133,18 +147,20 @@ export const creatorOnboardingResponseSchema = z.object({
       publisherName: z.string(),
       matchScore: z.number(),
       matchReasons: z.array(z.string()),
-    })
+    }),
   ),
   nextSteps: z.array(
     z.object({
       code: z.string(),
       label: z.string(),
       targetUrl: z.string(),
-    })
+    }),
   ),
 });
 
-export type CreatorOnboardingResponse = z.infer<typeof creatorOnboardingResponseSchema>;
+export type CreatorOnboardingResponse = z.infer<
+  typeof creatorOnboardingResponseSchema
+>;
 
 export const onboardingStatusSchema = z.enum([
   "not_started",
@@ -158,10 +174,23 @@ export type OnboardingStatus = z.infer<typeof onboardingStatusSchema>;
 export const creatorOnboardingStateSchema = z.object({
   authenticated: z.boolean(),
   status: onboardingStatusSchema,
-  step: z.number().int().min(0).max(3),
+  step: z.number().int().min(0).max(4),
   practices: z.array(z.string()),
   refinements: z.array(z.string()),
   interests: z.array(z.string()),
+  givenName: z.string().optional(),
+  familyName: z.string().optional(),
+  usesSingleName: z.boolean().default(false),
+  countryCode: z.string().optional(),
+  city: z.string().optional(),
+  timezone: z.string().optional(),
+  careerStage: z
+    .enum(["student", "emerging", "mid-career", "established", "any"])
+    .default("any"),
+  travelWillingness: z
+    .enum(["remote-only", "willing-to-travel", "local-only", "any"])
+    .default("any"),
+  noFeeOnly: z.boolean().default(false),
   completedAt: z.string().datetime().optional(),
   skippedAt: z.string().datetime().optional(),
   nextAction: z
@@ -179,16 +208,38 @@ export const creatorOnboardingStateSchema = z.object({
     .optional(),
 });
 
-export type CreatorOnboardingState = z.infer<typeof creatorOnboardingStateSchema>;
+export type CreatorOnboardingState = z.infer<
+  typeof creatorOnboardingStateSchema
+>;
 
 export const creatorOnboardingMutationSchema = z.object({
   action: z.enum(["save_step", "complete", "skip"]),
-  step: z.number().int().min(0).max(3).optional(),
+  step: z.number().int().min(0).max(4).optional(),
   practices: z.array(z.string().trim()).default([]),
   refinements: z.array(z.string().trim()).default([]),
   interests: z.array(z.string().trim()).default([]),
   primaryPractice: z.string().trim().optional(),
   lastRoute: z.string().trim().optional(),
+  givenName: z.string().trim().min(1).max(80).optional(),
+  familyName: z.string().trim().max(80).optional(),
+  usesSingleName: z.boolean().default(false),
+  countryCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{2}$/u)
+    .optional(),
+  city: z.string().trim().max(120).optional(),
+  timezone: z.string().trim().min(1).max(80).optional(),
+  careerStage: z
+    .enum(["student", "emerging", "mid-career", "established", "any"])
+    .default("any"),
+  travelWillingness: z
+    .enum(["remote-only", "willing-to-travel", "local-only", "any"])
+    .default("any"),
+  noFeeOnly: z.boolean().default(false),
 });
 
-export type CreatorOnboardingMutation = z.infer<typeof creatorOnboardingMutationSchema>;
+export type CreatorOnboardingMutation = z.infer<
+  typeof creatorOnboardingMutationSchema
+>;

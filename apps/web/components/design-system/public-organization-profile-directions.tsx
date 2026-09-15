@@ -350,7 +350,7 @@ function EditorialProfile({ scenario }: { scenario: Scenario }) {
   return (
     <main>
       <div className={`${styles.editorialHero} ${!scenario.cover ? styles.withoutCover : ''}`}>
-        {scenario.cover && <Image src="/media/missa-org-gallery.png" alt="A gallery installation presented by Missa Arts Foundation" fill priority sizes="100vw" />}
+        {scenario.cover && <Image src="/media/missa-org-gallery.webp" alt="A gallery installation presented by Missa Arts Foundation" fill priority sizes="100vw" />}
         <div className={styles.editorialIdentity}><Identity scenario={scenario} /></div>
       </div>
       <Notice notice={scenario.notice} />

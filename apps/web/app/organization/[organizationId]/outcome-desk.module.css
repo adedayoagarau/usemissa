@@ -6,12 +6,12 @@
 .header p:last-child { max-width: 710px; margin-top: 12px; color: var(--muted-foreground); font-size: .86rem; line-height: 1.55; }
 .role { flex: 0 0 auto; padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-deep); font-size: .7rem; font-weight: 700; }
 .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin-top: 24px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--border); }
-.summary div { padding: 16px; background: white; }
+.summary div { padding: 16px; background: var(--background); }
 .summary dt { color: var(--muted-foreground); font-size: .64rem; }
 .summary dd { margin: 7px 0 0; font-family: var(--font-mono), monospace; font-size: 1.2rem; }
 .filters { display: flex; gap: 10px; margin-top: 22px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--muted) 48%, white); }
 .filters label { display: grid; min-width: 190px; flex: 1; gap: 5px; color: var(--muted-foreground); font-size: .66rem; font-weight: 650; }
-.filters input, .filters select { min-height: 44px; padding: 0 11px; border: 1px solid var(--border); border-radius: 8px; background: white; color: var(--foreground); font: inherit; font-size: .76rem; }
+.filters input, .filters select { min-height: 44px; padding: 0 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--background); color: var(--foreground); font: inherit; font-size: .76rem; }
 .filters button, .clear { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; align-self: end; padding: 0 14px; border-radius: 8px; font-size: .73rem; font-weight: 700; text-decoration: none; }
 .filters button { background: var(--foreground); color: white; }
 .clear { border: 1px solid var(--border); color: var(--foreground); }
@@ -32,7 +32,7 @@
 .attention { color: var(--warning-foreground, #7a4c00); font-size: .65rem; }
 .open { display: inline-flex; min-height: 44px; align-items: center; gap: 5px; color: var(--primary); font-size: .7rem; font-weight: 750; }
 .open svg { width: 14px; }
-.dossier { position: sticky; top: 84px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: white; }
+.dossier { position: sticky; top: 84px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--background); }
 .dossierHeader { display: flex; justify-content: space-between; gap: 18px; padding: 22px; border-bottom: 1px solid var(--border); }
 .dossierHeader h2, .dossierHeader p { margin: 0; }
 .dossierHeader h2 { margin-top: 6px; font-family: var(--font-heading), Georgia, serif; font-size: 1.65rem; font-weight: 560; }

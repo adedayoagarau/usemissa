@@ -120,11 +120,11 @@ export function FollowingWorkspace() {
         }}
         className="gap-6"
       >
-        <TabsList variant="line" className="min-h-12 gap-6">
-          <TabsTrigger value="following" className="min-h-11 px-1">
+        <TabsList variant="line" size="responsive" className="gap-6">
+          <TabsTrigger value="following" size="touch">
             Following
           </TabsTrigger>
-          <TabsTrigger value="explore" className="min-h-11 px-1">
+          <TabsTrigger value="explore" size="touch">
             Explore
           </TabsTrigger>
         </TabsList>
@@ -220,7 +220,7 @@ export function FollowingWorkspace() {
                   >
                     <div className="flex w-full items-center justify-between gap-3">
                       <Avatar className="size-12">
-                        <AvatarFallback className="bg-secondary font-heading text-xl text-primary">
+                        <AvatarFallback variant="organization">
                           {item.name
                             .split(/\s+/)
                             .slice(0, 2)
@@ -408,7 +408,7 @@ function FollowingDetail({
       }}
     >
       <SheetContent className="overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
-        <SheetHeader className="gap-3 border-b border-border px-6 pt-12 pb-6">
+        <SheetHeader variant="section" className="gap-3 px-6 pt-12 pb-6">
           <SheetTitle className="font-heading text-3xl leading-tight break-words">
             {data?.name ??
               (selected.kind === "program" ? "Program" : "Organization")}

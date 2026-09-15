@@ -26,6 +26,15 @@ import {
   CollapsibleContent,
 } from "@/components/ui/collapsible";
 import { ApplicationReminders } from "@/components/missa/application-reminders";
+import { CountBadge } from "@/components/missa/count-badge";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 
 export type InboxProductGroup =
   "attention" | "changes" | "submissions" | "discovery";
@@ -151,6 +160,8 @@ export function InboxProduct({
       })),
     [items],
   );
+  const attentionCount =
+    grouped.find((group) => group.id === "attention")?.items.length ?? 0;
 
   function changeView(next: InboxView) {
     setView(next);
@@ -221,41 +232,53 @@ export function InboxProduct({
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 pb-12">
-      <header className="flex flex-wrap items-end justify-between gap-6">
-        <div>
-          <h1 className="font-sans text-3xl font-semibold tracking-tight">
-            Inbox
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Updates from your applications, goals and people you follow.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          disabled={!unreadCount || busy}
-          onClick={() => void markRead()}
-        >
-          <CheckCheck />
-          {unreadCount ? `Mark all read (${unreadCount})` : "All read"}
-        </Button>
-      </header>
+    <div className="mx-auto max-w-6xl space-y-8 pb-12">
+      <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <header className="flex flex-wrap items-end justify-between gap-6">
+          <div className="max-w-2xl">
+            <h1 className="font-sans text-3xl font-semibold tracking-tight">
+              Inbox
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              Decisions, reminders and changes connected to your Missa work.
+            </p>
+          </div>
+          {initialPreferences ? (
+            <CollapsibleTrigger
+              render={<Button variant="outline" aria-expanded={settingsOpen} />}
+            >
+              <BellRing />
+              Notification settings
+            </CollapsibleTrigger>
+          ) : null}
+        </header>
+        {initialPreferences ? (
+          <CollapsibleContent className="pt-6">
+            <NotificationPreferencesPanel initial={initialPreferences} />
+          </CollapsibleContent>
+        ) : null}
+      </Collapsible>
       <Tabs
         value={view}
         onValueChange={(v) => changeView(v as InboxView)}
-        className="gap-6"
+        className="gap-8"
       >
-        <TabsList variant="line" className="min-h-12 max-w-full gap-3 sm:gap-8">
-          <TabsTrigger value="briefing" className="min-h-11 px-1">
-            Updates
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {unreadCount}
-            </span>
+        <TabsList
+          variant="section"
+          size="responsive"
+          aria-label="Inbox views"
+          className="max-w-full overflow-x-auto"
+        >
+          <TabsTrigger value="briefing" size="touch">
+            Briefing
+            {unreadCount ? (
+              <CountBadge count={unreadCount} label="unread updates" />
+            ) : null}
           </TabsTrigger>
-          <TabsTrigger value="reminders" className="min-h-11 px-1">
+          <TabsTrigger value="reminders" size="touch">
             Reminders
           </TabsTrigger>
-          <TabsTrigger value="email" className="min-h-11 px-1">
+          <TabsTrigger value="email" size="touch">
             Email review
           </TabsTrigger>
         </TabsList>
@@ -265,43 +288,108 @@ export function InboxProduct({
           ) : view === "reminders" ? (
             <ApplicationReminders />
           ) : (
-            <div className="space-y-10">
+            <div className="space-y-12">
               {!items.length ? (
-                <section className="space-y-4 border-y border-border py-12">
-                  <Check className="size-8 text-primary" />
-                  <h2 className="font-sans text-xl font-semibold">
-                    You&apos;re all caught up.
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    New decisions, opportunity updates and reminders will appear
-                    here.
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => changeView("reminders")}
-                  >
-                    View upcoming reminders
-                    <ArrowRight />
-                  </Button>
-                </section>
+                <Empty variant="bordered" size="spacious">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <Check />
+                    </EmptyMedia>
+                    <EmptyTitle role="heading" aria-level={2}>
+                      Nothing needs your attention right now
+                    </EmptyTitle>
+                    <EmptyDescription>
+                      Decisions, material Opportunity changes and reminders tied
+                      to your account will appear here. An empty Inbox does not
+                      change anything in Tracker.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <EmptyContent className="sm:flex-row sm:justify-center">
+                    <Button onClick={() => router.push("/opportunities")}>
+                      Browse Opportunities
+                      <ArrowRight />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => changeView("reminders")}
+                    >
+                      Review reminders
+                    </Button>
+                  </EmptyContent>
+                </Empty>
               ) : (
-                grouped.map((group) =>
-                  group.items.length ? (
+                <>
+                  <header className="flex flex-wrap items-end justify-between gap-6 border-b border-border pb-6">
+                    <div className="max-w-2xl">
+                      <h2 className="font-sans text-2xl font-semibold tracking-tight">
+                        Your Missa briefing
+                      </h2>
+                      <p className="mt-2 text-muted-foreground">
+                        {attentionCount
+                          ? `${attentionCount} ${attentionCount === 1 ? "item needs" : "items need"} your attention. Quieter updates follow.`
+                          : "Nothing needs action. Your recent updates remain below."}
+                      </p>
+                    </div>
+                    {unreadCount ? (
+                      <Button
+                        variant="outline"
+                        disabled={busy}
+                        aria-busy={busy}
+                        onClick={() => void markRead()}
+                      >
+                        <CheckCheck />
+                        Mark all read
+                      </Button>
+                    ) : null}
+                  </header>
+                  {!attentionCount ? (
+                    <section
+                      aria-labelledby="inbox-attention"
+                      className="space-y-2"
+                    >
+                      <h3
+                        id="inbox-attention"
+                        className="font-sans text-lg font-semibold"
+                      >
+                        Needs attention
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Nothing here requires action. Your other account updates
+                        remain grouped below.
+                      </p>
+                    </section>
+                  ) : null}
+                  {grouped.map((group) =>
+                    group.items.length ? (
                     <section
                       key={group.id}
                       aria-labelledby={`inbox-${group.id}`}
+                      className="space-y-4"
                     >
-                      <h2
-                        id={`inbox-${group.id}`}
-                        className="mb-4 font-sans text-lg font-semibold"
-                      >
-                        {group.title}
-                      </h2>
+                      <div className="flex flex-wrap items-end justify-between gap-4">
+                        <div className="max-w-2xl">
+                          <h3
+                            id={`inbox-${group.id}`}
+                            className="font-sans text-lg font-semibold"
+                          >
+                            {group.id === "attention"
+                              ? "Needs attention"
+                              : group.title}
+                          </h3>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {group.description}
+                          </p>
+                        </div>
+                        <span className="text-sm text-muted-foreground tabular-nums">
+                          {group.items.length}{" "}
+                          {group.items.length === 1 ? "update" : "updates"}
+                        </span>
+                      </div>
                       <div className="divide-y divide-border border-y border-border">
                         {group.items.map((item) => (
                           <article
                             key={item.id}
-                            className={`flex items-start gap-4 px-3 py-5 sm:px-5 ${item.unread ? "bg-secondary" : ""}`}
+                            className={`grid grid-cols-[auto_minmax(0,1fr)] gap-4 px-3 py-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:px-5 ${item.unread ? "bg-secondary" : ""}`}
                           >
                             <span className="mt-1 shrink-0 text-primary">
                               {iconFor(item)}
@@ -325,8 +413,11 @@ export function InboxProduct({
                                   {item.summary}
                                 </span>
                               </button>
-                              <div className="mt-3 flex flex-wrap items-center gap-3">
-                                <span className="text-xs text-muted-foreground">
+                              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                                <span>
+                                  <span className="font-medium text-foreground">
+                                    Why you&apos;re seeing this:{" "}
+                                  </span>
                                   {item.reason}
                                 </span>
                                 {item.reminderId ? (
@@ -357,43 +448,26 @@ export function InboxProduct({
                               </div>
                             </div>
                             <Button
-                              size="icon"
+                              size="sm"
                               variant="ghost"
-                              aria-label={`${item.actionLabel}: ${item.title}`}
+                              className="col-start-2 justify-self-start sm:col-start-3 sm:row-start-1 sm:self-center sm:justify-self-end"
                               onClick={() => void openItem(item)}
                             >
+                              {item.actionLabel}
                               <ArrowRight />
                             </Button>
                           </article>
                         ))}
                       </div>
                     </section>
-                  ) : null,
-                )
+                    ) : null,
+                  )}
+                </>
               )}
             </div>
           )}
         </TabsContent>
       </Tabs>
-      {initialPreferences ? (
-        <Collapsible
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-          className="border-t border-border pt-4"
-        >
-          <CollapsibleTrigger
-            render={
-              <Button variant="ghost" className="w-full justify-between" />
-            }
-          >
-            Notification settings
-            <BellRing />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-4">
-            <NotificationPreferencesPanel initial={initialPreferences} />
-          </CollapsibleContent>
-        </Collapsible>
-      ) : null}
       <p
         role="status"
         aria-live="polite"

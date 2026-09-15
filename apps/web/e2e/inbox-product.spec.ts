@@ -30,8 +30,10 @@ test('Option 2 Inbox groups real owner alerts and persists read state', async ({
 
   await expect(page.getByRole('heading', { level: 1, name: 'Inbox' })).toBeVisible();
   await expect(page.getByText('Your Missa briefing', { exact: true })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Inbox views' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Briefing/ })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('tablist', { name: 'Inbox views' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Briefing/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { name: 'Needs attention' })).toBeVisible();
+  await expect(page.getByText(/Why you're seeing this:/).first()).toBeVisible();
   await expect(page.getByText(/source confidence|prediction confidence|matched confidence|classification|recently updated/i)).toHaveCount(0);
 
   const inbox = await page.evaluate(async (userId) => {

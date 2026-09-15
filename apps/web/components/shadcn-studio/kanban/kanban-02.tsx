@@ -59,7 +59,7 @@ const PRIORITY_META: Record<
   medium: {
     label: 'Medium',
     variant: 'secondary',
-    className: 'bg-amber-600/10 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400'
+    className: 'bg-warning/10 text-warning dark:bg-warning/10 dark:text-warning'
   },
   low: { label: 'Low', variant: 'outline', className: 'text-muted-foreground' }
 }

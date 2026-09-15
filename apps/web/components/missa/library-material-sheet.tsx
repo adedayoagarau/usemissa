@@ -144,7 +144,10 @@ export function LibraryMaterialSheet({
       }}
     >
       <SheetContent className="overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
-        <SheetHeader className="gap-3 border-b border-border p-6 pt-12 sm:p-8 sm:pt-12">
+        <SheetHeader
+          variant="section"
+          className="gap-3 p-6 pt-12 sm:p-8 sm:pt-12"
+        >
           <SheetTitle className="font-heading text-3xl leading-tight break-words">
             {title}
           </SheetTitle>
@@ -346,7 +349,7 @@ export function LibraryMaterialSheet({
                 submission.
               </p>
               {usage.versions.map((v) => (
-                <Collapsible key={v.id} className="border-b border-border py-2">
+                <Collapsible key={v.id} variant="divided">
                   <CollapsibleTrigger
                     render={
                       <Button

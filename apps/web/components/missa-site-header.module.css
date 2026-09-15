@@ -236,8 +236,8 @@
 
   .mobileNav a:hover,
   .mobileNav a[aria-current="page"] {
-    background: var(--accent-tint);
-    color: var(--accent-deep);
+    background: var(--accent);
+    color: var(--primary);
   }
 
   .mobileNav .mobileCreate {

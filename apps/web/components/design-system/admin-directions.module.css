@@ -69,13 +69,14 @@
 .platformStrip h2 { margin: 3px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: 17px; font-weight: 600; }
 .platformStrip > header > span { color: var(--muted-foreground); font: 8px var(--font-mono), monospace; }
 .platformStrip > div { display: grid; grid-template-columns: repeat(4, 1fr); }
-.platformStrip article { display: grid; min-height: 78px; align-items: center; gap: 9px; padding: 12px 15px; border-right: 1px solid var(--border); grid-template-columns: 24px 1fr; }
+.platformStrip article { display: grid; min-height: 96px; align-items: center; gap: 9px; padding: 12px 15px; border-right: 1px solid var(--border); grid-template-columns: 24px 1fr; }
 .platformStrip article:last-child { border-right: 0; }
 .platformStrip article > svg { width: 17px; color: var(--primary); }
 .platformStrip article span { display: grid; }
 .platformStrip small { color: var(--muted-foreground); font-size: 8px; }
 .platformStrip strong { margin-top: 2px; font-size: 11px; }
 .platformStrip em { margin-top: 2px; overflow: hidden; color: var(--muted-foreground); font-size: 8px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.platformStrip .signalProvenance { margin-top: 5px; color: var(--muted-foreground); font: 7px/1.35 var(--font-mono), monospace; }
 .worklist { min-width: 0; border: 1px solid var(--border); border-radius: 13px; overflow: hidden; background: #fff; }
 .worklist > header { display: flex; align-items: start; justify-content: space-between; gap: 14px; padding: 16px; border-bottom: 1px solid var(--border); }
 .worklist h2 { margin: 3px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: 21px; font-weight: 600; }

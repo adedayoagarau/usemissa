@@ -37,7 +37,7 @@ const PopoverRatingsDemo = () => {
           <PopoverHeader>
             <div className='flex items-center gap-1'>
               <span className='text-xl font-semibold'>{averageRating}</span>
-              <StarIcon className='size-5 fill-amber-500 stroke-amber-500 dark:fill-amber-400 dark:stroke-amber-400' />
+              <StarIcon className='size-5 fill-warning stroke-warning dark:fill-warning dark:stroke-warning' />
             </div>
             <PopoverTitle className='text-sm font-medium'>Total {totalReviews} reviews</PopoverTitle>
             <PopoverDescription className='text-muted-foreground text-sm'>

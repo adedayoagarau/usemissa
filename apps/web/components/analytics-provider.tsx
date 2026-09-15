@@ -7,10 +7,11 @@ import {
   type ClientAnalyticsEventName,
   validateAnalyticsEventProperties,
 } from "@/lib/analytics-contract";
+import { hasAnalyticsConsent, subscribeConsent } from "@/lib/analyticsConsent";
 
 let initialized = false;
 
-function ensurePostHog(): boolean {
+function startPostHog(): boolean {
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   if (!key) return false;
   if (!initialized) {
@@ -25,8 +26,22 @@ function ensurePostHog(): boolean {
       person_profiles: "identified_only",
     });
     initialized = true;
+  } else {
+    posthog.opt_in_capturing();
   }
   return true;
+}
+
+function ensurePostHog(): boolean {
+  if (!hasAnalyticsConsent()) return false;
+  return startPostHog();
+}
+
+/** Stop and discard third-party analytics state when consent is withdrawn. */
+function stopPostHog(): void {
+  if (!initialized) return;
+  posthog.opt_out_capturing();
+  posthog.reset();
 }
 
 function analyticsSessionId(): string | undefined {
@@ -48,6 +63,7 @@ function recordFirstPartyEvent(
   path: string,
   properties?: Record<string, unknown>,
 ): void {
+  if (!hasAnalyticsConsent()) return;
   if (validateAnalyticsEventProperties(eventName, properties)) return;
   void fetch("/api/analytics/events", {
     method: "POST",
@@ -132,10 +148,25 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const attribution = browserAttributionProperties();
-    recordFirstPartyEvent("page_view", pathname, attribution);
-    if (ensurePostHog())
-      posthog.capture("$pageview", { path: pathname, ...attribution });
+    function measurePageView() {
+      if (!hasAnalyticsConsent()) return;
+      const attribution = browserAttributionProperties();
+      recordFirstPartyEvent("page_view", pathname, attribution);
+      if (ensurePostHog())
+        posthog.capture("$pageview", { path: pathname, ...attribution });
+    }
+
+    measurePageView();
+    // Accepting consent mid-session should start measuring immediately rather
+    // than waiting for the next navigation. Withdrawing it must stop and
+    // discard third-party state right away.
+    return subscribeConsent((choice) => {
+      if (choice === "accepted") {
+        measurePageView();
+      } else {
+        stopPostHog();
+      }
+    });
   }, [pathname]);
 
   return children;

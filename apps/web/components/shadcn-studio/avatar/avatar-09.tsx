@@ -9,7 +9,7 @@ const AvatarStatusAwayDemo = () => {
         className='rounded-sm'
       />
       <AvatarFallback>HR</AvatarFallback>
-      <AvatarBadge className='-top-1 -right-1 bg-amber-600 group-data-[size=default]/avatar:size-2 dark:bg-amber-400'>
+      <AvatarBadge className='-top-1 -right-1 bg-warning group-data-[size=default]/avatar:size-2 dark:bg-warning'>
         <span className='sr-only'>Away</span>
       </AvatarBadge>
     </Avatar>

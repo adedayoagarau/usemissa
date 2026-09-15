@@ -20,7 +20,7 @@ export type CreatorFollowView = Readonly<{
 
 type PreferenceRow = {
   types: string[]; disciplines: string[]; genres: string[]; locations: string[]; career_stages: string[];
-  max_fee_cents: number | null; no_fee_only: boolean; deadline_within_days: number | null; simultaneous_required: boolean; revision: number;
+  max_fee_cents: number | null; no_fee_only: boolean; travel_willingness: NonNullable<OpportunityPreferences["travelWillingness"]>; deadline_within_days: number | null; simultaneous_required: boolean; revision: number;
 };
 
 export type CreatorPreferenceBundle = Readonly<{ opportunityPreferences: OpportunityPreferences; taxonomyPreferences: TaxonomyPreference[]; revision: number }>;
@@ -46,7 +46,7 @@ export class PostgresCreatorPreferenceRepository extends CreatorRepositoryBase {
   async opportunityPreferences(accountId: string): Promise<OpportunityPreferences | undefined> {
     const result = await this.query<PreferenceRow>(
       `select types, disciplines, genres, locations, career_stages, max_fee_cents,
-              no_fee_only, deadline_within_days, simultaneous_required, revision
+              no_fee_only, travel_willingness, deadline_within_days, simultaneous_required, revision
        from opportunity_preferences where account_id = $1`, [accountId],
     );
     const row = result.rows[0];
@@ -54,7 +54,7 @@ export class PostgresCreatorPreferenceRepository extends CreatorRepositoryBase {
     return {
       types: row.types as OpportunityPreferences["types"], disciplines: row.disciplines, genres: row.genres,
       locations: row.locations, careerStages: row.career_stages, ...(row.max_fee_cents === null ? {} : { maxFeeCents: row.max_fee_cents }),
-      noFeeOnly: row.no_fee_only, ...(row.deadline_within_days === null ? {} : { deadlineWithinDays: row.deadline_within_days }),
+      noFeeOnly: row.no_fee_only, travelWillingness: row.travel_willingness, ...(row.deadline_within_days === null ? {} : { deadlineWithinDays: row.deadline_within_days }),
       simultaneousRequired: row.simultaneous_required,
     };
   }
@@ -62,7 +62,7 @@ export class PostgresCreatorPreferenceRepository extends CreatorRepositoryBase {
   async preferenceBundle(accountId: string): Promise<CreatorPreferenceBundle | undefined> {
     const result = await this.query<PreferenceRow>(
       `select types, disciplines, genres, locations, career_stages, max_fee_cents,
-              no_fee_only, deadline_within_days, simultaneous_required, revision
+              no_fee_only, travel_willingness, deadline_within_days, simultaneous_required, revision
        from opportunity_preferences where account_id = $1`, [accountId],
     );
     const row = result.rows[0];
@@ -88,11 +88,11 @@ export class PostgresCreatorPreferenceRepository extends CreatorRepositoryBase {
       const updated = await client.query<{ account_id: string; revision: number }>(
         `update opportunity_preferences set
            types=$3, disciplines=$4, genres=$5, locations=$6, career_stages=$7,
-           max_fee_cents=$8, no_fee_only=$9, deadline_within_days=$10,
-           simultaneous_required=$11, revision=revision+1, updated_at=now()
+           max_fee_cents=$8, no_fee_only=$9, travel_willingness=$10, deadline_within_days=$11,
+           simultaneous_required=$12, revision=revision+1, updated_at=now()
          where account_id=$1 and revision=$2 returning account_id, revision`,
         [envelope.accountId, envelope.expectedRevision, preferences.types, preferences.disciplines, preferences.genres, preferences.locations,
-          preferences.careerStages, preferences.maxFeeCents ?? null, preferences.noFeeOnly, preferences.deadlineWithinDays ?? null, preferences.simultaneousRequired],
+          preferences.careerStages, preferences.maxFeeCents ?? null, preferences.noFeeOnly, preferences.travelWillingness ?? "any", preferences.deadlineWithinDays ?? null, preferences.simultaneousRequired],
       );
       const row = updated.rows[0];
       if (!row) return this.throwPreferenceConflict(client, envelope);

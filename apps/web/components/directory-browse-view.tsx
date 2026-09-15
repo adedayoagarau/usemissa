@@ -117,45 +117,47 @@ export function DirectoryBrowseView({
           </Link>
         ))}
       </nav>
-      <form
-        action={basePath}
-        method="get"
-        role="search"
-        className={styles.search}
-      >
-        <Search size={18} aria-hidden="true" />
-        <label className="sr-only" htmlFor="directory-search">
+      <div className={styles.searchGroup}>
+        <label className={styles.searchLabel} htmlFor="directory-search">
           Search organizations
         </label>
-        <Input
-          key={`${query}:${activeKind}:${activeWindow}:${activeSort}:${activeCountry}`}
-          id="directory-search"
-          name="q"
-          defaultValue={query}
-          placeholder="Search by name or interest…"
-          className={styles.input}
-        />
-        {activeKind && basePath === "/directory" && (
-          <input type="hidden" name="kind" value={activeKind} />
-        )}
-        {activeWindow && (
-          <input type="hidden" name="window" value={activeWindow} />
-        )}
-        {activeCountry && (
-          <input type="hidden" name="country" value={activeCountry} />
-        )}
-        {activeSort && activeSort !== "name_asc" && (
-          <input type="hidden" name="sort" value={activeSort} />
-        )}
-        <Button
-          type="submit"
-          aria-label="Search organizations"
-          title="Search organizations"
-          className={styles.submit}
+        <form
+          action={basePath}
+          method="get"
+          role="search"
+          className={styles.search}
         >
-          <ArrowUpRight size={18} aria-hidden="true" />
-        </Button>
-      </form>
+          <Search size={18} aria-hidden="true" />
+          <Input
+            key={`${query}:${activeKind}:${activeWindow}:${activeSort}:${activeCountry}`}
+            id="directory-search"
+            name="q"
+            defaultValue={query}
+            placeholder="Name or interest"
+            className={styles.input}
+          />
+          {activeKind && basePath === "/directory" && (
+            <input type="hidden" name="kind" value={activeKind} />
+          )}
+          {activeWindow && (
+            <input type="hidden" name="window" value={activeWindow} />
+          )}
+          {activeCountry && (
+            <input type="hidden" name="country" value={activeCountry} />
+          )}
+          {activeSort && activeSort !== "name_asc" && (
+            <input type="hidden" name="sort" value={activeSort} />
+          )}
+          <Button
+            type="submit"
+            aria-label="Search organizations"
+            title="Search organizations"
+            className={styles.submit}
+          >
+            <ArrowUpRight size={18} aria-hidden="true" />
+          </Button>
+        </form>
+      </div>
 
       <nav aria-label="Country filters" className={styles.countryFilters}>
         {PRIMARY_PUBLISHING_COUNTRIES.map((opt) => {

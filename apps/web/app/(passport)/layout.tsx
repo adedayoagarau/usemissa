@@ -5,6 +5,14 @@ import { safeAuthRedirect } from '@/lib/authRedirect';
 import { CreatorShell } from '@/components/creator-shell';
 import { getEngine } from '@/lib/engine';
 
+/** Private creator surface: never index, and name it for browser chrome. */
+export const metadata = {
+  title: 'Your Missa workspace',
+  description:
+    'Your saved opportunities, applications, deadlines, and materials in Missa.',
+  robots: { index: false, follow: false },
+};
+
 /** Auth-gated shell for the creator-facing Missa surface. */
 export default async function PassportLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();

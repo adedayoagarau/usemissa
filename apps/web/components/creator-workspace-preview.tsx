@@ -12,16 +12,16 @@ import {
 import Link from "next/link";
 import styles from "./creator-workspace-preview.module.css";
 
-type View = "now" | "applications" | "materials" | "calendar";
+type View = "workspace" | "tracker" | "library" | "calendar";
 const nav = [
-  { id: "now", label: "Now", icon: LayoutDashboard },
-  { id: "applications", label: "Applications", icon: FolderOpen },
-  { id: "materials", label: "Materials", icon: Library },
+  { id: "workspace", label: "Workspace", icon: LayoutDashboard },
+  { id: "tracker", label: "Tracker", icon: FolderOpen },
+  { id: "library", label: "Library", icon: Library },
   { id: "calendar", label: "Calendar", icon: CalendarDays },
 ] as const;
 
 export function CreatorWorkspacePreview() {
-  const [view, setView] = useState<View>("now");
+  const [view, setView] = useState<View>("workspace");
   const [tasks, setTasks] = useState([false, false, false]);
   const complete = tasks.filter(Boolean).length;
   const navigation = (mobile = false) => (
@@ -67,7 +67,7 @@ export function CreatorWorkspacePreview() {
       <div className={styles.shell}>
         {navigation()}
         <main className={styles.main}>
-          {view === "now" ? (
+          {view === "workspace" ? (
             <>
               <p className={styles.eyebrow}>Friday, September 5</p>
               <h1 className={`${styles.headline} font-heading`}>
@@ -128,9 +128,9 @@ export function CreatorWorkspacePreview() {
                       <button
                         type="button"
                         className={styles.primaryAction}
-                        onClick={() => setView("applications")}
+                        onClick={() => setView("tracker")}
                       >
-                        Prepare application{" "}
+                        Continue in Tracker{" "}
                         <ArrowRight aria-hidden="true" size={17} />
                       </button>
                     </div>
@@ -181,9 +181,9 @@ export function CreatorWorkspacePreview() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setView("applications")}
+                      onClick={() => setView("tracker")}
                     >
-                      Prepare <ArrowRight aria-hidden="true" size={14} />
+                      Open in Tracker <ArrowRight aria-hidden="true" size={14} />
                     </button>
                   </article>
                 ))}
@@ -199,10 +199,10 @@ export function CreatorWorkspacePreview() {
   );
 }
 
-function WorkspaceList({ view }: { view: Exclude<View, "now"> }) {
+function WorkspaceList({ view }: { view: Exclude<View, "workspace"> }) {
   const content = {
-    applications: [
-      "Applications",
+    tracker: [
+      "Tracker",
       "Keep preparation, official handoffs and creator-confirmed submissions in one calm place.",
       [
         [
@@ -218,8 +218,8 @@ function WorkspaceList({ view }: { view: Exclude<View, "now"> }) {
         ["Open Call: Future Forms", "Saved · no date listed", "Review"],
       ],
     ],
-    materials: [
-      "Your materials",
+    library: [
+      "Library",
       "Private building blocks for your applications. Nothing here becomes public unless you publish it deliberately.",
       [
         [

@@ -53,10 +53,10 @@ export function ExportButtons() {
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">Download your tracker, Works, Files, and Saved Answers. Exports are private and owner-scoped.</p>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" disabled={Boolean(busy)} onClick={() => download('json')} className="min-h-11 min-w-40 gap-2">
+        <Button type="button" disabled={Boolean(busy)} onClick={() => download('json')} className="min-w-40">
           <Download className="size-4" aria-hidden="true" />{busy === 'json' ? 'Preparing…' : 'Download JSON'}
         </Button>
-        <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => download('csv')} className="min-h-11 min-w-40 gap-2">
+        <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => download('csv')} className="min-w-40">
           <Download className="size-4" aria-hidden="true" />{busy === 'csv' ? 'Preparing…' : 'Download CSV'}
         </Button>
       </div>

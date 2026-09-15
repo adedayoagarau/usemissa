@@ -138,7 +138,7 @@ function ResetPasswordForm() {
       <Button
         type="submit"
         disabled={isPending}
-        className="w-full h-11 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+        className="w-full"
       >
         {isPending ? 'Updating password…' : 'Set new password'}
       </Button>

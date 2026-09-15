@@ -16,6 +16,7 @@ const projection = `select t.opportunity_id as "opportunityId", o.title,
  coalesce(p.name,org.data->>'name','') as "organizationName",o.type,t.status as "myStatus",
  o.status as "opportunityStatus",o.publication_state='published' as available,t.revision,
  o.deadline_date::text as deadline,coalesce(o.deadline_kind,'unknown') as "deadlineKind",
+ to_char(o.deadline_time at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') as "deadlineTime",o.deadline_timezone as "deadlineTimezone",
  t.submitted_at as "submittedAt",t.updated_at as "updatedAt",w.title as "workTitle",t.work_id as "workId",t.notify
  from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
  left join radar_organizations org on org.id=o.organization_id

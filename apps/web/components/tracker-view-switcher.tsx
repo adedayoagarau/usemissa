@@ -126,8 +126,8 @@ export function TrackerViewSwitcher({
       {mode === 'list' && (
         <div className="mt-4 space-y-2">
           <div className="flex flex-wrap gap-2" aria-label="Filter by List">
-            <button type="button" onClick={() => setListId('all')} className={`min-h-11 rounded-md border px-3 text-sm ${listId === 'all' ? 'border-primary bg-accent-tint' : 'border-border'}`}>All tracked</button>
-            {lists.map((list) => <button type="button" key={list.id} onClick={() => setListId(list.id)} className={`min-h-11 rounded-md border px-3 text-sm ${listId === list.id ? 'border-primary bg-accent-tint' : 'border-border'}`}>{list.name}</button>)}
+            <button type="button" onClick={() => setListId('all')} className={`min-h-11 rounded-md border px-3 text-sm ${listId === 'all' ? 'border-primary bg-accent text-primary' : 'border-border'}`}>All tracked</button>
+            {lists.map((list) => <button type="button" key={list.id} onClick={() => setListId(list.id)} className={`min-h-11 rounded-md border px-3 text-sm ${listId === list.id ? 'border-primary bg-accent text-primary' : 'border-border'}`}>{list.name}</button>)}
           </div>
           {(listId === 'all' ? allItems : allItems.filter((item) => memberships.some((membership) => membership.listId === listId && membership.opportunityId === item.opportunityId))).map((item) => (
             <TrackerItemRow key={item.opportunityId} userId={userId} item={item} works={works} />

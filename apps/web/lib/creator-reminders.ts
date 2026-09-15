@@ -3,8 +3,9 @@ import { z } from 'zod';
 import { CreatorRepositoryBase, CreatorConflictError, creatorPoolFor, type CreatorCommandEnvelope } from '@missa/radar-adapters';
 
 const timezone = z.string().refine(v => { try { new Intl.DateTimeFormat('en', { timeZone: v }); return true; } catch { return false; } });
+const timeOfDay = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Choose a time of day');
 export const reminderInput = z.discriminatedUnion('kind', [
-  z.object({ opportunityId: z.string().min(1).max(200), kind: z.literal('deadline'), offsetDays: z.union([z.literal(0), z.literal(1), z.literal(3), z.literal(7), z.literal(14)]), timezone }),
+  z.object({ opportunityId: z.string().min(1).max(200), kind: z.literal('deadline'), offsetDays: z.union([z.literal(0), z.literal(1), z.literal(3), z.literal(7), z.literal(14)]), timeOfDay: timeOfDay.default('09:00'), timezone }),
   z.object({ opportunityId: z.string().min(1).max(200), kind: z.enum(['preparation', 'response']), title: z.string().trim().min(1).max(160), dueAt: z.string().datetime({ offset: true }), repeatDays: z.union([z.literal(0), z.literal(7), z.literal(14), z.literal(30)]), timezone }),
 ]);
 export type ReminderInput = z.infer<typeof reminderInput>;
@@ -35,7 +36,7 @@ export class CreatorReminderRepository extends CreatorRepositoryBase {
 
   async create(envelope: CreatorCommandEnvelope, input: ReminderInput) {
     return this.executeOwnerCommand(envelope, async client => {
-      const t = (await client.query<{ status: string; deadline: string | null; deadline_kind: string; publication_state: string }>(`select t.status,o.deadline_date::text as deadline,o.deadline_kind,o.publication_state from tracked_opportunities t join opportunities o on o.id=t.opportunity_id where t.account_id=$1 and t.opportunity_id=$2 for update of t`, [envelope.accountId, input.opportunityId])).rows[0];
+      const t = (await client.query<{ status: string; deadline: string | null; deadline_kind: string; publication_state: string; deadline_time: string | Date | null; deadline_timezone: string | null }>(`select t.status,o.deadline_date::text as deadline,o.deadline_kind,o.publication_state,o.deadline_time,o.deadline_timezone from tracked_opportunities t join opportunities o on o.id=t.opportunity_id where t.account_id=$1 and t.opportunity_id=$2 for update of t`, [envelope.accountId, input.opportunityId])).rows[0];
       if (!t) throw new ReminderValidationError('Save this application before setting a reminder.');
       const preparing = ['interested', 'saved', 'preparing', 'draft-started', 'ready-to-submit'].includes(t.status);
       if (input.kind === 'response' ? preparing || ['accepted', 'declined', 'withdrawn', 'delivered', 'archived'].includes(t.status) : !preparing)
@@ -43,9 +44,18 @@ export class CreatorReminderRepository extends CreatorRepositoryBase {
       if (input.kind === 'deadline' && (!t.deadline || !['fixed', 'exact'].includes(t.deadline_kind) || t.publication_state !== 'published'))
         throw new ReminderValidationError('A confirmed deadline is needed. Set a personal preparation reminder instead.');
       const due = input.kind === 'deadline'
-        ? (await client.query<{ value: string }>(`select (($1::date-$2::int)+time '09:00') at time zone $3 as value`, [t.deadline, input.offsetDays, input.timezone])).rows[0].value
+        ? (await client.query<{ value: string }>(`select ((($1::date-$2::int)::timestamp+$3::time) at time zone $4) as value`, [t.deadline, input.offsetDays, input.timeOfDay, input.timezone])).rows[0].value
         : input.dueAt;
-      if (!(await client.query<{ valid: boolean }>('select $1::timestamptz > now() as valid', [due])).rows[0].valid) throw new ReminderValidationError('Choose a reminder time that is still ahead.');
+      if (input.kind === 'deadline') {
+        // The reminder must still land before the deadline closes: at the
+        // provider's stated time when the source gave one, and at the end of the
+        // deadline day in the deadline's own timezone otherwise.
+        const window = (await client.query<{ ahead: boolean; before_close: boolean }>(
+          `select $1::timestamptz > now() as ahead,$1::timestamptz < coalesce($2::timestamptz,(($3::date+1)::timestamp at time zone coalesce($4::text,$5::text))) as before_close`,
+          [due, t.deadline_time, t.deadline, t.deadline_timezone, input.timezone])).rows[0];
+        if (!window.before_close) throw new ReminderValidationError('That time is after the deadline closes. Choose an earlier reminder time.');
+        if (!window.ahead) throw new ReminderValidationError('Choose a reminder time that is still ahead.');
+      } else if (!(await client.query<{ valid: boolean }>('select $1::timestamptz > now() as valid', [due])).rows[0].valid) throw new ReminderValidationError('Choose a reminder time that is still ahead.');
       // Existing active reminders are edited explicitly, never silently overwritten by a new request.
       const existing = (await client.query<{ id: string; state: string }>('select id,state from creator_application_reminders where account_id=$1 and opportunity_id=$2 and kind=$3 for update', [envelope.accountId, input.opportunityId, input.kind])).rows[0];
       if (existing && ['scheduled', 'needs-review'].includes(existing.state)) throw new ReminderValidationError('You already have this reminder. Open it to reschedule or cancel it.');
@@ -89,10 +99,13 @@ export async function tickCreatorReminders(accountId?: string) {
     await client.query(`update creator_application_reminders r set state='needs-review',due_at=null,snoozed_until=null,revision=r.revision+1,updated_at=now()
       from opportunities o where o.id=r.opportunity_id and ($1::text is null or r.account_id=$1) and r.state='scheduled' and r.kind='deadline'
       and (o.publication_state<>'published' or o.deadline_date is null or o.deadline_kind not in ('fixed','exact'))`, [accountId ?? null]);
-    await client.query(`update creator_application_reminders r set due_at=((o.deadline_date-r.deadline_offset_days)+time '09:00') at time zone r.timezone,
+    await client.query(`update creator_application_reminders r set due_at=((o.deadline_date-r.deadline_offset_days)::timestamp+coalesce((r.due_at at time zone r.timezone)::time,time '09:00')::interval) at time zone r.timezone,
       source_deadline=o.deadline_date,snoozed_until=null,revision=r.revision+1,updated_at=now()
       from opportunities o where o.id=r.opportunity_id and ($1::text is null or r.account_id=$1) and r.state='scheduled' and r.kind='deadline'
       and r.source_deadline is distinct from o.deadline_date`, [accountId ?? null]);
+    await client.query(`update creator_application_reminders r set state='needs-review',due_at=null,snoozed_until=null,revision=r.revision+1,updated_at=now()
+      from opportunities o where o.id=r.opportunity_id and ($1::text is null or r.account_id=$1) and r.state='scheduled' and r.kind='deadline'
+      and r.due_at >= coalesce(o.deadline_time,((o.deadline_date+1)::timestamp at time zone coalesce(o.deadline_timezone,r.timezone)))`, [accountId ?? null]);
     const due = await client.query(`select r.*,o.title as application_title,t.status as application_status,o.deadline_date < (now() at time zone r.timezone)::date as deadline_passed,
       coalesce(r.snoozed_until,r.due_at) as effective_due,coalesce(p.in_app_enabled and p.reminder_enabled,false) as allowed
       from creator_application_reminders r join opportunities o on o.id=r.opportunity_id

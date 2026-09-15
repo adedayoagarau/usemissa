@@ -24,9 +24,9 @@ const AccordionActiveItemDemo = () => {
         <AccordionItem
           key={index}
           value={`item-${index + 1}`}
-          className='bg-transparent data-open:border-amber-600 not-last:data-open:border-b-2 dark:data-open:border-amber-400'
+          className='bg-transparent data-open:border-warning not-last:data-open:border-b-2 dark:data-open:border-warning'
         >
-          <AccordionTrigger className='px-0 in-data-open:text-amber-600 in-data-open:**:data-[slot=accordion-trigger-icon]:text-amber-600 dark:in-data-open:text-amber-400 dark:in-data-open:**:data-[slot=accordion-trigger-icon]:text-amber-400'>
+          <AccordionTrigger className='px-0 in-data-open:text-warning in-data-open:**:data-[slot=accordion-trigger-icon]:text-warning dark:in-data-open:text-warning dark:in-data-open:**:data-[slot=accordion-trigger-icon]:text-warning'>
             {item.title}
           </AccordionTrigger>
           <AccordionContent className='text-muted-foreground'>{item.content}</AccordionContent>

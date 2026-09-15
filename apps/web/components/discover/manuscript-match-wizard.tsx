@@ -188,9 +188,8 @@ export function ManuscriptMatchWizard({
                     variant={genre === g ? "default" : "outline"}
                     size="xs"
                     aria-pressed={genre === g}
-                    className="capitalize"
                   >
-                    {g}
+                    <span className="capitalize">{g}</span>
                   </Button>
                 ))}
               </div>

@@ -74,6 +74,9 @@
   width: min(100%, 27rem);
 }
 .formKicker {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   color: var(--brand-accent);
   font-size: 0.7rem;
   font-weight: 700;
@@ -343,6 +346,9 @@
 }
 .switchMode a,
 .switchMode button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
   color: var(--brand-accent);
   font-weight: 600;
 }

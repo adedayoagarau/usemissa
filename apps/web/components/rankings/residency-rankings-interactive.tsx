@@ -16,7 +16,10 @@ import {
   Search,
   Star,
 } from "lucide-react";
-import type { ResidencyRankingRow, ResidencyReviewRow } from "@missa/radar-adapters";
+import type {
+  ResidencyRankingRow,
+  ResidencyReviewRow,
+} from "@missa/radar-adapters";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,12 +56,59 @@ type SortOption = "score" | "rating" | "reviews" | "name";
 
 const DISCIPLINES_LIST = [
   { id: "all", label: "All Disciplines" },
-  { id: "writing", label: "Writing & Literature", keywords: ["writing", "literature", "poetry", "fiction", "playwriting", "screenwriting", "nonfiction", "translation"] },
-  { id: "visual", label: "Visual Arts", keywords: ["visual", "painting", "sculpture", "ceramics", "drawing", "printmaking", "photography", "textiles"] },
-  { id: "multi", label: "Multidisciplinary & Hybrid", keywords: ["interdisciplinary", "multidisciplinary", "all disciplines", "hybrid"] },
-  { id: "music", label: "Music & Sound", keywords: ["music", "composition", "sound", "acoustic"] },
-  { id: "film", label: "Film & Media Arts", keywords: ["film", "video", "media", "animation", "digital"] },
-  { id: "performance", label: "Dance & Performing Arts", keywords: ["dance", "performance", "theater", "choreography"] },
+  {
+    id: "writing",
+    label: "Writing & Literature",
+    keywords: [
+      "writing",
+      "literature",
+      "poetry",
+      "fiction",
+      "playwriting",
+      "screenwriting",
+      "nonfiction",
+      "translation",
+    ],
+  },
+  {
+    id: "visual",
+    label: "Visual Arts",
+    keywords: [
+      "visual",
+      "painting",
+      "sculpture",
+      "ceramics",
+      "drawing",
+      "printmaking",
+      "photography",
+      "textiles",
+    ],
+  },
+  {
+    id: "multi",
+    label: "Multidisciplinary & Hybrid",
+    keywords: [
+      "interdisciplinary",
+      "multidisciplinary",
+      "all disciplines",
+      "hybrid",
+    ],
+  },
+  {
+    id: "music",
+    label: "Music & Sound",
+    keywords: ["music", "composition", "sound", "acoustic"],
+  },
+  {
+    id: "film",
+    label: "Film & Media Arts",
+    keywords: ["film", "video", "media", "animation", "digital"],
+  },
+  {
+    id: "performance",
+    label: "Dance & Performing Arts",
+    keywords: ["dance", "performance", "theater", "choreography"],
+  },
 ] as const;
 
 const FUNDING_FILTERS = [
@@ -121,7 +171,9 @@ export function ResidencyRankingsInteractive({
   const [sort, setSort] = useState<SortOption>(paramSort);
   const [discipline, setDiscipline] = useState(paramDiscipline);
   const [filters, setFilters] = useState<string[]>(paramFilters);
-  const [page, setPage] = useState(Math.max(0, isNaN(paramPage) ? 0 : paramPage));
+  const [page, setPage] = useState(
+    Math.max(0, isNaN(paramPage) ? 0 : paramPage),
+  );
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
 
@@ -186,12 +238,17 @@ export function ResidencyRankingsInteractive({
           }
         }
 
-        if (tier !== "all" && !row.prestigeTier.toLowerCase().includes(tier.toLowerCase())) {
+        if (
+          tier !== "all" &&
+          !row.prestigeTier.toLowerCase().includes(tier.toLowerCase())
+        ) {
           return false;
         }
 
         if (discipline !== "all") {
-          const matchedCategory = DISCIPLINES_LIST.find((d) => d.id === discipline);
+          const matchedCategory = DISCIPLINES_LIST.find(
+            (d) => d.id === discipline,
+          );
           if (matchedCategory && "keywords" in matchedCategory) {
             const discText = (row.disciplines || "").toLowerCase();
             if (!matchedCategory.keywords.some((kw) => discText.includes(kw))) {
@@ -325,9 +382,21 @@ export function ResidencyRankingsInteractive({
       <div className="flex flex-wrap items-center justify-between gap-6 border-b border-border">
         <nav aria-label="Ranking kind" className="flex flex-wrap gap-6">
           {[
-            { href: "/rankings/residencies", label: "Artist residencies", current: true },
-            { href: "/rankings/magazines", label: "Literary magazines", current: false },
-            { href: "/rankings/compare?kind=residencies", label: "Compare", current: false },
+            {
+              href: "/rankings/residencies",
+              label: "Artist residencies",
+              current: true,
+            },
+            {
+              href: "/rankings/magazines",
+              label: "Literary magazines",
+              current: false,
+            },
+            {
+              href: "/rankings/compare?kind=residencies",
+              label: "Compare",
+              current: false,
+            },
           ].map((tab) => (
             <Link
               key={tab.href}
@@ -380,7 +449,9 @@ export function ResidencyRankingsInteractive({
           </div>
         </Field>
         <Field>
-          <FieldLabel htmlFor="residency-discipline">Artistic discipline</FieldLabel>
+          <FieldLabel htmlFor="residency-discipline">
+            Artistic discipline
+          </FieldLabel>
           <NativeSelect
             id="residency-discipline"
             value={discipline}
@@ -468,7 +539,7 @@ export function ResidencyRankingsInteractive({
       </div>
 
       {visible.length === 0 ? (
-        <Empty className="border border-border py-16">
+        <Empty variant="bordered" size="spacious">
           <EmptyHeader>
             <EmptyTitle>No residencies found</EmptyTitle>
             <EmptyDescription>
@@ -487,7 +558,7 @@ export function ResidencyRankingsInteractive({
             points; community ratings come from resident reporting.
           </caption>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
+            <TableRow variant="static">
               <TableHead scope="col" className="w-12 text-start sm:w-20">
                 Rank
               </TableHead>
@@ -534,7 +605,10 @@ export function ResidencyRankingsInteractive({
               const rank = currentPage * PAGE_SIZE + index + 1;
               return (
                 <TableRow key={row.profileId}>
-                  <TableCell className="py-6 align-top font-mono text-base text-muted-foreground tabular-nums">
+                  <TableCell
+                    tone="muted"
+                    className="py-6 align-top font-mono text-base tabular-nums"
+                  >
                     {rank}
                   </TableCell>
                   <TableCell className="py-6 whitespace-normal">
@@ -574,10 +648,39 @@ export function ResidencyRankingsInteractive({
                       {fundingFacts(row).join(" · ")}
                     </p>
                     {row.disciplines ? (
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground italic line-clamp-1">
+                      <p className="mt-1 line-clamp-1 text-xs leading-5 text-muted-foreground italic">
                         {row.disciplines}
                       </p>
                     ) : null}
+                    <dl
+                      className="mt-4 grid gap-2 lg:hidden"
+                      aria-label={`${row.name} score details`}
+                    >
+                      <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                        <dt className="text-xs text-muted-foreground">
+                          Funding support
+                        </dt>
+                        <dd className="font-mono text-xs text-foreground tabular-nums">
+                          {row.fundingScore.toFixed(1)} / 35
+                        </dd>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                        <dt className="text-xs text-muted-foreground">
+                          Community score
+                        </dt>
+                        <dd className="font-mono text-xs text-foreground tabular-nums">
+                          {row.ratingScore.toFixed(1)} / 30
+                        </dd>
+                      </div>
+                      <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                        <dt className="text-xs text-muted-foreground">
+                          Facilities
+                        </dt>
+                        <dd className="font-mono text-xs text-foreground tabular-nums">
+                          {row.facilitiesScore.toFixed(1)} / 20
+                        </dd>
+                      </div>
+                    </dl>
                     <div className="mt-3 flex flex-wrap gap-3 xl:hidden">
                       <ResidencyIntelligenceDrawer
                         profileId={row.profileId}
@@ -588,7 +691,9 @@ export function ResidencyRankingsInteractive({
                         variant="ghost"
                         onClick={() => void openReviewsDialog(row)}
                       >
-                        {row.rmarRating !== null ? "Resident reviews" : "Add review"}
+                        {row.rmarRating !== null
+                          ? "Resident reviews"
+                          : "Add review"}
                       </Button>
                       <Button
                         variant="ghost"
@@ -733,9 +838,8 @@ export function ResidencyRankingsInteractive({
               <span>{activeResidencyForReviews?.name} reviews</span>
             </DialogTitle>
             <DialogDescription>
-              Community ratings and resident testimonials sourced from
-              publicly reported accounts. Missa does not verify residency
-              outcomes.
+              Community ratings and resident testimonials sourced from publicly
+              reported accounts. Missa does not verify residency outcomes.
             </DialogDescription>
           </DialogHeader>
 
@@ -763,13 +867,15 @@ export function ResidencyRankingsInteractive({
               </div>
             ) : reviewsData.length === 0 ? (
               <div className="space-y-2 rounded-xl border border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-                <p>No full-text written reviews available yet for this program.</p>
+                <p>
+                  No full-text written reviews available yet for this program.
+                </p>
                 {activeResidencyForReviews?.rmarRating ? (
                   <p className="font-medium text-foreground">
                     Aggregate rating:{" "}
                     {activeResidencyForReviews.rmarRating.toFixed(1)} / 5.0
-                    across {activeResidencyForReviews.rmarRatingsCount} community
-                    reports.
+                    across {activeResidencyForReviews.rmarRatingsCount}{" "}
+                    community reports.
                   </p>
                 ) : null}
                 {activeResidencyForReviews?.websiteUrl ? (
@@ -857,7 +963,9 @@ export function ResidencyRankingsInteractive({
                   </span>
                 </div>
                 <div className="mt-2">
-                  <RankingTierBadge tier={activeResidencyForScore.prestigeTier} />
+                  <RankingTierBadge
+                    tier={activeResidencyForScore.prestigeTier}
+                  />
                 </div>
               </div>
 
@@ -931,7 +1039,8 @@ export function ResidencyRankingsInteractive({
                       <span>Facilities &amp; solitude</span>
                     </div>
                     <span className="font-mono font-semibold text-foreground">
-                      {activeResidencyForScore.facilitiesScore.toFixed(1)} / 20 pts
+                      {activeResidencyForScore.facilitiesScore.toFixed(1)} / 20
+                      pts
                     </span>
                   </div>
                   <div className={styles.meterTrack}>
@@ -975,7 +1084,7 @@ export function ResidencyRankingsInteractive({
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Historical longevity, multi-directory provenance, and
-                    active verified calls
+                    linked calls with current source records
                   </p>
                 </div>
               </div>

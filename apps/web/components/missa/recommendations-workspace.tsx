@@ -283,11 +283,11 @@ export function RecommendationsWorkspace({
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border">
             <Tabs value={mode} onValueChange={(v) => change("mode", String(v))}>
-              <TabsList variant="line" className="min-h-12 gap-5">
-                <TabsTrigger value="now" className="min-h-11">
+              <TabsList variant="line" size="responsive" className="gap-5">
+                <TabsTrigger value="now" size="touch">
                   Apply now
                 </TabsTrigger>
-                <TabsTrigger value="plan" className="min-h-11">
+                <TabsTrigger value="plan" size="touch">
                   Plan ahead
                 </TabsTrigger>
               </TabsList>
@@ -409,7 +409,7 @@ export function RecommendationsWorkspace({
                         {item.reasons[0]?.label ?? "Why it’s here"}
                         <ChevronDown className="shrink-0" />
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="space-y-2 px-3 py-2 text-xs text-muted-foreground">
+                      <CollapsibleContent className="space-y-2 px-3 py-2">
                         {item.reasons.slice(1).map((r) => (
                           <p key={`${r.kind}:${r.label}`}>{r.label}</p>
                         ))}

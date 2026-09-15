@@ -26,10 +26,10 @@ const SelectWithLabel = () => {
   const [status, setStatus] = useState<string>('online')
 
   const statusColors: Record<string, string> = {
-    online: 'bg-green-600 dark:bg-green-400',
+    online: 'bg-success dark:bg-success',
     offline: 'bg-destructive',
     busy: 'bg-sky-600 dark:bg-sky-400',
-    away: 'bg-amber-600 dark:bg-amber-400'
+    away: 'bg-warning dark:bg-warning'
   }
 
   return (

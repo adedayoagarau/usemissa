@@ -4,7 +4,7 @@ import { DirectoryCategoryPage } from "@/components/directory-category-page";
 import { ResidencyRankingsInteractive } from "@/components/rankings/residency-rankings-interactive";
 import { getResidencyRankingRepository } from "@/lib/residencyRankingRepository";
 import { PublicSiteShell } from "@/components/public-site-shell";
-import catalogueStyles from "@/components/design-system/opportunities-browse-v2-preview.module.css";
+import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 
 export const dynamic = "force-dynamic";
 

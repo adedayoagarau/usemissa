@@ -8,6 +8,16 @@ import {
   SectionHeading,
   WarningList,
 } from "@/components/platform-admin";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { AdminArea } from "@/lib/platformAdmin";
 import type { PlatformAdminSupportData } from "@/lib/platformAdminSupport";
 
@@ -18,6 +28,17 @@ const PLATFORM_SUPPORT_STATUSES = [
   "dismissed",
 ] as const;
 type PlatformSupportStatus = (typeof PLATFORM_SUPPORT_STATUSES)[number];
+
+const PUBLIC_FIELD_LABELS: Record<string, string> = {
+  deadline_date: "Deadline date",
+  status: "Opportunity status",
+  fee_status: "Fee status",
+  fee_cents: "Fee amount",
+  guidelines_url: "Guidelines URL",
+  submission_url: "Submission URL",
+  location: "Location",
+  title: "Title",
+};
 
 function statusLabel(status: string): string {
   return status.replaceAll("-", " ");
@@ -43,6 +64,8 @@ export default function PlatformAdminSupport({
   const [summary, setSummary] = useState(area.data.summary);
   const [savingId, setSavingId] = useState<string>();
   const [error, setError] = useState<string>();
+  const [message, setMessage] = useState<string>();
+  const [pendingChange, setPendingChange] = useState<{ caseId: string; status: PlatformSupportStatus }>();
   const [resolutionById, setResolutionById] = useState<Record<string, { correction: string; evidenceUrl: string; field: string; value: string }>>({});
   const [statusFilter, setStatusFilter] = useState<
     PlatformSupportStatus | "all"
@@ -56,11 +79,18 @@ export default function PlatformAdminSupport({
     [rows, statusFilter],
   );
 
+  function requestStatusChange(caseId: string, status: PlatformSupportStatus) {
+    const row = rows.find((item) => item.id === caseId);
+    if (!row || row.status === status) return;
+    setPendingChange({ caseId, status });
+  }
+
   async function changeStatus(caseId: string, status: PlatformSupportStatus) {
     const row = rows.find((item) => item.id === caseId);
     if (!row || row.status === status) return;
     setSavingId(caseId);
     setError(undefined);
+    setMessage(undefined);
     const resolution = resolutionById[caseId];
     try {
       const response = await fetch("/api/admin/support", {
@@ -89,6 +119,11 @@ export default function PlatformAdminSupport({
         next[status] = (next[status] ?? 0) + 1;
         return { ...current, byStatus: next };
       });
+      setMessage(
+        resolution?.field
+          ? "Support update accepted. Verify the current public record and outbox processing before treating the correction as externally confirmed."
+          : "Support status update accepted and audited. This does not confirm any external provider action.",
+      );
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -99,6 +134,23 @@ export default function PlatformAdminSupport({
       setSavingId(undefined);
     }
   }
+
+  const pendingRow = pendingChange
+    ? rows.find((row) => row.id === pendingChange.caseId)
+    : undefined;
+  const pendingResolution = pendingChange
+    ? resolutionById[pendingChange.caseId]
+    : undefined;
+  const pendingMissingEvidence = Boolean(
+    pendingChange &&
+      ((pendingChange.status === "resolved" &&
+        (!pendingResolution?.correction.trim() ||
+          !pendingResolution.evidenceUrl.trim())) ||
+        (pendingResolution?.field &&
+          (!pendingResolution.value.trim() ||
+            !pendingResolution.correction.trim() ||
+            !pendingResolution.evidenceUrl.trim()))),
+  );
 
   return (
     <div className="space-y-8">
@@ -111,10 +163,15 @@ export default function PlatformAdminSupport({
       {error && (
         <div
           role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-lg border border-destructive/30 bg-destructive-subtle px-4 py-3 text-sm text-destructive"
         >
           {error}
         </div>
+      )}
+      {message && (
+        <p role="status" className="rounded-lg border border-information/30 bg-information-subtle px-4 py-3 text-sm text-information">
+          {message}
+        </p>
       )}
       <section
         className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"
@@ -183,7 +240,7 @@ export default function PlatformAdminSupport({
           title="Reported issues"
           description="Account and opportunity references are shown for authorized platform operators. Email bodies, provider tokens, and unrelated private content are not included."
         />
-        <div className="mt-4 border border-border bg-white">
+        <div className="mt-4 border border-border bg-card">
           <h2 id="support-case-list-title" className="sr-only">
             Reported opportunity issues
           </h2>
@@ -308,7 +365,7 @@ export default function PlatformAdminSupport({
                             rowId={row.id}
                             status={row.status}
                             saving={savingId === row.id}
-                            onChange={changeStatus}
+                            onChange={requestStatusChange}
                           />
                         </td>
                       </tr>
@@ -332,7 +389,7 @@ export default function PlatformAdminSupport({
                         rowId={row.id}
                         status={row.status}
                         saving={savingId === row.id}
-                        onChange={changeStatus}
+                        onChange={requestStatusChange}
                       />
                     </div>
                     <div className="text-sm">
@@ -344,7 +401,7 @@ export default function PlatformAdminSupport({
                       </p>
                     </div>
                     {row.note && (
-                      <p className="border-l-2 border-border pl-3 text-xs leading-5 text-muted-foreground">
+                      <p className="border border-border p-3 text-xs leading-5 text-muted-foreground">
                         {row.note}
                       </p>
                     )}
@@ -366,6 +423,42 @@ export default function PlatformAdminSupport({
         </div>
       </section>
 
+      <AlertDialog open={Boolean(pendingRow)} onOpenChange={(open) => { if (!open) setPendingChange(undefined); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingResolution?.field
+                ? `Update ${PUBLIC_FIELD_LABELS[pendingResolution.field] ?? pendingResolution.field} for “${pendingRow?.opportunityTitle ?? pendingRow?.opportunityId}”?`
+                : `Change support case ${pendingRow?.id} to ${pendingChange ? statusLabel(pendingChange.status) : "the selected status"}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingResolution?.field
+                ? "This changes the named public opportunity field, records the correction and official source, updates the support case, and emits a worker-readable outbox event. Review every value before continuing."
+                : "This changes the durable support status and emits a worker-readable outbox event. It does not prove an external correction or provider action occurred."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {pendingRow && pendingChange && (
+            <dl className="grid gap-2 border border-border bg-muted/30 p-3 text-xs">
+              <div><dt className="font-medium text-muted-foreground">Case</dt><dd className="mt-0.5 break-words text-foreground">{pendingRow.id}</dd></div>
+              <div><dt className="font-medium text-muted-foreground">Opportunity</dt><dd className="mt-0.5 text-foreground">{pendingRow.opportunityTitle ?? pendingRow.opportunityId}</dd></div>
+              <div><dt className="font-medium text-muted-foreground">Status change</dt><dd className="mt-0.5 text-foreground capitalize">{statusLabel(pendingRow.status)} → {statusLabel(pendingChange.status)}</dd></div>
+              {pendingResolution?.field && <><div><dt className="font-medium text-muted-foreground">Public field</dt><dd className="mt-0.5 text-foreground">{PUBLIC_FIELD_LABELS[pendingResolution.field] ?? pendingResolution.field}</dd></div><div><dt className="font-medium text-muted-foreground">New value</dt><dd className="mt-0.5 break-words text-foreground">{pendingResolution.value || "No value entered"}</dd></div><div><dt className="font-medium text-muted-foreground">Correction detail</dt><dd className="mt-0.5 break-words text-foreground">{pendingResolution.correction || "No correction detail entered"}</dd></div><div><dt className="font-medium text-muted-foreground">Official source</dt><dd className="mt-0.5 break-all text-foreground">{pendingResolution.evidenceUrl || "No official source entered"}</dd></div></>}
+            </dl>
+          )}
+          {pendingMissingEvidence && (
+            <p role="alert" className="border border-warning/30 bg-warning-subtle p-3 text-xs leading-5 text-warning">
+              Add the correction detail and official source before resolving a case. A public-field change also requires its new value.
+            </p>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep current state</AlertDialogCancel>
+            <AlertDialogAction disabled={pendingMissingEvidence} variant={pendingChange?.status === "dismissed" ? "destructive" : "default"} onClick={() => { if (!pendingChange) return; const change = pendingChange; setPendingChange(undefined); void changeStatus(change.caseId, change.status); }}>
+              {pendingResolution?.field ? "Apply public-field change" : "Confirm status change"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <section className="border-t border-border pt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -381,7 +474,7 @@ export default function PlatformAdminSupport({
         </div>
         <ul className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
           {area.data.planned.map((item) => (
-            <li key={item} className="border border-border bg-white px-3 py-2">
+            <li key={item} className="border border-border bg-card px-3 py-2">
               {item}
             </li>
           ))}
@@ -411,7 +504,7 @@ function StatusSelect({
         onChange={(event) =>
           onChange(rowId, event.target.value as PlatformSupportStatus)
         }
-        className="h-9 min-w-32 border border-border bg-white px-2 text-xs text-foreground capitalize outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-wait disabled:opacity-60"
+        className="h-9 min-w-32 border border-border bg-card px-2 text-xs text-foreground capitalize outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-wait disabled:opacity-60"
       >
         {PLATFORM_SUPPORT_STATUSES.map((option) => (
           <option key={option} value={option}>

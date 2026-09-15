@@ -63,9 +63,12 @@ export function ReportResponseDialog({
           profileId,
           genre,
           submittedDate,
-          decisionDate: outcome === "pending" || !decisionDate ? null : decisionDate,
+          decisionDate:
+            outcome === "pending" || !decisionDate ? null : decisionDate,
           responseDays:
-            outcome === "pending" || calculatedDays <= 0 ? null : calculatedDays,
+            outcome === "pending" || calculatedDays <= 0
+              ? null
+              : calculatedDays,
           outcome,
           rejectionType: outcome === "rejected" ? rejectionType : null,
           feePaidCents: Math.round(parseFloat(feePaidDollars || "0") * 100),
@@ -102,16 +105,18 @@ export function ReportResponseDialog({
   return (
     <>
       {trigger ? (
-        <div onClick={() => setOpen(true)} className="inline-block cursor-pointer">
+        <div
+          onClick={() => setOpen(true)}
+          className="inline-block cursor-pointer"
+        >
           {trigger}
         </div>
       ) : (
         <Button
           type="button"
-          variant="outline"
+          variant="accentOutline"
           size="sm"
           onClick={() => setOpen(true)}
-          className="inline-flex items-center gap-1.5 text-xs text-primary border-primary/30 hover:bg-primary/10"
         >
           <Clock className="size-3.5" aria-hidden="true" />
           <span>Report Turnaround Speed</span>
@@ -126,20 +131,21 @@ export function ReportResponseDialog({
               <span>Report Submission Outcome</span>
             </DialogTitle>
             <DialogDescription>
-              Help keep Missa response times and transparency scores accurate for{" "}
-              <strong className="text-foreground">{magazineName}</strong>. All reports are strictly anonymous.
+              Help keep Missa response times and transparency scores accurate
+              for <strong className="text-foreground">{magazineName}</strong>.
+              All reports are strictly anonymous.
             </DialogDescription>
           </DialogHeader>
 
           {successMsg ? (
-            <div className="flex items-center gap-2.5 rounded-lg bg-accent-tint/15 border border-accent-tint/30 p-3 text-sm text-accent-deep">
+            <div className="flex items-center gap-2.5 rounded-lg border border-information/30 bg-information-subtle p-3 text-sm text-information">
               <CheckCircle2 className="size-5 shrink-0" aria-hidden="true" />
               <span>{successMsg}</span>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error ? (
-                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 border border-destructive/20 p-2.5 text-xs text-destructive">
+                <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-2.5 text-xs text-destructive">
                   <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
                   <span>{error}</span>
                 </div>
@@ -147,7 +153,7 @@ export function ReportResponseDialog({
 
               {/* Genre */}
               <div>
-                <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
                   Genre Submitted
                 </label>
                 <select
@@ -165,7 +171,7 @@ export function ReportResponseDialog({
               {/* Dates */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                  <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
                     Date Sent
                   </label>
                   <input
@@ -177,7 +183,7 @@ export function ReportResponseDialog({
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                  <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
                     Decision Date
                   </label>
                   <input
@@ -193,17 +199,18 @@ export function ReportResponseDialog({
 
               {/* Turnaround speed indicator */}
               {outcome !== "pending" && calculatedDays > 0 ? (
-                <div className="rounded-lg bg-muted/50 p-2.5 text-xs text-muted-foreground flex items-center justify-between">
+                <div className="flex items-center justify-between rounded-lg bg-muted/50 p-2.5 text-xs text-muted-foreground">
                   <span>Calculated turnaround:</span>
                   <span className="font-mono font-semibold text-foreground">
-                    {calculatedDays} days (~{Math.round(calculatedDays / 30)} months)
+                    {calculatedDays} days (~{Math.round(calculatedDays / 30)}{" "}
+                    months)
                   </span>
                 </div>
               ) : null}
 
               {/* Outcome */}
               <div>
-                <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
                   Outcome
                 </label>
                 <div className="mt-1.5 grid grid-cols-4 gap-2">
@@ -217,10 +224,10 @@ export function ReportResponseDialog({
                       key={o.id}
                       type="button"
                       onClick={() => setOutcome(o.id)}
-                      className={`rounded-lg py-1.5 text-xs font-medium border transition-colors ${
+                      className={`rounded-lg border py-1.5 text-xs font-medium transition-colors ${
                         outcome === o.id
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-card border-border text-foreground hover:bg-muted"
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-card text-foreground hover:bg-muted"
                       }`}
                     >
                       {o.label}
@@ -232,7 +239,7 @@ export function ReportResponseDialog({
               {/* Rejection Type (if rejected) */}
               {outcome === "rejected" ? (
                 <div>
-                  <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                  <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
                     Rejection Character
                   </label>
                   <select
@@ -241,31 +248,37 @@ export function ReportResponseDialog({
                     className="mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
                     <option value="form">Standard Form Rejection</option>
-                    <option value="tiered_personal">Tiered / Encouraging Rejection</option>
-                    <option value="editor_note">Personal Note from Editor</option>
+                    <option value="tiered_personal">
+                      Tiered / Encouraging Rejection
+                    </option>
+                    <option value="editor_note">
+                      Personal Note from Editor
+                    </option>
                   </select>
                 </div>
               ) : null}
 
               {/* Submission Fee */}
               <div>
-                <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                <label className="text-xs font-semibold tracking-wider text-foreground uppercase">
                   Submission Fee Paid (USD)
                 </label>
                 <div className="relative mt-1">
-                  <span className="absolute left-3 top-2 text-sm text-muted-foreground">$</span>
+                  <span className="absolute top-2 left-3 text-sm text-muted-foreground">
+                    $
+                  </span>
                   <input
                     type="number"
                     min="0"
                     step="1"
                     value={feePaidDollars}
                     onChange={(e) => setFeePaidDollars(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-card pl-7 pr-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="w-full rounded-lg border border-border bg-card py-2 pr-3 pl-7 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   />
                 </div>
               </div>
 
-              <DialogFooter className="mt-5 sm:justify-end gap-2">
+              <DialogFooter className="mt-5 gap-2 sm:justify-end">
                 <Button
                   type="button"
                   variant="outline"
@@ -274,12 +287,7 @@ export function ReportResponseDialog({
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={loading}
-                  className="inline-flex items-center gap-1.5"
-                >
+                <Button type="submit" size="sm" disabled={loading}>
                   <Send className="size-3.5" aria-hidden="true" />
                   <span>{loading ? "Recording..." : "Log Response Data"}</span>
                 </Button>

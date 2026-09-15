@@ -433,6 +433,8 @@ export interface OpportunityPreferences {
   careerStages: string[];
   maxFeeCents?: number;
   noFeeOnly: boolean;
+  travelWillingness?:
+    "remote-only" | "willing-to-travel" | "local-only" | "any";
   deadlineWithinDays?: number;
   simultaneousRequired: boolean;
 }
@@ -631,6 +633,10 @@ export interface Account {
   /** Enterprise provisioning identifiers; private and never in public projections. */
   externalId?: string;
   displayName?: string;
+  /** Private signup identity fields. Public surfaces continue to use displayName. */
+  givenName?: string;
+  familyName?: string;
+  usesSingleName?: boolean;
   /**
    * Set only by a future domain-verification flow. Never infer this from
    * Account.email; an email address is contact data, not organizational proof.

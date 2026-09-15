@@ -30,7 +30,7 @@ const AlertTaskDemo = () => {
         <p className='mb-2!'>this projects task is remaining, deadline is near.</p>
         <Progress
           value={progress}
-          className='**:data-[slot=progress-indicator]:bg-amber-600 *:data-[slot=progress-track]:h-1.5 *:data-[slot=progress-track]:bg-amber-600/20 dark:**:data-[slot=progress-indicator]:bg-amber-400 dark:*:data-[slot=progress-track]:bg-amber-400/20'
+          className='**:data-[slot=progress-indicator]:bg-warning *:data-[slot=progress-track]:h-1.5 *:data-[slot=progress-track]:bg-warning/20 dark:**:data-[slot=progress-indicator]:bg-warning dark:*:data-[slot=progress-track]:bg-warning/20'
           aria-label='Task progress'
         />
       </AlertDescription>

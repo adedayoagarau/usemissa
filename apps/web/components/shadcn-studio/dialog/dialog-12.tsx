@@ -53,12 +53,12 @@ const DialogOTPVerificationDemo = () => {
           <div
             className={cn(
               'flex size-10 shrink-0 items-center justify-center rounded-full bg-sky-600/10 dark:bg-sky-400/10',
-              { 'bg-green-600/10 dark:bg-green-400/10': hasGuessed }
+              { 'bg-success/10 dark:bg-success/10': hasGuessed }
             )}
             aria-hidden='true'
           >
             {hasGuessed ? (
-              <CheckIcon className='size-6 text-green-600 dark:text-green-400' strokeWidth={1} />
+              <CheckIcon className='size-6 text-success dark:text-success' strokeWidth={1} />
             ) : (
               <MailIcon className='size-6 text-sky-600 dark:text-sky-400' strokeWidth={1} />
             )}

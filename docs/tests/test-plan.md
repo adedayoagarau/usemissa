@@ -2,7 +2,7 @@
 
 ## Scope
 
-This gate covers the public discovery promise and the private creator journey: discovery, rankings, canonical magazine profiles, signup, onboarding, Saved, and Tracker.
+This gate covers the public discovery promise and the private creator journey: discovery, rankings, canonical magazine profiles, signup, onboarding, Saved, Tracker, and account-owned reminder scheduling.
 
 Production publication, outbound email delivery, payment, application submission, and physical-device certification are outside this local release check.
 
@@ -26,6 +26,7 @@ Production publication, outbound email delivery, payment, application submission
 | TC-02 | Public discovery | P0 | Home, Opportunities, Directory, Rankings, comparison, methodology, and details resolve and fit mobile |
 | TC-03 | Magazine consolidation | P0 | Legacy URLs redirect; ranking and publication data remain; public links use official destinations |
 | TC-04 | Interaction quality | P1 | Keyboard, validation, reduced motion, and serious/critical accessibility checks pass |
+| TC-05 | Deadline reminder timing | P0 | Same-day reminders remain future-bound, precede the provider close, and appear only on actual deadline events |
 
 ## Gate
 

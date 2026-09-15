@@ -81,11 +81,11 @@ export default async function SubmissionsPage({
         {filters.organizationId && <input type="hidden" name="organizationId" value={filters.organizationId} />}
         <label className="min-w-56 flex-1 text-xs font-medium text-muted-foreground">
           Search opportunities
-          <input name="q" defaultValue={filters.q ?? ''} placeholder="Search by opportunity title" className="mt-1 h-11 w-full rounded-md border border-input bg-white px-3 text-sm text-foreground" />
+          <input name="q" defaultValue={filters.q ?? ''} placeholder="Search by opportunity title" className="mt-1 h-11 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground" />
         </label>
         <label className="text-xs font-medium text-muted-foreground">
           Status
-          <select name="status" defaultValue={statusFilter} className="mt-1 h-11 rounded-md border border-input bg-white px-3 text-sm text-foreground">
+          <select name="status" defaultValue={statusFilter} className="mt-1 h-11 rounded-md border border-input bg-card px-3 text-sm text-foreground">
             <option value="">All statuses</option>
             <option value="submitted">Submitted</option>
             <option value="in-review">In review</option>

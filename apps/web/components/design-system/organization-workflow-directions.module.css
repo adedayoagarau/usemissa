@@ -217,9 +217,9 @@
 .directionIntro strong {
   display: block;
   margin: 1px 0;
-  font-family: var(--font-heading), Georgia, serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .organizationBar {
@@ -304,8 +304,46 @@
   font-weight: 650;
 }
 
-.organizationBar > button:last-child {
+.organizationMenuButton {
   display: none;
+}
+
+.navigationSheet,
+.mobileDossierSheet {
+  width: min(92vw, 420px);
+  max-width: 420px;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.sheetTitle {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-weight: 650;
+}
+
+.navigationSheet > nav {
+  display: grid;
+  padding: 8px 16px 24px;
+}
+
+.navigationSheet > nav a {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.navigationSheet > nav a[aria-current='page'] {
+  color: var(--primary);
+  font-weight: 650;
+}
+
+.navigationSheet > nav svg {
+  width: 16px;
 }
 
 .main {
@@ -333,11 +371,11 @@
 
 .pageHeader h1 {
   margin: 4px 0 3px;
-  font-family: var(--font-heading), Georgia, serif;
-  font-size: clamp(28px, 3vw, 42px);
-  font-weight: 550;
-  letter-spacing: -.035em;
-  line-height: 1.05;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: clamp(28px, 3vw, 36px);
+  font-weight: 650;
+  letter-spacing: -.025em;
+  line-height: 1.15;
 }
 
 .pageHeader p:not(.eyebrow) {
@@ -515,6 +553,38 @@
   font-weight: 600;
 }
 
+.mobileFieldLabel {
+  display: none;
+}
+
+.nextActionCell {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+}
+
+.nextActionCell button {
+  height: auto;
+  min-height: 36px;
+  max-width: 220px;
+  justify-content: flex-start;
+  padding: 4px 0;
+  text-align: start;
+  white-space: normal;
+}
+
+.nextActionCell button svg {
+  flex: 0 0 auto;
+}
+
+.rowActions {
+  white-space: nowrap;
+}
+
+.rowActions > button:first-child {
+  display: none;
+}
+
 .stateBadge {
   display: inline-flex;
   min-height: 23px;
@@ -574,9 +644,17 @@
 
 .dossier h2,
 .roundHeader h2,
-.reader h2,
+.rubric h2,
 .decisionWorks h2,
 .decisionSummary h2 {
+  margin: 3px 0;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: -.02em;
+}
+
+.workReader h2 {
   margin: 3px 0;
   font-family: var(--font-heading), Georgia, serif;
   font-size: 21px;
@@ -679,10 +757,10 @@
 }
 
 .dossier > footer {
-  display: flex;
+  display: grid;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .dossier > footer > div {
@@ -694,6 +772,14 @@
 .dossier > footer span {
   color: var(--muted-foreground);
   font-size: 9px;
+}
+
+.dossier > footer > button {
+  grid-column: 2;
+}
+
+.dossier > footer > div {
+  grid-row: 1 / span 2;
 }
 
 .emptyState {
@@ -720,9 +806,9 @@
 }
 
 .emptyState h2 {
-  font-family: var(--font-heading), Georgia, serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   font-size: 24px;
-  font-weight: 580;
+  font-weight: 650;
 }
 
 .emptyState p {
@@ -1187,7 +1273,7 @@
     display: none;
   }
 
-  .organizationBar > button:last-child {
+  .organizationMenuButton {
     display: inline-flex;
     min-width: 44px;
     min-height: 44px;
@@ -1305,15 +1391,71 @@
     max-width: none;
   }
 
-  .dossier,
-  .main[data-direction='ledger'] > .dossier {
-    grid-template-columns: 1fr;
-    padding: 16px;
+  .mobileFieldLabel {
+    display: inline;
+    flex: 0 0 auto;
+    color: var(--muted-foreground);
+    font-size: 11px;
+    font-weight: 600;
   }
 
-  .dossier > footer {
+  .selectionCell {
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .nextActionCell {
+    min-width: 0;
+    align-items: end;
+    justify-items: end;
+  }
+
+  .nextActionCell button {
+    min-height: 44px;
+    max-width: min(230px, 65vw);
+    justify-content: flex-end;
+    text-align: end;
+  }
+
+  .rowActions {
+    display: flex !important;
+    width: 100%;
+    justify-content: space-between !important;
+  }
+
+  .rowActions > button:first-child {
+    display: inline-flex;
+    min-height: 44px;
+  }
+
+  .rowActions > button:last-child {
+    display: none;
+  }
+
+  .submissionLayout > .dossier,
+  .main[data-direction='ledger'] > .dossier {
+    display: none;
+  }
+
+  .mobileDossierSheet .dossier {
+    position: static;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 16px;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .mobileDossierSheet .dossier > footer {
     align-items: stretch;
-    flex-direction: column;
+    grid-template-columns: 1fr;
+  }
+
+  .mobileDossierSheet .dossier > footer > div,
+  .mobileDossierSheet .dossier > footer > button {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .dossier button,

@@ -3,12 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { UserHandle } from "@missa/radar-adapters";
+import { CANONICAL_COUNTRIES } from "@missa/contracts";
 import { MissaWordmark } from "@/components/missa-wordmark";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { signupIdentity, suggestedHandle } from "@/lib/signupIdentity";
 import {
   ONBOARDING_PRACTICES,
   ONBOARDING_INTERESTS,
@@ -18,7 +23,15 @@ type OnboardingStateProps = {
   /** Local design tour only: no account writes. */
   preview?: boolean;
   initialDisplayName?: string;
-  initialProfileRevision?: number;
+  initialGivenName?: string;
+  initialFamilyName?: string;
+  initialUsesSingleName?: boolean;
+  initialCountryCode?: string;
+  initialCity?: string;
+  initialTimezone?: string;
+  initialCareerStage?: string;
+  initialTravelWillingness?: string;
+  initialNoFeeOnly?: boolean;
   initialHandle?: UserHandle | null;
   handleNamespaceReady?: boolean;
   handleClaimingOpen?: boolean;
@@ -43,7 +56,15 @@ const INTEREST_IMAGES = [
 export function CreatorOnboarding({
   preview = false,
   initialDisplayName = "",
-  initialProfileRevision,
+  initialGivenName = "",
+  initialFamilyName = "",
+  initialUsesSingleName = false,
+  initialCountryCode = "",
+  initialCity = "",
+  initialTimezone = "",
+  initialCareerStage = "any",
+  initialTravelWillingness = "any",
+  initialNoFeeOnly = false,
   initialHandle = null,
   handleNamespaceReady = false,
   handleClaimingOpen = false,
@@ -53,21 +74,27 @@ export function CreatorOnboarding({
   initialStep = 0,
   initialStatus = "not_started",
 }: OnboardingStateProps) {
-  const router = useRouter();
   const [step, setStep] = useState(
     initialStatus === "completed" || initialStatus === "skipped"
-      ? 3
-      : Math.min(3, Math.max(0, initialStep)),
+      ? 4
+      : Math.min(4, Math.max(0, initialStep)),
   );
   const [practices, setPractices] = useState<string[]>(initialPractices);
   const [refinements, setRefinements] = useState<string[]>(initialRefinements);
   const [interests, setInterests] = useState<string[]>(initialInterests);
-  const [displayName, setDisplayName] = useState(initialDisplayName);
-  const [profileRevision, setProfileRevision] = useState(
-    initialProfileRevision,
+  const [givenName, setGivenName] = useState(initialGivenName);
+  const [familyName, setFamilyName] = useState(initialFamilyName);
+  const [usesSingleName, setUsesSingleName] = useState(initialUsesSingleName);
+  const [countryCode, setCountryCode] = useState(initialCountryCode);
+  const [city, setCity] = useState(initialCity);
+  const [timezone, setTimezone] = useState(initialTimezone);
+  const [careerStage, setCareerStage] = useState(initialCareerStage);
+  const [travelWillingness, setTravelWillingness] = useState(
+    initialTravelWillingness,
   );
+  const [noFeeOnly, setNoFeeOnly] = useState(initialNoFeeOnly);
   const [handleValue, setHandleValue] = useState(
-    initialHandle?.displayHandle ?? "",
+    initialHandle?.displayHandle ?? suggestedHandle(initialDisplayName),
   );
   const [claimedHandle, setClaimedHandle] = useState(initialHandle);
   const [handleStatus, setHandleStatus] = useState("");
@@ -75,6 +102,12 @@ export function CreatorOnboarding({
   const [error, setError] = useState<string | null>(null);
 
   const heading = useRef<HTMLHeadingElement>(null);
+  const identity = signupIdentity({ givenName, familyName, usesSingleName });
+  const displayName =
+    "field" in identity ? initialDisplayName : identity.displayName;
+  const countryOptions = Object.entries(CANONICAL_COUNTRIES)
+    .filter(([code]) => code !== "GLOBAL")
+    .sort(([, left], [, right]) => left.localeCompare(right));
 
   function move(next: number) {
     setStep(next);
@@ -90,6 +123,12 @@ export function CreatorOnboarding({
   const handleIsValid = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/u.test(
     normalizedHandle,
   );
+
+  useEffect(() => {
+    if (timezone) return;
+    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    queueMicrotask(() => setTimezone(detected));
+  }, [timezone]);
 
   useEffect(() => {
     if (preview || claimedHandle || !handleClaimingOpen || !handleIsValid) {
@@ -146,11 +185,20 @@ export function CreatorOnboarding({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: nextStep >= 3 ? "complete" : "save_step",
+          action: nextStep >= 4 ? "complete" : "save_step",
           step: nextStep,
           practices,
           refinements,
           interests,
+          givenName,
+          familyName: usesSingleName ? undefined : familyName,
+          usesSingleName,
+          countryCode,
+          city,
+          timezone,
+          careerStage,
+          travelWillingness,
+          noFeeOnly,
           lastRoute: "/onboarding",
         }),
       });
@@ -174,20 +222,33 @@ export function CreatorOnboarding({
   }
 
   async function saveIdentityAndFinish() {
-    const nextName = displayName.trim();
-    if (!nextName) {
-      setError("Enter the name you want Missa to use.");
+    if ("field" in identity) {
+      setError(identity.message);
+      return;
+    }
+    if (!countryCode || !timezone) {
+      setError("Add your country and time zone before finishing setup.");
       return;
     }
     if (
+      !preview &&
       !claimedHandle &&
-      normalizedHandle &&
-      (!handleIsValid || handleStatus.includes("already in use"))
+      handleClaimingOpen &&
+      (!normalizedHandle || !handleIsValid)
+    ) {
+      setError("Use 3–30 letters, numbers, or hyphens for your Missa address.");
+      return;
+    }
+    if (
+      !preview &&
+      !claimedHandle &&
+      handleClaimingOpen &&
+      handleStatus !== `@${normalizedHandle} is available.`
     ) {
       setError(
-        handleIsValid
-          ? "Choose an available Missa address or leave it blank for now."
-          : "Use 3–30 letters, numbers, or hyphens for your Missa address.",
+        handleStatus.includes("already in use")
+          ? "Choose an available Missa address."
+          : "Wait while Missa checks this address, then finish setup.",
       );
       return;
     }
@@ -200,37 +261,13 @@ export function CreatorOnboarding({
           claimedAt: new Date().toISOString(),
         });
       }
-      move(3);
+      move(4);
       return;
     }
 
     setSaving(true);
     setError(null);
     try {
-      if (nextName !== initialDisplayName.trim()) {
-        const response = await fetch("/api/me/profile", {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "Idempotency-Key": crypto.randomUUID(),
-          },
-          body: JSON.stringify({
-            displayName: nextName,
-            ...(profileRevision !== undefined
-              ? { expectedRevision: profileRevision }
-              : {}),
-          }),
-        });
-        const result = (await response.json().catch(() => ({}))) as {
-          revision?: number;
-          error?: string;
-        };
-        if (!response.ok) {
-          throw new Error(result.error ?? "We could not save your name.");
-        }
-        if (result.revision) setProfileRevision(result.revision);
-      }
-
       if (!claimedHandle && normalizedHandle) {
         const response = await fetch("/api/me/handles", {
           method: "POST",
@@ -249,41 +286,13 @@ export function CreatorOnboarding({
         setClaimedHandle(result.handle);
       }
 
-      await handleSaveStep(3);
+      await handleSaveStep(4);
     } catch (problem) {
       setError(
         problem instanceof Error
           ? problem.message
           : "We could not finish setting up your account. Try again.",
       );
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleSkip() {
-    if (preview) {
-      move(3);
-      return;
-    }
-    setSaving(true);
-    setError(null);
-    try {
-      const response = await fetch("/api/me/onboarding", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "skip",
-          step,
-          lastRoute: "/tracker",
-        }),
-      });
-      if (!response.ok) throw new Error("Could not skip setup");
-      router.push("/tracker");
-    } catch {
-      setSaving(false);
-      setError("We could not save this change. Please try again.");
-      return;
     } finally {
       setSaving(false);
     }
@@ -302,7 +311,7 @@ export function CreatorOnboarding({
           aria-label="Set up your Missa account"
         >
           <div className="mb-6 flex gap-2" aria-hidden="true">
-            {[0, 1, 2].map((index) => (
+            {[0, 1, 2, 3].map((index) => (
               <span
                 key={index}
                 className={`h-1 w-12 rounded-full ${
@@ -313,7 +322,7 @@ export function CreatorOnboarding({
           </div>
 
           <p className="mb-4 text-xs font-medium tracking-widest text-primary uppercase">
-            {step < 3 ? `${step + 1} of 3` : "Account ready"}
+            {step < 4 ? `${step + 1} of 4` : "Account ready"}
           </p>
 
           <h1
@@ -326,8 +335,10 @@ export function CreatorOnboarding({
               : step === 1
                 ? "What are you looking for?"
                 : step === 2
-                  ? "How should people find you?"
-                  : "You’re ready to explore."}
+                  ? "Where are you based?"
+                  : step === 3
+                    ? "Choose your Missa address."
+                    : "You’re ready to explore."}
           </h1>
 
           <p className="mt-3 mb-8 text-base leading-relaxed text-muted-foreground">
@@ -336,10 +347,12 @@ export function CreatorOnboarding({
               : step === 1
                 ? "Choose the opportunity types you want to see first. You can still browse everything."
                 : step === 2
-                  ? "Confirm your name. You can also choose a public Missa address, but your Profile stays private until you publish it."
-                  : preview
-                    ? "This is the completed setup state. The design preview has not changed your account."
-                    : "Your choices have been saved. You can change them in Profile at any time."}
+                  ? "Your location and preferences help Missa explain which opportunities may fit. These details stay private."
+                  : step === 3
+                    ? "Confirm your name and choose the address people can use to find your Profile. Nothing is public until you publish it."
+                    : preview
+                      ? "This is the completed setup state. The design preview has not changed your account."
+                      : "Your choices have been saved. You can change them in Profile at any time."}
           </p>
 
           {error && (
@@ -446,10 +459,7 @@ export function CreatorOnboarding({
                   : "You have not selected anything yet."}
               </p>
 
-              <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-                <Button variant="ghost" onClick={handleSkip} disabled={saving}>
-                  Skip setup
-                </Button>
+              <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
                 <Button onClick={() => handleSaveStep(1)} disabled={saving}>
                   {saving ? <Loader2 className="size-4 animate-spin" /> : null}
                   {practices.length ? "Continue" : "Decide later"}
@@ -533,40 +543,234 @@ export function CreatorOnboarding({
                   <ArrowRight aria-hidden="true" />
                 </Button>
               </div>
-
-              <div className="mt-4">
-                <Button
-                  variant="ghost"
-                  onClick={handleSkip}
-                  disabled={saving}
-                >
-                  Skip setup
-                </Button>
-              </div>
             </>
           )}
 
           {step === 2 && (
             <>
+              <div className="grid gap-6 border-y border-border py-8 md:grid-cols-2 md:gap-8">
+                <div className="space-y-2">
+                  <label
+                    className="text-sm font-semibold"
+                    htmlFor="onboarding-country"
+                  >
+                    Country
+                  </label>
+                  <NativeSelect
+                    id="onboarding-country"
+                    className="w-full [&_select]:h-11"
+                    value={countryCode}
+                    onChange={(event) => setCountryCode(event.target.value)}
+                    required
+                  >
+                    <NativeSelectOption value="">
+                      Choose your country
+                    </NativeSelectOption>
+                    {countryOptions.map(([code, name]) => (
+                      <NativeSelectOption key={code} value={code}>
+                        {name}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Missa uses your country to explain location rules. It is
+                    private by default.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label
+                    className="text-sm font-semibold"
+                    htmlFor="onboarding-city"
+                  >
+                    City{" "}
+                    <span className="font-normal text-muted-foreground">
+                      (optional)
+                    </span>
+                  </label>
+                  <Input
+                    id="onboarding-city"
+                    value={city}
+                    onChange={(event) => setCity(event.target.value)}
+                    autoComplete="address-level2"
+                    maxLength={120}
+                    placeholder="Lagos"
+                  />
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Add your city if you want Missa to surface nearby
+                    opportunities.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label
+                    className="text-sm font-semibold"
+                    htmlFor="onboarding-timezone"
+                  >
+                    Time zone
+                  </label>
+                  <Input
+                    id="onboarding-timezone"
+                    value={timezone}
+                    onChange={(event) => setTimezone(event.target.value)}
+                    maxLength={80}
+                    placeholder="Africa/Lagos"
+                    required
+                  />
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    We use this to show deadlines and reminders at the right
+                    local time.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label
+                    className="text-sm font-semibold"
+                    htmlFor="onboarding-career-stage"
+                  >
+                    Career stage
+                  </label>
+                  <NativeSelect
+                    id="onboarding-career-stage"
+                    className="w-full [&_select]:h-11"
+                    value={careerStage}
+                    onChange={(event) => setCareerStage(event.target.value)}
+                  >
+                    <NativeSelectOption value="any">
+                      I do not want to narrow this
+                    </NativeSelectOption>
+                    <NativeSelectOption value="student">
+                      Student
+                    </NativeSelectOption>
+                    <NativeSelectOption value="emerging">
+                      Early career
+                    </NativeSelectOption>
+                    <NativeSelectOption value="mid-career">
+                      Mid-career
+                    </NativeSelectOption>
+                    <NativeSelectOption value="established">
+                      Established
+                    </NativeSelectOption>
+                  </NativeSelect>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    Choose the description that best matches where you are now.
+                  </p>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label
+                    className="text-sm font-semibold"
+                    htmlFor="onboarding-travel"
+                  >
+                    How can you take part?
+                  </label>
+                  <NativeSelect
+                    id="onboarding-travel"
+                    className="w-full [&_select]:h-11"
+                    value={travelWillingness}
+                    onChange={(event) =>
+                      setTravelWillingness(event.target.value)
+                    }
+                  >
+                    <NativeSelectOption value="any">
+                      In person or online
+                    </NativeSelectOption>
+                    <NativeSelectOption value="remote-only">
+                      Online only
+                    </NativeSelectOption>
+                    <NativeSelectOption value="willing-to-travel">
+                      I can travel
+                    </NativeSelectOption>
+                    <NativeSelectOption value="local-only">
+                      Near where I live
+                    </NativeSelectOption>
+                  </NativeSelect>
+                </div>
+                <label className="flex min-h-11 items-center gap-3 text-sm md:col-span-2">
+                  <Checkbox
+                    checked={noFeeOnly}
+                    onCheckedChange={(checked) =>
+                      setNoFeeOnly(checked === true)
+                    }
+                  />
+                  Only show me opportunities with no application fee.
+                </label>
+              </div>
+
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={() => move(1)}
+                  disabled={saving}
+                >
+                  <ArrowLeft aria-hidden="true" />
+                  Back
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (!countryCode || !timezone) {
+                      setError("Add your country and time zone to continue.");
+                      return;
+                    }
+                    void handleSaveStep(3);
+                  }}
+                  disabled={saving}
+                >
+                  {saving ? <Loader2 className="size-4 animate-spin" /> : null}
+                  Save and continue
+                  <ArrowRight aria-hidden="true" />
+                </Button>
+              </div>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
               <div className="grid gap-8 border-y border-border py-8 md:grid-cols-[minmax(0,1fr)_minmax(18rem,0.8fr)] md:gap-12">
                 <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label
-                      className="text-sm font-semibold"
-                      htmlFor="onboarding-display-name"
-                    >
-                      Display name
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-semibold"
+                        htmlFor="onboarding-given-name"
+                      >
+                        Given name
+                      </label>
+                      <Input
+                        id="onboarding-given-name"
+                        value={givenName}
+                        onChange={(event) => setGivenName(event.target.value)}
+                        maxLength={80}
+                        autoComplete="given-name"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label
+                        className="text-sm font-semibold"
+                        htmlFor="onboarding-family-name"
+                      >
+                        Family name
+                      </label>
+                      <Input
+                        id="onboarding-family-name"
+                        value={familyName}
+                        onChange={(event) => setFamilyName(event.target.value)}
+                        maxLength={80}
+                        autoComplete="family-name"
+                        disabled={usesSingleName}
+                        required={!usesSingleName}
+                      />
+                    </div>
+                    <label className="flex min-h-11 items-center gap-3 text-sm sm:col-span-2">
+                      <Checkbox
+                        checked={usesSingleName}
+                        onCheckedChange={(checked) => {
+                          const next = checked === true;
+                          setUsesSingleName(next);
+                          if (next) setFamilyName("");
+                        }}
+                      />
+                      I use one name.
                     </label>
-                    <Input
-                      id="onboarding-display-name"
-                      value={displayName}
-                      onChange={(event) => setDisplayName(event.target.value)}
-                      maxLength={120}
-                      autoComplete="name"
-                    />
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      Missa will use this name in your account and welcome
-                      messages.
+                    <p className="text-sm leading-6 text-muted-foreground sm:col-span-2">
+                      {`Your Missa name is ${displayName || "shown here after you enter it"}.`}
                     </p>
                   </div>
 
@@ -589,7 +793,7 @@ export function CreatorOnboarding({
                         className="text-sm font-semibold"
                         htmlFor="onboarding-handle"
                       >
-                        Missa address (optional)
+                        Missa address
                       </label>
                       <Input
                         id="onboarding-handle"
@@ -610,9 +814,8 @@ export function CreatorOnboarding({
                         id="onboarding-handle-help"
                         className="text-sm leading-6 text-muted-foreground"
                       >
-                        Your address will be usemissa.com/@yourname. You can
-                        choose it later in Profile. Use 3–30 letters, numbers,
-                        or hyphens.
+                        We suggested an address from your name. Keep it or
+                        choose another using 3–30 letters, numbers, or hyphens.
                       </p>
                       <p
                         id="onboarding-handle-status"
@@ -658,7 +861,7 @@ export function CreatorOnboarding({
               <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
                 <Button
                   variant="ghost"
-                  onClick={() => move(1)}
+                  onClick={() => move(2)}
                   disabled={saving}
                 >
                   <ArrowLeft aria-hidden="true" />
@@ -666,7 +869,16 @@ export function CreatorOnboarding({
                 </Button>
                 <Button
                   onClick={saveIdentityAndFinish}
-                  disabled={saving || !displayName.trim()}
+                  disabled={
+                    saving ||
+                    "field" in identity ||
+                    !countryCode ||
+                    !timezone ||
+                    (!preview &&
+                      !claimedHandle &&
+                      handleClaimingOpen &&
+                      handleStatus !== `@${normalizedHandle} is available.`)
+                  }
                 >
                   {saving ? <Loader2 className="size-4 animate-spin" /> : null}
                   Finish setup
@@ -676,7 +888,7 @@ export function CreatorOnboarding({
             </>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <>
               <div className="mb-6 rounded-xl border border-border bg-card p-6 shadow-sm">
                 <p className="mb-3 flex items-center gap-2 font-medium text-foreground">
@@ -710,6 +922,30 @@ export function CreatorOnboarding({
                       ? interests.join(" · ")
                       : "Missa will show every opportunity type."}
                   </p>
+                  <p>
+                    <strong className="text-foreground">Location:</strong>{" "}
+                    {[city, CANONICAL_COUNTRIES[countryCode]]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                  <p>
+                    <strong className="text-foreground">Participation:</strong>{" "}
+                    {travelWillingness === "remote-only"
+                      ? "Online only"
+                      : travelWillingness === "willing-to-travel"
+                        ? "Open to travel"
+                        : travelWillingness === "local-only"
+                          ? "Near where you live"
+                          : "In person or online"}
+                  </p>
+                  {noFeeOnly ? (
+                    <p>
+                      <strong className="text-foreground">
+                        Application fees:
+                      </strong>{" "}
+                      No-fee opportunities only
+                    </p>
+                  ) : null}
                 </div>
                 <Button
                   variant="ghost"

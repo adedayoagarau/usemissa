@@ -3,11 +3,11 @@ import { CircleAlertIcon } from "lucide-react"
 
 const AlertSoftWarningDemo = () => {
   return (
-    <Alert className='border-none bg-amber-600/10 text-amber-600 dark:bg-amber-400/10 dark:text-amber-400'>
+    <Alert className='border-none bg-warning/10 text-warning dark:bg-warning/10 dark:text-warning'>
       <CircleAlertIcon
       />
       <AlertTitle>This file might be too large</AlertTitle>
-      <AlertDescription className='text-amber-600/80 dark:text-amber-400/80'>
+      <AlertDescription className='text-warning/80 dark:text-warning/80'>
         Uploading large files may take longer or fail. Consider compressing it first.
       </AlertDescription>
     </Alert>

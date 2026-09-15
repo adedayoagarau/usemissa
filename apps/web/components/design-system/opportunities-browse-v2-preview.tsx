@@ -298,38 +298,43 @@ export function OpportunitiesBrowseV2Preview({
         </div>
 
         <div className={styles.browse}>
-          <form
-            className={styles.search}
-            role="search"
-            onSubmit={(e) => {
-              e.preventDefault();
-              updateFilters({}, searchQuery);
-            }}
-          >
-            <Search aria-hidden="true" className={styles.searchIcon} />
-            <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by title, practice or organization"
-              aria-label="Search opportunities"
-            />
-            {searchQuery ? (
-              <button
-                type="button"
-                className={styles.searchClear}
-                aria-label="Clear search"
-                onClick={() => {
-                  setSearchQuery("");
-                  updateFilters({}, "");
-                }}
-              >
-                <X aria-hidden="true" />
-              </button>
-            ) : null}
-            <Button type="submit" variant="default" size="icon" className={styles.searchSubmit} disabled={isPending} aria-label="Search opportunities" title="Search opportunities">
-              <ArrowUpRight aria-hidden="true" />
-            </Button>
-          </form>
+          <div className={styles.searchGroup}>
+            <label className={styles.searchLabel} htmlFor="opportunity-search">
+              Search opportunities
+            </label>
+            <form
+              className={styles.search}
+              role="search"
+              onSubmit={(e) => {
+                e.preventDefault();
+                updateFilters({}, searchQuery);
+              }}
+            >
+              <Search aria-hidden="true" className={styles.searchIcon} />
+              <input
+                id="opportunity-search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Title, practice or organization"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  className={styles.searchClear}
+                  aria-label="Clear search"
+                  onClick={() => {
+                    setSearchQuery("");
+                    updateFilters({}, "");
+                  }}
+                >
+                  <X aria-hidden="true" />
+                </button>
+              ) : null}
+              <Button type="submit" variant="default" size="icon" className={styles.searchSubmit} disabled={isPending} aria-label="Search opportunities" title="Search opportunities">
+                <ArrowUpRight aria-hidden="true" />
+              </Button>
+            </form>
+          </div>
 
           {activeFilterContent ?? (activeChips.length > 0 ? (
             <div className={styles.activeFilters} aria-label="Active filters">

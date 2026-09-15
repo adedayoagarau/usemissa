@@ -14,6 +14,7 @@ apps/web/next-env.d.ts
 .env.*
 apps/web/playwright-report/
 apps/web/test-results/
+apps/web/e2e/storage-state.json
 test-results/
 .impeccable/
 *.impeccable/

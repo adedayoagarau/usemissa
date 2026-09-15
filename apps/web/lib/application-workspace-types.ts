@@ -11,6 +11,10 @@ export type ApplicationSummary = {
   revision: number;
   deadline: string | null;
   deadlineKind: string;
+  /** Provider-stated closing instant, when the source gave one. */
+  deadlineTime: string | null;
+  /** Timezone the provider states the closing time in. */
+  deadlineTimezone: string | null;
   submittedAt: string | null;
   updatedAt: string;
   workTitle: string | null;

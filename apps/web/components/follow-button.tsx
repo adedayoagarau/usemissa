@@ -38,8 +38,7 @@ export function FollowButton({
       <Button
         nativeButton={false}
         render={<Link href={authPath} />}
-        variant="ghost"
-        className="text-primary"
+        variant="link"
         aria-label={`Sign up to follow ${organizationName ?? "this organization"}`}
       >
         Sign up to follow
@@ -49,10 +48,9 @@ export function FollowButton({
 
   return (
     <Button
-      variant="ghost"
+      variant="link"
       type="button"
       disabled={isPending}
-      className="text-primary"
       onClick={() =>
         startTransition(async () => {
           requestKey.current ??= crypto.randomUUID();

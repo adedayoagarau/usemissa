@@ -27,8 +27,10 @@ import {
   calendarSourceEvents,
   calendarEventsOnDay,
   calendarConflicts,
+  canSetDeadlineReminder,
   type PlanningEvent,
 } from "@/lib/calendar-planning";
+import { firstViableDeadlineSchedule } from "@/lib/reminder-schedule";
 import { toast } from "sonner";
 import { CalendarFeedButton } from "@/components/calendar-feed-button";
 import {
@@ -187,6 +189,20 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
           actionHref: e.opportunityId
             ? `/tracker?application=${encodeURIComponent(e.opportunityId)}`
             : undefined,
+          ...(e.purpose === "official-deadline" && e.opportunityId
+            ? (() => {
+                const source = data.tracker.find(
+                  (item: { opportunityId: string }) =>
+                    item.opportunityId === e.opportunityId,
+                );
+                return source
+                  ? {
+                      deadlineTime: source.deadlineTime,
+                      deadlineTimezone: source.deadlineTimezone,
+                    }
+                  : {};
+              })()
+            : {}),
         }));
       const syncByOpportunity = new Map(
         personal
@@ -703,12 +719,25 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
     setSaving(true);
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     try {
-      const isDeadline = event.kind === "tracker";
+      const isDeadline = canSetDeadlineReminder(event);
+      const schedule = isDeadline
+        ? firstViableDeadlineSchedule(
+            event.startAt.slice(0, 10),
+            new Date(),
+            [1, 0],
+            event.deadlineTime,
+          )
+        : null;
+      if (isDeadline && !schedule)
+        throw new Error(
+          "This deadline has closed, so a deadline reminder can no longer be set.",
+        );
       const body = isDeadline
         ? {
             opportunityId: event.opportunityId,
             kind: "deadline",
-            offsetDays: 1,
+            offsetDays: schedule?.offsetDays,
+            timeOfDay: schedule?.timeOfDay,
             timezone,
           }
         : {
@@ -733,7 +762,9 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
       await load();
       toast.success(
         isDeadline
-          ? "Reminder set for one day before the deadline."
+          ? schedule?.offsetDays === 1
+            ? `Reminder set for the day before at ${schedule.timeOfDay}.`
+            : `Reminder set for today at ${schedule?.timeOfDay}.`
           : "Preparation reminder set.",
       );
     } catch (error) {
@@ -1602,7 +1633,8 @@ export function CalendarWorkspace({ userId }: { userId: string }) {
                             : "Open application"}
                       </Link>
                     ) : null}
-                    {selected.kind === "tracker" && selected.opportunityId ? (
+                    {selected.opportunityId &&
+                    canSetDeadlineReminder(selected) ? (
                       <button
                         className={buttonVariants({ variant: "outline" })}
                         disabled={saving}

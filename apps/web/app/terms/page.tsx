@@ -1,5 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  LEGAL_CONTACT_EMAIL,
+  LEGAL_ENTITY_NAME,
+  LEGAL_POSTAL_ADDRESS,
+  hasPostalAddress,
+} from "@/lib/legalContact";
 
 export const metadata: Metadata = {
   title: "Terms",
@@ -36,11 +42,27 @@ export default function TermsPage() {
           <p className="mt-3">Keep your account access secure and provide accurate information. Do not misuse Missa, interfere with the service, or use it to violate another person&apos;s rights.</p>
         </section>
         <section>
+          <h2 className="font-heading text-2xl font-medium text-foreground">Cookies and analytics</h2>
+          <p className="mt-3">Optional analytics is off until you accept it, and you can change that choice at any time in the <Link className="text-foreground underline underline-offset-4" href="/privacy">Privacy notice</Link>. Declining does not restrict any part of Missa.</p>
+        </section>
+        <section>
+          <h2 className="font-heading text-2xl font-medium text-foreground">Your content</h2>
+          <p className="mt-3">You keep the rights you hold in any Work, text, or media you add. You give Missa only the permission needed to store it privately and to publish the parts you explicitly choose to publish in a portfolio. Unpublished material stays private.</p>
+        </section>
+        <section>
           <h2 className="font-heading text-2xl font-medium text-foreground">Questions</h2>
-          <p className="mt-3">For a terms question, email <a className="text-foreground underline underline-offset-4" href="mailto:hello@usemissa.com">hello@usemissa.com</a>. See the <Link className="text-foreground underline underline-offset-4" href="/privacy">Privacy notice</Link> for the current public flow.</p>
+          {LEGAL_ENTITY_NAME ? (
+            <p className="mt-3">{LEGAL_ENTITY_NAME} operates Missa.</p>
+          ) : null}
+          {hasPostalAddress() && (
+            <address className="mt-3 not-italic whitespace-pre-line">
+              {LEGAL_POSTAL_ADDRESS}
+            </address>
+          )}
+          <p className="mt-3">For a terms question, email <a className="text-foreground underline underline-offset-4" href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>. See the <Link className="text-foreground underline underline-offset-4" href="/privacy">Privacy notice</Link> for the current public flow.</p>
         </section>
       </div>
-      <p className="mt-12 border-t border-border pt-5 text-sm text-muted-foreground">Last updated September 12, 2026.</p>
+      <p className="mt-12 border-t border-border pt-5 text-sm text-muted-foreground">Last updated September 13, 2026.</p>
     </main>
   );
 }

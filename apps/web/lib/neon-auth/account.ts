@@ -6,6 +6,7 @@ import { CreatorAccountProvisionError } from '@missa/radar-adapters';
 import { getEngine, persistRadar } from '@/lib/engine';
 import type { SessionAccount } from '@/lib/auth';
 import { getCreatorAccountRepository } from '@/lib/creatorRepositories';
+import type { SignupIdentity } from '@/lib/signupIdentity';
 
 import { isVerifiedNeonEmail } from './emailVerification';
 import { getNeonAuth } from './server';
@@ -50,7 +51,7 @@ export async function getNeonSessionAccount(): Promise<SessionAccount | undefine
  * Link an authenticated Neon user to Missa's existing account model. This is
  * the only path that provisions a compatibility account for a new Neon user.
  */
-export async function provisionNeonAuthAccount(): Promise<{
+export async function provisionNeonAuthAccount(identity?: SignupIdentity): Promise<{
   account: Account;
   created: boolean;
 }> {
@@ -78,7 +79,7 @@ export async function provisionNeonAuthAccount(): Promise<{
     throw new NeonAuthAccountError(401, 'Not authenticated');
   }
 
-  const resolved = await resolveNeonAuthAccount(result.data.user, true);
+  const resolved = await resolveNeonAuthAccount(result.data.user, true, identity);
   if (!resolved || !('created' in resolved)) {
     throw new NeonAuthAccountError(
       503,
@@ -91,6 +92,7 @@ export async function provisionNeonAuthAccount(): Promise<{
 async function resolveNeonAuthAccount(
   user: NeonAuthUser,
   provision: boolean,
+  identity?: SignupIdentity,
 ): Promise<{ account: Account; created: boolean } | SessionAccount | undefined> {
   if (!user.id || typeof user.email !== 'string' || !user.email.trim()) {
     if (!provision) return undefined;
@@ -117,7 +119,10 @@ async function resolveNeonAuthAccount(
       return await relational.provisionNeonAccount({
         authUserId: user.id,
         email,
-        displayName: user.name?.trim().slice(0, 120) || email.split('@')[0]?.slice(0, 120) || 'Missa creator',
+        displayName: identity?.displayName ?? (user.name?.trim().slice(0, 120) || email.split('@')[0]?.slice(0, 120) || 'Missa creator'),
+        givenName: identity?.givenName,
+        familyName: identity?.familyName,
+        usesSingleName: identity?.usesSingleName,
         passwordHash: `${randomBytes(16).toString('hex')}:${randomBytes(32).toString('hex')}`,
         emailVerified: isVerifiedNeonEmail(user),
       });
@@ -163,8 +168,8 @@ async function resolveNeonAuthAccount(
     return { account: existing, created: false };
   }
 
-  const displayName =
-    user.name?.trim().slice(0, 120) || email.split('@')[0]?.slice(0, 120) || 'Missa creator';
+  const displayName = identity?.displayName ??
+    (user.name?.trim().slice(0, 120) || email.split('@')[0]?.slice(0, 120) || 'Missa creator');
   const { account } = engine.signUp(
     email,
     randomBytes(32).toString('base64url'),
@@ -172,6 +177,10 @@ async function resolveNeonAuthAccount(
   );
   account.authProvider = 'neon-auth';
   account.authUserId = user.id;
+  account.displayName = displayName;
+  account.givenName = identity?.givenName;
+  account.familyName = identity?.familyName;
+  account.usesSingleName = identity?.usesSingleName;
   await persistRadar();
   return { account, created: true };
 }

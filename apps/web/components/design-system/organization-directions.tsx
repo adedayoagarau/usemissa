@@ -16,6 +16,7 @@ import {
   Gavel,
   Inbox,
   LayoutDashboard,
+  Menu,
   MessageSquare,
   Plus,
   Search,
@@ -37,6 +38,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 
 import { MissaWordmark } from '@/components/missa-wordmark'
 import styles from './organization-directions.module.css'
@@ -229,11 +237,13 @@ function OverviewBody({ fixture, role, direction, onStatus }: { fixture: Fixture
 function OverviewShell({ direction, fixture, onChoose, onCommand, onStatus }: { direction: Direction; fixture: Fixture; onChoose: () => void; onCommand: () => void; onStatus: (message: string) => void }) {
   const role = roleFor(fixture)
   const [active, setActive] = useState('Overview')
+  const [navigationOpen, setNavigationOpen] = useState(false)
   const organization: Organization = { ...organizations[0]!, name: fixture === 'long' ? 'The International Foundation for Collaborative Literature and Public Culture' : organizations[0]!.name, role }
-  function navigate(label: string) { setActive(label); onStatus(`${label} selected. This local direction keeps the Organization context.`) }
+  function navigate(label: string) { setActive(label); setNavigationOpen(false); onStatus(`${label} selected. This local direction keeps the Organization context.`) }
   const nav = <Navigation role={role} active={active} onNavigate={navigate} compact={direction === 'ledger'} />
-  if (direction === 'ledger') return <div className={styles.organizationShell}><section className={styles.ledgerContext}><OrganizationSwitcher organization={organization} role={role} onChoose={onChoose} /><div><span>Current product</span><strong>Organization</strong></div><Button type='button' variant='outline' onClick={onCommand}><Search aria-hidden='true' />Search Organization</Button></section>{nav}<OverviewBody fixture={fixture} role={role} direction={direction} onStatus={onStatus} /></div>
-  return <div className={styles.organizationShell}><aside className={styles.organizationRail}><OrganizationSwitcher organization={organization} role={role} onChoose={onChoose} />{nav}<div className={styles.railFooter}><Button type='button' variant='outline' onClick={onCommand}><Search aria-hidden='true' />Search<span>⌘K</span></Button><p>Actions and counts are limited to your role.</p></div></aside><OverviewBody fixture={fixture} role={role} direction={direction} onStatus={onStatus} /></div>
+  const mobileMenu = <><Button type='button' variant='outline' size='icon' className={styles.mobileNavigationButton} aria-label='Open Organization navigation' aria-expanded={navigationOpen} onClick={() => setNavigationOpen(true)}><Menu aria-hidden='true' /></Button><Sheet open={navigationOpen} onOpenChange={setNavigationOpen}><SheetContent side='right' className={styles.mobileNavigationSheet}><SheetHeader variant='section'><SheetTitle className={styles.mobileNavigationTitle}>Organization navigation</SheetTitle><SheetDescription>{organization.name} · {role}</SheetDescription></SheetHeader><Navigation role={role} active={active} onNavigate={navigate} /></SheetContent></Sheet></>
+  if (direction === 'ledger') return <div className={styles.organizationShell}><section className={styles.ledgerContext}><OrganizationSwitcher organization={organization} role={role} onChoose={onChoose} /><div><span>Current product</span><strong>Organization</strong></div><Button type='button' variant='outline' onClick={onCommand}><Search aria-hidden='true' />Search Organization</Button>{mobileMenu}</section>{nav}<OverviewBody fixture={fixture} role={role} direction={direction} onStatus={onStatus} /></div>
+  return <div className={styles.organizationShell}><aside className={styles.organizationRail}><div className={styles.mobileNavigationContext}><OrganizationSwitcher organization={organization} role={role} onChoose={onChoose} />{mobileMenu}</div>{nav}<div className={styles.railFooter}><Button type='button' variant='outline' onClick={onCommand}><Search aria-hidden='true' />Search<span>⌘K</span></Button><p>Actions and counts are limited to your role.</p></div></aside><OverviewBody fixture={fixture} role={role} direction={direction} onStatus={onStatus} /></div>
 }
 
 function CommandSearch({ open, setOpen, fixture, onStatus }: { open: boolean; setOpen: (open: boolean) => void; fixture: Fixture; onStatus: (message: string) => void }) {

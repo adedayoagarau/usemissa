@@ -59,7 +59,7 @@
 .formBody label, .formBody legend { font-size: 12px; font-weight: 650; }
 .formBody label span, .formBody legend span { color: var(--muted-foreground); font-weight: 400; }
 .formBody > div > p { margin: 0; color: var(--muted-foreground); font-size: 10px; line-height: 1.5; }
-.formBody select { width: 100%; min-height: 46px; padding: 0 13px; border: 1px solid var(--border); border-radius: 9px; background: #fff; color: var(--foreground); font: inherit; font-size: 13px; }
+.formBody select { width: 100%; min-height: 46px; padding: 0 13px; border: 1px solid var(--border); border-radius: 9px; background: var(--background); color: var(--foreground); font: inherit; font-size: 13px; }
 .formBody fieldset { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: 10px; }
 .formBody fieldset legend { padding: 0 5px; }
 

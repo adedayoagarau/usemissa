@@ -27,7 +27,6 @@ import {
   ItemActions,
   ItemContent,
   ItemDescription,
-  ItemGroup,
   ItemMedia,
   ItemSeparator,
   ItemTitle,
@@ -254,11 +253,11 @@ function CreditList({
   onHiddenToggle?: (credit: Credit) => void;
 }) {
   return (
-    <ItemGroup
+    <ul
       className={`${styles.credits} ${hidden ? styles.hiddenCredits : ""}`}
     >
       {items.map((credit, index) => (
-        <div key={`${credit.year}-${credit.title}`}>
+        <li key={`${credit.year}-${credit.title}`}>
           <Item
             className={`${styles.credit} ${hidden || credit.visibility === "hidden" ? styles.hiddenCredit : ""}`}
           >
@@ -289,9 +288,9 @@ function CreditList({
             )}
           </Item>
           {index < items.length - 1 && <ItemSeparator />}
-        </div>
+        </li>
       ))}
-    </ItemGroup>
+    </ul>
   );
 }
 
@@ -431,18 +430,21 @@ function PublicProfile({ kind = "text" }: { kind?: SampleKind }) {
       <CardContent>
         <PublicIdentity />
         <Separator />
-        <section className={styles.sampleRegion} aria-labelledby="sample-title">
+        <section
+          className={styles.sampleRegion}
+          aria-labelledby="public-sample-title"
+        >
           <div className={styles.sectionLabel}>
-            <span id="sample-title">Selected Work</span>
+            <h3 id="public-sample-title">Selected Work</h3>
           </div>
           <Sample kind={kind} />
         </section>
         <section
           className={styles.creditRegion}
-          aria-labelledby="credits-title"
+          aria-labelledby="public-credits-title"
         >
           <div className={styles.sectionLabel}>
-            <span id="credits-title">Credits</span>
+            <h3 id="public-credits-title">Credits</h3>
           </div>
           <CreditList />
         </section>
@@ -548,9 +550,12 @@ function OwnerProfile() {
           </ItemContent>
         </Item>
         <Separator />
-        <section className={styles.sampleRegion}>
+        <section
+          className={styles.sampleRegion}
+          aria-labelledby="owner-sample-title"
+        >
           <div className={styles.sectionLabel}>
-            <span>Selected Work</span>
+            <h3 id="owner-sample-title">Selected Work</h3>
             <span>Public</span>
           </div>
           <Sample kind="text" />
@@ -563,9 +568,12 @@ function OwnerProfile() {
             </Button>
           </div>
         </section>
-        <section className={styles.creditRegion}>
+        <section
+          className={styles.creditRegion}
+          aria-labelledby="owner-credits-title"
+        >
           <div className={styles.sectionLabel}>
-            <span>Credits</span>
+            <h3 id="owner-credits-title">Credits</h3>
             <span>3 public · 1 hidden</span>
           </div>
           <CreditList
@@ -685,7 +693,7 @@ function FixturePreview({ number }: { number: string }) {
         <h3>Amaka Obi</h3>
         <p>@amaka</p>
         <p className={styles.ownerOnly}>
-          Handle not claimed · public page unavailable
+          Owner only · handle not claimed · public page unavailable
         </p>
       </div>
     );

@@ -84,7 +84,7 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
     : null;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-card">
       <MissaSiteHeader session={headerSession} />
       <PublicDiscoveryEvent eventName="public.opportunity_view" properties={{ opportunityId: opportunity.id, slug: opportunity.slug }} />
       <JsonLd

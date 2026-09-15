@@ -13,10 +13,10 @@ const ToggleFilledIcon = () => {
         <ThumbsUp className='group-data-[state=on]/toggle:fill-sky-600 group-data-[state=on]/toggle:stroke-sky-600 group-data-[state=on]/toggle:text-sky-600 dark:group-data-[state=on]/toggle:fill-sky-400 dark:group-data-[state=on]/toggle:stroke-sky-400 dark:group-data-[state=on]/toggle:text-sky-400' />
       </Toggle>
       <Toggle aria-label='Toggle star' variant='outline'>
-        <StarIcon className='group-data-[state=on]/toggle:fill-amber-600 group-data-[state=on]/toggle:stroke-amber-600 group-data-[state=on]/toggle:text-amber-600 dark:group-data-[state=on]/toggle:fill-amber-400 dark:group-data-[state=on]/toggle:stroke-amber-400 dark:group-data-[state=on]/toggle:text-amber-400' />
+        <StarIcon className='group-data-[state=on]/toggle:fill-warning group-data-[state=on]/toggle:stroke-warning group-data-[state=on]/toggle:text-warning dark:group-data-[state=on]/toggle:fill-warning dark:group-data-[state=on]/toggle:stroke-warning dark:group-data-[state=on]/toggle:text-warning' />
       </Toggle>
       <Toggle aria-label='Toggle arrow up' variant='outline'>
-        <ArrowBigUpIcon className='group-data-[state=on]/toggle:fill-green-600 group-data-[state=on]/toggle:stroke-green-600 group-data-[state=on]/toggle:text-green-600 dark:group-data-[state=on]/toggle:fill-green-400 dark:group-data-[state=on]/toggle:stroke-green-400 dark:group-data-[state=on]/toggle:text-green-400' />
+        <ArrowBigUpIcon className='group-data-[state=on]/toggle:fill-success group-data-[state=on]/toggle:stroke-success group-data-[state=on]/toggle:text-success dark:group-data-[state=on]/toggle:fill-success dark:group-data-[state=on]/toggle:stroke-success dark:group-data-[state=on]/toggle:text-success' />
       </Toggle>
     </div>
   )

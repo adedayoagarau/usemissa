@@ -20,7 +20,7 @@ import {
   PUBLIC_OPPORTUNITY_PREVIEW_FACETS,
   previewItemsForQuery,
 } from "@/lib/opportunityPreviewFixtures";
-import { OpportunitiesBrowseV2Preview } from "@/components/design-system/opportunities-browse-v2-preview";
+import { OpportunitiesBrowse } from "@/components/missa/opportunities-browse";
 import styles from "./opportunities.module.css";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -254,7 +254,7 @@ export default async function OpportunitiesPage({
         },
       }} />
       {usePreviewFixtures ? <p className={styles.previewNotice} role="note">Design preview · Representative examples, not published listings</p> : null}
-      <OpportunitiesBrowseV2Preview
+      <OpportunitiesBrowse
         embedded
         signedIn={Boolean(activeSession)}
         initialItems={displayResult.items}

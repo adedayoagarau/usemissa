@@ -43,10 +43,23 @@ test("admin can open the control room and operational loop", async ({
   await expect(
     page.getByRole("link", { name: "Agents", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('Operate', { exact: true })).toBeVisible();
-  await expect(page.getByText('Review', { exact: true })).toBeVisible();
-  await expect(page.getByText('Serve', { exact: true })).toBeVisible();
-  await expect(page.getByText('Business', { exact: true })).toBeVisible();
+  for (const group of [
+    "Overview",
+    "Sources & automation",
+    "Content & taxonomy",
+    "Customers & organizations",
+    "Communication & support",
+    "Finance & governance",
+  ]) {
+    await expect(page.getByText(group, { exact: true })).toBeVisible();
+  }
+  const diagnostics = page.getByRole("button", {
+    name: "Diagnostics & audit",
+  });
+  await expect(diagnostics).toBeVisible();
+  await diagnostics.click();
+  await expect(page.getByRole("link", { name: "System", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Audit", exact: true })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Governance", exact: true }),
   ).toBeVisible();
@@ -186,9 +199,17 @@ test("admin can open the control room and operational loop", async ({
     await expect(
       page.getByRole("heading", { name: "Control Room" }),
     ).toBeVisible();
-    if (width < 1024)
+    if (width < 1024) {
       await expect(
         page.getByRole("button", { name: "Open platform admin navigation" }),
       ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Open platform admin navigation" })
+        .click();
+      await expect(
+        page.getByText("Sources & automation", { exact: true }),
+      ).toBeVisible();
+      await page.keyboard.press("Escape");
+    }
   }
 });

@@ -51,11 +51,12 @@ export function DirectorySort({
       >
         <SelectTrigger
           aria-label="Sort directory"
-          className="min-h-9 border-transparent bg-transparent px-2 text-xs font-medium text-muted-foreground shadow-none hover:bg-muted hover:text-foreground"
+          variant="quiet"
+          size="touch"
         >
           <SelectValue>{(selected: string) => labels[selected] ?? selected}</SelectValue>
         </SelectTrigger>
-        <SelectContent align="end" alignItemWithTrigger={false} sideOffset={4} className="w-52 p-1">
+      <SelectContent align="end" alignItemWithTrigger={false} sideOffset={4} className="w-52">
           <SelectGroup className={dropdownStyles.list}>
             <SelectItem className={dropdownStyles.option} value="name_asc">
               Alphabetical (A–Z)

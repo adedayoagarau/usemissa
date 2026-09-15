@@ -22,7 +22,7 @@ const RatingIconDemo = () => {
             />
           }
           onValueChange={setHeart}
-          className="[&_[data-filled='false']_svg]:fill-red-500/30 [&_[data-filled='false']_svg]:stroke-red-500/10 [&_[data-filled='false']_svg]:stroke-1 [&_[data-filled='false']_svg]:text-red-500/10 [&_[data-filled='true']_svg]:stroke-1 [&_[data-filled='true']_svg]:text-red-500"
+          className="[&_[data-filled='false']_svg]:fill-destructive/30 [&_[data-filled='false']_svg]:stroke-destructive/10 [&_[data-filled='false']_svg]:stroke-1 [&_[data-filled='false']_svg]:text-destructive/10 [&_[data-filled='true']_svg]:stroke-1 [&_[data-filled='true']_svg]:text-destructive"
         />
       </div>
 
@@ -37,7 +37,7 @@ const RatingIconDemo = () => {
             />
           }
           onValueChange={setEnergy}
-          className="[&_[data-filled='false']_svg]:fill-transparent [&_[data-filled='false']_svg]:stroke-amber-400 [&_[data-filled='false']_svg]:stroke-[1.5px] [&_[data-filled='false']_svg]:text-amber-400 [&_[data-filled='true']_svg]:text-amber-400"
+          className="[&_[data-filled='false']_svg]:fill-transparent [&_[data-filled='false']_svg]:stroke-warning [&_[data-filled='false']_svg]:stroke-[1.5px] [&_[data-filled='false']_svg]:text-warning [&_[data-filled='true']_svg]:text-warning"
         />
       </div>
 

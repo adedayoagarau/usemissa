@@ -126,7 +126,7 @@ export default function PlatformAdminAnalytics({
         <p className="text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase">
           Platform Admin · Product
         </p>
-        <h1 className="mt-2 font-heading text-4xl font-medium tracking-tight text-foreground">
+        <h1 className="mt-2 font-sans text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
           Analytics
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
@@ -164,6 +164,7 @@ export default function PlatformAdminAnalytics({
       <Tabs defaultValue="overview">
         <TabsList
           variant="line"
+          size="responsive"
           className="max-w-full overflow-x-auto"
           aria-label="Analytics views"
         >
@@ -371,7 +372,7 @@ export default function PlatformAdminAnalytics({
                       </TableCell>
                       <TableCell>{user.segment}</TableCell>
                       <TableCell>{user.journeyStage}</TableCell>
-                      <TableCell className="text-xs whitespace-nowrap text-muted-foreground">
+                        <TableCell tone="muted" className="text-xs whitespace-nowrap">
                         {formatDate(user.lastSeenAt)}
                       </TableCell>
                       <TableCell className="text-end font-mono tabular-nums">
@@ -451,7 +452,7 @@ export default function PlatformAdminAnalytics({
                         <TableCell className="text-end font-mono tabular-nums">
                           {stage.actors}
                         </TableCell>
-                        <TableCell className="text-end font-mono text-muted-foreground tabular-nums">
+                          <TableCell tone="muted" className="text-end font-mono tabular-nums">
                           {stage.conversionFromPrevious === null
                             ? "—"
                             : `${stage.conversionFromPrevious}%`}

@@ -85,7 +85,7 @@ const StepperVerticalDemo = () => {
                 <StepperIndicator
                   className={
                     submitted
-                      ? 'data-[state=completed]:bg-green-600/20 data-[state=completed]:text-green-600 dark:data-[state=completed]:bg-green-400/20 dark:data-[state=completed]:text-green-400'
+                      ? 'data-[state=completed]:bg-success/20 data-[state=completed]:text-success dark:data-[state=completed]:bg-success/20 dark:data-[state=completed]:text-success'
                       : ''
                   }
                 >
@@ -98,7 +98,7 @@ const StepperVerticalDemo = () => {
                   className={cn(
                     'absolute inset-x-0 top-2 right-[calc(-50%+18px)] left-[calc(50%+18px)]',
                     submitted
-                      ? 'group-data-[state=completed]/step:bg-green-600/40 dark:group-data-[state=completed]/step:bg-green-400/40'
+                      ? 'group-data-[state=completed]/step:bg-success/40 dark:group-data-[state=completed]/step:bg-success/40'
                       : ''
                   )}
                 />

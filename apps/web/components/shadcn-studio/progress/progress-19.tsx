@@ -37,9 +37,9 @@ const CircularProgressColorDemo = () => {
             strokeWidth={8}
             value={progress}
             showLabel
-            progressClassName='stroke-green-600 dark:stroke-green-400 transition-all duration-300'
-            labelClassName='text-xl font-medium text-green-600 dark:text-green-400'
-            progressBgClassName='stroke-green-600/10 dark:stroke-green-400/10'
+            progressClassName='stroke-success dark:stroke-success transition-all duration-300'
+            labelClassName='text-xl font-medium text-success dark:text-success'
+            progressBgClassName='stroke-success/10 dark:stroke-success/10'
           />
           <span className='text-muted-foreground text-xs font-medium uppercase'>Exercise</span>
         </div>

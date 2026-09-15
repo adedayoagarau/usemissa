@@ -295,7 +295,7 @@ export function ApplicationPreparation({
         }}
       >
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
-          <DialogTitle className="font-sans text-xl font-semibold">
+          <DialogTitle className="text-xl">
             {dialog === "add"
               ? "Add a preparation step"
               : "Link a Library material"}

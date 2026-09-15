@@ -60,7 +60,7 @@ export function CalendarFeedButton({ userId }: { userId: string }) {
 
   return (
     <div className="flex flex-wrap gap-2" aria-label="Calendar feed controls">
-      <Button className="text-foreground" size="sm" variant="outline" disabled={busy} onClick={() => issue(state.active ? 'rotate' : 'issue')}>
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => issue(state.active ? 'rotate' : 'issue')}>
         {state.active ? 'Rotate and copy calendar link' : 'Connect local calendar'}
       </Button>
       {state.active ? <Button size="sm" variant="ghost" disabled={busy} onClick={revoke}>Revoke calendar link</Button> : null}

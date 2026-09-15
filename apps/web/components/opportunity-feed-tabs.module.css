@@ -37,7 +37,7 @@
 }
 
 .feedList a.active {
-  background: var(--accent-tint);
+  background: var(--accent);
   color: var(--primary);
 }
 

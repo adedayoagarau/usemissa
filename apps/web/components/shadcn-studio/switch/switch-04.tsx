@@ -9,7 +9,7 @@ const SwitchColorsDemo = () => {
         defaultChecked
       />
       <Switch
-        className='focus-visible:border-ring-green-600 dark:focus-visible:border-ring-green-400 focus-visible:ring-green-600/20 data-checked:bg-green-600 dark:focus-visible:ring-green-400/40 dark:data-checked:bg-green-400'
+        className='focus-visible:border-ring-green-600 dark:focus-visible:border-ring-green-400 focus-visible:ring-green-600/20 data-checked:bg-success dark:focus-visible:ring-green-400/40 dark:data-checked:bg-success'
         aria-label='Success Switch'
         defaultChecked
       />
@@ -19,7 +19,7 @@ const SwitchColorsDemo = () => {
         defaultChecked
       />
       <Switch
-        className='focus-visible:border-ring-amber-600 dark:focus-visible:border-ring-amber-400 focus-visible:ring-amber-600/20 data-checked:bg-amber-600 dark:focus-visible:ring-amber-400/40 dark:data-checked:bg-amber-400'
+        className='focus-visible:border-ring-amber-600 dark:focus-visible:border-ring-amber-400 focus-visible:ring-amber-600/20 data-checked:bg-warning dark:focus-visible:ring-amber-400/40 dark:data-checked:bg-warning'
         aria-label='Warning Switch'
         defaultChecked
       />

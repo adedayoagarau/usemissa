@@ -2403,6 +2403,7 @@ export const opportunityPreferences = pgTable(
       .default(sql`ARRAY[]::text[]`),
     maxFeeCents: integer("max_fee_cents"),
     noFeeOnly: boolean("no_fee_only").notNull().default(false),
+    travelWillingness: text("travel_willingness").notNull().default("any"),
     deadlineWithinDays: integer("deadline_within_days"),
     simultaneousRequired: boolean("simultaneous_required")
       .notNull()
@@ -2552,9 +2553,15 @@ export const creatorProfiles = pgTable(
       .references(() => accounts.id, { onDelete: "cascade" }),
     userId: text("user_id").notNull(),
     displayName: text("display_name").notNull(),
+    givenName: text("given_name"),
+    familyName: text("family_name"),
+    usesSingleName: boolean("uses_single_name").notNull().default(false),
     bio: text("bio"),
     website: text("website"),
     location: text("location"),
+    countryCode: text("country_code"),
+    city: text("city"),
+    timezone: text("timezone"),
     displayNameVisibility: text("display_name_visibility")
       .notNull()
       .default("public"),

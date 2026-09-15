@@ -24,9 +24,10 @@ test("password signup creates the account aggregates and governance evidence in 
     release: () => statements.push("RELEASE"),
   };
   const pool = { connect: async () => client } as unknown as Pool;
-  const result = await new PostgresCreatorAccountRepository(pool).provisionPasswordAccount({ email: "ADA@example.com", password: "correct-horse", displayName: "Ada" });
+  const result = await new PostgresCreatorAccountRepository(pool).provisionPasswordAccount({ email: "ADA@example.com", password: "correct-horse", givenName: "Ada", familyName: "Lovelace", usesSingleName: false, displayName: "Ada Lovelace" });
   assert.equal(result.created, true);
   assert.equal(result.account.email, "ada@example.com");
+  assert.equal(result.account.givenName, "Ada");
   assert.ok(statements.some((value) => value.startsWith("insert into creator_profiles")));
   assert.ok(statements.some((value) => value.startsWith("insert into opportunity_preferences")));
   assert.ok(statements.some((value) => value.startsWith("insert into notification_preferences")));
@@ -34,6 +35,24 @@ test("password signup creates the account aggregates and governance evidence in 
   assert.ok(statements.some((value) => value.startsWith("insert into workspace_command_receipts")));
   assert.ok(statements.some((value) => value.startsWith("insert into audit_events")));
   assert.ok(statements.some((value) => value.startsWith("insert into outbox_events")));
+  assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
+});
+
+test("explicit authentication reconciliation restores missing creator aggregates", async () => {
+  const account = { id: "acct-legacy", email: "legacy@example.com", passwordHash: "unused", userId: "user-legacy", isAdmin: true, createdAt: new Date(0).toISOString(), active: true };
+  const statements: string[] = [];
+  const client = {
+    query: async (text: string) => {
+      statements.push(text.replace(/\s+/g, " ").trim());
+      return { rows: [] };
+    },
+    release: () => statements.push("RELEASE"),
+  };
+  const pool = { connect: async () => client } as unknown as Pool;
+  await new PostgresCreatorAccountRepository(pool).ensureProductData(account);
+  assert.ok(statements.some((value) => value.startsWith("insert into creator_profiles") && value.includes("on conflict")));
+  assert.ok(statements.some((value) => value.startsWith("insert into opportunity_preferences") && value.includes("on conflict")));
+  assert.ok(statements.some((value) => value.startsWith("insert into notification_preferences") && value.includes("on conflict")));
   assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
 });
 
@@ -55,6 +74,28 @@ test("updatePassword updates hash and records audit event in transaction", async
   assert.equal(success, true);
   assert.ok(statements.some((s) => s.startsWith("update radar_accounts set data =")));
   assert.ok(statements.some((s) => s.includes("account.password_reset")));
+  assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
+});
+
+test("onboarding profile data updates the private account identity and location together", async () => {
+  const account = { id: "acct-one", email: "ada@example.com", passwordHash: "hash", userId: "user-one", isAdmin: false, createdAt: new Date(0).toISOString(), active: true };
+  const statements: string[] = [];
+  const client = {
+    query: async (text: string) => {
+      statements.push(text.replace(/\s+/g, " ").trim());
+      if (text.startsWith("select id,email,data")) return { rows: [{ id: account.id, email: account.email, data: account }] };
+      if (text.includes("update creator_profiles")) return { rows: [], rowCount: 1 };
+      return { rows: [], rowCount: 0 };
+    },
+    release: () => statements.push("RELEASE"),
+  };
+  const pool = { connect: async () => client } as unknown as Pool;
+  await new PostgresCreatorAccountRepository(pool).updateOnboardingProfile("acct-one", {
+    givenName: "Ada", familyName: "Lovelace", usesSingleName: false, displayName: "Ada Lovelace",
+    countryCode: "GB", countryName: "United Kingdom", city: "London", timezone: "Europe/London",
+  });
+  assert.ok(statements.some((value) => value.startsWith("update radar_accounts")));
+  assert.ok(statements.some((value) => value.startsWith("update creator_profiles")));
   assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
 });
 

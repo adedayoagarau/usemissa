@@ -51,8 +51,8 @@ const CircularProgressAnimationDemo = () => {
           {/* Compact Feature Grid */}
           <div className='grid grid-cols-2 gap-2'>
             <div className='flex items-center gap-2.5 px-0.5'>
-              <div className='flex size-8 items-center justify-center rounded-full bg-green-600/20 dark:bg-green-400/20'>
-                <ShieldCheckIcon className='size-4 text-green-600 dark:text-green-400' />
+              <div className='flex size-8 items-center justify-center rounded-full bg-success/20 dark:bg-success/20'>
+                <ShieldCheckIcon className='size-4 text-success dark:text-success' />
               </div>
               <div className='flex flex-col'>
                 <span className='text-muted-foreground text-xs font-medium uppercase'>Status</span>
@@ -61,8 +61,8 @@ const CircularProgressAnimationDemo = () => {
             </div>
 
             <div className='flex items-center gap-2.5 px-0.5'>
-              <div className='flex size-8 items-center justify-center rounded-full bg-amber-600/20 dark:bg-amber-400/20'>
-                <ZapIcon className='size-4 text-amber-600 dark:text-amber-400' />
+              <div className='flex size-8 items-center justify-center rounded-full bg-warning/20 dark:bg-warning/20'>
+                <ZapIcon className='size-4 text-warning dark:text-warning' />
               </div>
               <div className='flex flex-col'>
                 <span className='text-muted-foreground text-xs font-medium uppercase'>Boost</span>
