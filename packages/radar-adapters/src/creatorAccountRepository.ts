@@ -5,6 +5,7 @@ import { CreatorRepositoryBase } from "./creatorRepository.js";
 
 type AccountRow = { id: string; email: string; data: Account };
 type MembershipRow = { account_id: string; organization_id: string; role: string; data: Partial<OrgMembership> };
+export type CreatorSignupIdentity = Readonly<{ givenName: string; familyName?: string; usesSingleName: boolean; displayName: string }>;
 
 const ROLES = new Set<OrgRole>(["member", "admin", "owner", "team-admin", "program-manager", "reviewer", "finance", "legal", "viewer", "guest"]);
 
@@ -143,7 +144,7 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
     } finally { client.release(); }
   }
 
-  async provisionPasswordAccount(input: { email: string; password: string; displayName: string }): Promise<{ account: Account; created: true }> {
+  async provisionPasswordAccount(input: { email: string; password: string } & CreatorSignupIdentity): Promise<{ account: Account; created: true }> {
     const email = input.email.trim().toLowerCase();
     const client = await this.database.connect();
     try {
@@ -154,9 +155,9 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
       const accountId = `acct_${randomUUID()}`;
       const userId = `user_${randomUUID()}`;
       const now = new Date().toISOString();
-      const account: Account = { id: accountId, email, passwordHash: hashPassword(input.password), userId, isAdmin: false, createdAt: now, displayName: input.displayName, active: true };
+      const account: Account = { id: accountId, email, passwordHash: hashPassword(input.password), userId, isAdmin: false, createdAt: now, displayName: input.displayName, givenName: input.givenName, familyName: input.familyName, usesSingleName: input.usesSingleName, active: true };
       await client.query("insert into radar_accounts (id,email,data) values ($1,$2,$3::jsonb)", [accountId, email, JSON.stringify(account)]);
-      await client.query("insert into creator_profiles (account_id,user_id,display_name) values ($1,$2,$3)", [accountId, userId, input.displayName]);
+      await client.query("insert into creator_profiles (account_id,user_id,display_name,given_name,family_name,uses_single_name) values ($1,$2,$3,$4,$5,$6)", [accountId, userId, input.displayName, input.givenName, input.familyName ?? null, input.usesSingleName]);
       await client.query("insert into opportunity_preferences (account_id) values ($1)", [accountId]);
       await client.query("insert into notification_preferences (account_id) values ($1)", [accountId]);
       await client.query("insert into creator_product_states (account_id) values ($1) on conflict (account_id) do nothing", [accountId]).catch(() => undefined);
@@ -180,7 +181,7 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
     displayName: string;
     passwordHash: string;
     emailVerified: boolean;
-  }): Promise<{ account: Account; created: boolean }> {
+  } & Partial<CreatorSignupIdentity>): Promise<{ account: Account; created: boolean }> {
     const client = await this.database.connect();
     try {
       await client.query("BEGIN");
@@ -211,10 +212,11 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
       const account: Account = {
         id: accountId, email: input.email, passwordHash: input.passwordHash,
         authProvider: "neon-auth", authUserId: input.authUserId, userId,
-        isAdmin: false, createdAt: now, displayName: input.displayName, active: true,
+        isAdmin: false, createdAt: now, displayName: input.displayName,
+        givenName: input.givenName, familyName: input.familyName, usesSingleName: input.usesSingleName, active: true,
       };
       await client.query("insert into radar_accounts (id,email,data) values ($1,$2,$3::jsonb)", [accountId, input.email, JSON.stringify(account)]);
-      await client.query("insert into creator_profiles (account_id,user_id,display_name) values ($1,$2,$3)", [accountId, userId, input.displayName]);
+      await client.query("insert into creator_profiles (account_id,user_id,display_name,given_name,family_name,uses_single_name) values ($1,$2,$3,$4,$5,$6)", [accountId, userId, input.displayName, input.givenName ?? null, input.familyName ?? null, input.usesSingleName ?? false]);
       await client.query("insert into opportunity_preferences (account_id) values ($1)", [accountId]);
       await client.query("insert into notification_preferences (account_id) values ($1)", [accountId]);
       await client.query("insert into creator_product_states (account_id) values ($1) on conflict (account_id) do nothing", [accountId]).catch(() => undefined);
@@ -235,5 +237,29 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
     } finally {
       client.release();
     }
+  }
+
+  async updateOnboardingProfile(accountId: string, input: CreatorSignupIdentity & { countryCode: string; countryName: string; city?: string; timezone: string }): Promise<void> {
+    const client = await this.database.connect();
+    try {
+      await client.query("BEGIN");
+      const current = await client.query<AccountRow>("select id,email,data from radar_accounts where id=$1 for update", [accountId]);
+      const row = current.rows[0];
+      if (!row) throw new CreatorAccountProvisionError("identity-conflict");
+      const updated: Account = { ...accountFromRow(row), displayName: input.displayName, givenName: input.givenName, familyName: input.familyName, usesSingleName: input.usesSingleName };
+      await client.query("update radar_accounts set data=$2::jsonb, updated_at=now() where id=$1", [accountId, JSON.stringify(updated)]);
+      const profileUpdate = await client.query(
+        `update creator_profiles set display_name=$2, given_name=$3, family_name=$4,
+           uses_single_name=$5, country_code=$6, city=$7, timezone=$8,
+           location=concat_ws(', ', nullif($7, ''), $9), revision=revision+1, updated_at=now()
+         where account_id=$1`,
+        [accountId, input.displayName, input.givenName, input.familyName ?? null, input.usesSingleName, input.countryCode, input.city ?? null, input.timezone, input.countryName],
+      );
+      if (profileUpdate.rowCount !== 1) throw new CreatorAccountProvisionError("identity-conflict");
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally { client.release(); }
   }
 }

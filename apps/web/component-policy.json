@@ -120,8 +120,15 @@
     },
     "composition.creator-onboarding": {
       "semantic": "CreatorOnboarding",
-      "composition": ["Button", "Checkbox", "Link"],
-      "appearance": "editorial-onboarding-with-practices-and-interests"
+      "composition": [
+        "Button",
+        "Checkbox",
+        "Input",
+        "NativeSelect",
+        "Link"
+      ],
+      "appearance": "editorial-onboarding-with-practices-interests-private-location-and-confirmed-profile-address",
+      "boundary": "Given and family names are supplied by the person and remain distinct from the normalized public handle. Country, city, timezone, career stage, travel willingness, and fee preference are private matching inputs."
     },
     "composition.creator-workspace": {
       "semantic": "CreatorWorkspace",

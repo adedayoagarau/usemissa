@@ -7,6 +7,11 @@ export function CreatorOnboardingPreview() {
     <CreatorOnboarding
       preview
       initialDisplayName="Ayo"
+      initialGivenName="Ayo"
+      initialUsesSingleName
+      initialCountryCode="NG"
+      initialCity="Lagos"
+      initialTimezone="Africa/Lagos"
       handleNamespaceReady
       handleClaimingOpen
     />

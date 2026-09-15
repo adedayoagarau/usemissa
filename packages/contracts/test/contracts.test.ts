@@ -5,6 +5,7 @@ import {
   chatPostInputSchema,
   AFRICAN_COUNTRIES,
   CANONICAL_COUNTRIES,
+  creatorOnboardingMutationSchema,
   normalizeCountry,
   opportunityBrowseQuerySchema,
   opportunityDetailResponseSchema,
@@ -17,6 +18,27 @@ import {
   sourceCoverageCellSchema,
   taxonomyAssignmentSetSchema,
 } from "../src/index.js";
+
+test("creator onboarding accepts the private matching profile needed to finish setup", () => {
+  const result = creatorOnboardingMutationSchema.parse({
+    action: "complete",
+    step: 4,
+    practices: ["Writing"],
+    interests: ["Grants"],
+    givenName: "Adedayo",
+    familyName: "Agarau",
+    countryCode: "ng",
+    city: "Lagos",
+    timezone: "Africa/Lagos",
+    careerStage: "mid-career",
+    travelWillingness: "willing-to-travel",
+    noFeeOnly: true,
+  });
+
+  assert.equal(result.countryCode, "NG");
+  assert.equal(result.step, 4);
+  assert.equal(result.noFeeOnly, true);
+});
 
 test("resource IDs accept legacy and UUID-backed prefixed identities", () => {
   assert.equal(resourceIdSchema.parse("org_0001"), "org_0001");

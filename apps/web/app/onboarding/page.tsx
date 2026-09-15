@@ -41,7 +41,15 @@ export default async function OnboardingPage() {
   let initialStatus: "not_started" | "in_progress" | "completed" | "skipped" =
     "not_started";
   let initialDisplayName = session.account.displayName?.trim() ?? "";
-  let initialProfileRevision: number | undefined;
+  let initialGivenName = session.account.givenName?.trim() ?? "";
+  let initialFamilyName = session.account.familyName?.trim() ?? "";
+  let initialUsesSingleName = session.account.usesSingleName ?? false;
+  let initialCountryCode = "";
+  let initialCity = "";
+  let initialTimezone = "";
+  let initialCareerStage = "any";
+  let initialTravelWillingness = "any";
+  let initialNoFeeOnly = false;
   let initialHandle: UserHandle | null = null;
   let handleNamespaceReady = false;
   let handleClaimingOpen = false;
@@ -52,7 +60,12 @@ export default async function OnboardingPage() {
     );
     if (profile) {
       initialDisplayName = profile.displayName;
-      initialProfileRevision = profile.revision;
+      initialGivenName = profile.givenName ?? initialGivenName;
+      initialFamilyName = profile.familyName ?? initialFamilyName;
+      initialUsesSingleName = profile.usesSingleName;
+      initialCountryCode = profile.countryCode ?? "";
+      initialCity = profile.city ?? "";
+      initialTimezone = profile.timezone ?? "";
     }
     const productState = await preferenceRepo.productState(session.account.id);
     if (productState) {
@@ -76,6 +89,9 @@ export default async function OnboardingPage() {
     if (oppPrefs?.types) {
       initialInterests = mapOpportunityTypesToInterestLabels(oppPrefs.types);
     }
+    initialCareerStage = oppPrefs?.careerStages[0] ?? "any";
+    initialTravelWillingness = oppPrefs?.travelWillingness ?? "any";
+    initialNoFeeOnly = oppPrefs?.noFeeOnly ?? false;
   } else {
     const engine = await getEngine();
     const user = engine.store.users.get(session.account.userId!);
@@ -129,7 +145,15 @@ export default async function OnboardingPage() {
   return (
     <CreatorOnboarding
       initialDisplayName={initialDisplayName}
-      initialProfileRevision={initialProfileRevision}
+      initialGivenName={initialGivenName}
+      initialFamilyName={initialFamilyName}
+      initialUsesSingleName={initialUsesSingleName}
+      initialCountryCode={initialCountryCode}
+      initialCity={initialCity}
+      initialTimezone={initialTimezone}
+      initialCareerStage={initialCareerStage}
+      initialTravelWillingness={initialTravelWillingness}
+      initialNoFeeOnly={initialNoFeeOnly}
       initialHandle={initialHandle}
       handleNamespaceReady={handleNamespaceReady}
       handleClaimingOpen={handleClaimingOpen}

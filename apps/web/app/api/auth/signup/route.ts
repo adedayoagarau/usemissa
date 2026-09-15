@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { AuthError } from "@missa/radar-engine";
-import { CreatorAccountProvisionError, redeemWaitlistInvite } from "@missa/radar-adapters";
+import {
+  CreatorAccountProvisionError,
+  redeemWaitlistInvite,
+} from "@missa/radar-adapters";
 import { getEngine, persistRadar } from "@/lib/engine";
 import { getCreatorAccountRepository } from "@/lib/creatorRepositories";
 import {
@@ -10,27 +13,9 @@ import {
 } from "@/lib/auth";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
 import { clientAddress, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
-import {
-  FIRST_SAVE_INTENT_COOKIE,
-  verifyFirstSaveIntent,
-} from "@/lib/firstSaveIntent";
 import { deliverWelcomeEmail } from "@/emails/welcome";
 import { isNeonAuthConfigured } from "@/lib/neon-auth/server";
-
-function cookieValue(request: Request): string | undefined {
-  const encoded = request.headers
-    .get("cookie")
-    ?.split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${FIRST_SAVE_INTENT_COOKIE}=`))
-    ?.slice(FIRST_SAVE_INTENT_COOKIE.length + 1);
-  if (!encoded) return undefined;
-  try {
-    return decodeURIComponent(encoded);
-  } catch {
-    return undefined;
-  }
-}
+import { signupIdentity } from "@/lib/signupIdentity";
 
 export async function POST(request: Request) {
   // Production password signup belongs to Neon Auth so email ownership cannot
@@ -55,34 +40,33 @@ export async function POST(request: Request) {
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
-  const { email, password, displayName, inviteToken, waitlistEmail } = (
-    body && typeof body === "object" ? body : {}
-  ) as {
+  const {
+    email,
+    password,
+    givenName,
+    familyName,
+    usesSingleName,
+    inviteToken,
+    waitlistEmail,
+  } = (body && typeof body === "object" ? body : {}) as {
     email?: unknown;
     password?: unknown;
-    displayName?: unknown;
+    givenName?: unknown;
+    familyName?: unknown;
+    usesSingleName?: unknown;
     inviteToken?: unknown;
     waitlistEmail?: unknown;
   };
-  if (
-    typeof email !== "string" ||
-    typeof password !== "string" ||
-    typeof displayName !== "string"
-  ) {
+  if (typeof email !== "string" || typeof password !== "string") {
     return NextResponse.json(
-      { error: "Name, email, and password are required." },
+      { error: "Your name, email address, and password are required." },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
-  const normalizedName = displayName.trim();
-  const firstSaveIntent = verifyFirstSaveIntent(cookieValue(request));
-  if ((!normalizedName && !firstSaveIntent) || normalizedName.length > 120) {
+  const identity = signupIdentity({ givenName, familyName, usesSingleName });
+  if ("field" in identity) {
     return NextResponse.json(
-      {
-        error: firstSaveIntent
-          ? "Use no more than 120 characters for your name."
-          : "Use a name between 1 and 120 characters.",
-      },
+      { error: identity.message, field: identity.field },
       { status: 400, headers: { "Cache-Control": "no-store" } },
     );
   }
@@ -113,22 +97,34 @@ export async function POST(request: Request) {
   let account;
   try {
     const repository = getCreatorAccountRepository();
-    if (repository) ({ account } = await repository.provisionPasswordAccount({ email, password, displayName: normalizedName }));
+    if (repository)
+      ({ account } = await repository.provisionPasswordAccount({
+        email,
+        password,
+        ...identity,
+      }));
     else {
       const engine = await getEngine();
-      ({ account } = engine.signUp(email, password, normalizedName));
+      ({ account } = engine.signUp(email, password, identity.displayName));
+      account.displayName = identity.displayName;
+      account.givenName = identity.givenName;
+      account.familyName = identity.familyName;
+      account.usesSingleName = identity.usesSingleName;
       await persistRadar();
     }
   } catch (err) {
     const accountExists =
-      (err instanceof CreatorAccountProvisionError && err.code === "account-exists") ||
-      (err instanceof Error && err.message.toLowerCase().includes("already exists"));
+      (err instanceof CreatorAccountProvisionError &&
+        err.code === "account-exists") ||
+      (err instanceof Error &&
+        err.message.toLowerCase().includes("already exists"));
     const message = accountExists
       ? "An account already uses this email. Log in instead."
       : err instanceof AuthError
         ? err.message
         : "We could not create your account. Check your details and try again.";
-    if (!accountExists && !(err instanceof AuthError)) console.error("Account signup failed", err);
+    if (!accountExists && !(err instanceof AuthError))
+      console.error("Account signup failed", err);
     return NextResponse.json(
       { error: message, ...(accountExists ? { code: "account_exists" } : {}) },
       { status: 400, headers: { "Cache-Control": "no-store" } },
@@ -171,9 +167,9 @@ export async function POST(request: Request) {
     {
       accountId: account.id,
       email: account.email,
-      displayName: normalizedName,
+      givenName: identity.givenName,
     },
-    process.env.DATABASE_URL
+    process.env.DATABASE_URL,
   ).catch((err) => {
     console.error("Welcome email delivery failed", err);
   });

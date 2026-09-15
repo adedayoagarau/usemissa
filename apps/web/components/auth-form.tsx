@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
   FieldDescription,
@@ -46,6 +47,7 @@ import {
 import { MissaWordmark } from "@/components/missa-wordmark";
 import { SocialAuthButton } from "@/components/missa/social-auth-button";
 import styles from "@/app/auth.module.css";
+import { signupIdentity } from "@/lib/signupIdentity";
 import {
   Accordion,
   AccordionItem,
@@ -56,7 +58,11 @@ import {
 type AuthMode = "login" | "signup";
 
 type PendingEmailVerification = {
+  mode: AuthMode;
   email: string;
+  givenName: string;
+  familyName?: string;
+  usesSingleName: boolean;
   waitlistEmail?: string;
   codeSent: boolean;
 };
@@ -80,6 +86,7 @@ export function AuthForm({
   const [isPending, setIsPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [signupUsesSingleName, setSignupUsesSingleName] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accountExists, setAccountExists] = useState(false);
   const [pendingVerification, setPendingVerification] =
@@ -90,7 +97,7 @@ export function AuthForm({
   );
   const [isResending, setIsResending] = useState(false);
   const [fieldError, setFieldError] = useState<{
-    field: "displayName" | "email" | "password" | "confirmation";
+    field: "givenName" | "familyName" | "email" | "password" | "confirmation";
     message: string;
   } | null>(null);
   const [sessionReady, setSessionReady] = useState(authenticated);
@@ -202,7 +209,7 @@ export function AuthForm({
   }, [isPending, isResending, pendingVerification]);
 
   function showFieldError(
-    field: "displayName" | "email" | "password" | "confirmation",
+    field: "givenName" | "familyName" | "email" | "password" | "confirmation",
     message: string,
   ) {
     setFieldError({ field, message });
@@ -226,16 +233,12 @@ export function AuthForm({
             waitlistEmail: waitlistEmail || undefined,
           }),
         });
-        const redemptionBody = (await redemption
-          .json()
-          .catch(() => ({}))) as {
+        const redemptionBody = (await redemption.json().catch(() => ({}))) as {
           redeemed?: boolean;
           message?: string;
         };
         if (redemptionBody.redeemed) {
-          toast.success(
-            "Your waitlist priority is connected to this account.",
-          );
+          toast.success("Your waitlist priority is connected to this account.");
         } else if (redemptionBody.message) {
           toast.message(redemptionBody.message);
         }
@@ -266,6 +269,11 @@ export function AuthForm({
 
   async function sendVerificationCode(
     email: string,
+    identity?: {
+      givenName: string;
+      familyName?: string;
+      usesSingleName: boolean;
+    },
     waitlistEmail?: string,
   ) {
     if (!neonAuthClient) {
@@ -274,7 +282,11 @@ export function AuthForm({
     }
 
     setPendingVerification({
+      mode,
       email,
+      givenName: identity?.givenName ?? "",
+      familyName: identity?.familyName,
+      usesSingleName: identity?.usesSingleName ?? false,
       waitlistEmail: waitlistEmail || undefined,
       codeSent: false,
     });
@@ -335,7 +347,12 @@ export function AuthForm({
       const response = await fetch("/api/auth/missa-session", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode: "signup" }),
+        body: JSON.stringify({
+          mode: pendingVerification.mode,
+          givenName: pendingVerification.givenName,
+          familyName: pendingVerification.familyName,
+          usesSingleName: pendingVerification.usesSingleName,
+        }),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as {
@@ -411,14 +428,18 @@ export function AuthForm({
     const data = new FormData(form);
     const email = String(data.get("email") ?? "").trim();
     const password = String(data.get("password") ?? "");
-    const displayName = String(data.get("displayName") ?? "").trim();
+    const identity = signupIdentity({
+      givenName: data.get("givenName"),
+      familyName: data.get("familyName"),
+      usesSingleName: signupUsesSingleName,
+    });
     const waitlistEmail = String(data.get("waitlistEmail") ?? "").trim();
     const confirmation = String(data.get("confirmation") ?? "");
 
     if (!/^\S+@\S+\.\S+$/.test(email))
       return showFieldError("email", "Enter a valid email address.");
-    if (mode === "signup" && !firstSaveContext && !displayName)
-      return showFieldError("displayName", "Tell us what to call you.");
+    if (mode === "signup" && "field" in identity)
+      return showFieldError(identity.field, identity.message);
     if (password.length < 8)
       return showFieldError(
         "password",
@@ -442,7 +463,9 @@ export function AuthForm({
               : {
                   email,
                   password,
-                  displayName,
+                  ...(mode === "signup" && !("field" in identity)
+                    ? identity
+                    : {}),
                   inviteToken,
                   waitlistEmail: waitlistEmail || undefined,
                 },
@@ -468,13 +491,13 @@ export function AuthForm({
               : await neonAuthClient.signUp.email({
                   email,
                   password,
-                  name: displayName || "Missa creator",
+                  name:
+                    "field" in identity
+                      ? "Missa creator"
+                      : identity.displayName,
                 });
           if (result.error) {
-            if (
-              mode === "login" &&
-              isEmailVerificationRequired(result.error)
-            ) {
+            if (mode === "login" && isEmailVerificationRequired(result.error)) {
               await sendVerificationCode(email);
               return;
             }
@@ -491,7 +514,11 @@ export function AuthForm({
           } else if (mode === "signup") {
             // Neon owns the pending identity. Missa does not provision product
             // data or issue its session until the emailed code is accepted.
-            await sendVerificationCode(email, waitlistEmail);
+            await sendVerificationCode(
+              email,
+              "field" in identity ? undefined : identity,
+              waitlistEmail,
+            );
             return;
           } else {
             response = await fetch("/api/auth/missa-session", {
@@ -517,7 +544,10 @@ export function AuthForm({
           response = await missaPasswordRequest();
         }
         if (!response.ok && !neonRejected) {
-          const problem = (await response.clone().json().catch(() => ({}))) as {
+          const problem = (await response
+            .clone()
+            .json()
+            .catch(() => ({}))) as {
             code?: string;
           };
           if (problem.code === "email_verification_required") {
@@ -694,10 +724,10 @@ export function AuthForm({
                 ? `We sent a six-digit code to ${pendingVerification.email}. Enter it to finish creating your account.`
                 : `Verify ${pendingVerification.email} to finish creating your account. Choose Resend code to request a new code.`
               : firstSaveContext
-              ? "Your account keeps this Opportunity in your private Tracker and brings you back to its current details."
-              : mode === "login"
-                ? "Pick up where you left off."
-                : "Save opportunities and keep track of your applications."}
+                ? "Your account keeps this Opportunity in your private Tracker and brings you back to its current details."
+                : mode === "login"
+                  ? "Pick up where you left off."
+                  : "Save opportunities and keep track of your applications."}
           </p>
 
           {firstSaveContext ? (
@@ -1001,33 +1031,72 @@ export function AuthForm({
                 </>
               ) : null}
               {mode === "signup" && (
-                <div className={styles.field} key="display-name">
-                  <label htmlFor="displayName" className={styles.label}>
-                    {firstSaveContext ? "Name (optional)" : "Your name"}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className={styles.field} key="given-name">
+                    <label htmlFor="givenName" className={styles.label}>
+                      Given name
+                    </label>
+                    <Input
+                      className="h-11"
+                      id="givenName"
+                      name="givenName"
+                      autoComplete="given-name"
+                      placeholder="Adedayo"
+                      aria-invalid={fieldError?.field === "givenName"}
+                      aria-describedby={
+                        fieldError?.field === "givenName"
+                          ? fieldErrorId
+                          : undefined
+                      }
+                      required
+                    />
+                    {fieldError?.field === "givenName" ? (
+                      <p
+                        id={fieldErrorId}
+                        className={styles.fieldError}
+                        role="alert"
+                      >
+                        {fieldError.message}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className={styles.field} key="family-name">
+                    <label htmlFor="familyName" className={styles.label}>
+                      Family name
+                    </label>
+                    <Input
+                      className="h-11"
+                      id="familyName"
+                      name="familyName"
+                      autoComplete="family-name"
+                      placeholder="Agarau"
+                      disabled={signupUsesSingleName}
+                      aria-invalid={fieldError?.field === "familyName"}
+                      aria-describedby={
+                        fieldError?.field === "familyName"
+                          ? fieldErrorId
+                          : undefined
+                      }
+                    />
+                    {fieldError?.field === "familyName" ? (
+                      <p
+                        id={fieldErrorId}
+                        className={styles.fieldError}
+                        role="alert"
+                      >
+                        {fieldError.message}
+                      </p>
+                    ) : null}
+                  </div>
+                  <label className="flex min-h-11 items-center gap-3 text-sm sm:col-span-2">
+                    <Checkbox
+                      checked={signupUsesSingleName}
+                      onCheckedChange={(checked) =>
+                        setSignupUsesSingleName(checked === true)
+                      }
+                    />
+                    I use one name.
                   </label>
-                  <Input
-                    className="h-11"
-                    id="displayName"
-                    name="displayName"
-                    autoComplete="name"
-                    placeholder="Alex Morgan"
-                    aria-invalid={fieldError?.field === "displayName"}
-                    aria-describedby={
-                      fieldError?.field === "displayName"
-                        ? fieldErrorId
-                        : undefined
-                    }
-                    required={!firstSaveContext}
-                  />
-                  {fieldError?.field === "displayName" ? (
-                    <p
-                      id={fieldErrorId}
-                      className={styles.fieldError}
-                      role="alert"
-                    >
-                      {fieldError.message}
-                    </p>
-                  ) : null}
                 </div>
               )}
               <div className={styles.field} key="account-email">

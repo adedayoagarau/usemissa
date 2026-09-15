@@ -1,8 +1,18 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { creatorOnboardingMutationSchema } from "@missa/contracts";
-import { getSessionAccountFromToken, SESSION_COOKIE } from "../../../../lib/auth";
-import { getCreatorPreferenceRepository, getCreatorProfileRepository } from "../../../../lib/creatorRepositories";
+import {
+  CANONICAL_COUNTRIES,
+  creatorOnboardingMutationSchema,
+} from "@missa/contracts";
+import {
+  getSessionAccountFromToken,
+  SESSION_COOKIE,
+} from "../../../../lib/auth";
+import {
+  getCreatorAccountRepository,
+  getCreatorPreferenceRepository,
+  getCreatorProfileRepository,
+} from "../../../../lib/creatorRepositories";
 import { getEngine, persistRadar } from "../../../../lib/engine";
 import { creatorCommandEnvelope } from "@missa/radar-adapters";
 import {
@@ -32,7 +42,7 @@ export async function GET() {
         refinements: [],
         interests: [],
       },
-      { headers: noStore }
+      { headers: noStore },
     );
   }
 
@@ -42,22 +52,46 @@ export async function GET() {
   let firstSaveIntent = undefined;
   if (firstSaveToken) {
     try {
-      const { verifyFirstSaveIntent } = await import("../../../../lib/firstSaveIntent");
+      const { verifyFirstSaveIntent } =
+        await import("../../../../lib/firstSaveIntent");
       firstSaveIntent = verifyFirstSaveIntent(firstSaveToken);
     } catch {
       firstSaveIntent = undefined;
     }
   }
 
-  let status: "not_started" | "in_progress" | "completed" | "skipped" = "not_started";
+  let status: "not_started" | "in_progress" | "completed" | "skipped" =
+    "not_started";
   let step = 0;
   let completedAt: string | undefined;
   let skippedAt: string | undefined;
   let practices: string[] = [];
   let refinements: string[] = [];
   let interests: string[] = [];
+  let givenName = session.account.givenName?.trim() ?? "";
+  let familyName = session.account.familyName?.trim() ?? "";
+  let usesSingleName = session.account.usesSingleName ?? false;
+  let countryCode = "";
+  let city = "";
+  let timezone = "";
+  let careerStage:
+    "student" | "emerging" | "mid-career" | "established" | "any" = "any";
+  let travelWillingness:
+    "remote-only" | "willing-to-travel" | "local-only" | "any" = "any";
+  let noFeeOnly = false;
 
   if (preferenceRepo) {
+    const profile = await getCreatorProfileRepository()?.profile(
+      session.account.id,
+    );
+    if (profile) {
+      givenName = profile.givenName ?? givenName;
+      familyName = profile.familyName ?? familyName;
+      usesSingleName = profile.usesSingleName;
+      countryCode = profile.countryCode ?? "";
+      city = profile.city ?? "";
+      timezone = profile.timezone ?? "";
+    }
     const productState = await preferenceRepo.productState(session.account.id);
     if (productState) {
       status = productState.onboardingStatus;
@@ -66,30 +100,48 @@ export async function GET() {
       skippedAt = productState.skippedAt;
     }
 
-    const taxonomyPrefs = await preferenceRepo.taxonomyPreferences(session.account.id);
-    const oppPrefs = await preferenceRepo.opportunityPreferences(session.account.id);
+    const taxonomyPrefs = await preferenceRepo.taxonomyPreferences(
+      session.account.id,
+    );
+    const oppPrefs = await preferenceRepo.opportunityPreferences(
+      session.account.id,
+    );
 
-    const practiceMapping = mapTaxonomyToPracticeLabels(taxonomyPrefs.map((t) => t.termId));
+    const practiceMapping = mapTaxonomyToPracticeLabels(
+      taxonomyPrefs.map((t) => t.termId),
+    );
     practices = practiceMapping.practices;
     refinements = practiceMapping.refinements;
 
     if (oppPrefs?.types) {
       interests = mapOpportunityTypesToInterestLabels(oppPrefs.types);
     }
+    careerStage =
+      (oppPrefs?.careerStages[0] as typeof careerStage | undefined) ?? "any";
+    travelWillingness = oppPrefs?.travelWillingness ?? "any";
+    noFeeOnly = oppPrefs?.noFeeOnly ?? false;
   } else {
     const engine = await getEngine();
     const user = engine.store.users.get(session.account.userId!);
     if (user) {
       if (user.taxonomyPreferences) {
-        const practiceMapping = mapTaxonomyToPracticeLabels(user.taxonomyPreferences.map((t) => t.termId));
+        const practiceMapping = mapTaxonomyToPracticeLabels(
+          user.taxonomyPreferences.map((t) => t.termId),
+        );
         practices = practiceMapping.practices;
         refinements = practiceMapping.refinements;
       }
       if (user.opportunityPreferences?.types) {
-        interests = mapOpportunityTypesToInterestLabels(user.opportunityPreferences.types);
+        interests = mapOpportunityTypesToInterestLabels(
+          user.opportunityPreferences.types,
+        );
       }
       const savedStatus = user.attributes.onboardingStatus;
-      if (savedStatus === "skipped" || savedStatus === "completed" || savedStatus === "in_progress") {
+      if (
+        savedStatus === "skipped" ||
+        savedStatus === "completed" ||
+        savedStatus === "in_progress"
+      ) {
         status = savedStatus;
         step = Number(user.attributes.onboardingStep ?? 0);
       } else if (practices.length > 0 || interests.length > 0) {
@@ -104,21 +156,23 @@ export async function GET() {
     label: string;
     description: string;
     href: string;
-    kind: "resume-save" | "explore-matches" | "prepare-opportunity" | "browse-all";
+    kind:
+      "resume-save" | "explore-matches" | "prepare-opportunity" | "browse-all";
   };
 
   if (firstSaveIntent) {
     nextAction = {
       kind: "resume-save",
       label: `Prepare ${firstSaveIntent.context.title}`,
-      description: "Review deadline and application details in your private workspace.",
+      description:
+        "Review deadline and application details in your private workspace.",
       href: "/tracker",
     };
   } else if (practices.length > 0) {
     nextAction = {
       kind: "explore-matches",
       label: `Explore ${practices.join(" & ")} opportunities`,
-      description: "Curated open calls matching your private practice preferences.",
+      description: "Opportunities based on the work you make.",
       href: "/tracker",
     };
   } else {
@@ -138,11 +192,20 @@ export async function GET() {
       practices,
       refinements,
       interests,
+      givenName,
+      familyName,
+      usesSingleName,
+      countryCode,
+      city,
+      timezone,
+      careerStage,
+      travelWillingness,
+      noFeeOnly,
       completedAt,
       skippedAt,
       nextAction,
     },
-    { headers: noStore }
+    { headers: noStore },
   );
 }
 
@@ -151,7 +214,7 @@ export async function POST(request: Request) {
   if (!session?.account.id) {
     return NextResponse.json(
       { error: "Unauthorized. Please log in." },
-      { status: 401, headers: noStore }
+      { status: 401, headers: noStore },
     );
   }
 
@@ -161,19 +224,42 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "Invalid JSON in request body." },
-      { status: 400, headers: noStore }
+      { status: 400, headers: noStore },
     );
   }
 
   const parseResult = creatorOnboardingMutationSchema.safeParse(body);
   if (!parseResult.success) {
     return NextResponse.json(
-      { error: "Invalid onboarding payload.", issues: parseResult.error.issues },
-      { status: 400, headers: noStore }
+      {
+        error: "Invalid onboarding payload.",
+        issues: parseResult.error.issues,
+      },
+      { status: 400, headers: noStore },
     );
   }
 
   const data = parseResult.data;
+  if (data.countryCode && !CANONICAL_COUNTRIES[data.countryCode]) {
+    return NextResponse.json(
+      { error: "Choose a country from the list." },
+      { status: 400, headers: noStore },
+    );
+  }
+  if (data.action === "complete") {
+    if (!data.givenName || (!data.usesSingleName && !data.familyName)) {
+      return NextResponse.json(
+        { error: "Enter your name before finishing setup." },
+        { status: 400, headers: noStore },
+      );
+    }
+    if (!data.countryCode || !data.timezone) {
+      return NextResponse.json(
+        { error: "Add your country and time zone before finishing setup." },
+        { status: 400, headers: noStore },
+      );
+    }
+  }
   const preferenceRepo = getCreatorPreferenceRepository();
   const profileRepo = getCreatorProfileRepository();
   // Relational creator repositories are the durable authority. Loading and
@@ -206,17 +292,20 @@ export async function POST(request: Request) {
         status: "skipped",
         redirectUrl: "/tracker",
       },
-      { headers: noStore }
+      { headers: noStore },
     );
   }
 
   // Handle save_step or complete
-  const taxonomyPreferences = mapPracticesToTaxonomy(data.practices, data.refinements);
+  const taxonomyPreferences = mapPracticesToTaxonomy(
+    data.practices,
+    data.refinements,
+  );
   const opportunityTypes = mapInterestsToOpportunityTypes(data.interests);
 
   const isComplete = data.action === "complete";
   const newStatus = isComplete ? "completed" : "in_progress";
-  const currentStep = data.step ?? (isComplete ? 2 : 1);
+  const currentStep = data.step ?? (isComplete ? 4 : 1);
 
   if (preferenceRepo && profileRepo) {
     // Read current bundle for revision
@@ -235,9 +324,24 @@ export async function POST(request: Request) {
 
     const updatedOpportunity = {
       ...existingOpportunity,
-      types: opportunityTypes.length > 0 ? opportunityTypes : existingOpportunity.types,
-      disciplines: data.practices.length > 0 ? data.practices : existingOpportunity.disciplines,
-      genres: data.refinements.length > 0 ? data.refinements : existingOpportunity.genres,
+      types:
+        opportunityTypes.length > 0
+          ? opportunityTypes
+          : existingOpportunity.types,
+      disciplines:
+        data.practices.length > 0
+          ? data.practices
+          : existingOpportunity.disciplines,
+      genres:
+        data.refinements.length > 0
+          ? data.refinements
+          : existingOpportunity.genres,
+      locations: data.countryCode
+        ? [data.countryCode]
+        : existingOpportunity.locations,
+      careerStages: data.careerStage === "any" ? [] : [data.careerStage],
+      travelWillingness: data.travelWillingness,
+      noFeeOnly: data.noFeeOnly,
     };
 
     const idempotencyKey = `onboarding-${session.account.id}-${Date.now()}`;
@@ -246,11 +350,15 @@ export async function POST(request: Request) {
       "creator-preferences.update",
       idempotencyKey,
       { taxonomyPreferences, opportunityPreferences: updatedOpportunity },
-      expectedRevision
+      expectedRevision,
     );
 
     try {
-      await preferenceRepo.updatePreferences(envelope, taxonomyPreferences, updatedOpportunity);
+      await preferenceRepo.updatePreferences(
+        envelope,
+        taxonomyPreferences,
+        updatedOpportunity,
+      );
     } catch (err) {
       console.error("Preference update failed:", err);
       return NextResponse.json(
@@ -259,6 +367,33 @@ export async function POST(request: Request) {
         },
         { status: 503, headers: noStore },
       );
+    }
+
+    if (data.givenName && data.countryCode && data.timezone) {
+      const familyName = data.usesSingleName
+        ? undefined
+        : data.familyName?.trim();
+      try {
+        await getCreatorAccountRepository()?.updateOnboardingProfile(
+          session.account.id,
+          {
+            givenName: data.givenName,
+            familyName,
+            usesSingleName: data.usesSingleName,
+            displayName: [data.givenName, familyName].filter(Boolean).join(" "),
+            countryCode: data.countryCode,
+            countryName: CANONICAL_COUNTRIES[data.countryCode],
+            city: data.city,
+            timezone: data.timezone,
+          },
+        );
+      } catch (err) {
+        console.error("Onboarding profile update failed:", err);
+        return NextResponse.json(
+          { error: "We could not save your profile. Please try again." },
+          { status: 503, headers: noStore },
+        );
+      }
     }
 
     await preferenceRepo.upsertProductState(session.account.id, {
@@ -290,9 +425,10 @@ export async function POST(request: Request) {
           types: opportunityTypes,
           disciplines: data.practices,
           genres: data.refinements,
-          locations: [],
-          careerStages: [],
-          noFeeOnly: false,
+          locations: data.countryCode ? [data.countryCode] : [],
+          careerStages: data.careerStage === "any" ? [] : [data.careerStage],
+          noFeeOnly: data.noFeeOnly,
+          travelWillingness: data.travelWillingness,
           simultaneousRequired: false,
         },
       };
@@ -308,7 +444,30 @@ export async function POST(request: Request) {
         user.opportunityPreferences.types = opportunityTypes;
         user.opportunityPreferences.disciplines = data.practices;
         user.opportunityPreferences.genres = data.refinements;
+        user.opportunityPreferences.locations = data.countryCode
+          ? [data.countryCode]
+          : user.opportunityPreferences.locations;
+        user.opportunityPreferences.careerStages =
+          data.careerStage === "any" ? [] : [data.careerStage];
+        user.opportunityPreferences.travelWillingness = data.travelWillingness;
+        user.opportunityPreferences.noFeeOnly = data.noFeeOnly;
       }
+    }
+    if (data.givenName) {
+      const familyName = data.usesSingleName
+        ? undefined
+        : data.familyName?.trim();
+      const displayName = [data.givenName, familyName]
+        .filter(Boolean)
+        .join(" ");
+      user.displayName = displayName;
+      session.account.displayName = displayName;
+      session.account.givenName = data.givenName;
+      session.account.familyName = familyName;
+      session.account.usesSingleName = data.usesSingleName;
+      user.attributes.countryCode = data.countryCode ?? "";
+      user.attributes.city = data.city ?? "";
+      user.attributes.timezone = data.timezone ?? "";
     }
     user.attributes.onboardingStatus = newStatus;
     user.attributes.onboardingStep = String(currentStep);
@@ -322,6 +481,6 @@ export async function POST(request: Request) {
       step: currentStep,
       redirectUrl: "/tracker",
     },
-    { headers: noStore }
+    { headers: noStore },
   );
 }

@@ -9,6 +9,7 @@ import { sendMail, type SendMailReport } from "../lib/mail-service";
 export interface WelcomeEmailProps {
   accountId: string;
   email: string;
+  givenName?: string;
   displayName?: string;
 }
 
@@ -18,7 +19,7 @@ export function renderWelcomeEmail(props: WelcomeEmailProps): {
   text: string;
 } {
   const subject = "Welcome to Missa";
-  const name = props.displayName?.trim() || "";
+  const name = props.givenName?.trim() || props.displayName?.trim() || "";
   const safeName = escapeHtml(name);
   const title = name ? `Welcome to Missa, ${safeName}.` : "Welcome to Missa.";
   const opportunitiesUrl = new URL(
