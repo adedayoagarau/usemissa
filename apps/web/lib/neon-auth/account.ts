@@ -7,6 +7,7 @@ import { getEngine, persistRadar } from '@/lib/engine';
 import type { SessionAccount } from '@/lib/auth';
 import { getCreatorAccountRepository } from '@/lib/creatorRepositories';
 
+import { isVerifiedNeonEmail } from './emailVerification';
 import { getNeonAuth } from './server';
 
 type NeonAuthUser = {
@@ -20,6 +21,7 @@ export class NeonAuthAccountError extends Error {
   constructor(
     readonly status: 401 | 403 | 409 | 503,
     message: string,
+    readonly code?: 'email_verification_required',
   ) {
     super(message);
     this.name = 'NeonAuthAccountError';
@@ -96,6 +98,14 @@ async function resolveNeonAuthAccount(
   }
 
   const email = user.email.trim().toLowerCase();
+  if (!isVerifiedNeonEmail(user)) {
+    if (!provision) return undefined;
+    throw new NeonAuthAccountError(
+      409,
+      'Verify your email before opening your Missa account.',
+      'email_verification_required',
+    );
+  }
   const relational = getCreatorAccountRepository();
   if (relational) {
     if (!provision) {
@@ -109,7 +119,7 @@ async function resolveNeonAuthAccount(
         email,
         displayName: user.name?.trim().slice(0, 120) || email.split('@')[0]?.slice(0, 120) || 'Missa creator',
         passwordHash: `${randomBytes(16).toString('hex')}:${randomBytes(32).toString('hex')}`,
-        emailVerified: isVerifiedEmail(user),
+        emailVerified: isVerifiedNeonEmail(user),
       });
     } catch (error) {
       if (error instanceof CreatorAccountProvisionError) {
@@ -147,12 +157,6 @@ async function resolveNeonAuthAccount(
         'This email is already connected to another auth identity.',
       );
     }
-    if (!isVerifiedEmail(user)) {
-      throw new NeonAuthAccountError(
-        409,
-        'Verify your email before connecting this existing Missa account.',
-      );
-    }
     existing.authProvider = 'neon-auth';
     existing.authUserId = user.id;
     await persistRadar();
@@ -170,12 +174,4 @@ async function resolveNeonAuthAccount(
   account.authUserId = user.id;
   await persistRadar();
   return { account, created: true };
-}
-
-function isVerifiedEmail(user: NeonAuthUser): boolean {
-  return (
-    user.emailVerified === true ||
-    user.emailVerified instanceof Date ||
-    (typeof user.emailVerified === 'string' && user.emailVerified.length > 0)
-  );
 }

@@ -22,7 +22,7 @@ export type OnboardingPracticeDefinition = {
 export const ONBOARDING_PRACTICES: readonly OnboardingPracticeDefinition[] = [
   {
     label: "Writing",
-    description: "Poetry, fiction, essays & more",
+    description: "You write poetry, fiction, essays, and more.",
     practiceFamilyTermId: "taxterm_pf-writing-and-literature",
     refinements: [
       { label: "Poetry", termId: "taxterm_disc-poetry" },
@@ -32,7 +32,7 @@ export const ONBOARDING_PRACTICES: readonly OnboardingPracticeDefinition[] = [
   },
   {
     label: "Visual arts",
-    description: "Painting, photography & beyond",
+    description: "You make paintings, photographs, sculpture, and more.",
     practiceFamilyTermId: "taxterm_pf-visual-arts",
     refinements: [
       { label: "Painting", termId: "taxterm_disc-painting" },
@@ -42,7 +42,7 @@ export const ONBOARDING_PRACTICES: readonly OnboardingPracticeDefinition[] = [
   },
   {
     label: "Music & sound",
-    description: "Composition, recordings & sound",
+    description: "You compose, record, produce, or work with sound.",
     practiceFamilyTermId: "taxterm_pf-music-and-sound",
     refinements: [
       { label: "Composition", termId: "taxterm_disc-composition" },
@@ -52,7 +52,7 @@ export const ONBOARDING_PRACTICES: readonly OnboardingPracticeDefinition[] = [
   },
   {
     label: "Film & moving image",
-    description: "Cinema, animation & video",
+    description: "You make films, animation, video, or moving-image work.",
     practiceFamilyTermId: "taxterm_pf-film-and-moving-image",
     refinements: [
       { label: "Documentary", termId: "taxterm_disc-documentary-filmmaking" },
@@ -62,7 +62,7 @@ export const ONBOARDING_PRACTICES: readonly OnboardingPracticeDefinition[] = [
   },
   {
     label: "Performance",
-    description: "Theatre, dance & live work",
+    description: "You make theatre, dance, performance, or live work.",
     practiceFamilyTermId: "taxterm_pf-performance-and-live-art",
     refinements: [
       { label: "Dance", termId: "taxterm_pf-dance-and-choreography" },
@@ -72,7 +72,7 @@ export const ONBOARDING_PRACTICES: readonly OnboardingPracticeDefinition[] = [
   },
   {
     label: "Design & craft",
-    description: "Objects, spaces & visual design",
+    description: "You design objects, spaces, graphics, or crafted work.",
     practiceFamilyTermId: "taxterm_pf-design",
     refinements: [
       { label: "Ceramics", termId: "taxterm_disc-ceramics" },
@@ -91,32 +91,32 @@ export type OnboardingInterestDefinition = {
 export const ONBOARDING_INTERESTS: readonly OnboardingInterestDefinition[] = [
   {
     label: "Grants & funding",
-    description: "Support to bring ideas to life",
+    description: "You want funding for a project or practice.",
     opportunityTypes: ["grant"],
   },
   {
     label: "Residencies",
-    description: "Time and space for your practice",
+    description: "You want time and space to develop your work.",
     opportunityTypes: ["residency"],
   },
   {
     label: "Publication opportunities",
-    description: "Find a home for your work",
+    description: "You want to publish your writing or creative work.",
     opportunityTypes: ["magazine", "open-call"],
   },
   {
     label: "Exhibitions & commissions",
-    description: "Share your work with an audience",
+    description: "You want to exhibit work or take on a commission.",
     opportunityTypes: ["exhibition", "commission", "open-call"],
   },
   {
     label: "Fellowships & awards",
-    description: "Recognition and room to grow",
+    description: "You want a fellowship, award, or professional support.",
     opportunityTypes: ["fellowship", "award"],
   },
   {
     label: "Jobs & paid projects",
-    description: "Put your practice to work",
+    description: "You want a job, contract, or paid creative project.",
     opportunityTypes: ["job", "commission"],
   },
 ] as const;
@@ -126,13 +126,19 @@ export const ONBOARDING_INTERESTS: readonly OnboardingInterestDefinition[] = [
  */
 export function mapPracticesToTaxonomy(
   selectedPractices: readonly string[],
-  selectedRefinements: readonly string[] = []
+  selectedRefinements: readonly string[] = [],
 ): Array<{ termId: string; preference: "prefer" | "include"; weight: number }> {
-  const preferences: Array<{ termId: string; preference: "prefer" | "include"; weight: number }> = [];
+  const preferences: Array<{
+    termId: string;
+    preference: "prefer" | "include";
+    weight: number;
+  }> = [];
   const added = new Set<string>();
 
   for (const practiceLabel of selectedPractices) {
-    const practice = ONBOARDING_PRACTICES.find((p) => p.label.toLowerCase() === practiceLabel.toLowerCase());
+    const practice = ONBOARDING_PRACTICES.find(
+      (p) => p.label.toLowerCase() === practiceLabel.toLowerCase(),
+    );
     if (practice && !added.has(practice.practiceFamilyTermId)) {
       preferences.push({
         termId: practice.practiceFamilyTermId,
@@ -142,7 +148,10 @@ export function mapPracticesToTaxonomy(
       added.add(practice.practiceFamilyTermId);
 
       // If this is Design & Craft, also include craft-and-material-arts family
-      if (practice.label === "Design & craft" && !added.has("taxterm_pf-craft-and-material-arts")) {
+      if (
+        practice.label === "Design & craft" &&
+        !added.has("taxterm_pf-craft-and-material-arts")
+      ) {
         preferences.push({
           termId: "taxterm_pf-craft-and-material-arts",
           preference: "prefer",
@@ -154,7 +163,9 @@ export function mapPracticesToTaxonomy(
       // Check applicable refinements for this practice
       for (const refinement of practice.refinements) {
         if (
-          selectedRefinements.some((r) => r.toLowerCase() === refinement.label.toLowerCase()) &&
+          selectedRefinements.some(
+            (r) => r.toLowerCase() === refinement.label.toLowerCase(),
+          ) &&
           !added.has(refinement.termId)
         ) {
           preferences.push({
@@ -174,10 +185,14 @@ export function mapPracticesToTaxonomy(
 /**
  * Converts user-selected interest card labels into canonical OpportunityType array.
  */
-export function mapInterestsToOpportunityTypes(selectedInterests: readonly string[]): OpportunityType[] {
+export function mapInterestsToOpportunityTypes(
+  selectedInterests: readonly string[],
+): OpportunityType[] {
   const types = new Set<OpportunityType>();
   for (const interestLabel of selectedInterests) {
-    const interest = ONBOARDING_INTERESTS.find((i) => i.label.toLowerCase() === interestLabel.toLowerCase());
+    const interest = ONBOARDING_INTERESTS.find(
+      (i) => i.label.toLowerCase() === interestLabel.toLowerCase(),
+    );
     if (interest) {
       for (const t of interest.opportunityTypes) {
         types.add(t);
@@ -215,7 +230,9 @@ export function mapTaxonomyToPracticeLabels(termIds: readonly string[]): {
 /**
  * Maps stored opportunity types back into human-friendly interest labels.
  */
-export function mapOpportunityTypesToInterestLabels(opportunityTypes: readonly string[]): string[] {
+export function mapOpportunityTypesToInterestLabels(
+  opportunityTypes: readonly string[],
+): string[] {
   const typeSet = new Set(opportunityTypes);
   const interests: string[] = [];
 
