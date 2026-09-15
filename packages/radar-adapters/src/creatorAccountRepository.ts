@@ -5,6 +5,7 @@ import { CreatorRepositoryBase } from "./creatorRepository.js";
 
 type AccountRow = { id: string; email: string; data: Account };
 type MembershipRow = { account_id: string; organization_id: string; role: string; data: Partial<OrgMembership> };
+type OrganizationNameRow = { id: string; name: string | null };
 export type CreatorSignupIdentity = Readonly<{ givenName: string; familyName?: string; usesSingleName: boolean; displayName: string }>;
 
 const ROLES = new Set<OrgRole>(["member", "admin", "owner", "team-admin", "program-manager", "reviewer", "finance", "legal", "viewer", "guest"]);
@@ -66,6 +67,22 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
         grantedAt: row.data.grantedAt ?? new Date(0).toISOString(),
       }];
     });
+  }
+
+  async organizationNames(
+    organizationIds: readonly string[],
+  ): Promise<Map<string, string>> {
+    const ids = [...new Set(organizationIds)].filter(Boolean);
+    if (ids.length === 0) return new Map();
+    const result = await this.query<OrganizationNameRow>(
+      `select id, nullif(trim(data->>'name'), '') as name
+         from radar_organizations
+        where id = any($1::text[])`,
+      [ids],
+    );
+    return new Map(
+      result.rows.map((row) => [row.id, row.name ?? row.id]),
+    );
   }
 
   async authenticatePassword(email: string, password: string): Promise<Account | undefined> {

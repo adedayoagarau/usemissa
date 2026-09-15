@@ -14,6 +14,34 @@ test("password authentication reads the relational account and rejects a wrong p
   assert.equal(await repository.authenticatePassword("ada@example.com", "wrong-password"), undefined);
 });
 
+test("organization names use one bounded relational lookup", async () => {
+  const calls: Array<{ text: string; values?: unknown[] }> = [];
+  const pool = {
+    query: async (text: string, values?: unknown[]) => {
+      calls.push({ text: text.replace(/\s+/g, " ").trim(), values });
+      return {
+        rows: [
+          { id: "org-one", name: "One Arts" },
+          { id: "org-two", name: null },
+        ],
+      };
+    },
+  } as unknown as Pool;
+  const repository = new PostgresCreatorAccountRepository(pool);
+
+  assert.deepEqual(await repository.organizationNames([]), new Map());
+  const names = await repository.organizationNames([
+    "org-one",
+    "org-two",
+    "org-one",
+  ]);
+
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0]?.values, [["org-one", "org-two"]]);
+  assert.equal(names.get("org-one"), "One Arts");
+  assert.equal(names.get("org-two"), "org-two");
+});
+
 test("password signup creates the account aggregates and governance evidence in one transaction", async () => {
   const statements: string[] = [];
   const client = {
