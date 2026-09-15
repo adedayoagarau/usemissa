@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import localFont from "next/font/local";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AnalyticsProvider } from "@/components/analytics-provider";
+import { WebMcpProvider } from "@/components/missa/webmcp-provider";
 import { DEFAULT_DESCRIPTION, SITE_NAME } from "@/lib/seo";
 import { siteUrl } from "@/lib/siteUrl";
 
@@ -72,6 +74,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <Suspense fallback={null}>
+            <WebMcpProvider />
+          </Suspense>
           <AnalyticsProvider>{children}</AnalyticsProvider>
           <Toaster />
         </ThemeProvider>

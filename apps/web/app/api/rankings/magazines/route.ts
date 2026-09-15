@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import type { RankingGenre } from "@missa/radar-engine";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 
-function boundedInteger(value: string | null, fallback: number, maximum: number) {
+function boundedInteger(
+  value: string | null,
+  fallback: number,
+  maximum: number,
+) {
   const parsed = Number.parseInt(value ?? "", 10);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(Math.max(parsed, 0), maximum);
@@ -27,7 +31,13 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json(
-    { items: page.items, total: page.total },
+    {
+      items: page.items,
+      total: page.total,
+      year: page.year,
+      genre: page.genre,
+      dataSource: page.dataSource,
+    },
     {
       headers: {
         "cache-control": "public, s-maxage=300, stale-while-revalidate=1800",
