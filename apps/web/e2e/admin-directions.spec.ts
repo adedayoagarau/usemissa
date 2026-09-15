@@ -94,6 +94,30 @@ test('taxonomy and unavailable states preserve governance boundaries', async ({ 
   await expect(page.getByText('No actionable rows observed')).toBeVisible()
 })
 
+test('selected Admin signals fail closed when the read model is unavailable', async ({ page }) => {
+  for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport)
+    await page.goto('/design-system/admin')
+
+    const signals = page.getByRole('region', { name: 'Current signals' })
+    await expect(signals.getByText('Running', { exact: true })).toBeVisible()
+    let results = await new AxeBuilder({ page }).withRules(['region']).analyze()
+    expect(results.violations).toEqual([])
+
+    await page.getByLabel('Edge state').selectOption('unavailable')
+    await expect(signals.getByText('Unavailable', { exact: true })).toHaveCount(4)
+    await expect(signals).toContainText('Read unavailable · retry required')
+    await expect(signals).toContainText('Source: Admin read model unavailable')
+    await expect(signals.getByText('Running', { exact: true })).toHaveCount(0)
+    await expect(signals.getByText('6 / 6 processed', { exact: true })).toHaveCount(0)
+    await expect(signals.getByText('12 accepted', { exact: true })).toHaveCount(0)
+    await expect(signals.getByText('Observed', { exact: true })).toHaveCount(0)
+
+    results = await new AxeBuilder({ page }).withRules(['region']).analyze()
+    expect(results.violations).toEqual([])
+  }
+})
+
 test('Admin comparison has no detectable WCAG A or AA violations in core wide and mobile states', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/design-system/admin-directions')

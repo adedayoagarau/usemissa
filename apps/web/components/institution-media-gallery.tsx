@@ -3,7 +3,13 @@ import { publicationCoverCaption } from "@/lib/publication-cover-caption";
 import { useState, useMemo } from "react";
 import { Button } from "./ui/button";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
-import { Expand, ArrowUpRight, BookOpen, ShoppingBag, ExternalLink } from "lucide-react";
+import {
+  Expand,
+  ArrowUpRight,
+  BookOpen,
+  ShoppingBag,
+  ExternalLink,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -14,18 +20,14 @@ import {
 import styles from "./institution-profile.module.css";
 
 export type MediaGroupKey =
-  | "all"
-  | "issues"
-  | "books"
-  | "photos"
-  | "exhibitions"
-  | "projects";
+  "all" | "issues" | "books" | "photos" | "exhibitions" | "projects";
 
 export type InstitutionGalleryImage = {
   url: string;
   label: string;
   cover: boolean;
-  group?: "issues" | "books" | "photos" | "exhibitions" | "projects" | "identity";
+  group?:
+    "issues" | "books" | "photos" | "exhibitions" | "projects" | "identity";
   dateLabel?: string;
   subtitle?: string;
   credit?: string;
@@ -112,7 +114,9 @@ export function InstitutionMediaGallery({
 
   if (!images.length && !shelf && !photos) return null;
 
-  const visibleImages = expanded ? displayedImages : displayedImages.slice(0, 6);
+  const visibleImages = expanded
+    ? displayedImages
+    : displayedImages.slice(0, 6);
 
   return (
     <section
@@ -191,14 +195,12 @@ export function InstitutionMediaGallery({
               }
             }}
           >
-            <TabsList variant="line" className="border-b border-border w-full justify-start gap-3 pb-1">
-              <TabsTrigger value="all" className="text-sm font-medium">
-                All ({images.length})
-              </TabsTrigger>
+            <TabsList variant="section">
+              <TabsTrigger value="all">All ({images.length})</TabsTrigger>
               {distinctGroups.map((grp) => {
                 const count = images.filter((img) => img.group === grp).length;
                 return (
-                  <TabsTrigger key={grp} value={grp} className="text-sm font-medium">
+                  <TabsTrigger key={grp} value={grp}>
                     {GROUP_LABELS[grp] || grp} ({count})
                   </TabsTrigger>
                 );
@@ -213,9 +215,10 @@ export function InstitutionMediaGallery({
         data-single={visibleImages.length === 1 || undefined}
       >
         {visibleImages.map((image, index) => {
-          const caption = (shelf || image.cover)
-            ? publicationCoverCaption(image.label)
-            : { title: image.label };
+          const caption =
+            shelf || image.cover
+              ? publicationCoverCaption(image.label)
+              : { title: image.label };
           return (
             <Dialog key={image.url}>
               <div className={styles.galleryCard}>
@@ -245,7 +248,7 @@ export function InstitutionMediaGallery({
                 {image.dateLabel && (
                   <div className={styles.issueDate}>{image.dateLabel}</div>
                 )}
-                <div className="flex flex-wrap items-center gap-2 mt-2 pt-1 text-xs">
+                <div className="mt-2 flex flex-wrap items-center gap-2 pt-1 text-xs">
                   {image.readingUrl && (
                     <a
                       href={image.readingUrl}
@@ -268,20 +271,25 @@ export function InstitutionMediaGallery({
                       Buy ↗
                     </a>
                   )}
-                  {image.officialUrl && !image.readingUrl && !image.purchaseUrl && (
-                    <a
-                      href={image.officialUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-muted-foreground hover:underline"
-                    >
-                      <ExternalLink size={12} aria-hidden="true" />
-                      Details ↗
-                    </a>
-                  )}
-                  {shelf && !image.readingUrl && !image.purchaseUrl && !image.officialUrl && (
-                    <span className={styles.issuePreview}>Preview cover</span>
-                  )}
+                  {image.officialUrl &&
+                    !image.readingUrl &&
+                    !image.purchaseUrl && (
+                      <a
+                        href={image.officialUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-muted-foreground hover:underline"
+                      >
+                        <ExternalLink size={12} aria-hidden="true" />
+                        Details ↗
+                      </a>
+                    )}
+                  {shelf &&
+                    !image.readingUrl &&
+                    !image.purchaseUrl &&
+                    !image.officialUrl && (
+                      <span className={styles.issuePreview}>Preview cover</span>
+                    )}
                 </div>
               </div>
               <DialogContent className={styles.lightbox}>
@@ -291,7 +299,7 @@ export function InstitutionMediaGallery({
                 </DialogDescription>
                 <div className="flex flex-col gap-4">
                   <MediaImage image={image} expanded />
-                  <div className="border-t border-border pt-4 flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 border-t border-border pt-4">
                     <div className="text-base font-medium">{caption.title}</div>
                     {(caption.author || image.subtitle) && (
                       <div className="text-sm text-muted-foreground">
@@ -308,7 +316,9 @@ export function InstitutionMediaGallery({
                         Date / Season: {image.dateLabel}
                       </div>
                     )}
-                    {(image.readingUrl || image.purchaseUrl || image.officialUrl) && (
+                    {(image.readingUrl ||
+                      image.purchaseUrl ||
+                      image.officialUrl) && (
                       <div className="flex flex-wrap items-center gap-2 pt-2">
                         {image.readingUrl && (
                           <Button

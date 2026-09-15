@@ -103,10 +103,10 @@
 .context {
   container-type: inline-size;
   container-name: homepage-context;
-  padding: 88px 48px 32px;
+  padding: 88px 64px 32px;
   color: var(--ink);
   background: transparent;
-  max-width: 1440px;
+  max-width: 1360px;
   margin: auto;
 }
 .statement {
@@ -384,6 +384,10 @@
   background: var(--accent-deep);
 }
 @container homepage-context (max-width: 1000px) {
+  .context {
+    padding-inline: 40px;
+  }
+
   .statsStatus {
     min-height: 496px;
   }
@@ -409,7 +413,7 @@
 }
 @media (max-width: 600px) {
   .context {
-    padding: 48px 20px 20px;
+    padding: 48px 24px 20px;
   }
   .statement {
     margin-bottom: 32px;

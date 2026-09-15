@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AnalyticsProvider } from "@/components/analytics-provider";
+import { CookieConsent } from "@/components/missa/cookie-consent";
 import { WebMcpProvider } from "@/components/missa/webmcp-provider";
 import { DEFAULT_DESCRIPTION, SITE_NAME } from "@/lib/seo";
 import { siteUrl } from "@/lib/siteUrl";
@@ -43,12 +44,25 @@ export const metadata: Metadata = {
   openGraph: {
     siteName: SITE_NAME,
     type: "website",
+    images: [
+      {
+        url: "/brand/missa-social-share.png",
+        width: 1200,
+        height: 630,
+        type: "image/png",
+        alt: "Missa, creative opportunities with their source and limits kept visible.",
+      },
+    ],
   },
-  twitter: { card: "summary_large_image" },
-  icons: {
-    icon: [{ url: "/brand/missa-wordmark-80.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/brand/missa-wordmark-240.svg", type: "image/svg+xml" }],
+  twitter: {
+    card: "summary_large_image",
+    images: ["/brand/missa-social-share.png"],
   },
+  // Static platform manifest. It is a data file rather than feature code, so
+  // its literal theme colours do not belong in the token-checked source tree.
+  manifest: "/manifest.webmanifest",
+  // Icon links come from the App Router file conventions:
+  // app/favicon.ico, app/icon.svg, app/icon.png, app/apple-icon.png.
 };
 
 export default function RootLayout({
@@ -77,6 +91,7 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <WebMcpProvider />
           </Suspense>
+          <CookieConsent />
           <AnalyticsProvider>{children}</AnalyticsProvider>
           <Toaster />
         </ThemeProvider>

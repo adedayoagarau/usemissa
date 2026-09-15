@@ -44,7 +44,7 @@ export function ResidencyTrackerAction({
         href={applicationUrl}
         target="_blank"
         rel="noreferrer noopener"
-        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted transition-colors shadow-sm"
+        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
         aria-label={`Apply to ${residencyName}`}
       >
         <ExternalLink className="h-3.5 w-3.5 text-primary" />
@@ -60,7 +60,6 @@ export function ResidencyTrackerAction({
       variant="outline"
       size={compact ? "icon-sm" : "sm"}
       aria-label={`View details and calls for ${residencyName}`}
-      className="gap-1.5 min-h-9 text-xs"
       render={<Link href={`/residency/${encodeURIComponent(residencySlug)}`} />}
     >
       <Building className="h-3.5 w-3.5 text-muted-foreground" />

@@ -48,7 +48,7 @@ const DialogSignUpDemo = () => {
             <div className='flex items-center gap-2'>
               <Checkbox
                 id={id}
-                className='focus-visible:ring-green-600/20 data-checked:border-green-600 data-checked:bg-green-600 dark:text-white dark:focus-visible:ring-green-400/40 dark:data-checked:border-green-400 dark:data-checked:bg-green-400'
+                className='focus-visible:ring-green-600/20 data-checked:border-success data-checked:bg-success dark:text-white dark:focus-visible:ring-green-400/40 dark:data-checked:border-success dark:data-checked:bg-success'
                 defaultChecked
               />
               <Label htmlFor={id} className='gap-1'>
@@ -64,7 +64,7 @@ const DialogSignUpDemo = () => {
             </div>
           </form>
           <DialogFooter className='pt-4 sm:flex-col'>
-            <Button className='bg-green-600 text-white hover:bg-green-600 focus-visible:ring-green-600 dark:bg-green-400 dark:hover:bg-green-400 dark:focus-visible:ring-green-400'>
+            <Button className='bg-success text-white hover:bg-success focus-visible:ring-green-600 dark:bg-success dark:hover:bg-success dark:focus-visible:ring-green-400'>
               Start your trial
             </Button>
             <div className='before:bg-border after:bg-border flex items-center gap-4 before:h-px before:flex-1 after:h-px after:flex-1'>

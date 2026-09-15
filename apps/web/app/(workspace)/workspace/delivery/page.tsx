@@ -24,20 +24,20 @@ export default async function WorkspaceDeliveryPage({ searchParams }: { searchPa
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Track the work that follows an accepted submission. Complete means your team marked the task complete in Missa; it does not confirm that an external message or asset was delivered.</p>
       </header>
       <section className="mt-6 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-white p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">All tasks</p>
           <p className="mt-2 font-mono text-2xl text-foreground">{tasks.length}</p>
         </div>
-        <div className="rounded-xl border border-border bg-white p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Pending</p>
-          <p className="mt-2 font-mono text-2xl text-amber-700">{tasks.filter((task) => task.status === 'pending').length}</p>
+          <p className="mt-2 font-mono text-2xl text-warning">{tasks.filter((task) => task.status === 'pending').length}</p>
         </div>
-        <div className="rounded-xl border border-border bg-white p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Complete</p>
           <p className="mt-2 font-mono text-2xl text-foreground">{tasks.filter((task) => task.status === 'complete').length}</p>
         </div>
       </section>
-      <section className="mt-8 overflow-x-auto rounded-xl border border-border bg-white">
+      <section className="mt-8 overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full min-w-[760px] text-left text-sm">
           <caption className="sr-only">Organization delivery tasks</caption>
           <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">
@@ -67,7 +67,7 @@ export default async function WorkspaceDeliveryPage({ searchParams }: { searchPa
                   <span className="mt-1 block font-mono text-[11px] font-normal text-muted-foreground">{task.id}</span>
                 </th>
                 <td className="px-4 py-3 text-muted-foreground capitalize">{decision?.outcome ?? 'No decision recorded'}</td>
-                <td className={`px-4 py-3 capitalize ${task.status === 'pending' ? 'text-amber-700' : 'text-green-700'}`}>{task.status}</td>
+                <td className={`px-4 py-3 capitalize ${task.status === 'pending' ? 'text-warning' : 'text-success'}`}>{task.status}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{task.dueDate ?? 'No due date'}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{task.completedAt ?? '—'}</td>
               </tr>

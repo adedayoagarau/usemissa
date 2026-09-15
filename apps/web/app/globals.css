@@ -22,6 +22,9 @@
 :root {
   --bg: #ffffff;
   --surface: #ffffff;
+  --canvas-subtle: color-mix(in srgb, var(--surface) 99%, var(--ink));
+  --surface-subtle: color-mix(in srgb, var(--surface) 97%, var(--ink));
+  --surface-muted: color-mix(in srgb, var(--surface) 94%, var(--ink));
   --ink: #171418;
   --ink-2: #6d6670;
   --ink-3: #9a929d;
@@ -35,6 +38,13 @@
   --ochre-tint: #f5ecd9;
   --mineral-blue: #426b7a;
   --mineral-blue-tint: #e7eff2;
+  --success: var(--chart-2);
+  --success-subtle: color-mix(in srgb, var(--success) 14%, var(--background));
+  --warning: var(--chart-3);
+  --warning-subtle: color-mix(in srgb, var(--warning) 14%, var(--background));
+  --information: var(--chart-4);
+  --information-subtle: color-mix(in srgb, var(--information) 14%, var(--background));
+  --destructive-subtle: color-mix(in srgb, var(--destructive) 14%, var(--background));
 
   --s1: 8px;
   --s2: 16px;
@@ -69,12 +79,12 @@
   --popover-foreground: var(--ink);
   --primary: var(--brand-accent);
   --primary-foreground: #ffffff;
-  --secondary: var(--accent-tint);
-  --secondary-foreground: var(--accent-deep);
-  --muted: #f1f3f2;
+  --secondary: var(--surface-muted);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-muted);
   --muted-foreground: var(--ink-2);
-  --accent: var(--accent-tint);
-  --accent-foreground: var(--accent-deep);
+  --accent: var(--surface-subtle);
+  --accent-foreground: var(--ink);
   --destructive: #9f3f46;
   --border: #e3e7e5;
   --input: #d8dfdc;
@@ -89,9 +99,9 @@
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--brand-accent);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: var(--accent-tint);
-  --sidebar-accent-foreground: var(--accent-deep);
-  --sidebar-border: #e3e7e5;
+  --sidebar-accent: var(--surface-subtle);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--border);
   --sidebar-ring: var(--brand-accent);
 }
 
@@ -253,6 +263,13 @@ body {
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-information: var(--information);
+  --color-information-subtle: var(--information-subtle);
   --color-accent-tint: var(--accent-tint);
   --color-accent-deep: var(--accent-deep);
   --color-green: var(--green);

@@ -66,8 +66,8 @@ export function CreatorWorkspace({
             A little progress changes the whole week.
           </h1>
           <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            Your work is private here. Pick up one application, one material, or
-            one useful next step.
+            Your work is private here. Pick up one Tracker item, one Library
+            material, or one useful next step.
           </p>
         </header>
 
@@ -416,7 +416,7 @@ export function CreatorWorkspace({
                     className="size-4 text-primary"
                     aria-hidden="true"
                   />
-                  Application tracker
+                  Tracker
                 </span>
                 <span className="text-xs">→</span>
               </Link>

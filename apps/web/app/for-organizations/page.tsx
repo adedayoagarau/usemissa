@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { ArrowRight, Check, ExternalLink } from 'lucide-react';
 import { PublicSiteShell } from '@/components/public-site-shell';
 import { JsonLd, absoluteUrl, pageMetadata } from '@/lib/seo';
+import { StickyMobileCta } from '@/components/missa/sticky-mobile-cta';
 import styles from './org.module.css';
+import { contactMailto } from "@/lib/legalContact";
 
 export const metadata = pageMetadata({ title: 'Run creative Opportunities with Missa', description: 'Publish clear calls, receive multi-Work Submissions, assign review, record per-Work decisions, and keep communication attached to the right record.', path: '/for-organizations' });
 
@@ -28,9 +30,16 @@ const steps = [
 export default function ForOrganizationsPage() {
   return <PublicSiteShell current="For organizations"><main id="main-content" className={styles.main}>
     <JsonLd data={{ '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'Missa', applicationCategory: 'BusinessApplication', operatingSystem: 'Web', description: 'Creative Opportunity and submission operations for Organizations.', url: absoluteUrl('/for-organizations') }} />
-    <header className={styles.hero}><div><p className={styles.eyebrow}>For Organizations</p><h1>Run the whole Opportunity without losing the individual Work.</h1><p>Publish clearly, receive coherent packets, assign focused reviews, decide each Work, communicate accurately, and coordinate what happens after acceptance.</p><div className={styles.actions}><a href="mailto:hello@usemissa.com?subject=Missa%20for%20my%20Organization" className={styles.primary}>Discuss your program <ExternalLink aria-hidden="true" /></a><Link href="/opportunities">See the creator side <ArrowRight aria-hidden="true" /></Link></div></div><aside><strong>No capability theatre</strong><p>Available, limited, and planned work stay visibly different. Planned work is not shown as a live customer screenshot or promised delivery date.</p></aside></header>
+    <header className={styles.hero}><div><p className={styles.eyebrow}>For Organizations</p><h1>Run the whole Opportunity without losing the individual Work.</h1><p>Publish clearly, receive coherent packets, assign focused reviews, decide each Work, communicate accurately, and coordinate what happens after acceptance.</p><div className={styles.actions}><a id="organizations-primary-cta" href={contactMailto("Missa for my Organization")} className={styles.primary}>Discuss your program <ExternalLink aria-hidden="true" /></a><Link href="/opportunities">See the creator side <ArrowRight aria-hidden="true" /></Link></div></div><aside><strong>No capability theatre</strong><p>Available, limited, and planned work stay visibly different. Planned work is not shown as a live customer screenshot or promised delivery date.</p></aside></header>
     <section className={styles.workflow} aria-labelledby="organization-path"><header><p className={styles.eyebrow}>One connected record</p><h2 id="organization-path">From published call to per-Work outcome</h2></header><ol>{steps.map(([number, title, copy]) => <li key={number}><span>{number}</span><div><strong>{title}</strong><p>{copy}</p></div></li>)}</ol></section>
     <section className={styles.capabilities} aria-labelledby="capability-map"><header><p className={styles.eyebrow}>Capability map</p><h2 id="capability-map">What Missa can claim now</h2><p>These labels describe the current product boundary, not a sales roadmap.</p></header><div>{capabilities.map((item) => <article key={item.title}><Check aria-hidden="true" /><div><h3>{item.title}</h3><p>{item.copy}</p></div><span data-state={item.state.toLowerCase()}>{item.state}</span></article>)}</div></section>
-    <section className={styles.finalCta}><p className={styles.eyebrow}>Start with the real program</p><h2>Bring one Opportunity and its actual review path.</h2><p>We will map the call, Works, reviewers, decisions, communication, and delivery obligations without pretending every Organization works the same way.</p><a href="mailto:hello@usemissa.com?subject=Missa%20Organization%20workflow">Discuss your program <ArrowRight aria-hidden="true" /></a></section>
-  </main></PublicSiteShell>;
+    <section className={styles.finalCta}><p className={styles.eyebrow}>Start with the real program</p><h2>Bring one Opportunity and its actual review path.</h2><p>We will map the call, Works, reviewers, decisions, communication, and delivery obligations without pretending every Organization works the same way.</p><a href={contactMailto("Missa Organization workflow")}>Discuss your program <ArrowRight aria-hidden="true" /></a></section>
+  </main>
+  <StickyMobileCta
+    anchorId="organizations-primary-cta"
+    href={contactMailto("Missa for my Organization")}
+  >
+    Discuss your program
+  </StickyMobileCta>
+  </PublicSiteShell>;
 }

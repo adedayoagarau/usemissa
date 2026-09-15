@@ -1,6 +1,6 @@
 .page { min-height: 100vh; background: var(--background); color: var(--foreground); }
 .header { display: flex; min-height: 68px; align-items: center; justify-content: space-between; gap: var(--space-group); border-bottom: 1px solid var(--border); padding: 0 clamp(20px, 5vw, 72px); }
-.brand { display: inline-flex; align-items: center; color: var(--foreground); }
+.brand { display: inline-flex; min-height: var(--touch-target-min); align-items: center; color: var(--foreground); }
 .brand img { width: 110px; height: auto; }
 .identity { color: var(--muted-foreground); font-size: 14px; }
 .shell { display: grid; max-width: 1440px; margin: 0 auto; grid-template-columns: 218px minmax(0, 1fr); }
@@ -41,7 +41,7 @@
 .monogram { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 50%; background: var(--accent); color: var(--primary); font-size: 11px; font-weight: 700; }
 .opportunity h3 { margin: 0; font-size: 15px; }
 .opportunity p { margin: 4px 0 0; color: var(--muted-foreground); font-size: 13px; }
-.opportunity button { align-self: center; border: 0; background: transparent; color: var(--primary); cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; }
+.opportunity button { display: inline-flex; min-height: var(--touch-target-min); align-self: center; align-items: center; border: 0; background: transparent; color: var(--primary); cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; }
 .alternate { max-width: 760px; border-top: 1px solid var(--border); padding-top: 20px; }
 .alternate h2 { margin: 0; font-size: clamp(28px, 4vw, 42px); font-weight: 500; }
 .alternate > p { color: var(--muted-foreground); line-height: 1.55; }
@@ -49,6 +49,6 @@
 .alternateItem { display: flex; min-height: 72px; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); }
 .alternateItem strong { display: block; font-size: 15px; }
 .alternateItem span { color: var(--muted-foreground); font-size: 13px; }
-.alternateItem button { border: 1px solid var(--border); background: var(--card); color: var(--foreground); cursor: pointer; padding: 9px 12px; font: inherit; font-size: 13px; }
+.alternateItem button { display: inline-flex; min-height: var(--touch-target-min); align-items: center; border: 1px solid var(--border); background: var(--card); color: var(--foreground); cursor: pointer; padding: 9px 12px; font: inherit; font-size: 13px; }
 .mobileNav { display: none; }
 @media (max-width: 720px) { .identity { display: none; } .shell { display: block; } .nav { display: none; } .main { padding: 28px 20px 90px; } .headline { font-size: 43px; } .intro { margin-bottom: 30px; font-size: 16px; } .todayGrid { grid-template-columns: 1fr; gap: 38px; } .mobileNav { position: fixed; z-index: 10; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--border); background: var(--background); padding: 7px 5px calc(7px + env(safe-area-inset-bottom)); } .mobileNav button { display: grid; min-height: 48px; place-content: center; gap: 3px; border: 0; background: transparent; color: var(--muted-foreground); font: inherit; font-size: 10px; } .mobileNav button[data-active="true"] { color: var(--primary); font-weight: 700; } .opportunity { grid-template-columns: 34px minmax(0, 1fr); } .opportunity button { grid-column: 2; justify-self: start; } }

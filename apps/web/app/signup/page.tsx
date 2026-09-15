@@ -3,11 +3,19 @@ import { cookies } from "next/headers";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { safeAuthRedirect } from "@/lib/authRedirect";
 import { AuthForm } from "@/components/auth-form";
+import { pageMetadata } from "@/lib/seo";
 import {
   FIRST_SAVE_INTENT_COOKIE,
   firstSaveContext,
   verifyFirstSaveIntent,
 } from "@/lib/firstSaveIntent";
+
+export const metadata = pageMetadata({
+  title: "Create your Missa account",
+  description:
+    "Create a free Missa account to save opportunities, track deadlines, and prepare applications with the official source in view.",
+  path: "/signup",
+});
 
 export default async function SignupPage({
   searchParams,

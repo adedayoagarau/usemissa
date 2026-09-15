@@ -182,7 +182,7 @@ export default function PlatformAdminCrm({
       />
       <WarningList warnings={area.warnings} />
       <section
-        className="overflow-hidden rounded-xl border border-border bg-white"
+        className="overflow-hidden rounded-xl border border-border bg-card"
         aria-labelledby="crm-workflow-title"
       >
         <div className="border-b border-border px-4 py-4 sm:px-5">
@@ -275,7 +275,7 @@ export default function PlatformAdminCrm({
         className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]"
         aria-labelledby="crm-timeline-title"
       >
-        <div className="min-w-0 border border-border bg-white">
+        <div className="min-w-0 border border-border bg-card">
           <div className="border-b border-border px-4 py-4 sm:px-5">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
@@ -298,7 +298,7 @@ export default function PlatformAdminCrm({
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search organization, event, or note…"
-                className="h-10 w-full border border-border bg-white px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-10 w-full border border-border bg-card px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
             </label>
           </div>
@@ -328,7 +328,7 @@ export default function PlatformAdminCrm({
                     </time>
                   </div>
                   {row.body && (
-                    <p className="mt-3 border-l-2 border-border pl-3 text-sm leading-6 text-muted-foreground">
+                    <p className="mt-3 rounded-lg border border-border p-3 text-sm leading-6 text-muted-foreground">
                       {row.body}
                     </p>
                   )}
@@ -342,7 +342,7 @@ export default function PlatformAdminCrm({
             </div>
           )}
         </div>
-        <aside className="border border-border bg-white p-5 xl:sticky xl:top-6 xl:self-start">
+        <aside className="border border-border bg-card p-5 xl:sticky xl:top-6 xl:self-start">
           <h2 className="text-lg font-semibold tracking-tight text-foreground">
             Add internal note
           </h2>
@@ -408,7 +408,7 @@ export default function PlatformAdminCrm({
         className="grid gap-5 lg:grid-cols-2"
         aria-label="CRM contacts and follow-ups"
       >
-        <div className="border border-border bg-white">
+        <div className="border border-border bg-card">
           <div className="border-b border-border px-4 py-4 sm:px-5">
             <h2 className="text-lg font-semibold tracking-tight text-foreground">
               Contacts
@@ -452,7 +452,7 @@ export default function PlatformAdminCrm({
             </div>
           )}
         </div>
-        <div className="border border-border bg-white">
+        <div className="border border-border bg-card">
           <div className="border-b border-border px-4 py-4 sm:px-5">
             <h2 className="text-lg font-semibold tracking-tight text-foreground">
               Follow-ups
@@ -517,7 +517,7 @@ export default function PlatformAdminCrm({
       >
         <form
           onSubmit={addContact}
-          className="border border-border bg-white p-5"
+          className="border border-border bg-card p-5"
         >
           <h2 className="text-lg font-semibold tracking-tight text-foreground">
             Add contact
@@ -561,7 +561,7 @@ export default function PlatformAdminCrm({
             Record contact
           </button>
         </form>
-        <form onSubmit={addTask} className="border border-border bg-white p-5">
+        <form onSubmit={addTask} className="border border-border bg-card p-5">
           <h2 className="text-lg font-semibold tracking-tight text-foreground">
             Add follow-up
           </h2>

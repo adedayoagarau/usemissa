@@ -19,7 +19,7 @@ const PopoverDeleteFileDemo = () => {
       </PopoverTrigger>
       <PopoverContent className='w-80'>
         <div className='flex flex-col items-center gap-4'>
-          <div className='flex aspect-square size-12 items-center justify-center rounded-full bg-red-500/10'>
+          <div className='flex aspect-square size-12 items-center justify-center rounded-full bg-destructive/10'>
             <FileWarningIcon className='text-destructive size-6' />
           </div>
           <PopoverHeader className='gap-2 text-center'>

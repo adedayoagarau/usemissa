@@ -6,6 +6,13 @@ import { MissaWordmark } from '@/components/missa-wordmark';
 import styles from './reviews.module.css';
 import { loginRedirectForCurrentRequest } from '@/lib/serverAuthRedirect';
 
+/** Private reviewer surface: never index. */
+export const metadata = {
+  title: 'Review assignments',
+  description: 'Your assigned Missa review work and submission evidence.',
+  robots: { index: false, follow: false },
+};
+
 export default async function ReviewsLayout({ children }: { children: React.ReactNode }) {
   const session = await getSessionAccountFromToken((await cookies()).get(SESSION_COOKIE)?.value);
   if (!session) redirect(await loginRedirectForCurrentRequest());

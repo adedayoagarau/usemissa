@@ -159,7 +159,7 @@ function HomepageHero({ access }: { access: AccessCopy }) {
       >
         <Image
           className={styles.heroImage}
-          src="/design-system/homepage-future/missa-cobalt-hero-4k.png"
+          src="/design-system/homepage-future/missa-cobalt-hero-4k.webp"
           alt=""
           fill
           priority

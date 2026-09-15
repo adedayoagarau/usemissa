@@ -20,6 +20,9 @@ const STATIC_PATHS = [
   "/about",
   "/methodology",
   "/for-organizations",
+  "/waitlist",
+  "/rankings/plan",
+  "/rankings/claim",
   "/terms",
   "/privacy",
 ];

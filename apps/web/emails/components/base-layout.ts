@@ -1,4 +1,10 @@
 import { siteUrl } from '../../lib/siteUrl';
+import {
+  LEGAL_CONTACT_EMAIL,
+  LEGAL_ENTITY_NAME,
+  LEGAL_POSTAL_ADDRESS,
+  hasPostalAddress,
+} from '../../lib/legalContact';
 
 export interface BaseEmailLayoutProps {
   subject: string;
@@ -164,6 +170,14 @@ export function renderBaseEmailLayout(props: BaseEmailLayoutProps): string {
               <td class="missa-email-footer" style="padding:24px 36px;border-top:1px solid ${EMAIL_COLORS.border};background-color:${EMAIL_COLORS.canvas};font-family:${EMAIL_FONTS.interface};font-size:12px;line-height:18px;color:${EMAIL_COLORS.inkMuted};">
                 <div style="margin-bottom:6px;">
                   Missa • Creative opportunities with source &amp; limits kept visible.
+                </div>
+                <div style="margin-bottom:6px;">
+                  ${escapeHtml(LEGAL_ENTITY_NAME || 'Missa')}${
+                    hasPostalAddress()
+                      ? `<br />${escapeHtml(LEGAL_POSTAL_ADDRESS).replace(/\n/g, '<br />')}`
+                      : ''
+                  }
+                  <br /><a href="mailto:${escapeHtml(LEGAL_CONTACT_EMAIL)}" style="color:${EMAIL_COLORS.inkMuted};text-decoration:underline;">${escapeHtml(LEGAL_CONTACT_EMAIL)}</a>
                 </div>
                 <div>
                   <a href="${safePreferencesUrl}" style="color:${EMAIL_COLORS.inkMuted};text-decoration:underline;">Notification preferences</a>${unsubscribeLink}

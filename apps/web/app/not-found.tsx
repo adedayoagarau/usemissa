@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { Button } from "@/components/ui/button";
+import { contactMailto } from "@/lib/legalContact";
 
 export const metadata: Metadata = {
   title: "Page not found",
@@ -43,7 +44,7 @@ export default function NotFound() {
           Still stuck?{" "}
           <a
             className="text-foreground underline underline-offset-4"
-            href="mailto:hello@usemissa.com"
+            href={contactMailto()}
           >
             Tell us which link you followed
           </a>

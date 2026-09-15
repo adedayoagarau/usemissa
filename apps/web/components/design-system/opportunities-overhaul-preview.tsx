@@ -149,7 +149,7 @@ const opportunities: Opportunity[] = [
     deadlineIso: '2026-09-15',
     deadlineKind: 'exact',
     fee: 'Fee not stated',
-    identityAssetUrl: '/media/missa-org-gallery.png',
+    identityAssetUrl: '/media/missa-org-gallery.webp',
     identityAssetAlt: 'Visitors viewing artwork in a bright gallery',
   },
   {

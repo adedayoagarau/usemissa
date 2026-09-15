@@ -54,8 +54,7 @@ const FEATURES = [
     icon: CalendarDays,
     title: "Keep your calls together.",
     image: "/media/home/generated/publications.webp",
-    description:
-      "Save a call, add a note and see what you have applied for.",
+    description: "Save a call, add a note and see what you have applied for.",
     href: "/tracker",
     action: "Open your Tracker",
     note: "Your notes and application records stay private.",
@@ -66,8 +65,7 @@ const FEATURES = [
     icon: Bell,
     title: "Choose your updates.",
     image: "/media/home/generated/community.webp",
-    description:
-      "Turn updates for saved calls on or off in your Inbox.",
+    description: "Turn updates for saved calls on or off in your Inbox.",
     href: "/inbox",
     action: "Open your Inbox",
     note: "Change your preferences any time.",
@@ -78,8 +76,7 @@ const FEATURES = [
     icon: Target,
     title: "Make time for the work.",
     image: "/media/home/generated/feature-studio.webp",
-    description:
-      "Set a simple submission target and see your progress.",
+    description: "Set a simple submission target and see your progress.",
     href: "/goals",
     action: "Set a goal",
     note: "This preview does not change your account.",
@@ -320,6 +317,7 @@ export function HomepageWorkspace({
                         key={theme}
                         embedded
                         sampleTheme={theme}
+                        sampleWorkLimit={1}
                       />
                     </div>
                   )}

@@ -8,10 +8,10 @@ import { cn } from '@/lib/utils'
 
 const statusColors: Record<string, string> = {
   '1': 'bg-violet-500',
-  '2': 'bg-amber-500',
+  '2': 'bg-warning',
   '3': 'bg-emerald-600',
   '4': 'bg-gray-500',
-  '5': 'bg-red-500'
+  '5': 'bg-destructive'
 }
 
 const statusLabels: Record<string, string> = {

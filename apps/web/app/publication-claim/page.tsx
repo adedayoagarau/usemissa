@@ -3,6 +3,15 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Claim your publication on Missa",
+  description:
+    "Claim a publication profile on Missa so readers and submitters can find the right editorial contact.",
+  path: "/publication-claim",
+  noIndex: true,
+});
 
 export default async function PublicationClaimPage({
   searchParams,

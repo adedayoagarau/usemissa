@@ -37,7 +37,7 @@ test("public archive filters works and opens accessible project details", async 
 });
 
 test("archive keeps failed media explorable", async ({page}) => {
-  await page.route("**/media/creator-preview-landscape.png", route => route.abort());
+  await page.route("**/media/creator-preview-landscape.webp", route => route.abort());
   await page.goto("/design-system/creator-profile-v2");
   const work = page.getByRole("button", { name: "Explore An atlas of small departures", exact: true });
   await work.scrollIntoViewIfNeeded();

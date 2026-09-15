@@ -64,7 +64,7 @@ export async function generateMetadata({
     title: `${displayName} — literary publishers & creative opportunities`,
     description: isGlobal
       ? `Browse literary magazines, presses, residencies, and open calls accepting submissions from writers worldwide.`
-      : `Browse literary magazines, small presses, residencies, and creative opportunities based in or open to writers in ${displayName}.`,
+      : `Browse literary magazines and small presses based in ${displayName}, plus country-filtered and explicitly worldwide opportunity listings. Check each official source for eligibility.`,
     path: `/countries/${country.toLowerCase()}`,
   });
 }
@@ -140,7 +140,7 @@ export default async function CountryHubPage({
           },
         }}
       />
-      <div className={styles.page}>
+      <main id="main-content" className={styles.page}>
         {/* Breadcrumb */}
         <nav className={styles.breadcrumb} aria-label="Breadcrumb">
           <Link href="/countries">Countries</Link>
@@ -168,7 +168,9 @@ export default async function CountryHubPage({
                 <span className={styles.heroStatValue}>
                   {opportunityCount.toLocaleString()}
                 </span>{" "}
-                open opportunit{opportunityCount !== 1 ? "ies" : "y"}
+                {isGlobal
+                  ? `open opportunit${opportunityCount !== 1 ? "ies" : "y"}`
+                  : `open listing${opportunityCount !== 1 ? "s" : ""} in this index`}
               </span>
             )}
           </div>
@@ -240,7 +242,7 @@ export default async function CountryHubPage({
               <h2 id="opportunities-heading" className={styles.sectionTitle}>
                 {isGlobal
                   ? "Open calls — worldwide"
-                  : `Opportunities open to writers in ${displayName}`}
+                  : `${displayName} and worldwide listings`}
               </h2>
               <span className={styles.sectionCount}>
                 {opportunityCount.toLocaleString()} total
@@ -248,17 +250,21 @@ export default async function CountryHubPage({
             </div>
             {!isGlobal && (
               <p style={{ fontSize: "0.8125rem", color: "var(--muted-foreground)", marginBottom: "var(--s3)" }}>
-                Includes opportunities based in {displayName} and worldwide open calls.
+                This index combines country-filtered records with listings that
+                explicitly say they are worldwide. Inclusion does not confirm
+                eligibility; check the official source before applying.
               </p>
             )}
             {opportunities.length > 0 ? (
               <>
                 <div className={styles.opportunityGrid}>
                   {opportunities.map((opp) => {
-                    const isGlobalOpp =
-                      !opp.location ||
-                      opp.location.toLowerCase().includes("worldwide") ||
-                      opp.location.toLowerCase().includes("global");
+                    const normalizedLocation = opp.location?.toLowerCase();
+                    const isGlobalOpp = Boolean(
+                      normalizedLocation?.includes("worldwide") ||
+                        normalizedLocation?.includes("global"),
+                    );
+                    const hasUnstatedLocation = !opp.location;
                     const isFree = opp.fee.status === "no-fee";
                     const isOpen = opp.status === "open" || opp.status === "closing-soon";
                     return (
@@ -300,6 +306,11 @@ export default async function CountryHubPage({
                               Worldwide
                             </span>
                           )}
+                          {hasUnstatedLocation && (
+                            <span className={`${styles.badge} ${styles.badgeGlobal}`}>
+                              Location not stated
+                            </span>
+                          )}
                           {isFree && (
                             <span className={`${styles.badge} ${styles.badgeFree}`}>
                               No fee
@@ -324,7 +335,7 @@ export default async function CountryHubPage({
             )}
           </section>
         </div>
-      </div>
+      </main>
     </PublicSiteShell>
   );
 }

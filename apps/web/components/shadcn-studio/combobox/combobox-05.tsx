@@ -33,7 +33,7 @@ const ComboboxCustomCheckIconDemo = () => {
                     <span className='pointer-events-none absolute right-2 flex size-4 items-center justify-center' />
                   }
                 >
-                  <CircleCheckIcon className='pointer-events-none size-4 fill-blue-500 stroke-white pointer-coarse:size-5' />
+                  <CircleCheckIcon className='pointer-events-none size-4 fill-information stroke-white pointer-coarse:size-5' />
                 </ComboboxPrimitive.ItemIndicator>
               </ComboboxPrimitive.Item>
             )}

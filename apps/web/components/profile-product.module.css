@@ -83,7 +83,7 @@
   text-align: left;
 }
 .contentLayout > aside > :is(button, a):hover { background: var(--muted); }
-.contentLayout > aside > :is(button, a)[aria-current='page'] { border-left-color: var(--primary); background: var(--accent-tint); }
+.contentLayout > aside > :is(button, a)[aria-current='page'] { border-left-color: var(--primary); background: var(--accent); color: var(--primary); }
 .contentLayout > aside svg { width: 1rem; color: var(--muted-foreground); }
 .contentLayout > aside strong,
 .contentLayout > aside small { display: block; }
@@ -107,7 +107,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: clamp(1.25rem, 3vw, 2rem);
-  background: #fff;
+  background: var(--background);
 }
 .publicSummary h3 { margin: 0; font-family: var(--font-heading); font-size: 1.75rem; font-weight: 540; letter-spacing: -.025em; }
 .publicSummary > div > span { display: block; margin-top: .65rem; color: var(--muted-foreground); line-height: 1.65; }
@@ -122,7 +122,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: clamp(1.15rem, 3vw, 1.5rem);
-  background: var(--accent-tint);
+  background: var(--accent);
 }
 .cardKicker { margin: 0 0 .35rem; color: var(--muted-foreground); font-size: .72rem; font-weight: 650; letter-spacing: .13em; text-transform: uppercase; }
 .handleCard h3 { margin: 0; font-size: 1.2rem; font-weight: 680; }
@@ -130,7 +130,7 @@
 .handleForm { display: grid; gap: .45rem; }
 .handleForm label { font-size: .78rem; font-weight: 650; }
 .handleForm > p:not([role]) { margin: 0; color: var(--muted-foreground); font-size: .76rem; line-height: 1.5; }
-.sectionRows { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-xl); background: #fff; }
+.sectionRows { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--background); }
 .sectionRows > header { padding: 1.25rem 1.35rem; }
 .sectionRows h3,
 .preferenceGroup h3,
@@ -164,7 +164,7 @@
 
 .form > div:has(> label:first-child),
 .twoColumns > div { display: grid; gap: .45rem; }
-.form input:not([type='checkbox']), .form textarea, .form select, .refinement input, .refinement select { min-height: 2.75rem; background: #fff; }
+.form input:not([type='checkbox']), .form textarea, .form select, .refinement input, .refinement select { min-height: 2.75rem; background: var(--background); }
 .form textarea { resize: vertical; }
 .form div > p:not([role]),
 .twoColumns p { margin: 0; color: var(--muted-foreground); font-size: .76rem; line-height: 1.5; }
@@ -177,7 +177,7 @@
   padding: 1.25rem;
   background: var(--muted);
 }
-.visibilityNote > span { width: 3.3rem; height: 3.3rem; background: #fff; }
+.visibilityNote > span { width: 3.3rem; height: 3.3rem; background: var(--background); }
 .unavailable,
 .importCallout {
   border: 1px dashed var(--border);
@@ -195,7 +195,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: clamp(1.1rem, 3vw, 1.5rem);
-  background: #fff;
+  background: var(--background);
 }
 .checkboxGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
 .checkboxGrid label,
@@ -221,7 +221,7 @@
 .refinementControls > div { display: grid; gap: .4rem; }
 .termResults { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
 .termResults > button { min-height: 3.25rem; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: .65rem .75rem; text-align: left; }
-.termResults > button:hover { border-color: var(--primary); background: var(--accent-tint); }
+.termResults > button:hover { border-color: var(--primary); background: var(--accent); }
 .termResults strong, .termResults span { display: block; }
 .termResults strong { font-size: .82rem; }
 .termResults span { display: -webkit-box; margin-top: .15rem; overflow: hidden; color: var(--muted-foreground); font-size: .7rem; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
@@ -232,7 +232,7 @@
 .switchRow p { margin: .25rem 0; color: var(--muted-foreground); font-size: .78rem; line-height: 1.5; }
 .switchRow div > span { font-size: .72rem; font-weight: 650; }
 .switchRow > button { position: relative; width: 3rem; min-width: 3rem; height: 2rem; border: 1px solid var(--border); border-radius: 999px; background: var(--muted); }
-.switchRow > button > span { position: absolute; top: .28rem; left: .28rem; width: 1.35rem; height: 1.35rem; border-radius: 999px; background: #fff; box-shadow: 0 1px 3px rgb(23 20 24 / .18); transition: transform 160ms ease; }
+.switchRow > button > span { position: absolute; top: .28rem; left: .28rem; width: 1.35rem; height: 1.35rem; border-radius: 999px; background: var(--primary-foreground); box-shadow: 0 1px 3px rgb(23 20 24 / .18); transition: transform 160ms ease; }
 .switchRow > button[data-checked='true'] { border-color: var(--primary); background: var(--primary); }
 .switchRow > button[data-checked='true'] > span { transform: translateX(.95rem); }
 .switchRow > button:focus-visible { outline: 3px solid color-mix(in srgb, var(--ring), transparent 55%); outline-offset: 2px; }

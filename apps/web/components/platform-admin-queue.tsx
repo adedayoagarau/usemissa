@@ -40,13 +40,13 @@ const maturityLabels: Record<AdminMaturity, string> = {
 };
 
 const maturityStyles: Record<AdminMaturity, string> = {
-  live: "border-green-200 bg-green-50 text-green-700",
-  durable: "border-blue-200 bg-blue-50 text-blue-700",
+  live: "border-success/30 bg-success-subtle text-success",
+  durable: "border-information/30 bg-information-subtle text-information",
   derived: "border-border bg-muted text-muted-foreground",
-  "latest-run-only": "border-amber-200 bg-amber-50 text-amber-700",
-  "target-schema": "border-blue-200 bg-blue-50 text-blue-700",
-  partial: "border-amber-200 bg-amber-50 text-amber-700",
-  unavailable: "border-border bg-white text-muted-foreground",
+  "latest-run-only": "border-warning/30 bg-warning-subtle text-warning",
+  "target-schema": "border-information/30 bg-information-subtle text-information",
+  partial: "border-warning/30 bg-warning-subtle text-warning",
+  unavailable: "border-border bg-card text-muted-foreground",
 };
 
 const queueLabels: Record<PlatformAdminQueueName, string> = {
@@ -121,10 +121,10 @@ function SeverityMark({ row }: { row: PlatformAdminQueueRow }) {
           : CircleDot;
   const color =
     row.severity === "high"
-      ? "text-red-600"
+      ? "text-destructive"
       : row.severity === "medium"
-        ? "text-amber-600"
-        : "text-blue-600";
+        ? "text-warning"
+        : "text-information";
   return (
     <span
       className="flex shrink-0 items-center gap-1.5"
@@ -170,7 +170,7 @@ function WarningList({ warnings }: { warnings: string[] }) {
   return (
     <section
       aria-label="Admin data warnings"
-      className="border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+      className="border border-warning/30 bg-warning-subtle px-4 py-3 text-sm text-warning"
     >
       <p className="font-medium">Read-model caveats</p>
       <ul className="mt-1 list-disc space-y-1 pl-5 text-xs leading-5">
@@ -195,7 +195,7 @@ function DetailValue({ value, href }: { value: string; href?: string }) {
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noreferrer" : undefined}
-      className="text-right font-mono text-[11px] break-all text-blue-700 underline decoration-blue-200 underline-offset-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      className="text-right font-mono text-[11px] break-all text-information underline decoration-information/30 underline-offset-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       {value}
       <ExternalLink className="ml-1 inline size-3" aria-hidden="true" />
@@ -213,7 +213,7 @@ function QueueDetail({
   if (!row) {
     return (
       <aside
-        className="border border-border bg-white p-5 xl:sticky xl:top-6 xl:self-start"
+        className="border border-border bg-card p-5 xl:sticky xl:top-6 xl:self-start"
         aria-label="Queue item detail"
       >
         <div className="flex min-h-64 flex-col items-center justify-center text-center">
@@ -234,7 +234,7 @@ function QueueDetail({
   }
   return (
     <aside
-      className="border border-border bg-white p-5 xl:sticky xl:top-6 xl:self-start"
+      className="border border-border bg-card p-5 xl:sticky xl:top-6 xl:self-start"
       aria-label={`Details for ${row.title}`}
     >
       <div className="flex items-start justify-between gap-4">
@@ -380,7 +380,7 @@ function QueueTable({
               return (
                 <tr
                   key={row.id}
-                  className={`border-b border-border last:border-0 ${selected ? "bg-accent-tint/45" : "hover:bg-muted/30"}`}
+                  className={`border-b border-border last:border-0 ${selected ? "bg-accent" : "hover:bg-muted/30"}`}
                 >
                   <td
                     className="border-l-2 border-transparent px-4 py-3 align-top data-[selected=true]:border-primary"
@@ -439,7 +439,7 @@ function QueueTable({
                       className="text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                     >
                       <span
-                        className={`block font-mono text-xs font-medium whitespace-nowrap ${row.severity === "high" ? "text-red-700" : row.severity === "medium" ? "text-amber-700" : "text-foreground"}`}
+                        className={`block font-mono text-xs font-medium whitespace-nowrap ${row.severity === "high" ? "text-destructive" : row.severity === "medium" ? "text-warning" : "text-foreground"}`}
                       >
                         {row.age}
                       </span>
@@ -468,7 +468,7 @@ function QueueTable({
           return (
             <div
               key={row.id}
-              className={selected ? "bg-accent-tint/45" : undefined}
+              className={selected ? "bg-accent" : undefined}
             >
               <button
                 type="button"
@@ -528,7 +528,7 @@ function LaneHealth({
   if (counts.length === 0) return null;
   return (
     <section
-      className="border border-border bg-white px-4 py-4"
+      className="border border-border bg-card px-4 py-4"
       aria-labelledby="lane-health-title"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -561,7 +561,7 @@ function LaneHealth({
               type="button"
               onClick={() => onSelect(selected ? "all" : queue)}
               aria-pressed={selected}
-              className={`min-h-16 border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${selected ? "border-primary bg-accent-tint/45" : "border-border hover:border-primary/50 hover:bg-muted/30"}`}
+              className={`min-h-16 border px-3 py-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${selected ? "border-primary bg-accent text-primary" : "border-border hover:border-primary/50 hover:bg-muted/30"}`}
             >
               <span className="block truncate text-xs font-medium text-foreground">
                 {queueLabels[queue]}
@@ -702,7 +702,7 @@ export default function PlatformAdminOperationsQueue({
           <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <span
-                className={`size-2 rounded-full ${workerHealthy ? "bg-green-600" : data.worker.status === "failed" ? "bg-red-600" : "bg-amber-500"}`}
+                className={`size-2 rounded-full ${workerHealthy ? "bg-success" : data.worker.status === "failed" ? "bg-destructive" : "bg-warning-subtle0"}`}
                 aria-hidden="true"
               />
               Worker {workerStatus}
@@ -719,7 +719,7 @@ export default function PlatformAdminOperationsQueue({
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="flex min-h-9 items-center gap-2 border border-border bg-white px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="flex min-h-9 items-center gap-2 border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             <RefreshCw className="size-3.5" aria-hidden="true" />
             Refresh
@@ -754,7 +754,7 @@ export default function PlatformAdminOperationsQueue({
         </div>
         <div className="border-b border-border px-3 py-4 sm:border-r sm:border-b-0">
           <p className="text-xs text-muted-foreground">Needs attention</p>
-          <p className="mt-1 font-mono text-2xl text-red-700 tabular-nums">
+          <p className="mt-1 font-mono text-2xl text-destructive tabular-nums">
             {data.queue.summary.attention}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground">
@@ -763,7 +763,7 @@ export default function PlatformAdminOperationsQueue({
         </div>
         <div className="border-b border-border px-3 py-4 sm:border-r sm:border-b-0">
           <p className="text-xs text-muted-foreground">In progress</p>
-          <p className="mt-1 font-mono text-2xl text-blue-700 tabular-nums">
+          <p className="mt-1 font-mono text-2xl text-information tabular-nums">
             {data.queue.summary.inProgress}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground">
@@ -789,7 +789,7 @@ export default function PlatformAdminOperationsQueue({
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section
-          className={`${selectedRow ? "hidden xl:block" : "block"} min-w-0 border border-border bg-white`}
+          className={`${selectedRow ? "hidden xl:block" : "block"} min-w-0 border border-border bg-card`}
           aria-labelledby="worklist-title"
         >
           <div className="border-b border-border px-4 py-4 sm:px-5">
@@ -802,7 +802,7 @@ export default function PlatformAdminOperationsQueue({
                   >
                     Worklist
                   </h2>
-                  <span className="font-mono text-xs text-red-700">
+                  <span className="font-mono text-xs text-destructive">
                     {filteredRows.length}
                     {filteredRows.length !== data.queue.summary.open
                       ? ` / ${data.queue.summary.open}`
@@ -846,7 +846,7 @@ export default function PlatformAdminOperationsQueue({
                   onChange={(event) => { setSearch(event.target.value); replaceUrl({ q: event.target.value.trim() || undefined, item: undefined }); setSelectedId(undefined); }}
                   placeholder="Search by ID, item, reason, owner…"
                   aria-label="Search operations queue"
-                  className="h-10 w-full border border-border bg-white pr-12 pl-9 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="h-10 w-full border border-border bg-card pr-12 pl-9 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
                 />
                 <span className="pointer-events-none absolute top-1/2 right-3 hidden -translate-y-1/2 font-mono text-[10px] text-muted-foreground sm:inline">
                   ⌘K
@@ -861,7 +861,7 @@ export default function PlatformAdminOperationsQueue({
                 onChange={(event) =>
                   selectQueue(event.target.value as QueueFilter)
                 }
-                className="h-10 border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-10 border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               >
                 <option value="all">All queues</option>
                 {queueOrder.map((queue) => (
@@ -879,7 +879,7 @@ export default function PlatformAdminOperationsQueue({
                 onChange={(event) =>
                   { const value = event.target.value as SeverityFilter; setSeverityFilter(value); setSelectedId(undefined); replaceUrl({ severity: value === 'all' ? undefined : value, item: undefined }); }
                 }
-                className="h-10 border border-border bg-white px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-10 border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               >
                 <option value="all">All severity</option>
                 <option value="high">High</option>

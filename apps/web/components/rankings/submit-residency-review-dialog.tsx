@@ -51,7 +51,9 @@ export function SubmitResidencyReviewDialog({
     }
 
     if (!reviewBody.trim() || reviewBody.trim().length < 10) {
-      setError("Please write at least 10 characters sharing your residency experience.");
+      setError(
+        "Please write at least 10 characters sharing your residency experience.",
+      );
       return;
     }
 
@@ -66,7 +68,9 @@ export function SubmitResidencyReviewDialog({
             ratingScore: rating,
             reviewTitle: reviewTitle.trim() || undefined,
             reviewBody: reviewBody.trim(),
-            authorName: isAnonymous ? "Anonymous Resident" : authorName.trim() || undefined,
+            authorName: isAnonymous
+              ? "Anonymous Resident"
+              : authorName.trim() || undefined,
             isAnonymous,
           }),
         },
@@ -77,7 +81,9 @@ export function SubmitResidencyReviewDialog({
         throw new Error(json.error || "Failed to submit review.");
       }
 
-      toast.success("Review submitted! Thank you for contributing to the community index.");
+      toast.success(
+        "Review submitted! Thank you for contributing to the community index.",
+      );
       onSuccess?.(json.newRating, json.newTotalScore);
       onClose();
 
@@ -88,7 +94,11 @@ export function SubmitResidencyReviewDialog({
       setAuthorName("");
       setIsAnonymous(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Submission failed. Please try again.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Submission failed. Please try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -103,7 +113,8 @@ export function SubmitResidencyReviewDialog({
             <span>Review {residency.name}</span>
           </DialogTitle>
           <DialogDescription>
-            Share your residency experience to help fellow artists make informed application decisions.
+            Share your residency experience to help fellow artists make informed
+            application decisions.
           </DialogDescription>
         </DialogHeader>
 
@@ -128,13 +139,13 @@ export function SubmitResidencyReviewDialog({
                     onClick={() => setRating(star)}
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(null)}
-                    className="p-1 rounded-md hover:bg-muted transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+                    className="rounded-md p-1 transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={`Rate ${star} of 5 stars`}
                   >
                     <Star
                       className={`h-6 w-6 transition-transform ${
                         active
-                          ? "fill-amber-400 text-amber-500 scale-110"
+                          ? "scale-110 fill-warning text-warning"
                           : "text-muted-foreground/40 hover:text-muted-foreground"
                       }`}
                     />
@@ -142,41 +153,43 @@ export function SubmitResidencyReviewDialog({
                 );
               })}
               <span className="ml-2 font-mono text-sm font-semibold text-foreground">
-                {(hoverRating ?? rating)}.0 / 5.0
+                {hoverRating ?? rating}.0 / 5.0
               </span>
             </div>
           </Field>
 
           {/* Review Title */}
           <Field>
-            <FieldLabel htmlFor="review-title">Review Headline (optional)</FieldLabel>
+            <FieldLabel htmlFor="review-title">
+              Review Headline (optional)
+            </FieldLabel>
             <Input
               id="review-title"
               placeholder="e.g. Uninterrupted solitude and generous studio space"
               value={reviewTitle}
               onChange={(e) => setReviewTitle(e.target.value)}
-              className="h-10 text-sm"
               disabled={isSubmitting}
             />
           </Field>
 
           {/* Review Body */}
           <Field>
-            <FieldLabel htmlFor="review-body">Your Residency Experience *</FieldLabel>
+            <FieldLabel htmlFor="review-body">
+              Your Residency Experience *
+            </FieldLabel>
             <Textarea
               id="review-body"
               placeholder="How was the working environment, studio solitude, accommodation quality, staff support, and financial honesty?"
               rows={4}
               value={reviewBody}
               onChange={(e) => setReviewBody(e.target.value)}
-              className="text-sm"
               disabled={isSubmitting}
               required
             />
           </Field>
 
           {/* Author Name & Anonymity */}
-          <div className="space-y-2 pt-1 border-t border-border">
+          <div className="space-y-2 border-t border-border pt-1">
             <div className="flex items-center gap-2">
               <Checkbox
                 id="anonymous-check"
@@ -186,7 +199,7 @@ export function SubmitResidencyReviewDialog({
               />
               <label
                 htmlFor="anonymous-check"
-                className="text-xs font-medium text-foreground cursor-pointer select-none"
+                className="cursor-pointer text-xs font-medium text-foreground select-none"
               >
                 Post anonymously as &quot;Anonymous Resident&quot;
               </label>
@@ -194,13 +207,15 @@ export function SubmitResidencyReviewDialog({
 
             {!isAnonymous && (
               <Field className="pt-2">
-                <FieldLabel htmlFor="author-name">Your Name or Pen Name</FieldLabel>
+                <FieldLabel htmlFor="author-name">
+                  Your Name or Pen Name
+                </FieldLabel>
                 <Input
                   id="author-name"
                   placeholder="e.g. Elena Rostova or Ceramicist in Residence"
                   value={authorName}
                   onChange={(e) => setAuthorName(e.target.value)}
-                  className="h-9 text-sm"
+                  size="compact"
                   disabled={isSubmitting}
                 />
               </Field>
@@ -208,7 +223,7 @@ export function SubmitResidencyReviewDialog({
           </div>
 
           {/* Form Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
+          <div className="flex items-center justify-end gap-3 border-t border-border pt-3">
             <Button
               type="button"
               variant="outline"
@@ -224,7 +239,6 @@ export function SubmitResidencyReviewDialog({
               variant="default"
               size="sm"
               disabled={isSubmitting}
-              className="min-h-9 gap-1.5"
             >
               {isSubmitting ? (
                 <>

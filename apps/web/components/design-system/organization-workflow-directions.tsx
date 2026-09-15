@@ -45,6 +45,13 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 
 import { MissaWordmark } from '@/components/missa-wordmark'
@@ -259,13 +266,21 @@ function DirectionIntro({ direction }: { direction: Direction }) {
 }
 
 function OrganizationBar({ surface, role }: { surface: Surface; role: string }) {
+  const [navigationOpen, setNavigationOpen] = useState(false)
+  const navigationItems = ['Overview', 'Opportunities', 'Submissions', 'Reviews', 'Decisions', 'Messages', 'Delivery', 'Insights', 'Settings']
   return (
     <div className={styles.organizationBar}>
       <button type='button' aria-label={`Switch Organization. Current: North River Review, ${role}`}><span className={styles.organizationMark}>NR</span><span><strong>North River Review</strong><small>{role}</small></span><ChevronDown aria-hidden='true' /></button>
       <nav aria-label='Organization navigation'>
-        <a href='#'>Overview</a><a href='#'>Opportunities</a><a href='#' aria-current={surface === 'submissions' ? 'page' : undefined}>Submissions</a><a href='#' aria-current={surface === 'reviews' ? 'page' : undefined}>Reviews</a><a href='#' aria-current={surface === 'decisions' ? 'page' : undefined}>Decisions</a>
+        {navigationItems.map((item) => <a key={item} href={`#organization-${item.toLowerCase()}`} aria-current={surface === item.toLowerCase() ? 'page' : undefined}>{item}</a>)}
       </nav>
-      <Button type='button' variant='ghost' size='icon' aria-label='Open Organization navigation'><Menu aria-hidden='true' /></Button>
+      <Button type='button' variant='ghost' size='icon' className={styles.organizationMenuButton} aria-label='Open Organization navigation' aria-expanded={navigationOpen} onClick={() => setNavigationOpen(true)}><Menu aria-hidden='true' /></Button>
+      <Sheet open={navigationOpen} onOpenChange={setNavigationOpen}>
+        <SheetContent side='right' className={styles.navigationSheet}>
+          <SheetHeader variant='section'><SheetTitle className={styles.sheetTitle}>Organization navigation</SheetTitle><SheetDescription>North River Review · {role}</SheetDescription></SheetHeader>
+          <nav aria-label='Organization mobile navigation'>{navigationItems.map((item) => <a key={item} href={`#organization-${item.toLowerCase()}`} aria-current={surface === item.toLowerCase() ? 'page' : undefined} onClick={() => setNavigationOpen(false)}>{item}<ChevronRight aria-hidden='true' /></a>)}</nav>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
@@ -312,13 +327,15 @@ function SubmissionFilters({ query, setQuery }: { query: string; setQuery: (valu
   )
 }
 
-function SubmissionTable({ rows, selected, setSelected, selectedIds, setSelectedIds, role }: {
+function SubmissionTable({ rows, selected, setSelected, selectedIds, setSelectedIds, role, onOpenDossier, onStatus }: {
   rows: SubmissionRow[]
   selected: string
   setSelected: (id: string) => void
   selectedIds: string[]
   setSelectedIds: (ids: string[]) => void
   role: string
+  onOpenDossier: (id: string) => void
+  onStatus: (message: string) => void
 }) {
   const allSelected = rows.length > 0 && rows.every((row) => selectedIds.includes(row.id))
   return (
@@ -326,23 +343,23 @@ function SubmissionTable({ rows, selected, setSelected, selectedIds, setSelected
       <table>
         <caption className='sr-only'>Organization Submissions</caption>
         <thead><tr>{role === 'Viewer' ? null : <th scope='col'><Checkbox aria-label='Select all visible Submissions' checked={allSelected} onCheckedChange={(checked) => setSelectedIds(checked ? rows.map((row) => row.id) : [])} /></th>}<th scope='col'>Submission</th><th scope='col'>Opportunity</th><th scope='col'>Receipt</th><th scope='col'>Review</th><th scope='col'>Decision</th>{role === 'Finance' ? <th scope='col'>Payment</th> : null}<th scope='col'>Next</th><th scope='col'><span className='sr-only'>Open</span></th></tr></thead>
-        <tbody>{rows.map((row) => <tr key={row.id} data-selected={row.id === selected}>{role === 'Viewer' ? null : <td><Checkbox aria-label={`Select Submission from ${row.submitter}`} checked={selectedIds.includes(row.id)} onCheckedChange={(checked) => setSelectedIds(checked ? [...selectedIds, row.id] : selectedIds.filter((id) => id !== row.id))} /></td>}<th scope='row'><button type='button' onClick={() => setSelected(row.id)}>{row.submitter}</button><small>{row.works.length} Work{row.works.length === 1 ? '' : 's'} · {row.category}</small></th><td>{row.opportunity}</td><td><StateBadge value={row.receipt} /></td><td><StateBadge value={row.review} /></td><td><StateBadge value={row.decision} /></td>{role === 'Finance' ? <td><StateBadge value={row.payment} /></td> : null}<td><strong>{row.next}</strong><small>{row.due}</small></td><td><Button type='button' variant='ghost' size='icon' aria-label={`More actions for Submission from ${row.submitter}`}><MoreHorizontal aria-hidden='true' /></Button></td></tr>)}</tbody>
+        <tbody>{rows.map((row) => <tr key={row.id} data-selected={row.id === selected}>{role === 'Viewer' ? null : <td className={styles.selectionCell}><Checkbox aria-label={`Select Submission from ${row.submitter}`} checked={selectedIds.includes(row.id)} onCheckedChange={(checked) => setSelectedIds(checked ? [...selectedIds, row.id] : selectedIds.filter((id) => id !== row.id))} /></td>}<th scope='row'><button type='button' onClick={() => setSelected(row.id)}>{row.submitter}</button><small>{row.works.length} Work{row.works.length === 1 ? '' : 's'} · {row.category}</small></th><td><span className={styles.mobileFieldLabel}>Opportunity</span>{row.opportunity}</td><td><span className={styles.mobileFieldLabel}>Receipt</span><StateBadge value={row.receipt} /></td><td><span className={styles.mobileFieldLabel}>Review</span><StateBadge value={row.review} /></td><td><span className={styles.mobileFieldLabel}>Decision</span><StateBadge value={row.decision} /></td>{role === 'Finance' ? <td><span className={styles.mobileFieldLabel}>Payment</span><StateBadge value={row.payment} /></td> : null}<td><span className={styles.mobileFieldLabel}>Next</span><div className={styles.nextActionCell}><Button type='button' variant='ghost' onClick={() => onStatus(`${row.next} opened for ${row.submitter}.`)}>{row.next}<ChevronRight aria-hidden='true' /></Button><small>{row.due}</small></div></td><td className={styles.rowActions}><Button type='button' variant='outline' onClick={() => onOpenDossier(row.id)}>Open dossier<span className='sr-only'> for {row.submitter}</span><ChevronRight aria-hidden='true' /></Button><Button type='button' variant='ghost' size='icon' aria-label={`More actions for Submission from ${row.submitter}`}><MoreHorizontal aria-hidden='true' /></Button></td></tr>)}</tbody>
       </table>
     </div>
   )
 }
 
-function SubmissionDossier({ row, fixture, role }: { row?: SubmissionRow; fixture: Fixture; role: string }) {
+function SubmissionDossier({ row, fixture, role, onClose, onStatus }: { row?: SubmissionRow; fixture: Fixture; role: string; onClose?: () => void; onStatus: (message: string) => void }) {
   if (!row) return null
   const identityVisible = role !== 'Finance' && fixture !== 'blind'
   return (
     <aside className={styles.dossier} aria-label='Selected Submission'>
-      <header><div><p className={styles.eyebrow}>Selected Submission</p><h2>{identityVisible ? row.submitter : 'Identity withheld'}</h2><p>{row.opportunity}</p></div><Button type='button' variant='ghost' size='icon' aria-label='Close selected Submission'><ArrowRight aria-hidden='true' /></Button></header>
+      <header><div><p className={styles.eyebrow}>Selected Submission</p><h2>{identityVisible ? row.submitter : 'Identity withheld'}</h2><p>{row.opportunity}</p></div>{onClose ? <Button type='button' variant='ghost' size='icon' aria-label='Close selected Submission' onClick={onClose}><ArrowRight aria-hidden='true' /></Button> : null}</header>
       {fixture === 'import-integrity' ? <Alert variant='destructive'><ShieldAlert aria-hidden='true' /><AlertTitle>Imported outcome needs repair</AlertTitle><AlertDescription>This packet says Accepted but has no per-Work decisions. Review the original import before any message or delivery action.</AlertDescription></Alert> : null}
       {fixture === 'taxonomy-conflict' ? <Alert><Flag aria-hidden='true' /><AlertTitle>Field context needs review</AlertTitle><AlertDescription>The submitted term and Opportunity rule conflict. This does not determine eligibility or the creative decision.</AlertDescription></Alert> : null}
       <dl className={styles.factList}><div><dt>Receipt</dt><dd>{row.receipt}</dd></div><div><dt>Review</dt><dd>{row.review}</dd></div><div><dt>Decision summary</dt><dd>{row.decision}</dd></div><div><dt>Payment</dt><dd>{row.payment}</dd></div><div><dt>Category</dt><dd>{row.category}</dd></div></dl>
       <section className={styles.workList}><header><h3>Works</h3><span>{row.works.length}</span></header>{row.works.map((work, index) => <article key={work}><div className={styles.fileIcon}><FileText aria-hidden='true' /></div><div><strong>{work}</strong><p>{index === 0 ? 'PDF · 14 pages · Available' : fixture === 'missing-file' ? 'Required file missing' : 'PDF · 9 pages · Available'}</p></div><Button type='button' variant='ghost' size='icon' aria-label={`Open ${work}`}><ChevronRight aria-hidden='true' /></Button></article>)}</section>
-      <footer><div><strong>{row.next}</strong><span>{row.due}</span></div><Button type='button' variant='outline'>Open full dossier</Button></footer>
+      <footer><div><span>Next</span><strong>{row.next}</strong><span>{row.due}</span></div><Button type='button' onClick={() => onStatus(`${row.next} opened for ${row.submitter}.`)}>{row.next}<ChevronRight aria-hidden='true' /></Button><Button type='button' variant='outline' onClick={() => onStatus(`Full dossier opened for ${row.submitter}.`)}>Open full dossier</Button></footer>
     </aside>
   )
 }
@@ -356,6 +373,7 @@ function SubmissionsSurface({ direction, fixture, role, onStatus }: { direction:
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState('river-maps')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [dossierOpen, setDossierOpen] = useState(false)
   const rows = rowsForFixture(fixture).filter((row) => !query || `${row.submitter} ${row.works.join(' ')} ${row.opportunity}`.toLowerCase().includes(query.toLowerCase()))
   const active = rows.find((row) => row.id === selected) ?? rows[0]
   return (
@@ -365,8 +383,9 @@ function SubmissionsSurface({ direction, fixture, role, onStatus }: { direction:
       {fixture === 'mobile-urgent' ? <Alert variant='destructive'><AlertCircle aria-hidden='true' /><AlertTitle>A withdrawn Work is still assigned</AlertTitle><AlertDescription>Remove the Work from active review before the reviewer opens the packet.</AlertDescription></Alert> : null}
       <SubmissionFilters query={query} setQuery={setQuery} />
       {selectedIds.length ? <div className={styles.bulkBar}><p><strong>{selectedIds.length} selected</strong><span>Current page only</span></p><Button type='button' variant='outline' onClick={() => onStatus(`${selectedIds.length} Submissions opened for assignment preview.`)}><UserRoundCheck aria-hidden='true' />Preview assignment</Button><Button type='button' variant='outline'><Download aria-hidden='true' />Review export</Button><Button type='button' variant='ghost' onClick={() => setSelectedIds([])}>Clear</Button></div> : null}
-      {rows.length ? <div className={styles.submissionLayout}><SubmissionTable rows={rows} selected={active?.id ?? ''} setSelected={setSelected} selectedIds={selectedIds} setSelectedIds={setSelectedIds} role={role} />{direction === 'ledger' ? null : <SubmissionDossier row={active} fixture={fixture} role={role} />}</div> : <SubmissionEmpty fixture={fixture} />}
-      {direction === 'ledger' && active ? <SubmissionDossier row={active} fixture={fixture} role={role} /> : null}
+      {rows.length ? <div className={styles.submissionLayout}><SubmissionTable rows={rows} selected={active?.id ?? ''} setSelected={setSelected} selectedIds={selectedIds} setSelectedIds={setSelectedIds} role={role} onOpenDossier={(id) => { setSelected(id); setDossierOpen(true) }} onStatus={onStatus} />{direction === 'ledger' ? null : <SubmissionDossier row={active} fixture={fixture} role={role} onStatus={onStatus} />}</div> : <SubmissionEmpty fixture={fixture} />}
+      {direction === 'ledger' && active ? <SubmissionDossier row={active} fixture={fixture} role={role} onStatus={onStatus} /> : null}
+      <Sheet open={dossierOpen} onOpenChange={setDossierOpen}><SheetContent side='right' className={styles.mobileDossierSheet}><SheetHeader variant='section'><SheetTitle className={styles.sheetTitle}>Submission dossier</SheetTitle><SheetDescription>{active ? `${active.opportunity} · ${active.works.length} Work${active.works.length === 1 ? '' : 's'}` : 'Selected Submission'}</SheetDescription></SheetHeader><SubmissionDossier row={active} fixture={fixture} role={role} onClose={() => setDossierOpen(false)} onStatus={onStatus} /></SheetContent></Sheet>
       {fixture === 'large' ? <nav className={styles.pagination} aria-label='Submission pages'><span>1–50 of 10,000</span><Button type='button' variant='outline' disabled><ArrowLeft aria-hidden='true' />Previous</Button><Button type='button' variant='outline'>Next<ArrowRight aria-hidden='true' /></Button></nav> : null}
     </main>
   )
@@ -385,7 +404,7 @@ function ReviewReader({ fixture, onStatus }: { fixture: Fixture; onStatus: (mess
   return (
     <section className={styles.reader}>
       <article className={styles.workReader}><header><div><p className={styles.eyebrow}>Assigned Work 1 of 2</p><h2>River Maps</h2><p>{fixture === 'blind' ? 'Identity withheld · Poetry' : 'Amaka Nwosu · Poetry'}</p></div><Button type='button' variant='outline'><Paperclip aria-hidden='true' />Open PDF</Button></header><div className={styles.manuscript}><p>I return by water, each bridge a version of the city that learned my name.</p><p>The map folds differently at dusk. Roads become questions; the river keeps the answer.</p><p>At the old market, light settles on every roof except the one I remember.</p></div></article>
-      <form className={styles.rubric} onSubmit={(event) => { event.preventDefault(); onStatus(fixture === 'review-save-failure' ? 'Review could not be saved. Your recommendation and notes remain here.' : 'Review draft saved.') }}><header><div><p className={styles.eyebrow}>Reader round · Due today</p><h2>Recommendation</h2></div><StateBadge value={fixture === 'review-save-failure' ? 'Needs attention' : 'Draft'} /></header>{fixture === 'review-conflict' ? <Alert variant='destructive'><ShieldAlert aria-hidden='true' /><AlertTitle>You declared a conflict</AlertTitle><AlertDescription>This Work is no longer available for review. The Program manager can reassign it.</AlertDescription></Alert> : null}<fieldset disabled={fixture === 'review-conflict'}><legend>Overall recommendation</legend><RadioGroup value={recommendation} onValueChange={(value) => setRecommendation(value)}><label><RadioGroupItem value='recommend' />Recommend</label><label><RadioGroupItem value='consider' />Consider</label><label><RadioGroupItem value='do-not-recommend' />Do not recommend</label></RadioGroup></fieldset><label><span>Notes for the review team</span><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} aria-describedby='review-note-help' /></label><p id='review-note-help'>Private to the permitted review team. Identity remains hidden in this round.</p><footer><Button type='button' variant='outline' onClick={() => onStatus('Conflict form opened.')}>Declare conflict</Button><Button type='submit'>Save draft</Button><Button type='button' onClick={() => onStatus('Review validation passed. Final submission confirmation opened.')}>Review and submit</Button></footer></form>
+      <form className={styles.rubric} onSubmit={(event) => { event.preventDefault(); onStatus(fixture === 'review-save-failure' ? 'Review could not be saved. Your recommendation and notes remain here.' : 'Review draft saved.') }}><header><div><p className={styles.eyebrow}>Reader round · Due today</p><h2>Recommendation</h2></div><StateBadge value={fixture === 'review-save-failure' ? 'Needs attention' : 'Draft'} /></header>{fixture === 'review-save-failure' ? <Alert variant='destructive'><AlertCircle aria-hidden='true' /><AlertTitle>Review draft could not be saved</AlertTitle><AlertDescription>Your recommendation and notes remain here. Last confirmed save: today at 2:14 PM.</AlertDescription><Button type='button' variant='outline' onClick={() => onStatus('Review draft save retry started. Your responses remain available.')}><RefreshCw aria-hidden='true' />Try saving again</Button></Alert> : null}{fixture === 'review-conflict' ? <Alert variant='destructive'><ShieldAlert aria-hidden='true' /><AlertTitle>You declared a conflict</AlertTitle><AlertDescription>This Work is no longer available for review. The Program manager can reassign it.</AlertDescription></Alert> : null}<fieldset disabled={fixture === 'review-conflict'}><legend>Overall recommendation</legend><RadioGroup value={recommendation} onValueChange={(value) => setRecommendation(value)}><label><RadioGroupItem value='recommend' />Recommend</label><label><RadioGroupItem value='consider' />Consider</label><label><RadioGroupItem value='do-not-recommend' />Do not recommend</label></RadioGroup></fieldset><label><span>Notes for the review team</span><Textarea value={notes} onChange={(event) => setNotes(event.target.value)} aria-describedby='review-note-help' /></label><p id='review-note-help'>Private to the permitted review team. Identity remains hidden in this round.</p><footer><Button type='button' variant='outline' onClick={() => onStatus('Conflict form opened.')}>Declare conflict</Button><Button type='submit'>Save draft</Button><Button type='button' onClick={() => onStatus('Review validation passed. Final submission confirmation opened.')}>Review and submit</Button></footer></form>
     </section>
   )
 }

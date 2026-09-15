@@ -25,6 +25,10 @@ export default defineConfig({
   use: {
     baseURL: externalBaseUrl ?? "http://127.0.0.1:3100",
     trace: "on-first-retry",
+    // Analytics consent is a one-time gate, so the suite starts already
+    // answered and exercises the product. Specs that assert consent behaviour
+    // override this with an empty storage state.
+    storageState: "./e2e/storage-state.json",
   },
   projects: [
     {

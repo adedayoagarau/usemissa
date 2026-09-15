@@ -31,7 +31,7 @@ const listItems = [
       <EqualIcon
       />
     ),
-    color: '*:[svg]:text-amber-600 dark:*:[svg]:text-amber-400',
+    color: '*:[svg]:text-warning dark:*:[svg]:text-warning',
     priority: 'Medium'
   },
   {
@@ -39,7 +39,7 @@ const listItems = [
       <ChevronDownIcon
       />
     ),
-    color: '*:[svg]:text-green-600/60 dark:*:[svg]:text-green-400/60',
+    color: '*:[svg]:text-success/60 dark:*:[svg]:text-success/60',
     priority: 'Low'
   },
   {
@@ -47,7 +47,7 @@ const listItems = [
       <ChevronsDownIcon
       />
     ),
-    color: '*:[svg]:text-green-600 dark:*:[svg]:text-green-400',
+    color: '*:[svg]:text-success dark:*:[svg]:text-success',
     priority: 'Lowest'
   }
 ]

@@ -300,7 +300,7 @@ const StepperFormDemo = () => {
                 <StepperIndicator
                   className={
                     submitted
-                      ? 'group-data-[state=active]/step:ring-green-600/40 data-[state=active]:bg-green-600/20 data-[state=active]:text-green-600 data-[state=completed]:bg-green-600/20 data-[state=completed]:text-green-600 dark:group-data-[state=active]/step:ring-green-400/40 dark:data-[state=completed]:bg-green-400/20 dark:data-[state=completed]:text-green-400'
+                      ? 'group-data-[state=active]/step:ring-green-600/40 data-[state=active]:bg-success/20 data-[state=active]:text-success data-[state=completed]:bg-success/20 data-[state=completed]:text-success dark:group-data-[state=active]/step:ring-green-400/40 dark:data-[state=completed]:bg-success/20 dark:data-[state=completed]:text-success'
                       : ''
                   }
                 >
@@ -313,7 +313,7 @@ const StepperFormDemo = () => {
                   className={cn(
                     'absolute inset-x-0 top-2 right-[calc(-50%+18px)] left-[calc(50%+18px)]',
                     submitted
-                      ? 'group-data-[state=completed]/step:bg-green-600/20 dark:group-data-[state=completed]/step:bg-green-400/20'
+                      ? 'group-data-[state=completed]/step:bg-success/20 dark:group-data-[state=completed]/step:bg-success/20'
                       : ''
                   )}
                 />

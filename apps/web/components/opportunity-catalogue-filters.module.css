@@ -9,7 +9,7 @@
 .desktopControls { display: flex; }
 .desktopFilterBar { display: flex; align-items: center; gap: 6px; }
 .filterTrigger { min-height: 40px; gap: 7px; border-color: transparent; background: var(--muted); box-shadow: none; }
-.filterTrigger:hover { border-color: var(--border); background: var(--accent-tint); }
+.filterTrigger:hover { border-color: var(--border); background: var(--accent); }
 .filterTrigger > svg { width: 14px; height: 14px; color: var(--muted-foreground); }
 .triggerCount { display: inline-grid; min-width: 20px; height: 20px; place-items: center; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); font-size: 11px; }
 .optionPopover { width: 300px; padding: 6px; background: var(--background); }
@@ -114,7 +114,7 @@
   padding: 0 34px 0 11px;
   border: 1px solid var(--input);
   border-radius: 8px;
-  background: white;
+  background: var(--background);
   color: var(--foreground);
   font: inherit;
   font-weight: 500;

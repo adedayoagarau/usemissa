@@ -15,6 +15,9 @@
   inset-inline-start: var(--space-gutter);
   top: calc(-1 * var(--space-section));
   z-index: 2;
+  display: inline-flex;
+  min-height: var(--touch-target-min);
+  align-items: center;
   padding: var(--space-helper) var(--space-row);
   background: var(--primary);
   color: white;
@@ -209,6 +212,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-helper);
+  min-height: var(--touch-target-min);
   color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 4px;
@@ -224,6 +228,10 @@
   justify-content: space-between;
   gap: var(--space-row);
   color: var(--profile-muted);
+}
+.sectionLabel h3 {
+  margin: 0;
+  font: inherit;
 }
 .textSample {
   max-width: 56ch;
@@ -265,6 +273,9 @@
   display: flex;
   flex-direction: column;
   gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 .credit {
   display: flex;
@@ -525,7 +536,7 @@
   gap: var(--space-control-inline-bordered);
 }
 .hiddenCredit {
-  opacity: 0.55;
+  opacity: 1;
   background: var(--profile-subtle);
 }
 .shownCredit {
@@ -542,6 +553,7 @@
 .hiddenCredit button {
   align-self: center;
   justify-self: end;
+  min-height: var(--touch-target-min);
 }
 .hiddenLabel {
   color: var(--profile-muted);
@@ -614,9 +626,11 @@
   margin-block-start: var(--space-row);
 }
 .privateState,
-.mutedState,
-.ownerOnly {
+.mutedState {
   color: var(--profile-muted);
+}
+.ownerOnly {
+  color: var(--ink);
 }
 .miniProfile {
   min-width: 0;
@@ -899,8 +913,44 @@
     grid-template-columns: 1fr;
   }
   .credit {
+    display: grid;
     grid-template-columns: 48px 1fr;
     column-gap: var(--space-row);
+  }
+  .credit [data-slot="item-content"] {
+    min-width: 0;
+  }
+  .credit [data-slot="item-actions"] {
+    grid-column: 2;
+    width: 100%;
+  }
+  .hiddenCredit button {
+    width: 100%;
+    justify-self: stretch;
+  }
+  .creditRegion > button {
+    width: 100%;
+    height: auto;
+    min-height: var(--touch-target-min);
+    white-space: normal;
+    text-align: start;
+  }
+  .ownerNotice > div,
+  .inlineActions,
+  .saveBar > div {
+    flex-wrap: wrap;
+  }
+  .ownerNotice > div > button,
+  .inlineActions > button,
+  .saveBar > div > button {
+    flex: 1 1 auto;
+  }
+  .saveBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .saveBar > div {
+    margin-block-start: var(--space-row);
   }
   .identity h2 {
     font-size: 3.5rem;

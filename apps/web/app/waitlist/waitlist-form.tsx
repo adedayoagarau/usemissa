@@ -1,11 +1,13 @@
 'use client';
 
 import { ArrowRight, Check } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { browserAttributionProperties, recordPublicAnalyticsEvent } from '@/components/analytics-provider';
 import styles from './waitlist.module.css';
 
 export function WaitlistForm() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
@@ -40,6 +42,7 @@ export function WaitlistForm() {
       }
       setStatus('success');
       setMessage('You’re on the list. We’ll let you know when Missa is ready for you.');
+      router.push('/thank-you?source=waitlist');
     } catch {
       setStatus('error');
       setMessage('We could not save your place. Please try again.');

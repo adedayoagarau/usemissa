@@ -87,7 +87,7 @@ export function OrganizationSeats({ organizationId, canManage }: { organizationI
   }
 
   return (
-    <section className="rounded-lg border border-border bg-white p-5 shadow-sm" aria-labelledby="organization-seats-heading">
+    <section className="rounded-lg border border-border bg-card p-5 shadow-sm" aria-labelledby="organization-seats-heading">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 id="organization-seats-heading" className="font-heading text-xl font-medium text-foreground">
@@ -102,7 +102,7 @@ export function OrganizationSeats({ organizationId, canManage }: { organizationI
         )}
       </div>
       {error && (
-        <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+        <p className="mt-3 rounded-md bg-destructive px-3 py-2 text-sm text-destructive" role="alert">
           {error}
         </p>
       )}
@@ -112,7 +112,7 @@ export function OrganizationSeats({ organizationId, canManage }: { organizationI
             <span className="min-w-0 truncate text-sm text-foreground">{member.email}</span>
             <div className="flex items-center gap-2">
               {canManage ? (
-                <select aria-label={`Role for ${member.email}`} value={member.role} onChange={(event) => void changeRole(member.accountId, event.target.value)} className="rounded-md border border-border bg-white px-2 py-1.5 text-sm text-foreground">
+                <select aria-label={`Role for ${member.email}`} value={member.role} onChange={(event) => void changeRole(member.accountId, event.target.value)} className="rounded-md border border-border bg-card px-2 py-1.5 text-sm text-foreground">
                   {roles.map((role) => (
                     <option key={role} value={role}>
                       {role.replace('-', ' ')}
@@ -123,7 +123,7 @@ export function OrganizationSeats({ organizationId, canManage }: { organizationI
                 <span className="text-sm text-muted-foreground capitalize">{member.role.replace('-', ' ')}</span>
               )}
               {canManage && (
-                <button type="button" onClick={() => void remove(member.accountId)} className="rounded-md border border-border px-2 py-1.5 text-sm text-muted-foreground hover:border-red-300 hover:text-red-700">
+                <button type="button" onClick={() => void remove(member.accountId)} className="rounded-md border border-border px-2 py-1.5 text-sm text-muted-foreground hover:border-destructive hover:text-destructive">
                   Remove
                 </button>
               )}

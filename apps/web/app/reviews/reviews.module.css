@@ -1,7 +1,7 @@
-.shell { min-height: 100vh; background: #fff; color: var(--foreground); }
+.shell { min-height: 100vh; background: var(--background); color: var(--foreground); }
 .skipLink { position: fixed; z-index: 100; top: 10px; left: 10px; translate: 0 -150%; min-height: 44px; padding: 12px 16px; border-radius: 8px; background: var(--foreground); color: #fff; }
 .skipLink:focus { translate: 0; }
-.topbar { position: sticky; z-index: 40; top: 0; display: grid; grid-template-columns: 1fr auto 1fr; min-height: 68px; align-items: center; padding: 0 28px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, #fff 96%, transparent); backdrop-filter: blur(14px); }
+.topbar { position: sticky; z-index: 40; top: 0; display: grid; grid-template-columns: 1fr auto 1fr; min-height: 68px; align-items: center; padding: 0 28px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--background) 96%, transparent); backdrop-filter: blur(14px); }
 .wordmark { justify-self: start; color: var(--foreground); font-family: var(--font-heading), Georgia, serif; font-size: 1.25rem; font-weight: 720; letter-spacing: -.04em; text-decoration: none; }
 .topbar nav { display: flex; gap: 6px; }
 .topbar nav a { display: inline-flex; min-height: 44px; align-items: center; padding: 0 13px; border-radius: 8px; color: var(--muted-foreground); font-size: .78rem; text-decoration: none; }
@@ -58,7 +58,7 @@
 .assignmentHeader { align-items: center; padding-bottom: 20px; }
 .assignmentHeader h1 { font-size: clamp(2rem, 4vw, 3.8rem); }
 .assignmentHeader div > p:last-child { margin-top: 9px; }
-.desk { display: grid; grid-template-columns: 230px minmax(0, 1fr) minmax(280px, 360px); min-height: 680px; margin-top: 22px; overflow: hidden; border: 1px solid var(--border); border-radius: 13px; background: #fff; }
+.desk { display: grid; grid-template-columns: 230px minmax(0, 1fr) minmax(280px, 360px); min-height: 680px; margin-top: 22px; overflow: hidden; border: 1px solid var(--border); border-radius: 13px; background: var(--background); }
 .assignmentRail { min-width: 0; padding: 17px 11px; border-right: 1px solid var(--border); background: color-mix(in srgb, var(--muted) 42%, #fff); }
 .assignmentRail header { padding: 3px 8px 12px; }
 .assignmentRail h2, .assignmentRail p { margin: 0; }
@@ -85,7 +85,7 @@
 .workEmpty h3 { margin: 12px 0 0; font-size: .85rem; }
 .workEmpty p { max-width: 420px; margin-top: 6px; color: var(--muted-foreground); font-size: .7rem; }
 .reviewPane { min-width: 0; padding: 23px 20px; border-left: 1px solid var(--border); background: color-mix(in srgb, var(--muted) 28%, #fff); }
-.heldReview, .legacyRecord { display: grid; justify-items: start; margin-top: 18px; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.heldReview, .legacyRecord { display: grid; justify-items: start; margin-top: 18px; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--background); }
 .heldReview > svg, .legacyRecord > svg { width: 24px; color: var(--primary); }
 .legacyRecord > svg { color: var(--success, #56705b); }
 .heldReview h3, .heldReview h4, .heldReview p, .legacyRecord h3, .legacyRecord p { margin: 0; }
@@ -124,7 +124,7 @@
   .queueRows > a > svg { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
   .mobileSwitch { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-top: 18px; padding: 4px; border: 1px solid var(--border); border-radius: 10px; background: color-mix(in srgb, var(--muted) 45%, #fff); }
   .mobileSwitch button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 7px; background: transparent; color: var(--muted-foreground); font: inherit; font-size: .72rem; font-weight: 700; }
-  .mobileSwitch button[aria-pressed='true'] { background: #fff; color: var(--accent-deep); box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
+  .mobileSwitch button[aria-pressed='true'] { background: var(--background); color: var(--accent-deep); box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
   .mobileSwitch svg { width: 16px; }
   .desk { display: block; min-height: 0; margin-top: 10px; }
   .assignmentRail { display: none; }

@@ -303,7 +303,7 @@
 .themeCallout {
   margin-bottom: 24px;
   padding: 18px 22px;
-  border-left: 3px solid var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
   border-radius: 0 10px 10px 0;
   background: var(--accent-tint);
 }
@@ -593,7 +593,7 @@
 
 .profileButton {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -811,6 +811,7 @@
 
 .reportQuietLink {
   display: inline-flex;
+  min-height: 44px;
   align-items: center;
   gap: 6px;
   margin-top: 16px;

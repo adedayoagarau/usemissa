@@ -46,11 +46,4 @@
 .meterFill {
   height: 100%;
   border-radius: 9999px;
-  transition: width 250ms ease;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .meterFill {
-    transition: none;
-  }
 }

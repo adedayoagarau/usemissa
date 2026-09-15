@@ -53,8 +53,8 @@ export async function POST(request: Request) {
   }
 
   let account;
+  const repository = getCreatorAccountRepository();
   try {
-    const repository = getCreatorAccountRepository();
     account = repository
       ? await repository.authenticatePassword(email, password)
       : (await getEngine()).logIn(email, password);
@@ -66,6 +66,14 @@ export async function POST(request: Request) {
     );
   }
 
+  try {
+    if (repository) await repository.ensureProductData(account);
+  } catch {
+    return NextResponse.json(
+      { error: "We could not finish preparing your workspace. Try again." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
+  }
   const token = issueSessionToken(account.id);
   await trackPlatformAnalytics({
     eventName: "auth.login_succeeded",

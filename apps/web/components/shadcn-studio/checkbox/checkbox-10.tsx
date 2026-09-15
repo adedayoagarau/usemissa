@@ -14,7 +14,7 @@ const CheckboxColorsDemo = () => {
         defaultChecked
       />
       <Checkbox
-        className='focus-visible:ring-green-600/20 data-checked:border-green-600! data-checked:bg-green-600 dark:text-white dark:focus-visible:ring-green-400/40 dark:data-checked:border-green-400! dark:data-checked:bg-green-400'
+        className='focus-visible:ring-green-600/20 data-checked:border-success! data-checked:bg-success dark:text-white dark:focus-visible:ring-green-400/40 dark:data-checked:border-success! dark:data-checked:bg-success'
         aria-label='Color success'
         defaultChecked
       />

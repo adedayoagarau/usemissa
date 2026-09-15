@@ -37,6 +37,7 @@ test('My applications records submission progress with self-scoped mutations', a
   const response = await page.goto('/tracker');
   expect(response?.status()).toBe(200);
 
+  await expect(page.getByRole('link', { name: 'Tracker', exact: true }).first()).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('heading', { level: 1, name: 'My applications' })).toBeVisible();
   await expect(page.getByRole('tab', { name: /Saved/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('heading', { name: opportunity.title, exact: true })).toBeVisible();
@@ -57,6 +58,9 @@ test('My applications remains accessible at phone width', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/tracker');
 
+  await page.getByRole('button', { name: 'Open navigation' }).click();
+  await expect(page.getByRole('link', { name: 'Tracker', exact: true }).last()).toHaveAttribute('aria-current', 'page');
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { level: 1, name: 'My applications' })).toBeVisible();
   await expect(page.getByRole('tab', { name: /Saved/ })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('region', { name: 'Application list' })).toBeVisible();

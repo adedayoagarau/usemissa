@@ -57,7 +57,7 @@ User approved closing the creator journey before organization work. This is the 
 
 - [x] Preserve /saved through authentication (redirect allowlist and regression assertions).
 - [x] Send account-profile actions to the authenticated portfolio editor instead of an unpublished public URL. Existing Link/Button styling is retained; this is navigation, not a new component variant.
-- [ ] Complete password recovery, expired-session recovery and authentication error states. Local email signup/login now fall back to the compatibility endpoint when Neon rejects the local origin; Google remains on Neon Auth.
+- [ ] Complete password recovery, expired-session recovery and authentication error states. Neon Auth is the account authority: email+password and Google both resolve through it, then `/api/auth/missa-session` links the Neon identity to a Missa account. `apps/web` falls back to `/api/auth/signup` and `/api/auth/login` only when Neon itself refuses the request. That bridge stays until the Neon project trusts the deployment origin: `trusted_origins` is empty and the credential endpoints answer `403 INVALID_ORIGIN` for `https://www.usemissa.com`.
 - [ ] Connect optional, resumable orientation to private preferences; preserve first-save intent.
 - [ ] Clarify account identity versus public portfolio identity and privacy controls.
 - [ ] Verify one complete authenticated save and portfolio publication journey using isolated test data.

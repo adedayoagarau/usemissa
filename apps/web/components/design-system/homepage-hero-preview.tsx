@@ -10,8 +10,7 @@ import { HOMEPAGE_NAV_LINKS } from "@/lib/homepage-navigation";
 import styles from "./homepage-hero-preview.module.css";
 import "./homepage-marketing-palette.css";
 
-const DESKTOP_PLATE = "/design-system/homepage-hero/knit-h1.jpg";
-const MOBILE_PLATE = "/design-system/homepage-hero/knit-h1-mobile.jpg";
+const HERO_PLATE = "/media/home/hero-artist-studio.webp";
 
 export function HomepageHeroPreview({
   exploreHref = "/opportunities",
@@ -19,19 +18,21 @@ export function HomepageHeroPreview({
   exploreHref?: string;
 }) {
   const mobileImage = getImageProps({
-    src: MOBILE_PLATE,
+    src: HERO_PLATE,
     alt: "",
-    width: 652,
-    height: 1024,
+    width: 3840,
+    height: 2560,
     sizes: "100vw",
+    loading: "eager",
     fetchPriority: "high",
   }).props;
   const desktopImage = getImageProps({
-    src: DESKTOP_PLATE,
+    src: HERO_PLATE,
     alt: "",
-    width: 1024,
-    height: 573,
+    width: 3840,
+    height: 2560,
     sizes: "100vw",
+    loading: "eager",
     fetchPriority: "high",
   }).props;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -176,12 +177,26 @@ export function HomepageHeroPreview({
           <p className={styles.lede}>
             Find open calls, grants, residencies and places to share your work.
           </p>
-          <Link href={exploreHref} className={styles.explore}>
+          <Link
+            id="homepage-primary-cta"
+            href={exploreHref}
+            className={styles.explore}
+          >
             <span className={styles.exploreMark} aria-hidden="true">
               <ArrowUpRight className={styles.exploreArrow} />
             </span>
             Browse opportunities
           </Link>
+          <p className={styles.photoCredit}>
+            Photo by{" "}
+            <a
+              href="https://www.pexels.com/photo/artist-among-paintings-15522372/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Sandro Lopes Art / Pexels
+            </a>
+          </p>
         </div>
       </div>
     </section>

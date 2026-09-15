@@ -39,7 +39,7 @@ export function SaveSearchButton({ userId, criteria, defaultName }: { userId: st
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button type="button" variant="outline" size="sm" className="gap-1.5" />}><Bookmark className="size-3.5" />Save search</DialogTrigger>
+      <DialogTrigger render={<Button type="button" variant="outline" size="sm"  />}><Bookmark className="size-3.5" />Save search</DialogTrigger>
       <DialogContent>
         <DialogHeader><DialogTitle>Save this search</DialogTitle></DialogHeader>
         <div className="space-y-2"><label htmlFor="search-name" className="text-sm font-medium">Name</label><Input id="search-name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Poetry residencies" /></div>

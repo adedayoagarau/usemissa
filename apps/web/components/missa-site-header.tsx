@@ -34,6 +34,7 @@ const publicLinks = [
   { href: "/opportunities", label: "Opportunities" },
   { href: "/directory", label: "Directory" },
   { href: "/rankings/magazines", label: "Rankings" },
+  { href: "/for-organizations", label: "For organizations" },
   { href: "/about", label: "About" },
 ] as const;
 
@@ -125,6 +126,9 @@ export function MissaSiteHeader({
           ) : (
             <div className={styles.authActions}>
               <Link href="/login?next=%2Fopportunities">Log in</Link>
+              <Link href="/signup" className={styles.createButton}>
+                Create account
+              </Link>
             </div>
           )}
           <Button
@@ -163,6 +167,13 @@ export function MissaSiteHeader({
                 onClick={() => setMobileOpen(false)}
               >
                 Log in
+              </Link>
+              <Link
+                href="/signup"
+                className={styles.mobileCreate}
+                onClick={() => setMobileOpen(false)}
+              >
+                Create account
               </Link>
             </>
           ) : null}

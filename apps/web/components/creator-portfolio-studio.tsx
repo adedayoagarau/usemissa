@@ -112,6 +112,7 @@ export function CreatorPortfolioStudio({
   embedded = false,
   sampleTheme = "white",
   presentation = "compact",
+  sampleWorkLimit,
 }: {
   ownerId?: string;
   publicData?: PortfolioData;
@@ -119,6 +120,7 @@ export function CreatorPortfolioStudio({
   embedded?: boolean;
   sampleTheme?: "white" | "sage" | "paper" | "mineral" | "night";
   presentation?: "compact" | "showcase";
+  sampleWorkLimit?: number;
 }) {
   const isAccount = Boolean(ownerId && ownerId !== "design-preview-only");
   const [handle, setHandle] = useState(publicData?.handle ?? "");
@@ -536,8 +538,8 @@ export function CreatorPortfolioStudio({
       : undefined;
   const displayName = isSample ? "Riley Chen" : name || "Your name";
   const title = isSample ? "An atlas of small departures" : work.title;
-  const image = isSample ? "/media/creator-preview-landscape.png" : work.image;
-  const portrait = isSample ? "/media/creator-preview-portrait.png" : photo;
+  const image = isSample ? "/media/creator-preview-landscape.webp" : work.image;
+  const portrait = isSample ? "/media/creator-preview-portrait.webp" : photo;
   const workFormats = (item: Work) =>
     isSample
       ? item.formats
@@ -567,49 +569,48 @@ export function CreatorPortfolioStudio({
     "Threshold studies": {
       summary:
         "Images made between rehearsal and performance, when a room is holding its breath.",
-      excerpt:
-        "Six photographs, 2024–2025.",
+      excerpt: "Six photographs, 2024–2025.",
       alt: "An artist writing at a desk beside a sunlit window",
     },
     "A frequency for the footpath": {
       summary:
         "Field recordings, spoken fragments and a score composed from the intervals between passing footsteps.",
-      excerpt:
-        "12 min 08 sec · stereo sound and text · 2025",
+      excerpt: "12 min 08 sec · stereo sound and text · 2025",
       alt: "",
     },
   };
+  const sampleWorks: Work[] = [
+    {
+      title,
+      image,
+      text: sampleWorkDetails[title]?.excerpt ?? "",
+      audio: "",
+      formats: ["Writing", "Images"],
+    },
+    {
+      title: "The rooms remember us",
+      image: "/media/home/portfolio-still-life.webp",
+      text: sampleWorkDetails["The rooms remember us"].excerpt,
+      audio: "",
+      formats: ["Writing", "Images"],
+    },
+    {
+      title: "Threshold studies",
+      image: "/media/home/artist-at-work.webp",
+      text: sampleWorkDetails["Threshold studies"].excerpt,
+      audio: "",
+      formats: ["Images"],
+    },
+    {
+      title: "A frequency for the footpath",
+      image: "",
+      text: sampleWorkDetails["A frequency for the footpath"].excerpt,
+      audio: "",
+      formats: ["Writing", "Sound"],
+    },
+  ];
   const displayWorks: Work[] = isSample
-    ? [
-        {
-          title,
-          image,
-          text: sampleWorkDetails[title].excerpt,
-          audio: "",
-          formats: ["Writing", "Images"],
-        },
-        {
-          title: "The rooms remember us",
-          image: "/media/home/portfolio-still-life.webp",
-          text: sampleWorkDetails["The rooms remember us"].excerpt,
-          audio: "",
-          formats: ["Writing", "Images"],
-        },
-        {
-          title: "Threshold studies",
-          image: "/media/home/artist-at-work.webp",
-          text: sampleWorkDetails["Threshold studies"].excerpt,
-          audio: "",
-          formats: ["Images"],
-        },
-        {
-          title: "A frequency for the footpath",
-          image: "",
-          text: sampleWorkDetails["A frequency for the footpath"].excerpt,
-          audio: "",
-          formats: ["Writing", "Sound"],
-        },
-      ]
+    ? sampleWorks.slice(0, sampleWorkLimit ?? sampleWorks.length)
     : works.filter((item) => item.title.trim());
   const formats = [...new Set(displayWorks.flatMap(workFormats))];
   const visibleWorks = displayWorks.filter(
@@ -627,24 +628,59 @@ export function CreatorPortfolioStudio({
     : "h1";
   const WorkHeading = embedded ? "h4" : "h2";
   if (isPublicStage) {
-    return <CreatorPortfolioArchive
-      name={displayName}
-      bio={isSample ? "Poems, images and field recordings about how places carry memory." : bio}
-      portrait={portrait}
-      practices={isSample ? ["Poet", "Sound artist", "Photographer"] : selected}
-      sample={isSample}
-      works={displayWorks.map((entry, index) => ({
-        ...entry,
-        ...(isSample ? {
-          summary: sampleWorkDetails[entry.title]?.summary,
-          alt: sampleWorkDetails[entry.title]?.alt,
-          text: index === 0 ? "The train carries weather from one place to the next—\ncondensing, clearing,\nchanging as we move.\n\nI write the names of stations\non the back of yesterday.\nEach valley holds its breath\nand lets us pass.\n\nAt home, I will remember\nnot the distance,\nbut the window—\nhow it made a room of leaving." : entry.text,
-        } : {}),
-      }))}
-      book={isSample ? { title: "Field notes from the in-between", cover: "/media/creator-preview-book.png", year: "2025", url: "" } : sections.includes("Books") ? book : { title:"",cover:"",year:"",url:"" }}
-      contact={contact}
-      credit={isSample ? { title:"Station fragments",venue:"The Quiet Review",year:"2025",url:"" } : sections.includes("Selected publications") ? credit : { title:"",venue:"",year:"",url:"" }}
-    />;
+    return (
+      <CreatorPortfolioArchive
+        name={displayName}
+        bio={
+          isSample
+            ? "Poems, images and field recordings about how places carry memory."
+            : bio
+        }
+        portrait={portrait}
+        practices={
+          isSample ? ["Poet", "Sound artist", "Photographer"] : selected
+        }
+        sample={isSample}
+        works={displayWorks.map((entry, index) => ({
+          ...entry,
+          ...(isSample
+            ? {
+                summary: sampleWorkDetails[entry.title]?.summary,
+                alt: sampleWorkDetails[entry.title]?.alt,
+                text:
+                  index === 0
+                    ? "The train carries weather from one place to the next—\ncondensing, clearing,\nchanging as we move.\n\nI write the names of stations\non the back of yesterday.\nEach valley holds its breath\nand lets us pass.\n\nAt home, I will remember\nnot the distance,\nbut the window—\nhow it made a room of leaving."
+                    : entry.text,
+              }
+            : {}),
+        }))}
+        book={
+          isSample
+            ? {
+                title: "Field notes from the in-between",
+                cover: "/media/creator-preview-book.webp",
+                year: "2025",
+                url: "",
+              }
+            : sections.includes("Books")
+              ? book
+              : { title: "", cover: "", year: "", url: "" }
+        }
+        contact={contact}
+        credit={
+          isSample
+            ? {
+                title: "Station fragments",
+                venue: "The Quiet Review",
+                year: "2025",
+                url: "",
+              }
+            : sections.includes("Selected publications")
+              ? credit
+              : { title: "", venue: "", year: "", url: "" }
+        }
+      />
+    );
   }
   return (
     <div
@@ -1385,9 +1421,30 @@ export function CreatorPortfolioStudio({
                           </Button>
                           {isPublicStage && (
                             <>
-                              <Button variant="ghost" size="icon" aria-label="X — sample link" onClick={() => setContactDemo(true)}><span aria-hidden="true">𝕏</span></Button>
-                              <Button variant="ghost" size="icon" aria-label="Threads — sample link" onClick={() => setContactDemo(true)}><AtSign aria-hidden="true" /></Button>
-                              <Button variant="ghost" size="icon" aria-label="Facebook — sample link" onClick={() => setContactDemo(true)}><Facebook aria-hidden="true" /></Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="X — sample link"
+                                onClick={() => setContactDemo(true)}
+                              >
+                                <span aria-hidden="true">𝕏</span>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Threads — sample link"
+                                onClick={() => setContactDemo(true)}
+                              >
+                                <AtSign aria-hidden="true" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                aria-label="Facebook — sample link"
+                                onClick={() => setContactDemo(true)}
+                              >
+                                <Facebook aria-hidden="true" />
+                              </Button>
                             </>
                           )}
                         </>
@@ -1422,7 +1479,10 @@ export function CreatorPortfolioStudio({
                 </div>
               </header>
               {isPublicStage ? (
-                <nav className={styles.exhibitionIndex} aria-label="Portfolio sections">
+                <nav
+                  className={styles.exhibitionIndex}
+                  aria-label="Portfolio sections"
+                >
                   <a href="#selected-work">Selected work</a>
                   {isSample && <a href="#about-riley">About</a>}
                   {isSample && <a href="#contact-riley">Contact</a>}
@@ -1445,139 +1505,168 @@ export function CreatorPortfolioStudio({
                 {filter === "All work" ? "All formats" : filter} selected
               </p>
               {visibleWorks.length ? (
-                <section id="selected-work" className={styles.workIndex} aria-label="Selected work">
-                {visibleWorks.map((work, index) => {
-                  const title = work.title;
-                  const image = work.image;
-                  const sampleDetail = isSample
-                    ? sampleWorkDetails[title]
-                    : undefined;
-                  return (
-                    <article
-                      key={`${index}-${title}`}
-                      data-work-position={index % 4}
-                      className={`${styles.project} ${filter === "Writing" || filter === "Sound" || !image ? styles.readingProject : ""}`}
-                    >
-                      {isPublicStage && !image && workFormats(work).includes("Sound") && (
-                        <div className={styles.soundArtwork}>
-                          <span>{isSample ? "Field recording · 2025" : "Audio work"}</span>
-                          <div className={styles.soundLines} aria-hidden="true">
-                            {Array.from({ length: 48 }, (_, bar) => (
-                              <i key={bar} style={{ "--bar-height": `${16 + Math.round(Math.abs(Math.sin(bar * 0.53) * Math.cos(bar * 0.17)) * 88)}px` } as React.CSSProperties} />
-                            ))}
-                          </div>
-                          <span>{isSample ? "Sound & text · audio preview coming soon" : "Sound & text"}</span>
-                        </div>
-                      )}
-                      {image && filter !== "Writing" && filter !== "Sound" && (
-                        <Button variant="ghost"
-                          className={styles.imageButton}
-                          aria-label={`Enlarge image from ${title}`}
-                          onClick={() => {
-                            setViewingWork(work);
-                            setEnlarged(true);
-                          }}
-                        >
-                          <img
-                            className={styles.art}
-                            loading="lazy"
-                            src={image}
-                            alt={
-                              isSample
-                                ? sampleDetail?.alt
-                                : work.title
-                            }
-                          />
-                          <span className={styles.imageAffordance}>
-                            <Expand aria-hidden="true" />
-                            View image
-                          </span>
-                        </Button>
-                      )}
-                      <div className={styles.projectCopy}>
-                        <p className={styles.projectIndex} aria-hidden="true">
-                          <span>{String(index + 1).padStart(2, "0")}</span>
-                          {workFormats(work).join(" / ")}
-                        </p>
-                        <WorkHeading className="font-heading">
-                          {title}
-                        </WorkHeading>
-                        <p className={styles.disciplines}>
-                          {filter === "Images"
-                            ? "Photography"
-                            : filter === "Writing"
-                              ? "Writing"
-                              : filter === "Sound"
-                                ? "Audio"
-                                : isSample
-                                  ? workFormats(work).join(" · ")
-                                  : workFormats(work).join(" · ")}
-                        </p>
-                        {isSample && filter === "Images" && (
-                          <p>{sampleDetail?.alt}.</p>
-                        )}
-                        {isSample && !embedded && filter === "All work" && (
-                          <p>
-                            {sampleDetail?.summary}
-                          </p>
-                        )}
-                        {work.audio &&
-                          !isSample &&
-                          filter !== "Writing" &&
-                          filter !== "Images" && (
-                            <audio
-                              controls
-                              src={work.audio}
-                              aria-label={work.title}
-                            />
+                <section
+                  id="selected-work"
+                  className={styles.workIndex}
+                  aria-label="Selected work"
+                >
+                  {visibleWorks.map((work, index) => {
+                    const title = work.title;
+                    const image = work.image;
+                    const sampleDetail = isSample
+                      ? sampleWorkDetails[title]
+                      : undefined;
+                    return (
+                      <article
+                        key={`${index}-${title}`}
+                        data-work-position={index % 4}
+                        className={`${styles.project} ${filter === "Writing" || filter === "Sound" || !image ? styles.readingProject : ""}`}
+                      >
+                        {isPublicStage &&
+                          !image &&
+                          workFormats(work).includes("Sound") && (
+                            <div className={styles.soundArtwork}>
+                              <span>
+                                {isSample
+                                  ? "Field recording · 2025"
+                                  : "Audio work"}
+                              </span>
+                              <div
+                                className={styles.soundLines}
+                                aria-hidden="true"
+                              >
+                                {Array.from({ length: 48 }, (_, bar) => (
+                                  <i
+                                    key={bar}
+                                    style={
+                                      {
+                                        "--bar-height": `${16 + Math.round(Math.abs(Math.sin(bar * 0.53) * Math.cos(bar * 0.17)) * 88)}px`,
+                                      } as React.CSSProperties
+                                    }
+                                  />
+                                ))}
+                              </div>
+                              <span>
+                                {isSample
+                                  ? "Sound & text · audio preview coming soon"
+                                  : "Sound & text"}
+                              </span>
+                            </div>
                           )}
-                        {filter !== "Images" &&
-                          filter !== "Sound" &&
-                          (!isPublicStage || workFormats(work).includes("Writing")) && (
-                          <p className={styles.poem}>
-                            {isSample
-                              ? sampleDetail?.excerpt
-                              : work.text.slice(0, 180)}
-                          </p>
-                        )}
-                        {filter !== "Images" &&
-                          filter !== "Sound" &&
-                          (!isPublicStage || workFormats(work).includes("Writing")) &&
-                          (isSample || work.text) && (
+                        {image &&
+                          filter !== "Writing" &&
+                          filter !== "Sound" && (
                             <Button
-                              variant="outline"
+                              variant="ghost"
+                              className={styles.imageButton}
+                              aria-label={`Enlarge image from ${title}`}
                               onClick={() => {
                                 setViewingWork(work);
-                                setRead(true);
+                                setEnlarged(true);
                               }}
                             >
-                              <BookOpen aria-hidden="true" />
-                              {isSample ? (workFormats(work).includes("Sound") ? "Read accompanying text" : "Read poem") : "Read full text"}
+                              <img
+                                className={styles.art}
+                                loading="lazy"
+                                src={image}
+                                alt={isSample ? sampleDetail?.alt : work.title}
+                              />
+                              <span className={styles.imageAffordance}>
+                                <Expand aria-hidden="true" />
+                                View image
+                              </span>
                             </Button>
                           )}
-                        {!isSample && publicWebUrl(work.url ?? "") && (
-                          <p>
-                            <span className={styles.workSource}>
-                              {new URL(
-                                publicWebUrl(work.url ?? "")!,
-                              ).hostname.replace(/^www\./, "")}
-                            </span>
-                            <a
-                              className={buttonVariants({ variant: "outline" })}
-                              href={publicWebUrl(work.url ?? "")}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              aria-label={`Open ${work.title} (opens in new tab)`}
-                            >
-                              Read work
-                              <ArrowUpRight aria-hidden="true" />
-                            </a>
+                        <div className={styles.projectCopy}>
+                          <p className={styles.projectIndex} aria-hidden="true">
+                            <span>{String(index + 1).padStart(2, "0")}</span>
+                            {workFormats(work).join(" / ")}
                           </p>
-                        )}
-                      </div>
-                    </article>
-                  );
-                })}
+                          <WorkHeading className="font-heading">
+                            {title}
+                          </WorkHeading>
+                          <p className={styles.disciplines}>
+                            {filter === "Images"
+                              ? "Photography"
+                              : filter === "Writing"
+                                ? "Writing"
+                                : filter === "Sound"
+                                  ? "Audio"
+                                  : isSample
+                                    ? workFormats(work).join(" · ")
+                                    : workFormats(work).join(" · ")}
+                          </p>
+                          {isSample && filter === "Images" && (
+                            <p>{sampleDetail?.alt}.</p>
+                          )}
+                          {isSample && !embedded && filter === "All work" && (
+                            <p>{sampleDetail?.summary}</p>
+                          )}
+                          {work.audio &&
+                            !isSample &&
+                            filter !== "Writing" &&
+                            filter !== "Images" && (
+                              <audio
+                                controls
+                                src={work.audio}
+                                aria-label={work.title}
+                              />
+                            )}
+                          {filter !== "Images" &&
+                            filter !== "Sound" &&
+                            (!isPublicStage ||
+                              workFormats(work).includes("Writing")) && (
+                              <p className={styles.poem}>
+                                {isSample
+                                  ? sampleDetail?.excerpt
+                                  : work.text.slice(0, 180)}
+                              </p>
+                            )}
+                          {filter !== "Images" &&
+                            filter !== "Sound" &&
+                            (!isPublicStage ||
+                              workFormats(work).includes("Writing")) &&
+                            (isSample || work.text) && (
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setViewingWork(work);
+                                  setRead(true);
+                                }}
+                              >
+                                <BookOpen aria-hidden="true" />
+                                {isSample
+                                  ? workFormats(work).includes("Sound")
+                                    ? "Read accompanying text"
+                                    : "Read poem"
+                                  : "Read full text"}
+                              </Button>
+                            )}
+                          {!isSample && publicWebUrl(work.url ?? "") && (
+                            <p>
+                              <span className={styles.workSource}>
+                                {new URL(
+                                  publicWebUrl(work.url ?? "")!,
+                                ).hostname.replace(/^www\./, "")}
+                              </span>
+                              <a
+                                className={buttonVariants({
+                                  variant: "outline",
+                                })}
+                                href={publicWebUrl(work.url ?? "")}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`Open ${work.title} (opens in new tab)`}
+                              >
+                                Read work
+                                <ArrowUpRight aria-hidden="true" />
+                              </a>
+                            </p>
+                          )}
+                        </div>
+                      </article>
+                    );
+                  })}
                 </section>
               ) : (
                 <p className={styles.empty}>
@@ -1617,7 +1706,7 @@ export function CreatorPortfolioStudio({
                               className={styles.cover}
                               src={
                                 isSample
-                                  ? "/media/creator-preview-book.png"
+                                  ? "/media/creator-preview-book.webp"
                                   : book.cover
                               }
                               alt=""
@@ -1769,7 +1858,11 @@ export function CreatorPortfolioStudio({
                           variant="ghost"
                           onClick={() => setContactDemo(true)}
                         >
-                          {Icon ? <Icon aria-hidden="true" /> : <span aria-hidden="true">𝕏</span>}
+                          {Icon ? (
+                            <Icon aria-hidden="true" />
+                          ) : (
+                            <span aria-hidden="true">𝕏</span>
+                          )}
                           {label as string}
                         </Button>
                       ))}
@@ -1873,7 +1966,7 @@ export function CreatorPortfolioStudio({
           {sampleDetail === "book" && (
             <img
               className={styles.cover}
-              src="/media/creator-preview-book.png"
+              src="/media/creator-preview-book.webp"
               alt="Field notes from the in-between cover"
             />
           )}

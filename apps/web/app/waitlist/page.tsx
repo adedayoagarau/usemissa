@@ -7,6 +7,7 @@ import { WaitlistForm } from './waitlist-form';
 import { WaitlistArtwork } from './waitlist-artwork';
 import { WaitlistFaq } from './waitlist-faq';
 import { waitlistFaqs } from './waitlist-faq-content';
+import { StickyMobileCta } from '@/components/missa/sticky-mobile-cta';
 import styles from './waitlist.module.css';
 
 const waitlistDescription = 'Missa helps you find the calls that fit your work, prepare what you need, and stay on top of every deadline—with the original source close at hand.';
@@ -54,7 +55,7 @@ export default async function WaitlistPage({ searchParams }: { searchParams?: Pr
             <h1 id="waitlist-heading"><span>There is a god in every door.</span><span>And a door, and a door, and a door.</span></h1>
             <div className={styles.conversionBlock}>
               <p className={styles.description}>{waitlistDescription}</p>
-              <div className={styles.joinBlock}>
+              <div className={styles.joinBlock} id="waitlist-join">
                 <WaitlistForm />
                 <p className={styles.finePrint}><LockKeyhole aria-hidden="true" /> For creators and organizations.</p>
               </div>
@@ -70,6 +71,9 @@ export default async function WaitlistPage({ searchParams }: { searchParams?: Pr
         <span>Opportunities for creative work, with the source and limits kept visible.</span>
         <Link href="/privacy">Privacy</Link>
       </footer>
+      <StickyMobileCta anchorId="waitlist-join" href="#waitlist-join">
+        Join the waitlist
+      </StickyMobileCta>
     </div>
   );
 }

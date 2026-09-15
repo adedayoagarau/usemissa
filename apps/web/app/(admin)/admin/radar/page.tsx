@@ -27,7 +27,7 @@ export default async function PlatformAdminRadarPage({
       value: data.sourceHealth.summary.stale,
       detail: "past cadence",
       href: "/admin/radar?focus=stale-sources",
-      tone: "text-amber-700",
+      tone: "text-warning",
     },
     {
       label: "Checked",
@@ -41,14 +41,14 @@ export default async function PlatformAdminRadarPage({
       value: data.sourceHealth.summary.successfulFetch,
       detail: "successful fetch",
       href: "/admin/radar?focus=source-health",
-      tone: "text-blue-700",
+      tone: "text-information",
     },
     {
       label: "Processed",
       value: data.sourceHealth.summary.processed,
       detail: "content processed",
       href: "/admin/radar?focus=source-health",
-      tone: "text-green-700",
+      tone: "text-success",
     },
     {
       label: "Review",
@@ -68,7 +68,7 @@ export default async function PlatformAdminRadarPage({
           description="Opportunity freshness, lifecycle, evidence quality, publication queues, and claim review from the current Missa source store."
         />
         {focus && (
-          <p className="rounded-lg border border-primary/30 bg-accent-tint px-4 py-3 text-sm text-accent-deep">
+          <p className="rounded-lg border border-information/30 bg-information-subtle px-4 py-3 text-sm text-information">
             Focused queue:{" "}
             <span className="font-medium">{focus.replaceAll("-", " ")}</span>.
             The table below remains a read-only view of the same current store.
@@ -148,7 +148,7 @@ export default async function PlatformAdminRadarPage({
               <li key={stage.label}>
                 <Link
                   href={stage.href}
-                  className="group block min-h-24 border border-border bg-white p-4 transition-colors hover:border-primary/50 hover:bg-muted/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="group block min-h-24 border border-border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-muted/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -212,7 +212,7 @@ export default async function PlatformAdminRadarPage({
               </div>
               <div>
                 <dt className="text-muted-foreground">Stale</dt>
-                <dd className="mt-1 font-mono text-lg text-amber-700">
+                <dd className="mt-1 font-mono text-lg text-warning">
                   {data.sourceHealth.summary.stale}
                 </dd>
               </div>

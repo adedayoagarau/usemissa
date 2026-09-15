@@ -1,5 +1,5 @@
 import { hashPassword, verifyPassword, type Account, type OrgMembership, type OrgRole } from "@missa/radar-engine";
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
 import { CreatorRepositoryBase } from "./creatorRepository.js";
 
@@ -10,6 +10,20 @@ const ROLES = new Set<OrgRole>(["member", "admin", "owner", "team-admin", "progr
 
 function accountFromRow(row: AccountRow): Account {
   return { ...row.data, id: row.id, email: row.email };
+}
+
+async function ensureCreatorProductRows(client: Pick<PoolClient, "query">, account: Account): Promise<void> {
+  if (!account.userId) return;
+  const displayName = account.displayName?.trim().slice(0, 120)
+    || account.email.split("@")[0]?.slice(0, 120)
+    || "Missa creator";
+  await client.query(
+    "insert into creator_profiles (account_id,user_id,display_name) values ($1,$2,$3) on conflict (account_id) do nothing",
+    [account.id, account.userId, displayName],
+  );
+  await client.query("insert into opportunity_preferences (account_id) values ($1) on conflict (account_id) do nothing", [account.id]);
+  await client.query("insert into notification_preferences (account_id) values ($1) on conflict (account_id) do nothing", [account.id]);
+  await client.query("insert into creator_product_states (account_id) values ($1) on conflict (account_id) do nothing", [account.id]).catch(() => undefined);
 }
 
 export class CreatorAccountProvisionError extends Error {
@@ -57,6 +71,22 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
     const account = await this.accountByEmail(email.trim().toLowerCase());
     if (!account || account.active === false || !verifyPassword(password, account.passwordHash)) return undefined;
     return account;
+  }
+
+  /** Reconcile creator aggregates only at an explicit authentication boundary. */
+  async ensureProductData(account: Account): Promise<void> {
+    const client = await this.database.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("select id from radar_accounts where id=$1 for update", [account.id]);
+      await ensureCreatorProductRows(client, account);
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async updatePassword(accountId: string, newPassword: string): Promise<boolean> {
@@ -159,7 +189,7 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
       if (mapped.rows[0]) {
         const account = accountFromRow(mapped.rows[0]);
         if (account.active === false) throw new CreatorAccountProvisionError("inactive");
-        await client.query("insert into notification_preferences (account_id) values ($1) on conflict (account_id) do nothing", [account.id]);
+        await ensureCreatorProductRows(client, account);
         await client.query("COMMIT");
         return { account, created: false };
       }
@@ -170,7 +200,7 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
         if (!input.emailVerified) throw new CreatorAccountProvisionError("verification-required");
         const linked: Account = { ...account, authProvider: "neon-auth", authUserId: input.authUserId };
         await client.query("update radar_accounts set data=$2::jsonb, updated_at=now() where id=$1", [account.id, JSON.stringify(linked)]);
-        await client.query("insert into notification_preferences (account_id) values ($1) on conflict (account_id) do nothing", [account.id]);
+        await ensureCreatorProductRows(client, linked);
         await client.query("COMMIT");
         return { account: linked, created: false };
       }

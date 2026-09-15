@@ -16,6 +16,13 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine } from "@/lib/engine";
 import { getCreatorPreferenceRepository, getCreatorProfileRepository } from "@/lib/creatorRepositories";
 
+export const metadata = {
+  title: "Your Missa profile",
+  description:
+    "Your identity, preferences, privacy, and public preview settings in Missa.",
+  robots: { index: false, follow: false },
+};
+
 const PROFILE_SECTION_VALUES: readonly ProfileSection[] = [
   "overview",
   "identity",
@@ -83,7 +90,7 @@ export default async function ProfilePage({
       },
     };
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-background">
         <AppNav
           email={session.account.email}
           userId={creator.userId}
@@ -159,7 +166,7 @@ export default async function ProfilePage({
     }));
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <AppNav
         email={session.account.email}
         userId={session.account.userId}

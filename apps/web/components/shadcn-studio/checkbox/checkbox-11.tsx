@@ -27,7 +27,7 @@ const CheckboxCustomIconsDemo = () => {
           <StarIcon className='stroke-1' />
         </span>
         <span className='in-data-unchecked:hidden'>
-          <StarIcon className='fill-amber-500 stroke-amber-500 stroke-1 text-amber-500 dark:fill-amber-400 dark:stroke-amber-400 dark:text-amber-400' />
+          <StarIcon className='fill-warning stroke-warning stroke-1 text-warning dark:fill-warning dark:stroke-warning dark:text-warning' />
         </span>
       </CheckboxPrimitive.Root>
       <CheckboxPrimitive.Root
@@ -40,7 +40,7 @@ const CheckboxCustomIconsDemo = () => {
           <CircleIcon className='stroke-1' />
         </span>
         <span className='in-data-unchecked:hidden'>
-          <CircleIcon className='fill-green-600 stroke-green-600 stroke-1 text-green-600 dark:fill-green-400 dark:stroke-green-400 dark:text-green-400' />
+          <CircleIcon className='fill-success stroke-success stroke-1 text-success dark:fill-success dark:stroke-success dark:text-success' />
         </span>
       </CheckboxPrimitive.Root>
     </div>

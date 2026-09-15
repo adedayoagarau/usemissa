@@ -20,16 +20,16 @@
 .directionIntro { display: flex; align-items: center; gap: 14px; padding: 12px 28px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, #fff 98%, var(--muted) 2%); }
 .directionIntro > span { color: var(--primary); font-family: var(--font-mono), monospace; font-size: 12px; }
 .directionIntro p { margin: 0; color: var(--muted-foreground); font-size: 10px; }
-.directionIntro h2 { margin: 1px 0; font-family: var(--font-heading), Georgia, serif; font-size: 17px; font-weight: 600; }
+.directionIntro h2 { margin: 1px 0; font-family: var(--font-sans), system-ui, sans-serif; font-size: 17px; font-weight: 650; }
 .directionIntro > [data-slot='badge'] { margin-left: auto; }
 .eyebrow { margin: 0; color: var(--muted-foreground); font-family: var(--font-mono), monospace; font-size: 9px; text-transform: uppercase; letter-spacing: .13em; }
 .chooserMain { width: min(860px, calc(100% - 32px)); margin: 0 auto; padding: 58px 0 80px; }
 .chooserMain > header { max-width: 620px; }
-.chooserMain > header h1, .pageHeader h1 { margin: 8px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(32px, 5vw, 45px); font-weight: 600; letter-spacing: -.025em; }
+.chooserMain > header h1, .pageHeader h1 { margin: 8px 0 0; font-family: var(--font-sans), system-ui, sans-serif; font-size: clamp(32px, 5vw, 40px); font-weight: 650; letter-spacing: -.025em; }
 .chooserMain > header > p:last-child, .pageHeader > div > p:last-child { margin: 9px 0 0; color: var(--muted-foreground); font-size: 13px; line-height: 1.6; }
 .chooserMain > [data-slot='alert'] { margin-top: 24px; }
 .invitation { display: grid; align-items: center; gap: 24px; margin-top: 28px; padding: 22px; border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border)); border-radius: 12px; background: color-mix(in srgb, #fff 97%, var(--primary) 3%); grid-template-columns: 1fr auto; }
-.invitation h2, .noMembership h2 { margin: 6px 0; font-family: var(--font-heading), Georgia, serif; font-size: 23px; font-weight: 600; }
+.invitation h2, .noMembership h2 { margin: 6px 0; font-family: var(--font-sans), system-ui, sans-serif; font-size: 23px; font-weight: 650; }
 .invitation p:last-child, .noMembership p { margin: 0; color: var(--muted-foreground); font-size: 12px; line-height: 1.6; }
 .invitation > div:last-child { display: flex; gap: 8px; }
 .noMembership { display: grid; justify-items: start; gap: 8px; margin-top: 32px; padding: 44px; border: 1px dashed var(--border); border-radius: 12px; }
@@ -80,7 +80,7 @@
 .attentionQueue, .attentionCompact, .lifecycle, .opportunitiesTable { margin-top: 24px; }
 .attentionQueue > header, .attentionCompact > header, .lifecycle > header, .opportunitiesTable > header { display: flex; align-items: end; gap: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 .attentionQueue > header > div, .attentionCompact > header > div, .lifecycle > header > div, .opportunitiesTable > header > div { margin-right: auto; }
-.attentionQueue h2, .attentionCompact h2, .lifecycle h2, .opportunitiesTable h2 { margin: 4px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: 20px; font-weight: 600; }
+.attentionQueue h2, .attentionCompact h2, .lifecycle h2, .opportunitiesTable h2 { margin: 4px 0 0; font-family: var(--font-sans), system-ui, sans-serif; font-size: 20px; font-weight: 650; }
 .attentionQueue > header > span, .attentionCompact > header > span { color: var(--primary); font-family: var(--font-mono), monospace; font-size: 13px; }
 .attentionQueue > div > article, .attentionCompact > div > article { display: grid; min-height: 72px; align-items: center; gap: 13px; padding: 12px 0; border-bottom: 1px solid var(--border); grid-template-columns: auto minmax(0, 1fr) auto; }
 .attentionQueue article > svg, .attentionCompact article > svg { width: 18px; height: 18px; }
@@ -119,11 +119,18 @@
 .ledgerContext { display: grid; align-items: center; gap: 18px; padding: 14px 30px; border-bottom: 1px solid var(--border); grid-template-columns: minmax(240px, 360px) 1fr auto; }
 .ledgerContext > div { display: grid; gap: 2px; padding-left: 18px; border-left: 1px solid var(--border); }
 .ledgerContext > div span { color: var(--muted-foreground); font-size: 9px; }
-.ledgerContext > div strong { font-family: var(--font-heading), Georgia, serif; font-size: 16px; }
+.ledgerContext > div strong { font-family: var(--font-sans), system-ui, sans-serif; font-size: 16px; font-weight: 650; }
 .horizontalNav { display: flex; overflow-x: auto; gap: 20px; padding: 0 32px; border-bottom: 1px solid var(--border); scrollbar-width: thin; }
 .horizontalNav a { display: flex; min-height: 44px; flex: none; align-items: center; gap: 7px; border-bottom: 2px solid transparent; color: var(--muted-foreground); font-size: 10px; text-decoration: none; }
 .horizontalNav a svg { width: 14px; }
 .horizontalNav a[aria-current='page'] { border-bottom-color: var(--primary); color: var(--foreground); font-weight: 650; }
+.mobileNavigationContext { min-width: 0; }
+.mobileNavigationButton { display: none; }
+.mobileNavigationSheet { width: min(92vw, 420px); max-width: 420px; padding: 0; overflow-y: auto; }
+.mobileNavigationTitle { font-family: var(--font-sans), system-ui, sans-serif; font-weight: 650; }
+.mobileNavigationSheet .sideNav { display: grid; gap: 0; margin: 0; padding: 8px 16px 24px; }
+.mobileNavigationSheet .sideNav a { min-height: 48px; padding: 0; border-left: 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.mobileNavigationSheet .sideNav a[aria-current='page'] { background: transparent; color: var(--primary); }
 .organizationShell:has(.horizontalNav) { display: block; }
 .deskGrid { display: grid; align-items: start; gap: 24px; grid-template-columns: minmax(280px, .8fr) minmax(0, 1.5fr); }
 .attentionCompact { position: sticky; top: 74px; padding-right: 20px; border-right: 1px solid var(--border); }
@@ -166,7 +173,6 @@
   .reviewBar select { width: 100%; min-width: 0; min-height: 44px; }
   .appHeader { min-height: 58px; gap: 14px; padding: 0 16px; }
   .appHeader nav, .headerActions > button:first-child, .headerActions > button:nth-child(2) { display: none; }
-  .headerActions::before { display: grid; width: 44px; height: 44px; place-items: center; content: '☰'; font-size: 17px; }
   .avatar { width: 44px; height: 44px; }
   .directionIntro { padding: 10px 16px; }
   .directionIntro > [data-slot='badge'] { display: none; }
@@ -185,7 +191,10 @@
   .organizationRow button svg { margin: 0; }
   .organizationShell { display: block; }
   .organizationRail { display: block; padding: 12px 16px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .mobileNavigationContext { display: grid; align-items: center; gap: 8px; grid-template-columns: minmax(0, 1fr) auto; }
+  .mobileNavigationButton { display: inline-flex; width: 44px; height: 44px; }
   .organizationSwitcher { min-height: 58px; }
+  .organizationRail > .sideNav { display: none; }
   .sideNav { display: flex; overflow-x: auto; gap: 14px; margin-top: 10px; padding-bottom: 2px; scrollbar-width: thin; }
   .sideNav a { min-height: 44px; flex: none; padding: 0 2px; border-left: 0; border-bottom: 2px solid transparent; }
   .sideNav a[aria-current='page'] { border-bottom-color: var(--primary); background: transparent; }
@@ -215,6 +224,8 @@
   .ledgerContext { align-items: stretch; padding: 12px 16px; grid-template-columns: 1fr; }
   .ledgerContext > div { display: none; }
   .ledgerContext > button:last-child { display: none; }
+  .ledgerContext > .mobileNavigationButton { display: inline-flex; width: 44px; height: 44px; }
+  .organizationShell > .horizontalNav { display: none; }
   .horizontalNav { padding: 0 16px; }
   .horizontalNav a { min-height: 48px; }
   .liveStatus { right: 12px; bottom: 12px; max-width: calc(100% - 24px); min-height: 44px; }

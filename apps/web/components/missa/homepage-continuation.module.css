@@ -34,9 +34,9 @@
 .people,
 .questions,
 .footer {
-  max-width: 1240px;
+  max-width: 1360px;
   margin: auto;
-  padding-inline: 48px;
+  padding-inline: 64px;
 }
 .how {
   padding-top: 80px;
@@ -45,7 +45,19 @@
 .opportunityGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
   gap: 24px;
+}
+.opportunityGrid > article {
+  height: auto;
+}
+@container homepage-rest (min-width: 761px) {
+  .opportunityGrid h2 {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
+  }
 }
 .opportunitySkeleton {
   min-height: 460px;
@@ -301,7 +313,7 @@
   color: var(--home-active-ink);
   max-width: none;
   margin: 0;
-  padding: 80px 48px;
+  padding: 80px 64px;
   text-align: center;
   border-radius: 0;
   overflow: hidden;
@@ -428,7 +440,11 @@
   .people,
   .questions,
   .footer {
-    padding-inline: 32px;
+    padding-inline: 40px;
+  }
+
+  .invitation {
+    padding-inline: 40px;
   }
   .opportunityGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

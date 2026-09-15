@@ -43,7 +43,7 @@ const ContactUSFormDemo = () => {
 
   function onSubmit() {
     toast.custom(() => (
-      <Alert className='border-green-600 text-green-600 sm:w-122 dark:border-green-400 dark:text-green-400 *:[svg]:row-span-1'>
+      <Alert className='border-success text-success sm:w-122 dark:border-success dark:text-success *:[svg]:row-span-1'>
         <CheckCheckIcon
         />
         <AlertTitle>Issue submitted successfully! Our team will reach out to you shortly.</AlertTitle>

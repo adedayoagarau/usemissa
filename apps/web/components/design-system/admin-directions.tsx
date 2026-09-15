@@ -226,12 +226,34 @@ function AdminHeader({ navOpen, onNavOpen }: { navOpen: boolean; onNavOpen: () =
 }
 
 function PlatformStrip({ fixture }: { fixture: Fixture }) {
-  const worker = fixture === 'worker-running' ? ['Running', 'Worker-confirmed heartbeat'] : fixture === 'worker-stale' ? ['Stale', 'Heartbeat outside policy'] : fixture === 'worker-failed' ? ['Failed', 'Latest durable run failed'] : fixture === 'worker-unknown' || fixture === 'latest-run-only' ? ['Unknown', 'No current heartbeat'] : ['Running', '2 lanes acknowledged']
-  const source = fixture === 'source-fetch-failed' ? ['Fetch failed', '0 snapshots produced'] : fixture === 'source-process-failed' ? ['Processing failed', 'Snapshot retained'] : fixture === 'partial' ? ['Partial', 'One source store loaded'] : ['6 / 6 processed', '1 conflict to review']
+  const worker = fixture === 'worker-running' ? ['Running', 'Worker-confirmed heartbeat'] : fixture === 'worker-stale' ? ['Stale', 'Heartbeat outside policy'] : fixture === 'worker-failed' ? ['Failed', 'Latest durable run failed'] : fixture === 'worker-unknown' ? ['Unknown', 'No current heartbeat'] : ['Running', '2 lanes acknowledged']
+  const source = fixture === 'source-fetch-failed' ? ['Fetch failed', '0 snapshots produced'] : fixture === 'source-process-failed' ? ['Processing failed', 'Snapshot retained'] : ['6 / 6 processed', '1 conflict to review']
   const messages = fixture === 'messaging-partial' ? ['Partly delivered', '3 failed effects'] : ['12 accepted', '0 pending effects']
   const billing = fixture === 'billing-past-due' || fixture === 'billing-mismatch' ? ['Attention', '1 reconciliation item'] : ['Observed', 'No inferred revenue']
-  const entries = [{ icon: Activity, label: 'Worker', value: worker[0], detail: worker[1] }, { icon: Network, label: 'Sources', value: source[0], detail: source[1] }, { icon: Mail, label: 'Messaging', value: messages[0], detail: messages[1] }, { icon: CircleDollarSign, label: 'Billing', value: billing[0], detail: billing[1] }]
-  return <section className={styles.platformStrip} aria-labelledby='platform-state-title'><header><div><p className={styles.eyebrow}>Observed platform state</p><h2 id='platform-state-title'>Current signals</h2></div><span>Read 8 Aug · 6:42 PM</span></header><div>{entries.map((entry) => { const Icon = entry.icon; return <article key={entry.label}><Icon aria-hidden='true' /><span><small>{entry.label}</small><strong>{entry.value}</strong><em>{entry.detail}</em></span></article> })}</div></section>
+  const currentEntries = [
+    { icon: Activity, label: 'Worker', value: worker[0], detail: worker[1], provenance: 'Worker heartbeat read' },
+    { icon: Network, label: 'Sources', value: source[0], detail: source[1], provenance: 'Source processing ledger' },
+    { icon: Mail, label: 'Messaging', value: messages[0], detail: messages[1], provenance: 'Message effects ledger' },
+    { icon: CircleDollarSign, label: 'Billing', value: billing[0], detail: billing[1], provenance: 'Billing reconciliation ledger' },
+  ]
+  const entries = fixture === 'unavailable' ? [
+    { icon: Activity, label: 'Worker', value: 'Unavailable', detail: 'No current worker read', provenance: 'Admin read model unavailable' },
+    { icon: Network, label: 'Sources', value: 'Unavailable', detail: 'No current source read', provenance: 'Admin read model unavailable' },
+    { icon: Mail, label: 'Messaging', value: 'Unavailable', detail: 'No current message read', provenance: 'Admin read model unavailable' },
+    { icon: CircleDollarSign, label: 'Billing', value: 'Unavailable', detail: 'No current billing read', provenance: 'Admin read model unavailable' },
+  ] : fixture === 'partial' ? [
+    { icon: Activity, label: 'Worker', value: 'Unavailable', detail: 'Worker read not loaded', provenance: 'Partial Admin read model' },
+    { icon: Network, label: 'Sources', value: 'Partial', detail: 'One source store loaded', provenance: 'Source store only' },
+    { icon: Mail, label: 'Messaging', value: 'Unavailable', detail: 'Message effects not loaded', provenance: 'Partial Admin read model' },
+    { icon: CircleDollarSign, label: 'Billing', value: 'Unavailable', detail: 'Billing ledger not loaded', provenance: 'Partial Admin read model' },
+  ] : fixture === 'latest-run-only' ? [
+    { icon: Activity, label: 'Worker', value: 'Last known', detail: 'No current heartbeat', provenance: 'Latest durable run only' },
+    { icon: Network, label: 'Sources', value: 'Last known', detail: 'Current source state unknown', provenance: 'Latest durable run only' },
+    { icon: Mail, label: 'Messaging', value: 'Last known', detail: 'Current delivery state unknown', provenance: 'Latest durable run only' },
+    { icon: CircleDollarSign, label: 'Billing', value: 'Last known', detail: 'Current ledger state unknown', provenance: 'Latest durable run only' },
+  ] : currentEntries
+  const readLabel = fixture === 'unavailable' ? 'Read unavailable · retry required' : fixture === 'partial' ? 'Partial read · 8 Aug · 6:42 PM' : fixture === 'latest-run-only' ? 'Last known read · 8 Aug · 6:42 PM' : 'Read 8 Aug · 6:42 PM'
+  return <section className={styles.platformStrip} aria-labelledby='platform-state-title'><header><div><p className={styles.eyebrow}>Observed platform state</p><h2 id='platform-state-title'>Current signals</h2></div><span>{readLabel}</span></header><div>{entries.map((entry) => { const Icon = entry.icon; return <article key={entry.label}><Icon aria-hidden='true' /><span><small>{entry.label}</small><strong>{entry.value}</strong><em>{entry.detail}</em><small className={styles.signalProvenance}>Source: {entry.provenance}</small></span></article> })}</div></section>
 }
 
 function Warning({ fixture }: { fixture: Fixture }) {
@@ -338,7 +360,7 @@ function AdminExperience({ selectedOnly }: { selectedOnly: boolean }) {
 
   const shared: SharedProps = { query, severity, selected, mobileDetail, onQuery: setQuery, onSeverity: setSeverity, onSelect: selectRow, onBack: backToList, onClear: () => { setQuery(''); setSeverity('all') }, onStatus: setStatus }
 
-  return <div className={styles.page}><DirectionControls direction={activeDirection} fixture={fixture} selectedOnly={selectedOnly} onDirection={(value) => { setDirection(value); setMobileDetail(false); setStatus('') }} onFixture={changeFixture} /><DirectionIntro direction={activeDirection} selectedOnly={selectedOnly} /><div className={styles.adminShell} data-direction={activeDirection}><aside className={styles.sidebar}><div className={styles.brand}><MissaWordmark href={null} size='compact' /><span>Platform Admin</span></div><AdminNavigation compact={activeDirection === 'index'} /><footer><span>PA</span><div><strong>Platform operator</strong><small>Read + request access</small></div></footer></aside><section className={styles.shellBody}><AdminHeader navOpen={navOpen} onNavOpen={() => setNavOpen((open) => !open)} />{navOpen ? <div id='admin-mobile-navigation' className={styles.mobileNavigation}><AdminNavigation mobile /></div> : null}<main id='admin-main' className={styles.main}><PageHeading fixture={fixture} rowCount={rows.length} /><Warning fixture={fixture} />{activeDirection === 'ledger' ? <CommandLedger rows={rows} fixture={fixture} shared={shared} /> : activeDirection === 'control' ? <EvidenceControlRoom rows={rows} fixture={fixture} shared={shared} /> : <DomainIndex rows={rows} fixture={fixture} shared={shared} />}</main></section></div><p className={styles.liveStatus} role='status' aria-live='polite'>{status}{status ? <Check aria-hidden='true' /> : null}</p></div>
+  return <div className={styles.page}><section aria-label='Admin design review'><DirectionControls direction={activeDirection} fixture={fixture} selectedOnly={selectedOnly} onDirection={(value) => { setDirection(value); setMobileDetail(false); setStatus('') }} onFixture={changeFixture} /><DirectionIntro direction={activeDirection} selectedOnly={selectedOnly} /></section><div className={styles.adminShell} data-direction={activeDirection}><aside className={styles.sidebar}><div className={styles.brand}><MissaWordmark href={null} size='compact' /><span>Platform Admin</span></div><AdminNavigation compact={activeDirection === 'index'} /><footer><span>PA</span><div><strong>Platform operator</strong><small>Read + request access</small></div></footer></aside><div className={styles.shellBody}><AdminHeader navOpen={navOpen} onNavOpen={() => setNavOpen((open) => !open)} />{navOpen ? <div id='admin-mobile-navigation' className={styles.mobileNavigation}><AdminNavigation mobile /></div> : null}<main id='admin-main' className={styles.main}><PageHeading fixture={fixture} rowCount={rows.length} /><Warning fixture={fixture} />{activeDirection === 'ledger' ? <CommandLedger rows={rows} fixture={fixture} shared={shared} /> : activeDirection === 'control' ? <EvidenceControlRoom rows={rows} fixture={fixture} shared={shared} /> : <DomainIndex rows={rows} fixture={fixture} shared={shared} />}<p className={styles.liveStatus} role='status' aria-live='polite'>{status}{status ? <Check aria-hidden='true' /> : null}</p></main></div></div></div>
 }
 
 export function AdminDirections() {

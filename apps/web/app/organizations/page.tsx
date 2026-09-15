@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { DirectoryCategoryPage } from "@/components/directory-category-page";
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "Galleries & arts organizations",
+  title: "Visual arts organizations & galleries",
   description:
-    "Explore galleries, nonprofits and visual arts organizations worldwide.",
+    "Browse the visual arts section of Missa’s organization directory, including galleries, nonprofits and arts organizations worldwide.",
 };
 export default function Page({
   searchParams,
@@ -15,8 +15,8 @@ export default function Page({
     <DirectoryCategoryPage
       kind="visual_arts_organization"
       basePath="/organizations"
-      title="Connect with the arts community."
-      description="Explore galleries, nonprofits and visual arts organizations worldwide."
+      title="Explore visual arts organizations."
+      description="Browse galleries, nonprofits and visual arts organizations in this section of the wider organization directory."
       searchParams={searchParams}
     />
   );

@@ -24,7 +24,16 @@ export type PlanningEvent = {
   previousDeadline?: string;
   deadlineChangedAt?: string;
   deadlineReconciliationStatus?: "current" | "needs-review" | "dismissed";
+  deadlineTime?: string;
+  deadlineTimezone?: string;
 };
+
+export function canSetDeadlineReminder(event: PlanningEvent): boolean {
+  return (
+    event.kind === "tracker" &&
+    ["application-deadline", "official-deadline"].includes(event.purpose ?? "")
+  );
+}
 type GoalDate = {
   id: string;
   title: string;
@@ -62,6 +71,10 @@ const day = (
   sourceId?: string,
   sourceRevision?: number,
   opportunityId?: string,
+  details?: Pick<
+    PlanningEvent,
+    "purpose" | "deadlineTime" | "deadlineTimezone"
+  >,
 ): PlanningEvent => ({
   id,
   title,
@@ -76,6 +89,7 @@ const day = (
   sourceId,
   sourceRevision,
   opportunityId,
+  ...details,
 });
 export function calendarSourceEvents(
   items: CreatorCalendarItem[],
@@ -104,6 +118,7 @@ export function calendarSourceEvents(
           undefined,
           undefined,
           item.opportunityId,
+          { purpose: "application-open" },
         ),
       );
     }
@@ -123,6 +138,11 @@ export function calendarSourceEvents(
           undefined,
           undefined,
           item.opportunityId,
+          {
+            purpose: "application-deadline",
+            deadlineTime: item.deadlineTime,
+            deadlineTimezone: item.deadlineTimezone,
+          },
         ),
       );
     if (item.expectedResponseBy && awaiting.has(item.myStatus))
@@ -137,6 +157,7 @@ export function calendarSourceEvents(
           undefined,
           undefined,
           item.opportunityId,
+          { purpose: "response-check-in" },
         ),
       );
   }

@@ -29,6 +29,7 @@ import {
 import { goalDirections, opportunityTypes } from "@/lib/goal-options";
 import { RecommendationsWorkspace } from "./recommendations-workspace";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { GoalSubmissionProgress } from "./goal-submission-progress";
 
 type Target = {
@@ -441,30 +442,31 @@ export function GoalsWorkspace() {
               </h2>
               {step === 0 && (
                 <>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <RadioGroup
+                    aria-label="Goal direction"
+                    value={direction}
+                    onValueChange={(value) => {
+                      setDirection(value);
+                      setCount(value === "publish" ? "12" : "1");
+                      setTargets([]);
+                      setNext("");
+                    }}
+                    className="grid gap-3 sm:grid-cols-2"
+                  >
                     {goalDirections.map((d) => (
-                      <Button
+                      <label
                         key={d.id}
-                        type="button"
-                        variant={direction === d.id ? "secondary" : "outline"}
-                        aria-pressed={direction === d.id}
-                        className="h-auto min-h-20 justify-between p-5 text-start text-base whitespace-normal"
-                        onClick={() => {
-                          setDirection(d.id);
-                          setCount(d.id === "publish" ? "12" : "1");
-                          setTargets([]);
-                          setNext("");
-                        }}
+                        htmlFor={`goal-direction-${d.id}`}
+                        className="relative flex min-h-20 cursor-pointer items-center justify-between gap-4 rounded-xl border border-border bg-background p-5 text-base font-medium transition-colors hover:bg-muted/60 has-data-checked:border-primary has-data-checked:bg-secondary"
                       >
-                        {d.label}
-                        {direction === d.id ? (
-                          <Check aria-hidden="true" />
-                        ) : (
-                          <ArrowRight aria-hidden="true" />
-                        )}
-                      </Button>
+                        <span>{d.label}</span>
+                        <RadioGroupItem
+                          id={`goal-direction-${d.id}`}
+                          value={d.id}
+                        />
+                      </label>
                     ))}
-                  </div>
+                  </RadioGroup>
                   {direction ? (
                     <div className="mt-6 grid gap-5 sm:grid-cols-2">
                       {direction === "other" ? (
@@ -546,7 +548,8 @@ export function GoalsWorkspace() {
                       required
                       value={count}
                       onChange={(e) => setCount(e.target.value)}
-                      className="max-w-xs text-lg"
+                      size="large"
+                      className="max-w-xs"
                     />
                   </label>
                   <div className="mt-3 flex gap-2">
@@ -668,8 +671,8 @@ export function GoalsWorkspace() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Button
                       type="button"
-                      variant="outline"
-                      className="h-auto min-h-24 justify-start p-4 text-left whitespace-normal"
+                      variant="choice"
+                      size="choice"
                       onClick={() => openPicker("organization")}
                     >
                       <Building2 aria-hidden="true" />
@@ -682,8 +685,8 @@ export function GoalsWorkspace() {
                     </Button>
                     <Button
                       type="button"
-                      variant="outline"
-                      className="h-auto min-h-24 justify-start p-4 text-left whitespace-normal"
+                      variant="choice"
+                      size="choice"
                       onClick={() => openPicker("opportunity")}
                     >
                       <CalendarDays aria-hidden="true" />
@@ -1077,9 +1080,11 @@ export function GoalsWorkspace() {
                   <Button
                     key={t.kind + t.id}
                     type="button"
-                    variant="ghost"
+                    variant="choice"
+                    size="choice"
+                    data-selected={chosen}
                     aria-pressed={chosen}
-                    className={`mb-2 h-auto w-full justify-start gap-4 rounded-lg border p-4 text-left whitespace-normal ${chosen ? "border-primary bg-accent" : "border-border"}`}
+                    className="mb-2"
                     onClick={() =>
                       setTargets(
                         chosen

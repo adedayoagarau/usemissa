@@ -31,7 +31,7 @@ Aubergine are historical. Do not copy them. Legacy Aubergine (`#5A3F68`,
 | --- | --- | --- | --- |
 | Brand / action | Forest 600 | `#285649` | Primary actions, links, active navigation, focus |
 | Action hover / deep | Forest 700 | `#1d4037` | Hover, pressed, exceptional editorial dark bands |
-| Brand wash | Forest 100 | `#e3ece8` | Secondary actions, selected surfaces, quiet emphasis |
+| Brand wash | Forest 100 | `#e3ece8` | Rare selected emphasis and scoped brand moments |
 | Progress / positive | Lichen 600 | `#657547` | Saved, accepted, complete, progress |
 | Progress wash | Lichen 50 | `#eef1e8` | Positive status surfaces |
 | Attention | Aged ochre | `#a8762a` | Deadlines, fees, review attention, pending states |
@@ -41,6 +41,8 @@ Aubergine are historical. Do not copy them. Legacy Aubergine (`#5A3F68`,
 | Information wash | Mineral blue 50 | `#e7eff2` | Information surfaces |
 | Ink | Neutral 900 | `#171418` | Primary text, high-emphasis icons |
 | Canvas | White | `#ffffff` | Default page canvas and primary surfaces |
+| Subtle surface | Neutral 50 | `#f7f7f7` | Hover, selection, menus, and grouped controls |
+| Muted surface | Neutral 100 | `#f1f1f0` | Lower-emphasis filled actions and subdued regions |
 
 `DESIGN.md` primitive names (`forest-600`, `lichen-600`, and so on) are the
 token spellings. Feature code consumes semantic tokens (`--primary`,
@@ -62,6 +64,9 @@ values directly.
   make Missa a dark-first product.
 - Keep color distribution quiet: one dominant action, one status signal, and
   generous neutral space.
+- Secondary actions, routine hover states, unread rows, and navigation
+  selection use neutral surfaces. Forest remains in the action, focus ring,
+  text, icon, border, or compact indicator that explains the emphasis.
 - Never communicate status through color alone. Pair every status color with
   a word, icon, or explicit state.
 - Avoid purple gradients, rainbow dashboards, and decorative color that does
@@ -130,6 +135,8 @@ The implementation source of truth is `apps/web/app/globals.css`:
 | `--brand-accent` / `--primary` | `#285649` |
 | `--accent-deep` | `#1d4037` |
 | `--accent-tint` | `#e3ece8` |
+| `--secondary` / `--muted` | Muted neutral derived from `--surface` and `--ink` |
+| `--accent` / `--sidebar-accent` | Subtle neutral derived from `--surface` and `--ink` |
 | `--green` | `#657547` |
 | `--ochre` / `--ochre-deep` / `--ochre-tint` | `#a8762a` / `#78551e` / `#f5ecd9` |
 | `--mineral-blue` / `--mineral-blue-tint` | `#426b7a` / `#e7eff2` |

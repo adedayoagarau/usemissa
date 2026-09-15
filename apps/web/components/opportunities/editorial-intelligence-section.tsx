@@ -11,6 +11,7 @@ import {
   BookOpen,
 } from "lucide-react";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
+import { BetaBadge } from "@/components/ui/beta-badge";
 import { cn } from "@/lib/utils";
 
 interface EditorialIntelligenceSectionProps {
@@ -27,7 +28,7 @@ export function EditorialIntelligenceSection({
 
   return (
     <section
-      aria-label="Editorial Intelligence and Publisher Dossier"
+      aria-label="Editorial Intelligence beta"
       className={cn(
         "rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/40 p-6 backdrop-blur-sm",
         className,
@@ -35,14 +36,17 @@ export function EditorialIntelligenceSection({
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] pb-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Sparkles className="size-4 text-[var(--text-primary)]" />
             <h2 className="font-serif text-lg font-medium text-[var(--text-primary)]">
               Editorial Intelligence & Market Telemetry
             </h2>
+            <BetaBadge />
           </div>
-          <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-            Verified taste DNA, slush ratios, payout transparency, and judge lineages.
+          <p className="mt-2 max-w-2xl text-xs leading-relaxed text-[var(--text-muted)]">
+            Experimental, modelled signals from Missa—not publisher-confirmed
+            facts. Check the publisher&apos;s official guidelines before
+            deciding whether or how to submit.
           </p>
         </div>
         {prestigeTier && (
@@ -220,7 +224,7 @@ export function EditorialIntelligenceSection({
                 </div>
                 {compensation.isProRate && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-secondary)] px-2.5 py-0.5 font-sans text-xs font-medium text-[var(--text-primary)] border border-[var(--border-subtle)]">
-                    Pro Rate Verified
+                    Estimated pro rate
                   </span>
                 )}
               </div>

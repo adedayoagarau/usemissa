@@ -226,7 +226,7 @@
   padding: 0 15px;
   border: 1px solid var(--tracker-border);
   border-radius: 10px;
-  background: white;
+  background: var(--background);
   color: var(--foreground);
   font-size: 0.84rem;
   font-weight: 650;
@@ -336,7 +336,7 @@
   padding: 0 12px;
   border: 1px solid var(--tracker-border);
   border-radius: 10px;
-  background: white;
+  background: var(--background);
 }
 
 .search svg {
@@ -393,7 +393,7 @@
 }
 
 .layoutSwitch button[data-active="true"] {
-  background: white;
+  background: var(--background);
   color: var(--foreground);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--ink) 10%, transparent);
 }
@@ -507,7 +507,7 @@
   padding: 18px;
   border: 1px solid var(--tracker-border);
   border-radius: 14px;
-  background: white;
+  background: var(--background);
   box-shadow: 0 1px 1px color-mix(in srgb, var(--ink) 3%, transparent);
 }
 
@@ -671,7 +671,7 @@
   padding: 0 10px;
   border: 1px solid var(--tracker-border);
   border-radius: 9px;
-  background: white;
+  background: var(--background);
   font-size: 0.78rem;
 }
 
@@ -807,7 +807,7 @@
   padding: 20px;
   border: 1px solid var(--tracker-border);
   border-radius: 16px;
-  background: white;
+  background: var(--background);
 }
 
 .calendarLayout > section > header {

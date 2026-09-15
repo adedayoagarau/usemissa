@@ -6,7 +6,7 @@ const BadgeStatusOnlineDemo = () => {
       <Avatar className='size-10'>
         <AvatarImage src='https://cdn.shadcnstudio.com/ss-assets/avatar/avatar-5.png' alt='Hallie Richards' />
         <AvatarFallback>HR</AvatarFallback>
-        <AvatarBadge className='bg-green-600 group-data-[size=default]/avatar:size-2 dark:bg-green-400'>
+        <AvatarBadge className='bg-success group-data-[size=default]/avatar:size-2 dark:bg-success'>
           <span className='sr-only'>Online</span>
         </AvatarBadge>
       </Avatar>

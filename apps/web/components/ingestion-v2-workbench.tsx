@@ -92,17 +92,17 @@ type Detail = {
 };
 
 const statusStyles: Record<string, string> = {
-  completed: "border-green-200 bg-green-50 text-green-700",
-  running: "border-blue-200 bg-blue-50 text-blue-700",
+  completed: "border-success bg-success text-success",
+  running: "border-information bg-information text-information",
   queued: "border-slate-200 bg-slate-50 text-slate-700",
-  failed: "border-red-200 bg-red-50 text-red-700",
-  cancelled: "border-amber-200 bg-amber-50 text-amber-700",
+  failed: "border-destructive bg-destructive text-destructive",
+  cancelled: "border-warning bg-warning text-warning",
 };
 
 function StatusBadge({ value }: { value: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusStyles[value] ?? "border-border bg-white text-muted-foreground"}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${statusStyles[value] ?? "border-border bg-card text-muted-foreground"}`}
     >
       {value}
     </span>
@@ -120,14 +120,14 @@ function formatTime(value: string | null): string {
 function IconForStatus({ value }: { value: string }) {
   if (value === "completed")
     return (
-      <CheckCircle2 className="size-4 text-green-700" aria-hidden="true" />
+      <CheckCircle2 className="size-4 text-success" aria-hidden="true" />
     );
   if (value === "failed")
-    return <ShieldAlert className="size-4 text-red-700" aria-hidden="true" />;
+    return <ShieldAlert className="size-4 text-destructive" aria-hidden="true" />;
   if (value === "running")
     return (
       <CircleDashed
-        className="size-4 animate-pulse text-blue-700"
+        className="size-4 animate-pulse text-information"
         aria-hidden="true"
       />
     );
@@ -359,7 +359,7 @@ export default function IngestionV2Workbench() {
             detail: "Still unpublished",
           },
         ].map((item) => (
-          <div key={item.label} className="border border-border bg-white p-4">
+          <div key={item.label} className="border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground">{item.label}</p>
             <p className="mt-2 font-mono text-2xl tabular-nums">{item.value}</p>
             <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
@@ -368,12 +368,12 @@ export default function IngestionV2Workbench() {
       </section>
 
       <section
-        className="border border-primary/20 bg-accent-tint/30 p-4"
+        className="border border-information/25 bg-information-subtle p-4"
         aria-labelledby="ingestion-contract-title"
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-medium tracking-[0.14em] text-primary uppercase">
+            <p className="text-xs font-medium tracking-[0.14em] text-information uppercase">
               Shadow boundary
             </p>
             <h2
@@ -417,7 +417,7 @@ export default function IngestionV2Workbench() {
               type="button"
               onClick={() => void requestLaneBatch("core-daily")}
               disabled={batchRequesting || sources.length === 0}
-              className="inline-flex min-h-9 items-center gap-2 rounded-md border border-primary bg-white px-3 text-xs font-medium text-primary hover:bg-accent-tint disabled:cursor-wait disabled:opacity-60"
+              className="inline-flex min-h-9 items-center gap-2 rounded-md border border-primary bg-card px-3 text-xs font-medium text-primary hover:bg-accent disabled:cursor-wait disabled:opacity-60"
             >
               <Play className="size-3.5" aria-hidden="true" />
               Daily core
@@ -426,7 +426,7 @@ export default function IngestionV2Workbench() {
               type="button"
               onClick={() => void requestLaneBatch("scheduled")}
               disabled={batchRequesting || sources.length === 0}
-              className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border bg-white px-3 text-xs font-medium text-foreground hover:bg-muted disabled:cursor-wait disabled:opacity-60"
+              className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted disabled:cursor-wait disabled:opacity-60"
             >
               Scheduled
             </button>
@@ -446,7 +446,7 @@ export default function IngestionV2Workbench() {
                     : sourceId
                 }
                 onChange={(event) => setSourceId(event.target.value)}
-                className="min-h-9 max-w-[230px] rounded-md border border-border bg-white px-2 text-xs text-foreground"
+                className="min-h-9 max-w-[230px] rounded-md border border-border bg-card px-2 text-xs text-foreground"
               >
                 <option value="">No source available</option>
                 {sources
@@ -483,7 +483,7 @@ export default function IngestionV2Workbench() {
         className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(340px,0.75fr)]"
         aria-label="Ingestion v2 runs"
       >
-        <div className="min-w-0 border border-border bg-white">
+        <div className="min-w-0 border border-border bg-card">
           <div className="border-b border-border p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -538,7 +538,7 @@ export default function IngestionV2Workbench() {
                     filter_value: event.target.value,
                   });
                 }}
-                className="min-h-9 rounded-md border border-border bg-white px-2 text-xs"
+                className="min-h-9 rounded-md border border-border bg-card px-2 text-xs"
               >
                 <option value="all">All statuses</option>
                 <option value="queued">Queued</option>
@@ -557,7 +557,7 @@ export default function IngestionV2Workbench() {
                     filter_value: event.target.value,
                   });
                 }}
-                className="min-h-9 rounded-md border border-border bg-white px-2 text-xs"
+                className="min-h-9 rounded-md border border-border bg-card px-2 text-xs"
               >
                 <option value="all">All sources</option>
                 {sources.map((source) => (
@@ -583,7 +583,7 @@ export default function IngestionV2Workbench() {
                   type="button"
                   key={run.id}
                   onClick={() => void selectRun(run)}
-                  className={`flex w-full items-start gap-3 p-4 text-left transition-colors hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${selectedId === run.id ? "bg-accent-tint/40" : ""}`}
+                  className={`flex w-full items-start gap-3 p-4 text-left transition-colors hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${selectedId === run.id ? "bg-accent" : ""}`}
                   aria-pressed={selectedId === run.id}
                 >
                   <IconForStatus value={run.status} />
@@ -618,7 +618,7 @@ export default function IngestionV2Workbench() {
         </div>
 
         <aside
-          className="min-w-0 border border-border bg-white"
+          className="min-w-0 border border-border bg-card"
           aria-label="Selected run evidence"
         >
           {!selectedId ? (
@@ -689,7 +689,7 @@ export default function IngestionV2Workbench() {
                         <span className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">reconciliation {detail.publisher.reconciliation.decision}</span>
                       </div>
                       <ul className="mt-3 space-y-2 text-xs leading-5">
-                        {detail.publisher.rationale.map((reason) => <li key={reason} className="border-l-2 border-primary/40 pl-3">{reason}</li>)}
+                        {detail.publisher.rationale.map((reason) => <li key={reason} className="border border-primary/30 p-3">{reason}</li>)}
                       </ul>
                       {detail.publisher.reconciliation.authoritativeUrl && <a className="mt-3 block truncate text-xs text-accent-deep underline" href={detail.publisher.reconciliation.authoritativeUrl} target="_blank" rel="noreferrer">{detail.publisher.reconciliation.authoritativeUrl}</a>}
                     </>
@@ -704,7 +704,7 @@ export default function IngestionV2Workbench() {
                       detail.quality.reasons.map((reason) => (
                         <li
                           key={reason}
-                          className="border-l-2 border-primary/40 pl-3"
+                          className="border border-primary/30 p-3"
                         >
                           {reason}
                         </li>
@@ -814,7 +814,7 @@ export default function IngestionV2Workbench() {
                     Warnings
                   </h3>
                   {detail.warnings.length ? (
-                    <ul className="mt-3 space-y-2 text-xs leading-5 text-amber-700">
+                    <ul className="mt-3 space-y-2 text-xs leading-5 text-warning">
                       {detail.warnings.map((warning) => (
                         <li key={warning}>• {warning}</li>
                       ))}

@@ -16,7 +16,7 @@ const RadioGroupColorsDemo = () => {
         <RadioGroupItem
           value='success'
           id='color-success'
-          className='border-green-600 focus-visible:border-green-600 focus-visible:ring-green-600/20 data-checked:border-green-600 data-checked:bg-green-600 dark:border-green-400 dark:focus-visible:ring-green-600/40 dark:data-checked:border-green-400 dark:data-checked:bg-green-400'
+          className='border-success focus-visible:border-success focus-visible:ring-green-600/20 data-checked:border-success data-checked:bg-success dark:border-success dark:focus-visible:ring-green-600/40 dark:data-checked:border-success dark:data-checked:bg-success'
         />
         <Label htmlFor='color-success'>Success</Label>
       </div>

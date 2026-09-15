@@ -6,7 +6,7 @@
 .searchRow { display: grid; min-width: 0; }
 .activeFilters { display: flex; min-height: 40px; align-items: center; gap: 8px; overflow-x: auto; padding-block: 2px; }
 .chip { display: inline-flex; min-height: 36px; flex: 0 0 auto; align-items: center; gap: 6px; padding-inline: 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--background); color: var(--foreground); font-size: 13px; text-decoration: none; }
-.chip:hover { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); background: var(--accent-tint); }
+.chip:hover { border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); background: var(--accent); }
 .chip svg { width: 14px; height: 14px; color: var(--muted-foreground); }
 .clear { display: inline-flex; min-height: 36px; flex: 0 0 auto; align-items: center; padding-inline: 6px; color: var(--primary); font-size: 13px; font-weight: 600; text-decoration: none; }
 .toolbar { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 18px; margin-top: 4px; padding-block: 14px 16px; border-bottom: 1px solid var(--border); }

@@ -46,11 +46,11 @@ const COLUMN_META: Record<ColumnId, { title: string; accent: string }> = {
   },
   execution: {
     title: 'Execution',
-    accent: 'bg-amber-600 dark:bg-amber-400'
+    accent: 'bg-warning dark:bg-warning'
   },
   release: {
     title: 'Release',
-    accent: 'bg-green-600 dark:bg-green-400'
+    accent: 'bg-success dark:bg-success'
   }
 }
 
@@ -61,7 +61,7 @@ const HEALTH_META: Record<
   onTrack: {
     label: 'On track',
     variant: 'outline',
-    className: 'border-green-600/50 text-green-600 dark:border-green-400/50 dark:text-green-400'
+    className: 'border-success/50 text-success dark:border-success/50 dark:text-success'
   },
   atRisk: {
     label: 'At risk',

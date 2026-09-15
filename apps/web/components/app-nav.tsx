@@ -73,7 +73,7 @@ export function AppNav({ email, userId, isAdmin = false, organizations = [] }: {
     return (
       <label className={`flex min-w-0 items-center gap-2 ${className}`}>
         <span className="sr-only">Organization</span>
-        <select aria-label="Organization" value={organizations.some((organization) => organization.id === currentOrganizationId) ? currentOrganizationId! : (organizations[0]?.id ?? '')} onChange={(event) => handleOrganizationChange(event.target.value)} className="min-h-11 max-w-52 min-w-0 rounded-md border border-border bg-white px-2.5 text-xs font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
+        <select aria-label="Organization" value={organizations.some((organization) => organization.id === currentOrganizationId) ? currentOrganizationId! : (organizations[0]?.id ?? '')} onChange={(event) => handleOrganizationChange(event.target.value)} className="min-h-11 max-w-52 min-w-0 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
           {organizations.map((organization) => (
             <option key={organization.id} value={organization.id}>
               {organization.name}
@@ -85,14 +85,14 @@ export function AppNav({ email, userId, isAdmin = false, organizations = [] }: {
   }
 
   return (
-    <header className="relative z-50 flex min-w-0 items-center gap-3 border-b border-border bg-white px-4 py-3 sm:px-6">
+    <header className="relative z-50 flex min-w-0 items-center gap-3 border-b border-border bg-background px-4 py-3 sm:px-6">
       <MissaWordmark size="app" className="shrink-0 text-foreground" />
 
       <NavigationMenu className="hidden lg:block">
-        <NavigationMenuList className="gap-4">
+        <NavigationMenuList variant="app">
           {VISIBLE_NAV_LINKS.map((link) => (
             <NavigationMenuItem key={link.href}>
-              <NavigationMenuLink render={<Link href={link.href} />} className={`relative py-2 text-sm transition-colors hover:text-primary ${pathname === link.href || pathname.startsWith(`${link.href}/`) ? 'font-medium text-foreground after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5 after:bg-primary' : 'text-muted-foreground'}`} aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? 'page' : undefined}>
+              <NavigationMenuLink render={<Link href={link.href} />} variant="app" active={pathname === link.href || pathname.startsWith(`${link.href}/`)} aria-current={pathname === link.href || pathname.startsWith(`${link.href}/`) ? 'page' : undefined}>
                 {link.label}
               </NavigationMenuLink>
             </NavigationMenuItem>
@@ -119,13 +119,13 @@ export function AppNav({ email, userId, isAdmin = false, organizations = [] }: {
         {organizationPicker('ml-1')}
       </div>
 
-      <button type="button" className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted lg:hidden" aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}>
+      <button type="button" className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg border border-border text-foreground hover:bg-muted lg:hidden" aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}>
         {mobileNavOpen ? <X className="size-4" /> : <Menu className="size-4" />}
       </button>
 
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />} className="ml-auto shrink-0 gap-2 text-sm text-muted-foreground">
-          <span className="flex size-7 items-center justify-center rounded-full bg-[var(--ink)] text-xs font-semibold text-white">{email.slice(0, 1).toUpperCase()}</span>
+        <DropdownMenuTrigger render={<Button variant="account" size="account" />} className="ml-auto shrink-0">
+          <span className="flex size-7 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background">{email.slice(0, 1).toUpperCase()}</span>
           <span className="hidden sm:inline">{email.split('@')[0]}</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
@@ -150,28 +150,28 @@ export function AppNav({ email, userId, isAdmin = false, organizations = [] }: {
       </DropdownMenu>
 
       {mobileNavOpen && (
-        <nav aria-label="Mobile navigation" className="absolute inset-x-0 top-full border-b border-border bg-white p-2 shadow-lg lg:hidden">
+        <nav aria-label="Mobile navigation" className="absolute inset-x-0 top-full border-b border-border bg-background p-2 shadow-lg lg:hidden">
           <div className="grid gap-1">
             {VISIBLE_NAV_LINKS.map((link) => {
               const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
               return (
-                <Link key={link.href} href={link.href} onClick={() => setMobileNavOpen(false)} aria-current={active ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${active ? 'bg-accent-tint font-medium text-accent-deep' : 'text-foreground hover:bg-muted'}`}>
+                <Link key={link.href} href={link.href} onClick={() => setMobileNavOpen(false)} aria-current={active ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${active ? 'bg-accent font-medium text-primary' : 'text-foreground hover:bg-muted'}`}>
                   {link.label}
                 </Link>
               );
             })}
             {userId && (
-              <Link href="/inbox" onClick={() => setMobileNavOpen(false)} aria-current={pathname === '/inbox' ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname === '/inbox' ? 'bg-accent-tint font-medium text-accent-deep' : 'text-foreground hover:bg-muted'}`}>
+              <Link href="/inbox" onClick={() => setMobileNavOpen(false)} aria-current={pathname === '/inbox' ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname === '/inbox' ? 'bg-accent font-medium text-primary' : 'text-foreground hover:bg-muted'}`}>
                 Inbox
               </Link>
             )}
             {userId && (
-              <Link href="/profile" onClick={() => setMobileNavOpen(false)} aria-current={pathname === '/profile' ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname === '/profile' ? 'bg-accent-tint font-medium text-accent-deep' : 'text-foreground hover:bg-muted'}`}>
+              <Link href="/profile" onClick={() => setMobileNavOpen(false)} aria-current={pathname === '/profile' ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname === '/profile' ? 'bg-accent font-medium text-primary' : 'text-foreground hover:bg-muted'}`}>
                 Profile
               </Link>
             )}
             {organizations.length > 0 && (
-              <Link href={scopedHref('/workspace')} onClick={() => setMobileNavOpen(false)} aria-current={pathname.startsWith('/workspace') ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname.startsWith('/workspace') ? 'bg-accent-tint font-medium text-accent-deep' : 'text-foreground hover:bg-muted'}`}>
+              <Link href={scopedHref('/workspace')} onClick={() => setMobileNavOpen(false)} aria-current={pathname.startsWith('/workspace') ? 'page' : undefined} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname.startsWith('/workspace') ? 'bg-accent font-medium text-primary' : 'text-foreground hover:bg-muted'}`}>
                 Organization
               </Link>
             )}

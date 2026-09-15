@@ -1,5 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { AnalyticsChoiceControl } from '@/components/missa/analytics-choice-control';
+import {
+  LEGAL_CONTACT_EMAIL,
+  LEGAL_ENTITY_NAME,
+  LEGAL_POSTAL_ADDRESS,
+  hasPostalAddress,
+} from '@/lib/legalContact';
 
 export const metadata: Metadata = {
   title: 'Privacy',
@@ -17,7 +24,13 @@ export default function PrivacyPage() {
       <div className="mt-10 space-y-8 text-base leading-7 text-muted-foreground">
         <section>
           <h2 className="font-heading text-2xl font-medium text-foreground">Browsing without an account</h2>
-          <p className="mt-3">You can browse the catalogue, directory and rankings without signing in. Missa records a first-party session identifier and basic product analytics for this site, such as which pages and filters are used, so we can tell what is working. We do not use it to build a public profile of you.</p>
+          <p className="mt-3">You can browse the catalogue, directory and rankings without signing in. Nothing optional is measured until you accept analytics, and declining changes nothing about what you can use. If you accept, Missa records a first-party session identifier and basic product analytics, such as which pages and filters are used, so we can tell what is working. We do not use it to build a public profile of you, and we do not sell data or run advertising.</p>
+        </section>
+        <section>
+          <h2 className="font-heading text-2xl font-medium text-foreground">Cookies and analytics</h2>
+          <p className="mt-3">A banner asks for your analytics decision on your first visit. Turning analytics off stops both the third-party analytics client and Missa&apos;s own event records; turning it on starts them. Accepting is never required to use Missa. The only thing stored before you choose is a record of the choice itself, so the banner does not reappear.</p>
+          <p className="mt-3">Signing in, saving an Opportunity, or submitting an application still produces account and operational records. Those are part of the service you asked for, not optional analytics.</p>
+          <AnalyticsChoiceControl />
         </section>
         <section>
           <h2 className="font-heading text-2xl font-medium text-foreground">Your account</h2>
@@ -40,11 +53,20 @@ export default function PrivacyPage() {
           <p className="mt-3">We keep account records while your account is open and for as long as needed to run Missa and meet our obligations. You can ask us to correct or delete your data, or to explain what we hold, at any time.</p>
         </section>
         <section>
-          <h2 className="font-heading text-2xl font-medium text-foreground">Contact</h2>
-          <p className="mt-3">To ask a privacy question or request removal, email <a className="text-foreground underline underline-offset-4" href="mailto:hello@usemissa.com">hello@usemissa.com</a>. See the <Link className="text-foreground underline underline-offset-4" href="/terms">Terms</Link> for how the beta works.</p>
+          <h2 className="font-heading text-2xl font-medium text-foreground">Who is responsible, and how to reach us</h2>
+          <p className="mt-3">
+            {LEGAL_ENTITY_NAME ? `${LEGAL_ENTITY_NAME} is ` : 'Missa is '}
+            responsible for the personal data described here.
+          </p>
+          {hasPostalAddress() && (
+            <address className="mt-3 not-italic whitespace-pre-line">
+              {LEGAL_POSTAL_ADDRESS}
+            </address>
+          )}
+          <p className="mt-3">To ask a privacy question or request removal, email <a className="text-foreground underline underline-offset-4" href={`mailto:${LEGAL_CONTACT_EMAIL}`}>{LEGAL_CONTACT_EMAIL}</a>. See the <Link className="text-foreground underline underline-offset-4" href="/terms">Terms</Link> for how the beta works.</p>
         </section>
       </div>
-      <p className="mt-12 border-t border-border pt-5 text-sm text-muted-foreground">Last updated September 12, 2026. Missa is in beta, and this notice will be expanded as the product changes.</p>
+      <p className="mt-12 border-t border-border pt-5 text-sm text-muted-foreground">Last updated September 13, 2026. Missa is in beta, and this notice will be expanded as the product changes.</p>
     </main>
   );
 }

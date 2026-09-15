@@ -8,6 +8,7 @@ import {
   BarChart3,
   Building2,
   CreditCard,
+  ChevronDown,
   FileText,
   FileClock,
   LayoutDashboard,
@@ -30,6 +31,11 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { MissaWordmark } from "@/components/missa-wordmark";
 
 type NavItem = {
@@ -41,43 +47,54 @@ type NavItem = {
   activeQuery?: { key: string; value: string };
 };
 
-const operateLinks: NavItem[] = [
+const overviewLinks: NavItem[] = [
   { href: "/admin", label: "Control Room", icon: LayoutDashboard, exact: true },
-  { href: "/admin/gary", label: "Gary", icon: Bot },
   { href: "/admin/operations", label: "Operations", icon: ListChecks },
-  { href: "/admin/agents", label: "Agents", icon: Bot },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+];
+
+const sourceAutomationLinks: NavItem[] = [
   { href: "/admin/radar", label: "Opportunity sources", icon: Radar },
   { href: "/admin/ingestion-v2", label: "Ingestion v2", icon: Activity },
-  { href: "/admin/system", label: "System", icon: Settings2 },
+  { href: "/admin/gary", label: "Gary", icon: Bot },
+  { href: "/admin/agents", label: "Agents", icon: Bot },
 ];
 
-const reviewLinks: NavItem[] = [
+const contentTaxonomyLinks: NavItem[] = [
   { href: "/admin/content", label: "Content", icon: FileText },
   { href: "/admin/taxonomy", label: "Taxonomy", icon: Tags },
-  { href: "/admin/governance", label: "Governance", icon: ShieldCheck },
-  { href: "/admin/audit", label: "Audit", icon: FileClock },
 ];
 
-const serveLinks: NavItem[] = [
+const customerOrganizationLinks: NavItem[] = [
   { href: "/admin/customers", label: "Customers", icon: Users },
   { href: "/admin/organizations", label: "Organizations", icon: Building2 },
   { href: "/admin/crm", label: "CRM", icon: Users },
   { href: "/admin/waitlist", label: "Waitlist", icon: Mail },
-  { href: "/admin/support", label: "Support", icon: LifeBuoy },
+];
+
+const communicationSupportLinks: NavItem[] = [
   { href: "/admin/messaging", label: "Messaging", icon: Mail },
+  { href: "/admin/support", label: "Support", icon: LifeBuoy },
   { href: "/admin/email-previews", label: "Email previews", icon: Mail },
 ];
 
-const businessLinks: NavItem[] = [
+const financeGovernanceLinks: NavItem[] = [
   { href: "/admin/billing", label: "Billing", icon: CreditCard },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/governance", label: "Governance", icon: ShieldCheck },
+];
+
+const diagnosticLinks: NavItem[] = [
+  { href: "/admin/system", label: "System", icon: Settings2 },
+  { href: "/admin/audit", label: "Audit", icon: FileClock },
 ];
 
 const navigationGroups: Array<{ label: string; items: NavItem[] }> = [
-  { label: "Operate", items: operateLinks },
-  { label: "Review", items: reviewLinks },
-  { label: "Serve", items: serveLinks },
-  { label: "Business", items: businessLinks },
+  { label: "Overview", items: overviewLinks },
+  { label: "Sources & automation", items: sourceAutomationLinks },
+  { label: "Content & taxonomy", items: contentTaxonomyLinks },
+  { label: "Customers & organizations", items: customerOrganizationLinks },
+  { label: "Communication & support", items: communicationSupportLinks },
+  { label: "Finance & governance", items: financeGovernanceLinks },
 ];
 
 function isActive(pathname: string, search: string, item: NavItem): boolean {
@@ -109,7 +126,7 @@ function NavLink({
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`group flex min-h-10 items-center gap-3 border-l-2 px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${active ? "border-primary bg-accent-tint font-medium text-primary" : "border-transparent text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"}`}
+      className={`group flex min-h-10 items-center gap-3 border-l-2 px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${active ? "border-primary bg-accent font-medium text-primary" : "border-transparent text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"}`}
     >
       <Icon
         className="size-4 shrink-0"
@@ -130,6 +147,9 @@ function Navigation({
   search: string;
   email: string;
 }) {
+  const diagnosticsActive = diagnosticLinks.some((item) =>
+    isActive(pathname, search, item),
+  );
   return (
     <div className="flex min-h-full flex-col">
       <div className="border-b border-border px-5 py-5">
@@ -145,12 +165,44 @@ function Navigation({
       </div>
       <nav
         aria-label="Platform admin navigation"
-        className="flex-1 space-y-6 px-3 py-5"
+        className="flex-1 space-y-5 overflow-y-auto px-3 py-5"
       >
-        {navigationGroups.map((group) => <div key={group.label} className="space-y-1">
-          <p className="px-3 pb-1 text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">{group.label}</p>
-          {group.items.map((item) => <NavLink key={item.href} item={item} pathname={pathname} search={search} />)}
-        </div>)}
+        {navigationGroups.map((group) => (
+          <div key={group.label} className="space-y-1">
+            <p className="px-3 pb-1 text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
+              {group.label}
+            </p>
+            {group.items.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                pathname={pathname}
+                search={search}
+              />
+            ))}
+          </div>
+        ))}
+        <Collapsible defaultOpen={diagnosticsActive} className="space-y-1">
+          <CollapsibleTrigger
+            render={<Button type="button" variant="ghost" />}
+          >
+            Diagnostics &amp; audit
+            <ChevronDown
+              className="size-3.5 shrink-0 transition-transform in-data-open:rotate-180"
+              aria-hidden="true"
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-1">
+            {diagnosticLinks.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                pathname={pathname}
+                search={search}
+              />
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
       </nav>
       <div className="border-t border-border px-5 py-4">
         <div className="flex items-center gap-3">
@@ -194,10 +246,10 @@ export function AdminShellNav({ email }: { email: string }) {
   const search = searchParams.toString();
   return (
     <>
-      <aside className="hidden min-h-screen w-56 shrink-0 border-r border-border bg-white lg:block">
+      <aside className="hidden min-h-screen w-56 shrink-0 border-r border-border bg-card lg:block">
         <Navigation pathname={pathname} search={search} email={email} />
       </aside>
-      <div className="fixed inset-x-0 top-0 z-30 flex min-h-14 items-center justify-between border-b border-border bg-white px-4 lg:hidden">
+      <div className="fixed inset-x-0 top-0 z-30 flex min-h-14 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
         <Link
           href="/admin"
           className="focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
@@ -221,10 +273,11 @@ export function AdminShellNav({ email }: { email: string }) {
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="w-72 max-w-[calc(100vw-2rem)] bg-white p-0"
+            surface="card"
+            className="w-72 max-w-[calc(100vw-2rem)] p-0"
           >
-            <SheetHeader className="border-b border-border px-5 py-5 pr-12 text-left">
-              <SheetTitle className="font-heading text-xl">
+            <SheetHeader variant="section" className="px-5 py-5 pr-12 text-left">
+              <SheetTitle className="font-sans text-xl font-semibold">
                 Missa Platform Admin
               </SheetTitle>
               <SheetDescription>

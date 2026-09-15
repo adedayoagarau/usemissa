@@ -26,20 +26,20 @@ export default async function WorkspaceDecisionsPage({ searchParams }: { searchP
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Each decision stays with its Work. Decision email delivery is tracked separately in Messages.</p>
       </header>
       <section className="mt-6 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-white p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Total decisions</p>
           <p className="mt-2 font-mono text-2xl text-foreground">{decisions.length}</p>
         </div>
-        <div className="rounded-xl border border-border bg-white p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Accepted</p>
           <p className="mt-2 font-mono text-2xl text-foreground">{decisions.filter((item) => item.outcome === 'accepted').length}</p>
         </div>
-        <div className="rounded-xl border border-border bg-white p-4">
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Waitlisted</p>
           <p className="mt-2 font-mono text-2xl text-foreground">{decisions.filter((item) => item.outcome === 'waitlisted').length}</p>
         </div>
       </section>
-      <section className="mt-8 overflow-x-auto rounded-xl border border-border bg-white">
+      <section className="mt-8 overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full min-w-[760px] text-left text-sm">
           <caption className="sr-only">Organization decisions</caption>
           <thead className="border-b border-border bg-muted/40 text-xs text-muted-foreground">

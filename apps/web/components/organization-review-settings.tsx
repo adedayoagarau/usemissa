@@ -20,10 +20,10 @@ export function OrganizationReviewSettings({ organizationId, canManage }: { orga
     setSaving(false);
   }
   if (!settings) return null;
-  return <section className="rounded-lg border border-border bg-white p-5 shadow-sm" aria-labelledby="review-privacy-heading">
+  return <section className="rounded-lg border border-border bg-card p-5 shadow-sm" aria-labelledby="review-privacy-heading">
     <h2 id="review-privacy-heading" className="font-heading text-xl font-medium text-foreground">Review privacy</h2>
     <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Choose whether reviewer views hide applicant identity by default. Individual review stages can use their own immutable workflow setting.</p>
-    {error && <p className="mt-3 text-sm text-red-700" role="alert">{error}</p>}
+    {error && <p className="mt-3 text-sm text-destructive" role="alert">{error}</p>}
     <fieldset className="mt-4 space-y-3" disabled={!canManage || saving}>
       <legend className="sr-only">Blind review mode</legend>
       <label className="flex cursor-pointer gap-3 rounded-md border border-border p-3"><input type="radio" name="blind-mode" checked={settings.blindMode === 'identity-redacted'} onChange={() => void update('identity-redacted')} /><span><span className="block text-sm font-medium text-foreground">Blind review on</span><span className="block text-sm text-muted-foreground">Hide applicant identity from reviewer projections.</span></span></label>

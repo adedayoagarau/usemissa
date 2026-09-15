@@ -76,9 +76,15 @@ const COUNTRY_EMOJI: Record<string, string> = {
   AE: "🇦🇪",
 };
 
-const REGIONS: Array<{ label: string; codes: string[] }> = [
+const REGIONS: Array<{
+  label: string;
+  description?: string;
+  codes: string[];
+}> = [
   {
-    label: "English-speaking",
+    label: "English-language publishing hubs",
+    description:
+      "A language-based collection. Countries may also appear in their geographic region below.",
     codes: ["US", "GB", "CA", "AU", "NZ", "IE", "ZA"],
   },
   {
@@ -121,6 +127,7 @@ export default async function CountriesPage() {
   // Build region sections, filtering to only countries that have data
   const regionSections = REGIONS.map((region) => ({
     label: region.label,
+    description: region.description,
     countries: region.codes
       .map((code) => countByCode.get(code))
       .filter((c): c is CountryCount => !!c),
@@ -172,6 +179,9 @@ export default async function CountriesPage() {
         {regionSections.map((region) => (
           <section key={region.label} className={styles.region}>
             <h2 className={styles.regionHeading}>{region.label}</h2>
+            {region.description ? (
+              <p className={styles.cardMeta}>{region.description}</p>
+            ) : null}
             <div className={styles.grid}>
               {region.countries.map((country) => (
                 <Link

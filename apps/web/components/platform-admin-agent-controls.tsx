@@ -84,7 +84,7 @@ export default function PlatformAdminAgentControls({
       />
       <WarningList warnings={area.warnings} />
       <section
-        className="overflow-hidden rounded-xl border border-border bg-white"
+        className="overflow-hidden rounded-xl border border-border bg-card"
         aria-labelledby="agent-control-contract"
       >
         <div className="border-b border-border px-4 py-4 sm:px-5">
@@ -191,7 +191,7 @@ export default function PlatformAdminAgentControls({
         />
       </section>
       <section
-        className="border border-border bg-white"
+        className="border border-border bg-card"
         aria-labelledby="agent-runs-title"
       >
         <div className="border-b border-border px-4 py-4 sm:px-5">
@@ -227,7 +227,7 @@ export default function PlatformAdminAgentControls({
               >
                 <div className="flex min-w-0 items-start gap-3">
                   <span
-                    className={`mt-1 size-2 shrink-0 rounded-full ${run.stale ? "bg-red-600" : run.status === "paused" ? "bg-amber-500" : run.status === "completed" ? "bg-green-600" : "bg-blue-600"}`}
+                    className={`mt-1 size-2 shrink-0 rounded-full ${run.stale ? "bg-destructive" : run.status === "paused" ? "bg-warning-subtle0" : run.status === "completed" ? "bg-success" : "bg-information"}`}
                     aria-hidden="true"
                   />
                   <div className="min-w-0">
@@ -236,9 +236,9 @@ export default function PlatformAdminAgentControls({
                       <span
                         className={
                           run.stale
-                            ? "text-red-700"
+                            ? "text-destructive"
                             : run.status === "paused"
-                              ? "text-amber-700"
+                              ? "text-warning"
                               : "text-foreground"
                         }
                       >
@@ -250,7 +250,7 @@ export default function PlatformAdminAgentControls({
                       {run.id} · {run.inputCount} in / {run.outputCount} out
                     </p>
                     {run.error && (
-                      <p className="mt-1 truncate text-xs text-red-700">
+                      <p className="mt-1 truncate text-xs text-destructive">
                         {run.error}
                       </p>
                     )}
@@ -272,7 +272,7 @@ export default function PlatformAdminAgentControls({
         )}
       </section>
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 border border-border bg-white">
+        <div className="min-w-0 border border-border bg-card">
           <div className="border-b border-border px-4 py-4 sm:px-5">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
@@ -305,7 +305,7 @@ export default function PlatformAdminAgentControls({
                       </p>
                     </div>
                     <span
-                      className={`text-xs font-medium capitalize ${row.status === "applied" ? "text-green-700" : row.status === "failed" || row.status === "rejected" ? "text-red-700" : "text-amber-700"}`}
+                      className={`text-xs font-medium capitalize ${row.status === "applied" ? "text-success" : row.status === "failed" || row.status === "rejected" ? "text-destructive" : "text-warning"}`}
                     >
                       {row.status}
                     </span>
@@ -324,7 +324,7 @@ export default function PlatformAdminAgentControls({
             </div>
           )}
         </div>
-        <aside className="border border-border bg-white p-5 xl:sticky xl:top-6 xl:self-start">
+        <aside className="border border-border bg-card p-5 xl:sticky xl:top-6 xl:self-start">
           <h2 className="text-lg font-semibold tracking-tight text-foreground">
             Request a control
           </h2>

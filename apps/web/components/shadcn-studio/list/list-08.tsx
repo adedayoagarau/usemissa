@@ -8,7 +8,7 @@ const ListProgress = () => {
       <Card className='pt-0'>
         <CardHeader className='bg-muted p-2'>
           <span className='inline-flex w-fit shrink-0 items-center justify-center gap-1 px-2 py-0.5 text-sm font-medium whitespace-nowrap'>
-            <span className='size-2 rounded-full bg-green-600 dark:bg-green-400' aria-hidden='true' />
+            <span className='size-2 rounded-full bg-success dark:bg-success' aria-hidden='true' />
             In Progress
           </span>
         </CardHeader>
@@ -52,7 +52,7 @@ const ListProgress = () => {
         </CardContent>
         <CardHeader className='bg-muted rounded-none p-2'>
           <span className='inline-flex w-fit shrink-0 items-center justify-center gap-1 px-2 py-0.5 text-sm font-medium whitespace-nowrap'>
-            <span className='size-2 rounded-full bg-amber-600 dark:bg-amber-400' aria-hidden='true' />
+            <span className='size-2 rounded-full bg-warning dark:bg-warning' aria-hidden='true' />
             In Planned
           </span>
         </CardHeader>

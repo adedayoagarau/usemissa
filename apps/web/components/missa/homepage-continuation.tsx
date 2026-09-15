@@ -23,13 +23,16 @@ import { selectHomepageCalls, type HomepageCall } from "@/lib/homepageCalls";
 import "@/components/design-system/homepage-continuation-tokens.css";
 import "@/components/design-system/homepage-marketing-palette.css";
 import styles from "./homepage-continuation.module.css";
+import { contactMailto } from "@/lib/legalContact";
 
 const HomepageWorkspace = dynamic(
-  () => import("./homepage-workspace").then((module) => module.HomepageWorkspace),
+  () =>
+    import("./homepage-workspace").then((module) => module.HomepageWorkspace),
   { ssr: false },
 );
 const HomepagePortfolio = dynamic(
-  () => import("./homepage-portfolio").then((module) => module.HomepagePortfolio),
+  () =>
+    import("./homepage-portfolio").then((module) => module.HomepagePortfolio),
   { ssr: false },
 );
 
@@ -304,7 +307,7 @@ export function HomepageContinuation({
             <h2 id="places-heading">The organizations behind the calls</h2>
           </div>
           <Link className={styles.textLink} href="/directory">
-            Browse organizations <ArrowUpRight size={18} />
+            Browse the organization directory <ArrowUpRight size={18} />
           </Link>
         </div>
         {directoryError ? (
@@ -383,7 +386,7 @@ export function HomepageContinuation({
                         />
                       )}
                       <AvatarFallback
-                        className={`${styles.organizationLogoFallback} font-heading`}
+                        className={styles.organizationLogoFallback}
                       >
                         {profile.name.replace(/^The /, "").slice(0, 1)}
                       </AvatarFallback>
@@ -415,7 +418,7 @@ export function HomepageContinuation({
         >
           <div>
             <h2 id="questions-heading">Questions about Missa</h2>
-            <a className={styles.textLink} href="mailto:hello@usemissa.com">
+            <a className={styles.textLink} href={contactMailto()}>
               Contact us <ArrowUpRight size={17} />
             </a>
           </div>
@@ -499,7 +502,7 @@ export function HomepageFooter() {
                 <Link href={`/opportunities?${categorySearch(["festival"])}`}>
                   Festivals
                 </Link>
-                <Link href="/directory">Organizations</Link>
+                <Link href="/directory">Organization directory</Link>
               </div>
               <div>
                 <span>Your work</span>
@@ -510,7 +513,7 @@ export function HomepageFooter() {
                 <Link href="/rankings/magazines">Magazine rankings</Link>
                 <Link href="/methodology">How Missa works</Link>
                 <Link href="/about">About us</Link>
-                <a href="mailto:hello@usemissa.com">Get in touch</a>
+                <a href={contactMailto()}>Get in touch</a>
               </div>
               <div>
                 <span>Account</span>

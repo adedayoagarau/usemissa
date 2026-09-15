@@ -37,6 +37,24 @@ test("password signup creates the account aggregates and governance evidence in 
   assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
 });
 
+test("explicit authentication reconciliation restores missing creator aggregates", async () => {
+  const account = { id: "acct-legacy", email: "legacy@example.com", passwordHash: "unused", userId: "user-legacy", isAdmin: true, createdAt: new Date(0).toISOString(), active: true };
+  const statements: string[] = [];
+  const client = {
+    query: async (text: string) => {
+      statements.push(text.replace(/\s+/g, " ").trim());
+      return { rows: [] };
+    },
+    release: () => statements.push("RELEASE"),
+  };
+  const pool = { connect: async () => client } as unknown as Pool;
+  await new PostgresCreatorAccountRepository(pool).ensureProductData(account);
+  assert.ok(statements.some((value) => value.startsWith("insert into creator_profiles") && value.includes("on conflict")));
+  assert.ok(statements.some((value) => value.startsWith("insert into opportunity_preferences") && value.includes("on conflict")));
+  assert.ok(statements.some((value) => value.startsWith("insert into notification_preferences") && value.includes("on conflict")));
+  assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
+});
+
 test("updatePassword updates hash and records audit event in transaction", async () => {
   const account = { id: "acct-one", email: "ada@example.com", passwordHash: hashPassword("old-pass"), userId: "user-one", isAdmin: false, createdAt: new Date(0).toISOString(), active: true };
   const statements: string[] = [];

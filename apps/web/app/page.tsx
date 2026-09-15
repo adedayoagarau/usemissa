@@ -4,8 +4,9 @@ import {
   HomepageContinuation,
   HomepageFooter,
 } from "@/components/missa/homepage-continuation";
-import { HomepageHeroPreview } from "@/components/design-system/homepage-hero-preview";
+import { HomepageHero } from "@/components/missa/homepage-hero";
 import { HomepageNextOpening } from "@/components/missa/homepage-next-opening";
+import { StickyMobileCta } from "@/components/missa/sticky-mobile-cta";
 import { pageMetadata } from "@/lib/seo";
 import { getPublicOpportunityPage } from "@/lib/publicOpportunityReads";
 import { selectHomepageCalls, type HomepageCall } from "@/lib/homepageCalls";
@@ -64,7 +65,7 @@ export default async function HomePage() {
   return (
     <>
       <main>
-        <HomepageHeroPreview />
+        <HomepageHero />
         <HomepageNextOpening />
         <HomepageContinuation
           signedIn={Boolean(session)}
@@ -73,6 +74,9 @@ export default async function HomePage() {
         />
       </main>
       <HomepageFooter />
+      <StickyMobileCta anchorId="homepage-primary-cta" href="/opportunities">
+        Browse opportunities
+      </StickyMobileCta>
     </>
   );
 }

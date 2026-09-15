@@ -32,6 +32,8 @@ export async function GET(request: Request) {
       );
     }
 
+    if (repository) await repository.ensureProductData(account);
+
     const requestUrl = new URL(request.url);
     const host = request.headers.get("host") ?? requestUrl.host;
     const response = NextResponse.redirect(

@@ -20,6 +20,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { BetaBadge } from "@/components/ui/beta-badge";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import type {
   ResidencyFullIntelligenceProfile,
@@ -43,9 +44,8 @@ export function ResidencyIntelligenceDrawer({
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [data, setData] = React.useState<ResidencyFullIntelligenceProfile | null>(
-    null,
-  );
+  const [data, setData] =
+    React.useState<ResidencyFullIntelligenceProfile | null>(null);
   const [activeTab, setActiveTab] = React.useState<
     "funding" | "facilities" | "cohort" | "alumni"
   >("funding");
@@ -82,7 +82,7 @@ export function ResidencyIntelligenceDrawer({
   }, [open, data, loading, fetchIntelligence]);
 
   const defaultTrigger = (
-    <Button variant="outline" size="sm" className="gap-1.5">
+    <Button variant="outline" size="sm">
       <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
       <span>Intelligence</span>
     </Button>
@@ -93,14 +93,16 @@ export function ResidencyIntelligenceDrawer({
       <SheetTrigger render={trigger || defaultTrigger} />
       <SheetContent
         side="right"
-        className="w-full sm:max-w-xl md:max-w-2xl bg-[var(--surface-primary)] border-l border-[var(--border-subtle)] overflow-y-auto p-6"
+        surface="card"
+        className="w-full overflow-y-auto p-6 sm:max-w-xl md:max-w-2xl"
       >
-        <SheetHeader className="border-b border-[var(--border-subtle)] pb-4 text-left">
+        <SheetHeader variant="section" className="pb-4 text-left">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs uppercase tracking-wider text-[var(--text-muted)]">
+              <span className="font-mono text-xs tracking-wider text-[var(--text-muted)] uppercase">
                 Fellowship Dossier
               </span>
+              <BetaBadge />
               {data?.prestigeTier && (
                 <RankingTierBadge tier={data.prestigeTier} />
               )}
@@ -116,24 +118,27 @@ export function ResidencyIntelligenceDrawer({
               </a>
             )}
           </div>
-          <SheetTitle className="font-serif text-2xl font-medium text-[var(--text-primary)]">
-            {residencyName}
-          </SheetTitle>
-          <SheetDescription className="font-sans text-xs text-[var(--text-secondary)]">
-            {data?.location || "United States"} · Verified residency specs, stipends, private studios, and alumni lineage.
+          <SheetTitle className="text-2xl">{residencyName}</SheetTitle>
+          <SheetDescription className="text-xs">
+            {data?.location || "Location not listed"} · A beta summary of
+            current residency records, including stipends, studios, and alumni
+            lineage. This tool is not residency-confirmed; check the official
+            site before applying.
           </SheetDescription>
         </SheetHeader>
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <Clock className="size-8 animate-spin text-[var(--text-muted)] mb-3" />
+            <Clock className="mb-3 size-8 animate-spin text-[var(--text-muted)]" />
             <p className="font-sans text-sm text-[var(--text-secondary)]">
               Loading residency intelligence dossier...
             </p>
           </div>
         ) : error ? (
           <div className="py-12 text-center">
-            <p className="font-sans text-sm text-[var(--text-primary)]">{error}</p>
+            <p className="font-sans text-sm text-[var(--text-primary)]">
+              {error}
+            </p>
             <Button
               variant="outline"
               size="sm"
@@ -155,7 +160,7 @@ export function ResidencyIntelligenceDrawer({
                       ? "Fully Funded"
                       : "Subsidized"}
                 </span>
-                <p className="text-[10px] uppercase font-medium text-[var(--text-muted)]">
+                <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase">
                   {data.specs.stipendFrequency !== "none"
                     ? `Stipend (${data.specs.stipendFrequency})`
                     : "Funding Model"}
@@ -166,7 +171,7 @@ export function ResidencyIntelligenceDrawer({
                 <span className="font-mono text-lg font-semibold text-[var(--text-primary)]">
                   {data.specs.acceptanceRatePercent}%
                 </span>
-                <p className="text-[10px] uppercase font-medium text-[var(--text-muted)]">
+                <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase">
                   Acceptance Rate
                 </p>
               </div>
@@ -177,7 +182,7 @@ export function ResidencyIntelligenceDrawer({
                     ? `${data.specs.privateStudioSqft} sqft`
                     : "Private"}
                 </span>
-                <p className="text-[10px] uppercase font-medium text-[var(--text-muted)]">
+                <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase">
                   Studio Space
                 </p>
               </div>
@@ -185,12 +190,22 @@ export function ResidencyIntelligenceDrawer({
 
             {/* Custom Tab Navigation */}
             <div className="flex border-b border-[var(--border-subtle)]">
-              {([
-                { id: "funding", label: "Funding & Stipends", icon: DollarSign },
-                { id: "facilities", label: "Studio & Facilities", icon: Building },
-                { id: "cohort", label: "Selectivity & Cohort", icon: Users },
-                { id: "alumni", label: "Alumni & Reviews", icon: Award },
-              ] as const).map((tab) => {
+              {(
+                [
+                  {
+                    id: "funding",
+                    label: "Funding & Stipends",
+                    icon: DollarSign,
+                  },
+                  {
+                    id: "facilities",
+                    label: "Studio & Facilities",
+                    icon: Building,
+                  },
+                  { id: "cohort", label: "Selectivity & Cohort", icon: Users },
+                  { id: "alumni", label: "Alumni & Reviews", icon: Award },
+                ] as const
+              ).map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
@@ -198,9 +213,9 @@ export function ResidencyIntelligenceDrawer({
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={cn(
-                      "flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 font-sans text-xs font-medium border-b-2 transition",
+                      "inline-flex flex-1 items-center justify-center gap-1.5 border-b-2 py-2.5 font-sans text-xs font-medium transition",
                       isActive
-                        ? "border-[var(--text-primary)] text-[var(--text-primary)] font-semibold"
+                        ? "border-[var(--text-primary)] font-semibold text-[var(--text-primary)]"
                         : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]",
                     )}
                   >
@@ -214,14 +229,16 @@ export function ResidencyIntelligenceDrawer({
             {/* Tab 1: Funding & Stipends */}
             {activeTab === "funding" && (
               <div className="space-y-4">
-                <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 space-y-3">
-                  <h4 className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4">
+                  <h4 className="font-sans text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
                     Stipends, Grants & Financial Aid
                   </h4>
 
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-                      <span className="text-[var(--text-secondary)]">Living Stipend:</span>
+                      <span className="text-[var(--text-secondary)]">
+                        Living Stipend:
+                      </span>
                       <span className="font-medium text-[var(--text-primary)]">
                         {data.specs.stipendAmountCents > 0
                           ? `$${(data.specs.stipendAmountCents / 100).toLocaleString()} (${data.specs.stipendFrequency})`
@@ -230,7 +247,9 @@ export function ResidencyIntelligenceDrawer({
                     </div>
 
                     <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-                      <span className="text-[var(--text-secondary)]">Travel Grant / Reimbursement:</span>
+                      <span className="text-[var(--text-secondary)]">
+                        Travel Grant / Reimbursement:
+                      </span>
                       <span className="font-medium text-[var(--text-primary)]">
                         {data.specs.travelGrantCents > 0
                           ? `Up to $${(data.specs.travelGrantCents / 100).toLocaleString()}`
@@ -239,14 +258,18 @@ export function ResidencyIntelligenceDrawer({
                     </div>
 
                     <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-                      <span className="text-[var(--text-secondary)]">Meal Plan:</span>
+                      <span className="text-[var(--text-secondary)]">
+                        Meal Plan:
+                      </span>
                       <span className="font-medium text-[var(--text-primary)] capitalize">
                         {data.specs.mealPlanKind.replace(/_/g, " ")}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between">
-                      <span className="text-[var(--text-secondary)]">Application Fee:</span>
+                      <span className="text-[var(--text-secondary)]">
+                        Application Fee:
+                      </span>
                       <span className="font-medium text-[var(--text-primary)]">
                         {data.specs.applicationFeeCents > 0
                           ? `$${(data.specs.applicationFeeCents / 100).toFixed(0)}`
@@ -272,8 +295,8 @@ export function ResidencyIntelligenceDrawer({
             {/* Tab 2: Studio & Facilities */}
             {activeTab === "facilities" && (
               <div className="space-y-4">
-                <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 space-y-3">
-                  <h4 className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4">
+                  <h4 className="font-sans text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
                     Studio Amenities & Equipment
                   </h4>
 
@@ -289,23 +312,33 @@ export function ResidencyIntelligenceDrawer({
                     ))}
                   </div>
 
-                  <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2 text-xs">
+                  <div className="space-y-2 border-t border-[var(--border-subtle)] pt-3 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-[var(--text-secondary)]">Living Quarters:</span>
+                      <span className="text-[var(--text-secondary)]">
+                        Living Quarters:
+                      </span>
                       <span className="font-medium text-[var(--text-primary)] capitalize">
                         {data.specs.livingArrangement.replace(/_/g, " ")}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[var(--text-secondary)]">ADA Accessible:</span>
+                      <span className="text-[var(--text-secondary)]">
+                        ADA Accessible:
+                      </span>
                       <span className="font-medium text-[var(--text-primary)]">
-                        {data.specs.adaAccessible ? "Yes (ADA Compliant)" : "Historic Site Limitations"}
+                        {data.specs.adaAccessible
+                          ? "Yes (ADA Compliant)"
+                          : "Historic Site Limitations"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[var(--text-secondary)]">Family / Partner Friendly:</span>
+                      <span className="text-[var(--text-secondary)]">
+                        Family / Partner Friendly:
+                      </span>
                       <span className="font-medium text-[var(--text-primary)]">
-                        {data.specs.familyPartnerFriendly ? "Partners / Children welcome" : "Solo residency only"}
+                        {data.specs.familyPartnerFriendly
+                          ? "Partners / Children welcome"
+                          : "Solo residency only"}
                       </span>
                     </div>
                   </div>
@@ -316,8 +349,8 @@ export function ResidencyIntelligenceDrawer({
             {/* Tab 3: Selectivity & Cohort */}
             {activeTab === "cohort" && (
               <div className="space-y-4">
-                <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 space-y-3">
-                  <h4 className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4">
+                  <h4 className="font-sans text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
                     Admissions Selectivity & Cohort Structure
                   </h4>
 
@@ -326,7 +359,7 @@ export function ResidencyIntelligenceDrawer({
                       <span className="font-mono text-xl font-semibold text-[var(--text-primary)]">
                         {data.specs.cohortSize} Fellows
                       </span>
-                      <p className="mt-0.5 text-[10px] uppercase font-medium text-[var(--text-muted)]">
+                      <p className="mt-0.5 text-[10px] font-medium text-[var(--text-muted)] uppercase">
                         Cohort Size per Session
                       </p>
                     </div>
@@ -335,25 +368,28 @@ export function ResidencyIntelligenceDrawer({
                       <span className="font-mono text-xl font-semibold text-[var(--text-primary)]">
                         {data.specs.typicalDurationWeeks} Weeks
                       </span>
-                      <p className="mt-0.5 text-[10px] uppercase font-medium text-[var(--text-muted)]">
+                      <p className="mt-0.5 text-[10px] font-medium text-[var(--text-muted)] uppercase">
                         Typical Session Length
                       </p>
                     </div>
                   </div>
 
-                  <p className="text-xs text-[var(--text-muted)] pt-2">
-                    Approximately {data.specs.annualApplicantVolume.toLocaleString()} artists and writers apply annually for fellowship slots across seasonal cycles.
+                  <p className="pt-2 text-xs text-[var(--text-muted)]">
+                    Approximately{" "}
+                    {data.specs.annualApplicantVolume.toLocaleString()} artists
+                    and writers apply annually for fellowship slots across
+                    seasonal cycles.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Tab 4: Alumni & Verified Reviews */}
+            {/* Tab 4: Alumni & community reviews */}
             {activeTab === "alumni" && (
               <div className="space-y-4">
                 {data.specs.notableAlumni.length > 0 && (
-                  <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 space-y-2">
-                    <h4 className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
+                  <div className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4">
+                    <h4 className="font-sans text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
                       Notable Alumni & Major Honors
                     </h4>
                     <div className="flex flex-wrap gap-1.5 pt-1">
@@ -371,8 +407,8 @@ export function ResidencyIntelligenceDrawer({
 
                 {/* Community Reviews */}
                 <div className="space-y-3">
-                  <h4 className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                    Verified Resident Reviews ({data.reviews.length})
+                  <h4 className="font-sans text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
+                    Community reviews ({data.reviews.length})
                   </h4>
 
                   {data.reviews.length === 0 ? (
@@ -383,7 +419,7 @@ export function ResidencyIntelligenceDrawer({
                     data.reviews.map((rev: ResidencyReviewRow) => (
                       <div
                         key={rev.id}
-                        className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 space-y-2 shadow-sm text-xs"
+                        className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 text-xs shadow-sm"
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-[var(--text-primary)]">
@@ -395,12 +431,12 @@ export function ResidencyIntelligenceDrawer({
                             </span>
                           )}
                         </div>
-                        <p className="text-[var(--text-secondary)] leading-relaxed">
+                        <p className="leading-relaxed text-[var(--text-secondary)]">
                           &ldquo;{rev.reviewBody}&rdquo;
                         </p>
-                        <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)]">
+                        <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-1 text-[11px] text-[var(--text-muted)]">
                           <span>{rev.authorName || "Anonymous Resident"}</span>
-                          <span>{rev.datePublished || "Verified"}</span>
+                          <span>{rev.datePublished || "Date not listed"}</span>
                         </div>
                       </div>
                     ))

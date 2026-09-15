@@ -114,7 +114,7 @@ export function OpportunityFilters({ locations, activeFilterCount, saveSearch }:
           <label className={styles.toggle}><input type="checkbox" checked={searchParams.get('fee') === 'no-fee'} onChange={(event) => update('fee', 'no-fee', event.target.checked)} /><span className={styles.toggleTrack} />No fee</label>
           <label className={styles.toggle}><input type="checkbox" checked={searchParams.get('openNow') !== '0'} onChange={(event) => update('openNow', event.target.checked ? undefined : '0', event.target.checked)} /><span className={styles.toggleTrack} />Open now</label>
           {saveSearch}
-          <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={clearAll}><SlidersHorizontal className="size-3.5" />{activeFilterCount ? `${activeFilterCount} filters` : 'Filter'}</Button>
+          <Button type="button" variant="outline" size="sm"  onClick={clearAll}><SlidersHorizontal className="size-3.5" />{activeFilterCount ? `${activeFilterCount} filters` : 'Filter'}</Button>
         </div>
       </div>
       <div className="mt-2 flex min-h-5 items-center justify-between gap-3" aria-live="polite">

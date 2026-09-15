@@ -63,7 +63,7 @@ const ProgressChecklistDemo = ({
             >
               <div className='relative flex h-4 w-4 shrink-0 items-center justify-center'>
                 {isCompleted ? (
-                  <CheckCircle2Icon className='h-4 w-4 text-green-600 dark:text-green-400' />
+                  <CheckCircle2Icon className='h-4 w-4 text-success dark:text-success' />
                 ) : (
                   <CircleIcon className='group-hover:text-foreground h-4 w-4 transition-colors' />
                 )}

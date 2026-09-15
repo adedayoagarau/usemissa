@@ -55,7 +55,7 @@ const CollapsibleFilterDemo = () => {
             <Label htmlFor='rating-4' className='flex shrink-0 items-center gap-1 text-sm font-medium'>
               <span className='flex items-center gap-1'>
                 4
-                <StarIcon className='size-4 fill-amber-500 stroke-amber-500 text-amber-500 dark:fill-amber-400 dark:stroke-amber-400 dark:text-amber-400' />
+                <StarIcon className='size-4 fill-warning stroke-warning text-warning dark:fill-warning dark:stroke-warning dark:text-warning' />
               </span>
               & Up
             </Label>
@@ -65,7 +65,7 @@ const CollapsibleFilterDemo = () => {
             <Label htmlFor='rating-3' className='flex shrink-0 items-center gap-1 text-sm font-medium'>
               <span className='flex items-center gap-1'>
                 3
-                <StarIcon className='size-4 fill-amber-500 stroke-amber-500 text-amber-500 dark:fill-amber-400 dark:stroke-amber-400 dark:text-amber-400' />
+                <StarIcon className='size-4 fill-warning stroke-warning text-warning dark:fill-warning dark:stroke-warning dark:text-warning' />
               </span>
               & Up
             </Label>
@@ -75,7 +75,7 @@ const CollapsibleFilterDemo = () => {
             <Label htmlFor='rating-2' className='flex shrink-0 items-center gap-1 text-sm font-medium'>
               <span className='flex items-center gap-1'>
                 2
-                <StarIcon className='size-4 fill-amber-500 stroke-amber-500 text-amber-500 dark:fill-amber-400 dark:stroke-amber-400 dark:text-amber-400' />
+                <StarIcon className='size-4 fill-warning stroke-warning text-warning dark:fill-warning dark:stroke-warning dark:text-warning' />
               </span>
               & Up
             </Label>

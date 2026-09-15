@@ -18,7 +18,7 @@ const badgeVariants = cva(
         outline:
           "text-foreground border border-input bg-background/50 backdrop-blur-sm hover:bg-accent hover:text-accent-foreground",
         glass:
-          "bg-white/10 dark:bg-black/10 backdrop-blur-md border border-white/20 dark:border-white/10 text-foreground shadow-sm hover:bg-white/20 dark:hover:bg-black/20",
+          "bg-card/10 dark:bg-black/10 backdrop-blur-md border border-white/20 dark:border-white/10 text-foreground shadow-sm hover:bg-card/20 dark:hover:bg-black/20",
         glow: "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_10px_color-mix(in_oklab,var(--primary)_20%,transparent)] hover:shadow-[0_0_20px_color-mix(in_oklab,var(--primary)_40%,transparent)] hover:bg-primary/20 motion-safe:hover:scale-[1.02]",
         animated:
           "group gap-2 tracking-widest uppercase border border-border/60 bg-card/70 text-muted-foreground backdrop-blur hover:border-primary/60 hover:bg-primary/15 hover:text-primary",
@@ -94,7 +94,7 @@ function NativeBadge({
         )}
         {children}
         {isAnimated && tag && (
-          <span className="rounded-full border border-border/40 bg-white/5 px-2 py-0.5 text-[0.6rem] text-muted-foreground transition-colors duration-200 group-hover:border-primary/60 group-hover:bg-primary/25 group-hover:text-primary">
+          <span className="rounded-full border border-border/40 bg-card/5 px-2 py-0.5 text-[0.6rem] text-muted-foreground transition-colors duration-200 group-hover:border-primary/60 group-hover:bg-primary/25 group-hover:text-primary">
             {tag}
           </span>
         )}

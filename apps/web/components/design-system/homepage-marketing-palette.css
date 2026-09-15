@@ -22,8 +22,16 @@
   --hero-action-ink: var(--marketing-ink);
   --hero-photo-shade: linear-gradient(
     to top,
-    color-mix(in srgb, var(--accent-deep) 42%, transparent),
-    transparent 64%
+    color-mix(in srgb, var(--ink) 72%, transparent),
+    transparent 58%
+  ), linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--ink) 52%, transparent),
+    transparent 28%
+  ), linear-gradient(
+    to left,
+    color-mix(in srgb, var(--ink) 34%, transparent),
+    transparent 68%
   );
 }
 
@@ -31,8 +39,12 @@
   .missa-homepage-hero {
     --hero-photo-shade: linear-gradient(
       to top,
-      color-mix(in srgb, var(--accent-deep) 92%, transparent),
-      transparent 65%
+      color-mix(in srgb, var(--ink) 88%, transparent),
+      transparent 62%
+    ), linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--ink) 56%, transparent),
+      transparent 26%
     );
   }
 }

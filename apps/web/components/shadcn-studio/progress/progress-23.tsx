@@ -11,7 +11,7 @@ const CircularProgressProductivityDemo = () => {
   const val = progress
 
   const getColor = (v: number) => {
-    if (v > 85) return 'text-green-600 dark:text-green-400'
+    if (v > 85) return 'text-success dark:text-success'
     if (v > 40) return 'text-primary'
 
     return 'text-destructive'

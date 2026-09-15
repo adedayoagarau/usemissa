@@ -39,7 +39,7 @@ const COLUMN_META: Record<ColumnId, { title: string; eyebrow: string; accent: st
     title: 'Building',
     eyebrow: 'In flight',
     accent: 'from-amber-600/20 via-amber-600/5 dark:from-amber-400/20 dark:via-amber-400/5 to-transparent',
-    dot: 'bg-amber-500'
+    dot: 'bg-warning'
   },
   review: {
     title: 'QA Review',
@@ -51,14 +51,14 @@ const COLUMN_META: Record<ColumnId, { title: string; eyebrow: string; accent: st
     title: 'Shipped',
     eyebrow: 'Released',
     accent: 'from-green-600/20 via-green-600/5 dark:from-green-400/20 dark:via-green-400/5 to-transparent',
-    dot: 'bg-green-600 dark:bg-green-400'
+    dot: 'bg-success dark:bg-success'
   }
 }
 
 const PRIORITY_STYLES: Record<Task['priority'], string> = {
   low: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300',
   medium:
-    'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-300',
+    'border-warning bg-warning text-warning dark:border-warning/70 dark:bg-warning/40 dark:text-warning',
   high: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-300'
 }
 

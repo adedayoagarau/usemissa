@@ -1,6 +1,9 @@
 "use client";
 
-import { RankingMovement, RankingTierBadge } from "@/components/missa/ranking-indicators";
+import {
+  RankingMovement,
+  RankingTierBadge,
+} from "@/components/missa/ranking-indicators";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -266,7 +269,6 @@ export function MagazineRankingsInteractive({
             </Button>
           ))}
         </div>
-
       )}
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
         <p role="status" aria-live="polite">
@@ -285,7 +287,7 @@ export function MagazineRankingsInteractive({
       </div>
 
       {visible.length === 0 ? (
-        <Empty className="border border-border py-16">
+        <Empty variant="bordered" size="spacious">
           <EmptyHeader>
             <EmptyTitle>No magazines found</EmptyTitle>
             <EmptyDescription>
@@ -303,7 +305,7 @@ export function MagazineRankingsInteractive({
             response times are medians where available.
           </caption>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
+            <TableRow variant="static">
               <TableHead scope="col" className="w-12 text-start sm:w-20">
                 Rank
               </TableHead>
@@ -344,7 +346,10 @@ export function MagazineRankingsInteractive({
           <TableBody>
             {visible.map((row) => (
               <TableRow key={row.profileId}>
-                <TableCell className="py-6 align-top font-mono text-base text-muted-foreground tabular-nums">
+                <TableCell
+                  tone="muted"
+                  className="py-6 align-top font-mono text-base tabular-nums"
+                >
                   {row.rankPosition}
                   <RankingMovement delta={row.rankDelta} />
                 </TableCell>
@@ -375,6 +380,37 @@ export function MagazineRankingsInteractive({
                           : ""}
                     </p>
                   )}
+                  <dl
+                    className="mt-4 grid gap-2 lg:hidden"
+                    aria-label={`${row.name} score details`}
+                  >
+                    <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                      <dt className="text-xs text-muted-foreground">
+                        Anthology honors
+                      </dt>
+                      <dd className="font-mono text-xs text-foreground tabular-nums">
+                        {row.accoladesScore} / 40
+                      </dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                      <dt className="text-xs text-muted-foreground">
+                        Contributor pay
+                      </dt>
+                      <dd className="font-mono text-xs text-foreground tabular-nums">
+                        {row.payScore} / 15
+                      </dd>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-3 border-t border-border pt-2 md:hidden">
+                      <dt className="text-xs text-muted-foreground">
+                        Response time
+                      </dt>
+                      <dd className="text-end font-mono text-xs text-foreground tabular-nums">
+                        {!preview && row.medianResponseDays != null
+                          ? `${row.medianResponseDays} days median`
+                          : "Not available"}
+                      </dd>
+                    </div>
+                  </dl>
                   {!preview && (
                     <div className="mt-3 flex flex-wrap gap-3 xl:hidden">
                       <EditorialIntelligenceDrawer
@@ -453,16 +489,13 @@ export function MagazineRankingsInteractive({
                             profileId={row.profileId}
                             magazineName={row.name}
                             onSuccess={() => router.refresh()}
-                            trigger={
-                              <Button variant="ghost">Report</Button>
-                            }
+                            trigger={<Button variant="ghost">Report</Button>}
                           />
                         )}
                       </div>
                     </div>
                   </TableCell>
                 )}
-
               </TableRow>
             ))}
           </TableBody>

@@ -61,7 +61,7 @@ export function OrganizationBilling({ organizationId, canManage }: { organizatio
   }
   if (!billing) return null;
   return (
-    <section className="rounded-lg border border-border bg-white p-5 shadow-sm" aria-labelledby="organization-billing-heading">
+    <section className="rounded-lg border border-border bg-card p-5 shadow-sm" aria-labelledby="organization-billing-heading">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 id="organization-billing-heading" className="font-heading text-xl font-medium text-foreground">
@@ -74,7 +74,7 @@ export function OrganizationBilling({ organizationId, canManage }: { organizatio
         </span>
       </div>
       {error && (
-        <p className="mt-3 text-sm text-red-700" role="alert">
+        <p className="mt-3 text-sm text-destructive" role="alert">
           {error}
         </p>
       )}
@@ -96,7 +96,7 @@ export function OrganizationBilling({ organizationId, canManage }: { organizatio
             </>
           )}
           {billing.subscriptionId && !billing.cancelAtPeriodEnd && (
-            <button type="button" onClick={() => void cancel()} className="rounded-md border border-red-200 px-3 py-2 text-sm text-red-700">
+            <button type="button" onClick={() => void cancel()} className="rounded-md border border-destructive px-3 py-2 text-sm text-destructive">
               Cancel at period end
             </button>
           )}

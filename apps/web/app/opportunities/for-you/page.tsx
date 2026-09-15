@@ -4,6 +4,14 @@ import {getSessionAccountFromToken,SESSION_COOKIE} from '@/lib/auth';
 import {getEngine} from '@/lib/engine';
 import {OpportunityShell} from '@/components/opportunity-shell';
 import {RecommendationsWorkspace} from '@/components/missa/recommendations-workspace';
+
+export const metadata = {
+  title: 'Opportunities for you',
+  description:
+    'Opportunities matched to your practice, with the official source kept in view.',
+  robots: { index: false, follow: false },
+};
+
 export default async function ForYouPage(){
   const session=await getSessionAccountFromToken((await cookies()).get(SESSION_COOKIE)?.value);if(!session)redirect('/login?next=/opportunities/for-you');
   const orgs=session.memberships.length?(await getEngine()).store.organizations:null;

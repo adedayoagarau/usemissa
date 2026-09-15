@@ -45,7 +45,7 @@ const SheetWithFormDemo = () => {
 
   const onSubmit = () => {
     toast.custom(() => (
-      <Alert className='border-green-600 text-green-600 dark:border-green-400 dark:text-green-400'>
+      <Alert className='border-success text-success dark:border-success dark:text-success'>
         <CheckCheckIcon
         />
         <AlertTitle>Account created successfully!</AlertTitle>

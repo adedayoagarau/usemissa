@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { ResidencyRankingRow } from "@missa/radar-adapters";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
+import { Button } from "@/components/ui/button";
 
 interface ResidencyComparisonViewProps {
   allResidencies: ResidencyRankingRow[];
@@ -36,7 +37,9 @@ export function ResidencyComparisonView({
 
   const selectedResidencies = useMemo(() => {
     return selectedIds
-      .map((id) => allResidencies.find((r) => r.profileId === id || r.slug === id))
+      .map((id) =>
+        allResidencies.find((r) => r.profileId === id || r.slug === id),
+      )
       .filter((r): r is ResidencyRankingRow => Boolean(r));
   }, [selectedIds, allResidencies]);
 
@@ -83,22 +86,22 @@ export function ResidencyComparisonView({
 
       {/* Program Selector Search */}
       {selectedIds.length < 3 && (
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm space-y-2">
+        <div className="space-y-2 rounded-xl border border-border bg-card p-4 shadow-sm">
           <label
             htmlFor="compare-residency-search"
-            className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+            className="text-xs font-semibold tracking-wider text-muted-foreground uppercase"
           >
             Add Residency Program to Compare
           </label>
           <div className="relative max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               id="compare-residency-search"
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search residency by name or location to add…"
-              className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="min-h-11 w-full rounded-lg border border-border bg-background py-2 pr-3 pl-9 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             />
             {searchResults.length > 0 && (
               <ul className="absolute z-20 mt-1 w-full rounded-lg border border-border bg-popover py-1 shadow-lg">
@@ -107,11 +110,13 @@ export function ResidencyComparisonView({
                     <button
                       type="button"
                       onClick={() => addResidency(res.profileId)}
-                      className="w-full text-left px-3 py-2 text-sm text-foreground hover:bg-muted/70 flex items-center justify-between transition-colors"
+                      className="flex min-h-11 w-full items-center justify-between px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted/70 focus-visible:outline-2 focus-visible:outline-ring"
                     >
                       <div className="space-y-0.5">
-                        <span className="font-medium block">{res.name}</span>
-                        <span className="text-xs text-muted-foreground">{res.location || "Location unlisted"}</span>
+                        <span className="block font-medium">{res.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {res.location || "Location unlisted"}
+                        </span>
                       </div>
                       <span className="font-mono text-xs font-semibold text-primary">
                         {res.totalScore.toFixed(1)} pts
@@ -128,7 +133,10 @@ export function ResidencyComparisonView({
       {/* Comparison Grid */}
       {selectedResidencies.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card p-12 text-center text-muted-foreground">
-          <p>No residencies selected for comparison. Search above to add programs.</p>
+          <p>
+            No residencies selected for comparison. Search above to add
+            programs.
+          </p>
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -136,53 +144,66 @@ export function ResidencyComparisonView({
             return (
               <div
                 key={res.profileId}
-                className="relative rounded-2xl border border-border bg-card p-6 shadow-sm space-y-6 flex flex-col justify-between"
+                className="relative flex flex-col justify-between space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm"
               >
                 {/* Remove Card Button */}
-                <button
-                  type="button"
-                  onClick={() => removeResidency(res.profileId)}
-                  className="absolute top-4 right-4 p-1 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                  aria-label={`Remove ${res.name} from comparison`}
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <div className="absolute top-3 right-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeResidency(res.profileId)}
+                    aria-label={`Remove ${res.name} from comparison`}
+                  >
+                    <X aria-hidden="true" />
+                  </Button>
+                </div>
 
                 <div className="space-y-4">
                   {/* Header & Tier */}
-                  <div className="pr-8 space-y-1.5">
+                  <div className="space-y-1.5 pr-12">
                     <RankingTierBadge tier={res.prestigeTier} />
                     <h3 className="text-lg font-bold text-foreground">
                       <Link
                         href={`/residency/${res.slug}`}
-                        className="hover:text-primary transition-colors underline-offset-4 hover:underline"
+                        className="underline-offset-4 transition-colors hover:text-primary hover:underline"
                       >
                         {res.name}
                       </Link>
                     </h3>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <MapPin className="h-3 w-3 shrink-0" />
-                      <span>{res.location || [res.city, res.region, res.country].filter(Boolean).join(", ") || "Location unlisted"}</span>
+                      <span>
+                        {res.location ||
+                          [res.city, res.region, res.country]
+                            .filter(Boolean)
+                            .join(", ") ||
+                          "Location unlisted"}
+                      </span>
                     </div>
                   </div>
 
                   {/* Composite MRI Score */}
                   <div className="rounded-xl border border-border bg-muted/40 p-4 text-center">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                       Missa Residency Index
                     </span>
                     <div className="mt-1 font-mono text-3xl font-bold text-foreground">
                       {res.totalScore.toFixed(1)}
-                      <span className="text-xs font-normal text-muted-foreground"> / 100</span>
+                      <span className="text-xs font-normal text-muted-foreground">
+                        {" "}
+                        / 100
+                      </span>
                     </div>
                   </div>
 
                   {/* Dimension Metrics */}
                   <div className="space-y-3 divide-y divide-border text-xs">
                     {/* Funding */}
-                    <div className="pt-2 flex items-center justify-between">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Funding (35 pts)
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />{" "}
+                        Funding (35 pts)
                       </span>
                       <span className="font-mono font-semibold text-foreground">
                         {res.fundingScore.toFixed(1)} pts
@@ -190,9 +211,10 @@ export function ResidencyComparisonView({
                     </div>
 
                     {/* Community */}
-                    <div className="pt-2 flex items-center justify-between">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-400" /> Resident Rating (30 pts)
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Star className="h-3.5 w-3.5 fill-warning text-warning" />{" "}
+                        Resident Rating (30 pts)
                       </span>
                       <span className="font-mono font-semibold text-foreground">
                         {res.ratingScore.toFixed(1)} pts
@@ -200,9 +222,10 @@ export function ResidencyComparisonView({
                     </div>
 
                     {/* Facilities */}
-                    <div className="pt-2 flex items-center justify-between">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Home className="h-3.5 w-3.5 text-sky-500" /> Facilities (20 pts)
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Home className="h-3.5 w-3.5 text-sky-500" /> Facilities
+                        (20 pts)
                       </span>
                       <span className="font-mono font-semibold text-foreground">
                         {res.facilitiesScore.toFixed(1)} pts
@@ -210,9 +233,10 @@ export function ResidencyComparisonView({
                     </div>
 
                     {/* Prestige */}
-                    <div className="pt-2 flex items-center justify-between">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Award className="h-3.5 w-3.5 text-primary" /> Prestige (15 pts)
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Award className="h-3.5 w-3.5 text-primary" /> Prestige
+                        (15 pts)
                       </span>
                       <span className="font-mono font-semibold text-foreground">
                         {res.accessScore.toFixed(1)} pts
@@ -221,15 +245,21 @@ export function ResidencyComparisonView({
                   </div>
 
                   {/* Amenities Comparison */}
-                  <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2 text-xs">
+                  <div className="space-y-2 rounded-xl border border-border bg-muted/20 p-3 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Tuition / Fee:</span>
+                      <span className="text-muted-foreground">
+                        Tuition / Fee:
+                      </span>
                       <span className="font-medium text-foreground">
-                        {res.isFullyFunded ? "100% Free Fellowship" : "Subsidized / Paid"}
+                        {res.isFullyFunded
+                          ? "100% Free Fellowship"
+                          : "Subsidized / Paid"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Living Stipend:</span>
+                      <span className="text-muted-foreground">
+                        Living Stipend:
+                      </span>
                       <span className="font-medium text-foreground">
                         {res.hasStipend ? "Provided" : "None"}
                       </span>
@@ -241,27 +271,35 @@ export function ResidencyComparisonView({
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Private Studio:</span>
+                      <span className="text-muted-foreground">
+                        Private Studio:
+                      </span>
                       <span className="font-medium text-foreground">
-                        {res.hasPrivateStudio ? "Dedicated Private" : "Shared / Unlisted"}
+                        {res.hasPrivateStudio
+                          ? "Dedicated Private"
+                          : "Shared / Unlisted"}
                       </span>
                     </div>
                   </div>
 
                   {/* Disciplines */}
                   {res.disciplines && (
-                    <div className="text-xs space-y-1">
-                      <span className="font-semibold text-muted-foreground uppercase text-[10px]">Disciplines</span>
-                      <p className="text-muted-foreground italic line-clamp-2">{res.disciplines}</p>
+                    <div className="space-y-1 text-xs">
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                        Disciplines
+                      </span>
+                      <p className="line-clamp-2 text-muted-foreground italic">
+                        {res.disciplines}
+                      </p>
                     </div>
                   )}
                 </div>
 
                 {/* Card Footer Actions */}
-                <div className="pt-4 border-t border-border flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
                   <Link
                     href={`/residency/${res.slug}`}
-                    className="inline-flex min-h-9 items-center text-xs font-medium text-primary hover:underline"
+                    className="inline-flex min-h-11 items-center text-xs font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                   >
                     View Missa Profile →
                   </Link>
@@ -271,7 +309,7 @@ export function ResidencyComparisonView({
                       href={res.websiteUrl}
                       target="_blank"
                       rel="noreferrer noopener"
-                      className="inline-flex min-h-9 items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                      className="inline-flex min-h-11 items-center gap-1 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                     >
                       <span>Official Site</span>
                       <ExternalLink className="h-3 w-3" />

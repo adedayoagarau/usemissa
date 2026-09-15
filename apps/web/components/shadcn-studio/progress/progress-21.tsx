@@ -7,7 +7,7 @@ const ProgressStripedDemo = () => {
       <Progress
         value={40}
         id='progress-green'
-        className='**:data-[slot=progress-indicator]:animate-progress-bar-stripes **:data-[slot=progress-indicator]:bg-green-600 **:data-[slot=progress-indicator]:bg-[linear-gradient(45deg,rgba(255,255,255,0.28)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.28)_50%,rgba(255,255,255,0.28)_75%,transparent_75%,transparent)] **:data-[slot=progress-indicator]:bg-size-[0.75rem_0.75rem] *:data-[slot=progress-track]:h-2 *:data-[slot=progress-track]:bg-green-600/20 dark:**:data-[slot=progress-indicator]:bg-green-400 dark:*:data-[slot=progress-track]:bg-green-400/20'
+        className='**:data-[slot=progress-indicator]:animate-progress-bar-stripes **:data-[slot=progress-indicator]:bg-success **:data-[slot=progress-indicator]:bg-[linear-gradient(45deg,rgba(255,255,255,0.28)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.28)_50%,rgba(255,255,255,0.28)_75%,transparent_75%,transparent)] **:data-[slot=progress-indicator]:bg-size-[0.75rem_0.75rem] *:data-[slot=progress-track]:h-2 *:data-[slot=progress-track]:bg-success/20 dark:**:data-[slot=progress-indicator]:bg-success dark:*:data-[slot=progress-track]:bg-success/20'
       >
         <ProgressLabel>Green</ProgressLabel>
         <ProgressValue className='text-foreground font-medium' />
@@ -17,7 +17,7 @@ const ProgressStripedDemo = () => {
       <Progress
         value={60}
         id='progress-amber'
-        className='**:data-[slot=progress-indicator]:animate-progress-bar-stripes **:data-[slot=progress-indicator]:bg-amber-600 **:data-[slot=progress-indicator]:bg-[linear-gradient(45deg,rgba(255,255,255,0.28)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.28)_50%,rgba(255,255,255,0.28)_75%,transparent_75%,transparent)] **:data-[slot=progress-indicator]:bg-size-[0.75rem_0.75rem] *:data-[slot=progress-track]:h-2 *:data-[slot=progress-track]:bg-amber-600/20 dark:**:data-[slot=progress-indicator]:bg-amber-400 dark:*:data-[slot=progress-track]:bg-amber-400/20'
+        className='**:data-[slot=progress-indicator]:animate-progress-bar-stripes **:data-[slot=progress-indicator]:bg-warning **:data-[slot=progress-indicator]:bg-[linear-gradient(45deg,rgba(255,255,255,0.28)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.28)_50%,rgba(255,255,255,0.28)_75%,transparent_75%,transparent)] **:data-[slot=progress-indicator]:bg-size-[0.75rem_0.75rem] *:data-[slot=progress-track]:h-2 *:data-[slot=progress-track]:bg-warning/20 dark:**:data-[slot=progress-indicator]:bg-warning dark:*:data-[slot=progress-track]:bg-warning/20'
       >
         <ProgressLabel>Amber</ProgressLabel>
         <ProgressValue className='text-foreground font-medium' />

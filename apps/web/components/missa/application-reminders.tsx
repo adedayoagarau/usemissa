@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,13 +20,39 @@ import {
   applicationDate,
   applicationView,
 } from "@/lib/application-workspace-types";
+import {
+  DEFAULT_REMINDER_TIME,
+  firstViableDeadlineSchedule,
+  isAhead,
+  isBeforeDeadlineClose,
+  reminderDateForOffset,
+  viableTimeOfDay,
+} from "@/lib/reminder-schedule";
 import { toast } from "sonner";
+
+/** Reminder days offered for the deadline default, nearest useful day first. */
+const DEADLINE_DEFAULT_OFFSETS = [7, 3, 1, 0];
 
 function nextMorning() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
   d.setHours(9, 0, 0, 0);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T09:00`;
+}
+function closingLabel(iso: string, timeZone: string | null) {
+  const options: Intl.DateTimeFormatOptions = {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  };
+  try {
+    return new Intl.DateTimeFormat("en", {
+      ...options,
+      ...(timeZone ? { timeZone } : {}),
+    }).format(new Date(iso));
+  } catch {
+    return new Intl.DateTimeFormat("en", options).format(new Date(iso));
+  }
 }
 function whenLabel(item: ApplicationReminder) {
   if (item.state === "needs-review") return "Deadline needs review";
@@ -60,12 +86,24 @@ export function ApplicationReminders({
   const [title, setTitle] = useState(""),
     [when, setWhen] = useState(""),
     [repeat, setRepeat] = useState(0),
-    [offset, setOffset] = useState(7);
+    [offset, setOffset] = useState(7),
+    [timeOfDay, setTimeOfDay] = useState(DEFAULT_REMINDER_TIME),
+    [dialogOpenedAt, setDialogOpenedAt] = useState(0);
   const request = useRef<{ signature: string; key: string } | null>(null);
   const preparing =
     application && applicationView(application.myStatus) === "saved";
   const canAdd =
     application && applicationView(application.myStatus) !== "history";
+  const deadlineDay =
+    dialog === "new" && application?.deadline
+      ? reminderDateForOffset(application.deadline, offset)
+      : null;
+  const deadlineAhead = deadlineDay
+    ? isAhead(deadlineDay, timeOfDay, new Date(dialogOpenedAt))
+    : true;
+  const deadlineBeforeClose = deadlineDay
+    ? isBeforeDeadlineClose(deadlineDay, timeOfDay, application?.deadlineTime)
+    : true;
   const load = useCallback(async () => {
     try {
       const response = await fetch(
@@ -159,6 +197,25 @@ export function ApplicationReminders({
               );
               setWhen(nextMorning());
               setRepeat(0);
+              setDialogOpenedAt(Date.now());
+              // Seed the deadline defaults so a deadline that is already today
+              // opens on a time that is still ahead instead of the 9am default.
+              if (application?.deadline) {
+                const now = new Date();
+                const schedule = firstViableDeadlineSchedule(
+                  application.deadline,
+                  now,
+                  DEADLINE_DEFAULT_OFFSETS,
+                  application.deadlineTime,
+                ) ?? {
+                  offsetDays: 0,
+                  timeOfDay: viableTimeOfDay(application.deadline, now),
+                };
+                setOffset(schedule.offsetDays);
+                setTimeOfDay(schedule.timeOfDay);
+              } else {
+                setTimeOfDay(DEFAULT_REMINDER_TIME);
+              }
               setError("");
               setDialog("new");
             }}
@@ -235,7 +292,7 @@ export function ApplicationReminders({
         }}
       >
         <DialogContent className="max-h-[85dvh] overflow-y-auto">
-          <DialogTitle className="font-sans text-xl font-semibold">
+          <DialogTitle className="text-xl">
             {dialog === "new" ? "Set a reminder" : dialog?.title}
           </DialogTitle>
           <DialogDescription>
@@ -255,6 +312,7 @@ export function ApplicationReminders({
                         opportunityId: application.opportunityId,
                         kind,
                         offsetDays: offset,
+                        timeOfDay,
                         timezone,
                       }
                     : {
@@ -298,7 +356,18 @@ export function ApplicationReminders({
                     <NativeSelect
                       id="reminder-offset"
                       value={offset}
-                      onChange={(e) => setOffset(Number(e.target.value))}
+                      onChange={(e) => {
+                        const nextOffset = Number(e.target.value);
+                        setOffset(nextOffset);
+                        if (!application.deadline) return;
+                        const schedule = firstViableDeadlineSchedule(
+                          application.deadline,
+                          new Date(dialogOpenedAt),
+                          [nextOffset],
+                          application.deadlineTime,
+                        );
+                        if (schedule) setTimeOfDay(schedule.timeOfDay);
+                      }}
                     >
                       {[
                         [14, "Two weeks before"],
@@ -308,10 +377,37 @@ export function ApplicationReminders({
                         [0, "On the day"],
                       ].map(([value, label]) => (
                         <option key={value} value={value}>
-                          {label} · 9 am
+                          {label}
                         </option>
                       ))}
                     </NativeSelect>
+                  </Field>
+                  <Field data-invalid={!deadlineAhead || !deadlineBeforeClose}>
+                    <FieldLabel htmlFor="reminder-time">Time</FieldLabel>
+                    <Input
+                      id="reminder-time"
+                      type="time"
+                      value={timeOfDay}
+                      onChange={(event) => setTimeOfDay(event.target.value)}
+                      required
+                      step={60}
+                      aria-invalid={!deadlineAhead || !deadlineBeforeClose}
+                      aria-describedby="reminder-time-description"
+                    />
+                    <FieldDescription id="reminder-time-description">
+                      {application.deadlineTime
+                        ? `The provider closes applications at ${closingLabel(application.deadlineTime, application.deadlineTimezone)}.`
+                        : "No closing time is stated, so Missa uses the end of the deadline day."}
+                    </FieldDescription>
+                    {!deadlineAhead ? (
+                      <p role="alert" className="text-sm text-destructive">
+                        Choose a reminder time that is still ahead.
+                      </p>
+                    ) : !deadlineBeforeClose ? (
+                      <p role="alert" className="text-sm text-destructive">
+                        Choose a time before the application closes.
+                      </p>
+                    ) : null}
                   </Field>
                 </>
               ) : (
@@ -372,7 +468,14 @@ export function ApplicationReminders({
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={busy}>
+                <Button
+                  type="submit"
+                  disabled={
+                    busy ||
+                    (kind === "deadline" &&
+                      (!deadlineAhead || !deadlineBeforeClose))
+                  }
+                >
                   {busy ? "Saving…" : "Set reminder"}
                 </Button>
               </div>

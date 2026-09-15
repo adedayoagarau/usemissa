@@ -18,6 +18,7 @@ import {
   Menu,
   MessageSquareText,
   MoreHorizontal,
+  RefreshCw,
   Save,
   Scale,
   ShieldCheck,
@@ -40,6 +41,14 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress, ProgressLabel, ProgressValue } from '@/components/ui/progress'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 
 import { MissaWordmark } from '@/components/missa-wordmark'
@@ -97,6 +106,19 @@ const assignments = [
   { id: '018', organization: 'Field Notes Foundation', opportunity: 'Research and Writing Fellowship', due: '24 Aug', progress: 33 },
 ]
 
+type Assignment = (typeof assignments)[number]
+
+function assignmentRowsForFixture(fixture: Fixture): Assignment[] {
+  if (fixture === 'many') {
+    return Array.from({ length: 12 }, (_, index) => ({
+      ...assignments[index % assignments.length]!,
+      id: String(42 - index).padStart(3, '0'),
+    }))
+  }
+
+  return assignments.slice(0, fixture === 'multi-org' ? 4 : 3)
+}
+
 const rubric = [
   { id: 'clarity', title: 'Clarity of intent', help: 'How clearly does the Work express its central intention?', left: 'Still emerging', right: 'Exceptionally clear' },
   { id: 'craft', title: 'Craft and execution', help: 'Consider control of form, language, pacing, and composition.', left: 'Needs development', right: 'Highly resolved' },
@@ -135,14 +157,15 @@ function fixtureStatus(fixture: Fixture) {
   return null
 }
 
-function AssignmentList({ fixture, compact = false }: { fixture: Fixture; compact?: boolean }) {
-  const rows = fixture === 'many' ? Array.from({ length: 12 }, (_, index) => ({ ...assignments[index % assignments.length], id: String(42 - index).padStart(3, '0') })) : assignments.slice(0, fixture === 'multi-org' ? 4 : 3)
-  return <section className={compact ? styles.assignmentRail : styles.queue} aria-labelledby={compact ? 'assignment-rail-title' : 'assignment-queue-title'}><header><div><p className={styles.eyebrow}>Your queue</p><h2 id={compact ? 'assignment-rail-title' : 'assignment-queue-title'}>Assignments</h2></div><Badge variant='outline'>{rows.filter((item) => item.progress < 100).length} open</Badge></header><div className={styles.assignmentRows}>{rows.map((item, index) => <button key={`${item.id}-${index}`} type='button' data-active={index === 0}><span className={styles.assignmentTop}><strong>{item.organization}</strong><small>{item.due}</small></span><span>{item.opportunity}</span><span className={styles.assignmentBottom}><small>{item.progress === 100 ? 'Submitted' : item.progress ? `${item.progress}% complete` : 'Not started'}</small>{index === 0 ? <ChevronRight aria-hidden='true' /> : null}</span></button>)}</div>{fixture === 'many' ? <nav className={styles.pagination} aria-label='Assignment pages'><Button type='button' variant='outline' disabled>Previous</Button><span>Page 1 of 3</span><Button type='button' variant='outline'>Next</Button></nav> : null}</section>
+function AssignmentList({ fixture, compact = false, idPrefix = 'assignment', selectedId, onSelect }: { fixture: Fixture; compact?: boolean; idPrefix?: string; selectedId: string; onSelect: (assignment: Assignment) => void }) {
+  const rows = assignmentRowsForFixture(fixture)
+  const titleId = `${idPrefix}-title`
+  return <section className={compact ? styles.assignmentRail : styles.queue} aria-labelledby={titleId}><header><div><p className={styles.eyebrow}>Your queue</p><h2 id={titleId}>Assignments</h2></div><Badge variant='outline'>{rows.filter((item) => item.progress < 100).length} open</Badge></header><div className={styles.assignmentRows}>{rows.map((item, index) => <button key={`${item.id}-${index}`} type='button' data-active={item.id === selectedId} aria-current={item.id === selectedId ? 'true' : undefined} onClick={() => onSelect(item)}><span className={styles.assignmentTop}><strong>{item.organization}</strong><small>{item.due}</small></span><span>{item.opportunity}</span><span className={styles.assignmentBottom}><small>{item.progress === 100 ? 'Submitted' : item.progress ? `${item.progress}% complete` : 'Not started'}</small>{item.id === selectedId ? <ChevronRight aria-hidden='true' /> : null}</span></button>)}</div>{fixture === 'many' ? <nav className={styles.pagination} aria-label='Assignment pages'><Button type='button' variant='outline' disabled>Previous</Button><span>Page 1 of 3</span><Button type='button' variant='outline'>Next</Button></nav> : null}</section>
 }
 
-function AssignmentHeader({ fixture }: { fixture: Fixture }) {
+function AssignmentHeader({ fixture, assignment }: { fixture: Fixture; assignment: Assignment }) {
   const long = fixture === 'long-text'
-  return <header className={styles.assignmentHeader}><div><Button type='button' variant='ghost' size='icon' aria-label='Back to assignments'><ArrowLeft aria-hidden='true' /></Button><div><p className={styles.eyebrow}>{long ? 'Àjọ Àwọn Òǹkọ̀wé Àgbáyé · International Programme for Emerging and Experimental Writers' : 'North River Review · First review round'}</p><h2>{long ? 'A Long Work About Memory, Migration, Belonging, and the Places We Build Between Languages' : 'Emerging Writers Award'}</h2><p>Submission 042 · One recommendation for the complete packet</p></div></div><div className={styles.assignmentMeta}><Badge variant='outline'><LockKeyhole aria-hidden='true' />{fixture === 'double-blind' ? 'Double-blind' : fixture === 'single-blind' ? 'Single-blind' : 'Identity withheld'}</Badge><span><Clock3 aria-hidden='true' />Due 12 August · 5:00 PM</span></div></header>
+  return <header className={styles.assignmentHeader}><div><Button type='button' variant='ghost' size='icon' aria-label='Back to assignments'><ArrowLeft aria-hidden='true' /></Button><div><p className={styles.eyebrow}>{long ? 'Àjọ Àwọn Òǹkọ̀wé Àgbáyé · International Programme for Emerging and Experimental Writers' : `${assignment.organization} · First review round`}</p><h2>{long ? 'A Long Work About Memory, Migration, Belonging, and the Places We Build Between Languages' : assignment.opportunity}</h2><p>Submission {assignment.id} · One recommendation for the complete packet</p></div></div><div className={styles.assignmentMeta}><Badge variant='outline'><LockKeyhole aria-hidden='true' />{fixture === 'double-blind' ? 'Double-blind' : fixture === 'single-blind' ? 'Single-blind' : 'Identity withheld'}</Badge><span><Clock3 aria-hidden='true' />Due {assignment.due} · 5:00 PM</span></div></header>
 }
 
 function WorkReader({ fixture }: { fixture: Fixture }) {
@@ -189,7 +212,7 @@ function RubricPanel({ fixture, onStatus }: { fixture: Fixture; onStatus: (messa
 
   if (conflict) return <section className={styles.rubricPanel} aria-labelledby='conflict-title'><div className={styles.conflictState}><UserRoundX aria-hidden='true' /><p className={styles.eyebrow}>Conflict recorded</p><h3 id='conflict-title'>You are recused from this assignment</h3><p>The review team has been notified. Work and rubric access are closed under this round’s policy.</p><Button type='button' variant='outline'>Return to assignments</Button></div></section>
 
-  return <section className={styles.rubricPanel} aria-labelledby='rubric-title'>{status ? <Alert data-tone={status.tone} variant={status.tone === 'danger' ? 'destructive' : 'default'}><status.icon aria-hidden='true' /><AlertTitle>{status.title}</AlertTitle><AlertDescription>{status.copy}</AlertDescription></Alert> : null}{fixture === 'conflict-failed' ? <Alert variant='destructive'><AlertCircle aria-hidden='true' /><AlertTitle>Conflict could not be recorded</AlertTitle><AlertDescription>Your explanation remains here. Work access has not changed; try again or contact the review team.</AlertDescription></Alert> : null}<header className={styles.rubricHead}><div><p className={styles.eyebrow}>Emerging Writers · rubric v3</p><h3 id='rubric-title'>Your review</h3></div><div><Progress value={67} aria-label='Review completion'><ProgressLabel>Completion</ProgressLabel><ProgressValue /></Progress></div></header>{reviewing ? <ReviewSummary scores={scores} recommendation={recommendation} onBack={() => setReviewing(false)} onSubmit={() => setSubmitOpen(true)} /> : <><div ref={errorSummaryRef} data-testid='review-error-summary' tabIndex={-1} className={styles.errorSummary} hidden={!missing}><AlertCircle aria-hidden='true' /><div><strong>Complete 1 required criterion</strong><a href='#criterion-clarity'>Go to Clarity of intent</a></div></div><div className={styles.criteria}>{shownRubric.map((criterion, index) => { const invalid = index === 0 && (missing || scoreRange); return <div id={index === 0 ? 'criterion-clarity' : undefined} key={criterion.id}><ScaleField criterion={criterion} value={invalid ? '' : scores[criterion.id] ?? ''} onChange={(value) => setScores((current) => ({ ...current, [criterion.id]: value }))} invalid={invalid} invalidReason={scoreRange ? 'Choose a valid score from 1 to 5.' : undefined} /></div> })}</div><div className={styles.notes}><label htmlFor='review-notes'>Notes for the review team</label><Textarea id='review-notes' rows={5} placeholder='Add evidence for your recommendation…' aria-describedby='review-notes-help' /><p id='review-notes-help'>Private to the authorized review team · 2,000 characters maximum.</p></div><fieldset className={styles.recommendation}><legend>Overall recommendation<span>Required</span></legend>{[['recommend', 'Recommend'], ['consider', 'Consider'], ['do-not', 'Do not recommend']].map(([value, label]) => <label key={value}><input type='radio' name='recommendation' value={value} checked={recommendation === value} onChange={() => setRecommendation(value)} />{label}</label>)}</fieldset><div className={styles.rubricActions}><Button type='button' variant='outline' onClick={() => onStatus(fixture === 'save-failed' ? 'Draft could not be saved. Your responses remain here.' : 'Draft saved privately.')}><Save aria-hidden='true' />Save draft</Button><Button type='button' onClick={reviewRecommendation} disabled={fixture === 'closed'}>Review recommendation<ChevronRight aria-hidden='true' /></Button><button type='button' className={styles.conflictLink} onClick={() => setConflictOpen(true)} disabled={fixture === 'closed'}><Flag aria-hidden='true' />Declare a conflict</button></div></>}
+  return <section className={styles.rubricPanel} aria-labelledby='rubric-title'>{status ? <Alert data-tone={status.tone} variant={status.tone === 'danger' ? 'destructive' : 'default'}><status.icon aria-hidden='true' /><AlertTitle>{status.title}</AlertTitle><AlertDescription>{status.copy}{fixture === 'save-failed' ? <span className={styles.saveContext}>Last confirmed save: today at 4:31 PM.</span> : null}</AlertDescription>{fixture === 'save-failed' ? <Button type='button' variant='outline' onClick={() => onStatus('Draft save retry started. Your responses remain available while Missa reconnects.')}><RefreshCw aria-hidden='true' />Try saving again</Button> : null}</Alert> : null}{fixture === 'conflict-failed' ? <Alert variant='destructive'><AlertCircle aria-hidden='true' /><AlertTitle>Conflict could not be recorded</AlertTitle><AlertDescription>Your explanation remains here. Work access has not changed; try again or contact the review team.</AlertDescription></Alert> : null}<header className={styles.rubricHead}><div><p className={styles.eyebrow}>Emerging Writers · rubric v3</p><h3 id='rubric-title'>Your review</h3></div><div><Progress value={67} aria-label='Review completion'><ProgressLabel>Completion</ProgressLabel><ProgressValue /></Progress></div></header>{reviewing ? <ReviewSummary scores={scores} recommendation={recommendation} onBack={() => setReviewing(false)} onSubmit={() => setSubmitOpen(true)} /> : <><div ref={errorSummaryRef} data-testid='review-error-summary' tabIndex={-1} className={styles.errorSummary} hidden={!missing}><AlertCircle aria-hidden='true' /><div><strong>Complete 1 required criterion</strong><a href='#criterion-clarity'>Go to Clarity of intent</a></div></div><div className={styles.criteria}>{shownRubric.map((criterion, index) => { const invalid = index === 0 && (missing || scoreRange); return <div id={index === 0 ? 'criterion-clarity' : undefined} key={criterion.id}><ScaleField criterion={criterion} value={invalid ? '' : scores[criterion.id] ?? ''} onChange={(value) => setScores((current) => ({ ...current, [criterion.id]: value }))} invalid={invalid} invalidReason={scoreRange ? 'Choose a valid score from 1 to 5.' : undefined} /></div> })}</div><div className={styles.notes}><label htmlFor='review-notes'>Notes for the review team</label><Textarea id='review-notes' rows={5} placeholder='Add evidence for your recommendation…' aria-describedby='review-notes-help' /><p id='review-notes-help'>Private to the authorized review team · 2,000 characters maximum.</p></div><fieldset className={styles.recommendation}><legend>Overall recommendation<span>Required</span></legend>{[['recommend', 'Recommend'], ['consider', 'Consider'], ['do-not', 'Do not recommend']].map(([value, label]) => <label key={value}><input type='radio' name='recommendation' value={value} checked={recommendation === value} onChange={() => setRecommendation(value)} />{label}</label>)}</fieldset><div className={styles.rubricActions}><Button type='button' variant='outline' onClick={() => onStatus(fixture === 'save-failed' ? 'Draft could not be saved. Your responses remain here.' : 'Draft saved privately.')}><Save aria-hidden='true' />Save draft</Button><Button type='button' onClick={reviewRecommendation} disabled={fixture === 'closed'}>Review recommendation<ChevronRight aria-hidden='true' /></Button><button type='button' className={styles.conflictLink} onClick={() => setConflictOpen(true)} disabled={fixture === 'closed'}><Flag aria-hidden='true' />Declare a conflict</button></div></>}
   <AlertDialog open={submitOpen} onOpenChange={setSubmitOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Submit this recommendation?</AlertDialogTitle><AlertDialogDescription>North River Review will receive your complete recommendation for Submission 042. You will not be able to edit it unless the review team reopens the assignment.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Return to review</AlertDialogCancel><AlertDialogAction onClick={() => { setSubmitOpen(false); onStatus('Review submitted once. Receipt is ready.') }}>Submit review</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
   <AlertDialog open={conflictOpen} onOpenChange={setConflictOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Declare a conflict?</AlertDialogTitle><AlertDialogDescription>The review team will receive your policy-required reason and reassign the Work. Your draft will not be submitted.</AlertDialogDescription></AlertDialogHeader><Textarea aria-label='Conflict explanation' placeholder='Briefly explain the conflict…' /><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { setConflictOpen(false); onStatus('Conflict recorded privately. Assignment access is now closed.') }}>Declare conflict</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></section>
 }
@@ -206,13 +229,16 @@ function UnavailableState({ removed = false }: { removed?: boolean }) {
   return <section className={styles.emptyState}><LockKeyhole aria-hidden='true' /><p className={styles.eyebrow}>Assignment unavailable</p><h2>{removed ? 'This assignment was removed' : 'You cannot open this assignment'}</h2><p>{removed ? 'The review team withdrew access. No Work, answers, files, or review draft are shown.' : 'It may belong to another reviewer, be closed, or no longer be available.'}</p><Button type='button' variant='outline'>Return to your assignments</Button></section>
 }
 
-function DeskDirection({ fixture, onStatus }: { fixture: Fixture; onStatus: (message: string) => void }) {
+function DeskDirection({ fixture, onStatus, selectedAssignment, onSelectAssignment }: { fixture: Fixture; onStatus: (message: string) => void; selectedAssignment: Assignment; onSelectAssignment: (assignment: Assignment) => void }) {
   const [pane, setPane] = useState<MobilePane>('work')
-  return <div><div className={styles.mobileSwitch} aria-label='Assignment workspace view'><button type='button' aria-pressed={pane === 'work'} onClick={() => setPane('work')}><BookOpen aria-hidden='true' />Work</button><button type='button' aria-pressed={pane === 'review'} onClick={() => setPane('review')}><Scale aria-hidden='true' />Review</button></div><div className={styles.deskLayout} data-mobile-pane={pane}><AssignmentList fixture={fixture} compact /><WorkReader fixture={fixture} /><RubricPanel fixture={fixture} onStatus={onStatus} /></div></div>
+  const [queueOpen, setQueueOpen] = useState(false)
+  const rows = assignmentRowsForFixture(fixture)
+  const currentPosition = Math.max(0, rows.findIndex((item) => item.id === selectedAssignment.id)) + 1
+  return <div><div className={styles.mobileAssignmentContext}><span>Assignment {currentPosition} of {rows.length}</span><strong>{selectedAssignment.organization}</strong><small>Submission {selectedAssignment.id} · {selectedAssignment.opportunity}</small></div><div className={styles.mobileSwitch} aria-label='Assignment workspace view'><Sheet open={queueOpen} onOpenChange={setQueueOpen}><SheetTrigger render={<Button type='button' variant='outline' className={styles.queueTrigger} />}><Inbox aria-hidden='true' />Assignments</SheetTrigger><SheetContent side='left' className={styles.queueSheet}><SheetHeader variant='section'><SheetTitle>Assignment queue</SheetTitle><SheetDescription>{rows.filter((item) => item.progress < 100).length} open · current assignment {currentPosition} of {rows.length}</SheetDescription></SheetHeader><AssignmentList fixture={fixture} compact idPrefix='mobile-assignment-queue' selectedId={selectedAssignment.id} onSelect={(assignment) => { onSelectAssignment(assignment); setQueueOpen(false); setPane('work') }} /></SheetContent></Sheet><button type='button' aria-pressed={pane === 'work'} onClick={() => setPane('work')}><BookOpen aria-hidden='true' />Work</button><button type='button' aria-pressed={pane === 'review'} onClick={() => setPane('review')}><Scale aria-hidden='true' />Review</button></div><div className={styles.deskLayout} data-mobile-pane={pane}><AssignmentList fixture={fixture} compact idPrefix='desktop-assignment-rail' selectedId={selectedAssignment.id} onSelect={onSelectAssignment} /><WorkReader fixture={fixture} /><RubricPanel fixture={fixture} onStatus={onStatus} /></div></div>
 }
 
-function FocusedDirection({ fixture, onStatus }: { fixture: Fixture; onStatus: (message: string) => void }) {
-  return <div className={styles.focusedLayout}><AssignmentList fixture={fixture} /><div className={styles.focusedAssignment}><WorkReader fixture={fixture} /><RubricPanel fixture={fixture} onStatus={onStatus} /></div></div>
+function FocusedDirection({ fixture, onStatus, selectedAssignment, onSelectAssignment }: { fixture: Fixture; onStatus: (message: string) => void; selectedAssignment: Assignment; onSelectAssignment: (assignment: Assignment) => void }) {
+  return <div className={styles.focusedLayout}><AssignmentList fixture={fixture} idPrefix='focused-assignment-queue' selectedId={selectedAssignment.id} onSelect={onSelectAssignment} /><div className={styles.focusedAssignment}><WorkReader fixture={fixture} /><RubricPanel fixture={fixture} onStatus={onStatus} /></div></div>
 }
 
 function PacketDirection({ fixture, onStatus }: { fixture: Fixture; onStatus: (message: string) => void }) {
@@ -223,19 +249,26 @@ function ReviewerExperience({ selectedOnly }: { selectedOnly: boolean }) {
   const [direction, setDirection] = useState<Direction>('desk')
   const [fixture, setFixture] = useState<Fixture>('active')
   const [status, setStatus] = useState('')
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState(assignments[0]!.id)
   const activeDirection = selectedOnly ? 'desk' : direction
   const unavailable = fixture === 'forbidden' || fixture === 'removed'
+  const assignmentRows = assignmentRowsForFixture(fixture)
+  const selectedAssignment = assignmentRows.find((item) => item.id === selectedAssignmentId) ?? assignmentRows[0] ?? assignments[0]!
+  const selectAssignment = (assignment: Assignment) => {
+    setSelectedAssignmentId(assignment.id)
+    setStatus(`Submission ${assignment.id} selected. Work and review context updated.`)
+  }
 
   const content = useMemo(() => {
     if (fixture === 'empty') return <EmptyState />
     if (unavailable) return <UnavailableState removed={fixture === 'removed'} />
-    const props = { fixture, onStatus: setStatus }
+    const props = { fixture, onStatus: setStatus, selectedAssignment, onSelectAssignment: selectAssignment }
     if (activeDirection === 'focused') return <FocusedDirection {...props} />
     if (activeDirection === 'packet') return <PacketDirection {...props} />
     return <DeskDirection {...props} />
-  }, [activeDirection, fixture, unavailable])
+  }, [activeDirection, fixture, selectedAssignment, unavailable])
 
-  return <div className={styles.page}><ReviewControls direction={activeDirection} fixture={fixture} selectedOnly={selectedOnly} onDirection={(value) => { setDirection(value); setStatus('') }} onFixture={(value) => { setFixture(value); setStatus('') }} /><Header /><main id='reviewer-main' className={styles.main}><DirectionIntro direction={activeDirection} selectedOnly={selectedOnly} />{fixture !== 'empty' && !unavailable ? <AssignmentHeader fixture={fixture} /> : null}{content}</main><p className={styles.liveStatus} role='status' aria-live='polite'>{status}{status ? <Check aria-hidden='true' /> : null}</p></div>
+  return <div className={styles.page}><ReviewControls direction={activeDirection} fixture={fixture} selectedOnly={selectedOnly} onDirection={(value) => { setDirection(value); setStatus('') }} onFixture={(value) => { setFixture(value); setSelectedAssignmentId(assignmentRowsForFixture(value)[0]?.id ?? assignments[0]!.id); setStatus('') }} /><Header /><main id='reviewer-main' className={styles.main}><DirectionIntro direction={activeDirection} selectedOnly={selectedOnly} />{fixture !== 'empty' && !unavailable ? <AssignmentHeader fixture={fixture} assignment={selectedAssignment} /> : null}{content}</main><p className={styles.liveStatus} role='status' aria-live='polite'>{status}{status ? <Check aria-hidden='true' /> : null}</p></div>
 }
 
 export function ReviewerDirections() {

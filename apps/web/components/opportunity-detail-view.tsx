@@ -978,7 +978,7 @@ export function OpportunityDetailView({
             opportunityId={opportunity.id}
             surface="mobile-dock"
           >
-            Apply ↗
+            Open official site <ExternalLink aria-hidden="true" />
           </OfficialDestinationLink>
         </MobileActionDock>
       </article>

@@ -21,7 +21,7 @@ const BadgeSelectableDemo = () => {
         checked={selected}
         onCheckedChange={checked => setSelected(!!checked)}
       />
-      <CheckCircleIcon className='hidden size-3 text-green-600 peer-data-checked:block dark:text-green-400' aria-hidden='true' />
+      <CheckCircleIcon className='hidden size-3 text-success peer-data-checked:block dark:text-success' aria-hidden='true' />
       <label htmlFor={id} className='cursor-pointer select-none after:absolute after:inset-0'>
         {selected ? 'Selected' : 'Selectable'}
       </label>

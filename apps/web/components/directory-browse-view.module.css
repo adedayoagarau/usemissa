@@ -55,6 +55,16 @@
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
+.searchGroup {
+  display: grid;
+  gap: 8px;
+}
+.searchLabel {
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
 .search {
   display: flex;
   gap: 12px;
@@ -300,8 +310,8 @@
 .filterPill {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
-  padding: 4px 12px;
+  min-height: 44px;
+  padding: 8px 12px;
   border-radius: var(--radius-full);
   border: 1px solid var(--border);
   background: var(--background);
