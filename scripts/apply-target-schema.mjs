@@ -76,6 +76,7 @@ const migrationFiles = [
   '0067_wave6_review_recusal_expiry.sql',
   '0068_wave6_review_recommendation_states.sql',
   '0069_wave6_erasure_requests.sql',
+  '0074_creator_onboarding_profile_data.sql',
 ];
 
 
