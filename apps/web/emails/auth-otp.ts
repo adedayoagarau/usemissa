@@ -22,23 +22,20 @@ export interface AuthOtpEmailProps {
 
 const copyByType: Record<
   AuthOtpType,
-  { subject: string; eyebrow: string; title: string; instruction: string }
+  { subject: string; title: string; instruction: string }
 > = {
   'email-verification': {
     subject: 'Verify your email for Missa',
-    eyebrow: 'Email verification',
     title: 'Verify your email',
     instruction: 'finish creating your Missa account',
   },
   'sign-in': {
     subject: 'Your Missa sign-in code',
-    eyebrow: 'Secure sign-in',
     title: 'Sign in to Missa',
     instruction: 'sign in to your Missa account',
   },
   'forget-password': {
     subject: 'Reset your Missa password',
-    eyebrow: 'Password reset',
     title: 'Reset your password',
     instruction: 'continue resetting your Missa password',
   },
@@ -100,18 +97,9 @@ export function renderAuthOtpEmail(props: AuthOtpEmailProps): {
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" class="missa-auth-frame" style="max-width:560px;margin:0 auto;padding:38px 42px 34px;background:${EMAIL_COLORS.cardSurface};border:1px solid ${EMAIL_COLORS.border};text-align:left;">
             <tr>
               <td>
-                <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-                  <tr>
-                    <td valign="middle">
-                      <a href="${siteUrl()}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
-                        <img src="${escapeHtml(logoUrl)}" alt="Missa" height="25" style="display:block;width:auto;height:25px;border:0;">
-                      </a>
-                    </td>
-                    <td align="right" valign="middle" style="font-family:${EMAIL_FONTS.interface};font-size:11px;font-weight:700;line-height:16px;letter-spacing:0.12em;text-transform:uppercase;color:${EMAIL_COLORS.forest600};">
-                      ${escapeHtml(copy.eyebrow)}&nbsp;&nbsp;/&nbsp;&nbsp;01
-                    </td>
-                  </tr>
-                </table>
+                <a href="${siteUrl()}" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
+                  <img src="${escapeHtml(logoUrl)}" alt="Missa" height="25" style="display:block;width:auto;height:25px;border:0;">
+                </a>
               </td>
             </tr>
             <tr>

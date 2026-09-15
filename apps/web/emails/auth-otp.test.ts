@@ -17,6 +17,10 @@ test('renders an accessible, code-first email-verification message', () => {
   assert.match(rendered.html, />123456</u);
   assert.match(rendered.html, /creator@example\.com/u);
   assert.match(rendered.html, /expires in <strong>10 minutes<\/strong>/u);
+  assert.doesNotMatch(
+    rendered.html,
+    /Email verification|Secure sign-in|Password reset|\/\s*01/iu,
+  );
   assert.doesNotMatch(rendered.html, /unsubscribe/iu);
   assert.match(rendered.text, /123456/u);
   assert.match(rendered.text, /expires in 10 minutes/u);

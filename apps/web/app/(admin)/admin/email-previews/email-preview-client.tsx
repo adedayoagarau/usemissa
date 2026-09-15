@@ -206,7 +206,7 @@ export function EmailPreviewStudioClient({
       <div className="flex justify-center p-6 bg-muted/20 border border-border rounded-xl min-h-[680px]">
         {format === 'html' ? (
           <div
-            className="transition-all duration-200 bg-white border border-border rounded-lg shadow-sm overflow-hidden"
+            className="transition-all duration-200 bg-card border border-border rounded-lg shadow-sm overflow-hidden"
             style={{ width: device === 'mobile' ? '390px' : '640px' }}
           >
             <iframe
