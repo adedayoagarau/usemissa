@@ -1,8 +1,10 @@
+import { existsSync } from "node:fs";
 import { defineConfig, devices } from "@playwright/test";
 
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
 const relational = process.env.MISSA_E2E_RELATIONAL === "1";
 const relationalDatabaseUrl = process.env.DATABASE_URL?.trim() ?? "";
+const savedBrowserState = "./e2e/storage-state.json";
 
 // Specs that require a seeded Postgres and relational authority. They are the
 // only files whose assertions touch durable profile/tracker/following writes.
@@ -25,10 +27,9 @@ export default defineConfig({
   use: {
     baseURL: externalBaseUrl ?? "http://127.0.0.1:3100",
     trace: "on-first-retry",
-    // Analytics consent is a one-time gate, so the suite starts already
-    // answered and exercises the product. Specs that assert consent behaviour
-    // override this with an empty storage state.
-    storageState: "./e2e/storage-state.json",
+    // Local browser sessions may start with analytics consent already answered.
+    // Clean checkouts and CI continue without a generated storage-state file.
+    storageState: existsSync(savedBrowserState) ? savedBrowserState : undefined,
   },
   projects: [
     {

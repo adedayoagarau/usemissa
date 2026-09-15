@@ -3,7 +3,15 @@ import AxeBuilder from '@axe-core/playwright';
 
 async function createAccount(page: Page, name = 'Profile Test User') {
   const email = `profile-${Date.now()}-${Math.random().toString(16).slice(2)}@example.com`;
-  const signup = await page.request.post('/api/auth/signup', { data: { email, password: 'correct-horse-battery', displayName: name } });
+  const [givenName, ...familyNameParts] = name.trim().split(/\s+/);
+  const signup = await page.request.post('/api/auth/signup', {
+    data: {
+      email,
+      password: 'correct-horse-battery',
+      givenName,
+      familyName: familyNameParts.join(' '),
+    },
+  });
   expect(signup.status()).toBe(201);
   const sessionCookie = signup.headers()['set-cookie']?.match(/(?:^|,\s*)missa_session=([^;]+)/)?.[1];
   expect(sessionCookie).toBeTruthy();

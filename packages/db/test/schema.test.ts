@@ -354,6 +354,8 @@ test("target schema replay includes the submission portal and Wave 6 authority t
   const targetSchema = readFileSync("../../scripts/apply-target-schema.mjs", "utf8");
   const requiredTail = [
     "0042_creator_product_states.sql",
+    "0043_profile_and_opportunity_geography.sql",
+    "0049_creator_following.sql",
     "0056_submission_portal_configuration_versions.sql",
     "0057_submission_draft_version_pins.sql",
     "0059_organization_review_settings.sql",
@@ -366,6 +368,7 @@ test("target schema replay includes the submission portal and Wave 6 authority t
     "0067_wave6_review_recusal_expiry.sql",
     "0068_wave6_review_recommendation_states.sql",
     "0069_wave6_erasure_requests.sql",
+    "0074_creator_onboarding_profile_data.sql",
   ];
   let previous = targetSchema.indexOf("'0041_creator_portfolios.sql'");
   assert.ok(previous >= 0, "replay has a stable portal insertion point");

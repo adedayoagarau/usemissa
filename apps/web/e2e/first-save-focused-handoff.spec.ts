@@ -7,7 +7,14 @@ const password = "correct-horse-battery";
 
 async function beginSignedOutSave(page: Page) {
   await page.goto(`/opportunities/${slug}`);
-  const save = page.getByRole("button", { name: /Save .* privately/ });
+  const saveButtons = page.getByRole("button", {
+    name: /Save .* privately/,
+  });
+  const save = (page.viewportSize()?.width ?? 1280) <= 768
+    ? saveButtons.last()
+    : page
+        .locator("#opportunity-summary-actions")
+        .getByRole("button", { name: /Save .* privately/ });
   await save.focus();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/signup\?next=/);
@@ -16,10 +23,9 @@ async function beginSignedOutSave(page: Page) {
   await expect(page.getByText(title, { exact: true })).toBeVisible();
 }
 
-async function createAccount(page: Page, email: string, includeName = true) {
-  if (includeName) {
-    await page.getByLabel("Name (optional)").fill("First Save Creator");
-  }
+async function createAccount(page: Page, email: string) {
+  await page.getByLabel("Given name").fill("First");
+  await page.getByLabel("Family name").fill("Save Creator");
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Confirm password").fill(password);
@@ -46,7 +52,7 @@ test("new creator gets private value before optional Tracker guidance", async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await beginSignedOutSave(page);
-  await createAccount(page, `first-save-${Date.now()}@example.com`, false);
+  await createAccount(page, `first-save-${Date.now()}@example.com`);
 
   await expect(
     page.getByRole("heading", { name: "Opportunity saved privately" }),
@@ -97,7 +103,12 @@ test("existing email moves to login without losing the Opportunity or email", as
   expect(
     (
       await page.request.post("/api/auth/signup", {
-        data: { email, password, displayName: "Existing Creator" },
+        data: {
+          email,
+          password,
+          givenName: "Existing",
+          familyName: "Creator",
+        },
       })
     ).status(),
   ).toBe(201);
@@ -273,7 +284,9 @@ test("declining signup returns to public reading without saving", async ({
   await expect(page).toHaveURL(new RegExp(`/opportunities/${slug}$`));
   await expect(page.getByRole("heading", { name: title })).toBeVisible();
   await expect(
-    page.getByRole("button", { name: /Save .* privately/ }),
+    page
+      .locator("#opportunity-summary-actions")
+      .getByRole("button", { name: /Save .* privately/ }),
   ).toBeVisible();
 });
 

@@ -61,6 +61,8 @@ const migrationFiles = [
   '0036_opportunity_media_enrichment.sql',
   '0041_creator_portfolios.sql',
   '0042_creator_product_states.sql',
+  '0043_profile_and_opportunity_geography.sql',
+  '0049_creator_following.sql',
   // Submission portal configuration and Wave 6 operations are deliberately
   // listed explicitly: they are the relational authority tail used by the
   // production workspace health gate.
@@ -76,6 +78,7 @@ const migrationFiles = [
   '0067_wave6_review_recusal_expiry.sql',
   '0068_wave6_review_recommendation_states.sql',
   '0069_wave6_erasure_requests.sql',
+  '0074_creator_onboarding_profile_data.sql',
 ];
 
 
