@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -16,7 +16,7 @@ export function FollowButton({
   organizationName?: string;
   returnTo?: string;
 }) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const [followed, setFollowed] = useState(false);
   const requestKey = useRef<string | null>(null);
 
@@ -49,31 +49,32 @@ export function FollowButton({
       variant="link"
       type="button"
       disabled={isPending}
-      onClick={() =>
-        startTransition(async () => {
-          requestKey.current ??= crypto.randomUUID();
-          try {
-            const res = await fetch(`/api/users/${userId}/following`, {
-              method: "POST",
-              headers: {
-                "content-type": "application/json",
-                "Idempotency-Key": requestKey.current,
-              },
-              body: JSON.stringify({ organizationId }),
-            });
-            if (res.ok) {
-              setFollowed(true);
-              toast.success(
-                `Following ${organizationName ?? "this organization"}`,
-              );
-            } else {
-              toast.error("Following could not be saved. Try again.");
-            }
-          } catch {
+      onClick={async () => {
+        requestKey.current ??= crypto.randomUUID();
+        setIsPending(true);
+        try {
+          const res = await fetch(`/api/users/${userId}/following`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "Idempotency-Key": requestKey.current,
+            },
+            body: JSON.stringify({ organizationId }),
+          });
+          if (res.ok) {
+            setFollowed(true);
+            toast.success(
+              `Following ${organizationName ?? "this organization"}`,
+            );
+          } else {
             toast.error("Following could not be saved. Try again.");
           }
-        })
-      }
+        } catch {
+          toast.error("Following could not be saved. Try again.");
+        } finally {
+          setIsPending(false);
+        }
+      }}
     >
       {isPending ? "Saving…" : "Follow organization"}
     </Button>
