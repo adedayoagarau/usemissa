@@ -14,6 +14,29 @@ const organizationId = "org_story-16-2-e2e";
 const client = await pool.connect();
 try {
   await client.query("BEGIN");
+  // This evidence table predates the reconciled Drizzle migration ledger in
+  // production. Recreate the columns exercised by this disposable relational
+  // fixture so a published call still has to satisfy the real confirmation
+  // rule used by Follow, recommendations, and availability projections.
+  await client.query(`
+    create table if not exists opportunity_url_observations (
+      id text primary key,
+      opportunity_id text not null references opportunities(id) on delete cascade,
+      program_id text,
+      organization_id text,
+      source_id text,
+      role text not null,
+      url text not null,
+      normalized_url text not null,
+      host text not null,
+      first_party boolean not null default false,
+      state text not null,
+      confidence double precision,
+      discovered_at timestamptz not null default now(),
+      last_verified_at timestamptz,
+      extractor_version text
+    )
+  `);
   await client.query("delete from opportunities where id='story-16-2-e2e-opportunity'");
   await client.query(
     `insert into radar_organizations(id,data) values($1,$2::jsonb)
@@ -43,6 +66,12 @@ try {
      values($1,'story-16-2','story-16-2','{}'::jsonb,'approved',100,now())
      on conflict(opportunity_id) do update set review_status='approved',review_score=100,reviewed_at=now(),updated_at=now()`,
     [opportunityId],
+  );
+  await client.query(
+    `insert into opportunity_url_observations(id,opportunity_id,organization_id,source_id,role,url,normalized_url,host,first_party,state,confidence,discovered_at,last_verified_at,extractor_version)
+     values('story-16-2-e2e-url-evidence',$1,$2,$3,'official','https://example.invalid/story-16-2-opportunity','https://example.invalid/story-16-2-opportunity','example.invalid',true,'verified',1,now(),now(),'story-16-2')
+     on conflict(id) do update set first_party=true,state='verified',last_verified_at=now(),extractor_version='story-16-2'`,
+    [opportunityId, organizationId, sourceId],
   );
   await client.query("update opportunities set publication_state='published',updated_at=now() where id=$1", [opportunityId]);
   const ada = await client.query("select id,data->>'userId' as user_id from radar_accounts where lower(email)=lower('ada@example.com') limit 1");
