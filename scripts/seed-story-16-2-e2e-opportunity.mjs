@@ -19,6 +19,11 @@ try {
   // fixture so a published call still has to satisfy the real confirmation
   // rule used by Follow, recommendations, and availability projections.
   await client.query(`
+    alter table opportunities
+      add column if not exists program_id text,
+      add column if not exists edition_label text
+  `);
+  await client.query(`
     create table if not exists opportunity_url_observations (
       id text primary key,
       opportunity_id text not null references opportunities(id) on delete cascade,
