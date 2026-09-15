@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getResidencyRankingRepository } from "@/lib/residencyRankingRepository";
 
-function boundedInteger(value: string | null, fallback: number, maximum: number) {
+function boundedInteger(
+  value: string | null,
+  fallback: number,
+  maximum: number,
+) {
   const parsed = Number.parseInt(value ?? "", 10);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(Math.max(parsed, 0), maximum);
@@ -17,7 +21,7 @@ export async function GET(request: Request) {
   });
 
   return NextResponse.json(
-    { items: page.items, total: page.total },
+    { items: page.items, total: page.total, dataSource: page.dataSource },
     {
       headers: {
         "cache-control": "public, s-maxage=300, stale-while-revalidate=1800",

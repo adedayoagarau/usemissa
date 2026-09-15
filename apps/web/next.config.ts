@@ -8,16 +8,40 @@ const previewHosts = (process.env.MISSA_DEV_PREVIEW_HOST ?? "")
   .split(",")
   .map((host) => host.trim())
   .filter(Boolean);
+const allowedPermissionsPolicy =
+  "camera=(), microphone=(), geolocation=(), tools=(self)";
+const blockedPermissionsPolicy =
+  "camera=(), microphone=(), geolocation=(), tools=()";
+const webMcpBlockedRoutes = [
+  "/admin/:path*",
+  "/auth/:path*",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/unsubscribe/:path*",
+  "/publication-claim/:path*",
+  "/rankings/claim/:path*",
+  "/my-submissions/:submissionId/:path*",
+  "/tracker/submissions/:submissionId/:path*",
+  "/organization/:organizationId/settings/:path*",
+  "/organization/:organizationId/submissions/:submissionId/:path*",
+  "/workspace/settings/:path*",
+];
 
 const nextConfig: NextConfig = {
   experimental: {
     // Optional local-only override for slow external-drive cache compaction.
-    turbopackFileSystemCacheForDev: process.env.MISSA_DEV_DISABLE_DISK_CACHE !== "1",
+    turbopackFileSystemCacheForDev:
+      process.env.MISSA_DEV_DISABLE_DISK_CACHE !== "1",
   },
   // This is an npm-workspaces monorepo (root package-lock.json), not a
   // standalone app -- tell Next.js where the real project root is so it
   // doesn't warn about / mis-trace the "additional lockfile" at ../../..
-  outputFileTracingRoot: path.join(/* turbopackIgnore: true */ import.meta.dirname, "../../"),
+  outputFileTracingRoot: path.join(
+    /* turbopackIgnore: true */ import.meta.dirname,
+    "../../",
+  ),
   allowedDevOrigins: ["127.0.0.1", "10.0.0.119", ...previewHosts],
   async headers() {
     return [
@@ -29,7 +53,7 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: allowedPermissionsPolicy,
           },
           { key: "X-DNS-Prefetch-Control", value: "off" },
           { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
@@ -43,6 +67,12 @@ const nextConfig: NextConfig = {
             : []),
         ],
       },
+      ...webMcpBlockedRoutes.map((source) => ({
+        source,
+        headers: [
+          { key: "Permissions-Policy", value: blockedPermissionsPolicy },
+        ],
+      })),
     ];
   },
 };

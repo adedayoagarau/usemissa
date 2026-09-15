@@ -38,6 +38,12 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Test WebMCP projections
+        run: >-
+          node --experimental-strip-types --test
+          apps/web/lib/webmcp.test.ts
+          apps/web/lib/public-creator-projection.test.ts
+
       - name: Install Playwright Chromium
         run: npm exec --workspace=@missa/web -- playwright install --with-deps chromium
 
