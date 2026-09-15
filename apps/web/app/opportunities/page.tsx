@@ -8,7 +8,7 @@ import {
   getPersonalizedOpportunityBrowse,
   getPublicOpportunityBrowse,
 } from "@/lib/publicOpportunityReads";
-import { getEngine } from "@/lib/engine";
+import { getCreatorAccountRepository } from "@/lib/creatorRepositories";
 import { countryNameFromCode } from "@missa/contracts";
 import { LOCATION_OPTIONS, taxonomyLabelFor } from "@/lib/opportunityTaxonomy";
 import { OpportunityShell } from "@/components/opportunity-shell";
@@ -222,18 +222,18 @@ export default async function OpportunitiesPage({
     noFeeOnly: query.feeStatus === "no-fee",
     deadlineWithinDays: query.deadlineWithinDays,
   };
-  const organizationStore = activeSession
-    ? (await getEngine()).store.organizations
-    : null;
+  const organizationNames = activeSession?.memberships.length
+    ? await getCreatorAccountRepository()?.organizationNames(
+        activeSession.memberships.map((membership) => membership.organizationId),
+      )
+    : undefined;
   const headerSession = activeSession
     ? {
         email: activeSession.account.email,
         isAdmin: activeSession.account.isAdmin,
         organizations: activeSession.memberships.map((membership) => ({
           id: membership.organizationId,
-          name:
-            organizationStore?.get(membership.organizationId)?.name ??
-            "Organization",
+          name: organizationNames?.get(membership.organizationId) ?? "Organization",
         })),
       }
     : null;
