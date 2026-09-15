@@ -60,6 +60,7 @@ const migrationFiles = [
   '0035_visual_arts_organizations.sql',
   '0036_opportunity_media_enrichment.sql',
   '0041_creator_portfolios.sql',
+  '0042_creator_product_states.sql',
   // Submission portal configuration and Wave 6 operations are deliberately
   // listed explicitly: they are the relational authority tail used by the
   // production workspace health gate.

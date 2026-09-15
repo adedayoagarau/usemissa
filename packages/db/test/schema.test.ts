@@ -353,6 +353,7 @@ test("target schema replay includes the complete registered tail through workspa
 test("target schema replay includes the submission portal and Wave 6 authority tail", () => {
   const targetSchema = readFileSync("../../scripts/apply-target-schema.mjs", "utf8");
   const requiredTail = [
+    "0042_creator_product_states.sql",
     "0056_submission_portal_configuration_versions.sql",
     "0057_submission_draft_version_pins.sql",
     "0059_organization_review_settings.sql",
