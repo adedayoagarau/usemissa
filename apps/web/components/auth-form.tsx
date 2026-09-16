@@ -543,18 +543,6 @@ export function AuthForm({
         if (!response.ok && neonRejected && mode === "login") {
           response = await missaPasswordRequest();
         }
-        if (!response.ok && !neonRejected) {
-          const problem = (await response
-            .clone()
-            .json()
-            .catch(() => ({}))) as {
-            code?: string;
-          };
-          if (problem.code === "email_verification_required") {
-            await sendVerificationCode(email);
-            return;
-          }
-        }
       } else {
         response = await missaPasswordRequest();
       }
@@ -563,6 +551,21 @@ export function AuthForm({
           error?: string;
           code?: string;
         };
+        // The server is the final authority for whether Neon Auth protects
+        // signup. Recover into verification even if a stale or malformed
+        // public build variable caused the browser to choose compatibility
+        // signup first.
+        if (
+          mode === "signup" &&
+          body.code === "email_verification_required"
+        ) {
+          await sendVerificationCode(
+            email,
+            "field" in identity ? undefined : identity,
+            waitlistEmail,
+          );
+          return;
+        }
         // A 409 on sign-up means this email already has a Missa account: either
         // in Neon, or as a pre-Neon account the bridge will not silently adopt.
         const alreadyRegistered = body.code === "account_exists";
