@@ -8,6 +8,22 @@ const media = z
     "Upload this media before saving.",
   )
   .default("");
+
+export const PORTFOLIO_THEMES = ["sage", "paper", "mineral", "night"] as const;
+export type PortfolioTheme = (typeof PORTFOLIO_THEMES)[number];
+
+/**
+ * Older preview drafts carried `theme: "white"` before the public palette
+ * settled on these four values. Coerce any unknown or legacy value to the
+ * canonical default so a stored draft keeps loading.
+ */
+export function coercePortfolioTheme(value: unknown): PortfolioTheme {
+  return typeof value === "string" &&
+    (PORTFOLIO_THEMES as readonly string[]).includes(value)
+    ? (value as PortfolioTheme)
+    : "sage";
+}
+
 export const portfolioSchema = z.object({
   handle: text(30),
   name: text(100),
@@ -55,7 +71,7 @@ export const portfolioSchema = z.object({
     .array(z.enum(["Books", "Selected publications"]))
     .max(2)
     .default(["Books", "Selected publications"]),
-  theme: z.enum(["sage", "paper", "mineral", "night"]).default("sage"),
+  theme: z.enum(PORTFOLIO_THEMES).default("sage"),
 });
 export type PortfolioData = z.infer<typeof portfolioSchema>;
 export function portfolioMediaIds(draft: PortfolioData) {

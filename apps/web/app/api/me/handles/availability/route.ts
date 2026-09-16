@@ -36,8 +36,13 @@ export async function GET(request: Request) {
   if (!process.env.DATABASE_URL || !(await handleNamespaceAvailable(process.env.DATABASE_URL).catch(()=>false)))
     return NextResponse.json({error:"Availability checks are temporarily unavailable. Please retry."},{status:503});
   const resolved = await resolveHandle(process.env.DATABASE_URL, key);
+  // A handle the caller already owns is not "in use" for them: returning false
+  // here blocks onboarding/rename for accounts whose claim already persisted.
+  const ownHandle =
+    resolved?.subjectType === "user" &&
+    resolved.subjectId === session.account.userId;
   return NextResponse.json(
-    { available: !resolved },
+    { available: !resolved || ownHandle },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

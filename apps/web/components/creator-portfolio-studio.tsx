@@ -110,7 +110,7 @@ export function CreatorPortfolioStudio({
   publicData,
   initialName = "",
   embedded = false,
-  sampleTheme = "white",
+  sampleTheme = "sage",
   presentation = "compact",
   sampleWorkLimit,
 }: {

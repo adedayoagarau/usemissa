@@ -1,4 +1,7 @@
-import { portfolioSchema } from "./creator-portfolio-schema";
+import {
+  coercePortfolioTheme,
+  portfolioSchema,
+} from "./creator-portfolio-schema";
 /** Account writes are confirmed before reporting success. Samples stay device-local. */
 const revisions = new Map<string, number>();
 const queues = new Map<string, Promise<unknown>>();
@@ -104,6 +107,7 @@ export function publicWebUrl(value: string): string | undefined {
 async function upgradePortfolio(value: unknown) {
   const draft = structuredClone(value) as Record<string, unknown>;
   if (!draft.works && draft.work) draft.works = [draft.work];
+  draft.theme = coercePortfolioTheme(draft.theme);
   const upload = async (value: unknown) => {
     if (typeof value !== "string" || !value.startsWith("data:")) return value;
     const response = await fetch(value);
