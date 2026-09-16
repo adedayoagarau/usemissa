@@ -212,6 +212,13 @@ export type CreatorOnboardingState = z.infer<
   typeof creatorOnboardingStateSchema
 >;
 
+const optionalFormField = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess(
+    (value) =>
+      typeof value === "string" && value.trim() === "" ? undefined : value,
+    schema.optional(),
+  );
+
 export const creatorOnboardingMutationSchema = z.object({
   action: z.enum(["save_step", "complete", "skip"]),
   step: z.number().int().min(0).max(4).optional(),
@@ -220,17 +227,14 @@ export const creatorOnboardingMutationSchema = z.object({
   interests: z.array(z.string().trim()).default([]),
   primaryPractice: z.string().trim().optional(),
   lastRoute: z.string().trim().optional(),
-  givenName: z.string().trim().min(1).max(80).optional(),
+  givenName: optionalFormField(z.string().trim().min(1).max(80)),
   familyName: z.string().trim().max(80).optional(),
   usesSingleName: z.boolean().default(false),
-  countryCode: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z]{2}$/u)
-    .optional(),
+  countryCode: optionalFormField(
+    z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/u),
+  ),
   city: z.string().trim().max(120).optional(),
-  timezone: z.string().trim().min(1).max(80).optional(),
+  timezone: optionalFormField(z.string().trim().min(1).max(80)),
   careerStage: z
     .enum(["student", "emerging", "mid-career", "established", "any"])
     .default("any"),
