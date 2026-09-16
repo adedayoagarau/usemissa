@@ -199,6 +199,6 @@ test('customer directory preserves unknown billing and distinguishes empty from 
   const unavailableModel = buildPlatformAdminReadModel({ generatedAt, databaseConfigured: false, durable: emptyPlatformAdminDurableSummary(generatedAt) });
   assert.equal(unavailableModel.customers.data.availability, 'unavailable');
   assert.equal(unavailableModel.customers.provenance.maturity, 'unavailable');
-  assert.match(unavailableModel.customers.warnings.join('\n'), /Radar compatibility store could not be read/);
-  assert.match(unavailableModel.customers.warnings.join('\n'), /Workspace compatibility store could not be read/);
+  assert.match(unavailableModel.customers.warnings.join('\n'), /Source store could not be read/);
+  assert.match(unavailableModel.customers.warnings.join('\n'), /Organization records could not be read/);
 });

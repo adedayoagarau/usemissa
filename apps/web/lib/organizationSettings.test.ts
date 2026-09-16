@@ -9,8 +9,8 @@ test('Finance receives only the bounded billing section', () => {
 });
 
 test('Owner and Admin can inspect every settings domain without gaining mutation capability', () => {
-  assert.equal(settingsSectionsForRole('owner').length, 8);
-  assert.equal(settingsSectionsForRole('admin').length, 8);
+  assert.equal(settingsSectionsForRole('owner').length, 9);
+  assert.equal(settingsSectionsForRole('admin').length, 9);
   assert.equal(selectedSettingsSection('admin', 'integrations'), 'integrations');
 });
 
