@@ -6,6 +6,8 @@ import {
   mapInterestsToOpportunityTypes,
   mapTaxonomyToPracticeLabels,
   mapOpportunityTypesToInterestLabels,
+  coerceCareerStage,
+  coerceTravelWillingness,
 } from "./creatorOnboardingTaxonomy";
 
 test("maps Writing and Poetry refinement to canonical taxonomy terms", () => {
@@ -70,4 +72,16 @@ test("maps stored opportunity types back into interest card labels", () => {
   assert.ok(interests.includes("Grants & funding"));
   assert.ok(interests.includes("Fellowships & awards"));
   assert.ok(!interests.includes("Residencies"));
+});
+
+test("coerces legacy career stages and travel labels to canonical enums", () => {
+  assert.equal(coerceCareerStage("all-stages"), "any");
+  assert.equal(coerceCareerStage("established"), "established");
+  assert.equal(coerceCareerStage(undefined), "any");
+  assert.equal(coerceCareerStage(42), "any");
+
+  assert.equal(coerceTravelWillingness("willing"), "any");
+  assert.equal(coerceTravelWillingness("remote-only"), "remote-only");
+  assert.equal(coerceTravelWillingness(undefined), "any");
+  assert.equal(coerceTravelWillingness(null), "any");
 });

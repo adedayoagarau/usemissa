@@ -16,6 +16,8 @@ import {
 import { getEngine, persistRadar } from "../../../../lib/engine";
 import { creatorCommandEnvelope } from "@missa/radar-adapters";
 import {
+  coerceCareerStage,
+  coerceTravelWillingness,
   mapInterestsToOpportunityTypes,
   mapOpportunityTypesToInterestLabels,
   mapPracticesToTaxonomy,
@@ -116,9 +118,8 @@ export async function GET() {
     if (oppPrefs?.types) {
       interests = mapOpportunityTypesToInterestLabels(oppPrefs.types);
     }
-    careerStage =
-      (oppPrefs?.careerStages[0] as typeof careerStage | undefined) ?? "any";
-    travelWillingness = oppPrefs?.travelWillingness ?? "any";
+    careerStage = coerceCareerStage(oppPrefs?.careerStages[0]);
+    travelWillingness = coerceTravelWillingness(oppPrefs?.travelWillingness);
     noFeeOnly = oppPrefs?.noFeeOnly ?? false;
   } else {
     const engine = await getEngine();

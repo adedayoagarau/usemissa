@@ -14,6 +14,8 @@ import {
 import { getEngine } from "@/lib/engine";
 import { CreatorOnboarding } from "@/components/creator-onboarding";
 import {
+  coerceCareerStage,
+  coerceTravelWillingness,
   mapOpportunityTypesToInterestLabels,
   mapTaxonomyToPracticeLabels,
 } from "@/lib/creatorOnboardingTaxonomy";
@@ -89,8 +91,10 @@ export default async function OnboardingPage() {
     if (oppPrefs?.types) {
       initialInterests = mapOpportunityTypesToInterestLabels(oppPrefs.types);
     }
-    initialCareerStage = oppPrefs?.careerStages[0] ?? "any";
-    initialTravelWillingness = oppPrefs?.travelWillingness ?? "any";
+    initialCareerStage = coerceCareerStage(oppPrefs?.careerStages[0]);
+    initialTravelWillingness = coerceTravelWillingness(
+      oppPrefs?.travelWillingness,
+    );
     initialNoFeeOnly = oppPrefs?.noFeeOnly ?? false;
   } else {
     const engine = await getEngine();

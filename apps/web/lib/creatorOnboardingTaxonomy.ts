@@ -244,3 +244,40 @@ export function mapOpportunityTypesToInterestLabels(
 
   return interests;
 }
+
+const CAREER_STAGES = [
+  "student",
+  "emerging",
+  "mid-career",
+  "established",
+  "any",
+] as const;
+
+const TRAVEL_WILLINGNESS_VALUES = [
+  "remote-only",
+  "willing-to-travel",
+  "local-only",
+  "any",
+] as const;
+
+export type CareerStage = (typeof CAREER_STAGES)[number];
+export type TravelWillingness = (typeof TRAVEL_WILLINGNESS_VALUES)[number];
+
+/**
+ * Stored creator preferences can predate the canonical onboarding enums, so a
+ * persisted value such as "all-stages" or a legacy travel label must not be
+ * echoed back into the onboarding payload where it would fail validation.
+ */
+export function coerceCareerStage(value: unknown): CareerStage {
+  return typeof value === "string" &&
+    (CAREER_STAGES as readonly string[]).includes(value)
+    ? (value as CareerStage)
+    : "any";
+}
+
+export function coerceTravelWillingness(value: unknown): TravelWillingness {
+  return typeof value === "string" &&
+    (TRAVEL_WILLINGNESS_VALUES as readonly string[]).includes(value)
+    ? (value as TravelWillingness)
+    : "any";
+}
