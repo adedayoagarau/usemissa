@@ -40,6 +40,30 @@ test("creator onboarding accepts the private matching profile needed to finish s
   assert.equal(result.noFeeOnly, true);
 });
 
+test("creator onboarding accepts blank optional form fields while saving an early step", () => {
+  const result = creatorOnboardingMutationSchema.parse({
+    action: "save_step",
+    step: 1,
+    practices: ["Writing", "Visual arts"],
+    refinements: [],
+    interests: [],
+    givenName: "",
+    familyName: "",
+    usesSingleName: false,
+    countryCode: "",
+    city: "",
+    timezone: "",
+    careerStage: "any",
+    travelWillingness: "any",
+    noFeeOnly: false,
+    lastRoute: "/onboarding",
+  });
+
+  assert.equal(result.givenName, undefined);
+  assert.equal(result.countryCode, undefined);
+  assert.equal(result.timezone, undefined);
+});
+
 test("resource IDs accept legacy and UUID-backed prefixed identities", () => {
   assert.equal(resourceIdSchema.parse("org_0001"), "org_0001");
   assert.equal(
