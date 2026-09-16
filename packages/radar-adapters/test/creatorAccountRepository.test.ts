@@ -123,7 +123,12 @@ test("onboarding profile data updates the private account identity and location 
     countryCode: "GB", countryName: "United Kingdom", city: "London", timezone: "Europe/London",
   });
   assert.ok(statements.some((value) => value.startsWith("update radar_accounts")));
-  assert.ok(statements.some((value) => value.startsWith("update creator_profiles")));
+  const profileStatement = statements.find((value) => value.startsWith("update creator_profiles"));
+  assert.ok(profileStatement);
+  // `concat_ws` takes a VARIADIC "any" list, so the city and country parameters
+  // must carry an explicit text cast or Postgres raises 42P18 (indeterminate
+  // datatype) when the statement is prepared.
+  assert.match(profileStatement!, /concat_ws\(', ', nullif\(\$7::text, ''\), \$9::text\)/);
   assert.deepEqual(statements.slice(-2), ["COMMIT", "RELEASE"]);
 });
 

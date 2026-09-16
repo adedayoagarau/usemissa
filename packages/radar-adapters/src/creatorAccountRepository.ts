@@ -268,7 +268,7 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
       const profileUpdate = await client.query(
         `update creator_profiles set display_name=$2, given_name=$3, family_name=$4,
            uses_single_name=$5, country_code=$6, city=$7, timezone=$8,
-           location=concat_ws(', ', nullif($7, ''), $9), revision=revision+1, updated_at=now()
+           location=concat_ws(', ', nullif($7::text, ''), $9::text), revision=revision+1, updated_at=now()
          where account_id=$1`,
         [accountId, input.displayName, input.givenName, input.familyName ?? null, input.usesSingleName, input.countryCode, input.city ?? null, input.timezone, input.countryName],
       );
