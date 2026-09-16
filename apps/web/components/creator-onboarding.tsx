@@ -268,7 +268,7 @@ export function CreatorOnboarding({
     setSaving(true);
     setError(null);
     try {
-      if (!claimedHandle && normalizedHandle) {
+      if (!claimedHandle && handleClaimingOpen && normalizedHandle) {
         const response = await fetch("/api/me/handles", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
