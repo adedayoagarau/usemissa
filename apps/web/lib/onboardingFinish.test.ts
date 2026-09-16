@@ -9,8 +9,8 @@ test("onboarding finish never claims a handle while claiming is closed", () => {
   );
 
   // The finish action must gate the handle POST on handleClaimingOpen, otherwise
-  // invite-only accounts fail with "could not hold this Missa address" instead
-  // of completing setup without a public handle.
+  // an account without claim access fails with "could not hold this Missa
+  // address" instead of completing setup without a public handle.
   assert.match(
     source,
     /if \(!claimedHandle && handleClaimingOpen && normalizedHandle\)/u,

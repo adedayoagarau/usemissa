@@ -11,6 +11,6 @@ test("claim-time normalization is the shared deterministic gate", () => {
   assert.equal(normalizeUserHandleInput("grаnta"), null);
 });
 
-test("handle claims default to the protected invitee window", () => {
-  assert.equal(handleClaimAccessMode(), "invite-only");
+test("user handle claims are open at signup", () => {
+  assert.equal(handleClaimAccessMode(), "open");
 });

@@ -258,6 +258,7 @@ test("invite, rename, and deletion lifecycle constants are explicit", () => {
     inviteeClaimWindowOpen({
       redeemedAt,
       now: new Date("2026-08-14T23:59:59.000Z"),
+      accessMode: "invite-only",
     }),
     true,
   );
@@ -265,6 +266,7 @@ test("invite, rename, and deletion lifecycle constants are explicit", () => {
     inviteeClaimWindowOpen({
       redeemedAt,
       now: new Date("2026-08-15T00:00:00.000Z"),
+      accessMode: "invite-only",
     }),
     false,
   );

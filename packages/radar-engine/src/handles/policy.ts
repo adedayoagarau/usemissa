@@ -1,11 +1,11 @@
 /**
- * Handle lifecycle policy is deliberately explicit and boring. Change
- * HANDLE_CLAIM_ACCESS_MODE to `open` when the protected invitee window has
- * been reviewed and general claiming should open without rewriting claim
- * logic.
+ * Handle lifecycle policy is deliberately explicit and boring. User handle
+ * claiming is open so every new account can choose a public address during
+ * onboarding. Organization and directory-profile claiming are separate,
+ * not-yet-shipped surfaces and are not affected by this flag.
  */
-export const HANDLE_CLAIM_ACCESS_MODE = "invite-only" as const;
-export type HandleClaimAccessMode = typeof HANDLE_CLAIM_ACCESS_MODE | "open";
+export const HANDLE_CLAIM_ACCESS_MODE = "open" as const;
+export type HandleClaimAccessMode = "invite-only" | "open";
 
 export const HANDLE_CLAIM_INVITEE_WINDOW_DAYS = 14;
 export const HANDLE_RENAME_INTERVAL_DAYS = 30;
