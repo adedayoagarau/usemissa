@@ -104,6 +104,7 @@ const migrationFiles = [
   '0074_creator_onboarding_profile_data.sql',
   '0075_recommendation_evidence.sql',
   '0076_opportunity_version_heads.sql',
+  '0077_opportunity_version_head_activation.sql',
 ];
 
 

@@ -469,4 +469,60 @@ export async function saveOpportunityProjectionToPostgres(
     if (source) await upsertOpportunity(client, opportunity, source, taxonomyEnabled);
   }
   await upsertVersionsAndChanges(client, store, scope?.opportunityIds);
+  if (await versionHeadAvailable(client)) {
+    await upsertVersionHeads(client, scope?.opportunityIds);
+  }
+}
+
+async function versionHeadAvailable(client: PoolClient): Promise<boolean> {
+  const result = await client.query<{ ready: boolean }>(
+    `select
+       to_regclass('public.opportunity_version_heads') is not null
+       and exists (
+         select 1
+         from pg_proc p
+         join pg_namespace n on n.oid = p.pronamespace
+         where n.nspname = 'public'
+           and p.proname = 'missa_opportunity_material_fingerprint'
+       ) as ready`,
+  );
+  return result.rows[0]?.ready === true;
+}
+
+/**
+ * ADR-006: keep the canonical version head current for every opportunity this
+ * writer persisted. The head is the lock target for the guarded First-Save
+ * transaction, so it must advance atomically with the projection and immutable
+ * version rows it names. Skipped when the activation migration is absent.
+ */
+async function upsertVersionHeads(
+  client: PoolClient,
+  opportunityIds?: Set<string>,
+): Promise<void> {
+  await client.query(
+    `insert into opportunity_version_heads
+       (opportunity_id, version_id, publication_state, safety_state, material_fingerprint, canonical_at)
+     select
+       o.id,
+       latest.id,
+       o.publication_state,
+       'unknown',
+       missa_opportunity_material_fingerprint(o),
+       now()
+     from opportunities o
+     join lateral (
+       select v.id
+       from opportunity_versions v
+       where v.opportunity_id = o.id
+       order by v.created_at desc, v.id asc
+       limit 1
+     ) latest on true
+     where ($1::text[] is null or o.id = any($1::text[]))
+     on conflict (opportunity_id) do update set
+       version_id = excluded.version_id,
+       publication_state = excluded.publication_state,
+       material_fingerprint = excluded.material_fingerprint,
+       canonical_at = now()`,
+    [opportunityIds ? [...opportunityIds] : null],
+  );
 }

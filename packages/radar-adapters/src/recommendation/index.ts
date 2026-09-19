@@ -29,6 +29,7 @@ export {
 export { PostgresRecommendationEvidenceStore } from "./postgresEvidenceStorage.js";
 export {
   OPPORTUNITY_VERSION_HEAD_TABLE,
+  ensureOpportunityVersionHead,
   OpportunityRevalidationRequiredError,
   OpportunityVersionHeadMissingError,
   readOpportunityVersionHead,

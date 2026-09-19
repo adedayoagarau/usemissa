@@ -106,6 +106,8 @@ interface OpportunityDetailRow extends OpportunityRow {
   detail_materials: MaterialRow[] | null;
   detail_changes: ChangeRow[] | null;
   detail_related_ids: string[] | null;
+  head_version_id: string | null;
+  head_material_fingerprint: string | null;
 }
 
 interface FacetCountsRow extends QueryResultRow {
@@ -1424,6 +1426,16 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
         limit 24
       ) related
     ), '[]'::jsonb) as detail_related_ids,
+    (
+      select head.version_id
+      from opportunity_version_heads head
+      where head.opportunity_id = o.id
+    ) as head_version_id,
+    (
+      select head.material_fingerprint
+      from opportunity_version_heads head
+      where head.opportunity_id = o.id
+    ) as head_material_fingerprint,
     o.created_at
 `,
     );
@@ -1470,6 +1482,10 @@ export class PostgresOpportunityRepository implements OpportunityRepository {
         newValue: item.new_value ?? undefined,
       })),
       relatedOpportunityIds,
+      ...(row.head_version_id ? { versionId: row.head_version_id } : {}),
+      ...(row.head_material_fingerprint
+        ? { materialFingerprint: row.head_material_fingerprint }
+        : {}),
     };
   }
 }

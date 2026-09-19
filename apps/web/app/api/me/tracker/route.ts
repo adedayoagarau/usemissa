@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import {
   creatorRelationalAuthorityEnabled,
   CreatorIdempotencyConflictError,
+  OpportunityRevalidationRequiredError,
+  OpportunityVersionHeadMissingError,
 } from "@missa/radar-adapters";
 
 import { getSessionAccount } from "@/lib/auth";
@@ -182,6 +184,25 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: error.message },
         { status: 409, headers: noStore },
+      );
+    }
+    if (error instanceof OpportunityRevalidationRequiredError) {
+      return NextResponse.json(
+        {
+          error:
+            "This Opportunity changed while you were saving it. Review the latest details and save again.",
+          code: "opportunity-revalidation-required",
+        },
+        { status: 409, headers: noStore },
+      );
+    }
+    if (error instanceof OpportunityVersionHeadMissingError) {
+      return NextResponse.json(
+        {
+          error:
+            "We could not confirm this Opportunity's current version. Your Tracker is unchanged. Try again.",
+        },
+        { status: 503, headers: noStore },
       );
     }
     return NextResponse.json(

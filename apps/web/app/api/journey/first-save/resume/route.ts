@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  OpportunityRevalidationRequiredError,
+  OpportunityVersionHeadMissingError,
+} from "@missa/radar-adapters";
 
 import { getSessionAccount } from "@/lib/auth";
 import { getOpportunityRepository } from "@/lib/opportunityRepository";
@@ -253,7 +257,25 @@ export async function POST(request: Request) {
       { status: saved.status, receipt },
       { status: saved.status === "created" ? 201 : 200, headers: noStore },
     );
-  } catch {
+  } catch (error) {
+    if (error instanceof OpportunityRevalidationRequiredError) {
+      return NextResponse.json(
+        {
+          error:
+            "This Opportunity changed while you were saving it. Review the latest details and save again.",
+        },
+        { status: 409, headers: noStore },
+      );
+    }
+    if (error instanceof OpportunityVersionHeadMissingError) {
+      return NextResponse.json(
+        {
+          error:
+            "We could not finish saving this Opportunity. Your Save request is still available. Try again.",
+        },
+        { status: 503, headers: noStore },
+      );
+    }
     return NextResponse.json(
       {
         error:

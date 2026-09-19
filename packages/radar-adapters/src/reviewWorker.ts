@@ -9,6 +9,7 @@ import { evaluatePublicationRubric, type PublicationRubricCandidate } from "./pu
 import { syncProfileOpportunityLinks } from "./profileIdentityMatcher.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
+import { ensureOpportunityVersionHead } from "./recommendation/versionHead.js";
 
 type ReviewDecision = "publish" | "needs-human" | "suppress" | "error";
 type ReviewJob = { id: string; opportunityId: string; inputVersion: string };
@@ -194,10 +195,12 @@ async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<Re
     );
     if (result.decision === "publish") {
       await client.query("update opportunities set publication_state = 'published', last_changed_at = now() where id = $1 and publication_state = 'reviewable'", [job.opportunityId]);
+      await ensureOpportunityVersionHead(client, job.opportunityId);
       await client.query("update radar_review_jobs set status = 'completed', lease_until = null, updated_at = now() where id = $1", [job.id]);
       await writeHandoff(client, runId, job.opportunityId, "publisher", "publication-decision", "completed", { score: result.score });
     } else if (result.decision === "suppress") {
       await client.query("update opportunities set publication_state = 'suppressed', last_changed_at = now() where id = $1 and publication_state = 'reviewable'", [job.opportunityId]);
+      await ensureOpportunityVersionHead(client, job.opportunityId);
       await client.query("update radar_review_jobs set status = 'blocked', lease_until = null, updated_at = now() where id = $1", [job.id]);
       await writeHandoff(client, runId, job.opportunityId, "publisher", "suppression-decision", "completed", { score: result.score });
     } else {

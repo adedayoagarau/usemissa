@@ -123,3 +123,55 @@ export async function readOpportunityVersionHead(
   const row = result.rows[0];
   return row ? headFromRow(row) : null;
 }
+
+/**
+ * Materialize or refresh the canonical head for a single opportunity using the
+ * SQL-side fingerprint function and the newest version. This is the hook the
+ * review/publish worker uses so a publication-state transition never leaves a
+ * stale head behind. It is a no-op on databases where the ADR-006 activation
+ * migration has not been applied.
+ */
+export async function ensureOpportunityVersionHead(
+  client: PoolClient,
+  opportunityId: string,
+): Promise<void> {
+  const ready = await client.query<{ ready: boolean }>(
+    `select
+       to_regclass('public.opportunity_version_heads') is not null
+       and exists (
+         select 1
+         from pg_proc p
+         join pg_namespace n on n.oid = p.pronamespace
+         where n.nspname = 'public'
+           and p.proname = 'missa_opportunity_material_fingerprint'
+       ) as ready`,
+  );
+  if (ready.rows[0]?.ready !== true) return;
+
+  await client.query(
+    `insert into opportunity_version_heads
+       (opportunity_id, version_id, publication_state, safety_state, material_fingerprint, canonical_at)
+     select
+       o.id,
+       latest.id,
+       o.publication_state,
+       'unknown',
+       missa_opportunity_material_fingerprint(o),
+       now()
+     from opportunities o
+     join lateral (
+       select v.id
+       from opportunity_versions v
+       where v.opportunity_id = o.id
+       order by v.created_at desc, v.id asc
+       limit 1
+     ) latest on true
+     where o.id = $1
+     on conflict (opportunity_id) do update set
+       version_id = excluded.version_id,
+       publication_state = excluded.publication_state,
+       material_fingerprint = excluded.material_fingerprint,
+       canonical_at = now()`,
+    [opportunityId],
+  );
+}

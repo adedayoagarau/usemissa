@@ -204,6 +204,14 @@ export interface OpportunityDetailProjection extends OpportunityBrowseProjection
   }>;
   organizationSummary?: string;
   relatedOpportunityIds: string[];
+  /**
+   * Canonical version-head identity observed during revalidation (ADR-006).
+   * Present only when the relational repository is authoritative and the
+   * version-head activation migration has been applied. The guarded First-Save
+   * transaction re-checks these values under lock; absent means "unguarded".
+   */
+  versionId?: string;
+  materialFingerprint?: string;
 }
 
 export interface OpportunityBrowsePage {

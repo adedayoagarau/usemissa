@@ -1,5 +1,8 @@
 import type { OpportunityDetailProjection } from "@missa/radar-engine";
-import { saveCanonicalOpportunityToTracker } from "@missa/radar-adapters";
+import {
+  saveCanonicalOpportunityToTracker,
+  saveCanonicalOpportunityToTrackerGuarded,
+} from "@missa/radar-adapters";
 
 import type { SessionAccount } from "./auth";
 import { getEngine, persistRadar } from "./engine";
@@ -26,6 +29,31 @@ export async function saveOpportunityForAccount(
     process.env.MISSA_CREATOR_RELATIONAL_AUTHORITY === "1" &&
     process.env.DATABASE_URL
   ) {
+    if (
+      process.env.MISSA_GUARDED_FIRST_SAVE === "1" &&
+      opportunity.versionId &&
+      opportunity.materialFingerprint
+    ) {
+      const result = await saveCanonicalOpportunityToTrackerGuarded(
+        process.env.DATABASE_URL,
+        session.account.id,
+        opportunity.id,
+        {
+          idempotencyKey,
+          guard: {
+            observedVersionId: opportunity.versionId,
+            observedMaterialFingerprint: opportunity.materialFingerprint,
+          },
+        },
+      );
+      if (!result) throw new Error("Opportunity is not available to save");
+      return {
+        status: result.status,
+        replayed: result.replayed,
+        receiptId: result.receiptId,
+        revision: result.tracked.revision,
+      };
+    }
     const result = await saveCanonicalOpportunityToTracker(
       process.env.DATABASE_URL,
       session.account.id,
