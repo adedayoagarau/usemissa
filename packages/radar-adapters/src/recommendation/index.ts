@@ -26,3 +26,4 @@ export {
   type RecommendationSignalRecord,
   type RecommendationSignalRecordInput,
 } from "./evidenceStorage.js";
+export { PostgresRecommendationEvidenceStore } from "./postgresEvidenceStorage.js";

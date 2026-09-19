@@ -102,6 +102,7 @@ const migrationFiles = [
   '0072_product_analytics_query_indexes.sql',
   '0073_opportunity_legacy_aliases.sql',
   '0074_creator_onboarding_profile_data.sql',
+  '0075_recommendation_evidence.sql',
 ];
 
 
