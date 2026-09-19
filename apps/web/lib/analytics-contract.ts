@@ -105,8 +105,16 @@ export const ANALYTICS_EVENTS = {
   "application.provider_receipt_recorded": serverCreator("Missa or a provider produced durable submission evidence.", ["submission_id"], ["opportunity_id", "provider"]),
   "application.status_recorded": serverCreator("A creator recorded a lifecycle status in Tracker.", ["opportunity_id", "status", "occurred_on"]),
   "outcome.response_recorded": serverCreator("A creator or authoritative workflow recorded an application response.", ["opportunity_id", "outcome"]),
-  "auth.login_succeeded": serverCreator("A password login succeeded.", ["method"]),
-  "auth.signup_succeeded": serverCreator("A new account was created.", ["method"]),
+  "auth.login_succeeded": serverCreator(
+    "A password or Neon Auth login succeeded.",
+    ["method"],
+    ["linked"],
+  ),
+  "auth.signup_succeeded": serverCreator(
+    "A new account was created.",
+    ["method"],
+    ["linked"],
+  ),
 
   admin_agent_control_requested: clientPlatform("An admin selected an agent control action.", ["targetType", "action"]),
   admin_crm_contact_created: clientPlatform("An admin attempted to create a CRM contact.", []),

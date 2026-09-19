@@ -1,5 +1,21 @@
 import { Pool, type PoolConfig } from "pg";
 
+/**
+ * `pg-connection-string` v2 treats `sslmode=require` as `verify-full`, but
+ * v3 adopts the weaker standard libpq meaning (encrypt without verifying the
+ * certificate). Upgrade the weaker spelling to `verify-full` at the pool seam
+ * so a stale connection string cannot silently weaken TLS when the driver is
+ * bumped. A trailing newline is tolerated by the current driver and is trimmed
+ * here so env-file round-trips do not leak it into the channel-binding value.
+ */
+export function normalizePostgresConnectionString(
+  connectionString: string,
+): string {
+  return connectionString
+    .trim()
+    .replace(/sslmode=require(?=&|$)/u, "sslmode=verify-full");
+}
+
 function positiveInteger(value: string | undefined): number | undefined {
   if (!value) return undefined;
   const parsed = Number(value);
@@ -47,7 +63,7 @@ export function missaPostgresPoolConfig(
   const connectionTimeoutMillis = positiveInteger(process.env.MISSA_DB_CONNECTION_TIMEOUT_MS);
   const idleTimeoutMillis = positiveInteger(process.env.MISSA_DB_IDLE_TIMEOUT_MS);
   return {
-    connectionString,
+    connectionString: normalizePostgresConnectionString(connectionString),
     ...(max === undefined ? {} : { max }),
     ...(connectionTimeoutMillis === undefined ? {} : { connectionTimeoutMillis }),
     ...(idleTimeoutMillis === undefined ? {} : { idleTimeoutMillis }),
