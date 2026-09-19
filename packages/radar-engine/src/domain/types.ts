@@ -727,6 +727,23 @@ export const OUTCOME_STATUSES: readonly MyStatus[] = [
   "delivered",
 ];
 
+/**
+ * Statuses that represent an organization actually responding with a decision,
+ * as opposed to a confirmation/acknowledgement (`received`, `in-review`) or a
+ * creator-side action (`withdrawn`, `partially-withdrawn`, `delivered`). These
+ * are the only transitions that count toward an organization's response-time
+ * distribution.
+ */
+export const RESPONSE_DECISION_STATUSES: readonly MyStatus[] = [
+  "longlisted",
+  "shortlisted",
+  "finalist",
+  "waitlisted",
+  "revision-requested",
+  "accepted",
+  "declined",
+];
+
 /** Status Event Model (strategy § 26): every My Status transition is recorded. */
 export interface StatusEvent {
   at: IsoDateTime;

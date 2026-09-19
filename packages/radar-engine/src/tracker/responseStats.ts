@@ -1,4 +1,4 @@
-import type { MyStatus } from '../domain/types.js';
+import { RESPONSE_DECISION_STATUSES } from '../domain/types.js';
 import type { RadarStore } from '../store/store.js';
 import { daysBetween, isoDateOf } from '../extraction/dates.js';
 
@@ -20,12 +20,6 @@ export interface ResponseStats {
   p90Days: number;
 }
 
-/** Any status that means "we heard something back" after submitting. */
-const RESPONSE_STATUSES: readonly MyStatus[] = [
-  'received', 'in-review', 'longlisted', 'shortlisted', 'finalist',
-  'accepted', 'declined', 'waitlisted', 'revision-requested',
-];
-
 function percentile(sortedDays: number[], p: number): number {
   const idx = Math.min(sortedDays.length - 1, Math.floor((p / 100) * sortedDays.length));
   return sortedDays[idx];
@@ -43,7 +37,10 @@ export function computeResponseStats(store: RadarStore, organizationId: string):
     if (!t.submittedAt) continue;
     const opp = store.opportunities.get(t.opportunityId);
     if (!opp || opp.fields.organizationId !== organizationId) continue;
-    const responseEvent = t.events.find((e) => e.at > t.submittedAt! && RESPONSE_STATUSES.includes(e.to));
+    // Only an actual organization decision marks a response. Acknowledgements
+    // (`received`, `in-review`) are filtered out so an auto-confirmation does
+    // not pretend to be the organization's reply and shorten the window.
+    const responseEvent = t.events.find((e) => e.at > t.submittedAt! && RESPONSE_DECISION_STATUSES.includes(e.to));
     if (!responseEvent) continue;
     samples.push(daysBetween(isoDateOf(new Date(t.submittedAt)), isoDateOf(new Date(responseEvent.at))));
   }

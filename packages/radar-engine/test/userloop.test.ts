@@ -179,6 +179,32 @@ test("an organization's own response history refines the window used for overdue
   assert.match(overdue[0].body, /~10d/);
 });
 
+test("acknowledgements and in-review do not count as an organization response", async () => {
+  const { engine, magazine } = await trackedWorld();
+  const orgId = engine.store.opportunities.get(magazine.id)!.fields.organizationId!;
+
+  // Three historical submissions that only ever received an acknowledgement
+  // ("received" or "in-review") and never a decision. These must not shorten
+  // the organization's response window, because an auto-confirmation is not a
+  // reply from the organization.
+  for (const displayName of ['Ack1', 'Ack2', 'Ack3']) {
+    const user = engine.addUser({ displayName, genres: [], attributes: {} });
+    engine.trackOpportunity(user.id, magazine.id);
+    engine.setMyStatus(user.id, magazine.id, 'submitted');
+    engine.setMyStatus(user.id, magazine.id, 'received');
+  }
+  for (const tracked of engine.store.tracked) {
+    if (tracked.opportunityId !== magazine.id) continue;
+    const submit = tracked.events.find((event) => event.to === 'submitted');
+    const received = tracked.events.find((event) => event.to === 'received');
+    if (submit) submit.at = '2026-01-01T00:00:00.000Z';
+    if (received) received.at = '2026-01-02T00:00:00.000Z';
+    if (tracked.submittedAt) tracked.submittedAt = '2026-01-01T00:00:00.000Z';
+  }
+
+  assert.equal(engine.responseStats(orgId), undefined);
+});
+
 test('acceptance suggests withdrawing other active submissions, once, and never auto-withdraws anything', async () => {
   const { engine, ids, magazine } = await trackedWorld();
   const grant = [...engine.store.opportunities.values()].find((o) => o.fields.title.startsWith('Hilltop'))!;
