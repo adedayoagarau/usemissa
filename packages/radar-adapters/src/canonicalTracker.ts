@@ -7,6 +7,12 @@ import {
   CreatorIdempotencyConflictError,
 } from "./creatorRepository.js";
 import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import { recommendationSignalId } from "./recommendation/evidenceStorage.js";
+import type { FirstSaveProvenance } from "./recommendation/provenance.js";
+import {
+  OpportunityRevalidationRequiredError,
+  OpportunityVersionHeadMissingError,
+} from "./recommendation/versionHead.js";
 
 export type CanonicalTrackerSave = {
   status: "created" | "already-present";
@@ -634,6 +640,235 @@ export async function saveCanonicalOpportunityToTracker(
   } finally {
     client.release();
   }
+}
+
+export type GuardedTrackerSaveOptions = {
+  idempotencyKey?: string;
+  correlationId?: string;
+  guard: {
+    observedVersionId: string;
+    observedMaterialFingerprint: string;
+  };
+  /** Optional version-bound recommendation provenance to persist atomically. */
+  signal?: FirstSaveProvenance;
+};
+
+/**
+ * ADR-006 conformance: a guarded First-Save transaction. It locks the
+ * Opportunity and its canonical version head, fails without writes when the
+ * revalidated version or material fingerprint no longer matches, and otherwise
+ * creates (or recovers) Tracker state, status history, and the version-bound
+ * recommendation signal in one transaction. This is not wired into serving.
+ */
+export async function saveCanonicalOpportunityToTrackerGuarded(
+  connectionString: string,
+  accountId: string,
+  opportunityId: string,
+  options: GuardedTrackerSaveOptions,
+): Promise<CanonicalTrackerSave | null> {
+  const pool = creatorPoolFor(connectionString);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const commandType = "tracker.save";
+    const requestHash = canonicalCreatorRequestHash(
+      commandType,
+      { opportunityId },
+      1,
+    );
+    if (options.idempotencyKey) {
+      const replay = await client.query<{
+        request_hash: string;
+        result: CanonicalTrackerSave;
+      }>(
+        `select request_hash, result
+         from workspace_command_receipts
+         where scope_type = 'owner' and scope_id = $1 and actor_account_id = $1
+           and command_type = $2 and idempotency_key = $3
+         for update`,
+        [accountId, commandType, options.idempotencyKey],
+      );
+      const prior = replay.rows[0];
+      if (prior) {
+        if (prior.request_hash !== requestHash) {
+          throw new CreatorIdempotencyConflictError();
+        }
+        await client.query("COMMIT");
+        return { ...prior.result, replayed: true };
+      }
+    }
+
+    const opportunity = await client.query<{
+      id: string;
+      publication_state: string;
+    }>(
+      "select id, publication_state from opportunities where id = $1 for update",
+      [opportunityId],
+    );
+    const opportunityRow = opportunity.rows[0];
+    if (!opportunityRow || opportunityRow.publication_state !== "published") {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    const head = await client.query<{
+      version_id: string;
+      material_fingerprint: string;
+    }>(
+      `select version_id, material_fingerprint
+       from opportunity_version_heads
+       where opportunity_id = $1
+       for update`,
+      [opportunityId],
+    );
+    const headRow = head.rows[0];
+    if (!headRow) {
+      await client.query("ROLLBACK");
+      throw new OpportunityVersionHeadMissingError(opportunityId);
+    }
+    if (
+      headRow.version_id !== options.guard.observedVersionId ||
+      headRow.material_fingerprint !== options.guard.observedMaterialFingerprint
+    ) {
+      await client.query("ROLLBACK");
+      throw new OpportunityRevalidationRequiredError(
+        opportunityId,
+        options.guard.observedVersionId,
+        headRow.version_id,
+      );
+    }
+
+    const inserted = await client.query<TrackerRow>(
+      `insert into tracked_opportunities
+         (id, account_id, opportunity_id, status, tracked_at, updated_at)
+       values ($1, $2, $3, 'interested', now(), now())
+       on conflict (account_id, opportunity_id) do nothing
+       returning id, account_id, opportunity_id, status, tracked_at, updated_at, revision, notify, work_id`,
+      [`tracked_${randomUUID()}`, accountId, opportunityId],
+    );
+
+    if (inserted.rows[0]) {
+      await client.query(
+        `insert into tracked_status_events
+           (tracked_opportunity_id, account_id, from_status, to_status, source)
+         values ($1, $2, null, 'interested', 'user')`,
+        [inserted.rows[0].id, accountId],
+      );
+      await recordGuardedRecommendationSignal(client, options.signal, {
+        accountId,
+        opportunityId,
+        versionId: options.guard.observedVersionId,
+        trackerId: inserted.rows[0].id,
+      });
+      const result: CanonicalTrackerSave = {
+        status: "created",
+        tracked: trackedRow(inserted.rows[0]),
+        replayed: false,
+      };
+      const governed = await recordTrackerSaveCommand(
+        client,
+        accountId,
+        opportunityId,
+        result,
+        requestHash,
+        options,
+      );
+      await client.query("COMMIT");
+      return governed;
+    }
+
+    const existing = await client.query<TrackerRow>(
+      `select id, account_id, opportunity_id, status, tracked_at, updated_at, revision, notify, work_id
+       from tracked_opportunities
+       where account_id = $1 and opportunity_id = $2`,
+      [accountId, opportunityId],
+    );
+    const row = existing.rows[0];
+    if (!row) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+    await recordGuardedRecommendationSignal(client, options.signal, {
+      accountId,
+      opportunityId,
+      versionId: options.guard.observedVersionId,
+      trackerId: row.id,
+    });
+    const result: CanonicalTrackerSave = {
+      status: "already-present",
+      tracked: trackedRow(row),
+      replayed: false,
+    };
+    const governed = await recordTrackerSaveCommand(
+      client,
+      accountId,
+      opportunityId,
+      result,
+      requestHash,
+      options,
+    );
+    await client.query("COMMIT");
+    return governed;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function recordGuardedRecommendationSignal(
+  client: import("pg").PoolClient,
+  signal: FirstSaveProvenance | undefined,
+  binding: {
+    accountId: string;
+    opportunityId: string;
+    versionId: string;
+    trackerId: string;
+  },
+): Promise<void> {
+  if (!signal) return;
+  if (signal.accountId !== binding.accountId) {
+    throw new Error("Recommendation signal belongs to another account");
+  }
+  if (signal.opportunityId !== binding.opportunityId) {
+    throw new Error("Recommendation signal opportunity mismatch");
+  }
+  if (signal.opportunityVersionId !== binding.versionId) {
+    throw new Error("Recommendation signal version mismatch");
+  }
+  const signalId = recommendationSignalId(signal);
+  await client.query(
+    `insert into recommendation_signal_records
+       (signal_id, account_id, opportunity_id, opportunity_version_id, tracker_id,
+        taxonomy_version, taxonomy_assignment_ids, source_evidence_refs,
+        opportunity_source_snapshot, eligibility_rule_ids, safety_state,
+        safety_authority, safety_decision_id, safety_evidence_refs,
+        intent_fingerprint, revalidated_at, undo_state, created_at, cleared_at)
+     values ($1, $2, $3, $4, $5, $6, $7::text[], $8::text[], $9::jsonb, $10::text[],
+             $11, $12, $13, $14::text[], $15, $16, $17, now(), null)
+     on conflict (signal_id) do nothing`,
+    [
+      signalId,
+      signal.accountId,
+      signal.opportunityId,
+      signal.opportunityVersionId,
+      binding.trackerId,
+      signal.taxonomyVersion ?? null,
+      signal.taxonomyAssignmentIds,
+      signal.sourceEvidenceRefs,
+      JSON.stringify(signal.opportunitySourceSnapshot),
+      signal.eligibilityRuleIds,
+      signal.safetyState,
+      signal.safetyAuthority ?? null,
+      signal.safetyDecisionId ?? null,
+      signal.safetyEvidenceRefs,
+      signal.intentFingerprint,
+      signal.revalidatedAt,
+      signal.undoState,
+    ],
+  );
 }
 
 async function recordTrackerSaveCommand(

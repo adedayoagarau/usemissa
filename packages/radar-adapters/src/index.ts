@@ -149,9 +149,11 @@ export {
   canonicalTrackerStatus,
   listCanonicalTrackedOpportunities,
   saveCanonicalOpportunityToTracker,
+  saveCanonicalOpportunityToTrackerGuarded,
   removeCanonicalTrackedOpportunity,
   updateCanonicalTrackerReminder,
   updateCanonicalTrackerStatus,
+  type GuardedTrackerSaveOptions,
   type CanonicalTrackerSave,
   type CanonicalTrackerItem,
   type CanonicalTrackerStatus,
@@ -621,4 +623,3 @@ export {
   type ManuscriptMatchResponse,
   type MatchCategory,
 } from "./ranking/manuscriptMatchEngine.js";
-

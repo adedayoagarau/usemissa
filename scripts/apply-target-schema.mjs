@@ -103,6 +103,7 @@ const migrationFiles = [
   '0073_opportunity_legacy_aliases.sql',
   '0074_creator_onboarding_profile_data.sql',
   '0075_recommendation_evidence.sql',
+  '0076_opportunity_version_heads.sql',
 ];
 
 

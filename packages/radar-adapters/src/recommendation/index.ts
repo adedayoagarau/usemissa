@@ -27,3 +27,11 @@ export {
   type RecommendationSignalRecordInput,
 } from "./evidenceStorage.js";
 export { PostgresRecommendationEvidenceStore } from "./postgresEvidenceStorage.js";
+export {
+  OPPORTUNITY_VERSION_HEAD_TABLE,
+  OpportunityRevalidationRequiredError,
+  OpportunityVersionHeadMissingError,
+  readOpportunityVersionHead,
+  setOpportunityVersionHead,
+  type OpportunityVersionHead,
+} from "./versionHead.js";
