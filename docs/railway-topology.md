@@ -25,7 +25,7 @@ Gary's crawler and AI reviewer are specified in [gary-agent-harness.md](./gary-a
 | `enrichment-worker` | Fetches public opportunity pages for media, guideline, past-winner, and call-profile evidence. Writes provenance-tagged evidence and retries failures through a leased queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=enrichment`, `RADAR_ENRICHMENT_INTERVAL_MINUTES`, `RADAR_ENRICHMENT_BATCH_SIZE` |
 | `review-agent` | Scores reviewable opportunities, records explainable decisions, publishes only when strict evidence gates pass, and hands ambiguous records to a human-review queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=review`, `RADAR_REVIEW_INTERVAL_MINUTES`, `RADAR_REVIEW_BATCH_SIZE` |
 | `content-worker` *(implemented; provision after migration rehearsal)* | Builds source-linked Opportunity Intelligence briefs, persists them, then reviews the exact built content for provenance, bounded claims, and completeness. Approved content is exposed; the worker never mutates canonical opportunity facts. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=content`, `RADAR_CONTENT_INTERVAL_MINUTES`, `RADAR_CONTENT_BATCH_SIZE` |
-| `ingestion-v2-worker` *(shadow; provision against staging only)* | Runs the BullMQ-backed Gary/Radar replacement benchmark. It stores source snapshots, extraction candidates, failures, and comparison artifacts in additive v2 tables; it never publishes to Radar. | Operator-triggered during benchmark | `INGESTION_V2_DATABASE_ROLE=staging`, staging `DATABASE_URL`, Upstash `REDIS_URL`, optional `DEEPSEEK_API_KEY` |
+| `ingestion-v2-worker` *(shadow; provision against staging only)* | Runs the Postgres-backed Gary/Radar replacement benchmark. It stores source snapshots, extraction candidates, failures, and comparison artifacts in additive v2 tables; it never publishes to Radar. | Daily Railway cron; one bounded run that closes its database pool and exits | `INGESTION_V2_DATABASE_ROLE=staging`, staging `DATABASE_URL`, `MISSA_INGESTION_V2_RUN_ONCE=1`, optional `DEEPSEEK_API_KEY` |
 
 The research and radar services receive the same Neon URL. Discovery uses a
 short transaction-scoped lock (`1984/728`); canonical Radar runs as one
@@ -178,8 +178,10 @@ before queueing a job.
   lanes, which remain serialized by Postgres advisory locks. Ingestion v2 has
   its own staging-only BullMQ/Upstash queue for the shadow benchmark.
 - **Second Postgres instance:** not needed. Neon is the source of truth.
-- **Always-on staging workers:** not enabled. Vercel preview plus an isolated
-  Neon branch is safer than two unattended workers writing to production.
+- **Always-on staging workers:** not enabled. The ingestion-v2 benchmark is a
+  once-daily Railway cron that exits after draining the bounded source set;
+  Vercel preview plus an isolated Neon branch remains safer than unattended
+  staging workers writing continuously.
 
 ## Operational rules
 
