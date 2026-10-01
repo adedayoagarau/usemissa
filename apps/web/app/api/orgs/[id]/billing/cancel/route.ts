@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireOrganizationAccess, persistOrganizationMutation } from '@/lib/organizationAccess';
+import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,5 +19,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   organization.billingCancelAtPeriodEnd = data.cancel_at_period_end === true;
   organization.billingStatus = (data.status as typeof organization.billingStatus) ?? organization.billingStatus;
   await persistOrganizationMutation(result.access, { action: 'billing.subscription_cancel_scheduled', targetType: 'organization', targetId: id, detail: { subscriptionId: organization.billingSubscriptionId } });
+  await trackPlatformAnalytics({
+    eventName: 'billing.subscription_cancel_scheduled',
+    source: 'organization-api',
+    accountId: result.access.session.account.id,
+    organizationId: id,
+  });
   return NextResponse.json({ cancelAtPeriodEnd: organization.billingCancelAtPeriodEnd, status: organization.billingStatus });
 }

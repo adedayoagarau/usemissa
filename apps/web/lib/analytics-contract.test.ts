@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ANALYTICS_EVENT_NAMES,
+  CLIENT_ANALYTICS_EVENT_NAMES,
   analyticsEventDefinition,
   validateAnalyticsEventProperties,
   validateAnalyticsProperties,
@@ -56,4 +57,23 @@ test("existing first-save and waitlist dimensions remain explicitly registered",
     }),
     undefined,
   );
+});
+
+test("billing instrumentation events are server-authoritative and organization-scoped", () => {
+  assert.equal(analyticsEventDefinition("billing.checkout_started")?.authority, "server");
+  assert.equal(analyticsEventDefinition("billing.checkout_started")?.owner, "organizations");
+  assert.equal(validateAnalyticsEventProperties("billing.checkout_started", { plan: "pro" }), undefined);
+  assert.match(validateAnalyticsEventProperties("billing.checkout_started", {}) ?? "", /plan/u);
+  assert.equal(validateAnalyticsEventProperties("billing.subscription_cancel_scheduled", {}), undefined);
+});
+
+test("billing fake-door events are client observations and reject sensitive payloads", () => {
+  assert.equal(analyticsEventDefinition("billing.plan_viewed")?.authority, "client");
+  assert.equal(analyticsEventDefinition("billing.plan_viewed")?.owner, "organizations");
+  assert.equal(validateAnalyticsEventProperties("billing.plan_viewed", { surface: "workspace" }), undefined);
+  assert.match(validateAnalyticsEventProperties("billing.plan_viewed", {}) ?? "", /surface/u);
+  assert.equal(validateAnalyticsEventProperties("billing.plan_selected", { plan: "pro" }), undefined);
+  assert.match(validateAnalyticsEventProperties("billing.plan_selected", {}) ?? "", /plan/u);
+  assert.ok(CLIENT_ANALYTICS_EVENT_NAMES.includes("billing.plan_viewed"));
+  assert.ok(CLIENT_ANALYTICS_EVENT_NAMES.includes("billing.plan_selected"));
 });

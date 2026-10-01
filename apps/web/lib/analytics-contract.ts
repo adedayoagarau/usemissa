@@ -157,6 +157,10 @@ export const ANALYTICS_EVENTS = {
   "admin.ingestion_shadow_batch_requested": serverPlatform("A shadow ingestion batch was durably queued.", ["scope", "queued_count", "request_result"]),
   organization_decision_email_batch_sent: serverOrganization("A decision-email batch completed.", ["sent", "failed"]),
   "organization.decision_email_batch_sent": serverOrganization("A decision-email batch completed.", ["sent", "failed"]),
+  "billing.checkout_started": serverOrganization("A paid plan checkout session was created for an organization.", ["plan"]),
+  "billing.subscription_cancel_scheduled": serverOrganization("A period-end subscription cancellation was scheduled for an organization.", []),
+  "billing.plan_viewed": clientOrganization("A plan or pricing surface became visible.", ["surface"]),
+  "billing.plan_selected": clientOrganization("A plan was selected to continue toward checkout.", ["plan"]),
 } as const satisfies Record<string, AnalyticsEventDefinition>;
 
 function clientGrowth(description: string, requiredProperties: readonly string[]): AnalyticsEventDefinition {
@@ -189,6 +193,10 @@ function serverPlatform(description: string, requiredProperties: readonly string
 
 function serverOrganization(description: string, requiredProperties: readonly string[]): AnalyticsEventDefinition {
   return definition("server", "organizations", description, requiredProperties, [], 365);
+}
+
+function clientOrganization(description: string, requiredProperties: readonly string[], optionalProperties: readonly string[] = []): AnalyticsEventDefinition {
+  return definition("client", "organizations", description, requiredProperties, optionalProperties, 90);
 }
 
 function definition(
@@ -227,6 +235,8 @@ export const CLIENT_ANALYTICS_EVENT_NAMES = [
   "opportunity_search_saved",
   "work_taxonomy_saved",
   "application.official_destination_opened",
+  "billing.plan_viewed",
+  "billing.plan_selected",
   "admin_agent_control_requested",
   "admin_crm_contact_created",
   "admin_crm_note_created",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { captureProductEvent } from '@/components/analytics-provider';
 
 type Billing = {
   plan: string;
@@ -10,16 +11,18 @@ type Billing = {
   cancelAtPeriodEnd?: boolean;
 };
 
-export function OrganizationBilling({ organizationId, canManage }: { organizationId: string; canManage: boolean }) {
+export function OrganizationBilling({ organizationId, canManage, surface = 'workspace' }: { organizationId: string; canManage: boolean; surface?: string }) {
   const [billing, setBilling] = useState<Billing | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
+    captureProductEvent('billing.plan_viewed', { surface });
     void fetch(`/api/orgs/${organizationId}/billing`)
       .then((response) => (response.ok ? response.json() : null))
       .then(setBilling);
-  }, [organizationId]);
+  }, [organizationId, surface]);
   async function start(plan: string) {
     setError(null);
+    captureProductEvent('billing.plan_selected', { plan });
     const response = await fetch(`/api/orgs/${organizationId}/billing`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

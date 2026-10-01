@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireOrganizationAccess } from '@/lib/organizationAccess';
 import { stripePriceId, type PaidPlan } from '@/lib/billing';
+import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -48,5 +49,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   });
   const data = await response.json() as { id?: string; url?: string; error?: { message?: string } };
   if (!response.ok || !data.url) return NextResponse.json({ error: data.error?.message ?? 'Unable to start checkout' }, { status: 502 });
+  await trackPlatformAnalytics({
+    eventName: 'billing.checkout_started',
+    source: 'organization-api',
+    accountId: result.access.session.account.id,
+    organizationId: id,
+    properties: { plan },
+  });
   return NextResponse.json({ id: data.id, url: data.url });
 }

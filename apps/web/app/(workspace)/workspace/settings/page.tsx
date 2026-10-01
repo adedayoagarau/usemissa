@@ -20,7 +20,7 @@ export default async function WorkspaceSettingsPage({ searchParams }: { searchPa
         <h1 className="mt-2 font-heading text-3xl font-medium tracking-tight text-foreground">Settings & billing</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">Manage your plan and payout details. Only organization owners and admins can make changes.</p>
       </header>
-      <div className="mt-6">{(await searchParams).section === 'review' ? <OrganizationReviewSettings organizationId={access.organizationId} canManage={canManage} /> : <OrganizationBilling organizationId={access.organizationId} canManage={canManage} />}</div>
+      <div className="mt-6">{(await searchParams).section === 'review' ? <OrganizationReviewSettings organizationId={access.organizationId} canManage={canManage} /> : <OrganizationBilling organizationId={access.organizationId} canManage={canManage} surface="workspace-settings" />}</div>
     </main>
   );
 }
