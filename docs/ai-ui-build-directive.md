@@ -17,6 +17,24 @@ Before proposing or changing UI, read:
 4. `apps/web/components.json` only when a required component is not installed
    and a configured registry must be inspected.
 
+## Skills
+
+Three installable skills operationalise specific design workflows. Invoke them
+by name rather than re-deriving their procedure inline.
+
+- `missa-component-docs` (`.github/skills/missa-component-docs/`) — write the
+  Missa component spec for a new or changed component and update the ledger,
+  policy, and catalogue.
+- `missa-token-mapping` (`.github/skills/missa-token-mapping/`) — map existing
+  values or legacy styles onto Missa tokens and report gaps without inventing
+  names.
+- `missa-design-review` (`.github/skills/missa-design-review/`) — review a
+  screen against `DESIGN.md` review criteria and report findings by severity.
+
+These skills reference `DESIGN.md`, `component-policy.json`, and
+`component-catalogue.json`; they do not replace them. They follow the source
+precedence documented in `.github/skills/README.md`.
+
 ## Binding build behavior
 
 - Name the interaction or information intent before selecting a component.
@@ -41,6 +59,8 @@ Before proposing or changing UI, read:
 - Run `npm run check:design-system` before handoff. If no approved component can
   satisfy the need, document the sources inspected and the functional or
   accessibility gap before adding a reusable component and policy entry.
+- Route token or component compliance questions through `missa-token-mapping`
+  and `missa-component-docs` rather than resolving them ad hoc.
 
 ## Handoff
 

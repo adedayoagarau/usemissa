@@ -6,7 +6,10 @@
     "AGENTS.md",
     "docs/ai-ui-build-directive.md",
     ".github/copilot-instructions.md",
-    ".cursor/rules/missa-ui.mdc"
+    ".cursor/rules/missa-ui.mdc",
+    ".github/skills/missa-component-docs/SKILL.md",
+    ".github/skills/missa-token-mapping/SKILL.md",
+    ".github/skills/missa-design-review/SKILL.md"
   ],
   "sources": {
     "installed": "@/components/ui",

@@ -9,4 +9,7 @@ Select components by user intent through the policy. Prefer installed Shadcn
 primitives and Missa semantic components; do not invent route-local primitives,
 directly import licensed Studio variants into feature code, or introduce raw
 colors, fonts, radii, shadows, or motion. Run `npm run check:design-system`
-before handing off UI changes.
+before handing off UI changes. For repeatable workflows use
+`.github/skills/missa-component-docs`, `.github/skills/missa-token-mapping`, and
+`.github/skills/missa-design-review`, following the source precedence in
+`.github/skills/README.md`.

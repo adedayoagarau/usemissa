@@ -11,6 +11,9 @@ These instructions apply to every AI-authored UI change in this repository.
 | Installed Studio inventory                | `apps/web/component-catalogue.json` |
 | Reusable AI UI directive                  | `docs/ai-ui-build-directive.md`     |
 | Directory filters and creator portfolio integration | `docs/directory-portfolio-integration-handoff.md` |
+| Missa component spec skill                | `.github/skills/missa-component-docs/SKILL.md` |
+| Missa token-mapping skill                 | `.github/skills/missa-token-mapping/SKILL.md` |
+| Missa design-review skill                 | `.github/skills/missa-design-review/SKILL.md` |
 
 ## Before building UI
 
@@ -37,6 +40,16 @@ These instructions apply to every AI-authored UI change in this repository.
    animations in feature code.
 8. If no approved component works, record the registries and local variants
    inspected plus the functional or accessibility gap before creating custom UI.
+
+## Skills
+
+For repeatable design workflows, use the installable skills under
+`.github/skills/` rather than re-deriving their procedure inline:
+`missa-component-docs` (write a component spec and update the ledger, policy,
+and catalogue), `missa-token-mapping` (map values to tokens and report gaps),
+and `missa-design-review` (review a screen against `DESIGN.md` criteria). The
+skills follow the source precedence in `.github/skills/README.md` and do not
+restate the rules here.
 
 ## Required handoff evidence
 
