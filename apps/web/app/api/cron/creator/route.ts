@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { tickCreatorReminders } from '@/lib/creator-reminders';
+import { deliverCreatorReminderEmails } from '@/lib/creator-reminder-email';
 import { getCreatorCalendarRepository } from '@/lib/creatorRepositories';
 import { tickGoals } from '@/lib/goal-engine';
 import { tickCreatorFollowing } from '@/lib/creator-following';
@@ -9,7 +10,8 @@ export async function GET(request: Request) {
   // Deadlines first, so this tick's reminders are recalculated against them.
   const deadlines = await getCreatorCalendarRepository()?.reconcileOfficialDeadlines();
   const reminders = await tickCreatorReminders();
+  const reminderEmails = await deliverCreatorReminderEmails();
   const goals = await tickGoals();
   const following = await tickCreatorFollowing();
-  return NextResponse.json({ deadlines, reminders, goals, following }, { headers: { 'Cache-Control': 'no-store' } });
+  return NextResponse.json({ deadlines, reminders, reminderEmails, goals, following }, { headers: { 'Cache-Control': 'no-store' } });
 }
