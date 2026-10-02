@@ -36,7 +36,7 @@ export async function deliverWeeklyDigests(): Promise<WeeklyDigestReport> {
       html,
       text,
       templateKey: 'weekly-digest',
-      templateVersion: 'weekly.v1',
+      templateVersion: 'weekly.v2',
       metadata: {
         isoWeek: recipient.isoWeek,
         newForYou: digest.newForYou.length,

@@ -1,4 +1,5 @@
-import { renderBaseEmailLayout, escapeHtml, EMAIL_COLORS } from './components/base-layout';
+import { renderBaseEmailLayout } from './components/base-layout';
+import { calendarDate, daysLeftLabel, longDate, renderOpportunitySection } from './components/opportunity-row';
 import { buildUnsubscribeUrl } from '../lib/email-tokens';
 import { siteUrl } from '../lib/siteUrl';
 import { sendMail, type SendMailReport } from '../lib/mail-service';
@@ -16,64 +17,61 @@ export interface DeadlineReminderEmailProps {
   accountId: string;
   email: string;
   opportunities: DeadlineReminderOpportunity[];
+  /** Render time; defaults to now. */
+  now?: Date;
 }
 
 export function renderDeadlineReminderEmail(props: DeadlineReminderEmailProps): { subject: string; html: string; text: string } {
+  const now = props.now ?? new Date();
   const count = props.opportunities.length;
   const single = count === 1 ? props.opportunities[0] : undefined;
+  const left = (days: number) => daysLeftLabel(days).toLowerCase();
 
   const subject = single
     ? `Deadline approaching: ${single.title} (${single.daysRemaining} days left)`
     : `Missa: ${count} submission deadlines approaching`;
 
-  const title = single ? 'Deadline countdown' : 'Upcoming deadlines';
+  const singleDate = single ? calendarDate(single.deadlineFormatted) : null;
+  const words = ['no', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+  const title = single
+    ? single.daysRemaining === 0
+      ? 'It closes today.'
+      : single.daysRemaining === 1
+        ? 'One day left.'
+        : `${words[single.daysRemaining] ?? single.daysRemaining} days left.`
+    : `${count} of your deadlines are close`;
+  const lede = single
+    ? `${single.title} from ${single.organizationName} closes on ${singleDate ? longDate(singleDate, now) : single.deadlineFormatted}. You asked Missa to remind you.`
+    : 'These calls in your Tracker close soon. Each one links to its page on Missa, with the official source.';
   const preheader = single
     ? `${single.title} closes in ${single.daysRemaining} days.`
     : `You have ${count} opportunities closing soon.`;
 
-  const bodyHtml = props.opportunities
-    .map((opp) => {
-      const remainingLabel =
-        opp.daysRemaining <= 1
-          ? 'Closes in 24 hours'
-          : `Closes in ${opp.daysRemaining} days`;
-
-      return `
-        <div style="margin-bottom:18px;padding:16px 18px;background-color:#ffffff;border:1px solid ${EMAIL_COLORS.border};border-radius:8px;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-            <span style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:${EMAIL_COLORS.forest600};">
-              ${escapeHtml(opp.organizationName)}
-            </span>
-            <span style="font-size:12px;font-weight:600;background-color:#edf3f0;color:#1d4037;padding:3px 8px;border-radius:4px;">
-              ${escapeHtml(remainingLabel)}
-            </span>
-          </div>
-          <div style="font-size:16px;font-weight:600;color:${EMAIL_COLORS.ink};margin-bottom:6px;">
-            ${escapeHtml(opp.title)}
-          </div>
-          <div style="font-size:13px;color:${EMAIL_COLORS.inkMuted};">
-            Deadline: ${escapeHtml(opp.deadlineFormatted)} ${opp.categoryLabel ? `• ${escapeHtml(opp.categoryLabel)}` : ''}
-          </div>
-        </div>
-      `;
-    })
-    .join('');
-
-  const noteHtml = `
-    <strong>Tip:</strong> Submissions often experience higher traffic during closing hours. We recommend submitting your work well in advance to avoid deadline-day technical issues.
-  `;
+  const rows = props.opportunities.map((opp) => ({
+    url: new URL(`/opportunities/${encodeURIComponent(opp.id)}`, `${siteUrl()}/`).toString(),
+    title: opp.title,
+    organizationName: opp.organizationName,
+    deadline: opp.deadlineFormatted,
+    daysRemaining: opp.daysRemaining,
+    reason: opp.categoryLabel,
+  }));
+  const bodyHtml = renderOpportunitySection(single ? 'Your reminder' : 'Closing soon', rows, { now });
 
   const html = renderBaseEmailLayout({
     subject,
     preheader,
-    eyebrow: 'Deadline alert',
+    eyebrow: 'Deadline reminder',
+    dateline: `${now.getUTCDate()} ${now.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })} ${now.getUTCFullYear()}`,
     title,
-    bodyHtml: `<p style="margin:0 0 16px;font-size:15px;line-height:24px;color:${EMAIL_COLORS.inkSecondary};">The following opportunities in your saved list or tracker are closing soon:</p>${bodyHtml}`,
-    noteHtml,
+    lede,
+    bodyHtml,
+    noteHtml: 'Check the official guidelines one more time before you send: word limits, file formats and any fee can change after a call opens.',
     callToAction: {
-      label: 'Open Tracker',
-      url: new URL('/tracker', `${siteUrl()}/`).toString(),
+      label: single ? 'Open the call' : 'Open Tracker',
+      url: single ? rows[0]!.url : new URL('/tracker', `${siteUrl()}/`).toString(),
     },
+    secondaryAction: single ? { label: 'Update it in your Tracker', url: new URL('/tracker', `${siteUrl()}/`).toString() } : undefined,
+    footerReason: 'You get this because you set a reminder for this call.',
     unsubscribeUrl: buildUnsubscribeUrl({
       accountId: props.accountId,
       email: props.email,
@@ -82,10 +80,13 @@ export function renderDeadlineReminderEmail(props: DeadlineReminderEmailProps): 
   });
 
   const textLines = props.opportunities
-    .map((opp) => `• ${opp.title} (${opp.organizationName}) — Deadline: ${opp.deadlineFormatted} (${opp.daysRemaining} days left)`)
+    .map((opp) => {
+      const date = calendarDate(opp.deadlineFormatted);
+      return `- ${opp.title}, ${opp.organizationName}\n  Closes ${date ? longDate(date, now) : opp.deadlineFormatted} (${left(opp.daysRemaining)}).`;
+    })
     .join('\n');
 
-  const text = `${title}\n\n${subject}\n\nOpportunities closing soon:\n${textLines}\n\nReview your Tracker: ${siteUrl()}/tracker\nManage notifications: ${siteUrl()}/profile`;
+  const text = `${title}\n\n${lede}\n\n${textLines}\n\nOpen your Tracker: ${siteUrl()}/tracker\nEmail settings: ${siteUrl()}/inbox`;
 
   return { subject, html, text };
 }
@@ -110,7 +111,7 @@ export async function deliverDeadlineReminderEmail(
     html,
     text,
     templateKey: 'deadline-reminder',
-    templateVersion: 'deadline.v1',
+    templateVersion: 'deadline.v2',
     metadata: { opportunityCount: props.opportunities.length },
     connectionString,
     retryFailed: true,

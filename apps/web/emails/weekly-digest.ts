@@ -1,5 +1,6 @@
 import type { WeeklyDigest, WeeklyDigestItem } from '@missa/radar-adapters';
 import { renderBaseEmailLayout, escapeHtml, EMAIL_COLORS } from './components/base-layout';
+import { calendarDate, daysLeftLabel, daysUntil, longDate, renderOpportunitySection } from './components/opportunity-row';
 import { buildUnsubscribeUrl } from '../lib/email-tokens';
 import { siteUrl } from '../lib/siteUrl';
 
@@ -7,72 +8,98 @@ export interface WeeklyDigestEmailProps {
   accountId: string;
   email: string;
   digest: WeeklyDigest;
+  /** Render time; defaults to now. */
+  now?: Date;
 }
 
-const SECTIONS: { key: keyof WeeklyDigest; heading: string; intro: string }[] = [
-  { key: 'yourDeadlines', heading: 'Your deadlines', intro: 'Saved applications closing in the next three weeks.' },
-  { key: 'newForYou', heading: 'New for you', intro: 'Added to Missa this week and matching what you make.' },
-  { key: 'closingSoon', heading: 'Closing soon', intro: 'Matching calls that close in the next two weeks.' },
+const SECTIONS: { key: keyof WeeklyDigest; heading: string }[] = [
+  { key: 'yourDeadlines', heading: 'Your deadlines' },
+  { key: 'newForYou', heading: 'New for you' },
+  { key: 'closingSoon', heading: 'Closing soon' },
 ];
+
+const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+const count = (n: number, one: string, many: string) => `${NUMBER_WORDS[n] ?? String(n)} ${n === 1 ? one : many}`;
+
+/** One plain sentence that says what is in this week's email. */
+function lede(digest: WeeklyDigest): string {
+  const parts = [
+    digest.yourDeadlines.length ? `${count(digest.yourDeadlines.length, 'saved deadline', 'saved deadlines')} in the next three weeks` : '',
+    digest.newForYou.length ? `${count(digest.newForYou.length, 'new call', 'new calls')} in your practice` : '',
+    digest.closingSoon.length ? `${count(digest.closingSoon.length, 'call', 'calls')} you may want to catch before ${digest.closingSoon.length === 1 ? 'it closes' : 'they close'}` : '',
+  ].filter(Boolean);
+  const list = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0] ?? '';
+  return `This week: ${list}.`;
+}
+
+/** ISO 8601 week number, matching the digest's once-a-week ledger key. */
+function isoWeek(now: Date): number {
+  const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  const yearStart = Date.UTC(date.getUTCFullYear(), 0, 1);
+  return Math.ceil(((date.getTime() - yearStart) / 86_400_000 + 1) / 7);
+}
 
 const opportunityUrl = (item: WeeklyDigestItem) =>
   new URL(`/opportunities/${encodeURIComponent(item.opportunityId)}`, `${siteUrl()}/`).toString();
 
-function itemHtml(item: WeeklyDigestItem): string {
-  const deadline = item.deadline ? `Deadline ${escapeHtml(item.deadline)}` : 'No fixed deadline';
-  return `
-    <div style="margin-bottom:12px;padding:14px 16px;background-color:${EMAIL_COLORS.cardSurface};border:1px solid ${EMAIL_COLORS.border};border-radius:8px;">
-      <div style="font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:${EMAIL_COLORS.forest600};margin-bottom:4px;">${escapeHtml(item.organizationName)}</div>
-      <a href="${escapeHtml(opportunityUrl(item))}" style="font-size:16px;font-weight:600;color:${EMAIL_COLORS.ink};text-decoration:none;">${escapeHtml(item.title)}</a>
-      <div style="font-size:13px;color:${EMAIL_COLORS.inkMuted};margin-top:4px;">${deadline} · ${escapeHtml(item.reason)}</div>
-    </div>`;
-}
-
 /**
- * Weekly personalised digest. Sections without items are omitted, so a quiet
- * week sends a short email; callers skip sending when every section is empty.
+ * Weekly personalised digest, laid out like a short weekly letter. Sections
+ * without items are omitted; callers skip sending when every section is empty.
  */
 export function renderWeeklyDigestEmail(props: WeeklyDigestEmailProps): { subject: string; html: string; text: string } {
+  const now = props.now ?? new Date();
   const sections = SECTIONS.filter((section) => props.digest[section.key].length);
-  const newCount = props.digest.newForYou.length;
-  const deadlineCount = props.digest.yourDeadlines.length;
   const subject = 'Your week in calls';
-  const preheader = [
-    deadlineCount ? `${deadlineCount} saved deadline${deadlineCount === 1 ? '' : 's'} coming up` : '',
-    newCount ? `${newCount} new call${newCount === 1 ? '' : 's'} for you` : '',
-  ].filter(Boolean).join(' · ') || 'Calls matching what you make';
+  const summary = lede(props.digest);
 
   const bodyHtml = sections
-    .map(
-      (section) => `
-        <h2 style="font-size:17px;line-height:24px;color:${EMAIL_COLORS.ink};margin:24px 0 4px;">${escapeHtml(section.heading)}</h2>
-        <p style="margin:0 0 12px;font-size:14px;line-height:20px;color:${EMAIL_COLORS.inkSecondary};">${escapeHtml(section.intro)}</p>
-        ${props.digest[section.key].map(itemHtml).join('')}`,
+    .map((section) =>
+      renderOpportunitySection(
+        section.heading,
+        props.digest[section.key].map((item) => ({
+          url: opportunityUrl(item),
+          title: item.title,
+          organizationName: item.organizationName,
+          deadline: item.deadline,
+          reason: item.reason,
+        })),
+        { now },
+      ),
     )
     .join('');
 
+  const preferencesUrl = new URL('/inbox', `${siteUrl()}/`).toString();
   const html = renderBaseEmailLayout({
     subject,
-    preheader,
-    eyebrow: 'Weekly',
+    preheader: summary,
+    dateline: `Week ${isoWeek(now)} \u00b7 ${now.getUTCDate()} ${now.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' })}`,
     title: 'Your week in calls',
+    lede: summary,
     bodyHtml,
-    noteHtml: 'Matches come from the disciplines and genres in your profile. Update them any time to change what appears here.',
-    callToAction: { label: 'Open Missa', url: new URL('/opportunities/for-you', `${siteUrl()}/`).toString() },
+    noteHtml: `Everything here matches the disciplines and genres you chose, and leaves out anything you excluded. <a href="${escapeHtml(new URL('/profile', `${siteUrl()}/`).toString())}" style="color:${EMAIL_COLORS.forest600};text-decoration:underline;text-underline-offset:3px;">Change what you follow</a>`,
+    callToAction: { label: 'See all your matches', url: new URL('/opportunities/for-you', `${siteUrl()}/`).toString() },
+    footerReason: 'You get this every Sunday evening because the weekly digest is on.',
+    preferencesUrl,
     unsubscribeUrl: buildUnsubscribeUrl({ accountId: props.accountId, email: props.email, category: 'notification_digest' }),
   });
 
   const text = [
     'Your week in calls',
+    '',
+    summary,
     ...sections.flatMap((section) => [
       '',
-      section.heading,
-      ...props.digest[section.key].map(
-        (item) => `• ${item.title} (${item.organizationName}) — ${item.deadline ? `deadline ${item.deadline}` : 'no fixed deadline'} — ${item.reason}\n  ${opportunityUrl(item)}`,
-      ),
+      section.heading.toUpperCase(),
+      ...props.digest[section.key].map((item) => {
+        const date = calendarDate(item.deadline);
+        const when = date ? `${longDate(date, now)} (${daysLeftLabel(daysUntil(date, now)).toLowerCase()})` : 'no fixed deadline';
+        return `- ${item.title}, ${item.organizationName}\n  ${when}. ${item.reason}.\n  ${opportunityUrl(item)}`;
+      }),
     ]),
     '',
-    `Manage notifications: ${siteUrl()}/profile`,
+    `See all your matches: ${siteUrl()}/opportunities/for-you`,
+    `Email settings: ${preferencesUrl}`,
   ].join('\n');
 
   return { subject, html, text };
