@@ -12,6 +12,8 @@ The source-of-truth documents these skills read and update are unchanged:
 - `apps/web/component-policy.json` — machine-readable intent to component map.
 - `apps/web/component-catalogue.json` — installed component ledger.
 - `docs/ai-ui-build-directive.md` — the reusable AI UI directive.
+- `docs/design-system-source-map.md` — the canonical source and name
+  reconciliation map (role noun → product name → CSS variable).
 - `apps/web/app/globals.css` — the compiled primitive, semantic, and component
   token variables.
 - `scripts/check-design-system.mjs` — the mechanical validator, run as
@@ -35,18 +37,12 @@ precedence below.
 
 ## Source precedence
 
-When two sources disagree, resolve in this order and say which one you followed:
-
-1. `DESIGN.md` (binding product rule).
-2. `apps/web/component-policy.json` (machine-readable, binding for new UI).
-3. `apps/web/component-catalogue.json` (installed ledger and approved variants).
-4. The installed component source under `apps/web/components/ui`, then
-   `apps/web/components/shadcn-studio`.
-5. The configured registry (`apps/web/components.json`).
-
-Where no rule reaches the disagreement, surface both sources and stop; do not
-choose. The `npm run check:design-system` validator is enforcement, not a rule
-source: a passing check does not override `DESIGN.md`.
+The canonical precedence and the role → product-name → CSS-variable
+reconciliation live in `docs/design-system-source-map.md`. When two sources
+disagree, resolve in that order and say which one you followed. Where no rule
+reaches the disagreement, surface both sources and stop; do not choose. The
+`npm run check:design-system` validator is enforcement, not a rule source: a
+passing check does not override `DESIGN.md`.
 
 ## Building and maintaining these skills
 

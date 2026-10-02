@@ -4,11 +4,8 @@ globs: apps/web/**/*.{ts,tsx,css}
 alwaysApply: false
 ---
 
-Follow `AGENTS.md`. Before changing UI, read `DESIGN.md`,
-`apps/web/component-policy.json`, `apps/web/component-catalogue.json`, and
-`docs/ai-ui-build-directive.md`. Select primitives and semantic components by
-intent through the policy, preserve Missa tokens and accessibility behavior,
-and run `npm run check:design-system` before handoff. For repeatable workflows
-use `.github/skills/missa-component-docs`, `.github/skills/missa-token-mapping`,
-and `.github/skills/missa-design-review`; they follow the source precedence in
-`.github/skills/README.md`.
+Follow `AGENTS.md`, which points to `DESIGN.md`,
+`apps/web/component-policy.json`, `apps/web/component-catalogue.json`,
+`docs/ai-ui-build-directive.md`, and `docs/design-system-source-map.md`. Run
+`npm run check:design-system` before handoff, and use the skills under
+`.github/skills/` for repeatable design workflows.

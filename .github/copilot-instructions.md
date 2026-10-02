@@ -1,15 +1,7 @@
 # Missa coding instructions
 
-For every UI task, follow `AGENTS.md` and read `DESIGN.md`,
-`apps/web/component-policy.json`, and `apps/web/component-catalogue.json` before
-generating markup or styles. The reusable directive is
-`docs/ai-ui-build-directive.md`.
-
-Select components by user intent through the policy. Prefer installed Shadcn
-primitives and Missa semantic components; do not invent route-local primitives,
-directly import licensed Studio variants into feature code, or introduce raw
-colors, fonts, radii, shadows, or motion. Run `npm run check:design-system`
-before handing off UI changes. For repeatable workflows use
-`.github/skills/missa-component-docs`, `.github/skills/missa-token-mapping`, and
-`.github/skills/missa-design-review`, following the source precedence in
-`.github/skills/README.md`.
+For every UI task, follow `AGENTS.md`, which points to `DESIGN.md`,
+`apps/web/component-policy.json`, `apps/web/component-catalogue.json`,
+`docs/ai-ui-build-directive.md`, and `docs/design-system-source-map.md`. Run
+`npm run check:design-system` before handing off UI changes, and use the skills
+under `.github/skills/` for repeatable design workflows.

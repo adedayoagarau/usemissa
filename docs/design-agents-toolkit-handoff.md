@@ -81,9 +81,10 @@ material has drifted from the canonical contracts.
 
 ## Run these first
 
-1. **Architect 2 (source map)** — the highest-leverage fix. A single source
-   precedence map removes the recurring "which token wins" ambiguity that the
-   token spreadsheet and multiple CSS palettes create.
+1. **Architect 2 (source map)** — done. `docs/design-system-source-map.md`
+   records the canonical precedence and the role → product-name → CSS-variable
+   reconciliation, and marks the scoped palettes and the retired spreadsheet as
+   non-canonical. Keep it updated as the remaining steps resolve.
 2. **Build 5 + Architect 1 + Improve 1 (project instructions)** — consolidate the
    four overlapping rule sets so the skills and the directive stop repeating the
    same rules.
