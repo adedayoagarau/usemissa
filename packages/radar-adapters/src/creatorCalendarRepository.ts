@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import {
   CreatorRepositoryBase,
@@ -445,7 +445,7 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       const eventId = `deadline:${row.tracked_id}`;
       const inserted = await client.query<{ id: string; revision: number }>(
         `insert into creator_calendar_events
-           (id,account_id,title,description,start_at,end_at,all_day,color,opportunity_id,purpose)
+           (id,account_id,title,description,start_at,end_at,all_day,color,opportunity_id,purpose,source_deadline_date)
          values ($1,$2,$3,'Official opportunity deadline',$4::date,$4::date+interval '1 day',true,'ochre',$5,'official-deadline',$4::date)
          on conflict (account_id,opportunity_id) where purpose='official-deadline'
          do update set title=excluded.title,start_at=excluded.start_at,end_at=excluded.end_at,
@@ -553,6 +553,114 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       );
       await client.query("commit");
       return { status: "resolved" as const, moved };
+    } catch (error) {
+      await client.query("rollback").catch(() => undefined);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Scheduled counterpart to ensureOpportunityDeadline: official deadlines
+   * follow the source even when nobody re-saves the opportunity. A moved date
+   * updates the event, flags it for review, queues the provider update and
+   * writes one Inbox notice. A removed deadline or closed call keeps the last
+   * known event as history and only notifies. Notices go to applications still
+   * in preparation; submitted ones are updated silently.
+   */
+  async reconcileOfficialDeadlines(accountId?: string, limit = 200) {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      const changed = await client.query<{
+        id: string;
+        account_id: string;
+        opportunity_id: string;
+        title: string;
+        previous: string | null;
+        next: string;
+        notify: boolean;
+      }>(
+        `select e.id,e.account_id,e.opportunity_id,o.title,e.source_deadline_date::text previous,o.deadline_date::text next,
+                t.status in (${PRE_SUBMISSION}) notify
+           from creator_calendar_events e
+           join opportunities o on o.id=e.opportunity_id
+           join tracked_opportunities t on t.account_id=e.account_id and t.opportunity_id=e.opportunity_id
+          where e.purpose='official-deadline' and ($1::text is null or e.account_id=$1)
+            and o.deadline_date is not null and o.deadline_kind in ('exact','fixed')
+            and e.source_deadline_date is distinct from o.deadline_date
+          order by e.id for update of e skip locked limit $2`,
+        [accountId ?? null, limit],
+      );
+      for (const row of changed.rows) {
+        const updated = await client.query<{ revision: number }>(
+          `update creator_calendar_events
+              set title=$2,start_at=$3::date,end_at=$3::date+interval '1 day',
+                  previous_source_deadline_date=source_deadline_date,source_deadline_date=$3::date,
+                  deadline_changed_at=now(),deadline_reconciliation_status='needs-review',
+                  revision=revision+1,updated_at=now()
+            where id=$1 returning revision`,
+          [row.id, row.title, row.next],
+        );
+        await queueCalendarSync(client, row.account_id, row.id, "upsert", updated.rows[0]!.revision);
+        if (row.notify)
+          await insertDeadlineNotice(client, row, {
+            kind: "deadline-changed",
+            title: `Deadline changed: ${row.title}`,
+            body: row.previous
+              ? `The official deadline moved from ${row.previous} to ${row.next}. Your calendar and deadline reminders now use the new date.`
+              : `The official deadline is now ${row.next}. Your calendar and deadline reminders now use this date.`,
+            dedupeKey: `deadline-changed:${row.id}:${row.next}`,
+          });
+      }
+
+      const unconfirmed = await client.query<{
+        id: string;
+        account_id: string;
+        opportunity_id: string;
+        title: string;
+        known: string | null;
+        closed: boolean;
+      }>(
+        `select e.id,e.account_id,e.opportunity_id,o.title,e.source_deadline_date::text known,
+                ${OPEN_DEADLINE_CLOSED} closed
+           from creator_calendar_events e
+           join opportunities o on o.id=e.opportunity_id
+           join tracked_opportunities t on t.account_id=e.account_id and t.opportunity_id=e.opportunity_id
+          where e.purpose='official-deadline' and ($1::text is null or e.account_id=$1)
+            and t.status in (${PRE_SUBMISSION})
+            and (${OPEN_DEADLINE_CLOSED} or o.publication_state in ('suppressed','withdrawn')
+                 or o.deadline_date is null or o.deadline_kind not in ('exact','fixed'))
+            and not exists (select 1 from creator_inbox_alerts a where a.account_id=e.account_id and a.dedupe_key=
+                  case when ${OPEN_DEADLINE_CLOSED} then 'call-closed:'||e.id
+                       else 'deadline-unconfirmed:'||e.id||':'||coalesce(e.source_deadline_date::text,'none') end)
+          order by e.id limit $2`,
+        [accountId ?? null, limit],
+      );
+      let notices = 0;
+      for (const row of unconfirmed.rows) {
+        const known = row.known ? ` Your calendar keeps the last known date, ${row.known}.` : "";
+        notices += await insertDeadlineNotice(
+          client,
+          row,
+          row.closed
+            ? {
+                kind: "call-closed",
+                title: `Closed: ${row.title} is no longer accepting submissions`,
+                body: `The official source now shows this call as closed.${known}`,
+                dedupeKey: `call-closed:${row.id}`,
+              }
+            : {
+                kind: "deadline-changed",
+                title: `Deadline needs checking: ${row.title}`,
+                body: `The official source no longer shows a confirmed deadline.${known} Check the official page before relying on it.`,
+                dedupeKey: `deadline-unconfirmed:${row.id}:${row.known ?? "none"}`,
+              },
+        );
+      }
+      await client.query("commit");
+      return { refreshed: changed.rowCount ?? 0, unconfirmedNotices: notices };
     } catch (error) {
       await client.query("rollback").catch(() => undefined);
       throw error;
@@ -907,6 +1015,35 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       expectedResponseBy: expectedResponse(row.status, row.submitted_at, row.response_time_days)?.expectedResponseBy,
     }));
   }
+}
+
+const PRE_SUBMISSION = "'interested','saved','preparing','draft-started','ready-to-submit'";
+// A call that closes after its deadline passes is expected; only an early or
+// undated closure is news worth an Inbox notice.
+const OPEN_DEADLINE_CLOSED =
+  "(o.status in ('closed','archived') and (o.deadline_date is null or o.deadline_date>=current_date))";
+
+async function insertDeadlineNotice(
+  client: PoolClient,
+  row: { account_id: string; opportunity_id: string },
+  notice: { kind: string; title: string; body: string; dedupeKey: string },
+) {
+  const inserted = await client.query(
+    `insert into creator_inbox_alerts(id,account_id,opportunity_id,kind,title,body,reason,dedupe_key,delivery_eligibility,action_href)
+     values($1,$2,$3,$4,$5,$6,'You saved this opportunity.',$7,'in-app',$8)
+     on conflict (account_id,dedupe_key) do nothing`,
+    [
+      randomUUID(),
+      row.account_id,
+      row.opportunity_id,
+      notice.kind,
+      notice.title,
+      notice.body,
+      notice.dedupeKey,
+      `/tracker?view=saved&application=${encodeURIComponent(row.opportunity_id)}`,
+    ],
+  );
+  return inserted.rowCount ?? 0;
 }
 
 async function queueCalendarSync(
