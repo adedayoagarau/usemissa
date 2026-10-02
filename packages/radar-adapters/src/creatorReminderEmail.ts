@@ -8,6 +8,20 @@ export type PendingCreatorReminderEmail = {
   title: string;
   organizationName: string;
   deadline: string;
+  /** Exact closing moment when the organisation published one, ISO 8601. */
+  deadlineTime: string | null;
+  /** IANA timezone the organisation states the deadline in. */
+  deadlineTimezone: string | null;
+  /** The creator's own timezone from notification settings, when set. */
+  recipientTimezone: string | null;
+  givenName: string | null;
+  /** The creator's Tracker status for this call, when tracked. */
+  trackedStatus: string | null;
+  type: string;
+  feeStatus: string;
+  feeCents: number | null;
+  feeCurrency: string | null;
+  prize: string | null;
   idempotencyKey: string;
 };
 
@@ -30,14 +44,29 @@ export async function pendingCreatorReminderEmails(pool: Pool, limit = 100): Pro
     title: string;
     organization_name: string | null;
     deadline: string;
+    deadline_time: Date | null;
+    deadline_timezone: string | null;
+    recipient_timezone: string | null;
+    given_name: string | null;
+    tracked_status: string | null;
+    type: string;
+    fee_status: string;
+    fee_cents: number | null;
+    fee_currency: string | null;
+    prize: string | null;
   }>(
     `select a.id alert_id,a.account_id,acc.email,a.opportunity_id,o.title,
-            coalesce(org.data->>'name',o.organization_id) organization_name,o.deadline_date::text deadline
+            coalesce(org.data->>'name',o.organization_id) organization_name,o.deadline_date::text deadline,
+            o.deadline_time,o.deadline_timezone,to_jsonb(p)->>'timezone' recipient_timezone,
+            nullif(trim(cp.given_name),'') given_name,t.status tracked_status,
+            o.type,o.fee_status,o.fee_cents,o.fee_currency,o.prize
        from creator_inbox_alerts a
        join radar_accounts acc on acc.id=a.account_id
        join notification_preferences p on p.account_id=a.account_id
        join opportunities o on o.id=a.opportunity_id
        left join radar_organizations org on org.id=o.organization_id
+       left join creator_profiles cp on cp.account_id=a.account_id
+       left join tracked_opportunities t on t.account_id=a.account_id and t.opportunity_id=a.opportunity_id
       where a.kind='deadline-reminder' and a.reminder_id is not null
         and a.created_at > now()-interval '3 days'
         and p.email_enabled and p.reminder_enabled
@@ -59,6 +88,16 @@ export async function pendingCreatorReminderEmails(pool: Pool, limit = 100): Pro
     title: row.title,
     organizationName: row.organization_name ?? "Organization",
     deadline: row.deadline,
+    deadlineTime: row.deadline_time ? new Date(row.deadline_time).toISOString() : null,
+    deadlineTimezone: row.deadline_timezone,
+    recipientTimezone: row.recipient_timezone,
+    givenName: row.given_name,
+    trackedStatus: row.tracked_status,
+    type: row.type,
+    feeStatus: row.fee_status,
+    feeCents: row.fee_cents,
+    feeCurrency: row.fee_currency,
+    prize: row.prize,
     idempotencyKey: creatorReminderEmailKey(row.alert_id),
   }));
 }
