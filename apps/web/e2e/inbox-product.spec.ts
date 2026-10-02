@@ -122,12 +122,12 @@ test('Notification preferences save through the relational UI and survive reload
   const email = page.getByRole('checkbox', { name: 'Email delivery' });
   await expect(email).not.toBeChecked();
   await email.check();
-  await page.getByLabel('Email digest cadence').selectOption('weekly');
+  await page.getByLabel('Weekly digest').selectOption('weekly');
   await page.getByRole('button', { name: 'Save notification preferences' }).click();
   await expect(page.getByRole('region', { name: 'Notification preferences' }).getByRole('status')).toContainText('Notification preferences saved.');
   await expect(page.getByText(/delivery provider is currently unavailable/i)).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole('checkbox', { name: 'Email delivery' })).toBeChecked();
-  await expect(page.getByLabel('Email digest cadence')).toHaveValue('weekly');
+  await expect(page.getByLabel('Weekly digest')).toHaveValue('weekly');
 });

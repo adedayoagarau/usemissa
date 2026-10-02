@@ -576,6 +576,12 @@
       "composition": ["Button", "Link"],
       "boundary": "Site-wide analytics permission question. Decline leaves both the third-party analytics client and the first-party client event ledger unstarted. The choice is stored in localStorage with a cookie mirror and never gates product functionality."
     },
+    "composition.email-choice-prompt": {
+      "semantic": "EmailChoicePrompt",
+      "implementation": "apps/web/components/missa/email-choice-prompt.tsx",
+      "composition": ["Button", "Link"],
+      "boundary": "One-time email question in the creator workspace for accounts created before reminder emails and the weekly digest were on by default. Shown only while notification_preferences.email_choice_at is null; accepting turns on email, reminders and the weekly digest, declining changes nothing, and either answer stops the question."
+    },
     "composition.homepage-workspace": {
       "semantic": "HomepageWorkspace",
       "implementation": "apps/web/components/missa/homepage-workspace.tsx",
@@ -812,6 +818,12 @@
       "implementation": "components/missa/goal-submission-progress.tsx",
       "motion": "never",
       "boundary": "One circle per submission up to 24; numeric progressbar for larger targets. Preparation does not increment progress."
+    },
+    "EmailChoicePrompt": {
+      "base": "Button",
+      "implementation": "components/missa/email-choice-prompt.tsx",
+      "motion": "never",
+      "boundary": "Non-urgent permission question rendered above workspace content, not modal. The installed Alert is not used because it hard-codes role=alert; only the save failure uses role=alert."
     },
     "CookieConsent": {
       "base": "Button",

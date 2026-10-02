@@ -1310,6 +1310,12 @@ export function AuthForm({
                     : "Create account"}
                 <ArrowRight className="size-4" />
               </Button>
+              {mode === "signup" ? (
+                <p className={styles.finePrint}>
+                  Missa will email the reminders you set and a weekly digest
+                  of calls. Turn either off anytime in Inbox settings.
+                </p>
+              ) : null}
               {firstSaveContext ? (
                 <p className={styles.finePrint}>
                   You can update Profile details later. They are not required to

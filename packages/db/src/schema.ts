@@ -2712,8 +2712,8 @@ export const notificationPreferences = pgTable(
       .primaryKey()
       .references(() => accounts.id, { onDelete: "cascade" }),
     inAppEnabled: boolean("in_app_enabled").notNull().default(true),
-    emailEnabled: boolean("email_enabled").notNull().default(false),
-    digestCadence: text("digest_cadence").notNull().default("off"),
+    emailEnabled: boolean("email_enabled").notNull().default(true),
+    digestCadence: text("digest_cadence").notNull().default("weekly"),
     savedSearchEnabled: boolean("saved_search_enabled").notNull().default(true),
     followEnabled: boolean("follow_enabled").notNull().default(true),
     reminderEnabled: boolean("reminder_enabled").notNull().default(true),
@@ -2724,6 +2724,7 @@ export const notificationPreferences = pgTable(
     timezone: text("timezone"),
     quietHoursStartMinute: smallint("quiet_hours_start_minute"),
     quietHoursEndMinute: smallint("quiet_hours_end_minute"),
+    emailChoiceAt: timestamp("email_choice_at", { withTimezone: true }).defaultNow(),
     providerState: text("provider_state").notNull().default("unavailable"),
     revision: revision(),
     createdAt,
