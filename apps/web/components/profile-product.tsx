@@ -43,7 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/missa/semantic-badges";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -286,7 +286,7 @@ function FacetRefinement({
             independent.
           </p>
         </div>
-        <Badge variant="outline">12-facet model</Badge>
+        <StatusBadge>12-facet model</StatusBadge>
       </div>
       <div className={styles.refinementControls}>
         <div>
@@ -720,7 +720,7 @@ export function ProfileProduct({
                   <strong>{item.label}</strong>
                   <small>{item.copy}</small>
                 </span>
-                <Badge variant="outline">{sectionStatus(item.id)}</Badge>
+                <StatusBadge>{sectionStatus(item.id)}</StatusBadge>
               </button>
             );
           })}
@@ -797,7 +797,7 @@ export function ProfileProduct({
                         <strong>{item.label}</strong>
                         <small>{item.copy}</small>
                       </span>
-                      <Badge variant="outline">{sectionStatus(item.id)}</Badge>
+                      <StatusBadge>{sectionStatus(item.id)}</StatusBadge>
                       <ArrowRight aria-hidden="true" />
                     </button>
                   );

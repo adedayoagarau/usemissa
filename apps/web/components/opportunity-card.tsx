@@ -11,7 +11,7 @@ import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { TrackButton } from "@/components/track-button";
 import { SaveOpportunityButton } from "@/components/save-opportunity-button";
 import { ListPicker } from "@/components/list-picker";
-import { Badge } from "@/components/ui/badge";
+import { CategoryBadge, UrgencyBadge } from "@/components/missa/semantic-badges";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { opportunityFreshness } from "@/lib/opportunityFreshness";
@@ -124,13 +124,9 @@ export function OpportunityCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <Badge variant="outline" size="compact">
-              {typeLabel(item.type)}
-            </Badge>
+            <CategoryBadge size="compact">{typeLabel(item.type)}</CategoryBadge>
             {item.status === "closing-soon" && (
-              <Badge variant="destructive" size="compact">
-                Closing soon
-              </Badge>
+              <UrgencyBadge size="compact">Closing soon</UrgencyBadge>
             )}
           </div>
           <h2 className="mt-2 line-clamp-2 text-[0.95rem] leading-snug font-semibold text-foreground">

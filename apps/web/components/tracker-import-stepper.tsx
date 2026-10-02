@@ -19,7 +19,7 @@ import {
 import type { ImportField, ImportMapping, ImportRowDecision, ImportTaxonomyDecision } from '@missa/radar-engine';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { StatusBadge } from '@/components/missa/semantic-badges';
 import { Button } from '@/components/ui/button';
 
 import styles from './tracker-import-stepper.module.css';
@@ -348,7 +348,7 @@ export function TrackerImportStepper() {
             const action = decisionAction(decision);
             const selectedOpportunityId = typeof decision === 'object' ? decision.opportunityId : undefined;
             return <article key={row.rowNumber} className={styles.row} data-unresolved={!isResolved(row, decision)}>
-              <header><div><p>Row {row.rowNumber}</p><h3>{row.values.title || 'Untitled row'}</h3><span>{row.values.organization || 'Organization not mapped'} · {row.values.status || 'Status not mapped'}</span></div><Badge variant="outline">{stateLabels[row.state]}</Badge></header>
+              <header><div><p>Row {row.rowNumber}</p><h3>{row.values.title || 'Untitled row'}</h3><span>{row.values.organization || 'Organization not mapped'} · {row.values.status || 'Status not mapped'}</span></div><StatusBadge>{stateLabels[row.state]}</StatusBadge></header>
               {row.candidates.length ? <section className={styles.candidates} aria-label={`Possible matches for row ${row.rowNumber}`}><h4>Published Opportunity candidates</h4>{row.candidates.map((candidate) => <label key={candidate.opportunityId} data-selected={selectedOpportunityId === candidate.opportunityId || row.state === 'exact-match' && !selectedOpportunityId}><input type="radio" name={`candidate-${row.rowNumber}`} checked={selectedOpportunityId === candidate.opportunityId || row.state === 'exact-match' && !selectedOpportunityId} onChange={() => updateDecision(row, { action: row.conflict ? 'keep-current' : 'match', opportunityId: candidate.opportunityId, ...retainedDecisionContext(decision) })} /><span><strong>{candidate.title}</strong><small>{candidate.organizationName}</small>{candidate.reasons.map((reason) => <em key={reason}><Check aria-hidden="true" />{reason}</em>)}</span></label>)}</section> : null}
               {row.conflict ? <Alert><RotateCcw aria-hidden="true" /><AlertTitle>Current and imported Tracker states differ</AlertTitle><AlertDescription>Current: {row.conflict.current.status}. Imported: {row.conflict.imported.status ?? 'unknown'}. Choose which private Tracker state to keep.</AlertDescription></Alert> : null}
               {row.errors.length ? <Alert variant="destructive"><AlertTriangle aria-hidden="true" /><AlertTitle>This row cannot be imported as written</AlertTitle><AlertDescription>{row.errors.join(' ')}</AlertDescription></Alert> : null}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Badge } from "@/components/ui/badge";
+import { AuthorityBadge, FitLevelBadge } from "@/components/missa/semantic-badges";
 import type { FitScore } from "@missa/radar-engine";
 
 /**
@@ -10,21 +10,6 @@ import type { FitScore } from "@missa/radar-engine";
  * "Explained Score" component spec and the PRD's non-negotiable "every
  * alert/score carries its reason" rule.
  */
-const LEVEL_LABEL: Record<FitScore["level"], string> = {
-  strong: "Strong Fit",
-  possible: "Possible Fit",
-  weak: "Weak Fit",
-  "not-eligible": "Not Eligible",
-  unknown: "Unknown Fit",
-};
-
-const LEVEL_VARIANT: Record<FitScore["level"], string> = {
-  strong: "bg-[var(--green)] text-white",
-  possible: "bg-information-subtle text-information",
-  weak: "bg-muted text-muted-foreground",
-  "not-eligible": "bg-destructive/10 text-destructive",
-  unknown: "bg-muted text-muted-foreground",
-};
 
 export function FitScoreBadge({ fit }: { fit: FitScore }) {
   const [expanded, setExpanded] = useState(false);
@@ -39,9 +24,7 @@ export function FitScoreBadge({ fit }: { fit: FitScore }) {
         onClick={() => hasReasons && setExpanded((e) => !e)}
         className="inline-flex items-center gap-1"
       >
-        <Badge className={LEVEL_VARIANT[fit.level]}>
-          {LEVEL_LABEL[fit.level]}
-        </Badge>
+        <FitLevelBadge level={fit.level} />
         {hasReasons && (
           <span className="text-xs text-muted-foreground">
             {expanded ? "hide reasons" : "why?"}
@@ -82,7 +65,11 @@ export function TrustBadge({
     trust >= 70 ? "Verified" : trust >= 40 ? "Checked" : "Unverified";
   return (
     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-      <Badge variant="outline">{label}</Badge>
+      <AuthorityBadge
+        level={trust >= 70 ? "verified" : trust >= 40 ? "checked" : "unverified"}
+      >
+        {label}
+      </AuthorityBadge>
       {checkedLabel && <span>{checkedLabel}</span>}
     </span>
   );

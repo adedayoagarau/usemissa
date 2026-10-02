@@ -729,12 +729,14 @@
     "CategoryBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-04", "badge-09", "badge-10"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/semantic-badges.tsx"
     },
     "OpportunityStatusBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-05", "badge-10"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/semantic-badges.tsx"
     },
     "MagazineScheduleBadge": {
       "base": "Badge",
@@ -744,7 +746,8 @@
     "UrgencyBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-05", "badge-10"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/semantic-badges.tsx"
     },
     "FeeBadge": {
       "base": "Badge",
@@ -754,7 +757,8 @@
     "AuthorityBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-10"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/semantic-badges.tsx"
     },
     "MatchExplanationTrigger": {
       "base": "Button",
@@ -793,6 +797,18 @@
       "studioCandidates": ["badge-10"],
       "motion": "never",
       "implementation": "apps/web/components/ui/beta-badge.tsx"
+    },
+    "FitLevelBadge": {
+      "base": "Badge",
+      "implementation": "components/missa/semantic-badges.tsx",
+      "motion": "never",
+      "boundary": "Personalized fit level; the caller renders the explanation trigger."
+    },
+    "StatusBadge": {
+      "base": "Badge",
+      "implementation": "components/missa/semantic-badges.tsx",
+      "motion": "never",
+      "boundary": "Generic workflow or section status with no opportunity-domain meaning."
     },
     "RankingTierBadge": {
       "base": "Badge",

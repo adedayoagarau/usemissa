@@ -7,7 +7,7 @@ import { CalendarDays, MapPin, Tag } from "lucide-react";
 import { calendarDaysUntil } from "@/lib/deadlineLabel";
 import type { OpportunityBrowseProjection } from "@missa/radar-engine";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
-import { Badge } from "@/components/ui/badge";
+import { OpportunityStatusBadge } from "@/components/missa/semantic-badges";
 import { Card, CardFooter } from "@/components/ui/card";
 import { cleanTitleOrLabel } from "@/lib/textUtils";
 import styles from "./opportunity-catalogue-card.module.css";
@@ -249,12 +249,12 @@ export function OpportunityCatalogueCard({
               </span>
             ) : null}
             {publicStatus ? (
-              <Badge
-                variant="secondary"
+              <OpportunityStatusBadge
+                state={item.status}
                 className={`${styles.status} ${styles[item.status]}`}
               >
                 {publicStatus}
-              </Badge>
+              </OpportunityStatusBadge>
             ) : null}
           </div>
 

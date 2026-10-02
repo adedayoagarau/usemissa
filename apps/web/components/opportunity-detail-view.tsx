@@ -27,7 +27,7 @@ import {
   type ProfileDetail,
   getSemanticUrlForProfile,
 } from "@missa/radar-adapters";
-import { Badge } from "@/components/ui/badge";
+import { CategoryBadge } from "@/components/missa/semantic-badges";
 import { Button } from "@/components/ui/button";
 import { SaveToTrackerButton } from "@/components/save-to-tracker-button";
 import { OpportunityIssueReport } from "@/components/opportunity-issue-report";
@@ -708,9 +708,7 @@ export function OpportunityDetailView({
                 <h3 id="tags-title">Tags</h3>
                 <div className={styles.tagCluster}>
                   {practiceLabels.map((tag) => (
-                    <Badge key={tag} variant="secondary">
-                      {tag}
-                    </Badge>
+                    <CategoryBadge key={tag}>{tag}</CategoryBadge>
                   ))}
                 </div>
               </section>
