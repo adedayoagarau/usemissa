@@ -7,9 +7,17 @@ export type WeeklyDigestItem = {
   deadline: string | null;
   /** Plain-language reason the item is here, shown beside it in the email. */
   reason: string;
+  /** Opportunity type, e.g. "residency"; the email turns it into a label line. */
+  type: string;
+  feeStatus: string;
+  feeCents: number | null;
+  feeCurrency: string | null;
+  prize: string | null;
 };
 
 export type WeeklyDigest = {
+  /** The creator's given name when their profile has one. */
+  recipientName?: string | null;
   newForYou: WeeklyDigestItem[];
   closingSoon: WeeklyDigestItem[];
   yourDeadlines: WeeklyDigestItem[];
@@ -68,7 +76,12 @@ export async function weeklyDigestRecipients(pool: Pool, limit = 200): Promise<W
   }));
 }
 
-type ItemRow = { id: string; title: string; organization_name: string | null; deadline: string | null; reason: string | null };
+type ItemRow = {
+  id: string; title: string; organization_name: string | null; deadline: string | null; reason: string | null;
+  type: string; fee_status: string; fee_cents: number | null; fee_currency: string | null; prize: string | null;
+};
+
+const FACTS = "o.type,o.fee_status,o.fee_cents,o.fee_currency,o.prize";
 
 const item = (row: ItemRow, fallback: string): WeeklyDigestItem => ({
   opportunityId: row.id,
@@ -76,6 +89,11 @@ const item = (row: ItemRow, fallback: string): WeeklyDigestItem => ({
   organizationName: row.organization_name ?? "Organization",
   deadline: row.deadline,
   reason: row.reason ?? fallback,
+  type: row.type,
+  feeStatus: row.fee_status,
+  feeCents: row.fee_cents,
+  feeCurrency: row.fee_currency,
+  prize: row.prize,
 });
 
 /**
@@ -98,7 +116,7 @@ export async function buildWeeklyDigest(pool: Pool, accountId: string, perSectio
         join opportunity_taxonomy_terms a on a.term_id=e.term_id and a.certainty<>'rejected'
         join taxonomy_terms t on t.id=e.root_id
     )
-    select o.id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,o.deadline_date::text deadline,
+    select o.id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,o.deadline_date::text deadline,${FACTS},
            (select 'Because you chose ' || m.preferred_label from matches m
              where m.opportunity_id=o.id and m.preference in ('include','prefer')
              order by m.preference='prefer' desc, m.preferred_label limit 1) reason
@@ -125,7 +143,7 @@ export async function buildWeeklyDigest(pool: Pool, accountId: string, perSectio
     [accountId, perSection, shown],
   );
   const yourDeadlines = await pool.query<ItemRow>(
-    `select o.id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,o.deadline_date::text deadline,
+    `select o.id,o.title,coalesce(org.data->>'name',o.organization_id) organization_name,o.deadline_date::text deadline,${FACTS},
             'You saved this' reason
        from tracked_opportunities t
        join opportunities o on o.id=t.opportunity_id
@@ -136,7 +154,11 @@ export async function buildWeeklyDigest(pool: Pool, accountId: string, perSectio
       order by o.deadline_date, o.id limit $2`,
     [accountId, perSection],
   );
+  const profile = await pool
+    .query<{ given_name: string | null }>("select nullif(trim(given_name),'') given_name from creator_profiles where account_id=$1", [accountId])
+    .catch(() => ({ rows: [] as { given_name: string | null }[] }));
   return {
+    recipientName: profile.rows[0]?.given_name ?? null,
     newForYou: newForYou.rows.map((row) => item(row, "Matches your practice")),
     closingSoon: closingSoon.rows.map((row) => item(row, "Matches your practice")),
     yourDeadlines: yourDeadlines.rows.map((row) => item(row, "You saved this")),
