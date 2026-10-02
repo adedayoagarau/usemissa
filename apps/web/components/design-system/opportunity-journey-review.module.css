@@ -22,7 +22,7 @@
 .summary dd { display: flex; margin: 7px 0 0; align-items: center; gap: 7px; color: #171418; font-family: var(--font-heading, Georgia, serif); font-size: 21px; }
 .summary dd svg { width: 17px; color: #285649; }
 .journey { padding: 76px 0 88px; }
-.sectionHeading { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1fr); gap: 32px; align-items: end; padding-bottom: 20px; border-bottom: 1px solid #ded7df; }
+.sectionHeading { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1fr); gap: 32px; align-items: end; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
 .sectionHeading h2, .guardrails h2 { margin: 0; color: #171418; font-family: var(--font-heading, Georgia, serif); font-size: clamp(30px, 4vw, 46px); font-weight: 520; letter-spacing: -.035em; line-height: 1; }
 .sectionHeading > p { max-width: 620px; margin: 0; color: #6b636c; line-height: 1.6; }
 .steps { margin: 0; padding: 34px 0 0; list-style: none; }
@@ -43,7 +43,7 @@
 .stepAction a, .footer a { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; color: #285649; font-size: 14px; font-weight: 750; text-decoration: none; }
 .stepAction a svg, .footer a svg { width: 16px; }
 .stepAction a:hover, .stepAction a:focus-visible, .footer a:hover, .footer a:focus-visible { text-decoration: underline; text-underline-offset: 4px; }
-.guardrails { display: grid; grid-template-columns: minmax(220px, .75fr) minmax(0, 1fr); gap: 42px; padding: 30px 0 56px; border-top: 1px solid #ded7df; }
+.guardrails { display: grid; grid-template-columns: minmax(220px, .75fr) minmax(0, 1fr); gap: 42px; padding: 30px 0 56px; border-top: 1px solid var(--border); }
 .guardrails ul { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
 .guardrails li { display: flex; gap: 10px; color: #625b63; line-height: 1.55; }
 .guardrails li svg { width: 17px; flex: 0 0 auto; margin-top: 3px; color: #285649; }

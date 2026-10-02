@@ -185,7 +185,7 @@
 
 .groupHeader {
   padding-bottom: 20px;
-  border-bottom: 1px solid #ded7df;
+  border-bottom: 1px solid var(--border);
   display: grid;
   grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1fr);
   gap: 32px;
@@ -208,7 +208,7 @@
 }
 
 .list {
-  border-bottom: 1px solid #ded7df;
+  border-bottom: 1px solid var(--border);
 }
 
 .item {

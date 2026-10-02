@@ -345,40 +345,39 @@ body {
 }
 
 .dark {
-  /* Dark mode isn't in scope for this story (no dark-mode requirement in the
-     UX spec) -- kept as shadcn's own generated defaults so the class exists
-     and doesn't crash if toggled, not tuned to the brand palette yet. */
-  --background: #171418;
-  --foreground: #f5f1f7;
-  --card: #211b23;
-  --card-foreground: #f5f1f7;
-  --popover: #211b23;
-  --popover-foreground: #f5f1f7;
-  --primary: #a991b5;
-  --primary-foreground: #171418;
-  --secondary: #33233b;
-  --secondary-foreground: #f5f1f7;
-  --muted: #2a242d;
-  --muted-foreground: #b9afbd;
-  --accent: #33233b;
-  --accent-foreground: #f5f1f7;
-  --destructive: #d88991;
-  --border: #423746;
-  --input: #423746;
-  --ring: #a991b5;
-  --chart-1: #a991b5;
-  --chart-2: #9baa79;
-  --chart-3: #d1a65f;
-  --chart-4: #79a7b6;
-  --chart-5: #d88991;
-  --sidebar: #211b23;
-  --sidebar-foreground: #f5f1f7;
-  --sidebar-primary: #a991b5;
-  --sidebar-primary-foreground: #171418;
-  --sidebar-accent: #33233b;
-  --sidebar-accent-foreground: #f5f1f7;
-  --sidebar-border: #423746;
-  --sidebar-ring: #a991b5;
+  /* Unreachable in production: there is no dark-mode toggle, and dark mode is
+     an open DESIGN.md §15 decision. Kept as a Forest-family fallback so the
+     class never renders shadcn's lavender default. This is a palette-
+     consistency fix, not a dark-mode design pass; contrast tuning stays
+     deferred to the §15 decision. */
+  --background: var(--ink);
+  --foreground: var(--surface);
+  --card: var(--ink);
+  --card-foreground: var(--surface);
+  --popover: var(--ink);
+  --popover-foreground: var(--surface);
+  --primary: var(--brand-accent);
+  --primary-foreground: var(--surface);
+  --secondary: var(--surface-subtle);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-subtle);
+  --muted-foreground: var(--ink-2);
+  --accent: var(--surface-subtle);
+  --accent-foreground: var(--ink);
+  --ring: var(--brand-accent);
+  --chart-1: var(--brand-accent);
+  --chart-2: var(--green);
+  --chart-3: var(--ochre);
+  --chart-4: var(--mineral-blue);
+  --chart-5: var(--accent-deep);
+  --sidebar: var(--ink);
+  --sidebar-foreground: var(--surface);
+  --sidebar-primary: var(--brand-accent);
+  --sidebar-primary-foreground: var(--surface);
+  --sidebar-accent: var(--surface-subtle);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--brand-accent);
 }
 
 @layer base {

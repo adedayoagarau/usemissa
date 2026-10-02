@@ -147,7 +147,15 @@ const excludedPrefixes = [
   "components/design-system/",
   "app/design-system/",
   "emails/",
+  // Token definitions live here by design; the canonical values are guarded
+  // by apps/web/lib/designTokenAuthority.test.ts, not the raw-color rule.
+  "app/globals.css",
 ];
+
+const isTestFile = (relative) => /\.(?:test|spec)\.(?:ts|tsx|js|jsx|mjs)$/.test(relative);
+// Edge-runtime renders (ImageResponse / next/og) cannot resolve CSS custom
+// properties, so inline hex there is a platform constraint, not debt.
+const isEdgeRender = (source) => /ImageResponse|next\/og/.test(source);
 
 const findings = [];
 function record(file, rule, detail) {
@@ -163,6 +171,7 @@ for (const file of sourceFiles) {
   const isExcluded = excludedPrefixes.some((prefix) =>
     relative.startsWith(prefix),
   );
+  const skipColorScan = isExcluded || isTestFile(relative) || isEdgeRender(source);
 
   for (const primitive of policy.importPolicy.restrictedPrimitives) {
     const importPattern = new RegExp(
@@ -189,7 +198,8 @@ for (const file of sourceFiles) {
 
   if (!isExcluded) {
     for (const line of source.split("\n")) {
-      if (/#[0-9a-fA-F]{3,8}\b/.test(line)) record(file, "raw-color", line);
+      if (!skipColorScan && /#[0-9a-fA-F]{3,8}\b/.test(line))
+        record(file, "raw-color", line);
       if (/font-family\s*:/.test(line)) record(file, "raw-font-family", line);
       if (/animate-\[|animation\s*:(?!\s*none)/.test(line))
         record(file, "unapproved-motion", line);
