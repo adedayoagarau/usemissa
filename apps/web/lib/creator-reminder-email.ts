@@ -49,7 +49,7 @@ export async function deliverCreatorReminderEmails(now = new Date()): Promise<Cr
       html,
       text,
       templateKey: 'deadline-reminder',
-      templateVersion: 'deadline.v1',
+      templateVersion: 'deadline.v2',
       metadata: { inboxAlertId: reminder.alertId, opportunityId: reminder.opportunityId },
       connectionString,
       retryFailed: true,
