@@ -2754,6 +2754,24 @@ export const notificationPreferences = pgTable(
   ],
 );
 
+export const creatorPlans = pgTable(
+  "creator_plans",
+  {
+    accountId: text("account_id")
+      .primaryKey()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    plan: text("plan").notNull(),
+    source: text("source").notNull().default("grant"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    check("creator_plans_plan_check", sql`${table.plan} in ('free', 'plus', 'pro')`),
+    check("creator_plans_source_check", sql`${table.source} in ('grant', 'trial', 'billing', 'cohort')`),
+  ],
+);
+
 export const creatorGoals = pgTable(
   "creator_goals",
   {

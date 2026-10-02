@@ -65,6 +65,17 @@
   line-height: 1.55;
 }
 
+.allowance {
+  margin-top: 8px;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.allowanceCount {
+  color: var(--foreground);
+}
+
 .pageActions {
   flex-wrap: wrap;
   justify-content: flex-end;

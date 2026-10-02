@@ -512,7 +512,10 @@ export function TrackerProduct({
   initialLayout,
   initialQuery,
   initialImportId,
+  allowance,
 }: {
+  /** Free-plan tracking allowance; omitted for plans without a limit. */
+  allowance?: { active: number; limit: number };
   initialItems: TrackerProductItem[];
   hostedSubmissions: TrackerHostedSubmission[];
   works: Array<{ id: string; title: string }>;
@@ -863,6 +866,14 @@ export function TrackerProduct({
             Keep the next deadline, preparation step, and submission record
             together.
           </span>
+          {allowance ? (
+            <div className={styles.allowance}>
+              <span className={`${styles.allowanceCount} font-mono tabular-nums`}>
+                {allowance.active} of {allowance.limit}
+              </span>{" "}
+              calls in progress on Free. Submitted and closed calls don&apos;t count.
+            </div>
+          ) : null}
         </div>
         <div className={styles.pageActions}>
           <Link href="/import" className={styles.quietLink}>

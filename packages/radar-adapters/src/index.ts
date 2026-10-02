@@ -113,6 +113,16 @@ export {
   type WeeklyDigestRecipient,
 } from "./weeklyDigest.js";
 export {
+  assertTrackingAllowance,
+  CREATOR_PLAN_LIMITS,
+  creatorEntitlements,
+  creatorPlan,
+  FREE_ACTIVE_TRACKED_LIMIT,
+  TrackingLimitReachedError,
+  type CreatorEntitlements,
+  type CreatorPlan,
+} from "./creatorEntitlements.js";
+export {
   CreatorEmailReviewError,
   PostgresCreatorEmailReviewRepository,
   type CreatorEmailCandidateView,

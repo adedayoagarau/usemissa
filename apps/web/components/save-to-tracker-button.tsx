@@ -3,6 +3,7 @@
 import { useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Bookmark, Check } from "lucide-react";
+import { showSaveFailure } from "@/lib/saveFailureToast";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { rememberFirstSaveReceipt } from "@/lib/firstSaveClient";
@@ -102,9 +103,12 @@ export function SaveToTrackerButton({
               receipt?: FirstSaveReceipt;
               calendar?: { status?: "added" | "no-deadline" | "pending" };
               error?: string;
+              code?: string;
+              actionHref?: string;
+              actionLabel?: string;
             };
             if (!response.ok || !body.receipt) {
-              toast.error(body.error ?? "We could not save this Opportunity.");
+              showSaveFailure(body, "We could not save this Opportunity.");
               return;
             }
             rememberFirstSaveReceipt(body.receipt);
