@@ -137,3 +137,58 @@ export function StatusBadge({
     </Badge>
   );
 }
+
+type FeeProjection = {
+  status: "no-fee" | "paid" | "unknown";
+  amountCents?: number;
+  currency?: string;
+};
+
+function formatFeeAmount(amountCents: number, currency: string): string {
+  if (/^[A-Z]{3}$/u.test(currency)) {
+    return new Intl.NumberFormat("en", { style: "currency", currency }).format(
+      amountCents / 100,
+    );
+  }
+  return `${currency}${(amountCents / 100).toFixed(2)}`;
+}
+
+/** Canonical fee label per DESIGN.md §8: customer language, not backend enums. */
+export function feeLabel(fee: FeeProjection): string {
+  if (fee.status === "no-fee" || fee.amountCents === 0) {
+    return "Free to submit";
+  }
+  if (fee.amountCents !== undefined && fee.currency) {
+    return `${formatFeeAmount(fee.amountCents, fee.currency)} fee`;
+  }
+  if (fee.status === "paid") {
+    return "Application fee";
+  }
+  return "Fee unclear";
+}
+
+/**
+ * Free-to-submit signal. Quiet Lichen when the scan value warrants it; neutral
+ * otherwise. Never animates (DESIGN.md §8).
+ */
+export function FeeBadge({
+  fee,
+  className,
+}: {
+  fee: FeeProjection;
+  className?: string;
+}) {
+  const free = fee.status === "no-fee" || fee.amountCents === 0;
+  if (free) {
+    return (
+      <Badge className={cx("bg-lichen-tint text-green", className)}>
+        {feeLabel(fee)}
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="outline" className={className}>
+      {feeLabel(fee)}
+    </Badge>
+  );
+}

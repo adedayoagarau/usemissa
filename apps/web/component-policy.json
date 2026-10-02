@@ -753,7 +753,8 @@
     "FeeBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-02", "badge-04"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/semantic-badges.tsx"
     },
     "AuthorityBadge": {
       "base": "Badge",
