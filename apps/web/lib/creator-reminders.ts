@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { CreatorRepositoryBase, CreatorConflictError, creatorPoolFor, type CreatorCommandEnvelope } from '@missa/radar-adapters';
+import { CreatorRepositoryBase, CreatorConflictError, creatorPoolFor, deferRemindersInQuietHours, type CreatorCommandEnvelope } from '@missa/radar-adapters';
 
 const timezone = z.string().refine(v => { try { new Intl.DateTimeFormat('en', { timeZone: v }); return true; } catch { return false; } });
 const timeOfDay = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Choose a time of day');
@@ -106,6 +106,7 @@ export async function tickCreatorReminders(accountId?: string) {
     await client.query(`update creator_application_reminders r set state='needs-review',due_at=null,snoozed_until=null,revision=r.revision+1,updated_at=now()
       from opportunities o where o.id=r.opportunity_id and ($1::text is null or r.account_id=$1) and r.state='scheduled' and r.kind='deadline'
       and r.due_at >= coalesce(o.deadline_time,((o.deadline_date+1)::timestamp at time zone coalesce(o.deadline_timezone,r.timezone)))`, [accountId ?? null]);
+    const deferred = await deferRemindersInQuietHours(client, accountId);
     const due = await client.query(`select r.*,o.title as application_title,t.status as application_status,o.deadline_date < (now() at time zone r.timezone)::date as deadline_passed,
       coalesce(r.snoozed_until,r.due_at) as effective_due,coalesce(p.in_app_enabled and p.reminder_enabled,false) as allowed
       from creator_application_reminders r join opportunities o on o.id=r.opportunity_id
@@ -130,7 +131,7 @@ export async function tickCreatorReminders(accountId?: string) {
         last_delivered_at=case when $2 then now() else last_delivered_at end,revision=revision+1,updated_at=now() where id=$1`, [r.id, sent, !r.allowed]);
     }
     await client.query('commit');
-    return { processed: due.rowCount ?? 0, delivered };
+    return { processed: due.rowCount ?? 0, delivered, deferred };
   } catch (e) { await client.query('rollback'); throw e; }
   finally { client.release(); }
 }
