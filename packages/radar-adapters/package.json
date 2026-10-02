@@ -33,6 +33,7 @@
     "publication-review": "node dist/src/publicationReviewCli.js",
     "lifecycle-reconciler": "node dist/src/lifecycleWorker.js",
     "media-dry-run": "node dist/src/mediaDryRunCli.js",
+    "calendar:backfill-deadlines": "npx tsx src/scripts/backfillOfficialDeadlines.ts",
     "resartis:slugs": "npx tsx src/scripts/harvestResArtisSlugs.ts",
     "resartis:harvest": "npx tsx src/scripts/harvestResArtisListings.ts",
     "resartis:review": "npx tsx src/scripts/reviewResArtisHarvest.ts",
