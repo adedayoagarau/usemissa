@@ -99,6 +99,11 @@ export {
 } from "./creatorNotificationRepository.js";
 export { deferRemindersInQuietHours } from "./reminderQuietHours.js";
 export {
+  creatorReminderEmailKey,
+  pendingCreatorReminderEmails,
+  type PendingCreatorReminderEmail,
+} from "./creatorReminderEmail.js";
+export {
   CreatorEmailReviewError,
   PostgresCreatorEmailReviewRepository,
   type CreatorEmailCandidateView,
