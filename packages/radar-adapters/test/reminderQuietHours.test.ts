@@ -113,3 +113,30 @@ test(
     }
   },
 );
+
+test(
+  "deferral is a no-op on a database without the quiet-hours columns",
+  { skip: !databaseUrl },
+  async (t) => {
+    const pool = new Pool({ connectionString: databaseUrl, max: 1 });
+    const client = await pool.connect();
+    try {
+      const present = await client.query<{ ready: boolean }>(
+        "select to_regclass('public.notification_preferences') is not null as ready",
+      );
+      if (!present.rows[0]!.ready) {
+        t.skip("notification preferences are not in this database");
+        return;
+      }
+      await client.query("begin");
+      await client.query(
+        "alter table notification_preferences drop column if exists timezone, drop column if exists quiet_hours_start_minute, drop column if exists quiet_hours_end_minute",
+      );
+      assert.equal(await deferRemindersInQuietHours(client), 0);
+    } finally {
+      await client.query("rollback").catch(() => undefined);
+      client.release();
+      await pool.end();
+    }
+  },
+);

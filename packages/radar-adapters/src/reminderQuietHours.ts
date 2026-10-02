@@ -8,6 +8,14 @@ import type { PoolClient } from "pg";
  * reminder tick's transaction and returns how many reminders were deferred.
  */
 export async function deferRemindersInQuietHours(client: PoolClient, accountId?: string): Promise<number> {
+  // Deploys can reach a database before migration 0078; the tick must keep
+  // delivering reminders rather than fail on the missing columns.
+  const schema = await client.query<{ ready: boolean }>(
+    `select count(*) = 3 as ready from information_schema.columns
+      where table_schema=current_schema() and table_name='notification_preferences'
+        and column_name in ('timezone','quiet_hours_start_minute','quiet_hours_end_minute')`,
+  );
+  if (!schema.rows[0]?.ready) return 0;
   const deferred = await client.query(
     `with due as (
        select r.id,
