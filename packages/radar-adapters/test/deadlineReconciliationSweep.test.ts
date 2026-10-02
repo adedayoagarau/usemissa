@@ -6,16 +6,25 @@ import { PostgresCreatorCalendarRepository } from "../src/index.js";
 
 /**
  * Real-Postgres coverage for the scheduled official-deadline sweep. Runs in
- * CI's postgres-integration job against the target schema and is skipped
- * without DATABASE_URL. Fixtures use a random prefix and are removed afterwards.
+ * CI's target-schema job; it is skipped without DATABASE_URL or when that
+ * database has no creator schema (the legacy snapshot-store job). Fixtures use
+ * a random prefix and are removed afterwards.
  */
 const databaseUrl = process.env.DATABASE_URL;
 
 test(
   "official deadlines follow the source and notify once per change",
   { skip: !databaseUrl },
-  async () => {
+  async (t) => {
     const pool = new Pool({ connectionString: databaseUrl, max: 2 });
+    const schema = await pool.query<{ ready: boolean }>(
+      "select to_regclass('public.creator_calendar_events') is not null as ready",
+    );
+    if (!schema.rows[0]!.ready) {
+      await pool.end();
+      t.skip("creator target schema is not applied to this database");
+      return;
+    }
     const calendar = new PostgresCreatorCalendarRepository(pool);
     const prefix = `sweep-${randomBytes(4).toString("hex")}`;
     const account = `${prefix}-account`;
