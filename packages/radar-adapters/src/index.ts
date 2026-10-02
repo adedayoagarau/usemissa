@@ -104,6 +104,15 @@ export {
   type PendingCreatorReminderEmail,
 } from "./creatorReminderEmail.js";
 export {
+  buildWeeklyDigest,
+  weeklyDigestIsEmpty,
+  weeklyDigestKey,
+  weeklyDigestRecipients,
+  type WeeklyDigest,
+  type WeeklyDigestItem,
+  type WeeklyDigestRecipient,
+} from "./weeklyDigest.js";
+export {
   CreatorEmailReviewError,
   PostgresCreatorEmailReviewRepository,
   type CreatorEmailCandidateView,
