@@ -86,12 +86,14 @@ const sanctionedMotion = new Set([
   "finite-state-transition",
 ]);
 
-// Reverse map: implementation path -> declared motion value. Implementation
-// paths are stored relative to webRoot, matching the `relative` in the scan.
-const implementationMotion = new Map();
+// A file is motion-permitted when at least one of its semantic components
+// declares a sanctioned finite/state-bound motion value. Shared wrappers host
+// multiple components, so a single `never` entry must not mask a sibling's
+// sanctioned indicator transition.
+const motionSanctionedFiles = new Set();
 for (const entry of Object.values(policy.semanticComponents)) {
-  if (entry.implementation) {
-    implementationMotion.set(entry.implementation, entry.motion ?? "never");
+  if (entry.implementation && sanctionedMotion.has(entry.motion)) {
+    motionSanctionedFiles.add(entry.implementation);
   }
 }
 
@@ -222,7 +224,7 @@ for (const file of sourceFiles) {
         record(file, "raw-color", line);
       if (/font-family\s*:/.test(line)) record(file, "raw-font-family", line);
       if (/animate-\[|animation\s*:(?!\s*none)/.test(line))
-        if (!sanctionedMotion.has(implementationMotion.get(relative)))
+        if (!motionSanctionedFiles.has(relative))
           record(file, "unapproved-motion", line);
     }
   }

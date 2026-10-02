@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { AuthorityBadge, FitLevelBadge } from "@/components/missa/semantic-badges";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { FitScore } from "@missa/radar-engine";
 
 /**
@@ -12,26 +16,22 @@ import type { FitScore } from "@missa/radar-engine";
  */
 
 export function FitScoreBadge({ fit }: { fit: FitScore }) {
-  const [expanded, setExpanded] = useState(false);
   const hasReasons =
     fit.reasons.length + fit.watchouts.length + fit.disqualifiers.length > 0;
 
+  if (!hasReasons) {
+    return <FitLevelBadge level={fit.level} />;
+  }
+
   return (
-    <div>
-      <button
-        type="button"
-        aria-expanded={expanded}
-        onClick={() => hasReasons && setExpanded((e) => !e)}
+    <Popover>
+      <PopoverTrigger
         className="inline-flex items-center gap-1"
       >
         <FitLevelBadge level={fit.level} />
-        {hasReasons && (
-          <span className="text-xs text-muted-foreground">
-            {expanded ? "hide reasons" : "why?"}
-          </span>
-        )}
-      </button>
-      {expanded && (
+        <span className="text-xs text-muted-foreground">why?</span>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-auto max-w-64">
         <ul className="mt-1 space-y-0.5 text-sm">
           {fit.reasons.map((r) => (
             <li key={r} className="text-[var(--green)]">
@@ -49,8 +49,8 @@ export function FitScoreBadge({ fit }: { fit: FitScore }) {
             </li>
           ))}
         </ul>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

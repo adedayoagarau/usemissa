@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
+import { CircleAlert, LoaderCircle } from "lucide-react";
 import type { FitScore } from "@missa/radar-engine";
 
 type Size = "default" | "compact";
@@ -189,6 +190,65 @@ export function FeeBadge({
   return (
     <Badge variant="outline" className={className}>
       {feeLabel(fee)}
+    </Badge>
+  );
+}
+
+const PUBLICATION_TREATMENT: Record<string, string> = {
+  draft: "bg-muted text-muted-foreground",
+  published: "bg-accent-tint text-accent-deep",
+  closed: "bg-muted text-muted-foreground",
+  archived: "bg-muted text-muted-foreground",
+};
+
+/**
+ * Draft/published/archived workflow token. Restrained; only the badge's own
+ * color transition reflects the state change, never a pulse (DESIGN.md §8).
+ */
+export function PublicationStateBadge({
+  state,
+  children,
+  size,
+}: {
+  state: "draft" | "published" | "closed" | "archived";
+  children: ReactNode;
+  size?: Size;
+}) {
+  return (
+    <Badge className={PUBLICATION_TREATMENT[state]} size={size}>
+      {children}
+    </Badge>
+  );
+}
+
+/**
+ * Uploading/syncing/processing. The indicator spins only while the process is
+ * confirmed active; a failed process is a static destructive icon (DESIGN.md
+ * §8). Callers render the nearby recovery action.
+ */
+export function ProcessBadge({
+  state,
+  children,
+  size,
+  role,
+}: {
+  state: "active" | "failed";
+  children: ReactNode;
+  size?: Size;
+  role?: string;
+}) {
+  if (state === "failed") {
+    return (
+      <Badge className="bg-destructive/10 text-destructive" size={size} role={role}>
+        <CircleAlert aria-hidden="true" />
+        {children}
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="bg-information-subtle text-information" size={size} role={role}>
+      <LoaderCircle className="size-3 animate-spin" aria-hidden="true" />
+      {children}
     </Badge>
   );
 }

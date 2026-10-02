@@ -23,6 +23,7 @@ import {
 } from "@/lib/creator-portfolio-draft";
 import { Button, buttonVariants } from "./ui/button";
 import { FilterChip } from "./missa/filter-chip";
+import { ProcessBadge } from "./missa/semantic-badges";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import {
@@ -1342,7 +1343,11 @@ export function CreatorPortfolioStudio({
                     </label>
                   </>
                 )}
-                {uploading > 0 && <p role="status">Preparing your media…</p>}
+                {uploading > 0 && (
+                  <ProcessBadge state="active" role="status">
+                    Preparing your media…
+                  </ProcessBadge>
+                )}
                 {error && <p role="alert">{error}</p>}
               </fieldset>
             </section>

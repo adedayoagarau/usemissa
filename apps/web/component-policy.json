@@ -765,17 +765,20 @@
     "MatchExplanationTrigger": {
       "base": "Button",
       "disclosure": "Popover",
-      "motion": "popover-transition-only"
+      "motion": "popover-transition-only",
+      "implementation": "components/explained-score.tsx"
     },
     "PublicationStateBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-16", "badge-18", "badge-19"],
-      "motion": "active-transition-only"
+      "motion": "active-transition-only",
+      "implementation": "components/missa/semantic-badges.tsx"
     },
     "ProcessBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-16", "badge-17", "badge-20", "badge-21"],
-      "motion": "indicator-while-confirmed-active"
+      "motion": "indicator-while-confirmed-active",
+      "implementation": "components/missa/semantic-badges.tsx"
     },
     "CountBadge": {
       "base": "Badge",
