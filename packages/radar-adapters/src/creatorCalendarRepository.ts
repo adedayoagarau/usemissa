@@ -10,6 +10,7 @@ import {
   encryptCalendarCredential,
 } from "./calendarCredentialCrypto.js";
 import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
+import { expectedResponse } from "./trackerResponseDates.js";
 
 export type CreatorCalendarTokenState = {
   active: boolean;
@@ -903,27 +904,7 @@ export class PostgresCreatorCalendarRepository extends CreatorRepositoryBase {
       deadlineKind: row.deadline_kind,
       ...(row.deadline_time ? { deadlineTime: iso(row.deadline_time) } : {}),
       ...(row.deadline_timezone ? { deadlineTimezone: row.deadline_timezone } : {}),
-      expectedResponseBy:
-        [
-          "submitted",
-          "received",
-          "in-review",
-          "longlisted",
-          "finalist",
-          "waitlisted",
-          "revision-requested",
-          "partially-withdrawn",
-          "shortlisted",
-        ].includes(row.status) &&
-        row.submitted_at &&
-        row.response_time_days
-          ? new Date(
-              new Date(row.submitted_at).getTime() +
-                row.response_time_days * 86_400_000,
-            )
-              .toISOString()
-              .slice(0, 10)
-          : undefined,
+      expectedResponseBy: expectedResponse(row.status, row.submitted_at, row.response_time_days)?.expectedResponseBy,
     }));
   }
 }
