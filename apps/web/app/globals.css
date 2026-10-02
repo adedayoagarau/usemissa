@@ -362,6 +362,15 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Infinite Tailwind utilities must stop under reduced motion (DESIGN.md §9,
+     §11.9). The icons/skeleton blocks still render; only the loop is removed. */
+  .animate-spin,
+  .animate-pulse,
+  .animate-bounce,
+  .animate-ping {
+    animation: none;
+  }
+
   .count-badge-entrance {
     animation: none;
   }
