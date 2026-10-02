@@ -22,7 +22,6 @@
 :root {
   --bg: #ffffff;
   --surface: #ffffff;
-  --canvas-subtle: color-mix(in srgb, var(--surface) 99%, var(--ink));
   --surface-subtle: color-mix(in srgb, var(--surface) 97%, var(--ink));
   --surface-muted: color-mix(in srgb, var(--surface) 94%, var(--ink));
   --ink: #171418;

@@ -741,7 +741,8 @@
     "MagazineScheduleBadge": {
       "base": "Badge",
       "studioCandidates": ["badge-05", "badge-10"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/ui/magazine-schedule-badge.tsx"
     },
     "UrgencyBadge": {
       "base": "Badge",
@@ -790,7 +791,8 @@
       "base": "Button",
       "studioCandidates": ["button-01"],
       "browserObservedReferences": ["button-23", "button-31"],
-      "motion": "finite-state-transition"
+      "motion": "finite-state-transition",
+      "implementation": "components/save-to-tracker-button.tsx"
     },
     "BetaBadge": {
       "base": "Badge",
