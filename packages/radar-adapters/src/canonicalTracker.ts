@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { MyStatus, OpportunityType } from "@missa/radar-engine";
+import { RESPONSE_DECISION_STATUSES, type MyStatus, type OpportunityType } from "@missa/radar-engine";
 import {
   canonicalCreatorRequestHash,
   creatorPoolFor,
@@ -8,6 +8,7 @@ import {
 } from "./creatorRepository.js";
 import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
 import { recommendationSignalId } from "./recommendation/evidenceStorage.js";
+import { DECISION_STATUS_SQL, expectedResponse, isoDate, type ExpectedResponse } from "./trackerResponseDates.js";
 import type { FirstSaveProvenance } from "./recommendation/provenance.js";
 import {
   OpportunityRevalidationRequiredError,
@@ -43,6 +44,12 @@ export type CanonicalTrackerItem = {
   revision: number;
   notify: boolean;
   workId?: string;
+  /** Date the creator submitted, as recorded when the status became Submitted. */
+  submittedAt?: string;
+  /** Date of the first decision; acknowledgements do not count. */
+  respondedAt?: string;
+  expectedResponseBy?: string;
+  expectedResponseBasis?: ExpectedResponse["expectedResponseBasis"];
 };
 
 type TrackerRow = {
@@ -66,7 +73,25 @@ type TrackerOpportunityRow = TrackerRow & {
   deadline_date: string | null;
   deadline_kind: string | null;
   submitted_at: Date | string | null;
+  response_time_days: number | null;
+  responded_on: string | null;
 };
+
+/**
+ * One projection for every Tracker read and write path, so dates never drop
+ * out of the item a mutation returns. The response date is the first decision
+ * event; acknowledgements such as "received" are not responses.
+ */
+const TRACKER_PROJECTION = `select t.id, t.account_id, t.opportunity_id, t.status, t.tracked_at, t.updated_at, t.revision, t.notify, t.work_id, t.submitted_at,
+              o.title, coalesce(org.data->>'name', o.organization_id) as organization_name, o.status as opportunity_status,
+              o.type as opportunity_type, o.deadline_date::text as deadline_date, o.deadline_kind, cp.response_time_days,
+              (select coalesce(e.occurred_on, (e.created_at at time zone 'UTC')::date)::text from tracked_status_events e
+                where e.tracked_opportunity_id = t.id and e.to_status in (${DECISION_STATUS_SQL})
+                order by e.created_at limit 1) as responded_on
+       from tracked_opportunities t
+       join opportunities o on o.id = t.opportunity_id
+       left join radar_organizations org on org.id = o.organization_id
+       left join opportunity_call_profiles cp on cp.opportunity_id = o.id`;
 
 const OPPORTUNITY_TYPES = new Set<OpportunityType>([
   "open-call",
@@ -108,6 +133,8 @@ const CANONICAL_STATUSES = new Set<CanonicalTrackerStatus>([
   "archived",
 ]);
 
+const PRE_SUBMISSION_STATUSES = new Set<string>(["interested", "saved", "preparing", "draft-started", "ready-to-submit"]);
+
 function opportunityType(value: string): OpportunityType {
   return OPPORTUNITY_TYPES.has(value as OpportunityType)
     ? (value as OpportunityType)
@@ -135,6 +162,9 @@ function trackerItem(row: TrackerOpportunityRow): CanonicalTrackerItem {
     revision: row.revision,
     notify: row.notify,
     workId: row.work_id ?? undefined,
+    ...(isoDate(row.submitted_at) ? { submittedAt: isoDate(row.submitted_at) } : {}),
+    ...(row.responded_on && !PRE_SUBMISSION_STATUSES.has(status) ? { respondedAt: row.responded_on } : {}),
+    ...expectedResponse(status, row.submitted_at, row.response_time_days),
   };
 }
 
@@ -149,12 +179,7 @@ export async function listCanonicalTrackedOpportunities(
 ): Promise<CanonicalTrackerItem[]> {
   const pool = creatorPoolFor(connectionString);
     const result = await pool.query<TrackerOpportunityRow>(
-      `select t.id, t.account_id, t.opportunity_id, t.status, t.tracked_at, t.updated_at, t.revision, t.notify, t.work_id, t.submitted_at,
-              o.title, coalesce(org.data->>'name', o.organization_id) as organization_name, o.status as opportunity_status,
-              o.type as opportunity_type, o.deadline_date::text as deadline_date, o.deadline_kind
-       from tracked_opportunities t
-       join opportunities o on o.id = t.opportunity_id
-       left join radar_organizations org on org.id = o.organization_id
+      `${TRACKER_PROJECTION}
        where t.account_id = $1 and ${canonicalPublicOpportunityPredicate("o")}
        order by t.updated_at desc, t.id desc`,
       [accountId],
@@ -217,12 +242,7 @@ export async function updateCanonicalTrackerStatus(
       }
     }
     const current = await client.query<TrackerOpportunityRow>(
-      `select t.id, t.account_id, t.opportunity_id, t.status, t.tracked_at, t.updated_at, t.revision, t.notify, t.work_id, t.submitted_at,
-              o.title, coalesce(org.data->>'name', o.organization_id) as organization_name, o.status as opportunity_status,
-              o.type as opportunity_type, o.deadline_date::text as deadline_date, o.deadline_kind
-       from tracked_opportunities t
-       join opportunities o on o.id = t.opportunity_id
-       left join radar_organizations org on org.id = o.organization_id
+      `${TRACKER_PROJECTION}
        where t.account_id = $1 and t.opportunity_id = $2 and ${canonicalPublicOpportunityPredicate("o")}
        for update of t`,
       [accountId, opportunityId],
@@ -251,7 +271,7 @@ export async function updateCanonicalTrackerStatus(
            end,
            revision = revision + 1, updated_at = now()
        where account_id = $1 and opportunity_id = $2 and revision = $4
-       returning id, account_id, opportunity_id, status, tracked_at, updated_at, revision, notify, work_id`,
+       returning id, account_id, opportunity_id, status, tracked_at, updated_at, revision, notify, work_id, submitted_at`,
       [accountId, opportunityId, status, row.revision, options.occurredOn ?? null],
     );
     const eventId = randomUUID();
@@ -268,7 +288,13 @@ export async function updateCanonicalTrackerStatus(
     const result = next
       ? {
           status: "updated" as const,
-          tracked: trackerItem({ ...row, ...next }),
+          tracked: trackerItem({
+            ...row,
+            ...next,
+            responded_on:
+              row.responded_on ??
+              (RESPONSE_DECISION_STATUSES.includes(status) ? (options.occurredOn ?? new Date().toISOString().slice(0, 10)) : null),
+          }),
           replayed:false,
         }
       : null;
@@ -398,11 +424,7 @@ export async function updateCanonicalTrackerReminder(
       return { ...replay.rows[0].result, replayed: true };
     }
     const current = await client.query<TrackerOpportunityRow>(
-      `select t.id, t.account_id, t.opportunity_id, t.status, t.tracked_at, t.updated_at, t.revision, t.notify, t.work_id,
-              o.title, coalesce(org.data->>'name', o.organization_id) as organization_name, o.status as opportunity_status,
-              o.type as opportunity_type, o.deadline_date::text as deadline_date, o.deadline_kind
-       from tracked_opportunities t join opportunities o on o.id=t.opportunity_id
-       left join radar_organizations org on org.id=o.organization_id
+      `${TRACKER_PROJECTION}
        where t.account_id=$1 and t.opportunity_id=$2 and ${canonicalPublicOpportunityPredicate("o")} for update of t`,
       [accountId, opportunityId],
     );
