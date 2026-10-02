@@ -204,7 +204,7 @@ function SectionHeading({ section }: { section: ProfileSection }) {
   return (
     <header className={styles.sectionHeading}>
       <p>Profile · {item.label}</p>
-      <h2 id="profile-section-heading" tabIndex={-1}>
+      <h2 id="profile-section-heading" tabIndex={-1} className="font-heading">
         {item.label}
       </h2>
       <span>{item.copy}.</span>
@@ -662,7 +662,7 @@ export function ProfileProduct({
           </span>
           <div>
             <p>Your account</p>
-            <h1>Profile</h1>
+            <h1 className="font-heading">Profile</h1>
             <small>
               Public identity and private opportunity preferences stay separate.
             </small>
@@ -751,7 +751,7 @@ export function ProfileProduct({
               <section className={styles.publicSummary}>
                 <div>
                   <p>Public preview</p>
-                  <h3>
+                  <h3 className="font-heading">
                     {publicFields.length
                       ? profile.displayName
                       : "Nothing is public"}
@@ -809,7 +809,7 @@ export function ProfileProduct({
           {active === "identity" ? (
             <form className={styles.form} onSubmit={saveIdentity} noValidate>
               <div className={styles.visibilityNote}>
-                <span>{initials(displayName)}</span>
+                <span className="font-heading">{initials(displayName)}</span>
                 <div>
                   <h3>Public identity</h3>
                   <p>

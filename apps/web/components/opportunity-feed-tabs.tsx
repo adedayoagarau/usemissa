@@ -54,7 +54,7 @@ export function OpportunityFeedTabs({
 
   return (
     <nav className={styles.feedNav} aria-label="Browse opportunities by timing and cost">
-      <span className={styles.label}>Browse by</span>
+      <span className={`${styles.label} font-mono`}>Browse by</span>
       <div className={styles.feedList}>
         {feeds.map((feed) => {
           const Icon = feed.icon;

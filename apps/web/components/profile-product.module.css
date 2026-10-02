@@ -23,7 +23,6 @@
   border-radius: 999px;
   background: var(--accent-tint);
   color: var(--accent-deep);
-  font-family: var(--font-heading);
   font-size: 1.1rem;
   font-weight: 650;
 }
@@ -37,7 +36,6 @@
   letter-spacing: .13em;
   text-transform: uppercase;
 }
-.identity h1 { margin: 0; font-family: var(--font-heading); font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 520; letter-spacing: -.045em; line-height: .95; }
 .identity small { display: block; margin-top: .55rem; color: var(--muted-foreground); font-size: .93rem; line-height: 1.5; }
 .previewLink { flex: 0 0 auto; gap: .5rem; }
 
@@ -92,7 +90,6 @@
 .contentLayout > aside [data-slot='badge'] { max-width: 6.25rem; overflow: hidden; font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
 .sectionSurface { min-width: 0; }
 .sectionHeading { margin-bottom: 1.75rem; border-bottom: 1px solid var(--border); padding-bottom: 1.4rem; }
-.sectionHeading h2 { margin: 0; outline: none; font-family: var(--font-heading); font-size: clamp(2rem, 4vw, 3.25rem); font-weight: 520; letter-spacing: -.035em; }
 .sectionHeading > span { display: block; margin-top: .45rem; color: var(--muted-foreground); font-size: .93rem; }
 
 .overview,
@@ -109,7 +106,6 @@
   padding: clamp(1.25rem, 3vw, 2rem);
   background: var(--background);
 }
-.publicSummary h3 { margin: 0; font-family: var(--font-heading); font-size: 1.75rem; font-weight: 540; letter-spacing: -.025em; }
 .publicSummary > div > span { display: block; margin-top: .65rem; color: var(--muted-foreground); line-height: 1.65; }
 .publicSummary dl { display: grid; gap: .85rem; margin: 0; }
 .publicSummary dl > div { border-bottom: 1px solid var(--border); padding-bottom: .85rem; }

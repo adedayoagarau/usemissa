@@ -212,7 +212,7 @@ function EmptyTracker() {
   return (
     <section className={styles.empty} aria-labelledby="empty-tracker-title">
       <FolderKanban aria-hidden="true" />
-      <h2 id="empty-tracker-title">Your Tracker is ready</h2>
+      <h2 id="empty-tracker-title" className="font-heading">Your Tracker is ready</h2>
       <p>
         Save an Opportunity to keep its deadline, preparation, and private
         status together.
@@ -240,7 +240,7 @@ function SearchZero({
   return (
     <section className={styles.empty} aria-labelledby="tracker-zero-title">
       <Search aria-hidden="true" />
-      <h2 id="tracker-zero-title">No Tracker items match “{query}”</h2>
+      <h2 id="tracker-zero-title" className="font-heading">No Tracker items match “{query}”</h2>
       <p>Try an Organization, Opportunity, Work, or type name.</p>
       <button type="button" className={styles.quietButton} onClick={onClear}>
         Clear search
@@ -263,7 +263,7 @@ function HostedSubmissionCard({
         </span>
         <div>
           <p>Submitted through Missa</p>
-          <h3>{submission.title}</h3>
+          <h3 className="font-heading">{submission.title}</h3>
           <span>{submission.organizationName}</span>
         </div>
         <strong>{submission.status.replaceAll("-", " ")}</strong>
@@ -345,7 +345,7 @@ function TrackerCard({
       tabIndex={highlighted ? -1 : undefined}
     >
       <div className={styles.itemIdentity}>
-        <span className={styles.monogram} aria-hidden="true">
+        <span className={`${styles.monogram} font-mono`} aria-hidden="true">
           {monogram(item)}
         </span>
         <div>
@@ -483,7 +483,7 @@ function GroupedItems({
                 {label}
               </h2>
             </div>
-            <span>{items.length}</span>
+            <span className="font-mono">{items.length}</span>
           </header>
           <div className={styles.itemList}>{items.map(renderItem)}</div>
         </section>
@@ -858,7 +858,7 @@ export function TrackerProduct({
       <header className={styles.pageHeader}>
         <div>
           <p>Private to your Profile</p>
-          <h1>Tracker</h1>
+          <h1 className="font-heading">Tracker</h1>
           <span>
             Keep the next deadline, preparation step, and submission record
             together.
@@ -887,7 +887,7 @@ export function TrackerProduct({
                 ? "Saved privately"
                 : "Already in Tracker"}
             </p>
-            <h2 id="first-save-handoff-title">{firstSaveReceipt.title}</h2>
+            <h2 id="first-save-handoff-title" className="font-heading">{firstSaveReceipt.title}</h2>
             {firstSaveReceipt.organizationName ? (
               <span>{firstSaveReceipt.organizationName}</span>
             ) : null}
@@ -1044,7 +1044,7 @@ export function TrackerProduct({
       ) : initialImportId && !scopedItems.length ? (
         <section className={styles.empty}>
           <Import aria-hidden="true" />
-          <h2>No changed Tracker rows are linked to this receipt</h2>
+          <h2 className="font-heading">No changed Tracker rows are linked to this receipt</h2>
           <p>
             This may be a no-change receipt, or the rows may have changed in a
             later import.
@@ -1161,7 +1161,7 @@ export function TrackerProduct({
                   <section key={stage}>
                     <header>
                       <h2>{stage}</h2>
-                      <span>{stageItems.length}</span>
+                      <span className="font-mono">{stageItems.length}</span>
                     </header>
                     <div>{stageItems.map(renderItem)}</div>
                     {stageItems.length ? null : <p>No items</p>}
@@ -1216,7 +1216,7 @@ export function TrackerProduct({
           {!hostedSubmissions.length && !externalSubmissionItems.length ? (
             <section className={styles.empty}>
               <FileCheck2 aria-hidden="true" />
-              <h2>No submission records yet</h2>
+              <h2 className="font-heading">No submission records yet</h2>
               <p>
                 Submitted Opportunities will keep their receipt, Work snapshot,
                 messages, and decisions here.
@@ -1239,7 +1239,7 @@ export function TrackerProduct({
             <header>
               <div>
                 <p>Exact dates</p>
-                <h2 id="tracker-dated-title">
+                <h2 id="tracker-dated-title" className="font-heading">
                   Upcoming and recorded deadlines
                 </h2>
               </div>
@@ -1253,7 +1253,7 @@ export function TrackerProduct({
                 );
                 return (
                   <Link href={action.href} key={item.opportunityId}>
-                    <time>{formatDate(item.deadline!)}</time>
+                    <time className="font-mono">{formatDate(item.deadline!)}</time>
                     <span>
                       <strong>{item.title}</strong>
                       <small>
@@ -1332,7 +1332,7 @@ export function TrackerProduct({
           ) ? null : (
             <section className={styles.empty}>
               <FolderKanban aria-hidden="true" />
-              <h2>Nothing archived</h2>
+              <h2 className="font-heading">Nothing archived</h2>
               <p>
                 Archived items remain private and can be restored without losing
                 their history.

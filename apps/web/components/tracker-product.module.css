@@ -49,7 +49,6 @@
 
 .pageHeader h1 {
   margin: 0;
-  font-family: var(--font-heading), serif;
   font-size: clamp(2.35rem, 5vw, 4.25rem);
   font-weight: 500;
   letter-spacing: -0.045em;
@@ -127,7 +126,6 @@
 
 .firstSaveHandoff h2 {
   margin-top: 6px;
-  font-family: var(--font-heading), serif;
   font-size: 1.45rem;
   font-weight: 550;
   letter-spacing: -0.02em;
@@ -423,7 +421,6 @@
 .grouped > section > header h2,
 .calendarLayout h2 {
   margin: 0;
-  font-family: var(--font-heading), serif;
   font-size: 1.35rem;
   font-weight: 550;
   letter-spacing: -0.02em;
@@ -491,7 +488,6 @@
 .viewSection > header > span,
 .grouped > section > header > span {
   color: var(--muted-foreground);
-  font-family: var(--font-mono), monospace;
   font-size: 0.76rem;
 }
 
@@ -550,7 +546,6 @@
   border-radius: 50%;
   background: var(--tracker-soft);
   color: var(--accent-deep);
-  font-family: var(--font-mono), monospace;
   font-size: 0.72rem;
   font-weight: 700;
 }
@@ -582,7 +577,6 @@
 .itemIdentity h3,
 .submissionIdentity h3 {
   margin: 8px 0 0;
-  font-family: var(--font-heading), serif;
   font-size: 1.08rem;
   font-weight: 570;
   letter-spacing: -0.015em;
@@ -728,7 +722,6 @@
 
 .board header span {
   color: var(--muted-foreground);
-  font-family: var(--font-mono), monospace;
   font-size: 0.68rem;
 }
 
@@ -838,7 +831,6 @@
 
 .calendarRows time {
   color: var(--accent-deep);
-  font-family: var(--font-mono), monospace;
   font-size: 0.72rem;
 }
 
@@ -910,7 +902,6 @@
 
 .empty h2 {
   margin: 14px 0 0;
-  font-family: var(--font-heading), serif;
   font-size: 1.55rem;
   font-weight: 550;
 }
