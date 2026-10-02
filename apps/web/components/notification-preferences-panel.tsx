@@ -5,6 +5,12 @@ import type { CreatorNotificationPreferences } from "@missa/radar-adapters";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+
+function timezoneOptions(selected?: string | null): string[] {
+  const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+  return selected && !zones.includes(selected) ? [selected, ...zones] : zones;
+}
 
 export function NotificationPreferencesPanel({ initial }: { initial: CreatorNotificationPreferences }) {
   const request=useRef<{body:string;key:string}|null>(null);
@@ -14,6 +20,7 @@ export function NotificationPreferencesPanel({ initial }: { initial: CreatorNoti
   const [message, setMessage] = useState("");
   const [stale, setStale] = useState(false);
   const dirty = JSON.stringify(value) !== JSON.stringify(saved);
+  const quietHoursOn = value.quietHoursStart != null && value.quietHoursEnd != null;
   const toggle = (field: "inAppEnabled" | "emailEnabled" | "savedSearchEnabled" | "followEnabled" | "reminderEnabled" | "smsEnabled", checked: boolean) =>
     setValue((current) => ({ ...current, [field]: checked }));
 
@@ -66,6 +73,42 @@ export function NotificationPreferencesPanel({ initial }: { initial: CreatorNoti
           </NativeSelect>
         </label>
       </div>
+      <fieldset className="mt-5 grid gap-3 sm:grid-cols-2">
+        <legend className="text-sm font-medium">Reminder timing</legend>
+        <label className="grid gap-1 text-sm sm:col-span-2">
+          <span>Timezone</span>
+          <NativeSelect
+            value={value.timezone ?? ""}
+            onChange={(event) => setValue((current) => ({ ...current, timezone: event.target.value || null }))}
+          >
+            <option value="">Use each reminder&apos;s own timezone</option>
+            {timezoneOptions(value.timezone).map((zone) => <option key={zone} value={zone}>{zone.replaceAll("_", " ")}</option>)}
+          </NativeSelect>
+        </label>
+        <label className="flex min-h-11 items-center gap-3 rounded-lg border border-border px-3 text-sm sm:col-span-2">
+          <Checkbox
+            checked={quietHoursOn}
+            onCheckedChange={(checked) =>
+              setValue((current) => checked === true
+                ? { ...current, quietHoursStart: current.quietHoursStart ?? "21:00", quietHoursEnd: current.quietHoursEnd ?? "08:00" }
+                : { ...current, quietHoursStart: null, quietHoursEnd: null })}
+          />
+          Hold reminders during quiet hours
+        </label>
+        {quietHoursOn ? (
+          <>
+            <label className="grid gap-1 text-sm">
+              <span>Quiet from</span>
+              <Input type="time" value={value.quietHoursStart ?? ""} onChange={(event) => setValue((current) => ({ ...current, quietHoursStart: event.target.value || null }))} />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span>Until</span>
+              <Input type="time" value={value.quietHoursEnd ?? ""} onChange={(event) => setValue((current) => ({ ...current, quietHoursEnd: event.target.value || null }))} />
+            </label>
+            <p className="text-sm text-muted-foreground sm:col-span-2">Reminders due in this window arrive when it ends. A deadline reminder still arrives if the call would close first.</p>
+          </>
+        ) : null}
+      </fieldset>
       <p className="mt-3 text-sm text-muted-foreground">Text reminders will appear here after phone verification and an SMS provider are configured. Email and in-app reminders are available now.</p>
       {value.providerState === "unavailable" && value.emailEnabled ? <p className="mt-3 text-sm text-muted-foreground">Email delivery is currently unavailable. Your in-app settings still apply.</p> : null}
       <div className="mt-4 flex flex-wrap items-center gap-2">

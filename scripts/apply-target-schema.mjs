@@ -105,6 +105,7 @@ const migrationFiles = [
   '0075_recommendation_evidence.sql',
   '0076_opportunity_version_heads.sql',
   '0077_opportunity_version_head_activation.sql',
+  '0078_notification_timezone_quiet_hours.sql',
 ];
 
 
