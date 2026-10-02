@@ -1,15 +1,15 @@
 ---
 title: Missa Value and Positioning
-version: "0.1"
+version: "0.2"
 status: working draft
-last_updated: "2026-08-15"
+last_updated: "2026-10-02"
 owners: Founder, Product, Brand, Editorial
 scope: Internal positioning, fundraising, product strategy, and public-copy hierarchy
 ---
 
 # Missa value and positioning
 
-This document explains what Missa is worth to the people who use it, the organizations that pay for it, and the investors who may fund it. It is the narrative layer between the current product description and the longer-term product strategy.
+This document explains what Missa is worth to the creators and organizations who use and pay for it, and to the investors who may fund it. It is the narrative layer between the current product description and the longer-term product strategy.
 
 ## The core thesis
 
@@ -26,6 +26,32 @@ The public promise can stay concrete:
 The strategic promise is broader:
 
 > Make opportunity easier to find, understand, pursue, and remember.
+
+## The circulation thesis
+
+Most opportunity tools, Missa included, start from the call: find an opportunity, then work out what to send. Creators usually start from the other end. They have finished work, and the question is where each piece should go next. Finished work that is not out in the world earns nothing.
+
+Missa's product direction is to keep a creator's work in circulation:
+
+1. The creator adds finished work to the Library.
+2. Missa matches each piece against open, eligible calls and the piece's rights and simultaneous-submission status.
+3. Missa prepares a complete submission (adapted administrative materials, requirement and pre-submit checks, the official destination) and asks the creator to approve it, by default in a weekly "ready to send" digest.
+4. The creator approves and sends each submission. Missa never submits without explicit per-submission approval, and fees and declarations are always the creator's decision.
+5. Missa follows the response. A decline queues the next good match for that piece; an acceptance prepares withdrawals elsewhere and updates the rights record.
+
+The creator-facing measure is **pieces in circulation**. It turns the scattered capabilities already in the product (catalogue, extracted requirements, Library, matching and eligibility, email forwarding, deadlines and reminders, the application bridge investigation) into one loop with one promise. Volume of well-fitted submissions, not discovery alone, is what produces acceptances, and administrative work is what usually stops that volume.
+
+Guardrails are part of the thesis, not an afterthought:
+
+- Fit over volume. Missa caps submissions and requires a minimum fit so organizations receive fewer, better-prepared entries. If editors see Missa as a source of spam, the thesis fails.
+- AI may adapt administrative material such as bios, statements, and cover letters within stated limits and in the creator's voice. It never writes the creative work.
+- Missa follows each destination's rules. Where assisted submission is not permitted, Missa prepares the package and the creator completes the final step at the destination.
+
+The candidate creator promise is:
+
+> Your work should be out there. Missa keeps it there.
+
+This is product direction. The loop is not shipped, and public copy must not describe it as available until the route, data, and deployment state support it.
 
 ## The problem
 
@@ -60,7 +86,8 @@ Missa helps a person:
 3. save the opportunity and the next action;
 4. prepare from a private Profile and Library;
 5. submit through Missa where the opportunity supports it;
-6. retain receipts, decisions, deadlines, and outcome history.
+6. retain receipts, decisions, deadlines, and outcome history;
+7. keep finished work in circulation, from match to approval to response and the next submission.
 
 ### For organizations
 
@@ -79,10 +106,10 @@ These are connected by the Opportunity, but they are not the same surface or the
 
 | Person or customer | Value created | Evidence we need |
 | --- | --- | --- |
-| Creator | Less search time, clearer fit decisions, fewer missed deadlines, and reusable submission work | Relevant saves, return usage, save-to-action conversion, completed submissions, and retention |
-| Organization | Clearer public calls, more relevant submissions, and less fragmented review and decision work | Paid pilots, publishing activity, submission quality, workflow adoption, and renewal |
+| Creator | Less search time, clearer fit decisions, fewer missed deadlines, reusable submission work, and more finished work in circulation | Relevant saves, return usage, save-to-action conversion, completed submissions, pieces in circulation, paid conversion, and retention |
+| Organization | Clearer public calls, more relevant and better-prepared submissions, and less fragmented review and decision work | Paid pilots, publishing activity, submission quality, workflow adoption, and renewal |
 | Missa | A structured record of opportunities, requirements, source evidence, creator activity, and outcomes | Source accuracy, freshness, coverage, repeat usage, and permission-safe aggregate insight |
-| Investor | A path from a painful fragmented workflow to a large, repeatable category | Creator demand, organization revenue, retention, distribution, and a defensible data or network advantage |
+| Investor | A path from a painful fragmented workflow to a large, repeatable category | Creator subscription revenue, organization revenue, retention, distribution, and a defensible data or network advantage |
 
 ## Why this can become a large company
 
@@ -104,6 +131,7 @@ Use different language for different jobs. Do not make one sentence serve every 
 | --- | --- |
 | Public acquisition | Find the call worth your time. |
 | Creator value | Compare the facts, open the official source, save your decision, and keep track of what comes next. |
+| Creator paid value (candidate) | Your work should be out there. Missa keeps it there. |
 | Organization value | Publish the opportunity, receive the work, review it, record decisions, and complete the next step. |
 | Strategic category | The trusted opportunity layer for creative work. |
 | Investor narrative | Missa is building the discovery and submission infrastructure for a fragmented opportunity economy. |
@@ -112,15 +140,52 @@ Use different language for different jobs. Do not make one sentence serve every 
 
 ## Business model direction
 
-The intended model is free creator access with paid organization tools and services. Creator growth is valuable because it creates demand, repeat usage, and a better understanding of opportunity fit. Organization revenue must come from a clear operational outcome: reaching relevant people, running a program, or completing the work after a decision.
+Missa charges creators. A creator-free model cannot sustain the product: SMS and WhatsApp delivery, AI assistance, source monitoring, and catalogue maintenance all carry per-user cost, and organization revenue alone arrives too slowly to fund them.
 
-Do not sell organizations an abstract “network.” Sell a defined job with a measurable result.
+The model is freemium. The free tier stays genuinely useful because it brings people in, earns search traffic, and gives organizations a reason to be on Missa. Paid tiers charge for the work between saving a call and getting a result, and for anything with a per-use cost.
+
+### What stays free
+
+- Discovery, Opportunity pages, official-source links, and verification detail. Trust and facts are never paywalled.
+- Saving and tracking a limited number of active opportunities.
+- A basic calendar and email reminders. A free user never misses a deadline because they did not pay; at least one email reminder is always sent.
+
+### What creators pay for
+
+| Tier | For | Includes (direction, not shipped) |
+| --- | --- | --- |
+| Plus | Creators who submit regularly | Unlimited tracking; SMS and WhatsApp reminders within a monthly allowance; reply-to-act messages; start-by dates; opening, deadline-change, and deadline-day alerts; pre-submit checks including blind-review name checks; the simultaneous-submission guard; the rights ledger; the money ledger with export; the automatic creative CV; keeping the full Library in circulation |
+| Pro | Heavy submitters and grant applicants | Everything in Plus, booked preparation time, capacity planning, an annual plan, AI adaptation of administrative materials, drafted withdrawals and follow-ups, referee reminders, and multiple pen names or portfolios |
+| Add-ons | Anyone | Extra message packs and paid application reviews by past winners, jurors, or editors, with Missa taking a share |
+
+The free tier includes one piece in circulation so creators experience the loop before paying for it.
+
+Working price hypotheses to test, not decisions: Plus at about US$7 a month or US$60 a year, and Pro at about US$18 a month or US$150 a year. Comparable creator subscriptions exist in the market, but competitor prices must be checked before they are cited.
+
+### Pricing principles
+
+- Price regionally by purchasing power and charge in local currency where possible. Nigeria is priced in naira through a local processor, with WhatsApp as the default message channel because international SMS is expensive and less reliable.
+- Offer upgrades when the user can see the value: reaching the tracking limit, approaching a deadline, saving a recurring call, an acceptance with other submissions still pending, or a first blind-review call. A 14-day Plus trial begins on the first save of a call closing within 30 days.
+- Upgrade prompts follow the product's calm register. They state what the person gets, never what they will lose, and never use alarm treatment.
+- Validate willingness to pay with a founding-member annual presale and price tests before building full billing.
+
+### Organization and institution revenue
+
+Creator subscriptions fund the product now. Organization and institution revenue remains the larger long-term line and must come from a clear operational outcome:
+
+- Organizations pay for reaching eligible, well-matched creators, eligibility screening at intake, review tools, funder and impact reporting, payments and contracts, and an "Apply with Missa" intake path that receives better-prepared submissions.
+- Foundations and sponsors can fund fee waivers for under-represented or low-income applicants across many calls.
+- Institutions such as MFA programmes, arts councils, writer centres, and residencies buy Plus for a cohort or membership and receive permission-safe aggregate activity. Creators get the product without paying, the institution pays, and Missa gains distribution.
+
+Do not sell organizations an abstract "network." Sell a defined job with a measurable result.
 
 ## What we must prove before making larger claims
 
 - A new creator can find and save a genuinely relevant opportunity quickly.
 - Saved opportunities turn into preparation or submission activity.
 - Creators return because Missa remains useful after the first search.
+- Creators will pay for Plus at a sustainable price, and paid creators retain across at least one full submission season.
+- Prepared submissions are approved and sent, and pieces in circulation per active creator grow over time.
 - Organizations will publish or pay for a specific workflow, not only create a profile.
 - Source records remain accurate enough that people trust Missa with consequential deadlines and requirements.
 - The product can expand categories without weakening taxonomy, provenance, privacy, or user understanding.
@@ -136,13 +201,14 @@ The strategy must keep present capability separate from intended capability.
 | Public discovery | Source-first Opportunity browsing, official-source links, and visible uncertainty | “Missa helps you compare the facts and check the official source.” |
 | Creator workspace | Profile, Tracker, Library, and submission-related surfaces exist in the product model and current route work at different maturity levels | Name the specific available surface; do not imply every lifecycle feature is complete. |
 | Organization product | Organization publishing, intake, review, decisions, messages, delivery, and insights are the intended operating model, with some routes and contracts still bounded or local | Present the workflow as the product direction or a pilot capability unless current production evidence supports the claim. |
+| Circulation and paid tiers | Product and business direction. The weekly ready-to-send loop, SMS delivery, and creator billing are not shipped; SMS has schema groundwork only | Describe as direction. Do not publish prices, tiers, or circulation features until they are live. |
 | Opportunity graph | Structured, source-aware discovery and future aggregate intelligence | Describe this as the long-term advantage we are building, not as data we already possess at full scale. |
 
 A strategy statement is not evidence of a shipped feature. Public copy, investor materials, and customer commitments must be checked against the current route, data, and deployment state.
 
 ## Founder and investor narrative
 
-Missa is building the trusted opportunity layer for creative work. Today, opportunities are scattered across the internet and difficult to compare: deadlines, fees, eligibility, requirements, and source details do not arrive in one understandable path. Missa starts by helping creators find the call worth their time, inspect the official source, save the decision, and keep track of what comes next. Over time, it connects discovery to preparation, submission, review, decisions, and outcomes for both creators and organizations. The creator side stays free; organizations pay when Missa helps them reach the right people and run the work that follows.
+Missa is building the trusted opportunity layer for creative work. Today, opportunities are scattered across the internet and difficult to compare: deadlines, fees, eligibility, requirements, and source details do not arrive in one understandable path. Missa starts by helping creators find the call worth their time, inspect the official source, save the decision, and keep track of what comes next. Over time, it keeps a creator's finished work in circulation, from match to submission to response and the next submission, and connects that work to review, decisions, and outcomes for organizations. Creators get a useful free tier and pay when Missa does the work of keeping their submissions moving; organizations and institutions pay when Missa helps them reach the right people and run the work that follows.
 
 ## Editorial and product rules
 
@@ -150,13 +216,15 @@ Missa is building the trusted opportunity layer for creative work. Today, opport
 - Use “trusted” as a standard we must meet, not as proof we have already earned everywhere.
 - Keep source, limits, unknowns, fees, eligibility, geography, deadlines, and outcomes distinct.
 - Do not claim eligibility, quality, acceptance likelihood, fairness, or completeness without evidence.
+- Never send, pay, or accept a declaration on a creator's behalf without their explicit approval of that specific submission.
 - Do not call a planned organization workflow shipped merely because a route or visual direction exists.
 - Keep customer-facing language plain. “Opportunity layer” belongs in strategy and fundraising; a creator should usually see “Opportunities,” “Tracker,” “Library,” and a direct next step.
 
 ## Open decisions for the next revision
 
-1. Which organization type is the first paid wedge?
-2. Which creator segment is the first repeat-use wedge?
-3. Which three metrics will prove that discovery becomes action?
-4. Which organization outcome will justify payment first: distribution, intake, review, or delivery?
-5. Which parts of the Opportunity graph can be built from consented, source-linked data without compromising privacy or editorial trust?
+1. Which creator segment is the first paying wedge?
+2. What are the final free-tier limits and Plus and Pro prices after the presale and price tests?
+3. Which three metrics will prove that discovery becomes action and action becomes circulation?
+4. Which organization type is the first paid wedge, and which outcome justifies payment first: distribution, intake, review, or delivery?
+5. Which institutions are the first Missa for Programs pilots?
+6. Which parts of the Opportunity graph can be built from consented, source-linked data without compromising privacy or editorial trust?
