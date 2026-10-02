@@ -67,9 +67,9 @@ export function NotificationPreferencesPanel({ initial }: { initial: CreatorNoti
           Text reminders (coming later)
         </label>
         <label className="grid gap-1 text-sm">
-          <span className="font-medium">Email digest cadence</span>
+          <span className="font-medium">Weekly digest</span>
           <NativeSelect value={value.digestCadence} onChange={(event) => setValue((current) => ({ ...current, digestCadence: event.target.value as CreatorNotificationPreferences["digestCadence"] }))}>
-            <option value="off">Off</option><option value="daily">Daily</option><option value="weekly">Weekly</option>
+            <option value="off">Off</option><option value="weekly">Sunday evening</option>
           </NativeSelect>
         </label>
       </div>

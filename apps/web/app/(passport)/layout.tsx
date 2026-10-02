@@ -4,6 +4,8 @@ import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { safeAuthRedirect } from '@/lib/authRedirect';
 import { CreatorShell } from '@/components/creator-shell';
 import { getEngine } from '@/lib/engine';
+import { getCreatorNotificationRepository } from '@/lib/creatorRepositories';
+import { EmailChoicePrompt } from '@/components/missa/email-choice-prompt';
 
 /** Private creator surface: never index, and name it for browser chrome. */
 export const metadata = {
@@ -25,7 +27,14 @@ export default async function PassportLayout({ children }: { children: React.Rea
   const radar = session.memberships.length ? await getEngine() : undefined;
   const organizations = session.memberships.map((membership) => ({ id: membership.organizationId, name: radar?.store.organizations.get(membership.organizationId)?.name ?? membership.organizationId }));
 
+  // Accounts from before email was on by default are asked once; the prompt
+  // must never keep the workspace from rendering.
+  const preferences = await getCreatorNotificationRepository()?.preferences(session.account.id).catch(() => undefined);
+
   return <CreatorShell email={session.account.email} organizations={organizations} isAdmin={session.account.isAdmin}>
-    <main className="mx-auto max-w-[1600px] px-6 py-6 sm:py-8">{children}</main>
+    <main className="mx-auto max-w-[1600px] px-6 py-6 sm:py-8">
+      {preferences?.emailChoiceNeeded ? <EmailChoicePrompt revision={preferences.revision} /> : null}
+      {children}
+    </main>
   </CreatorShell>;
 }

@@ -59,7 +59,7 @@ export async function PUT(request: Request) {
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const cadence = body?.digestCadence;
   const fields = ["inAppEnabled", "emailEnabled", "savedSearchEnabled", "followEnabled", "reminderEnabled", "smsEnabled"] as const;
-  if (!body || !fields.every((field) => typeof body[field] === "boolean") || !["off", "daily", "weekly"].includes(String(cadence))) {
+  if (!body || !fields.every((field) => typeof body[field] === "boolean") || !["off", "weekly"].includes(String(cadence))) {
     return json({ error: "Choose valid notification settings." }, 400);
   }
   const expectedRevision = body.expectedRevision;
@@ -71,7 +71,7 @@ export async function PUT(request: Request) {
   if ("error" in timing) return json({ error: timing.error }, 400);
   const input = {
     inAppEnabled: Boolean(body.inAppEnabled), emailEnabled: Boolean(body.emailEnabled),
-    digestCadence: cadence as "off" | "daily" | "weekly", savedSearchEnabled: Boolean(body.savedSearchEnabled),
+    digestCadence: cadence as "off" | "weekly", savedSearchEnabled: Boolean(body.savedSearchEnabled),
     followEnabled: Boolean(body.followEnabled), reminderEnabled: Boolean(body.reminderEnabled), smsEnabled: false, smsPhone: null,
     ...timing,
   };
