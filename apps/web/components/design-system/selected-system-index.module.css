@@ -12,7 +12,7 @@
   z-index: 20;
   padding: 10px 14px;
   color: #fff;
-  background: #5a3f68;
+  background: #285649;
   border-radius: 8px;
   transform: translateY(calc(-100% - 16px));
 }
@@ -32,7 +32,7 @@
 }
 
 .wordmark {
-  color: #5a3f68;
+  color: #285649;
   font-family: var(--font-serif, Georgia, serif);
   font-size: 24px;
   font-weight: 700;
@@ -84,9 +84,9 @@
 
 .boundary {
   padding: 20px;
-  border: 1px solid #d9cedd;
+  border: 1px solid #e3e7e5;
   border-radius: 16px;
-  background: #fbf9fb;
+  background: #e3ece8;
   display: flex;
   gap: 14px;
   align-items: flex-start;
@@ -96,7 +96,7 @@
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
-  color: #5a3f68;
+  color: #285649;
 }
 
 .boundary strong,
@@ -138,7 +138,7 @@
 
 .summary dd {
   margin: 7px 0 0;
-  color: #332937;
+  color: #171418;
   font-family: var(--font-serif, Georgia, serif);
   font-size: 24px;
 }
@@ -241,7 +241,7 @@
   margin-top: 2px;
   border-radius: 50%;
   color: #fff;
-  background: #5a3f68;
+  background: #285649;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -295,7 +295,7 @@
 
 .primaryLink {
   color: #fff;
-  background: #5a3f68;
+  background: #285649;
 }
 
 .primaryLink svg,

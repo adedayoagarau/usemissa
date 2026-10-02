@@ -488,7 +488,7 @@ export function ProfileOpportunityJourneyPreview() {
           <h2 id='contract-heading' className='mt-3 text-2xl font-semibold tracking-tight'>Profile components must make evidence and action legible.</h2>
           <div className='mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
             {[
-              ['One dominant action', 'Aubergine is reserved for the next meaningful action.'],
+              ['One dominant action', 'Forest is reserved for the next meaningful action.'],
               ['Source link is clear', 'Give users a path to the official source when a decision depends on it.'],
               ['Fit is explained', 'Show the Profile detail and requirement that shaped the recommendation.'],
               ['Mobile keeps the path', 'Move detail into a sheet and preserve the next action at the bottom.'],

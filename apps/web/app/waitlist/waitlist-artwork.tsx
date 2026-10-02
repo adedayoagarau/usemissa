@@ -196,8 +196,7 @@ export function WaitlistArtwork() {
         <motion.path
           className={styles.svgDoor}
           d="M322 520V334A48 48 0 0 1 418 334V520Z"
-          fill="#473050"
-          style={{ scaleX: doorScaleX, skewY: doorSkewY, x: doorX }}
+          style={{ scaleX: doorScaleX, skewY: doorSkewY, x: doorX, fill: "var(--accent-deep)" }}
         />
         <path className={styles.hingeLine} d="M322 350V504" />
       </svg>

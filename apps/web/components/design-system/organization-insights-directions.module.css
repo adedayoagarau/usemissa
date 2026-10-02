@@ -1,7 +1,7 @@
 .page {
-  --aubergine: #5a3f68;
-  --aubergine-deep: #3f2949;
-  --aubergine-soft: #f3eef5;
+  --brand-accent: #285649;
+  --accent-deep: #1d4037;
+  --accent-tint: #e3ece8;
   --lichen: #56705b;
   --lichen-soft: #edf4ee;
   --ochre: #9c6d28;
@@ -47,7 +47,7 @@
 
 .eyebrow {
   margin: 0;
-  color: var(--aubergine);
+  color: var(--brand-accent);
   font-size: 0.72rem;
   font-weight: 750;
   letter-spacing: 0.14em;
@@ -106,7 +106,7 @@
 .wordmark:focus-visible,
 .topLinks a:focus-visible,
 .dataDetails summary:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--aubergine) 28%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--brand-accent) 28%, transparent);
   outline-offset: 2px;
 }
 
@@ -133,17 +133,17 @@
 }
 
 .directionOption:hover {
-  border-color: color-mix(in srgb, var(--aubergine) 35%, var(--line));
+  border-color: color-mix(in srgb, var(--brand-accent) 35%, var(--line));
 }
 
 .directionOption[data-selected='true'] {
-  border-color: var(--aubergine);
-  background: var(--aubergine-soft);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--aubergine) 12%, transparent);
+  border-color: var(--brand-accent);
+  background: var(--accent-tint);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-accent) 12%, transparent);
 }
 
 .directionOption > span {
-  color: var(--aubergine);
+  color: var(--brand-accent);
   font-family: var(--font-mono), monospace;
   font-size: 0.76rem;
   font-weight: 700;
@@ -163,7 +163,7 @@
 
 .directionOption > svg {
   width: 18px;
-  color: var(--aubergine);
+  color: var(--brand-accent);
 }
 
 .screen {
@@ -229,7 +229,7 @@
 }
 
 .topLinks a[aria-current='page'] {
-  color: var(--aubergine-deep);
+  color: var(--accent-deep);
 }
 
 .topLinks a[aria-current='page']::after {
@@ -237,7 +237,7 @@
   inset: auto 0 2px;
   height: 2px;
   border-radius: 2px;
-  background: var(--aubergine);
+  background: var(--brand-accent);
   content: '';
 }
 
@@ -256,7 +256,7 @@
 
 .roleChip svg {
   width: 16px;
-  color: var(--aubergine);
+  color: var(--brand-accent);
 }
 
 .menuButton {
@@ -355,7 +355,7 @@
 
 .scopeSummary > svg {
   width: 18px;
-  color: var(--aubergine);
+  color: var(--brand-accent);
 }
 
 .scopeSummary p {
@@ -416,7 +416,7 @@
 
 .metricValue {
   margin: 0;
-  color: var(--aubergine-deep);
+  color: var(--accent-deep);
   font-family: var(--font-heading), Georgia, serif;
   font-size: clamp(2rem, 4vw, 3rem);
   font-weight: 620;
@@ -484,7 +484,7 @@
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  color: var(--aubergine);
+  color: var(--brand-accent);
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
@@ -575,7 +575,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: var(--aubergine);
+  background: var(--brand-accent);
 }
 
 .outcomeGrid {
@@ -758,7 +758,7 @@
 
 .suppressed > svg {
   width: 20px;
-  color: var(--aubergine);
+  color: var(--brand-accent);
 }
 
 .suppressed b {
@@ -822,8 +822,8 @@
 }
 
 .briefNarrative {
-  border-color: color-mix(in srgb, var(--aubergine) 28%, var(--line));
-  background: var(--aubergine-soft);
+  border-color: color-mix(in srgb, var(--brand-accent) 28%, var(--line));
+  background: var(--accent-tint);
 }
 
 .briefNarrative [data-slot='card-title'] {
@@ -915,8 +915,8 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--aubergine-soft);
-  color: var(--aubergine);
+  background: var(--accent-tint);
+  color: var(--brand-accent);
 }
 
 .emptyState h2 {

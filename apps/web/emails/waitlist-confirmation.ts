@@ -10,9 +10,9 @@ const colors = {
   muted: '#6d6670',
   border: '#e7e7e5',
   canvas: '#f7f7f7',
-  aubergine: '#5a3f68',
-  aubergineDark: '#473050',
-  aubergineTint: '#f1edf3',
+  forest: '#285649',
+  forestDeep: '#1d4037',
+  forestTint: '#e3ece8',
   white: '#ffffff',
 };
 
@@ -24,10 +24,10 @@ const styles = {
   header: `border-bottom:1px solid ${colors.border};padding:24px 40px;`,
   logo: 'display:block;height:auto;width:120px;',
   content: 'padding:44px 40px 40px;',
-  eyebrow: `color:${colors.aubergine};font-size:11px;font-weight:700;letter-spacing:0.16em;line-height:16px;text-transform:uppercase;`,
+  eyebrow: `color:${colors.forest};font-size:11px;font-weight:700;letter-spacing:0.16em;line-height:16px;text-transform:uppercase;`,
   title: `color:${colors.ink};font-family:'Ysabeau',Georgia,'Times New Roman',serif;font-size:40px;font-weight:500;letter-spacing:-0.025em;line-height:44px;margin:12px 0 22px;`,
   paragraph: `color:${colors.ink};font-size:16px;line-height:26px;margin:0 0 18px;`,
-  note: `background-color:${colors.aubergineTint};border-left:3px solid ${colors.aubergine};color:${colors.aubergineDark};font-size:14px;line-height:22px;margin:28px 0;padding:16px 18px;`,
+  note: `background-color:${colors.forestTint};border:1px solid ${colors.border};color:${colors.forestDeep};font-size:14px;line-height:22px;margin:28px 0;padding:16px 18px;`,
   footer: `border-top:1px solid ${colors.border};color:${colors.muted};font-size:12px;line-height:19px;padding:24px 40px 28px;`,
 } as const;
 

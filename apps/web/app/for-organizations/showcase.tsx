@@ -26,7 +26,7 @@ const applicants = [
     city: 'Lagos, NG',
     score: '91',
     status: 'Shortlisted',
-    tone: 'violet',
+    tone: 'green',
   },
   {
     name: 'Marco Ruiz',
@@ -46,7 +46,6 @@ const applicants = [
 
 const statusClass: Record<string, string> = {
   amber: styles.statusamber,
-  violet: styles.statusviolet,
   green: styles.statusgreen,
 };
 

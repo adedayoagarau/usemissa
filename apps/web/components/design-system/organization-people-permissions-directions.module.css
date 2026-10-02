@@ -1,7 +1,7 @@
 .page {
-  --aubergine: #5a3f68;
-  --aubergine-deep: #3f2949;
-  --aubergine-soft: #f3eef5;
+  --brand-accent: #285649;
+  --accent-deep: #1d4037;
+  --accent-tint: #e3ece8;
   --lichen: #56705b;
   --lichen-soft: #edf4ee;
   --ochre: #9c6d28;
@@ -49,7 +49,7 @@
 
 .eyebrow {
   margin: 0;
-  color: var(--aubergine);
+  color: var(--brand-accent);
   font-size: 0.7rem;
   font-weight: 750;
   letter-spacing: 0.14em;
@@ -125,17 +125,17 @@
 }
 
 .directionOption:hover {
-  border-color: color-mix(in srgb, var(--aubergine) 35%, var(--line));
+  border-color: color-mix(in srgb, var(--brand-accent) 35%, var(--line));
 }
 
 .directionOption[data-selected='true'] {
-  border-color: var(--aubergine);
-  background: var(--aubergine-soft);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--aubergine) 12%, transparent);
+  border-color: var(--brand-accent);
+  background: var(--accent-tint);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-accent) 12%, transparent);
 }
 
 .directionOption > span {
-  color: var(--aubergine);
+  color: var(--brand-accent);
   font-family: var(--font-mono), monospace;
   font-size: 0.76rem;
   font-weight: 700;
@@ -155,7 +155,7 @@
 
 .directionOption > svg {
   width: 18px;
-  color: var(--aubergine);
+  color: var(--brand-accent);
 }
 
 .directionOption:focus-visible,
@@ -163,7 +163,7 @@
 .personRow:focus-visible,
 .wordmark:focus-visible,
 .topLinks a:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--aubergine) 28%, transparent);
+  outline: 3px solid color-mix(in srgb, var(--brand-accent) 28%, transparent);
   outline-offset: 2px;
 }
 
@@ -230,7 +230,7 @@
 }
 
 .topLinks a[aria-current='page'] {
-  color: var(--aubergine-deep);
+  color: var(--accent-deep);
 }
 
 .topLinks a[aria-current='page']::after {
@@ -238,7 +238,7 @@
   inset: auto 0 2px;
   height: 2px;
   border-radius: 2px;
-  background: var(--aubergine);
+  background: var(--brand-accent);
   content: '';
 }
 
@@ -256,7 +256,7 @@
 
 .roleChip svg {
   width: 16px;
-  color: var(--aubergine);
+  color: var(--brand-accent);
 }
 
 .menuButton {
@@ -336,7 +336,7 @@
 .seatCard b {
   display: block;
   margin-top: 4px;
-  color: var(--aubergine-deep);
+  color: var(--accent-deep);
   font-family: var(--font-heading), Georgia, serif;
   font-size: 1.65rem;
 }
@@ -496,8 +496,8 @@
 .personRow:hover { background: #faf8fa; }
 
 .personRow[data-selected='true'] {
-  background: var(--aubergine-soft);
-  box-shadow: inset 3px 0 0 var(--aubergine);
+  background: var(--accent-tint);
+  box-shadow: inset 3px 0 0 var(--brand-accent);
 }
 
 .personRow > svg {
@@ -513,8 +513,8 @@
 }
 
 .personIdentity [data-slot='avatar-fallback'] {
-  background: var(--aubergine-soft);
-  color: var(--aubergine-deep);
+  background: var(--accent-tint);
+  color: var(--accent-deep);
   font-weight: 700;
 }
 
@@ -535,9 +535,9 @@
 .personIdentity p > span {
   flex: 0 0 auto;
   border-radius: 999px;
-  background: var(--aubergine-soft);
+  background: var(--accent-tint);
   padding: 2px 6px;
-  color: var(--aubergine);
+  color: var(--brand-accent);
   font-size: 0.62rem;
 }
 
@@ -698,7 +698,7 @@
   font-size: 0.78rem;
 }
 
-.capabilityGrid h4 svg { width: 16px; color: var(--aubergine); }
+.capabilityGrid h4 svg { width: 16px; color: var(--brand-accent); }
 
 .capabilityGrid ul {
   display: grid;
@@ -879,8 +879,8 @@
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  background: var(--aubergine-soft);
-  color: var(--aubergine);
+  background: var(--accent-tint);
+  color: var(--brand-accent);
 }
 
 .emptyState > div svg { width: 23px; }

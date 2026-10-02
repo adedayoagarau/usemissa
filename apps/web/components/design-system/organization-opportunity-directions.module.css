@@ -950,7 +950,7 @@
 
 .imagePreview[data-extreme='true'],
 .previewMedia[data-extreme='true'] {
-  background: linear-gradient(100deg, #201826 0 12%, #d7e1e4 12% 87%, #5a3f68 87%);
+  background: linear-gradient(100deg, #171418 0 12%, #d7e1e4 12% 87%, #285649 87%);
 }
 
 .imagePreview span,

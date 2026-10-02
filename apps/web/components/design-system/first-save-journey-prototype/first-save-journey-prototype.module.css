@@ -40,7 +40,7 @@
   padding: 10px 14px;
   border-radius: 8px;
   color: white;
-  background: #4f355d;
+  background: #285649;
   transform: translateY(calc(-100% - 16px));
   transition: transform 120ms ease;
 }
@@ -56,9 +56,9 @@
   justify-content: center;
   gap: 20px;
   padding: 6px 24px;
-  border-block-end: 1px solid #ded8e0;
-  color: #4f355d;
-  background: #f1edf3;
+  border-block-end: 1px solid #e3e7e5;
+  color: #285649;
+  background: #e3ece8;
   font-size: 11px;
 }
 
@@ -116,7 +116,7 @@
   inset-inline: 10px;
   inset-block-end: 0;
   height: 2px;
-  background: #5a3f68;
+  background: #285649;
   content: "";
 }
 
@@ -192,8 +192,8 @@
   margin-block-start: 6px;
   padding: 4px 7px;
   border-radius: 4px;
-  color: #4f355d;
-  background: #f1edf3;
+  color: #285649;
+  background: #e3ece8;
   font-family: var(--font-mono), monospace;
   font-size: 10px;
 }
@@ -208,7 +208,7 @@
   padding-inline: 14px;
   border: 1px solid #cbc8c4;
   border-radius: 8px;
-  color: #4f355d;
+  color: #285649;
   background: white;
   cursor: pointer;
   font-size: 12px;
@@ -402,9 +402,9 @@
 
 .primaryButton {
   padding-inline: 17px;
-  border: 1px solid #5a3f68;
+  border: 1px solid #285649;
   color: white;
-  background: #5a3f68;
+  background: #285649;
 }
 
 .primaryButton:hover {
@@ -428,7 +428,7 @@
 .textButton {
   padding-inline: 8px;
   border: 0;
-  color: #5a3f68;
+  color: #285649;
   background: transparent;
 }
 
@@ -448,7 +448,7 @@
   width: 28px;
   height: 28px;
   margin-block-end: 22px;
-  color: #5a3f68;
+  color: #285649;
 }
 
 .journeyContent h1 {
@@ -480,7 +480,7 @@
 .privateNote svg {
   width: 16px;
   flex: 0 0 auto;
-  color: #5a3f68;
+  color: #285649;
 }
 
 .authForm {
@@ -596,7 +596,7 @@
 .nextActionPreview > svg {
   width: 21px;
   flex: 0 0 auto;
-  color: #5a3f68;
+  color: #285649;
 }
 
 .nextActionPreview span,
@@ -630,7 +630,7 @@
 
 .trackerStatus {
   margin: 10px 0 0;
-  color: #5a3f68;
+  color: #285649;
   font-size: 11px;
 }
 
@@ -675,7 +675,7 @@
   margin-block-end: 20px;
   padding: 0;
   border: 0;
-  color: #5a3f68;
+  color: #285649;
   background: transparent;
   cursor: pointer;
   font-size: 12px;

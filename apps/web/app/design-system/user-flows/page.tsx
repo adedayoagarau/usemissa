@@ -16,14 +16,14 @@ export default function UserFlowsPage() {
             ← Design System Index
           </Link>
           <span className="text-[#d4d0c9]">/</span>
-          <span className="text-sm font-semibold text-[#5a3f68]">Interactive User Flow Visualizer</span>
+          <span className="text-sm font-semibold text-[#285649]">Interactive User Flow Visualizer</span>
         </div>
         <div className="flex items-center gap-2">
           <a
             href="/flow-map.html"
             target="_blank"
             rel="noreferrer"
-            className="px-3 py-1.5 bg-[#5a3f68] text-white text-xs font-semibold rounded hover:bg-[#473050] transition-colors"
+            className="px-3 py-1.5 bg-[#285649] text-white text-xs font-semibold rounded hover:bg-[#1d4037] transition-colors"
           >
             Open Standalone Fullscreen ↗
           </a>

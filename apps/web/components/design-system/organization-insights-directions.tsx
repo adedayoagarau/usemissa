@@ -366,7 +366,7 @@ function countLabel(value: number, singular: string, plural = `${singular}s`) {
 }
 
 const chartConfig = {
-  submissions: { label: 'Submissions', color: '#5A3F68' },
+  submissions: { label: 'Submissions', color: '#285649' },
   previous: { label: 'Previous period', color: '#B7A9BE' },
 } satisfies ChartConfig
 
