@@ -8,7 +8,12 @@ export function CountBadge({
   label: string;
 }) {
   return (
-    <Badge variant="secondary" size="compact" aria-label={`${count} ${label}`}>
+    <Badge
+      variant="secondary"
+      size="compact"
+      aria-label={`${count} ${label}`}
+      className="count-badge-entrance"
+    >
       {count}
     </Badge>
   );

@@ -343,6 +343,30 @@ body {
   }
 }
 
+/* Finite attention entrance for a counter that becomes nonzero (DESIGN.md §9,
+   CountBadge `finite-entrance-when-becoming-nonzero`). One-shot, 180ms, and
+   suppressed entirely under reduced motion. */
+.count-badge-entrance {
+  animation: count-badge-entrance 180ms ease-out both;
+}
+
+@keyframes count-badge-entrance {
+  from {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .count-badge-entrance {
+    animation: none;
+  }
+}
+
 .dark {
   /* Unreachable in production: there is no dark-mode toggle, and dark mode is
      an open DESIGN.md §15 decision. Kept as a Forest-family fallback so the

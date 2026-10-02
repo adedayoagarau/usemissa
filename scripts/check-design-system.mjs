@@ -75,6 +75,26 @@ const observedStudioCounts = {
 
 const policy = JSON.parse(await fs.readFile(policyPath, "utf8"));
 
+// Semantic `motion` values that sanction finite, state-bound animation under
+// DESIGN.md §9. Their implementation file is the single place permitted to
+// hold that motion. `never` and `none` remain fully static.
+const sanctionedMotion = new Set([
+  "finite-entrance-when-becoming-nonzero",
+  "active-transition-only",
+  "popover-transition-only",
+  "indicator-while-confirmed-active",
+  "finite-state-transition",
+]);
+
+// Reverse map: implementation path -> declared motion value. Implementation
+// paths are stored relative to webRoot, matching the `relative` in the scan.
+const implementationMotion = new Map();
+for (const entry of Object.values(policy.semanticComponents)) {
+  if (entry.implementation) {
+    implementationMotion.set(entry.implementation, entry.motion ?? "never");
+  }
+}
+
 async function walk(directory) {
   const entries = await fs.readdir(directory, { withFileTypes: true });
   const files = [];
@@ -202,7 +222,8 @@ for (const file of sourceFiles) {
         record(file, "raw-color", line);
       if (/font-family\s*:/.test(line)) record(file, "raw-font-family", line);
       if (/animate-\[|animation\s*:(?!\s*none)/.test(line))
-        record(file, "unapproved-motion", line);
+        if (!sanctionedMotion.has(implementationMotion.get(relative)))
+          record(file, "unapproved-motion", line);
     }
   }
 }
