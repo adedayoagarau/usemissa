@@ -11,6 +11,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import type { MagazineRankingRow } from "@missa/radar-adapters";
 import type { RankingGenre } from "@missa/radar-engine";
 import { Button } from "@/components/ui/button";
+import { FilterChip } from "@/components/missa/filter-chip";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -254,11 +255,10 @@ export function MagazineRankingsInteractive({
             ["simultaneous", "Allows simultaneous submissions"],
             ["fast", "Responds within 60 days"],
           ].map(([id, label]) => (
-            <Button
+            <FilterChip
               key={id}
-              variant={filters.includes(id) ? "default" : "outline"}
-              aria-pressed={filters.includes(id)}
-              onClick={() => {
+              selected={filters.includes(id)}
+              onToggle={() => {
                 setFilters((old) =>
                   old.includes(id) ? old.filter((f) => f !== id) : [...old, id],
                 );
@@ -266,7 +266,7 @@ export function MagazineRankingsInteractive({
               }}
             >
               {label}
-            </Button>
+            </FilterChip>
           ))}
         </div>
       )}

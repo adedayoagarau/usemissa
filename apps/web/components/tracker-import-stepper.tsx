@@ -21,6 +21,7 @@ import type { ImportField, ImportMapping, ImportRowDecision, ImportTaxonomyDecis
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { StatusBadge } from '@/components/missa/semantic-badges';
 import { Button } from '@/components/ui/button';
+import { FilterChip } from '@/components/missa/filter-chip';
 
 import styles from './tracker-import-stepper.module.css';
 
@@ -342,7 +343,7 @@ export function TrackerImportStepper() {
 
         {step === 'review' && preview ? <section className={styles.panel} aria-labelledby="review-heading">
           <header><p>Step 3</p><h2 id="review-heading">Review every row</h2><span aria-live="polite">{preview.rows.length} rows · {unresolvedRows.length} still need your decision. Nothing has changed.</span></header>
-          <div className={styles.filters} role="group" aria-label="Filter import rows">{([['all', 'All'], ['review', 'Needs review'], ['exact', 'Exact source match'], ['manual', 'Manual entry'], ['skip', 'Skip']] as const).map(([value, label]) => <Button key={value} type="button" variant={filter === value ? 'secondary' : 'ghost'} aria-pressed={filter === value} onClick={() => setFilter(value)}>{label}</Button>)}</div>
+          <div className={styles.filters} role="group" aria-label="Filter import rows">{([['all', 'All'], ['review', 'Needs review'], ['exact', 'Exact source match'], ['manual', 'Manual entry'], ['skip', 'Skip']] as const).map(([value, label]) => <FilterChip key={value} selected={filter === value} onToggle={() => setFilter(value)}>{label}</FilterChip>)}</div>
           <div className={styles.rows}>{visibleRows.map((row) => {
             const decision = decisions[String(row.rowNumber)];
             const action = decisionAction(decision);

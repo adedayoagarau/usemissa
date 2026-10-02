@@ -22,6 +22,7 @@ import {
   publicWebUrl,
 } from "@/lib/creator-portfolio-draft";
 import { Button, buttonVariants } from "./ui/button";
+import { FilterChip } from "./missa/filter-chip";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import {
@@ -1490,14 +1491,13 @@ export function CreatorPortfolioStudio({
               ) : formats.length > 1 ? (
                 <nav className={styles.tabs} aria-label="Work formats">
                   {["All work", ...formats].map((f) => (
-                    <Button
-                      variant="ghost"
+                    <FilterChip
                       key={f}
-                      aria-pressed={filter === f}
-                      onClick={() => setFilter(f)}
+                      selected={filter === f}
+                      onToggle={() => setFilter(f)}
                     >
                       {f}
-                    </Button>
+                    </FilterChip>
                   ))}
                 </nav>
               ) : null}

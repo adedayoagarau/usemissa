@@ -785,7 +785,8 @@
     "FilterChip": {
       "base": "Button",
       "studioReferences": ["badge-12", "badge-13"],
-      "motion": "never"
+      "motion": "never",
+      "implementation": "components/missa/filter-chip.tsx"
     },
     "SaveAction": {
       "base": "Button",

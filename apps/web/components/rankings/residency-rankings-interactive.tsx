@@ -22,6 +22,7 @@ import type {
 } from "@missa/radar-adapters";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { Button } from "@/components/ui/button";
+import { FilterChip } from "@/components/missa/filter-chip";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -511,14 +512,13 @@ export function ResidencyRankingsInteractive({
 
       <div className="flex flex-wrap gap-3" aria-label="Residency preferences">
         {FUNDING_FILTERS.map(({ id, label }) => (
-          <Button
+          <FilterChip
             key={id}
-            variant={filters.includes(id) ? "default" : "outline"}
-            aria-pressed={filters.includes(id)}
-            onClick={() => toggleFilter(id)}
+            selected={filters.includes(id)}
+            onToggle={() => toggleFilter(id)}
           >
             {label}
-          </Button>
+          </FilterChip>
         ))}
       </div>
 
