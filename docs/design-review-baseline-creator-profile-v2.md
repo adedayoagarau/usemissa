@@ -4,6 +4,35 @@ The `Define 4` / `Test 4` run for the `missa-design-review` skill. It records th
 no-skill baseline and the skill-based review on one real screen, so the skill's
 value is measurable rather than assumed.
 
+## Correction (2026-10-01)
+
+The four findings below were written from fold-cropped screenshots before the
+component source was read. On re-inspection against
+`apps/web/components/creator-portfolio-archive.tsx` and a full-page render at
+390px, two of them do not hold and are withdrawn:
+
+- **Hero "clipping" (withdrawn).** The mobile hero is a deliberate stacked
+  layout: `.heroCopy` (name, bio) above a 260px `.heroImage` with the caption
+  `From An atlas of small departures` positioned at its bottom. Nothing is
+  clipped; the caption is present. Verified: `scrollWidth === clientWidth ===
+  390` (no horizontal overflow).
+- **Competing primaries (withdrawn).** `Let's talk` is
+  `variant="outline"` (bordered, transparent), not a filled primary. The only
+  filled primary on the surface is the site shell's `Create account`. No
+  competing-primary defect exists within the portfolio.
+- **Icon-only down-arrow (downgraded to note).** It already carries
+  `aria-label="Explore selected work"` and targets `#archive-work`. The
+  accessible name is present; only a visible label is absent, which is an
+  accepted scroll-cue pattern.
+- **Two contact affordances (downgraded to note).** `About & contact` anchors to
+  `#archive-about`; `Let's talk` opens the contact dialog. They are distinct
+  functions, not a redundancy defect.
+
+Net: the screen is in good shape. The skill's value here was negative — it
+over-reported on partial evidence — which is the point of a recorded baseline:
+the correction is itself a finding about the review process (read the source
+and capture full-page before asserting a "clipping" defect).
+
 ## Setup under test
 
 - Screen: `http://127.0.0.1:3100/design-system/creator-profile-v2`
