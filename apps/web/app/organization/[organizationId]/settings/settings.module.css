@@ -22,7 +22,7 @@
 .sectionNav small { overflow: hidden; font-size: .61rem; font-weight: 450; text-overflow: ellipsis; white-space: nowrap; }
 .sectionNav i { width: 7px; height: 7px; border-radius: 999px; background: var(--muted-foreground); }
 .sectionNav i[data-state='current'] { background: var(--success, #56705b); }
-.sectionNav i[data-state='partial'] { background: var(--warning, #9c6d28); }
+.sectionNav i[data-state='partial'] { background: var(--warning, var(--ochre)); }
 .panel { min-width: 0; }
 .panelHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; min-height: 104px; padding: 24px 28px 20px; border-bottom: 1px solid var(--border); }
 .panelHeader h2, .panelHeader p { margin: 0; }
@@ -35,9 +35,9 @@
 .factList dt, .commercialGrid dt, .structureFacts dt { color: var(--muted-foreground); font-size: .67rem; }
 .factList dd, .commercialGrid dd, .structureFacts dd { margin: 0; overflow-wrap: anywhere; font-size: .76rem; font-weight: 700; }
 .factList p { grid-column: 2; margin: 0; color: var(--muted-foreground); font-size: .65rem; line-height: 1.45; }
-.withheld, .attention { display: flex; gap: 11px; margin-top: 24px; padding: 15px; border: 1px solid color-mix(in srgb, var(--warning, #9c6d28) 28%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--warning, #9c6d28) 4%, white); }
-.attention { border-color: color-mix(in srgb, var(--warning, #9c6d28) 38%, var(--border)); }
-.attention svg { color: var(--warning, #9c6d28); }
+.withheld, .attention { display: flex; gap: 11px; margin-top: 24px; padding: 15px; border: 1px solid color-mix(in srgb, var(--warning, var(--ochre)) 28%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--warning, var(--ochre)) 4%, white); }
+.attention { border-color: color-mix(in srgb, var(--warning, var(--ochre)) 38%, var(--border)); }
+.attention svg { color: var(--warning, var(--ochre)); }
 .structureFacts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 9px; }
 .structureFacts div { padding: 15px; border-right: 1px solid var(--border); }
 .structureFacts div:last-child { border-right: 0; }

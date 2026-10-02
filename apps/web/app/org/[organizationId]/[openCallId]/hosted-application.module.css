@@ -23,7 +23,7 @@
 .guidelines h2, .guidelines p { margin: 0; }
 .guidelines h2 { margin-top: 5px; font-family: var(--font-heading), Georgia, serif; font-size: 1.8rem; font-weight: 550; }
 .guidelines > p { max-width: 760px; color: var(--muted-foreground); font-size: .78rem; line-height: 1.75; white-space: pre-wrap; }
-.publicLimit, .compatibility { display: flex; gap: 11px; margin-top: 28px; padding: 15px; border: 1px solid color-mix(in srgb, var(--warning, #9c6d28) 28%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--warning, #9c6d28) 4%, white); }
+.publicLimit, .compatibility { display: flex; gap: 11px; margin-top: 28px; padding: 15px; border: 1px solid color-mix(in srgb, var(--warning, var(--ochre)) 28%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--warning, var(--ochre)) 4%, white); }
 .publicLimit svg, .compatibility svg { flex: 0 0 auto; width: 18px; color: var(--primary); }
 .publicLimit strong, .publicLimit p, .compatibility strong, .compatibility p { margin: 0; }
 .publicLimit strong, .compatibility strong { font-size: .74rem; }
