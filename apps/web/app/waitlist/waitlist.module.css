@@ -163,12 +163,12 @@
   overflow: visible;
 }
 
-.architectureLines { fill: none; stroke: #c7bec6; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.15; vector-effect: non-scaling-stroke; }
-.cloudFoam { fill: rgba(248, 246, 249, .92); stroke: #ded7df; stroke-width: 1.05; transform-origin: 558px 86px; vector-effect: non-scaling-stroke; }
+.architectureLines { fill: none; stroke: var(--ink-3); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.15; vector-effect: non-scaling-stroke; }
+.cloudFoam { fill: rgba(255, 255, 255, .92); stroke: var(--border); stroke-width: 1.05; transform-origin: 558px 86px; vector-effect: non-scaling-stroke; }
 .flyingBird { transform-origin: center; }
-.birdMark { fill: none; stroke: #695371; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.1; vector-effect: non-scaling-stroke; }
-.doorFrame { fill: none; stroke: #b7adb6; stroke-width: 1.65; vector-effect: non-scaling-stroke; }
-.thresholdLine { fill: none; stroke: #c7bec6; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.birdMark { fill: none; stroke: var(--brand-accent); stroke-linecap: round; stroke-linejoin: round; stroke-width: 2.1; vector-effect: non-scaling-stroke; }
+.doorFrame { fill: none; stroke: var(--ink-3); stroke-width: 1.65; vector-effect: non-scaling-stroke; }
+.thresholdLine { fill: none; stroke: var(--ink-3); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
 .hingeLine { fill: none; stroke: color-mix(in srgb, var(--accent-deep) 62%, white); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .svgDoor { filter: drop-shadow(4px 5px 5px rgba(71, 48, 80, .14)); transform-box: fill-box; transform-origin: 0 50%; will-change: transform; }
 .lightSpill { transform-box: fill-box; transform-origin: 50% 0; }
@@ -251,7 +251,7 @@
   align-items: stretch;
   gap: 4px;
   padding: 4px;
-  border: 1px solid var(--border-strong, #d4d3d0);
+  border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--background);
   box-shadow: 0 8px 24px rgba(28, 24, 21, .045);
@@ -275,7 +275,7 @@
 
 .confirmation { display: flex; align-items: center; gap: 12px; min-height: 64px; border: 1px solid color-mix(in srgb, var(--green) 36%, var(--border)); border-radius: 12px; padding: 12px 16px; background: var(--lichen-tint); color: var(--green); }
 .confirmation p { margin: 0; font-size: 14px; line-height: 1.45; }
-.confirmationIcon { display: grid; flex: 0 0 auto; width: 28px; height: 28px; place-items: center; border-radius: 50%; background: var(--green); color: #fff; }
+.confirmationIcon { display: grid; flex: 0 0 auto; width: 28px; height: 28px; place-items: center; border-radius: 50%; background: var(--green); color: var(--background); }
 
 @media (max-width: 900px) {
   .header, .hero, .footer { width: min(100% - 40px, 680px); }
@@ -293,13 +293,13 @@
   .hero { align-content: start; align-items: start; gap: 0; padding: 12px 0 32px; }
   .artwork { width: 100%; height: 254px; justify-items: center; margin: 0 0 8px; overflow: hidden; }
   .architecture { width: 272px; transform: translateY(-4px); }
-  .architectureLines { stroke: #b8adb7; stroke-width: 1.3; }
+  .architectureLines { stroke: var(--ink-3); stroke-width: 1.3; }
   .cloudFoam { animation: mobileCloudDrift 9s ease-in-out infinite; }
   .flyingBird { animation-duration: 7.6s; animation-timing-function: cubic-bezier(.4, 0, .2, 1); animation-iteration-count: infinite; }
   .birdOne { animation-name: mobileBirdOneFlight; animation-delay: -1s; }
   .birdTwo { animation-name: mobileBirdTwoFlight; animation-delay: -3.6s; }
   .birdThree { animation-name: mobileBirdThreeFlight; animation-delay: -6.1s; }
-  .birdMark { stroke: #594061; stroke-width: 2.45; transform-box: fill-box; transform-origin: center; animation: mobileWingBeat .58s ease-in-out infinite; }
+  .birdMark { stroke: var(--accent-deep); stroke-width: 2.45; transform-box: fill-box; transform-origin: center; animation: mobileWingBeat .58s ease-in-out infinite; }
   .birdTwo .birdMark { animation-duration: .66s; }
   .birdThree .birdMark { animation-duration: .72s; }
   .svgDoor { animation: mobileDoorCycle 5.8s cubic-bezier(.4, 0, .2, 1) infinite; }

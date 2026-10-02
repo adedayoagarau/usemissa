@@ -47,7 +47,7 @@
 .ledger li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 9px; min-height: 66px; align-items: center; padding: 8px; border-radius: 8px; color: var(--muted-foreground); }
 .ledger li[data-state='current'] { background: color-mix(in srgb, var(--primary) 7%, white); color: var(--accent-deep); }
 .ledger li[data-state='blocked'] { color: var(--foreground); }
-.ledger li[data-state='available'] > span { border-color: color-mix(in srgb, var(--success, #56705b) 45%, var(--border)); color: var(--success, #56705b); }
+.ledger li[data-state='available'] > span { border-color: color-mix(in srgb, var(--success) 45%, var(--border)); color: var(--success); }
 .ledger svg { width: 13px; }
 .ledger strong, .ledger small { display: block; }
 .ledger strong { font-size: .7rem; }

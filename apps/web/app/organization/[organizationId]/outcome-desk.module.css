@@ -26,7 +26,7 @@
 .queue p { margin-top: 5px; color: var(--muted-foreground); font-size: .7rem; line-height: 1.45; }
 .queueMeta { display: flex; flex-wrap: wrap; gap: 6px 10px; margin-top: 8px; }
 .state { display: inline-flex; width: fit-content; min-height: 25px; align-items: center; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-deep); font-size: .62rem; font-weight: 750; }
-.attention { color: var(--warning-foreground, #7a4c00); font-size: .65rem; }
+.attention { color: var(--ochre-deep); font-size: .65rem; }
 .open { display: inline-flex; min-height: 44px; align-items: center; gap: 5px; color: var(--primary); font-size: .7rem; font-weight: 750; }
 .open svg { width: 14px; }
 .dossier { position: sticky; top: 84px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--background); }

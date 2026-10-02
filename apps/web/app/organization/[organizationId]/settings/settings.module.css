@@ -20,7 +20,7 @@
 .sectionNav strong { font-size: .73rem; }
 .sectionNav small { overflow: hidden; font-size: .61rem; font-weight: 450; text-overflow: ellipsis; white-space: nowrap; }
 .sectionNav i { width: 7px; height: 7px; border-radius: 999px; background: var(--muted-foreground); }
-.sectionNav i[data-state='current'] { background: var(--success, #56705b); }
+.sectionNav i[data-state='current'] { background: var(--success); }
 .sectionNav i[data-state='partial'] { background: var(--warning, var(--ochre)); }
 .panel { min-width: 0; }
 .panelHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; min-height: 104px; padding: 24px 28px 20px; border-bottom: 1px solid var(--border); }

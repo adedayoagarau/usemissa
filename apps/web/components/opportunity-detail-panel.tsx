@@ -49,7 +49,7 @@ export function OpportunityDetailPanel({ opportunity, userId, closeHref, mobileO
     <aside className={`flex min-h-0 flex-col border-l border-border bg-card lg:sticky lg:top-0 lg:h-[calc(100vh-3.75rem)] lg:overflow-y-auto ${styles.detailPanel} ${mobileOpen ? styles.detailPanelMobileOpen : ''}`}>
       <div className="flex items-start justify-between gap-4 p-6 pb-4">
         <div className="flex min-w-0 gap-4">
-          <div className="relative flex h-28 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-[linear-gradient(145deg,#eaf0f2,#c6d6dc)] text-center text-[10px] font-semibold tracking-[0.14em] text-slate-700 uppercase">
+          <div className="relative flex h-28 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-[linear-gradient(145deg,var(--mineral-blue-tint),var(--mineral-blue))] text-center text-[10px] font-semibold tracking-[0.14em] text-muted-foreground uppercase">
             {opportunity.identityAssetUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={opportunity.identityAssetUrl} alt={cleanTitleOrLabel(opportunity.identityAssetAlt) || sourceName} className="h-full w-full object-cover" />

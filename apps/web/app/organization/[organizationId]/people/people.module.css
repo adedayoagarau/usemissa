@@ -59,7 +59,7 @@
 .accessList strong, .accessList span, .assignmentList strong, .assignmentList span { display: block; }
 .accessList strong, .assignmentList strong { font-size: .72rem; }
 .accessList span, .assignmentList span { margin-top: 4px; color: var(--muted-foreground); font-size: .64rem; line-height: 1.4; }
-.unavailable { margin-top: 17px; padding: 14px; border: 1px solid color-mix(in srgb, var(--warning, #a8762a) 30%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--warning, #a8762a) 4%, white); }
+.unavailable { margin-top: 17px; padding: 14px; border: 1px solid color-mix(in srgb, var(--warning) 30%, var(--border)); border-radius: 9px; background: color-mix(in srgb, var(--warning) 4%, white); }
 .unavailable strong, .unavailable p { margin: 0; }
 .unavailable strong { font-size: .73rem; }
 .unavailable p { margin-top: 5px; color: var(--muted-foreground); font-size: .67rem; line-height: 1.5; }

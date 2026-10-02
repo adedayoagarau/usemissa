@@ -110,7 +110,7 @@ export function OpportunityCard({
       )}
     >
       <Link href={detailHref} className="flex gap-3 p-3.5 pb-2.5">
-        <div className="relative flex h-28 w-[4.75rem] shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border bg-[linear-gradient(145deg,#e9f0f2,#b9cdd2)] text-center text-[10px] font-semibold tracking-[0.12em] text-slate-700 uppercase">
+        <div className="relative flex h-28 w-[4.75rem] shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border bg-[linear-gradient(145deg,var(--mineral-blue-tint),var(--mineral-blue))] text-center text-[10px] font-semibold tracking-[0.12em] text-muted-foreground uppercase">
           {item.identityAssetUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

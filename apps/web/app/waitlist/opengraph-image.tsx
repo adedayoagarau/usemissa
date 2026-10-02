@@ -16,7 +16,7 @@ export default function OpenGraphImage() {
           display: 'flex',
           flexDirection: 'column',
           background: '#ffffff',
-          color: '#17131d',
+          color: '#171418',
           padding: '72px 80px',
         }}
       >
@@ -39,11 +39,11 @@ export default function OpenGraphImage() {
             <div>There is a god in every door.</div>
             <div>And a door, and a door, and a door.</div>
           </div>
-          <div style={{ marginTop: '28px', color: '#695371', fontFamily: 'Arial, sans-serif', fontSize: '25px' }}>
+          <div style={{ marginTop: '28px', color: '#285649', fontFamily: 'Arial, sans-serif', fontSize: '25px' }}>
             A clearer way to find and follow creative opportunities.
           </div>
         </div>
-        <div style={{ display: 'flex', marginTop: 'auto', color: '#695371', fontFamily: 'Arial, sans-serif', fontSize: '22px' }}>
+        <div style={{ display: 'flex', marginTop: 'auto', color: '#285649', fontFamily: 'Arial, sans-serif', fontSize: '22px' }}>
           usemissa.com/waitlist
         </div>
       </div>
