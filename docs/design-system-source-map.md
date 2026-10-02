@@ -72,6 +72,15 @@ Do not define a raw value where one of these aliases applies. The `--text-sm`,
 `--text-lg`, and `--text-*--line-height` names are Tailwind v4 generated font
 utilities, not part of this alias layer.
 
+### Component-level aliases (action, radius, information)
+
+| Alias | Maps to | Role |
+| --- | --- | --- |
+| `--radius-full` | `9999px` | pills, avatars, compact status pills |
+| `--primary-subtle` | `var(--accent-tint)` | Forest tint hover/saved surface |
+| `--primary-hover` | `var(--accent-deep)` | deep Forest hover |
+| `--info` | `var(--information)` | mineral-blue informational callout |
+
 ### Known naming inconsistency
 
 `DESIGN.md` §3 calls the warning role "Amber", but its own badge table and the

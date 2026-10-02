@@ -117,6 +117,16 @@
   --surface-secondary: var(--surface-subtle);
   --border-subtle: var(--border);
   --border-strong: var(--input);
+
+  /*
+   * Component-level aliases that feature code referenced without a definition.
+   * --radius-full governs pills/avatars/badges (DESIGN.md §7); the others are
+   * the action/information role under its feature-side name.
+   */
+  --radius-full: 9999px;
+  --primary-subtle: var(--accent-tint);
+  --primary-hover: var(--accent-deep);
+  --info: var(--information);
 }
 
 /*
