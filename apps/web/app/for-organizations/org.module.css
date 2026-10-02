@@ -1,21 +1,17 @@
 .main { width: min(100% - 48px, 1240px); margin: 0 auto; }
 .eyebrow { margin: 0; color: var(--accent-deep); font-size: .7rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
 .hero { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(280px, .7fr); gap: clamp(42px, 8vw, 110px); align-items: center; padding: clamp(64px, 9vw, 124px) 0 70px; }
-.hero h1 { max-width: 850px; margin: 14px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(3.2rem, 6.5vw, 6.4rem); font-weight: 520; letter-spacing: -.06em; line-height: .96; }
 .hero > div > p:not(.eyebrow) { max-width: 720px; margin: 24px 0 0; color: var(--muted-foreground); font-size: 1.05rem; line-height: 1.65; }
 .hero aside { padding: 26px; border: 1px solid color-mix(in srgb, var(--primary) 25%, var(--border)); border-radius: 14px; background: color-mix(in srgb, var(--primary) 4%, white); }
-.hero aside strong { font-family: var(--font-heading), Georgia, serif; font-size: 1.5rem; }
 .hero aside p { margin: 10px 0 0; color: var(--muted-foreground); font-size: .86rem; line-height: 1.6; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px 22px; margin-top: 28px; }
 .actions a, .finalCta a { display: inline-flex; min-height: 46px; align-items: center; gap: 8px; color: var(--primary); font-size: .86rem; font-weight: 700; text-decoration: none; }
 .actions .primary { padding: 0 17px; border-radius: 9px; background: var(--primary); color: var(--primary-foreground); }
 .actions svg, .finalCta svg { width: 16px; height: 16px; }
 .workflow, .capabilities { padding: 56px 0; border-top: 1px solid var(--border); }
-.workflow h2, .capabilities h2, .finalCta h2 { margin: 8px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(2rem, 4vw, 3.6rem); font-weight: 540; letter-spacing: -.04em; }
 .workflow ol { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: 30px 0 0; padding: 0; list-style: none; }
 .workflow li { min-height: 210px; padding: 20px; border: 1px solid var(--border); border-right: 0; }
 .workflow li:last-child { border-right: 1px solid var(--border); }
-.workflow li > span { color: var(--accent-deep); font-family: var(--font-mono), monospace; font-size: .7rem; }
 .workflow li div { margin-top: 50px; }
 .workflow li strong { font-size: .9rem; }
 .workflow li p { color: var(--muted-foreground); font-size: .78rem; line-height: 1.5; }

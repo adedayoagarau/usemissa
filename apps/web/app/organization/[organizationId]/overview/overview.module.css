@@ -1,7 +1,6 @@
 .main { width: min(100% - 48px, 1240px); margin: 0 auto; padding: 38px 0 80px; }
 .eyebrow { margin: 0; color: var(--accent-deep); font-size: .68rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
 .header { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; padding-bottom: 26px; border-bottom: 1px solid var(--border); }
-.header h1 { margin: 7px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(2.6rem, 5vw, 4.6rem); font-weight: 520; letter-spacing: -.05em; line-height: 1; }
 .header span { display: block; max-width: 650px; margin-top: 12px; color: var(--muted-foreground); font-size: .88rem; line-height: 1.55; }
 .roleBadge { flex: 0 0 auto; padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-deep); font-size: .72rem; font-weight: 750; }
 .next { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 16px; align-items: center; margin-top: 24px; padding: 20px; border: 1px solid color-mix(in srgb, var(--primary) 26%, var(--border)); border-radius: 12px; background: color-mix(in srgb, var(--primary) 4%, white); }
@@ -13,7 +12,6 @@
 .next svg:last-child, .attention a svg, .opportunities a svg { width: 15px; }
 .layout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr); gap: 32px; margin-top: 42px; }
 .sectionHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 15px; }
-.sectionHeader h2 { margin: 6px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: 1.8rem; font-weight: 560; }
 .sectionHeader > span { color: var(--muted-foreground); font-size: .74rem; }
 .attention { border-top: 1px solid var(--border); }
 .attention article { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 14px; align-items: center; min-height: 86px; padding: 12px 0; border-bottom: 1px solid var(--border); }
@@ -26,7 +24,6 @@
 .summary { display: grid; gap: 10px; }
 .summary a, .summary div { display: flex; min-height: 62px; align-items: center; justify-content: space-between; gap: 14px; padding: 0 14px; border: 1px solid var(--border); border-radius: 9px; color: var(--foreground); text-decoration: none; }
 .summary span { color: var(--muted-foreground); font-size: .76rem; }
-.summary strong { font-family: var(--font-mono), monospace; font-size: 1rem; }
 .opportunities { margin-top: 48px; }
 .opportunityList { border-top: 1px solid var(--border); }
 .opportunityList article { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(150px, .6fr) auto auto; gap: 18px; align-items: center; min-height: 72px; border-bottom: 1px solid var(--border); }

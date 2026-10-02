@@ -1,7 +1,6 @@
 .main { width: min(100% - 48px, 1320px); margin: 0 auto; padding: 38px 0 80px; }
 .eyebrow { margin: 0; color: var(--accent-deep); font-size: .66rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
 .header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
-.header h1 { margin: 7px 0 0; font-family: var(--font-heading), Georgia, serif; font-size: clamp(2.6rem, 5vw, 4.6rem); font-weight: 520; letter-spacing: -.05em; line-height: 1; }
 .header p:last-child { max-width: 700px; margin: 12px 0 0; color: var(--muted-foreground); font-size: .86rem; line-height: 1.55; }
 .role { flex: 0 0 auto; padding: 7px 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--accent-deep); font-size: .7rem; font-weight: 700; }
 .filters { display: grid; grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(135px, .45fr)) auto; gap: 9px; align-items: end; margin-top: 24px; padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--muted) 52%, white); }
@@ -33,7 +32,6 @@
 .dossier { position: sticky; top: 84px; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--background); }
 .dossierHeader { padding: 20px; border-bottom: 1px solid var(--border); }
 .dossierHeader h2, .dossierHeader p { margin: 0; }
-.dossierHeader h2 { margin-top: 6px; font-family: var(--font-heading), Georgia, serif; font-size: 1.55rem; font-weight: 560; }
 .dossierHeader p:last-child { margin-top: 7px; color: var(--muted-foreground); font-size: .74rem; }
 .dossierBody { padding: 20px; }
 .factList { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; margin: 0; }
@@ -55,11 +53,9 @@
 .full { color: var(--primary); }
 .empty, .limited { margin-top: 28px; padding: 28px; border: 1px solid var(--border); border-radius: 12px; }
 .empty h2, .limited h2, .empty p, .limited p { margin: 0; }
-.empty h2, .limited h2 { font-family: var(--font-heading), Georgia, serif; font-size: 1.55rem; }
 .empty p, .limited p { max-width: 680px; margin-top: 9px; color: var(--muted-foreground); font-size: .8rem; line-height: 1.6; }
 .limited dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0 0; }
 .limited dl div { padding: 15px; border: 1px solid var(--border); border-radius: 9px; }
 .limited dt { color: var(--muted-foreground); font-size: .65rem; }
-.limited dd { margin: 7px 0 0; font-family: var(--font-mono), monospace; font-size: 1.1rem; }
 @media (max-width: 1120px) { .filters { grid-template-columns: repeat(3, 1fr); } .filters label:first-child { grid-column: 1 / -1; } .layout { grid-template-columns: 1fr; } .dossier { position: static; } }
 @media (max-width: 680px) { .main { width: min(100% - 32px, 620px); padding-top: 26px; } .header { display: grid; } .role { width: fit-content; } .filters { grid-template-columns: 1fr; } .filters label:first-child { grid-column: auto; } .filterActions { width: 100%; } .apply, .clear { flex: 1; } .summary { align-items: flex-start; flex-direction: column; gap: 5px; } .row { grid-template-columns: 24px minmax(0, 1fr); } .open { grid-column: 2; justify-self: start; } .desktopOpen, .dossier { display: none; } .mobileOpen { display: inline-flex; } .lanes { grid-template-columns: 1fr 1fr; } .factList { grid-template-columns: 1fr; } .dossierFooter { align-items: flex-start; flex-direction: column; } .limited dl { grid-template-columns: 1fr; } }

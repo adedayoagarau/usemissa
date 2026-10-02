@@ -1,6 +1,5 @@
 .product { width: min(100%, 1240px); margin: 0 auto; color: var(--foreground); }
 .header { display: flex; align-items: end; justify-content: space-between; gap: 32px; padding: 24px 0 32px; border-bottom: 1px solid var(--border); }
-.header h1 { margin: 0; font-family: var(--font-heading), sans-serif; font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 600; letter-spacing: -.045em; line-height: .95; }
 .header p { max-width: 620px; margin: 16px 0 0; color: var(--muted-foreground); font-size: 1rem; line-height: 1.55; }
 .header > a, .actions a, .empty a { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; gap: 8px; border-radius: 8px; font-weight: 650; }
 .header > a { padding: 0 16px; background: var(--primary); color: var(--primary-foreground); }
@@ -23,7 +22,6 @@
 .mark svg { width: 18px; height: 18px; }
 .cardTop > span:last-child { color: var(--muted-foreground); font-size: .75rem; font-weight: 650; }
 .cardTop > span[data-urgent='true'] { color: var(--ochre-deep); }
-.card h3 { margin: 0; font-family: var(--font-heading), sans-serif; font-size: 1.5rem; letter-spacing: -.025em; line-height: 1.15; overflow-wrap: anywhere; }
 .card > div > p { margin: 7px 0 0; color: var(--muted-foreground); }
 .card dl { display: grid; margin: 0; border-top: 1px solid var(--border); grid-template-columns: 1fr 1fr; }
 .card dl > div { padding: 16px 12px 0 0; }

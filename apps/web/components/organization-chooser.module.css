@@ -2,7 +2,6 @@
 .chooser > header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; padding: 26px 0 18px; }
 .chooser > header p, .chooser > header h2 { margin: 0; }
 .chooser > header p { color: var(--accent-deep); font-size: .68rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
-.chooser > header h2 { margin-top: 5px; font-family: var(--font-heading), Georgia, serif; font-size: 2rem; font-weight: 560; }
 .chooser > header > span { color: var(--muted-foreground); font-size: .78rem; }
 .search { display: flex; align-items: center; gap: 8px; width: min(100%, 460px); min-height: 46px; margin-bottom: 16px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; }
 .search svg { width: 16px; }

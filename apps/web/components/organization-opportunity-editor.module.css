@@ -5,7 +5,6 @@
 .panel { max-width: 780px; padding: 32px 0; }
 .panelHeader p, .panelHeader h2 { margin: 0; }
 .panelHeader p:first-child { color: var(--accent-deep); font-size: .66rem; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
-.panelHeader h2 { margin-top: 7px; font-family: var(--font-heading), Georgia, serif; font-size: 2rem; font-weight: 560; }
 .panelHeader p:last-child { margin-top: 8px; color: var(--muted-foreground); font-size: .8rem; line-height: 1.55; }
 .form { display: grid; gap: 22px; margin-top: 26px; }
 .form > div { display: grid; gap: 7px; }

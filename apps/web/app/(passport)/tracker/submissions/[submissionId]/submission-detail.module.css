@@ -45,7 +45,6 @@
 .header h1 {
   max-width: 760px;
   margin: 0;
-  font-family: var(--font-heading), serif;
   font-size: clamp(2.2rem, 5vw, 4rem);
   font-weight: 520;
   letter-spacing: -0.045em;
@@ -107,7 +106,6 @@
 
 .receipt h2 {
   margin: 0;
-  font-family: var(--font-heading), serif;
   font-size: 1.45rem;
   font-weight: 560;
 }
@@ -139,7 +137,6 @@
 .receipt dd {
   overflow-wrap: anywhere;
   margin: 0;
-  font-family: var(--font-mono), monospace;
 }
 
 .layout {
@@ -176,14 +173,12 @@
 .section h2,
 .sideColumn h2 {
   margin: 0;
-  font-family: var(--font-heading), serif;
   font-size: 1.28rem;
   font-weight: 560;
 }
 
 .section header > span {
   color: var(--muted-foreground);
-  font-family: var(--font-mono), monospace;
   font-size: 0.72rem;
 }
 
@@ -350,7 +345,6 @@
 .history time {
   margin-top: 4px;
   color: var(--muted-foreground);
-  font-family: var(--font-mono), monospace;
   font-size: 0.68rem;
 }
 
