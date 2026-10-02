@@ -52,6 +52,26 @@ Subtle variants are derived, not independent tokens: `--surface-subtle`,
 `--information-subtle`, `--destructive-subtle`. Quote them by name; do not
 re-declare a raw value where a subtle token exists.
 
+### Semantic alias layer (editorial surfaces)
+
+These alias names appear across editorial cards, the calendar, the tracker
+importer, and the homepage workspace. They are declared in `globals.css`
+`:root` and each maps to one canonical token:
+
+| Alias | Maps to | Role |
+| --- | --- | --- |
+| `--text-primary` | `var(--foreground)` | primary ink text |
+| `--text-secondary` | `var(--muted-foreground)` | secondary text (`--ink-2`) |
+| `--text-muted` | `var(--ink-3)` | tertiary/disabled text |
+| `--surface-primary` | `var(--surface)` | white card surface |
+| `--surface-secondary` | `var(--surface-subtle)` | subtle neutral surface |
+| `--border-subtle` | `var(--border)` | hairline border |
+| `--border-strong` | `var(--input)` | stronger border |
+
+Do not define a raw value where one of these aliases applies. The `--text-sm`,
+`--text-lg`, and `--text-*--line-height` names are Tailwind v4 generated font
+utilities, not part of this alias layer.
+
 ### Known naming inconsistency
 
 `DESIGN.md` §3 calls the warning role "Amber", but its own badge table and the

@@ -103,6 +103,20 @@
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--brand-accent);
+
+  /*
+   * Semantic alias layer for editorial surfaces. These names are referenced
+   * across editorial cards, the calendar, the tracker importer, and the
+   * homepage workspace but were never declared in this file, so var() fell
+   * back to unset/currentColor. Each maps to an existing canonical token.
+   */
+  --text-primary: var(--foreground);
+  --text-secondary: var(--muted-foreground);
+  --text-muted: var(--ink-3);
+  --surface-primary: var(--surface);
+  --surface-secondary: var(--surface-subtle);
+  --border-subtle: var(--border);
+  --border-strong: var(--input);
 }
 
 /*
