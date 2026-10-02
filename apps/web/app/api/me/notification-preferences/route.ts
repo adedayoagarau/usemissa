@@ -1,10 +1,38 @@
 import { NextResponse } from "next/server";
-import { creatorCommandEnvelope, CreatorConflictError, CreatorIdempotencyConflictError } from "@missa/radar-adapters";
+import { creatorCommandEnvelope, CreatorConflictError, CreatorIdempotencyConflictError, quietHoursMinute } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
 import { getCreatorNotificationRepository } from "@/lib/creatorRepositories";
 
 const headers = { "Cache-Control": "private, no-store" };
 const json = (value: unknown, status = 200) => NextResponse.json(value, { status, headers });
+
+function validTimezone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Timing fields are optional so an older client keeps the saved values. An
+ * explicit null or empty string clears them.
+ */
+function timingInput(body: Record<string, unknown>, current: { timezone?: string | null; quietHoursStart?: string | null; quietHoursEnd?: string | null }) {
+  const pick = (key: "timezone" | "quietHoursStart" | "quietHoursEnd") =>
+    key in body ? (body[key] === "" ? null : body[key]) : (current[key] ?? null);
+  const timezone = pick("timezone"), quietHoursStart = pick("quietHoursStart"), quietHoursEnd = pick("quietHoursEnd");
+  if (timezone !== null && (typeof timezone !== "string" || !validTimezone(timezone))) return { error: "Choose a valid timezone." };
+  if ((quietHoursStart === null) !== (quietHoursEnd === null)) return { error: "Set both a start and an end for quiet hours, or neither." };
+  if (quietHoursStart !== null) {
+    const start = quietHoursMinute(typeof quietHoursStart === "string" ? quietHoursStart : null);
+    const end = quietHoursMinute(typeof quietHoursEnd === "string" ? quietHoursEnd : null);
+    if (start === null || end === null) return { error: "Choose quiet hours as times of day." };
+    if (start === end) return { error: "Quiet hours need different start and end times." };
+  }
+  return { timezone: timezone as string | null, quietHoursStart: quietHoursStart as string | null, quietHoursEnd: quietHoursEnd as string | null };
+}
 
 function isRevisionConflict(error: unknown): error is CreatorConflictError {
   if (error instanceof CreatorConflictError) return true;
@@ -39,10 +67,13 @@ export async function PUT(request: Request) {
   if (!Number.isSafeInteger(expectedRevision) || Number(expectedRevision) < 1 || !key || key.length > 200) {
     return json({ error: "Refresh these settings before saving again." }, 400);
   }
+  const timing = timingInput(body, await repository.preferences(session.account.id));
+  if ("error" in timing) return json({ error: timing.error }, 400);
   const input = {
     inAppEnabled: Boolean(body.inAppEnabled), emailEnabled: Boolean(body.emailEnabled),
     digestCadence: cadence as "off" | "daily" | "weekly", savedSearchEnabled: Boolean(body.savedSearchEnabled),
     followEnabled: Boolean(body.followEnabled), reminderEnabled: Boolean(body.reminderEnabled), smsEnabled: false, smsPhone: null,
+    ...timing,
   };
   try {
     const receipt = await repository.update(

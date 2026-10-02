@@ -11,6 +11,7 @@ import {
   numeric,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -2720,6 +2721,9 @@ export const notificationPreferences = pgTable(
     smsPhone: text("sms_phone"),
     smsPhoneVerifiedAt: timestamp("sms_phone_verified_at", { withTimezone: true }),
     smsProviderState: text("sms_provider_state").notNull().default("unavailable"),
+    timezone: text("timezone"),
+    quietHoursStartMinute: smallint("quiet_hours_start_minute"),
+    quietHoursEndMinute: smallint("quiet_hours_end_minute"),
     providerState: text("provider_state").notNull().default("unavailable"),
     revision: revision(),
     createdAt,
@@ -2737,6 +2741,10 @@ export const notificationPreferences = pgTable(
     check(
       "notification_preferences_sms_provider_check",
       sql`${table.smsProviderState} in ('unavailable', 'available')`,
+    ),
+    check(
+      "notification_preferences_quiet_hours_check",
+      sql`(${table.quietHoursStartMinute} is null and ${table.quietHoursEndMinute} is null) or (${table.quietHoursStartMinute} between 0 and 1439 and ${table.quietHoursEndMinute} between 0 and 1439 and ${table.quietHoursStartMinute} <> ${table.quietHoursEndMinute})`,
     ),
     check(
       "notification_preferences_revision_check",
