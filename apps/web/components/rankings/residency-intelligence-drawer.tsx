@@ -1,451 +1,463 @@
 "use client";
 
 import * as React from "react";
-import {
-  Sparkles,
-  ExternalLink,
-  DollarSign,
-  Clock,
-  Award,
-  Users,
-  Building,
-  Check,
-} from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import type {
+  ResidencyRankingRow,
+  ResidencyReviewRow,
+} from "@missa/radar-adapters";
+import type { ResidencyPillarKey } from "@missa/radar-engine";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { BetaBadge } from "@/components/ui/beta-badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
-import type {
-  ResidencyFullIntelligenceProfile,
-  ResidencyReviewRow,
-} from "@missa/radar-adapters";
-import { cn } from "@/lib/utils";
+import {
+  NOT_RECORDED,
+  applicationFeeLabel,
+  costLabel,
+  factStatusLabel,
+  mealsLabel,
+  ratingLabel,
+  selectionLabel,
+  sourceHost,
+  stipendLabel,
+  studioLabel,
+} from "@/lib/residencyFacts";
+// Values come from the ranking module itself: the package root also exports Node-only code.
+import { RESIDENCY_PILLAR_MAX } from "@missa/radar-engine/dist/src/ranking/residencyRankingEngine.js";
+
+type Detail = ResidencyRankingRow & { reviews: ResidencyReviewRow[] };
+
+interface Fact {
+  label: string;
+  value: string;
+  source: string | null;
+}
+
+interface Pillar {
+  key: ResidencyPillarKey;
+  label: string;
+  score: number;
+  facts: Fact[];
+}
+
+function pillars(row: ResidencyRankingRow): Pillar[] {
+  const source = (key: string) => row.factSources[key]?.url ?? null;
+  const founded = row.foundingYear
+    ? `Founded ${row.foundingYear}`
+    : NOT_RECORDED;
+  return [
+    {
+      key: "funding",
+      label: "Funding",
+      score: row.fundingScore,
+      facts: [
+        { label: "Cost", value: costLabel(row), source: source("fee") },
+        {
+          label: "Stipend",
+          value: stipendLabel(row),
+          source: source("stipend"),
+        },
+      ],
+    },
+    {
+      key: "ratings",
+      label: "What residents say",
+      score: row.ratingScore,
+      facts: [
+        { label: "Rating", value: ratingLabel(row), source: source("rating") },
+      ],
+    },
+    {
+      key: "facilities",
+      label: "Room to work",
+      score: row.facilitiesScore,
+      facts: [
+        {
+          label: "Meals",
+          value: mealsLabel(row.meals),
+          source: source("meals"),
+        },
+        {
+          label: "Studio",
+          value: studioLabel(row.privateStudio),
+          source: source("studio"),
+        },
+      ],
+    },
+    {
+      key: "access",
+      label: "Standing and access",
+      score: row.accessScore,
+      facts: [
+        { label: "Years running", value: founded, source: source("founded") },
+        {
+          label: "Listed by",
+          value: row.directories.length
+            ? row.directories.join(", ")
+            : NOT_RECORDED,
+          source: null,
+        },
+        {
+          label: "Open call",
+          value: row.openCall
+            ? row.openCall.deadline
+              ? `${row.openCall.title}, closes ${new Date(`${row.openCall.deadline}T12:00:00Z`).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+              : row.openCall.title
+            : "None on record",
+          source: source("openCall"),
+        },
+      ],
+    },
+  ];
+}
+
+function points(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3">
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function SourceLink({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-0.5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+    >
+      {sourceHost(url)}
+      <ArrowUpRight className="size-3" aria-hidden="true" />
+      <span className="sr-only"> (opens in a new tab)</span>
+    </a>
+  );
+}
+
+function ScoreBreakdown({ row }: { row: ResidencyRankingRow }) {
+  return (
+    <Section title="How the score adds up">
+      <ul className="divide-y divide-border border-y border-border">
+        {pillars(row).map((pillar) => {
+          const status = row.pillarStatus[pillar.key];
+          return (
+            <li key={pillar.key} className="space-y-2 py-3">
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="text-sm font-medium text-foreground">
+                  {pillar.label}
+                </span>
+                <span className="text-sm text-foreground">
+                  <span className="font-mono tabular-nums">
+                    {points(pillar.score)}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    / {RESIDENCY_PILLAR_MAX[pillar.key]}
+                  </span>
+                </span>
+              </div>
+              <dl className="space-y-1.5">
+                {pillar.facts.map((fact) => (
+                  <FactRow key={fact.label} fact={fact} />
+                ))}
+              </dl>
+              {status !== "recorded" && (
+                <p className="text-xs text-muted-foreground">
+                  {factStatusLabel(status)}: a fact not on record scores the
+                  middle of its range.
+                </p>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-sm leading-6 text-muted-foreground">
+        {Math.round(row.coverage * 100)}% of these points rest on recorded
+        facts.
+      </p>
+    </Section>
+  );
+}
+
+/** Label on the left; the value with its source underneath, so neither is squeezed. */
+function FactRow({ fact, className }: { fact: Fact; className?: string }) {
+  return (
+    <div
+      className={`grid grid-cols-[7rem_minmax(0,1fr)] items-baseline gap-x-3 ${className ?? ""}`}
+    >
+      <dt className="text-xs text-muted-foreground">{fact.label}</dt>
+      <dd className="min-w-0 space-y-0.5">
+        <p
+          className={
+            fact.value === NOT_RECORDED
+              ? "text-sm break-words text-muted-foreground"
+              : "text-sm break-words text-foreground"
+          }
+        >
+          {fact.value}
+        </p>
+        {fact.source ? <SourceLink url={fact.source} /> : null}
+      </dd>
+    </div>
+  );
+}
+
+function ProgramDetails({ row }: { row: ResidencyRankingRow }) {
+  const source = (key: string) => row.factSources[key]?.url ?? null;
+  const facts: Fact[] = [
+    { label: "Location", value: row.location ?? NOT_RECORDED, source: null },
+    {
+      label: "Length",
+      value: row.residencyLength ?? NOT_RECORDED,
+      source: source("length"),
+    },
+    {
+      label: "Applying",
+      value: applicationFeeLabel(row) ?? NOT_RECORDED,
+      source: source("applicationFee"),
+    },
+    {
+      label: "Selection",
+      value: selectionLabel(row) ?? NOT_RECORDED,
+      source: source("selection"),
+    },
+    {
+      label: "Housing",
+      value: row.housing ?? NOT_RECORDED,
+      source: source("housing"),
+    },
+    {
+      label: "Wheelchair access",
+      value: row.wheelchair ?? NOT_RECORDED,
+      source: source("wheelchair"),
+    },
+  ];
+  return (
+    <Section title="The program">
+      <dl className="divide-y divide-border border-y border-border">
+        {facts.map((fact) => (
+          <FactRow key={fact.label} fact={fact} className="py-2.5" />
+        ))}
+      </dl>
+      {row.disciplines && (
+        <p className="text-sm leading-6 text-muted-foreground">
+          <span className="text-foreground">Disciplines:</span>{" "}
+          {row.disciplines}
+        </p>
+      )}
+    </Section>
+  );
+}
+
+function Reviews({ reviews }: { reviews: ResidencyReviewRow[] }) {
+  return (
+    <Section title="Residents’ reviews">
+      {reviews.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No reviews on record yet.
+        </p>
+      ) : (
+        <ul className="space-y-5">
+          {reviews.slice(0, 8).map((review) => (
+            <li key={review.id} className="space-y-1.5">
+              <p className="text-sm font-medium text-foreground">
+                {review.reviewTitle ?? "Review"}
+                {review.ratingScore != null && (
+                  <span className="ms-2 font-normal text-muted-foreground">
+                    {review.ratingScore.toFixed(1)} / 5
+                  </span>
+                )}
+              </p>
+              <p className="text-sm leading-6 text-foreground">
+                {review.reviewBody}
+              </p>
+              <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground">
+                <span>{review.authorName ?? "Anonymous"}</span>
+                {review.datePublished && (
+                  <span>{review.datePublished.slice(0, 10)}</span>
+                )}
+                {review.sourceUrl ? (
+                  <SourceLink url={review.sourceUrl} />
+                ) : (
+                  <span>{review.source}</span>
+                )}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
+  );
+}
 
 interface ResidencyIntelligenceDrawerProps {
   profileId: string;
   residencyName: string;
-  residencySlug?: string | null;
+  residencySlug: string;
+  /** The ranking row already on screen; otherwise it is fetched with the reviews. */
+  ranking?: ResidencyRankingRow;
+  /** Track, apply and review actions, shown in the footer. */
+  actions?: React.ReactNode;
   trigger?: React.ReactElement;
 }
 
 export function ResidencyIntelligenceDrawer({
   profileId,
   residencyName,
-  residencySlug: _residencySlug,
+  residencySlug,
+  ranking,
+  actions,
   trigger,
 }: ResidencyIntelligenceDrawerProps) {
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [data, setData] =
-    React.useState<ResidencyFullIntelligenceProfile | null>(null);
-  const [activeTab, setActiveTab] = React.useState<
-    "funding" | "facilities" | "cohort" | "alumni"
-  >("funding");
+  const [error, setError] = React.useState(false);
+  const [detail, setDetail] = React.useState<Detail | null>(null);
+  const [loaded, setLoaded] = React.useState(false);
 
-  const fetchIntelligence = React.useCallback(async () => {
+  const load = React.useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setError(false);
     try {
       const res = await fetch(
         `/api/rankings/residencies/${encodeURIComponent(profileId)}/intelligence`,
       );
-      if (!res.ok) {
-        throw new Error("Failed to load residency intelligence data.");
+      if (res.status === 404) {
+        setDetail(null);
+        setLoaded(true);
+        return;
       }
-      const json = (await res.json()) as ResidencyFullIntelligenceProfile;
-      setData(json);
-    } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "An unexpected error occurred while fetching residency intelligence.",
-      );
+      if (!res.ok) throw new Error("Request failed");
+      setDetail((await res.json()) as Detail);
+      setLoaded(true);
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
   }, [profileId]);
 
   React.useEffect(() => {
-    if (open && !data && !loading) {
+    if (open && !loaded && !loading && !error) {
       // The fetch callback owns loading/error state for this user-triggered disclosure.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchIntelligence();
+      void load();
     }
-  }, [open, data, loading, fetchIntelligence]);
+  }, [open, loaded, loading, error, load]);
 
-  const defaultTrigger = (
-    <Button variant="outline" size="sm">
-      <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-      <span>Intelligence</span>
-    </Button>
-  );
+  const row = ranking ?? detail ?? null;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={trigger || defaultTrigger} />
+      <SheetTrigger
+        render={
+          trigger ?? (
+            <Button variant="outline" size="sm">
+              Details
+            </Button>
+          )
+        }
+      />
       <SheetContent
         side="right"
-        surface="card"
-        className="w-full overflow-y-auto p-6 sm:max-w-xl md:max-w-2xl"
+        surface="canvas"
+        className="flex w-full flex-col overflow-y-auto p-0 sm:max-w-lg"
       >
-        <SheetHeader variant="section" className="pb-4 text-left">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-xs tracking-wider text-[var(--text-muted)] uppercase">
-                Fellowship Dossier
+        <SheetHeader variant="section" className="space-y-3 p-6">
+          {row && (
+            <div className="flex flex-wrap items-center gap-2">
+              <RankingTierBadge tier={row.prestigeTier} />
+              <span className="text-sm text-muted-foreground">
+                #{row.rankPosition} of the residency index
               </span>
-              <BetaBadge />
-              {data?.prestigeTier && (
-                <RankingTierBadge tier={data.prestigeTier} />
-              )}
             </div>
-            {data?.websiteUrl && (
-              <a
-                href={data.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-sans text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              >
-                Official Site <ExternalLink className="size-3" />
-              </a>
-            )}
-          </div>
-          <SheetTitle className="text-2xl">{residencyName}</SheetTitle>
-          <SheetDescription className="text-xs">
-            {data?.location || "Location not listed"} · A beta summary of
-            current residency records, including stipends, studios, and alumni
-            lineage. This tool is not residency-confirmed; check the official
-            site before applying.
+          )}
+          <SheetTitle className="text-xl font-semibold">
+            {residencyName}
+          </SheetTitle>
+          {row && (
+            <p className="text-sm text-foreground">
+              <span className="font-mono text-2xl tabular-nums">
+                {row.totalScore.toFixed(1)}
+              </span>
+              <span className="text-muted-foreground"> / 100</span>
+            </p>
+          )}
+          <SheetDescription>
+            What Missa has on record for this program, with the source for each
+            fact. Check the program’s own guidelines before you apply.
           </SheetDescription>
         </SheetHeader>
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <Clock className="mb-3 size-8 animate-spin text-[var(--text-muted)]" />
-            <p className="font-sans text-sm text-[var(--text-secondary)]">
-              Loading residency intelligence dossier...
-            </p>
-          </div>
-        ) : error ? (
-          <div className="py-12 text-center">
-            <p className="font-sans text-sm text-[var(--text-primary)]">
-              {error}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchIntelligence}
-              className="mt-4"
-            >
-              Retry
-            </Button>
-          </div>
-        ) : data ? (
-          <div className="space-y-6 pt-5">
-            {/* Quick Summary Highlights Banner */}
-            <div className="grid grid-cols-3 gap-2 rounded-[var(--radius-lg)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/60 p-3 text-center">
-              <div>
-                <span className="font-serif text-lg font-semibold text-[var(--text-primary)]">
-                  {data.specs.stipendAmountCents > 0
-                    ? `$${(data.specs.stipendAmountCents / 100).toLocaleString()}`
-                    : data.isFullyFunded
-                      ? "Fully Funded"
-                      : "Subsidized"}
-                </span>
-                <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase">
-                  {data.specs.stipendFrequency !== "none"
-                    ? `Stipend (${data.specs.stipendFrequency})`
-                    : "Funding Model"}
-                </p>
-              </div>
-
-              <div>
-                <span className="font-mono text-lg font-semibold text-[var(--text-primary)]">
-                  {data.specs.acceptanceRatePercent}%
-                </span>
-                <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase">
-                  Acceptance Rate
-                </p>
-              </div>
-
-              <div>
-                <span className="font-mono text-lg font-semibold text-[var(--text-primary)]">
-                  {data.specs.privateStudioSqft
-                    ? `${data.specs.privateStudioSqft} sqft`
-                    : "Private"}
-                </span>
-                <p className="text-[10px] font-medium text-[var(--text-muted)] uppercase">
-                  Studio Space
-                </p>
-              </div>
+        <div className="flex-1 space-y-8 p-6">
+          {row && <ScoreBreakdown row={row} />}
+          {row && <ProgramDetails row={row} />}
+          {loading && !loaded && (
+            <div className="space-y-3" aria-label="Loading reviews">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-16 w-full" />
             </div>
-
-            {/* Custom Tab Navigation */}
-            <div className="flex border-b border-[var(--border-subtle)]">
-              {(
-                [
-                  {
-                    id: "funding",
-                    label: "Funding & Stipends",
-                    icon: DollarSign,
-                  },
-                  {
-                    id: "facilities",
-                    label: "Studio & Facilities",
-                    icon: Building,
-                  },
-                  { id: "cohort", label: "Selectivity & Cohort", icon: Users },
-                  { id: "alumni", label: "Alumni & Reviews", icon: Award },
-                ] as const
-              ).map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      "inline-flex flex-1 items-center justify-center gap-1.5 border-b-2 py-2.5 font-sans text-xs font-medium transition",
-                      isActive
-                        ? "border-[var(--text-primary)] font-semibold text-[var(--text-primary)]"
-                        : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]",
-                    )}
-                  >
-                    <Icon className="size-3.5" />
-                    <span className="hidden sm:inline">{tab.label}</span>
-                  </button>
-                );
-              })}
+          )}
+          {error && (
+            <div className="space-y-3" role="alert">
+              <p className="text-sm text-destructive">
+                Reviews could not load.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => void load()}>
+                Try again
+              </Button>
             </div>
+          )}
+          {loaded && <Reviews reviews={detail?.reviews ?? []} />}
+          {loaded && !row && (
+            <p className="text-sm text-muted-foreground">
+              This program is not in the residency index yet: no directory
+              describes it in enough detail to compare.
+            </p>
+          )}
+        </div>
 
-            {/* Tab 1: Funding & Stipends */}
-            {activeTab === "funding" && (
-              <div className="space-y-4">
-                <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4">
-                  <h4 className="font-sans text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
-                    Stipends, Grants & Financial Aid
-                  </h4>
-
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-                      <span className="text-[var(--text-secondary)]">
-                        Living Stipend:
-                      </span>
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {data.specs.stipendAmountCents > 0
-                          ? `$${(data.specs.stipendAmountCents / 100).toLocaleString()} (${data.specs.stipendFrequency})`
-                          : "No cash stipend (Residency is cost-free)"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-                      <span className="text-[var(--text-secondary)]">
-                        Travel Grant / Reimbursement:
-                      </span>
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {data.specs.travelGrantCents > 0
-                          ? `Up to $${(data.specs.travelGrantCents / 100).toLocaleString()}`
-                          : "Self-funded travel"}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
-                      <span className="text-[var(--text-secondary)]">
-                        Meal Plan:
-                      </span>
-                      <span className="font-medium text-[var(--text-primary)] capitalize">
-                        {data.specs.mealPlanKind.replace(/_/g, " ")}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--text-secondary)]">
-                        Application Fee:
-                      </span>
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {data.specs.applicationFeeCents > 0
-                          ? `$${(data.specs.applicationFeeCents / 100).toFixed(0)}`
-                          : "Free to apply"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {data.specs.feeWaiverPolicy && (
-                  <div className="rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/40 p-3.5 text-xs">
-                    <span className="font-semibold text-[var(--text-primary)]">
-                      Fee Waiver Policy:
-                    </span>
-                    <p className="mt-1 text-[var(--text-secondary)]">
-                      {data.specs.feeWaiverPolicy}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Tab 2: Studio & Facilities */}
-            {activeTab === "facilities" && (
-              <div className="space-y-4">
-                <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4">
-                  <h4 className="font-sans text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
-                    Studio Amenities & Equipment
-                  </h4>
-
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {data.specs.studioAmenities.map((amenity: string) => (
-                      <span
-                        key={amenity}
-                        className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)]"
-                      >
-                        <Check className="size-3 text-[var(--text-primary)]" />
-                        {amenity.replace(/_/g, " ")}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="space-y-2 border-t border-[var(--border-subtle)] pt-3 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--text-secondary)]">
-                        Living Quarters:
-                      </span>
-                      <span className="font-medium text-[var(--text-primary)] capitalize">
-                        {data.specs.livingArrangement.replace(/_/g, " ")}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--text-secondary)]">
-                        ADA Accessible:
-                      </span>
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {data.specs.adaAccessible
-                          ? "Yes (ADA Compliant)"
-                          : "Historic Site Limitations"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--text-secondary)]">
-                        Family / Partner Friendly:
-                      </span>
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {data.specs.familyPartnerFriendly
-                          ? "Partners / Children welcome"
-                          : "Solo residency only"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 3: Selectivity & Cohort */}
-            {activeTab === "cohort" && (
-              <div className="space-y-4">
-                <div className="space-y-3 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4">
-                  <h4 className="font-sans text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
-                    Admissions Selectivity & Cohort Structure
-                  </h4>
-
-                  <div className="grid grid-cols-2 gap-3 pt-1">
-                    <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/50 p-3 text-center">
-                      <span className="font-mono text-xl font-semibold text-[var(--text-primary)]">
-                        {data.specs.cohortSize} Fellows
-                      </span>
-                      <p className="mt-0.5 text-[10px] font-medium text-[var(--text-muted)] uppercase">
-                        Cohort Size per Session
-                      </p>
-                    </div>
-
-                    <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/50 p-3 text-center">
-                      <span className="font-mono text-xl font-semibold text-[var(--text-primary)]">
-                        {data.specs.typicalDurationWeeks} Weeks
-                      </span>
-                      <p className="mt-0.5 text-[10px] font-medium text-[var(--text-muted)] uppercase">
-                        Typical Session Length
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="pt-2 text-xs text-[var(--text-muted)]">
-                    Approximately{" "}
-                    {data.specs.annualApplicantVolume.toLocaleString()} artists
-                    and writers apply annually for fellowship slots across
-                    seasonal cycles.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 4: Alumni & community reviews */}
-            {activeTab === "alumni" && (
-              <div className="space-y-4">
-                {data.specs.notableAlumni.length > 0 && (
-                  <div className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4">
-                    <h4 className="font-sans text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
-                      Notable Alumni & Major Honors
-                    </h4>
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {data.specs.notableAlumni.map((alum: string) => (
-                        <span
-                          key={alum}
-                          className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)] px-2 py-0.5 text-xs font-medium text-[var(--text-primary)]"
-                        >
-                          {alum}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Community Reviews */}
-                <div className="space-y-3">
-                  <h4 className="font-sans text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
-                    Community reviews ({data.reviews.length})
-                  </h4>
-
-                  {data.reviews.length === 0 ? (
-                    <p className="text-xs text-[var(--text-muted)] italic">
-                      No community reviews submitted yet for this program.
-                    </p>
-                  ) : (
-                    data.reviews.map((rev: ResidencyReviewRow) => (
-                      <div
-                        key={rev.id}
-                        className="space-y-2 rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--surface-primary)] p-4 text-xs shadow-sm"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-[var(--text-primary)]">
-                            {rev.reviewTitle || "Fellow Experience"}
-                          </span>
-                          {rev.ratingScore && (
-                            <span className="flex items-center gap-1 font-mono text-xs font-medium text-[var(--text-primary)]">
-                              ★ {rev.ratingScore.toFixed(1)}
-                            </span>
-                          )}
-                        </div>
-                        <p className="leading-relaxed text-[var(--text-secondary)]">
-                          &ldquo;{rev.reviewBody}&rdquo;
-                        </p>
-                        <div className="flex items-center justify-between border-t border-[var(--border-subtle)] pt-1 text-[11px] text-[var(--text-muted)]">
-                          <span>{rev.authorName || "Anonymous Resident"}</span>
-                          <span>{rev.datePublished || "Date not listed"}</span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : null}
+        <div className="flex flex-wrap gap-3 border-t border-border p-6">
+          {actions}
+          <Button
+            variant="ghost"
+            nativeButton={false}
+            render={
+              <Link
+                href={`/residency/${encodeURIComponent(residencySlug || profileId)}`}
+              />
+            }
+          >
+            Program profile
+          </Button>
+          <Button
+            variant="ghost"
+            nativeButton={false}
+            render={<Link href="/rankings/methodology" />}
+          >
+            How scores work
+          </Button>
+        </div>
       </SheetContent>
     </Sheet>
   );

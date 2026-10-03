@@ -675,8 +675,9 @@ export {
   type ResidencyRankingPage,
   type SubmitResidencyReviewInput,
   type SubmitResidencyReviewResult,
-  type ResidencyIntelligenceSpecs,
-  type ResidencyFullIntelligenceProfile,
+  type ResidencyAmount,
+  residencyRow,
+  MISSA_REVIEWS_SOURCE_URL,
 } from "./ranking/residencyRankingRepository.js";
 
 export {
@@ -748,3 +749,5 @@ export {
   type SiteTrafficData,
   type TrafficSummary,
 } from "./siteObservability.js";
+export * from "./ranking/residency/acaDirectory.js";
+export * from "./ranking/residency/recompute.js";

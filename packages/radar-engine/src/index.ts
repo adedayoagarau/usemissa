@@ -265,4 +265,5 @@ export {
 } from './search/opportunitySearchEngine.js';
 
 export * from './ranking/magazineRankingEngine.js';
+export * from './ranking/residencyRankingEngine.js';
 
