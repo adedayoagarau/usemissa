@@ -9,6 +9,7 @@ import { CreatorRecommendationRepository } from "@/lib/creator-recommendations";
 import { listGoals } from "@/lib/goal-engine";
 import {
   buildCreatorHome,
+  greetingFor,
   type HomeApplication,
   type HomeGoal,
   type HomeOpening,
@@ -47,6 +48,7 @@ export default async function HomePage() {
               opportunityId: item.id,
               title: item.title,
               reason: item.reasons[0]?.label ?? "Matches what you follow",
+              goalFit: item.reasons.some((reason) => reason.kind === "goal"),
             })),
           )
           .catch(() => [])
@@ -62,6 +64,8 @@ export default async function HomePage() {
         : null,
     })),
     reminders: reminders.map<HomeReminder>((reminder) => ({
+      id: reminder.id,
+      revision: reminder.revision,
       opportunityId: reminder.opportunityId,
       kind: reminder.kind,
       dueAt: reminder.dueAt ? new Date(reminder.dueAt).toISOString() : null,
@@ -75,21 +79,40 @@ export default async function HomePage() {
         target: Number(goal.target),
         progress: Number(goal.progress ?? 0),
         endsOn: String(goal.ends_on),
+        startsOn: goal.starts_on ? String(goal.starts_on) : undefined,
       })),
     openings,
   });
 
-  const today = new Intl.DateTimeFormat("en", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  }).format(new Date());
+  // The creator's own timezone, from what they have already told Missa.
+  const timeZone =
+    reminders.find((reminder) => reminder.timezone)?.timezone ??
+    (goals as Array<Record<string, unknown>>)
+      .map((goal) => goal.timezone)
+      .find((value): value is string => typeof value === "string" && value.length > 0);
+  const now = new Date();
+  let today: string;
+  try {
+    today = new Intl.DateTimeFormat("en", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      timeZone,
+    }).format(now);
+  } catch {
+    today = new Intl.DateTimeFormat("en", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    }).format(now);
+  }
 
   return (
     <CreatorHome
       home={home}
       displayName={session.account.displayName}
       today={today}
+      greeting={greetingFor(now, timeZone)}
     />
   );
 }
@@ -106,6 +129,7 @@ async function legacyApplications(
       opportunityId: item.opportunityId,
       title: item.title,
       organizationName: item.organizationName ?? "",
+      type: item.type,
       myStatus: item.myStatus as MyStatus,
       deadline: item.deadline ?? null,
       deadlineKind: item.deadlineKind,

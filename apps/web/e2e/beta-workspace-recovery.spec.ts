@@ -6,7 +6,8 @@ test("a creator reaches a private workspace after signup", async ({ page }) => {
     data: {
       email: `workspace-${Date.now()}@example.com`,
       password: "correct-horse-battery",
-      displayName: "Workspace QA",
+      givenName: "Workspace",
+      familyName: "QA",
     },
   });
   expect(signup.status()).toBe(201);
@@ -14,11 +15,11 @@ test("a creator reaches a private workspace after signup", async ({ page }) => {
   await page.goto("/workspace");
   await expect(page).toHaveURL(/\/home$/);
   await expect(
-    page.getByRole("heading", { level: 1, name: "Hello, Workspace." }),
+    page.getByRole("heading", { level: 1, name: "Welcome, Workspace." }),
   ).toBeVisible();
   await expect(page.getByText("Private to you")).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Your week starts with one saved call" }),
+    page.getByRole("heading", { name: "Save a call you want to apply for" }),
   ).toBeVisible();
 });
 
