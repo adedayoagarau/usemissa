@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireOrganizationAccess, persistOrganizationMutation } from '@/lib/organizationAccess';
+import { ORGANIZATION_BILLING_UNAVAILABLE_MESSAGE, organizationBillingEnabled } from '@/lib/organizationBilling';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (!organizationBillingEnabled()) return NextResponse.json({ error: ORGANIZATION_BILLING_UNAVAILABLE_MESSAGE }, { status: 503 });
   const organization = result.access.radar.store.organizations.get(id)!;
   if (!organization.billingSubscriptionId) return NextResponse.json({ error: 'No active subscription to cancel.' }, { status: 400 });
   const secret = process.env.STRIPE_SECRET_KEY;

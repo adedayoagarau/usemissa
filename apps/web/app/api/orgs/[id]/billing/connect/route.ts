@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { persistOrganizationMutation } from '@/lib/organizationAccess';
-import { requireOrganizationAccess } from '@/lib/organizationAccess';
+import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/organizationAccess';
+import { ORGANIZATION_BILLING_UNAVAILABLE_MESSAGE, organizationBillingEnabled } from '@/lib/organizationBilling';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  if (!organizationBillingEnabled()) return NextResponse.json({ error: ORGANIZATION_BILLING_UNAVAILABLE_MESSAGE }, { status: 503 });
   const secret = process.env.STRIPE_SECRET_KEY;
   if (!secret) return NextResponse.json({ error: 'Stripe Connect is not configured' }, { status: 503 });
   const idempotencyKey = request.headers.get('Idempotency-Key')?.trim().slice(0, 240) || undefined;

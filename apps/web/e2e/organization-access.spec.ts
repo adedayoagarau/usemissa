@@ -53,6 +53,9 @@ test('organization members read only their role capabilities and cannot change s
       expect(forbiddenRead.status(), path).toBe(403);
     }
 
+    const paidCheckout = await admin.post(`/api/orgs/${organizationId}/billing`, { data: { plan: 'pro' } });
+    expect(paidCheckout.status()).toBe(503);
+
     const forbiddenTeam = await member.post(`/api/orgs/${organizationId}/teams`, {
       data: { name: 'Unauthorized team' },
     });
