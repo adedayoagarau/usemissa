@@ -17,7 +17,8 @@ export const metadata: Metadata = pageMetadata({
   path: "/rankings/methodology",
 });
 
-export const dynamic = "force-dynamic";
+/** Served from the CDN and regenerated at most every five minutes. */
+export const revalidate = 300;
 
 const getCachedIndexReport = unstable_cache(
   async () => {
@@ -79,39 +80,53 @@ export default async function RankingsMethodologyPage() {
               The residency rankings
             </h2>
             <p className="max-w-[68ch] text-base leading-7 text-muted-foreground">
-              Residencies are scored out of 100 in the same spirit: from the
-              program’s own records and from what residents report. Some
-              programs have more on record than others, so treat the score as a
-              way to compare, not as a judgement of a program.
+              Residencies are scored out of 100 from public directory listings
+              and from what residents report. The facts come from the Artist
+              Communities Alliance directory, RateMyArtistResidency, reviews
+              left on Missa and the open calls listed on Missa. Each fact links
+              to the page it came from, and the list is rebuilt from those
+              sources rather than edited by hand.
             </p>
             <ul className="max-w-[68ch] list-disc space-y-2 pl-5 text-base leading-7 text-muted-foreground marker:text-primary">
               <li>
                 <strong className="text-foreground">
                   Funding, up to 35 points.
                 </strong>{" "}
-                25 for a residency that costs nothing to attend, and 10 more for
-                a living stipend.
+                25 when there is no residency fee and 10 when the program pays
+                artists a stipend.
               </li>
               <li>
                 <strong className="text-foreground">
                   What residents say, up to 30 points.
                 </strong>{" "}
-                The ratings past residents have left on the program.
+                The average rating past residents gave. A program with only a
+                few ratings is pulled towards the middle until more come in, so
+                one glowing review cannot carry it.
               </li>
               <li>
                 <strong className="text-foreground">
                   Room to work, up to 20 points.
                 </strong>{" "}
-                10 for a private studio and 10 for meals provided.
+                10 when all meals are provided (7 for some meals) and 10 for a
+                private studio.
               </li>
               <li>
                 <strong className="text-foreground">
                   Standing and access, up to 15 points.
                 </strong>{" "}
-                How long the program has run, how many directories list it, and
-                whether it has a current open call on record.
+                The year the program was founded, whether more than one
+                directory lists it, and whether an open call is accepting
+                applications now.
               </li>
             </ul>
+            <p className="max-w-[68ch] text-base leading-7 text-muted-foreground">
+              When no source records a fact, it scores the middle of its range:
+              a program is neither rewarded nor punished for what we have not
+              found. Each program’s details panel shows which facts are on
+              record and what share of its score rests on them. Only programs
+              with a Missa profile are ranked, so a residency missing from the
+              list may simply not be in the directory yet.
+            </p>
           </section>
 
           <section className="space-y-4">

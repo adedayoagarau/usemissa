@@ -1,0 +1,12 @@
+/*
+ * Internal design-system routes and the licensed Studio catalogue under
+ * components/shadcn-studio are left out of app/globals.css, so the stylesheet
+ * every visitor downloads carries only what shipped pages use. This sheet
+ * regenerates the full utility set for these routes; it loads after the global
+ * sheet, so the cascade matches a single combined stylesheet.
+ */
+@reference "tailwindcss";
+@reference "tw-animate-css";
+@reference "shadcn/tailwind.css";
+@reference "../tailwind-theme.css";
+@import "tailwindcss/utilities" layer(utilities);

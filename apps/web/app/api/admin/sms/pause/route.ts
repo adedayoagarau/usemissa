@@ -10,7 +10,7 @@ async function guard(request: Request) {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) return { denied: NextResponse.json({ error: 'A database is required to pause texts.' }, { status: 503, headers }) };
   const pool = creatorPoolFor(connectionString);
-  if (!(await smsLedgerReady(pool))) return { denied: NextResponse.json({ error: 'Run migration 0085 before pausing texts.' }, { status: 503, headers }) };
+  if (!(await smsLedgerReady(pool))) return { denied: NextResponse.json({ error: 'Run migration 0087 before pausing texts.' }, { status: 503, headers }) };
   return { pool, connectionString, accountId: auth.session.account.id };
 }
 

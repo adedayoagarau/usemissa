@@ -92,7 +92,7 @@ on, and whether the plan includes them.
 2. Set the profile's webhook URL to
    `https://www.usemissa.com/api/sms/telnyx/webhook` (API v2).
 3. Set the environment variables below on Vercel and the creator worker.
-4. Apply migration `0086_sms_reminders.sql`.
+4. Apply migration `0087_sms_reminders.sql`.
 5. Send yourself a test text from Admin > Health, then reply STOP and START to
    check the opt-out sync.
 

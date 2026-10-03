@@ -26,7 +26,7 @@ export function getResidencyRankingRepository(): {
   listRankings: (filter?: ResidencyRankingsFilter) => Promise<ResidencyRankingPage & { dataSource: "database" | "empty" }>;
   getReviews: (profileId: string) => Promise<ResidencyReviewRow[]>;
   getDetail: (profileId: string) => Promise<(ResidencyRankingRow & { reviews: ResidencyReviewRow[] }) | null>;
-  getIntelligence: (profileId: string) => Promise<import("@missa/radar-adapters").ResidencyFullIntelligenceProfile | null>;
+  getIntelligence: (profileId: string) => Promise<(ResidencyRankingRow & { reviews: ResidencyReviewRow[] }) | null>;
   recordReview: (input: SubmitResidencyReviewInput) => Promise<SubmitResidencyReviewResult>;
 } {
   const readConnectionString = catalogueReadDatabaseUrl();

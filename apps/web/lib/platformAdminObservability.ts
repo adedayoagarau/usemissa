@@ -155,7 +155,7 @@ export async function getSmsHealth(days = 30): Promise<Loaded<SmsHealthData> & {
     const data = await readSmsHealth(creatorPoolFor(connectionString), { days });
     return data.available
       ? { configured, available: true, data }
-      : { configured, available: false, reason: 'The text message tables are not deployed yet. Run migration 0085.', data };
+      : { configured, available: false, reason: 'The text message tables are not deployed yet. Run migration 0087.', data };
   } catch (error) {
     console.error('Admin SMS read failed', error instanceof Error ? error.message : error);
     return { configured, available: false, reason: 'Text message records could not be read right now.', data: emptySms };

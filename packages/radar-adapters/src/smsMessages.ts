@@ -18,7 +18,7 @@ async function relationExists(db: Queryable, name: string): Promise<boolean> {
   return Boolean(result.rows[0]?.present);
 }
 
-/** True once migration 0085 is applied; every text path checks this first. */
+/** True once migration 0087 is applied; every text path checks this first. */
 export async function smsLedgerReady(db: Queryable): Promise<boolean> {
   return relationExists(db, "sms_messages");
 }
@@ -34,7 +34,7 @@ const utcMonthStart = "(date_trunc('month', now() at time zone 'UTC') at time zo
 
 export type SmsPauseState = Readonly<{ paused: boolean; updatedAt?: string; updatedBy?: string }>;
 
-/** Whether a platform admin has paused all texts. Not paused before migration 0085. */
+/** Whether a platform admin has paused all texts. Not paused before migration 0087. */
 export async function readSmsPause(db: Queryable): Promise<SmsPauseState> {
   if (!(await relationExists(db, "platform_settings"))) return { paused: false };
   const result = await db.query<{ value: { paused?: unknown } | null; updated_at: Date | null; updated_by: string | null }>(
