@@ -372,7 +372,7 @@ export function MagazineRankingsInteractive({
                         colSpan={preview ? 6 : 7}
                         className="pt-8 pb-2 text-start"
                       >
-                        <span className="font-heading text-lg font-medium">
+                        <span className="text-base font-semibold">
                           {rowTier.label}
                         </span>
                         {rowTier.name && (
@@ -386,14 +386,14 @@ export function MagazineRankingsInteractive({
                   <TableRow>
                     <TableCell
                       tone="muted"
-                      className="py-5 align-top font-heading text-2xl leading-none tabular-nums"
+                      className="py-5 align-top text-lg leading-tight tabular-nums"
                     >
                       {row.rankPosition}
                     </TableCell>
                     <TableCell className="py-5 align-top whitespace-normal">
                       <Link
                         href={`/journal/${encodeURIComponent(row.slug)}`}
-                        className="font-heading text-xl leading-tight font-medium text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                        className="text-lg leading-snug font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                       >
                         {row.name}
                       </Link>

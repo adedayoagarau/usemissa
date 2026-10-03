@@ -332,7 +332,7 @@ export function EditorialIntelligenceDrawer({
               </span>
             )}
           </div>
-          <SheetTitle className="font-heading text-2xl font-medium">
+          <SheetTitle className="text-xl font-semibold">
             {magazineName}
           </SheetTitle>
           {row && (
