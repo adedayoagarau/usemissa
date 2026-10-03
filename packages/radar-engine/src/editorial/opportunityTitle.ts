@@ -1,0 +1,359 @@
+/**
+ * Deterministic editorial pass for opportunity titles.
+ *
+ * The pass is intentionally rule-based (no model calls) so every change is
+ * reproducible, testable, and explainable in review evidence. It only adjusts
+ * the case of words written entirely in ASCII letters; words in any other
+ * script, or words containing combining marks, are left exactly as written.
+ */
+
+export interface OpportunityTitleOptions {
+  /** Confirmed organization name, when one is known. */
+  organizationName?: string | null;
+}
+
+export type OpportunityTitleChange =
+  | 'removed-decorations'
+  | 'collapsed-whitespace'
+  | 'fixed-punctuation-spacing'
+  | 'normalized-separators'
+  | 'trimmed-separators'
+  | 'moved-edition-code'
+  | 'recased'
+  | 'added-organization';
+
+export interface OpportunityTitleResult {
+  /** The title exactly as it was received. */
+  rawTitle: string;
+  /** The editorial title, including the organization prefix when one was added. */
+  title: string;
+  /** The cleaned title before any organization prefix. */
+  label: string;
+  changed: boolean;
+  changes: OpportunityTitleChange[];
+  /** The label is a bare section, genre, status, or year/season label. */
+  genericLabel: boolean;
+  /**
+   * The label cannot identify the opportunity on its own: it is generic, or it
+   * is a short label scraped in all-lowercase with no other identity signal.
+   */
+  weakIdentity: boolean;
+  organizationName: string | null;
+  organizationInTitle: boolean;
+  /** A weak label with no known organization. It must not publish automatically. */
+  needsOrganization: boolean;
+}
+
+export interface OpportunityRelevanceResult {
+  /** False means the record should be routed to a person before publication. */
+  relevant: boolean;
+  signals: string[];
+}
+
+const ORGANIZATION_SEPARATOR = ' — ';
+
+// Emoji (including ZWJ sequences, skin tones and presentation selectors),
+// keycaps, regional-indicator flags, and other pictographic symbols.
+const EMOJI_SEQUENCE = /(?:\p{Extended_Pictographic}|\p{Regional_Indicator})(?:[︎️\u{1F3FB}-\u{1F3FF}]|‍(?:\p{Extended_Pictographic}|\p{Regional_Indicator}))*[︎️]?/gu;
+const KEYCAP = /[0-9#*][︎️]?⃣/gu;
+// "Symbol, other" covers dingbats, stars, snowflakes, boxes and similar marks
+// that are decorative in titles. Arrows are math symbols, listed separately.
+const DECORATIVE_SYMBOL = /[\p{So}←-⇿⟰-⟿⤀-⥿⬀-⯿]/gu;
+const STRAY_PRESENTATION = /[︎️⃣]/gu;
+const DECORATIVE_RUN = /[*~]+|_{2,}|={2,}|\^{2,}/g;
+
+const SPACE = /[\s   -​  ⁠　﻿]+/gu;
+const EDGE_SEPARATORS = /^[\s\-–—|:;,·•/\\]+|[\s\-–—|:;,·•/\\]+$/gu;
+const SPACED_SEPARATOR = /\s+(?:-{1,2}|–|—|\||·|•)\s+/gu;
+
+const SMALL_WORDS = new Set([
+  'a', 'an', 'and', 'as', 'at', 'but', 'by', 'en', 'for', 'from', 'if', 'in', 'into', 'nor', 'of', 'on', 'or', 'per', 'the', 'to', 'v', 'vs', 'via', 'with',
+]);
+
+// Upper-case forms that should survive recasing. Ambiguous two-letter words
+// (US, IT, IN, OR, ME, MA, LA, OK, HI, AS, AT, ID) are deliberately excluded.
+const ACRONYMS = new Set([
+  'AAPI', 'AI', 'ASL', 'AWP', 'BA', 'BAME', 'BBC', 'BC', 'BFA', 'BIPOC', 'CBC', 'CNF', 'DC', 'DEI', 'DIY', 'DJ', 'EP', 'EU', 'FAQ', 'HBCU', 'HIV',
+  'ISBN', 'ISSN', 'LGBT', 'LGBTQ', 'LGBTQI', 'LGBTQIA', 'LP', 'MFA', 'MG', 'NEA', 'NEH', 'NFT', 'NGO', 'NPR', 'NY', 'NYC', 'NYSCA', 'PDF',
+  'PEN', 'POC', 'QTBIPOC', 'SF', 'SFF', 'SFWA', 'TV', 'UK', 'UN', 'USA', 'VR', 'AR', 'XR', 'YA',
+]);
+const SPECIAL_CASES = new Map([
+  ['phd', 'PhD'],
+  ['2slgbtq', '2SLGBTQ'],
+  ['2slgbtqia', '2SLGBTQIA'],
+]);
+const ROMAN_NUMERAL = /^(?=[ivxl])(?:xl|l?x{0,3})(?:ix|iv|v?i{0,3})$/i;
+
+const GENERIC_WORDS = new Set([
+  // forms and genres
+  'fiction', 'poetry', 'poem', 'poems', 'nonfiction', 'non', 'creative', 'cnf', 'essay', 'essays', 'flash', 'short', 'story', 'stories', 'prose',
+  'hybrid', 'translation', 'translations', 'review', 'reviews', 'art', 'arts', 'visual', 'artwork', 'artworks', 'photography', 'photo', 'photos',
+  'comics', 'comic', 'graphic', 'illustration', 'drama', 'play', 'plays', 'playwriting', 'script', 'scripts', 'screenplay', 'screenplays',
+  'screenwriting', 'music', 'film', 'films', 'video', 'audio', 'dance', 'performance', 'interview', 'interviews', 'criticism', 'book', 'books',
+  'chapbook', 'chapbooks', 'manuscript', 'manuscripts', 'novel', 'novels', 'memoir', 'writing', 'work', 'works', 'pitch', 'pitches', 'pitching',
+  // call and status words
+  'general', 'submission', 'submissions', 'submit', 'submitting', 'call', 'calls', 'open', 'opening', 'always', 'rolling', 'now', 'closed',
+  'guidelines', 'reading', 'period', 'periods', 'contest', 'contests', 'prize', 'prizes', 'competition', 'competitions', 'award', 'awards',
+  'fellowship', 'fellowships', 'grant', 'grants', 'residency', 'residencies', 'anthology', 'issue', 'issues', 'volume', 'edition', 'theme',
+  'themed', 'special', 'writers', 'writer', 'artists', 'artist', 'poets', 'poet', 'new', 'upcoming', 'current', 'all', 'genres', 'genre',
+  'other', 'misc', 'miscellaneous', 'emerging', 'opportunity', 'opportunities', 'info', 'information', 'details', 'apply', 'application',
+  'applications', 'entry', 'entries', 'deadline', 'deadlines', 'page', 'contributors', 'contribute', 'content',
+  // function words
+  'for', 'and', 'the', 'of', 'our', 'to', 'in', 'a', 'an', 'on', 'or', 'by', 'with',
+]);
+const SEASONS = new Set(['spring', 'summer', 'fall', 'autumn', 'winter', 'season', 'quarter']);
+const YEAR_TOKEN = /^(?:\d{1,4}(?:[/-]\d{1,4})?[a-z]?|q[1-4]|h[12])$/i;
+
+const ORGANIZATION_SUFFIX = /\s+(?:literary\s+magazine|lit\s+mag|magazine|journal|quarterly|review|press|books|inc|llc|ltd|foundation|organization|organisation)$/i;
+
+function collapse(value: string): string {
+  return value.replace(SPACE, ' ').trim();
+}
+
+function stripDecorations(value: string): string {
+  return value
+    .replace(KEYCAP, ' ')
+    .replace(EMOJI_SEQUENCE, ' ')
+    .replace(DECORATIVE_SYMBOL, ' ')
+    .replace(STRAY_PRESENTATION, '')
+    .replace(DECORATIVE_RUN, ' ');
+}
+
+function trimEdges(value: string): string {
+  return value.replace(EDGE_SEPARATORS, '').trim();
+}
+
+function isAsciiWord(core: string): boolean {
+  return /^[A-Za-z]+(?:['’][A-Za-z]+)*$/.test(core);
+}
+
+function capitalize(core: string): string {
+  return core.charAt(0).toUpperCase() + core.slice(1).toLowerCase();
+}
+
+function casePart(part: string, options: { first: boolean; last: boolean }): string {
+  const lower = part.toLowerCase();
+  const special = SPECIAL_CASES.get(lower);
+  if (special) return special;
+  if (!isAsciiWord(part)) return part;
+  if (ACRONYMS.has(part.toUpperCase())) return part.toUpperCase();
+  if (ROMAN_NUMERAL.test(part) && lower !== 'i') return part.toUpperCase();
+  if (lower === 'i') return 'I';
+  if (!options.first && !options.last && SMALL_WORDS.has(lower)) return lower;
+  return capitalize(part);
+}
+
+function caseToken(token: string, options: { first: boolean; last: boolean }): string {
+  const match = /^([^\p{L}\p{N}]*)(.*?)([^\p{L}\p{N}]*)$/u.exec(token);
+  if (!match) return token;
+  const [, lead = '', core = '', trail = ''] = match;
+  if (!core) return token;
+  // Words that carry digits (years, edition codes) or any non-ASCII letter or
+  // mark are left untouched so names in other scripts are never mangled.
+  if (/\d/.test(core) && !SPECIAL_CASES.has(core.toLowerCase())) return token;
+  const parts = core.split(/([-/])/);
+  if (parts.some((part, index) => index % 2 === 0 && part.length > 0 && !isAsciiWord(part) && !SPECIAL_CASES.has(part.toLowerCase()))) return token;
+  const cased = parts
+    .map((part, index) => {
+      if (index % 2 === 1 || part.length === 0) return part;
+      const isFirstPart = index === 0;
+      return casePart(part, {
+        first: options.first && isFirstPart,
+        last: options.last && index === parts.length - 1,
+      });
+    })
+    .join('');
+  return `${lead}${cased}${trail}`;
+}
+
+/** Recases a run of words to title case, restarting the small-word rule after ":" and "—". */
+function toTitleCase(value: string): string {
+  const tokens = value.split(' ');
+  let segmentStart = true;
+  return tokens
+    .map((token, index) => {
+      if (token === '—' || token === '–') {
+        segmentStart = true;
+        return token;
+      }
+      const next = tokens[index + 1];
+      const last = index === tokens.length - 1 || next === '—' || next === '–';
+      const cased = caseToken(token, { first: segmentStart, last });
+      segmentStart = /[:—]$/.test(token);
+      return cased;
+    })
+    .join(' ');
+}
+
+function hasLowercase(value: string): boolean {
+  return /\p{Ll}/u.test(value);
+}
+
+function hasUppercase(value: string): boolean {
+  return /\p{Lu}/u.test(value);
+}
+
+function isAllCaps(value: string): boolean {
+  return !hasLowercase(value) && (value.match(/[A-Z]/g)?.length ?? 0) >= 3;
+}
+
+function isAllLowercase(value: string): boolean {
+  return !hasUppercase(value) && /[a-z]/.test(value);
+}
+
+/** Recases shouting segments inside an otherwise mixed-case title ("— ALWAYS OPEN"). */
+function recaseShoutingSegments(value: string): string {
+  return value
+    .split(/(\s—\s|:\s)/)
+    .map((segment, index) => {
+      if (index % 2 === 1) return segment;
+      const words = segment.split(' ').filter((word) => /[A-Za-z]/.test(word));
+      if (words.length < 2 || !isAllCaps(segment)) return segment;
+      const allAcronyms = words.every((word) => ACRONYMS.has(word.replace(/[^A-Za-z]/g, '').toUpperCase()));
+      return allAcronyms ? segment : toTitleCase(segment);
+    })
+    .join('');
+}
+
+function wordTokens(value: string): string[] {
+  return value
+    .toLowerCase()
+    .split(/[\s\-–—/:,&()+|.!?'"’“”[\]]+/u)
+    .filter((token) => token.length > 0);
+}
+
+/** True when the label is only a section, genre, call, status, or year/season label. */
+export function isGenericOpportunityLabel(label: string): boolean {
+  const tokens = wordTokens(label);
+  if (tokens.length === 0) return true;
+  let substantive = 0;
+  for (const token of tokens) {
+    if (YEAR_TOKEN.test(token) || SEASONS.has(token) || ROMAN_NUMERAL.test(token)) {
+      substantive += 1;
+      continue;
+    }
+    if (!GENERIC_WORDS.has(token)) return false;
+    if (!['for', 'and', 'the', 'of', 'our', 'to', 'in', 'a', 'an', 'on', 'or', 'by', 'with'].includes(token)) substantive += 1;
+  }
+  return substantive > 0;
+}
+
+function fold(value: string): string {
+  return ` ${value
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()} `;
+}
+
+function cleanOrganizationName(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const cleaned = trimEdges(collapse(stripDecorations(value)));
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+/** True when the title already names the organization (ignoring case, accents, "The", and common suffixes). */
+export function titleContainsOrganization(title: string, organizationName: string): boolean {
+  const haystack = fold(title);
+  const full = fold(organizationName);
+  if (full.trim().length === 0) return false;
+  if (haystack.includes(full)) return true;
+  const withoutArticle = fold(organizationName.replace(/^the\s+/i, ''));
+  if (withoutArticle.trim().length >= 4 && haystack.includes(withoutArticle)) return true;
+  const core = fold(organizationName.replace(/^the\s+/i, '').replace(ORGANIZATION_SUFFIX, ''));
+  return core.trim().length >= 4 && haystack.includes(core);
+}
+
+export function normalizeOpportunityTitle(title: string, options: OpportunityTitleOptions = {}): OpportunityTitleResult {
+  const rawTitle = title ?? '';
+  const changes = new Set<OpportunityTitleChange>();
+  let value = rawTitle.normalize('NFC');
+
+  const decorated = stripDecorations(value);
+  if (decorated !== value) changes.add('removed-decorations');
+  value = decorated;
+
+  const collapsed = collapse(value);
+  if (collapsed !== value.trim() || /\s{2,}|[^\S ]/.test(value.trim())) changes.add('collapsed-whitespace');
+  value = collapsed;
+
+  const punctuated = value.replace(/\s+([:;,])(?=\s|$)/g, '$1');
+  if (punctuated !== value) changes.add('fixed-punctuation-spacing');
+  value = punctuated;
+
+  const separated = value.replace(SPACED_SEPARATOR, ORGANIZATION_SEPARATOR);
+  if (separated !== value) changes.add('normalized-separators');
+  value = separated;
+
+  const trimmed = trimEdges(value);
+  if (trimmed !== value) changes.add('trimmed-separators');
+  value = trimmed;
+
+  const editionCode = /^[([]([^)\]]{1,24})[)\]]\s+(.+)$/u.exec(value);
+  if (editionCode && /\d{2,4}|spring|summer|fall|autumn|winter/i.test(editionCode[1] ?? '')) {
+    value = `${editionCode[2]} (${editionCode[1]})`;
+    changes.add('moved-edition-code');
+  }
+
+  const originalAllLowercase = isAllLowercase(value);
+  let recased = value;
+  if (originalAllLowercase || isAllCaps(value)) recased = toTitleCase(value);
+  else recased = recaseShoutingSegments(value);
+  if (recased !== value) changes.add('recased');
+  value = recased;
+
+  const label = value;
+  const genericLabel = isGenericOpportunityLabel(label);
+  const letterWords = label.split(' ').filter((word) => /\p{L}/u.test(word));
+  const weakIdentity = genericLabel || (originalAllLowercase && letterWords.length <= 4);
+
+  const organizationName = cleanOrganizationName(options.organizationName);
+  const organizationInTitle = organizationName ? titleContainsOrganization(label, organizationName) : false;
+  let finalTitle = label;
+  if (organizationName && !organizationInTitle) {
+    finalTitle = label.length > 0 ? `${organizationName}${ORGANIZATION_SEPARATOR}${label}` : organizationName;
+    changes.add('added-organization');
+  }
+  if (finalTitle.length === 0) finalTitle = collapse(rawTitle);
+
+  return {
+    rawTitle,
+    title: finalTitle,
+    label,
+    changed: finalTitle !== rawTitle,
+    changes: [...changes],
+    genericLabel,
+    weakIdentity,
+    organizationName,
+    organizationInTitle,
+    needsOrganization: weakIdentity && !organizationName,
+  };
+}
+
+const CREATIVE_SIGNAL = /\b(?:arts?|artists?|artwork|creative|creators?|writers?|writing|poe(?:t|ts|try|ms?)|fiction|nonfiction|essays?|literary|literature|books?|chapbooks?|manuscripts?|novel|stories|story|music|musicians?|composers?|film|filmmakers?|cinema|video|photograph\w*|dance|dancers?|theat(?:er|re)|playwrights?|perform\w*|craft|crafts|design|designers?|culture|cultural|heritage|humanities|journalism|journalists?|translat\w*|comics?|illustrat\w*|sculpt\w*|paint\w*|residency|residencies|fellowships?|exhibitions?|galler(?:y|ies)|museum|magazine|journal|press|anthology|submissions?)\b/i;
+
+const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; requiresNoCreativeSignal?: boolean }> = [
+  { signal: 'blog-post', pattern: /\bblog\b/i },
+  { signal: 'how-to-article', pattern: /^\s*how\s+to\b/i },
+  { signal: 'newsletter-signup', pattern: /\b(?:newsletter|mailing\s+list)\b.*\b(?:sign\s*-?\s*up|subscribe|join)\b|\b(?:sign\s*-?\s*up|subscribe|join)\b.*\b(?:newsletter|mailing\s+list)\b/i },
+  { signal: 'subscription', pattern: /\bsubscri(?:be|ption)s?\b/i },
+  { signal: 'site-page', pattern: /^\s*(?:about(?:\s+us)?|contact(?:\s+us)?|masthead|staff|privacy\s+policy|terms(?:\s+of\s+(?:service|use))?|log\s*-?\s*in|sign\s*-?\s*in|shop|store|cart|donate|archive|past\s+issues)\s*$/i },
+  { signal: 'non-creative-assistance', pattern: /\b(?:housing|rent(?:al)?\s+assistance|mortgage|homebuyers?|home\s+repair|tenants?|utility|utilities|childcare|food\s+(?:assistance|shelf|bank)|small\s+business(?:es)?|workforce)\b/i, requiresNoCreativeSignal: true },
+];
+
+/**
+ * Conservative denylist for records that are probably not creative
+ * opportunities (blog posts, newsletter sign-ups, site pages, or assistance
+ * programs with no creative purpose). A match only routes to a person; it never
+ * deletes or suppresses anything.
+ */
+export function assessOpportunityRelevance(title: string): OpportunityRelevanceResult {
+  const value = collapse(stripDecorations(title ?? ''));
+  const creative = CREATIVE_SIGNAL.test(value);
+  const signals = NON_OPPORTUNITY_PATTERNS
+    .filter((entry) => entry.pattern.test(value) && (!entry.requiresNoCreativeSignal || !creative))
+    .map((entry) => entry.signal);
+  return { relevant: signals.length === 0, signals };
+}
