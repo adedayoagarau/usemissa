@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { creatorPoolFor, creatorRelationalAuthorityEnabled, PostgresCreatorAccountRepository } from '@missa/radar-adapters';
-import { hashPassword, revokeAccountSessions } from '@missa/radar-engine';
+import { hashPassword } from '@missa/radar-engine';
 import { getEngine } from '@/lib/engine';
 import { verifyPasswordResetToken } from '@/lib/password-reset-tokens';
 import { z } from 'zod';
+import { revokeAccountSessions } from '@missa/radar-engine';
 
 export const dynamic = 'force-dynamic';
 
