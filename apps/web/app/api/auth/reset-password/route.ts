@@ -5,6 +5,7 @@ import { getCreatorAccountRepository } from '@/lib/creatorRepositories';
 import { clientAddress, consumeAuthRateLimit, PASSWORD_RESET_RATE_LIMIT_POLICY } from '@/lib/auth-rate-limit';
 import { verifyPasswordResetToken } from '@/lib/password-reset-tokens';
 import { z } from 'zod';
+import { revokeAccountSessions } from '@missa/radar-engine';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Failed to update password.' }, { status: 500 });
       }
       memAccount.passwordHash = hashPassword(password);
+      revokeAccountSessions(memAccount, new Date());
     }
 
     return NextResponse.json({ ok: true, message: 'Your password has been successfully updated.' });

@@ -2,6 +2,7 @@ export * from './domain/types.js';
 export * from './ports.js';
 export * from './opportunityPorts.js';
 export * from './content/opportunityContent.js';
+export * from './editorial/opportunityTitle.js';
 export { DEFAULT_PROFILE_PRIVACY, RadarEngine, ProfilePrivacyValidationError, ProfileValidationError, type TickReport, type RadarStats, type RadarEngineOptions } from './engine.js';
 export { createStore, cloneStore, loadStore, saveStore, changesFor, versionsFor, membershipKey, type RadarStore } from './store/store.js';
 export { LibraryValidationError, LibraryConflictError, libraryForUser, libraryWorkReferences, libraryFileReferences, savedAnswerReferences, createLibraryWork, updateLibraryWork, deleteLibraryWork, createLibraryFile, deleteLibraryFile, createSavedAnswer, updateSavedAnswer, deleteSavedAnswer, type LibraryReferenceCounts } from './library/library.js';
@@ -134,6 +135,7 @@ export { RadarServer, type RadarServerOptions } from './server/server.js';
 export { AuthError, DEFAULT_SEAT_LIMITS, membershipsFor, isOrgMember, organizationSeatLimit, organizationSeatUsage, provisionOrgAccount, revokeOrgMembership } from './auth/accounts.js';
 export {
   hashPassword, verifyPassword, createSessionToken, verifySessionToken, type SessionPayload,
+  isSessionIssuedAfterRevocation, revokeAccountSessions, sessionRevocationCutoff, type SessionRevocationState,
   createFeedToken, verifyFeedToken, type FeedTokenPayload,
 } from './auth/crypto.js';
 export { buildIcsFeed } from './tracker/calendarFeed.js';

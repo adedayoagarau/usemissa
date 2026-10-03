@@ -7,7 +7,14 @@ import {
   CreatorIdempotencyConflictError,
 } from "./creatorRepository.js";
 import { canonicalPublicOpportunityPredicate } from "./canonicalOpportunityProjection.js";
-import { assertTrackingAllowance } from "./creatorEntitlements.js";
+import {
+  assertTrackingAllowance,
+  creatorEntitlements,
+  isActiveTrackedStatus,
+  lockTrackingAllowance,
+  TrackingLimitReachedError,
+  type CreatorEntitlements,
+} from "./creatorEntitlements.js";
 import { recommendationSignalId } from "./recommendation/evidenceStorage.js";
 import { DECISION_STATUS_SQL, expectedResponse, isoDate, type ExpectedResponse } from "./trackerResponseDates.js";
 import type { FirstSaveProvenance } from "./recommendation/provenance.js";
@@ -242,6 +249,13 @@ export async function updateCanonicalTrackerStatus(
         return { ...prior.result,replayed:true };
       }
     }
+    // Moving a submitted or closed call back into progress takes a place in the
+    // Free allowance, like a new save. The per-account allowance lock is taken
+    // before the row lock, in the same order as a save or an import, and the
+    // count is read under it so two moves at once cannot both pass the limit.
+    const allowance: CreatorEntitlements | undefined = isActiveTrackedStatus(status)
+      ? await lockTrackingAllowance(client, accountId)
+      : undefined;
     const current = await client.query<TrackerOpportunityRow>(
       `${TRACKER_PROJECTION}
        where t.account_id = $1 and t.opportunity_id = $2 and ${canonicalPublicOpportunityPredicate("o")}
@@ -275,6 +289,14 @@ export async function updateCanonicalTrackerStatus(
        returning id, account_id, opportunity_id, status, tracked_at, updated_at, revision, notify, work_id, submitted_at`,
       [accountId, opportunityId, status, row.revision, options.occurredOn ?? null],
     );
+    // Refuses the move when it adds a call in progress past the plan's limit;
+    // moves between in-progress statuses never change the count.
+    if (allowance && allowance.activeTrackedLimit !== null && !isActiveTrackedStatus(row.status)) {
+      const after = await creatorEntitlements(client, accountId);
+      if (after.activeTracked > allowance.activeTracked && after.activeTracked > allowance.activeTrackedLimit) {
+        throw new TrackingLimitReachedError(allowance.activeTrackedLimit, allowance.activeTracked);
+      }
+    }
     const eventId = randomUUID();
     await client.query(
       `insert into tracked_status_events

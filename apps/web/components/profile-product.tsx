@@ -397,6 +397,9 @@ export function ProfileProduct({
   const [closeAccountOpen, setCloseAccountOpen] = useState(false);
   const [closeAccountText, setCloseAccountText] = useState("");
   const [closingAccount, setClosingAccount] = useState(false);
+  const [signOutEverywhereOpen, setSignOutEverywhereOpen] = useState(false);
+  const [signingOutEverywhere, setSigningOutEverywhere] = useState(false);
+  const [signOutEverywhereError, setSignOutEverywhereError] = useState<string>();
   const [isPending, startTransition] = useTransition();
 
   const identityDirty = !same({ displayName, bio }, savedIdentity);
@@ -1309,6 +1312,17 @@ export function ProfileProduct({
               </div>
               <div className={styles.importCallout}>
                 <div>
+                  <h3>Sign out of all devices</h3>
+                  <p>
+                    Ends every Missa session, including this one. Use this after signing in on a shared device or if you think someone else has access.
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => setSignOutEverywhereOpen(true)}>
+                  Sign out everywhere
+                </Button>
+              </div>
+              <div className={styles.importCallout}>
+                <div>
                   <h3>Close your account</h3>
                   <p>
                     Your private workspace will stop accepting sign-ins. Published profiles are removed from public view; audit records are retained where required.
@@ -1342,6 +1356,44 @@ export function ProfileProduct({
             <AlertDialogCancel>Keep editing</AlertDialogCancel>
             <AlertDialogAction onClick={discardCurrent}>
               Discard and continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={signOutEverywhereOpen} onOpenChange={(open) => { if (signingOutEverywhere) return; setSignOutEverywhereOpen(open); if (!open) setSignOutEverywhereError(undefined); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out of all devices?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Every browser and device signed in to your Missa account, including this one, will need to sign in again. Your data is not changed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {signOutEverywhereError ? (
+            <p role="alert" className={styles.error}>
+              {signOutEverywhereError}
+            </p>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={signingOutEverywhere}>Stay signed in</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={signingOutEverywhere}
+              onClick={(event) => {
+                event.preventDefault();
+                setSigningOutEverywhere(true);
+                setSignOutEverywhereError(undefined);
+                fetch("/api/auth/logout-all", { method: "POST" })
+                  .then(async (response) => {
+                    const data = await response.json().catch(() => ({}));
+                    if (!response.ok) throw new Error(data.error || "Could not sign you out of all devices.");
+                    window.location.href = "/login";
+                  })
+                  .catch((reason: unknown) => {
+                    setSignOutEverywhereError(reason instanceof Error ? reason.message : "Could not sign you out of all devices.");
+                    setSigningOutEverywhere(false);
+                  });
+              }}
+            >
+              {signingOutEverywhere ? "Signing out…" : "Sign out everywhere"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -49,11 +49,32 @@ export function sitemapIndex(childPaths: string[]): string {
   ].join("\n");
 }
 
-export function xmlResponse(body: string): Response {
+export function xmlResponse(
+  body: string,
+  options: { degraded?: boolean } = {},
+): Response {
   return new Response(body, {
     headers: {
       "content-type": "application/xml; charset=utf-8",
-      "cache-control": "public, s-maxage=3600, stale-while-revalidate=86400",
+      // A sitemap built after a failed read must not be cached as if it were
+      // the real catalogue.
+      "cache-control": options.degraded
+        ? "no-store"
+        : "public, s-maxage=3600, stale-while-revalidate=86400",
     },
   });
+}
+
+/**
+ * Serve a sitemap from a database read. A failed read yields an empty but
+ * valid urlset instead of a 500, which search consoles treat as an outage.
+ */
+export async function sitemapResponse(
+  load: () => Promise<SitemapEntry[]>,
+): Promise<Response> {
+  try {
+    return xmlResponse(sitemapUrlset(await load()));
+  } catch {
+    return xmlResponse(sitemapUrlset([]), { degraded: true });
+  }
 }

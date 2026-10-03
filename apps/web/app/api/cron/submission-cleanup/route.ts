@@ -4,6 +4,10 @@ import { randomUUID } from 'node:crypto';
 import { cronAuthorization } from '@/lib/cron-auth';
 import { getRelationalWorkspace, getWorkspaceEngine, persistWorkspace, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
+// Blob deletion for up to 100 expired drafts; 300s is within Vercel's limit
+// for every plan with Fluid compute.
+export const maxDuration = 300;
+
 export async function GET(request: Request) {
   const auth = cronAuthorization(request);
   if (auth === 'unconfigured') return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 503 });

@@ -27,6 +27,13 @@ import {
   setFirstSaveGuidanceDismissed,
 } from "@/lib/firstSaveClient";
 import type { FirstSaveReceipt } from "@/lib/firstSaveTypes";
+import {
+  resolveTrackerFocus,
+  trackerStage,
+  viewShowsStatus,
+  type TrackerStage,
+  type TrackerView,
+} from "@/lib/trackerViews";
 import styles from "./tracker-product.module.css";
 
 export type TrackerProductItem = {
@@ -63,22 +70,15 @@ export type TrackerHostedSubmission = {
   paymentStatus?: string;
 };
 
-export type TrackerProductView =
-  | "active"
-  | "submissions"
-  | "calendar"
-  | "works"
-  | "types"
-  | "organizations"
-  | "archive";
+export type TrackerProductView = TrackerView;
 export type TrackerProductLayout = "actions" | "board";
 type View = TrackerProductView;
 type Layout = TrackerProductLayout;
-type Stage =
-  "Saved" | "Preparing" | "Submitted" | "In progress" | "Outcome" | "Archived";
+type Stage = TrackerStage;
 
 const primaryViews: Array<{ id: View; label: string }> = [
   { id: "active", label: "Active" },
+  { id: "saved", label: "Saved" },
   { id: "submissions", label: "Submissions" },
   { id: "calendar", label: "Calendar" },
   { id: "works", label: "Works" },
@@ -90,25 +90,7 @@ const secondaryViews: Array<{ id: View; label: string }> = [
   { id: "archive", label: "Archive" },
 ];
 
-function stageFor(status: MyStatus): Stage {
-  if (["interested", "saved"].includes(status)) return "Saved";
-  if (["preparing", "draft-started", "ready-to-submit"].includes(status))
-    return "Preparing";
-  if (["submitted", "received"].includes(status)) return "Submitted";
-  if (
-    [
-      "in-review",
-      "longlisted",
-      "shortlisted",
-      "finalist",
-      "waitlisted",
-      "revision-requested",
-    ].includes(status)
-  )
-    return "In progress";
-  if (status === "archived") return "Archived";
-  return "Outcome";
-}
+const stageFor = trackerStage;
 
 function nextStatuses(status: MyStatus): MyStatus[] {
   if (["interested", "saved"].includes(status))
@@ -208,7 +190,13 @@ function matches(item: TrackerProductItem, query: string): boolean {
     .includes(query.toLocaleLowerCase("en"));
 }
 
-function EmptyTracker() {
+function EmptyTracker({
+  receiptCount,
+  onOpenReceipts,
+}: {
+  receiptCount: number;
+  onOpenReceipts: () => void;
+}) {
   return (
     <section className={styles.empty} aria-labelledby="empty-tracker-title">
       <FolderKanban aria-hidden="true" />
@@ -221,10 +209,21 @@ function EmptyTracker() {
         <Link href="/opportunities" className={styles.primaryLink}>
           Browse Opportunities
         </Link>
-        <Link href="/import" className={styles.quietLink}>
-          <Import aria-hidden="true" />
-          Import an existing tracker
-        </Link>
+        {receiptCount ? (
+          <button
+            type="button"
+            className={styles.quietButton}
+            onClick={onOpenReceipts}
+          >
+            <FileCheck2 aria-hidden="true" />
+            View {receiptCount === 1 ? "your receipt" : `${receiptCount} receipts`}
+          </button>
+        ) : (
+          <Link href="/import" className={styles.quietLink}>
+            <Import aria-hidden="true" />
+            Import an existing tracker
+          </Link>
+        )}
       </div>
     </section>
   );
@@ -251,12 +250,18 @@ function SearchZero({
 
 function HostedSubmissionCard({
   submission,
+  selected,
 }: {
   submission: TrackerHostedSubmission;
+  selected?: boolean;
 }) {
   const outcomes = submission.works.filter((work) => work.outcome);
   return (
-    <article className={styles.submissionCard}>
+    <article
+      className={styles.submissionCard}
+      data-selected={selected || undefined}
+      tabIndex={selected ? -1 : undefined}
+    >
       <div className={styles.submissionIdentity}>
         <span>
           <FileCheck2 aria-hidden="true" />
@@ -317,6 +322,7 @@ function TrackerCard({
   busy,
   error,
   highlighted,
+  selected,
   stale,
   onStatus,
   onWork,
@@ -329,6 +335,7 @@ function TrackerCard({
   busy: boolean;
   error?: string;
   highlighted?: boolean;
+  selected?: boolean;
   stale?: boolean;
   onStatus: (item: TrackerProductItem, status: MyStatus) => void;
   onWork: (item: TrackerProductItem, workId?: string) => void;
@@ -342,7 +349,8 @@ function TrackerCard({
       className={styles.itemCard}
       data-stage={stage.toLocaleLowerCase("en").replace(" ", "-")}
       data-first-save={highlighted || undefined}
-      tabIndex={highlighted ? -1 : undefined}
+      data-selected={selected || undefined}
+      tabIndex={highlighted || selected ? -1 : undefined}
     >
       <div className={styles.itemIdentity}>
         <span className={styles.monogram} aria-hidden="true">
@@ -512,6 +520,7 @@ export function TrackerProduct({
   initialLayout,
   initialQuery,
   initialImportId,
+  initialApplicationId = "",
   allowance,
 }: {
   /** Free-plan tracking allowance; omitted for plans without a limit. */
@@ -525,12 +534,23 @@ export function TrackerProduct({
   initialLayout: Layout;
   initialQuery: string;
   initialImportId: string;
+  /** Opportunity or receipt id from a deep link; selects that record. */
+  initialApplicationId?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [items, setItems] = useState(initialItems);
-  const [view, setView] = useState<View>(initialView);
+  const [focus] = useState(() =>
+    resolveTrackerFocus({
+      view: initialView,
+      applicationId: initialApplicationId,
+      items: initialItems,
+      submissions: hostedSubmissions,
+    }),
+  );
+  const [missingApplication, setMissingApplication] = useState(focus.missing);
+  const [view, setView] = useState<View>(focus.view);
   const [layout, setLayout] = useState<Layout>(initialLayout);
   const [query, setQuery] = useState(initialQuery);
   const [busyId, setBusyId] = useState<string>();
@@ -571,6 +591,25 @@ export function TrackerProduct({
       { method: "DELETE" },
     ).catch(() => undefined);
   }, [accountId, initialItems]);
+
+  useEffect(() => {
+    if (!focus.opportunityId && !focus.submissionId) return;
+    const frame = requestAnimationFrame(() => {
+      const target = document.querySelector<HTMLElement>(
+        "[data-selected='true']",
+      );
+      if (!target) return;
+      const reduceMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      target.scrollIntoView({
+        block: "center",
+        behavior: reduceMotion ? "auto" : "smooth",
+      });
+      target.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focus]);
 
   useEffect(() => {
     if (!firstSaveReceipt || firstSaveDismissed) return;
@@ -634,7 +673,11 @@ export function TrackerProduct({
 
   function changeView(nextView: View) {
     setView(nextView);
-    updateUrl({ view: nextView === "active" ? undefined : nextView });
+    setMissingApplication(false);
+    updateUrl({
+      view: nextView === "active" ? undefined : nextView,
+      application: undefined,
+    });
     setAnnouncement(
       `${primaryViews.find((candidate) => candidate.id === nextView)?.label ?? secondaryViews.find((candidate) => candidate.id === nextView)?.label ?? "Tracker"} view opened.`,
     );
@@ -827,6 +870,7 @@ export function TrackerProduct({
         busy={busyId === item.opportunityId}
         error={errors[item.opportunityId]}
         highlighted={firstSaveReceipt?.opportunityId === item.opportunityId}
+        selected={focus.opportunityId === item.opportunityId}
         stale={staleItems.has(item.opportunityId)}
         onStatus={updateStatus}
         onWork={updateWork}
@@ -850,6 +894,9 @@ export function TrackerProduct({
       ["Submitted", "In progress", "Outcome"].includes(
         stageFor(item.myStatus),
       ) && !submissionByOpportunity.has(item.opportunityId),
+  );
+  const savedItems = visibleItems.filter((item) =>
+    viewShowsStatus("saved", item.myStatus),
   );
   const exactDates = visibleItems
     .filter((item) => item.deadline)
@@ -1053,8 +1100,38 @@ export function TrackerProduct({
         {announcement ? <Check aria-hidden="true" /> : null}
       </p>
 
+      {missingApplication ? (
+        <section
+          className={styles.importContext}
+          aria-labelledby="tracker-missing-title"
+        >
+          <div>
+            <p>Linked item</p>
+            <h2 id="tracker-missing-title">
+              This item is no longer in your Tracker
+            </h2>
+            <span>It may have been removed. Your other items are below.</span>
+          </div>
+          <button
+            type="button"
+            className={styles.quietButton}
+            onClick={() => {
+              setMissingApplication(false);
+              updateUrl({ application: undefined });
+            }}
+          >
+            Dismiss
+          </button>
+        </section>
+      ) : null}
+
       {!items.length ? (
-        <EmptyTracker />
+        view === "submissions" && hostedSubmissions.length ? null : (
+          <EmptyTracker
+            receiptCount={hostedSubmissions.length}
+            onOpenReceipts={() => changeView("submissions")}
+          />
+        )
       ) : initialImportId && !scopedItems.length ? (
         <section className={styles.empty}>
           <Import aria-hidden="true" />
@@ -1187,7 +1264,36 @@ export function TrackerProduct({
         </>
       ) : null}
 
-      {items.length && visibleItems.length && view === "submissions" ? (
+      {items.length && visibleItems.length && view === "saved" ? (
+        <section
+          className={styles.viewSection}
+          aria-labelledby="tracker-saved-title"
+        >
+          <header>
+            <div>
+              <p>Not yet submitted</p>
+              <h2 id="tracker-saved-title">Saved and preparing</h2>
+            </div>
+          </header>
+          <div className={styles.itemList}>{savedItems.map(renderItem)}</div>
+          {savedItems.length ? null : (
+            <section className={styles.empty}>
+              <FolderKanban aria-hidden="true" />
+              <h2>Nothing saved right now</h2>
+              <p>
+                Opportunities you save stay here until you record a
+                submission.
+              </p>
+              <Link href="/opportunities" className={styles.primaryLink}>
+                Browse Opportunities
+              </Link>
+            </section>
+          )}
+        </section>
+      ) : null}
+
+      {view === "submissions" &&
+      (hostedSubmissions.length || (items.length && visibleItems.length)) ? (
         <section
           className={styles.viewSection}
           aria-labelledby="tracker-submissions-title"
@@ -1211,6 +1317,7 @@ export function TrackerProduct({
               <HostedSubmissionCard
                 key={submission.id}
                 submission={submission}
+                selected={focus.submissionId === submission.id}
               />
             ))}
           </div>

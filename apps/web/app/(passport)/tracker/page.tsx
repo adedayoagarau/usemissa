@@ -15,29 +15,13 @@ import {
   type TrackerHostedSubmission,
   type TrackerProductItem,
   type TrackerProductLayout,
-  type TrackerProductView,
 } from "@/components/tracker-product";
+import { parseApplicationId, parseTrackerView } from "@/lib/trackerViews";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-const trackerViews = new Set<TrackerProductView>([
-  "active",
-  "submissions",
-  "calendar",
-  "works",
-  "types",
-  "organizations",
-  "archive",
-]);
-
 function first(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
-
-function safeView(value: string): TrackerProductView {
-  return trackerViews.has(value as TrackerProductView)
-    ? (value as TrackerProductView)
-    : "active";
 }
 
 function safeLayout(value: string): TrackerProductLayout {
@@ -167,7 +151,8 @@ export default async function TrackerPage({
       works={works}
       accountId={session.account.id}
       userId={userId}
-      initialView={safeView(first(raw.view))}
+      initialView={parseTrackerView(first(raw.view))}
+      initialApplicationId={parseApplicationId(first(raw.application))}
       initialLayout={safeLayout(first(raw.layout))}
       initialQuery={first(raw.q).slice(0, 200)}
       initialImportId={first(raw.import).slice(0, 240)}

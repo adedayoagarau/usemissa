@@ -1,4 +1,10 @@
-import { verifySessionToken, createSessionToken, membershipsFor, type Account } from '@missa/radar-engine';
+import {
+  verifySessionToken,
+  createSessionToken,
+  isSessionIssuedAfterRevocation,
+  membershipsFor,
+  type Account,
+} from '@missa/radar-engine';
 import { randomBytes } from 'node:crypto';
 import { getEngine } from './engine';
 import { getNeonSessionAccount } from './neon-auth/account';
@@ -65,16 +71,18 @@ export async function getSessionAccountFromToken(token: string | undefined): Pro
     const payload = verifySessionToken(token, sessionSecret(), new Date());
     if (!payload) return getNeonSessionAccount();
 
+    // The account read below is the only per-request lookup; the revocation
+    // check reuses it rather than consulting a session store.
     const creatorAccounts = getCreatorAccountRepository();
     if (creatorAccounts) {
       const account = await creatorAccounts.account(payload.accountId);
-      if (!account || account.active === false) return getNeonSessionAccount();
+      if (!isUsableSessionAccount(account, payload.issuedAt)) return getNeonSessionAccount();
       return { account, memberships: await creatorAccounts.memberships(account.id) };
     }
 
     const engine = await getEngine();
     const account = engine.store.accounts.get(payload.accountId);
-    if (!account || account.active === false) return getNeonSessionAccount();
+    if (!isUsableSessionAccount(account, payload.issuedAt)) return getNeonSessionAccount();
 
     return { account, memberships: membershipsFor(engine.store, account.id) };
   } catch {
@@ -83,6 +91,12 @@ export async function getSessionAccountFromToken(token: string | undefined): Pro
     // request or an information-bearing error response.
     return getNeonSessionAccount();
   }
+}
+
+/** An account accepts a session only while it is active and the session was
+ * issued at or after its revocation boundary (Account.sessionsValidAfter). */
+export function isUsableSessionAccount(account: Account | undefined, issuedAt: unknown): account is Account {
+  return Boolean(account && account.active !== false && isSessionIssuedAfterRevocation(issuedAt, account));
 }
 
 /** Issues a new signed session token for an account -- used by the (minimal,

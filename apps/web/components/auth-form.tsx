@@ -1312,7 +1312,15 @@ export function AuthForm({
               </Button>
               {mode === "signup" ? (
                 <p className={styles.finePrint}>
-                  Missa will email the reminders you set and a weekly digest
+                  By creating an account you agree to the{" "}
+                  <Link className="underline underline-offset-2" href="/terms">
+                    Terms
+                  </Link>{" "}
+                  and confirm you have read the{" "}
+                  <Link className="underline underline-offset-2" href="/privacy">
+                    Privacy notice
+                  </Link>
+                  . Missa will email the reminders you set and a weekly digest
                   of calls. Turn either off anytime in Inbox settings.
                 </p>
               ) : null}

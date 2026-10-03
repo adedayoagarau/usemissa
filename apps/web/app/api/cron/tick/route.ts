@@ -4,6 +4,10 @@ import { radarWorkerBatchSize, runRadarWorkerTick, runCoverageWorkerTick, runTax
 import { deliverPendingAlertEmails, deliverPendingDeadlineEmails } from '@/lib/alert-delivery';
 import { cronAuthorization } from '@/lib/cron-auth';
 
+// A bounded ingestion batch plus alert email, coverage and taxonomy passes.
+// 300s is within Vercel's limit for every plan with Fluid compute.
+export const maxDuration = 300;
+
 /**
  * Vercel Cron target (Story 1.5) -- replaces the manual "Check for updates"
  * button as the production ingestion trigger. The button stays functional

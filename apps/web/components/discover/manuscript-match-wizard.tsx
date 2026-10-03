@@ -21,6 +21,12 @@ import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { EditorialIntelligenceDrawer } from "@/components/rankings/editorial-intelligence-drawer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { NativeSelect } from "@/components/ui/native-select";
 import { toast } from "sonner";
@@ -123,9 +129,11 @@ export function ManuscriptMatchWizard({
         if (!res.ok) throw new Error("Match computation failed");
         const data = (await res.json()) as ManuscriptMatchResponse;
         setResults(data);
-        toast.success(`Matched across ${data.totalAnalyzed.toLocaleString()} publication profiles`);
+        if (data.status === "available" && data.matchedCount > 0) {
+          toast.success(`Compared ${data.totalAnalyzed.toLocaleString()} publications.`);
+        }
       } catch {
-        toast.error("Failed to generate manuscript strategy matches");
+        toast.error("We could not compare publications. Try again.");
       }
     });
   };
@@ -348,7 +356,37 @@ export function ManuscriptMatchWizard({
       </section>
 
       {/* 2. Results Section & Strategy Tiers */}
-      {results && (
+      {results?.status === "unavailable" && (
+        <Empty variant="bordered" role="status">
+          <EmptyHeader>
+            <EmptyTitle>Publication matching is unavailable</EmptyTitle>
+            <EmptyDescription>
+              The magazine index could not be read, so no matches are shown.
+              Try again later, or browse the directory.
+            </EmptyDescription>
+          </EmptyHeader>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link href="/directory" />}
+          >
+            Browse the directory
+          </Button>
+        </Empty>
+      )}
+
+      {results?.status === "available" && results.matchedCount === 0 && (
+        <Empty variant="bordered" role="status">
+          <EmptyHeader>
+            <EmptyTitle>No matching publications</EmptyTitle>
+            <EmptyDescription>
+              Change the word count, styles, or pay filter and compare again.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      )}
+
+      {results && results.status === "available" && results.matchedCount > 0 && (
         <section className="space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border-subtle)] pb-4">
             <div className="flex flex-wrap gap-2">
@@ -446,7 +484,9 @@ export function ManuscriptMatchWizard({
                   <div className="mt-4 grid grid-cols-3 gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/40 p-2 text-center text-xs">
                     <div>
                       <span className="font-mono font-medium text-[var(--text-primary)]">
-                        {card.telemetry.medianResponseDays}d
+                        {card.telemetry.medianResponseDays === null
+                          ? "Not recorded"
+                          : `${card.telemetry.medianResponseDays}d`}
                       </span>
                       <p className="text-[10px] text-[var(--text-muted)]">
                         Median Turnaround
@@ -454,7 +494,9 @@ export function ManuscriptMatchWizard({
                     </div>
                     <div>
                       <span className="font-mono font-medium text-[var(--text-primary)]">
-                        {card.aesthetic.unsolicitedSlushRatioPercent}%
+                        {card.aesthetic.unsolicitedSlushRatioPercent === null
+                          ? "Not recorded"
+                          : `${card.aesthetic.unsolicitedSlushRatioPercent}%`}
                       </span>
                       <p className="text-[10px] text-[var(--text-muted)]">
                         Slush Ratio
@@ -464,9 +506,11 @@ export function ManuscriptMatchWizard({
                       <span className="font-medium text-[var(--text-primary)]">
                         {card.compensation.isProRate
                           ? "Pro Rate"
-                          : card.compensation.paysContributors
-                            ? "Paid"
-                            : "Unpaid"}
+                          : card.compensation.paysContributors === null
+                            ? "Not recorded"
+                            : card.compensation.paysContributors
+                              ? "Paid"
+                              : "Unpaid"}
                       </span>
                       <p className="text-[10px] text-[var(--text-muted)]">
                         Contributor Pay
