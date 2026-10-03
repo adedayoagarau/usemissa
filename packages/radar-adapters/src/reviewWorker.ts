@@ -16,23 +16,30 @@ type ReviewDecision = "publish" | "needs-human" | "suppress" | "error";
 type ReviewJob = { id: string; opportunityId: string; inputVersion: string };
 
 /**
- * `queue` (the default) holds records that pass every automated gate for a
- * person to approve from the admin publication review queue. `auto` restores
- * direct publication by the review agent.
+ * `auto` (the default) publishes every record that passes the automated gates;
+ * the pipeline runs with no person in the loop. `queue` is an opt-in
+ * oversight mode that also holds gate-passing records for approval in the
+ * admin publication review queue.
  */
 export type ReviewPublishMode = "auto" | "queue";
 
-/** Why a record that the automated review would otherwise publish is waiting for a person. */
+/**
+ * Why a record the rubric would otherwise publish is not published.
+ * `missing-organization` keeps the record unpublished until enrichment links
+ * an organization, which re-queues the review automatically.
+ * `possible-non-opportunity` suppresses the record. `held-for-editorial-review`
+ * only occurs in the opt-in `queue` mode.
+ */
 export type ReviewHoldReason = "held-for-editorial-review" | "missing-organization" | "possible-non-opportunity";
 
 export const REVIEW_HOLD_REASON_TEXT: Record<ReviewHoldReason, string> = {
   "held-for-editorial-review": "Passed every automated gate; held for editorial approval because RADAR_REVIEW_PUBLISH_MODE is queue.",
-  "missing-organization": "The title is a generic or bare label and no organization is known, so it cannot identify the opportunity.",
-  "possible-non-opportunity": "The title looks like a blog post, newsletter, site page, or non-creative program rather than an opportunity.",
+  "missing-organization": "The title is a generic or bare label and no organization is known, so it cannot identify the opportunity. It stays unpublished until an organization is linked.",
+  "possible-non-opportunity": "The title looks like a blog post, newsletter, site page, or non-creative program rather than an opportunity, so it was suppressed.",
 };
 
 export function reviewPublishMode(value: string | undefined = process.env.RADAR_REVIEW_PUBLISH_MODE): ReviewPublishMode {
-  return value?.trim().toLowerCase() === "auto" ? "auto" : "queue";
+  return value?.trim().toLowerCase() === "queue" ? "queue" : "auto";
 }
 
 const ACTIVE_STATUSES = ["opening-soon", "open", "closing-soon", "deadline-extended"];
@@ -186,9 +193,10 @@ export type EditorialReviewResult = {
 
 /**
  * Applies the deterministic title editorial pass and the relevance denylist,
- * then the publication rubric, then the publish mode. A record publishes
- * directly only when every gate passes, the title can identify the
- * opportunity, and the mode is `auto`; otherwise it waits in human review.
+ * then the publication rubric, then the publish mode. A record publishes when
+ * every gate passes and the title can identify the opportunity. A probable
+ * non-opportunity is suppressed. Anything else stays unpublished and is
+ * reviewed again automatically when enrichment or repair changes the record.
  */
 export function editorialReview(candidate: ReviewCandidate, mode: ReviewPublishMode = reviewPublishMode()): EditorialReviewResult {
   const title = normalizeOpportunityTitle(candidate.title, { organizationName: candidate.organizationName ?? null });
@@ -198,11 +206,15 @@ export function editorialReview(candidate: ReviewCandidate, mode: ReviewPublishM
   if (title.needsOrganization) holdReasons.push("missing-organization");
   if (!relevance.relevant) holdReasons.push("possible-non-opportunity");
   let decision: EditorialReviewResult["decision"] = rubric.decision === "error" ? "needs-human" : rubric.decision;
-  if (decision === "publish") {
+  if (decision !== "suppress" && !relevance.relevant) {
+    decision = "suppress";
+  } else if (decision === "publish") {
     if (holdReasons.length === 0 && mode === "queue") holdReasons.push("held-for-editorial-review");
     if (holdReasons.length > 0) decision = "needs-human";
   }
-  const reasons = decision === "suppress" ? rubric.reasons : [...rubric.reasons, ...holdReasons.map((reason) => REVIEW_HOLD_REASON_TEXT[reason])];
+  const reasons = decision === "suppress" && rubric.decision === "suppress"
+    ? rubric.reasons
+    : [...rubric.reasons, ...holdReasons.map((reason) => REVIEW_HOLD_REASON_TEXT[reason])];
   const checks = {
     ...rubric.checks,
     publishMode: mode,

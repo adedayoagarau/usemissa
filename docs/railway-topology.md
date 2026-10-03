@@ -23,7 +23,7 @@ Gary's crawler and AI reviewer are specified in [gary-agent-harness.md](./gary-a
 | `taxonomy-discovery-worker` | Executes canonical taxonomy coverage queries against the approved search provider and stores reviewable candidates. Never publishes directly. | Every 15 minutes, 8 taxonomy queries/tick, up to 25 results/query | `MISSA_WORKER_MODE=taxonomy-discovery`, `MISSA_TAXONOMY_DISCOVERY_ENDPOINT`, `MISSA_TAXONOMY_DISCOVERY_TOKEN`, `MISSA_TAXONOMY_DISCOVERY_BATCH_SIZE`, `MISSA_TAXONOMY_DISCOVERY_RESULT_LIMIT` |
 | `radar-worker` | Canonical refresh, validation, deduplication, status changes, relational projection, and alert evaluation. New sources are immediately due; canonical sources default to a 24-hour cadence. | Every 5 minutes, 100 sources/tick (bounded max 200) | `MISSA_WORKER_MODE=radar`, `TICK_MINUTES`, `RADAR_WORKER_BATCH_SIZE`, `RADAR_DEFAULT_CHECK_INTERVAL_HOURS=24`, `RADAR_MAX_TIER=0`, `RADAR_USE_ADVISORY_LOCK=0` |
 | `enrichment-worker` | Fetches public opportunity pages for media, guideline, past-winner, and call-profile evidence. Writes provenance-tagged evidence and retries failures through a leased queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=enrichment`, `RADAR_ENRICHMENT_INTERVAL_MINUTES`, `RADAR_ENRICHMENT_BATCH_SIZE` |
-| `review-agent` | Scores reviewable opportunities, applies the deterministic title editorial pass, records explainable decisions, and hands ambiguous records to a human-review queue. With `RADAR_REVIEW_PUBLISH_MODE=queue` (the default) records that pass every gate are also held for human approval; with `auto` they publish directly. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=review`, `RADAR_REVIEW_INTERVAL_MINUTES`, `RADAR_REVIEW_BATCH_SIZE`, `RADAR_REVIEW_PUBLISH_MODE` |
+| `review-agent` | Scores reviewable opportunities, applies the deterministic title editorial pass, records explainable decisions, and publishes records that pass every gate with no person in the loop, suppresses probable non-opportunities, and leaves the rest unpublished until enrichment or repair changes them. `RADAR_REVIEW_PUBLISH_MODE=queue` is an opt-in oversight mode that holds gate-passing records for approval. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=review`, `RADAR_REVIEW_INTERVAL_MINUTES`, `RADAR_REVIEW_BATCH_SIZE`, `RADAR_REVIEW_PUBLISH_MODE` |
 | `content-worker` *(implemented; provision after migration rehearsal)* | Builds source-linked Opportunity Intelligence briefs, persists them, then reviews the exact built content for provenance, bounded claims, and completeness. Approved content is exposed; the worker never mutates canonical opportunity facts. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=content`, `RADAR_CONTENT_INTERVAL_MINUTES`, `RADAR_CONTENT_BATCH_SIZE` |
 | `ingestion-v2-worker` *(shadow; provision against staging only)* | Runs the BullMQ-backed Gary/Radar replacement benchmark. It stores source snapshots, extraction candidates, failures, and comparison artifacts in additive v2 tables; it never publishes to Radar. | Operator-triggered during benchmark | `INGESTION_V2_DATABASE_ROLE=staging`, staging `DATABASE_URL`, Upstash `REDIS_URL`, optional `DEEPSEEK_API_KEY` |
 
@@ -84,8 +84,8 @@ that passes every automated gate:
 
 | Value | Behavior |
 | --- | --- |
-| `queue` (default; also used for an unset or unknown value) | The record stays `reviewable`. Its `radar_review_jobs` row moves to `needs-human`, the decision is recorded as `needs-human` with `checks.holdReasons = ["held-for-editorial-review"]`, and an `editorial-hold` handoff is queued to `human-review`. |
-| `auto` | The record is published directly, as before. |
+| `auto` (default; also used for an unset or unknown value) | The record is published directly. No person is in the loop. |
+| `queue` (opt-in oversight) | The record stays `reviewable`. Its `radar_review_jobs` row moves to `needs-human`, the decision is recorded as `needs-human` with `checks.holdReasons = ["held-for-editorial-review"]`, and an `editorial-hold` handoff is queued to `human-review`. |
 
 Before any decision, the agent runs `normalizeOpportunityTitle` from
 `@missa/radar-engine`, with no model calls. It strips emoji and decorative symbols,
@@ -94,21 +94,28 @@ separators into ` — `, trims dangling separators, moves a leading edition code
 such as `(2026W)` to the end, and recases ALL-CAPS or all-lowercase titles to
 title case. Recasing keeps acronyms, years, and roman numerals, and it changes
 only words written in ASCII letters. When the organization is known and the
-title does not name it, the title becomes `<Organization> — <Label>`. The
+title does not name it, the title becomes `<Organization> — <Label>`. A name
+that is a scraper placeholder ("Please Wait"), a section label, a listing site
+(ArtConnect, CuratorSpace, Duotrope and similar), a bare domain, truncated
+text, or a run-together URL slug is never used as the organization.
+Short all-caps names with an unknown short word ("SXSW 2027", "DOC NYC") keep
+their capitals. The
 editorial title is written to `opportunities.title`. The raw title is kept in the
 append-only decision history at `radar_review_decisions.checks.editorial.rawTitle`.
 
-Two holds apply in both modes and never publish automatically:
+Two outcomes apply in both modes, with no person required:
 
 - `missing-organization`: the title is a bare section, genre, status, or
   year/season label, or a short all-lowercase scraped label, and no
-  organization name is known.
+  organization name is known. The record stays `reviewable` and unpublished.
+  The review job is re-queued automatically when the record changes, for
+  example when enrichment links an organization.
 - `possible-non-opportunity`: a conservative denylist matched the title (for
   example a blog post, a how-to article, a newsletter sign-up, a site page, or
-  an assistance program with no creative purpose). The record is only routed
-  to a person; nothing is deleted or suppressed.
+  an assistance program with no creative purpose). The record is suppressed
+  and the matched signals are kept in the decision history.
 
-Platform admins resolve held and ambiguous records from the **Publication
+Optionally, platform admins can resolve held records from the **Publication
 review** section of `/admin/radar` (`POST /api/admin/radar/review`). Approval
 reruns the title pass, accepts an optional corrected title, and refuses a bare
 label with no organization. It then sets `publication_state = 'published'`, completes the

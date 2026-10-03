@@ -126,12 +126,12 @@ test("durable publication schema accepts verified opening dates and open-ended i
   assert.match(publicationRubricSchema, /update of publication_state, source_id, status, open_date, deadline_date, deadline_kind/);
 });
 
-test("publish mode defaults to queue and accepts only auto as the alternative", () => {
-  assert.equal(reviewPublishMode(undefined), "queue");
-  assert.equal(reviewPublishMode(""), "queue");
-  assert.equal(reviewPublishMode("queue"), "queue");
-  assert.equal(reviewPublishMode(" AUTO "), "auto");
-  assert.equal(reviewPublishMode("publish"), "queue");
+test("publish mode defaults to auto and accepts only queue as the opt-in alternative", () => {
+  assert.equal(reviewPublishMode(undefined), "auto");
+  assert.equal(reviewPublishMode(""), "auto");
+  assert.equal(reviewPublishMode(" QUEUE "), "queue");
+  assert.equal(reviewPublishMode("auto"), "auto");
+  assert.equal(reviewPublishMode("publish"), "auto");
 });
 
 test("queue mode holds a fully evidenced call for editorial review instead of publishing", () => {
@@ -164,12 +164,20 @@ test("a generic title with a known organization is prefixed and can auto-publish
   assert.deepEqual((result.checks.editorial as Record<string, unknown>).rawTitle, "POETRY");
 });
 
-test("likely non-opportunities are routed to a person, not suppressed", () => {
+test("likely non-opportunities are suppressed with the reason recorded", () => {
   for (const title of ["How to Poet Blog", "The Minnesota Microgrant Partnership - Housing"]) {
     const result = editorialReview(candidate({ title, organizationName: "Example Arts" }), "auto");
-    assert.equal(result.decision, "needs-human", title);
+    assert.equal(result.decision, "suppress", title);
     assert.ok(result.holdReasons.includes("possible-non-opportunity"), title);
+    assert.match(result.reasons.join(" "), /suppressed/, title);
   }
+});
+
+test("a listing site's name is never used as the organization", () => {
+  const result = editorialReview(candidate({ title: "Poetry", organizationName: "ArtConnect" }), "auto");
+  assert.equal(result.decision, "needs-human");
+  assert.deepEqual(result.holdReasons, ["missing-organization"]);
+  assert.equal(result.title.title, "Poetry");
 });
 
 test("rubric suppression still wins over editorial holds", () => {

@@ -26,8 +26,8 @@ type Decision = 'approved' | 'blocked';
 
 const HOLD_REASON_LABELS: Record<PublicationHoldRow['holdReasons'][number], string> = {
   'held-for-editorial-review': 'Passed every automated check. Waiting for editorial approval.',
-  'missing-organization': 'The title is a bare label and no organization is known.',
-  'possible-non-opportunity': 'The title looks like a blog post, newsletter, site page, or non-creative program.',
+  'missing-organization': 'The title is a bare label and no organization is known. Re-reviewed automatically when one is linked.',
+  'possible-non-opportunity': 'The title looks like a blog post, newsletter, site page, or non-creative program. Suppressed automatically.',
 };
 
 function formatDate(value?: string): string | undefined {

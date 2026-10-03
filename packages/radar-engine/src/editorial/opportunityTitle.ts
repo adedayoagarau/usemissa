@@ -45,7 +45,7 @@ export interface OpportunityTitleResult {
 }
 
 export interface OpportunityRelevanceResult {
-  /** False means the record should be routed to a person before publication. */
+  /** False means the record is probably not an opportunity and should not publish. */
   relevant: boolean;
   signals: string[];
 }
@@ -277,7 +277,7 @@ const RUN_TOGETHER_PART = /(?:press|mag|review|media|films?|arts|council|foundat
  * Rejects scraper placeholders ("Please Wait"), section labels ("Calls &
  * Opportunities"), listing platforms, bare domains, truncated text, and words
  * run together from a URL ("Blackpublicmedia"). A rejected name is treated as
- * unknown, so a weak title is held for a person instead of mislabelled.
+ * unknown, so a weak title stays unpublished instead of being mislabelled.
  */
 export function isUsableOrganizationName(name: string): boolean {
   const value = collapse(name);
@@ -395,8 +395,8 @@ const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; require
 /**
  * Conservative denylist for records that are probably not creative
  * opportunities (blog posts, newsletter sign-ups, site pages, or assistance
- * programs with no creative purpose). A match only routes to a person; it never
- * deletes or suppresses anything.
+ * programs with no creative purpose). The review agent suppresses a match and
+ * records the signals; nothing is deleted.
  */
 export function assessOpportunityRelevance(title: string): OpportunityRelevanceResult {
   const value = collapse(stripDecorations(title ?? ''));
