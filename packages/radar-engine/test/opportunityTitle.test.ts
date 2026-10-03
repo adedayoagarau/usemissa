@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   assessOpportunityRelevance,
+  decodeHtmlEntities,
   isGenericOpportunityLabel,
   isUsableOrganizationName,
   normalizeOpportunityTitle,
@@ -211,4 +212,13 @@ test('falls back to the raw text when nothing but decoration remains', () => {
   assert.equal(empty.label, '');
   assert.equal(empty.needsOrganization, true);
   assert.equal(normalizeOpportunityTitle('✨✨', { organizationName: 'Rattle' }).title, 'Rattle');
+});
+
+test('decodes HTML entities left in scraped titles', () => {
+  assert.equal(decodeHtmlEntities('Writers&#8217; Residency &amp; Fellowship'), 'Writers’ Residency & Fellowship');
+  assert.equal(decodeHtmlEntities('A &amp;amp; B &#x2014; C'), 'A & B — C');
+  assert.equal(decodeHtmlEntities('AT&T Prize &unknown;'), 'AT&T Prize &unknown;');
+  const result = normalizeOpportunityTitle('Arts&nbsp;&amp;&nbsp;Letters Prize');
+  assert.equal(result.title, 'Arts & Letters Prize');
+  assert.ok(result.changes.includes('decoded-entities'));
 });

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AnalyticsProvider } from "@/components/analytics-provider";
+import { SiteBeacon } from "@/components/site-beacon";
 import { CookieConsent } from "@/components/missa/cookie-consent";
 import { WebMcpProvider } from "@/components/missa/webmcp-provider";
 import { DEFAULT_DESCRIPTION, SITE_NAME } from "@/lib/seo";
@@ -91,6 +92,7 @@ export default function RootLayout({
           <Suspense fallback={null}>
             <WebMcpProvider />
           </Suspense>
+          <SiteBeacon />
           <CookieConsent />
           <AnalyticsProvider>{children}</AnalyticsProvider>
           <Toaster />

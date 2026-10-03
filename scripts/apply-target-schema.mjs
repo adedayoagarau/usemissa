@@ -111,7 +111,8 @@ const migrationFiles = [
   '0081_creator_billing.sql',
   '0082_creator_billing_event_order.sql',
   '0083_missa_ranking_provenance.sql',
-  '0084_editorial_intelligence_sources.sql',
+  '0084_site_observability.sql',
+  '0085_editorial_intelligence_sources.sql',
 ];
 
 

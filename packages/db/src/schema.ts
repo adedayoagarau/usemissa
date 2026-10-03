@@ -3,8 +3,10 @@ import {
   type AnyPgColumn,
   customType,
   check,
+  bigserial,
   boolean,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -4801,6 +4803,93 @@ export const platformAnalyticsEvents = pgTable(
       .where(sql`${table.sessionId} is not null`),
   ],
 );
+
+/** Daily random salt for cookieless visitor hashes; deleted after a day. */
+export const siteTrafficSalts = pgTable("site_traffic_salts", {
+  day: date("day").primaryKey(),
+  salt: text("salt").notNull(),
+  createdAt,
+});
+
+/** First-party cookieless pageviews, goals, web vitals, and client errors. */
+export const siteEvents = pgTable(
+  "site_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    kind: text("kind").notNull(),
+    name: text("name").notNull(),
+    visitorHash: text("visitor_hash").notNull(),
+    path: text("path").notNull(),
+    referrerHost: text("referrer_host"),
+    utmSource: text("utm_source"),
+    utmMedium: text("utm_medium"),
+    utmCampaign: text("utm_campaign"),
+    country: text("country"),
+    device: text("device"),
+    browser: text("browser"),
+    os: text("os"),
+    value: doublePrecision("value"),
+    detail: text("detail"),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("site_events_kind_check", sql`${table.kind} in ('pageview', 'goal', 'vital', 'error')`),
+    index("site_events_occurred_idx").on(table.occurredAt),
+    index("site_events_kind_name_idx").on(table.kind, table.name, table.occurredAt),
+    index("site_events_visitor_idx").on(table.visitorHash, table.occurredAt),
+  ],
+);
+
+export const siteUptimeChecks = pgTable(
+  "site_uptime_checks",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    target: text("target").notNull(),
+    url: text("url").notNull(),
+    ok: boolean("ok").notNull(),
+    status: integer("status"),
+    latencyMs: integer("latency_ms"),
+    error: text("error"),
+    checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("site_uptime_checks_target_idx").on(table.target, table.checkedAt)],
+);
+
+export const siteAlerts = pgTable(
+  "site_alerts",
+  {
+    key: text("key").primaryKey(),
+    state: text("state").notNull(),
+    title: text("title").notNull(),
+    detail: text("detail"),
+    firstFiredAt: timestamp("first_fired_at", { withTimezone: true }),
+    lastNotifiedAt: timestamp("last_notified_at", { withTimezone: true }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    updatedAt,
+  },
+  (table) => [check("site_alerts_state_check", sql`${table.state} in ('firing', 'resolved')`)],
+);
+
+export const adminChartNotes = pgTable(
+  "admin_chart_notes",
+  {
+    id: text("id").primaryKey(),
+    day: date("day").notNull(),
+    label: text("label").notNull(),
+    createdBy: text("created_by"),
+    createdAt,
+  },
+  (table) => [index("admin_chart_notes_day_idx").on(table.day)],
+);
+
+export const publicMetricShares = pgTable("public_metric_shares", {
+  token: text("token").primaryKey(),
+  title: text("title").notNull(),
+  metrics: jsonb("metrics").notNull().$type<string[]>().default(sql`'[]'::jsonb`),
+  createdBy: text("created_by"),
+  createdAt,
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+});
 
 /**
  * Durable state for the first read-only assistant slice. Conversation state is
