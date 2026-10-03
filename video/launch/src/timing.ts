@@ -1,9 +1,9 @@
 /**
  * Voiceover sync map for "Talent's your department".
  *
- * Measured from the waveform of `public/audio/voiceover-script1-storyteller.mp3`
- * (ElevenLabs eleven_v4, voice "Warm, Grounded Storyteller", take 1) with
- * `node scripts/measure-vo.mjs <file> 0.04 0.18` (phrases) and `0.1 0.05`
+ * Measured from the waveform of `public/audio/voiceover-script1-lyan.mp3`
+ * (ElevenLabs eleven_v4, voice "Lyan", take 2 of 4) with
+ * `node scripts/measure-vo.mjs <file> 0.04 0.3` (phrases) and `0.1 0.05`
  * (words inside phrases). Times are seconds inside the audio file; VO_OFFSET
  * shifts them onto the video timeline. Swap the voiceover → re-measure these.
  */
@@ -11,30 +11,30 @@ export const FPS = 30;
 export const VO_OFFSET = 0.6;
 export const DURATION_SECONDS = 33;
 
-export const VOICEOVER_FILE = "audio/voiceover-script1-storyteller.mp3";
+export const VOICEOVER_FILE = "audio/voiceover-script1-lyan.mp3";
 
 const vo = {
   open: 0.15, // "Some people will tell you the art world runs on talent."
-  talent: 1.8, //   ...the word "talent"
-  helps: 3.4, // "Talent helps."
-  mostly: 4.65, // "But mostly…"
-  runs: 5.6, // "…it runs on deadlines."
-  deadlines: 6.05, //   ...the word "deadlines"
-  grant: 7.45, // "Grant deadlines."
-  residency: 8.6, // "Residency deadlines."
-  magazine: 10.2, // "That magazine that only reads submissions in March."
-  march: 12.05, //   ...the word "March"
-  missOne: 13.3, // "Miss one,"
-  waitYear: 14.1, // "and you wait a year."
-  missa: 16.0, // "Missa finds the opportunities"
-  fit: 17.5, // "that fit what you make,"
-  reminds: 18.75, // "and reminds you"
-  closes: 19.8, // "before every one of them closes."
-  department: 21.9, // "Talent's your department."
-  ours: 23.8, // "Deadlines are ours."
-  name: 25.7, // "Missa."
-  tagline: 26.65, // "Opportunities for every creator."
-  end: 28.3,
+  talent: 2.2, //   ...the word "talent"
+  helps: 4.1, // "Talent helps."
+  mostly: 5.5, // "But mostly…"
+  runs: 6.6, // "…it runs on deadlines."
+  deadlines: 7.3, //   ...the word "deadlines"
+  grant: 8.5, // "Grant deadlines."
+  residency: 9.8, // "Residency deadlines."
+  magazine: 11.5, // "That magazine that only reads submissions in March."
+  march: 13.65, //   ...the word "March"
+  missOne: 14.8, // "Miss one,"
+  waitYear: 15.75, // "and you wait a year."
+  missa: 17.3, // "Missa finds the opportunities"
+  fit: 18.95, // "that fit what you make,"
+  reminds: 20.45, // "and reminds you"
+  closes: 21.25, // "before every one of them closes."
+  department: 23.4, // "Talent's your department."
+  ours: 25.1, // "Deadlines are ours."
+  name: 26.9, // "Missa."
+  tagline: 27.75, // "Opportunities for every creator."
+  end: 29.7,
 } as const;
 
 export type Cue = keyof typeof vo;

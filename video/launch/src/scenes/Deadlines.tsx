@@ -38,7 +38,7 @@ export const Deadlines: React.FC = () => {
   let year = 2026;
   let monthIndex = 10; // November
   let flip = 0;
-  let crossed = Math.floor(mix(0, 13, progress(t, cue("deadlines") + 1.1, cue("grant") - cue("deadlines") - 1.2, (n) => n)));
+  let crossed = Math.floor(mix(0, 13, progress(t, cue("deadlines") + 1.1, 0.85, (n) => n)));
   if (t >= cue("march") - 0.15) {
     year = 2027;
     monthIndex = 2;

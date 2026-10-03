@@ -6,19 +6,19 @@ import { Launch } from "./Launch";
 export type Clip = [from: number, to: number];
 
 export const CUTS: Record<"cut15" | "cut6", Clip[]> = {
-  // Both stay under their ad slot (14.9s and 5.85s).
+  // Both stay under their ad slot (14.95s and 5.9s).
   // "But mostly, it runs on deadlines." → Missa finds + reminds →
   // "Talent's your department. Deadlines are ours." → end card with CTA
   cut15: [
-    [4.9, 7.75],
-    [16.45, 21.8],
-    [22.35, 25.6],
-    [26.1, 29.55],
+    [5.85, 8.95],
+    [17.85, 23.5],
+    [23.95, 26.95],
+    [27.35, 30.55],
   ],
   // "But mostly, it runs on deadlines." → "Missa. Opportunities for every creator."
   cut6: [
-    [4.9, 7.3],
-    [26.1, 29.55],
+    [5.95, 8.7],
+    [27.4, 30.55],
   ],
 };
 

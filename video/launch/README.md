@@ -30,9 +30,9 @@ the site. Those copies are git-ignored.
 > Talent's your department. Deadlines are ours.
 > Missa. Opportunities for every creator.
 
-Voiceover: ElevenLabs **eleven_v4**, voice "Warm, Grounded Storyteller", take 1.
-The file is `public/audio/voiceover-script1-storyteller.mp3`. The Belle and
-Daniel auditions are not in the repo. To use a different take, replace the
+Voiceover: ElevenLabs **eleven_v4**, voice **Lyan** ("Contrarian yet friendly"),
+take 2 of 4. The file is `public/audio/voiceover-script1-lyan.mp3`. The other
+takes and the earlier Storyteller, Belle and Daniel auditions are not in the repo. To use a different take, replace the
 file and re-measure the cues (see Sync below).
 
 ## Storyboard
@@ -47,10 +47,15 @@ file and re-measure the cues (see Sync below).
 
 ## Sound
 
-- **Sound effects** (`public/sfx`, ElevenLabs text-to-sound): an impact on
-  "deadlines", a clock tick under the calendar, page flips for March and the
-  lost year, whooshes on scene changes, a chime per reminder, and a check per
-  ringed date. The timeline is in `src/components/SoundDesign.tsx`.
+- **Sound effects** (`public/sfx`, ElevenLabs text-to-sound): studio room tone
+  under the opening, an impact on "deadlines", marker strikes as the days
+  cross off, paper slides for the deadline cards, marker circles round the
+  grant and residency dates, a clock tick under the calendar, page flips for
+  March and the lost year, a rubber stamp on "Closed", whooshes on scene
+  changes, a swell under each wordmark, pops for the "why this may fit" chips,
+  the discipline tiles and the call to action, a chime per reminder, and a
+  marker circle per ringed date on the real calendar. Each effect is placed so
+  its peak lands on the moment, not its first sample (`PEAK` in the file). The timeline is in `src/components/SoundDesign.tsx`.
 - **Score** (`public/audio/score.mp3`): ElevenLabs video-to-music, generated
   from the picture-locked cut so that hits land on the scene changes. It plays
   at 0.32 volume under the voice. If you re-cut the picture, generate the
