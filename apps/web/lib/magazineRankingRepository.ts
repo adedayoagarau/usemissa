@@ -30,7 +30,7 @@ function isUndefinedTableError(error: unknown): error is PostgresError {
  * enabled with MISSA_RANKINGS_SEED_PREVIEW=1. They are never used to describe
  * a real publication's standing.
  */
-export function seedRankingsPreviewAllowed(env: NodeJS.ProcessEnv = process.env): boolean {
+export function seedRankingsPreviewAllowed(env: Record<string, string | undefined> = process.env): boolean {
   if (env.MISSA_RANKINGS_SEED_PREVIEW === "1") return true;
   return env.VERCEL_ENV !== "production";
 }
