@@ -148,18 +148,6 @@ export const Categories: React.FC = () => {
             </div>
           ))}
         </div>
-        <div
-          style={{
-            marginTop: 28 * u,
-            fontFamily: font.data,
-            fontSize: 26 * u,
-            color: color.forestDeep,
-            opacity: intro * (1 - leave),
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          {String(active + 1).padStart(2, "0")} / 04
-        </div>
       </div>
     </AbsoluteFill>
   );

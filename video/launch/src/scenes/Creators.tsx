@@ -136,7 +136,7 @@ export const Creators: React.FC = () => {
                   borderRadius: 20 * u,
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "space-between",
+                  justifyContent: "center",
                   padding: `0 ${44 * u}px`,
                   transformOrigin: `50% 50% ${-75 * u}px`,
                   transform: `rotateX(${rotate}deg)`,
@@ -155,16 +155,6 @@ export const Creators: React.FC = () => {
                   }}
                 >
                   {n.name}
-                </span>
-                <span
-                  style={{
-                    fontFamily: font.data,
-                    fontSize: 26 * u,
-                    color: color.forestDeep,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {String(i + 1).padStart(2, "0")}
                 </span>
               </div>
             );
