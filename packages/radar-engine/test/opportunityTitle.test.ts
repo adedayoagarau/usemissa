@@ -71,6 +71,12 @@ test('keeps acronyms, years, and roman numerals when recasing', () => {
   assert.equal(normalizeOpportunityTitle('phd residency for 2slgbtqia+ artists').title, 'PhD Residency for 2SLGBTQIA+ Artists');
 });
 
+test('keeps a short all-caps brand at the start of a mixed-case title', () => {
+  assert.equal(normalizeOpportunityTitle('TOMA HOUSE AIR — How to Live Together?').title, 'TOMA HOUSE AIR — How to Live Together?');
+  assert.equal(normalizeOpportunityTitle('Key West Literary Seminar — 2027/ BETH NGUYEN').title, 'Key West Literary Seminar — 2027/ Beth Nguyen');
+  assert.equal(normalizeOpportunityTitle('TRAILBLAZER INITIATIVE NIGERIA — Call for Proposal').title, 'Trailblazer Initiative Nigeria — Call for Proposal');
+});
+
 test('keeps short all-caps names and acronyms it does not know', () => {
   for (const title of ['SXSW 2027', 'SCBWI', 'YIDFF 2027', 'DOC NYC', 'CHEAP POP', 'ACM SIGCHI CFP', 'TOS']) {
     assert.equal(normalizeOpportunityTitle(title).title, title);
@@ -183,7 +189,7 @@ test('flags tenders, admissions, and medical programs unless the title is about 
   for (const title of ['UNICEF Tenders - Business Opportunities And', 'Primary school admissions 2025: How to apply', 'One Year Asylum Deadline', 'Pediatrics Residency Program — College of Medicine', 'California Community Foundation announces Request for Proposals', 'Terms & Conditions — Global Teacher', 'Hours, Tickets & Admission Prices', 'More...']) {
     assert.equal(assessOpportunityRelevance(title).relevant, false, title);
   }
-  for (const title of ['Public Art Request for Proposals', 'Creative Crosswalks — Request for Proposals', 'Paediatric Association of Nigeria Announces Art Competition', 'Medical Humanities Writing Prize', 'More Than Words Poetry Prize']) {
+  for (const title of ['Public Art Request for Proposals', 'Creative Crosswalks — Request for Proposals', 'Paediatric Association of Nigeria Announces Art Competition', 'Medical Humanities Writing Prize', 'More Than Words Poetry Prize', 'Intima: A Journal of Narrative Medicine — Field Notes', 'Calendula Review: A Journal of Narrative Medicine — Submissions', 'Glossy Planet: Bad Medicine']) {
     assert.equal(assessOpportunityRelevance(title).relevant, true, title);
   }
 });

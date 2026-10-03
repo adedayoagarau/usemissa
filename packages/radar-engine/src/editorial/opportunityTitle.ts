@@ -243,6 +243,9 @@ function recaseShoutingSegments(value: string): string {
       if (index % 2 === 1) return segment;
       const words = segment.split(' ').filter((word) => /[A-Za-z]/.test(word));
       if (words.length < 2 || !isAllCaps(segment)) return segment;
+      // The first segment is usually the organization, where short all-caps
+      // brand names ("TOMA HOUSE AIR", "ONLY POEMS") are deliberate.
+      if (index === 0 && isStylizedCapsName(segment)) return segment;
       const allAcronyms = words.every((word) => ACRONYMS.has(word.replace(/[^A-Za-z]/g, '').toUpperCase()));
       return allAcronyms ? segment : toTitleCase(segment);
     })
@@ -424,7 +427,7 @@ const CALL_SIGNAL = /\b(?:call|calls|submissions?|submit|contest|prize|award|ope
 
 // Words that tie a title to the arts, used to spare arts calls from the
 // procurement and institutional denylists ("Public Art Request for Proposals").
-const STRONG_CREATIVE_SIGNAL = /\b(?:arts?|artists?|artwork|creative|writ\w*|poe\w*|fiction|literary|literature|music\w*|film\w*|danc\w*|theat\w*|paint\w*|sculpt\w*|photograph\w*|humanities|illustrat\w*|comics?|novel\w*)\b/i;
+const STRONG_CREATIVE_SIGNAL = /\b(?:arts?|artists?|artwork|creative|writ\w*|poe\w*|fiction|literary|literature|music\w*|film\w*|danc\w*|theat\w*|paint\w*|sculpt\w*|photograph\w*|humanities|illustrat\w*|comics?|novel\w*|journal|magazine)\b/i;
 
 const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; requiresNoCreativeSignal?: boolean; requiresNoStrongCreativeSignal?: boolean; unlessCall?: boolean }> = [
   { signal: 'blog-post', pattern: /\bblog\b/i, unlessCall: true },
@@ -435,7 +438,7 @@ const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; require
   { signal: 'site-page', pattern: /^\s*(?:about(?:\s+us)?|contact(?:\s+us)?|masthead|staff|privacy\s+policy|terms(?:\s+of\s+(?:service|use))?|log\s*-?\s*in|sign\s*-?\s*in|shop|store|cart|donate|archive|past\s+issues)\s*$/i },
   { signal: 'site-page', pattern: /^\s*(?:terms\s*(?:&|and)\s*conditions|hours,?\s+tickets)\b|^\s*(?:(?:read|see)\s+)?more\W*$/i },
   { signal: 'procurement', pattern: /\b(?:tenders?|procurement|rfps?|request\s+for\s+(?:proposals?|quotations?)|bids?)\b/i, requiresNoStrongCreativeSignal: true },
-  { signal: 'non-creative-institution', pattern: /\b(?:admissions?|asylum|immigration|nurse|nursing|p(?:a)?ediatric\w*|medicine|medical|clinical|surg(?:ery|ical))\b/i, requiresNoStrongCreativeSignal: true },
+  { signal: 'non-creative-institution', pattern: /\b(?:admissions?|asylum|immigration|nurse|nursing|p(?:a)?ediatric\w*|medical|clinical|surg(?:ery|ical)|(?:school|college|faculty|department)\s+of\s+medicine|(?:family|community|internal|molecular|emergency)\s+medicine)\b/i, requiresNoStrongCreativeSignal: true },
   { signal: 'non-creative-assistance', pattern: /\b(?:housing|rent(?:al)?\s+assistance|mortgage|homebuyers?|home\s+repair|tenants?|utility|utilities|childcare|food\s+(?:assistance|shelf|bank)|small\s+business(?:es)?|workforce)\b/i, requiresNoCreativeSignal: true },
 ];
 
