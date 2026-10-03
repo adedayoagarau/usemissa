@@ -212,7 +212,7 @@ export async function readPublicationHoldQueue(connectionString: string, limit =
          left join lateral (
            select d.score, d.reasons, d.checks, d.created_at
              from radar_review_decisions d
-            where d.job_id = j.id
+            where d.opportunity_id = j.opportunity_id
             order by d.created_at desc
             limit 1
          ) decision on true
@@ -227,7 +227,7 @@ export async function readPublicationHoldQueue(connectionString: string, limit =
          from radar_review_jobs j
          join opportunities o on o.id = j.opportunity_id and o.publication_state = 'reviewable'
          left join lateral (
-           select d.checks from radar_review_decisions d where d.job_id = j.id order by d.created_at desc limit 1
+           select d.checks from radar_review_decisions d where d.opportunity_id = j.opportunity_id order by d.created_at desc limit 1
          ) decision on true
          left join lateral (
            select value as reason from jsonb_array_elements_text(coalesce(decision.checks->'holdReasons', '[]'::jsonb))
@@ -280,7 +280,7 @@ async function lockHold(client: PoolClient, jobId: string): Promise<LockedRow | 
        left join lateral (
          select d.run_id, d.score, d.reasons, d.checks
            from radar_review_decisions d
-          where d.job_id = j.id
+          where d.opportunity_id = j.opportunity_id
           order by d.created_at desc
           limit 1
        ) decision on true
