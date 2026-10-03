@@ -148,8 +148,8 @@
         "Spinner",
         "Link"
       ],
-      "appearance": "split-editorial-onboarding-with-step-navigation-sticky-actions-live-private-summary-and-profile-preview",
-      "boundary": "Given and family names are supplied by the person and remain distinct from the normalized public handle. Country, city, timezone, career stage, travel willingness, and fee preference are private matching inputs. Country and time zone use searchable Combobox lists; time zones are validated on the server. Finish later saves the current choices and marks setup skipped; only a completed setup opens on the summary."
+      "appearance": "focused-single-question-onboarding-with-studio-choice-imagery-live-match-count-address-claim-and-matched-welcome",
+      "boundary": "Given and family names are supplied by the person and remain distinct from the normalized public handle. Country, city, timezone, career stage, travel willingness, and fee preference are private matching inputs. Country and time zone use searchable Combobox lists; time zones are validated on the server. Finish later saves the current choices and marks setup skipped; only a completed setup opens on the summary. The live match count and the welcome list read the public browse API: kinds of work widen the set (taxonomyMatch=any) while opportunity types, country eligibility, and the fee preference narrow it. They show open calls, never eligibility, and hide when the API is unavailable. When handle claiming is open, finishing waits for a confirmed available address."
     },
     "composition.creator-workspace": {
       "semantic": "CreatorWorkspace",

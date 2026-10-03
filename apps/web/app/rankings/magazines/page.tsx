@@ -38,7 +38,7 @@ const getCachedMagazineRankings = unstable_cache(
   async (genre: RankingGenre) =>
     getMagazineRankingRepository().listRankings({
       genre,
-      limit: 100,
+      limit: 1000,
     }),
   ["public-magazine-rankings-v1"],
   { revalidate: 300, tags: ["magazine-rankings"] },
@@ -114,7 +114,6 @@ export default async function MagazineRankingsPage({
             preview={page.dataSource === "seed"}
             initialItems={page.items}
             currentGenre={genre}
-            total={page.total}
             signedIn={Boolean(session)}
           />
         )}

@@ -94,6 +94,8 @@ export const opportunityBrowseQuerySchema = z.object({
   taxonomyTermIds: z.array(resourceIdSchema).max(32).default([]),
   taxonomySchemeVersion: z.number().int().min(1).default(1),
   taxonomyIncludeDescendants: z.boolean().default(false),
+  /** "all" requires every requested term; "any" matches at least one. */
+  taxonomyMatch: z.enum(["all", "any"]).default("all"),
   locations: z.array(z.string().trim().min(1).max(120)).max(32).default([]),
   country: z.string().trim().max(80).optional(),
   countryCode: z.string().trim().max(10).optional(),

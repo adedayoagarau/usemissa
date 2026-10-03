@@ -529,7 +529,7 @@ export function ManuscriptMatchWizard({
                         type="button"
                         className="inline-flex items-center gap-1 font-medium text-[var(--text-primary)] hover:underline"
                       >
-                        Explore Dossier & DNA →
+                        Details →
                       </button>
                     }
                   />
