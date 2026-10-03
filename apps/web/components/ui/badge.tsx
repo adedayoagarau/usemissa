@@ -19,6 +19,8 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // Time-sensitive state; product code reaches it only through UrgencyBadge.
+        warning: "border-warning bg-warning-subtle text-ochre-deep",
       },
       size: {
         default: "h-5 px-2 py-0.5 text-xs",

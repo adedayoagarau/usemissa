@@ -616,9 +616,13 @@ function ReminderSlots({
               <p className="text-xs text-muted-foreground">
                 {item ? (
                   <>
-                    <span className="font-mono tabular-nums">
-                      {whenLabel(item)}
-                    </span>
+                    {item.dueAt && item.state === "scheduled" ? (
+                      <span className="font-mono tabular-nums">
+                        {whenLabel(item)}
+                      </span>
+                    ) : (
+                      whenLabel(item)
+                    )}
                     {item.repeatDays ? ` · Every ${item.repeatDays} days` : ""}
                     {!item.inAppEnabled
                       ? " · Paused by your notification settings"
