@@ -102,6 +102,7 @@ export {
   creatorReminderEmailKey,
   pendingCreatorReminderEmails,
   type PendingCreatorReminderEmail,
+  type CreatorNoticeEmailKind,
 } from "./creatorReminderEmail.js";
 export {
   buildWeeklyDigest,

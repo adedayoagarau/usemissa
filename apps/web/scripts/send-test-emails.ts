@@ -19,7 +19,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { renderWeeklyDigestEmail } from '../emails/weekly-digest';
-import { renderDeadlineReminderEmail } from '../emails/deadline-reminder';
+import { renderDeadlineMomentEmail, type DeadlineMomentNotice } from '../emails/deadline-moments';
 import { renderWelcomeEmail } from '../emails/welcome';
 import { renderAuthOtpEmail } from '../emails/auth-otp';
 import { renderPasswordResetEmail } from '../emails/password-reset';
@@ -124,6 +124,29 @@ const samples = await realSamples().catch((error: unknown) => {
 });
 const lead = samples.yourDeadlines[0]!;
 
+const shiftDays = (date: string, days: number) => new Date(Date.parse(`${date}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10);
+const moment = (kind: DeadlineMomentNotice['kind'], extra: Partial<DeadlineMomentNotice> = {}) =>
+  renderDeadlineMomentEmail({
+    accountId: 'acct_email_test',
+    email: to,
+    notice: {
+      kind,
+      noticedAt: new Date(now.getTime() - 86_400_000).toISOString(),
+      opportunityId: lead.opportunityId,
+      title: lead.title,
+      organizationName: lead.organizationName,
+      deadline: lead.deadline,
+      givenName: 'Tola',
+      trackedStatus: 'preparing',
+      type: lead.type,
+      feeStatus: lead.feeStatus,
+      feeCents: lead.feeCents,
+      feeCurrency: lead.feeCurrency,
+      prize: lead.prize,
+      ...extra,
+    },
+  });
+
 const templates: Record<string, () => Rendered> = {
   'sunday-list': () =>
     renderWeeklyDigestEmail({
@@ -131,12 +154,11 @@ const templates: Record<string, () => Rendered> = {
       email: to,
       digest: { recipientName: 'Tola', ...samples },
     }),
-  'deadline-reminder': () =>
-    renderDeadlineReminderEmail({
-      accountId: 'acct_email_test',
-      email: to,
-      opportunities: [{ id: lead.opportunityId, title: lead.title, organizationName: lead.organizationName, deadlineFormatted: lead.deadline ?? inDays(3), daysRemaining: 3 }],
-    }),
+  'deadline-reminder': () => moment('deadline-reminder'),
+  'deadline-changed': () => moment('deadline-changed', { previousDeadline: lead.deadline ? shiftDays(lead.deadline, -5) : null }),
+  'call-closed': () => moment('call-closed', { listedDeadline: lead.deadline }),
+  'response-overdue': () =>
+    moment('response-overdue', { trackedStatus: 'submitted', submittedAt: new Date(now.getTime() - 74 * 86_400_000).toISOString(), responseTimeDays: 60 }),
   welcome: () => renderWelcomeEmail({ accountId: 'acct_email_test', email: to, givenName: 'Tola' }),
   'sign-in-code': () => renderAuthOtpEmail({ email: to, code: '482913', type: 'sign-in', expiresInMinutes: 10 }),
   'password-reset': () => renderPasswordResetEmail({ accountId: 'acct_email_test', email: to, resetToken: 'sample-token', displayName: 'Tola' }),

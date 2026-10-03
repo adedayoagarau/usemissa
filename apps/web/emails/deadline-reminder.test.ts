@@ -6,6 +6,7 @@ test('renderDeadlineReminderEmail handles single opportunity countdown', () => {
   const rendered = renderDeadlineReminderEmail({
     accountId: 'acc_creator_1',
     email: 'creator@example.com',
+    now: new Date('2026-03-13T09:00:00Z'),
     opportunities: [
       {
         id: 'opp_1',
@@ -18,10 +19,11 @@ test('renderDeadlineReminderEmail handles single opportunity countdown', () => {
     ],
   });
 
-  assert.ok(rendered.subject.includes('Spring Poetry Prize'));
-  assert.ok(rendered.subject.includes('2 days left'));
+  assert.equal(rendered.subject, 'Spring Poetry Prize closes in 2 days');
   assert.ok(rendered.html.includes('The Kenyon Review'));
-  assert.ok(rendered.html.includes('2 days left'));
+  assert.ok(rendered.html.includes('days left.'));
+  assert.ok(rendered.html.includes('Sunday 15 March'));
+  assert.ok(rendered.html.includes('/opportunities/opp_1'));
   assert.ok(rendered.html.includes('/tracker'));
   assert.ok(rendered.text.includes('Spring Poetry Prize'));
 });
@@ -48,9 +50,10 @@ test('renderDeadlineReminderEmail handles multiple opportunity countdowns', () =
     ],
   });
 
-  assert.ok(rendered.subject.includes('2 submission deadlines approaching'));
-  assert.ok(rendered.html.includes('Spring Poetry Prize'));
-  assert.ok(rendered.html.includes('Nonfiction Fellowship'));
+  assert.equal(rendered.subject, 'Two of your deadlines are close');
+  assert.ok(rendered.html.includes('Spring Poetry Prize, The Kenyon Review'));
+  assert.ok(rendered.html.includes('Nonfiction Fellowship, Tin House'));
+  assert.ok(rendered.text.includes('/opportunities/opp_2'));
 });
 
 test('deliverDeadlineReminderEmail sends idempotently', async () => {
