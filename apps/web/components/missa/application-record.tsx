@@ -67,6 +67,7 @@ import { deadlineCountdown, closingTimeLabel } from "@/lib/application-timing";
 import { estimateStartBy } from "@/lib/start-by";
 import { ApplicationPreparation } from "./application-preparation";
 import { StartByDate } from "./start-by-date";
+import { UrgencyBadge } from "./urgency-badge";
 import { ApplicationEmailEvidence, emailDay } from "./application-email-evidence";
 import { ApplicationReminders } from "./application-reminders";
 import { ApplicationCalendarDeliveryPanel } from "./application-calendar-delivery";
@@ -517,15 +518,15 @@ export function ApplicationRecord({
                 "Not listed"
               )}
               {countdown && beforeSubmission ? (
-                <span
-                  className={
-                    countdown.urgent
-                      ? "ms-2 rounded-full bg-warning-subtle px-2 py-0.5 text-xs font-medium text-ochre-deep"
-                      : "ms-2 text-xs text-muted-foreground"
-                  }
-                >
-                  {countdown.label}
-                </span>
+                countdown.urgent ? (
+                  <span className="ms-2 inline-flex align-middle">
+                    <UrgencyBadge>{countdown.label}</UrgencyBadge>
+                  </span>
+                ) : (
+                  <span className="ms-2 text-xs text-muted-foreground">
+                    {countdown.label}
+                  </span>
+                )
               ) : null}
             </dd>
           </div>
@@ -1143,8 +1144,8 @@ function LifecycleTimeline({ steps }: { steps: LifecycleStepView[] }) {
                   aria-hidden="true"
                   className={
                     step.state === "complete"
-                      ? "absolute start-[11px] top-7 bottom-1 w-px bg-primary"
-                      : "absolute start-[11px] top-7 bottom-1 w-px bg-border"
+                      ? "absolute start-3 top-7 bottom-1 w-px -translate-x-1/2 bg-primary rtl:translate-x-1/2"
+                      : "absolute start-3 top-7 bottom-1 w-px -translate-x-1/2 bg-border rtl:translate-x-1/2"
                   }
                 />
               ) : null}
