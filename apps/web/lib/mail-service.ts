@@ -5,7 +5,7 @@ import {
   completePlatformMessageEffect,
 } from '@missa/radar-adapters';
 import { runDurableProviderDelivery } from './durableMessageDelivery';
-import { buildOneClickUnsubscribeHeaders } from './email-tokens';
+import { buildOneClickUnsubscribeHeaders, type EmailCategory } from './email-tokens';
 import { htmlToPlainText } from '../emails/components/base-layout';
 import type { MessageCategory } from './email-preference-evaluator';
 
@@ -20,6 +20,9 @@ export interface SendMailOptions {
   html: string;
   text?: string;
   category?: MessageCategory;
+  /** Which preference the RFC 8058 one-click unsubscribe turns off. Defaults
+   * to all notification email; reminder emails pass 'deadline_reminder'. */
+  unsubscribeCategory?: EmailCategory;
   replyTo?: string;
   headers?: Record<string, string>;
   templateKey?: string;
@@ -124,7 +127,7 @@ export async function sendMail(options: SendMailOptions): Promise<SendMailReport
     const unsubHeaders = buildOneClickUnsubscribeHeaders({
       accountId: options.recipientAccountId,
       email: recipientEmail,
-      category: 'notification_digest',
+      category: options.unsubscribeCategory ?? 'notification_digest',
     });
     Object.assign(combinedHeaders, unsubHeaders);
   }

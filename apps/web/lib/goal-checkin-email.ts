@@ -118,6 +118,7 @@ export async function deliverGoalCheckInEmails(now = new Date()): Promise<GoalCh
       recipientAccountId: checkIn.accountId,
       kind: 'goal-check-in',
       category: 'notification_digest',
+      unsubscribeCategory: 'deadline_reminder',
       idempotencyKey: goalCheckInEmailKey(checkIn.alertId),
       subject,
       html,
