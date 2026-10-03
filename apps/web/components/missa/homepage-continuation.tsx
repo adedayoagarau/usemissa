@@ -24,6 +24,7 @@ import "@/components/design-system/homepage-continuation-tokens.css";
 import "@/components/design-system/homepage-marketing-palette.css";
 import styles from "./homepage-continuation.module.css";
 import { contactMailto } from "@/lib/legalContact";
+import { useSignedIn } from "@/lib/browserSession";
 
 const HomepageWorkspace = dynamic(
   () =>
@@ -111,16 +112,18 @@ function ActionLink({
 }
 
 export function HomepageContinuation({
-  signedIn = false,
+  signedIn: serverSignedIn,
   layout = "full",
   initialCalls = null,
   initialOrganizations = null,
 }: {
+  /** Omit on pages served from the CDN; the session then loads in the browser. */
   signedIn?: boolean;
   layout?: "full" | "focused";
   initialCalls?: HomepageCall[] | null;
   initialOrganizations?: Profile[] | null;
 }) {
+  const signedIn = useSignedIn(serverSignedIn);
   const sectionRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[] | null>(

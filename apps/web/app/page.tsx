@@ -1,5 +1,3 @@
-import { cookies } from "next/headers";
-import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import {
   HomepageContinuation,
   HomepageFooter,
@@ -22,7 +20,13 @@ export const metadata = pageMetadata({
   path: "/",
 });
 
-export const dynamic = "force-dynamic";
+/**
+ * Served from the CDN and regenerated at most every five minutes, the same
+ * lifetime as the cached catalogue reads below. Nothing here depends on the
+ * visitor: signed-in state loads in the browser, and the strip refreshes
+ * itself with the visitor's own saved state once it scrolls into view.
+ */
+export const revalidate = 300;
 
 /**
  * The homepage strip must not open on a skeleton: the calls are the first
@@ -52,23 +56,16 @@ async function currentCalls(): Promise<HomepageCall[] | null> {
 }
 
 export default async function HomePage() {
-  const cookieStore = await cookies();
-  const session = await getSessionAccountFromToken(
-    cookieStore.get(SESSION_COOKIE)?.value,
-  );
-  const [initialCalls, initialOrganizations] = session
-    ? [null, null]
-    : await Promise.all([
-        currentCalls(),
-        getHomepageOrganizations().catch((): HomepageOrganization[] => []),
-      ]);
+  const [initialCalls, initialOrganizations] = await Promise.all([
+    currentCalls(),
+    getHomepageOrganizations().catch((): HomepageOrganization[] => []),
+  ]);
   return (
     <>
       <main>
         <HomepageHero />
         <HomepageNextOpening />
         <HomepageContinuation
-          signedIn={Boolean(session)}
           initialCalls={initialCalls}
           initialOrganizations={initialOrganizations}
         />

@@ -1,35 +1,32 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
-import { MissaSiteHeader } from "@/components/missa-site-header";
+import {
+  MissaSiteHeader,
+  type HeaderSession,
+} from "@/components/missa-site-header";
 import { MissaWordmark } from "@/components/missa-wordmark";
 import styles from "./public-site-shell.module.css";
 import { contactMailto } from "@/lib/legalContact";
 
-export async function PublicSiteShell({
+/**
+ * Public page frame. It reads no request data, so the pages inside it can be
+ * served from the CDN; the header resolves the visitor's session in the
+ * browser unless a page that already has it passes `session`.
+ */
+export function PublicSiteShell({
   children,
   current,
   collectionLinks,
+  session,
 }: {
   children: ReactNode;
   current?: string;
   collectionLinks?: Array<{ slug: string; title: string }>;
+  session?: HeaderSession;
 }) {
-  const cookieStore = await cookies();
-  const session = await getSessionAccountFromToken(
-    cookieStore.get(SESSION_COOKIE)?.value,
-  );
-  const headerSession = session
-    ? {
-        email: session.account.email,
-        hasOrganization: session.memberships.length > 0,
-      }
-    : null;
-
   return (
     <div className={styles.site}>
-      <MissaSiteHeader session={headerSession} current={current} />
+      <MissaSiteHeader session={session} current={current} />
       {children}
       <footer
         className={styles.footer}

@@ -9,7 +9,8 @@ import {
 import { getPublicProfileCountryCounts } from "@/lib/publicProfileReads";
 import styles from "./countries.module.css";
 
-export const dynamic = "force-dynamic";
+/** Served from the CDN and regenerated at most every five minutes. */
+export const revalidate = 300;
 
 export const metadata: Metadata = pageMetadata({
   title: "Literary publishers & opportunities by country",

@@ -11,6 +11,7 @@ import { CookieConsent } from "@/components/missa/cookie-consent";
 import { WebMcpProvider } from "@/components/missa/webmcp-provider";
 import { consentAnsweredScript } from "@/lib/analyticsConsent";
 import { DEFAULT_DESCRIPTION, SITE_NAME } from "@/lib/seo";
+import { signedInHintScript } from "@/lib/signedInHint";
 import { siteUrl } from "@/lib/siteUrl";
 
 /**
@@ -93,6 +94,7 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: consentAnsweredScript() }} />
+        <script dangerouslySetInnerHTML={{ __html: signedInHintScript() }} />
       </head>
       <body>
         <ThemeProvider

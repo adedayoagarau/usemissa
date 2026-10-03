@@ -17,7 +17,8 @@ export const metadata: Metadata = pageMetadata({
   path: "/rankings/methodology",
 });
 
-export const dynamic = "force-dynamic";
+/** Served from the CDN and regenerated at most every five minutes. */
+export const revalidate = 300;
 
 const getCachedIndexReport = unstable_cache(
   async () => {

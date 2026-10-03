@@ -39,6 +39,7 @@ import type {
 import { rememberFirstSaveReceipt } from "@/lib/firstSaveClient";
 import { isNeonAuthClientConfigured } from "@/lib/neon-auth/client-config";
 import { loadNeonAuthClient } from "@/lib/neon-auth/load-client";
+import { rememberSignedIn } from "@/lib/signedInHint";
 import {
   isEmailVerificationRequired,
   isInvalidEmailVerificationCode,
@@ -275,6 +276,7 @@ export function AuthForm({
     setVerificationCode("");
     setVerificationError(null);
     setSessionReady(true);
+    rememberSignedIn(true);
     if (firstSaveContext) {
       setIsResuming(true);
       // Let the authenticated server render become the single resume owner.
