@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 import { buildSubmissionPortfolioPlan, type StrategyCriteria, type RankingGenre, type SubmissionStrategyPreset } from "@missa/radar-engine";
+import { planningCandidate } from "@/lib/magazineFacts";
 
 export async function POST(request: Request) {
   try {
@@ -31,22 +32,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const candidates = page.items.map((item) => ({
-      profileId: item.profileId,
-      name: item.name,
-      slug: item.slug,
-      websiteUrl: item.websiteUrl,
-      rankPosition: item.rankPosition,
-      totalScore: item.totalScore,
-      prestigeTier: item.prestigeTier,
-      medianResponseDays: item.medianResponseDays,
-      regularFeeCents: item.regularFeeCents,
-      contributorPayCents: item.contributorPayCents,
-      simultaneousPolicy: item.simultaneousPolicy,
-      formatEthicsScore: item.formatEthicsScore,
-      activeOpportunity: item.activeOpportunity,
-      schedule: item.schedule,
-    }));
+    const candidates = page.items.map(planningCandidate);
 
     const criteria: StrategyCriteria = {
       genre,

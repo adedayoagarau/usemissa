@@ -1,0 +1,128 @@
+import type { MagazineRankingRow } from "@missa/radar-adapters";
+import {
+  PILLAR_MAX,
+  PRO_PAY_THRESHOLDS,
+  type ContributorPayKind,
+  type FactStatus,
+  type PillarStatusMap,
+  type RankedMagazinePlanningCandidate,
+  type ResponseTimeBand,
+  type SimultaneousPolicy,
+} from "@missa/radar-engine";
+
+/** What the index shows when no source records a fact. */
+export const NOT_RECORDED = "Not recorded";
+
+type FeeFacts = {
+  regularFeeCents: number | null;
+  chargesReadingFee?: boolean | null;
+};
+type PayFacts = {
+  contributorPayCents: number | null;
+  payKind?: ContributorPayKind | null;
+};
+type ResponseFacts = {
+  medianResponseDays: number | null;
+  responseTimeBand?: ResponseTimeBand | null;
+};
+
+const RESPONSE_BAND_LABELS: Record<ResponseTimeBand, string> = {
+  under_3_months: "Under 3 months",
+  "3_to_6_months": "3 to 6 months",
+  over_6_months: "Over 6 months",
+};
+
+function dollars(cents: number): string {
+  return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
+}
+
+export function feeLabel(row: FeeFacts): string {
+  if (row.regularFeeCents === 0 || row.chargesReadingFee === false)
+    return "No submission fee";
+  if (row.regularFeeCents != null)
+    return `${dollars(row.regularFeeCents)} submission fee`;
+  if (row.chargesReadingFee) return "Charges a fee (amount not recorded)";
+  return `Fee: ${NOT_RECORDED.toLowerCase()}`;
+}
+
+export function payLabel(row: PayFacts): string {
+  if (row.contributorPayCents != null && row.contributorPayCents > 0) {
+    return `Pays ${dollars(row.contributorPayCents)}`;
+  }
+  if (row.payKind === "cash") return "Pays (amount not recorded)";
+  if (row.payKind === "copies_only") return "Contributor copies";
+  if (row.payKind === "unpaid") return "Unpaid";
+  return `Pay: ${NOT_RECORDED.toLowerCase()}`;
+}
+
+export function responseLabel(row: ResponseFacts): string {
+  if (row.medianResponseDays != null)
+    return `${row.medianResponseDays} days median`;
+  if (row.responseTimeBand)
+    return `${RESPONSE_BAND_LABELS[row.responseTimeBand]} (listed)`;
+  return NOT_RECORDED;
+}
+
+export function simultaneousLabel(policy: SimultaneousPolicy | null): string {
+  if (policy === "allowed") return "Simultaneous submissions welcome";
+  if (policy === "conditional")
+    return "Simultaneous submissions with conditions";
+  if (policy === "forbidden") return "No simultaneous submissions";
+  return `Simultaneous policy ${NOT_RECORDED.toLowerCase()}`;
+}
+
+export function factStatusLabel(status: FactStatus): string {
+  if (status === "recorded") return "Recorded";
+  if (status === "partial") return "Range recorded";
+  return NOT_RECORDED;
+}
+
+/** Filters pass only on recorded facts; an unknown never matches a filter. */
+export const magazineFilters = {
+  free: (row: FeeFacts) =>
+    row.regularFeeCents === 0 || row.chargesReadingFee === false,
+  paying: (row: PayFacts) =>
+    row.payKind === "cash" || (row.contributorPayCents ?? 0) > 0,
+  /** Same threshold the pay pillar uses: a recorded pro rate earns full points. */
+  pro: (row: { payScore: number; pillarStatus: PillarStatusMap }) =>
+    row.pillarStatus.pay === "recorded" && row.payScore >= PILLAR_MAX.pay,
+  debut: (row: { debutFriendly: boolean | null }) => row.debutFriendly === true,
+  simultaneous: (row: { simultaneousPolicy: SimultaneousPolicy | null }) =>
+    row.simultaneousPolicy === "allowed",
+  fast: (row: ResponseFacts) =>
+    row.medianResponseDays != null
+      ? row.medianResponseDays <= 90
+      : row.responseTimeBand === "under_3_months",
+};
+
+export type MagazineFilterId = keyof typeof magazineFilters;
+
+export const PRO_PAY_LABEL = `Pro pay (${PRO_PAY_THRESHOLDS.perWordCents}¢+/word, $${
+  PRO_PAY_THRESHOLDS.perPoemCents / 100
+}+/poem or $${PRO_PAY_THRESHOLDS.perPieceCents / 100}+/piece)`;
+
+/** Portfolio-plan candidate built from a stored ranking row, facts unchanged. */
+export function planningCandidate(
+  item: MagazineRankingRow,
+): RankedMagazinePlanningCandidate {
+  return {
+    profileId: item.profileId,
+    name: item.name,
+    slug: item.slug,
+    websiteUrl: item.websiteUrl,
+    rankPosition: item.rankPosition,
+    totalScore: item.totalScore,
+    prestigeTier: item.prestigeTier,
+    medianResponseDays: item.medianResponseDays,
+    responseTimeBand: item.responseTimeBand,
+    regularFeeCents: item.regularFeeCents,
+    chargesReadingFee: item.chargesReadingFee,
+    contributorPayCents: item.contributorPayCents,
+    payKind: item.payKind,
+    simultaneousPolicy: item.simultaneousPolicy,
+    debutFriendly: item.debutFriendly,
+    formatEthicsScore: item.formatEthicsScore,
+    activeOpportunity: item.activeOpportunity,
+    schedule: item.schedule,
+  };
+}

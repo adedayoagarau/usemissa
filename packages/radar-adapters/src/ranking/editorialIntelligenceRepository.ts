@@ -99,11 +99,23 @@ export interface EditorialIntelligenceFullProfile {
     genres: string[];
     manuscriptWishlist: string | null;
   }>;
+  /** Anthology selections, each with the source that names the magazine. */
   awards: Array<{
     anthology: string;
     year: number;
     awardType: string;
     genre: string;
+    pieceTitle: string | null;
+    authorName: string | null;
+    sourceUrl: string;
+  }>;
+  /** Clifford Garstang's latest Pushcart ranking rows for this magazine. */
+  pushcart: Array<{
+    editionYear: number;
+    genre: string;
+    rank: number;
+    score: number;
+    sourceUrl: string;
   }>;
 }
 
@@ -271,21 +283,42 @@ export class PostgresEditorialIntelligenceRepository {
         manuscriptWishlist: row.manuscript_wishlist ? String(row.manuscript_wishlist) : null,
       }));
 
-      // 8. Fetch Awards
-      const awardsRes = await this.pool.query(
-        `SELECT anthology, award_year, award_type, genre
-         FROM missa_literary_awards
-         WHERE profile_id = $1
-         ORDER BY award_year DESC
-         LIMIT 10`,
-        [profileId],
-      );
+      // 8. Fetch sourced anthology selections and Pushcart standing
+      const [awardsRes, pushcartRes] = await Promise.all([
+        this.pool.query(
+          `SELECT anthology, award_year, award_type, genre, piece_title, author_name, source_url
+           FROM missa_literary_awards
+           WHERE profile_id = $1
+           ORDER BY award_year DESC
+           LIMIT 10`,
+          [profileId],
+        ),
+        this.pool.query(
+          `SELECT edition_year, genre, source_rank, source_score, source_url
+           FROM missa_pushcart_rankings
+           WHERE profile_id = $1
+             AND edition_year = (SELECT MAX(edition_year) FROM missa_pushcart_rankings WHERE profile_id = $1)
+           ORDER BY source_rank ASC`,
+          [profileId],
+        ),
+      ]);
 
       const awards = awardsRes.rows.map((row) => ({
         anthology: String(row.anthology),
         year: Number(row.award_year),
         awardType: String(row.award_type),
         genre: String(row.genre),
+        pieceTitle: row.piece_title ? String(row.piece_title) : null,
+        authorName: row.author_name ? String(row.author_name) : null,
+        sourceUrl: String(row.source_url),
+      }));
+
+      const pushcart = pushcartRes.rows.map((row) => ({
+        editionYear: Number(row.edition_year),
+        genre: String(row.genre),
+        rank: Number(row.source_rank),
+        score: Number(row.source_score),
+        sourceUrl: String(row.source_url),
       }));
 
       if (
@@ -295,7 +328,8 @@ export class PostgresEditorialIntelligenceRepository {
         !aesthetic &&
         judges.length === 0 &&
         masthead.length === 0 &&
-        awards.length === 0
+        awards.length === 0 &&
+        pushcart.length === 0
       ) {
         // A profile row alone is not editorial intelligence.
         return null;
@@ -314,6 +348,7 @@ export class PostgresEditorialIntelligenceRepository {
         judges,
         masthead,
         awards,
+        pushcart,
       };
     } catch (err) {
       console.error("[PostgresEditorialIntelligenceRepository] Error fetching intelligence:", err);

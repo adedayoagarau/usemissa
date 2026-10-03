@@ -79,6 +79,19 @@ export interface ManuscriptMatchResponse {
   simultaneousPackets: ManuscriptMatchCard[];
 }
 
+/**
+ * Stored tiers are the engine labels ("Tier 1 (Flagship Luminary)" …); the
+ * match cards use short keys. Tier 4 has no card group, so it maps to tier_3.
+ */
+export function indexTierKey(value: unknown): ManuscriptMatchCard["prestigeTier"] {
+  const label = typeof value === "string" ? value : "";
+  if (label === "tier_1" || label === "tier_2" || label === "tier_3") return label;
+  if (label.startsWith("Tier 1")) return "tier_1";
+  if (label.startsWith("Tier 2")) return "tier_2";
+  if (label.startsWith("Tier 3") || label.startsWith("Tier 4")) return "tier_3";
+  return "unranked";
+}
+
 function nullableNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
@@ -162,7 +175,7 @@ export class ManuscriptMatchEngine {
           SELECT ranking_rows.*
           FROM missa_magazine_rankings ranking_rows
           WHERE ranking_rows.profile_id = gp.id
-            AND ranking_rows.ranking_year = 2026
+            AND ranking_rows.ranking_year = (SELECT MAX(ranking_year) FROM missa_magazine_rankings)
           ORDER BY (ranking_rows.genre = 'overall') DESC, ranking_rows.total_score DESC
           LIMIT 1
         ) mr ON TRUE
@@ -328,7 +341,7 @@ export class ManuscriptMatchEngine {
 
       // Determine fit category
       let fitCategory: MatchCategory = "packet_builder";
-      if (row.prestige_tier === "tier_1") {
+      if (indexTierKey(row.prestige_tier) === "tier_1") {
         fitCategory = "dream_reach";
       } else if (isDebutChampion && slushRatio !== null && slushRatio >= 75) {
         fitCategory = "debut_champion";
@@ -345,7 +358,7 @@ export class ManuscriptMatchEngine {
         name: row.name,
         slug: manuscriptMatchProfileSlug(row.name, row.slug ?? row.profile_id),
         websiteUrl: row.website_url,
-        prestigeTier: row.prestige_tier,
+        prestigeTier: indexTierKey(row.prestige_tier),
         matchScore: normalizedScore,
         fitCategory,
         reasons,

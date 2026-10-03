@@ -621,6 +621,10 @@ export {
 
 export {
   PostgresMagazineRankingRepository,
+  refreshTurnaroundFromReports,
+  rerankYearGenre,
+  type MagazineIndexCoverage,
+  type SubmissionTelemetryInput,
   type MagazineRankingOpportunity,
   type MagazineRankingRow,
   type MagazineRankingsFilter,

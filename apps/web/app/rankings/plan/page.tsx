@@ -13,6 +13,7 @@ import {
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { buildSubmissionPortfolioPlan } from "@missa/radar-engine";
+import { planningCandidate } from "@/lib/magazineFacts";
 
 export const dynamic = "force-dynamic";
 
@@ -35,22 +36,7 @@ export default async function SubmissionPlanPage() {
   // Plans are built only from the live index. Seed rankings are sample data
   // and must never be presented as a real shortlist.
   const liveIndex = page.dataSource === "database";
-  const candidates = (liveIndex ? page.items : []).map((item) => ({
-    profileId: item.profileId,
-    name: item.name,
-    slug: item.slug,
-    websiteUrl: item.websiteUrl,
-    rankPosition: item.rankPosition,
-    totalScore: item.totalScore,
-    prestigeTier: item.prestigeTier,
-    medianResponseDays: item.medianResponseDays,
-    regularFeeCents: item.regularFeeCents,
-    contributorPayCents: item.contributorPayCents,
-    simultaneousPolicy: item.simultaneousPolicy,
-    formatEthicsScore: item.formatEthicsScore,
-    activeOpportunity: item.activeOpportunity,
-    schedule: item.schedule,
-  }));
+  const candidates = (liveIndex ? page.items : []).map(planningCandidate);
 
   const initialPlan = liveIndex
     ? buildSubmissionPortfolioPlan(candidates, {

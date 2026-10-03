@@ -21,6 +21,13 @@ import { cn } from "@/lib/utils";
 import { MagazineScheduleBadge } from "@/components/ui/magazine-schedule-badge";
 import { MagazineCitizenshipBadges } from "@/components/missa/magazine-citizenship-badges";
 import { MagazineTrackerAction } from "@/components/rankings/magazine-tracker-action";
+import {
+  factStatusLabel,
+  feeLabel,
+  payLabel,
+  responseLabel,
+  simultaneousLabel,
+} from "@/lib/magazineFacts";
 
 interface MagazineComparisonViewProps {
   allMagazines: MagazineRankingRow[];
@@ -208,17 +215,13 @@ export function MagazineComparisonView({
               <div className="flex items-center justify-between gap-4 py-3">
                 <dt className="text-sm text-muted-foreground">Response time</dt>
                 <dd className="text-end font-mono text-sm text-foreground tabular-nums">
-                  {mag.medianResponseDays
-                    ? `${mag.medianResponseDays} days median`
-                    : `${mag.turnaroundScore} / 15`}
+                  {responseLabel(mag)}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-4 py-3">
                 <dt className="text-sm text-muted-foreground">Reading fee</dt>
                 <dd className="text-end text-sm font-medium text-foreground">
-                  {mag.regularFeeCents === 0
-                    ? "No fee"
-                    : `$${(mag.regularFeeCents / 100).toFixed(2)}`}
+                  {feeLabel(mag)}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-4 py-3">
@@ -226,11 +229,7 @@ export function MagazineComparisonView({
                   Simultaneous submissions
                 </dt>
                 <dd className="text-end text-sm font-medium text-foreground">
-                  {mag.simultaneousPolicy === "allowed"
-                    ? "Allowed"
-                    : mag.simultaneousPolicy === "not_allowed"
-                      ? "Not allowed"
-                      : "Policy not listed"}
+                  {simultaneousLabel(mag.simultaneousPolicy)}
                 </dd>
               </div>
             </dl>
@@ -370,7 +369,8 @@ export function MagazineComparisonView({
                     <span>{mag.accoladesScore} / 40</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    10-year rolling Pushcart, Best American, and digital honors
+                    Pushcart standing (Garstang) and cited Best Small Fictions
+                    or Best Microfiction selections
                   </p>
                 </td>
               ))}
@@ -396,11 +396,7 @@ export function MagazineComparisonView({
                     <span>{mag.payScore} / 15</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {mag.payScore >= 12
-                      ? "Professional rates (Cash honoraria)"
-                      : mag.payScore >= 6
-                        ? "Modest honorarium or contributor copies"
-                        : "Unpaid / Contributor copies only"}
+                    {payLabel(mag)} · {factStatusLabel(mag.pillarStatus.pay)}
                   </p>
                 </td>
               ))}
@@ -423,18 +419,11 @@ export function MagazineComparisonView({
                       className="size-4 shrink-0 text-muted-foreground"
                       aria-hidden="true"
                     />
-                    <span>
-                      {mag.medianResponseDays
-                        ? `~${mag.medianResponseDays} days`
-                        : `${mag.turnaroundScore}/15`}
-                    </span>
+                    <span>{mag.turnaroundScore} / 15</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {mag.medianResponseDays && mag.medianResponseDays <= 30
-                      ? "Lightning response (< 30 days)"
-                      : mag.medianResponseDays && mag.medianResponseDays <= 60
-                        ? "Swift response (< 60 days)"
-                        : "Standard literary turnaround"}
+                    {responseLabel(mag)} ·{" "}
+                    {factStatusLabel(mag.pillarStatus.turnaround)}
                   </p>
                 </td>
               ))}
@@ -450,15 +439,7 @@ export function MagazineComparisonView({
               <td className="p-4 font-semibold text-foreground">Reading Fee</td>
               {selectedMagazines.map((mag) => (
                 <td key={mag.profileId} className="p-4 text-sm">
-                  {mag.regularFeeCents === 0 ? (
-                    <span className="font-semibold text-accent-deep">
-                      100% Free ($0)
-                    </span>
-                  ) : (
-                    <span className="text-foreground">
-                      ${(mag.regularFeeCents / 100).toFixed(2)} regular fee
-                    </span>
-                  )}
+                  <span className="text-foreground">{feeLabel(mag)}</span>
                 </td>
               ))}
               {Array.from({ length: 3 - selectedMagazines.length }).map(
@@ -476,13 +457,6 @@ export function MagazineComparisonView({
               {selectedMagazines.map((mag) => (
                 <td key={mag.profileId} className="p-4">
                   <MagazineCitizenshipBadges ranking={mag} />
-                  {!mag.medianResponseDays &&
-                  mag.regularFeeCents > 0 &&
-                  mag.contributorPayCents === 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                      No badge thresholds met from current ranking fields.
-                    </p>
-                  ) : null}
                 </td>
               ))}
               {Array.from({ length: 3 - selectedMagazines.length }).map(
@@ -499,16 +473,8 @@ export function MagazineComparisonView({
               </td>
               {selectedMagazines.map((mag) => (
                 <td key={mag.profileId} className="p-4 text-sm">
-                  <span
-                    className={
-                      mag.simultaneousPolicy === "allowed"
-                        ? "font-medium text-foreground"
-                        : "font-medium text-destructive"
-                    }
-                  >
-                    {mag.simultaneousPolicy === "allowed"
-                      ? "Allowed"
-                      : "Forbidden (Exclusive Only)"}
+                  <span className="font-medium text-foreground">
+                    {simultaneousLabel(mag.simultaneousPolicy)}
                   </span>
                 </td>
               ))}
