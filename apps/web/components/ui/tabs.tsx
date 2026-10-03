@@ -35,7 +35,7 @@ const tabsListVariants = cva(
           "w-full justify-start gap-3 border-b border-border bg-transparent pb-1",
         // A row of day or period tiles; each trigger is a small card (Creator Home week).
         tiles:
-          "grid w-full grid-cols-4 gap-2 rounded-none bg-transparent p-0 sm:grid-cols-8",
+          "grid w-full grid-cols-4 gap-2 rounded-none bg-transparent p-0 md:grid-cols-8",
       },
       size: {
         compact: "group-data-horizontal/tabs:h-8",

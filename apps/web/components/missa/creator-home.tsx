@@ -8,7 +8,6 @@ import {
   Target,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import {
   Empty,
   EmptyContent,
@@ -131,7 +130,7 @@ export function CreatorHome({
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
-                <Link href="/opportunities" className={cn(buttonVariants())}>
+                <Link href="/opportunities" className={buttonVariants()}>
                   Browse opportunities
                   <ArrowRight />
                 </Link>
@@ -263,6 +262,15 @@ export function CreatorHome({
                     <ArrowRight className="size-4" aria-hidden="true" />
                   </Link>
                 </>
+              ) : home.thisWeek.some((move) => move.kind === "opening") ? (
+                // Every current suggestion is already one of this week's moves.
+                <Link
+                  href="/opportunities/for-you"
+                  className="inline-flex min-h-11 items-center gap-1 self-start text-sm font-semibold text-primary underline-offset-4 hover:underline"
+                >
+                  More selected for you
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
               ) : (
                 <p className="text-sm text-muted-foreground">
                   Follow a few organizations or disciplines and Missa will
@@ -326,8 +334,9 @@ function GoalPace({ pace }: { pace: HomeGoalPace }) {
         </span>
       </p>
       {circles ? (
-        <ol
-          className="grid grid-cols-6 gap-2"
+        <div
+          role="img"
+          className="grid max-w-72 grid-cols-6 gap-2"
           aria-label={`${goal.progress} submitted, ${Math.max(0, pace.reachable - goal.progress)} in reach, ${goal.target} in all`}
         >
           {Array.from({ length: goal.target }, (_, index) => {
@@ -338,9 +347,8 @@ function GoalPace({ pace }: { pace: HomeGoalPace }) {
                   ? "reach"
                   : "open";
             return (
-              <li
+              <span
                 key={index}
-                aria-hidden="true"
                 className={
                   state === "done"
                     ? "aspect-square rounded-full bg-primary"
@@ -351,7 +359,7 @@ function GoalPace({ pace }: { pace: HomeGoalPace }) {
               />
             );
           })}
-        </ol>
+        </div>
       ) : null}
       {pace.inReach && pace.status !== "reached" ? (
         <p className="text-sm leading-snug">
@@ -418,10 +426,7 @@ function LeadMove({ move }: { move: HomeMove }) {
           />
         ) : (
           <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href={move.href}
-              className={cn(buttonVariants({ size: "lg" }))}
-            >
+            <Link href={move.href} className={buttonVariants({ size: "lg" })}>
               {move.actionLabel}
               <span className="sr-only">: {move.title}</span>
               <ArrowRight />
@@ -490,7 +495,7 @@ function SupportingMove({
         ) : (
           <Link
             href={move.href}
-            className={cn(buttonVariants({ variant: "outline" }))}
+            className={buttonVariants({ variant: "outline" })}
           >
             {move.actionLabel}
             <span className="sr-only">: {move.title}</span>
@@ -550,10 +555,10 @@ function FirstRun() {
             <p className="text-sm text-muted-foreground">{step.body}</p>
             <Link
               href={step.href}
-              className={cn(
-                buttonVariants({ variant: step.variant }),
-                "mt-auto self-start",
-              )}
+              className={buttonVariants({
+                variant: step.variant,
+                className: "mt-auto self-start",
+              })}
             >
               {step.label}
               <step.icon />

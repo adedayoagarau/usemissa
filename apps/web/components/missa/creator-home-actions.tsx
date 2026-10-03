@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronRight, Info } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -285,9 +284,9 @@ export function HomeCheckIn({
       <div className="flex flex-wrap gap-3">
         <Link
           href={href}
-          className={cn(
-            buttonVariants({ variant: primary ? "default" : "outline" }),
-          )}
+          className={buttonVariants({
+            variant: primary ? "default" : "outline",
+          })}
         >
           Yes, record the answer
           <span className="sr-only"> for {title}</span>
@@ -591,7 +590,12 @@ export function HomeTrackerTabs({
     <Tabs defaultValue={first}>
       <TabsList variant="line" aria-label="Tracker stages">
         {tabs.map((tab) => (
-          <TabsTrigger key={tab.value} value={tab.value} size="touch">
+          <TabsTrigger
+            key={tab.value}
+            value={tab.value}
+            size="touch"
+            aria-label={`${tab.label}, ${tab.rows.length}`}
+          >
             {tab.label}
             <CountBadge
               count={tab.rows.length}
