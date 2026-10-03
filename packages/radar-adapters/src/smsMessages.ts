@@ -91,12 +91,14 @@ export async function reserveSmsMessage(pool: Pool, input: SmsReservationInput):
   try {
     await client.query("begin");
     await client.query("select pg_advisory_xact_lock(hashtext('sms-ledger'))");
-    const existing = await client.query<{ id: string; status: SmsStatus; attempts: number }>(
-      "select id, status, attempts from sms_messages where idempotency_key=$1 for update",
+    const existing = await client.query<{ id: string; status: SmsStatus; attempts: number; provider_message_id: string | null }>(
+      "select id, status, attempts, provider_message_id from sms_messages where idempotency_key=$1 for update",
       [input.idempotencyKey],
     );
     const row = existing.rows[0];
-    if (row && (row.status !== "failed" || row.attempts >= SMS_MAX_ATTEMPTS)) {
+    // Only a send the provider never accepted is retried: once Telnyx has the
+    // message, a carrier failure is final and a resend would be billed again.
+    if (row && (row.status !== "failed" || row.attempts >= SMS_MAX_ATTEMPTS || row.provider_message_id)) {
       await client.query("commit");
       return { outcome: "duplicate", id: row.id, status: row.status };
     }

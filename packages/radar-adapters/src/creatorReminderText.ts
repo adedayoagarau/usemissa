@@ -28,7 +28,8 @@ export const creatorReminderTextKey = (alertId: string) => `creator-reminder-sms
  * simply stops matching. Deadline reminders and response check-ins were
  * already held through quiet hours by the reminder tick; moved deadlines and
  * early closures are held here until the account's quiet hours end. A notice
- * with any ledger row is skipped unless that row failed with attempts left.
+ * with any ledger row is skipped unless Telnyx never accepted it and it has
+ * attempts left.
  * Texts are time-sensitive, so only notices from the last day are sent.
  */
 export async function pendingCreatorReminderTexts(pool: Pool, limit = 100): Promise<PendingCreatorReminderText[]> {
@@ -96,7 +97,7 @@ export async function pendingCreatorReminderTexts(pool: Pool, limit = 100): Prom
         and not exists (
           select 1 from sms_messages m
            where m.idempotency_key='creator-reminder-sms:'||a.id
-             and (m.status<>'failed' or m.attempts >= $3)
+             and (m.status<>'failed' or m.attempts >= $3 or m.provider_message_id is not null)
         )
       order by a.created_at
       limit $1`,
