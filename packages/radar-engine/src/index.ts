@@ -134,6 +134,7 @@ export { RadarServer, type RadarServerOptions } from './server/server.js';
 export { AuthError, DEFAULT_SEAT_LIMITS, membershipsFor, isOrgMember, organizationSeatLimit, organizationSeatUsage, provisionOrgAccount, revokeOrgMembership } from './auth/accounts.js';
 export {
   hashPassword, verifyPassword, createSessionToken, verifySessionToken, type SessionPayload,
+  isSessionIssuedAfterRevocation, revokeAccountSessions, sessionRevocationCutoff, type SessionRevocationState,
   createFeedToken, verifyFeedToken, type FeedTokenPayload,
 } from './auth/crypto.js';
 export { buildIcsFeed } from './tracker/calendarFeed.js';

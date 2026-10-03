@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { creatorPoolFor, creatorRelationalAuthorityEnabled, PostgresCreatorAccountRepository } from '@missa/radar-adapters';
-import { hashPassword } from '@missa/radar-engine';
+import { hashPassword, revokeAccountSessions } from '@missa/radar-engine';
 import { getEngine } from '@/lib/engine';
 import { verifyPasswordResetToken } from '@/lib/password-reset-tokens';
 import { z } from 'zod';
@@ -79,6 +79,7 @@ export async function POST(request: Request) {
       const memAccount = engine.store.accounts.get(account.id);
       if (memAccount) {
         memAccount.passwordHash = hashPassword(password);
+        revokeAccountSessions(memAccount, new Date());
       }
     }
 
