@@ -19,6 +19,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { renderWeeklyDigestEmail } from '../emails/weekly-digest';
+import { renderAlertDigestEmail } from '../emails/alert-digest';
 import { renderDeadlineMomentEmail, type DeadlineMomentNotice } from '../emails/deadline-moments';
 import { renderWelcomeEmail } from '../emails/welcome';
 import { renderAuthOtpEmail } from '../emails/auth-otp';
@@ -154,6 +155,31 @@ const templates: Record<string, () => Rendered> = {
       email: to,
       digest: { recipientName: 'Tola', ...samples },
     }),
+  'selected-for-you': () => {
+    const sampled = [...samples.newForYou, ...samples.closingSoon];
+    const alertFor = (entry: DigestSample, index: number, kind: 'new-match' | 'followed-org-new-call') => ({
+      id: `sample-alert-${index}`,
+      audience: 'user' as const,
+      userId: 'sample-user',
+      kind,
+      opportunityId: entry.opportunityId,
+      title: entry.title,
+      body: 'Sample',
+      reason: kind === 'new-match' ? 'matches your saved search "Residencies, free to enter"' : 'you follow this organization',
+      createdAt: now.toISOString(),
+      read: false,
+    });
+    return renderAlertDigestEmail({
+      accountId: 'acct_email_test',
+      email: to,
+      now,
+      alerts: [alertFor(sampled[0]!, 0, 'new-match'), alertFor(sampled[1]!, 1, 'new-match'), alertFor(sampled[2]!, 2, 'followed-org-new-call')],
+      opportunity: (id) => {
+        const entry = sampled.find((candidate) => candidate.opportunityId === id);
+        return entry && { ...entry, feeCurrency: entry.feeCurrency ?? null };
+      },
+    });
+  },
   'deadline-reminder': () => moment('deadline-reminder'),
   'deadline-changed': () => moment('deadline-changed', { previousDeadline: lead.deadline ? shiftDays(lead.deadline, -5) : null }),
   'call-closed': () => moment('call-closed', { listedDeadline: lead.deadline }),
