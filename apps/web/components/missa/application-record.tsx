@@ -562,7 +562,7 @@ export function ApplicationRecord({
         className="gap-6"
       >
         <div className="-mx-1 overflow-x-auto px-1">
-          <TabsList variant="line" className="min-h-11 w-full gap-0 sm:w-fit sm:gap-4">
+          <TabsList variant="line" className="min-h-11 w-full justify-start gap-0 sm:w-fit sm:gap-4">
             {APPLICATION_RECORD_SECTIONS.map((candidate) => (
               <TabsTrigger key={candidate.id} value={candidate.id} size="touch">
                 {candidate.label}
