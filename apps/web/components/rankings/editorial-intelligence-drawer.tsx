@@ -33,6 +33,14 @@ import { BetaBadge } from "@/components/ui/beta-badge";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import type { EditorialIntelligenceFullProfile } from "@missa/radar-adapters";
 
+function NoRecord({ children }: { children: React.ReactNode }) {
+  return <p className="py-8 text-center text-sm text-muted-foreground">{children}</p>;
+}
+
+function recorded(value: number | null | undefined, suffix = ""): string {
+  return value === null || value === undefined ? "Not recorded" : `${value}${suffix}`;
+}
+
 interface EditorialIntelligenceDrawerProps {
   profileId: string;
   magazineName: string;
@@ -49,6 +57,7 @@ export function EditorialIntelligenceDrawer({
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [notFound, setNotFound] = React.useState(false);
   const [data, setData] =
     React.useState<EditorialIntelligenceFullProfile | null>(null);
   const [activeTab, setActiveTab] = React.useState<
@@ -58,12 +67,17 @@ export function EditorialIntelligenceDrawer({
   const fetchIntelligence = React.useCallback(async () => {
     setLoading(true);
     setError(null);
+    setNotFound(false);
     try {
       const res = await fetch(
         `/api/rankings/magazines/${encodeURIComponent(profileId)}/intelligence`,
       );
+      if (res.status === 404) {
+        setNotFound(true);
+        return;
+      }
       if (!res.ok) {
-        throw new Error("Failed to load editorial intelligence data.");
+        throw new Error("We could not load these records. Try again.");
       }
       const json = (await res.json()) as EditorialIntelligenceFullProfile;
       setData(json);
@@ -71,7 +85,7 @@ export function EditorialIntelligenceDrawer({
       setError(
         err instanceof Error
           ? err.message
-          : "An unexpected error occurred while fetching intelligence.",
+          : "We could not load these records. Try again.",
       );
     } finally {
       setLoading(false);
@@ -79,12 +93,17 @@ export function EditorialIntelligenceDrawer({
   }, [profileId]);
 
   React.useEffect(() => {
-    if (open && !data && !loading) {
+    if (open && !data && !loading && !notFound && !error) {
       // The fetch callback owns loading/error state for this user-triggered disclosure.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       void fetchIntelligence();
     }
-  }, [open, data, loading, fetchIntelligence]);
+  }, [open, data, loading, notFound, error, fetchIntelligence]);
+
+  const aesthetic = data?.aesthetic ?? null;
+  const telemetry = data?.telemetry ?? null;
+  const compensation = data?.compensation ?? null;
+  const specs = data?.specs ?? null;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -108,8 +127,8 @@ export function EditorialIntelligenceDrawer({
         <SheetHeader variant="muted" className="p-6">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <RankingTierBadge tier={data?.prestigeTier ?? "Tier 1"} />
-              {data?.aesthetic.isDebutChampion && (
+              {data?.prestigeTier && <RankingTierBadge tier={data.prestigeTier} />}
+              {aesthetic?.isDebutChampion && (
                 <span className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                   <HeartHandshake className="size-3" /> Debut Champion
                 </span>
@@ -205,8 +224,7 @@ export function EditorialIntelligenceDrawer({
             <div className="space-y-3 py-16 text-center">
               <div className="inline-block size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               <p className="text-sm text-muted-foreground">
-                Synthesizing editorial taste DNA, telemetry & publisher
-                intelligence...
+                Loading editorial records…
               </p>
             </div>
           )}
@@ -215,7 +233,7 @@ export function EditorialIntelligenceDrawer({
             <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
               <AlertCircle className="mt-0.5 size-5 shrink-0" />
               <div>
-                <p className="font-semibold">Unable to fetch intelligence</p>
+                <p className="font-semibold">Records not loaded</p>
                 <p className="mt-1 text-xs opacity-90">{error}</p>
                 <Button
                   variant="outline"
@@ -229,25 +247,35 @@ export function EditorialIntelligenceDrawer({
             </div>
           )}
 
+          {!loading && notFound && (
+            <NoRecord>
+              Missa has no editorial records for this publication yet. Check
+              the publication&apos;s official guidelines.
+            </NoRecord>
+          )}
+
           {!loading && data && (
             <>
               {/* TAB 1: AESTHETIC TASTE DNA & COMPS */}
-              {activeTab === "aesthetic" && (
+              {activeTab === "aesthetic" && !aesthetic && (
+                <NoRecord>No taste records for this publication yet.</NoRecord>
+              )}
+              {activeTab === "aesthetic" && aesthetic && (
                 <div className="space-y-6">
                   {/* Editorial Motto */}
-                  {data.aesthetic.editorialMotto && (
+                  {aesthetic.editorialMotto && (
                     <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 p-4">
                       <p className="text-xs font-semibold tracking-wider text-primary uppercase">
                         Editorial Taste Profile
                       </p>
                       <p className="font-serif text-sm leading-relaxed text-foreground italic">
-                        &ldquo;{data.aesthetic.editorialMotto}&rdquo;
+                        &ldquo;{aesthetic.editorialMotto}&rdquo;
                       </p>
                     </div>
                   )}
 
                   {/* Author Comps ("If You Write Like...") */}
-                  {data.aesthetic.authorComps.length > 0 && (
+                  {aesthetic.authorComps.length > 0 && (
                     <div className="space-y-3 rounded-lg border border-border bg-card p-4">
                       <div className="flex items-center justify-between">
                         <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
@@ -263,7 +291,7 @@ export function EditorialIntelligenceDrawer({
                         this journal&rsquo;s published work:
                       </p>
                       <div className="flex flex-wrap gap-2 pt-1">
-                        {data.aesthetic.authorComps.map((author) => (
+                        {aesthetic.authorComps.map((author) => (
                           <span
                             key={author}
                             className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
@@ -283,21 +311,23 @@ export function EditorialIntelligenceDrawer({
                         <span>Slush Acceptance & Debut Friendliness</span>
                       </h4>
                       <span className="font-mono text-xs font-semibold text-emerald-600">
-                        {data.aesthetic.debutAuthorFriendlyScore} / 10 Debut
-                        Score
+                        {aesthetic.debutAuthorFriendlyScore === null
+                          ? "Debut score not recorded"
+                          : `${aesthetic.debutAuthorFriendlyScore} / 10 Debut Score`}
                       </span>
                     </div>
 
+                    {aesthetic.unsolicitedSlushRatioPercent !== null && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">
                           Unsolicited Slush Acceptance Share
                         </span>
                         <span className="font-mono font-semibold text-foreground">
-                          {data.aesthetic.unsolicitedSlushRatioPercent}% Open
+                          {aesthetic.unsolicitedSlushRatioPercent}% Open
                           Slush{" "}
                           <span className="font-normal text-muted-foreground">
-                            ({100 - data.aesthetic.unsolicitedSlushRatioPercent}
+                            ({100 - aesthetic.unsolicitedSlushRatioPercent}
                             % Solicited)
                           </span>
                         </span>
@@ -306,22 +336,23 @@ export function EditorialIntelligenceDrawer({
                         <div
                           className="h-full bg-emerald-600 transition-all duration-500"
                           style={{
-                            width: `${data.aesthetic.unsolicitedSlushRatioPercent}%`,
+                            width: `${aesthetic.unsolicitedSlushRatioPercent}%`,
                           }}
                         />
                         <div
                           className="h-full bg-muted-foreground/30 transition-all duration-500"
                           style={{
-                            width: `${100 - data.aesthetic.unsolicitedSlushRatioPercent}%`,
+                            width: `${100 - aesthetic.unsolicitedSlushRatioPercent}%`,
                           }}
                         />
                       </div>
                     </div>
+                    )}
 
                     <p className="pt-1 text-xs leading-relaxed text-muted-foreground">
-                      {data.aesthetic.isDebutChampion
-                        ? "Beta signal: Current tool inputs suggest this magazine often publishes emerging and first-time writers from open submissions."
-                        : "Selective Masthead: Significant portion of each issue is curated through solicitations and established contributors."}
+                      {aesthetic.isDebutChampion
+                        ? "Missa's records show this magazine publishes first-time writers from open submissions."
+                        : "Missa has no record of this magazine favouring first-time writers."}
                     </p>
                   </div>
 
@@ -332,7 +363,7 @@ export function EditorialIntelligenceDrawer({
                         Preferred Writing Styles
                       </h4>
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        {data.aesthetic.writingStyles.map((style) => (
+                        {aesthetic.writingStyles.map((style) => (
                           <span
                             key={style}
                             className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-foreground capitalize"
@@ -348,7 +379,7 @@ export function EditorialIntelligenceDrawer({
                         Poetry Forms & Structures
                       </h4>
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        {data.aesthetic.poetryForms.map((form) => (
+                        {aesthetic.poetryForms.map((form) => (
                           <span
                             key={form}
                             className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-foreground capitalize"
@@ -361,13 +392,13 @@ export function EditorialIntelligenceDrawer({
                   </div>
 
                   {/* Thematic Interests */}
-                  {data.aesthetic.thematicInterests.length > 0 && (
+                  {aesthetic.thematicInterests.length > 0 && (
                     <div className="space-y-2 rounded-lg border border-border bg-card p-4">
                       <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                         Recurring Thematic Explorations
                       </h4>
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        {data.aesthetic.thematicInterests.map((theme) => (
+                        {aesthetic.thematicInterests.map((theme) => (
                           <span
                             key={theme}
                             className="rounded border border-primary/20 bg-primary/10 px-2 py-0.5 font-mono text-xs text-primary capitalize"
@@ -382,7 +413,10 @@ export function EditorialIntelligenceDrawer({
               )}
 
               {/* TAB 2: TELEMETRY & RESPONSE CURVES */}
-              {activeTab === "telemetry" && (
+              {activeTab === "telemetry" && !telemetry && (
+                <NoRecord>No response records for this publication yet.</NoRecord>
+              )}
+              {activeTab === "telemetry" && telemetry && (
                 <div className="space-y-6">
                   {/* Key Telemetry Numbers */}
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -391,12 +425,13 @@ export function EditorialIntelligenceDrawer({
                         Median Turnaround
                       </p>
                       <p className="mt-1 font-mono text-xl font-bold text-foreground">
-                        {data.telemetry.medianResponseDays}{" "}
-                        <span className="text-xs font-normal">days</span>
+                        {recorded(telemetry.medianResponseDays, " days")}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        Avg: {data.telemetry.avgResponseDays}d
-                      </p>
+                      {telemetry.avgResponseDays !== null && (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          Avg: {telemetry.avgResponseDays}d
+                        </p>
+                      )}
                     </div>
 
                     <div className="rounded-lg border border-border bg-muted/40 p-3.5">
@@ -404,10 +439,7 @@ export function EditorialIntelligenceDrawer({
                         Acceptance Rate
                       </p>
                       <p className="mt-1 font-mono text-xl font-bold text-primary">
-                        {data.telemetry.acceptanceRatePercent}%
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        Highly Selective
+                        {recorded(telemetry.acceptanceRatePercent, "%")}
                       </p>
                     </div>
 
@@ -416,7 +448,7 @@ export function EditorialIntelligenceDrawer({
                         Personal / Tier Notes
                       </p>
                       <p className="mt-1 font-mono text-xl font-bold text-foreground">
-                        {data.telemetry.tieredRejectionRatePercent}%
+                        {recorded(telemetry.tieredRejectionRatePercent, "%")}
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         Encouraging replies
@@ -428,7 +460,7 @@ export function EditorialIntelligenceDrawer({
                         Active Queue Depth
                       </p>
                       <p className="mt-1 font-mono text-xl font-bold text-foreground">
-                        {data.telemetry.currentQueueDepth}
+                        {recorded(telemetry.currentQueueDepth)}
                       </p>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         In review now
@@ -437,7 +469,7 @@ export function EditorialIntelligenceDrawer({
                   </div>
 
                   {/* Free Cap Depletion Alert */}
-                  {data.telemetry.submittableFreeCapDepletionDays != null && (
+                  {telemetry.submittableFreeCapDepletionDays != null && (
                     <div className="flex items-start gap-3 rounded-lg border border-warning/20 bg-warning/5 p-4">
                       <TrendingUp className="mt-0.5 size-5 shrink-0 text-warning" />
                       <div className="space-y-1">
@@ -448,7 +480,7 @@ export function EditorialIntelligenceDrawer({
                           This publication operates on a monthly Submittable
                           free cap that typically exhausts within{" "}
                           <span className="font-semibold text-foreground">
-                            {data.telemetry.submittableFreeCapDepletionDays}{" "}
+                            {telemetry.submittableFreeCapDepletionDays}{" "}
                             days
                           </span>{" "}
                           of the calendar month opening. We recommend queueing
@@ -460,19 +492,19 @@ export function EditorialIntelligenceDrawer({
                   )}
 
                   {/* Response Probability Curve */}
+                  {telemetry.responseCurveDistribution.length > 0 && (
                   <div className="space-y-3 rounded-lg border border-border bg-card p-4">
                     <div className="flex items-center justify-between">
                       <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                         <Clock className="size-4 text-primary" />
                         <span>Response Timeline Distribution</span>
                       </h4>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        Confidence{" "}
-                        {(
-                          Number(data.telemetry.telemetryConfidenceScore) * 100
-                        ).toFixed(0)}
-                        %
-                      </span>
+                      {telemetry.telemetryConfidenceScore !== null && (
+                        <span className="font-mono text-xs text-muted-foreground">
+                          Confidence{" "}
+                          {(telemetry.telemetryConfidenceScore * 100).toFixed(0)}%
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Probability curve showing when editorial decisions
@@ -481,7 +513,7 @@ export function EditorialIntelligenceDrawer({
                     </p>
 
                     <div className="space-y-2 pt-2">
-                      {data.telemetry.responseCurveDistribution.map(
+                      {telemetry.responseCurveDistribution.map(
                         (bucket) => (
                           <div key={bucket.bucketDays} className="space-y-1">
                             <div className="flex items-center justify-between font-mono text-xs">
@@ -510,18 +542,22 @@ export function EditorialIntelligenceDrawer({
 
                     <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground">
                       <span>
-                        Fastest: {data.telemetry.fastestResponseDays} days
+                        Fastest: {recorded(telemetry.fastestResponseDays, " days")}
                       </span>
                       <span>
-                        Slowest: {data.telemetry.slowestResponseDays} days
+                        Slowest: {recorded(telemetry.slowestResponseDays, " days")}
                       </span>
                     </div>
                   </div>
+                  )}
                 </div>
               )}
 
               {/* TAB 3: COMPENSATION & RIGHTS */}
-              {activeTab === "compensation" && (
+              {activeTab === "compensation" && !compensation && (
+                <NoRecord>No pay or fee records for this publication yet.</NoRecord>
+              )}
+              {activeTab === "compensation" && compensation && (
                 <div className="space-y-4">
                   {/* Contributor Pay Card */}
                   <div className="space-y-3 rounded-lg border border-border bg-card p-4">
@@ -530,7 +566,7 @@ export function EditorialIntelligenceDrawer({
                         <DollarSign className="size-4 text-primary" />
                         <span>Contributor Pay & Pro Rates</span>
                       </h4>
-                      {data.compensation.isProRate && (
+                      {compensation.isProRate && (
                         <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
                           SFWA / Pro Rate
                         </span>
@@ -543,7 +579,9 @@ export function EditorialIntelligenceDrawer({
                           Payment Structure
                         </p>
                         <p className="mt-0.5 text-base font-semibold text-foreground capitalize">
-                          {data.compensation.payRateKind.replace(/_/g, " ")}
+                          {compensation.payRateKind
+                            ? compensation.payRateKind.replace(/_/g, " ")
+                            : "Not recorded"}
                         </p>
                       </div>
 
@@ -552,13 +590,11 @@ export function EditorialIntelligenceDrawer({
                           Standard Rate
                         </p>
                         <p className="mt-0.5 font-mono text-base font-semibold text-primary">
-                          {data.compensation.rateCentsPerWord != null
-                            ? `$${(data.compensation.rateCentsPerWord / 100).toFixed(2)} / word`
-                            : data.compensation.flatRateCents != null
-                              ? `$${(data.compensation.flatRateCents / 100).toFixed(0)} flat rate`
-                              : data.compensation.paysContributors
-                                ? "Honorarium / Copies"
-                                : "Unpaid / Contributor Copy"}
+                          {compensation.rateCentsPerWord != null
+                            ? `$${(compensation.rateCentsPerWord / 100).toFixed(2)} / word`
+                            : compensation.flatRateCents != null
+                              ? `$${(compensation.flatRateCents / 100).toFixed(0)} flat rate`
+                              : "Not recorded"}
                         </p>
                       </div>
                     </div>
@@ -579,28 +615,26 @@ export function EditorialIntelligenceDrawer({
                             Rights Acquired:{" "}
                           </span>
                           <span className="font-mono font-medium text-foreground uppercase">
-                            {data.compensation.rightsAcquired}
-                          </span>{" "}
-                          (First North American Serial Rights & non-exclusive
-                          archival rights).
+                            {compensation.rightsAcquired ?? "Not recorded"}
+                          </span>
                         </div>
                       </div>
 
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                        <div>
-                          <span className="font-semibold text-foreground">
-                            Rights Reversion:{" "}
-                          </span>
-                          All publication rights automatically revert to the
-                          author{" "}
-                          <span className="font-semibold text-foreground">
-                            {data.compensation.rightsReversionMonths ?? 3}{" "}
-                            months
-                          </span>{" "}
-                          following publication.
+                      {compensation.rightsReversionMonths !== null && (
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                          <div>
+                            <span className="font-semibold text-foreground">
+                              Rights Reversion:{" "}
+                            </span>
+                            Rights revert to the author{" "}
+                            <span className="font-semibold text-foreground">
+                              {compensation.rightsReversionMonths} months
+                            </span>{" "}
+                            after publication.
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
 
@@ -612,19 +646,21 @@ export function EditorialIntelligenceDrawer({
                         <span>Submission Fees & Financial Accessibility</span>
                       </h4>
                       <span className="font-mono text-xs text-muted-foreground">
-                        {data.compensation.submissionFeeCents === 0
-                          ? "100% Free Submissions"
-                          : `$${(data.compensation.submissionFeeCents / 100).toFixed(2)} Regular Fee`}
+                        {compensation.submissionFeeCents === null
+                          ? "Fee not confirmed"
+                          : compensation.submissionFeeCents === 0
+                            ? "Free to submit"
+                            : `$${(compensation.submissionFeeCents / 100).toFixed(2)} fee`}
                       </span>
                     </div>
 
-                    {data.compensation.hasFeeWaivers &&
-                      data.compensation.feeWaiverPolicy && (
+                    {compensation.hasFeeWaivers &&
+                      compensation.feeWaiverPolicy && (
                         <div className="rounded-lg border border-primary/30 bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
                           <p className="mb-1 font-semibold text-foreground">
                             Fee Waiver & Hardship Policy:
                           </p>
-                          {data.compensation.feeWaiverPolicy}
+                          {compensation.feeWaiverPolicy}
                         </div>
                       )}
                   </div>
@@ -632,7 +668,10 @@ export function EditorialIntelligenceDrawer({
               )}
 
               {/* TAB 4: MANUSCRIPT GUIDELINES */}
-              {activeTab === "guidelines" && (
+              {activeTab === "guidelines" && !specs && (
+                <NoRecord>No manuscript specs for this publication yet.</NoRecord>
+              )}
+              {activeTab === "guidelines" && specs && (
                 <div className="space-y-4">
                   {/* Constraints Grid */}
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -641,9 +680,9 @@ export function EditorialIntelligenceDrawer({
                         Max Word Count
                       </p>
                       <p className="mt-0.5 font-mono text-base font-bold text-foreground">
-                        {data.specs.maxWordCount
-                          ? `${data.specs.maxWordCount.toLocaleString()} words`
-                          : "No hard limit"}
+                        {specs.maxWordCount
+                          ? `${specs.maxWordCount.toLocaleString()} words`
+                          : "Not stated"}
                       </p>
                     </div>
 
@@ -652,7 +691,9 @@ export function EditorialIntelligenceDrawer({
                         Poetry Submission
                       </p>
                       <p className="mt-0.5 font-mono text-base font-bold text-foreground">
-                        Up to {data.specs.maxPoemsPerSubmission ?? 5} poems
+                        {specs.maxPoemsPerSubmission === null
+                          ? "Not stated"
+                          : `Up to ${specs.maxPoemsPerSubmission} poems`}
                       </p>
                     </div>
 
@@ -661,7 +702,7 @@ export function EditorialIntelligenceDrawer({
                         Blind Review
                       </p>
                       <p className="mt-0.5 flex items-center gap-1 text-base font-semibold text-foreground">
-                        {data.specs.requiresBlindReview ? (
+                        {specs.requiresBlindReview ? (
                           <>
                             <CheckCircle2 className="size-4 text-primary" />{" "}
                             Required
@@ -688,13 +729,13 @@ export function EditorialIntelligenceDrawer({
                           <span className="font-semibold text-foreground">
                             Simultaneous Submissions:{" "}
                           </span>
-                          {data.specs.allowsSimultaneous
-                            ? "Permitted. Please notify editorial team immediately via Submittable / email if accepted elsewhere."
-                            : "Not allowed. All submissions must be exclusive during active review."}
+                          {specs.allowsSimultaneous
+                            ? "Allowed. Tell the editors if the piece is accepted elsewhere."
+                            : "Not allowed."}
                         </div>
                       </li>
                       <li className="flex items-start gap-2">
-                        {data.specs.allowsReprints ? (
+                        {specs.allowsReprints ? (
                           <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
                         ) : (
                           <XCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
@@ -703,31 +744,33 @@ export function EditorialIntelligenceDrawer({
                           <span className="font-semibold text-foreground">
                             Reprints Policy:{" "}
                           </span>
-                          {data.specs.allowsReprints
-                            ? "Reprints and previously published works accepted with attribution."
-                            : "Previously unpublished works only. Pieces appearing online or in self-published anthologies cannot be considered."}
+                          {specs.allowsReprints
+                            ? "Previously published work accepted."
+                            : "Unpublished work only."}
                         </div>
                       </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                        <div>
-                          <span className="font-semibold text-foreground">
-                            Accepted Formats:{" "}
-                          </span>
-                          <span className="font-mono uppercase">
-                            {data.specs.acceptedFileFormats.join(", ")}
-                          </span>
-                        </div>
-                      </li>
+                      {specs.acceptedFileFormats.length > 0 && (
+                        <li className="flex items-start gap-2">
+                          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+                          <div>
+                            <span className="font-semibold text-foreground">
+                              Accepted Formats:{" "}
+                            </span>
+                            <span className="font-mono uppercase">
+                              {specs.acceptedFileFormats.join(", ")}
+                            </span>
+                          </div>
+                        </li>
+                      )}
                     </ul>
 
-                    {data.specs.specificGuidelines && (
+                    {specs.specificGuidelines && (
                       <div className="mt-3 border-t border-border pt-3">
                         <p className="mb-1 text-xs font-semibold text-foreground">
                           Editorial Instructions:
                         </p>
                         <p className="text-xs leading-relaxed text-muted-foreground">
-                          {data.specs.specificGuidelines}
+                          {specs.specificGuidelines}
                         </p>
                       </div>
                     )}
