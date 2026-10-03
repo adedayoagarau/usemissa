@@ -34,6 +34,20 @@ def opportunity_type(candidate: ReviewCandidate) -> str:
     return "contest"
 
 
+_ORGANIZER_SEPARATORS = re.compile(r"[:|/()\[\]\u2013\u2014]| - ")
+
+
+def organizer_name(candidate: ReviewCandidate) -> str | None:
+    """Gary's organizer field is often the call title itself; pass it on only when it reads like a name."""
+    organizer = " ".join((candidate.organizer or "").split())
+    title = " ".join((candidate.title or "").split())
+    if not organizer or len(organizer.split()) > 8 or _ORGANIZER_SEPARATORS.search(organizer):
+        return None
+    if title and title.casefold() in organizer.casefold():
+        return None
+    return organizer
+
+
 def publish_opportunity(database_url: str, candidate: ReviewCandidate) -> str:
     """Hand a Gary-approved call to the Missa review agent.
 
@@ -128,7 +142,7 @@ def publish_opportunity(database_url: str, candidate: ReviewCandidate) -> str:
                     candidate.opportunity_id,
                     source_id,
                     candidate.source_detail_url,
-                    json.dumps({"source": "gary", "organizerName": candidate.organizer, "officialWebsite": official}),
+                    json.dumps({"source": "gary", "organizerName": organizer_name(candidate), "officialWebsite": official}),
                 ),
             )
             connection.execute(
