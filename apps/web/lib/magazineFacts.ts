@@ -130,3 +130,38 @@ export function planningCandidate(
     schedule: item.schedule,
   };
 }
+
+/** Short cell values for the rankings table; null when no source records the fact. */
+export function feeCell(row: FeeFacts): string | null {
+  if (row.regularFeeCents === 0 || row.chargesReadingFee === false)
+    return "Free";
+  if (row.regularFeeCents != null) return dollars(row.regularFeeCents);
+  if (row.chargesReadingFee) return "Fee";
+  return null;
+}
+
+export function payCell(
+  row: PayFacts & { payScore: number; pillarStatus: PillarStatusMap },
+): string | null {
+  if (magazineFilters.pro(row)) return "Pro rate";
+  if (row.payKind === "cash" || (row.contributorPayCents ?? 0) > 0)
+    return "Pays";
+  if (row.payKind === "copies_only") return "Copies";
+  if (row.payKind === "unpaid") return "Unpaid";
+  return null;
+}
+
+export function replyCell(row: ResponseFacts): string | null {
+  if (row.medianResponseDays != null) return `${row.medianResponseDays} days`;
+  if (row.responseTimeBand) return RESPONSE_BAND_LABELS[row.responseTimeBand];
+  return null;
+}
+
+/** "pw.org" from a source URL, for a compact citation. */
+export function sourceHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}

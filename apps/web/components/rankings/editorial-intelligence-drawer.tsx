@@ -2,119 +2,317 @@
 
 import * as React from "react";
 import Link from "next/link";
-import {
-  Sparkles,
-  ExternalLink,
-  DollarSign,
-  Clock,
-  FileText,
-  Award,
-  ShieldCheck,
-  AlertCircle,
-  TrendingUp,
-  CheckCircle2,
-  XCircle,
-  Info,
-  Compass,
-  Gavel,
-  BookOpen,
-  HeartHandshake,
-} from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import type {
+  EditorialIntelligenceFullProfile,
+  MagazineRankingRow,
+} from "@missa/radar-adapters";
+import type { PillarKey } from "@missa/radar-engine";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { BetaBadge } from "@/components/ui/beta-badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
-import type { EditorialIntelligenceFullProfile } from "@missa/radar-adapters";
+import {
+  NOT_RECORDED,
+  factStatusLabel,
+  feeLabel,
+  payLabel,
+  responseLabel,
+  simultaneousLabel,
+  sourceHost,
+} from "@/lib/magazineFacts";
+// Values come from the ranking module itself: the package root also exports Node-only code.
+import { PILLAR_MAX } from "@missa/radar-engine/dist/src/ranking/magazineRankingEngine.js";
 
-function NoRecord({ children }: { children: React.ReactNode }) {
-  return <p className="py-8 text-center text-sm text-muted-foreground">{children}</p>;
+const GENRE_LABELS: Record<string, string> = {
+  fiction: "Fiction",
+  poetry: "Poetry",
+  nonfiction: "Nonfiction",
+  overall: "Overall",
+};
+
+interface Pillar {
+  key: PillarKey;
+  label: string;
+  score: number;
+  fact: string;
+  source: string | null;
 }
 
-function recorded(value: number | null | undefined, suffix = ""): string {
-  return value === null || value === undefined ? "Not recorded" : `${value}${suffix}`;
+function pillars(row: MagazineRankingRow): Pillar[] {
+  const source = (key: string) => row.factSources[key]?.url ?? null;
+  return [
+    {
+      key: "accolades",
+      label: "Honours",
+      score: row.accoladesScore,
+      fact: "Pushcart standing and anthology selections",
+      source: null,
+    },
+    {
+      key: "pay",
+      label: "Pay",
+      score: row.payScore,
+      fact: payLabel(row),
+      source: source("pay"),
+    },
+    {
+      key: "turnaround",
+      label: "Reply time",
+      score: row.turnaroundScore,
+      fact: responseLabel(row),
+      source: row.medianResponseDays != null ? null : source("response"),
+    },
+    {
+      key: "fees",
+      label: "Fees",
+      score: row.feesScore,
+      fact: feeLabel(row),
+      source: source("fee"),
+    },
+    {
+      key: "respect",
+      label: "Writer respect",
+      score: row.respectScore,
+      fact: simultaneousLabel(row.simultaneousPolicy),
+      source: source("simultaneous"),
+    },
+    {
+      key: "formatEthics",
+      label: "Format and ethics",
+      score: row.formatEthicsScore,
+      fact: "Archive, blind reading and debut policy",
+      source: null,
+    },
+  ];
+}
+
+function points(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3">
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      {children}
+    </section>
+  );
+}
+
+function SourceLink({ url }: { url: string }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-0.5 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+    >
+      {sourceHost(url)}
+      <ArrowUpRight className="size-3" aria-hidden="true" />
+      <span className="sr-only"> (opens in a new tab)</span>
+    </a>
+  );
+}
+
+function ScoreBreakdown({ row }: { row: MagazineRankingRow }) {
+  return (
+    <Section title="How the score adds up">
+      <ul className="divide-y divide-border border-y border-border">
+        {pillars(row).map((pillar) => {
+          const status = row.pillarStatus[pillar.key];
+          const max = PILLAR_MAX[pillar.key];
+          return (
+            <li
+              key={pillar.key}
+              className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 py-3"
+            >
+              <span className="text-sm font-medium text-foreground">
+                {pillar.label}
+              </span>
+              <span className="text-end text-sm text-foreground">
+                <span className="font-mono tabular-nums">
+                  {points(pillar.score)}
+                </span>
+                <span className="text-muted-foreground"> / {max}</span>
+              </span>
+              <span
+                className={
+                  status === "unknown"
+                    ? "text-sm text-muted-foreground"
+                    : "text-sm text-foreground"
+                }
+              >
+                {pillar.fact}
+              </span>
+              <span className="text-end text-xs text-muted-foreground">
+                {pillar.source ? (
+                  <SourceLink url={pillar.source} />
+                ) : (
+                  factStatusLabel(status)
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="text-sm leading-6 text-muted-foreground">
+        {Math.round(row.coverage * 100)}% of these points rest on recorded
+        facts. A fact not on record scores the middle of its range.
+      </p>
+    </Section>
+  );
+}
+
+function Honours({ data }: { data: EditorialIntelligenceFullProfile }) {
+  if (data.pushcart.length === 0 && data.awards.length === 0) {
+    return (
+      <Section title="Honours">
+        <p className="text-sm text-muted-foreground">
+          No Pushcart standing or anthology selection on record.
+        </p>
+      </Section>
+    );
+  }
+  return (
+    <Section title="Honours">
+      {data.pushcart.length > 0 && (
+        <ul className="divide-y divide-border border-y border-border">
+          {data.pushcart.map((entry) => (
+            <li
+              key={`${entry.editionYear}-${entry.genre}`}
+              className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 py-3"
+            >
+              <span className="text-sm text-foreground">
+                Pushcart tally {entry.editionYear}
+              </span>
+              <span className="text-end text-sm text-foreground">
+                <span className="font-mono tabular-nums">#{entry.rank}</span>
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {GENRE_LABELS[entry.genre] ?? entry.genre}
+              </span>
+              <span className="text-end">
+                <SourceLink url={entry.sourceUrl} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {data.awards.length > 0 && (
+        <ul className="space-y-3">
+          {data.awards.map((award, index) => (
+            <li
+              key={`${award.anthology}-${award.year}-${index}`}
+              className="space-y-0.5"
+            >
+              <p className="text-sm text-foreground">
+                {award.anthology} {award.year}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {[award.pieceTitle && `“${award.pieceTitle}”`, award.authorName]
+                  .filter(Boolean)
+                  .join(" by ") || NOT_RECORDED}
+              </p>
+              <SourceLink url={award.sourceUrl} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
+  );
+}
+
+function WriterReports({ row }: { row: MagazineRankingRow }) {
+  return (
+    <Section title="Reply times from Missa writers">
+      <p className="text-sm leading-6 text-muted-foreground">
+        {row.medianResponseDays != null
+          ? `Half of ${row.telemetryReports} reported decisions arrived within ${row.medianResponseDays} days.`
+          : "Fewer than five writers have reported a decision. Reply times appear here once five have."}
+      </p>
+    </Section>
+  );
 }
 
 interface EditorialIntelligenceDrawerProps {
   profileId: string;
   magazineName: string;
   magazineSlug: string;
-  trigger?: React.ReactNode;
+  /** The ranking row already on screen; otherwise the latest overall row is fetched. */
+  ranking?: MagazineRankingRow;
+  /** Track and report actions, shown in the footer. */
+  actions?: React.ReactNode;
+  trigger?: React.ReactElement;
 }
 
 export function EditorialIntelligenceDrawer({
   profileId,
   magazineName,
   magazineSlug,
+  ranking,
+  actions,
   trigger,
 }: EditorialIntelligenceDrawerProps) {
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [notFound, setNotFound] = React.useState(false);
+  const [error, setError] = React.useState(false);
   const [data, setData] =
     React.useState<EditorialIntelligenceFullProfile | null>(null);
-  const [activeTab, setActiveTab] = React.useState<
-    "aesthetic" | "telemetry" | "compensation" | "guidelines" | "judges"
-  >("aesthetic");
+  const [loaded, setLoaded] = React.useState(false);
 
-  const fetchIntelligence = React.useCallback(async () => {
+  const load = React.useCallback(async () => {
     setLoading(true);
-    setError(null);
-    setNotFound(false);
+    setError(false);
     try {
       const res = await fetch(
         `/api/rankings/magazines/${encodeURIComponent(profileId)}/intelligence`,
       );
       if (res.status === 404) {
-        setNotFound(true);
+        setData(null);
+        setLoaded(true);
         return;
       }
-      if (!res.ok) {
-        throw new Error("We could not load these records. Try again.");
-      }
-      const json = (await res.json()) as EditorialIntelligenceFullProfile;
-      setData(json);
-    } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "We could not load these records. Try again.",
-      );
+      if (!res.ok) throw new Error("Request failed");
+      setData((await res.json()) as EditorialIntelligenceFullProfile);
+      setLoaded(true);
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
   }, [profileId]);
 
   React.useEffect(() => {
-    if (open && !data && !loading && !notFound && !error) {
+    if (open && !loaded && !loading && !error) {
       // The fetch callback owns loading/error state for this user-triggered disclosure.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      void fetchIntelligence();
+      void load();
     }
-  }, [open, data, loading, notFound, error, fetchIntelligence]);
+  }, [open, loaded, loading, error, load]);
 
-  const aesthetic = data?.aesthetic ?? null;
-  const telemetry = data?.telemetry ?? null;
-  const compensation = data?.compensation ?? null;
-  const specs = data?.specs ?? null;
+  const row = ranking ?? data?.ranking ?? null;
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger
         render={
-          trigger ? (
-            (trigger as React.ReactElement)
-          ) : (
+          trigger ?? (
             <Button variant="outline" size="sm">
-              <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-              <span>Intelligence</span>
+              Details
             </Button>
           )
         }
@@ -122,829 +320,83 @@ export function EditorialIntelligenceDrawer({
       <SheetContent
         side="right"
         surface="canvas"
-        className="flex w-full flex-col overflow-y-auto p-0 sm:max-w-xl md:max-w-2xl"
+        className="flex w-full flex-col overflow-y-auto p-0 sm:max-w-lg"
       >
-        <SheetHeader variant="muted" className="p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2.5">
-              {data?.prestigeTier && <RankingTierBadge tier={data.prestigeTier} />}
-              {aesthetic?.isDebutChampion && (
-                <span className="inline-flex items-center gap-1 rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                  <HeartHandshake className="size-3" /> Debut Champion
-                </span>
-              )}
-              <BetaBadge />
-            </div>
-            <Link
-              href={`/journal/${encodeURIComponent(magazineSlug || profileId)}`}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
-            >
-              <span>View full profile</span>
-              <ExternalLink className="size-3.5" aria-hidden="true" />
-            </Link>
+        <SheetHeader variant="section" className="space-y-3 p-6">
+          <div className="flex flex-wrap items-center gap-2">
+            {row && <RankingTierBadge tier={row.prestigeTier} />}
+            {row && (
+              <span className="text-sm text-muted-foreground">
+                {row.rankingYear} · #{row.rankPosition}{" "}
+                {GENRE_LABELS[row.genre]?.toLowerCase() ?? row.genre}
+              </span>
+            )}
           </div>
-
-          <SheetTitle className="mt-2 text-xl sm:text-2xl">
+          <SheetTitle className="font-heading text-2xl font-medium">
             {magazineName}
           </SheetTitle>
-          <SheetDescription className="mt-1">
-            A beta summary of Missa&apos;s current records, including taste
-            signals, response telemetry, manuscript specs, and prize lineage.
-            This tool is not publisher-confirmed; check official guidelines
-            before deciding where to submit.
+          {row && (
+            <p className="text-sm text-foreground">
+              <span className="font-mono text-2xl tabular-nums">
+                {row.totalScore.toFixed(1)}
+              </span>
+              <span className="text-muted-foreground"> / 100</span>
+            </p>
+          )}
+          <SheetDescription>
+            What Missa has on record for this magazine, with the source for each
+            fact. Check the magazine’s own guidelines before you submit.
           </SheetDescription>
-
-          {/* Tab Navigation */}
-          <div className="mt-6 -mb-6 no-scrollbar flex items-center gap-1 overflow-x-auto border-b border-border">
-            <button
-              type="button"
-              onClick={() => setActiveTab("aesthetic")}
-              className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:text-sm ${
-                activeTab === "aesthetic"
-                  ? "border-primary font-semibold text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Compass className="size-3.5" />
-              <span>Taste DNA & Comps</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("telemetry")}
-              className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:text-sm ${
-                activeTab === "telemetry"
-                  ? "border-primary font-semibold text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Clock className="size-3.5" />
-              <span>Response & Telemetry</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("compensation")}
-              className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:text-sm ${
-                activeTab === "compensation"
-                  ? "border-primary font-semibold text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <DollarSign className="size-3.5" />
-              <span>Compensation</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("guidelines")}
-              className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:text-sm ${
-                activeTab === "guidelines"
-                  ? "border-primary font-semibold text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <FileText className="size-3.5" />
-              <span>Specs</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("judges")}
-              className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:text-sm ${
-                activeTab === "judges"
-                  ? "border-primary font-semibold text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Gavel className="size-3.5" />
-              <span>Judges & Lineage</span>
-            </button>
-          </div>
         </SheetHeader>
 
-        <div className="flex-1 space-y-6 p-6">
-          {loading && (
-            <div className="space-y-3 py-16 text-center">
-              <div className="inline-block size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-              <p className="text-sm text-muted-foreground">
-                Loading editorial records…
+        <div className="flex-1 space-y-8 p-6">
+          {row && <ScoreBreakdown row={row} />}
+          {loading && !loaded && (
+            <div className="space-y-3" aria-label="Loading honours">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          )}
+          {error && (
+            <div className="space-y-3" role="alert">
+              <p className="text-sm text-destructive">
+                The honours record could not load.
               </p>
+              <Button variant="outline" size="sm" onClick={() => void load()}>
+                Try again
+              </Button>
             </div>
           )}
-
-          {error && !loading && (
-            <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-              <AlertCircle className="mt-0.5 size-5 shrink-0" />
-              <div>
-                <p className="font-semibold">Records not loaded</p>
-                <p className="mt-1 text-xs opacity-90">{error}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={fetchIntelligence}
-                  className="mt-3"
-                >
-                  Retry
-                </Button>
-              </div>
-            </div>
+          {loaded && data && <Honours data={data} />}
+          {loaded && !data && !row && (
+            <p className="text-sm text-muted-foreground">
+              Missa has no ranking or honours on record for this magazine yet.
+            </p>
           )}
+          {row && <WriterReports row={row} />}
+        </div>
 
-          {!loading && notFound && (
-            <NoRecord>
-              Missa has no editorial records for this publication yet. Check
-              the publication&apos;s official guidelines.
-            </NoRecord>
-          )}
-
-          {!loading && data && (
-            <>
-              {/* TAB 1: AESTHETIC TASTE DNA & COMPS */}
-              {activeTab === "aesthetic" && !aesthetic && (
-                <NoRecord>No taste records for this publication yet.</NoRecord>
-              )}
-              {activeTab === "aesthetic" && aesthetic && (
-                <div className="space-y-6">
-                  {/* Editorial Motto */}
-                  {aesthetic.editorialMotto && (
-                    <div className="space-y-1.5 rounded-lg border border-primary/20 bg-primary/5 p-4">
-                      <p className="text-xs font-semibold tracking-wider text-primary uppercase">
-                        Editorial Taste Profile
-                      </p>
-                      <p className="font-serif text-sm leading-relaxed text-foreground italic">
-                        &ldquo;{aesthetic.editorialMotto}&rdquo;
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Author Comps ("If You Write Like...") */}
-                  {aesthetic.authorComps.length > 0 && (
-                    <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-                      <div className="flex items-center justify-between">
-                        <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                          <BookOpen className="size-4 text-primary" />
-                          <span>Author & Aesthetic Comps</span>
-                        </h4>
-                        <span className="font-mono text-xs text-muted-foreground">
-                          Stylistic Kinship
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Writers who share tonal or structural resonance with
-                        this journal&rsquo;s published work:
-                      </p>
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        {aesthetic.authorComps.map((author) => (
-                          <span
-                            key={author}
-                            className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
-                          >
-                            {author}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Slush & Debut Breakdown */}
-                  <div className="space-y-4 rounded-lg border border-border bg-card p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        <HeartHandshake className="size-4 text-emerald-600" />
-                        <span>Slush Acceptance & Debut Friendliness</span>
-                      </h4>
-                      <span className="font-mono text-xs font-semibold text-emerald-600">
-                        {aesthetic.debutAuthorFriendlyScore === null
-                          ? "Debut score not recorded"
-                          : `${aesthetic.debutAuthorFriendlyScore} / 10 Debut Score`}
-                      </span>
-                    </div>
-
-                    {aesthetic.unsolicitedSlushRatioPercent !== null && (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">
-                          Unsolicited Slush Acceptance Share
-                        </span>
-                        <span className="font-mono font-semibold text-foreground">
-                          {aesthetic.unsolicitedSlushRatioPercent}% Open
-                          Slush{" "}
-                          <span className="font-normal text-muted-foreground">
-                            ({100 - aesthetic.unsolicitedSlushRatioPercent}
-                            % Solicited)
-                          </span>
-                        </span>
-                      </div>
-                      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full bg-emerald-600 transition-all duration-500"
-                          style={{
-                            width: `${aesthetic.unsolicitedSlushRatioPercent}%`,
-                          }}
-                        />
-                        <div
-                          className="h-full bg-muted-foreground/30 transition-all duration-500"
-                          style={{
-                            width: `${100 - aesthetic.unsolicitedSlushRatioPercent}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                    )}
-
-                    <p className="pt-1 text-xs leading-relaxed text-muted-foreground">
-                      {aesthetic.isDebutChampion
-                        ? "Missa's records show this magazine publishes first-time writers from open submissions."
-                        : "Missa has no record of this magazine favouring first-time writers."}
-                    </p>
-                  </div>
-
-                  {/* Writing Styles & Poetry Forms Grid */}
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-2 rounded-lg border border-border bg-card p-4">
-                      <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                        Preferred Writing Styles
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {aesthetic.writingStyles.map((style) => (
-                          <span
-                            key={style}
-                            className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-foreground capitalize"
-                          >
-                            {style.replace(/_/g, " ")}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 rounded-lg border border-border bg-card p-4">
-                      <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                        Poetry Forms & Structures
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {aesthetic.poetryForms.map((form) => (
-                          <span
-                            key={form}
-                            className="rounded bg-muted px-2 py-0.5 font-mono text-xs text-foreground capitalize"
-                          >
-                            {form.replace(/_/g, " ")}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Thematic Interests */}
-                  {aesthetic.thematicInterests.length > 0 && (
-                    <div className="space-y-2 rounded-lg border border-border bg-card p-4">
-                      <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                        Recurring Thematic Explorations
-                      </h4>
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {aesthetic.thematicInterests.map((theme) => (
-                          <span
-                            key={theme}
-                            className="rounded border border-primary/20 bg-primary/10 px-2 py-0.5 font-mono text-xs text-primary capitalize"
-                          >
-                            {theme.replace(/_/g, " ")}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* TAB 2: TELEMETRY & RESPONSE CURVES */}
-              {activeTab === "telemetry" && !telemetry && (
-                <NoRecord>No response records for this publication yet.</NoRecord>
-              )}
-              {activeTab === "telemetry" && telemetry && (
-                <div className="space-y-6">
-                  {/* Key Telemetry Numbers */}
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div className="rounded-lg border border-border bg-muted/40 p-3.5">
-                      <p className="text-xs text-muted-foreground">
-                        Median Turnaround
-                      </p>
-                      <p className="mt-1 font-mono text-xl font-bold text-foreground">
-                        {recorded(telemetry.medianResponseDays, " days")}
-                      </p>
-                      {telemetry.avgResponseDays !== null && (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          Avg: {telemetry.avgResponseDays}d
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="rounded-lg border border-border bg-muted/40 p-3.5">
-                      <p className="text-xs text-muted-foreground">
-                        Acceptance Rate
-                      </p>
-                      <p className="mt-1 font-mono text-xl font-bold text-primary">
-                        {recorded(telemetry.acceptanceRatePercent, "%")}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-border bg-muted/40 p-3.5">
-                      <p className="text-xs text-muted-foreground">
-                        Personal / Tier Notes
-                      </p>
-                      <p className="mt-1 font-mono text-xl font-bold text-foreground">
-                        {recorded(telemetry.tieredRejectionRatePercent, "%")}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        Encouraging replies
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-border bg-muted/40 p-3.5">
-                      <p className="text-xs text-muted-foreground">
-                        Active Queue Depth
-                      </p>
-                      <p className="mt-1 font-mono text-xl font-bold text-foreground">
-                        {recorded(telemetry.currentQueueDepth)}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        In review now
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Free Cap Depletion Alert */}
-                  {telemetry.submittableFreeCapDepletionDays != null && (
-                    <div className="flex items-start gap-3 rounded-lg border border-warning/20 bg-warning/5 p-4">
-                      <TrendingUp className="mt-0.5 size-5 shrink-0 text-warning" />
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-foreground">
-                          Submittable Free Submission Cap Depletion Velocity
-                        </p>
-                        <p className="text-xs leading-relaxed text-muted-foreground">
-                          This publication operates on a monthly Submittable
-                          free cap that typically exhausts within{" "}
-                          <span className="font-semibold text-foreground">
-                            {telemetry.submittableFreeCapDepletionDays}{" "}
-                            days
-                          </span>{" "}
-                          of the calendar month opening. We recommend queueing
-                          your submission draft for automatic dispatch on the
-                          1st of each month.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Response Probability Curve */}
-                  {telemetry.responseCurveDistribution.length > 0 && (
-                  <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        <Clock className="size-4 text-primary" />
-                        <span>Response Timeline Distribution</span>
-                      </h4>
-                      {telemetry.telemetryConfidenceScore !== null && (
-                        <span className="font-mono text-xs text-muted-foreground">
-                          Confidence{" "}
-                          {(telemetry.telemetryConfidenceScore * 100).toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Probability curve showing when editorial decisions
-                      (acceptances, requests, or rejections) are delivered to
-                      submitters.
-                    </p>
-
-                    <div className="space-y-2 pt-2">
-                      {telemetry.responseCurveDistribution.map(
-                        (bucket) => (
-                          <div key={bucket.bucketDays} className="space-y-1">
-                            <div className="flex items-center justify-between font-mono text-xs">
-                              <span className="text-muted-foreground">
-                                {bucket.bucketDays}
-                              </span>
-                              <span className="font-semibold text-foreground">
-                                {bucket.percentage}%{" "}
-                                <span className="font-normal text-muted-foreground">
-                                  ({bucket.count} reports)
-                                </span>
-                              </span>
-                            </div>
-                            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                              <div
-                                className="h-full rounded-full bg-primary transition-all duration-500"
-                                style={{
-                                  width: `${Math.max(4, bucket.percentage)}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-                        ),
-                      )}
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-[11px] text-muted-foreground">
-                      <span>
-                        Fastest: {recorded(telemetry.fastestResponseDays, " days")}
-                      </span>
-                      <span>
-                        Slowest: {recorded(telemetry.slowestResponseDays, " days")}
-                      </span>
-                    </div>
-                  </div>
-                  )}
-                </div>
-              )}
-
-              {/* TAB 3: COMPENSATION & RIGHTS */}
-              {activeTab === "compensation" && !compensation && (
-                <NoRecord>No pay or fee records for this publication yet.</NoRecord>
-              )}
-              {activeTab === "compensation" && compensation && (
-                <div className="space-y-4">
-                  {/* Contributor Pay Card */}
-                  <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        <DollarSign className="size-4 text-primary" />
-                        <span>Contributor Pay & Pro Rates</span>
-                      </h4>
-                      {compensation.isProRate && (
-                        <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
-                          SFWA / Pro Rate
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                      <div className="rounded-lg bg-muted/40 p-3">
-                        <p className="text-xs text-muted-foreground">
-                          Payment Structure
-                        </p>
-                        <p className="mt-0.5 text-base font-semibold text-foreground capitalize">
-                          {compensation.payRateKind
-                            ? compensation.payRateKind.replace(/_/g, " ")
-                            : "Not recorded"}
-                        </p>
-                      </div>
-
-                      <div className="rounded-lg bg-muted/40 p-3">
-                        <p className="text-xs text-muted-foreground">
-                          Standard Rate
-                        </p>
-                        <p className="mt-0.5 font-mono text-base font-semibold text-primary">
-                          {compensation.rateCentsPerWord != null
-                            ? `$${(compensation.rateCentsPerWord / 100).toFixed(2)} / word`
-                            : compensation.flatRateCents != null
-                              ? `$${(compensation.flatRateCents / 100).toFixed(0)} flat rate`
-                              : "Not recorded"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Rights Acquired & Reversion */}
-                  <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-                    <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                      <ShieldCheck className="size-4 text-primary" />
-                      <span>Rights & Copyright Retention</span>
-                    </h4>
-
-                    <div className="space-y-2 text-xs leading-relaxed text-muted-foreground">
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                        <div>
-                          <span className="font-semibold text-foreground">
-                            Rights Acquired:{" "}
-                          </span>
-                          <span className="font-mono font-medium text-foreground uppercase">
-                            {compensation.rightsAcquired ?? "Not recorded"}
-                          </span>
-                        </div>
-                      </div>
-
-                      {compensation.rightsReversionMonths !== null && (
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                          <div>
-                            <span className="font-semibold text-foreground">
-                              Rights Reversion:{" "}
-                            </span>
-                            Rights revert to the author{" "}
-                            <span className="font-semibold text-foreground">
-                              {compensation.rightsReversionMonths} months
-                            </span>{" "}
-                            after publication.
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Fees & Fee Waivers */}
-                  <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        <Info className="size-4 text-primary" />
-                        <span>Submission Fees & Financial Accessibility</span>
-                      </h4>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {compensation.submissionFeeCents === null
-                          ? "Fee not confirmed"
-                          : compensation.submissionFeeCents === 0
-                            ? "Free to submit"
-                            : `$${(compensation.submissionFeeCents / 100).toFixed(2)} fee`}
-                      </span>
-                    </div>
-
-                    {compensation.hasFeeWaivers &&
-                      compensation.feeWaiverPolicy && (
-                        <div className="rounded-lg border border-primary/30 bg-muted/40 p-3 text-xs leading-relaxed text-muted-foreground">
-                          <p className="mb-1 font-semibold text-foreground">
-                            Fee Waiver & Hardship Policy:
-                          </p>
-                          {compensation.feeWaiverPolicy}
-                        </div>
-                      )}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 4: MANUSCRIPT GUIDELINES */}
-              {activeTab === "guidelines" && !specs && (
-                <NoRecord>No manuscript specs for this publication yet.</NoRecord>
-              )}
-              {activeTab === "guidelines" && specs && (
-                <div className="space-y-4">
-                  {/* Constraints Grid */}
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    <div className="rounded-lg border border-border bg-muted/40 p-3">
-                      <p className="text-xs text-muted-foreground">
-                        Max Word Count
-                      </p>
-                      <p className="mt-0.5 font-mono text-base font-bold text-foreground">
-                        {specs.maxWordCount
-                          ? `${specs.maxWordCount.toLocaleString()} words`
-                          : "Not stated"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-border bg-muted/40 p-3">
-                      <p className="text-xs text-muted-foreground">
-                        Poetry Submission
-                      </p>
-                      <p className="mt-0.5 font-mono text-base font-bold text-foreground">
-                        {specs.maxPoemsPerSubmission === null
-                          ? "Not stated"
-                          : `Up to ${specs.maxPoemsPerSubmission} poems`}
-                      </p>
-                    </div>
-
-                    <div className="rounded-lg border border-border bg-muted/40 p-3">
-                      <p className="text-xs text-muted-foreground">
-                        Blind Review
-                      </p>
-                      <p className="mt-0.5 flex items-center gap-1 text-base font-semibold text-foreground">
-                        {specs.requiresBlindReview ? (
-                          <>
-                            <CheckCircle2 className="size-4 text-primary" />{" "}
-                            Required
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="size-4 text-muted-foreground" />{" "}
-                            Standard
-                          </>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Submission Rules List */}
-                  <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-                    <h4 className="text-sm font-semibold text-foreground">
-                      Editorial Policies & Formatting Rules
-                    </h4>
-                    <ul className="space-y-2.5 text-xs text-muted-foreground">
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                        <div>
-                          <span className="font-semibold text-foreground">
-                            Simultaneous Submissions:{" "}
-                          </span>
-                          {specs.allowsSimultaneous
-                            ? "Allowed. Tell the editors if the piece is accepted elsewhere."
-                            : "Not allowed."}
-                        </div>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        {specs.allowsReprints ? (
-                          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                        ) : (
-                          <XCircle className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                        )}
-                        <div>
-                          <span className="font-semibold text-foreground">
-                            Reprints Policy:{" "}
-                          </span>
-                          {specs.allowsReprints
-                            ? "Previously published work accepted."
-                            : "Unpublished work only."}
-                        </div>
-                      </li>
-                      {specs.acceptedFileFormats.length > 0 && (
-                        <li className="flex items-start gap-2">
-                          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
-                          <div>
-                            <span className="font-semibold text-foreground">
-                              Accepted Formats:{" "}
-                            </span>
-                            <span className="font-mono uppercase">
-                              {specs.acceptedFileFormats.join(", ")}
-                            </span>
-                          </div>
-                        </li>
-                      )}
-                    </ul>
-
-                    {specs.specificGuidelines && (
-                      <div className="mt-3 border-t border-border pt-3">
-                        <p className="mb-1 text-xs font-semibold text-foreground">
-                          Editorial Instructions:
-                        </p>
-                        <p className="text-xs leading-relaxed text-muted-foreground">
-                          {specs.specificGuidelines}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 5: CONTEST JUDGES & LINEAGE */}
-              {activeTab === "judges" && (
-                <div className="space-y-6">
-                  {/* Contest Judges */}
-                  <div className="space-y-4 rounded-lg border border-border bg-card p-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                        <Gavel className="size-4 text-primary" />
-                        <span>Annual Contest Judges & Aesthetics</span>
-                      </h4>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        ROI Optimization
-                      </span>
-                    </div>
-
-                    {data.judges.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        No active annual contest judge dossiers recorded for
-                        this profile.
-                      </p>
-                    ) : (
-                      <div className="space-y-4 divide-y divide-border">
-                        {data.judges.map((judge, idx) => (
-                          <div
-                            key={judge.id}
-                            className={idx > 0 ? "space-y-3 pt-4" : "space-y-3"}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-bold text-foreground">
-                                  {judge.contestName}
-                                </p>
-                                <p className="mt-0.5 text-xs font-semibold text-primary">
-                                  Judge: {judge.judgeName}
-                                </p>
-                              </div>
-                            </div>
-
-                            {judge.judgeBio && (
-                              <p className="text-xs leading-relaxed text-muted-foreground">
-                                {judge.judgeBio}
-                              </p>
-                            )}
-
-                            {judge.judgeAestheticNotes && (
-                              <div className="rounded-lg border border-primary/30 bg-muted/40 p-3 text-xs leading-relaxed">
-                                <p className="mb-1 font-semibold text-foreground">
-                                  Judge Aesthetic Focus:
-                                </p>
-                                <p className="text-muted-foreground italic">
-                                  &ldquo;{judge.judgeAestheticNotes}&rdquo;
-                                </p>
-                              </div>
-                            )}
-
-                            {judge.judgePraisedAuthors.length > 0 && (
-                              <div className="space-y-1 text-xs">
-                                <span className="font-semibold text-foreground">
-                                  Praised Authors & Influences:{" "}
-                                </span>
-                                <span className="font-mono text-muted-foreground">
-                                  {judge.judgePraisedAuthors.join(", ")}
-                                </span>
-                              </div>
-                            )}
-
-                            {judge.pastWinnersLineage.length > 0 && (
-                              <div className="space-y-2 pt-2">
-                                <p className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                                  Past Winners & Book Deals Lineage
-                                </p>
-                                <div className="space-y-2">
-                                  {judge.pastWinnersLineage.map(
-                                    (winner, wIdx) => (
-                                      <div
-                                        key={wIdx}
-                                        className="space-y-1 rounded border border-border/50 bg-muted/40 p-2.5 text-xs"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <span className="font-semibold text-foreground">
-                                            {winner.winnerName} ({winner.year})
-                                          </span>
-                                          <span className="font-mono text-[10px] text-muted-foreground uppercase">
-                                            {winner.genre}
-                                          </span>
-                                        </div>
-                                        <p className="text-muted-foreground italic">
-                                          &ldquo;{winner.winningPieceTitle}
-                                          &rdquo;
-                                        </p>
-                                        {winner.resultingPressOrPrize && (
-                                          <p className="text-[11px] font-medium text-primary">
-                                            Outcome:{" "}
-                                            {winner.resultingPressOrPrize}
-                                          </p>
-                                        )}
-                                      </div>
-                                    ),
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Anthologies & Honors */}
-                  <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-                    <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                      <Award className="size-4 text-warning" />
-                      <span>Recorded honors</span>
-                    </h4>
-
-                    {data.pushcart.length === 0 && data.awards.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        No Pushcart standing or anthology selection is recorded
-                        for this magazine.
-                      </p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {data.pushcart.map((row) => (
-                          <li
-                            key={`pushcart-${row.genre}`}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/50 bg-muted/40 p-2.5 text-xs"
-                          >
-                            <span className="font-semibold text-foreground capitalize">
-                              Pushcart recognition {row.editionYear} · {row.genre}
-                            </span>
-                            <a
-                              href={row.sourceUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-mono text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                            >
-                              Ranked #{row.rank} · source
-                            </a>
-                          </li>
-                        ))}
-                        {data.awards.map((award) => (
-                          <li
-                            key={`${award.anthology}-${award.year}-${award.pieceTitle ?? ""}`}
-                            className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/50 bg-muted/40 p-2.5 text-xs"
-                          >
-                            <span className="font-semibold text-foreground">
-                              {award.anthology} {award.year}
-                              {award.pieceTitle ? ` · “${award.pieceTitle}”` : ""}
-                              {award.authorName ? ` by ${award.authorName}` : ""}
-                            </span>
-                            <a
-                              href={award.sourceUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                            >
-                              Source
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+        <div className="flex flex-wrap gap-3 border-t border-border p-6">
+          {actions}
+          <Button
+            variant="ghost"
+            nativeButton={false}
+            render={
+              <Link
+                href={`/journal/${encodeURIComponent(magazineSlug || profileId)}`}
+              />
+            }
+          >
+            Magazine profile
+          </Button>
+          <Button
+            variant="ghost"
+            nativeButton={false}
+            render={<Link href="/rankings/methodology" />}
+          >
+            How scores work
+          </Button>
         </div>
       </SheetContent>
     </Sheet>

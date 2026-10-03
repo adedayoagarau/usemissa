@@ -227,7 +227,8 @@ function opportunityStatus(
   return "unknown";
 }
 
-function rankingRow(row: Record<string, unknown>): MagazineRankingRow {
+/** Maps a stored ranking row (with profile name, slug and website) to the public shape. */
+export function rankingRow(row: Record<string, unknown>): MagazineRankingRow {
   const activeOpportunity = nullableText(row.active_opportunity_id)
     ? {
         id: String(row.active_opportunity_id),
