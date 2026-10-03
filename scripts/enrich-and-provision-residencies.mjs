@@ -1,16 +1,16 @@
 import fs from "node:fs";
 import crypto from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import pg from "pg";
 
-const envContent = fs.readFileSync("/Volumes/Crucial X10/usemissa/.env.local", "utf8");
-let dbUrl = "";
-for (const line of envContent.split("\n")) {
-  const match = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
-  if (match) {
-    dbUrl = match[1].trim().replace(/^["\x27]|["\x27]$/g, "");
-    break;
-  }
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  console.error("DATABASE_URL is required. Set it in the environment (or pass --env-file=.env.local).");
+  process.exit(1);
 }
+
+const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 
 const client = new pg.Client({ connectionString: dbUrl, ssl: { rejectUnauthorized: false } });
 
@@ -34,12 +34,12 @@ async function run() {
   console.log("Connected to PostgreSQL for residency enrichment & provisioning...");
 
   // Apply migration 0058
-  const migrationSql = fs.readFileSync("/Volumes/Crucial X10/usemissa/packages/db/migrations/0058_missa_residency_enrichment.sql", "utf8");
+  const migrationSql = fs.readFileSync(path.join(repoRoot, "packages/db/migrations/0058_missa_residency_enrichment.sql"), "utf8");
   await client.query(migrationSql);
   console.log("Applied migration 0058_missa_residency_enrichment.sql");
 
   const unified = JSON.parse(
-    fs.readFileSync("/Volumes/Crucial X10/usemissa/packages/radar-adapters/src/ranking/data/residencies/unified-residencies.json", "utf8")
+    fs.readFileSync(path.join(repoRoot, "packages/radar-adapters/src/ranking/data/residencies/unified-residencies.json"), "utf8")
   );
 
   const dbProfiles = await client.query(`

@@ -1,21 +1,10 @@
 import fs from "node:fs";
 import pg from "pg";
 
-let databaseUrl = process.env.DATABASE_URL;
-if (!databaseUrl && fs.existsSync("/Volumes/Crucial X10/usemissa/.env.local")) {
-  const envContent = fs.readFileSync("/Volumes/Crucial X10/usemissa/.env.local", "utf8");
-  for (const line of envContent.split("\n")) {
-    const match = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
-    if (match) {
-      databaseUrl = match[1].trim().replace(/^["']|["']$/g, "");
-      break;
-    }
-  }
-}
-
+const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
-  console.log("No DATABASE_URL available; memory cache and adapter heuristics handle runtime intelligence.");
-  process.exit(0);
+  console.error("DATABASE_URL is required. Set it in the environment (or pass --env-file=.env.local).");
+  process.exit(1);
 }
 
 const client = new pg.Client({

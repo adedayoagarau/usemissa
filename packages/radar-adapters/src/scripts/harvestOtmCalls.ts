@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseOtmGrantPage, type OtmGrant } from "./otmParser.js";
 
-const dataDir = "/Volumes/Crucial X10/usemissa/packages/radar-adapters/data";
+const dataDir = fileURLToPath(new URL("../../data", import.meta.url));
 const outputFile = path.join(dataDir, "otm_grants.json");
 
 fs.mkdirSync(dataDir, { recursive: true });

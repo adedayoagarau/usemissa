@@ -8,14 +8,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DATA_FILE = path.resolve(__dirname, "../../data/submittable_calls.json");
 
-const envContent = fs.readFileSync("/Volumes/Crucial X10/usemissa/.env.local", "utf8");
-let dbUrl = "";
-for (const line of envContent.split("\n")) {
-  const match = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
-  if (match) {
-    dbUrl = match[1].trim().replace(/^["']|["']$/g, "");
-    break;
-  }
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  console.error("DATABASE_URL is required. Set it in the environment (or pass --env-file=.env.local).");
+  process.exit(1);
 }
 
 const { Client } = pg;
