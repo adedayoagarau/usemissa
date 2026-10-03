@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { creatorPoolFor, creatorRelationalAuthorityEnabled, PostgresCreatorAccountRepository } from '@missa/radar-adapters';
 import { hashPassword } from '@missa/radar-engine';
 import { getEngine } from '@/lib/engine';
+import { getCreatorAccountRepository } from '@/lib/creatorRepositories';
+import { clientAddress, consumeAuthRateLimit, PASSWORD_RESET_RATE_LIMIT_POLICY } from '@/lib/auth-rate-limit';
 import { verifyPasswordResetToken } from '@/lib/password-reset-tokens';
 import { z } from 'zod';
 
@@ -25,7 +26,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Password must be between 8 and 200 characters.' }, { status: 400 });
   }
 
-  const connectionString = process.env.DATABASE_URL;
+  const retryAfter = await consumeAuthRateLimit({ ip: clientAddress(request) }, PASSWORD_RESET_RATE_LIMIT_POLICY);
+  if (retryAfter !== undefined) {
+    return NextResponse.json(
+      { error: 'Too many reset attempts. Try again later.' },
+      { status: 429, headers: { 'Retry-After': String(retryAfter) } },
+    );
+  }
+
+  // Write to the same account store that sign-in reads from, so a reset
+  // always changes the password the next sign-in checks.
+  const repository = getCreatorAccountRepository();
 
   try {
     // First, decode token to find accountId
@@ -41,8 +52,7 @@ export async function POST(request: Request) {
     const { accountId } = preCheck;
     let account: { id: string; email: string; passwordHash: string; active?: boolean } | undefined;
 
-    if (connectionString && creatorRelationalAuthorityEnabled(process.env)) {
-      const repository = new PostgresCreatorAccountRepository(creatorPoolFor(connectionString));
+    if (repository) {
       const row = await repository.account(accountId);
       if (row) {
         account = { id: row.id, email: row.email, passwordHash: row.passwordHash, active: row.active };
@@ -68,8 +78,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (connectionString && creatorRelationalAuthorityEnabled(process.env)) {
-      const repository = new PostgresCreatorAccountRepository(creatorPoolFor(connectionString));
+    if (repository) {
       const updated = await repository.updatePassword(account.id, password);
       if (!updated) {
         return NextResponse.json({ error: 'Failed to update password.' }, { status: 500 });
@@ -77,9 +86,10 @@ export async function POST(request: Request) {
     } else {
       const engine = await getEngine();
       const memAccount = engine.store.accounts.get(account.id);
-      if (memAccount) {
-        memAccount.passwordHash = hashPassword(password);
+      if (!memAccount) {
+        return NextResponse.json({ error: 'Failed to update password.' }, { status: 500 });
       }
+      memAccount.passwordHash = hashPassword(password);
     }
 
     return NextResponse.json({ ok: true, message: 'Your password has been successfully updated.' });
