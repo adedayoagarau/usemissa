@@ -21,3 +21,33 @@ Uses the existing Missa wordmark, Newsreader heading token, forest primary surfa
 Supersedes the editorial side-panel composition: six generated discipline images now form the selectable cards in a centered three-column desktop/two-column mobile grid. Asset: public/media/onboarding-practices.png, generated specifically for this preview; rendered as a six-cell CSS sprite without modifying the source. Labels sit on solid surfaces for contrast. Selection reveals optional practice-specific checkboxes, preserves choices on Back, and includes active refinements in the review. Opportunity interests use existing local editorial media. Still a local-state design preview, not canonical taxonomy/account persistence.
 
 Validation: TypeScript and design policy passed; 390px overflow check passed; Writing → Poetry → Continue → Back preserved selection. Desktop rendered cards visually inspected.
+
+## Split editorial redesign (October 2026)
+
+Supersedes the single-column composition. Desktop is a split layout: the question column on the left, and on the right a sticky campaign image with a live private summary ("What Missa will look for"). On the Profile step that summary becomes a Profile preview. Below 1024px the image panel is hidden and the Profile preview appears inline under the fields.
+
+Mobbin references reviewed: Cosmos onboarding (split form and curated imagery), https://mobbin.com/flows/6d86217f-51e7-4277-a871-3015005b118f; Delphi handle claim (inline prefix and availability), https://mobbin.com/screens/e5965ff1-6799-4313-91b5-6396014ff394; Mintlify site naming (inline confirmation of the resulting address), https://mobbin.com/screens/c71f4db8-2732-4072-b005-1c6c1d53508d. We adapted the structure only. Missa tokens, type, and copy are unchanged.
+
+Component intent → policy entry `composition.creator-onboarding`:
+
+- Step navigation: a labelled `<nav>` with an ordered list. Visited steps are real buttons, and the current step carries `aria-current="step"`. Mobile shows a segmented progress bar with a text label.
+- Multiple selection: `Checkbox` inside image tiles (practices), thumbnail rows (opportunity interests), and chips (refinements). Each control is named by its title and described by its description.
+- Single choice: `RadioGroup` cards for career stage and participation. The fee preference uses `Switch`.
+- Long option lists: `Combobox` for country (about 250 options) and time zone (IANA list with UTC offsets, detected from the device).
+- Handle: `InputGroup` with an inline `usemissa.com/@` prefix, availability icon, status text, and a "Check again" action when the check fails.
+- Feedback: an inline `Alert` for save failures, `FieldError` for each invalid field, and a `Spinner` with `aria-busy` on pending actions.
+- Actions: a sticky bottom action bar (safe-area aware) with one primary action, and "Finish later" in the header.
+
+Behaviour fixes shipped with the redesign:
+
+- "Finish later" saves the current choices and marks setup skipped. A skipped setup resumes at its saved step instead of showing the completed summary.
+- Editing a completed setup keeps the status `completed`; previously an intermediate save reset it to `in_progress` and cleared `completedAt`.
+- Cleared interests, practices, and refinements now persist. Values owned by other surfaces are preserved.
+- Deselecting a practice removes its now-hidden refinements, so they are not saved.
+- Time zones are chosen from a list and validated by the API. A free-text zone would make deadline formatters throw.
+- Errors clear on step change. A 401 response sends the person to log in with `next=/onboarding`.
+- Enter submits the current step. Focus moves to the step heading and the page scrolls to the top on each step.
+- The Profile preview no longer shows a `/@handle` the account cannot claim.
+- Demo mode (no database) now stores interests and location for new accounts and reads location back.
+
+Validation: 1440px desktop, 390px mobile, 320px, and 640px (200% zoom equivalent) with no horizontal overflow; reduced motion (step entrance animations use `motion-reduce:animate-none`); keyboard (Space toggles tiles, Enter submits, Enter in a combobox selects without submitting). These states were exercised: empty, selected, save error, field validation, session expiry, skipped resume, completed edit, and handle claim in the preview. `e2e/beta-onboarding.spec.ts` was updated for "Finish later" and skipped resume.
