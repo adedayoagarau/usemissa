@@ -198,3 +198,15 @@ Before promotion:
 - explicit page-family approval is recorded.
 
 Product promotion remains blocked.
+
+## Visual refresh (October 2026)
+
+`/login`, `/signup`, `/forgot-password`, and `/reset-password` now share `AuthShell` (`apps/web/components/auth-shell.tsx`): a white form column with the wordmark and legal links, and on screens 1024px and wider an inset campaign photograph with an editorial caption. Mobbin references: Runway sign-up (photograph with caption), https://mobbin.com/screens/38f91207-39b8-4687-a6bd-e3408bc67ae7; Wrangle (inset image card), https://mobbin.com/screens/c351dd1b-e441-4a74-b6d6-257582737b0f; Telescope (Google first, then email), https://mobbin.com/screens/0804a8fc-37c0-48c8-801e-a754fa9b931a.
+
+Behaviour changes:
+
+- Sign-up drops the client-only "Confirm password" field. The show/hide toggle and a live "At least 8 characters" hint cover typos, and email verification still protects ownership. Reset password follows the same pattern.
+- `AuthForm` takes `signupRedirectTo`. Switching between log in and sign up in place now uses the destination for the active mode: a returning person who switches to log in on `/signup` is no longer sent to `/onboarding`, and `/login?mode=signup` sends new accounts to `/onboarding`.
+- `/signup` now has a `main` landmark (it had none). Headings use Newsreader without trailing periods.
+
+Authentication, Neon email verification, invite redemption, Google sign-in, and the first-save resume logic are unchanged. Validation: axe WCAG 2.1 AA is clean at 1440px and 390px for all four routes, with no horizontal overflow. `auth.spec.ts` and the mocked `auth-email-verification.spec.ts` pass; specs that used the removed confirmation field are updated.

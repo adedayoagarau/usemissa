@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  AlertCircle,
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
@@ -44,7 +45,9 @@ import {
   isEmailVerificationRequired,
   isInvalidEmailVerificationCode,
 } from "@/lib/neon-auth/emailVerification";
-import { MissaWordmark } from "@/components/missa-wordmark";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Spinner } from "@/components/ui/spinner";
+import { AuthShell } from "@/components/auth-shell";
 import { SocialAuthButton } from "@/components/missa/social-auth-button";
 import styles from "@/app/auth.module.css";
 import { signupIdentity } from "@/lib/signupIdentity";
@@ -70,13 +73,17 @@ type PendingEmailVerification = {
 export function AuthForm({
   initialMode = "login",
   redirectTo = "/opportunities",
+  signupRedirectTo,
   firstSaveContext,
   firstSaveUnavailable = false,
   authenticated = false,
   inviteToken,
 }: {
   initialMode?: AuthMode;
+  /** Where a returning person goes after logging in. */
   redirectTo?: string;
+  /** Where a new account goes; defaults to redirectTo. */
+  signupRedirectTo?: string;
   firstSaveContext?: FirstSaveContext;
   firstSaveUnavailable?: boolean;
   authenticated?: boolean;
@@ -85,7 +92,7 @@ export function AuthForm({
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [passwordLength, setPasswordLength] = useState(0);
   const [signupUsesSingleName, setSignupUsesSingleName] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [accountExists, setAccountExists] = useState(false);
@@ -97,7 +104,7 @@ export function AuthForm({
   );
   const [isResending, setIsResending] = useState(false);
   const [fieldError, setFieldError] = useState<{
-    field: "givenName" | "familyName" | "email" | "password" | "confirmation";
+    field: "givenName" | "familyName" | "email" | "password";
     message: string;
   } | null>(null);
   const [sessionReady, setSessionReady] = useState(authenticated);
@@ -110,6 +117,10 @@ export function AuthForm({
   const resolutionRef = useRef<HTMLElement>(null);
   const verificationCodeRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<AuthMode>(initialMode);
+  // Switching between log in and sign up happens in place, so the destination
+  // follows the mode rather than the route the person arrived on.
+  const destination =
+    mode === "signup" ? (signupRedirectTo ?? redirectTo) : redirectTo;
 
   const resumeFirstSave = useCallback(
     async (acknowledgedFingerprint?: string) => {
@@ -209,7 +220,7 @@ export function AuthForm({
   }, [isPending, isResending, pendingVerification]);
 
   function showFieldError(
-    field: "givenName" | "familyName" | "email" | "password" | "confirmation",
+    field: "givenName" | "familyName" | "email" | "password",
     message: string,
   ) {
     setFieldError({ field, message });
@@ -264,7 +275,7 @@ export function AuthForm({
     }
     // Cross the authentication boundary with a document navigation so the
     // next server render always receives the newly issued session cookie.
-    window.location.assign(redirectTo);
+    window.location.assign(destination);
   }
 
   async function sendVerificationCode(
@@ -434,7 +445,6 @@ export function AuthForm({
       usesSingleName: signupUsesSingleName,
     });
     const waitlistEmail = String(data.get("waitlistEmail") ?? "").trim();
-    const confirmation = String(data.get("confirmation") ?? "");
 
     if (!/^\S+@\S+\.\S+$/.test(email))
       return showFieldError("email", "Enter a valid email address.");
@@ -445,8 +455,6 @@ export function AuthForm({
         "password",
         "Use at least 8 characters for your password.",
       );
-    if (mode === "signup" && password !== confirmation)
-      return showFieldError("confirmation", "The passwords do not match.");
 
     setIsPending(true);
     try {
@@ -555,10 +563,7 @@ export function AuthForm({
         // signup. Recover into verification even if a stale or malformed
         // public build variable caused the browser to choose compatibility
         // signup first.
-        if (
-          mode === "signup" &&
-          body.code === "email_verification_required"
-        ) {
+        if (mode === "signup" && body.code === "email_verification_required") {
           await sendVerificationCode(
             email,
             "field" in identity ? undefined : identity,
@@ -606,7 +611,7 @@ export function AuthForm({
       setError("Google sign-in is not available in this environment yet.");
       return;
     }
-    const callbackURL = `/auth/callback?next=${encodeURIComponent(redirectTo)}`;
+    const callbackURL = `/auth/callback?next=${encodeURIComponent(destination)}`;
     const result = await neonAuthClient.signIn.social({
       provider: "google",
       callbackURL,
@@ -647,7 +652,7 @@ export function AuthForm({
     await fetch("/api/journey/first-save/intent?outcome=expired", {
       method: "DELETE",
     }).catch(() => undefined);
-    router.push(redirectTo);
+    router.push(destination);
   }
 
   async function leaveCompletedFirstSave(path: string) {
@@ -667,620 +672,526 @@ export function AuthForm({
     ? `auth-${fieldError.field}-error`
     : undefined;
   const heading = pendingVerification
-    ? "Check your email."
+    ? "Check your email"
     : firstSaveContext
       ? mode === "login"
         ? "Log in to save this Opportunity"
         : "Create an account to save this Opportunity"
       : mode === "login"
-        ? "Welcome back."
-        : "Create your account.";
+        ? "Welcome back"
+        : "Create your account";
+
+  function fieldErrorFor(field: NonNullable<typeof fieldError>["field"]) {
+    return fieldError?.field === field ? (
+      <FieldError id={fieldErrorId}>{fieldError.message}</FieldError>
+    ) : null;
+  }
+
+  function describedBy(
+    field: NonNullable<typeof fieldError>["field"],
+    fallback?: string,
+  ) {
+    return fieldError?.field === field ? fieldErrorId : fallback;
+  }
 
   return (
-    <div className={styles.page}>
-      <section className={styles.story} aria-label="About Missa">
-        <div className={styles.storyContent}>
-          <MissaWordmark size="marketing" className={styles.mark} />
-          <div className={styles.storyCopy}>
-            <p className={styles.storyTitle}>
-              Your next opportunity starts here.
-            </p>
-            <p className={styles.storyBody}>
-              Missa brings the right opportunities, requirements, and next steps
-              into one place.
-            </p>
-            <div className={styles.promiseList}>
-              <p className={styles.promise}>
-                Opportunities based on your field
-              </p>
-              <p className={styles.promise}>
-                Requirements visible before you commit
-              </p>
-              <p className={styles.promise}>
-                One place to track what happens next
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
+    <AuthShell visual={mode === "signup" ? "signup" : "login"}>
       <section
-        className={styles.formPane}
-        aria-label={
-          pendingVerification
-            ? "Verify your email"
-            : mode === "login"
-              ? "Log in"
-              : "Create an account"
-        }
+        aria-labelledby="auth-heading"
+        className="animate-in duration-200 fade-in-0 motion-reduce:animate-none"
       >
-        <div className={styles.formCard}>
-          <MissaWordmark
-            href="/"
-            size="compact"
-            className={styles.formKicker}
-          />
-          <h1 className={styles.formTitle}>{heading}</h1>
-          <p className={styles.formDescription}>
-            {pendingVerification
-              ? pendingVerification.codeSent
-                ? `We sent a six-digit code to ${pendingVerification.email}. Enter it to finish creating your account.`
-                : `Verify ${pendingVerification.email} to finish creating your account. Choose Resend code to request a new code.`
-              : firstSaveContext
-                ? "Your account keeps this Opportunity in your private Tracker and brings you back to its current details."
-                : mode === "login"
-                  ? "Pick up where you left off."
-                  : "Save opportunities and keep track of your applications."}
-          </p>
+        {pendingVerification ? (
+          <span
+            aria-hidden="true"
+            className="mb-6 flex size-11 items-center justify-center rounded-full bg-accent-tint text-primary"
+          >
+            <MailCheck className="size-5" />
+          </span>
+        ) : null}
+        <h1
+          id="auth-heading"
+          className="font-heading text-4xl leading-[1.05] tracking-tight text-balance text-foreground"
+        >
+          {heading}
+        </h1>
+        <p className="mt-3 text-base leading-relaxed text-pretty text-muted-foreground">
+          {pendingVerification ? (
+            pendingVerification.codeSent ? (
+              <>
+                We sent a six-digit code to{" "}
+                <strong className="font-medium text-foreground">
+                  {pendingVerification.email}
+                </strong>
+                . Enter it to finish creating your account.
+              </>
+            ) : (
+              <>
+                Verify{" "}
+                <strong className="font-medium text-foreground">
+                  {pendingVerification.email}
+                </strong>{" "}
+                to finish creating your account. Choose Resend code to request a
+                new code.
+              </>
+            )
+          ) : firstSaveContext ? (
+            "Your account keeps this Opportunity in your private Tracker and brings you back to its current details."
+          ) : mode === "login" ? (
+            "Log in to see your saved opportunities and deadlines."
+          ) : (
+            "Free to join. Save opportunities and keep every deadline in view."
+          )}
+        </p>
 
-          {firstSaveContext ? (
-            <section
-              className={styles.intentContext}
-              aria-labelledby="first-save-opportunity-title"
+        {firstSaveContext ? (
+          <section
+            className="mt-6 rounded-xl border border-border bg-card p-4"
+            aria-labelledby="first-save-opportunity-title"
+          >
+            <p className="flex items-center gap-1.5 text-xs font-medium text-primary">
+              <LockKeyhole aria-hidden="true" className="size-3.5" />
+              Private Save
+            </p>
+            <h2
+              id="first-save-opportunity-title"
+              className="mt-2 font-heading text-xl leading-snug text-foreground"
             >
-              <p className={styles.intentEyebrow}>
-                <LockKeyhole aria-hidden="true" /> Private Save
+              {firstSaveContext.title}
+            </h2>
+            {firstSaveContext.organizationName ? (
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {firstSaveContext.organizationName}
               </p>
-              <h3 id="first-save-opportunity-title">
-                {firstSaveContext.title}
-              </h3>
-              {firstSaveContext.organizationName ? (
-                <p>{firstSaveContext.organizationName}</p>
-              ) : null}
-              <small>
-                Saving does not confirm eligibility or send an application.
-              </small>
-            </section>
-          ) : null}
+            ) : null}
+            <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+              Saving does not confirm eligibility or send an application.
+            </p>
+          </section>
+        ) : null}
 
-          {firstSaveUnavailable ? (
-            <section className={styles.intentContext} role="alert">
-              <p className={styles.intentEyebrow}>
-                <AlertTriangle aria-hidden="true" /> Save request expired
-              </p>
-              <h3>Return to the Opportunity to save it</h3>
-              <small>
-                You can continue with this account form, but Missa will not save
-                the Opportunity automatically from an expired request.
-              </small>
+        {firstSaveUnavailable ? (
+          <section
+            className="mt-6 rounded-xl border border-border bg-card p-4"
+            role="alert"
+          >
+            <p className="flex items-center gap-1.5 text-xs font-medium text-warning">
+              <AlertTriangle aria-hidden="true" className="size-3.5" />
+              Save request expired
+            </p>
+            <h2 className="mt-2 text-base font-semibold text-foreground">
+              Return to the Opportunity to save it
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              You can continue with this account form, but Missa will not save
+              the Opportunity automatically from an expired request.
+            </p>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline focus-visible:underline disabled:opacity-50"
+              onClick={() => void clearInvalidFirstSave()}
+            >
+              Return to the Opportunity
+            </button>
+          </section>
+        ) : null}
+
+        {pendingVerification ? (
+          <form
+            className="mt-8 grid gap-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void verifyEmailCode();
+            }}
+            noValidate
+          >
+            <Field data-invalid={Boolean(verificationError)}>
+              <FieldLabel htmlFor="verification-code">
+                Verification code
+              </FieldLabel>
+              <InputOTP
+                ref={verificationCodeRef}
+                id="verification-code"
+                maxLength={6}
+                pattern={REGEXP_ONLY_DIGITS}
+                value={verificationCode}
+                onChange={setVerificationCode}
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                autoFocus
+                disabled={isPending || isResending}
+                aria-invalid={Boolean(verificationError)}
+                aria-describedby={
+                  verificationError
+                    ? "verification-guidance verification-error"
+                    : "verification-guidance"
+                }
+                containerClassName="w-full justify-between"
+              >
+                <InputOTPGroup>
+                  {[0, 1, 2].map((index) => (
+                    <InputOTPSlot
+                      key={index}
+                      index={index}
+                      className="size-12 text-lg"
+                    />
+                  ))}
+                </InputOTPGroup>
+                <InputOTPSeparator />
+                <InputOTPGroup>
+                  {[3, 4, 5].map((index) => (
+                    <InputOTPSlot
+                      key={index}
+                      index={index}
+                      className="size-12 text-lg"
+                    />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+              <FieldDescription id="verification-guidance">
+                Paste or type the six digits. Missa opens the account only after
+                the address is verified.
+              </FieldDescription>
+              {verificationError ? (
+                <FieldError id="verification-error">
+                  {verificationError}
+                </FieldError>
+              ) : null}
+            </Field>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={isPending || verificationCode.length !== 6}
+              aria-busy={isPending}
+              className="w-full"
+            >
+              {isPending ? <Spinner aria-hidden="true" /> : null}
+              {isPending ? "Verifying…" : "Verify email"}
+            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-x-2 text-sm text-muted-foreground">
+              <span>Didn’t get it?</span>
               <button
                 type="button"
-                className={styles.inlineContextLink}
-                onClick={() => void clearInvalidFirstSave()}
+                className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline focus-visible:underline disabled:opacity-50"
+                disabled={isPending || isResending}
+                aria-busy={isResending}
+                onClick={() => void resendVerificationCode()}
               >
-                Return to the Opportunity
+                {isResending ? "Sending…" : "Resend code"}
               </button>
-            </section>
-          ) : null}
-
-          {pendingVerification ? (
-            <form
-              className={styles.form}
-              onSubmit={(event) => {
-                event.preventDefault();
-                void verifyEmailCode();
-              }}
-              noValidate
-            >
-              <p className={styles.intentEyebrow}>
-                <MailCheck aria-hidden="true" /> Email verification
-              </p>
-              <Field data-invalid={Boolean(verificationError)}>
-                <FieldLabel htmlFor="verification-code">
-                  Verification code
-                </FieldLabel>
-                <InputOTP
-                  ref={verificationCodeRef}
-                  id="verification-code"
-                  maxLength={6}
-                  pattern={REGEXP_ONLY_DIGITS}
-                  value={verificationCode}
-                  onChange={setVerificationCode}
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                  autoFocus
-                  disabled={isPending || isResending}
-                  aria-invalid={Boolean(verificationError)}
-                  aria-describedby={
-                    verificationError
-                      ? "verification-guidance verification-error"
-                      : "verification-guidance"
-                  }
-                  containerClassName="w-full justify-center"
-                >
-                  <InputOTPGroup>
-                    {[0, 1, 2].map((index) => (
-                      <InputOTPSlot
-                        key={index}
-                        index={index}
-                        className="size-11 text-base"
-                      />
-                    ))}
-                  </InputOTPGroup>
-                  <InputOTPSeparator />
-                  <InputOTPGroup>
-                    {[3, 4, 5].map((index) => (
-                      <InputOTPSlot
-                        key={index}
-                        index={index}
-                        className="size-11 text-base"
-                      />
-                    ))}
-                  </InputOTPGroup>
-                </InputOTP>
-                <FieldDescription id="verification-guidance">
-                  Paste or type the six digits from the email. We will not open
-                  the account until the address is verified.
-                </FieldDescription>
-                {verificationError ? (
-                  <FieldError id="verification-error">
-                    {verificationError}
-                  </FieldError>
-                ) : null}
-              </Field>
-              <Button
-                type="submit"
-                size="lg"
-                disabled={isPending || verificationCode.length !== 6}
-                aria-busy={isPending}
-                className="h-11 justify-between"
+              <span aria-hidden="true">·</span>
+              <button
+                type="button"
+                className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline focus-visible:underline disabled:opacity-50"
+                disabled={isPending || isResending}
+                onClick={useAnotherEmail}
               >
-                {isPending ? "Verifying…" : "Verify email"}
-                <ArrowRight className="size-4" aria-hidden="true" />
-              </Button>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={isPending || isResending}
-                  aria-busy={isResending}
-                  className="h-11 flex-1"
-                  onClick={() => void resendVerificationCode()}
-                >
-                  {isResending ? "Sending…" : "Resend code"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  disabled={isPending || isResending}
-                  className="h-11 flex-1"
-                  onClick={useAnotherEmail}
-                >
-                  Use another email
-                </Button>
+                Use another email
+              </button>
+            </div>
+          </form>
+        ) : sessionReady && firstSaveContext ? (
+          <section
+            ref={resolutionRef}
+            className={styles.resolution}
+            aria-labelledby="first-save-resolution-title"
+            tabIndex={-1}
+          >
+            {isResuming ? (
+              <div className={styles.resolutionStatus} role="status">
+                <RefreshCw aria-hidden="true" className={styles.spin} />
+                <div>
+                  <h2 id="first-save-resolution-title">
+                    Checking the current Opportunity
+                  </h2>
+                  <p>Missa is checking its status and details before saving.</p>
+                </div>
               </div>
-            </form>
-          ) : sessionReady && firstSaveContext ? (
-            <section
-              ref={resolutionRef}
-              className={styles.resolution}
-              aria-labelledby="first-save-resolution-title"
-              tabIndex={-1}
-            >
-              {isResuming ? (
-                <div className={styles.resolutionStatus} role="status">
-                  <RefreshCw aria-hidden="true" className={styles.spin} />
-                  <div>
-                    <h3 id="first-save-resolution-title">
-                      Checking the current Opportunity
-                    </h3>
-                    <p>
-                      Missa is checking its status and details before saving.
-                    </p>
-                  </div>
-                </div>
-              ) : resumeError ? (
-                <div className={styles.resolutionStatus} role="alert">
-                  <AlertTriangle aria-hidden="true" />
-                  <div>
-                    <h3 id="first-save-resolution-title">
-                      Saving was interrupted
-                    </h3>
-                    <p>{resumeError}</p>
-                    <Button type="button" onClick={() => resumeFirstSave()}>
-                      Try again
-                    </Button>
-                  </div>
-                </div>
-              ) : resumeState?.status === "review-required" ? (
+            ) : resumeError ? (
+              <div className={styles.resolutionStatus} role="alert">
+                <AlertTriangle aria-hidden="true" />
                 <div>
-                  <div className={styles.resolutionStatus} role="alert">
-                    <AlertTriangle aria-hidden="true" />
-                    <div>
-                      <h3 id="first-save-resolution-title">
-                        This Opportunity changed
-                      </h3>
-                      <p>
-                        Review the current details before saving them to your
-                        Tracker.
-                      </p>
-                    </div>
-                  </div>
-                  <dl className={styles.changeList}>
-                    {resumeState.changes.map((change) => (
-                      <div key={change.code}>
-                        <dt>{change.label}</dt>
-                        <dd>
-                          <span>Was: {change.before}</span>
-                          <strong>Now: {change.after}</strong>
-                        </dd>
-                      </div>
-                    ))}
-                  </dl>
-                  <div className={styles.resolutionActions}>
-                    <Button
-                      type="button"
-                      onClick={() =>
-                        resumeFirstSave(resumeState.currentFingerprint)
-                      }
-                    >
-                      Save current details
-                    </Button>
-                    <Link href={resumeState.currentPath}>
-                      Review the Opportunity
-                    </Link>
-                  </div>
+                  <h2 id="first-save-resolution-title">
+                    Saving was interrupted
+                  </h2>
+                  <p>{resumeError}</p>
+                  <Button type="button" onClick={() => resumeFirstSave()}>
+                    Try again
+                  </Button>
                 </div>
-              ) : resumeState?.status === "blocked" ? (
+              </div>
+            ) : resumeState?.status === "review-required" ? (
+              <div>
                 <div className={styles.resolutionStatus} role="alert">
                   <AlertTriangle aria-hidden="true" />
                   <div>
-                    <h3 id="first-save-resolution-title">
-                      {resumeState.reason === "closed"
-                        ? "This Opportunity is closed"
-                        : "This Opportunity cannot be saved"}
-                    </h3>
+                    <h2 id="first-save-resolution-title">
+                      This Opportunity changed
+                    </h2>
                     <p>
-                      Missa did not add it to your Tracker. You can still review
-                      the available public information.
+                      Review the current details before saving them to your
+                      Tracker.
                     </p>
-                    <Link href={resumeState.currentPath ?? opportunityPath}>
-                      Review the Opportunity
-                    </Link>
                   </div>
                 </div>
-              ) : resumeState?.status === "expired" ||
-                resumeState?.status === "missing" ? (
-                <div className={styles.resolutionStatus} role="alert">
-                  <AlertTriangle aria-hidden="true" />
-                  <div>
-                    <h3 id="first-save-resolution-title">
-                      This Save request expired
-                    </h3>
-                    <p>
-                      Return to the Opportunity and choose Save again. Your
-                      account is ready.
-                    </p>
-                    <Link href={resumeState.restartPath ?? opportunityPath}>
-                      Return to the Opportunity
-                    </Link>
-                  </div>
-                </div>
-              ) : resumeState?.status === "created" ||
-                resumeState?.status === "already-present" ? (
-                <div>
-                  <div className={styles.resolutionStatus} role="status">
-                    <CheckCircle2 aria-hidden="true" />
-                    <div>
-                      <h3 id="first-save-resolution-title">
-                        {resumeState.status === "created"
-                          ? "Opportunity saved privately"
-                          : "Already in your Tracker"}
-                      </h3>
-                      <p>
-                        Only you can see this Tracker item. Saving does not
-                        confirm eligibility or send an application.
-                      </p>
+                <dl className={styles.changeList}>
+                  {resumeState.changes.map((change) => (
+                    <div key={change.code}>
+                      <dt>{change.label}</dt>
+                      <dd>
+                        <span>Was: {change.before}</span>
+                        <strong>Now: {change.after}</strong>
+                      </dd>
                     </div>
-                  </div>
-                  <div className={styles.nextAction}>
-                    <p>Next useful action</p>
-                    <strong>{resumeState.receipt.nextAction.label}</strong>
-                    <span>{resumeState.receipt.nextAction.description}</span>
-                  </div>
-                  <div className={styles.resolutionActions}>
-                    <Button
-                      type="button"
-                      onClick={() => router.push("/tracker")}
-                    >
-                      Open Tracker <ArrowRight aria-hidden="true" />
-                    </Button>
-                    <button
-                      type="button"
-                      className={styles.resolutionLink}
-                      onClick={() =>
-                        void leaveCompletedFirstSave(opportunityPath)
-                      }
-                    >
-                      View the Opportunity
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </section>
-          ) : (
-            <form onSubmit={onSubmit} className={styles.form} noValidate>
-              {isNeonAuthClientConfigured ? (
-                <>
-                  <SocialAuthButton
-                    disabled={isPending}
-                    onGoogle={continueWithGoogle}
-                  />
-                  <div className={styles.authDivider} aria-hidden="true">
-                    <Separator />
-                    <span>or use email</span>
-                    <Separator />
-                  </div>
-                </>
-              ) : null}
-              {mode === "signup" && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className={styles.field} key="given-name">
-                    <label htmlFor="givenName" className={styles.label}>
-                      Given name
-                    </label>
-                    <Input
-                      className="h-11"
-                      id="givenName"
-                      name="givenName"
-                      autoComplete="given-name"
-                      placeholder="Adedayo"
-                      aria-invalid={fieldError?.field === "givenName"}
-                      aria-describedby={
-                        fieldError?.field === "givenName"
-                          ? fieldErrorId
-                          : undefined
-                      }
-                      required
-                    />
-                    {fieldError?.field === "givenName" ? (
-                      <p
-                        id={fieldErrorId}
-                        className={styles.fieldError}
-                        role="alert"
-                      >
-                        {fieldError.message}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className={styles.field} key="family-name">
-                    <label htmlFor="familyName" className={styles.label}>
-                      Family name
-                    </label>
-                    <Input
-                      className="h-11"
-                      id="familyName"
-                      name="familyName"
-                      autoComplete="family-name"
-                      placeholder="Agarau"
-                      disabled={signupUsesSingleName}
-                      aria-invalid={fieldError?.field === "familyName"}
-                      aria-describedby={
-                        fieldError?.field === "familyName"
-                          ? fieldErrorId
-                          : undefined
-                      }
-                    />
-                    {fieldError?.field === "familyName" ? (
-                      <p
-                        id={fieldErrorId}
-                        className={styles.fieldError}
-                        role="alert"
-                      >
-                        {fieldError.message}
-                      </p>
-                    ) : null}
-                  </div>
-                  <label className="flex min-h-11 items-center gap-3 text-sm sm:col-span-2">
-                    <Checkbox
-                      checked={signupUsesSingleName}
-                      onCheckedChange={(checked) =>
-                        setSignupUsesSingleName(checked === true)
-                      }
-                    />
-                    I use one name.
-                  </label>
-                </div>
-              )}
-              <div className={styles.field} key="account-email">
-                <label htmlFor="email" className={styles.label}>
-                  Email address
-                </label>
-                <Input
-                  className="h-11"
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  aria-invalid={fieldError?.field === "email"}
-                  aria-describedby={
-                    fieldError?.field === "email" ? fieldErrorId : undefined
-                  }
-                  required
-                />
-                {fieldError?.field === "email" ? (
-                  <p
-                    id={fieldErrorId}
-                    className={styles.fieldError}
-                    role="alert"
+                  ))}
+                </dl>
+                <div className={styles.resolutionActions}>
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      resumeFirstSave(resumeState.currentFingerprint)
+                    }
                   >
-                    {fieldError.message}
-                  </p>
-                ) : null}
-              </div>
-              <div className={styles.field} key="password">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label htmlFor="password" className={styles.label}>
-                    Password
-                  </label>
-                  {mode === "login" && (
-                    <Link
-                      href="/forgot-password"
-                      className="inline-flex min-h-11 items-center text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
-                    >
-                      Forgot password?
-                    </Link>
-                  )}
+                    Save current details
+                  </Button>
+                  <Link href={resumeState.currentPath}>
+                    Review the Opportunity
+                  </Link>
                 </div>
-                <div className={styles.passwordWrap}>
-                  <Input
-                    className="h-11"
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete={
-                      mode === "login" ? "current-password" : "new-password"
-                    }
-                    placeholder={
-                      mode === "signup"
-                        ? "Choose a password"
-                        : "Enter your password"
-                    }
-                    aria-invalid={fieldError?.field === "password"}
-                    aria-describedby={
-                      fieldError?.field === "password"
-                        ? fieldErrorId
-                        : mode === "signup"
-                          ? "password-guidance"
-                          : undefined
-                    }
-                    minLength={8}
-                    required
-                  />
+              </div>
+            ) : resumeState?.status === "blocked" ? (
+              <div className={styles.resolutionStatus} role="alert">
+                <AlertTriangle aria-hidden="true" />
+                <div>
+                  <h2 id="first-save-resolution-title">
+                    {resumeState.reason === "closed"
+                      ? "This Opportunity is closed"
+                      : "This Opportunity cannot be saved"}
+                  </h2>
+                  <p>
+                    Missa did not add it to your Tracker. You can still review
+                    the available public information.
+                  </p>
+                  <Link href={resumeState.currentPath ?? opportunityPath}>
+                    Review the Opportunity
+                  </Link>
+                </div>
+              </div>
+            ) : resumeState?.status === "expired" ||
+              resumeState?.status === "missing" ? (
+              <div className={styles.resolutionStatus} role="alert">
+                <AlertTriangle aria-hidden="true" />
+                <div>
+                  <h2 id="first-save-resolution-title">
+                    This Save request expired
+                  </h2>
+                  <p>
+                    Return to the Opportunity and choose Save again. Your
+                    account is ready.
+                  </p>
+                  <Link href={resumeState.restartPath ?? opportunityPath}>
+                    Return to the Opportunity
+                  </Link>
+                </div>
+              </div>
+            ) : resumeState?.status === "created" ||
+              resumeState?.status === "already-present" ? (
+              <div>
+                <div className={styles.resolutionStatus} role="status">
+                  <CheckCircle2 aria-hidden="true" />
+                  <div>
+                    <h2 id="first-save-resolution-title">
+                      {resumeState.status === "created"
+                        ? "Opportunity saved privately"
+                        : "Already in your Tracker"}
+                    </h2>
+                    <p>
+                      Only you can see this Tracker item. Saving does not
+                      confirm eligibility or send an application.
+                    </p>
+                  </div>
+                </div>
+                <div className={styles.nextAction}>
+                  <p>Next useful action</p>
+                  <strong>{resumeState.receipt.nextAction.label}</strong>
+                  <span>{resumeState.receipt.nextAction.description}</span>
+                </div>
+                <div className={styles.resolutionActions}>
+                  <Button type="button" onClick={() => router.push("/tracker")}>
+                    Open Tracker <ArrowRight aria-hidden="true" />
+                  </Button>
                   <button
                     type="button"
-                    className={styles.passwordToggle}
-                    onClick={() => setShowPassword((value) => !value)}
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
+                    className={styles.resolutionLink}
+                    onClick={() =>
+                      void leaveCompletedFirstSave(opportunityPath)
                     }
                   >
-                    {showPassword ? (
-                      <EyeOff className="size-4" />
-                    ) : (
-                      <Eye className="size-4" />
-                    )}
+                    View the Opportunity
                   </button>
                 </div>
-                {mode === "signup" && (
-                  <p
-                    id="password-guidance"
-                    className="text-xs text-muted-foreground"
+              </div>
+            ) : null}
+          </section>
+        ) : (
+          <form onSubmit={onSubmit} className="mt-8 grid gap-5" noValidate>
+            {isNeonAuthClientConfigured ? (
+              <>
+                <SocialAuthButton
+                  disabled={isPending}
+                  onGoogle={continueWithGoogle}
+                />
+                <div
+                  className="flex items-center gap-3 text-xs text-muted-foreground"
+                  aria-hidden="true"
+                >
+                  <Separator className="flex-1" />
+                  <span>or continue with email</span>
+                  <Separator className="flex-1" />
+                </div>
+              </>
+            ) : null}
+            {mode === "signup" ? (
+              <div className="grid grid-cols-1 gap-x-3 gap-y-5 sm:grid-cols-2">
+                <Field data-invalid={fieldError?.field === "givenName"}>
+                  <FieldLabel htmlFor="givenName">Given name</FieldLabel>
+                  <Input
+                    id="givenName"
+                    name="givenName"
+                    autoComplete="given-name"
+                    aria-invalid={fieldError?.field === "givenName"}
+                    aria-describedby={describedBy("givenName")}
+                    required
+                  />
+                  {fieldErrorFor("givenName")}
+                </Field>
+                <Field data-invalid={fieldError?.field === "familyName"}>
+                  <FieldLabel htmlFor="familyName">Family name</FieldLabel>
+                  <Input
+                    id="familyName"
+                    name="familyName"
+                    autoComplete="family-name"
+                    disabled={signupUsesSingleName}
+                    aria-invalid={fieldError?.field === "familyName"}
+                    aria-describedby={describedBy("familyName")}
+                  />
+                  {fieldErrorFor("familyName")}
+                </Field>
+                <label className="-mt-2 flex min-h-11 cursor-pointer items-center gap-3 text-sm text-muted-foreground sm:col-span-2">
+                  <Checkbox
+                    checked={signupUsesSingleName}
+                    onCheckedChange={(checked) =>
+                      setSignupUsesSingleName(checked === true)
+                    }
+                  />
+                  I use one name
+                </label>
+              </div>
+            ) : null}
+            <Field data-invalid={fieldError?.field === "email"}>
+              <FieldLabel htmlFor="email">Email address</FieldLabel>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                inputMode="email"
+                placeholder="you@example.com"
+                aria-invalid={fieldError?.field === "email"}
+                aria-describedby={describedBy("email")}
+                required
+              />
+              {fieldErrorFor("email")}
+            </Field>
+            <Field data-invalid={fieldError?.field === "password"}>
+              <div className="flex items-center justify-between gap-3">
+                <FieldLabel htmlFor="password">Password</FieldLabel>
+                {mode === "login" ? (
+                  <Link
+                    href="/forgot-password"
+                    className="-my-3 inline-flex min-h-11 items-center text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                   >
-                    Use at least 8 characters.
-                  </p>
-                )}
-                {fieldError?.field === "password" ? (
-                  <p
-                    id={fieldErrorId}
-                    className={styles.fieldError}
-                    role="alert"
-                  >
-                    {fieldError.message}
-                  </p>
+                    Forgot password?
+                  </Link>
                 ) : null}
               </div>
-              {mode === "signup" && (
-                <div className={styles.field} key="password-confirmation">
-                  <label htmlFor="confirmation" className={styles.label}>
-                    Confirm password
-                  </label>
-                  <div className={styles.passwordWrap}>
-                    <Input
-                      className="h-11"
-                      id="confirmation"
-                      name="confirmation"
-                      type={showConfirmation ? "text" : "password"}
-                      autoComplete="new-password"
-                      placeholder="Repeat your password"
-                      aria-invalid={fieldError?.field === "confirmation"}
-                      aria-describedby={
-                        fieldError?.field === "confirmation"
-                          ? fieldErrorId
-                          : undefined
-                      }
-                      minLength={8}
-                      required
-                    />
-                    <button
-                      type="button"
-                      className={styles.passwordToggle}
-                      onClick={() => setShowConfirmation((value) => !value)}
-                      aria-label={
-                        showConfirmation
-                          ? "Hide password confirmation"
-                          : "Show password confirmation"
-                      }
-                    >
-                      {showConfirmation ? (
-                        <EyeOff className="size-4" />
-                      ) : (
-                        <Eye className="size-4" />
-                      )}
-                    </button>
-                  </div>
-                  {fieldError?.field === "confirmation" ? (
-                    <p
-                      id={fieldErrorId}
-                      className={styles.fieldError}
-                      role="alert"
-                    >
-                      {fieldError.message}
-                    </p>
-                  ) : null}
-                </div>
-              )}
-              {mode === "signup" && !firstSaveContext && (
-                <Accordion>
-                  <AccordionItem value="waitlist">
-                    <AccordionTrigger>
-                      Joined the waitlist with another email?
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <div className={styles.field}>
-                        <label htmlFor="waitlistEmail" className={styles.label}>
-                          Waitlist email (optional)
-                        </label>
-                        <Input
-                          id="waitlistEmail"
-                          name="waitlistEmail"
-                          type="email"
-                          autoComplete="off"
-                          className="h-11"
-                        />
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              )}
-              {error && (
-                <p className={styles.error} role="alert">
+              <div className={styles.passwordWrap}>
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete={
+                    mode === "login" ? "current-password" : "new-password"
+                  }
+                  aria-invalid={fieldError?.field === "password"}
+                  aria-describedby={describedBy(
+                    "password",
+                    mode === "signup" ? "password-guidance" : undefined,
+                  )}
+                  onChange={(event) =>
+                    setPasswordLength(event.target.value.length)
+                  }
+                  minLength={8}
+                  required
+                />
+                <button
+                  type="button"
+                  className={styles.passwordToggle}
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </button>
+              </div>
+              {mode === "signup" ? (
+                <p
+                  id="password-guidance"
+                  className={
+                    passwordLength >= 8
+                      ? "flex items-center gap-1.5 text-sm text-primary"
+                      : "flex items-center gap-1.5 text-sm text-muted-foreground"
+                  }
+                >
+                  <CheckCircle2 aria-hidden="true" className="size-4" />
+                  At least 8 characters
+                </p>
+              ) : null}
+              {fieldErrorFor("password")}
+            </Field>
+            {mode === "signup" && !firstSaveContext ? (
+              <Accordion>
+                <AccordionItem value="waitlist">
+                  <AccordionTrigger>
+                    Joined the waitlist with another email?
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <Field>
+                      <FieldLabel htmlFor="waitlistEmail">
+                        Waitlist email (optional)
+                      </FieldLabel>
+                      <Input
+                        id="waitlistEmail"
+                        name="waitlistEmail"
+                        type="email"
+                        autoComplete="off"
+                      />
+                    </Field>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            ) : null}
+            {error ? (
+              <Alert variant="destructive">
+                <AlertCircle aria-hidden="true" />
+                <AlertDescription>
                   {error}
                   {accountExists ? (
                     <button
                       type="button"
-                      className={styles.inlineErrorAction}
+                      className="mt-1 flex min-h-11 items-center font-medium text-destructive underline underline-offset-4"
                       onClick={() => {
                         setMode("login");
                         setError(null);
@@ -1293,81 +1204,87 @@ export function AuthForm({
                       Log in with this email
                     </button>
                   ) : null}
-                </p>
-              )}
-              <Button
-                type="submit"
-                size="lg"
-                disabled={isPending}
-                className="h-11 justify-between"
-              >
-                {isPending
-                  ? mode === "login"
-                    ? "Logging in…"
-                    : "Creating account…"
-                  : mode === "login"
-                    ? "Log in"
-                    : "Create account"}
-                <ArrowRight className="size-4" />
-              </Button>
-              {mode === "signup" ? (
-                <p className={styles.finePrint}>
-                  By creating an account you agree to the{" "}
-                  <Link className="underline underline-offset-2" href="/terms">
-                    Terms
-                  </Link>{" "}
-                  and confirm you have read the{" "}
-                  <Link className="underline underline-offset-2" href="/privacy">
-                    Privacy notice
-                  </Link>
-                  . Missa will email the reminders you set and a weekly digest
-                  of calls. Turn either off anytime in Inbox settings.
-                </p>
-              ) : null}
-              {firstSaveContext ? (
-                <p className={styles.finePrint}>
-                  You can update Profile details later. They are not required to
-                  save this Opportunity.
-                </p>
-              ) : null}
-            </form>
-          )}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+            <Button
+              type="submit"
+              size="lg"
+              disabled={isPending}
+              aria-busy={isPending}
+              className="w-full"
+            >
+              {isPending ? <Spinner aria-hidden="true" /> : null}
+              {isPending
+                ? mode === "login"
+                  ? "Logging in…"
+                  : "Creating account…"
+                : mode === "login"
+                  ? "Log in"
+                  : "Create account"}
+            </Button>
+            {mode === "signup" ? (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                By creating an account you agree to the{" "}
+                <Link
+                  className="underline underline-offset-2 hover:text-foreground"
+                  href="/terms"
+                >
+                  Terms
+                </Link>{" "}
+                and confirm you have read the{" "}
+                <Link
+                  className="underline underline-offset-2 hover:text-foreground"
+                  href="/privacy"
+                >
+                  Privacy notice
+                </Link>
+                . Missa will email the reminders you set and a weekly digest of
+                calls. Turn either off anytime in Inbox settings.
+              </p>
+            ) : null}
+            {firstSaveContext ? (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                You can update Profile details later. They are not required to
+                save this Opportunity.
+              </p>
+            ) : null}
+          </form>
+        )}
 
-          {!sessionReady && !pendingVerification ? (
-            <p className={styles.switchMode}>
-              {mode === "login"
-                ? "New to Missa? "
-                : "Already have an account? "}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode(mode === "login" ? "signup" : "login");
-                  setError(null);
-                  setAccountExists(false);
-                  setFieldError(null);
-                }}
-              >
-                {mode === "login" ? "Create an account" : "Log in"}
-              </button>
-            </p>
-          ) : null}
-          {firstSaveContext &&
-          resumeState?.status !== "created" &&
-          resumeState?.status !== "already-present" ? (
+        {!sessionReady && !pendingVerification ? (
+          <p className="mt-8 border-t border-border pt-6 text-center text-sm text-muted-foreground">
+            {mode === "login" ? "New to Missa?" : "Already have an account?"}{" "}
             <button
               type="button"
-              className={styles.backLink}
-              onClick={() => void abandonFirstSave()}
+              className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline focus-visible:underline disabled:opacity-50"
+              onClick={() => {
+                setMode(mode === "login" ? "signup" : "login");
+                setError(null);
+                setAccountExists(false);
+                setFieldError(null);
+              }}
             >
-              Return without saving <ArrowRight className="size-3.5" />
+              {mode === "login" ? "Create an account" : "Log in"}
             </button>
-          ) : firstSaveContext ? (
-            <Link href="/opportunities" className={styles.backLink}>
-              Browse public opportunities <ArrowRight className="size-3.5" />
-            </Link>
-          ) : null}
-        </div>
+          </p>
+        ) : null}
+        {firstSaveContext &&
+        resumeState?.status !== "created" &&
+        resumeState?.status !== "already-present" ? (
+          <button
+            type="button"
+            className={styles.backLink}
+            onClick={() => void abandonFirstSave()}
+          >
+            Return without saving <ArrowRight className="size-3.5" />
+          </button>
+        ) : firstSaveContext ? (
+          <Link href="/opportunities" className={styles.backLink}>
+            Browse public opportunities <ArrowRight className="size-3.5" />
+          </Link>
+        ) : null}
       </section>
-    </div>
+    </AuthShell>
   );
 }
