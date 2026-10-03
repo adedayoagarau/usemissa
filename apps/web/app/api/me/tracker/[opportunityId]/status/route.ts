@@ -5,10 +5,13 @@ import {
   CreatorConflictError,
   CreatorIdempotencyConflictError,
   creatorRelationalAuthorityEnabled,
+  TrackingLimitReachedError,
   updateCanonicalTrackerStatus,
 } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
 import { getEngine, persistRadar } from "@/lib/engine";
+import { assertLegacyTrackingAllowance } from "@/lib/legacyTrackingAllowance";
+import { trackingLimitBody } from "@/lib/trackingLimit";
 import { trackFirstSaveEvent } from "@/lib/firstSaveAnalytics";
 import { verifyFirstSaveCompletionToken } from "@/lib/firstSaveIntent";
 
@@ -99,6 +102,9 @@ export async function POST(
           { status: 409, headers },
         );
       }
+      if (error instanceof TrackingLimitReachedError) {
+        return NextResponse.json(trackingLimitBody(error), { status: 409, headers });
+      }
       throw error;
     }
     if (!updated) {
@@ -134,6 +140,14 @@ export async function POST(
       { error: "Tracker item not found" },
       { status: 404, headers },
     );
+  }
+
+  // Moving a submitted or closed call back into progress takes a Free place.
+  try {
+    await assertLegacyTrackingAllowance(engine.store, { accountId: session.account.id, userId, opportunityId, nextStatus: body.status });
+  } catch (error) {
+    if (error instanceof TrackingLimitReachedError) return NextResponse.json(trackingLimitBody(error), { status: 409, headers });
+    throw error;
   }
 
   const previousStatus = current.myStatus;

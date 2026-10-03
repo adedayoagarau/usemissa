@@ -15,6 +15,13 @@ export const CREATOR_PLAN_LIMITS = {
 
 export const FREE_ACTIVE_TRACKED_LIMIT = CREATOR_PLAN_LIMITS.free.activeTrackedLimit;
 
+/** Tracker statuses that count towards the Free limit while the call is open. */
+export const ACTIVE_TRACKED_STATUSES = ["interested", "saved", "preparing", "draft-started", "ready-to-submit"] as const;
+
+export function isActiveTrackedStatus(status: string): boolean {
+  return (ACTIVE_TRACKED_STATUSES as readonly string[]).includes(status);
+}
+
 /**
  * Calls a creator is still working towards: not yet submitted, and either
  * rolling or closing today or later. Submitted, decided and lapsed calls never
@@ -25,7 +32,7 @@ const ACTIVE_TRACKED_SQL = `
     from tracked_opportunities t
     join opportunities o on o.id = t.opportunity_id
    where t.account_id = $1
-     and t.status in ('interested','saved','preparing','draft-started','ready-to-submit')
+     and t.status in (${ACTIVE_TRACKED_STATUSES.map((status) => `'${status}'`).join(",")})
      and (o.deadline_date is null or o.deadline_date >= current_date)`;
 
 export class TrackingLimitReachedError extends Error {
@@ -70,7 +77,15 @@ export async function assertTrackingAllowance(client: PoolClient, accountId: str
   const existing = await client.query("select 1 from tracked_opportunities where account_id=$1 and opportunity_id=$2", [accountId, opportunityId]);
   if (existing.rows[0]) return;
   await client.query("select pg_advisory_xact_lock(hashtext($1))", [`tracking-allowance:${accountId}`]);
-  const entitlements = await creatorEntitlements(client, accountId);
+  assertRoomForActiveCall(await creatorEntitlements(client, accountId));
+}
+
+/**
+ * The limit check itself, for callers that count calls in progress some other
+ * way (the legacy Radar store): refuses one more call in progress when the plan
+ * is already at its limit.
+ */
+export function assertRoomForActiveCall(entitlements: Pick<CreatorEntitlements, "activeTrackedLimit" | "activeTracked">): void {
   if (entitlements.activeTrackedLimit !== null && entitlements.activeTracked >= entitlements.activeTrackedLimit) {
     throw new TrackingLimitReachedError(entitlements.activeTrackedLimit, entitlements.activeTracked);
   }
