@@ -852,6 +852,13 @@
       "motion": "never",
       "boundary": "The creator's plan page: current plan and Free allowance, the Plus offer with prices read from Stripe, and one action (upgrade, or manage in Stripe). Status messages use role=status; only a failed checkout or portal request uses role=alert."
     },
+    "TextRemindersSettings": {
+      "base": "Switch",
+      "implementation": "components/missa/text-reminders-settings.tsx",
+      "motion": "never",
+      "composition": ["Field", "PhoneInput", "InputOTP", "Switch", "Button"],
+      "boundary": "Plus-only text (SMS) reminder settings inside notification preferences: Free creators see what Plus adds and a link to /plan; Plus creators add a number with PhoneInput, confirm it with a six-digit InputOTP code, then use one Switch to turn texts on or off, change or remove the number. Every change saves immediately through /api/me/sms; the plan is plain text, not a Badge. Always states 'Reply STOP to end. Msg & data rates may apply.' Status uses role=status; only failures use role=alert."
+    },
     "CookieConsent": {
       "base": "Button",
       "implementation": "components/missa/cookie-consent.tsx",

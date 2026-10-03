@@ -2726,6 +2726,7 @@ export const notificationPreferences = pgTable(
     timezone: text("timezone"),
     quietHoursStartMinute: smallint("quiet_hours_start_minute"),
     quietHoursEndMinute: smallint("quiet_hours_end_minute"),
+    smsOptedOutAt: timestamp("sms_opted_out_at", { withTimezone: true }),
     emailChoiceAt: timestamp("email_choice_at", { withTimezone: true }).defaultNow(),
     providerState: text("provider_state").notNull().default("unavailable"),
     revision: revision(),
@@ -2753,8 +2754,74 @@ export const notificationPreferences = pgTable(
       "notification_preferences_revision_check",
       sql`${table.revision} >= 1`,
     ),
+    index("notification_preferences_sms_phone_idx")
+      .on(table.smsPhone)
+      .where(sql`${table.smsPhone} is not null`),
   ],
 );
+
+/**
+ * Ledger of every text (SMS) Missa tries to send through Telnyx, keyed by an
+ * idempotency key so a reminder or code is sent at most once. Delivery reports
+ * move rows from sent to delivered or failed and record the cost.
+ */
+export const smsMessages = pgTable(
+  "sms_messages",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    kind: text("kind").notNull(),
+    toPhone: text("to_phone").notNull(),
+    providerMessageId: text("provider_message_id"),
+    status: text("status").notNull().default("queued"),
+    error: text("error"),
+    attempts: integer("attempts").notNull().default(1),
+    costAmount: numeric("cost_amount", { precision: 12, scale: 5 }),
+    costCurrency: text("cost_currency"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    check(
+      "sms_messages_status_check",
+      sql`${table.status} in ('queued', 'sent', 'delivered', 'failed', 'suppressed', 'skipped')`,
+    ),
+    uniqueIndex("sms_messages_idempotency_key_idx").on(table.idempotencyKey),
+    uniqueIndex("sms_messages_provider_message_idx")
+      .on(table.providerMessageId)
+      .where(sql`${table.providerMessageId} is not null`),
+    index("sms_messages_account_created_idx").on(table.accountId, table.createdAt),
+    index("sms_messages_created_idx").on(table.createdAt),
+    index("sms_messages_status_created_idx").on(table.status, table.createdAt),
+  ],
+);
+
+/** One verification code sent to a phone; only a keyed hash of the code is stored. */
+export const smsPhoneVerifications = pgTable(
+  "sms_phone_verifications",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    phone: text("phone").notNull(),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt,
+  },
+  (table) => [index("sms_phone_verifications_account_created_idx").on(table.accountId, table.createdAt)],
+);
+
+/** Platform-wide switches set by platform admins, such as 'sms.paused'. */
+export const platformSettings = pgTable("platform_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull().default(sql`'{}'::jsonb`),
+  updatedAt,
+  updatedBy: text("updated_by"),
+});
 
 export const creatorPlans = pgTable(
   "creator_plans",

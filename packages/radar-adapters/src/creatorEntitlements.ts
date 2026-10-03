@@ -6,14 +6,24 @@ export type CreatorPlan = "free" | "plus" | "pro";
  * What each creator plan allows. This is the one place limits live; product
  * code asks for an entitlement instead of checking plan names. Discovery,
  * Opportunity pages, official sources and email reminders are never limited.
+ * Text (SMS) reminders cost Missa per message, so they come with Plus.
  */
 export const CREATOR_PLAN_LIMITS = {
-  free: { activeTrackedLimit: 10 },
-  plus: { activeTrackedLimit: null },
-  pro: { activeTrackedLimit: null },
-} as const satisfies Record<CreatorPlan, { activeTrackedLimit: number | null }>;
+  free: { activeTrackedLimit: 10, smsReminders: false },
+  plus: { activeTrackedLimit: null, smsReminders: true },
+  pro: { activeTrackedLimit: null, smsReminders: true },
+} as const satisfies Record<CreatorPlan, { activeTrackedLimit: number | null; smsReminders: boolean }>;
 
 export const FREE_ACTIVE_TRACKED_LIMIT = CREATOR_PLAN_LIMITS.free.activeTrackedLimit;
+
+/** Plans that include text reminders, for SQL that filters recipients by plan. */
+export const SMS_REMINDER_PLANS = (Object.keys(CREATOR_PLAN_LIMITS) as CreatorPlan[]).filter(
+  (plan) => CREATOR_PLAN_LIMITS[plan].smsReminders,
+);
+
+export function planIncludesSmsReminders(plan: CreatorPlan): boolean {
+  return CREATOR_PLAN_LIMITS[plan].smsReminders;
+}
 
 /** Tracker statuses that count towards the Free limit while the call is open. */
 export const ACTIVE_TRACKED_STATUSES = ["interested", "saved", "preparing", "draft-started", "ready-to-submit"] as const;
