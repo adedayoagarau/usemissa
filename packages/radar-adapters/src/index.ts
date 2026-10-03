@@ -283,6 +283,18 @@ export {
   type HumanContentReviewDecision,
 } from "./contentReviewAdmin.js";
 export {
+  emptyPublicationHoldQueue,
+  holdReasonsFromChecks,
+  mapPublicationHoldRow,
+  planPublicationApproval,
+  readPublicationHoldQueue,
+  resolvePublicationHold,
+  type PublicationApprovalPlan,
+  type PublicationHoldDecision,
+  type PublicationHoldQueueData,
+  type PublicationHoldRow,
+} from "./publicationHoldAdmin.js";
+export {
   classifyPublicationCandidate,
   publicationReviewMembershipHash,
   readPublicationReviewPreview,
@@ -341,7 +353,13 @@ export {
 export {
   runReviewTick,
   reviewCandidate,
+  editorialReview,
+  reviewPublishMode,
+  REVIEW_HOLD_REASON_TEXT,
+  type EditorialReviewResult,
   type ReviewCandidate,
+  type ReviewHoldReason,
+  type ReviewPublishMode,
 } from "./reviewWorker.js";
 export { runContentReviewTick } from "./contentWorker.js";
 export {

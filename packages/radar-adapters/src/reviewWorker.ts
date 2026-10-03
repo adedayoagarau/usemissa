@@ -10,9 +10,30 @@ import { syncProfileOpportunityLinks } from "./profileIdentityMatcher.js";
 import { finishWorkerRun, heartbeatWorkerRun, startWorkerRun } from "./workerTelemetry.js";
 import { createMissaPostgresPool } from "./postgresPoolPolicy.js";
 import { ensureOpportunityVersionHead } from "./recommendation/versionHead.js";
+import { assessOpportunityRelevance, normalizeOpportunityTitle, type OpportunityTitleResult } from "@missa/radar-engine";
 
 type ReviewDecision = "publish" | "needs-human" | "suppress" | "error";
 type ReviewJob = { id: string; opportunityId: string; inputVersion: string };
+
+/**
+ * `queue` (the default) holds records that pass every automated gate for a
+ * person to approve from the admin publication review queue. `auto` restores
+ * direct publication by the review agent.
+ */
+export type ReviewPublishMode = "auto" | "queue";
+
+/** Why a record that the automated review would otherwise publish is waiting for a person. */
+export type ReviewHoldReason = "held-for-editorial-review" | "missing-organization" | "possible-non-opportunity";
+
+export const REVIEW_HOLD_REASON_TEXT: Record<ReviewHoldReason, string> = {
+  "held-for-editorial-review": "Passed every automated gate; held for editorial approval because RADAR_REVIEW_PUBLISH_MODE is queue.",
+  "missing-organization": "The title is a generic or bare label and no organization is known, so it cannot identify the opportunity.",
+  "possible-non-opportunity": "The title looks like a blog post, newsletter, site page, or non-creative program rather than an opportunity.",
+};
+
+export function reviewPublishMode(value: string | undefined = process.env.RADAR_REVIEW_PUBLISH_MODE): ReviewPublishMode {
+  return value?.trim().toLowerCase() === "auto" ? "auto" : "queue";
+}
 
 const ACTIVE_STATUSES = ["opening-soon", "open", "closing-soon", "deadline-extended"];
 const REVIEW_INTERVAL_MINUTES = 2;
@@ -89,6 +110,8 @@ export type ReviewCandidate = PublicationRubricCandidate & {
   guidelinesUrl: string | null;
   sourceUrl: string | null;
   callProfilePresent: boolean;
+  /** Confirmed organization or linked profile name, when one is known. */
+  organizationName?: string | null;
 };
 
 async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandidate | null> {
@@ -104,9 +127,20 @@ async function candidate(pool: Pool, opportunityId: string): Promise<ReviewCandi
        coalesce(content.review_status = 'approved', false) as "contentApproved",
        (profile.opportunity_id is not null) as "callProfilePresent",
        profile.reading_period_kind as "readingPeriodKind",
-       coalesce(enrichment.evidence_count, 0)::int as "evidenceCount"
+       coalesce(enrichment.evidence_count, 0)::int as "evidenceCount",
+       coalesce(nullif(btrim(organization.data->>'name'), ''), nullif(btrim(organization_profile.name), ''), linked_profile.name) as "organizationName"
      from opportunities o
      left join opportunity_sources s on s.id = o.source_id
+     left join radar_organizations organization on organization.id = o.organization_id
+     left join gary_profiles organization_profile on organization_profile.id = o.organization_id
+     left join lateral (
+       select nullif(btrim(p.name), '') as name
+       from opportunity_profile_links link
+       join gary_profiles p on p.id = link.profile_id
+       where link.opportunity_id = o.id and link.status = 'confirmed' and link.verified_until > now()
+       order by link.confidence desc, link.id asc
+       limit 1
+     ) linked_profile on true
      left join lateral (
        select checked_at, processing_succeeded_at, organization_confirmed, destination_reconciled, destination_reconciliation
        from opportunity_source_evidence
@@ -139,6 +173,54 @@ export function reviewCandidate(candidate: ReviewCandidate): { decision: ReviewD
   return evaluatePublicationRubric(candidate);
 }
 
+export type EditorialReviewResult = {
+  decision: Exclude<ReviewDecision, "error">;
+  score: number;
+  reasons: string[];
+  checks: Record<string, unknown>;
+  holdReasons: ReviewHoldReason[];
+  title: OpportunityTitleResult;
+  /** True when the automated rubric alone would have published the record. */
+  rubricPublish: boolean;
+};
+
+/**
+ * Applies the deterministic title editorial pass and the relevance denylist,
+ * then the publication rubric, then the publish mode. A record publishes
+ * directly only when every gate passes, the title can identify the
+ * opportunity, and the mode is `auto`; otherwise it waits in human review.
+ */
+export function editorialReview(candidate: ReviewCandidate, mode: ReviewPublishMode = reviewPublishMode()): EditorialReviewResult {
+  const title = normalizeOpportunityTitle(candidate.title, { organizationName: candidate.organizationName ?? null });
+  const relevance = assessOpportunityRelevance(title.label);
+  const rubric = reviewCandidate({ ...candidate, title: title.title });
+  const holdReasons: ReviewHoldReason[] = [];
+  if (title.needsOrganization) holdReasons.push("missing-organization");
+  if (!relevance.relevant) holdReasons.push("possible-non-opportunity");
+  let decision: EditorialReviewResult["decision"] = rubric.decision === "error" ? "needs-human" : rubric.decision;
+  if (decision === "publish") {
+    if (holdReasons.length === 0 && mode === "queue") holdReasons.push("held-for-editorial-review");
+    if (holdReasons.length > 0) decision = "needs-human";
+  }
+  const reasons = decision === "suppress" ? rubric.reasons : [...rubric.reasons, ...holdReasons.map((reason) => REVIEW_HOLD_REASON_TEXT[reason])];
+  const checks = {
+    ...rubric.checks,
+    publishMode: mode,
+    holdReasons,
+    editorial: {
+      rawTitle: title.rawTitle,
+      title: title.title,
+      changes: title.changes,
+      genericLabel: title.genericLabel,
+      weakIdentity: title.weakIdentity,
+      organizationName: title.organizationName,
+      organizationInTitle: title.organizationInTitle,
+      relevanceSignals: relevance.signals,
+    },
+  };
+  return { decision, score: rubric.score, reasons, checks, holdReasons, title, rubricPublish: rubric.decision === "publish" };
+}
+
 export function isDurablePublicationGateError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const candidate = error as { code?: unknown; message?: unknown };
@@ -154,7 +236,7 @@ async function writeHandoff(client: PoolClient, runId: string, opportunityId: st
   );
 }
 
-async function routeDurableGateConflictToHuman(pool: Pool, runId: string, job: ReviewJob, result: ReturnType<typeof reviewCandidate>, error: unknown): Promise<void> {
+async function routeDurableGateConflictToHuman(pool: Pool, runId: string, job: ReviewJob, result: Pick<EditorialReviewResult, "score" | "reasons" | "checks">, error: unknown): Promise<void> {
   const message = error instanceof Error ? error.message : String(error);
   const reasons = [...result.reasons, "The durable database publication gate requires human review."];
   const checks = { ...result.checks, durablePublicationGate: "review" };
@@ -184,10 +266,15 @@ async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<Re
     await pool.query("update radar_review_jobs set status = 'completed', last_error = null, lease_until = null, updated_at = now() where id = $1", [job.id]);
     return "suppress";
   }
-  const result = reviewCandidate(item);
+  const result = editorialReview(item);
   const client = await pool.connect();
   try {
     await client.query("begin");
+    if (result.decision !== "suppress" && result.title.title !== item.title && result.title.title.length > 0) {
+      // The raw title stays in the append-only decision checks (editorial.rawTitle).
+      // last_changed_at is left alone so the edit does not re-seed this review job.
+      await client.query("update opportunities set title = $2 where id = $1 and publication_state = 'reviewable'", [job.opportunityId, result.title.title]);
+    }
     await client.query(
       `insert into radar_review_decisions (id, job_id, opportunity_id, run_id, decision, score, reasons, checks)
        values ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)`,
@@ -205,7 +292,8 @@ async function processJob(pool: Pool, runId: string, job: ReviewJob): Promise<Re
       await writeHandoff(client, runId, job.opportunityId, "publisher", "suppression-decision", "completed", { score: result.score });
     } else {
       await client.query("update radar_review_jobs set status = 'needs-human', lease_until = null, updated_at = now() where id = $1", [job.id]);
-      await writeHandoff(client, runId, job.opportunityId, "human-review", "needs-review", "queued", { score: result.score, reasons: result.reasons });
+      const kind = result.rubricPublish ? "editorial-hold" : "needs-review";
+      await writeHandoff(client, runId, job.opportunityId, "human-review", kind, "queued", { score: result.score, reasons: result.reasons, holdReasons: result.holdReasons });
     }
     await client.query("commit");
     return result.decision;
@@ -251,7 +339,7 @@ async function main(): Promise<void> {
   const stop = () => controller.abort();
   process.once("SIGINT", stop);
   process.once("SIGTERM", stop);
-  console.log(`[missa-review-agent] running every ${Math.round(intervalMs() / 60_000)} minutes, batch=${batchSize()}`);
+  console.log(`[missa-review-agent] running every ${Math.round(intervalMs() / 60_000)} minutes, batch=${batchSize()}, publishMode=${reviewPublishMode()}`);
   try {
     while (!controller.signal.aborted) {
       let hasMore = false;

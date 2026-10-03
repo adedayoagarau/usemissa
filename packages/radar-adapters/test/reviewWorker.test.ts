@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isDurablePublicationGateError, reviewCandidate, type ReviewCandidate } from "../src/reviewWorker.js";
+import { editorialReview, isDurablePublicationGateError, reviewCandidate, reviewPublishMode, type ReviewCandidate } from "../src/reviewWorker.js";
+import { holdReasonsFromChecks, mapPublicationHoldRow, planPublicationApproval } from "../src/publicationHoldAdmin.js";
 import { publicationRubricSchema } from "../src/publicationRubricSchema.js";
 import { evaluatePublicationRubric } from "../src/publicationRubric.js";
 
@@ -123,4 +124,98 @@ test("durable publication schema accepts verified opening dates and open-ended i
   assert.match(publicationRubricSchema, /new\.deadline_date >= current_date/);
   assert.match(publicationRubricSchema, /new\.deadline_kind in \('rolling', 'year-round', 'until-filled'\)/);
   assert.match(publicationRubricSchema, /update of publication_state, source_id, status, open_date, deadline_date, deadline_kind/);
+});
+
+test("publish mode defaults to queue and accepts only auto as the alternative", () => {
+  assert.equal(reviewPublishMode(undefined), "queue");
+  assert.equal(reviewPublishMode(""), "queue");
+  assert.equal(reviewPublishMode("queue"), "queue");
+  assert.equal(reviewPublishMode(" AUTO "), "auto");
+  assert.equal(reviewPublishMode("publish"), "queue");
+});
+
+test("queue mode holds a fully evidenced call for editorial review instead of publishing", () => {
+  const result = editorialReview(candidate({ title: "Rattle Poetry Prize", organizationName: "Rattle" }), "queue");
+  assert.equal(result.decision, "needs-human");
+  assert.equal(result.rubricPublish, true);
+  assert.deepEqual(result.holdReasons, ["held-for-editorial-review"]);
+  assert.equal(result.checks.publishMode, "queue");
+  assert.match(result.reasons.join(" "), /held for editorial approval/i);
+});
+
+test("auto mode publishes a fully evidenced call with an identifying title", () => {
+  const result = editorialReview(candidate({ title: "Rattle Poetry Prize", organizationName: "Rattle" }), "auto");
+  assert.equal(result.decision, "publish");
+  assert.deepEqual(result.holdReasons, []);
+});
+
+test("a generic title with no organization never auto-publishes", () => {
+  for (const title of ["POETRY", "Fiction", "glean 2026/27", "kluge fellowships", "house in the neighborhood", "🌟 Short Story Submission — ALWAYS OPEN"]) {
+    const result = editorialReview(candidate({ title, organizationName: null }), "auto");
+    assert.equal(result.decision, "needs-human", title);
+    assert.deepEqual(result.holdReasons, ["missing-organization"], title);
+  }
+});
+
+test("a generic title with a known organization is prefixed and can auto-publish", () => {
+  const result = editorialReview(candidate({ title: "POETRY", organizationName: "Rattle" }), "auto");
+  assert.equal(result.decision, "publish");
+  assert.equal(result.title.title, "Rattle — Poetry");
+  assert.deepEqual((result.checks.editorial as Record<string, unknown>).rawTitle, "POETRY");
+});
+
+test("likely non-opportunities are routed to a person, not suppressed", () => {
+  for (const title of ["How to Poet Blog", "The Minnesota Microgrant Partnership - Housing"]) {
+    const result = editorialReview(candidate({ title, organizationName: "Example Arts" }), "auto");
+    assert.equal(result.decision, "needs-human", title);
+    assert.ok(result.holdReasons.includes("possible-non-opportunity"), title);
+  }
+});
+
+test("rubric suppression still wins over editorial holds", () => {
+  const result = editorialReview(candidate({ title: "POETRY", organizationName: null, submissionState: "unsafe" }), "queue");
+  assert.equal(result.decision, "suppress");
+});
+
+test("editorial reasons are added to an existing rubric hold", () => {
+  const result = editorialReview(candidate({ title: "Fiction", organizationName: null, organizationConfirmed: false }), "auto");
+  assert.equal(result.decision, "needs-human");
+  assert.equal(result.rubricPublish, false);
+  assert.deepEqual(result.holdReasons, ["missing-organization"]);
+});
+
+test("approval publishes the editorial title and refuses a bare label with no organization", () => {
+  assert.deepEqual(planPublicationApproval({ currentTitle: "POETRY", organizationName: null }), {
+    ok: false,
+    reason: "The title is a bare label and no organization is known. Add the organization to the title before approving.",
+  });
+  const fixed = planPublicationApproval({ currentTitle: "POETRY", organizationName: null, requestedTitle: "Rattle Poetry Prize" });
+  assert.equal(fixed.ok, true);
+  assert.equal(fixed.ok && fixed.title, "Rattle Poetry Prize");
+  const prefixed = planPublicationApproval({ currentTitle: "POETRY", organizationName: "Rattle" });
+  assert.equal(prefixed.ok && prefixed.title, "Rattle — Poetry");
+  assert.equal(planPublicationApproval({ currentTitle: "Rattle Poetry Prize", requestedTitle: "ab" }).ok, false);
+});
+
+test("the admin queue reads hold reasons and proposes the editorial title", () => {
+  assert.deepEqual(holdReasonsFromChecks({ holdReasons: ["missing-organization", "unknown", 3] }), ["missing-organization"]);
+  const row = mapPublicationHoldRow({
+    job_id: "job_1",
+    opportunity_id: "opp_1",
+    title: "Visual Art : HUMBLE - Volume IX - Quibble Lit",
+    status: "open",
+    deadline_date: "2026-11-01",
+    submission_url: "https://example.com/submit",
+    source_name: "Quibble Lit",
+    source_url: "https://example.com/call",
+    organization_name: null,
+    score: 100,
+    reasons: ["Passed every automated gate."],
+    checks: { gates: { identity: "pass", safety: "pass" }, holdReasons: ["held-for-editorial-review"], editorial: { rawTitle: "Visual Art : HUMBLE - Volume IX - Quibble Lit" } },
+    decided_at: "2026-10-01T00:00:00.000Z",
+  });
+  assert.equal(row.proposedTitle, "Visual Art: HUMBLE — Volume IX — Quibble Lit");
+  assert.deepEqual(row.holdReasons, ["held-for-editorial-review"]);
+  assert.equal(row.gatesPassed, true);
+  assert.equal(row.needsTitle, false);
 });
