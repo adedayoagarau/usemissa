@@ -13,6 +13,7 @@ export interface OpportunityTitleOptions {
 }
 
 export type OpportunityTitleChange =
+  | 'decoded-entities'
   | 'removed-decorations'
   | 'collapsed-whitespace'
   | 'fixed-punctuation-spacing'
@@ -109,6 +110,24 @@ const ORGANIZATION_SUFFIX = /\s+(?:literary\s+magazine|lit\s+mag|magazine|journa
 
 function collapse(value: string): string {
   return value.replace(SPACE, ' ').trim();
+}
+
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  ndash: '\u2013', mdash: '\u2014', hellip: '\u2026',
+  lsquo: '\u2018', rsquo: '\u2019', ldquo: '\u201c', rdquo: '\u201d',
+};
+
+/** Decodes HTML entities left over from scraped titles, e.g. "&amp;" or "&#8217;". Runs twice to undo double-encoding. */
+export function decodeHtmlEntities(value: string): string {
+  const decodeOnce = (input: string) => input.replace(/&(#x[0-9a-f]{1,6}|#[0-9]{1,7}|[a-z]{2,8});/gi, (match, entity: string) => {
+    if (entity[0] === '#') {
+      const code = entity[1]?.toLowerCase() === 'x' ? Number.parseInt(entity.slice(2), 16) : Number.parseInt(entity.slice(1), 10);
+      return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+    }
+    return NAMED_ENTITIES[entity.toLowerCase()] ?? match;
+  });
+  return decodeOnce(decodeOnce(value));
 }
 
 function stripDecorations(value: string): string {
@@ -352,6 +371,10 @@ export function normalizeOpportunityTitle(title: string, options: OpportunityTit
   const rawTitle = title ?? '';
   const changes = new Set<OpportunityTitleChange>();
   let value = rawTitle.normalize('NFC');
+
+  const decoded = decodeHtmlEntities(value).normalize('NFC');
+  if (decoded !== value) changes.add('decoded-entities');
+  value = decoded;
 
   const decorated = stripDecorations(value);
   if (decorated !== value) changes.add('removed-decorations');
