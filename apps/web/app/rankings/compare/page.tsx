@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { listingMetadata } from "@/lib/seo";
 import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { headerSessionFor } from "@/lib/headerSession";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 import { getResidencyRankingRepository } from "@/lib/residencyRankingRepository";
 import { MagazineComparisonView } from "@/components/rankings/magazine-comparison-view";
@@ -51,7 +52,7 @@ export default async function ComparePage({
       : defaultResidencyIds;
 
     return (
-      <PublicSiteShell current="Residencies">
+      <PublicSiteShell current="Residencies" session={headerSessionFor(session)}>
         <main id="main-content" className={catalogueStyles.main}>
           <header className={`${catalogueStyles.pageIntro} mb-8`}>
             <p className={catalogueStyles.eyebrow}>Rankings · Side-by-Side Comparison</p>
@@ -102,7 +103,7 @@ export default async function ComparePage({
   const allPage = await repo.listRankings({ genre: "overall", limit: 1000 });
 
   return (
-    <PublicSiteShell current="Magazine rankings">
+    <PublicSiteShell current="Magazine rankings" session={headerSessionFor(session)}>
       <main id="main-content" className={catalogueStyles.main}>
         <header className={`${catalogueStyles.pageIntro} mb-8`}>
           <p className={catalogueStyles.eyebrow}>Rankings · Side-by-Side Comparison</p>

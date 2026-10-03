@@ -49,6 +49,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { MissaWordmark } from "@/components/missa-wordmark";
+import { rememberSignedIn } from "@/lib/signedInHint";
 import { AdminCommandPalette, type PaletteLink } from "@/components/admin-command-palette";
 
 type NavItem = {
@@ -256,6 +257,7 @@ function Navigation({
             type="button"
             onClick={() => {
               void fetch("/api/auth/logout", { method: "POST" }).then(() => {
+                rememberSignedIn(false);
                 window.location.assign("/login");
               });
             }}

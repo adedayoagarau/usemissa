@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { listingMetadata } from "@/lib/seo";
 import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";
+import { headerSessionFor } from "@/lib/headerSession";
 import { MagazineRankingsInteractive } from "@/components/rankings/magazine-rankings-interactive";
 import {
   Empty,
@@ -67,7 +68,7 @@ export default async function MagazineRankingsPage({
   );
 
   return (
-    <PublicSiteShell current="Magazine rankings">
+    <PublicSiteShell current="Magazine rankings" session={headerSessionFor(session)}>
       <main
         id="main-content"
         className={catalogueStyles.main}

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sessionCookieOptions, SESSION_COOKIE } from '@/lib/auth';
+import { clearSessionCookie } from '@/lib/auth';
 import { getNeonAuth } from '@/lib/neon-auth/server';
 
 export async function POST() {
@@ -10,6 +10,6 @@ export async function POST() {
     // temporarily unavailable; the next request will fail closed there.
   }
   const response = NextResponse.json({ ok: true }, { headers: { 'Cache-Control': 'no-store' } });
-  response.cookies.set(SESSION_COOKIE, '', sessionCookieOptions(0));
+  clearSessionCookie(response);
   return response;
 }

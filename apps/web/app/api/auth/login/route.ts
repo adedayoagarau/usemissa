@@ -3,8 +3,7 @@ import { getEngine } from "@/lib/engine";
 import { getCreatorAccountRepository } from "@/lib/creatorRepositories";
 import {
   issueSessionToken,
-  sessionCookieOptions,
-  SESSION_COOKIE,
+  setSessionCookie,
 } from "@/lib/auth";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
 import { clientAddress, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
@@ -85,6 +84,6 @@ export async function POST(request: Request) {
     { account: { id: account.id, email: account.email } },
     { headers: { "Cache-Control": "no-store" } },
   );
-  response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+  setSessionCookie(response, token);
   return response;
 }

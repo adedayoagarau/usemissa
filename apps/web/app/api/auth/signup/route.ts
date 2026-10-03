@@ -8,8 +8,7 @@ import { getEngine, persistRadar } from "@/lib/engine";
 import { getCreatorAccountRepository } from "@/lib/creatorRepositories";
 import {
   issueSessionToken,
-  sessionCookieOptions,
-  SESSION_COOKIE,
+  setSessionCookie,
 } from "@/lib/auth";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
 import { recordSiteGoal } from "@/lib/siteTracking";
@@ -184,6 +183,6 @@ export async function POST(request: Request) {
     },
     { status: 201, headers: { "Cache-Control": "no-store" } },
   );
-  response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
+  setSessionCookie(response, token);
   return response;
 }

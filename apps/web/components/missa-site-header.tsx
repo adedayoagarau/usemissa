@@ -15,12 +15,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MissaWordmark } from "@/components/missa-wordmark";
+import { useBrowserSession, type BrowserSession } from "@/lib/browserSession";
+import { rememberSignedIn } from "@/lib/signedInHint";
 import styles from "./missa-site-header.module.css";
 
-export type HeaderSession = {
-  email: string;
-  hasOrganization: boolean;
-} | null;
+export type HeaderSession = BrowserSession;
 
 const signedInLinks = [
   { href: "/opportunities", label: "Opportunities" },
@@ -39,12 +38,14 @@ const publicLinks = [
 ] as const;
 
 export function MissaSiteHeader({
-  session,
+  session: serverSession,
   current = "Opportunities",
 }: {
-  session: HeaderSession;
+  session?: HeaderSession;
   current?: string;
 }) {
+  // Pages served from the CDN pass no session; it loads in the browser.
+  const session = useBrowserSession(serverSession);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoutError, setLogoutError] = useState(false);
   const router = useRouter();
@@ -60,6 +61,7 @@ export function MissaSiteHeader({
       setLogoutError(true);
       return;
     }
+    rememberSignedIn(false);
     setMobileOpen(false);
     router.push("/login");
     router.refresh();

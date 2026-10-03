@@ -3,11 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import {
-  classifyWebMcpSurface,
-  createMissaWebMcpTools,
-  type MissaWebMcpTool,
-} from "@/lib/webmcp";
+import type { MissaWebMcpTool } from "@/lib/webmcp";
 
 type ModelContext = {
   registerTool: (
@@ -52,26 +48,30 @@ export function WebMcpProvider() {
 
   useEffect(() => {
     const modelContext = currentModelContext();
-    const surface = classifyWebMcpSurface(pathname);
-    if (!modelContext || surface === "blocked") return;
+    if (!modelContext) return;
 
     const registration = new AbortController();
-    const tools = createMissaWebMcpTools({
-      pathname,
-      search,
-      surface,
-      request: requestJson,
-      pageContext: () => ({
-        title: document.title || undefined,
-        primaryHeading:
-          document
-            .querySelector("main h1")
-            ?.textContent?.trim()
-            .slice(0, 300) || undefined,
-      }),
-    });
-
     void (async () => {
+      // Only browsers that expose WebMCP download the tool definitions.
+      const webMcp = await import("@/lib/webmcp").catch(() => null);
+      if (!webMcp || registration.signal.aborted) return;
+      const surface = webMcp.classifyWebMcpSurface(pathname);
+      if (surface === "blocked") return;
+      const tools = webMcp.createMissaWebMcpTools({
+        pathname,
+        search,
+        surface,
+        request: requestJson,
+        pageContext: () => ({
+          title: document.title || undefined,
+          primaryHeading:
+            document
+              .querySelector("main h1")
+              ?.textContent?.trim()
+              .slice(0, 300) || undefined,
+        }),
+      });
+
       for (const tool of tools) {
         if (registration.signal.aborted) break;
         try {
