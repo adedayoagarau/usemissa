@@ -774,6 +774,8 @@
     },
     "UrgencyBadge": {
       "base": "Badge",
+      "implementation": "components/missa/urgency-badge.tsx",
+      "variant": "warning",
       "studioCandidates": ["badge-05", "badge-10"],
       "motion": "never"
     },
