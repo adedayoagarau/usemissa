@@ -18,6 +18,7 @@ export type OpportunityTitleChange =
   | 'fixed-punctuation-spacing'
   | 'normalized-separators'
   | 'trimmed-separators'
+  | 'removed-truncation'
   | 'moved-edition-code'
   | 'recased'
   | 'added-organization';
@@ -121,6 +122,27 @@ function stripDecorations(value: string): string {
 
 function trimEdges(value: string): string {
   return value.replace(EDGE_SEPARATORS, '').trim();
+}
+
+const DANGLING_WORD = /\s+(?:a|an|and|as|at|but|by|for|from|in|into|is|are|its|of|on|or|our|per|the|their|to|via|with)$/iu;
+
+/**
+ * Removes the "..." a search snippet leaves on a cut-off title. When the cut
+ * fell inside a word ("Architectur..."), that partial word goes too, then any
+ * dangling small word or separator. A title that would shrink to one word is
+ * left alone.
+ */
+function removeTruncation(value: string): string {
+  const match = /^(.*?)(\s*)(?:\.{3}|\u2026)\s*$/u.exec(value);
+  if (!match) return value;
+  let body = match[1] ?? '';
+  if ((match[2] ?? '').length === 0) body = body.replace(/\s*\S+$/u, '');
+  let previous: string;
+  do {
+    previous = body;
+    body = trimEdges(body).replace(DANGLING_WORD, '');
+  } while (body !== previous);
+  return body.split(/\s+/).filter(Boolean).length >= 2 ? body : value;
 }
 
 function isAsciiWord(core: string): boolean {
@@ -344,6 +366,10 @@ export function normalizeOpportunityTitle(title: string, options: OpportunityTit
   if (separated !== value) changes.add('normalized-separators');
   value = separated;
 
+  const untruncated = removeTruncation(value);
+  if (untruncated !== value) changes.add('removed-truncation');
+  value = untruncated;
+
   const trimmed = trimEdges(value);
   if (trimmed !== value) changes.add('trimmed-separators');
   value = trimmed;
@@ -396,13 +422,20 @@ const CREATIVE_SIGNAL = /\b(?:arts?|artists?|artwork|creative|creators?|writers?
 // blog or a subscription ("Call for Blog Submissions").
 const CALL_SIGNAL = /\b(?:call|calls|submissions?|submit|contest|prize|award|open\s+call)\b/i;
 
-const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; requiresNoCreativeSignal?: boolean; unlessCall?: boolean }> = [
+// Words that tie a title to the arts, used to spare arts calls from the
+// procurement and institutional denylists ("Public Art Request for Proposals").
+const STRONG_CREATIVE_SIGNAL = /\b(?:arts?|artists?|artwork|creative|writ\w*|poe\w*|fiction|literary|literature|music\w*|film\w*|danc\w*|theat\w*|paint\w*|sculpt\w*|photograph\w*|humanities|illustrat\w*|comics?|novel\w*)\b/i;
+
+const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; requiresNoCreativeSignal?: boolean; requiresNoStrongCreativeSignal?: boolean; unlessCall?: boolean }> = [
   { signal: 'blog-post', pattern: /\bblog\b/i, unlessCall: true },
   { signal: 'how-to-article', pattern: /^\s*how\s+to\s+(?:write|become|get|make|find|start|build|choose|study|use|pitch|poet)\b/i },
   { signal: 'how-to-article', pattern: /^\s*how\s+to\s+apply\b/i, requiresNoCreativeSignal: true },
   { signal: 'newsletter-signup', pattern: /\b(?:newsletter|mailing\s+list)\b.*\b(?:sign\s*-?\s*up|subscribe|join)\b|\b(?:sign\s*-?\s*up|subscribe|join)\b.*\b(?:newsletter|mailing\s+list)\b/i },
   { signal: 'subscription', pattern: /\bsubscri(?:be|ption)s?\b/i, unlessCall: true },
   { signal: 'site-page', pattern: /^\s*(?:about(?:\s+us)?|contact(?:\s+us)?|masthead|staff|privacy\s+policy|terms(?:\s+of\s+(?:service|use))?|log\s*-?\s*in|sign\s*-?\s*in|shop|store|cart|donate|archive|past\s+issues)\s*$/i },
+  { signal: 'site-page', pattern: /^\s*(?:terms\s*(?:&|and)\s*conditions|hours,?\s+tickets)\b|^\s*(?:(?:read|see)\s+)?more\W*$/i },
+  { signal: 'procurement', pattern: /\b(?:tenders?|procurement|rfps?|request\s+for\s+(?:proposals?|quotations?)|bids?)\b/i, requiresNoStrongCreativeSignal: true },
+  { signal: 'non-creative-institution', pattern: /\b(?:admissions?|asylum|immigration|nurse|nursing|p(?:a)?ediatric\w*|medicine|medical|clinical|surg(?:ery|ical))\b/i, requiresNoStrongCreativeSignal: true },
   { signal: 'non-creative-assistance', pattern: /\b(?:housing|rent(?:al)?\s+assistance|mortgage|homebuyers?|home\s+repair|tenants?|utility|utilities|childcare|food\s+(?:assistance|shelf|bank)|small\s+business(?:es)?|workforce)\b/i, requiresNoCreativeSignal: true },
 ];
 
@@ -415,9 +448,13 @@ const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; require
 export function assessOpportunityRelevance(title: string): OpportunityRelevanceResult {
   const value = collapse(stripDecorations(title ?? ''));
   const creative = CREATIVE_SIGNAL.test(value);
+  const strongCreative = STRONG_CREATIVE_SIGNAL.test(value);
   const call = CALL_SIGNAL.test(value);
   const signals = NON_OPPORTUNITY_PATTERNS
-    .filter((entry) => entry.pattern.test(value) && (!entry.requiresNoCreativeSignal || !creative) && (!entry.unlessCall || !call))
+    .filter((entry) => entry.pattern.test(value)
+      && (!entry.requiresNoCreativeSignal || !creative)
+      && (!entry.requiresNoStrongCreativeSignal || !strongCreative)
+      && (!entry.unlessCall || !call))
     .map((entry) => entry.signal);
   return { relevant: signals.length === 0, signals: [...new Set(signals)] };
 }

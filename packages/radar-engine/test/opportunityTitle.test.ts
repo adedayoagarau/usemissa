@@ -169,6 +169,25 @@ test('flags obvious non-opportunities', () => {
   }
 });
 
+test('removes the cut-off a search snippet leaves on a title', () => {
+  assert.equal(normalizeOpportunityTitle('BEERS London – Group Exhibition and 40 Day Residency ...').title, 'BEERS London — Group Exhibition and 40 Day Residency');
+  assert.equal(normalizeOpportunityTitle('Open Call: Frank Moorhouse Fellowship for Young Writers ...').title, 'Open Call: Frank Moorhouse Fellowship for Young Writers');
+  assert.equal(normalizeOpportunityTitle('Submissions open for the AsBEA-RJ Sérgio Bernardes Architectur...').title, 'Submissions open for the AsBEA-RJ Sérgio Bernardes');
+  assert.equal(normalizeOpportunityTitle('Wise Children: Summer Open Residency. Deadline 17th ...').title, 'Wise Children: Summer Open Residency. Deadline 17th');
+  assert.equal(normalizeOpportunityTitle('Art contest gives children and youth the chance to share ...').title, 'Art contest gives children and youth the chance to share');
+  assert.equal(normalizeOpportunityTitle('Call for ...').title, 'Call for ...');
+  assert.ok(normalizeOpportunityTitle('Open Calls for Creatives at Brampton Arts ...').changes.includes('removed-truncation'));
+});
+
+test('flags tenders, admissions, and medical programs unless the title is about the arts', () => {
+  for (const title of ['UNICEF Tenders - Business Opportunities And', 'Primary school admissions 2025: How to apply', 'One Year Asylum Deadline', 'Pediatrics Residency Program — College of Medicine', 'California Community Foundation announces Request for Proposals', 'Terms & Conditions — Global Teacher', 'Hours, Tickets & Admission Prices', 'More...']) {
+    assert.equal(assessOpportunityRelevance(title).relevant, false, title);
+  }
+  for (const title of ['Public Art Request for Proposals', 'Creative Crosswalks — Request for Proposals', 'Paediatric Association of Nigeria Announces Art Competition', 'Medical Humanities Writing Prize', 'More Than Words Poetry Prize']) {
+    assert.equal(assessOpportunityRelevance(title).relevant, true, title);
+  }
+});
+
 test('does not flag a call that mentions a blog, a subscription, or how to apply', () => {
   for (const title of ['Call for Blog Submissions', 'Free submission with subscription (or renewal)', 'How to Live Together?', 'How to Apply: Artist Residency']) {
     assert.equal(assessOpportunityRelevance(title).relevant, true, title);
