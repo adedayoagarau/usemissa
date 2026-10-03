@@ -269,6 +269,10 @@ const LISTING_PLATFORMS = new Set([
 ]);
 const PLACEHOLDER_NAME = /^(?:please\s+wait|loading|just\s+a\s+moment|redirecting|access\s+denied|attention\s+required|untitled|home|error|(?:page\s+)?not\s+found|forms?|professionals?|faqs?|open\s+call\s+faqs?|contest\s+information)\b/i;
 const DOMAIN_NAME = /\b[\w-]+\.(?:com|org|net|co|io|gov|edu|info|uk|ca|eu)\b/i;
+// A name made only of label words is a section heading, not an organization,
+// when it is one word ("FICTION") or uses call words ("Calls & Opportunities").
+// Real names built from label words ("32 Poems", "Creative Screenwriting") pass.
+const CALL_WORD = /\b(?:calls?|submissions?|submit|opportunit(?:y|ies)|open|contests?|information|info|details|guidelines|apply|applications?|deadlines?|entry|entries|page|general)\b/i;
 // One long word that is several words run together, e.g. a site slug.
 const RUN_TOGETHER_PART = /(?:press|mag|review|media|films?|arts|council|foundation|society|project|quarterly|literary|awards?|guild|retreat|forum|online|center|centre|publishing|unit|humanities|teachers|world|story|books?|fiction|poetry|engineering)/i;
 
@@ -286,7 +290,7 @@ export function isUsableOrganizationName(name: string): boolean {
   if (/(?:\.\.\.|…)$/.test(value) || /[@<>]|\bcall\s+for\b/i.test(value)) return false;
   if (DOMAIN_NAME.test(value)) return false;
   if (/^(?:\S\s){3,}/.test(value)) return false;
-  if (isGenericOpportunityLabel(value)) return false;
+  if (isGenericOpportunityLabel(value) && (wordTokens(value).length === 1 || CALL_WORD.test(value))) return false;
   const folded = fold(value).trim();
   if (LISTING_PLATFORMS.has(folded)) return false;
   if (/^\p{Lu}?[a-z]{12,}$/u.test(value)) {
@@ -383,11 +387,16 @@ export function normalizeOpportunityTitle(title: string, options: OpportunityTit
 
 const CREATIVE_SIGNAL = /\b(?:arts?|artists?|artwork|creative|creators?|writers?|writing|poe(?:t|ts|try|ms?)|fiction|nonfiction|essays?|literary|literature|books?|chapbooks?|manuscripts?|novel|stories|story|music|musicians?|composers?|film|filmmakers?|cinema|video|photograph\w*|dance|dancers?|theat(?:er|re)|playwrights?|perform\w*|craft|crafts|design|designers?|culture|cultural|heritage|humanities|journalism|journalists?|translat\w*|comics?|illustrat\w*|sculpt\w*|paint\w*|residency|residencies|fellowships?|exhibitions?|galler(?:y|ies)|museum|magazine|journal|press|anthology|submissions?)\b/i;
 
-const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; requiresNoCreativeSignal?: boolean }> = [
-  { signal: 'blog-post', pattern: /\bblog\b/i },
-  { signal: 'how-to-article', pattern: /^\s*how\s+to\b/i },
+// A title that announces a call is an opportunity even when it mentions a
+// blog or a subscription ("Call for Blog Submissions").
+const CALL_SIGNAL = /\b(?:call|calls|submissions?|submit|contest|prize|award|open\s+call)\b/i;
+
+const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; requiresNoCreativeSignal?: boolean; unlessCall?: boolean }> = [
+  { signal: 'blog-post', pattern: /\bblog\b/i, unlessCall: true },
+  { signal: 'how-to-article', pattern: /^\s*how\s+to\s+(?:write|become|get|make|find|start|build|choose|study|use|pitch|poet)\b/i },
+  { signal: 'how-to-article', pattern: /^\s*how\s+to\s+apply\b/i, requiresNoCreativeSignal: true },
   { signal: 'newsletter-signup', pattern: /\b(?:newsletter|mailing\s+list)\b.*\b(?:sign\s*-?\s*up|subscribe|join)\b|\b(?:sign\s*-?\s*up|subscribe|join)\b.*\b(?:newsletter|mailing\s+list)\b/i },
-  { signal: 'subscription', pattern: /\bsubscri(?:be|ption)s?\b/i },
+  { signal: 'subscription', pattern: /\bsubscri(?:be|ption)s?\b/i, unlessCall: true },
   { signal: 'site-page', pattern: /^\s*(?:about(?:\s+us)?|contact(?:\s+us)?|masthead|staff|privacy\s+policy|terms(?:\s+of\s+(?:service|use))?|log\s*-?\s*in|sign\s*-?\s*in|shop|store|cart|donate|archive|past\s+issues)\s*$/i },
   { signal: 'non-creative-assistance', pattern: /\b(?:housing|rent(?:al)?\s+assistance|mortgage|homebuyers?|home\s+repair|tenants?|utility|utilities|childcare|food\s+(?:assistance|shelf|bank)|small\s+business(?:es)?|workforce)\b/i, requiresNoCreativeSignal: true },
 ];
@@ -401,8 +410,9 @@ const NON_OPPORTUNITY_PATTERNS: Array<{ signal: string; pattern: RegExp; require
 export function assessOpportunityRelevance(title: string): OpportunityRelevanceResult {
   const value = collapse(stripDecorations(title ?? ''));
   const creative = CREATIVE_SIGNAL.test(value);
+  const call = CALL_SIGNAL.test(value);
   const signals = NON_OPPORTUNITY_PATTERNS
-    .filter((entry) => entry.pattern.test(value) && (!entry.requiresNoCreativeSignal || !creative))
+    .filter((entry) => entry.pattern.test(value) && (!entry.requiresNoCreativeSignal || !creative) && (!entry.unlessCall || !call))
     .map((entry) => entry.signal);
-  return { relevant: signals.length === 0, signals };
+  return { relevant: signals.length === 0, signals: [...new Set(signals)] };
 }

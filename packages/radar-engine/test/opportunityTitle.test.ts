@@ -89,7 +89,8 @@ test('never puts a placeholder, listing site, domain, or run-together slug in a 
     assert.equal(isUsableOrganizationName(name), false, name);
     assert.equal(normalizeOpportunityTitle('Poetry', { organizationName: name }).needsOrganization, true, name);
   }
-  for (const name of ['Rattle', 'WILDsound Writing Festival', 'Chateau Orquevaux', 'Rijksakademie', 'Constellations', 'PRS for Music Foundation', 'The Ex-Puritan']) {
+  for (const name of ['FICTION', 'Open Calls']) assert.equal(isUsableOrganizationName(name), false, name);
+  for (const name of ['32 Poems', 'I-70 Review', '7.13 Books', 'Creative Screenwriting', 'In a Flash', 'Rattle', 'WILDsound Writing Festival', 'Chateau Orquevaux', 'Rijksakademie', 'Constellations', 'PRS for Music Foundation', 'The Ex-Puritan']) {
     assert.equal(isUsableOrganizationName(name), true, name);
   }
 });
@@ -154,11 +155,20 @@ test('recognizes bare section, status, and year or season labels', () => {
   }
 });
 
-test('flags obvious non-opportunities for a person without deleting them', () => {
+test('flags obvious non-opportunities', () => {
   assert.deepEqual(assessOpportunityRelevance('How to Poet Blog'), { relevant: false, signals: ['blog-post', 'how-to-article'] });
   assert.deepEqual(assessOpportunityRelevance('The Minnesota Microgrant Partnership - Housing'), { relevant: false, signals: ['non-creative-assistance'] });
   assert.equal(assessOpportunityRelevance('Sign up for our newsletter').relevant, false);
   assert.equal(assessOpportunityRelevance('Masthead').relevant, false);
+  for (const title of ['Fahmidan Blog', 'Subscribe', 'How to apply to study in the UK', 'How To Apply', 'How to write about Contemporary Art']) {
+    assert.equal(assessOpportunityRelevance(title).relevant, false, title);
+  }
+});
+
+test('does not flag a call that mentions a blog, a subscription, or how to apply', () => {
+  for (const title of ['Call for Blog Submissions', 'Free submission with subscription (or renewal)', 'How to Live Together?', 'How to Apply: Artist Residency']) {
+    assert.equal(assessOpportunityRelevance(title).relevant, true, title);
+  }
 });
 
 test('keeps the relevance check conservative for creative calls', () => {
