@@ -14,3 +14,15 @@ export function trackingLimitBody(error: TrackingLimitReachedError) {
     actionLabel: 'Open Tracker',
   };
 }
+
+/** Response body for a Tracker import refused because it would pass the Free limit. */
+export function importTrackingLimitBody(error: TrackingLimitReachedError) {
+  return {
+    code: error.code,
+    limit: error.limit,
+    active: error.active,
+    error: `This import would leave ${error.active} calls in progress, and Free tracks ${error.limit} at once. Nothing was imported. Mark rows you've already sent as submitted, or skip some, then import again. Submitted and closed calls never count.`,
+    actionHref: '/tracker',
+    actionLabel: 'Open Tracker',
+  };
+}

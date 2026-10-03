@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
+import { assertBulkTrackingWithinAllowance, lockTrackingAllowance } from './creatorEntitlements.js';
 import {
   cloneStore,
   commitTrackerImport,
@@ -87,6 +88,7 @@ export async function commitRelationalTrackerImportTransaction(pool:Pool,input:R
       await client.query('commit'); return {result:prior.rows[0].result,idempotent:true};
     }
     await rateLimitInTransaction(client,{accountId:input.accountId,kind:'commit',limit:3,windowMs:10*60_000,now});
+    const allowance=await lockTrackingAllowance(client,input.accountId);
     const current=await loadCanonicalTrackerImportStore(client,input.accountId,input.userId);
     if (trackerImportStateHash(current,input.userId)!==input.expectedTrackerHash) throw new TrackerImportPersistenceError('Your Tracker changed after this preview. Prepare a new preview to compare the latest state.','conflict');
     const plan=planTrackerImport(current,input.userId,input.parsed,input.mapping);
@@ -117,6 +119,7 @@ export async function commitRelationalTrackerImportTransaction(pool:Pool,input:R
       await client.query(`insert into tracker_manual_entries (id,account_id,title,organization_name,status,source_kind,detail,created_at,updated_at)
         values ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$8)`,[row.id,input.accountId,row.title,row.organizationName,row.myStatus,row.sourceKind,JSON.stringify(row),row.importedAt]);
     }
+    await assertBulkTrackingWithinAllowance(client,input.accountId,allowance);
     await client.query(`insert into tracker_import_receipts (id,account_id,user_id,idempotency_key,request_hash,source_hash,created_at,result)
       values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)`,[result.importId,input.accountId,input.userId,key,input.requestHash,input.sourceHash,now,JSON.stringify(result)]);
     const correlationId=randomUUID();
