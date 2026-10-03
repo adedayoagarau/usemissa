@@ -6,7 +6,7 @@ import {
   waitlistClaimAccess,
 } from "@missa/radar-adapters";
 
-import { AppNav } from "@/components/app-nav";
+import { CreatorShell } from "@/components/creator-shell";
 import {
   ProfileProduct,
   type ProfileProductData,
@@ -14,6 +14,7 @@ import {
 } from "@/components/profile-product";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine } from "@/lib/engine";
+import { creatorShellOrganizations } from "@/lib/creatorShellOrganizations";
 import { getCreatorPreferenceRepository, getCreatorProfileRepository } from "@/lib/creatorRepositories";
 
 export const metadata = {
@@ -89,16 +90,11 @@ export default async function ProfilePage({
         types: [], disciplines: [], genres: [], locations: [], careerStages: [], noFeeOnly: false, simultaneousRequired: false,
       },
     };
+    const organizations = await creatorShellOrganizations(session.memberships);
     return (
-      <div className="min-h-screen bg-background">
-        <AppNav
-          email={session.account.email}
-          userId={creator.userId}
-          isAdmin={session.account.isAdmin}
-          organizations={session.memberships.map((membership) => ({ id: membership.organizationId, name: membership.organizationId }))}
-        />
+      <CreatorShell email={session.account.email} organizations={organizations} isAdmin={session.account.isAdmin}>
         <ProfileProduct initialSection={initialSection} initialProfile={profile} savedSearches={savedSearches} following={following} />
-      </div>
+      </CreatorShell>
     );
   }
 
@@ -146,12 +142,7 @@ export default async function ProfilePage({
       simultaneousRequired: false,
     },
   };
-  const organizations = session.memberships.map((membership) => ({
-    id: membership.organizationId,
-    name:
-      engine.store.organizations.get(membership.organizationId)?.name ??
-      membership.organizationId,
-  }));
+  const organizations = await creatorShellOrganizations(session.memberships);
   const savedSearches = [...engine.store.radarProfiles.values()].filter(
     (saved) => saved.userId === user.id,
   );
@@ -166,19 +157,17 @@ export default async function ProfilePage({
     }));
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppNav
-        email={session.account.email}
-        userId={session.account.userId}
-        isAdmin={session.account.isAdmin}
-        organizations={organizations}
-      />
+    <CreatorShell
+      email={session.account.email}
+      organizations={organizations}
+      isAdmin={session.account.isAdmin}
+    >
       <ProfileProduct
         initialSection={initialSection}
         initialProfile={profile}
         savedSearches={savedSearches}
         following={following}
       />
-    </div>
+    </CreatorShell>
   );
 }

@@ -23,6 +23,13 @@ export async function POST(request: Request) {
     const repository = getMagazineRankingRepository();
     // Fetch all journals for this genre to run the strategy recommender
     const page = await repository.listRankings({ genre, year: 2026, limit: 1000 });
+    if (page.dataSource !== "database") {
+      // Never build a plan from seed rankings.
+      return NextResponse.json(
+        { error: "Submission plans are not available yet." },
+        { status: 503 },
+      );
+    }
 
     const candidates = page.items.map((item) => ({
       profileId: item.profileId,

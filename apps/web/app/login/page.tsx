@@ -15,6 +15,7 @@ export const metadata = pageMetadata({
   description:
     "Log in to save opportunities, prepare applications, and keep every deadline in view.",
   path: "/login",
+  noIndex: true,
 });
 
 export default async function LoginPage({

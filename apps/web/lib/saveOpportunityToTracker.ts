@@ -6,6 +6,7 @@ import {
 
 import type { SessionAccount } from "./auth";
 import { getEngine, persistRadar } from "./engine";
+import { assertLegacyTrackingAllowance } from "./legacyTrackingAllowance";
 
 export type TrackerSaveResult = {
   status: "created" | "already-present";
@@ -80,6 +81,12 @@ export async function saveOpportunityForAccount(
       item.userId === session.account.userId &&
       item.opportunityId === opportunity.id,
   );
+  // The Free limit applies to the legacy store as it does to the relational save.
+  await assertLegacyTrackingAllowance(engine.store, {
+    accountId: session.account.id,
+    userId: session.account.userId,
+    opportunityId: opportunity.id,
+  });
   engine.trackOpportunity(session.account.userId, opportunity.id);
   await persistRadar();
   return { status: existing ? "already-present" : "created" };

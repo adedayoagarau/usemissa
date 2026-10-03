@@ -1,4 +1,4 @@
-import { hashPassword, verifyPassword, type Account, type OrgMembership, type OrgRole } from "@missa/radar-engine";
+import { hashPassword, revokeAccountSessions, verifyPassword, type Account, type OrgMembership, type OrgRole } from "@missa/radar-engine";
 import type { Pool, PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
 import { CreatorRepositoryBase } from "./creatorRepository.js";
@@ -121,10 +121,11 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
         await client.query("ROLLBACK");
         return false;
       }
-      const updated: Account = {
+      // A password change ends every session issued under the old password.
+      const updated: Account = revokeAccountSessions({
         ...account,
         passwordHash: hashPassword(newPassword),
-      };
+      }, new Date());
       await client.query("update radar_accounts set data = $2::jsonb, updated_at = now() where id = $1", [accountId, JSON.stringify(updated)]);
       const receiptId = randomUUID();
       await client.query(
@@ -150,9 +151,35 @@ export class PostgresCreatorAccountRepository extends CreatorRepositoryBase {
       if (!existing.rows[0]) { await client.query("ROLLBACK"); return false; }
       const account = accountFromRow(existing.rows[0]);
       if (account.active === false) { await client.query("COMMIT"); return true; }
-      const closed = { ...account, active: false };
+      const closed = revokeAccountSessions({ ...account, active: false }, new Date());
       await client.query("update radar_accounts set data=$2::jsonb, updated_at=now() where id=$1", [accountId, JSON.stringify(closed)]);
       await client.query("insert into audit_events (account_id,action,target_type,target_id,detail,correlation_id) values ($1,'account.closed','account',$1,$2::jsonb,$3)", [accountId, JSON.stringify({ reason: "creator-request" }), randomUUID()]);
+      await client.query("COMMIT");
+      return true;
+    } catch (error) {
+      await client.query("ROLLBACK").catch(() => undefined);
+      throw error;
+    } finally { client.release(); }
+  }
+
+  /**
+   * "Sign out of all devices": every session issued before now is rejected on
+   * its next request. Returns false when the account is missing or closed.
+   */
+  async revokeSessions(accountId: string): Promise<boolean> {
+    const client = await this.database.connect();
+    try {
+      await client.query("BEGIN");
+      const existing = await client.query<AccountRow>("select id, email, data from radar_accounts where id=$1 for update", [accountId]);
+      if (!existing.rows[0]) { await client.query("ROLLBACK"); return false; }
+      const account = accountFromRow(existing.rows[0]);
+      if (account.active === false) { await client.query("ROLLBACK"); return false; }
+      const revoked = revokeAccountSessions({ ...account }, new Date());
+      await client.query("update radar_accounts set data=$2::jsonb, updated_at=now() where id=$1", [accountId, JSON.stringify(revoked)]);
+      await client.query(
+        "insert into audit_events (account_id,action,target_type,target_id,detail,correlation_id) values ($1,'account.sessions_revoked','account',$1,$2::jsonb,$3)",
+        [accountId, JSON.stringify({ sessionsValidAfter: revoked.sessionsValidAfter }), randomUUID()],
+      );
       await client.query("COMMIT");
       return true;
     } catch (error) {

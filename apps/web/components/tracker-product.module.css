@@ -547,9 +547,16 @@
   background: var(--muted-foreground);
 }
 
-.itemCard[data-first-save="true"] {
+.itemCard[data-first-save="true"],
+.itemCard[data-selected="true"],
+.submissionCard[data-selected="true"] {
   border-color: color-mix(in srgb, var(--primary) 48%, transparent);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 9%, transparent);
+}
+
+.itemCard[data-selected="true"],
+.submissionCard[data-selected="true"] {
+  scroll-margin-block: 96px;
 }
 
 .itemIdentity {
@@ -1024,7 +1031,8 @@
     padding: 15px;
   }
 
-  .importContext .quietLink {
+  .importContext .quietLink,
+  .importContext .quietButton {
     width: 100%;
   }
 

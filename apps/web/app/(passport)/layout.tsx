@@ -3,7 +3,7 @@ import { cookies, headers } from 'next/headers';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { safeAuthRedirect } from '@/lib/authRedirect';
 import { CreatorShell } from '@/components/creator-shell';
-import { getEngine } from '@/lib/engine';
+import { creatorShellOrganizations } from '@/lib/creatorShellOrganizations';
 import { getCreatorNotificationRepository } from '@/lib/creatorRepositories';
 import { EmailChoicePrompt } from '@/components/missa/email-choice-prompt';
 
@@ -24,8 +24,7 @@ export default async function PassportLayout({ children }: { children: React.Rea
     const returnPath = safeAuthRedirect(requestHeaders.get('x-missa-request-path') ?? undefined);
     redirect(`/login?next=${encodeURIComponent(returnPath)}`);
   }
-  const radar = session.memberships.length ? await getEngine() : undefined;
-  const organizations = session.memberships.map((membership) => ({ id: membership.organizationId, name: radar?.store.organizations.get(membership.organizationId)?.name ?? membership.organizationId }));
+  const organizations = await creatorShellOrganizations(session.memberships);
 
   // Accounts from before email was on by default are asked once; the prompt
   // must never keep the workspace from rendering.
