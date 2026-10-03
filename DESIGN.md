@@ -350,7 +350,7 @@ only boundary. Bordered or filled children use the ladder value.
 | ------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------- |
 | Public / marketing | Spacious    | `/`, `/guides`, `/guides/*`, `/about`, `/methodology`, `/discover/*`                                             |
 | Public record      | Comfortable | `/opportunities`, `/opportunities/*`, `/journals/*`, `/@handle`, `/profile/*`                                    |
-| Creator product    | Comfortable | `/profile`, `/settings/*`, `/tracker`, `/library/*`, `/inbox`, `/calendar`                                       |
+| Creator product    | Comfortable | `/home`, `/profile`, `/settings/*`, `/tracker`, `/library/*`, `/inbox`, `/calendar`                                       |
 | Organization       | Compact     | Organization workspace, builder, submissions, reviews, decisions, messages, delivery, insights, people, settings |
 | Reviewer           | Compact     | Reviewer queue and work surfaces                                                                                 |
 | Platform Admin     | Compact     | All admin routes                                                                                                 |
@@ -548,6 +548,7 @@ An AI-generated component that duplicates an approved item fails review.
 | Know when to start             | `StartByDate`                 | `Button` + `Popover` reasoning; estimate wording; Ochre only when today or passed              |
 | See calendar delivery          | `ApplicationCalendarDelivery` | Feed, provider and session rows; `Spinner` only while syncing; Retry and Reconnect actions     |
 | Confirm email evidence         | `ApplicationEmailEvidence`    | Suggestion panel; creator confirms; never changes state on its own                             |
+| Start the creator's week       | `CreatorHome`                 | Three numbered moves from Tracker state, hairline lists, goal `Progress`; rows open the record |
 | Edit a Work                    | `WorkEditor`                  | `Field`, form controls, `Sortable`, media blocks, `Dialog`/`Sheet`, process feedback           |
 | Manage calendar                | `OpportunityCalendar`         | `Calendar`, labelled events, `Popover` or side panel, provider sync status                     |
 | Configure Profile              | `ProfileSettingsForm`         | `Tabs` only for same-route peer sections, `Field`, form controls, inline feedback              |
