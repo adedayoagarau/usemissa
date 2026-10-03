@@ -6,6 +6,7 @@ import { getEngine } from '@/lib/engine';
 import { getCreatorLibraryRepository } from '@/lib/creatorRepositories';
 import { creatorFileStorageReady } from '@/lib/creator-file-storage';
 import { WorkDetailProduct, type WorkDetailSection } from '@/components/work-detail-product';
+import { LibraryMaterialUsageRepository } from '@/lib/library-material-usage';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -72,8 +73,19 @@ export default async function LibraryWorkPage({ params, searchParams }: {
     itemCount,
   }));
 
+  // Preserved submission snapshots name this Work by identity, not by title.
+  const usage = repository && process.env.DATABASE_URL
+    ? await new LibraryMaterialUsageRepository().usage(session.account.id, 'work', work.id).catch(() => null)
+    : null;
+  const submittedWith = usage?.versions.map((version) => ({
+    opportunityId: version.opportunityId,
+    title: version.title,
+    recordedAt: new Date(version.recordedAt).toISOString(),
+  })) ?? null;
+
   return (
     <WorkDetailProduct
+      submittedWith={submittedWith}
       work={{
         id: work.id,
         revision: numericField(work, 'revision'),

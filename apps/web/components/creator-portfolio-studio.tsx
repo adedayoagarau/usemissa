@@ -1548,7 +1548,7 @@ export function CreatorPortfolioStudio({
                               </div>
                               <span>
                                 {isSample
-                                  ? "Sound & text · audio preview coming soon"
+                                  ? "Sound & text · sample without a recording"
                                   : "Sound & text"}
                               </span>
                             </div>
