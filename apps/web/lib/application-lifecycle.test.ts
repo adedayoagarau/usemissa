@@ -62,6 +62,20 @@ test("a hosted receipt confirms submission and organization decisions reach Outc
   assert.equal(steps[5].detail, "Poem: accepted");
 });
 
+test("a step keeps the event that first reached it", () => {
+  const steps = buildLifecycle({
+    status: "declined",
+    statusLabel: "Declined",
+    history: [
+      { id: "3", to: "declined", source: "email", recordedAt: "2026-09-28T00:00:00Z" },
+      { id: "2", to: "received", source: "radar", recordedAt: "2026-08-24T00:00:00Z" },
+      { id: "1", to: "submitted", source: "user", recordedAt: "2026-08-19T00:00:00Z", occurredOn: "2026-08-19" },
+    ],
+  });
+  assert.equal(steps[3].date, "2026-08-19");
+  assert.equal(steps[3].provenance?.kind, "creator");
+});
+
 test("an archived application keeps the furthest step it reached", () => {
   const steps = buildLifecycle({
     status: "archived",
