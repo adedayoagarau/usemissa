@@ -70,3 +70,22 @@ test('weekly digest escapes opportunity text', () => {
   });
   assert.ok(!rendered.html.includes('<script>alert(1)</script>'));
 });
+
+test('every card is one link to its opportunity and Forest text survives Gmail dark mode', () => {
+  const rendered = renderWeeklyDigestEmail({
+    accountId: 'acc_1',
+    email: 'creator@example.com',
+    now,
+    digest: {
+      newForYou: [item('opp_a', 'First New Call'), item('opp_b', 'Second New Call')],
+      closingSoon: [item('opp_c', 'Closing Grant', 'Because you chose Fiction', '2026-10-09')],
+      yourDeadlines: [item('opp_saved', 'Saved Fellowship', 'You saved this', '2026-10-07')],
+    },
+  });
+  for (const id of ['opp_saved', 'opp_a', 'opp_b', 'opp_c']) {
+    assert.match(rendered.html, new RegExp(`<a href="[^"]*/opportunities/${id}" style="display:block;`));
+  }
+  assert.ok(rendered.html.includes('<body class="body"'));
+  assert.ok(rendered.html.includes('u + .body .gmail-blend-screen'));
+  assert.ok(rendered.html.includes('background-image:linear-gradient(#1d4037,#1d4037)'));
+});

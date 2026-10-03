@@ -11,7 +11,8 @@
     "lint:design-system:review": "eslint app components --rule 'shadcn/no-restyle: warn' --ignore-pattern app/design-system --ignore-pattern components/design-system --ignore-pattern components/shadcn-studio --ignore-pattern components/ui --ignore-pattern '**/*preview*.tsx'",
     "typecheck": "tsc --noEmit --incremental false",
     "test:unit": "NODE_OPTIONS=--import=./test/register.mjs tsx --test \"app/**/*.test.ts\" \"lib/**/*.test.ts\" \"emails/**/*.test.ts\"",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "email:test": "NODE_OPTIONS=--import=./test/register.mjs tsx scripts/send-test-emails.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
