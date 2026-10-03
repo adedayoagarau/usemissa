@@ -3,6 +3,8 @@ import { PublicSiteShell } from "@/components/public-site-shell";
 import { InstitutionProfileView } from "@/components/institution-profile-view";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { getSemanticUrlForProfile } from "@missa/radar-adapters";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +12,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const repo = getProfileRepository();
   const profile = repo ? await repo.getById(slug) : null;
-  if (!profile) return { title: "Press Not Found" };
-  return {
+  if (!profile) return { title: "Press Not Found", robots: { index: false, follow: true } };
+  return pageMetadata({
     title: `${profile.name} — Small & Independent Press`,
     description: profile.summary || `Manuscript submissions, catalog details, and book publishing with ${profile.name}.`,
-  };
+    path: getSemanticUrlForProfile(profile.kind, profile.slug),
+  });
 }
 
 export default async function PressDetailPage({ params }: { params: Promise<{ slug: string }> }) {

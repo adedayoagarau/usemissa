@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { ResidencyRankingsInteractive } from "@/components/rankings/residency-rankings-interactive";
 import { getResidencyRankingRepository } from "@/lib/residencyRankingRepository";
@@ -8,11 +9,12 @@ import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Missa Residency Index (2026) | Artist Residencies & Fellowships",
   description:
     "Explore and filter top artist residencies evaluated by funding, resident community reviews, private studio facilities, and institutional prestige.",
-};
+  path: "/rankings/residencies",
+});
 
 const getCachedResidencyRankings = unstable_cache(
   async () => getResidencyRankingRepository().listRankings({ limit: 100 }),

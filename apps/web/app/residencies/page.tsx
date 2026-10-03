@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { listingMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { DirectoryCategoryPage } from "@/components/directory-category-page";
 import { ResidencyRankingsInteractive } from "@/components/rankings/residency-rankings-interactive";
@@ -8,11 +9,21 @@ import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/p
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Artist residencies & retreats",
-  description:
-    "Explore artist residency centers, studios, fellowships, and retreat programs worldwide.",
-};
+export function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  return listingMetadata(
+    {
+      title: "Artist residencies & retreats | Missa",
+      description:
+        "Explore artist residency centers, studios, fellowships, and retreat programs worldwide.",
+      path: "/residencies",
+    },
+    searchParams,
+  );
+}
 
 export default async function Page({
   searchParams,
