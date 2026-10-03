@@ -24,6 +24,36 @@ function isUndefinedTableError(error: unknown): error is PostgresError {
   return error instanceof Error && (error as PostgresError).code === "42P01";
 }
 
+/**
+ * Seed rankings are illustrative sample data. They may be shown as a labelled
+ * preview outside production, but never in production unless explicitly
+ * enabled with MISSA_RANKINGS_SEED_PREVIEW=1. They are never used to describe
+ * a real publication's standing.
+ */
+export function seedRankingsPreviewAllowed(env: Record<string, string | undefined> = process.env): boolean {
+  if (env.MISSA_RANKINGS_SEED_PREVIEW === "1") return true;
+  return env.VERCEL_ENV !== "production";
+}
+
+export type MagazineRankingDataSource = "seed" | "database" | "empty";
+
+function previewOrEmptyPage(filter: MagazineRankingsFilter): MagazineRankingPage & {
+  dataSource: MagazineRankingDataSource;
+} {
+  const genre = filter.genre ?? "overall";
+  if (!seedRankingsPreviewAllowed()) {
+    return { dataSource: "empty", items: [], total: 0, year: filter.year ?? 2026, genre };
+  }
+  const all = getFallbackRankings(genre);
+  return {
+    dataSource: "seed",
+    items: all.slice(filter.offset ?? 0, (filter.offset ?? 0) + (filter.limit ?? 50)),
+    total: all.length,
+    year: filter.year ?? 2026,
+    genre,
+  };
+}
+
 function getFallbackRankings(genre: RankingGenre = "overall"): MagazineRankingRow[] {
   if (!memoryCache) {
     const computed = rankMagazines(SEED_MAGAZINES, 2026);
@@ -103,7 +133,7 @@ function getFallbackRankings(genre: RankingGenre = "overall"): MagazineRankingRo
 }
 
 export function getMagazineRankingRepository(): {
-  listRankings: (filter?: MagazineRankingsFilter) => Promise<MagazineRankingPage & { dataSource: "seed" | "database" }>;
+  listRankings: (filter?: MagazineRankingsFilter) => Promise<MagazineRankingPage & { dataSource: MagazineRankingDataSource }>;
   getMagazineStanding: (profileId: string) => Promise<MagazineRankingRow[]>;
   getTelemetrySummary: (profileId: string) => Promise<MagazineTelemetrySummary>;
   recordSubmissionTelemetry: (input: {
@@ -121,21 +151,9 @@ export function getMagazineRankingRepository(): {
   const readConnectionString = catalogueReadDatabaseUrl();
   if (!readConnectionString) {
     return {
-      listRankings: async (filter = {}) => {
-        const genre = filter.genre ?? "overall";
-        const all = getFallbackRankings(genre);
-        return {
-          dataSource: "seed",
-          items: all.slice(filter.offset ?? 0, (filter.offset ?? 0) + (filter.limit ?? 50)),
-          total: all.length,
-          year: filter.year ?? 2026,
-          genre,
-        };
-      },
-      getMagazineStanding: async (profileId: string) => {
-        const all = getFallbackRankings("overall");
-        return all.filter((r) => r.profileId === profileId);
-      },
+      listRankings: async (filter = {}) => previewOrEmptyPage(filter),
+      // Seed scores never describe a real publication's standing.
+      getMagazineStanding: async () => [],
       getTelemetrySummary: async (profileId: string) => ({
         profileId,
         sampleSize: 0,
@@ -182,35 +200,22 @@ export function getMagazineRankingRepository(): {
         if (page.items.length > 0) return { ...page, dataSource: "database" };
       } catch (error) {
         if (!isUndefinedTableError(error)) throw error;
-        console.warn(
-          "Magazine rankings table is unavailable; serving the verified preview dataset.",
-        );
+        console.warn("Magazine rankings table is unavailable.");
       }
 
-      // Graceful fallback to seeded engine computations if DB isn't hydrated yet
-      const genre = filter.genre ?? "overall";
-      const fallback = getFallbackRankings(genre);
-      return {
-        dataSource: "seed",
-        items: fallback.slice(filter.offset ?? 0, (filter.offset ?? 0) + (filter.limit ?? 50)),
-        total: fallback.length,
-        year: filter.year ?? 2026,
-        genre,
-      };
+      // The live index is empty or missing: a labelled preview outside
+      // production, nothing in production.
+      return previewOrEmptyPage(filter);
     },
     getMagazineStanding: async (profileId: string) => {
       try {
-        const standing = await readRepo.getMagazineStanding(profileId);
-        if (standing.length > 0) return standing;
+        return await readRepo.getMagazineStanding(profileId);
       } catch (error) {
         if (!isUndefinedTableError(error)) throw error;
-        console.warn(
-          "Magazine rankings table is unavailable; serving the verified preview dataset.",
-        );
+        console.warn("Magazine rankings table is unavailable.");
+        // Seed scores never describe a real publication's standing.
+        return [];
       }
-
-      const all = getFallbackRankings("overall");
-      return all.filter((r) => r.profileId === profileId);
     },
     getTelemetrySummary: async (profileId: string) => {
       return readRepo.getTelemetrySummary(profileId);

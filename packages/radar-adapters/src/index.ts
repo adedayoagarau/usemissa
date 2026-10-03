@@ -117,12 +117,16 @@ export {
   applyCreatorSubscription,
   creatorBillingAccount,
   type CreatorBillingAccount,
+  type CreatorSubscriptionResult,
   type CreatorSubscriptionUpdate,
 } from "./creatorBilling.js";
 export {
+  ACTIVE_TRACKED_STATUSES,
   assertBulkTrackingWithinAllowance,
+  assertRoomForActiveCall,
   assertTrackingAllowance,
   CREATOR_PLAN_LIMITS,
+  isActiveTrackedStatus,
   creatorEntitlements,
   creatorPlan,
   FREE_ACTIVE_TRACKED_LIMIT,
@@ -283,6 +287,18 @@ export {
   type HumanContentReviewDecision,
 } from "./contentReviewAdmin.js";
 export {
+  emptyPublicationHoldQueue,
+  holdReasonsFromChecks,
+  mapPublicationHoldRow,
+  planPublicationApproval,
+  readPublicationHoldQueue,
+  resolvePublicationHold,
+  type PublicationApprovalPlan,
+  type PublicationHoldDecision,
+  type PublicationHoldQueueData,
+  type PublicationHoldRow,
+} from "./publicationHoldAdmin.js";
+export {
   classifyPublicationCandidate,
   publicationReviewMembershipHash,
   readPublicationReviewPreview,
@@ -341,7 +357,13 @@ export {
 export {
   runReviewTick,
   reviewCandidate,
+  editorialReview,
+  reviewPublishMode,
+  REVIEW_HOLD_REASON_TEXT,
+  type EditorialReviewResult,
   type ReviewCandidate,
+  type ReviewHoldReason,
+  type ReviewPublishMode,
 } from "./reviewWorker.js";
 export { runContentReviewTick } from "./contentWorker.js";
 export {
@@ -656,6 +678,8 @@ export {
   type ManuscriptMatchInput,
   type ManuscriptMatchCard,
   type ManuscriptMatchResponse,
+  type ManuscriptMatchStatus,
+  emptyManuscriptMatchResponse,
   type MatchCategory,
 } from "./ranking/manuscriptMatchEngine.js";
 export {

@@ -24,7 +24,8 @@ export async function POST(request: Request) {
       interval: interval as PlusInterval,
       country: requestCountry(request.headers),
       origin,
-      idempotencyKey: request.headers.get('Idempotency-Key')?.trim().slice(0, 200) || undefined,
+      // Duplicate requests (double click, retry, a second tab) are collapsed by
+      // a server-side idempotency key in startPlusCheckout, not the client's.
     });
     await recordSiteGoal(request, 'checkout_started', '/plan');
     return NextResponse.json({ url }, { headers });

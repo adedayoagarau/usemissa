@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionAccount } from "@/lib/auth";
 import { CreatorShell } from "@/components/creator-shell";
 import { GoalsWorkspace } from "@/components/missa/goals-workspace";
+import { creatorShellOrganizations } from "@/lib/creatorShellOrganizations";
 export const metadata = {
   title: "Your practice goals",
   description: "Track the practice goals you set in Missa and the work behind them.",
@@ -12,8 +13,13 @@ export const dynamic = "force-dynamic";
 export default async function Page() {
   const session = await getSessionAccount((await cookies()).toString());
   if (!session) redirect("/login?next=%2Fgoals");
+  const organizations = await creatorShellOrganizations(session.memberships);
   return (
-    <CreatorShell email={session.account.email}>
+    <CreatorShell
+      email={session.account.email}
+      organizations={organizations}
+      isAdmin={session.account.isAdmin}
+    >
       <GoalsWorkspace />
     </CreatorShell>
   );

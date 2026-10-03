@@ -109,7 +109,8 @@ const migrationFiles = [
   '0079_notification_email_defaults.sql',
   '0080_creator_plans.sql',
   '0081_creator_billing.sql',
-  '0082_site_observability.sql',
+  '0082_creator_billing_event_order.sql',
+  '0083_site_observability.sql',
 ];
 
 

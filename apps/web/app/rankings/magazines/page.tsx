@@ -1,9 +1,16 @@
 import Link from "next/link";
 import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
 import type { Metadata } from "next";
+import { listingMetadata } from "@/lib/seo";
 import { cookies } from "next/headers";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { MagazineRankingsInteractive } from "@/components/rankings/magazine-rankings-interactive";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import type { RankingGenre } from "@missa/radar-engine";
@@ -11,11 +18,21 @@ import { unstable_cache } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Missa Literary Magazine Index (2026)",
-  description:
-    "The independent literary magazine rankings evaluated across anthology accolades, contributor compensation, turnaround speed, and submission access.",
-};
+export function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  return listingMetadata(
+    {
+      title: "Missa Literary Magazine Index (2026)",
+      description:
+        "The independent literary magazine rankings evaluated across anthology accolades, contributor compensation, turnaround speed, and submission access.",
+      path: "/rankings/magazines",
+    },
+    searchParams,
+  );
+}
 
 const getCachedMagazineRankings = unstable_cache(
   async (genre: RankingGenre) =>
@@ -76,14 +93,32 @@ export default async function MagazineRankingsPage({
           </p>
         )}
 
-        <MagazineRankingsInteractive
-          key={genre}
-          preview={page.dataSource === "seed"}
-          initialItems={page.items}
-          currentGenre={genre}
-          total={page.total}
-          signedIn={Boolean(session)}
-        />
+        {page.dataSource === "empty" ? (
+          <Empty variant="bordered" size="spacious" role="status">
+            <EmptyHeader>
+              <EmptyTitle>Magazine rankings are not available yet</EmptyTitle>
+              <EmptyDescription>
+                The 2026 index has not been published. Browse magazines in the
+                directory in the meantime.
+              </EmptyDescription>
+            </EmptyHeader>
+            <Link
+              href="/directory"
+              className="inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4"
+            >
+              Browse the directory
+            </Link>
+          </Empty>
+        ) : (
+          <MagazineRankingsInteractive
+            key={genre}
+            preview={page.dataSource === "seed"}
+            initialItems={page.items}
+            currentGenre={genre}
+            total={page.total}
+            signedIn={Boolean(session)}
+          />
+        )}
         <footer className="mt-8 border-t border-border pt-4">
           <Link href="/rankings/methodology" className="inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4">Methodology</Link>
         </footer>

@@ -1,11 +1,4 @@
 import { Pool } from "pg";
-import type {
-  EditorialIntelligenceFullProfile,
-  PublicationEditorialSpecs,
-  PublicationCompensationDetails,
-  PublicationTelemetryAnalytics,
-  PublicationAestheticProfile,
-} from "./editorialIntelligenceRepository.js";
 
 export interface ManuscriptMatchInput {
   genre: "fiction" | "poetry" | "nonfiction" | "flash" | "hybrid";
@@ -42,19 +35,20 @@ export interface ManuscriptMatchCard {
     allowsSimultaneous: boolean;
     requiresBlindReview: boolean;
   };
+  /** Values are null when Missa holds no stored record for them. */
   compensation: {
-    paysContributors: boolean;
-    payRateKind: string;
+    paysContributors: boolean | null;
+    payRateKind: string | null;
     isProRate: boolean;
     rateCentsPerWord: number | null;
     flatRateCents: number | null;
     hasFeeWaivers: boolean;
-    submissionFeeCents: number;
+    submissionFeeCents: number | null;
   };
   telemetry: {
-    medianResponseDays: number;
-    acceptanceRatePercent: number;
-    freeCapStatus: string;
+    medianResponseDays: number | null;
+    acceptanceRatePercent: number | null;
+    freeCapStatus: string | null;
     submittableFreeCapDepletionDays: number | null;
   };
   aesthetic: {
@@ -62,19 +56,47 @@ export interface ManuscriptMatchCard {
     poetryForms: string[];
     authorComps: string[];
     editorialMotto: string | null;
-    unsolicitedSlushRatioPercent: number;
-    debutAuthorFriendlyScore: number;
+    unsolicitedSlushRatioPercent: number | null;
+    debutAuthorFriendlyScore: number | null;
     isDebutChampion: boolean;
   };
 }
 
+/**
+ * `available` means the publication index was read (it may still have no
+ * matches). `unavailable` means the index could not be read; callers must show
+ * that state rather than substitute sample publications.
+ */
+export type ManuscriptMatchStatus = "available" | "unavailable";
+
 export interface ManuscriptMatchResponse {
+  status: ManuscriptMatchStatus;
   totalAnalyzed: number;
   matchedCount: number;
   dreamReach: ManuscriptMatchCard[];
   debutChampions: ManuscriptMatchCard[];
   rapidPro: ManuscriptMatchCard[];
   simultaneousPackets: ManuscriptMatchCard[];
+}
+
+function nullableNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function emptyManuscriptMatchResponse(
+  status: ManuscriptMatchStatus,
+): ManuscriptMatchResponse {
+  return {
+    status,
+    totalAnalyzed: 0,
+    matchedCount: 0,
+    dreamReach: [],
+    debutChampions: [],
+    rapidPro: [],
+    simultaneousPackets: [],
+  };
 }
 
 /** Match the canonical, human-readable slug emitted by ProfileRepository. */
@@ -98,7 +120,7 @@ export class ManuscriptMatchEngine {
     const limit = input.limit ?? 50;
 
     if (!this.pool) {
-      return this.fallbackMatch(input, limit);
+      return emptyManuscriptMatchResponse("unavailable");
     }
 
     try {
@@ -156,20 +178,18 @@ export class ManuscriptMatchEngine {
 
       const { rows } = await this.pool.query(query);
       if (!rows || rows.length === 0) {
-        return this.fallbackMatch(input, limit);
+        return emptyManuscriptMatchResponse("available");
       }
 
       return this.scoreAndGroupRows(rows, input, limit);
     } catch (err) {
-      console.warn(
-        "[ManuscriptMatchEngine] Postgres query failed, falling back to local heuristic matching:",
-        err,
-      );
-      return this.fallbackMatch(input, limit);
+      console.warn("[ManuscriptMatchEngine] Postgres query failed:", err);
+      return emptyManuscriptMatchResponse("unavailable");
     }
   }
 
-  private scoreAndGroupRows(
+  /** Score stored publication rows. Exposed for tests; no rows are invented. */
+  scoreAndGroupRows(
     rows: any[],
     input: ManuscriptMatchInput,
     limit: number,
@@ -213,10 +233,7 @@ export class ManuscriptMatchEngine {
       }
 
       // 2. Aesthetic DNA & Comp Matching (Max 35 pts)
-      const writingStyles: string[] = row.writing_styles ?? [
-        "literary",
-        "personal",
-      ];
+      const writingStyles: string[] = row.writing_styles ?? [];
       const authorComps: string[] = row.author_comps ?? [];
       const poetryForms: string[] = row.poetry_forms ?? [];
 
@@ -257,16 +274,17 @@ export class ManuscriptMatchEngine {
       }
 
       // 3. Debut Friendliness & Slush Ratio (Max 20 pts)
-      const slushRatio = Number(row.unsolicited_slush_ratio_percent ?? 65);
-      const debutScore = Number(row.debut_author_friendly_score ?? 8.5);
-      const isDebutChampion = Boolean(row.is_debut_champion ?? true);
+      const slushRatio = nullableNumber(row.unsolicited_slush_ratio_percent);
+      const debutScore = nullableNumber(row.debut_author_friendly_score);
+      const isDebutChampion = row.is_debut_champion === true;
 
       if (input.isDebutAuthor) {
-        if (isDebutChampion || slushRatio >= 70) {
+        if (isDebutChampion) {
           score += 20;
-          reasons.push(
-            `Debut champion (${slushRatio}% slush acceptance ratio)`,
-          );
+          reasons.push("Publishes debut writers");
+        } else if (slushRatio !== null && slushRatio >= 70) {
+          score += 20;
+          reasons.push(`${slushRatio}% of published work came from open submissions`);
         } else {
           score += 8;
         }
@@ -275,12 +293,16 @@ export class ManuscriptMatchEngine {
       }
 
       // 4. Pay & Fee Preference (Max 20 pts)
-      const paysContributors = Boolean(row.pays_contributors);
-      const isProRate = Boolean(row.is_pro_rate);
-      const submissionFee = Number(row.submission_fee_cents ?? 0);
-      const hasFeeWaivers = Boolean(row.has_fee_waivers);
+      const paysContributors =
+        row.pays_contributors === null || row.pays_contributors === undefined
+          ? null
+          : Boolean(row.pays_contributors);
+      const isProRate = row.is_pro_rate === true;
+      const submissionFee = nullableNumber(row.submission_fee_cents);
+      const hasFeeWaivers = row.has_fee_waivers === true;
+      const medianResponseDays = nullableNumber(row.median_response_days);
 
-      if (input.feeTolerance === "free_only" && submissionFee > 0) {
+      if (input.feeTolerance === "free_only" && submissionFee !== null && submissionFee > 0) {
         if (!hasFeeWaivers) {
           score -= 25;
         } else {
@@ -294,11 +316,11 @@ export class ManuscriptMatchEngine {
       if (input.minPayRate === "pro_rates_only") {
         if (isProRate) {
           score += 10;
-          reasons.push("Pro payment rate verified (≥ $0.08/w)");
+          reasons.push("Pays professional rates");
         } else {
           score -= 15;
         }
-      } else if (paysContributors) {
+      } else if (paysContributors === true) {
         score += 8;
       }
 
@@ -308,11 +330,12 @@ export class ManuscriptMatchEngine {
       let fitCategory: MatchCategory = "packet_builder";
       if (row.prestige_tier === "tier_1") {
         fitCategory = "dream_reach";
-      } else if (isDebutChampion && slushRatio >= 75) {
+      } else if (isDebutChampion && slushRatio !== null && slushRatio >= 75) {
         fitCategory = "debut_champion";
       } else if (
         isProRate &&
-        Number(row.median_response_days ?? 45) <= 35
+        medianResponseDays !== null &&
+        medianResponseDays <= 35
       ) {
         fitCategory = "rapid_pro";
       }
@@ -334,7 +357,7 @@ export class ManuscriptMatchEngine {
         },
         compensation: {
           paysContributors,
-          payRateKind: row.pay_rate_kind || "variable",
+          payRateKind: row.pay_rate_kind || null,
           isProRate,
           rateCentsPerWord: row.rate_cents_per_word
             ? Number(row.rate_cents_per_word)
@@ -346,9 +369,9 @@ export class ManuscriptMatchEngine {
           submissionFeeCents: submissionFee,
         },
         telemetry: {
-          medianResponseDays: Number(row.median_response_days ?? 32),
-          acceptanceRatePercent: Number(row.acceptance_rate_percent ?? 2.5),
-          freeCapStatus: row.free_cap_status || "healthy",
+          medianResponseDays,
+          acceptanceRatePercent: nullableNumber(row.acceptance_rate_percent),
+          freeCapStatus: row.free_cap_status || null,
           submittableFreeCapDepletionDays: row.submittable_free_cap_depletion_days
             ? Number(row.submittable_free_cap_depletion_days)
             : null,
@@ -357,7 +380,7 @@ export class ManuscriptMatchEngine {
           writingStyles,
           poetryForms,
           authorComps,
-          editorialMotto: row.editorial_motto,
+          editorialMotto: row.editorial_motto ?? null,
           unsolicitedSlushRatioPercent: slushRatio,
           debutAuthorFriendlyScore: debutScore,
           isDebutChampion,
@@ -374,13 +397,18 @@ export class ManuscriptMatchEngine {
       .filter((c) => c.aesthetic.isDebutChampion && c.prestigeTier !== "tier_1")
       .slice(0, 10);
     const rapidPro = scoredCards
-      .filter((c) => c.compensation.isProRate || c.telemetry.medianResponseDays <= 30)
+      .filter(
+        (c) =>
+          c.compensation.isProRate ||
+          (c.telemetry.medianResponseDays !== null && c.telemetry.medianResponseDays <= 30),
+      )
       .slice(0, 10);
     const simultaneousPackets = scoredCards
       .filter((c) => c.specs.allowsSimultaneous)
       .slice(0, 15);
 
     return {
+      status: "available",
       totalAnalyzed: rows.length,
       matchedCount: scoredCards.length,
       dreamReach,
@@ -388,135 +416,5 @@ export class ManuscriptMatchEngine {
       rapidPro,
       simultaneousPackets,
     };
-  }
-
-  private fallbackMatch(
-    input: ManuscriptMatchInput,
-    limit: number,
-  ): ManuscriptMatchResponse {
-    const dummyRows = [
-      {
-        profile_id: "paris-review",
-        name: "The Paris Review",
-        slug: "the-paris-review",
-        website_url: "https://theparisreview.org",
-        prestige_tier: "tier_1",
-        total_score: 98,
-        max_word_count: 8000,
-        min_word_count: null,
-        allows_simultaneous: true,
-        requires_blind_review: true,
-        pays_contributors: true,
-        pay_rate_kind: "per_word",
-        rate_cents_per_word: 12.0,
-        flat_rate_cents: 30000,
-        is_pro_rate: true,
-        has_fee_waivers: true,
-        submission_fee_cents: 300,
-        median_response_days: 60,
-        acceptance_rate_percent: 0.8,
-        freeCapStatus: "at_risk",
-        submittable_free_cap_depletion_days: 2,
-        writing_styles: ["literary", "realist", "personal"],
-        poetry_forms: ["free_verse", "lyric"],
-        author_comps: ["Lydia Davis", "Denis Johnson", "Deborah Eisenberg"],
-        editorial_motto: "Distinctive voice and unflinching psychological depth.",
-        unsolicited_slush_ratio_percent: 45,
-        debut_author_friendly_score: 7.8,
-        is_debut_champion: false,
-      },
-      {
-        profile_id: "split-lip-magazine",
-        name: "Split Lip Magazine",
-        slug: "split-lip-magazine",
-        website_url: "https://splitlipmagazine.com",
-        prestige_tier: "tier_2",
-        total_score: 91,
-        max_word_count: 3500,
-        min_word_count: null,
-        allows_simultaneous: true,
-        requires_blind_review: false,
-        pays_contributors: true,
-        pay_rate_kind: "flat_rate",
-        rate_cents_per_word: null,
-        flat_rate_cents: 7500,
-        is_pro_rate: true,
-        has_fee_waivers: true,
-        submission_fee_cents: 300,
-        median_response_days: 24,
-        acceptance_rate_percent: 3.2,
-        freeCapStatus: "at_risk",
-        submittable_free_cap_depletion_days: 1,
-        writing_styles: ["fabulist", "surrealist", "dark", "lyric"],
-        poetry_forms: ["prose_poetry", "ghazal", "hybrid"],
-        author_comps: ["Carmen Maria Machado", "Ocean Vuong", "Kelly Link"],
-        editorial_motto: "Voice-driven work with tooth and muscle.",
-        unsolicited_slush_ratio_percent: 86,
-        debut_author_friendly_score: 9.8,
-        is_debut_champion: true,
-      },
-      {
-        profile_id: "the-adroit-journal",
-        name: "The Adroit Journal",
-        slug: "the-adroit-journal",
-        website_url: "https://theadroitjournal.org",
-        prestige_tier: "tier_2",
-        total_score: 89,
-        max_word_count: 5000,
-        min_word_count: null,
-        allows_simultaneous: true,
-        requires_blind_review: false,
-        pays_contributors: true,
-        pay_rate_kind: "flat_rate",
-        rate_cents_per_word: null,
-        flat_rate_cents: 10000,
-        is_pro_rate: true,
-        has_fee_waivers: true,
-        submission_fee_cents: 0,
-        median_response_days: 28,
-        acceptance_rate_percent: 2.1,
-        freeCapStatus: "healthy",
-        submittable_free_cap_depletion_days: 7,
-        writing_styles: ["lyric", "experimental", "vibrant"],
-        poetry_forms: ["free_verse", "ghazal", "villanelle", "hybrid"],
-        author_comps: ["Ocean Vuong", "Kaveh Akbar", "Danez Smith"],
-        editorial_motto: "Fresh, urgent, and fearless writing.",
-        unsolicited_slush_ratio_percent: 82,
-        debut_author_friendly_score: 9.6,
-        is_debut_champion: true,
-      },
-      {
-        profile_id: "ploughshares",
-        name: "Ploughshares",
-        slug: "ploughshares",
-        website_url: "https://pshares.org",
-        prestige_tier: "tier_1",
-        total_score: 95,
-        max_word_count: 6000,
-        min_word_count: null,
-        allows_simultaneous: true,
-        requires_blind_review: false,
-        pays_contributors: true,
-        pay_rate_kind: "per_word",
-        rate_cents_per_word: 9.0,
-        flat_rate_cents: 22500,
-        is_pro_rate: true,
-        has_fee_waivers: true,
-        submission_fee_cents: 300,
-        median_response_days: 45,
-        acceptance_rate_percent: 1.4,
-        freeCapStatus: "healthy",
-        submittable_free_cap_depletion_days: 5,
-        writing_styles: ["literary", "narrative", "personal"],
-        poetry_forms: ["free_verse", "narrative"],
-        author_comps: ["Lorrie Moore", "George Saunders", "Jhumpa Lahiri"],
-        editorial_motto: "Memorable characterization, urgent stakes.",
-        unsolicited_slush_ratio_percent: 68,
-        debut_author_friendly_score: 8.8,
-        is_debut_champion: true,
-      },
-    ];
-
-    return this.scoreAndGroupRows(dummyRows, input, limit);
   }
 }

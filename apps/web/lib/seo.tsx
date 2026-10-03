@@ -45,6 +45,35 @@ export function pageMetadata(input: { title: string; description: string; path: 
   };
 }
 
+type ListingSearchParams = Record<string, string | string[] | undefined>;
+
+const PAGINATION_KEYS: readonly string[] = ['page', 'cursor'];
+
+/**
+ * True when a listing query narrows the results (search, filters, sort,
+ * alternate views). Pagination alone does not count.
+ */
+export function hasListingFilters(params: ListingSearchParams | undefined): boolean {
+  if (!params) return false;
+  return Object.entries(params).some(
+    ([key, value]) =>
+      !PAGINATION_KEYS.includes(key) &&
+      (Array.isArray(value) ? value.some((item) => item.trim() !== '') : Boolean(value?.trim())),
+  );
+}
+
+/**
+ * Metadata for a public listing page. Like /opportunities, every variant
+ * canonicalizes to the clean path, and filtered views stay out of the index.
+ */
+export async function listingMetadata(
+  input: { title: string; description: string; path: string },
+  searchParams?: Promise<ListingSearchParams>,
+): Promise<Metadata> {
+  const params = searchParams ? await searchParams : undefined;
+  return pageMetadata({ ...input, noIndex: hasListingFilters(params) });
+}
+
 export function JsonLd({ data }: { data: Record<string, unknown> }): ReactNode {
   const serialized = JSON.stringify(data).replace(/</g, '\\u003c');
   return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serialized }} />;

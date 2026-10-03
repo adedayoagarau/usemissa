@@ -67,4 +67,4 @@ starts or clears, and purges expired data. Rules:
 | `STRIPE_SECRET_KEY` | Revenue page and MRR on the dashboard and share cards |
 | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | Optional stack traces and server errors |
 
-Apply migration `0082_site_observability.sql` before deploying.
+Apply migration `0083_site_observability.sql` before deploying.

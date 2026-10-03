@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { ManuscriptMatchWizard } from "@/components/discover/manuscript-match-wizard";
 import { getManuscriptMatchEngine } from "@/lib/manuscriptMatchEngine";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Manuscript Strategy & Submission Matcher",
+export const metadata: Metadata = pageMetadata({
+  title: "Manuscript Strategy & Submission Matcher | Missa",
   description:
-    "Match your short story, essay, or poetry packet against the Missa magazine index with taste DNA comps, debut friendliness ratings, and payout verification.",
-};
+    "Match your short story, essay, or poetry packet against the Missa magazine index with taste DNA comps, debut friendliness ratings, and payment details.",
+  path: "/discover/match",
+});
 
 export default async function ManuscriptMatchPage() {
   const engine = getManuscriptMatchEngine();
