@@ -12,6 +12,7 @@ import {
   SESSION_COOKIE,
 } from "@/lib/auth";
 import { trackPlatformAnalytics } from "@/lib/platformAnalytics";
+import { recordSiteGoal } from "@/lib/siteTracking";
 import { clientAddress, consumeAuthRateLimit } from "@/lib/auth-rate-limit";
 import { deliverWelcomeEmail } from "@/emails/welcome";
 import { isNeonAuthConfigured } from "@/lib/neon-auth/server";
@@ -163,6 +164,7 @@ export async function POST(request: Request) {
     accountId: account.id,
     properties: { method: "password" },
   });
+  await recordSiteGoal(request, "signup", "/signup");
   void deliverWelcomeEmail(
     {
       accountId: account.id,

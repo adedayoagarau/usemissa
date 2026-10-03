@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createWaitlistSignup } from '@missa/radar-adapters';
 import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
+import { recordSiteGoal } from '@/lib/siteTracking';
 import { deliverWaitlistConfirmationEmail } from '@/lib/waitlist-email';
 import { consumeWaitlistRateLimit } from './waitlist-rate-limit';
 
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
       path: '/waitlist',
       properties: { waitlist: 'creator', created: result.created, ...campaign },
     });
+    if (result.created) await recordSiteGoal(request, 'waitlist_join', '/waitlist');
     const emailDelivery = await deliverWaitlistConfirmationEmail({
       connectionString: process.env.DATABASE_URL,
       email,
