@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { CreatorSubscriptionUpdate } from '@missa/radar-adapters';
 
 /**
@@ -127,11 +128,16 @@ export async function startPlusCheckout(input: {
   /** Where the visitor is, from the request; picks the regional price. */
   country: string | null;
   origin: string;
-  idempotencyKey?: string;
-}): Promise<string> {
+}, now = Date.now()): Promise<string> {
   const region = pricingRegion(input.country);
   const offer = (await plusOffers(region)).find((candidate) => candidate.interval === input.interval);
   if (!offer) throw new Error('Plus is not available for that billing period yet');
+  // A returning customer who already has a Plus checkout open for this price
+  // goes back to it rather than getting a second one they could also pay.
+  if (input.customerId) {
+    const open = await openPlusCheckout({ customerId: input.customerId, accountId: input.accountId, priceId: offer.priceId }).catch(() => undefined);
+    if (open) return open;
+  }
   const form = new URLSearchParams({
     mode: 'subscription',
     'line_items[0][price]': offer.priceId,
@@ -144,6 +150,7 @@ export async function startPlusCheckout(input: {
     billing_address_collection: 'required',
     'metadata[account_id]': input.accountId,
     'metadata[creator_plan]': 'plus',
+    'metadata[price_id]': offer.priceId,
     'metadata[pricing_region]': region,
     'metadata[request_country]': input.country ?? 'unknown',
     'subscription_data[metadata][account_id]': input.accountId,
@@ -153,9 +160,49 @@ export async function startPlusCheckout(input: {
   });
   if (input.customerId) form.set('customer', input.customerId);
   else if (input.email) form.set('customer_email', input.email);
-  const session = await stripe<{ url?: string }>('/checkout/sessions', { method: 'POST', form, idempotencyKey: input.idempotencyKey });
+  const session = await stripe<{ url?: string }>('/checkout/sessions', { method: 'POST', form, idempotencyKey: plusCheckoutIdempotencyKey(input.accountId, form, now) });
   if (!session.url) throw new Error('Stripe did not return a checkout page');
   return session.url;
+}
+
+/** How long identical checkout requests share one Stripe Checkout session. */
+export const CHECKOUT_IDEMPOTENCY_WINDOW_MS = 15 * 60_000;
+
+/**
+ * A deterministic Stripe idempotency key for a Plus checkout: the account, a
+ * digest of the exact request (price, region, return URLs, customer) and a
+ * 15-minute window. A double click, a retry or a second tab inside the window
+ * gets the same Checkout session back from Stripe instead of a new one. The
+ * request digest keeps the key valid for Stripe, which refuses a reused key with
+ * different parameters.
+ */
+export function plusCheckoutIdempotencyKey(accountId: string, form: URLSearchParams, now = Date.now()): string {
+  const sorted = new URLSearchParams([...form.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  const digest = createHash('sha256').update(sorted.toString()).digest('hex').slice(0, 24);
+  return `creator-plus-checkout:${accountId}:${digest}:${Math.floor(now / CHECKOUT_IDEMPOTENCY_WINDOW_MS)}`;
+}
+
+/**
+ * The page of an open Plus Checkout session this account already started for
+ * the same price, for a returning Stripe customer. Stripe only lists sessions by
+ * customer, so a first-time buyer relies on the idempotency key instead.
+ */
+export async function openPlusCheckout(
+  input: { customerId: string; accountId: string; priceId: string },
+  request: StripeRequest = stripe,
+): Promise<string | undefined> {
+  const listed = await request<{ data?: Array<{ url?: string | null; status?: string; metadata?: Record<string, string> }> }>(
+    `/checkout/sessions?customer=${encodeURIComponent(input.customerId)}&status=open&limit=10`,
+  );
+  const match = (listed.data ?? []).find(
+    (session) =>
+      session.status === 'open' &&
+      session.url &&
+      session.metadata?.creator_plan === 'plus' &&
+      session.metadata?.account_id === input.accountId &&
+      session.metadata?.price_id === input.priceId,
+  );
+  return match?.url ?? undefined;
 }
 
 /** Stripe's customer portal, where a creator changes card, switches period or cancels. */

@@ -4,8 +4,11 @@ import type { CreatorSubscriptionUpdate } from '@missa/radar-adapters';
 import {
   applyCreatorBillingEvent,
   cancelCreatorSubscriptions,
+  CHECKOUT_IDEMPOTENCY_WINDOW_MS,
   closeAccountAfterCancellingPlus,
   creatorAccountFor,
+  openPlusCheckout,
+  plusCheckoutIdempotencyKey,
   periodEnd,
   plusOffers,
   priceLabel,
@@ -213,4 +216,34 @@ test('a region uses its own price when set and falls back to the standard price 
     globalThis.fetch = realFetch;
     process.env = env;
   }
+});
+
+test('duplicate Plus checkout requests share one deterministic Stripe idempotency key', () => {
+  const form = (price: string) => new URLSearchParams({ mode: 'subscription', 'line_items[0][price]': price, 'metadata[account_id]': 'acc_1' });
+  const start = 1_800_000_000_000 - (1_800_000_000_000 % CHECKOUT_IDEMPOTENCY_WINDOW_MS);
+  const key = plusCheckoutIdempotencyKey('acc_1', form('price_month'), start);
+  assert.equal(plusCheckoutIdempotencyKey('acc_1', form('price_month'), start + 60_000), key, 'a double click or second tab reuses the session');
+  const reordered = new URLSearchParams([...form('price_month').entries()].reverse());
+  assert.equal(plusCheckoutIdempotencyKey('acc_1', reordered, start), key, 'parameter order does not matter');
+  assert.notEqual(plusCheckoutIdempotencyKey('acc_1', form('price_year'), start), key, 'another price is another checkout');
+  assert.notEqual(plusCheckoutIdempotencyKey('acc_2', form('price_month'), start), key, 'another account never shares a session');
+  assert.notEqual(plusCheckoutIdempotencyKey('acc_1', form('price_month'), start + CHECKOUT_IDEMPOTENCY_WINDOW_MS), key, 'a later window starts fresh');
+  assert.ok(key.length <= 255, 'within the Stripe idempotency key length');
+});
+
+test('a returning customer goes back to their open Plus checkout for the same price', async () => {
+  const paths: string[] = [];
+  const request = async <T,>(path: string): Promise<T> => {
+    paths.push(path);
+    return {
+      data: [
+        { status: 'open', url: 'https://checkout.stripe.test/other-price', metadata: { creator_plan: 'plus', account_id: 'acc_1', price_id: 'price_year' } },
+        { status: 'open', url: 'https://checkout.stripe.test/other-account', metadata: { creator_plan: 'plus', account_id: 'acc_2', price_id: 'price_month' } },
+        { status: 'open', url: 'https://checkout.stripe.test/mine', metadata: { creator_plan: 'plus', account_id: 'acc_1', price_id: 'price_month' } },
+      ],
+    } as T;
+  };
+  assert.equal(await openPlusCheckout({ customerId: 'cus_1', accountId: 'acc_1', priceId: 'price_month' }, request), 'https://checkout.stripe.test/mine');
+  assert.equal(await openPlusCheckout({ customerId: 'cus_1', accountId: 'acc_1', priceId: 'price_other' }, request), undefined);
+  assert.ok(paths.every((path) => path.includes('customer=cus_1') && path.includes('status=open')));
 });
