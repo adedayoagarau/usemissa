@@ -86,7 +86,9 @@ export function CreatorHome({
             <EmptyMedia variant="icon">
               <FolderKanban aria-hidden="true" />
             </EmptyMedia>
-            <EmptyTitle>Your week starts with one saved call</EmptyTitle>
+            <EmptyTitle>
+              <h2>Your week starts with one saved call</h2>
+            </EmptyTitle>
             <EmptyDescription>
               Browse open calls, or bring in the spreadsheet you already keep.
             </EmptyDescription>
@@ -168,7 +170,9 @@ export function CreatorHome({
           ) : (
             <Empty variant="bordered">
               <EmptyHeader>
-                <EmptyTitle>Nothing is pressing this week</EmptyTitle>
+                <EmptyTitle>
+                  <h2>Nothing is pressing this week</h2>
+                </EmptyTitle>
                 <EmptyDescription>
                   No deadlines close soon and nothing is waiting on you. A good
                   week to look ahead.
