@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { NextConfig } from "next";
+import { buildContentSecurityPolicy } from "./lib/content-security-policy";
 
 const isProduction = process.env.VERCEL_ENV
   ? process.env.VERCEL_ENV === "production"
@@ -57,6 +58,12 @@ const nextConfig: NextConfig = {
           },
           { key: "X-DNS-Prefetch-Control", value: "off" },
           { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+          // Report-only while reports are reviewed. Switch the key to
+          // Content-Security-Policy after a week of clean reports.
+          {
+            key: "Content-Security-Policy-Report-Only",
+            value: buildContentSecurityPolicy(),
+          },
           ...(isProduction
             ? [
                 {
