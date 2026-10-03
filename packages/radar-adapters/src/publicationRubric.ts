@@ -20,6 +20,8 @@ export type PublicationRubricCandidate = {
   evidenceCount: number;
   destinationReconciled: boolean;
   contentApproved: boolean;
+  /** The listing has waited long enough for its write-up; it may publish with the listing facts only. */
+  contentWaitExpired?: boolean;
 };
 
 export type PublicationRubricResult = {
@@ -64,12 +66,13 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
 
   const organizationConfident = candidate.organizationConfirmed || validIdentity;
   const timingReady = availability.publicationTimingReady || active;
+  const contentReady = candidate.contentApproved || Boolean(candidate.contentWaitExpired);
 
   const gates = {
     authorityDestination: sourcePresent && destinationPresent && candidate.destinationReconciled && !candidate.reviewOnly ? "pass" : "review",
     identity: validIdentity && candidate.organizationConfirmed ? "pass" : "review",
     freshness: active && deadlineOrWindow ? "pass" : "review",
-    completeness: candidate.contentApproved && validIdentity && destinationPresent ? "pass" : "review",
+    completeness: contentReady && validIdentity && destinationPresent ? "pass" : "review",
     safety: unsafe ? "fail" : "pass",
   } satisfies Record<string, PublicationGate>;
 
@@ -89,6 +92,7 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
     identityValid: validIdentity,
     aggregateIdentity: aggregate,
     contentApproved: candidate.contentApproved,
+    contentWaitExpired: Boolean(candidate.contentWaitExpired),
     evidenceCount: candidate.evidenceCount,
   };
 
@@ -98,7 +102,7 @@ export function evaluatePublicationRubric(candidate: PublicationRubricCandidate)
   if (!destinationPresent) reasons.push("Submission or guidelines destination is missing.");
   if (!candidate.organizationConfirmed) reasons.push("Opportunity host organization requires confirmation.");
   if (!candidate.destinationReconciled) reasons.push("Destination reconciliation is required.");
-  if (!candidate.contentApproved) reasons.push("Content review is required.");
+  if (!contentReady) reasons.push("Content review is required.");
   if (candidate.reviewOnly) reasons.push("Candidate is explicitly held for human review.");
   if (!active && !timingReady) reasons.push("Opportunity is not currently active.");
   if (!deadlineOrWindow) reasons.push("Opportunity timing evidence is uncertain.");

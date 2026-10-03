@@ -59,13 +59,19 @@ import {
   ChoiceChip,
   ChoiceRow,
   ChoiceTile,
+  MatchCount,
+  MatchList,
   OnboardingMobileProgress,
   OnboardingStepper,
-  OnboardingSummaryCard,
   ProfilePreviewCard,
   RadioCard,
   type OnboardingStepMeta,
 } from "@/components/creator-onboarding-parts";
+import {
+  onboardingMatchParams,
+  type OnboardingMatch,
+  type OnboardingMatches,
+} from "@/lib/onboardingMatches";
 
 type OnboardingStatus = "not_started" | "in_progress" | "completed" | "skipped";
 
@@ -105,7 +111,7 @@ const STEPS: readonly OnboardingStepMeta[] = [
   {
     label: "Your work",
     title: "What do you make?",
-    lede: "Choose every kind of work you make. Missa uses this to find calls written for work like yours.",
+    lede: "Choose everything that applies. Missa looks for calls written for work like yours.",
   },
   {
     label: "Opportunities",
@@ -115,18 +121,26 @@ const STEPS: readonly OnboardingStepMeta[] = [
   {
     label: "Location",
     title: "Where are you based?",
-    lede: "Many calls have location rules. Missa uses these details to explain which ones fit.",
+    lede: "Many calls have location rules. Missa uses this to explain which ones fit.",
   },
   {
     label: "Profile",
-    title: "Confirm your name.",
+    title: "Confirm your name",
     lede: "This is how Missa introduces you. Nothing is public until you publish your Profile.",
   },
 ];
 
 const DONE_STEP = STEPS.length;
 
-const PRACTICE_SPRITE = "url(/media/onboarding-practices.webp)";
+// One studio, staged for each kind of work (shared with the homepage).
+const PRACTICE_IMAGES: Record<string, string> = {
+  Writing: "/homepage/studio/v1/writing-desktop.webp",
+  "Visual arts": "/homepage/studio/v1/visual-art-desktop.webp",
+  "Music & sound": "/homepage/studio/v1/music-desktop.webp",
+  "Film & moving image": "/homepage/studio/v1/film-desktop.webp",
+  Performance: "/homepage/studio/v1/performance-desktop.webp",
+  "Design & craft": "/homepage/studio/v1/design-desktop.webp",
+};
 
 const INTEREST_IMAGES: Record<string, string> = {
   "Grants & funding": "/media/home/generated/grants.webp",
@@ -263,6 +277,12 @@ export function CreatorOnboarding({
     Partial<Record<FieldName, string>>
   >({});
 
+  const [editingTimezone, setEditingTimezone] = useState(false);
+  const [matches, setMatches] = useState<OnboardingMatches>({
+    state: "loading",
+    items: [],
+  });
+
   const heading = useRef<HTMLHeadingElement>(null);
   const identity = signupIdentity({ givenName, familyName, usesSingleName });
   const displayName =
@@ -364,6 +384,50 @@ export function CreatorOnboarding({
       controller.abort();
     };
   }, [canClaimHandle, handleIsValid, normalizedHandle, preview, handleRetry]);
+
+  // Preview how many open calls fit the choices so far. The public browse
+  // endpoint is cached at the edge, so quick changes stay cheap.
+  const matchQuery = onboardingMatchParams({
+    practices,
+    refinements,
+    interests,
+    countryCode,
+    noFeeOnly,
+  }).toString();
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setMatches((current) => ({
+        state: "loading",
+        total: current.state === "unavailable" ? undefined : current.total,
+        items: current.items,
+      }));
+      try {
+        const params = new URLSearchParams(matchQuery);
+        params.set("limit", "3");
+        const response = await fetch(`/api/opportunities?${params}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error(String(response.status));
+        const body = (await response.json()) as {
+          total?: number;
+          items?: OnboardingMatch[];
+        };
+        setMatches({
+          state: "ready",
+          total: body.total ?? 0,
+          items: (body.items ?? []).slice(0, 3),
+        });
+      } catch {
+        if (controller.signal.aborted) return;
+        setMatches({ state: "unavailable", items: [] });
+      }
+    }, 300);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [matchQuery]);
 
   function move(next: number) {
     setError(null);
@@ -585,54 +649,29 @@ export function CreatorOnboarding({
   const stageLabel =
     CAREER_STAGES.find((s) => s.value === careerStage && s.value !== "any")
       ?.label ?? null;
+  const hasChoices = matchQuery.length > 0;
+  const browseHref = `/opportunities${matchQuery ? `?${matchQuery}` : ""}`;
 
-  const summaryRows = [
-    { label: "You make", value: practiceSummary },
-    {
-      label: "Looking for",
-      value: interestSummary ?? (step > 1 ? "Every opportunity type" : null),
-    },
-    { label: "Based in", value: basedIn },
-    {
-      label: "Fit",
-      value:
-        step > 2 || basedIn
-          ? [
-              stageLabel,
-              PARTICIPATION_SUMMARY[travelWillingness],
-              noFeeOnly ? "No-fee only" : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")
-          : null,
-    },
-  ];
-
-  const asideImage =
-    step === 0
-      ? "/media/home/hero-artist-studio.webp"
-      : step === 1
-        ? (INTEREST_IMAGES[interests[interests.length - 1] ?? ""] ??
-          "/media/home/generated/residencies.webp")
-        : step === 2
-          ? "/media/home/generated/missa-coastal-village.webp"
-          : step === 3
-            ? "/media/home/artist-at-work.webp"
-            : "/media/home/generated/festivals.webp";
-
-  const selectedWorkCount = practices.length;
-  const selectionStatus =
-    step === 0
-      ? practices.length
-        ? `${selectedWorkCount} selected`
-        : "Nothing selected yet"
-      : step === 1
-        ? interests.length
-          ? `${interests.length} selected`
-          : "Showing every opportunity type"
-        : step === 2
-          ? "Private to you"
-          : "Nothing is published yet";
+  // Simple alternatives when the chosen address is taken; each is checked
+  // like any other entry once picked.
+  const handleSuggestions =
+    handleCheck.state === "taken" && handleCheck.handle === normalizedHandle
+      ? [
+          `${normalizedHandle}-studio`,
+          `${normalizedHandle}-works`,
+          suggestedHandle(
+            `${givenName} ${usesSingleName ? "" : familyName}`,
+          ).replaceAll("-", ""),
+        ]
+          .map((value) => value.slice(0, 30).replace(/-+$/u, ""))
+          .filter(
+            (value, index, all) =>
+              value !== normalizedHandle &&
+              HANDLE_PATTERN.test(value) &&
+              all.indexOf(value) === index,
+          )
+          .slice(0, 3)
+      : [];
 
   const primaryLabel =
     step === 0
@@ -647,6 +686,12 @@ export function CreatorOnboarding({
 
   const busy = saving !== null;
   const meta = STEPS[step];
+  const profileTitle = canClaimHandle
+    ? "Claim your Missa address"
+    : STEPS[3]!.title;
+  const profileLede = canClaimHandle
+    ? "Your Profile will live here. Nothing is public until you publish it."
+    : STEPS[3]!.lede;
 
   return (
     <div
@@ -683,380 +728,552 @@ export function CreatorOnboarding({
         </div>
       </header>
 
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(26rem,40%)]">
-        <main className="min-w-0">
-          {step < DONE_STEP && meta ? (
-            <form
-              noValidate
-              onSubmit={onSubmit}
-              aria-labelledby="onboarding-heading"
-              className="flex min-h-[calc(100dvh-4rem)] flex-col"
+      <main className="min-w-0">
+        {step < DONE_STEP && meta ? (
+          <form
+            noValidate
+            onSubmit={onSubmit}
+            aria-labelledby="onboarding-heading"
+            className="flex min-h-[calc(100dvh-4rem)] flex-col"
+          >
+            <div
+              className={cn(
+                "mx-auto w-full flex-1 px-gutter pt-6 pb-section md:pt-14",
+                step === 0 ? "max-w-3xl" : "max-w-2xl",
+              )}
             >
-              <div className="mx-auto w-full max-w-2xl flex-1 px-gutter pt-6 pb-section md:pt-12">
-                <OnboardingMobileProgress steps={STEPS} current={step} />
-                <div
-                  key={step}
-                  className="mt-6 animate-in duration-200 fade-in-0 slide-in-from-bottom-1 motion-reduce:animate-none md:mt-0"
-                >
-                  <p className="hidden text-sm text-muted-foreground md:block">
-                    Step {step + 1} of {STEPS.length}
-                  </p>
+              <OnboardingMobileProgress steps={STEPS} current={step} />
+              <div
+                key={step}
+                className="mt-6 animate-in duration-200 fade-in-0 slide-in-from-bottom-1 motion-reduce:animate-none md:mt-0"
+              >
+                <div className="mx-auto max-w-xl text-center">
                   <h1
                     id="onboarding-heading"
                     ref={heading}
                     tabIndex={-1}
-                    className="mt-2 font-heading text-4xl leading-[1.05] tracking-tight text-balance outline-none md:text-5xl"
+                    className="font-heading text-4xl leading-[1.05] tracking-tight text-balance outline-none md:text-5xl"
                   >
-                    {meta.title}
+                    {step === 3 ? profileTitle : meta.title}
                   </h1>
-                  <p className="mt-4 max-w-xl text-base leading-relaxed text-pretty text-muted-foreground">
-                    {meta.lede}
+                  <p className="mt-4 text-base leading-relaxed text-pretty text-muted-foreground md:text-lg">
+                    {step === 3 ? profileLede : meta.lede}
                   </p>
+                </div>
 
-                  {error ? (
-                    <div className="mt-6">
-                      <Alert variant="destructive">
-                        <AlertCircle aria-hidden="true" />
-                        <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                    </div>
-                  ) : null}
+                {error ? (
+                  <div className="mx-auto mt-8 max-w-xl">
+                    <Alert variant="destructive">
+                      <AlertCircle aria-hidden="true" />
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  </div>
+                ) : null}
 
-                  <div className="mt-8">
-                    {step === 0 ? (
-                      <>
-                        <fieldset>
-                          <legend className="sr-only">
-                            Creative practices
-                          </legend>
-                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-                            {ONBOARDING_PRACTICES.map((practice, index) => (
-                              <ChoiceTile
-                                key={practice.label}
-                                label={practice.label}
-                                description={practice.refinements
-                                  .map((r) => r.label)
-                                  .join(", ")}
-                                checked={practices.includes(practice.label)}
-                                onCheckedChange={(checked) =>
-                                  togglePractice(practice.label, checked)
-                                }
-                                media={
-                                  <span
-                                    className="absolute inset-0 bg-cover"
-                                    style={{
-                                      backgroundImage: PRACTICE_SPRITE,
-                                      backgroundSize: "300% 200%",
-                                      backgroundPosition: `${(index % 3) * 50}% ${index < 3 ? 0 : 100}%`,
-                                    }}
-                                  />
-                                }
-                              />
-                            ))}
-                          </div>
-                        </fieldset>
-
-                        {availableRefinements.length ? (
-                          <section
-                            aria-labelledby="refine-heading"
-                            className="mt-10 animate-in duration-200 fade-in-0 motion-reduce:animate-none"
-                          >
-                            <h2
-                              id="refine-heading"
-                              className="text-base font-semibold text-foreground"
-                            >
-                              Narrow it down{" "}
-                              <span className="font-normal text-muted-foreground">
-                                · optional
-                              </span>
-                            </h2>
-                            <div className="mt-4 grid gap-5">
-                              {availableRefinements.map((practice) => (
-                                <fieldset key={practice.label}>
-                                  <legend className="mb-2 text-sm text-muted-foreground">
-                                    {practice.label}
-                                  </legend>
-                                  <div className="flex flex-wrap gap-2">
-                                    {practice.refinements.map((refinement) => (
-                                      <ChoiceChip
-                                        key={refinement.termId}
-                                        label={refinement.label}
-                                        checked={refinements.includes(
-                                          refinement.label,
-                                        )}
-                                        onCheckedChange={(checked) =>
-                                          setRefinements((current) =>
-                                            checked
-                                              ? [...current, refinement.label]
-                                              : current.filter(
-                                                  (v) => v !== refinement.label,
-                                                ),
-                                          )
-                                        }
-                                      />
-                                    ))}
-                                  </div>
-                                </fieldset>
-                              ))}
-                            </div>
-                          </section>
-                        ) : null}
-                      </>
-                    ) : null}
-
-                    {step === 1 ? (
+                <div className="mt-10">
+                  {step === 0 ? (
+                    <>
                       <fieldset>
-                        <legend className="sr-only">
-                          Opportunity interests
-                        </legend>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          {ONBOARDING_INTERESTS.map((interest) => (
-                            <ChoiceRow
-                              key={interest.label}
-                              label={interest.label}
-                              description={interest.description}
-                              imageSrc={
-                                INTEREST_IMAGES[interest.label] ??
-                                "/media/home/generated/residencies.webp"
-                              }
-                              checked={interests.includes(interest.label)}
+                        <legend className="sr-only">Kinds of work</legend>
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+                          {ONBOARDING_PRACTICES.map((practice) => (
+                            <ChoiceTile
+                              key={practice.label}
+                              label={practice.label}
+                              description={practice.refinements
+                                .map((r) => r.label)
+                                .join(" · ")}
+                              checked={practices.includes(practice.label)}
                               onCheckedChange={(checked) =>
-                                setInterests((current) =>
-                                  checked
-                                    ? [...current, interest.label]
-                                    : current.filter(
-                                        (v) => v !== interest.label,
-                                      ),
-                                )
+                                togglePractice(practice.label, checked)
+                              }
+                              media={
+                                <Image
+                                  src={
+                                    PRACTICE_IMAGES[practice.label] ??
+                                    "/homepage/studio/v1/writing-desktop.webp"
+                                  }
+                                  alt=""
+                                  fill
+                                  sizes="(min-width: 768px) 240px, 45vw"
+                                  className="object-cover object-[center_62%] transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                                />
                               }
                             />
                           ))}
                         </div>
                       </fieldset>
-                    ) : null}
 
-                    {step === 2 ? (
-                      <div className="grid gap-10">
+                      {availableRefinements.length ? (
                         <section
-                          aria-labelledby="where-heading"
-                          className="grid gap-5"
+                          aria-labelledby="refine-heading"
+                          className="mt-10 animate-in rounded-xl border border-border bg-card p-5 duration-200 fade-in-0 motion-reduce:animate-none sm:p-6"
                         >
                           <h2
-                            id="where-heading"
-                            className="text-base font-semibold"
+                            id="refine-heading"
+                            className="text-base font-semibold text-foreground"
                           >
-                            Where you are
+                            Narrow it down{" "}
+                            <span className="font-normal text-muted-foreground">
+                              · optional
+                            </span>
                           </h2>
-                          <div className="grid gap-5 sm:grid-cols-2">
-                            <Field data-invalid={Boolean(fieldErrors.country)}>
-                              <FieldLabel htmlFor="onboarding-country">
-                                Country
-                              </FieldLabel>
-                              <Combobox
-                                items={COUNTRY_CODES}
-                                value={countryCode || null}
-                                itemToStringLabel={(code: string) =>
-                                  CANONICAL_COUNTRIES[code] ?? code
-                                }
-                                onValueChange={(code: string | null) => {
-                                  setCountryCode(code ?? "");
-                                  setFieldErrors(
-                                    ({ country: _drop, ...rest }) => rest,
-                                  );
-                                }}
-                              >
-                                <ComboboxInput
-                                  id="onboarding-country"
-                                  className="h-11 w-full"
-                                  placeholder="Search countries"
-                                  autoComplete="off"
-                                  aria-invalid={Boolean(fieldErrors.country)}
-                                  aria-describedby="onboarding-country-error"
-                                />
-                                <ComboboxContent>
-                                  <ComboboxEmpty>
-                                    No country matches that search.
-                                  </ComboboxEmpty>
-                                  <ComboboxList>
-                                    {(code: string) => (
-                                      <ComboboxItem
-                                        key={code}
-                                        value={code}
-                                        className="min-h-9"
-                                      >
-                                        {CANONICAL_COUNTRIES[code]}
-                                      </ComboboxItem>
-                                    )}
-                                  </ComboboxList>
-                                </ComboboxContent>
-                              </Combobox>
-                              <FieldError id="onboarding-country-error">
-                                {fieldErrors.country}
-                              </FieldError>
-                            </Field>
-                            <Field>
-                              <FieldLabel htmlFor="onboarding-city">
-                                City{" "}
-                                <span className="font-normal text-muted-foreground">
-                                  (optional)
-                                </span>
-                              </FieldLabel>
-                              <Input
-                                id="onboarding-city"
-                                value={city}
-                                onChange={(event) =>
-                                  setCity(event.target.value)
-                                }
-                                autoComplete="address-level2"
-                                maxLength={120}
-                              />
-                            </Field>
-                            <Field
-                              className="sm:col-span-2"
-                              data-invalid={Boolean(fieldErrors.timezone)}
-                            >
-                              <FieldLabel htmlFor="onboarding-timezone">
-                                Time zone
-                              </FieldLabel>
-                              <Combobox
-                                items={
-                                  timezone && !zoneOptions.includes(timezone)
-                                    ? [timezone, ...zoneOptions]
-                                    : zoneOptions
-                                }
-                                value={timezone || null}
-                                itemToStringLabel={(zone: string) =>
-                                  zoneLabels.get(zone) ?? plainZoneName(zone)
-                                }
-                                onValueChange={(zone: string | null) => {
-                                  setTimezone(zone ?? "");
-                                  setTimezoneDetected(false);
-                                  setFieldErrors(
-                                    ({ timezone: _drop, ...rest }) => rest,
-                                  );
-                                }}
-                              >
-                                <ComboboxInput
-                                  id="onboarding-timezone"
-                                  className="h-11 w-full"
-                                  placeholder="Search time zones"
-                                  autoComplete="off"
-                                  aria-invalid={Boolean(fieldErrors.timezone)}
-                                  aria-describedby="onboarding-timezone-help onboarding-timezone-error"
-                                />
-                                <ComboboxContent>
-                                  <ComboboxEmpty>
-                                    No time zone matches that search.
-                                  </ComboboxEmpty>
-                                  <ComboboxList>
-                                    {(zone: string) => (
-                                      <ComboboxItem
-                                        key={zone}
-                                        value={zone}
-                                        className="min-h-9"
-                                      >
-                                        {zoneLabels.get(zone) ??
-                                          plainZoneName(zone)}
-                                      </ComboboxItem>
-                                    )}
-                                  </ComboboxList>
-                                </ComboboxContent>
-                              </Combobox>
-                              <FieldDescription id="onboarding-timezone-help">
-                                {timezoneDetected
-                                  ? "Detected from this device. Deadlines and reminders use this time."
-                                  : "Deadlines and reminders use this time."}
-                              </FieldDescription>
-                              <FieldError id="onboarding-timezone-error">
-                                {fieldErrors.timezone}
-                              </FieldError>
-                            </Field>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Pick a focus to see fewer, closer matches.
+                          </p>
+                          <div className="mt-5 grid gap-5">
+                            {availableRefinements.map((practice) => (
+                              <fieldset key={practice.label}>
+                                <legend className="mb-2 text-sm text-muted-foreground">
+                                  {practice.label}
+                                </legend>
+                                <div className="flex flex-wrap gap-2">
+                                  {practice.refinements.map((refinement) => (
+                                    <ChoiceChip
+                                      key={refinement.termId}
+                                      label={refinement.label}
+                                      checked={refinements.includes(
+                                        refinement.label,
+                                      )}
+                                      onCheckedChange={(checked) =>
+                                        setRefinements((current) =>
+                                          checked
+                                            ? [...current, refinement.label]
+                                            : current.filter(
+                                                (v) => v !== refinement.label,
+                                              ),
+                                        )
+                                      }
+                                    />
+                                  ))}
+                                </div>
+                              </fieldset>
+                            ))}
                           </div>
                         </section>
+                      ) : null}
+                    </>
+                  ) : null}
 
-                        <section
-                          aria-labelledby="fit-heading"
-                          className="grid gap-6"
-                        >
+                  {step === 1 ? (
+                    <fieldset>
+                      <legend className="sr-only">Opportunity interests</legend>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {ONBOARDING_INTERESTS.map((interest) => (
+                          <ChoiceRow
+                            key={interest.label}
+                            label={interest.label}
+                            description={interest.description}
+                            imageSrc={
+                              INTEREST_IMAGES[interest.label] ??
+                              "/media/home/generated/residencies.webp"
+                            }
+                            checked={interests.includes(interest.label)}
+                            onCheckedChange={(checked) =>
+                              setInterests((current) =>
+                                checked
+                                  ? [...current, interest.label]
+                                  : current.filter((v) => v !== interest.label),
+                              )
+                            }
+                          />
+                        ))}
+                      </div>
+                      <p className="mt-6 text-center text-sm text-muted-foreground">
+                        Skip this to see every kind of opportunity.
+                      </p>
+                    </fieldset>
+                  ) : null}
+
+                  {step === 2 ? (
+                    <div className="grid gap-10">
+                      <section
+                        aria-label="Where you are"
+                        className="grid gap-5"
+                      >
+                        <div className="grid gap-5 sm:grid-cols-2">
+                          <Field data-invalid={Boolean(fieldErrors.country)}>
+                            <FieldLabel htmlFor="onboarding-country">
+                              Country
+                            </FieldLabel>
+                            <Combobox
+                              items={COUNTRY_CODES}
+                              value={countryCode || null}
+                              itemToStringLabel={(code: string) =>
+                                CANONICAL_COUNTRIES[code] ?? code
+                              }
+                              onValueChange={(code: string | null) => {
+                                setCountryCode(code ?? "");
+                                setFieldErrors(
+                                  ({ country: _drop, ...rest }) => rest,
+                                );
+                              }}
+                            >
+                              <ComboboxInput
+                                id="onboarding-country"
+                                className="h-11 w-full"
+                                placeholder="Search countries"
+                                autoComplete="off"
+                                aria-invalid={Boolean(fieldErrors.country)}
+                                aria-describedby="onboarding-country-error"
+                              />
+                              <ComboboxContent>
+                                <ComboboxEmpty>
+                                  No country matches that search.
+                                </ComboboxEmpty>
+                                <ComboboxList>
+                                  {(code: string) => (
+                                    <ComboboxItem
+                                      key={code}
+                                      value={code}
+                                      className="min-h-9"
+                                    >
+                                      {CANONICAL_COUNTRIES[code]}
+                                    </ComboboxItem>
+                                  )}
+                                </ComboboxList>
+                              </ComboboxContent>
+                            </Combobox>
+                            <FieldError id="onboarding-country-error">
+                              {fieldErrors.country}
+                            </FieldError>
+                          </Field>
+                          <Field>
+                            <FieldLabel htmlFor="onboarding-city">
+                              City{" "}
+                              <span className="font-normal text-muted-foreground">
+                                (optional)
+                              </span>
+                            </FieldLabel>
+                            <Input
+                              id="onboarding-city"
+                              value={city}
+                              onChange={(event) => setCity(event.target.value)}
+                              autoComplete="address-level2"
+                              maxLength={120}
+                            />
+                          </Field>
+                        </div>
+
+                        {editingTimezone || fieldErrors.timezone ? (
+                          <Field data-invalid={Boolean(fieldErrors.timezone)}>
+                            <FieldLabel htmlFor="onboarding-timezone">
+                              Time zone
+                            </FieldLabel>
+                            <Combobox
+                              items={
+                                timezone && !zoneOptions.includes(timezone)
+                                  ? [timezone, ...zoneOptions]
+                                  : zoneOptions
+                              }
+                              value={timezone || null}
+                              itemToStringLabel={(zone: string) =>
+                                zoneLabels.get(zone) ?? plainZoneName(zone)
+                              }
+                              onValueChange={(zone: string | null) => {
+                                setTimezone(zone ?? "");
+                                setTimezoneDetected(false);
+                                setFieldErrors(
+                                  ({ timezone: _drop, ...rest }) => rest,
+                                );
+                              }}
+                            >
+                              <ComboboxInput
+                                id="onboarding-timezone"
+                                className="h-11 w-full"
+                                placeholder="Search time zones"
+                                autoComplete="off"
+                                autoFocus={editingTimezone}
+                                aria-invalid={Boolean(fieldErrors.timezone)}
+                                aria-describedby="onboarding-timezone-help onboarding-timezone-error"
+                              />
+                              <ComboboxContent>
+                                <ComboboxEmpty>
+                                  No time zone matches that search.
+                                </ComboboxEmpty>
+                                <ComboboxList>
+                                  {(zone: string) => (
+                                    <ComboboxItem
+                                      key={zone}
+                                      value={zone}
+                                      className="min-h-9"
+                                    >
+                                      {zoneLabels.get(zone) ??
+                                        plainZoneName(zone)}
+                                    </ComboboxItem>
+                                  )}
+                                </ComboboxList>
+                              </ComboboxContent>
+                            </Combobox>
+                            <FieldDescription id="onboarding-timezone-help">
+                              Deadlines and reminders use this time.
+                            </FieldDescription>
+                            <FieldError id="onboarding-timezone-error">
+                              {fieldErrors.timezone}
+                            </FieldError>
+                          </Field>
+                        ) : (
+                          <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+                            <span>
+                              Time zone:{" "}
+                              <strong className="font-medium text-foreground">
+                                {timezone
+                                  ? (zoneLabels.get(timezone) ??
+                                    plainZoneName(timezone))
+                                  : "Detecting…"}
+                              </strong>
+                              {timezoneDetected ? " · from this device" : ""}
+                            </span>
+                            <button
+                              type="button"
+                              className="inline-flex min-h-11 items-center font-medium text-primary underline-offset-4 hover:underline"
+                              onClick={() => setEditingTimezone(true)}
+                            >
+                              Change
+                              <span className="sr-only"> time zone</span>
+                            </button>
+                          </p>
+                        )}
+                      </section>
+
+                      <section
+                        aria-labelledby="fit-heading"
+                        className="grid gap-6 border-t border-border pt-8"
+                      >
+                        <div>
                           <h2
                             id="fit-heading"
                             className="text-base font-semibold"
                           >
-                            What fits right now
-                          </h2>
-                          <div className="grid gap-3">
-                            <p
-                              id="career-stage-label"
-                              className="text-sm font-medium"
-                            >
-                              Career stage
-                            </p>
-                            <RadioGroup
-                              aria-labelledby="career-stage-label"
-                              value={careerStage}
-                              onValueChange={(value) =>
-                                setCareerStage(String(value))
-                              }
-                              className="grid gap-2 sm:grid-cols-2"
-                            >
-                              {CAREER_STAGES.map((stage) => (
-                                <RadioCard
-                                  key={stage.value}
-                                  value={stage.value}
-                                  label={stage.label}
-                                  description={stage.description}
-                                  checked={careerStage === stage.value}
-                                />
-                              ))}
-                            </RadioGroup>
-                          </div>
-                          <div className="grid gap-3">
-                            <p
-                              id="participation-label"
-                              className="text-sm font-medium"
-                            >
-                              How you can take part
-                            </p>
-                            <RadioGroup
-                              aria-labelledby="participation-label"
-                              value={travelWillingness}
-                              onValueChange={(value) =>
-                                setTravelWillingness(String(value))
-                              }
-                              className="grid gap-2 sm:grid-cols-2"
-                            >
-                              {PARTICIPATION.map((option) => (
-                                <RadioCard
-                                  key={option.value}
-                                  value={option.value}
-                                  label={option.label}
-                                  checked={travelWillingness === option.value}
-                                />
-                              ))}
-                            </RadioGroup>
-                          </div>
-                          <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-lg border border-border px-4 py-3">
-                            <span>
-                              <span className="block text-sm font-medium">
-                                No application fees
-                              </span>
-                              <span className="mt-0.5 block text-xs text-muted-foreground">
-                                Only show calls that are free to enter.
-                              </span>
+                            Fine-tune{" "}
+                            <span className="font-normal text-muted-foreground">
+                              · optional
                             </span>
-                            <Switch
-                              checked={noFeeOnly}
-                              onCheckedChange={(checked) =>
-                                setNoFeeOnly(checked === true)
-                              }
-                            />
-                          </label>
-                        </section>
-                      </div>
-                    ) : null}
+                          </h2>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Missa uses these to explain why a call fits.
+                          </p>
+                        </div>
+                        <div className="grid gap-3">
+                          <p
+                            id="career-stage-label"
+                            className="text-sm font-medium"
+                          >
+                            Career stage
+                          </p>
+                          <RadioGroup
+                            aria-labelledby="career-stage-label"
+                            value={careerStage}
+                            onValueChange={(value) =>
+                              setCareerStage(String(value))
+                            }
+                            className="flex flex-wrap gap-2"
+                          >
+                            {CAREER_STAGES.map((stage) => (
+                              <RadioCard
+                                key={stage.value}
+                                value={stage.value}
+                                label={
+                                  stage.value === "any"
+                                    ? "Any stage"
+                                    : stage.label
+                                }
+                                checked={careerStage === stage.value}
+                                compact
+                              />
+                            ))}
+                          </RadioGroup>
+                        </div>
+                        <div className="grid gap-3">
+                          <p
+                            id="participation-label"
+                            className="text-sm font-medium"
+                          >
+                            How you can take part
+                          </p>
+                          <RadioGroup
+                            aria-labelledby="participation-label"
+                            value={travelWillingness}
+                            onValueChange={(value) =>
+                              setTravelWillingness(String(value))
+                            }
+                            className="flex flex-wrap gap-2"
+                          >
+                            {PARTICIPATION.map((option) => (
+                              <RadioCard
+                                key={option.value}
+                                value={option.value}
+                                label={option.label}
+                                checked={travelWillingness === option.value}
+                                compact
+                              />
+                            ))}
+                          </RadioGroup>
+                        </div>
+                        <label className="flex min-h-11 cursor-pointer items-center justify-between gap-4 rounded-lg border border-border px-4 py-3">
+                          <span>
+                            <span className="block text-sm font-medium">
+                              No application fees
+                            </span>
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              Only show calls that are free to enter.
+                            </span>
+                          </span>
+                          <Switch
+                            checked={noFeeOnly}
+                            onCheckedChange={(checked) =>
+                              setNoFeeOnly(checked === true)
+                            }
+                          />
+                        </label>
+                      </section>
+                    </div>
+                  ) : null}
 
-                    {step === 3 ? (
-                      <div className="grid gap-8">
+                  {step === 3 ? (
+                    <div className="grid grid-cols-1 gap-8">
+                      {canClaimHandle ? (
+                        <Field data-invalid={Boolean(fieldErrors.handle)}>
+                          <FieldLabel
+                            htmlFor="onboarding-handle"
+                            className="sr-only"
+                          >
+                            Missa address
+                          </FieldLabel>
+                          <div className="[&_[data-slot=input-group]]:h-14 [&_[data-slot=input-group]]:rounded-xl [&_input]:text-lg">
+                            <InputGroup>
+                              <InputGroupAddon>
+                                <InputGroupText>usemissa.com/@</InputGroupText>
+                              </InputGroupAddon>
+                              <InputGroupInput
+                                id="onboarding-handle"
+                                value={handleValue}
+                                onChange={(event) => {
+                                  setHandleValue(
+                                    event.target.value
+                                      .toLowerCase()
+                                      .replace(/^@/u, ""),
+                                  );
+                                  setHandleCheck({ state: "idle" });
+                                  setFieldErrors(
+                                    ({ handle: _drop, ...rest }) => rest,
+                                  );
+                                }}
+                                maxLength={30}
+                                autoCapitalize="none"
+                                autoCorrect="off"
+                                spellCheck={false}
+                                aria-invalid={Boolean(fieldErrors.handle)}
+                                aria-describedby="onboarding-handle-status onboarding-handle-error"
+                              />
+                              <InputGroupAddon align="inline-end">
+                                {handleCheck.state === "checking" ? (
+                                  <span className="pe-1 text-muted-foreground">
+                                    <Spinner aria-hidden="true" />
+                                  </span>
+                                ) : handleAvailable ? (
+                                  <span className="pe-1 text-primary">
+                                    <Check aria-hidden="true" />
+                                  </span>
+                                ) : handleCheck.state === "taken" ? (
+                                  <span className="pe-1 text-destructive">
+                                    <X aria-hidden="true" />
+                                  </span>
+                                ) : null}
+                              </InputGroupAddon>
+                            </InputGroup>
+                          </div>
+                          <div
+                            id="onboarding-handle-status"
+                            role="status"
+                            className="flex min-h-6 flex-wrap items-center gap-2 text-sm text-muted-foreground"
+                          >
+                            {normalizedHandle && !handleIsValid ? (
+                              "Use 3–30 letters, numbers, or hyphens. Start and end with a letter or number."
+                            ) : handleCheck.state === "checking" ? (
+                              "Checking availability…"
+                            ) : handleAvailable ? (
+                              <span className="text-primary">
+                                @{normalizedHandle} is available.
+                              </span>
+                            ) : handleCheck.state === "taken" ? (
+                              `@${normalizedHandle} is already in use.`
+                            ) : handleCheck.state === "error" ? (
+                              <>
+                                <span>{handleCheck.message}</span>
+                                <button
+                                  type="button"
+                                  className="inline-flex min-h-11 items-center gap-1.5 font-medium text-primary underline-offset-4 hover:underline"
+                                  onClick={() => setHandleRetry((n) => n + 1)}
+                                >
+                                  <RotateCw
+                                    aria-hidden="true"
+                                    className="size-3.5"
+                                  />
+                                  Check again
+                                </button>
+                              </>
+                            ) : (
+                              "Letters, numbers, and hyphens. You can change it once every 30 days."
+                            )}
+                          </div>
+                          {handleSuggestions.length ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm text-muted-foreground">
+                                Try:
+                              </span>
+                              {handleSuggestions.map((suggestion) => (
+                                <button
+                                  key={suggestion}
+                                  type="button"
+                                  className="inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm hover:border-foreground/30 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                                  onClick={() => {
+                                    setHandleValue(suggestion);
+                                    setHandleCheck({ state: "idle" });
+                                    setFieldErrors(
+                                      ({ handle: _drop, ...rest }) => rest,
+                                    );
+                                  }}
+                                >
+                                  @{suggestion}
+                                </button>
+                              ))}
+                            </div>
+                          ) : null}
+                          <FieldError id="onboarding-handle-error">
+                            {fieldErrors.handle}
+                          </FieldError>
+                        </Field>
+                      ) : claimedHandle ? (
+                        <p className="flex items-center justify-between gap-3 rounded-xl border border-border px-4 py-4 text-sm">
+                          <span className="text-muted-foreground">
+                            Your Missa address
+                          </span>
+                          <span className="font-mono text-foreground">
+                            usemissa.com/@{claimedHandle.displayHandle}
+                          </span>
+                        </p>
+                      ) : null}
+
+                      <section
+                        aria-labelledby="name-heading"
+                        className={cn(
+                          "grid gap-5",
+                          canClaimHandle && "border-t border-border pt-8",
+                        )}
+                      >
+                        {canClaimHandle ? (
+                          <h2
+                            id="name-heading"
+                            className="text-base font-semibold"
+                          >
+                            Your name
+                          </h2>
+                        ) : (
+                          <h2 id="name-heading" className="sr-only">
+                            Your name
+                          </h2>
+                        )}
                         <div className="grid gap-5 sm:grid-cols-2">
                           <Field data-invalid={Boolean(fieldErrors.givenName)}>
                             <FieldLabel htmlFor="onboarding-given-name">
@@ -1120,249 +1337,112 @@ export function CreatorOnboarding({
                             I use one name
                           </label>
                         </div>
+                      </section>
 
-                        {claimedHandle ? (
-                          <div className="rounded-lg border border-border px-4 py-4">
-                            <p className="text-sm font-medium">
-                              Your Missa address
-                            </p>
-                            <p className="mt-1 font-mono text-base text-foreground">
-                              usemissa.com/@{claimedHandle.displayHandle}
-                            </p>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                              You can change it in Profile 30 days after
-                              claiming it.
-                            </p>
-                          </div>
-                        ) : canClaimHandle ? (
-                          <Field data-invalid={Boolean(fieldErrors.handle)}>
-                            <FieldLabel htmlFor="onboarding-handle">
-                              Missa address
-                            </FieldLabel>
-                            <InputGroup className="h-11">
-                              <InputGroupAddon>
-                                <InputGroupText>usemissa.com/@</InputGroupText>
-                              </InputGroupAddon>
-                              <InputGroupInput
-                                id="onboarding-handle"
-                                value={handleValue}
-                                onChange={(event) => {
-                                  setHandleValue(
-                                    event.target.value
-                                      .toLowerCase()
-                                      .replace(/^@/u, ""),
-                                  );
-                                  setHandleCheck({ state: "idle" });
-                                  setFieldErrors(
-                                    ({ handle: _drop, ...rest }) => rest,
-                                  );
-                                }}
-                                maxLength={30}
-                                autoCapitalize="none"
-                                autoCorrect="off"
-                                spellCheck={false}
-                                aria-invalid={Boolean(fieldErrors.handle)}
-                                aria-describedby="onboarding-handle-status onboarding-handle-error"
-                              />
-                              <InputGroupAddon align="inline-end">
-                                {handleCheck.state === "checking" ? (
-                                  <span className="text-muted-foreground">
-                                    <Spinner aria-hidden="true" />
-                                  </span>
-                                ) : handleAvailable ? (
-                                  <Check
-                                    aria-hidden="true"
-                                    className="text-primary"
-                                  />
-                                ) : handleCheck.state === "taken" ? (
-                                  <X
-                                    aria-hidden="true"
-                                    className="text-destructive"
-                                  />
-                                ) : null}
-                              </InputGroupAddon>
-                            </InputGroup>
-                            <div
-                              id="onboarding-handle-status"
-                              role="status"
-                              className="flex min-h-6 flex-wrap items-center gap-2 text-sm text-muted-foreground"
-                            >
-                              {normalizedHandle && !handleIsValid ? (
-                                "Use 3–30 letters, numbers, or hyphens. Start and end with a letter or number."
-                              ) : handleCheck.state === "checking" ? (
-                                "Checking availability…"
-                              ) : handleAvailable ? (
-                                <span className="text-primary">
-                                  @{normalizedHandle} is available.
-                                </span>
-                              ) : handleCheck.state === "taken" ? (
-                                `@${normalizedHandle} is already in use.`
-                              ) : handleCheck.state === "error" ? (
-                                <>
-                                  <span>{handleCheck.message}</span>
-                                  <Button
-                                    type="button"
-                                    variant="link"
-                                    size="xs"
-                                    onClick={() => setHandleRetry((n) => n + 1)}
-                                  >
-                                    <RotateCw aria-hidden="true" />
-                                    Check again
-                                  </Button>
-                                </>
-                              ) : (
-                                "Letters, numbers, and hyphens. You can change it once every 30 days."
-                              )}
-                            </div>
-                            <FieldError id="onboarding-handle-error">
-                              {fieldErrors.handle}
-                            </FieldError>
-                          </Field>
-                        ) : (
-                          <p className="flex items-start gap-3 rounded-lg border border-border px-4 py-3 text-sm text-muted-foreground">
-                            <Lock
-                              aria-hidden="true"
-                              className="mt-0.5 size-4 shrink-0"
-                            />
-                            Profile addresses are opening in stages. You can
-                            choose yours in Profile when it’s available.
-                          </p>
-                        )}
-
-                        <div className="lg:hidden">
-                          <ProfilePreviewCard
-                            name={displayName}
-                            address={publicAddress}
-                            practices={practices}
-                          />
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
+                      <ProfilePreviewCard
+                        name={displayName}
+                        address={publicAddress}
+                        practices={practices}
+                      />
+                      {!canClaimHandle && !claimedHandle ? (
+                        <p className="-mt-4 text-center text-sm text-muted-foreground">
+                          You can choose your Missa address later in Profile.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
-              </div>
-
-              <div className="sticky bottom-0 z-20 border-t border-border bg-background pb-[env(safe-area-inset-bottom)]">
-                <div className="mx-auto flex w-full max-w-2xl items-center gap-3 px-gutter py-3">
-                  <p
-                    role="status"
-                    aria-live="polite"
-                    className="me-auto hidden min-w-0 truncate text-sm text-muted-foreground sm:block"
-                  >
-                    {selectionStatus}
-                  </p>
-                  {step > 0 ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => move(step - 1)}
-                      disabled={busy}
-                      className="me-auto sm:me-0"
-                    >
-                      <ArrowLeft aria-hidden="true" />
-                      Back
-                    </Button>
-                  ) : (
-                    <span className="me-auto sm:hidden" />
-                  )}
-                  <Button
-                    type="submit"
-                    disabled={busy}
-                    aria-busy={saving === "next"}
-                    className="min-w-36"
-                  >
-                    {saving === "next" ? <Spinner aria-hidden="true" /> : null}
-                    {primaryLabel}
-                    {saving === "next" ? null : (
-                      <ArrowRight aria-hidden="true" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </form>
-          ) : (
-            <DoneView
-              heading={heading}
-              preview={preview}
-              name={givenName.trim() || displayName}
-              rows={[
-                {
-                  label: "Your work",
-                  value: practiceSummary ?? "Not chosen",
-                  step: 0,
-                },
-                {
-                  label: "Looking for",
-                  value: interestSummary ?? "Every opportunity type",
-                  step: 1,
-                },
-                {
-                  label: "Based in",
-                  value:
-                    [basedIn, timezone ? plainZoneName(timezone) : null]
-                      .filter(Boolean)
-                      .join(" · ") || "Not set",
-                  step: 2,
-                },
-                {
-                  label: "Preferences",
-                  value: [
-                    stageLabel ?? "Any career stage",
-                    PARTICIPATION_SUMMARY[travelWillingness],
-                    noFeeOnly ? "No-fee calls only" : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · "),
-                  step: 2,
-                },
-                {
-                  label: "Profile",
-                  value: [
-                    displayName,
-                    claimedHandle
-                      ? `usemissa.com/@${claimedHandle.displayHandle}`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · "),
-                  step: 3,
-                },
-              ]}
-              onEdit={move}
-            />
-          )}
-        </main>
-
-        <aside
-          aria-hidden={step === 3 ? undefined : true}
-          className="hidden lg:block"
-        >
-          <div className="sticky top-16 h-[calc(100dvh-4rem)] p-4 ps-0">
-            <div className="relative h-full overflow-hidden rounded-2xl bg-muted">
-              <Image
-                key={asideImage}
-                src={asideImage}
-                alt=""
-                fill
-                sizes="(min-width: 1024px) 40vw, 0px"
-                priority={step === resumeStep}
-                className="animate-in object-cover duration-300 fade-in-0 motion-reduce:animate-none"
-              />
-              <div className="absolute inset-x-4 bottom-4 xl:inset-x-6 xl:bottom-6">
-                {step === 3 ? (
-                  <ProfilePreviewCard
-                    name={displayName}
-                    address={publicAddress}
-                    practices={practices}
-                  />
-                ) : step < DONE_STEP ? (
-                  <OnboardingSummaryCard rows={summaryRows} />
-                ) : null}
               </div>
             </div>
-          </div>
-        </aside>
-      </div>
+
+            <div className="sticky bottom-0 z-20 border-t border-border bg-background pb-[env(safe-area-inset-bottom)]">
+              <div
+                className={cn(
+                  "mx-auto flex w-full items-center gap-3 px-gutter py-3",
+                  step === 0 ? "max-w-3xl" : "max-w-2xl",
+                )}
+              >
+                <div className="me-auto min-w-0">
+                  <MatchCount matches={matches} hasChoices={hasChoices} />
+                </div>
+                {step > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => move(step - 1)}
+                    disabled={busy}
+                  >
+                    <ArrowLeft aria-hidden="true" />
+                    <span className="max-sm:sr-only">Back</span>
+                  </Button>
+                ) : null}
+                <Button
+                  type="submit"
+                  disabled={busy}
+                  aria-busy={saving === "next"}
+                  className="min-w-32"
+                >
+                  {saving === "next" ? <Spinner aria-hidden="true" /> : null}
+                  {primaryLabel}
+                  {saving === "next" ? null : <ArrowRight aria-hidden="true" />}
+                </Button>
+              </div>
+            </div>
+          </form>
+        ) : (
+          <DoneView
+            heading={heading}
+            preview={preview}
+            name={givenName.trim() || displayName}
+            matches={matches}
+            browseHref={browseHref}
+            rows={[
+              {
+                label: "Your work",
+                value: practiceSummary ?? "Not chosen",
+                step: 0,
+              },
+              {
+                label: "Looking for",
+                value: interestSummary ?? "Every opportunity type",
+                step: 1,
+              },
+              {
+                label: "Based in",
+                value:
+                  [basedIn, timezone ? plainZoneName(timezone) : null]
+                    .filter(Boolean)
+                    .join(" · ") || "Not set",
+                step: 2,
+              },
+              {
+                label: "Preferences",
+                value: [
+                  stageLabel ?? "Any career stage",
+                  PARTICIPATION_SUMMARY[travelWillingness],
+                  noFeeOnly ? "No-fee calls only" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+                step: 2,
+              },
+              {
+                label: "Profile",
+                value: [
+                  displayName,
+                  claimedHandle
+                    ? `usemissa.com/@${claimedHandle.displayHandle}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · "),
+                step: 3,
+              },
+            ]}
+            onEdit={move}
+          />
+        )}
+      </main>
     </div>
   );
 }
@@ -1371,44 +1451,62 @@ function DoneView({
   heading,
   preview,
   name,
+  matches,
+  browseHref,
   rows,
   onEdit,
 }: {
   heading: RefObject<HTMLHeadingElement | null>;
   preview: boolean;
   name: string;
+  matches: OnboardingMatches;
+  browseHref: string;
   rows: { label: string; value: string; step: number }[];
   onEdit: (step: number) => void;
 }) {
+  const total = matches.state === "ready" ? matches.total : undefined;
+  const hasMatches = matches.items.length > 0 && Boolean(total);
   return (
     <div className="mx-auto w-full max-w-2xl px-gutter pt-10 pb-section md:pt-16">
       <div className="animate-in duration-300 fade-in-0 slide-in-from-bottom-1 motion-reduce:animate-none">
-        <span
-          aria-hidden="true"
-          className="flex size-11 items-center justify-center rounded-full bg-accent-tint text-primary"
-        >
-          <Check className="size-5" />
-        </span>
-        <h1
-          id="onboarding-heading"
-          ref={heading}
-          tabIndex={-1}
-          className="mt-6 font-heading text-4xl leading-[1.05] tracking-tight text-balance outline-none md:text-5xl"
-        >
-          {name ? `Welcome to Missa, ${name}.` : "Welcome to Missa."}
-        </h1>
-        <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-          {preview
-            ? "This is the finished setup. The design preview has not changed any account."
-            : "Your choices are saved. Missa uses them to explain which opportunities fit you."}
-        </p>
-
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link
-            className={buttonVariants({ className: "sm:min-w-44" })}
-            href="/opportunities"
+        <div className="text-center">
+          <span
+            aria-hidden="true"
+            className="mx-auto flex size-12 items-center justify-center rounded-full bg-accent-tint text-primary"
           >
-            Browse opportunities
+            <Check className="size-5" />
+          </span>
+          <h1
+            id="onboarding-heading"
+            ref={heading}
+            tabIndex={-1}
+            className="mt-6 font-heading text-4xl leading-[1.05] tracking-tight text-balance outline-none md:text-5xl"
+          >
+            {name ? `Welcome to Missa, ${name}.` : "Welcome to Missa."}
+          </h1>
+          <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-pretty text-muted-foreground md:text-lg">
+            {preview
+              ? "This is the finished setup. The design preview has not changed any account."
+              : hasMatches
+                ? `${total!.toLocaleString("en-US")} open calls match what you told us. These close soonest.`
+                : "Your choices are saved. Missa uses them to explain which opportunities fit you."}
+          </p>
+        </div>
+
+        {hasMatches ? (
+          <section aria-label="Open calls that match" className="mt-10">
+            <MatchList items={matches.items} />
+          </section>
+        ) : null}
+
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <Link
+            className={buttonVariants({ className: "sm:min-w-52" })}
+            href={hasMatches ? browseHref : "/opportunities"}
+          >
+            {hasMatches
+              ? `See all ${total!.toLocaleString("en-US")} matches`
+              : "Browse opportunities"}
             <ArrowRight aria-hidden="true" />
           </Link>
           <Link
@@ -1422,7 +1520,7 @@ function DoneView({
           </Link>
         </div>
 
-        <section aria-labelledby="summary-heading" className="mt-12">
+        <section aria-labelledby="summary-heading" className="mt-14">
           <div className="flex items-center justify-between gap-3">
             <h2 id="summary-heading" className="text-base font-semibold">
               Your setup
@@ -1457,7 +1555,7 @@ function DoneView({
               </div>
             ))}
           </dl>
-          <p className={cn("mt-4 text-sm text-muted-foreground")}>
+          <p className="mt-4 text-sm text-muted-foreground">
             You can also change these in Profile at any time.
           </p>
         </section>

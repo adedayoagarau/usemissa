@@ -108,6 +108,37 @@ test("canonical taxonomy filters require every selected hierarchy root", () => {
   }
 });
 
+test("taxonomyMatch any matches opportunities with at least one selected hierarchy", () => {
+  const previous = process.env.MISSA_TAXONOMY_READS;
+  process.env.MISSA_TAXONOMY_READS = "1";
+  try {
+    const terms = [
+      "taxterm_pf-writing-and-literature",
+      "taxterm_pf-visual-arts",
+    ];
+    const withDescendants = buildOpportunityBrowseQuery({
+      ...baseQuery,
+      taxonomyTermIds: terms,
+      taxonomyIncludeDescendants: true,
+      taxonomyMatch: "any",
+    });
+    assert.match(withDescendants.text, /exists \(with recursive expanded\(term_id\)/);
+    assert.doesNotMatch(withDescendants.text, /requested root/);
+    assert.deepEqual(withDescendants.values[1], terms);
+
+    const exact = buildOpportunityBrowseQuery({
+      ...baseQuery,
+      taxonomyTermIds: terms,
+      taxonomyMatch: "any",
+    });
+    assert.match(exact.text, /taxonomy_filter\.term_id = any\(\$2::text\[\]\)/);
+    assert.deepEqual(exact.values[1], terms);
+  } finally {
+    if (previous === undefined) delete process.env.MISSA_TAXONOMY_READS;
+    else process.env.MISSA_TAXONOMY_READS = previous;
+  }
+});
+
 test("facet SQL applies every filter except the facet being counted", () => {
   const built = buildOpportunityFacetCountsQuery(
     {
