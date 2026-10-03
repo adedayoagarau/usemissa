@@ -14,6 +14,7 @@ import {
 } from "@/components/profile-product";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine } from "@/lib/engine";
+import { emailIntegrationFlags } from "@/lib/email-integrations";
 import { getCreatorPreferenceRepository, getCreatorProfileRepository } from "@/lib/creatorRepositories";
 
 export const metadata = {
@@ -97,7 +98,7 @@ export default async function ProfilePage({
           isAdmin={session.account.isAdmin}
           organizations={session.memberships.map((membership) => ({ id: membership.organizationId, name: membership.organizationId }))}
         />
-        <ProfileProduct initialSection={initialSection} initialProfile={profile} savedSearches={savedSearches} following={following} />
+        <ProfileProduct initialSection={initialSection} initialProfile={profile} savedSearches={savedSearches} following={following} integrations={emailIntegrationFlags()} />
       </div>
     );
   }
@@ -178,6 +179,7 @@ export default async function ProfilePage({
         initialProfile={profile}
         savedSearches={savedSearches}
         following={following}
+        integrations={emailIntegrationFlags()}
       />
     </div>
   );
