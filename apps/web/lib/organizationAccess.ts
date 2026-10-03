@@ -1,17 +1,11 @@
-import type { OrgMembership, OrgRole, RadarEngine } from "@missa/radar-engine";
-import type { OrganizationScope, WorkspaceEngine } from "@missa/workspace-engine";
+import type { OrgMembership, RadarEngine } from "@missa/radar-engine";
+import type { OrganizationScope, ReviewAssignment, WorkspaceEngine } from "@missa/workspace-engine";
 import { getSessionAccount, type SessionAccount } from "./auth";
 import { getEngine, persistRadar } from "./engine";
+import { organizationRoleCan, type OrganizationCapability } from "./organizationProduct";
 import { getCompatibilityWorkspaceEngine, persistWorkspace, workspaceRelationalAuthorityEnabled } from "./workspaceEngine";
 
-/** Requested elevated capabilities intentionally map legacy `admin` routes to
- * owner/admin, so existing links keep working while new workspaces can use
- * reviewer, program-manager, finance, and viewer seats. */
-function hasRequestedRole(actual: OrgRole, requested: OrgRole): boolean {
-  if (requested === 'admin') return actual === 'admin' || actual === 'owner';
-  if (requested === 'member') return true;
-  return actual === requested || actual === 'admin' || actual === 'owner';
-}
+export type { OrganizationCapability } from "./organizationProduct";
 
 export interface OrganizationAccess {
   organizationId: string;
@@ -26,10 +20,21 @@ export type OrganizationAccessResult =
   | { ok: true; access: OrganizationAccess }
   | { ok: false; status: 401 | 403 | 404; error: string };
 
+export interface OrganizationAccessOptions {
+  /**
+   * The capability (or any of several capabilities) the caller must hold. It
+   * is required so that every Organization route states its access rule; the
+   * role-to-capability table lives in `organizationProduct.ts`.
+   */
+  capability: OrganizationCapability | readonly OrganizationCapability[];
+}
+
+export const ORGANIZATION_ROLE_FORBIDDEN = "Your organization role cannot perform this action";
+
 export async function requireOrganizationAccess(
   request: Request,
   organizationId: string,
-  options: { roles?: readonly OrgRole[] } = {},
+  options: OrganizationAccessOptions,
 ): Promise<OrganizationAccessResult> {
   const session = await getSessionAccount(request.headers.get("cookie"));
   if (!session) return { ok: false, status: 401, error: "Not authenticated" };
@@ -44,8 +49,8 @@ export async function requireOrganizationAccess(
     return { ok: false, status: 403, error: "You are not a member of this organization" };
   }
 
-  if (options.roles && !options.roles.some((role) => hasRequestedRole(membership.role, role))) {
-    return { ok: false, status: 403, error: "Your organization role cannot perform this action" };
+  if (!organizationRoleCan(membership.role, options.capability)) {
+    return { ok: false, status: 403, error: ORGANIZATION_ROLE_FORBIDDEN };
   }
 
   const workspace = workspaceRelationalAuthorityEnabled()
@@ -63,6 +68,26 @@ export async function requireOrganizationAccess(
       scope: workspace?.organizationScope(organizationId) as OrganizationScope,
     },
   };
+}
+
+/** True when the caller's Organization role holds the capability. */
+export function organizationAccessCan(access: OrganizationAccess, capability: OrganizationCapability | readonly OrganizationCapability[]): boolean {
+  return organizationRoleCan(access.membership.role, capability);
+}
+
+/**
+ * Review assignments on a Submission that belong to the caller. A reviewer
+ * without `submissions.read` may open only a Submission (and its Works) that
+ * carries one of these. Recused assignments do not grant access. The
+ * relational authority does not yet expose an assignment-scoped Submission
+ * projection, so assignment-scoped access fails closed there.
+ */
+export function callerReviewAssignmentsForSubmission(access: OrganizationAccess, submissionId: string): ReviewAssignment[] {
+  if (workspaceRelationalAuthorityEnabled() || !access.workspace || !access.scope) return [];
+  if (!access.scope.submission(submissionId)) return [];
+  return access.workspace
+    .reviewAssignmentsForSubmission(submissionId)
+    .filter((assignment) => assignment.reviewerAccountId === access.session.account.id && !(assignment as { recusedAt?: string }).recusedAt);
 }
 
 /**

@@ -4,7 +4,7 @@ import { getRelationalWorkspace, workspaceRelationalAuthorityEnabled } from '@/l
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   const body = await request.json().catch(() => ({}));
   if (body.operation !== 'mark-in-review' && body.operation !== 'archive') return NextResponse.json({ error: 'Choose a supported bulk operation' }, { status: 400 });

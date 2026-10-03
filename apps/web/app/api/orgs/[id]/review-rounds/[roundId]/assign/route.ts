@@ -4,7 +4,7 @@ import { getRelationalWorkspace, workspaceCommandEnvelope, workspaceMutationErro
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string; roundId: string }> }) {
   const { id, roundId } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   if (!workspaceRelationalAuthorityEnabled() && !result.access.scope.reviewRound(roundId)) {
     return NextResponse.json({ error: 'Unknown review round for this organization' }, { status: 404 });

@@ -1,4 +1,5 @@
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { organizationRoleCan } from '@/lib/organizationProduct';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
@@ -29,6 +30,10 @@ export default async function WorkspacePage({ searchParams }: { searchParams: Pr
 
   // If scoped to a valid organization membership, render organization admin workspace
   if (requestedOrganizationId && targetOrg) {
+    // This legacy surface is the Organization builder (structure, forms,
+    // seats, billing), so it needs the same capability as those mutations.
+    // Other roles use their projected /organization/[id] destinations.
+    if (!organizationRoleCan(targetOrg.role, 'organization.manage')) notFound();
     const organizationId = targetOrg.organizationId;
     const membership = targetOrg;
     const radarEngine = await getEngine();
