@@ -6,8 +6,17 @@ import {
   type MagazineRankingPage,
   type MagazineRankingsFilter,
   type MagazineTelemetrySummary,
+  type MagazineIndexCoverage,
+  type MagazineIndexAnalytics,
+  type SubmissionTelemetryInput,
 } from "@missa/radar-adapters";
-import { rankMagazines, type RankingGenre, type ScoreBreakdown } from "@missa/radar-engine";
+import {
+  rankMagazines,
+  type MagazineScoringInput,
+  type RankingGenre,
+  type ScoreBreakdown,
+  type ScoredGenre,
+} from "@missa/radar-engine";
 import { SEED_MAGAZINES } from "@missa/radar-adapters/dist/src/ranking/data/seedRankings.js";
 import { catalogueReadDatabaseUrl } from "./catalogueDatabase";
 
@@ -42,7 +51,7 @@ function previewOrEmptyPage(filter: MagazineRankingsFilter): MagazineRankingPage
 } {
   const genre = filter.genre ?? "overall";
   if (!seedRankingsPreviewAllowed()) {
-    return { dataSource: "empty", items: [], total: 0, year: filter.year ?? 2026, genre };
+    return { dataSource: "empty", items: [], total: 0, year: filter.year ?? new Date().getUTCFullYear(), genre };
   }
   const all = getFallbackRankings(genre);
   return {
@@ -54,74 +63,60 @@ function previewOrEmptyPage(filter: MagazineRankingsFilter): MagazineRankingPage
   };
 }
 
+function previewRow(
+  input: MagazineScoringInput,
+  genre: RankingGenre,
+  score: ScoreBreakdown & { rankPosition: number },
+): MagazineRankingRow {
+  return {
+    profileId: input.profileId,
+    name: input.name,
+    slug: input.profileId,
+    websiteUrl: null,
+    mediaUrl: null,
+    rankingYear: 2026,
+    genre,
+    rankPosition: score.rankPosition,
+    previousYearRank: null,
+    rankDelta: null,
+    prestigeTier: score.tier,
+    totalScore: score.totalScore,
+    accoladesScore: score.accoladesScore,
+    payScore: score.payScore,
+    turnaroundScore: score.turnaroundScore,
+    feesScore: score.feesScore,
+    respectScore: score.respectScore,
+    formatEthicsScore: score.formatAndEthicsScore,
+    medianResponseDays: input.medianResponseDays,
+    responseTimeBand: input.responseTimeBand,
+    regularFeeCents: input.regularSubmissionFeeCents,
+    chargesReadingFee: input.chargesSubmissionFee,
+    contributorPayCents: null,
+    payKind: input.contributorPay.kind,
+    simultaneousPolicy: input.simultaneousSubmissions,
+    debutFriendly: input.debutFriendly,
+    blindReading: input.blindReading,
+    digitalArchive: input.digitalArchive,
+    telemetryReports: 0,
+    factSources: {},
+    pillarStatus: score.pillarStatus,
+    coverage: score.coverage,
+    activeOpportunity: null,
+    schedule: null,
+  };
+}
+
 function getFallbackRankings(genre: RankingGenre = "overall"): MagazineRankingRow[] {
   if (!memoryCache) {
-    const computed = rankMagazines(SEED_MAGAZINES, 2026);
+    const inputs = new Map(SEED_MAGAZINES.map((input) => [input.profileId, input]));
     const rows: MagazineRankingRow[] = [];
-
-    for (const item of computed) {
-      // Overall
-      rows.push({
-        profileId: item.profileId,
-        name: item.name,
-        slug: item.profileId,
-        websiteUrl: null,
-        mediaUrl: null,
-        rankingYear: 2026,
-        genre: "overall",
-        rankPosition: item.overall.rankPosition,
-        previousYearRank: null,
-        rankDelta: null,
-        prestigeTier: item.overall.tier,
-        totalScore: item.overall.totalScore,
-        accoladesScore: item.overall.accoladesScore,
-        payScore: item.overall.payScore,
-        turnaroundScore: item.overall.turnaroundScore,
-        feesScore: item.overall.feesScore,
-        respectScore: item.overall.respectScore,
-        formatEthicsScore: item.overall.formatAndEthicsScore,
-        medianResponseDays: null,
-        regularFeeCents: 0,
-        contributorPayCents: 0,
-        simultaneousPolicy: "allowed",
-        activeOpportunity: null,
-        schedule: null,
-      });
-
-      // Specific genres
-      for (const [g, gScore] of Object.entries(item.genres) as Array<
-        [
-          Exclude<RankingGenre, "overall">,
-          (ScoreBreakdown & { rankPosition: number }) | undefined,
-        ]
+    for (const item of rankMagazines(SEED_MAGAZINES, 2026)) {
+      const input = inputs.get(item.profileId)!;
+      rows.push(previewRow(input, "overall", item.overall));
+      for (const [g, score] of Object.entries(item.genres) as Array<
+        [ScoredGenre, (ScoreBreakdown & { rankPosition: number }) | undefined]
       >) {
-        if (!gScore) continue;
-        rows.push({
-          profileId: item.profileId,
-          name: item.name,
-          slug: item.profileId,
-          websiteUrl: null,
-          mediaUrl: null,
-          rankingYear: 2026,
-          genre: g,
-          rankPosition: gScore.rankPosition,
-          previousYearRank: null,
-          rankDelta: null,
-          prestigeTier: gScore.tier,
-          totalScore: gScore.totalScore,
-          accoladesScore: gScore.accoladesScore,
-          payScore: gScore.payScore,
-          turnaroundScore: gScore.turnaroundScore,
-          feesScore: gScore.feesScore,
-          respectScore: gScore.respectScore,
-          formatEthicsScore: gScore.formatAndEthicsScore,
-          medianResponseDays: null,
-          regularFeeCents: 0,
-          contributorPayCents: 0,
-          simultaneousPolicy: "allowed",
-          activeOpportunity: null,
-          schedule: null,
-        });
+        if (score) rows.push(previewRow(input, g, score));
       }
     }
     memoryCache = rows;
@@ -136,17 +131,11 @@ export function getMagazineRankingRepository(): {
   listRankings: (filter?: MagazineRankingsFilter) => Promise<MagazineRankingPage & { dataSource: MagazineRankingDataSource }>;
   getMagazineStanding: (profileId: string) => Promise<MagazineRankingRow[]>;
   getTelemetrySummary: (profileId: string) => Promise<MagazineTelemetrySummary>;
-  recordSubmissionTelemetry: (input: {
-    profileId: string;
-    userId?: string | null;
-    genre?: string | null;
-    submittedDate: string;
-    decisionDate?: string | null;
-    responseDays?: number | null;
-    outcome?: "accepted" | "rejected" | "withdrawn" | "pending" | null;
-    rejectionType?: "form" | "tiered_personal" | "editor_note" | null;
-    feePaidCents?: number;
-  }) => Promise<{ success: boolean; newMedianDays: number | null }>;
+  getIndexCoverage: () => Promise<MagazineIndexCoverage | null>;
+  getIndexAnalytics: () => Promise<MagazineIndexAnalytics | null>;
+  recordSubmissionTelemetry: (
+    input: SubmissionTelemetryInput,
+  ) => Promise<{ success: boolean; newMedianDays: number | null }>;
 } {
   const readConnectionString = catalogueReadDatabaseUrl();
   if (!readConnectionString) {
@@ -176,7 +165,10 @@ export function getMagazineRankingRepository(): {
         },
         latestReportAt: null,
       }),
-      recordSubmissionTelemetry: async () => ({ success: true, newMedianDays: null }),
+      getIndexCoverage: async () => null,
+      getIndexAnalytics: async () => null,
+      // Without a database nothing is stored, so nothing is reported as saved.
+      recordSubmissionTelemetry: async () => ({ success: false, newMedianDays: null }),
     };
   }
 
@@ -219,6 +211,22 @@ export function getMagazineRankingRepository(): {
     },
     getTelemetrySummary: async (profileId: string) => {
       return readRepo.getTelemetrySummary(profileId);
+    },
+    getIndexCoverage: async () => {
+      try {
+        return await readRepo.getIndexCoverage();
+      } catch (error) {
+        if (!isUndefinedTableError(error)) throw error;
+        return null;
+      }
+    },
+    getIndexAnalytics: async () => {
+      try {
+        return await readRepo.getIndexAnalytics();
+      } catch (error) {
+        if (!isUndefinedTableError(error)) throw error;
+        return null;
+      }
     },
     recordSubmissionTelemetry: async (input) => {
       if (!writeRepo) return { success: false, newMedianDays: null };

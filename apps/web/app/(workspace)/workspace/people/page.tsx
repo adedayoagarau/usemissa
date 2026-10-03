@@ -2,7 +2,7 @@ import { OrganizationSeats } from '@/components/organization-seats';
 import { getWorkspacePageAccess } from '@/lib/workspacePage';
 
 export default async function WorkspacePeoplePage({ searchParams }: { searchParams: Promise<{ organizationId?: string }> }) {
-  const access = await getWorkspacePageAccess(searchParams, 'workspace/people');
+  const access = await getWorkspacePageAccess(searchParams, 'workspace/people', 'people.read');
   if (!access.organizationId)
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">

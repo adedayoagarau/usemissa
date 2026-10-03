@@ -124,17 +124,32 @@
       "variants": ["public-profile", "embedded-marketing-sample"],
       "embeddedBoundary": "Optional embedded sample removes nested main/h1 and contact/credit modules; retains actual work filters and reading/image disclosures. No ownerId, account loading or writes. Explicit fictional sample label remains visible."
     },
+    "composition.auth-shell": {
+      "semantic": "AuthShell",
+      "implementation": "apps/web/components/auth-shell.tsx",
+      "composition": ["MissaWordmark", "Link", "Image"],
+      "appearance": "white-form-column-with-inset-campaign-photograph-and-editorial-caption",
+      "usedBy": ["AuthForm (/login, /signup)", "/forgot-password", "/reset-password"],
+      "boundary": "Frame only: owns the main landmark, wordmark, legal links, and decorative photograph (hidden below 1024px and from assistive technology). Authentication, verification, and first-save logic stay in AuthForm. Form controls use Field, Input, InputOTP, Alert, Spinner, and Button; the Google action uses SocialAuthButton."
+    },
     "composition.creator-onboarding": {
       "semantic": "CreatorOnboarding",
+      "implementation": "apps/web/components/creator-onboarding.tsx",
       "composition": [
         "Button",
         "Checkbox",
+        "RadioGroup",
+        "Switch",
+        "Combobox",
+        "Field",
         "Input",
-        "NativeSelect",
+        "InputGroup",
+        "Alert",
+        "Spinner",
         "Link"
       ],
-      "appearance": "editorial-onboarding-with-practices-interests-private-location-and-confirmed-profile-address",
-      "boundary": "Given and family names are supplied by the person and remain distinct from the normalized public handle. Country, city, timezone, career stage, travel willingness, and fee preference are private matching inputs."
+      "appearance": "split-editorial-onboarding-with-step-navigation-sticky-actions-live-private-summary-and-profile-preview",
+      "boundary": "Given and family names are supplied by the person and remain distinct from the normalized public handle. Country, city, timezone, career stage, travel willingness, and fee preference are private matching inputs. Country and time zone use searchable Combobox lists; time zones are validated on the server. Finish later saves the current choices and marks setup skipped; only a completed setup opens on the summary."
     },
     "composition.creator-workspace": {
       "semantic": "CreatorWorkspace",

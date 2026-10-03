@@ -890,29 +890,55 @@ export function EditorialIntelligenceDrawer({
                   <div className="space-y-3 rounded-lg border border-border bg-card p-4">
                     <h4 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                       <Award className="size-4 text-warning" />
-                      <span>Major Anthology Selections</span>
+                      <span>Recorded honors</span>
                     </h4>
 
-                    {data.awards.length === 0 ? (
+                    {data.pushcart.length === 0 && data.awards.length === 0 ? (
                       <p className="text-xs text-muted-foreground">
-                        No major anthology selections recorded in the index.
+                        No Pushcart standing or anthology selection is recorded
+                        for this magazine.
                       </p>
                     ) : (
-                      <div className="space-y-2">
-                        {data.awards.map((award, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between rounded border border-border/50 bg-muted/40 p-2.5 text-xs"
+                      <ul className="space-y-2">
+                        {data.pushcart.map((row) => (
+                          <li
+                            key={`pushcart-${row.genre}`}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/50 bg-muted/40 p-2.5 text-xs"
+                          >
+                            <span className="font-semibold text-foreground capitalize">
+                              Pushcart recognition {row.editionYear} · {row.genre}
+                            </span>
+                            <a
+                              href={row.sourceUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-mono text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                            >
+                              Ranked #{row.rank} · source
+                            </a>
+                          </li>
+                        ))}
+                        {data.awards.map((award) => (
+                          <li
+                            key={`${award.anthology}-${award.year}-${award.pieceTitle ?? ""}`}
+                            className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/50 bg-muted/40 p-2.5 text-xs"
                           >
                             <span className="font-semibold text-foreground">
-                              {award.anthology} ({award.year})
+                              {award.anthology} {award.year}
+                              {award.pieceTitle ? ` · “${award.pieceTitle}”` : ""}
+                              {award.authorName ? ` by ${award.authorName}` : ""}
                             </span>
-                            <span className="font-mono text-muted-foreground capitalize">
-                              {award.genre} · {award.awardType}
-                            </span>
-                          </div>
+                            <a
+                              href={award.sourceUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                            >
+                              Source
+                            </a>
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     )}
                   </div>
                 </div>

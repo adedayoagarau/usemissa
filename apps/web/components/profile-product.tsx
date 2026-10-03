@@ -347,14 +347,27 @@ export function ProfileProduct({
   initialProfile,
   savedSearches,
   following,
+  integrations = { gmailSync: false, emailForwarding: false },
 }: {
   initialSection: ProfileSection;
   initialProfile: ProfileProductData;
   savedSearches: RadarProfile[];
   following: Following[];
+  /** Email integrations turned on for this deployment. Integrations is
+   * hidden when none are. */
+  integrations?: { gmailSync: boolean; emailForwarding: boolean };
 }) {
   const router = useRouter();
-  const [active, setActive] = useState(initialSection);
+  const integrationsAvailable =
+    integrations.gmailSync || integrations.emailForwarding;
+  const sections = SECTION_DEFINITIONS.filter(
+    (item) => item.id !== "integrations" || integrationsAvailable,
+  );
+  const [active, setActive] = useState<ProfileSection>(
+    initialSection === "integrations" && !integrationsAvailable
+      ? "overview"
+      : initialSection,
+  );
   const [profile, setProfile] = useState(initialProfile);
   const [revision, setRevision] = useState(initialProfile.revision);
   const [preferencesRevision, setPreferencesRevision] = useState(initialProfile.preferencesRevision);
@@ -686,7 +699,7 @@ export function ProfileProduct({
 
       <nav className={styles.sectionNav} aria-label="Profile sections">
         <Link href="/profile/portfolio" className={buttonVariants({ variant: "ghost" })}><Eye aria-hidden="true" />Public profile</Link>
-        {SECTION_DEFINITIONS.map((item) => {
+        {sections.map((item) => {
           const Icon = item.icon;
           return (
             <button
@@ -708,7 +721,7 @@ export function ProfileProduct({
             <Eye aria-hidden="true" />
             <span><strong>Public profile</strong><small>Build and preview your portfolio</small></span>
           </Link>
-          {SECTION_DEFINITIONS.map((item) => {
+          {sections.map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -785,7 +798,7 @@ export function ProfileProduct({
                   <h3>Profile sections</h3>
                   <p>Each consequential area has its own save boundary.</p>
                 </header>
-                {SECTION_DEFINITIONS.filter(
+                {sections.filter(
                   (item) => item.id !== "overview",
                 ).map((item) => {
                   const Icon = item.icon;
@@ -1247,7 +1260,7 @@ export function ProfileProduct({
             </div>
           ) : null}
 
-          {active === "integrations" ? (
+          {active === "integrations" && integrationsAvailable ? (
             <div className={styles.embedded}>
               <Alert>
                 <Link2 aria-hidden="true" />
@@ -1258,8 +1271,8 @@ export function ProfileProduct({
                   history.
                 </AlertDescription>
               </Alert>
-              <GmailSyncCard />
-              <EmailForwardingCard />
+              {integrations.gmailSync ? <GmailSyncCard /> : null}
+              {integrations.emailForwarding ? <EmailForwardingCard /> : null}
             </div>
           ) : null}
           {active === "searches" ? (

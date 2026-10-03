@@ -4,7 +4,7 @@ import { persistOrganizationMutation, requireOrganizationAccess } from '@/lib/or
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await requireOrganizationAccess(request, id, { roles: ['admin'] });
+  const result = await requireOrganizationAccess(request, id, { capability: 'organization.manage' });
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
   const body = await request.json().catch(() => ({}));
   if (typeof body.csv !== 'string') return NextResponse.json({ error: 'csv is required' }, { status: 400 });

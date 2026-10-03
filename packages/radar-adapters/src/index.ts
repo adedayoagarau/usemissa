@@ -648,8 +648,18 @@ export {
   type MediaDiscoveryResult,
 } from "./organizationMediaDiscovery.js";
 
+export * from "./ranking/live/sources.js";
+export * from "./ranking/live/feeFacts.js";
+export * from "./ranking/live/indexUpdate.js";
+
 export {
   PostgresMagazineRankingRepository,
+  refreshTurnaroundFromReports,
+  rerankYearGenre,
+  type MagazineIndexCoverage,
+  type MagazineIndexAnalytics,
+  type CategoryCounts,
+  type SubmissionTelemetryInput,
   type MagazineRankingOpportunity,
   type MagazineRankingRow,
   type MagazineRankingsFilter,

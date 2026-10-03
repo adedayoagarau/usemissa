@@ -32,6 +32,15 @@ import { MagazineScheduleBadge } from "@/components/ui/magazine-schedule-badge";
 import { ReportResponseDialog } from "./report-response-dialog";
 import { MagazineTrackerAction } from "./magazine-tracker-action";
 import { EditorialIntelligenceDrawer } from "./editorial-intelligence-drawer";
+import {
+  NOT_RECORDED,
+  PRO_PAY_LABEL,
+  feeLabel,
+  magazineFilters,
+  responseLabel,
+  simultaneousLabel,
+  type MagazineFilterId,
+} from "@/lib/magazineFacts";
 
 const genres = ["overall", "poetry", "fiction", "nonfiction"] as const;
 
@@ -56,7 +65,7 @@ export function MagazineRankingsInteractive({
   const [search, setSearch] = useState("");
   const [tier, setTier] = useState("all");
   const [sort, setSort] = useState<Sort>("rank");
-  const [filters, setFilters] = useState<string[]>([]);
+  const [filters, setFilters] = useState<MagazineFilterId[]>([]);
   const [page, setPage] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
@@ -71,20 +80,7 @@ export function MagazineRankingsInteractive({
             return false;
           if (tier !== "all" && !row.prestigeTier.startsWith(tier))
             return false;
-          return filters.every((filter) =>
-            filter === "free"
-              ? row.regularFeeCents === 0
-              : filter === "paying"
-                ? row.contributorPayCents > 0
-                : filter === "pro"
-                  ? row.contributorPayCents >= 800 || row.payScore >= 12
-                  : filter === "debut"
-                    ? row.prestigeTier !== "tier_1" || row.totalScore >= 75
-                    : filter === "simultaneous"
-                      ? row.simultaneousPolicy === "allowed"
-                      : row.medianResponseDays != null &&
-                        row.medianResponseDays <= 60,
-          );
+          return filters.every((filter) => magazineFilters[filter](row));
         })
 
         .sort((a, b) =>
@@ -237,7 +233,7 @@ export function MagazineRankingsInteractive({
             <option value="rank">Missa rank</option>
             <option value="accolades">Anthology honors</option>
             <option value="pay">Contributor pay score</option>
-            <option value="turnaround">Median response time</option>
+            <option value="turnaround">Response time score</option>
           </NativeSelect>
         </Field>
       </div>
@@ -246,28 +242,39 @@ export function MagazineRankingsInteractive({
           className="flex flex-wrap gap-3"
           aria-label="Submission preferences"
         >
-          {[
-            ["debut", "Debut champion (slush-friendly)"],
-            ["pro", "Pro pay rates (≥ $0.08/w)"],
-            ["free", "No submission fee"],
-            ["paying", "Pays contributors"],
-            ["simultaneous", "Allows simultaneous submissions"],
-            ["fast", "Responds within 60 days"],
-          ].map(([id, label]) => (
-            <Button
-              key={id}
-              variant={filters.includes(id) ? "default" : "outline"}
-              aria-pressed={filters.includes(id)}
-              onClick={() => {
-                setFilters((old) =>
-                  old.includes(id) ? old.filter((f) => f !== id) : [...old, id],
-                );
-                setPage(0);
-              }}
-            >
-              {label}
-            </Button>
-          ))}
+          {(
+            [
+              ["debut", "Debut-friendly (recorded)"],
+              ["pro", PRO_PAY_LABEL],
+              ["free", "No submission fee"],
+              ["paying", "Pays contributors"],
+              ["simultaneous", "Allows simultaneous submissions"],
+              ["fast", "Replies within 3 months"],
+            ] as Array<[MagazineFilterId, string]>
+          )
+            // A filter whose fact no loaded magazine records would always be empty.
+            .filter(
+              ([id]) =>
+                id !== "debut" ||
+                items.some((row) => row.debutFriendly != null),
+            )
+            .map(([id, label]) => (
+              <Button
+                key={id}
+                variant={filters.includes(id) ? "default" : "outline"}
+                aria-pressed={filters.includes(id)}
+                onClick={() => {
+                  setFilters((old) =>
+                    old.includes(id)
+                      ? old.filter((f) => f !== id)
+                      : [...old, id],
+                  );
+                  setPage(0);
+                }}
+              >
+                {label}
+              </Button>
+            ))}
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
@@ -301,8 +308,8 @@ export function MagazineRankingsInteractive({
       ) : (
         <Table className="table-fixed">
           <caption className="sr-only">
-            2026 {currentGenre} magazine rankings. Scores are index points;
-            response times are medians where available.
+            {items[0]?.rankingYear} {currentGenre} magazine rankings. Scores are index points;
+            facts no source records are shown as not recorded.
           </caption>
           <TableHeader>
             <TableRow variant="static">
@@ -368,16 +375,9 @@ export function MagazineRankingsInteractive({
                   </div>
                   {!preview && (
                     <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                      {row.regularFeeCents === 0
-                        ? "No submission fee"
-                        : row.regularFeeCents != null
-                          ? "Submission fee applies"
-                          : "Fee not listed"}
-                      {row.simultaneousPolicy === "allowed"
-                        ? " · Simultaneous submissions welcome"
-                        : row.simultaneousPolicy === "not_allowed"
-                          ? " · No simultaneous submissions"
-                          : ""}
+                      {feeLabel(row)}
+                      {" · "}
+                      {simultaneousLabel(row.simultaneousPolicy)}
                     </p>
                   )}
                   <dl
@@ -405,9 +405,7 @@ export function MagazineRankingsInteractive({
                         Response time
                       </dt>
                       <dd className="text-end font-mono text-xs text-foreground tabular-nums">
-                        {!preview && row.medianResponseDays != null
-                          ? `${row.medianResponseDays} days median`
-                          : "Not available"}
+                        {preview ? NOT_RECORDED : responseLabel(row)}
                       </dd>
                     </div>
                   </dl>
@@ -453,20 +451,16 @@ export function MagazineRankingsInteractive({
                   {row.payScore}
                 </TableCell>
                 <TableCell className="hidden py-6 text-end md:table-cell">
-                  {!preview && row.medianResponseDays != null ? (
-                    <>
-                      <span className="font-mono tabular-nums">
-                        {row.medianResponseDays} days
-                      </span>
-                      <span className="mt-2 block text-xs text-muted-foreground">
-                        median
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      Not available
-                    </span>
-                  )}
+                  <span
+                    className={
+                      !preview &&
+                      (row.medianResponseDays != null || row.responseTimeBand)
+                        ? "font-mono text-sm tabular-nums"
+                        : "text-xs text-muted-foreground"
+                    }
+                  >
+                    {preview ? NOT_RECORDED : responseLabel(row)}
+                  </span>
                 </TableCell>
                 {!preview && (
                   <TableCell className="hidden py-6 xl:table-cell">

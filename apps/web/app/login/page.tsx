@@ -43,17 +43,16 @@ export default async function LoginPage({
       ? invite
       : undefined;
   return (
-    <main id="main-content">
-      <AuthForm
-        initialMode={initialMode}
-        redirectTo={redirectTo}
-        firstSaveContext={
-          firstSaveIntent ? firstSaveContext(firstSaveIntent) : undefined
-        }
-        authenticated={Boolean(session)}
-        firstSaveUnavailable={Boolean(firstSaveToken && !firstSaveIntent)}
-        inviteToken={inviteToken}
-      />
-    </main>
+    <AuthForm
+      initialMode={initialMode}
+      redirectTo={redirectTo}
+      signupRedirectTo={next ? redirectTo : "/onboarding"}
+      firstSaveContext={
+        firstSaveIntent ? firstSaveContext(firstSaveIntent) : undefined
+      }
+      authenticated={Boolean(session)}
+      firstSaveUnavailable={Boolean(firstSaveToken && !firstSaveIntent)}
+      inviteToken={inviteToken}
+    />
   );
 }

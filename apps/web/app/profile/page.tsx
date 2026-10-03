@@ -14,6 +14,7 @@ import {
 } from "@/components/profile-product";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { getEngine } from "@/lib/engine";
+import { emailIntegrationFlags } from "@/lib/email-integrations";
 import { creatorShellOrganizations } from "@/lib/creatorShellOrganizations";
 import { getCreatorPreferenceRepository, getCreatorProfileRepository } from "@/lib/creatorRepositories";
 
@@ -93,7 +94,7 @@ export default async function ProfilePage({
     const organizations = await creatorShellOrganizations(session.memberships);
     return (
       <CreatorShell email={session.account.email} organizations={organizations} isAdmin={session.account.isAdmin}>
-        <ProfileProduct initialSection={initialSection} initialProfile={profile} savedSearches={savedSearches} following={following} />
+        <ProfileProduct initialSection={initialSection} initialProfile={profile} savedSearches={savedSearches} following={following} integrations={emailIntegrationFlags()} />
       </CreatorShell>
     );
   }
@@ -167,6 +168,7 @@ export default async function ProfilePage({
         initialProfile={profile}
         savedSearches={savedSearches}
         following={following}
+        integrations={emailIntegrationFlags()}
       />
     </CreatorShell>
   );

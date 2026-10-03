@@ -36,6 +36,7 @@ export async function deliverCreatorReminderEmails(now = new Date()): Promise<Cr
       recipientAccountId: reminder.accountId,
       kind: reminder.kind,
       category: 'notification_digest',
+      unsubscribeCategory: 'deadline_reminder',
       idempotencyKey: reminder.idempotencyKey,
       subject,
       html,

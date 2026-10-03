@@ -25,7 +25,6 @@ export async function GET(request: Request) {
   const offset = boundedInteger(params.get("offset"), 0, 10_000);
   const page = await getMagazineRankingRepository().listRankings({
     genre,
-    year: 2026,
     limit,
     offset,
   });
