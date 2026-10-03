@@ -114,6 +114,12 @@ export {
   type WeeklyDigestRecipient,
 } from "./weeklyDigest.js";
 export {
+  applyCreatorSubscription,
+  creatorBillingAccount,
+  type CreatorBillingAccount,
+  type CreatorSubscriptionUpdate,
+} from "./creatorBilling.js";
+export {
   assertBulkTrackingWithinAllowance,
   assertTrackingAllowance,
   CREATOR_PLAN_LIMITS,

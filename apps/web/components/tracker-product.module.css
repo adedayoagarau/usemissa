@@ -76,6 +76,12 @@
   color: var(--foreground);
 }
 
+.allowanceLink {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .pageActions {
   flex-wrap: wrap;
   justify-content: flex-end;

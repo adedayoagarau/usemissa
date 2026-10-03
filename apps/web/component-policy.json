@@ -825,6 +825,12 @@
       "motion": "never",
       "boundary": "Non-urgent permission question rendered above workspace content, not modal. The installed Alert is not used because it hard-codes role=alert; only the save failure uses role=alert."
     },
+    "PlanProduct": {
+      "base": "Button",
+      "implementation": "components/missa/plan-product.tsx",
+      "motion": "never",
+      "boundary": "The creator's plan page: current plan and Free allowance, the Plus offer with prices read from Stripe, and one action (upgrade, or manage in Stripe). Status messages use role=status; only a failed checkout or portal request uses role=alert."
+    },
     "CookieConsent": {
       "base": "Button",
       "implementation": "components/missa/cookie-consent.tsx",
