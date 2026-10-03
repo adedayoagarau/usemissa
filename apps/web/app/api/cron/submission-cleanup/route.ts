@@ -1,13 +1,13 @@
 import { del } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
+import { cronAuthorization } from '@/lib/cron-auth';
 import { getRelationalWorkspace, getWorkspaceEngine, persistWorkspace, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 503 });
-  const authorized = request.headers.get('authorization') === `Bearer ${secret}` || new URL(request.url).searchParams.get('secret') === secret;
-  if (!authorized) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  const auth = cronAuthorization(request);
+  if (auth === 'unconfigured') return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 503 });
+  if (auth !== 'authorized') return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (workspaceRelationalAuthorityEnabled()) {
     const workspace = await getRelationalWorkspace();
     const expired = await workspace.pool.query<{ id: string; organization_id: string; answers: Record<string, string | string[]> }>('select d.id,e.organization_id,d.answers from submission_drafts d join submission_paths sp on sp.id=d.submission_path_id join open_calls o on o.id=sp.open_call_id join programs p on p.id=o.program_id join entities e on e.id=p.entity_id where d.expires_at<=now() order by d.expires_at,d.id limit 100');

@@ -2,6 +2,7 @@ import { tickGoals } from '@/lib/goal-engine';
 import { NextResponse } from 'next/server';
 import { radarWorkerBatchSize, runRadarWorkerTick, runCoverageWorkerTick, runTaxonomyDiscoveryWorkerTick } from '@missa/radar-adapters';
 import { deliverPendingAlertEmails, deliverPendingDeadlineEmails } from '@/lib/alert-delivery';
+import { cronAuthorization } from '@/lib/cron-auth';
 
 /**
  * Vercel Cron target (Story 1.5) -- replaces the manual "Check for updates"
@@ -16,15 +17,11 @@ import { deliverPendingAlertEmails, deliverPendingDeadlineEmails } from '@/lib/a
  * worker while the latter is being rolled out; it will simply return skipped.
  */
 export async function GET(request: Request) {
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
+  const auth = cronAuthorization(request);
+  if (auth === 'unconfigured') {
     return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 503 });
   }
-
-  const auth = request.headers.get('authorization');
-  const provided = new URL(request.url).searchParams.get('secret');
-  const isAuthorized = auth === `Bearer ${cronSecret}` || provided === cronSecret;
-  if (!isAuthorized) {
+  if (auth !== 'authorized') {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
