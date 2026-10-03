@@ -954,7 +954,7 @@
       "DialogOrSheet",
       "ProcessFeedback"
     ],
-    "ProfileSettingsForm": ["Field", "FormControls", "InlineFeedback"],
+    "ProfileSettingsForm": ["Field", "FormControls", "RadioGroup", "Collapsible", "Switch", "AlertDialog", "InlineFeedback", "StickySaveBar"],
     "PortfolioIdentityHeader": [
       "EditorialTypography",
       "AvatarOrMedia",

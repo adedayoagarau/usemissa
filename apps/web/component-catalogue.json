@@ -1650,6 +1650,16 @@
     "evidence": "lib/creator-home.test.ts; e2e/creator-home.spec.ts; e2e/beta-workspace-recovery.spec.ts; desktop 1280 and 390px captures without horizontal overflow",
     "boundary": "Edits only through the record's checklist-item and reminder APIs; every other action opens the application record."
   },
+  "profileSettings": {
+    "status": "approved",
+    "implementation": "apps/web/components/profile-product.tsx",
+    "route": "/profile",
+    "composition": ["RadioGroup (Public / Only you per field)", "Collapsible (divided)", "Switch", "NativeSelect", "Checkbox", "AlertDialog", "ApplicationStateBadge", "HandleClaimCard", "NotificationPreferencesPanel (embedded)"],
+    "source": "Installed shadcn/Base UI primitives; no new registry install. Mobbin references for grouped settings navigation, field-level visibility, and sticky save (Vercel, Supabase, Mintlify, Flodesk).",
+    "adaptation": "Identity and Privacy merge into Public profile with visibility beside each field and a live preview; Preferences becomes Matching with a plain-language summary (lib/profile-settings.ts) and collapsible groups; Notifications moves in from Inbox; old ?section= links resolve to the new sections.",
+    "states": ["clean", "dirty-save-bar", "saving", "saved", "validation-error", "leave-with-unsaved-changes", "nothing-matched-yet", "exclusion-confirmation", "preference-conflict", "notifications-unavailable", "integrations-off"],
+    "evidence": "lib/profile-settings.test.ts; e2e/profile.spec.ts; e2e/profile-privacy.spec.ts; e2e/profile-export.spec.ts; axe clean on every section at 1280px; no overflow at 1280px, 640px (200% zoom), and 390px"
+  },
   "applicationStateBadge": {
     "implementation": "apps/web/components/missa/application-state-badge.tsx",
     "source": "Installed Badge with warning, information, accent, success, and outline variants",

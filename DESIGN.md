@@ -551,7 +551,7 @@ An AI-generated component that duplicates an approved item fails review.
 | Start the creator's week       | `CreatorHome`                 | Situation sentence, one lead move with `ApplicationRunway` and next steps, week `Tabs`, Tracker `Tabs`, goal pace |
 | Edit a Work                    | `WorkEditor`                  | `Field`, form controls, `Sortable`, media blocks, `Dialog`/`Sheet`, process feedback           |
 | Manage calendar                | `OpportunityCalendar`         | `Calendar`, labelled events, `Popover` or side panel, provider sync status                     |
-| Configure Profile              | `ProfileSettingsForm`         | `Tabs` only for same-route peer sections, `Field`, form controls, inline feedback              |
+| Configure Profile              | `ProfileSettingsForm`         | Grouped section navigation; visibility `RadioGroup` beside each public field with a live preview; `Collapsible` groups; one sticky save bar per section |
 | Present an artist              | `PortfolioIdentityHeader`     | editorial typography, `Avatar`/media, restrained actions; no dashboard chrome                  |
 | Present portfolio work         | `PortfolioWorkCard`           | media with aspect ratio, editorial title, credits, accessible captions                         |
 | Operate submissions            | `SubmissionTable`             | `Table`, semantic workflow states, row actions, responsive labelled records                    |
