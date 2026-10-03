@@ -9,8 +9,9 @@
     "render:square": "npm run sync && remotion render src/index.ts LaunchSquare out/missa-launch-1080x1080.mp4",
     "render:vertical": "npm run sync && remotion render src/index.ts LaunchVertical out/missa-launch-1080x1920.mp4",
     "render:wide": "npm run sync && remotion render src/index.ts LaunchWide out/missa-launch-1920x1080.mp4",
-    "render": "npm run render:square && npm run render:vertical && npm run render:wide",
-    "typecheck": "tsc --noEmit"
+    "render": "npm run render:square && npm run render:vertical && npm run render:wide && npm run render:cuts",
+    "typecheck": "tsc --noEmit",
+    "render:cuts": "npm run sync && for c in Cut15Square Cut15Vertical Cut15Wide Cut6Square Cut6Vertical Cut6Wide; do remotion render src/index.ts $c out/missa-$c.mp4 || exit 1; done"
   },
   "dependencies": {
     "@remotion/cli": "4.0.532",

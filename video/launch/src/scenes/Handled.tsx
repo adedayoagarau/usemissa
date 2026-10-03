@@ -1,9 +1,8 @@
 import React from "react";
 import { AbsoluteFill, Img, staticFile } from "remotion";
-import { Calendar } from "../components/Calendar";
 import { mix, progress, useLayout, useSeconds } from "../components/kit";
 import { cue, scenes } from "../timing";
-import { color, ease, font } from "../tokens";
+import { color, ease, font, shadow } from "../tokens";
 
 /** "Talent's your department. / Deadlines are ours." */
 const MAKERS = [
@@ -15,7 +14,17 @@ const MAKERS = [
   { label: "Design", src: "media/community.webp" },
 ];
 
-const HANDLED_DAYS = [6, 14, 19, 23, 30];
+// Real Missa calendar (month view, captured from the app with its sample
+// opportunities). Boxes are the deadline and reminder chips, as fractions of
+// the 2060×1514 capture: reminder 7, North River 9, Orchard 14, Harbor 23, Meridian 30.
+const CAL_ASPECT = 2060 / 1514;
+const CHIPS = [
+  [609, 731, 863, 796],
+  [1195, 731, 1449, 796],
+  [609, 948, 863, 1012],
+  [1195, 1164, 1449, 1229],
+  [1195, 1380, 1449, 1445],
+].map(([x0, y0, x1, y1]) => ({ x: x0 / 2060, y: y0 / 1514, w: (x1 - x0) / 2060, h: (y1 - y0) / 1514 }));
 
 export const Handled: React.FC = () => {
   const start = scenes.handled.from;
@@ -30,12 +39,9 @@ export const Handled: React.FC = () => {
   const gridW = width;
   const gridH = height;
 
-  const checks: Record<number, number> = {};
-  HANDLED_DAYS.forEach((d, i) => {
-    checks[d] = progress(t, cue("ours") + 0.15 + i * 0.16, 0.35);
-  });
-
-  const calW = (shape === "wide" ? 640 : shape === "tall" ? 860 : 700) * u;
+  const calW = (shape === "wide" ? 940 : shape === "tall" ? 900 : 760) * u;
+  const calH = calW / CAL_ASPECT;
+  const push = progress(t, cue("ours") - 0.3, scenes.handled.to - cue("ours") + 0.3, (n) => n);
 
   return (
     <AbsoluteFill style={{ backgroundColor: color.forestDeep, overflow: "hidden" }}>
@@ -131,8 +137,41 @@ export const Handled: React.FC = () => {
           <br />
           are <em>ours.</em>
         </div>
-        <div style={{ transform: `translateY(${(1 - swap) * 60 * u}px)` }}>
-          <Calendar u={u} width={calW} year={2026} monthIndex={10} checks={checks} />
+        <div
+          style={{
+            position: "relative",
+            width: calW,
+            height: calH,
+            borderRadius: 18 * u,
+            overflow: "hidden",
+            boxShadow: shadow.lifted,
+            transform: `translateY(${(1 - swap) * 60 * u}px) scale(${mix(1, 1.03, push)})`,
+          }}
+        >
+          <Img src={staticFile("ui/calendar-october.webp")} style={{ width: "100%", height: "100%", display: "block" }} />
+          <svg width={calW} height={calH} style={{ position: "absolute", inset: 0 }}>
+            {CHIPS.map((c, i) => {
+              const p = progress(t, cue("ours") + 0.15 + i * 0.16, 0.35);
+              const pad = 5 * u;
+              return (
+                <rect
+                  key={i}
+                  x={c.x * calW - pad}
+                  y={c.y * calH - pad}
+                  width={c.w * calW + pad * 2}
+                  height={c.h * calH + pad * 2}
+                  rx={10 * u}
+                  fill="none"
+                  stroke={color.ochre}
+                  strokeWidth={3.5 * u}
+                  pathLength={1}
+                  strokeDasharray={1}
+                  strokeDashoffset={1 - p}
+                  opacity={p > 0 ? 1 : 0}
+                />
+              );
+            })}
+          </svg>
         </div>
       </AbsoluteFill>
     </AbsoluteFill>
