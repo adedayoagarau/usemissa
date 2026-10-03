@@ -180,6 +180,8 @@ test("opportunities schema exposes the additive query and personal-state boundar
       (index) => index.config.name === "opportunity_sources_trust_idx",
     ),
   );
+  assert.ok(Object.values(opportunityConfig.columns).some((column) => column.name === "program_id"));
+  assert.ok(Object.values(opportunityConfig.columns).some((column) => column.name === "edition_label"));
   assert.ok(Object.values(sourceConfig.columns).some((column) => column.name === "trust_status"));
   assert.ok(Object.values(sourceConfig.columns).some((column) => column.name === "trust_score"));
   assert.ok(
@@ -702,4 +704,14 @@ test("residency intelligence specs schema defines stipends, amenities, cohort, a
   assert.ok(resIntelConfig.indexes.some((i) => i.config.name === "idx_res_intel_specs_profile"));
   assert.ok(resIntelConfig.indexes.some((i) => i.config.name === "idx_res_intel_stipend"));
   assert.ok(resIntelConfig.indexes.some((i) => i.config.name === "idx_res_intel_acceptance"));
+});
+
+test("target schema replay creates programme identity on opportunities", () => {
+  const targetSchema = readFileSync("../../scripts/apply-target-schema.mjs", "utf8");
+  const migration = readFileSync("migrations/0086_opportunity_program_identity.sql", "utf8");
+  assert.ok(
+    targetSchema.indexOf("'0086_opportunity_program_identity.sql'") > targetSchema.indexOf("'0085_editorial_intelligence_sources.sql'"),
+  );
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS program_id text/);
+  assert.match(migration, /ADD COLUMN IF NOT EXISTS edition_label text/);
 });
