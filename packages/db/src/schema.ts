@@ -5070,6 +5070,9 @@ export const missaLiteraryAwards = pgTable(
     awardYear: integer("award_year").notNull(),
     pieceTitle: text("piece_title"),
     authorName: text("author_name"),
+    sourceName: text("source_name"),
+    sourceUrl: text("source_url").notNull(),
+    retrievedOn: date("retrieved_on").notNull(),
     createdAt,
   },
   (table) => [
@@ -5084,7 +5087,7 @@ export const missaLiteraryAwards = pgTable(
     ),
     check(
       "missa_awards_type_check",
-      sql`${table.awardType} in ('win', 'special_mention', 'notable')`,
+      sql`${table.awardType} in ('win', 'special_mention', 'notable', 'selection')`,
     ),
   ],
 );
@@ -5096,7 +5099,6 @@ export const missaSubmissionTelemetry = pgTable(
     profileId: text("profile_id")
       .notNull()
       .references(() => garyProfiles.id, { onDelete: "cascade" }),
-    userId: text("user_id"),
     genre: text("genre"),
     submittedDate: date("submitted_date").notNull(),
     decisionDate: date("decision_date"),
@@ -5145,9 +5147,20 @@ export const missaMagazineRankings = pgTable(
     respectScore: numeric("respect_score", { precision: 5, scale: 2 }).notNull(),
     formatEthicsScore: numeric("format_ethics_score", { precision: 5, scale: 2 }).notNull(),
     medianResponseDays: integer("median_response_days"),
-    regularFeeCents: integer("regular_fee_cents").notNull().default(0),
-    contributorPayCents: integer("contributor_pay_cents").notNull().default(0),
-    simultaneousPolicy: text("simultaneous_policy").notNull().default("allowed"),
+    regularFeeCents: integer("regular_fee_cents"),
+    contributorPayCents: integer("contributor_pay_cents"),
+    simultaneousPolicy: text("simultaneous_policy"),
+    responseTimeBand: text("response_time_band"),
+    chargesReadingFee: boolean("charges_reading_fee"),
+    payKind: text("pay_kind"),
+    queryAfterDays: integer("query_after_days"),
+    digitalArchive: boolean("digital_archive"),
+    blindReading: boolean("blind_reading"),
+    debutFriendly: boolean("debut_friendly"),
+    telemetryReports: integer("telemetry_reports").notNull().default(0),
+    factSources: jsonb("fact_sources").notNull().default(sql`'{}'::jsonb`),
+    pillarStatus: jsonb("pillar_status").notNull().default(sql`'{}'::jsonb`),
+    coverage: numeric("coverage", { precision: 4, scale: 3 }),
     updatedAt,
   },
   (table) => [
@@ -5160,6 +5173,108 @@ export const missaMagazineRankings = pgTable(
     check(
       "missa_rankings_genre_check",
       sql`${table.genre} in ('overall', 'fiction', 'poetry', 'nonfiction')`,
+    ),
+    check(
+      "missa_rankings_simultaneous_check",
+      sql`${table.simultaneousPolicy} is null or ${table.simultaneousPolicy} in ('allowed', 'conditional', 'forbidden')`,
+    ),
+    check(
+      "missa_rankings_response_band_check",
+      sql`${table.responseTimeBand} is null or ${table.responseTimeBand} in ('under_3_months', '3_to_6_months', 'over_6_months')`,
+    ),
+    check(
+      "missa_rankings_pay_kind_check",
+      sql`${table.payKind} is null or ${table.payKind} in ('cash', 'copies_only', 'unpaid')`,
+    ),
+    check(
+      "missa_rankings_median_source_check",
+      sql`${table.medianResponseDays} is null or ${table.telemetryReports} > 0`,
+    ),
+  ],
+);
+
+/** Every fetched edition of an accolade source, accepted or rejected. */
+export const missaRankingSourceSnapshots = pgTable(
+  "missa_ranking_source_snapshots",
+  {
+    id: text("id").primaryKey(),
+    source: text("source").notNull(),
+    editionYear: integer("edition_year").notNull(),
+    genre: text("genre"),
+    url: text("url").notNull(),
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true }).notNull(),
+    contentSha256: text("content_sha256").notNull(),
+    rowCount: integer("row_count").notNull(),
+    rows: jsonb("rows").notNull(),
+    status: text("status").notNull(),
+    reason: text("reason"),
+    createdAt,
+  },
+  (table) => [
+    index("idx_missa_snapshot_edition").on(table.source, table.editionYear, table.genre, table.retrievedAt),
+    check(
+      "missa_snapshot_source_check",
+      sql`${table.source} in ('garstang', 'best_microfiction', 'best_small_fictions')`,
+    ),
+    check(
+      "missa_snapshot_genre_check",
+      sql`${table.genre} is null or ${table.genre} in ('fiction', 'poetry', 'nonfiction')`,
+    ),
+    check("missa_snapshot_status_check", sql`${table.status} in ('accepted', 'rejected')`),
+  ],
+);
+
+/** One row per scheduled or manual index update. */
+export const missaRankingRuns = pgTable(
+  "missa_ranking_runs",
+  {
+    id: text("id").primaryKey(),
+    trigger: text("trigger").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    status: text("status").notNull(),
+    published: boolean("published").notNull().default(false),
+    rankingYears: integer("ranking_years").array().notNull().default(sql`ARRAY[]::integer[]`),
+    summary: jsonb("summary").notNull().default(sql`'{}'::jsonb`),
+  },
+  (table) => [
+    index("idx_missa_runs_started").on(table.startedAt),
+    check(
+      "missa_runs_status_check",
+      sql`${table.status} in ('running', 'published', 'dry_run', 'unchanged', 'failed')`,
+    ),
+  ],
+);
+
+/** Clifford Garstang's published Pushcart ranking rows, as recorded. */
+export const missaPushcartRankings = pgTable(
+  "missa_pushcart_rankings",
+  {
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => garyProfiles.id, { onDelete: "cascade" }),
+    editionYear: integer("edition_year").notNull(),
+    genre: text("genre").notNull(),
+    sourceRank: integer("source_rank").notNull(),
+    sourceScore: numeric("source_score", { precision: 6, scale: 2 }).notNull(),
+    priorRank: integer("prior_rank"),
+    listedName: text("listed_name").notNull(),
+    statusMarker: text("status_marker"),
+    sourceName: text("source_name").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    retrievedOn: date("retrieved_on").notNull(),
+    createdAt,
+  },
+  (table) => [
+    primaryKey({ columns: [table.profileId, table.editionYear, table.genre] }),
+    index("idx_missa_pushcart_edition").on(table.editionYear, table.genre, table.sourceRank),
+    check(
+      "missa_pushcart_genre_check",
+      sql`${table.genre} in ('fiction', 'poetry', 'nonfiction')`,
+    ),
+    check(
+      "missa_pushcart_marker_check",
+      sql`${table.statusMarker} is null or ${table.statusMarker} in ('closed', 'hiatus', 'uncertain')`,
     ),
   ],
 );

@@ -9,7 +9,7 @@ interface MagazineCitizenshipBadgesProps {
     | "medianResponseDays"
     | "regularFeeCents"
     | "contributorPayCents"
-    | "formatEthicsScore"
+    | "debutFriendly"
   > | null;
   compact?: boolean;
   className?: string;
@@ -25,8 +25,10 @@ type CitizenshipBadge = {
 function hasWriterFirstPay(
   ranking: NonNullable<MagazineCitizenshipBadgesProps["ranking"]>,
 ): boolean {
-  if (ranking.genre === "poetry") return ranking.contributorPayCents >= 5000;
-  return ranking.contributorPayCents >= 10000;
+  const cents = ranking.contributorPayCents;
+  if (cents == null) return false;
+  if (ranking.genre === "poetry") return cents >= 5000;
+  return cents >= 10000;
 }
 
 export function MagazineCitizenshipBadges({
@@ -64,12 +66,12 @@ export function MagazineCitizenshipBadges({
           icon: BadgeCheck,
         }
       : null,
-    ranking.formatEthicsScore >= 4.5
+    ranking.debutFriendly === true
       ? {
           key: "debut",
           label: "Debut booster",
           title:
-            "Format and ethics evidence includes strong debut or emerging-writer support",
+            "A cited source records that the magazine reserves space for debut writers",
           icon: HandHeart,
         }
       : null,

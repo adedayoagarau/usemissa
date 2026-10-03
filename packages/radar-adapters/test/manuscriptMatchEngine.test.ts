@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import type { Pool } from "pg";
 import {
   ManuscriptMatchEngine,
+  indexTierKey,
   manuscriptMatchProfileSlug,
 } from "../src/ranking/manuscriptMatchEngine.js";
 
@@ -113,4 +114,16 @@ it("uses the same URL-safe publication slug as public profile routes", () => {
   assert.equal(manuscriptMatchProfileSlug("A Public Space", "a public space"), "a-public-space");
   assert.equal(manuscriptMatchProfileSlug("Adroit Journal", "adroit journal"), "adroit-journal");
   assert.equal(manuscriptMatchProfileSlug("Cincinnati Review", "cincinnati review"), "cincinnati-review");
+});
+
+describe("indexTierKey", () => {
+  it("maps stored index tier labels to match-card keys", () => {
+    assert.equal(indexTierKey("Tier 1 (Flagship Luminary)"), "tier_1");
+    assert.equal(indexTierKey("Tier 2 (High Distinction)"), "tier_2");
+    assert.equal(indexTierKey("Tier 3 (Distinguished Contemporary)"), "tier_3");
+    assert.equal(indexTierKey("Tier 4 (Emerging & Community)"), "tier_3");
+    assert.equal(indexTierKey("tier_2"), "tier_2");
+    assert.equal(indexTierKey(null), "unranked");
+    assert.equal(indexTierKey("unranked"), "unranked");
+  });
 });

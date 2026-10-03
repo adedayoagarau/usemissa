@@ -131,9 +131,10 @@ export function ReportResponseDialog({
               <span>Report Submission Outcome</span>
             </DialogTitle>
             <DialogDescription>
-              Help keep Missa response times and transparency scores accurate
-              for <strong className="text-foreground">{magazineName}</strong>.
-              All reports are strictly anonymous.
+              Help keep Missa response times accurate for{" "}
+              <strong className="text-foreground">{magazineName}</strong>.
+              Reports are saved without your name or account. Signing in only
+              lets us limit spam.
             </DialogDescription>
           </DialogHeader>
 

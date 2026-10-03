@@ -25,7 +25,7 @@ export function generateMetadata({
 }): Promise<Metadata> {
   return listingMetadata(
     {
-      title: "Missa Literary Magazine Index (2026)",
+      title: "Missa Literary Magazine Index",
       description:
         "The independent literary magazine rankings evaluated across anthology accolades, contributor compensation, turnaround speed, and submission access.",
       path: "/rankings/magazines",
@@ -38,7 +38,6 @@ const getCachedMagazineRankings = unstable_cache(
   async (genre: RankingGenre) =>
     getMagazineRankingRepository().listRankings({
       genre,
-      year: 2026,
       limit: 100,
     }),
   ["public-magazine-rankings-v1"],
@@ -74,7 +73,7 @@ export default async function MagazineRankingsPage({
         className={catalogueStyles.main}
       >
         <header className={`${catalogueStyles.pageIntro} mb-8`}>
-          <p className={catalogueStyles.eyebrow}>Rankings · 2026</p>
+          <p className={catalogueStyles.eyebrow}>Rankings · {page.year}</p>
           <div className={catalogueStyles.introRow}>
             <div className={catalogueStyles.introCopy}>
               <h1>Magazine rankings</h1>
@@ -98,7 +97,7 @@ export default async function MagazineRankingsPage({
             <EmptyHeader>
               <EmptyTitle>Magazine rankings are not available yet</EmptyTitle>
               <EmptyDescription>
-                The 2026 index has not been published. Browse magazines in the
+                The index has not been published. Browse magazines in the
                 directory in the meantime.
               </EmptyDescription>
             </EmptyHeader>
