@@ -84,6 +84,17 @@ npm run magazine:rankings -- --report=/tmp/report.json          # dry run
 DATABASE_URL=… npm run magazine:rankings -- --write             # write
 ```
 
+### Schema or code changes in production
+
+A change that alters the ranking tables must reach the database and the site
+together, because the old code cannot read the new columns:
+
+1. Branch the production database in Neon as a backup.
+2. Apply the migration, then publish with a manual run.
+3. Deploy at once. Vercel builds only commits whose message contains
+   `[vercel build]` (`scripts/vercel-ignore-build.sh`), so a squash merge
+   without it leaves the old code live.
+
 ## Scoring (`packages/radar-engine/src/ranking/magazineRankingEngine.ts`)
 
 Each pillar function returns `{ score, status }`, where `status` is `recorded`,
