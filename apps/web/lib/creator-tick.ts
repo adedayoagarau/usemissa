@@ -7,6 +7,9 @@ import { tickGoals } from './goal-engine';
 import { deliverGoalCheckInEmails } from './goal-checkin-email';
 import { tickCreatorFollowing } from './creator-following';
 import { calendarSyncTickLimits, drainCalendarSyncJobs } from './calendar-sync';
+import { recalculateObligationChains } from './deadline-planning';
+import { refreshCycleForecasts, tickOpeningAlerts } from './deadline-cycles';
+import { tickDeadlineReminders } from './deadline-reminders';
 
 /**
  * One creator scheduling pass, shared by the /api/cron/creator route and the
@@ -25,6 +28,13 @@ export async function runCreatorTick(accountId?: string) {
   try {
     const calendar = pool ? new PostgresCreatorCalendarRepository(pool) : undefined;
     const deadlines = calendar ? await calendar.reconcileOfficialDeadlines(accountId) : undefined;
+    // Obligations follow the deadlines the sweep just refreshed; forecasts and
+    // opening alerts come next; status-aware deadline reminders are scheduled
+    // before the reminder tick delivers whatever is due.
+    const chains = await recalculateObligationChains(accountId);
+    const forecasts = accountId ? undefined : await refreshCycleForecasts();
+    const openings = await tickOpeningAlerts(accountId);
+    const deadlineReminders = await tickDeadlineReminders(accountId);
     const reminders = await tickCreatorReminders(accountId);
     const reminderEmails = await deliverCreatorReminderEmails();
     const reminderTexts = await deliverCreatorReminderTexts();
@@ -36,7 +46,7 @@ export async function runCreatorTick(accountId?: string) {
     const calendarSync = calendar
       ? await drainCalendarSyncJobs(calendar, { accountId, ...calendarSyncTickLimits() })
       : undefined;
-    const result = { deadlines, reminders, reminderEmails, reminderTexts, weeklyDigests, goals, goalEmails, following, calendarSync };
+    const result = { deadlines, chains, forecasts, openings, deadlineReminders, reminders, reminderEmails, reminderTexts, weeklyDigests, goals, goalEmails, following, calendarSync };
     if (pool)
       await recordWorkerTick(pool, 'creator-worker', {
         status: 'completed',

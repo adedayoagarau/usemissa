@@ -168,11 +168,19 @@ export {
   FREE_ACTIVE_TRACKED_LIMIT,
   lockTrackingAllowance,
   planIncludesSmsReminders,
+  planIncludes,
+  plansIncluding,
+  creatorFeatures,
   SMS_REMINDER_PLANS,
   TrackingLimitReachedError,
   type CreatorEntitlements,
+  type CreatorFeature,
   type CreatorPlan,
+  type CreatorPlanLimits,
 } from "./creatorEntitlements.js";
+export * from "./deadlineFacts.js";
+export * from "./creatorObligations.js";
+export * from "./creatorPlanningPreferences.js";
 export {
   CreatorEmailReviewError,
   PostgresCreatorEmailReviewRepository,

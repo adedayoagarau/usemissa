@@ -254,6 +254,8 @@ function normalizeDeadlineKind(
     case "inferred":
     case "rolling":
     case "until-filled":
+    case "year-round":
+    case "seasonal":
     case "conflicting":
     case "unknown":
       return value;

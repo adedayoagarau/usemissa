@@ -61,7 +61,7 @@ export class CreatorReminderRepository extends CreatorRepositoryBase {
       if (existing && ['scheduled', 'needs-review'].includes(existing.state)) throw new ReminderValidationError('You already have this reminder. Open it to reschedule or cancel it.');
       const row = (await client.query<{ id: string; revision: number }>(`insert into creator_application_reminders(id,account_id,opportunity_id,kind,title,timezone,due_at,repeat_days,deadline_offset_days,source_deadline)
         values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-        on conflict(account_id,opportunity_id,kind) do update set title=excluded.title,timezone=excluded.timezone,due_at=excluded.due_at,repeat_days=excluded.repeat_days,deadline_offset_days=excluded.deadline_offset_days,source_deadline=excluded.source_deadline,state='scheduled',snoozed_until=null,revision=creator_application_reminders.revision+1,updated_at=now()
+        on conflict(account_id,opportunity_id,kind,coalesce(subject_kind,''),coalesce(subject_id,'')) do update set title=excluded.title,timezone=excluded.timezone,due_at=excluded.due_at,repeat_days=excluded.repeat_days,deadline_offset_days=excluded.deadline_offset_days,source_deadline=excluded.source_deadline,state='scheduled',snoozed_until=null,revision=creator_application_reminders.revision+1,updated_at=now()
         returning id,revision`, [randomUUID(), envelope.accountId, input.opportunityId, input.kind, input.kind === 'deadline' ? 'Application deadline' : input.title, input.timezone, due, input.kind === 'deadline' ? 0 : input.repeatDays, input.kind === 'deadline' ? input.offsetDays : null, input.kind === 'deadline' ? t.deadline : null])).rows[0];
       return { resourceType: 'application-reminder', resourceId: row.id, revision: row.revision };
     });
