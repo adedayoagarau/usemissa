@@ -309,9 +309,12 @@ export class PostgresEditorialIntelligenceRepository {
           `SELECT edition_year, genre, source_rank, source_score, source_url
            FROM missa_pushcart_rankings
            WHERE profile_id = $1
-             AND edition_year = (SELECT MAX(edition_year) FROM missa_pushcart_rankings WHERE profile_id = $1)
+             AND edition_year = COALESCE(
+               $2::int,
+               (SELECT MAX(edition_year) FROM missa_pushcart_rankings WHERE profile_id = $1)
+             )
            ORDER BY source_rank ASC`,
-          [profileId],
+          [profileId, ranking?.rankingYear ?? null],
         ),
       ]);
 

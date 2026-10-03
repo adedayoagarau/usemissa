@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronLeft, ChevronRight, Search } from "lucide-react";
@@ -29,19 +29,22 @@ import { ReportResponseDialog } from "./report-response-dialog";
 import { MagazineTrackerAction } from "./magazine-tracker-action";
 import { EditorialIntelligenceDrawer } from "./editorial-intelligence-drawer";
 import {
+  MAGAZINE_SORT_LABELS,
   NOT_RECORDED,
   PRO_PAY_LABEL,
+  compareMagazines,
   feeCell,
+  honoursLines,
   magazineFilters,
   payCell,
   replyCell,
   type MagazineFilterId,
+  type MagazineSort,
 } from "@/lib/magazineFacts";
 
 const genres = ["overall", "poetry", "fiction", "nonfiction"] as const;
 
 const pageSize = 25;
-type Sort = "rank" | "accolades" | "pay" | "turnaround";
 
 export function MagazineRankingsInteractive({
   initialItems,
@@ -58,7 +61,7 @@ export function MagazineRankingsInteractive({
   const items = initialItems;
   const [search, setSearch] = useState("");
   const [tier, setTier] = useState("all");
-  const [sort, setSort] = useState<Sort>("rank");
+  const [sort, setSort] = useState<MagazineSort>("rank");
   const [filters, setFilters] = useState<MagazineFilterId[]>([]);
   const [page, setPage] = useState(0);
   const filtered = useMemo(
@@ -74,17 +77,7 @@ export function MagazineRankingsInteractive({
             return false;
           return filters.every((filter) => magazineFilters[filter](row));
         })
-
-        .sort((a, b) =>
-          sort === "accolades"
-            ? b.accoladesScore - a.accoladesScore
-            : sort === "pay"
-              ? b.payScore - a.payScore
-              : sort === "turnaround"
-                ? (a.medianResponseDays ?? Infinity) -
-                  (b.medianResponseDays ?? Infinity)
-                : a.rankPosition - b.rankPosition,
-        ),
+        .sort(compareMagazines(sort)),
     [items, search, tier, filters, sort],
   );
   const currentPage = Math.min(
@@ -192,15 +185,20 @@ export function MagazineRankingsInteractive({
             id="magazine-sort"
             value={sort}
             onChange={(e) => {
-              setSort(e.target.value as Sort);
+              setSort(e.target.value as MagazineSort);
               setPage(0);
             }}
             className="w-full [&_select]:h-11"
           >
-            <option value="rank">Missa rank</option>
-            <option value="accolades">Anthology honors</option>
-            <option value="pay">Contributor pay score</option>
-            <option value="turnaround">Response time score</option>
+            {(
+              Object.entries(MAGAZINE_SORT_LABELS) as Array<
+                [MagazineSort, string]
+              >
+            ).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
           </NativeSelect>
         </Field>
       </div>
@@ -275,16 +273,23 @@ export function MagazineRankingsInteractive({
       ) : (
         <Table>
           <caption className="sr-only">
-            {items[0]?.rankingYear} {currentGenre} magazine rankings. Scores are
-            out of 100; a dash means no source records the fact.
+            {items[0]?.rankingYear} {currentGenre} magazine rankings, ordered by{" "}
+            {MAGAZINE_SORT_LABELS[sort].toLowerCase()}. Scores are out of 100; a
+            dash means no source records the fact.
           </caption>
           <TableHeader>
             <TableRow variant="static">
               <TableHead scope="col" className="w-10 text-start sm:w-14">
-                Rank
+                {sort === "rank" ? "Rank" : "#"}
               </TableHead>
               <TableHead scope="col" className="text-start">
                 Magazine
+              </TableHead>
+              <TableHead
+                scope="col"
+                className="hidden w-44 text-start xl:table-cell"
+              >
+                Honours
               </TableHead>
               <TableHead
                 scope="col"
@@ -323,6 +328,13 @@ export function MagazineRankingsInteractive({
               const pay = payCell(row);
               const reply = preview ? null : replyCell(row);
               const rowTier = tierParts(row.prestigeTier);
+              const honours = honoursLines(row);
+              // Other sorts number the list in their own order; the Missa
+              // rank stays visible under the name.
+              const position =
+                sort === "rank"
+                  ? row.rankPosition
+                  : currentPage * pageSize + index + 1;
               const startsTier =
                 groupByTier &&
                 (index === 0 ||
@@ -369,7 +381,7 @@ export function MagazineRankingsInteractive({
                     <TableRow variant="static">
                       <TableHead
                         scope="colgroup"
-                        colSpan={preview ? 6 : 7}
+                        colSpan={preview ? 7 : 8}
                         className="pt-8 pb-2 text-start"
                       >
                         <span className="text-base font-semibold">
@@ -388,7 +400,7 @@ export function MagazineRankingsInteractive({
                       tone="muted"
                       className="py-5 align-top text-lg leading-tight tabular-nums"
                     >
-                      {row.rankPosition}
+                      {position}
                     </TableCell>
                     <TableCell className="py-5 align-top whitespace-normal">
                       <Link
@@ -398,6 +410,9 @@ export function MagazineRankingsInteractive({
                         {row.name}
                       </Link>
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {sort !== "rank" && (
+                          <span>Missa rank {row.rankPosition}</span>
+                        )}
                         {!groupByTier && <span>{rowTier.label}</span>}
                         {!preview && (
                           <MagazineScheduleBadge schedule={row.schedule} />
@@ -406,9 +421,34 @@ export function MagazineRankingsInteractive({
                           <span>Simultaneous submissions OK</span>
                         )}
                       </div>
-                      <dl className="mt-3 grid grid-cols-3 gap-3 md:grid-cols-2 lg:hidden">
-                        <FactItem label="Fee" value={fee} />
-                        <FactItem label="Pay" value={pay} />
+                      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 md:grid-cols-3 lg:grid-cols-1 xl:hidden">
+                        <FactItem
+                          label="Honours"
+                          value={
+                            honours.length ? (
+                              honours.map((line) => (
+                                <span key={line} className="block">
+                                  {line}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground">
+                                None on record
+                              </span>
+                            )
+                          }
+                          className="col-span-2 md:col-span-1"
+                        />
+                        <FactItem
+                          label="Fee"
+                          value={fee}
+                          className="lg:hidden"
+                        />
+                        <FactItem
+                          label="Pay"
+                          value={pay}
+                          className="lg:hidden"
+                        />
                         <FactItem
                           label="Replies"
                           value={reply}
@@ -417,6 +457,22 @@ export function MagazineRankingsInteractive({
                       </dl>
                       {!preview && (
                         <div className="-ms-2.5 mt-2 sm:hidden">{drawer}</div>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden py-5 align-top text-sm xl:table-cell">
+                      {honours.length ? (
+                        <>
+                          <span className="block">{honours[0]}</span>
+                          {honours[1] && (
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {honours[1]}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          None on record
+                        </span>
                       )}
                     </TableCell>
                     <FactCell value={fee} className="hidden lg:table-cell" />
@@ -498,7 +554,7 @@ function FactItem({
   className,
 }: {
   label: string;
-  value: string | null;
+  value: ReactNode;
   className?: string;
 }) {
   return (

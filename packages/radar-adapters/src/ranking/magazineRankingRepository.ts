@@ -58,6 +58,11 @@ export interface MagazineRankingRow {
   blindReading: boolean | null;
   digitalArchive: boolean | null;
   telemetryReports: number;
+  /** Pushcart tally rank in this year's edition (overall: the best genre), else null. */
+  pushcartRank: number | null;
+  pushcartGenre: "fiction" | "poetry" | "nonfiction" | null;
+  /** Anthology selections the honours score counts (the last ten editions). */
+  anthologySelections: number;
   /** Where each recorded fact comes from: fee, pay, response, simultaneous… */
   factSources: Record<string, { url: string; recordedOn: string }>;
   pillarStatus: PillarStatusMap;
@@ -227,6 +232,34 @@ function opportunityStatus(
   return "unknown";
 }
 
+/**
+ * Honours shown beside a ranking: the Pushcart tally rank in the ranking
+ * year's edition (overall rows take the best genre) and the anthology
+ * selections the honours score counts (last ten editions, matching genre).
+ */
+const HONOURS_COLUMNS = `
+        honours_pc.pushcart_rank,
+        honours_pc.pushcart_genre,
+        COALESCE(honours_an.anthology_selections, 0) AS anthology_selections`;
+
+const HONOURS_JOINS = `
+      LEFT JOIN LATERAL (
+        SELECT pr.source_rank AS pushcart_rank, pr.genre AS pushcart_genre
+        FROM missa_pushcart_rankings pr
+        WHERE pr.profile_id = r.profile_id
+          AND pr.edition_year = r.ranking_year
+          AND (r.genre = 'overall' OR pr.genre = r.genre)
+        ORDER BY pr.source_rank ASC
+        LIMIT 1
+      ) honours_pc ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS anthology_selections
+        FROM missa_literary_awards a
+        WHERE a.profile_id = r.profile_id
+          AND a.award_year BETWEEN r.ranking_year - 9 AND r.ranking_year
+          AND (r.genre = 'overall' OR a.genre = r.genre OR a.genre = 'hybrid')
+      ) honours_an ON true`;
+
 /** Maps a stored ranking row (with profile name, slug and website) to the public shape. */
 export function rankingRow(row: Record<string, unknown>): MagazineRankingRow {
   const activeOpportunity = nullableText(row.active_opportunity_id)
@@ -287,6 +320,9 @@ export function rankingRow(row: Record<string, unknown>): MagazineRankingRow {
     blindReading: nullableBoolean(row.blind_reading),
     digitalArchive: nullableBoolean(row.digital_archive),
     telemetryReports: Number(row.telemetry_reports ?? 0),
+    pushcartRank: nullableNumber(row.pushcart_rank),
+    pushcartGenre: oneOf(row.pushcart_genre, ["fiction", "poetry", "nonfiction"] as const),
+    anthologySelections: Number(row.anthology_selections ?? 0),
     factSources: factSourcesFrom(row.fact_sources),
     pillarStatus: pillarStatusFrom(row.pillar_status),
     coverage: Number(row.coverage ?? 0),
@@ -430,7 +466,7 @@ export class PostgresMagazineRankingRepository {
         r.telemetry_reports,
         r.fact_sources,
         r.pillar_status,
-        r.coverage,
+        r.coverage,${HONOURS_COLUMNS},
         COUNT(*) OVER() as total_count
       FROM canonical_rankings r
       JOIN gary_profiles p ON p.id = r.profile_id
@@ -471,7 +507,7 @@ export class PostgresMagazineRankingRepository {
           o.deadline_date ASC NULLS LAST,
           o.title ASC
         LIMIT 1
-      ) active_opp ON true
+      ) active_opp ON true${HONOURS_JOINS}
       WHERE ${whereClause}
       ORDER BY r.rank_position ASC
       LIMIT $${values.length + 1} OFFSET $${values.length + 2}
@@ -542,7 +578,7 @@ export class PostgresMagazineRankingRepository {
           r.telemetry_reports,
           r.fact_sources,
           r.pillar_status,
-          r.coverage
+          r.coverage,${HONOURS_COLUMNS}
         FROM missa_magazine_rankings r
         JOIN gary_profiles p ON p.id = r.profile_id
         LEFT JOIN latest_observation ON latest_observation.profile_id = p.id
@@ -575,7 +611,7 @@ export class PostgresMagazineRankingRepository {
             o.deadline_date ASC NULLS LAST,
             o.title ASC
           LIMIT 1
-        ) active_opp ON true
+        ) active_opp ON true${HONOURS_JOINS}
         WHERE r.profile_id = $1 AND r.ranking_year = $2
         ORDER BY CASE WHEN r.genre = 'overall' THEN 1 ELSE 2 END, r.rank_position ASC`,
         [profileId, rankingYear],
