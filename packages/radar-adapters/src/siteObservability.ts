@@ -233,6 +233,7 @@ export interface SiteTrafficData {
   current: TrafficSummary;
   previous: TrafficSummary;
   live: number;
+  countriesReached: number;
   daily: Array<{ day: string; visitors: number; visits: number; pageviews: number }>;
   hourly: Array<{ hour: number; visitors: number }>;
   topPages: Breakdown[];
@@ -251,7 +252,7 @@ export interface SiteTrafficData {
 const emptySummary: TrafficSummary = { visitors: 0, visits: 0, pageviews: 0, bounceRate: null, avgVisitSeconds: null, pagesPerVisit: null };
 
 function emptyTraffic(days: number, now: Date): SiteTrafficData {
-  return { available: false, generatedAt: now.toISOString(), days, current: emptySummary, previous: emptySummary, live: 0, daily: [], hourly: [], topPages: [], entryPages: [], exitPages: [], referrers: [], sources: [], campaigns: [], countries: [], devices: [], browsers: [], operatingSystems: [], goals: [] };
+  return { available: false, generatedAt: now.toISOString(), days, current: emptySummary, previous: emptySummary, live: 0, countriesReached: 0, daily: [], hourly: [], topPages: [], entryPages: [], exitPages: [], referrers: [], sources: [], campaigns: [], countries: [], devices: [], browsers: [], operatingSystems: [], goals: [] };
 }
 
 /** Sessions: a visitor's pageviews on one day with gaps under 30 minutes. */
@@ -319,10 +320,11 @@ export async function readSiteTraffic(connectionString: string, options: { days?
     if (!(await tableExists(pool, "site_events"))) return emptyTraffic(days, now);
     const { current, previous } = periodFor(days, now);
     const params = [current.from.toISOString(), current.to.toISOString()];
-    const [currentSummary, previousSummary, live, daily, hourly, topPages, entryPages, exitPages, referrers, sources, campaigns, countries, devices, browsers, operatingSystems, goals] = await Promise.all([
+    const [currentSummary, previousSummary, live, countriesReached, daily, hourly, topPages, entryPages, exitPages, referrers, sources, campaigns, countries, devices, browsers, operatingSystems, goals] = await Promise.all([
       trafficSummary(pool, current),
       trafficSummary(pool, previous),
       rows(pool, `select count(distinct visitor_hash) as live from site_events where kind = 'pageview' and occurred_at >= $1::timestamptz - interval '5 minutes' and occurred_at <= $1::timestamptz`, [now.toISOString()]),
+      rows(pool, `select count(distinct country) as countries from site_events where kind = 'pageview' and country is not null and occurred_at >= $1 and occurred_at < $2`, params),
       rows(pool, `
         with ${SESSIONS_CTE},
         days as (select generate_series(($1::timestamptz at time zone 'UTC')::date, (($2::timestamptz - interval '1 second') at time zone 'UTC')::date, interval '1 day')::date as day),
@@ -350,6 +352,7 @@ export async function readSiteTraffic(connectionString: string, options: { days?
       current: currentSummary,
       previous: previousSummary,
       live: num(live[0]?.live),
+      countriesReached: num(countriesReached[0]?.countries),
       daily: daily.map((row) => ({ day: String(row.day), visitors: num(row.visitors), visits: num(row.visits), pageviews: num(row.pageviews) })),
       hourly: Array.from({ length: 24 }, (_, hour) => ({ hour, visitors: num(hourly.find((row) => num(row.hour) === hour)?.visitors) })),
       topPages: topPages.map((row) => ({ label: String(row.label), visitors: num(row.visitors), pageviews: num(row.pageviews) })),
@@ -923,4 +926,63 @@ export async function readMetricShare(connectionString: string, token: string): 
 export async function revokeMetricShare(connectionString: string, token: string): Promise<boolean> {
   const result = await sharedPool(connectionString).query(`update public_metric_shares set revoked_at = now() where token = $1 and revoked_at is null`, [token]);
   return (result.rowCount ?? 0) > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Alert signals
+// ---------------------------------------------------------------------------
+
+export interface AlertSignals {
+  errorsLastHour: number;
+  avgErrorsPerHour: number;
+  visitorsLast24h: number;
+  avgDailyVisitors: number;
+  signupsLast24h: number;
+  avgDailySignups: number;
+  failedEmailsLast24h: number;
+}
+
+/** Recent activity against a trailing baseline, for spike and drop alerts. Missing tables read as zero. */
+export async function readAlertSignals(connectionString: string, now = new Date()): Promise<AlertSignals> {
+  const pool = sharedPool(connectionString);
+  const at = now.toISOString();
+  const [hasSite, hasAccounts, hasEffects] = await Promise.all(["site_events", "radar_accounts", "platform_message_effects"].map((table) => tableExists(pool as unknown as Pool, table)));
+  const [site, accounts, email] = await Promise.all([
+    hasSite
+      ? pool.query(`select
+          count(*) filter (where kind = 'error' and occurred_at >= $1::timestamptz - interval '1 hour') as errors_hour,
+          count(*) filter (where kind = 'error' and occurred_at >= $1::timestamptz - interval '7 days' and occurred_at < $1::timestamptz - interval '1 hour') / 167.0 as avg_errors_hour,
+          count(distinct visitor_hash) filter (where kind = 'pageview' and occurred_at >= $1::timestamptz - interval '24 hours') as visitors_24h,
+          count(distinct ((occurred_at at time zone 'UTC')::date, visitor_hash)) filter (where kind = 'pageview' and occurred_at >= $1::timestamptz - interval '8 days' and occurred_at < $1::timestamptz - interval '24 hours') / 7.0 as avg_visitors
+        from site_events where occurred_at >= $1::timestamptz - interval '8 days' and occurred_at <= $1`, [at])
+      : Promise.resolve({ rows: [] }),
+    hasAccounts
+      ? pool.query(`select
+          count(*) filter (where created_at >= $1::timestamptz - interval '24 hours') as signups_24h,
+          count(*) filter (where created_at >= $1::timestamptz - interval '15 days' and created_at < $1::timestamptz - interval '24 hours') / 14.0 as avg_signups
+        from radar_accounts where created_at >= $1::timestamptz - interval '15 days' and created_at <= $1`, [at])
+      : Promise.resolve({ rows: [] }),
+    hasEffects
+      ? pool.query(`select count(*) as failed from platform_message_effects where status = 'failed' and created_at >= $1::timestamptz - interval '24 hours'`, [at])
+      : Promise.resolve({ rows: [] }),
+  ]);
+  const s = site.rows[0] ?? {};
+  const a = accounts.rows[0] ?? {};
+  return {
+    errorsLastHour: num(s.errors_hour),
+    avgErrorsPerHour: num(s.avg_errors_hour),
+    visitorsLast24h: num(s.visitors_24h),
+    avgDailyVisitors: num(s.avg_visitors),
+    signupsLast24h: num(a.signups_24h),
+    avgDailySignups: num(a.avg_signups),
+    failedEmailsLast24h: num(email.rows[0]?.failed),
+  };
+}
+
+/** Email addresses of platform admins, for alert delivery when no explicit recipient is configured. */
+export async function listPlatformAdminEmails(connectionString: string): Promise<string[]> {
+  const pool = sharedPool(connectionString);
+  if (!(await tableExists(pool as unknown as Pool, "radar_accounts"))) return [];
+  const result = await pool.query<{ email: string }>(`select email from radar_accounts where coalesce((data->>'isAdmin')::boolean, false) and coalesce((data->>'active')::boolean, true) order by created_at limit 10`);
+  return result.rows.map((row) => row.email);
 }

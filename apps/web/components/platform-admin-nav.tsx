@@ -10,8 +10,12 @@ import {
   Contact,
   CreditCard,
   ChevronDown,
+  CircleDollarSign,
   FileText,
+  Filter,
+  Globe,
   FileClock,
+  HeartPulse,
   LayoutDashboard,
   LifeBuoy,
   ListChecks,
@@ -21,10 +25,12 @@ import {
   Menu,
   Radar,
   Settings2,
+  Share2,
   ShieldCheck,
   Sparkles,
   Table2,
   Tags,
+  TrendingUp,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -56,8 +62,17 @@ type NavItem = {
 const overviewLinks: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/operations", label: "Worklist", icon: ListChecks },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/data", label: "Data", icon: Table2 },
+];
+
+const analyticsLinks: NavItem[] = [
+  { href: "/admin/traffic", label: "Traffic", icon: Globe },
+  { href: "/admin/growth", label: "Sign-ups & users", icon: TrendingUp },
+  { href: "/admin/funnels", label: "Funnels", icon: Filter },
+  { href: "/admin/revenue", label: "Revenue", icon: CircleDollarSign },
+  { href: "/admin/health", label: "Health", icon: HeartPulse },
+  { href: "/admin/metrics", label: "Share metrics", icon: Share2 },
+  { href: "/admin/analytics", label: "Product events", icon: BarChart3 },
 ];
 
 const peopleLinks: NavItem[] = [
@@ -94,6 +109,7 @@ const advancedLinks: NavItem[] = [
 
 const navigationGroups: Array<{ label: string; items: NavItem[] }> = [
   { label: "Overview", items: overviewLinks },
+  { label: "Analytics", items: analyticsLinks },
   { label: "People", items: peopleLinks },
   { label: "Content & sources", items: contentLinks },
   { label: "Automation", items: automationLinks },

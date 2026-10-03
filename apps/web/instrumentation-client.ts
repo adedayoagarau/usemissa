@@ -16,3 +16,27 @@ if (
     return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
   };
 }
+
+/**
+ * Browser error reporting. Loaded only when NEXT_PUBLIC_SENTRY_DSN is set, and
+ * only after the visitor has accepted analytics, matching the cookie notice.
+ */
+const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN?.trim();
+if (sentryDsn && typeof window !== "undefined") {
+  let consented = false;
+  try {
+    consented = window.localStorage.getItem("missa.analytics.consent.v1") === "accepted";
+  } catch {
+    consented = false;
+  }
+  if (consented) {
+    void import("@sentry/nextjs").then((Sentry) => {
+      Sentry.init({
+        dsn: sentryDsn,
+        environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
+        tracesSampleRate: Number(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE ?? 0.05),
+        sendDefaultPii: false,
+      });
+    });
+  }
+}

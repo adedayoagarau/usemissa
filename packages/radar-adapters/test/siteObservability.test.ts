@@ -93,6 +93,7 @@ test("site observability round-trips against Postgres", { skip: !databaseUrl }, 
   assert.equal(traffic.current.visits, 5);
   assert.equal(traffic.current.bounceRate, 4 / 5);
   assert.equal(traffic.live, 1);
+  assert.equal(traffic.countriesReached, 2);
   assert.equal(traffic.sources.find((row) => row.label === "twitter")?.visits, 1);
   assert.equal(traffic.referrers.find((row) => row.label === "google.com")?.visitors, 1);
   assert.equal(traffic.devices.find((row) => row.label === "mobile")?.visitors, 1);
@@ -177,5 +178,20 @@ test("site observability round-trips against Postgres", { skip: !databaseUrl }, 
   const purged = await purgeSiteObservability(url, now);
   assert.equal(purged.salts, 1);
 
+  await pool.end();
+});
+
+test("alert signals compare recent activity with a trailing baseline", { skip: !databaseUrl }, async () => {
+  const { readAlertSignals } = await import("../src/siteObservability.js");
+  const url = databaseUrl!;
+  const pool = new Pool({ connectionString: url });
+  await pool.query("delete from site_events");
+  const now = new Date("2026-10-03T12:00:00Z");
+  for (let i = 0; i < 12; i++) await recordSiteHit({ connectionString: url, kind: "error", name: "client-error", path: "/", host: "h", ip: `9.9.9.${i}`, userAgent: CHROME, detail: "boom", now: new Date(now.getTime() - 10 * 60_000) });
+  await recordSiteHit({ connectionString: url, kind: "pageview", name: "pageview", path: "/", host: "h", ip: "8.8.8.8", userAgent: CHROME, now: new Date(now.getTime() - 3 * 86_400_000) });
+  const signals = await readAlertSignals(url, now);
+  assert.equal(signals.errorsLastHour, 12);
+  assert.equal(signals.visitorsLast24h, 0);
+  assert.equal(signals.avgDailyVisitors, 1 / 7);
   await pool.end();
 });
