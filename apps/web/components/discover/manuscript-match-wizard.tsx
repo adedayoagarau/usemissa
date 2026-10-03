@@ -1,63 +1,294 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import {
-  Sparkles,
-  Send,
-  Layers,
-  Flame,
-  Clock,
-  CheckCircle2,
-  ExternalLink,
-  Check,
-} from "lucide-react";
+import { CheckCircle2, ExternalLink, Info } from "lucide-react";
 import type {
-  ManuscriptMatchInput,
-  ManuscriptMatchResponse,
   ManuscriptMatchCard,
+  ManuscriptMatchResponse,
 } from "@missa/radar-adapters";
+import { FilterChip } from "@/components/missa/filter-chip";
+import { MatchExplanationTrigger } from "@/components/missa/match-explanation-trigger";
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { EditorialIntelligenceDrawer } from "@/components/rankings/editorial-intelligence-drawer";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { NativeSelect } from "@/components/ui/native-select";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupText,
+} from "@/components/ui/input-group";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Slider } from "@/components/ui/slider";
+import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import {
+  DEFAULT_MANUSCRIPT_BRIEF,
+  manuscriptMatchPayload,
+  type ManuscriptBrief,
+} from "./manuscript-match-brief";
+import styles from "./manuscript-match-wizard.module.css";
 
-const PRESET_STYLES = [
-  "fabulist",
-  "surrealist",
-  "lyric",
-  "realist",
-  "dark",
-  "experimental",
-  "personal",
-  "minimalist",
-  "prose-poetry",
-  "ghazal",
-  "hybrid",
-  "humorous",
+const FORMS: Array<{ value: ManuscriptBrief["genre"]; label: string }> = [
+  { value: "fiction", label: "Fiction" },
+  { value: "flash", label: "Flash" },
+  { value: "nonfiction", label: "Nonfiction" },
+  { value: "poetry", label: "Poetry" },
+  { value: "hybrid", label: "Hybrid" },
 ];
 
-const PRESET_COMPS = [
-  "Ocean Vuong",
+const STYLES: Array<{ value: string; label: string }> = [
+  { value: "fabulist", label: "Fabulist" },
+  { value: "surrealist", label: "Surreal" },
+  { value: "lyric", label: "Lyric" },
+  { value: "realist", label: "Realist" },
+  { value: "dark", label: "Dark" },
+  { value: "experimental", label: "Experimental" },
+  { value: "personal", label: "Personal" },
+  { value: "minimalist", label: "Minimalist" },
+  { value: "humorous", label: "Funny" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "prose-poetry", label: "Prose poetry" },
+  { value: "ghazal", label: "Ghazal" },
+];
+
+const COMP_AUTHORS = [
   "Carmen Maria Machado",
   "Kelly Link",
-  "Lydia Davis",
   "George Saunders",
+  "Lorrie Moore",
+  "Lydia Davis",
+  "Ocean Vuong",
   "Maggie Nelson",
   "Ben Lerner",
   "Ada Limón",
   "Kaveh Akbar",
-  "Lorrie Moore",
 ];
+
+/** Typed lengths accept any value in range; the slider moves in steps. */
+const WORDS = {
+  min: 50,
+  max: 30000,
+  sliderMin: 0,
+  sliderMax: 12000,
+  step: 250,
+};
+const POEMS = { min: 1, max: 10, sliderMin: 1, sliderMax: 10, step: 1 };
+
+type LaneKey = "all" | "dreamReach" | "debutChampions" | "rapidPro";
+
+const LANES: Array<{ key: LaneKey; label: string; description?: string }> = [
+  { key: "all", label: "All" },
+  {
+    key: "dreamReach",
+    label: "Reach",
+    description:
+      "Top-tier magazines. The odds are long, so send your strongest work.",
+  },
+  {
+    key: "debutChampions",
+    label: "Open to new writers",
+    description:
+      "Magazines with a record of publishing writers for the first time.",
+  },
+  {
+    key: "rapidPro",
+    label: "Fast or well paid",
+    description: "Professional rates, or a typical reply within 30 days.",
+  },
+];
+
+const SCORED_NOTE =
+  "Fit compares your brief with what Missa has recorded for this magazine. It isn't an eligibility check.";
+const LIMITED_NOTE =
+  "Missa hasn't recorded this magazine's guidelines, pay, or reply times yet, so it's listed in Missa ranking order.";
+
+function clamp(value: number, range: { min: number; max: number }) {
+  return Math.min(range.max, Math.max(range.min, Math.round(value)));
+}
+
+function money(cents: number) {
+  return `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
+}
+
+/** Every magazine across the engine's groups, best fit first, once each. */
+function shortlist(results: ManuscriptMatchResponse): ManuscriptMatchCard[] {
+  const seen = new Set<string>();
+  const cards: ManuscriptMatchCard[] = [];
+  for (const card of [
+    ...results.simultaneousPackets,
+    ...results.dreamReach,
+    ...results.debutChampions,
+    ...results.rapidPro,
+  ]) {
+    if (seen.has(card.profileId)) continue;
+    seen.add(card.profileId);
+    cards.push(card);
+  }
+  return cards.sort((a, b) => b.matchScore - a.matchScore);
+}
+
+type Fact = { key: string; label: React.ReactNode };
+
+/** Recorded facts only. Unknown values are omitted, not labelled unknown. */
+function recordedFacts(
+  card: ManuscriptMatchCard,
+  brief: ManuscriptBrief,
+): Fact[] {
+  const facts: Fact[] = [];
+  const { specs, compensation: pay, telemetry, aesthetic } = card;
+  if (brief.genre !== "poetry" && specs.maxWordCount) {
+    facts.push({
+      key: "words",
+      label: (
+        <>
+          Up to{" "}
+          <data value={specs.maxWordCount}>
+            {specs.maxWordCount.toLocaleString()}
+          </data>{" "}
+          words
+        </>
+      ),
+    });
+  }
+  if (pay.isProRate && pay.rateCentsPerWord) {
+    facts.push({
+      key: "pay",
+      label: (
+        <>
+          Pays <data value={pay.rateCentsPerWord}>{pay.rateCentsPerWord}¢</data>{" "}
+          a word
+        </>
+      ),
+    });
+  } else if (pay.isProRate) {
+    facts.push({ key: "pay", label: "Pays professional rates" });
+  } else if (pay.paysContributors && pay.flatRateCents) {
+    facts.push({
+      key: "pay",
+      label: (
+        <>
+          Pays <data value={pay.flatRateCents}>{money(pay.flatRateCents)}</data>
+        </>
+      ),
+    });
+  } else if (pay.paysContributors === true) {
+    facts.push({ key: "pay", label: "Pays contributors" });
+  } else if (pay.paysContributors === false) {
+    facts.push({ key: "pay", label: "Unpaid" });
+  }
+  if (pay.submissionFeeCents === 0) {
+    facts.push({ key: "fee", label: "Free to submit" });
+  } else if (pay.submissionFeeCents !== null) {
+    facts.push({
+      key: "fee",
+      label: (
+        <>
+          <data value={pay.submissionFeeCents}>
+            {money(pay.submissionFeeCents)}
+          </data>{" "}
+          fee
+          {pay.hasFeeWaivers ? ", waivers available" : ""}
+        </>
+      ),
+    });
+  }
+  if (telemetry.medianResponseDays !== null) {
+    facts.push({
+      key: "reply",
+      label: (
+        <>
+          Replies in about{" "}
+          <data value={telemetry.medianResponseDays}>
+            {telemetry.medianResponseDays}
+          </data>{" "}
+          days
+        </>
+      ),
+    });
+  }
+  if (aesthetic.unsolicitedSlushRatioPercent !== null) {
+    facts.push({
+      key: "open",
+      label: (
+        <>
+          <data value={aesthetic.unsolicitedSlushRatioPercent}>
+            {aesthetic.unsolicitedSlushRatioPercent}%
+          </data>{" "}
+          of published work from open submissions
+        </>
+      ),
+    });
+  }
+  if (specs.allowsSimultaneous === false) {
+    facts.push({ key: "simultaneous", label: "No simultaneous submissions" });
+  }
+  return facts;
+}
+
+/** Conflicts between the brief and the magazine's recorded guidelines. */
+function watchouts(
+  card: ManuscriptMatchCard,
+  brief: ManuscriptBrief,
+): string[] {
+  const list: string[] = [];
+  const { specs, compensation: pay } = card;
+  if (brief.genre !== "poetry") {
+    if (specs.maxWordCount && brief.wordCount > specs.maxWordCount) {
+      list.push(`Over the ${specs.maxWordCount.toLocaleString()}-word limit`);
+    }
+    if (specs.minWordCount && brief.wordCount < specs.minWordCount) {
+      list.push(
+        `Under the ${specs.minWordCount.toLocaleString()}-word minimum`,
+      );
+    }
+  }
+  if (brief.allowSimultaneous && specs.allowsSimultaneous === false) {
+    list.push("Doesn't accept simultaneous submissions");
+  }
+  if (
+    brief.feeTolerance === "free_only" &&
+    pay.submissionFeeCents &&
+    !pay.hasFeeWaivers
+  ) {
+    list.push(`Charges a ${money(pay.submissionFeeCents)} fee with no waiver`);
+  }
+  if (brief.minPayRate === "pro_rates_only" && !pay.isProRate) {
+    list.push("Doesn't pay professional rates");
+  } else if (
+    brief.minPayRate === "any_paying" &&
+    pay.paysContributors === false
+  ) {
+    list.push("Doesn't pay contributors");
+  }
+  return list;
+}
+
+function toggled(list: string[], value: string, on: boolean) {
+  return on ? [...list, value] : list.filter((item) => item !== value);
+}
 
 interface ManuscriptMatchWizardProps {
   initialData?: ManuscriptMatchResponse;
@@ -66,486 +297,569 @@ interface ManuscriptMatchWizardProps {
 export function ManuscriptMatchWizard({
   initialData,
 }: ManuscriptMatchWizardProps) {
-  const [genre, setGenre] =
-    useState<ManuscriptMatchInput["genre"]>("fiction");
-  const [wordCount, setWordCount] = useState<number>(3500);
-  const [poemCount, setPoemCount] = useState<number>(3);
-  const [selectedStyles, setSelectedStyles] = useState<string[]>([
-    "fabulist",
-    "lyric",
-  ]);
-  const [selectedComps, setSelectedComps] = useState<string[]>([
-    "Carmen Maria Machado",
-  ]);
-  const [isDebutAuthor, setIsDebutAuthor] = useState<boolean>(true);
-  const [feeTolerance, setFeeTolerance] =
-    useState<ManuscriptMatchInput["feeTolerance"]>("free_only");
-  const [minPayRate, setMinPayRate] =
-    useState<ManuscriptMatchInput["minPayRate"]>("all");
-  const [allowSimultaneous, setAllowSimultaneous] = useState<boolean>(true);
-
+  const [brief, setBrief] = useState<ManuscriptBrief>(DEFAULT_MANUSCRIPT_BRIEF);
+  const [submittedBrief, setSubmittedBrief] = useState<ManuscriptBrief>(
+    DEFAULT_MANUSCRIPT_BRIEF,
+  );
+  const [lengthDraft, setLengthDraft] = useState<string | null>(null);
   const [results, setResults] = useState<ManuscriptMatchResponse | null>(
     initialData ?? null,
   );
-  const [activeTab, setActiveTab] = useState<
-    "dream_reach" | "debut_champions" | "rapid_pro" | "packet_builder"
-  >("debut_champions");
-
+  const [lane, setLane] = useState<LaneKey>("all");
+  const [announcement, setAnnouncement] = useState("");
   const [isPending, startTransition] = useTransition();
+  const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
+  const ids = useId();
 
-  const toggleStyle = (style: string) => {
-    setSelectedStyles((prev) =>
-      prev.includes(style) ? prev.filter((s) => s !== style) : [...prev, style],
+  const poetry = brief.genre === "poetry";
+  const lengthRange = poetry ? POEMS : WORDS;
+  const lengthValue = poetry ? brief.poemCount : brief.wordCount;
+  const lengthUnit = poetry
+    ? brief.poemCount === 1
+      ? "poem"
+      : "poems"
+    : "words";
+  const update = (patch: Partial<ManuscriptBrief>) =>
+    setBrief((current) => ({ ...current, ...patch }));
+  const setLength = (value: number) =>
+    update(
+      poetry
+        ? { poemCount: clamp(value, POEMS) }
+        : { wordCount: clamp(value, WORDS) },
     );
-  };
 
-  const toggleComp = (comp: string) => {
-    setSelectedComps((prev) =>
-      prev.includes(comp) ? prev.filter((c) => c !== comp) : [...prev, comp],
+  const briefChanged = JSON.stringify(brief) !== JSON.stringify(submittedBrief);
+
+  const lanes = useMemo(() => {
+    if (!results || results.status !== "available") return null;
+    const all = shortlist(results);
+    const cards: Record<LaneKey, ManuscriptMatchCard[]> = {
+      all,
+      dreamReach: results.dreamReach,
+      debutChampions: results.debutChampions,
+      rapidPro: results.rapidPro,
+    };
+    return LANES.filter((entry) => cards[entry.key].length > 0).map(
+      (entry) => ({ ...entry, cards: cards[entry.key] }),
     );
-  };
+  }, [results]);
+  const activeLane = lanes?.some((entry) => entry.key === lane) ? lane : "all";
 
-  const handleRunMatch = () => {
+  const findMagazines = (event: React.FormEvent) => {
+    event.preventDefault();
+    const sent = brief;
     startTransition(async () => {
       try {
-        const payload: ManuscriptMatchInput = {
-          genre,
-          wordCount: genre === "poetry" ? undefined : wordCount,
-          poemCount: genre === "poetry" ? poemCount : undefined,
-          aestheticTags: selectedStyles,
-          compAuthors: selectedComps,
-          isDebutAuthor,
-          feeTolerance,
-          minPayRate,
-          allowSimultaneous,
-        };
-
         const res = await fetch("/api/discover/match", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(manuscriptMatchPayload(sent)),
         });
-
         if (!res.ok) throw new Error("Match computation failed");
         const data = (await res.json()) as ManuscriptMatchResponse;
         setResults(data);
-        if (data.status === "available" && data.matchedCount > 0) {
-          toast.success(`Compared ${data.totalAnalyzed.toLocaleString()} publications.`);
+        setSubmittedBrief(sent);
+        setLane("all");
+        const found = data.status === "available" ? shortlist(data).length : 0;
+        setAnnouncement(
+          data.status === "available"
+            ? `${found} ${found === 1 ? "magazine" : "magazines"} to consider.`
+            : "Matching is unavailable.",
+        );
+        const heading = resultsHeadingRef.current;
+        if (
+          heading &&
+          heading.getBoundingClientRect().top > window.innerHeight
+        ) {
+          heading.focus();
         }
       } catch {
-        toast.error("We could not compare publications. Try again.");
+        toast.error("We couldn't compare magazines. Try again.");
       }
     });
   };
 
-  const currentCards: ManuscriptMatchCard[] = results
-    ? activeTab === "dream_reach"
-      ? results.dreamReach
-      : activeTab === "debut_champions"
-        ? results.debutChampions
-        : activeTab === "rapid_pro"
-          ? results.rapidPro
-          : results.simultaneousPackets
-    : [];
-
   return (
-    <div className="space-y-10">
-      <section className="border border-border bg-card p-5 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border-subtle)] pb-5">
-          <div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="size-5 text-[var(--text-primary)]" />
-              <h2 className="font-serif text-xl font-medium text-[var(--text-primary)]">
-                Manuscript Strategy & Submission Matcher
-              </h2>
-            </div>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              Input your piece specs and style markers to calculate fit scores across the Missa magazine index.
-            </p>
-          </div>
+    <div className={styles.layout}>
+      <form
+        className={styles.brief}
+        onSubmit={findMagazines}
+        aria-labelledby={`${ids}-brief`}
+      >
+        <h2 id={`${ids}-brief`} className={styles.briefTitle}>
+          Your piece
+        </h2>
 
-          <Button
-            type="button"
-            onClick={handleRunMatch}
-            disabled={isPending}
+        <FieldSet className={styles.group}>
+          <FieldLegend variant="label" className={styles.legend}>
+            Form
+          </FieldLegend>
+          <RadioGroup
+            className={styles.segments}
+            value={brief.genre}
+            onValueChange={(value) =>
+              update({ genre: value as ManuscriptBrief["genre"] })
+            }
           >
-            {isPending ? (
-              <Clock className="size-4 animate-spin" />
-            ) : (
-              <Send className="size-4" />
-            )}
-            {isPending ? "Calculating fit..." : "Find Matching Journals"}
-          </Button>
-        </div>
-
-        <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Genre & Specs */}
-          <div className="space-y-4">
-            <div>
-              <p className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                Genre / Form
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {(
-                  ["fiction", "poetry", "nonfiction", "flash", "hybrid"] as const
-                ).map((g) => (
-                  <Button
-                    key={g}
-                    type="button"
-                    onClick={() => setGenre(g)}
-                    variant={genre === g ? "default" : "outline"}
-                    size="xs"
-                    aria-pressed={genre === g}
-                  >
-                    <span className="capitalize">{g}</span>
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {genre === "poetry" ? (
-              <div>
-                <label className="block font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                  Poem Count in Submission ({poemCount} poems)
-                </label>
-                <input
-                  type="range"
-                  min={1}
-                  max={8}
-                  step={1}
-                  value={poemCount}
-                  onChange={(e) => setPoemCount(Number(e.target.value))}
-                  aria-label="Poem count in submission"
-                  className="mt-2 w-full accent-[var(--text-primary)]"
+            {FORMS.map((form) => (
+              <label key={form.value} className={styles.segment}>
+                <RadioGroupItem
+                  value={form.value}
+                  className={styles.segmentRadio}
                 />
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center justify-between">
-                  <label className="block font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                    Word Count
-                  </label>
-                  <span className="font-mono text-xs font-medium text-[var(--text-primary)]">
-                    {wordCount.toLocaleString()} words
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min={500}
-                  max={12000}
-                  step={250}
-                  value={wordCount}
-                  onChange={(e) => setWordCount(Number(e.target.value))}
-                  aria-label="Manuscript word count"
-                  className="mt-2 w-full accent-[var(--text-primary)]"
-                />
-              </div>
-            )}
-          </div>
+                {form.label}
+              </label>
+            ))}
+          </RadioGroup>
+        </FieldSet>
 
-          {/* Aesthetic Styles & Forms */}
-          <div className="space-y-4">
-            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-              Aesthetic Tone & Markers
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {PRESET_STYLES.map((style) => {
-                const isSelected = selectedStyles.includes(style);
-                return (
-                  <Button
-                    key={style}
-                    type="button"
-                    onClick={() => toggleStyle(style)}
-                    variant={isSelected ? "default" : "outline"}
-                    size="xs"
-                    aria-pressed={isSelected}
-                  >
-                    #{style}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Author Comps */}
-          <div className="space-y-4">
-            <p className="font-sans text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-              Comp Author Influences
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {PRESET_COMPS.map((comp) => {
-                const isSelected = selectedComps.includes(comp);
-                return (
-                  <Button
-                    key={comp}
-                    type="button"
-                    onClick={() => toggleComp(comp)}
-                    variant={isSelected ? "secondary" : "outline"}
-                    size="xs"
-                    aria-pressed={isSelected}
-                  >
-                    {isSelected && <Check className="size-3" />}
-                    {comp}
-                  </Button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Filters & Toggles */}
-        <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-[var(--border-subtle)] pt-4 text-xs">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isDebutAuthor}
-              onChange={(e) => setIsDebutAuthor(e.target.checked)}
-              className="rounded accent-[var(--text-primary)]"
-            />
-            <span className="font-medium text-[var(--text-primary)]">
-              I am a debut / first-time author
-            </span>
-          </label>
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allowSimultaneous}
-              onChange={(e) => setAllowSimultaneous(e.target.checked)}
-              className="rounded accent-[var(--text-primary)]"
-            />
-            <span className="text-[var(--text-secondary)]">
-              Allows simultaneous submissions
-            </span>
-          </label>
-
-          <Field className="min-w-56 gap-1">
-            <FieldLabel htmlFor="match-fee-policy">Fee policy</FieldLabel>
-            <NativeSelect
-              id="match-fee-policy"
-              value={feeTolerance}
-              onChange={(e) =>
-                setFeeTolerance(
-                  e.target.value as ManuscriptMatchInput["feeTolerance"],
-                )
-              }
-            >
-              <option value="free_only">No fee / Fee-waiver required</option>
-              <option value="fee_ok_with_waivers">Fee OK with waivers</option>
-              <option value="any">Any fee policy</option>
-            </NativeSelect>
-          </Field>
-
-          <Field className="min-w-52 gap-1">
-            <FieldLabel htmlFor="match-pay-rate">Contributor pay</FieldLabel>
-            <NativeSelect
-              id="match-pay-rate"
-              value={minPayRate}
-              onChange={(e) =>
-                setMinPayRate(
-                  e.target.value as ManuscriptMatchInput["minPayRate"],
-                )
-              }
-            >
-              <option value="all">All magazines</option>
-              <option value="any_paying">Paying contributors only</option>
-              <option value="pro_rates_only">Pro Rates Only (≥ $0.08/w)</option>
-            </NativeSelect>
-          </Field>
-        </div>
-      </section>
-
-      {/* 2. Results Section & Strategy Tiers */}
-      {results?.status === "unavailable" && (
-        <Empty variant="bordered" role="status">
-          <EmptyHeader>
-            <EmptyTitle>Publication matching is unavailable</EmptyTitle>
-            <EmptyDescription>
-              The magazine index could not be read, so no matches are shown.
-              Try again later, or browse the directory.
-            </EmptyDescription>
-          </EmptyHeader>
-          <Button
-            variant="outline"
-            nativeButton={false}
-            render={<Link href="/directory" />}
+        <Field className={styles.group}>
+          <FieldLabel
+            id={`${ids}-length-label`}
+            htmlFor={`${ids}-length`}
+            className={styles.legend}
           >
-            Browse the directory
-          </Button>
-        </Empty>
-      )}
+            {poetry ? "Poems in the packet" : "Length"}
+          </FieldLabel>
+          <InputGroup className={styles.lengthInput}>
+            <InputGroupInput
+              id={`${ids}-length`}
+              type="number"
+              inputMode="numeric"
+              min={lengthRange.min}
+              max={lengthRange.max}
+              value={lengthDraft ?? String(lengthValue)}
+              onChange={(event) => {
+                setLengthDraft(event.target.value);
+                const next = Number(event.target.value);
+                if (event.target.value && Number.isFinite(next))
+                  setLength(next);
+              }}
+              onBlur={() => setLengthDraft(null)}
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupText>{lengthUnit}</InputGroupText>
+            </InputGroupAddon>
+          </InputGroup>
+          <Slider
+            className={styles.slider}
+            min={lengthRange.sliderMin}
+            max={lengthRange.sliderMax}
+            step={lengthRange.step}
+            value={[lengthValue]}
+            onValueChange={(value) => {
+              setLengthDraft(null);
+              setLength(Array.isArray(value) ? value[0] : value);
+            }}
+            aria-labelledby={`${ids}-length-label`}
+          />
+        </Field>
 
-      {results?.status === "available" && results.matchedCount === 0 && (
-        <Empty variant="bordered" role="status">
-          <EmptyHeader>
-            <EmptyTitle>No matching publications</EmptyTitle>
-            <EmptyDescription>
-              Change the word count, styles, or pay filter and compare again.
-            </EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      )}
-
-      {results && results.status === "available" && results.matchedCount > 0 && (
-        <section className="space-y-6">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border-subtle)] pb-4">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                onClick={() => setActiveTab("debut_champions")}
-                variant={activeTab === "debut_champions" ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={activeTab === "debut_champions"}
+        <FieldSet className={styles.group}>
+          <FieldLegend variant="label" className={styles.legend}>
+            Style
+          </FieldLegend>
+          <FieldDescription className={styles.helper}>
+            Pick any that describe the piece.
+          </FieldDescription>
+          <div className={styles.chips}>
+            {STYLES.map((style) => (
+              <FilterChip
+                key={style.value}
+                selected={brief.aestheticTags.includes(style.value)}
+                onSelectedChange={(on) =>
+                  update({
+                    aestheticTags: toggled(
+                      brief.aestheticTags,
+                      style.value,
+                      on,
+                    ),
+                  })
+                }
               >
-                <Flame className="size-3.5" />
-                Debut & Slush Champions ({results.debutChampions.length})
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() => setActiveTab("dream_reach")}
-                variant={activeTab === "dream_reach" ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={activeTab === "dream_reach"}
-              >
-                <Sparkles className="size-3.5" />
-                Prestige / Dream Reach ({results.dreamReach.length})
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() => setActiveTab("rapid_pro")}
-                variant={activeTab === "rapid_pro" ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={activeTab === "rapid_pro"}
-              >
-                <Clock className="size-3.5" />
-                Rapid Response & Pro Pay ({results.rapidPro.length})
-              </Button>
-
-              <Button
-                type="button"
-                onClick={() => setActiveTab("packet_builder")}
-                variant={activeTab === "packet_builder" ? "default" : "ghost"}
-                size="sm"
-                aria-pressed={activeTab === "packet_builder"}
-              >
-                <Layers className="size-3.5" />
-                Simultaneous Packets ({results.simultaneousPackets.length})
-              </Button>
-            </div>
-
-            <p className="text-xs text-[var(--text-muted)]">
-              Ranked from {results.totalAnalyzed.toLocaleString()} publications
-            </p>
-          </div>
-
-          {/* Cards Grid */}
-          <div className="grid gap-4 md:grid-cols-2">
-            {currentCards.map((card) => (
-              <Card
-                key={card.profileId}
-                className="justify-between"
-              >
-                <CardContent>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h3 className="font-serif text-lg font-medium text-[var(--text-primary)]">
-                        {card.name}
-                      </h3>
-                      {card.aesthetic.editorialMotto && (
-                        <p className="mt-1 font-serif text-xs italic text-[var(--text-secondary)] line-clamp-1">
-                          &ldquo;{card.aesthetic.editorialMotto}&rdquo;
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className="font-mono text-sm font-semibold text-[var(--text-primary)]">
-                        {card.matchScore}% Fit
-                      </span>
-                      <RankingTierBadge tier={card.prestigeTier} />
-                    </div>
-                  </div>
-
-                  {/* Compatibility Reasons */}
-                  <div className="mt-3 space-y-1">
-                    {card.reasons.slice(0, 3).map((reason, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]"
-                      >
-                        <CheckCircle2 className="size-3 text-[var(--text-primary)] shrink-0" />
-                        <span>{reason}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Stats Bar */}
-                  <div className="mt-4 grid grid-cols-3 gap-2 rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/40 p-2 text-center text-xs">
-                    <div>
-                      <span className="font-mono font-medium text-[var(--text-primary)]">
-                        {card.telemetry.medianResponseDays === null
-                          ? "Not recorded"
-                          : `${card.telemetry.medianResponseDays}d`}
-                      </span>
-                      <p className="text-[10px] text-[var(--text-muted)]">
-                        Median Turnaround
-                      </p>
-                    </div>
-                    <div>
-                      <span className="font-mono font-medium text-[var(--text-primary)]">
-                        {card.aesthetic.unsolicitedSlushRatioPercent === null
-                          ? "Not recorded"
-                          : `${card.aesthetic.unsolicitedSlushRatioPercent}%`}
-                      </span>
-                      <p className="text-[10px] text-[var(--text-muted)]">
-                        Slush Ratio
-                      </p>
-                    </div>
-                    <div>
-                      <span className="font-medium text-[var(--text-primary)]">
-                        {card.compensation.isProRate
-                          ? "Pro Rate"
-                          : card.compensation.paysContributors === null
-                            ? "Not recorded"
-                            : card.compensation.paysContributors
-                              ? "Paid"
-                              : "Unpaid"}
-                      </span>
-                      <p className="text-[10px] text-[var(--text-muted)]">
-                        Contributor Pay
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-
-                <CardFooter className="mt-5 justify-between pt-3 text-xs">
-                  <EditorialIntelligenceDrawer
-                    profileId={card.profileId}
-                    magazineName={card.name}
-                    magazineSlug={card.slug}
-                    trigger={
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 font-medium text-[var(--text-primary)] hover:underline"
-                      >
-                        Details →
-                      </button>
-                    }
-                  />
-
-                  <Link
-                    href={`/journal/${card.slug}`}
-                    className="inline-flex items-center gap-1 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                  >
-                    View Journal <ExternalLink className="size-3" />
-                  </Link>
-                </CardFooter>
-              </Card>
+                {style.label}
+              </FilterChip>
             ))}
           </div>
-        </section>
-      )}
+        </FieldSet>
+
+        <FieldSet className={styles.group}>
+          <FieldLegend variant="label" className={styles.legend}>
+            Comparable writers
+          </FieldLegend>
+          <FieldDescription className={styles.helper}>
+            Magazines that publish similar work rank higher.
+          </FieldDescription>
+          <div className={styles.chips}>
+            {COMP_AUTHORS.map((author) => (
+              <FilterChip
+                key={author}
+                selected={brief.compAuthors.includes(author)}
+                onSelectedChange={(on) =>
+                  update({
+                    compAuthors: toggled(brief.compAuthors, author, on),
+                  })
+                }
+              >
+                {author}
+              </FilterChip>
+            ))}
+          </div>
+        </FieldSet>
+
+        <FieldSet className={styles.group}>
+          <FieldLegend variant="label" className={styles.legend}>
+            Preferences
+          </FieldLegend>
+          <Field orientation="horizontal" className={styles.switchRow}>
+            <FieldContent>
+              <FieldLabel htmlFor={`${ids}-debut`}>
+                First publication
+              </FieldLabel>
+              <FieldDescription className={styles.helper}>
+                Favour magazines that publish new writers.
+              </FieldDescription>
+            </FieldContent>
+            <Switch
+              id={`${ids}-debut`}
+              checked={brief.isDebutAuthor}
+              onCheckedChange={(checked) => update({ isDebutAuthor: checked })}
+            />
+          </Field>
+          <Field orientation="horizontal" className={styles.switchRow}>
+            <FieldContent>
+              <FieldLabel htmlFor={`${ids}-simultaneous`}>
+                Sending it to several magazines
+              </FieldLabel>
+              <FieldDescription className={styles.helper}>
+                Rank down magazines that refuse simultaneous submissions.
+              </FieldDescription>
+            </FieldContent>
+            <Switch
+              id={`${ids}-simultaneous`}
+              checked={brief.allowSimultaneous}
+              onCheckedChange={(checked) =>
+                update({ allowSimultaneous: checked })
+              }
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={`${ids}-fee`}>Submission fees</FieldLabel>
+            <NativeSelect
+              id={`${ids}-fee`}
+              className={styles.select}
+              value={brief.feeTolerance}
+              onChange={(event) =>
+                update({
+                  feeTolerance: event.target
+                    .value as ManuscriptBrief["feeTolerance"],
+                })
+              }
+            >
+              <NativeSelectOption value="free_only">
+                Free, or a fee waiver
+              </NativeSelectOption>
+              <NativeSelectOption value="fee_ok_with_waivers">
+                Fees are fine with a waiver option
+              </NativeSelectOption>
+              <NativeSelectOption value="any">Any fee</NativeSelectOption>
+            </NativeSelect>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor={`${ids}-pay`}>Payment</FieldLabel>
+            <NativeSelect
+              id={`${ids}-pay`}
+              className={styles.select}
+              value={brief.minPayRate}
+              onChange={(event) =>
+                update({
+                  minPayRate: event.target
+                    .value as ManuscriptBrief["minPayRate"],
+                })
+              }
+            >
+              <NativeSelectOption value="all">
+                Paid or unpaid
+              </NativeSelectOption>
+              <NativeSelectOption value="any_paying">
+                Paying magazines
+              </NativeSelectOption>
+              <NativeSelectOption value="pro_rates_only">
+                Professional rates (8¢ a word or more)
+              </NativeSelectOption>
+            </NativeSelect>
+          </Field>
+        </FieldSet>
+
+        <div className={styles.submit}>
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isPending}
+            aria-busy={isPending}
+          >
+            {isPending ? <Spinner aria-hidden="true" /> : null}
+            {isPending ? "Finding magazines…" : "Find magazines"}
+          </Button>
+        </div>
+      </form>
+
+      <section
+        className={styles.results}
+        aria-labelledby={`${ids}-results`}
+        aria-busy={isPending}
+      >
+        <header className={styles.resultsHeader}>
+          <h2
+            id={`${ids}-results`}
+            ref={resultsHeadingRef}
+            tabIndex={-1}
+            className={styles.resultsTitle}
+          >
+            Magazines to consider
+          </h2>
+          {results?.status === "available" && results.totalAnalyzed > 0 ? (
+            <p className={styles.resultsMeta}>
+              Compared with{" "}
+              <data value={results.totalAnalyzed} className="font-mono">
+                {results.totalAnalyzed.toLocaleString()}
+              </data>{" "}
+              magazines in the Missa index.
+            </p>
+          ) : null}
+          <p className="sr-only" role="status">
+            {announcement}
+          </p>
+          <p className={styles.changed} role="status">
+            {briefChanged && !isPending
+              ? "Your brief has changed. Find magazines again to update this list."
+              : ""}
+          </p>
+        </header>
+
+        {isPending ? (
+          <ResultsSkeleton />
+        ) : results?.status === "unavailable" ? (
+          <Empty variant="bordered" role="status">
+            <EmptyHeader>
+              <EmptyTitle>Matching is unavailable</EmptyTitle>
+              <EmptyDescription>
+                The magazine index couldn&apos;t be read, so there are no
+                matches to show. Try again later, or browse the directory.
+              </EmptyDescription>
+            </EmptyHeader>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/directory" />}
+            >
+              Browse the directory
+            </Button>
+          </Empty>
+        ) : !lanes || lanes.length === 0 ? (
+          <Empty variant="bordered" role="status">
+            <EmptyHeader>
+              <EmptyTitle>No magazines match this brief</EmptyTitle>
+              <EmptyDescription>
+                Try a different length, fewer styles, or a broader payment
+                choice.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <Tabs
+            value={activeLane}
+            onValueChange={(value) => setLane(value as LaneKey)}
+          >
+            {lanes.length > 1 ? (
+              <TabsList
+                variant="line"
+                size="responsive"
+                className={styles.lanes}
+              >
+                {lanes.map((entry) => (
+                  <TabsTrigger key={entry.key} value={entry.key} size="touch">
+                    {entry.label}
+                    <span className={`${styles.laneCount} font-mono`}>
+                      {entry.cards.length}
+                    </span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            ) : null}
+            {lanes.map((entry) => (
+              <TabsContent
+                key={entry.key}
+                value={entry.key}
+                className={styles.panel}
+              >
+                {entry.description ? (
+                  <p className={styles.laneDescription}>{entry.description}</p>
+                ) : null}
+                <ResultList cards={entry.cards} brief={submittedBrief} />
+              </TabsContent>
+            ))}
+          </Tabs>
+        )}
+
+        <p className={styles.footnote}>
+          Fit is a comparison aid, not an eligibility check. Read each
+          magazine&apos;s current guidelines before you submit.{" "}
+          <Link href="/methodology">How Missa ranks magazines</Link>
+        </p>
+      </section>
+    </div>
+  );
+}
+
+function ResultList({
+  cards,
+  brief,
+}: {
+  cards: ManuscriptMatchCard[];
+  brief: ManuscriptBrief;
+}) {
+  const rows = cards.map((card) => {
+    const facts = recordedFacts(card, brief);
+    const warnings = watchouts(card, brief);
+    const limited =
+      card.reasons.length === 0 && warnings.length === 0 && facts.length === 0;
+    return { card, facts, warnings, limited };
+  });
+  const limitedCount = rows.filter((row) => row.limited).length;
+
+  return (
+    <>
+      {limitedCount * 2 >= rows.length ? (
+        <Alert role="note" className={styles.notice}>
+          <Info aria-hidden="true" />
+          <AlertTitle>
+            {limitedCount === rows.length
+              ? "These magazines have limited data"
+              : `${limitedCount} of ${rows.length} magazines have limited data`}
+          </AlertTitle>
+          <AlertDescription>
+            Missa hasn&apos;t recorded their guidelines, pay, or reply times
+            yet, so they appear in ranking order without a fit score.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+      <ol className={styles.list}>
+        {rows.map(({ card, facts, warnings, limited }, index) => (
+          <li
+            key={card.profileId}
+            className={styles.result}
+            data-limited={limited || undefined}
+          >
+            <span className={`${styles.rank} font-mono`} aria-hidden="true">
+              {index + 1}
+            </span>
+            <div className={styles.resultBody}>
+              <div className={styles.resultHead}>
+                <div className={styles.identity}>
+                  <h3 className={`${styles.resultTitle} font-heading`}>
+                    <Link href={`/journal/${card.slug}`}>{card.name}</Link>
+                  </h3>
+                  {card.aesthetic.editorialMotto ? (
+                    <p className={`${styles.motto} font-heading`}>
+                      &ldquo;{card.aesthetic.editorialMotto}&rdquo;
+                    </p>
+                  ) : null}
+                </div>
+                <MatchExplanationTrigger
+                  score={limited ? null : card.matchScore}
+                  subject={card.name}
+                  reasons={card.reasons}
+                  watchouts={warnings}
+                  note={limited ? LIMITED_NOTE : SCORED_NOTE}
+                />
+              </div>
+
+              {limited ? (
+                <div className={styles.compactRow}>
+                  {card.prestigeTier !== "unranked" ? (
+                    <RankingTierBadge tier={card.prestigeTier} />
+                  ) : null}
+                  <ResultActions card={card} />
+                </div>
+              ) : (
+                <>
+                  {card.prestigeTier !== "unranked" || facts.length ? (
+                    <ul className={styles.facts} aria-label="Recorded details">
+                      {card.prestigeTier !== "unranked" ? (
+                        <li>
+                          <RankingTierBadge tier={card.prestigeTier} />
+                        </li>
+                      ) : null}
+                      {facts.map((fact) => (
+                        <li key={fact.key}>{fact.label}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+
+                  {card.reasons.length ? (
+                    <ul className={styles.reasons} aria-label="Why it fits">
+                      {card.reasons.slice(0, 3).map((reason) => (
+                        <li key={reason}>
+                          <CheckCircle2 aria-hidden="true" />
+                          {reason}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <ResultActions card={card} />
+                </>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </>
+  );
+}
+
+function ResultActions({ card }: { card: ManuscriptMatchCard }) {
+  return (
+    <div className={styles.actions}>
+      <EditorialIntelligenceDrawer
+        profileId={card.profileId}
+        magazineName={card.name}
+        magazineSlug={card.slug}
+        trigger={
+          <Button type="button" variant="outline" size="sm">
+            Editorial profile
+          </Button>
+        }
+      />
+      {card.websiteUrl ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          nativeButton={false}
+          render={<a href={card.websiteUrl} target="_blank" rel="noreferrer" />}
+        >
+          Website
+          <ExternalLink aria-hidden="true" />
+          <span className="sr-only">(opens in a new tab)</span>
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+function ResultsSkeleton() {
+  return (
+    <div className={styles.list} aria-hidden="true">
+      {[0, 1, 2, 3].map((row) => (
+        <div key={row} className={styles.result}>
+          <Skeleton className={styles.skeletonRank} />
+          <div className={styles.resultBody}>
+            <Skeleton className={styles.skeletonTitle} />
+            <Skeleton className={styles.skeletonLine} />
+            <Skeleton className={styles.skeletonActions} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
