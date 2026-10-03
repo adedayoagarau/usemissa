@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
-import { AppNav } from "@/components/app-nav";
+import { CreatorShell } from "@/components/creator-shell";
 import { CreatorPortfolioStudio } from "@/components/creator-portfolio-studio";
+import { creatorShellOrganizations } from "@/lib/creatorShellOrganizations";
 
 export const metadata = {
   title: "Public profile settings",
@@ -13,18 +14,14 @@ export default async function PortfolioSettingsPage() {
     (await cookies()).get(SESSION_COOKIE)?.value,
   );
   if (!session?.account.userId) redirect("/login?next=%2Fprofile%2Fportfolio");
+  const organizations = await creatorShellOrganizations(session.memberships);
   return (
-    <>
-      <AppNav
-        email={session.account.email}
-        userId={session.account.userId}
-        isAdmin={session.account.isAdmin}
-        organizations={session.memberships.map((membership) => ({
-          id: membership.organizationId,
-          name: membership.organizationId,
-        }))}
-      />
+    <CreatorShell
+      email={session.account.email}
+      organizations={organizations}
+      isAdmin={session.account.isAdmin}
+    >
       <CreatorPortfolioStudio ownerId={session.account.id} initialName={session.account.displayName ?? ""} />
-    </>
+    </CreatorShell>
   );
 }
