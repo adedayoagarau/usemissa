@@ -194,9 +194,15 @@ function itemAction(
       label: "View submission",
     };
   if (item.isManual) return { href: "/import", label: "Review import" };
+  const stage = stageFor(item.myStatus);
   return {
-    href: `/tracker?application=${encodeURIComponent(item.opportunityId)}`,
-    label: "Open record",
+    href: `/opportunities/${encodeURIComponent(item.opportunityId)}`,
+    label:
+      stage === "Saved"
+        ? "Review opportunity"
+        : stage === "Preparing"
+          ? "Continue preparing"
+          : "Open opportunity",
   };
 }
 
@@ -353,6 +359,7 @@ function TrackerCard({
   onWork,
   onOpen,
   onRemove,
+  recordsAvailable,
 }: {
   item: TrackerProductItem;
   works: Array<{ id: string; title: string }>;
@@ -370,6 +377,8 @@ function TrackerCard({
     trigger: HTMLElement,
   ) => void;
   onRemove: (item: TrackerProductItem) => void;
+  /** Account storage is available, so cards open the application record. */
+  recordsAvailable: boolean;
 }) {
   const action = itemAction(item, hosted);
   const stage = stageFor(item.myStatus);
@@ -475,7 +484,7 @@ function TrackerCard({
             </select>
           </label>
         ) : null}
-        {!item.isManual ? (
+        {!item.isManual && recordsAvailable ? (
           <button
             type="button"
             className={styles.quietButton}
@@ -503,7 +512,7 @@ function TrackerCard({
         <p>{error}</p>
         {stale ? <button type="button" className={styles.quietButton} onClick={() => window.location.reload()}>Reload latest Tracker state</button> : null}
       </div> : null}
-      {item.isManual ? (
+      {item.isManual || !recordsAvailable ? (
         <Link href={action.href} className={styles.rowAction}>
           {action.label}
           <ArrowRight aria-hidden="true" />
@@ -589,6 +598,7 @@ export function TrackerProduct({
   initialImportId,
   initialApplicationId = "",
   emailEvidence = false,
+  recordsAvailable = false,
   allowance,
 }: {
   /** Free-plan tracking allowance; omitted for plans without a limit. */
@@ -606,6 +616,11 @@ export function TrackerProduct({
   initialApplicationId?: string;
   /** Email forwarding or Gmail sync is on, so records can show email evidence. */
   emailEvidence?: boolean;
+  /**
+   * Account storage holds application records. Without it (the demo world)
+   * cards and deep links keep their list behaviour instead of opening a sheet.
+   */
+  recordsAvailable?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -746,6 +761,7 @@ export function TrackerProduct({
   // Inbox, email, Calendar, Library, Home, or this page — opens the same record.
   const requestedRecord = parseApplicationId(searchParams.get("application"));
   const recordId =
+    recordsAvailable &&
     requestedRecord &&
     items.some(
       (item) => item.opportunityId === requestedRecord && !item.isManual,
@@ -763,6 +779,17 @@ export function TrackerProduct({
     }
     const suffix = next.toString();
     window.history.replaceState(null, "", suffix ? `${pathname}?${suffix}` : pathname);
+  }
+
+  /** In-list links open the record when it exists, the listing otherwise. */
+  function rowAction(item: TrackerProductItem) {
+    const hosted = submissionByOpportunity.get(item.opportunityId);
+    if (recordsAvailable && !item.isManual)
+      return {
+        href: `/tracker?application=${encodeURIComponent(item.opportunityId)}`,
+        label: stageFor(item.myStatus) === "Preparing" ? "Continue preparing" : "Open record",
+      };
+    return itemAction(item, hosted);
   }
 
   function openRecord(
@@ -981,6 +1008,7 @@ export function TrackerProduct({
         onStatus={updateStatus}
         onWork={updateWork}
         onOpen={openRecord}
+        recordsAvailable={recordsAvailable}
         onRemove={removeItem}
       />
     );
@@ -1303,10 +1331,7 @@ export function TrackerProduct({
                     <h2 id="tracker-attention-title">Needs attention</h2>
                   </header>
                   {attention.map((item) => {
-                    const action = itemAction(
-                      item,
-                      submissionByOpportunity.get(item.opportunityId),
-                    );
+                    const action = rowAction(item);
                     return (
                       <div key={item.opportunityId}>
                         <Clock3 aria-hidden="true" />
@@ -1474,10 +1499,7 @@ export function TrackerProduct({
             </header>
             <div className={styles.calendarRows}>
               {exactDates.map((item) => {
-                const action = itemAction(
-                  item,
-                  submissionByOpportunity.get(item.opportunityId),
-                );
+                const action = rowAction(item);
                 return (
                   <Link href={action.href} key={item.opportunityId}>
                     <time>{formatDate(item.deadline!)}</time>
@@ -1498,10 +1520,7 @@ export function TrackerProduct({
             <p>Keep visible</p>
             <h2 id="tracker-undated-title">Undated and response items</h2>
             {undated.map((item) => {
-              const action = itemAction(
-                item,
-                submissionByOpportunity.get(item.opportunityId),
-              );
+              const action = rowAction(item);
               return (
                 <Link href={action.href} key={item.opportunityId}>
                   <strong>{item.title}</strong>
