@@ -1,413 +1,391 @@
 import { RankingTierBadge } from "@/components/missa/ranking-indicators";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import type { MagazineIndexCoverage } from "@missa/radar-adapters";
+import type {
+  CategoryCounts,
+  MagazineIndexAnalytics,
+  MagazineIndexCoverage,
+} from "@missa/radar-adapters";
 import {
   ANTHOLOGY_CITATION_POINTS,
   ANTHOLOGY_POINTS_CAP,
   MIN_REPORTS_FOR_MEDIAN,
-  PILLAR_KEYS,
   PILLAR_MAX,
   PRO_PAY_THRESHOLDS,
   TIER_THRESHOLDS,
-  computeFeesScore,
-  computePayScore,
-  computeRespectScore,
-  computeTurnaroundScore,
-  type PillarKey,
 } from "@missa/radar-engine";
 import {
-  Award,
-  CheckCircle2,
-  Clock,
-  DollarSign,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+  ComparisonChart,
+  CoverageChart,
+  FlashLeadersChart,
+  TierChart,
+} from "./magazine-index-charts";
 
-const PILLAR_NAMES: Record<PillarKey, string> = {
-  accolades: "Accolades",
-  pay: "Contributor pay",
-  turnaround: "Turnaround",
-  fees: "Submission fees",
-  respect: "Editorial respect",
-  formatEthics: "Format and ethics",
-};
+const percent = (part: number, whole: number) =>
+  whole > 0 ? Math.round((part / whole) * 100) : 0;
 
-// Every number below is read from the engine, so this page cannot drift from it.
-const cashUnknownAmount = computePayScore({ kind: "cash" }).score;
-const feeUnknownAmount = computeFeesScore({
-  regularSubmissionFeeCents: null,
-  chargesSubmissionFee: true,
-  hasSubsidizedFeeCategory: null,
-}).score;
-const bandScore = (
-  band: "under_3_months" | "3_to_6_months" | "over_6_months",
-) =>
-  computeTurnaroundScore({ medianResponseDays: null, responseTimeBand: band })
-    .score;
-const respectUnknown = computeRespectScore({
-  simultaneousSubmissions: null,
-  queryAllowedAfterDays: null,
-}).score;
-
-function percent(part: number, whole: number): string {
-  if (whole === 0) return "0%";
-  return `${Math.round((part / whole) * 100)}%`;
+/** Share of the recorded magazines in a group that fall in `key`. */
+function shareOf(counts: CategoryCounts, key: string, keys: string[]): number {
+  const recorded = keys.reduce((sum, k) => sum + (counts[k] ?? 0), 0);
+  return percent(counts[key] ?? 0, recorded);
 }
 
-function Pillar({
-  icon: Icon,
+function yearSpan(years: number[] | undefined): string | null {
+  if (!years?.length) return null;
+  const first = Math.min(...years);
+  const last = Math.max(...years);
+  return first === last ? String(first) : `${first} to ${last}`;
+}
+
+function Section({
   title,
-  max,
   children,
 }: {
-  icon: typeof Award;
   title: string;
-  max: number;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
-          <Icon className="size-5 text-primary" aria-hidden="true" />
-          {title}
-        </h3>
-        <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-          {max} points maximum
-        </span>
-      </div>
-      <div className="mt-2 space-y-2 text-sm leading-6 text-muted-foreground">
-        {children}
-      </div>
-    </div>
+    <section className="space-y-4">
+      <h2 className="text-2xl font-semibold tracking-tight text-balance text-foreground">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function Bullets({ children }: { children: React.ReactNode }) {
+  return (
+    <ul className="max-w-[68ch] list-disc space-y-2 pl-5 text-base leading-7 text-muted-foreground marker:text-primary">
+      {children}
+    </ul>
+  );
+}
+
+function Prose({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="max-w-[68ch] text-base leading-7 text-muted-foreground">
+      {children}
+    </p>
+  );
+}
+
+function Observations({ analytics }: { analytics: MagazineIndexAnalytics }) {
+  const { honours, comparison, flash } = analytics;
+  const feeKeys = ["free", "charges"];
+  const payKeys = ["cash", "copies", "unpaid"];
+  const replyKeys = ["under3", "between3and6", "over6"];
+  const topFee = shareOf(comparison.fees.top, "charges", feeKeys);
+  const restFee = shareOf(comparison.fees.rest, "charges", feeKeys);
+  const topPay = shareOf(comparison.pay.top, "cash", payKeys);
+  const restPay = shareOf(comparison.pay.rest, "cash", payKeys);
+  const topSlow = shareOf(comparison.response.top, "over6", replyKeys);
+  const restSlow = shareOf(comparison.response.rest, "over6", replyKeys);
+
+  return (
+    <Bullets>
+      <li>
+        Recognition gathers at the top. The ten most honoured magazines hold{" "}
+        {percent(honours.top10Share, 1)}% of all Pushcart recognition in the
+        index, and the fifty most honoured hold {percent(honours.top50Share, 1)}
+        %.
+      </li>
+      <li>
+        The long tail is real. {honours.singleRecognition.toLocaleString()} of
+        the {honours.magazines.toLocaleString()} magazines with any Pushcart
+        recognition have a single one to their name.
+      </li>
+      <li>
+        Honour and access pull in different directions. Among the fifty most
+        honoured magazines, {topFee}% charge a reading fee; among the rest,{" "}
+        {restFee}%.
+        {analytics.typicalFeeCents != null
+          ? ` Where we know the amount, it is usually $${(analytics.typicalFeeCents / 100).toFixed(0)}.`
+          : ""}
+      </li>
+      <li>
+        The most honoured magazines are also more likely to pay: {topPay}% of
+        them pay contributors in cash, against {restPay}% of everyone else.
+      </li>
+      <li>
+        They can be slower to answer. {topSlow}% of the most honoured take more
+        than six months to reply, against {restSlow}% of the rest.
+      </li>
+      <li>
+        Flash fiction keeps its own company. {flash.magazines.toLocaleString()}{" "}
+        magazines have had work chosen for the flash anthologies since{" "}
+        {flash.firstEdition}; only {flash.alsoPushcart.toLocaleString()} of them
+        also appear in the Pushcart record.
+      </li>
+      <li>
+        Honours outlast magazines. {honours.closed.toLocaleString()} magazines
+        in the Pushcart record have closed and {honours.paused.toLocaleString()}{" "}
+        are paused or quiet. They stay in the index, marked, so their record is
+        not lost.
+      </li>
+    </Bullets>
   );
 }
 
 export function MagazineMethodology({
   coverage,
+  analytics,
 }: {
   coverage: MagazineIndexCoverage | null;
+  analytics: MagazineIndexAnalytics | null;
 }) {
-  const total = coverage?.magazineCounts.overall ?? 0;
+  const editions = (source: string) =>
+    yearSpan(coverage?.sourceEditions[source]);
 
   return (
-    <>
-      <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
-        <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-          What the index measures
-        </h2>
-        <p className="mt-3 text-muted-foreground">
-          Prize volume alone does not tell you what it is like to submit to a
-          magazine. The Missa Literary Magazine Index adds pay, response time,
-          fees and submission policy to Pushcart standing, but only where a
-          source records them. A fact that no source records is shown as{" "}
-          <strong>Not recorded</strong> and never filled with a guess.
-        </p>
-      </div>
+    <div className="space-y-12">
+      <Section title="What the index is for">
+        <Prose>
+          A writer choosing where to send a story or a set of poems wants to
+          know two things: whether a magazine’s work is noticed, and how it
+          treats the people who send it work. The Missa Literary Magazine Index
+          puts both in one place. It weighs a magazine’s recognition alongside
+          what it pays, what it charges, how long it takes to reply and how it
+          handles submissions.
+        </Prose>
+        <Prose>
+          Every number comes from a source you could check yourself. When no
+          source records a fact, the index says so.
+        </Prose>
+      </Section>
 
-      <div className="pt-4">
-        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-          Four indexes
-        </h2>
-        {coverage ? (
-          <p className="mt-2 text-muted-foreground">
-            The {coverage.year} index ranks{" "}
-            <strong>{coverage.magazineCounts.overall.toLocaleString()}</strong>{" "}
-            magazines overall,{" "}
-            {coverage.magazineCounts.fiction.toLocaleString()} in fiction,{" "}
-            {coverage.magazineCounts.poetry.toLocaleString()} in poetry and{" "}
-            {coverage.magazineCounts.nonfiction.toLocaleString()} in nonfiction.
-            A magazine enters a genre index when it has a Pushcart standing or a
-            cited anthology selection in that genre. Counts are read from the
-            live index.
-          </p>
-        ) : (
-          <p className="mt-2 text-muted-foreground">
-            The index has not been published yet.
-          </p>
-        )}
-      </div>
-
-      <div className="pt-4">
-        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-          Sources
-        </h2>
-        <ul className="mt-4 space-y-4 text-sm leading-6 text-muted-foreground">
+      <Section title="What we count">
+        <Prose>Each magazine is scored out of 100, across six measures.</Prose>
+        <Bullets>
           <li>
             <strong className="text-foreground">
-              Clifford Garstang’s Literary Magazine Rankings
+              Honours, up to {PILLAR_MAX.accolades} points.
             </strong>{" "}
-            (cliffordgarstang.com, 2024–2026 tables). For each genre and year
-            Garstang publishes a magazine’s rank and a ten-year weighted score
-            of Pushcart Prizes and Pushcart special mentions, with recent years
-            weighted more. He does not publish the per-year prize and mention
-            counts or the exact weights, so Missa stores his score and rank as
-            published, with the page address and the date it was retrieved. A
-            magazine missing from his table had no Pushcart points in his
-            window.
+            A magazine’s Pushcart Prize recognition over the past ten years,
+            with recent years counting more. The most recognised magazine in
+            each index earns the full {PILLAR_MAX.accolades}; others earn points
+            in proportion, on a curve that keeps a single honour visible. Pieces
+            chosen for Best Small Fictions (
+            {ANTHOLOGY_CITATION_POINTS["Best Small Fictions"]} points) and Best
+            Microfiction ({ANTHOLOGY_CITATION_POINTS["Best Microfiction"]}{" "}
+            points) add up to {ANTHOLOGY_POINTS_CAP} more in fiction.
           </li>
           <li>
             <strong className="text-foreground">
-              Best Microfiction and Best Small Fictions
+              Pay, up to {PILLAR_MAX.pay} points.
             </strong>{" "}
-            tables of contents: Best Microfiction 2019–2026
-            (bestmicrofiction.com) and Best Small Fictions 2023–2025
-            (Alternating Current Press). Each selection is stored with its
-            title, author, the magazine the contents name and the page address.
-            Earlier Best Small Fictions contents are no longer published, so
-            those editions are left out for every magazine.
+            Full points for professional rates:{" "}
+            {PRO_PAY_THRESHOLDS.perWordCents}¢ a word, $
+            {PRO_PAY_THRESHOLDS.perPoemCents / 100} a poem or $
+            {PRO_PAY_THRESHOLDS.perPieceCents / 100} a piece. Less for smaller
+            payments, two points for contributor copies, none for unpaid work.
+          </li>
+          <li>
+            <strong className="text-foreground">
+              Reply time, up to {PILLAR_MAX.turnaround} points.
+            </strong>{" "}
+            Full points for a reply within a month, falling as the wait
+            lengthens, to none for more than a year.
+          </li>
+          <li>
+            <strong className="text-foreground">
+              Fees, up to {PILLAR_MAX.fees} points.
+            </strong>{" "}
+            Full points when submitting is free. Fewer as a reading fee rises,
+            with credit kept for magazines that waive the fee for some writers.
+          </li>
+          <li>
+            <strong className="text-foreground">
+              Submission policy, up to {PILLAR_MAX.respect} points.
+            </strong>{" "}
+            Points for welcoming simultaneous submissions and for telling
+            writers when they may ask after their work.
+          </li>
+          <li>
+            <strong className="text-foreground">
+              Archive and ethics, up to {PILLAR_MAX.formatEthics} points.
+            </strong>{" "}
+            Points for keeping published work available, for reading blind and
+            for making room for writers who have not yet published.
+          </li>
+        </Bullets>
+      </Section>
+
+      <Section title="When something is not on record">
+        <Bullets>
+          <li>
+            We never guess. A fact no source records is shown as “Not recorded”.
+          </li>
+          <li>
+            A missing fact earns half the points it could have earned, so it
+            neither lifts a magazine nor holds it back.
+          </li>
+          <li>
+            When a source gives only part of the answer, such as “pays in cash”
+            without an amount, the magazine earns the middle of what that answer
+            allows.
+          </li>
+          <li>
+            Each magazine’s page shows which of its facts are recorded, so you
+            can see how much of its score rests on the record.
+          </li>
+        </Bullets>
+      </Section>
+
+      <Section title="Where the facts come from">
+        <Bullets>
+          <li>
+            <strong className="text-foreground">
+              Pushcart Prize recognition
+            </strong>
+            {editions("garstang") ? `, ${editions("garstang")},` : ""} as
+            tallied each year at cliffordgarstang.com.
+          </li>
+          <li>
+            <strong className="text-foreground">The flash anthologies</strong>:
+            the published contents of Best Microfiction
+            {editions("best_microfiction")
+              ? ` (${editions("best_microfiction")})`
+              : ""}{" "}
+            and Best Small Fictions
+            {editions("best_small_fictions")
+              ? ` (${editions("best_small_fictions")})`
+              : ""}
+            .
+          </li>
+          <li>
+            <strong className="text-foreground">
+              The magazines’ own submission pages
+            </strong>{" "}
+            for what they charge. Prizes, paid fast-track reading and art calls
+            are set aside; the fee we use is the cheapest way any writer can
+            send work.
           </li>
           <li>
             <strong className="text-foreground">
               Poets &amp; Writers listings
             </strong>{" "}
-            for response-time band, whether a reading fee is charged, payment
-            type and simultaneous-submission policy. Each value keeps the
-            listing’s address. A listing counts for a ranking year only if it
-            was last updated in or before that year, so 2024 and 2025 have
-            almost no listing facts.
+            for pay, reply time and submission policy, used from the year each
+            listing was last updated.
           </li>
           <li>
-            <strong className="text-foreground">Missa writer reports.</strong> A
-            magazine’s median response time is recorded once it has{" "}
-            {MIN_REPORTS_FOR_MEDIAN} decided reports. Reports are stored without
-            an account.
+            <strong className="text-foreground">Writers’ own reports.</strong>{" "}
+            Once a magazine has {MIN_REPORTS_FOR_MEDIAN} reports, their typical
+            reply time becomes its recorded one. Reports are kept without names
+            or accounts.
           </li>
-          <li>
-            Not used: Erika Krouse’s tiers, the Best American series, the O.
-            Henry Prize and Best of the Net. No source in the index records them
-            per magazine, so the index does not claim them.
-          </li>
-        </ul>
-      </div>
+        </Bullets>
+        <Prose>
+          The index checks its sources every month and begins a new year each
+          January.
+          {coverage?.lastRun
+            ? ` It last checked them on ${new Date(coverage.lastRun.finishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.`
+            : ""}
+        </Prose>
+      </Section>
 
-      <div className="pt-6">
-        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-          The 100-point score
-        </h2>
-        <p className="mt-2 text-muted-foreground">
-          Six pillars add up to 100 points. When no source records a fact, its
-          pillar scores the midpoint of the points it could earn, so a missing
-          fact neither helps nor hurts. When a source records only a range (for
-          example “pays in cash” with no amount), the pillar scores the midpoint
-          of that range.
-        </p>
-
-        <div className="mt-6 space-y-4">
-          <Pillar icon={Award} title="Accolades" max={PILLAR_MAX.accolades}>
-            <p>
-              Pushcart standing earns {PILLAR_MAX.accolades} × √(the magazine’s
-              Garstang score ÷ the highest score in that index that year). The
-              top magazine earns {PILLAR_MAX.accolades}; the square root keeps a
-              single special mention visible. The overall index adds a
-              magazine’s fiction, poetry and nonfiction scores.
-            </p>
-            <p>
-              Each cited selection from the last ten editions adds{" "}
-              {ANTHOLOGY_CITATION_POINTS["Best Small Fictions"]} points (Best
-              Small Fictions) or{" "}
-              {ANTHOLOGY_CITATION_POINTS["Best Microfiction"]} points (Best
-              Microfiction), full weight for five years and half before that, up
-              to {ANTHOLOGY_POINTS_CAP} points. These count toward fiction and
-              overall.
-            </p>
-          </Pillar>
-
-          <Pillar
-            icon={DollarSign}
-            title="Contributor pay"
-            max={PILLAR_MAX.pay}
-          >
-            <p>
-              Pro pay (at least {PRO_PAY_THRESHOLDS.perWordCents}¢ a word, $
-              {PRO_PAY_THRESHOLDS.perPoemCents / 100} a poem or $
-              {PRO_PAY_THRESHOLDS.perPieceCents / 100} a piece) earns 15.
-              Semi-pro ($25 a poem or $40 a piece) earns 10, $10 or more earns
-              5, contributor copies earn 2 and unpaid earns 0. A listing that
-              says the magazine pays in cash without an amount earns{" "}
-              {cashUnknownAmount}.
-            </p>
-          </Pillar>
-
-          <Pillar icon={Clock} title="Turnaround" max={PILLAR_MAX.turnaround}>
-            <p>
-              A recorded median of 30 days or less earns 15; 60 days, 12; 120
-              days, 8; 180 days, 4; a year, 1; longer, 0. A listed response band
-              earns the midpoint of its range: under 3 months{" "}
-              {bandScore("under_3_months")}, 3 to 6 months{" "}
-              {bandScore("3_to_6_months")}, over 6 months{" "}
-              {bandScore("over_6_months")}.
-            </p>
-          </Pillar>
-
-          <Pillar
-            icon={CheckCircle2}
-            title="Submission fees"
-            max={PILLAR_MAX.fees}
-          >
-            <p>
-              No fee earns 15. A recorded free tier or fee waiver earns 11; a
-              fee up to $3.50 earns 7; up to $5, 4; above $5, 0. A listing that
-              records a fee without the amount earns {feeUnknownAmount}.
-            </p>
-          </Pillar>
-
-          <Pillar
-            icon={ShieldCheck}
-            title="Editorial respect"
-            max={PILLAR_MAX.respect}
-          >
-            <p>
-              Allowing simultaneous submissions earns 6, with conditions 3,
-              forbidding them 0. A query window of 180 days or less earns 4, a
-              longer one 2. With neither recorded the pillar earns{" "}
-              {respectUnknown}.
-            </p>
-          </Pillar>
-
-          <Pillar
-            icon={Sparkles}
-            title="Format and ethics"
-            max={PILLAR_MAX.formatEthics}
-          >
-            <p>
-              A recorded archive earns 2, blind reading 1.5 and a roster that
-              reserves space for debut writers 1.5. No current source records
-              these, so every magazine earns the midpoint,{" "}
-              {PILLAR_MAX.formatEthics / 2}.
-            </p>
-          </Pillar>
-        </div>
-      </div>
-
-      <div className="pt-6">
-        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-          Data coverage
-        </h2>
-        {coverage ? (
-          <>
-            <p className="mt-2 text-muted-foreground">
-              How many of the {total.toLocaleString()} magazines in the{" "}
-              {coverage.year} overall index have each pillar backed by a source.
-              On average{" "}
-              {coverage.averageCoverage != null
-                ? `${Math.round(coverage.averageCoverage * 100)}%`
-                : "none"}{" "}
-              of a magazine’s 100 points rest on recorded facts (a recorded
-              range counts half). The index holds{" "}
-              {coverage.pushcartRows.toLocaleString()} Pushcart ranking rows and{" "}
-              {coverage.anthologyCitations.toLocaleString()} anthology
-              selections for this window, and{" "}
-              {coverage.writerReports.toLocaleString()} writer reports.
-            </p>
-            <Table className="mt-4">
-              <caption className="sr-only">
-                Data coverage per pillar for the {coverage.year} overall index
-              </caption>
-              <TableHeader>
-                <TableRow variant="static">
-                  <TableHead scope="col">Pillar</TableHead>
-                  <TableHead scope="col" className="text-end">
-                    Recorded
-                  </TableHead>
-                  <TableHead scope="col" className="text-end">
-                    Range recorded
-                  </TableHead>
-                  <TableHead scope="col" className="text-end">
-                    Not recorded
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {PILLAR_KEYS.map((key) => {
-                  const row = coverage.pillars[key];
-                  return (
-                    <TableRow key={key} variant="static">
-                      <TableCell>
-                        {PILLAR_NAMES[key]}{" "}
-                        <span className="text-xs text-muted-foreground">
-                          / {PILLAR_MAX[key]}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-end font-mono tabular-nums">
-                        {row.recorded.toLocaleString()} (
-                        {percent(row.recorded, total)})
-                      </TableCell>
-                      <TableCell className="text-end font-mono tabular-nums">
-                        {row.partial.toLocaleString()} (
-                        {percent(row.partial, total)})
-                      </TableCell>
-                      <TableCell className="text-end font-mono tabular-nums">
-                        {row.unknown.toLocaleString()} (
-                        {percent(row.unknown, total)})
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </>
-        ) : (
-          <p className="mt-2 text-muted-foreground">
-            Coverage appears here once the index is published.
-          </p>
-        )}
-      </div>
-
-      <div className="pt-6">
-        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-          Tiers
-        </h2>
-        <p className="mt-2 text-muted-foreground">
-          Tiers come from the total score alone. Because unknown facts score the
-          midpoint, a magazine with few recorded facts can sit lower than one
-          whose strong policies are on record.
-        </p>
-        <div className="mt-6 space-y-3">
+      <Section title="Tiers">
+        <Prose>
+          The total score places each magazine in one of four tiers.
+        </Prose>
+        <ul className="space-y-3">
           {[
-            {
-              tier: "Tier 1",
-              range: `Score ${TIER_THRESHOLDS.tier1}+`,
-              name: "Flagship Luminary",
-            },
-            {
-              tier: "Tier 2",
-              range: `Score ${TIER_THRESHOLDS.tier2}–${TIER_THRESHOLDS.tier1 - 0.1}`,
-              name: "High Distinction",
-            },
-            {
-              tier: "Tier 3",
-              range: `Score ${TIER_THRESHOLDS.tier3}–${TIER_THRESHOLDS.tier2 - 0.1}`,
-              name: "Distinguished Contemporary",
-            },
-            {
-              tier: "Tier 4",
-              range: `Score below ${TIER_THRESHOLDS.tier3}`,
-              name: "Emerging & Community",
-            },
-          ].map((item) => (
-            <div
-              key={item.tier}
-              className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card/40 p-4"
-            >
-              <RankingTierBadge tier={item.tier}>
-                {item.tier} · {item.range}
-              </RankingTierBadge>
-              <h3 className="text-base font-semibold text-foreground">
-                {item.name}
-              </h3>
-            </div>
+            [
+              "Tier 1",
+              `${TIER_THRESHOLDS.tier1} and above`,
+              "Flagship Luminary",
+            ],
+            [
+              "Tier 2",
+              `${TIER_THRESHOLDS.tier2} to ${TIER_THRESHOLDS.tier1 - 0.1}`,
+              "High Distinction",
+            ],
+            [
+              "Tier 3",
+              `${TIER_THRESHOLDS.tier3} to ${TIER_THRESHOLDS.tier2 - 0.1}`,
+              "Distinguished Contemporary",
+            ],
+            [
+              "Tier 4",
+              `below ${TIER_THRESHOLDS.tier3}`,
+              "Emerging & Community",
+            ],
+          ].map(([tier, range, name]) => (
+            <li key={tier} className="flex flex-wrap items-center gap-3">
+              <RankingTierBadge tier={tier!}>{tier}</RankingTierBadge>
+              <span className="text-base text-foreground">{name}</span>
+              <span className="text-sm text-muted-foreground">
+                Score {range}
+              </span>
+            </li>
           ))}
-        </div>
-      </div>
-    </>
+        </ul>
+        <Prose>
+          A tier is a summary, not a verdict. A magazine with few facts on
+          record can sit lower than its reputation, because the index will not
+          assume what it cannot confirm.
+        </Prose>
+      </Section>
+
+      <Section title="Four indexes">
+        {coverage ? (
+          <Prose>
+            The {coverage.year} index ranks{" "}
+            {coverage.magazineCounts.overall.toLocaleString()} magazines
+            overall, {coverage.magazineCounts.fiction.toLocaleString()} in
+            fiction, {coverage.magazineCounts.poetry.toLocaleString()} in poetry
+            and {coverage.magazineCounts.nonfiction.toLocaleString()} in
+            nonfiction. A magazine joins a genre’s index when it has been
+            recognised in that genre.
+          </Prose>
+        ) : (
+          <Prose>The index has not been published yet.</Prose>
+        )}
+      </Section>
+
+      {analytics && coverage ? (
+        <Section title="What the numbers show">
+          <Observations analytics={analytics} />
+          <dl className="grid gap-4 sm:grid-cols-3">
+            {[
+              [
+                `${percent(analytics.honours.top10Share, 1)}%`,
+                "of Pushcart recognition held by the ten most honoured magazines",
+              ],
+              [
+                `${percent(analytics.honours.top50Share, 1)}%`,
+                "held by the fifty most honoured",
+              ],
+              [
+                `${analytics.honours.singleRecognition.toLocaleString()}`,
+                `of ${analytics.honours.magazines.toLocaleString()} recognised magazines have a single honour`,
+              ],
+            ].map(([figure, label]) => (
+              <div
+                key={label}
+                className="space-y-1 border-t border-border pt-3"
+              >
+                <dt className="sr-only">{label}</dt>
+                <dd className="font-mono text-3xl text-foreground tabular-nums">
+                  {figure}
+                </dd>
+                <dd className="text-sm leading-6 text-muted-foreground">
+                  {label}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <TierChart tiers={analytics.tiers} />
+            <CoverageChart coverage={coverage} />
+            <ComparisonChart kind="fees" counts={analytics.comparison.fees} />
+            <ComparisonChart kind="pay" counts={analytics.comparison.pay} />
+            <ComparisonChart
+              kind="response"
+              counts={analytics.comparison.response}
+            />
+            <FlashLeadersChart flash={analytics.flash} />
+          </div>
+        </Section>
+      ) : null}
+    </div>
   );
 }

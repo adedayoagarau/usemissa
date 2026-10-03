@@ -369,7 +369,7 @@ export function MagazineComparisonView({
                     <span>{mag.accoladesScore} / 40</span>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Pushcart standing (Garstang) and cited Best Small Fictions
+                    Pushcart recognition and Best Small Fictions
                     or Best Microfiction selections
                   </p>
                 </td>

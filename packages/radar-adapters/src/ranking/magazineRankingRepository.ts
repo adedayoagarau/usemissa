@@ -58,13 +58,43 @@ export interface MagazineRankingRow {
   blindReading: boolean | null;
   digitalArchive: boolean | null;
   telemetryReports: number;
-  factsSourceUrl: string | null;
-  factsRecordedOn: string | null;
+  /** Where each recorded fact comes from: fee, pay, response, simultaneous… */
+  factSources: Record<string, { url: string; recordedOn: string }>;
   pillarStatus: PillarStatusMap;
   /** Share of the 100 points backed by recorded facts, 0–1. */
   coverage: number;
   activeOpportunity: MagazineRankingOpportunity | null;
   schedule: MagazineScheduleResult | null;
+}
+
+/** One comparison row: how many magazines fall in each recorded category. */
+export type CategoryCounts = Record<string, number>;
+
+/** Plain-language facts about the index, read live for the methodology page. */
+export interface MagazineIndexAnalytics {
+  year: number;
+  tiers: Array<{ tier: string; count: number }>;
+  honours: {
+    magazines: number;
+    top10Share: number;
+    top50Share: number;
+    singleRecognition: number;
+    closed: number;
+    paused: number;
+  };
+  /** The fifty most honoured magazines against everyone else, recorded facts only. */
+  comparison: {
+    fees: { top: CategoryCounts; rest: CategoryCounts };
+    pay: { top: CategoryCounts; rest: CategoryCounts };
+    response: { top: CategoryCounts; rest: CategoryCounts };
+  };
+  typicalFeeCents: number | null;
+  flash: {
+    firstEdition: number;
+    magazines: number;
+    alsoPushcart: number;
+    leaders: Array<{ name: string; selections: number }>;
+  };
 }
 
 export interface MagazineIndexCoverage {
@@ -77,6 +107,10 @@ export interface MagazineIndexCoverage {
   anthologyCitations: number;
   writerReports: number;
   lastUpdated: string | null;
+  /** Edition years held for each accolade source (accepted snapshots). */
+  sourceEditions: Record<string, number[]>;
+  /** When the last scheduled or manual update finished, and how. */
+  lastRun: { finishedAt: string; status: string } | null;
 }
 
 export interface MagazineTelemetrySummary {
@@ -151,6 +185,18 @@ function oneOf<T extends string>(
     (allowed as readonly string[]).includes(value)
     ? (value as T)
     : null;
+}
+
+function factSourcesFrom(value: unknown): MagazineRankingRow["factSources"] {
+  const source = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  const out: MagazineRankingRow["factSources"] = {};
+  for (const [key, entry] of Object.entries(source)) {
+    const e = entry as { url?: unknown; recordedOn?: unknown } | null;
+    if (e && typeof e.url === "string") {
+      out[key] = { url: e.url, recordedOn: typeof e.recordedOn === "string" ? e.recordedOn : "" };
+    }
+  }
+  return out;
 }
 
 function pillarStatusFrom(value: unknown): PillarStatusMap {
@@ -240,8 +286,7 @@ function rankingRow(row: Record<string, unknown>): MagazineRankingRow {
     blindReading: nullableBoolean(row.blind_reading),
     digitalArchive: nullableBoolean(row.digital_archive),
     telemetryReports: Number(row.telemetry_reports ?? 0),
-    factsSourceUrl: nullableText(row.facts_source_url),
-    factsRecordedOn: dateText(row.facts_recorded_on),
+    factSources: factSourcesFrom(row.fact_sources),
     pillarStatus: pillarStatusFrom(row.pillar_status),
     coverage: Number(row.coverage ?? 0),
     activeOpportunity,
@@ -382,8 +427,7 @@ export class PostgresMagazineRankingRepository {
         r.blind_reading,
         r.digital_archive,
         r.telemetry_reports,
-        r.facts_source_url,
-        r.facts_recorded_on,
+        r.fact_sources,
         r.pillar_status,
         r.coverage,
         COUNT(*) OVER() as total_count
@@ -495,8 +539,7 @@ export class PostgresMagazineRankingRepository {
           r.blind_reading,
           r.digital_archive,
           r.telemetry_reports,
-          r.facts_source_url,
-          r.facts_recorded_on,
+          r.fact_sources,
           r.pillar_status,
           r.coverage
         FROM missa_magazine_rankings r
@@ -616,12 +659,136 @@ export class PostgresMagazineRankingRepository {
     return year == null ? null : Number(year);
   }
 
+  /** Patterns in the published index, for the methodology page's charts. */
+  async getIndexAnalytics(year?: number): Promise<MagazineIndexAnalytics | null> {
+    const rankingYear = year ?? (await this.latestRankingYear());
+    if (rankingYear == null) return null;
+    const firstEdition = rankingYear - 4;
+
+    const [overall, honours, flash] = await Promise.all([
+      this.pool.query(
+        `WITH ${CANONICAL_RANKINGS_CTE}
+         SELECT prestige_tier, accolades_score::float AS accolades, regular_fee_cents,
+                charges_reading_fee, pay_kind, response_time_band
+         FROM canonical_rankings
+         WHERE ranking_year = $1 AND genre = 'overall'
+         ORDER BY accolades_score DESC, total_score DESC`,
+        [rankingYear],
+      ),
+      this.pool.query(
+        `WITH standing AS (
+           SELECT profile_id, SUM(source_score)::float AS score,
+                  BOOL_OR(status_marker = 'closed') AS closed,
+                  BOOL_OR(status_marker IN ('hiatus', 'uncertain')) AS paused
+           FROM missa_pushcart_rankings WHERE edition_year = $1 GROUP BY profile_id
+         ), ranked AS (
+           SELECT *, ROW_NUMBER() OVER (ORDER BY score DESC) AS position FROM standing
+         )
+         SELECT COUNT(*)::int AS magazines,
+                COALESCE(SUM(score), 0)::float AS total,
+                COALESCE(SUM(score) FILTER (WHERE position <= 10), 0)::float AS top10,
+                COALESCE(SUM(score) FILTER (WHERE position <= 50), 0)::float AS top50,
+                COUNT(*) FILTER (WHERE score <= 1)::int AS single,
+                COUNT(*) FILTER (WHERE closed)::int AS closed,
+                COUNT(*) FILTER (WHERE paused AND NOT closed)::int AS paused
+         FROM ranked`,
+        [rankingYear],
+      ),
+      this.pool.query(
+        `WITH selections AS (
+           SELECT profile_id, COUNT(*)::int AS n FROM missa_literary_awards
+           WHERE award_year BETWEEN $2 AND $1 GROUP BY profile_id
+         )
+         SELECT
+           (SELECT COUNT(*)::int FROM selections) AS magazines,
+           (SELECT COUNT(*)::int FROM selections s
+              WHERE EXISTS (SELECT 1 FROM missa_pushcart_rankings p
+                            WHERE p.profile_id = s.profile_id AND p.edition_year = $1)) AS also_pushcart,
+           (SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM (
+              SELECT g.name, s.n AS selections FROM selections s JOIN gary_profiles g ON g.id = s.profile_id
+              ORDER BY s.n DESC, g.name ASC LIMIT 10) t) AS leaders`,
+        [rankingYear, firstEdition],
+      ),
+    ]);
+
+    const rows = overall.rows;
+    if (rows.length === 0) return null;
+    const tierOrder = ["Tier 1", "Tier 2", "Tier 3", "Tier 4"];
+    const tiers = tierOrder.map((prefix) => ({
+      tier: prefix,
+      count: rows.filter((r) => String(r.prestige_tier).startsWith(prefix)).length,
+    }));
+
+    const groups = { top: rows.slice(0, 50), rest: rows.slice(50) };
+    const count = (list: Record<string, unknown>[], classify: (r: Record<string, unknown>) => string | null) => {
+      const out: CategoryCounts = {};
+      for (const row of list) {
+        const key = classify(row) ?? "notRecorded";
+        out[key] = (out[key] ?? 0) + 1;
+      }
+      return out;
+    };
+    const feeClass = (r: Record<string, unknown>) =>
+      r.regular_fee_cents === 0 || r.charges_reading_fee === false
+        ? "free"
+        : r.regular_fee_cents != null || r.charges_reading_fee === true
+          ? "charges"
+          : null;
+    const payClass = (r: Record<string, unknown>) =>
+      r.pay_kind === "cash" ? "cash" : r.pay_kind === "copies_only" ? "copies" : r.pay_kind === "unpaid" ? "unpaid" : null;
+    const responseClass = (r: Record<string, unknown>) =>
+      r.response_time_band === "under_3_months"
+        ? "under3"
+        : r.response_time_band === "3_to_6_months"
+          ? "between3and6"
+          : r.response_time_band === "over_6_months"
+            ? "over6"
+            : null;
+
+    const fees = rows
+      .map((r) => (r.regular_fee_cents == null ? null : Number(r.regular_fee_cents)))
+      .filter((v): v is number => v != null && v > 0)
+      .sort((a, b) => a - b);
+    const h = honours.rows[0] ?? {};
+    const total = Number(h.total ?? 0);
+    const f = flash.rows[0] ?? {};
+    const leaders = (typeof f.leaders === "string" ? JSON.parse(f.leaders) : f.leaders) as Array<{
+      name: string;
+      selections: number;
+    }> | null;
+
+    return {
+      year: rankingYear,
+      tiers,
+      honours: {
+        magazines: Number(h.magazines ?? 0),
+        top10Share: total > 0 ? Number(h.top10) / total : 0,
+        top50Share: total > 0 ? Number(h.top50) / total : 0,
+        singleRecognition: Number(h.single ?? 0),
+        closed: Number(h.closed ?? 0),
+        paused: Number(h.paused ?? 0),
+      },
+      comparison: {
+        fees: { top: count(groups.top, feeClass), rest: count(groups.rest, feeClass) },
+        pay: { top: count(groups.top, payClass), rest: count(groups.rest, payClass) },
+        response: { top: count(groups.top, responseClass), rest: count(groups.rest, responseClass) },
+      },
+      typicalFeeCents: fees.length ? fees[Math.floor(fees.length / 2)]! : null,
+      flash: {
+        firstEdition,
+        magazines: Number(f.magazines ?? 0),
+        alsoPushcart: Number(f.also_pushcart ?? 0),
+        leaders: (leaders ?? []).map((l) => ({ name: String(l.name), selections: Number(l.selections) })),
+      },
+    };
+  }
+
   /** Live magazine counts and per-pillar fact coverage for the methodology page. */
   async getIndexCoverage(year?: number): Promise<MagazineIndexCoverage | null> {
     const rankingYear = year ?? (await this.latestRankingYear());
     if (rankingYear == null) return null;
 
-    const [counts, pillars, sources] = await Promise.all([
+    const [counts, pillars, sources, editions, lastRun] = await Promise.all([
       this.pool.query(
         `WITH ${CANONICAL_RANKINGS_CTE}
          SELECT genre, COUNT(*)::int AS count, AVG(coverage) AS average_coverage, MAX(updated_at)::text AS updated
@@ -646,6 +813,21 @@ export class PostgresMagazineRankingRepository {
            (SELECT COUNT(*)::int FROM missa_submission_telemetry) AS writer_reports`,
         [rankingYear],
       ),
+      this.pool
+        .query(
+          `SELECT source, array_agg(DISTINCT edition_year ORDER BY edition_year) AS years
+           FROM missa_ranking_source_snapshots
+           WHERE status = 'accepted' AND edition_year <= $1
+           GROUP BY source`,
+          [rankingYear],
+        )
+        .catch(() => ({ rows: [] as Record<string, unknown>[] })),
+      this.pool
+        .query(
+          `SELECT finished_at::text AS finished_at, status FROM missa_ranking_runs
+           WHERE status IN ('published', 'dry_run') ORDER BY finished_at DESC NULLS LAST LIMIT 1`,
+        )
+        .catch(() => ({ rows: [] as Record<string, unknown>[] })),
     ]);
 
     const magazineCounts: Record<RankingGenre, number> = {
@@ -699,6 +881,15 @@ export class PostgresMagazineRankingRepository {
       anthologyCitations: Number(sourceRow.anthology_citations ?? 0),
       writerReports: Number(sourceRow.writer_reports ?? 0),
       lastUpdated,
+      sourceEditions: Object.fromEntries(
+        editions.rows.map((row) => [
+          String(row.source),
+          (Array.isArray(row.years) ? row.years : []).map(Number),
+        ]),
+      ),
+      lastRun: lastRun.rows[0]?.finished_at
+        ? { finishedAt: String(lastRun.rows[0].finished_at), status: String(lastRun.rows[0].status) }
+        : null,
     };
   }
 

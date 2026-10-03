@@ -8,6 +8,8 @@
 -- 3. Anthology citations require a source URL and retrieval date; rows
 --    without one are removed.
 -- 4. Response reports no longer store an account identifier.
+-- 5. Every fetched source edition is archived as a snapshot, and every
+--    scheduled update is logged, so the index can refresh itself.
 
 ALTER TABLE "missa_magazine_rankings"
   ALTER COLUMN "regular_fee_cents" DROP NOT NULL,
@@ -24,8 +26,9 @@ ALTER TABLE "missa_magazine_rankings"
   ADD COLUMN IF NOT EXISTS "blind_reading" boolean,
   ADD COLUMN IF NOT EXISTS "debut_friendly" boolean,
   ADD COLUMN IF NOT EXISTS "telemetry_reports" integer DEFAULT 0 NOT NULL,
-  ADD COLUMN IF NOT EXISTS "facts_source_url" text,
-  ADD COLUMN IF NOT EXISTS "facts_recorded_on" date,
+  -- fact -> {"url", "recordedOn"} for every non-null fact (fee, pay, response,
+  -- simultaneous, query, archive, blind, debut).
+  ADD COLUMN IF NOT EXISTS "fact_sources" jsonb DEFAULT '{}'::jsonb NOT NULL,
   ADD COLUMN IF NOT EXISTS "pillar_status" jsonb DEFAULT '{}'::jsonb NOT NULL,
   ADD COLUMN IF NOT EXISTS "coverage" numeric(4, 3);
 
@@ -34,7 +37,7 @@ SET "median_response_days" = NULL,
     "regular_fee_cents" = NULL,
     "contributor_pay_cents" = NULL,
     "simultaneous_policy" = NULL
-WHERE "facts_source_url" IS NULL;
+WHERE "fact_sources" = '{}'::jsonb;
 
 ALTER TABLE "missa_magazine_rankings"
   DROP CONSTRAINT IF EXISTS "missa_rankings_simultaneous_check",
@@ -49,12 +52,14 @@ ALTER TABLE "missa_magazine_rankings"
   DROP CONSTRAINT IF EXISTS "missa_rankings_facts_source_check",
   ADD CONSTRAINT "missa_rankings_facts_source_check"
     CHECK (
-      "facts_source_url" IS NOT NULL
-      OR ("regular_fee_cents" IS NULL AND "contributor_pay_cents" IS NULL
-          AND "simultaneous_policy" IS NULL AND "response_time_band" IS NULL
-          AND "charges_reading_fee" IS NULL AND "pay_kind" IS NULL
-          AND "query_after_days" IS NULL AND "digital_archive" IS NULL
-          AND "blind_reading" IS NULL AND "debut_friendly" IS NULL)
+      (("regular_fee_cents" IS NULL AND "charges_reading_fee" IS NULL) OR "fact_sources" ? 'fee')
+      AND (("contributor_pay_cents" IS NULL AND "pay_kind" IS NULL) OR "fact_sources" ? 'pay')
+      AND ("response_time_band" IS NULL OR "fact_sources" ? 'response')
+      AND ("simultaneous_policy" IS NULL OR "fact_sources" ? 'simultaneous')
+      AND ("query_after_days" IS NULL OR "fact_sources" ? 'query')
+      AND ("digital_archive" IS NULL OR "fact_sources" ? 'archive')
+      AND ("blind_reading" IS NULL OR "fact_sources" ? 'blind')
+      AND ("debut_friendly" IS NULL OR "fact_sources" ? 'debut')
     ),
   DROP CONSTRAINT IF EXISTS "missa_rankings_median_source_check",
   ADD CONSTRAINT "missa_rankings_median_source_check"
@@ -94,3 +99,38 @@ ALTER TABLE "missa_literary_awards"
   ADD CONSTRAINT "missa_awards_type_check" CHECK ("award_type" IN ('win', 'special_mention', 'notable', 'selection'));
 
 ALTER TABLE "missa_submission_telemetry" DROP COLUMN IF EXISTS "user_id";
+
+CREATE TABLE IF NOT EXISTS "missa_ranking_source_snapshots" (
+  "id" text PRIMARY KEY NOT NULL,
+  "source" text NOT NULL,
+  "edition_year" integer NOT NULL,
+  "genre" text,
+  "url" text NOT NULL,
+  "retrieved_at" timestamptz NOT NULL,
+  "content_sha256" text NOT NULL,
+  "row_count" integer NOT NULL,
+  "rows" jsonb NOT NULL,
+  "status" text NOT NULL,
+  "reason" text,
+  "created_at" timestamptz DEFAULT now() NOT NULL,
+  CONSTRAINT "missa_snapshot_source_check" CHECK ("source" IN ('garstang', 'best_microfiction', 'best_small_fictions')),
+  CONSTRAINT "missa_snapshot_genre_check" CHECK ("genre" IS NULL OR "genre" IN ('fiction', 'poetry', 'nonfiction')),
+  CONSTRAINT "missa_snapshot_status_check" CHECK ("status" IN ('accepted', 'rejected'))
+);
+
+CREATE INDEX IF NOT EXISTS "idx_missa_snapshot_edition"
+  ON "missa_ranking_source_snapshots" ("source", "edition_year", "genre", "retrieved_at" DESC);
+
+CREATE TABLE IF NOT EXISTS "missa_ranking_runs" (
+  "id" text PRIMARY KEY NOT NULL,
+  "trigger" text NOT NULL,
+  "started_at" timestamptz DEFAULT now() NOT NULL,
+  "finished_at" timestamptz,
+  "status" text NOT NULL,
+  "published" boolean DEFAULT false NOT NULL,
+  "ranking_years" integer[] DEFAULT ARRAY[]::integer[] NOT NULL,
+  "summary" jsonb DEFAULT '{}'::jsonb NOT NULL,
+  CONSTRAINT "missa_runs_status_check" CHECK ("status" IN ('running', 'published', 'dry_run', 'unchanged', 'failed'))
+);
+
+CREATE INDEX IF NOT EXISTS "idx_missa_runs_started" ON "missa_ranking_runs" ("started_at" DESC);

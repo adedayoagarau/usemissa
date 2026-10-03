@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 export default async function SubmissionPlanPage() {
   const repository = getMagazineRankingRepository();
   const [page, cookieStore] = await Promise.all([
-    repository.listRankings({ genre: "overall", year: 2026, limit: 1000 }),
+    repository.listRankings({ genre: "overall", limit: 1000 }),
     cookies(),
   ]);
   const session = await getSessionAccountFromToken(

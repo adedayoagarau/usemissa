@@ -1,14 +1,18 @@
 import type { MagazineRankingRow } from "@missa/radar-adapters";
+import type {
+  ContributorPayKind,
+  FactStatus,
+  PillarStatusMap,
+  RankedMagazinePlanningCandidate,
+  ResponseTimeBand,
+  SimultaneousPolicy,
+} from "@missa/radar-engine";
+// Client components use this file, so take values from the ranking module
+// itself: the package root also exports Node-only modules (node:fs).
 import {
   PILLAR_MAX,
   PRO_PAY_THRESHOLDS,
-  type ContributorPayKind,
-  type FactStatus,
-  type PillarStatusMap,
-  type RankedMagazinePlanningCandidate,
-  type ResponseTimeBand,
-  type SimultaneousPolicy,
-} from "@missa/radar-engine";
+} from "@missa/radar-engine/dist/src/ranking/magazineRankingEngine.js";
 
 /** What the index shows when no source records a fact. */
 export const NOT_RECORDED = "Not recorded";

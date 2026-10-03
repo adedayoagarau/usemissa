@@ -206,6 +206,20 @@ test("turnaround uses one shared band table for medians and reported bands", () 
   );
 });
 
+test("a genre index scores that genre's recorded fee", () => {
+  const input = magazine({
+    genresPublished: ["fiction", "poetry"],
+    regularSubmissionFeeCents: 0,
+    chargesSubmissionFee: false,
+    feesByGenre: {
+      fiction: { regularSubmissionFeeCents: 300, chargesSubmissionFee: true, hasSubsidizedFeeCategory: false },
+    },
+  });
+  assert.equal(scoreMagazine(input, "fiction", 2026, baseline).feesScore, 7);
+  assert.equal(scoreMagazine(input, "poetry", 2026, baseline).feesScore, 15);
+  assert.equal(scoreMagazine(input, "overall", 2026, baseline).feesScore, 15);
+});
+
 test("tiers break at 75, 60 and 45", () => {
   assert.equal(assignMissaTier(75), "Tier 1 (Flagship Luminary)");
   assert.equal(assignMissaTier(74.9), "Tier 2 (High Distinction)");

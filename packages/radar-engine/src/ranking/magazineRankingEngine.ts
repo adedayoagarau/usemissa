@@ -77,6 +77,12 @@ export const ANTHOLOGY_CITATION_POINTS: Record<CitedAnthology, number> = {
 /** Anthology selections add at most this many of the 40 accolade points. */
 export const ANTHOLOGY_POINTS_CAP = 10;
 
+export interface FeeFacts {
+  regularSubmissionFeeCents: number | null;
+  chargesSubmissionFee: boolean | null;
+  hasSubsidizedFeeCategory: boolean | null;
+}
+
 export interface ContributorPayFacts {
   kind: ContributorPayKind | null;
   poetryPerPoemCents?: number | null;
@@ -102,6 +108,11 @@ export interface MagazineScoringInput {
   chargesSubmissionFee: boolean | null;
   hasSubsidizedFeeCategory: boolean | null;
   contributorPay: ContributorPayFacts;
+  /**
+   * Fees recorded for one genre's submission category. A genre index uses
+   * them in place of the magazine-wide fee facts.
+   */
+  feesByGenre?: Partial<Record<ScoredGenre, FeeFacts>>;
   digitalArchive: boolean | null;
   blindReading: boolean | null;
   debutFriendly: boolean | null;
@@ -462,6 +473,11 @@ export function combinePillars(
   };
 }
 
+/** The fee facts a genre index scores: the genre's own, else the magazine's. */
+export function feeFactsFor(input: MagazineScoringInput, genre: RankingGenre): FeeFacts {
+  return (genre !== "overall" ? input.feesByGenre?.[genre] : undefined) ?? input;
+}
+
 export function scoreMagazine(
   input: MagazineScoringInput,
   genre: RankingGenre,
@@ -472,7 +488,7 @@ export function scoreMagazine(
     accolades: computeAccoladesScore(input, genre, rankingYear, baseline),
     pay: computePayScore(input.contributorPay),
     turnaround: computeTurnaroundScore(input),
-    fees: computeFeesScore(input),
+    fees: computeFeesScore(feeFactsFor(input, genre)),
     respect: computeRespectScore(input),
     formatEthics: computeFormatAndEthicsScore(input),
   });

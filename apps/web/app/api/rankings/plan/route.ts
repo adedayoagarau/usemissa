@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     const repository = getMagazineRankingRepository();
     // Fetch all journals for this genre to run the strategy recommender
-    const page = await repository.listRankings({ genre, year: 2026, limit: 1000 });
+    const page = await repository.listRankings({ genre, limit: 1000 });
     if (page.dataSource !== "database") {
       // Never build a plan from seed rankings.
       return NextResponse.json(

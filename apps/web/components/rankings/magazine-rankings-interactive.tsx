@@ -308,7 +308,7 @@ export function MagazineRankingsInteractive({
       ) : (
         <Table className="table-fixed">
           <caption className="sr-only">
-            2026 {currentGenre} magazine rankings. Scores are index points;
+            {items[0]?.rankingYear} {currentGenre} magazine rankings. Scores are index points;
             facts no source records are shown as not recorded.
           </caption>
           <TableHeader>

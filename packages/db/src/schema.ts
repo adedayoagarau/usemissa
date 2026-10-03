@@ -5158,8 +5158,7 @@ export const missaMagazineRankings = pgTable(
     blindReading: boolean("blind_reading"),
     debutFriendly: boolean("debut_friendly"),
     telemetryReports: integer("telemetry_reports").notNull().default(0),
-    factsSourceUrl: text("facts_source_url"),
-    factsRecordedOn: date("facts_recorded_on"),
+    factSources: jsonb("fact_sources").notNull().default(sql`'{}'::jsonb`),
     pillarStatus: jsonb("pillar_status").notNull().default(sql`'{}'::jsonb`),
     coverage: numeric("coverage", { precision: 4, scale: 3 }),
     updatedAt,
@@ -5190,6 +5189,59 @@ export const missaMagazineRankings = pgTable(
     check(
       "missa_rankings_median_source_check",
       sql`${table.medianResponseDays} is null or ${table.telemetryReports} > 0`,
+    ),
+  ],
+);
+
+/** Every fetched edition of an accolade source, accepted or rejected. */
+export const missaRankingSourceSnapshots = pgTable(
+  "missa_ranking_source_snapshots",
+  {
+    id: text("id").primaryKey(),
+    source: text("source").notNull(),
+    editionYear: integer("edition_year").notNull(),
+    genre: text("genre"),
+    url: text("url").notNull(),
+    retrievedAt: timestamp("retrieved_at", { withTimezone: true }).notNull(),
+    contentSha256: text("content_sha256").notNull(),
+    rowCount: integer("row_count").notNull(),
+    rows: jsonb("rows").notNull(),
+    status: text("status").notNull(),
+    reason: text("reason"),
+    createdAt,
+  },
+  (table) => [
+    index("idx_missa_snapshot_edition").on(table.source, table.editionYear, table.genre, table.retrievedAt),
+    check(
+      "missa_snapshot_source_check",
+      sql`${table.source} in ('garstang', 'best_microfiction', 'best_small_fictions')`,
+    ),
+    check(
+      "missa_snapshot_genre_check",
+      sql`${table.genre} is null or ${table.genre} in ('fiction', 'poetry', 'nonfiction')`,
+    ),
+    check("missa_snapshot_status_check", sql`${table.status} in ('accepted', 'rejected')`),
+  ],
+);
+
+/** One row per scheduled or manual index update. */
+export const missaRankingRuns = pgTable(
+  "missa_ranking_runs",
+  {
+    id: text("id").primaryKey(),
+    trigger: text("trigger").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    status: text("status").notNull(),
+    published: boolean("published").notNull().default(false),
+    rankingYears: integer("ranking_years").array().notNull().default(sql`ARRAY[]::integer[]`),
+    summary: jsonb("summary").notNull().default(sql`'{}'::jsonb`),
+  },
+  (table) => [
+    index("idx_missa_runs_started").on(table.startedAt),
+    check(
+      "missa_runs_status_check",
+      sql`${table.status} in ('running', 'published', 'dry_run', 'unchanged', 'failed')`,
     ),
   ],
 );

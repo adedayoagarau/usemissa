@@ -1,231 +1,153 @@
 import { publicIndexLayoutStyles as catalogueStyles } from "@/components/missa/public-index-layout";
-import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Award,
-  DollarSign,
-  CheckCircle2,
-  Sparkles,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { MagazineMethodology } from "@/components/rankings/magazine-methodology";
 import { BetaBadge } from "@/components/ui/beta-badge";
+import { Button } from "@/components/ui/button";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 
 export const metadata: Metadata = {
-  title: "Ranking Methodology · Missa Literary Magazine Index",
+  title: "How the rankings work · Missa Literary Magazine Index",
   description:
-    "How the Missa Literary Magazine Index evaluates publication prestige, writer compensation, turnaround dignity, and submission ethics.",
+    "How Missa ranks literary magazines: what it counts, where each fact comes from, and what the numbers show.",
 };
 
 export const dynamic = "force-dynamic";
 
-const getCachedIndexCoverage = unstable_cache(
-  async () => getMagazineRankingRepository().getIndexCoverage(),
-  ["public-magazine-index-coverage-v1"],
+const getCachedIndexReport = unstable_cache(
+  async () => {
+    const repository = getMagazineRankingRepository();
+    const [coverage, analytics] = await Promise.all([
+      repository.getIndexCoverage(),
+      repository.getIndexAnalytics(),
+    ]);
+    return { coverage, analytics };
+  },
+  ["public-magazine-index-report-v1"],
   { revalidate: 300, tags: ["magazine-rankings"] },
 );
 
 export default async function RankingsMethodologyPage() {
-  const coverage = await getCachedIndexCoverage().catch(() => null);
+  const { coverage, analytics } = await getCachedIndexReport().catch(() => ({
+    coverage: null,
+    analytics: null,
+  }));
+
   return (
     <PublicSiteShell current="Magazine rankings">
       <main id="main-content" className={catalogueStyles.main}>
-        {/* Navigation Breadcrumb */}
-        <div className="mb-8 flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="mb-8 text-sm text-muted-foreground">
           <Link
             href="/rankings/magazines"
-            className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground"
+            className="inline-flex min-h-11 items-center gap-1.5 transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
           >
-            <ArrowLeft className="size-4" />
-            Back to Magazine Rankings
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Back to the magazine rankings
           </Link>
         </div>
 
-        {/* Header */}
-        <header className={`${catalogueStyles.pageIntro} mb-8`}>
-          <p className={catalogueStyles.eyebrow}>Rankings · 2026</p>
-          <h1 className="mt-2">Ranking methodology</h1>
+        <header className={`${catalogueStyles.pageIntro} mb-10`}>
+          <p className={catalogueStyles.eyebrow}>
+            Rankings{coverage ? ` · ${coverage.year}` : ""}
+          </p>
+          <h1 className="mt-2">How the rankings work</h1>
           <p className={catalogueStyles.lede}>
-            The sources, scoring criteria, and tiers behind Missa’s magazine
-            rankings.
+            What we count, where every fact comes from, and what the numbers
+            show.
           </p>
         </header>
 
-        <aside className="mb-8 rounded-xl border border-border bg-muted p-4 sm:p-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <BetaBadge />
-            <p className="font-mono text-xs text-foreground tabular-nums">
-              Method version: 2026 beta
-            </p>
-          </div>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-            These rankings are a testing tool, not a publisher or residency
-            endorsement. Scores use only facts a source records, and change as
-            records are added or corrected. Confirm fees, deadlines, policies,
-            and benefits on the organization&apos;s official site before acting.
+        <aside className="mb-12 max-w-3xl space-y-2 border-l-2 border-border pl-4">
+          <BetaBadge />
+          <p className="text-sm leading-6 text-muted-foreground">
+            The rankings are a guide, not an endorsement. They change as records
+            are added or corrected. Before you submit, check fees, deadlines and
+            guidelines on the magazine’s own site.
           </p>
         </aside>
 
-        <section className="space-y-8 text-base leading-7 text-foreground/90">
-          <MagazineMethodology coverage={coverage} />
+        <div className="space-y-16">
+          <MagazineMethodology coverage={coverage} analytics={analytics} />
 
-          {/* Section: The Missa Residency Index */}
-          <div className="pt-8">
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-              The Missa Residency Index (MRI)
+          <section className="space-y-4">
+            <h2 className="text-2xl font-semibold tracking-tight text-balance text-foreground">
+              The residency rankings
             </h2>
-            <p className="mt-2 text-muted-foreground">
-              For artists and writers, taking time away for an immersive
-              residency is one of the most transformative commitments in a
-              creative life. Yet the landscape has long suffered from
-              information asymmetry: hidden program fees, ambiguous
-              accommodations, and unpredictable fellowship support.
+            <p className="max-w-[68ch] text-base leading-7 text-muted-foreground">
+              Residencies are scored out of 100 in the same spirit: from the
+              program’s own records and from what residents report. Some
+              programs have more on record than others, so treat the score as a
+              way to compare, not as a judgement of a program.
             </p>
-            <p className="mt-3 text-muted-foreground">
-              The Missa Residency Index applies a rule-based 100-point model to
-              program records, community reporting, and institutional intake
-              fields held in the current index. Coverage and field completeness
-              vary by program, so the score is a comparison aid rather than a
-              certification of program quality or current terms.
-            </p>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-xl border border-border bg-card/60 p-5">
-                <div className="flex items-center gap-2 font-semibold text-foreground">
-                  <DollarSign className="size-4 text-primary" />
-                  Funding Support (35 pts)
-                </div>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Programs providing 100% free residencies (25 pts) and living
-                  stipends (10 pts) receive top weight to ensure economic
-                  access.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border bg-card/60 p-5">
-                <div className="flex items-center gap-2 font-semibold text-foreground">
-                  <Sparkles className="size-4 text-primary" />
-                  Community Rating (30 pts)
-                </div>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Normalized aggregate scores derived from the resident and
-                  community reports currently attached to each program record.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border bg-card/60 p-5">
-                <div className="flex items-center gap-2 font-semibold text-foreground">
-                  <CheckCircle2 className="size-4 text-primary" />
-                  Facilities & Solitude (20 pts)
-                </div>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Rewards dedicated private studio space (10 pts) and
-                  chef-prepared or provided meals (10 pts) essential for
-                  uninterrupted focus.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-border bg-card/60 p-5">
-                <div className="flex items-center gap-2 font-semibold text-foreground">
-                  <Award className="size-4 text-primary" />
-                  Prestige & Access (15 pts)
-                </div>
-                <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                  Recognizes institutional longevity, multi-directory
-                  provenance, and linked open calls where a current
-                  source-backed record is available.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4 rounded-xl border border-border bg-card p-6">
-              <h3 className="font-semibold text-foreground">
-                Residency Prestige Tiers
-              </h3>
-              <div className="grid gap-4 text-sm sm:grid-cols-3">
-                <div>
-                  <RankingTierBadge tier="Tier 1">
-                    Tier 1: Flagship Fellowships
-                  </RankingTierBadge>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    Nationally renowned, highly selective programs with full
-                    funding, private studios, meals, and stipends (e.g.
-                    MacDowell, Headlands, Yaddo, FAWC, VCCA, Skowhegan).
-                  </p>
-                </div>
-                <div>
-                  <RankingTierBadge tier="Tier 2">
-                    Tier 2: High Distinction
-                  </RankingTierBadge>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    Celebrated institutions offering high-quality facilities,
-                    competitive financial aid, or dedicated seasonal fellowship
-                    cohorts.
-                  </p>
-                </div>
-                <div>
-                  <RankingTierBadge tier="Tier 3">
-                    Tier 3: Emerging & Regional
-                  </RankingTierBadge>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    Vital incubator spaces, specialized medium retreats, and
-                    regional sanctuaries nurturing local and international
-                    creators.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Practical Strategy for Creators */}
-          <div className="rounded-2xl border border-border bg-card p-6 sm:p-8">
-            <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-              A Strategic Compass, Not a Gatekeeper
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Rankings should serve your craft, not intimidate it. We encourage
-              writers and artists to build a balanced portfolio strategy for
-              each manuscript and residency cycle:
-            </p>
-            <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+            <ul className="max-w-[68ch] list-disc space-y-2 pl-5 text-base leading-7 text-muted-foreground marker:text-primary">
               <li>
-                <strong>Send to a spread of tiers:</strong> Combine a couple of
-                Tier 1 &quot;reach&quot; journals or flagship residencies with
-                Tier 2 targets and Tier 3 venues whose creative communities you
-                personally admire.
+                <strong className="text-foreground">
+                  Funding, up to 35 points.
+                </strong>{" "}
+                25 for a residency that costs nothing to attend, and 10 more for
+                a living stipend.
               </li>
               <li>
-                <strong>Batch simultaneous submissions:</strong> Filter for
-                journals that record allowing simultaneous submissions and
-                replying within three months.
+                <strong className="text-foreground">
+                  What residents say, up to 30 points.
+                </strong>{" "}
+                The ratings past residents have left on the program.
               </li>
               <li>
-                <strong>Protect your budget:</strong> Use the &quot;No
-                submission fee&quot; filter. It shows only magazines whose
-                listing records no fee.
+                <strong className="text-foreground">
+                  Room to work, up to 20 points.
+                </strong>{" "}
+                10 for a private studio and 10 for meals provided.
+              </li>
+              <li>
+                <strong className="text-foreground">
+                  Standing and access, up to 15 points.
+                </strong>{" "}
+                How long the program has run, how many directories list it, and
+                whether it has a current open call on record.
               </li>
             </ul>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Link
-                href="/rankings/magazines"
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent-deep"
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-2xl font-semibold tracking-tight text-balance text-foreground">
+              Using the rankings well
+            </h2>
+            <ul className="max-w-[68ch] list-disc space-y-2 pl-5 text-base leading-7 text-muted-foreground marker:text-primary">
+              <li>
+                Send each piece to a spread of tiers: a few long shots, several
+                good fits, and magazines whose pages you already love.
+              </li>
+              <li>
+                If you submit to several places at once, filter for magazines
+                that welcome simultaneous submissions and reply within three
+                months.
+              </li>
+              <li>
+                Keep costs down with the “No submission fee” filter. It shows
+                only magazines where a free route is on record.
+              </li>
+            </ul>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <Button
+                nativeButton={false}
+                render={<Link href="/rankings/magazines" />}
               >
-                Magazine Rankings <ArrowRight className="size-4" />
-              </Link>
-              <Link
-                href="/rankings/residencies"
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                Magazine rankings <ArrowRight aria-hidden="true" />
+              </Button>
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<Link href="/rankings/residencies" />}
               >
-                Residency Rankings & Reviews
-              </Link>
+                Residency rankings
+              </Button>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
     </PublicSiteShell>
   );

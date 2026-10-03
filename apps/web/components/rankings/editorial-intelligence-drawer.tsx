@@ -906,7 +906,7 @@ export function EditorialIntelligenceDrawer({
                             className="flex flex-wrap items-center justify-between gap-2 rounded border border-border/50 bg-muted/40 p-2.5 text-xs"
                           >
                             <span className="font-semibold text-foreground capitalize">
-                              Pushcart ranking {row.editionYear} · {row.genre}
+                              Pushcart recognition {row.editionYear} · {row.genre}
                             </span>
                             <a
                               href={row.sourceUrl}
@@ -914,7 +914,7 @@ export function EditorialIntelligenceDrawer({
                               rel="noreferrer"
                               className="font-mono text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                             >
-                              #{row.rank} · score {row.score} (Garstang)
+                              Ranked #{row.rank} · source
                             </a>
                           </li>
                         ))}

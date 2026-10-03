@@ -7,6 +7,7 @@ import {
   type MagazineRankingsFilter,
   type MagazineTelemetrySummary,
   type MagazineIndexCoverage,
+  type MagazineIndexAnalytics,
   type SubmissionTelemetryInput,
 } from "@missa/radar-adapters";
 import {
@@ -50,7 +51,7 @@ function previewOrEmptyPage(filter: MagazineRankingsFilter): MagazineRankingPage
 } {
   const genre = filter.genre ?? "overall";
   if (!seedRankingsPreviewAllowed()) {
-    return { dataSource: "empty", items: [], total: 0, year: filter.year ?? 2026, genre };
+    return { dataSource: "empty", items: [], total: 0, year: filter.year ?? new Date().getUTCFullYear(), genre };
   }
   const all = getFallbackRankings(genre);
   return {
@@ -97,8 +98,7 @@ function previewRow(
     blindReading: input.blindReading,
     digitalArchive: input.digitalArchive,
     telemetryReports: 0,
-    factsSourceUrl: null,
-    factsRecordedOn: null,
+    factSources: {},
     pillarStatus: score.pillarStatus,
     coverage: score.coverage,
     activeOpportunity: null,
@@ -132,6 +132,7 @@ export function getMagazineRankingRepository(): {
   getMagazineStanding: (profileId: string) => Promise<MagazineRankingRow[]>;
   getTelemetrySummary: (profileId: string) => Promise<MagazineTelemetrySummary>;
   getIndexCoverage: () => Promise<MagazineIndexCoverage | null>;
+  getIndexAnalytics: () => Promise<MagazineIndexAnalytics | null>;
   recordSubmissionTelemetry: (
     input: SubmissionTelemetryInput,
   ) => Promise<{ success: boolean; newMedianDays: number | null }>;
@@ -165,6 +166,7 @@ export function getMagazineRankingRepository(): {
         latestReportAt: null,
       }),
       getIndexCoverage: async () => null,
+      getIndexAnalytics: async () => null,
       // Without a database nothing is stored, so nothing is reported as saved.
       recordSubmissionTelemetry: async () => ({ success: false, newMedianDays: null }),
     };
@@ -213,6 +215,14 @@ export function getMagazineRankingRepository(): {
     getIndexCoverage: async () => {
       try {
         return await readRepo.getIndexCoverage();
+      } catch (error) {
+        if (!isUndefinedTableError(error)) throw error;
+        return null;
+      }
+    },
+    getIndexAnalytics: async () => {
+      try {
+        return await readRepo.getIndexAnalytics();
       } catch (error) {
         if (!isUndefinedTableError(error)) throw error;
         return null;
