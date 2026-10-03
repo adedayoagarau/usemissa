@@ -33,11 +33,15 @@ const tabsListVariants = cva(
         line: "gap-1 bg-transparent",
         section:
           "w-full justify-start gap-3 border-b border-border bg-transparent pb-1",
+        // A row of day or period tiles; each trigger is a small card (Creator Home week).
+        tiles:
+          "grid w-full grid-cols-4 gap-2 rounded-none bg-transparent p-0 sm:grid-cols-8",
       },
       size: {
         compact: "group-data-horizontal/tabs:h-8",
         responsive:
           "group-data-horizontal/tabs:h-11 lg:group-data-horizontal/tabs:h-8",
+        auto: "group-data-horizontal/tabs:h-auto",
       },
     },
     defaultVariants: {
@@ -88,6 +92,7 @@ function TabsTrigger({
       className={cn(
         tabsTriggerVariants({ size }),
         "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "group-data-[variant=tiles]/tabs-list:h-auto group-data-[variant=tiles]/tabs-list:min-h-22 group-data-[variant=tiles]/tabs-list:flex-col group-data-[variant=tiles]/tabs-list:items-stretch group-data-[variant=tiles]/tabs-list:justify-start group-data-[variant=tiles]/tabs-list:gap-2 group-data-[variant=tiles]/tabs-list:rounded-xl group-data-[variant=tiles]/tabs-list:border-2 group-data-[variant=tiles]/tabs-list:bg-muted/60 group-data-[variant=tiles]/tabs-list:p-3 group-data-[variant=tiles]/tabs-list:text-start group-data-[variant=tiles]/tabs-list:whitespace-normal group-data-[variant=tiles]/tabs-list:text-foreground group-data-[variant=tiles]/tabs-list:hover:bg-muted group-data-[variant=tiles]/tabs-list:data-active:border-primary group-data-[variant=tiles]/tabs-list:data-active:bg-background group-data-[variant=tiles]/tabs-list:data-active:shadow-none",
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
         "data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground",
         "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",

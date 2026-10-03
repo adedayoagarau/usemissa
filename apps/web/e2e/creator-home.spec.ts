@@ -21,8 +21,8 @@ test("Home is derived from Tracker state and every row opens the record", async 
   // A new creator is sent from the old workspace entry to Home.
   await page.goto("/workspace");
   await expect(page).toHaveURL(/\/home$/);
-  await expect(page.getByRole("heading", { level: 1, name: "Hello, Ifeoma." })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Your week starts with one saved call" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Welcome, Ifeoma." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Save a call you want to apply for" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Home", exact: true }).first()).toHaveAttribute("aria-current", "page");
 
   const save = await page.request.post("/api/me/tracker", { data: { opportunityId } });
@@ -36,8 +36,12 @@ test("Home is derived from Tracker state and every row opens the record", async 
   expect(recorded.ok()).toBeTruthy();
 
   await page.goto("/home");
-  await expect(page.getByRole("heading", { name: "This week’s three" })).toBeVisible();
-  const awaiting = page.getByRole("region", { name: /Awaiting responses/ });
+  // One submission out and nothing due: Home names a waiting week.
+  await expect(page.getByText(/^A waiting week\. One submission is out/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "The week ahead" })).toBeVisible();
+  const tracker = page.getByRole("region", { name: "Your Tracker" });
+  await tracker.getByRole("tab", { name: /Awaiting/ }).click();
+  const awaiting = tracker.getByRole("tabpanel");
   await expect(awaiting.getByRole("link", { name: new RegExp(title) })).toBeVisible();
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((violation) => ["critical", "serious"].includes(violation.impact ?? ""))).toEqual([]);
