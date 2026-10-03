@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Star, Building, Check, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { ResidencyRankingRow } from "@missa/radar-adapters";
@@ -34,26 +35,25 @@ export function SubmitResidencyReviewDialog({
   const [hoverRating, setHoverRating] = useState<number | null>(null);
   const [reviewTitle, setReviewTitle] = useState("");
   const [reviewBody, setReviewBody] = useState("");
-  const [authorName, setAuthorName] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signInRequired, setSignInRequired] = useState(false);
 
   if (!residency) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSignInRequired(false);
 
     if (!rating || rating < 1 || rating > 5) {
-      setError("Please select a star rating between 1 and 5.");
+      setError("Choose a rating from 1 to 5.");
       return;
     }
 
     if (!reviewBody.trim() || reviewBody.trim().length < 10) {
-      setError(
-        "Please write at least 10 characters sharing your residency experience.",
-      );
+      setError("Write at least 10 characters about the residency.");
       return;
     }
 
@@ -68,22 +68,21 @@ export function SubmitResidencyReviewDialog({
             ratingScore: rating,
             reviewTitle: reviewTitle.trim() || undefined,
             reviewBody: reviewBody.trim(),
-            authorName: isAnonymous
-              ? "Anonymous Resident"
-              : authorName.trim() || undefined,
             isAnonymous,
           }),
         },
       );
 
-      const json = await res.json();
+      if (res.status === 401) {
+        setSignInRequired(true);
+        return;
+      }
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(json.error || "Failed to submit review.");
+        throw new Error(json.error || "We could not save your review. Try again.");
       }
 
-      toast.success(
-        "Review submitted! Thank you for contributing to the community index.",
-      );
+      toast.success("Review submitted.");
       onSuccess?.(json.newRating, json.newTotalScore);
       onClose();
 
@@ -91,13 +90,12 @@ export function SubmitResidencyReviewDialog({
       setRating(5);
       setReviewTitle("");
       setReviewBody("");
-      setAuthorName("");
       setIsAnonymous(true);
     } catch (err: unknown) {
       setError(
         err instanceof Error
           ? err.message
-          : "Submission failed. Please try again.",
+          : "We could not save your review. Try again.",
       );
     } finally {
       setIsSubmitting(false);
@@ -113,12 +111,34 @@ export function SubmitResidencyReviewDialog({
             <span>Review {residency.name}</span>
           </DialogTitle>
           <DialogDescription>
-            Share your residency experience to help fellow artists make informed
-            application decisions.
+            Reviews are posted from your Missa account. You can post one review
+            for each residency.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          {signInRequired && (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-lg border border-border bg-muted p-3 text-xs text-foreground"
+            >
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>
+                Sign in to post a review.{" "}
+                <Link
+                  href={`/login?next=${encodeURIComponent(
+                    typeof window === "undefined"
+                      ? "/rankings/residencies"
+                      : `${window.location.pathname}${window.location.search}`,
+                  )}`}
+                  className="font-medium text-primary underline underline-offset-4"
+                >
+                  Log in
+                </Link>
+              </span>
+            </div>
+          )}
+
           {error && (
             <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -204,22 +224,11 @@ export function SubmitResidencyReviewDialog({
                 Post anonymously as &quot;Anonymous Resident&quot;
               </label>
             </div>
-
-            {!isAnonymous && (
-              <Field className="pt-2">
-                <FieldLabel htmlFor="author-name">
-                  Your Name or Pen Name
-                </FieldLabel>
-                <Input
-                  id="author-name"
-                  placeholder="e.g. Elena Rostova or Ceramicist in Residence"
-                  value={authorName}
-                  onChange={(e) => setAuthorName(e.target.value)}
-                  size="compact"
-                  disabled={isSubmitting}
-                />
-              </Field>
-            )}
+            <p className="text-xs text-muted-foreground">
+              {isAnonymous
+                ? "Your name is hidden. The review is still linked to your account."
+                : "Your account name is shown with the review."}
+            </p>
           </div>
 
           {/* Form Actions */}

@@ -656,5 +656,7 @@ export {
   type ManuscriptMatchInput,
   type ManuscriptMatchCard,
   type ManuscriptMatchResponse,
+  type ManuscriptMatchStatus,
+  emptyManuscriptMatchResponse,
   type MatchCategory,
 } from "./ranking/manuscriptMatchEngine.js";

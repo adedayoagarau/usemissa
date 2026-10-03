@@ -14,6 +14,10 @@ import { RankingTierBadge } from "@/components/missa/ranking-indicators";
 import { BetaBadge } from "@/components/ui/beta-badge";
 import { cn } from "@/lib/utils";
 
+function recorded(value: number | null, suffix: string): string {
+  return value === null ? "Not recorded" : `${value}${suffix}`;
+}
+
 interface EditorialIntelligenceSectionProps {
   intelligence: EditorialIntelligenceFullProfile;
   className?: string;
@@ -25,6 +29,11 @@ export function EditorialIntelligenceSection({
 }: EditorialIntelligenceSectionProps) {
   const { aesthetic, telemetry, compensation, judges, prestigeTier } =
     intelligence;
+
+  // Only stored records are shown. With nothing to show, omit the section.
+  if (!aesthetic && !telemetry && !compensation && judges.length === 0) {
+    return null;
+  }
 
   return (
     <section
@@ -133,7 +142,7 @@ export function EditorialIntelligenceSection({
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/50 p-2.5 text-center">
                   <span className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
-                    {aesthetic.unsolicitedSlushRatioPercent}%
+                    {recorded(aesthetic.unsolicitedSlushRatioPercent, "%")}
                   </span>
                   <p className="mt-0.5 text-[10px] uppercase font-medium text-[var(--text-muted)]">
                     Slush Acceptance Ratio
@@ -141,7 +150,7 @@ export function EditorialIntelligenceSection({
                 </div>
                 <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/50 p-2.5 text-center">
                   <span className="font-serif text-2xl font-semibold text-[var(--text-primary)]">
-                    {aesthetic.debutAuthorFriendlyScore}/10
+                    {recorded(aesthetic.debutAuthorFriendlyScore, "/10")}
                   </span>
                   <p className="mt-0.5 text-[10px] uppercase font-medium text-[var(--text-muted)]">
                     Debut Friendliness
@@ -150,11 +159,13 @@ export function EditorialIntelligenceSection({
               </div>
             </div>
 
-            <p className="mt-3 text-xs text-[var(--text-muted)]">
-              {aesthetic.unsolicitedSlushRatioPercent > 65
-                ? "Highly receptive to unagented queue submissions with high debut representation in published issues."
-                : "Curates a balance of solicited voices and competitive slush-pile selections."}
-            </p>
+            {aesthetic.unsolicitedSlushRatioPercent !== null && (
+              <p className="mt-3 text-xs text-[var(--text-muted)]">
+                {aesthetic.unsolicitedSlushRatioPercent > 65
+                  ? "Most recorded issues draw on open submissions."
+                  : "Recorded issues mix solicited work with open submissions."}
+              </p>
+            )}
           </div>
         )}
 
@@ -180,19 +191,19 @@ export function EditorialIntelligenceSection({
               <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                 <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/50 p-2">
                   <span className="font-mono text-lg font-medium text-[var(--text-primary)]">
-                    {telemetry.medianResponseDays}d
+                    {recorded(telemetry.medianResponseDays, "d")}
                   </span>
                   <p className="text-[10px] text-[var(--text-muted)]">Median</p>
                 </div>
                 <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/50 p-2">
                   <span className="font-mono text-lg font-medium text-[var(--text-primary)]">
-                    {telemetry.fastestResponseDays}d
+                    {recorded(telemetry.fastestResponseDays, "d")}
                   </span>
                   <p className="text-[10px] text-[var(--text-muted)]">Fastest</p>
                 </div>
                 <div className="rounded-[var(--radius-sm)] border border-[var(--border-subtle)] bg-[var(--surface-secondary)]/50 p-2">
                   <span className="font-mono text-lg font-medium text-[var(--text-primary)]">
-                    {telemetry.acceptanceRatePercent}%
+                    {recorded(telemetry.acceptanceRatePercent, "%")}
                   </span>
                   <p className="text-[10px] text-[var(--text-muted)]">Accept Rate</p>
                 </div>
@@ -201,7 +212,7 @@ export function EditorialIntelligenceSection({
 
             {telemetry.submittableFreeCapDepletionDays && (
               <p className="mt-3 text-xs text-[var(--text-secondary)]">
-                ⚠️ Monthly Submittable free cap typically exhausts within{" "}
+                Monthly Submittable free cap typically exhausts within{" "}
                 <strong className="font-medium text-[var(--text-primary)]">
                   {telemetry.submittableFreeCapDepletionDays} days
                 </strong>{" "}
@@ -238,15 +249,13 @@ export function EditorialIntelligenceSection({
                       ? `$${(compensation.rateCentsPerWord / 100).toFixed(2)}/word`
                       : compensation.flatRateCents
                         ? `$${(compensation.flatRateCents / 100).toFixed(0)} flat rate`
-                        : compensation.paysContributors
-                          ? "Honoria / Contributor Copies"
-                          : "Unpaid / Non-monetary"}
+                        : "Not recorded"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2">
                   <span className="text-[var(--text-muted)]">Rights Acquired:</span>
                   <span className="font-mono text-[var(--text-primary)] uppercase">
-                    {compensation.rightsAcquired}
+                    {compensation.rightsAcquired ?? "Not recorded"}
                     {compensation.rightsReversionMonths
                       ? ` (${compensation.rightsReversionMonths}mo reversion)`
                       : ""}
@@ -256,8 +265,8 @@ export function EditorialIntelligenceSection({
                   <span className="text-[var(--text-muted)]">Fee Waivers:</span>
                   <span className="font-medium text-[var(--text-primary)]">
                     {compensation.hasFeeWaivers
-                      ? "Available upon request"
-                      : "Standard submission fees"}
+                      ? "Available on request"
+                      : "None recorded"}
                   </span>
                 </div>
               </div>

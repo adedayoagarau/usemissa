@@ -4,6 +4,12 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { SmartShortlistBuilder } from "@/components/rankings/smart-shortlist-builder";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { getMagazineRankingRepository } from "@/lib/magazineRankingRepository";
 import { getSessionAccountFromToken, SESSION_COOKIE } from "@/lib/auth";
 import { buildSubmissionPortfolioPlan } from "@missa/radar-engine";
@@ -26,7 +32,10 @@ export default async function SubmissionPlanPage() {
     cookieStore.get(SESSION_COOKIE)?.value,
   );
 
-  const candidates = page.items.map((item) => ({
+  // Plans are built only from the live index. Seed rankings are sample data
+  // and must never be presented as a real shortlist.
+  const liveIndex = page.dataSource === "database";
+  const candidates = (liveIndex ? page.items : []).map((item) => ({
     profileId: item.profileId,
     name: item.name,
     slug: item.slug,
@@ -43,11 +52,13 @@ export default async function SubmissionPlanPage() {
     schedule: item.schedule,
   }));
 
-  const initialPlan = buildSubmissionPortfolioPlan(candidates, {
-    genre: "overall",
-    preset: "balanced",
-    requireSimultaneousSubmissions: true,
-  });
+  const initialPlan = liveIndex
+    ? buildSubmissionPortfolioPlan(candidates, {
+        genre: "overall",
+        preset: "balanced",
+        requireSimultaneousSubmissions: true,
+      })
+    : null;
 
   return (
     <PublicSiteShell current="Directory">
@@ -82,16 +93,34 @@ export default async function SubmissionPlanPage() {
             Smart Submissions Shortlist
           </h1>
           <p className="mt-3 text-base leading-7 text-muted-foreground">
-            Do not submit in the dark. Our strategy engine evaluates hundreds of ranked literary magazines to generate an optimal portfolio of reach, target, and anchor journals customized to your manuscript, deadline horizons, and reading fee limits.
+            Build a shortlist of reach, target, and anchor magazines from the Missa magazine index, filtered by genre, fees, pay, and response time.
           </p>
         </header>
 
         {/* Interactive Builder */}
-        <SmartShortlistBuilder
-          initialPlan={initialPlan}
-          initialGenre="overall"
-          signedIn={Boolean(session)}
-        />
+        {initialPlan ? (
+          <SmartShortlistBuilder
+            initialPlan={initialPlan}
+            initialGenre="overall"
+            signedIn={Boolean(session)}
+          />
+        ) : (
+          <Empty variant="bordered" size="spacious" role="status">
+            <EmptyHeader>
+              <EmptyTitle>Submission plans are not available yet</EmptyTitle>
+              <EmptyDescription>
+                Plans are built from the published magazine index, which is not
+                available right now. Browse magazines in the directory instead.
+              </EmptyDescription>
+            </EmptyHeader>
+            <Link
+              href="/directory"
+              className="inline-flex min-h-11 items-center text-sm text-primary underline underline-offset-4"
+            >
+              Browse the directory
+            </Link>
+          </Empty>
+        )}
       </main>
     </PublicSiteShell>
   );
