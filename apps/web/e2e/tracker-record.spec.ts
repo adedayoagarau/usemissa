@@ -53,12 +53,12 @@ test("a Tracker deep link opens the record, and opening the official application
 
   await record.getByRole("button", { name: "Record submission" }).first().click();
   const recordDialog = page.getByRole("dialog", { name: "Record your submission" });
-  await recordDialog.getByLabel("Evidence (optional)").fill("Confirmation #E2E-1");
+  await recordDialog.getByLabel("Evidence (optional)").fill("Confirmation number E2E-1");
   await recordDialog.getByRole("button", { name: "Record submission" }).click();
   await expect(recordDialog).toHaveCount(0);
   await expect(record.getByText("Recorded by you").first()).toBeVisible();
   await record.getByRole("tab", { name: "History" }).click();
-  await expect(record.getByText("Confirmation #E2E-1")).toBeVisible();
+  await expect(record.getByText("Confirmation number E2E-1")).toBeVisible();
   const after = await page.request.get(`/api/me/applications/${opportunityId}`);
   expect(((await after.json()) as { myStatus: string }).myStatus).toBe("submitted");
 
