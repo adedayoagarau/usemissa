@@ -28,6 +28,8 @@ export interface OpportunityRepositoryQuery {
   genres?: string[];
   taxonomyTermIds?: string[];
   taxonomyIncludeDescendants?: boolean;
+  /** "all" (default) requires every requested term; "any" matches one. */
+  taxonomyMatch?: "all" | "any";
   locations?: string[];
   feeStatus?: "no-fee" | "paid" | "unknown";
   maxFeeCents?: number;

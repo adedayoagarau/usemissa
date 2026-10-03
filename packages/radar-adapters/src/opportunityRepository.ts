@@ -765,7 +765,37 @@ export function buildOpportunityBrowseQuery(
       );
     }
   }
-  if (query.taxonomyTermIds?.length) {
+  if (query.taxonomyTermIds?.length && query.taxonomyMatch === "any") {
+    if (taxonomyReads) {
+      // At least one requested term (or, with descendants, one of its narrower
+      // terms) is assigned to the opportunity.
+      const anyPredicate = query.taxonomyIncludeDescendants
+        ? `with recursive expanded(term_id) as (
+            select unnest($VALUE::text[])
+            union
+            select relation.subject_term_id
+            from taxonomy_term_relations relation
+            join expanded on relation.object_term_id = expanded.term_id
+            where relation.relation_type = 'broader'
+          )
+          select 1 from expanded
+          join opportunity_taxonomy_terms taxonomy_filter on taxonomy_filter.term_id = expanded.term_id
+          where taxonomy_filter.opportunity_id = o.id
+            and taxonomy_filter.certainty <> 'rejected'`
+        : `select 1 from opportunity_taxonomy_terms taxonomy_filter
+          where taxonomy_filter.opportunity_id = o.id
+            and taxonomy_filter.term_id = any($VALUE::text[])
+            and taxonomy_filter.certainty <> 'rejected'`;
+      addCondition(
+        conditions,
+        values,
+        `exists (${anyPredicate})`,
+        query.taxonomyTermIds,
+      );
+    } else {
+      conditions.push("false");
+    }
+  } else if (query.taxonomyTermIds?.length) {
     if (taxonomyReads) {
       const taxonomyPredicate = query.taxonomyIncludeDescendants
         ? `with recursive requested(term_id) as (select unnest($VALUE::text[])), expanded(root_id, term_id) as (

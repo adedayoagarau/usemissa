@@ -42,6 +42,7 @@ export function parseOpportunityBrowseQuery(params: URLSearchParams): Opportunit
     taxonomyIncludeDescendants: params.has("taxonomyDescendants")
       ? booleanParam(params, "taxonomyDescendants", false)
       : listParam(params, "taxonomy").length > 0,
+    taxonomyMatch: params.get("taxonomyMatch") === "any" ? "any" : "all",
     locations: listParam(params, "location"),
     country: params.get("country") ?? undefined,
     countryCode: params.get("countryCode") ?? undefined,
