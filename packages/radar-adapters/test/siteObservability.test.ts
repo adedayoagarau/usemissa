@@ -195,3 +195,28 @@ test("alert signals compare recent activity with a trailing baseline", { skip: !
   assert.equal(signals.avgDailyVisitors, 1 / 7);
   await pool.end();
 });
+
+test("admin search and user profiles read accounts, plans, and activity", { skip: !databaseUrl }, async () => {
+  const { readAdminUserProfile, searchAdminRecords } = await import("../src/siteObservability.js");
+  const url = databaseUrl!;
+  const pool = new Pool({ connectionString: url });
+  await pool.query("delete from platform_analytics_events where source = 'profile-test'");
+  await pool.query("delete from radar_accounts where id = 'acct_profile_1'");
+  await pool.query(`insert into radar_accounts (id, email, data, created_at) values ('acct_profile_1', 'ada_lovelace@example.test', '{"displayName":"Ada Lovelace","isAdmin":false}', '2026-09-01T00:00:00Z')`);
+  await pool.query(`insert into platform_analytics_events (id, event_name, source, account_id, path, properties, occurred_at) values
+    ('evt_profile_1', 'auth.signup_succeeded', 'profile-test', 'acct_profile_1', null, '{"method":"password"}', '2026-09-01T00:00:00Z'),
+    ('evt_profile_2', 'page_view', 'profile-test', 'acct_profile_1', '/opportunities', '{}', '2026-09-02T10:00:00Z')`);
+  const results = await searchAdminRecords(url, "lovelace");
+  assert.equal(results[0]?.href, "/admin/users/acct_profile_1");
+  assert.equal(results[0]?.subtitle, "Ada Lovelace");
+  assert.deepEqual(await searchAdminRecords(url, "a"), []);
+  assert.deepEqual(await searchAdminRecords(url, "100%_"), []);
+  const profile = await readAdminUserProfile(url, "acct_profile_1");
+  assert.equal(profile?.name, "Ada Lovelace");
+  assert.equal(profile?.activity.events, 2);
+  assert.equal(profile?.activity.activeDays, 2);
+  assert.equal(profile?.activity.signupMethod, "password");
+  assert.equal(profile?.timeline[0]?.path, "/opportunities");
+  assert.equal(await readAdminUserProfile(url, "acct_missing"), undefined);
+  await pool.end();
+});

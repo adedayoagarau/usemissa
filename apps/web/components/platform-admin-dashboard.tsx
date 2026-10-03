@@ -46,7 +46,7 @@ export default function PlatformAdminDashboard({ data }: { data: PlatformAdminDa
         </Link>
       </header>
 
-      <section aria-label="System health" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="System health" className={`grid gap-3 sm:grid-cols-2 ${data.health.length > 4 ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
         {data.health.map((check) => {
           const Icon = healthIcon[check.status];
           return (

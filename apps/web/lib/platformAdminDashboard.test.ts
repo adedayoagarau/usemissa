@@ -87,3 +87,23 @@ test('data page builds exportable tables and marks unconnected ones unavailable'
     for (const row of dataset.rows) assert.deepEqual(Object.keys(row).sort(), dataset.columns.map((column) => column.key).sort());
   }
 });
+
+test('dashboard uses traffic, growth, revenue, and alerts when connected', () => {
+  const traffic = { available: true, current: { visitors: 120 }, live: 3, daily: [{ visitors: 50 }, { visitors: 70 }] } as unknown as NonNullable<Parameters<typeof buildPlatformAdminDashboard>[4]>['traffic'];
+  const growth = { available: true, totals: { signupsCurrent: 12, accounts: 340 }, active: { wau: 40, mau: 90 }, signupsDaily: [{ signups: 5 }, { signups: 7 }] } as unknown as NonNullable<Parameters<typeof buildPlatformAdminDashboard>[4]>['growth'];
+  const data = buildPlatformAdminDashboard(overview({ databaseConfigured: true }), undefined, undefined, new Date(generatedAt), {
+    traffic,
+    growth,
+    revenue: { mrr: 812.4, currency: 'USD', series: [400, 812.4] },
+    firingAlerts: [{ title: 'Home page is down' }],
+  });
+  const kpi = (key: string) => data.kpis.find((item) => item.key === key);
+  assert.equal(kpi('visitors')?.value, 120);
+  assert.equal(kpi('visitors')?.detail, '3 on the site now');
+  assert.deepEqual(kpi('signups')?.series, [5, 7]);
+  assert.equal(kpi('active-users')?.value, 40);
+  assert.equal(kpi('mrr')?.value, 812);
+  const alerts = data.health.find((check) => check.key === 'alerts');
+  assert.equal(alerts?.status, 'warn');
+  assert.match(alerts?.detail ?? '', /Home page is down/);
+});

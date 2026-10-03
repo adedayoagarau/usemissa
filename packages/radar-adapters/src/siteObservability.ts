@@ -108,14 +108,20 @@ function utcDay(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-async function dailySalt(pool: Pool, day: string): Promise<string> {
+const saltCache = new Map<string, { day: string; salt: string }>();
+
+async function dailySalt(pool: Pool, day: string, connectionString: string): Promise<string> {
+  const cached = saltCache.get(connectionString);
+  if (cached?.day === day) return cached.salt;
   const created = await pool.query<{ salt: string }>(
     `insert into site_traffic_salts (day, salt) values ($1, $2)
      on conflict (day) do update set day = excluded.day
      returning salt`,
     [day, randomBytes(24).toString("base64url")],
   );
-  return created.rows[0]!.salt;
+  const salt = created.rows[0]!.salt;
+  saltCache.set(connectionString, { day, salt });
+  return salt;
 }
 
 export function siteVisitorHash(salt: string, host: string, ip: string, userAgent: string): string {
@@ -129,7 +135,7 @@ export async function recordSiteHit(input: SiteHitInput): Promise<boolean> {
   if (agent.bot || !isTrackedSitePath(path)) return false;
   const now = input.now ?? new Date();
   const pool = sharedPool(input.connectionString);
-  const salt = await dailySalt(pool, utcDay(now));
+  const salt = await dailySalt(pool, utcDay(now), input.connectionString);
   const visitorHash = siteVisitorHash(salt, input.host, input.ip, input.userAgent);
   const name = clean(input.name, 80) ?? input.kind;
   const value = typeof input.value === "number" && Number.isFinite(input.value) ? input.value : null;
@@ -985,4 +991,87 @@ export async function listPlatformAdminEmails(connectionString: string): Promise
   if (!(await tableExists(pool as unknown as Pool, "radar_accounts"))) return [];
   const result = await pool.query<{ email: string }>(`select email from radar_accounts where coalesce((data->>'isAdmin')::boolean, false) and coalesce((data->>'active')::boolean, true) order by created_at limit 10`);
   return result.rows.map((row) => row.email);
+}
+
+// ---------------------------------------------------------------------------
+// Admin search and user profiles
+// ---------------------------------------------------------------------------
+
+export interface AdminSearchResult {
+  kind: "user" | "organization";
+  id: string;
+  title: string;
+  subtitle: string;
+  href: string;
+}
+
+/** Finds accounts by email or name and organizations by name, for the admin command palette. */
+export async function searchAdminRecords(connectionString: string, query: string, limit = 8): Promise<AdminSearchResult[]> {
+  const term = query.trim().slice(0, 80);
+  if (term.length < 2) return [];
+  const pool = sharedPool(connectionString);
+  const like = `%${term.replace(/[\\%_]/gu, (char) => `\\${char}`)}%`;
+  const [hasAccounts, hasOrgs] = await Promise.all([tableExists(pool as unknown as Pool, "radar_accounts"), tableExists(pool as unknown as Pool, "radar_organizations")]);
+  const [accounts, orgs] = await Promise.all([
+    hasAccounts
+      ? pool.query(`select id, email, coalesce(data->>'displayName', trim(concat(data->>'givenName', ' ', data->>'familyName'))) as name, created_at
+          from radar_accounts where email ilike $1 or data->>'displayName' ilike $1 or concat(data->>'givenName', ' ', data->>'familyName') ilike $1
+          order by created_at desc limit $2`, [like, limit])
+      : Promise.resolve({ rows: [] }),
+    hasOrgs
+      ? pool.query(`select id, data->>'name' as name, data->>'billingTier' as tier from radar_organizations where data->>'name' ilike $1 order by created_at desc limit $2`, [like, limit])
+      : Promise.resolve({ rows: [] }),
+  ]);
+  return [
+    ...accounts.rows.map((row) => ({ kind: "user" as const, id: String(row.id), title: String(row.email), subtitle: row.name ? String(row.name) : `Joined ${iso(row.created_at)?.slice(0, 10) ?? ""}`, href: `/admin/users/${encodeURIComponent(String(row.id))}` })),
+    ...orgs.rows.map((row) => ({ kind: "organization" as const, id: String(row.id), title: String(row.name ?? row.id), subtitle: row.tier ? `Plan: ${String(row.tier)}` : "Organization", href: `/admin/customers?q=${encodeURIComponent(String(row.name ?? row.id))}` })),
+  ];
+}
+
+export interface AdminUserProfile {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt?: string;
+  isAdmin: boolean;
+  active: boolean;
+  plan: { plan: string; source?: string; billingStatus?: string; expiresAt?: string; cancelAtPeriodEnd?: boolean } | null;
+  organizations: Array<{ id: string; name: string; role: string }>;
+  activity: { events: number; activeDays: number; firstSeenAt?: string; lastSeenAt?: string; signupMethod?: string };
+  topActions: Array<{ eventName: string; count: number }>;
+  timeline: Array<{ eventName: string; path?: string; occurredAt: string }>;
+}
+
+export async function readAdminUserProfile(connectionString: string, accountId: string): Promise<AdminUserProfile | undefined> {
+  const pool = sharedPool(connectionString);
+  if (!(await tableExists(pool as unknown as Pool, "radar_accounts"))) return undefined;
+  const account = (await pool.query(`select id, email, data, created_at from radar_accounts where id = $1`, [accountId])).rows[0];
+  if (!account) return undefined;
+  const data = (account.data ?? {}) as Record<string, unknown>;
+  const [hasPlans, hasMemberships, hasEvents] = await Promise.all(["creator_plans", "radar_memberships", "platform_analytics_events"].map((table) => tableExists(pool as unknown as Pool, table)));
+  const [plan, orgs, summary, top, timeline] = await Promise.all([
+    hasPlans ? pool.query(`select plan, source, billing_status, expires_at, cancel_at_period_end from creator_plans where account_id = $1`, [accountId]) : Promise.resolve({ rows: [] }),
+    hasMemberships ? pool.query(`select m.organization_id as id, coalesce(o.data->>'name', m.organization_id) as name, m.role from radar_memberships m left join radar_organizations o on o.id = m.organization_id where m.account_id = $1 order by m.created_at`, [accountId]) : Promise.resolve({ rows: [] }),
+    hasEvents ? pool.query(`select count(*) as events, count(distinct (occurred_at at time zone 'UTC')::date) as active_days, min(occurred_at) as first_at, max(occurred_at) as last_at,
+        (select properties->>'method' from platform_analytics_events where account_id = $1 and event_name = 'auth.signup_succeeded' order by occurred_at limit 1) as method
+        from platform_analytics_events where account_id = $1`, [accountId]) : Promise.resolve({ rows: [] }),
+    hasEvents ? pool.query(`select event_name, count(*) as count from platform_analytics_events where account_id = $1 group by 1 order by 2 desc limit 8`, [accountId]) : Promise.resolve({ rows: [] }),
+    hasEvents ? pool.query(`select event_name, path, occurred_at from platform_analytics_events where account_id = $1 order by occurred_at desc limit 60`, [accountId]) : Promise.resolve({ rows: [] }),
+  ]);
+  const name = typeof data.displayName === "string" && data.displayName ? data.displayName : [data.givenName, data.familyName].filter((part) => typeof part === "string" && part).join(" ");
+  const p = plan.rows[0];
+  const s = summary.rows[0] ?? {};
+  return {
+    id: String(account.id),
+    email: String(account.email),
+    ...(name ? { name } : {}),
+    ...(iso(account.created_at) ? { createdAt: iso(account.created_at) } : {}),
+    isAdmin: data.isAdmin === true,
+    active: data.active !== false,
+    plan: p ? { plan: String(p.plan), ...(p.source ? { source: String(p.source) } : {}), ...(p.billing_status ? { billingStatus: String(p.billing_status) } : {}), ...(iso(p.expires_at) ? { expiresAt: iso(p.expires_at) } : {}), cancelAtPeriodEnd: Boolean(p.cancel_at_period_end) } : null,
+    organizations: orgs.rows.map((row) => ({ id: String(row.id), name: String(row.name), role: String(row.role) })),
+    activity: { events: num(s.events), activeDays: num(s.active_days), ...(iso(s.first_at) ? { firstSeenAt: iso(s.first_at) } : {}), ...(iso(s.last_at) ? { lastSeenAt: iso(s.last_at) } : {}), ...(s.method ? { signupMethod: String(s.method) } : {}) },
+    topActions: top.rows.map((row) => ({ eventName: String(row.event_name), count: num(row.count) })),
+    timeline: timeline.rows.map((row) => ({ eventName: String(row.event_name), ...(row.path ? { path: String(row.path) } : {}), occurredAt: iso(row.occurred_at) ?? "" })),
+  };
 }

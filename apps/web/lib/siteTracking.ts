@@ -48,3 +48,22 @@ export function scrubErrorMessage(message: string): string {
     .replace(/\d{6,}/gu, '[number]')
     .slice(0, 300);
 }
+
+const HIT_WINDOW_MS = 60_000;
+const HIT_LIMIT_PER_IP = 120;
+const hitHistory = new Map<string, { start: number; count: number }>();
+
+/** Per-instance cap on beacon hits per IP, so a script cannot cheaply inflate visit counts. */
+export function allowSiteHit(ip: string, now = Date.now()): boolean {
+  const key = ip || 'unknown';
+  const current = hitHistory.get(key);
+  if (!current || now - current.start >= HIT_WINDOW_MS) {
+    hitHistory.set(key, { start: now, count: 1 });
+    if (hitHistory.size > 5_000) {
+      for (const [entry, value] of hitHistory) if (now - value.start >= HIT_WINDOW_MS) hitHistory.delete(entry);
+    }
+    return true;
+  }
+  current.count++;
+  return current.count <= HIT_LIMIT_PER_IP;
+}

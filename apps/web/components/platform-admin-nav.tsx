@@ -49,6 +49,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { MissaWordmark } from "@/components/missa-wordmark";
+import { AdminCommandPalette, type PaletteLink } from "@/components/admin-command-palette";
 
 type NavItem = {
   href: string;
@@ -116,6 +117,11 @@ const navigationGroups: Array<{ label: string; items: NavItem[] }> = [
   { label: "Money", items: moneyLinks },
 ];
 
+const paletteLinks: PaletteLink[] = [
+  ...navigationGroups.flatMap((group) => group.items.map((item) => ({ href: item.href, label: item.label, group: group.label, icon: item.icon }))),
+  ...advancedLinks.map((item) => ({ href: item.href, label: item.label, group: "Advanced", icon: item.icon })),
+];
+
 function isActive(pathname: string, search: string, item: NavItem): boolean {
   const activePath = item.activePath ?? item.href;
   const query = new URLSearchParams(search);
@@ -161,10 +167,12 @@ function Navigation({
   pathname,
   search,
   email,
+  shortcut,
 }: {
   pathname: string;
   search: string;
   email: string;
+  shortcut: boolean;
 }) {
   const advancedActive = advancedLinks.some((item) =>
     isActive(pathname, search, item),
@@ -181,6 +189,9 @@ function Navigation({
             Platform Admin
           </span>
         </Link>
+      </div>
+      <div className="px-3 pt-4">
+        <AdminCommandPalette links={paletteLinks} shortcut={shortcut} />
       </div>
       <nav
         aria-label="Platform admin navigation"
@@ -266,7 +277,7 @@ export function AdminShellNav({ email }: { email: string }) {
   return (
     <>
       <aside className="hidden min-h-screen w-56 shrink-0 border-r border-border bg-card lg:block">
-        <Navigation pathname={pathname} search={search} email={email} />
+        <Navigation pathname={pathname} search={search} email={email} shortcut />
       </aside>
       <div className="fixed inset-x-0 top-0 z-30 flex min-h-14 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
         <Link
@@ -303,7 +314,7 @@ export function AdminShellNav({ email }: { email: string }) {
                 Run and monitor Missa
               </SheetDescription>
             </SheetHeader>
-            <Navigation pathname={pathname} search={search} email={email} />
+            <Navigation pathname={pathname} search={search} email={email} shortcut={false} />
           </SheetContent>
         </Sheet>
       </div>

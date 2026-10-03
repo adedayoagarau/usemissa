@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { recordSiteEvent, scrubErrorMessage, siteRequestContext } from '@/lib/siteTracking';
+import { allowSiteHit, recordSiteEvent, scrubErrorMessage, siteRequestContext } from '@/lib/siteTracking';
 
 const VITALS = new Set(['LCP', 'INP', 'CLS', 'FCP', 'TTFB']);
 const noStore = { 'Cache-Control': 'no-store' };
@@ -37,6 +37,7 @@ export async function POST(request: Request) {
   }
 
   const context = siteRequestContext(request.headers);
+  if (!allowSiteHit(context.ip)) return new NextResponse(null, { status: 429, headers: noStore });
   const path = text(body.path, 500);
   if (!path?.startsWith('/')) return new NextResponse(null, { status: 400, headers: noStore });
   const kind = body.kind;

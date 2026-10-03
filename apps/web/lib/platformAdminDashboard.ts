@@ -1,12 +1,18 @@
 import {
+  readAlerts,
+  readGrowthMetrics,
   readPlatformAdminAnalyticsEvents,
+  readSiteTraffic,
   readWaitlistSignups,
+  type GrowthData,
+  type SiteTrafficData,
   type PlatformAdminAnalyticsEventsData,
   type WaitlistSignupReadModel,
 } from '@missa/radar-adapters';
 import { ANALYTICS_EVENT_NAMES, SERVER_ANALYTICS_EVENT_NAMES } from './analytics-contract';
 import { getPlatformAdminOverview, type PlatformAdminOverview, type PlatformAdminQueueRow } from './platformAdmin';
 import { platformAnalyticsDatabaseUrl } from './platformAnalyticsDatabase';
+import { getRevenue } from './platformAdminRevenue';
 
 /**
  * The admin dashboard is a plain-language summary over the existing read models.
@@ -112,10 +118,6 @@ const QUEUE_AREA: Record<PlatformAdminQueueRow['queue'], string> = {
   workspace: 'Organizations',
 };
 
-function sum(values: Record<string, number>): number {
-  return Object.values(values).reduce((total, value) => total + value, 0);
-}
-
 function lastDays(count: number, now: Date): string[] {
   const days: string[] = [];
   for (let offset = count - 1; offset >= 0; offset--) {
@@ -135,11 +137,20 @@ function humanAction(action: string): string {
   return humanEventName(action.replace(/^platform_admin\./, ''));
 }
 
+/** Optional reads layered on top of the core overview; each is absent when its source is not connected. */
+export interface DashboardExtras {
+  traffic?: SiteTrafficData;
+  growth?: GrowthData;
+  revenue?: { mrr: number; currency: string; series: number[] };
+  firingAlerts?: Array<{ title: string }>;
+}
+
 export function buildPlatformAdminDashboard(
   overview: PlatformAdminOverview,
   events: PlatformAdminAnalyticsEventsData = emptyEvents,
   signups: WaitlistSignupReadModel = emptySignups,
   now = new Date(),
+  extras: DashboardExtras = {},
 ): PlatformAdminDashboardData {
   const operations = overview.operations.data;
   const radar = overview.radar.data;
@@ -214,6 +225,16 @@ export function buildPlatformAdminDashboard(
       href: '/admin/operations',
     },
   ];
+  if (extras.firingAlerts) {
+    const firing = extras.firingAlerts;
+    health.push({
+      key: 'alerts',
+      label: 'Alerts',
+      status: firing.length ? 'warn' : 'ok',
+      detail: firing.length ? `${firing.length} active: ${firing[0]!.title}${firing.length > 1 ? ' and more' : ''}` : 'Uptime, errors, traffic, and sign-ups look normal',
+      href: '/admin/health',
+    });
+  }
   const rank: Record<DashboardHealth, number> = { down: 3, warn: 2, unknown: 1, ok: 0 };
   const overall = health.reduce<DashboardHealth>((worst, check) => (rank[check.status] > rank[worst] ? check.status : worst), 'ok');
 
@@ -228,39 +249,32 @@ export function buildPlatformAdminDashboard(
   const weekAgo = days[days.length - 7];
   const signupsThisWeek = daily.filter((row) => row.day >= weekAgo).reduce((total, row) => total + row.signups, 0);
 
-  const customerCount = overview.customers.data.organizationCount;
+  const traffic = extras.traffic?.available ? extras.traffic : undefined;
+  const growth = extras.growth?.available ? extras.growth : undefined;
   const kpis: DashboardKpi[] = [
+    {
+      key: 'visitors',
+      label: 'Visitors (30 days)',
+      value: traffic ? traffic.current.visitors : null,
+      detail: traffic ? `${traffic.live} on the site now` : 'Visit counting not connected',
+      href: '/admin/traffic',
+      series: traffic ? traffic.daily.map((row) => row.visitors) : [],
+    },
+    {
+      key: 'signups',
+      label: 'New sign-ups (30 days)',
+      value: growth ? growth.totals.signupsCurrent : null,
+      detail: growth ? `${growth.totals.accounts.toLocaleString('en-GB')} users in total` : `${workspace.accounts.total} accounts in total`,
+      href: '/admin/growth',
+      series: growth ? growth.signupsDaily.map((row) => row.signups) : [],
+    },
     {
       key: 'active-users',
       label: 'Active users (7 days)',
-      value: events.available ? events.users.filter((user) => user.lastSeenAt && user.lastSeenAt.slice(0, 10) >= weekAgo).length : null,
-      detail: `${workspace.accounts.total} accounts in total`,
-      href: '/admin/analytics',
+      value: growth ? growth.active.wau : events.available ? events.users.filter((user) => user.lastSeenAt && user.lastSeenAt.slice(0, 10) >= weekAgo).length : null,
+      detail: growth ? `${growth.active.mau.toLocaleString('en-GB')} in the last 30 days` : `${workspace.accounts.total} accounts in total`,
+      href: '/admin/growth',
       series: events.available ? daily.map((row) => row.events) : [],
-    },
-    {
-      key: 'organizations',
-      label: 'Organizations',
-      value: customerCount ?? workspace.organizations,
-      detail: `${workspace.members} member${workspace.members === 1 ? '' : 's'}`,
-      href: '/admin/customers',
-      series: [],
-    },
-    {
-      key: 'opportunities',
-      label: 'Open opportunities',
-      value: radar.stats.opportunitiesOpen,
-      detail: `${radar.stats.opportunitiesDiscovered} discovered · ${radar.stats.staleListings} stale`,
-      href: '/admin/content',
-      series: [],
-    },
-    {
-      key: 'submissions',
-      label: 'Submissions',
-      value: sum(workspace.submissions),
-      detail: `${workspace.submissions['in-review'] ?? 0} in review · ${workspace.decisions.accepted ?? 0} accepted`,
-      href: '/admin/analytics',
-      series: [],
     },
     {
       key: 'waitlist',
@@ -270,6 +284,23 @@ export function buildPlatformAdminDashboard(
       href: '/admin/waitlist',
       series: signups.available ? daily.map((row) => row.signups) : [],
     },
+    extras.revenue
+      ? {
+          key: 'mrr',
+          label: `Monthly revenue (${extras.revenue.currency})`,
+          value: Math.round(extras.revenue.mrr),
+          detail: 'Recurring, from Stripe',
+          href: '/admin/revenue',
+          series: extras.revenue.series,
+        }
+      : {
+          key: 'opportunities',
+          label: 'Open opportunities',
+          value: radar.stats.opportunitiesOpen,
+          detail: `${radar.stats.opportunitiesDiscovered} discovered · ${radar.stats.staleListings} stale`,
+          href: '/admin/content',
+          series: [],
+        },
   ];
 
   const severity = { high: 0, medium: 1, low: 2 } as const;
@@ -310,12 +341,21 @@ export function buildPlatformAdminDashboard(
 
 export async function getPlatformAdminDashboard(): Promise<PlatformAdminDashboardData> {
   const analyticsDatabaseUrl = platformAnalyticsDatabaseUrl();
-  const [overview, events, signups] = await Promise.all([
+  const [overview, events, signups, traffic, growth, revenue, alerts] = await Promise.all([
     getPlatformAdminOverview({ readDatabaseUrl: analyticsDatabaseUrl }),
     analyticsDatabaseUrl
       ? readPlatformAdminAnalyticsEvents(analyticsDatabaseUrl, { days: 30, knownEventNames: ANALYTICS_EVENT_NAMES, serverEventNames: SERVER_ANALYTICS_EVENT_NAMES }).catch(() => emptyEvents)
       : Promise.resolve(emptyEvents),
     analyticsDatabaseUrl ? readWaitlistSignups(analyticsDatabaseUrl, { limit: 2_000 }).catch(() => emptySignups) : Promise.resolve(emptySignups),
+    analyticsDatabaseUrl ? readSiteTraffic(analyticsDatabaseUrl, { days: 30 }).catch(() => undefined) : Promise.resolve(undefined),
+    analyticsDatabaseUrl ? readGrowthMetrics(analyticsDatabaseUrl, { days: 30 }).catch(() => undefined) : Promise.resolve(undefined),
+    getRevenue(30),
+    analyticsDatabaseUrl ? readAlerts(analyticsDatabaseUrl).catch(() => undefined) : Promise.resolve(undefined),
   ]);
-  return buildPlatformAdminDashboard(overview, events, signups);
+  return buildPlatformAdminDashboard(overview, events, signups, new Date(), {
+    ...(traffic ? { traffic } : {}),
+    ...(growth ? { growth } : {}),
+    ...(revenue.available ? { revenue: { mrr: revenue.mrr, currency: revenue.currency, series: revenue.mrrHistory.map((row) => row.mrr) } } : {}),
+    ...(alerts ? { firingAlerts: alerts.filter((alert) => alert.state === 'firing') } : {}),
+  });
 }

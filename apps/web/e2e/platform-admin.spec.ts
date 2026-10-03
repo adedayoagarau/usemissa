@@ -32,7 +32,7 @@ test("admin can open the dashboard and operational loop", async ({
     page.getByRole("link", { name: "Content", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Analytics", exact: true }),
+    page.getByRole("link", { name: "Product events", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Messaging", exact: true }),
@@ -45,6 +45,7 @@ test("admin can open the dashboard and operational loop", async ({
   ).toBeVisible();
   for (const group of [
     "Overview",
+    "Analytics",
     "People",
     "Content & sources",
     "Automation",
@@ -53,6 +54,9 @@ test("admin can open the dashboard and operational loop", async ({
     await expect(page.getByText(group, { exact: true })).toBeVisible();
   }
   await expect(page.getByRole("link", { name: "Data", exact: true })).toBeVisible();
+  for (const label of ["Traffic", "Sign-ups & users", "Funnels", "Revenue", "Health", "Share metrics"]) {
+    await expect(page.getByRole("link", { name: label, exact: true })).toBeVisible();
+  }
   const diagnostics = page.getByRole("button", {
     name: "Advanced",
   });
@@ -182,6 +186,12 @@ test("admin can open the dashboard and operational loop", async ({
       "/admin",
       "/admin/operations",
       "/admin/data",
+      "/admin/traffic",
+      "/admin/growth",
+      "/admin/funnels",
+      "/admin/revenue",
+      "/admin/health",
+      "/admin/metrics",
       "/admin/radar",
       "/admin/analytics",
       "/admin/support",
