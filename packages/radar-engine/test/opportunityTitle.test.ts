@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   assessOpportunityRelevance,
   isGenericOpportunityLabel,
+  isUsableOrganizationName,
   normalizeOpportunityTitle,
   titleContainsOrganization,
 } from '../src/index.js';
@@ -68,6 +69,29 @@ test('keeps acronyms, years, and roman numerals when recasing', () => {
   assert.equal(normalizeOpportunityTitle('ANTHOLOGY VOLUME II: STORIES OF THE SEA').title, 'Anthology Volume II: Stories of the Sea');
   assert.equal(normalizeOpportunityTitle('NEA LITERATURE FELLOWSHIPS').title, 'NEA Literature Fellowships');
   assert.equal(normalizeOpportunityTitle('phd residency for 2slgbtqia+ artists').title, 'PhD Residency for 2SLGBTQIA+ Artists');
+});
+
+test('keeps short all-caps names and acronyms it does not know', () => {
+  for (const title of ['SXSW 2027', 'SCBWI', 'YIDFF 2027', 'DOC NYC', 'CHEAP POP', 'ACM SIGCHI CFP', 'TOS']) {
+    assert.equal(normalizeOpportunityTitle(title).title, title);
+  }
+  assert.equal(normalizeOpportunityTitle('AWP CFP').changes.includes('recased'), false);
+  assert.equal(normalizeOpportunityTitle('POETRY', { organizationName: 'Rattle' }).title, 'Rattle — Poetry');
+  assert.equal(normalizeOpportunityTitle('MEMOIR PRIZE FOR BOOKS 2026').title, 'Memoir Prize for Books 2026');
+});
+
+test('never puts a placeholder, listing site, domain, or run-together slug in a title', () => {
+  for (const name of [
+    'Please Wait', 'Calls & Opportunities', 'Contest Information', 'ArtConnect', 'CuratorSpace', 'Poets & Writers', 'Duotrope',
+    'NewPages.com', 'Grants.gov', 'CaFÉ (CallForEntry.org)', 'West Seattle Blog...', 'Blackpublicmedia', 'Shortstoryawards',
+    'Thekenyonreview', 'L I M I N A L . S P A C E S', '2026 Power Platform Community Conference: Call for Speakers @ Sessionize.com',
+  ]) {
+    assert.equal(isUsableOrganizationName(name), false, name);
+    assert.equal(normalizeOpportunityTitle('Poetry', { organizationName: name }).needsOrganization, true, name);
+  }
+  for (const name of ['Rattle', 'WILDsound Writing Festival', 'Chateau Orquevaux', 'Rijksakademie', 'Constellations', 'PRS for Music Foundation', 'The Ex-Puritan']) {
+    assert.equal(isUsableOrganizationName(name), true, name);
+  }
 });
 
 test('keeps small words lower case except at the start and after a colon or dash', () => {

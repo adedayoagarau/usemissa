@@ -73,7 +73,7 @@ const SMALL_WORDS = new Set([
 // Upper-case forms that should survive recasing. Ambiguous two-letter words
 // (US, IT, IN, OR, ME, MA, LA, OK, HI, AS, AT, ID) are deliberately excluded.
 const ACRONYMS = new Set([
-  'AAPI', 'AI', 'ASL', 'AWP', 'BA', 'BAME', 'BBC', 'BC', 'BFA', 'BIPOC', 'CBC', 'CNF', 'DC', 'DEI', 'DIY', 'DJ', 'EP', 'EU', 'FAQ', 'HBCU', 'HIV',
+  'AAPI', 'AI', 'ASL', 'AWP', 'BA', 'BAME', 'BBC', 'BC', 'BFA', 'BIPOC', 'CBC', 'CFP', 'CNF', 'DC', 'DEI', 'DIY', 'DJ', 'EP', 'EU', 'FAQ', 'HBCU', 'HIV',
   'ISBN', 'ISSN', 'LGBT', 'LGBTQ', 'LGBTQI', 'LGBTQIA', 'LP', 'MFA', 'MG', 'NEA', 'NEH', 'NFT', 'NGO', 'NPR', 'NY', 'NYC', 'NYSCA', 'PDF',
   'PEN', 'POC', 'QTBIPOC', 'SF', 'SFF', 'SFWA', 'TV', 'UK', 'UN', 'USA', 'VR', 'AR', 'XR', 'YA',
 ]);
@@ -201,6 +201,18 @@ function isAllLowercase(value: string): boolean {
   return !hasUppercase(value) && /[a-z]/.test(value);
 }
 
+/**
+ * A short all-caps title that is more than a section label is usually an
+ * acronym or a stylized name ("SXSW 2027", "SCBWI", "CHEAP POP"), so recasing
+ * it would damage it. The tell is a short word that is neither a known acronym
+ * nor a label word. "POETRY" and "NEA LITERATURE FELLOWSHIPS" still recase.
+ */
+function isStylizedCapsName(value: string): boolean {
+  const words = value.split(' ').map((word) => word.replace(/[^\p{L}]/gu, '')).filter((word) => word.length > 0);
+  if (words.length === 0 || words.length > 3 || isGenericOpportunityLabel(value)) return false;
+  return words.some((word) => isAsciiWord(word) && word.length <= 5 && !ACRONYMS.has(word) && !GENERIC_WORDS.has(word.toLowerCase()) && !SMALL_WORDS.has(word.toLowerCase()) && !ROMAN_NUMERAL.test(word));
+}
+
 /** Recases shouting segments inside an otherwise mixed-case title ("— ALWAYS OPEN"). */
 function recaseShoutingSegments(value: string): string {
   return value
@@ -248,10 +260,46 @@ function fold(value: string): string {
     .trim()} `;
 }
 
+// Listing sites and submission platforms. Their name is where a record was
+// found, not who runs the opportunity, so it never belongs in a title.
+const LISTING_PLATFORMS = new Set([
+  'artcall', 'artconnect', 'artinfoland', 'artis', 'cafe', 'callforentry', 'chill subs', 'creative organization', 'curatorspace',
+  'curatorspace partner', 'duotrope', 'dutchculture', 'archdaily', 'entrythingy', 'filmfreeway', 'grants gov', 'newpages', 'newpages com',
+  'on the move', 'playbill', 'poets and writers', 'res artis', 'sessionize', 'submittable', 'transartists', 'zapplication',
+]);
+const PLACEHOLDER_NAME = /^(?:please\s+wait|loading|just\s+a\s+moment|redirecting|access\s+denied|attention\s+required|untitled|home|error|(?:page\s+)?not\s+found|forms?|professionals?|faqs?|open\s+call\s+faqs?|contest\s+information)\b/i;
+const DOMAIN_NAME = /\b[\w-]+\.(?:com|org|net|co|io|gov|edu|info|uk|ca|eu)\b/i;
+// One long word that is several words run together, e.g. a site slug.
+const RUN_TOGETHER_PART = /(?:press|mag|review|media|films?|arts|council|foundation|society|project|quarterly|literary|awards?|guild|retreat|forum|online|center|centre|publishing|unit|humanities|teachers|world|story|books?|fiction|poetry|engineering)/i;
+
+/**
+ * True when a name can stand for the organization in a published title.
+ * Rejects scraper placeholders ("Please Wait"), section labels ("Calls &
+ * Opportunities"), listing platforms, bare domains, truncated text, and words
+ * run together from a URL ("Blackpublicmedia"). A rejected name is treated as
+ * unknown, so a weak title is held for a person instead of mislabelled.
+ */
+export function isUsableOrganizationName(name: string): boolean {
+  const value = collapse(name);
+  if (value.length < 2 || value.length > 80) return false;
+  if (PLACEHOLDER_NAME.test(value)) return false;
+  if (/(?:\.\.\.|…)$/.test(value) || /[@<>]|\bcall\s+for\b/i.test(value)) return false;
+  if (DOMAIN_NAME.test(value)) return false;
+  if (/^(?:\S\s){3,}/.test(value)) return false;
+  if (isGenericOpportunityLabel(value)) return false;
+  const folded = fold(value).trim();
+  if (LISTING_PLATFORMS.has(folded)) return false;
+  if (/^\p{Lu}?[a-z]{12,}$/u.test(value)) {
+    const rest = value.slice(1);
+    if (/^the[a-z]{7,}$/i.test(value) || RUN_TOGETHER_PART.test(rest.slice(2))) return false;
+  }
+  return true;
+}
+
 function cleanOrganizationName(value: string | null | undefined): string | null {
   if (!value) return null;
   const cleaned = trimEdges(collapse(stripDecorations(value)));
-  return cleaned.length > 0 ? cleaned : null;
+  return cleaned.length > 0 && isUsableOrganizationName(cleaned) ? cleaned : null;
 }
 
 /** True when the title already names the organization (ignoring case, accents, "The", and common suffixes). */
@@ -299,7 +347,8 @@ export function normalizeOpportunityTitle(title: string, options: OpportunityTit
 
   const originalAllLowercase = isAllLowercase(value);
   let recased = value;
-  if (originalAllLowercase || isAllCaps(value)) recased = toTitleCase(value);
+  if (originalAllLowercase) recased = toTitleCase(value);
+  else if (isAllCaps(value)) recased = isStylizedCapsName(value) ? value : toTitleCase(value);
   else recased = recaseShoutingSegments(value);
   if (recased !== value) changes.add('recased');
   value = recased;
