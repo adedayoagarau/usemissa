@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { rankingRow, type MagazineRankingRow } from "./magazineRankingRepository.js";
 
 export interface PublicationEditorialSpecs {
   profileId: string;
@@ -87,6 +88,8 @@ export interface EditorialIntelligenceFullProfile {
   websiteUrl: string | null;
   /** Null when the publication has no stored ranking row. */
   prestigeTier: string | null;
+  /** The latest overall ranking row: pillar scores, recorded facts and their sources. */
+  ranking: MagazineRankingRow | null;
   /** Each section is null when Missa holds no stored record for it. */
   specs: PublicationEditorialSpecs | null;
   compensation: PublicationCompensationDetails | null;
@@ -109,7 +112,7 @@ export interface EditorialIntelligenceFullProfile {
     authorName: string | null;
     sourceUrl: string;
   }>;
-  /** Clifford Garstang's latest Pushcart ranking rows for this magazine. */
+  /** The latest published Pushcart tally rows for this magazine. */
   pushcart: Array<{
     editionYear: number;
     genre: string;
@@ -134,10 +137,8 @@ export class PostgresEditorialIntelligenceRepository {
     try {
       // 1. Fetch Profile & Ranking Info
       const profileRes = await this.pool.query(
-        `SELECT gp.id as profile_id, gp.name, COALESCE(gp.name_key, gp.id) as slug, gp.website_url,
-                mr.prestige_tier as prestige_tier
+        `SELECT gp.id as profile_id, gp.name, COALESCE(gp.name_key, gp.id) as slug, gp.website_url
          FROM gary_profiles gp
-         LEFT JOIN missa_magazine_rankings mr ON mr.profile_id = gp.id AND mr.ranking_year = 2026
          WHERE gp.id = $1
          LIMIT 1`,
         [profileId],
@@ -148,6 +149,17 @@ export class PostgresEditorialIntelligenceRepository {
       }
 
       const pRow = profileRes.rows[0];
+
+      const rankingRes = await this.pool.query(
+        `SELECT r.*, p.name, COALESCE(NULLIF(p.name_key, ''), p.id) AS slug, p.website_url
+         FROM missa_magazine_rankings r
+         JOIN gary_profiles p ON p.id = r.profile_id
+         WHERE r.profile_id = $1 AND r.genre = 'overall'
+         ORDER BY r.ranking_year DESC
+         LIMIT 1`,
+        [profileId],
+      );
+      const ranking = rankingRes.rows[0] ? rankingRow(rankingRes.rows[0]) : null;
 
 
       // 2. Fetch Specs
@@ -297,9 +309,12 @@ export class PostgresEditorialIntelligenceRepository {
           `SELECT edition_year, genre, source_rank, source_score, source_url
            FROM missa_pushcart_rankings
            WHERE profile_id = $1
-             AND edition_year = (SELECT MAX(edition_year) FROM missa_pushcart_rankings WHERE profile_id = $1)
+             AND edition_year = COALESCE(
+               $2::int,
+               (SELECT MAX(edition_year) FROM missa_pushcart_rankings WHERE profile_id = $1)
+             )
            ORDER BY source_rank ASC`,
-          [profileId],
+          [profileId, ranking?.rankingYear ?? null],
         ),
       ]);
 
@@ -322,6 +337,7 @@ export class PostgresEditorialIntelligenceRepository {
       }));
 
       if (
+        !ranking &&
         !specs &&
         !compensation &&
         !telemetry &&
@@ -340,7 +356,8 @@ export class PostgresEditorialIntelligenceRepository {
         name: String(pRow.name),
         slug: String(pRow.slug),
         websiteUrl: pRow.website_url ? String(pRow.website_url) : null,
-        prestigeTier: pRow.prestige_tier ? String(pRow.prestige_tier) : null,
+        prestigeTier: ranking?.prestigeTier ?? null,
+        ranking,
         specs,
         compensation,
         telemetry,

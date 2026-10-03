@@ -130,3 +130,138 @@ export function planningCandidate(
     schedule: item.schedule,
   };
 }
+
+/** Short cell values for the rankings table; null when no source records the fact. */
+export function feeCell(row: FeeFacts): string | null {
+  if (row.regularFeeCents === 0 || row.chargesReadingFee === false)
+    return "Free";
+  if (row.regularFeeCents != null) return dollars(row.regularFeeCents);
+  if (row.chargesReadingFee) return "Charged";
+  return null;
+}
+
+export function payCell(
+  row: PayFacts & { payScore: number; pillarStatus: PillarStatusMap },
+): string | null {
+  if (magazineFilters.pro(row)) return "Pro rate";
+  if (row.payKind === "cash" || (row.contributorPayCents ?? 0) > 0)
+    return "Pays";
+  if (row.payKind === "copies_only") return "Copies";
+  if (row.payKind === "unpaid") return "Unpaid";
+  return null;
+}
+
+export function replyCell(row: ResponseFacts): string | null {
+  if (row.medianResponseDays != null) return `${row.medianResponseDays} days`;
+  if (row.responseTimeBand) return RESPONSE_BAND_LABELS[row.responseTimeBand];
+  return null;
+}
+
+/** "pw.org" from a source URL, for a compact citation. */
+export function sourceHost(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+const GENRE_WORDS = {
+  fiction: "fiction",
+  poetry: "poetry",
+  nonfiction: "nonfiction",
+} as const;
+
+/**
+ * The honours behind a magazine's score, in words: its Pushcart tally rank
+ * and the anthology selections counted. An empty list means none on record.
+ */
+export function honoursLines(
+  row: Pick<
+    MagazineRankingRow,
+    "genre" | "pushcartRank" | "pushcartGenre" | "anthologySelections"
+  >,
+): string[] {
+  const lines: string[] = [];
+  if (row.pushcartRank != null) {
+    const genre =
+      row.genre === "overall" && row.pushcartGenre
+        ? ` in ${GENRE_WORDS[row.pushcartGenre]}`
+        : "";
+    lines.push(`Pushcart rank ${row.pushcartRank}${genre}`);
+  }
+  if (row.anthologySelections > 0) {
+    lines.push(
+      `${row.anthologySelections} anthology ${row.anthologySelections === 1 ? "pick" : "picks"}`,
+    );
+  }
+  return lines;
+}
+
+export type MagazineSort = "rank" | "honours" | "fee" | "pay" | "replies";
+
+export const MAGAZINE_SORT_LABELS: Record<MagazineSort, string> = {
+  rank: "Missa rank",
+  honours: "Most honoured",
+  fee: "Lowest fee",
+  pay: "Best pay",
+  replies: "Fastest replies",
+};
+
+const BAND_DAYS: Record<ResponseTimeBand, number> = {
+  under_3_months: 45,
+  "3_to_6_months": 135,
+  over_6_months: 270,
+};
+
+type SortableRow = Pick<
+  MagazineRankingRow,
+  | "rankPosition"
+  | "accoladesScore"
+  | "regularFeeCents"
+  | "chargesReadingFee"
+  | "contributorPayCents"
+  | "payKind"
+  | "payScore"
+  | "pillarStatus"
+  | "medianResponseDays"
+  | "responseTimeBand"
+>;
+
+/** Smaller is better; null when no source records the fact. */
+function sortValue(sort: MagazineSort, row: SortableRow): number | null {
+  switch (sort) {
+    case "rank":
+      return row.rankPosition;
+    case "honours":
+      return -row.accoladesScore;
+    case "fee":
+      if (row.regularFeeCents === 0 || row.chargesReadingFee === false)
+        return 0;
+      if (row.regularFeeCents != null) return row.regularFeeCents;
+      return row.chargesReadingFee ? Number.MAX_SAFE_INTEGER : null;
+    case "pay": {
+      const pay = payCell(row);
+      if (pay === "Pro rate") return 0;
+      if (pay === "Pays") return 1;
+      if (pay === "Copies") return 2;
+      if (pay === "Unpaid") return 3;
+      return null;
+    }
+    case "replies":
+      if (row.medianResponseDays != null) return row.medianResponseDays;
+      return row.responseTimeBand ? BAND_DAYS[row.responseTimeBand] : null;
+  }
+}
+
+/** Orders rows for a sort: facts not on record go last, ties keep Missa rank. */
+export function compareMagazines(sort: MagazineSort) {
+  return (a: SortableRow, b: SortableRow): number => {
+    const x = sortValue(sort, a);
+    const y = sortValue(sort, b);
+    if (x == null && y != null) return 1;
+    if (y == null && x != null) return -1;
+    if (x != null && y != null && x !== y) return x - y;
+    return a.rankPosition - b.rankPosition;
+  };
+}
