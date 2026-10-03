@@ -157,7 +157,9 @@ export async function getRevenue(days = 30): Promise<RevenueData> {
   try {
     const since = Math.floor(Date.now() / 1000 - days * 86_400);
     const [subscriptions, invoices] = await Promise.all([
-      stripeList<StripeSubscription>('/subscriptions', { status: 'all', 'expand[]': 'data.items.data.price.product' }),
+      // Subscription items already carry the full price (with its nickname); Stripe
+      // rejects expansions deeper than four levels, so the product is not expanded.
+      stripeList<StripeSubscription>('/subscriptions', { status: 'all' }),
       stripeList<{ amount_paid: number; currency: string }>('/invoices', { status: 'paid', 'created[gte]': String(since) }),
     ]);
     const value = computeRevenue(subscriptions, invoices, { days });
