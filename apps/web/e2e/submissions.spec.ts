@@ -2,6 +2,8 @@ import { expect, request as playwrightRequest, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 test('submitter can save a draft, submit once, replay safely, and withdraw', async ({ baseURL, browser }) => {
+  // Receipt detail, Tracker and mobile checks each load a page.
+  test.slow();
   const admin = await playwrightRequest.newContext({ baseURL });
   const submitter = await playwrightRequest.newContext({ baseURL });
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -41,7 +43,7 @@ test('submitter can save a draft, submit once, replay safely, and withdraw', asy
 
     const email = `submission-${suffix}@example.com`;
     const signup = await submitter.post('/api/auth/signup', {
-      data: { email, password: 'correct-horse-battery', displayName: 'Submission E2E User' },
+      data: { email, password: 'correct-horse-battery', givenName: 'Submission', familyName: 'Tester' },
     });
     expect(signup.status()).toBe(201);
 
@@ -98,12 +100,21 @@ test('submitter can save a draft, submit once, replay safely, and withdraw', asy
     await visualPage.goto(`/tracker/submissions/${submitted.submission.id}`);
     await expect(visualPage.getByRole('heading', { level: 1, name: `E2E call ${suffix}` })).toBeVisible();
     await visualPage.screenshot({ path: 'outputs/submission-detail-product-desktop.png', fullPage: true });
+
     await visualPage.setViewportSize({ width: 390, height: 844 });
     await visualPage.reload();
     expect(await visualPage.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBeFalsy();
     const accessibility = await new AxeBuilder({ page: visualPage }).analyze();
     expect(accessibility.violations.filter((violation) => ['critical', 'serious'].includes(violation.impact ?? ''))).toEqual([]);
     await visualPage.screenshot({ path: 'outputs/submission-detail-product-mobile.png', fullPage: true });
+
+    // The submitter tracks nothing else, so the Tracker must still show the receipt.
+    await visualPage.goto('/tracker');
+    await expect(visualPage.getByRole('navigation', { name: 'Tracker views' }).getByRole('button', { name: 'Submissions', exact: true })).toHaveAttribute('aria-current', 'page');
+    await expect(visualPage.getByRole('heading', { level: 3, name: `E2E call ${suffix}` })).toBeVisible();
+    await expect(visualPage.getByRole('heading', { name: 'Your Tracker is ready' })).toHaveCount(0);
+    await visualPage.goto(`/tracker?view=awaiting&application=${encodeURIComponent(submitted.submission.id)}`);
+    await expect(visualPage.locator('article[data-selected="true"]').getByRole('heading', { name: `E2E call ${suffix}` })).toBeVisible();
     await visualContext.close();
 
     const unauthorizedReceipt = await admin.get(`/tracker/submissions/${submitted.submission.id}`);
@@ -142,7 +153,7 @@ test('organization decision reaches the submitter receipt and Inbox', async ({ b
     const form = (await (await admin.post(`/api/orgs/${organizationId}/open-calls/${call.id}/submission-paths`, { data: { categories: ['Poetry'], fields: [] } })).json()) as { id: string };
     expect((await admin.post(`/api/orgs/${organizationId}/open-calls/${call.id}/publish`)).ok()).toBeTruthy();
 
-    expect((await submitter.post('/api/auth/signup', { data: { email: `${suffix}@example.com`, password: 'correct-horse-battery', displayName: 'Decision E2E User' } })).status()).toBe(201);
+    expect((await submitter.post('/api/auth/signup', { data: { email: `${suffix}@example.com`, password: 'correct-horse-battery', givenName: 'Decision', familyName: 'Tester' } })).status()).toBe(201);
     const submittedResponse = await submitter.post(`/api/submission-paths/${form.id}/submit`, {
       data: { category: 'Poetry', works: [{ title: 'Decision poem' }] },
       headers: { 'Idempotency-Key': suffix },
