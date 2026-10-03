@@ -7,6 +7,7 @@ import {
   Bot,
   BarChart3,
   Building2,
+  Contact,
   CreditCard,
   ChevronDown,
   FileText,
@@ -14,12 +15,17 @@ import {
   LayoutDashboard,
   LifeBuoy,
   ListChecks,
+  LogOut,
   Mail,
+  MailCheck,
   Menu,
   Radar,
   Settings2,
   ShieldCheck,
+  Sparkles,
+  Table2,
   Tags,
+  UserPlus,
   Users,
 } from "lucide-react";
 import {
@@ -48,53 +54,50 @@ type NavItem = {
 };
 
 const overviewLinks: NavItem[] = [
-  { href: "/admin", label: "Control Room", icon: LayoutDashboard, exact: true },
-  { href: "/admin/operations", label: "Operations", icon: ListChecks },
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/admin/operations", label: "Worklist", icon: ListChecks },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+  { href: "/admin/data", label: "Data", icon: Table2 },
 ];
 
-const sourceAutomationLinks: NavItem[] = [
-  { href: "/admin/radar", label: "Opportunity sources", icon: Radar },
-  { href: "/admin/ingestion-v2", label: "Ingestion v2", icon: Activity },
-  { href: "/admin/gary", label: "Gary", icon: Bot },
-  { href: "/admin/agents", label: "Agents", icon: Bot },
+const peopleLinks: NavItem[] = [
+  { href: "/admin/customers", label: "Customers", icon: Users },
+  { href: "/admin/organizations", label: "Organizations", icon: Building2 },
+  { href: "/admin/crm", label: "CRM", icon: Contact },
+  { href: "/admin/waitlist", label: "Waitlist", icon: UserPlus },
+  { href: "/admin/support", label: "Support", icon: LifeBuoy },
+  { href: "/admin/messaging", label: "Messaging", icon: Mail },
 ];
 
-const contentTaxonomyLinks: NavItem[] = [
+const contentLinks: NavItem[] = [
   { href: "/admin/content", label: "Content", icon: FileText },
+  { href: "/admin/radar", label: "Opportunity sources", icon: Radar },
   { href: "/admin/taxonomy", label: "Taxonomy", icon: Tags },
 ];
 
-const customerOrganizationLinks: NavItem[] = [
-  { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/organizations", label: "Organizations", icon: Building2 },
-  { href: "/admin/crm", label: "CRM", icon: Users },
-  { href: "/admin/waitlist", label: "Waitlist", icon: Mail },
+const automationLinks: NavItem[] = [
+  { href: "/admin/agents", label: "Agents", icon: Bot },
+  { href: "/admin/gary", label: "Gary", icon: Sparkles },
+  { href: "/admin/ingestion-v2", label: "Ingestion v2", icon: Activity },
 ];
 
-const communicationSupportLinks: NavItem[] = [
-  { href: "/admin/messaging", label: "Messaging", icon: Mail },
-  { href: "/admin/support", label: "Support", icon: LifeBuoy },
-  { href: "/admin/email-previews", label: "Email previews", icon: Mail },
-];
-
-const financeGovernanceLinks: NavItem[] = [
+const moneyLinks: NavItem[] = [
   { href: "/admin/billing", label: "Billing", icon: CreditCard },
-  { href: "/admin/governance", label: "Governance", icon: ShieldCheck },
 ];
 
-const diagnosticLinks: NavItem[] = [
+const advancedLinks: NavItem[] = [
+  { href: "/admin/email-previews", label: "Email previews", icon: MailCheck },
+  { href: "/admin/governance", label: "Governance", icon: ShieldCheck },
   { href: "/admin/system", label: "System", icon: Settings2 },
-  { href: "/admin/audit", label: "Audit", icon: FileClock },
+  { href: "/admin/audit", label: "Audit log", icon: FileClock },
 ];
 
 const navigationGroups: Array<{ label: string; items: NavItem[] }> = [
   { label: "Overview", items: overviewLinks },
-  { label: "Sources & automation", items: sourceAutomationLinks },
-  { label: "Content & taxonomy", items: contentTaxonomyLinks },
-  { label: "Customers & organizations", items: customerOrganizationLinks },
-  { label: "Communication & support", items: communicationSupportLinks },
-  { label: "Finance & governance", items: financeGovernanceLinks },
+  { label: "People", items: peopleLinks },
+  { label: "Content & sources", items: contentLinks },
+  { label: "Automation", items: automationLinks },
+  { label: "Money", items: moneyLinks },
 ];
 
 function isActive(pathname: string, search: string, item: NavItem): boolean {
@@ -147,7 +150,7 @@ function Navigation({
   search: string;
   email: string;
 }) {
-  const diagnosticsActive = diagnosticLinks.some((item) =>
+  const advancedActive = advancedLinks.some((item) =>
     isActive(pathname, search, item),
   );
   return (
@@ -182,18 +185,18 @@ function Navigation({
             ))}
           </div>
         ))}
-        <Collapsible defaultOpen={diagnosticsActive} className="space-y-1">
+        <Collapsible defaultOpen={advancedActive} className="space-y-1">
           <CollapsibleTrigger
             render={<Button type="button" variant="ghost" />}
           >
-            Diagnostics &amp; audit
+            Advanced
             <ChevronDown
               className="size-3.5 shrink-0 transition-transform in-data-open:rotate-180"
               aria-hidden="true"
             />
           </CollapsibleTrigger>
           <CollapsibleContent className="space-y-1">
-            {diagnosticLinks.map((item) => (
+            {advancedLinks.map((item) => (
               <NavLink
                 key={item.href}
                 item={item}
@@ -214,7 +217,7 @@ function Navigation({
           </span>
           <div className="min-w-0">
             <p className="truncate text-xs font-medium text-foreground">
-              Platform operator
+              Admin
             </p>
             <p className="truncate text-[11px] text-muted-foreground">
               {email}
@@ -231,7 +234,7 @@ function Navigation({
             }}
             className="flex min-h-9 w-full items-center gap-2 text-left text-xs text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
-            <Activity className="size-3.5" aria-hidden="true" />
+            <LogOut className="size-3.5" aria-hidden="true" />
             Sign out
           </button>
         </div>
@@ -281,7 +284,7 @@ export function AdminShellNav({ email }: { email: string }) {
                 Missa Platform Admin
               </SheetTitle>
               <SheetDescription>
-                Tenant-independent operational read model
+                Run and monitor Missa
               </SheetDescription>
             </SheetHeader>
             <Navigation pathname={pathname} search={search} email={email} />
