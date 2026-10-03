@@ -23,6 +23,8 @@ import { renderDeadlineReminderEmail } from '../emails/deadline-reminder';
 import { renderWelcomeEmail } from '../emails/welcome';
 import { renderAuthOtpEmail } from '../emails/auth-otp';
 import { renderPasswordResetEmail } from '../emails/password-reset';
+import { renderWaitlistConfirmationEmail, WAITLIST_CONFIRMATION_SUBJECT, waitlistConfirmationText } from '../emails/waitlist-confirmation';
+import { renderDecisionLetter } from '../emails/decision-letter';
 
 type Rendered = { subject: string; html: string; text: string };
 
@@ -138,6 +140,15 @@ const templates: Record<string, () => Rendered> = {
   welcome: () => renderWelcomeEmail({ accountId: 'acct_email_test', email: to, givenName: 'Tola' }),
   'sign-in-code': () => renderAuthOtpEmail({ email: to, code: '482913', type: 'sign-in', expiresInMinutes: 10 }),
   'password-reset': () => renderPasswordResetEmail({ accountId: 'acct_email_test', email: to, resetToken: 'sample-token', displayName: 'Tola' }),
+  waitlist: () => ({ subject: WAITLIST_CONFIRMATION_SUBJECT, html: renderWaitlistConfirmationEmail(), text: waitlistConfirmationText() }),
+  'decision-letter': () =>
+    renderDecisionLetter({
+      submitterName: 'Tola',
+      organizationName: lead.organizationName,
+      workTitle: 'Ten poems',
+      outcome: 'declined',
+      editorialNote: 'This year we read more than 1,400 applications, and we are not able to offer you a place.\n\nYour poems were read in full by two readers. We hope you will apply again when the next call opens.',
+    }),
 };
 
 const names = only ?? Object.keys(templates);

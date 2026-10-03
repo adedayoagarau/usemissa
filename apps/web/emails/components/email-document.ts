@@ -25,6 +25,8 @@ export const CREATOR_EMAIL_COLORS = {
   rule: '#e3e7e5',
   night: '#171418',
   onNight: '#b9afbd',
+  canvas: '#f2f2f0',
+  lichenTint: '#eef1e8',
 } as const;
 
 /**
@@ -110,6 +112,8 @@ export function renderEmailFooter(props: {
   preferencesUrl?: string;
   preferencesLabel?: string;
   unsubscribeUrl?: string;
+  /** Replaces the legal sender line, e.g. "Poets House sent this through Missa". */
+  senderLine?: string;
 }): string {
   const c = CREATOR_EMAIL_COLORS;
   const f = EMAIL_FONTS;
@@ -128,7 +132,7 @@ export function renderEmailFooter(props: {
         ${mark}
         ${keepLight(`<p style="margin:0 0 10px;">${escapeHtml(props.reason)}</p>
         <p style="margin:0 0 10px;">${preferences}${unsubscribe}</p>
-        <p style="margin:0;">${escapeHtml(LEGAL_ENTITY_NAME || 'Missa')}${address} &nbsp;·&nbsp; ${link(`mailto:${LEGAL_CONTACT_EMAIL}`, LEGAL_CONTACT_EMAIL)}</p>`)}
+        <p style="margin:0;">${props.senderLine ? escapeHtml(props.senderLine) : `${escapeHtml(LEGAL_ENTITY_NAME || 'Missa')}${address}`} &nbsp;·&nbsp; ${link(`mailto:${LEGAL_CONTACT_EMAIL}`, LEGAL_CONTACT_EMAIL)}</p>`)}
       </td>
     </tr>`;
 }
