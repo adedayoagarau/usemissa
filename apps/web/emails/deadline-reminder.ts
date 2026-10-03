@@ -108,6 +108,7 @@ export async function deliverDeadlineReminderEmail(
     recipientAccountId: props.accountId,
     kind: 'deadline-reminder',
     category: 'notification_digest',
+    unsubscribeCategory: 'deadline_reminder',
     idempotencyKey: `deadline-reminder:${props.accountId}:${idsHash}`,
     subject,
     html,

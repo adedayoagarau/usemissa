@@ -18,6 +18,22 @@ export interface AlertDeliveryReport {
   reason?: string;
 }
 
+/** Alert kinds the creator reminder path (lib/creator-reminder-email.ts) emails
+ * once relational authority is on. The legacy engine paths leave them alone
+ * then, so a creator never gets the same reminder from two systems. */
+const CREATOR_REMINDER_ALERT_KINDS = new Set<string>(['deadline-reminder', 'response-overdue']);
+
+/** True when the creator reminder path owns reminder emails. */
+export function creatorReminderPathAuthoritative(env: Record<string, string | undefined> = process.env): boolean {
+  return creatorRelationalAuthorityEnabled(env);
+}
+
+/** Deadline reminders need email on, reminders on, and a working provider.
+ * Matches the filter in pendingCreatorReminderEmails. */
+export function deadlineReminderEmailAllowed(preference: CreatorNotificationPreferences): boolean {
+  return preference.emailEnabled && preference.reminderEnabled && preference.providerState === 'available';
+}
+
 function eligibleByPreference(alert: Alert, preference: CreatorNotificationPreferences): boolean {
   if (!preference.emailEnabled || preference.digestCadence === 'off' || preference.providerState !== 'available') return false;
   if (alert.kind === 'new-match') return preference.savedSearchEnabled;
@@ -66,16 +82,23 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       reason: 'RESEND_API_KEY/RESEND_FROM not configured',
     };
   if (!connectionString) return { status: 'skipped', recipients: 0, alerts: 0, failed: 0, reason: 'Durable message ledger is unavailable' };
-  const pending = [...engine.store.alerts.values()].filter((alert) => alert.audience === 'user' && alert.userId && !alert.emailSentAt);
+  const reminderPathOwnsReminders = creatorReminderPathAuthoritative(process.env);
+  const pending = [...engine.store.alerts.values()].filter(
+    (alert) =>
+      alert.audience === 'user' &&
+      alert.userId &&
+      !alert.emailSentAt &&
+      !(reminderPathOwnsReminders && CREATOR_REMINDER_ALERT_KINDS.has(alert.kind)),
+  );
   const byUser = new Map<string, typeof pending>();
   for (const alert of pending) {
     const rows = byUser.get(alert.userId!);
     if (rows) rows.push(alert);
     else byUser.set(alert.userId!, [alert]);
   }
-  const preferenceRepository = creatorRelationalAuthorityEnabled(process.env)
-    ? new PostgresCreatorNotificationRepository(creatorPoolFor(connectionString))
-    : undefined;
+  // Preferences are always honoured. The table exists whether or not
+  // relational authority is on; a missing row fails closed below.
+  const preferenceRepository = new PostgresCreatorNotificationRepository(creatorPoolFor(connectionString));
   const inboxRepository = creatorRelationalAuthorityEnabled(process.env)
     ? new PostgresCreatorInboxRepository(creatorPoolFor(connectionString))
     : undefined;
@@ -89,19 +112,17 @@ export async function deliverPendingAlertEmails(engine: RadarEngine, now = new D
       continue;
     }
     let eligibleAlerts = alerts;
-    if (preferenceRepository) {
-      try {
-        const preference = await preferenceRepository.syncProviderState(account.id, 'available');
-        eligibleAlerts = alerts.filter((alert) => eligibleByPreference(alert, preference));
-        const eligibleIds = new Set(eligibleAlerts.map((alert) => alert.id));
-        await inboxRepository?.setEmailEligibility(account.id, alerts.filter((alert) => !eligibleIds.has(alert.id)).map((alert) => alert.id), false);
-        await inboxRepository?.setEmailEligibility(account.id, eligibleAlerts.map((alert) => alert.id), true);
-      } catch {
-        failed += alerts.length;
-        continue;
-      }
-      if (!eligibleAlerts.length) continue;
+    try {
+      const preference = await preferenceRepository.syncProviderState(account.id, 'available');
+      eligibleAlerts = alerts.filter((alert) => eligibleByPreference(alert, preference));
+      const eligibleIds = new Set(eligibleAlerts.map((alert) => alert.id));
+      await inboxRepository?.setEmailEligibility(account.id, alerts.filter((alert) => !eligibleIds.has(alert.id)).map((alert) => alert.id), false);
+      await inboxRepository?.setEmailEligibility(account.id, eligibleAlerts.map((alert) => alert.id), true);
+    } catch {
+      failed += alerts.length;
+      continue;
     }
+    if (!eligibleAlerts.length) continue;
     const effectKey = `alert-digest:${userId}:${createHash('sha256')
       .update(
         eligibleAlerts
@@ -170,6 +191,16 @@ export async function deliverPendingDeadlineEmails(engine: RadarEngine, now = ne
   const from = process.env.RESEND_FROM;
   const connectionString = process.env.DATABASE_URL;
 
+  if (creatorReminderPathAuthoritative(process.env)) {
+    return {
+      status: 'skipped',
+      recipients: 0,
+      reminders: 0,
+      failed: 0,
+      reason: 'Creator reminder emails are authoritative',
+    };
+  }
+
   if (!apiKey || !from) {
     return {
       status: 'skipped',
@@ -178,6 +209,12 @@ export async function deliverPendingDeadlineEmails(engine: RadarEngine, now = ne
       failed: 0,
       reason: 'RESEND_API_KEY/RESEND_FROM not configured',
     };
+  }
+
+  // Without the database there are no stored preferences to honour, so no
+  // reminder email goes out.
+  if (!connectionString) {
+    return { status: 'skipped', recipients: 0, reminders: 0, failed: 0, reason: 'Email preferences are unavailable' };
   }
 
   // Find user deadline-reminder alerts that haven't had emails sent
@@ -196,9 +233,7 @@ export async function deliverPendingDeadlineEmails(engine: RadarEngine, now = ne
     else byUser.set(alert.userId!, [alert]);
   }
 
-  const preferenceRepository = (connectionString && creatorRelationalAuthorityEnabled(process.env))
-    ? new PostgresCreatorNotificationRepository(creatorPoolFor(connectionString))
-    : undefined;
+  const preferenceRepository = new PostgresCreatorNotificationRepository(creatorPoolFor(connectionString));
 
   let recipients = 0;
   let sentReminders = 0;
@@ -213,16 +248,12 @@ export async function deliverPendingDeadlineEmails(engine: RadarEngine, now = ne
       continue;
     }
 
-    if (preferenceRepository) {
-      try {
-        const preference = await preferenceRepository.syncProviderState(account.id, 'available');
-        if (!preference.emailEnabled || !preference.reminderEnabled || preference.providerState !== 'available') {
-          continue;
-        }
-      } catch {
-        failed += alerts.length;
-        continue;
-      }
+    try {
+      const preference = await preferenceRepository.syncProviderState(account.id, 'available');
+      if (!deadlineReminderEmailAllowed(preference)) continue;
+    } catch {
+      failed += alerts.length;
+      continue;
     }
 
     // Map alerts to opportunity items

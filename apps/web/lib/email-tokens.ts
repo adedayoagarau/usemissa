@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { siteUrl } from './siteUrl';
+import { resolveTokenSecret } from './token-secret';
 
 export type EmailCategory = 'notification_digest' | 'saved_search' | 'deadline_reminder' | 'marketing' | 'all';
 
@@ -28,8 +29,7 @@ export interface InvalidUnsubscribeToken {
 export type VerifyUnsubscribeResult = VerifiedUnsubscribeToken | InvalidUnsubscribeToken;
 
 function resolveSecret(explicit?: string): string {
-  const secret = explicit || process.env.MISSA_SESSION_SECRET || 'local-unsubscribe-secret';
-  return secret;
+  return resolveTokenSecret(explicit, 'local-unsubscribe-secret');
 }
 
 function base64UrlEncode(str: string): string {

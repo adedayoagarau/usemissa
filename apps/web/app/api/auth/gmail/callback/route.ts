@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { GoogleGmailProvider } from '@missa/radar-adapters';
 import { getSessionAccount } from '@/lib/auth';
 import { getEngine, persistRadar } from '@/lib/engine';
+import { gmailSyncUnavailable } from '@/lib/email-integrations';
 
 function redirect(request: Request, result: string) {
   return NextResponse.redirect(new URL(`/profile?gmail=${encodeURIComponent(result)}`, request.url));
 }
 
-export async function GET(request: Request) {
+export async function GET(request: Request) { const unavailable = gmailSyncUnavailable(); if (unavailable) return unavailable;
   const session = await getSessionAccount(request.headers.get('cookie'));
   if (!session?.account.userId) return redirect(request, 'error&reason=not-authenticated');
   const url = new URL(request.url);
