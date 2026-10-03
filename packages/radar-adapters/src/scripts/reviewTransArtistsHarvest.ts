@@ -12,27 +12,6 @@ if (!fs.existsSync(DATA_FILE)) {
   process.exit(1);
 }
 
-// Load DATABASE_URL
-const possibleEnvFiles = [
-  "/Volumes/Crucial X10/usemissa/.env.local",
-  path.resolve(".env.local"),
-  path.resolve("../../.env.local")
-];
-
-for (const envFile of possibleEnvFiles) {
-  if (fs.existsSync(envFile)) {
-    const envContent = fs.readFileSync(envFile, "utf8");
-    for (const line of envContent.split("\n")) {
-      const match = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
-      if (match) {
-        process.env.DATABASE_URL = match[1].trim().replace(/^["']|["']$/g, "");
-        break;
-      }
-    }
-    if (process.env.DATABASE_URL) break;
-  }
-}
-
 const programs = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
 console.log(`\n📊 [TransArtists Harvest Review]`);
 console.log(`Total residency programs harvested: ${programs.length}`);

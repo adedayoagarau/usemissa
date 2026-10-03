@@ -1,10 +1,11 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ResidencyProfile } from "./resArtisParser.js";
 
 // Canonical data directory path
-const dataDir = "/Volumes/Crucial X10/usemissa/packages/radar-adapters/data";
+const dataDir = fileURLToPath(new URL("../../data", import.meta.url));
 const dataFile = path.join(dataDir, "resartis_organizations.json");
 const downloadsFile = path.join(os.homedir(), "Downloads", "resartis_organizations.json");
 

@@ -7,29 +7,6 @@ const { Client } = pg;
 
 const dryRun = process.argv.includes("--dry-run");
 
-// Load DATABASE_URL from .env.local if not already in process.env
-if (!process.env.DATABASE_URL) {
-  const possiblePaths = [
-    path.resolve(".env.local"),
-    path.resolve("../../.env.local"),
-    "/Volumes/Crucial X10/usemissa/.env.local",
-  ];
-  for (const envPath of possiblePaths) {
-    if (fs.existsSync(envPath)) {
-      const content = fs.readFileSync(envPath, "utf8");
-      for (const line of content.split("\n")) {
-        const match = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
-        if (match) {
-          process.env.DATABASE_URL = match[1].trim().replace(/^["']|["']$/g, "");
-          console.log(`[BACKFILL] Loaded DATABASE_URL from ${envPath}`);
-          break;
-        }
-      }
-      if (process.env.DATABASE_URL) break;
-    }
-  }
-}
-
 async function runCountryBackfill() {
   console.log(`=== MISSA GEOGRAPHY & COUNTRY BASELINE BACKFILL ===`);
   if (dryRun) {

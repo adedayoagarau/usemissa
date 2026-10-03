@@ -1,14 +1,9 @@
-import fs from "node:fs";
 import pg from "pg";
 
-const envContent = fs.readFileSync("/Volumes/Crucial X10/usemissa/.env.local", "utf8");
-let dbUrl = "";
-for (const line of envContent.split("\n")) {
-  const match = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
-  if (match) {
-    dbUrl = match[1].trim().replace(/^["']|["']$/g, "");
-    break;
-  }
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) {
+  console.error("DATABASE_URL is required. Set it in the environment (or pass --env-file=.env.local).");
+  process.exit(1);
 }
 
 const { Client } = pg;

@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArtConnectPage, type ArtConnectProfile } from "./artConnectParser.js";
 
-const dataDir = "/Volumes/Crucial X10/usemissa/packages/radar-adapters/data";
+const dataDir = fileURLToPath(new URL("../../data", import.meta.url));
 const outputFile = path.join(dataDir, "artconnect_organizations.json");
 
 fs.mkdirSync(dataDir, { recursive: true });

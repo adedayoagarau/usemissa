@@ -1,30 +1,7 @@
-import fs from "node:fs";
-import path from "node:path";
 import pg from "pg";
 
-// 1. Load DATABASE_URL
-const possibleEnvFiles = [
-  "/Volumes/Crucial X10/usemissa/.env.local",
-  path.resolve(".env.local"),
-  path.resolve("../.env.local")
-];
-
-for (const envFile of possibleEnvFiles) {
-  if (fs.existsSync(envFile)) {
-    const envContent = fs.readFileSync(envFile, "utf8");
-    for (const line of envContent.split("\n")) {
-      const match = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
-      if (match) {
-        process.env.DATABASE_URL = match[1].trim().replace(/^["']|["']$/g, "");
-        break;
-      }
-    }
-    if (process.env.DATABASE_URL) break;
-  }
-}
-
 if (!process.env.DATABASE_URL) {
-  console.error("❌ ERROR: DATABASE_URL not found.");
+  console.error("DATABASE_URL is required. Set it in the environment (or pass --env-file=.env.local).");
   process.exit(1);
 }
 
