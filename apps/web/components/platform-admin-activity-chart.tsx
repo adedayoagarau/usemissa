@@ -17,7 +17,7 @@ function shortDay(day: string): string {
   return Number.isNaN(date.getTime()) ? day : date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 }
 
-export function Sparkline({ values, label }: { values: number[]; label: string }) {
+export function Sparkline({ values, label, className = 'text-primary' }: { values: number[]; label: string; className?: string }) {
   if (values.length < 2 || values.every((value) => value === 0)) return null;
   const max = Math.max(...values, 1);
   const width = 96;
@@ -25,7 +25,7 @@ export function Sparkline({ values, label }: { values: number[]; label: string }
   const step = width / (values.length - 1);
   const points = values.map((value, index) => `${(index * step).toFixed(1)},${(height - (value / max) * (height - 2) - 1).toFixed(1)}`).join(' ');
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="img" aria-label={label} className="text-primary">
+    <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} role="img" aria-label={label} className={className}>
       <polyline points={points} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );

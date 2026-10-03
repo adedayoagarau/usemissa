@@ -1,7 +1,9 @@
 import { AdminPageFrame } from '@/components/platform-admin';
 import AdminChartNotes from '@/components/admin-chart-notes';
 import TimeSeriesChart from '@/components/admin-time-series';
-import { AnalyticsHeader, BarList, NotConnected, Panel, PeriodPicker, StatTile, capitalise, countryName, formatCount, formatDuration, formatPercent } from '@/components/admin-observability-ui';
+import BreakdownTabs from '@/components/admin-breakdown-tabs';
+import MetricChart from '@/components/admin-metric-chart';
+import { AnalyticsHeader, BarList, ChangeLine, NotConnected, Panel, PeriodPicker, capitalise, countryName, formatCount, formatDuration, formatPercent } from '@/components/admin-observability-ui';
 import { getTrafficPage, parsePeriod } from '@/lib/platformAdminObservability';
 
 const GOAL_LABELS: Record<string, string> = { signup: 'Created an account', waitlist_join: 'Joined the waitlist', checkout_started: 'Started Plus checkout' };
@@ -14,7 +16,7 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
 
   return (
     <AdminPageFrame>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <AnalyticsHeader title="Traffic" description="Every visit, counted without cookies, so people who decline analytics are included. Bots are excluded.">
           <div className="flex flex-wrap items-center gap-3">
             {traffic.available && (
@@ -34,47 +36,47 @@ export default async function AdminTrafficPage({ searchParams }: { searchParams:
           <NotConnected reason={traffic.reason} />
         ) : (
           <>
-            <section aria-label="Traffic summary" className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-              <StatTile label="Visitors" value={formatCount(current.visitors)} current={current.visitors} previous={previous.visitors} />
-              <StatTile label="Visits" value={formatCount(current.visits)} current={current.visits} previous={previous.visits} />
-              <StatTile label="Page views" value={formatCount(current.pageviews)} current={current.pageviews} previous={previous.pageviews} />
-              <StatTile label="Bounce rate" value={formatPercent(current.bounceRate)} current={current.bounceRate} previous={previous.bounceRate} higherIsBetter={false} />
-              <StatTile label="Visit length" value={formatDuration(current.avgVisitSeconds)} current={current.avgVisitSeconds} previous={previous.avgVisitSeconds} />
-              <StatTile label="Pages per visit" value={current.pagesPerVisit === null ? '—' : current.pagesPerVisit.toFixed(1)} current={current.pagesPerVisit} previous={previous.pagesPerVisit} />
-            </section>
-
-            <Panel title="Visitors per day" description="Unique visitors each day. Dashed lines are your notes.">
-              <TimeSeriesChart data={data.daily} series={[{ key: 'visitors', label: 'Visitors' }]} notes={notes} caption="Unique visitors per day" />
-              <div className="mt-4 border-t border-border pt-4">
-                <AdminChartNotes notes={notes} />
-              </div>
-            </Panel>
+            <MetricChart
+              caption="Traffic over time"
+              data={data.daily}
+              notes={notes}
+              tabs={[
+                { key: 'visitors', label: 'Visitors', value: formatCount(current.visitors), seriesKey: 'visitors', delta: <ChangeLine current={current.visitors} previous={previous.visitors} /> },
+                { key: 'visits', label: 'Visits', value: formatCount(current.visits), seriesKey: 'visits', delta: <ChangeLine current={current.visits} previous={previous.visits} /> },
+                { key: 'pageviews', label: 'Page views', value: formatCount(current.pageviews), seriesKey: 'pageviews', kind: 'bar', delta: <ChangeLine current={current.pageviews} previous={previous.pageviews} /> },
+                { key: 'bounce', label: 'Bounce rate', value: formatPercent(current.bounceRate), delta: <ChangeLine current={current.bounceRate} previous={previous.bounceRate} higherIsBetter={false} /> },
+                { key: 'duration', label: 'Visit length', value: formatDuration(current.avgVisitSeconds), delta: <ChangeLine current={current.avgVisitSeconds} previous={previous.avgVisitSeconds} /> },
+                { key: 'depth', label: 'Pages per visit', value: current.pagesPerVisit === null ? '—' : current.pagesPerVisit.toFixed(1), delta: <ChangeLine current={current.pagesPerVisit} previous={previous.pagesPerVisit} /> },
+              ]}
+              footer={<AdminChartNotes notes={notes} />}
+            />
 
             <div className="grid gap-6 lg:grid-cols-2">
-              <Panel title="Where visitors come from" description="Campaign tag if present, otherwise the referring site.">
-                <BarList rows={data.sources.map((row) => ({ label: row.label, value: row.visitors, secondary: row.visits }))} secondaryLabel="Visits" />
-              </Panel>
-              <Panel title="Top pages">
-                <BarList rows={data.topPages.map((row) => ({ label: row.label, value: row.visitors, secondary: row.pageviews }))} secondaryLabel="Views" />
-              </Panel>
-              <Panel title="Landing pages" description="The first page of each visit.">
-                <BarList rows={data.entryPages.map((row) => ({ label: row.label, value: row.visitors, secondary: row.visits }))} secondaryLabel="Visits" />
-              </Panel>
-              <Panel title="Exit pages" description="Where visits ended. High counts on a key page can mean people get stuck.">
-                <BarList rows={data.exitPages.map((row) => ({ label: row.label, value: row.visitors, secondary: row.visits }))} secondaryLabel="Visits" />
-              </Panel>
-              <Panel title="Countries">
-                <BarList rows={data.countries.map((row) => ({ label: countryName(row.label), value: row.visitors }))} />
-              </Panel>
-              <Panel title="Campaigns" description="From utm_campaign links.">
-                <BarList rows={data.campaigns.map((row) => ({ label: row.label, value: row.visitors, secondary: row.visits }))} secondaryLabel="Visits" empty="No tagged campaigns yet. Add ?utm_campaign=… to links you share." />
-              </Panel>
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-3">
-              <Panel title="Devices"><BarList rows={data.devices.map((row) => ({ label: capitalise(row.label), value: row.visitors }))} /></Panel>
-              <Panel title="Browsers"><BarList rows={data.browsers.map((row) => ({ label: row.label, value: row.visitors }))} /></Panel>
-              <Panel title="Operating systems"><BarList rows={data.operatingSystems.map((row) => ({ label: row.label, value: row.visitors }))} /></Panel>
+              <BreakdownTabs
+                title="Where visitors come from"
+                views={[
+                  { key: 'sources', label: 'Sources', rows: data.sources.map((row) => ({ label: row.label, value: row.visitors, secondary: row.visits })), secondaryLabel: 'Visits' },
+                  { key: 'referrers', label: 'Referrers', rows: data.referrers.map((row) => ({ label: row.label, value: row.visitors, secondary: row.visits })), secondaryLabel: 'Visits' },
+                  { key: 'campaigns', label: 'Campaigns', rows: data.campaigns.map((row) => ({ label: row.label, value: row.visitors, secondary: row.visits })), secondaryLabel: 'Visits', empty: 'No tagged campaigns yet. Add ?utm_campaign=… to links you share.' },
+                ]}
+              />
+              <BreakdownTabs
+                title="Pages"
+                views={[
+                  { key: 'top', label: 'Top', rows: data.topPages.map((row) => ({ label: row.label, value: row.visitors, secondary: row.pageviews })), secondaryLabel: 'Views' },
+                  { key: 'entry', label: 'Landing', rows: data.entryPages.map((row) => ({ label: row.label, value: row.visitors, secondary: row.visits })), secondaryLabel: 'Visits' },
+                  { key: 'exit', label: 'Exit', rows: data.exitPages.map((row) => ({ label: row.label, value: row.visitors, secondary: row.visits })), secondaryLabel: 'Visits' },
+                ]}
+              />
+              <BreakdownTabs title="Countries" views={[{ key: 'countries', label: 'Countries', rows: data.countries.map((row) => ({ label: countryName(row.label), value: row.visitors })) }]} />
+              <BreakdownTabs
+                title="Devices"
+                views={[
+                  { key: 'devices', label: 'Device', rows: data.devices.map((row) => ({ label: capitalise(row.label), value: row.visitors })) },
+                  { key: 'browsers', label: 'Browser', rows: data.browsers.map((row) => ({ label: row.label, value: row.visitors })) },
+                  { key: 'os', label: 'System', rows: data.operatingSystems.map((row) => ({ label: row.label, value: row.visitors })) },
+                ]}
+              />
             </div>
 
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">

@@ -172,9 +172,9 @@ export default function PlatformAdminData({ page, initialKey }: { page: Platform
 
   return (
     <div className="space-y-5">
-      <header>
-        <h1 className="font-sans text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Data</h1>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">Browse, search, and export any table. Click a column to sort it.</p>
+      <header className="border-b border-border pb-6">
+        <h1 className="font-heading text-4xl font-medium tracking-[-0.02em] text-foreground sm:text-5xl">Data</h1>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">Browse, search, and export any table. Click a column to sort it.</p>
       </header>
 
       <Tabs

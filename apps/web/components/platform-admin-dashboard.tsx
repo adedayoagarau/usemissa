@@ -30,54 +30,61 @@ export default function PlatformAdminDashboard({ data }: { data: PlatformAdminDa
   const OverallIcon = healthIcon[data.overall];
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xs font-medium text-muted-foreground">Dashboard</h1>
-          <p role="status" className="mt-1 flex items-center gap-2 font-sans text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            <OverallIcon className={`size-6 shrink-0 ${healthText[data.overall]}`} aria-hidden="true" />
-            {summary.title}
-          </p>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{summary.detail}</p>
+    <div className="space-y-8">
+      {/* The one editorial Forest moment in the admin: status as a statement, the numbers that matter set into it. */}
+      <section aria-labelledby="dashboard-status" className="overflow-hidden rounded-2xl bg-primary text-primary-foreground">
+        <div className="px-5 pt-6 pb-7 sm:px-8 sm:pt-8 sm:pb-9">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="inline-flex items-center gap-2 rounded-full bg-primary-foreground px-3 py-1 text-xs font-medium text-foreground">
+              <OverallIcon className={`size-3.5 ${healthText[data.overall]}`} aria-hidden="true" />
+              {healthLabel[data.overall] === 'Healthy' ? 'All systems healthy' : `Status: ${healthLabel[data.overall].toLowerCase()}`}
+            </p>
+            <Link href="/admin" className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-primary-foreground/30 px-3 text-sm font-medium text-primary-foreground hover:bg-primary-foreground/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-foreground">
+              <RefreshCw className="size-3.5" aria-hidden="true" />
+              Refresh
+            </Link>
+          </div>
+          <h1 id="dashboard-status" className="mt-6 max-w-4xl font-heading text-4xl leading-[1.04] font-medium tracking-[-0.03em] text-balance sm:text-5xl lg:text-6xl">
+            <span className="sr-only">Dashboard: </span>
+            {summary.title}.
+          </h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-primary-foreground/80">{summary.detail}</p>
         </div>
-        <Link href="/admin" className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-          <RefreshCw className="size-3.5" aria-hidden="true" />
-          Refresh
-        </Link>
-      </header>
+        <ul aria-label="Key numbers" className="grid grid-cols-2 gap-px border-t border-primary-foreground/15 bg-primary-foreground/15 lg:grid-cols-5 [&>*:last-child:nth-child(odd)]:col-span-2 lg:[&>*:last-child:nth-child(odd)]:col-span-1">
+          {data.kpis.map((kpi) => (
+            <li key={kpi.key} className="bg-primary">
+              <Link href={kpi.href} className="group flex h-full flex-col px-5 py-5 hover:bg-primary-foreground/5 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary-foreground sm:px-6">
+                <span className="flex items-center justify-between gap-2 text-xs font-medium text-primary-foreground/75">
+                  {kpi.label}
+                  <ArrowRight className="size-3.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true" />
+                </span>
+                <span className="mt-3 flex items-end justify-between gap-3">
+                  <span className="font-mono text-3xl tracking-[-0.02em] tabular-nums sm:text-4xl">{formatNumber(kpi.value)}</span>
+                  <Sparkline values={kpi.series} label={`${kpi.label}, daily trend over 30 days`} className="mb-1 text-primary-foreground/80" />
+                </span>
+                <span className="mt-2 truncate text-xs text-primary-foreground/70">{kpi.value === null ? 'Not connected' : kpi.detail}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
 
-      <section aria-label="System health" className={`grid gap-3 sm:grid-cols-2 ${data.health.length > 4 ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
+      <section aria-label="System health" className={`grid gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 ${data.health.length > 4 ? 'xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
         {data.health.map((check) => {
           const Icon = healthIcon[check.status];
           return (
-            <Link key={check.key} href={check.href} className="group flex items-start gap-3 rounded-xl border border-border bg-card p-3 hover:border-foreground/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+            <Link key={check.key} href={check.href} className="group flex items-start gap-3 bg-card px-4 py-4 hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary">
               <Icon className={`mt-0.5 size-4 shrink-0 ${healthText[check.status]}`} aria-hidden="true" />
               <span className="min-w-0">
-                <span className="flex items-baseline gap-2">
-                  <span className="text-sm font-medium text-foreground">{check.label}</span>
-                  <span className={`text-xs ${healthText[check.status]}`}>{healthLabel[check.status]}</span>
+                <span className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-sm font-semibold text-foreground">{check.label}</span>
+                  <span className={`text-xs font-medium ${healthText[check.status]}`}>{healthLabel[check.status]}</span>
                 </span>
-                <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{check.detail}</span>
+                <span className="mt-1 block text-xs leading-5 text-muted-foreground">{check.detail}</span>
               </span>
             </Link>
           );
         })}
-      </section>
-
-      <section aria-label="Key numbers" className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
-        {data.kpis.map((kpi) => (
-          <Link key={kpi.key} href={kpi.href} className="group rounded-xl border border-border bg-card p-4 hover:border-foreground/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-            <p className="flex items-center justify-between gap-2 text-xs font-medium text-muted-foreground">
-              {kpi.label}
-              <ArrowRight className="size-3.5 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true" />
-            </p>
-            <div className="mt-2 flex items-end justify-between gap-2">
-              <p className="font-mono text-2xl tabular-nums text-foreground">{formatNumber(kpi.value)}</p>
-              <Sparkline values={kpi.series} label={`${kpi.label}, daily trend over 30 days`} />
-            </div>
-            <p className="mt-1 truncate text-xs text-muted-foreground">{kpi.value === null ? 'Not connected' : kpi.detail}</p>
-          </Link>
-        ))}
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(320px,1fr)]">

@@ -8,13 +8,13 @@ export default async function AdminFunnelsPage({ searchParams }: { searchParams:
 
   return (
     <AdminPageFrame>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <AnalyticsHeader title="Funnels" description="Where people drop off on the way to signing up, joining the waitlist, upgrading, and applying.">
           <PeriodPicker basePath="/admin/funnels" days={days} />
         </AnalyticsHeader>
 
         <section aria-labelledby="site-funnels" className="space-y-3">
-          <h2 id="site-funnels" className="text-base font-semibold text-foreground">Website funnels</h2>
+          <h2 id="site-funnels" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Website funnels</h2>
           {!site.available ? (
             <NotConnected reason={site.reason} />
           ) : (
@@ -30,7 +30,7 @@ export default async function AdminFunnelsPage({ searchParams }: { searchParams:
         </section>
 
         <section aria-labelledby="product-funnel" className="space-y-3">
-          <h2 id="product-funnel" className="text-base font-semibold text-foreground">Product journey</h2>
+          <h2 id="product-funnel" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Product journey</h2>
           {!journey.available ? (
             <NotConnected reason={journey.reason} />
           ) : (

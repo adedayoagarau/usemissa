@@ -16,7 +16,7 @@ export default async function AdminMetricsPage() {
 
   return (
     <AdminPageFrame>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <AnalyticsHeader title="Share metrics" description="Headline numbers for investor updates, decks, and social posts. Download an image, export the monthly table, or share a live link.">
           <a href="/api/admin/metrics/export" download className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
             <Download className="size-4" aria-hidden="true" />

@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { AdminPageFrame } from '@/components/platform-admin';
+import MetricChart from '@/components/admin-metric-chart';
 import TimeSeriesChart from '@/components/admin-time-series';
-import { AnalyticsHeader, BarList, CohortGrid, NotConnected, Panel, PeriodPicker, StatTile, formatCount, formatPercent } from '@/components/admin-observability-ui';
+import { AnalyticsHeader, ChangeLine, BarList, CohortGrid, NotConnected, Panel, PeriodPicker, StatGroup, StatTile, formatCount, formatPercent } from '@/components/admin-observability-ui';
 import { getGrowthPage, parsePeriod } from '@/lib/platformAdminObservability';
 
 const METHOD_LABELS: Record<string, string> = { password: 'Email and password', 'neon-auth': 'Google or email link', unknown: 'Unknown' };
@@ -19,7 +20,7 @@ export default async function AdminGrowthPage({ searchParams }: { searchParams: 
 
   return (
     <AdminPageFrame>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <AnalyticsHeader title="Sign-ups & users" description="How many people are joining, where they come from, whether they get value, and whether they come back.">
           <PeriodPicker basePath="/admin/growth" days={days} />
         </AnalyticsHeader>
@@ -28,27 +29,23 @@ export default async function AdminGrowthPage({ searchParams }: { searchParams: 
           <NotConnected reason={growth.reason} />
         ) : (
           <>
-            <section aria-label="Growth summary" className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <StatTile label="Total users" value={formatCount(data.totals.accounts)} hint="All accounts ever created" />
-              <StatTile label="New sign-ups" value={formatCount(data.totals.signupsCurrent)} current={data.totals.signupsCurrent} previous={data.totals.signupsPrevious} />
-              <StatTile label="Activation rate" value={formatPercent(data.activation.rate)} hint={`${data.activation.activated} of ${data.activation.cohort} new users`} />
-              <StatTile label="Waitlist" value={formatCount(data.totals.waitlist)} hint="People waiting for an invite" />
-            </section>
-            <section aria-label="Active users" className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <MetricChart
+              caption="Sign-ups over time"
+              data={data.signupsDaily}
+              notes={notes}
+              tabs={[
+                { key: 'signups', label: 'New sign-ups', value: formatCount(data.totals.signupsCurrent), seriesKey: 'signups', kind: 'bar', delta: <ChangeLine current={data.totals.signupsCurrent} previous={data.totals.signupsPrevious} /> },
+                { key: 'total', label: 'Total users', value: formatCount(data.totals.accounts), seriesKey: 'cumulative', delta: <span className="text-xs text-muted-foreground">All accounts ever created</span> },
+                { key: 'activation', label: 'Activation rate', value: formatPercent(data.activation.rate), delta: <span className="text-xs text-muted-foreground">{data.activation.activated} of {data.activation.cohort} new users</span> },
+                { key: 'waitlist', label: 'Waitlist', value: formatCount(data.totals.waitlist), delta: <span className="text-xs text-muted-foreground">Waiting for an invite</span> },
+              ]}
+            />
+            <StatGroup label="Active users" columns={4}>
               <StatTile label="Daily active users" value={formatCount(data.active.dau)} hint="Signed-in users, last 24 hours" />
               <StatTile label="Weekly active users" value={formatCount(data.active.wau)} hint="Last 7 days" />
               <StatTile label="Monthly active users" value={formatCount(data.active.mau)} hint="Last 30 days" />
               <StatTile label="Stickiness" value={formatPercent(data.active.stickiness)} hint="Average daily ÷ monthly active" />
-            </section>
-
-            <div className="grid gap-6 xl:grid-cols-2">
-              <Panel title="Sign-ups per day">
-                <TimeSeriesChart data={data.signupsDaily} kind="bar" series={[{ key: 'signups', label: 'Sign-ups' }]} notes={notes} caption="New accounts per day" />
-              </Panel>
-              <Panel title="Total users" description="Running total of accounts. The chart investors ask for.">
-                <TimeSeriesChart data={data.signupsDaily} kind="area" series={[{ key: 'cumulative', label: 'Total users' }]} notes={notes} caption="Total accounts over time" />
-              </Panel>
-            </div>
+            </StatGroup>
 
             <Panel title="Active users per day" description="Signed-in people who did something each day, split into people who joined that day and people coming back.">
               <TimeSeriesChart

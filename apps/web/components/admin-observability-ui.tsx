@@ -26,10 +26,10 @@ export function formatDuration(seconds: number | null | undefined): string {
 
 export function AnalyticsHeader({ title, description, children }: { title: string; description: string; children?: ReactNode }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="font-sans text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{title}</h1>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
+    <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 border-b border-border pb-6">
+      <div className="min-w-0">
+        <h1 className="font-heading text-4xl font-medium tracking-[-0.02em] text-balance text-foreground sm:text-5xl">{title}</h1>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">{description}</p>
       </div>
       {children}
     </header>
@@ -45,7 +45,7 @@ export function PeriodPicker({ basePath, days, options = [7, 30, 90, 365] }: { b
           key={value}
           href={`${basePath}?days=${value}`}
           aria-current={value === days ? 'page' : undefined}
-          className={`inline-flex min-h-8 items-center rounded-md px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${value === days ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          className={`inline-flex min-h-8 items-center rounded-md px-3 text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${value === days ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
         >
           {label(value)}
         </Link>
@@ -70,33 +70,49 @@ export function NotConnected({ reason }: { reason?: string }) {
  * A headline number with its change against the previous period.
  * `higherIsBetter` decides whether a rise is shown as good (bounce rate, for example, is not).
  */
-export function StatTile({ label, value, current, previous, higherIsBetter = true, hint }: { label: string; value: string; current?: number | null; previous?: number | null; higherIsBetter?: boolean; hint?: string }) {
+/** "+12% vs prev." with direction and good/bad colour. `higherIsBetter` is false for things like bounce rate. */
+export function ChangeLine({ current, previous, higherIsBetter = true, hint }: { current?: number | null; previous?: number | null; higherIsBetter?: boolean; hint?: string }) {
   const change = current !== null && current !== undefined && previous ? (current - previous) / previous : null;
-  const flat = change !== null && Math.abs(change) < 0.005;
-  const good = change !== null && !flat && (change > 0) === higherIsBetter;
-  const Icon = change === null || flat ? Minus : change > 0 ? ArrowUpRight : ArrowDownRight;
+  if (change === null) return <span className="text-xs text-muted-foreground">{hint ?? 'No earlier period to compare'}</span>;
+  const flat = Math.abs(change) < 0.005;
+  const good = !flat && (change > 0) === higherIsBetter;
+  const Icon = flat ? Minus : change > 0 ? ArrowUpRight : ArrowDownRight;
+  const tone = flat ? 'text-muted-foreground' : good ? 'text-success' : 'text-destructive';
   return (
-    <div className="min-w-0 rounded-xl border border-border bg-card p-4">
+    <span className="inline-flex items-center gap-1 text-xs">
+      <Icon className={`size-3.5 ${tone}`} aria-hidden="true" />
+      <span className={`font-medium ${tone}`}>
+        {change > 0 ? '+' : ''}
+        {formatPercent(change)}
+      </span>
+      <span className="text-muted-foreground">
+        <span aria-hidden="true">vs prev.</span>
+        <span className="sr-only">compared with the previous period</span>
+      </span>
+    </span>
+  );
+}
+
+/** A headline number with its change against the previous period. */
+export function StatTile({ label, value, current, previous, higherIsBetter = true, hint }: { label: string; value: string; current?: number | null; previous?: number | null; higherIsBetter?: boolean; hint?: string }) {
+  return (
+    <div className="min-w-0 bg-card px-5 py-5">
       <p className="truncate text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-2 font-mono text-2xl tabular-nums text-foreground">{value}</p>
-      <p className="mt-1 flex items-center gap-1 text-xs">
-        {change === null ? (
-          <span className="text-muted-foreground">{hint ?? 'No earlier period to compare'}</span>
-        ) : (
-          <>
-            <Icon className={`size-3.5 ${flat ? 'text-muted-foreground' : good ? 'text-success' : 'text-destructive'}`} aria-hidden="true" />
-            <span className={flat ? 'text-muted-foreground' : good ? 'text-success' : 'text-destructive'}>
-              {change > 0 ? '+' : ''}
-              {formatPercent(change)}
-            </span>
-            <span className="text-muted-foreground">
-              <span aria-hidden="true">vs prev.</span>
-              <span className="sr-only">compared with the previous period</span>
-            </span>
-          </>
-        )}
+      <p className="mt-3 font-mono text-3xl tracking-[-0.02em] tabular-nums text-foreground">{value}</p>
+      <p className="mt-2 flex items-center">
+        <ChangeLine current={current} previous={previous} higherIsBetter={higherIsBetter} hint={hint} />
       </p>
     </div>
+  );
+}
+
+/** A connected strip of figures: one bordered block with hairline dividers instead of separate cards. */
+export function StatGroup({ label, columns = 4, children }: { label: string; columns?: 3 | 4 | 5 | 6; children: ReactNode }) {
+  const grid = { 3: 'md:grid-cols-3', 4: 'md:grid-cols-4', 5: 'md:grid-cols-5', 6: 'md:grid-cols-3 xl:grid-cols-6' }[columns];
+  return (
+    <section aria-label={label} className={`grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1 ${grid}`}>
+      {children}
+    </section>
   );
 }
 

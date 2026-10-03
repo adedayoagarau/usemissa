@@ -11,7 +11,7 @@ test("admin can open the dashboard and operational loop", async ({
 
   await page.goto("/admin");
   await expect(
-    page.getByRole("heading", { name: "Dashboard", exact: true }),
+    page.getByRole("heading", { level: 1, name: /^Dashboard:/ }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Worklist", exact: true }),
@@ -208,7 +208,7 @@ test("admin can open the dashboard and operational loop", async ({
     }
     await page.goto("/admin");
     await expect(
-      page.getByRole("heading", { name: "Dashboard", exact: true }),
+      page.getByRole("heading", { level: 1, name: /^Dashboard:/ }),
     ).toBeVisible();
     if (width < 1024) {
       await expect(

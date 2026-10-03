@@ -3,7 +3,7 @@ import { CheckCircle2, CircleAlert, CircleDashed, CircleX } from 'lucide-react';
 import { WEB_VITAL_THRESHOLDS, readAlerts } from '@missa/radar-adapters';
 import { AdminPageFrame } from '@/components/platform-admin';
 import TimeSeriesChart from '@/components/admin-time-series';
-import { AnalyticsHeader, BarList, NotConnected, Panel, PeriodPicker, StatTile, formatCount, formatPercent } from '@/components/admin-observability-ui';
+import { AnalyticsHeader, BarList, NotConnected, Panel, PeriodPicker, StatGroup, StatTile, formatCount, formatPercent } from '@/components/admin-observability-ui';
 import { getHealthPage, parsePeriod } from '@/lib/platformAdminObservability';
 import { getPlatformAdminView } from '@/lib/platformAdmin';
 import { platformAnalyticsDatabaseUrl } from '@/lib/platformAnalyticsDatabase';
@@ -55,7 +55,7 @@ export default async function AdminHealthPage({ searchParams }: { searchParams: 
 
   return (
     <AdminPageFrame>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <AnalyticsHeader title="Health" description="Is the site up, fast, and error-free, and are emails and background jobs working?">
           <PeriodPicker basePath="/admin/health" days={days} options={[7, 30, 90]} />
         </AnalyticsHeader>
@@ -89,7 +89,7 @@ export default async function AdminHealthPage({ searchParams }: { searchParams: 
         ) : (
           <>
             <section aria-labelledby="uptime-title" className="space-y-3">
-              <h2 id="uptime-title" className="text-base font-semibold text-foreground">Uptime</h2>
+              <h2 id="uptime-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Uptime</h2>
               {data.uptime.length === 0 ? (
                 <NotConnected reason="Uptime checks start once the /api/cron/observability job runs (every 15 minutes on Vercel)." />
               ) : (
@@ -132,15 +132,15 @@ export default async function AdminHealthPage({ searchParams }: { searchParams: 
             </section>
 
             <section aria-labelledby="speed-title" className="space-y-3">
-              <h2 id="speed-title" className="text-base font-semibold text-foreground">Page speed for real visitors</h2>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+              <h2 id="speed-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Page speed for real visitors</h2>
+              <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border md:grid-cols-5 [&>*:last-child:nth-child(odd)]:col-span-2 md:[&>*:last-child:nth-child(odd)]:col-span-1">
                 {data.vitals.map((vital) => {
                   const rating = ratingStyle[vitalRating(vital.name, vital.p75)];
                   const Icon = rating.icon;
                   return (
-                    <div key={vital.name} className="rounded-xl border border-border bg-card p-4">
+                    <div key={vital.name} className="bg-card px-5 py-5">
                       <p className="text-xs font-medium text-muted-foreground" title={VITAL_LABELS[vital.name]?.help}>{VITAL_LABELS[vital.name]?.name ?? vital.name} <span className="font-mono">({vital.name})</span></p>
-                      <p className="mt-2 font-mono text-2xl tabular-nums text-foreground">{vitalValue(vital.name, vital.p75)}</p>
+                      <p className="mt-3 font-mono text-3xl tracking-[-0.02em] tabular-nums text-foreground">{vitalValue(vital.name, vital.p75)}</p>
                       <p className={`mt-1 flex items-center gap-1 text-xs ${rating.text}`}><Icon className="size-3.5" aria-hidden="true" />{rating.label}<span className="text-muted-foreground">· {formatCount(vital.samples)} samples</span></p>
                     </div>
                   );
@@ -158,12 +158,12 @@ export default async function AdminHealthPage({ searchParams }: { searchParams: 
             </section>
 
             <section aria-labelledby="errors-title" className="space-y-3">
-              <h2 id="errors-title" className="text-base font-semibold text-foreground">Browser errors</h2>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+              <h2 id="errors-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Browser errors</h2>
+              <StatGroup label="Summary" columns={3}>
                 <StatTile label="Errors" value={formatCount(data.errors.total)} hint={`In the last ${days} days`} />
                 <StatTile label="Visitors affected" value={formatCount(data.errors.affectedVisitors)} hint="Saw at least one error" />
                 <StatTile label="Errors per 100 page views" value={data.errors.errorRate === null ? '—' : (data.errors.errorRate * 100).toFixed(2)} hint="Lower is better" />
-              </div>
+              </StatGroup>
               <div className="grid gap-6 lg:grid-cols-2">
                 <Panel title="Errors per day">
                   <TimeSeriesChart data={data.errors.daily} kind="bar" series={[{ key: 'errors', label: 'Errors' }]} height={200} caption="Browser errors per day" />
@@ -187,18 +187,18 @@ export default async function AdminHealthPage({ searchParams }: { searchParams: 
             </section>
 
             <section aria-labelledby="email-title" className="space-y-3">
-              <h2 id="email-title" className="text-base font-semibold text-foreground">Email delivery</h2>
+              <h2 id="email-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Email delivery</h2>
               {!data.email.available ? (
                 <NotConnected reason="Email delivery records appear once the application database is connected." />
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                  <StatGroup label="Summary" columns={5}>
                     <StatTile label="Sent" value={formatCount(data.email.sent)} hint={`Last ${days} days`} />
                     <StatTile label="Delivered" value={data.email.sent ? formatPercent(data.email.delivered / data.email.sent) : '—'} hint={`${formatCount(data.email.delivered)} emails`} />
                     <StatTile label="Bounced" value={formatCount(data.email.bounced)} hint="Address did not accept it" />
                     <StatTile label="Spam complaints" value={formatCount(data.email.complained)} hint="Keep this at zero" />
                     <StatTile label="Failed to send" value={formatCount(data.email.failed)} hint="Provider rejected it" />
-                  </div>
+                  </StatGroup>
                   <div className="grid gap-6 lg:grid-cols-2">
                     <Panel title="Emails sent per day">
                       <TimeSeriesChart data={data.email.daily} kind="bar" stacked series={[{ key: 'sent', label: 'Sent', tone: 'primary' }, { key: 'failed', label: 'Failed', tone: 'comparison' }]} height={200} caption="Emails sent and failed per day" />
@@ -214,7 +214,7 @@ export default async function AdminHealthPage({ searchParams }: { searchParams: 
         )}
 
         <section aria-labelledby="jobs-title" className="space-y-3">
-          <h2 id="jobs-title" className="text-base font-semibold text-foreground">Background jobs</h2>
+          <h2 id="jobs-title" className="text-2xl font-semibold tracking-[-0.02em] text-foreground">Background jobs</h2>
           {worker ? (
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">

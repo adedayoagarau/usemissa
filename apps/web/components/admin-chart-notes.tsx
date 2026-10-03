@@ -47,7 +47,7 @@ export default function AdminChartNotes({ notes }: { notes: Array<ChartNoteMark 
           Date
           <Input type="date" value={day} onChange={(event) => setDay(event.target.value)} required className="w-40" />
         </label>
-        <label className="grid min-w-0 flex-1 gap-1 text-xs font-medium text-muted-foreground">
+        <label className="grid min-w-0 flex-1 basis-full gap-1 text-xs font-medium text-muted-foreground sm:basis-0">
           What happened
           <Input value={label} onChange={(event) => setLabel(event.target.value)} maxLength={120} placeholder="Launched on Product Hunt" required />
         </label>

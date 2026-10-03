@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, Mail } from 'lucide-react';
 import { readAdminUserProfile } from '@missa/radar-adapters';
 import { AdminPageFrame } from '@/components/platform-admin';
-import { BarList, NotConnected, Panel, StatTile, formatCount } from '@/components/admin-observability-ui';
+import { BarList, NotConnected, Panel, StatGroup, StatTile, formatCount } from '@/components/admin-observability-ui';
 import { platformAnalyticsDatabaseUrl } from '@/lib/platformAnalyticsDatabase';
 
 const METHOD_LABELS: Record<string, string> = { password: 'Email and password', 'neon-auth': 'Google or email link' };
@@ -35,12 +35,12 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
 
   return (
     <AdminPageFrame>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <Link href="/admin/growth" className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="size-3.5" aria-hidden="true" />Sign-ups & users</Link>
-        <header className="flex flex-wrap items-start justify-between gap-4">
+        <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-6">
           <div className="min-w-0">
-            <h1 className="truncate font-sans text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">{profile.name || profile.email}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{[profile.name ? profile.email : null, profile.isAdmin ? 'Platform admin' : null, profile.active ? null : 'Deactivated'].filter(Boolean).join(' · ')}</p>
+            <h1 className="truncate font-heading text-4xl font-medium tracking-[-0.02em] text-foreground sm:text-5xl">{profile.name || profile.email}</h1>
+            <p className="mt-3 text-base text-muted-foreground">{[profile.name ? profile.email : null, profile.isAdmin ? 'Platform admin' : null, profile.active ? null : 'Deactivated'].filter(Boolean).join(' · ')}</p>
             <p className="mt-1 font-mono text-xs text-muted-foreground">{profile.id}</p>
           </div>
           <a href={`mailto:${profile.email}`} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
@@ -49,12 +49,12 @@ export default async function AdminUserProfilePage({ params }: { params: Promise
           </a>
         </header>
 
-        <section aria-label="User summary" className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatGroup label="User summary" columns={4}>
           <StatTile label="Signed up" value={profile.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'} hint={daysSinceSignup === null ? undefined : `${daysSinceSignup} days ago${profile.activity.signupMethod ? ` · ${METHOD_LABELS[profile.activity.signupMethod] ?? profile.activity.signupMethod}` : ''}`} />
           <StatTile label="Last active" value={profile.activity.lastSeenAt ? new Date(profile.activity.lastSeenAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'} hint={when(profile.activity.lastSeenAt)} />
           <StatTile label="Active days" value={formatCount(profile.activity.activeDays)} hint={`${formatCount(profile.activity.events)} ${profile.activity.events === 1 ? 'action' : 'actions'} recorded`} />
           <StatTile label="Plan" value={profile.plan ? profile.plan.plan[0]!.toUpperCase() + profile.plan.plan.slice(1) : 'Free'} hint={profile.plan ? [profile.plan.source, profile.plan.billingStatus, profile.plan.cancelAtPeriodEnd ? 'cancels at period end' : undefined].filter(Boolean).join(' · ') : 'No paid plan'} />
-        </section>
+        </StatGroup>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <Panel title="Activity timeline" description="Most recent first. Product actions only appear for people who accepted analytics.">

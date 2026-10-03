@@ -151,7 +151,7 @@ function NavLink({
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      className={`group flex min-h-10 items-center gap-3 border-l-2 px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${active ? "border-primary bg-accent font-medium text-primary" : "border-transparent text-muted-foreground hover:border-border hover:bg-muted/40 hover:text-foreground"}`}
+      className={`group flex min-h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${active ? "bg-primary/10 font-semibold text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
     >
       <Icon
         className="size-4 shrink-0"
@@ -178,15 +178,15 @@ function Navigation({
     isActive(pathname, search, item),
   );
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex h-full min-h-full flex-col">
       <div className="border-b border-border px-5 py-5">
         <Link
           href="/admin"
           className="block focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
         >
-          <MissaWordmark href={null} size="compact" className="text-foreground" />
-          <span className="mt-0.5 block text-xs text-muted-foreground">
-            Platform Admin
+          <MissaWordmark href={null} size="app" className="text-foreground" />
+          <span className="mt-2 block font-heading text-base leading-none text-muted-foreground">
+            Admin
           </span>
         </Link>
       </div>
@@ -199,7 +199,7 @@ function Navigation({
       >
         {navigationGroups.map((group) => (
           <div key={group.label} className="space-y-1">
-            <p className="px-3 pb-1 text-[10px] font-medium tracking-[0.14em] text-muted-foreground uppercase">
+            <p className="px-3 pb-1.5 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
               {group.label}
             </p>
             {group.items.map((item) => (
@@ -276,7 +276,7 @@ export function AdminShellNav({ email }: { email: string }) {
   const search = searchParams.toString();
   return (
     <>
-      <aside className="hidden min-h-screen w-56 shrink-0 border-r border-border bg-card lg:block">
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 self-start overflow-hidden border-e border-border bg-card lg:block">
         <Navigation pathname={pathname} search={search} email={email} shortcut />
       </aside>
       <div className="fixed inset-x-0 top-0 z-30 flex min-h-14 items-center justify-between border-b border-border bg-card px-4 lg:hidden">
@@ -285,8 +285,8 @@ export function AdminShellNav({ email }: { email: string }) {
           className="focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
         >
           <MissaWordmark href={null} size="compact" className="text-foreground" />
-          <span className="ml-2 text-xs text-muted-foreground">
-            Platform Admin
+          <span className="ml-2 font-heading text-sm text-muted-foreground">
+            Admin
           </span>
         </Link>
         <Sheet>

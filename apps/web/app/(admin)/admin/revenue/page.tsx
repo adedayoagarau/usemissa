@@ -1,6 +1,6 @@
 import { AdminPageFrame } from '@/components/platform-admin';
 import TimeSeriesChart from '@/components/admin-time-series';
-import { AnalyticsHeader, BarList, NotConnected, Panel, PeriodPicker, StatTile, formatCount, formatPercent } from '@/components/admin-observability-ui';
+import { AnalyticsHeader, BarList, NotConnected, Panel, PeriodPicker, StatGroup, StatTile, formatCount, formatPercent } from '@/components/admin-observability-ui';
 import { parsePeriod } from '@/lib/platformAdminObservability';
 import { getRevenue } from '@/lib/platformAdminRevenue';
 
@@ -17,7 +17,7 @@ export default async function AdminRevenuePage({ searchParams }: { searchParams:
 
   return (
     <AdminPageFrame>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <AnalyticsHeader title="Revenue" description="Recurring revenue, paying customers, and churn, read live from Stripe.">
           <PeriodPicker basePath="/admin/revenue" days={days} />
         </AnalyticsHeader>
@@ -25,7 +25,7 @@ export default async function AdminRevenuePage({ searchParams }: { searchParams:
           <NotConnected reason={revenue.reason} />
         ) : (
           <>
-            <section aria-label="Revenue summary" className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <StatGroup label="Revenue summary" columns={4}>
               <StatTile label="Monthly recurring revenue" value={money(revenue.mrr, currency)} current={revenue.mrr} previous={previousMrr} hint="Compared with last month" />
               <StatTile label="Annual run rate" value={money(revenue.arr, currency)} hint="MRR × 12" />
               <StatTile label="Paying customers" value={formatCount(revenue.payingCustomers)} hint={`${revenue.trialing} on trial`} />
@@ -34,7 +34,7 @@ export default async function AdminRevenuePage({ searchParams }: { searchParams:
               <StatTile label="New subscriptions" value={formatCount(revenue.newInPeriod)} hint="Started in this period" />
               <StatTile label="Churn" value={formatPercent(revenue.churnRate)} hint={`${revenue.churnedInPeriod} ended in this period`} />
               <StatTile label="Payment problems" value={formatCount(revenue.pastDue)} hint={`${revenue.cancellingAtPeriodEnd} set to cancel`} />
-            </section>
+            </StatGroup>
             <Panel title="Monthly recurring revenue" description="Each month-end, using today's prices for each subscription.">
               <TimeSeriesChart data={revenue.mrrHistory} xKey="month" kind="area" series={[{ key: 'mrr', label: `MRR (${currency})` }]} caption="Monthly recurring revenue over the last 12 months" />
             </Panel>
