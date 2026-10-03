@@ -3,7 +3,9 @@ import { randomBytes } from "node:crypto";
 import test from "node:test";
 import { Pool } from "pg";
 import {
+  assertBulkTrackingWithinAllowance,
   creatorEntitlements,
+  lockTrackingAllowance,
   FREE_ACTIVE_TRACKED_LIMIT,
   saveCanonicalOpportunityToTracker,
   TrackingLimitReachedError,
@@ -81,6 +83,24 @@ test(
 
       const extra = await publish("extra", 30);
       await assert.rejects(save(extra), TrackingLimitReachedError);
+
+      // A bulk write such as a CSV import: past applications are always allowed,
+      // a new call in progress past the limit is refused.
+      const bulk = async (status: string) => {
+        const client = await pool.connect();
+        try {
+          await client.query("begin");
+          const before = await lockTrackingAllowance(client, account);
+          await client.query("insert into tracked_opportunities(id,account_id,opportunity_id,status) values($1,$2,$3,$4)", [`${p}-bulk`, account, extra, status]);
+          await assertBulkTrackingWithinAllowance(client, account, before);
+        } finally {
+          await client.query("rollback");
+          client.release();
+        }
+      };
+      await bulk("submitted");
+      await assert.rejects(bulk("preparing"), (error: unknown) =>
+        error instanceof TrackingLimitReachedError && error.limit === limit && error.active === limit + 1);
       await pool.query("insert into creator_plans(account_id,plan,source) values($1,'plus','grant')", [account]);
       assert.equal((await creatorEntitlements(pool, account)).activeTrackedLimit, null);
       assert.equal((await save(extra))?.status, "created", "Plus has no tracking limit");

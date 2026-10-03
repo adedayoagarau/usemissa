@@ -75,3 +75,26 @@ export async function assertTrackingAllowance(client: PoolClient, accountId: str
     throw new TrackingLimitReachedError(entitlements.activeTrackedLimit, entitlements.activeTracked);
   }
 }
+
+/**
+ * Bulk Tracker writes, such as a CSV import, take the same per-account lock as
+ * a single save and read the in-progress count before writing.
+ */
+export async function lockTrackingAllowance(client: Queryable, accountId: string): Promise<CreatorEntitlements> {
+  await client.query("select pg_advisory_xact_lock(hashtext($1))", [`tracking-allowance:${accountId}`]);
+  return creatorEntitlements(client, accountId);
+}
+
+/**
+ * Called after a bulk write, before commit: refuses the write when it takes the
+ * calls in progress past the plan's limit. A write that only adds submitted or
+ * closed calls, or that does not raise the count, is always allowed, so
+ * importing a history of past applications never hits the limit.
+ */
+export async function assertBulkTrackingWithinAllowance(client: Queryable, accountId: string, before: CreatorEntitlements): Promise<void> {
+  if (before.activeTrackedLimit === null) return;
+  const after = await creatorEntitlements(client, accountId);
+  if (after.activeTracked > before.activeTracked && after.activeTracked > before.activeTrackedLimit) {
+    throw new TrackingLimitReachedError(before.activeTrackedLimit, after.activeTracked);
+  }
+}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { creatorCommandEnvelope, CreatorConflictError, CreatorIdempotencyConflictError } from "@missa/radar-adapters";
 import { getSessionAccount } from "@/lib/auth";
 import { getCreatorNotificationRepository } from "@/lib/creatorRepositories";
+import { deliverEmailChoiceConfirmation } from "@/lib/account-letters";
 
 const headers = { "Cache-Control": "private, no-store" };
 const json = (value: unknown, status = 200) => NextResponse.json(value, { status, headers });
@@ -22,6 +23,9 @@ export async function POST(request: Request) {
       creatorCommandEnvelope(session.account.id, "notification-preferences.email-choice", key, { accept: body.accept }, Number(body.expectedRevision)),
       body.accept,
     );
+    if (body.accept && session.account.email) {
+      await deliverEmailChoiceConfirmation({ accountId: session.account.id, email: session.account.email }).catch(() => undefined);
+    }
     return json({ ...await repository.preferences(session.account.id), receipt });
   } catch (error) {
     if (error instanceof CreatorConflictError || error instanceof CreatorIdempotencyConflictError) return json({ error: error.message }, 409);

@@ -8,10 +8,11 @@ import {
   type ImportRowDecision,
   type ImportMapping,
 } from '@missa/radar-engine';
-import { commitRelationalTrackerImportTransaction, creatorPoolFor, creatorRelationalAuthorityEnabled, trackerImportRequestHash, TrackerImportPersistenceError } from '@missa/radar-adapters';
+import { commitRelationalTrackerImportTransaction, creatorPoolFor, creatorRelationalAuthorityEnabled, trackerImportRequestHash, TrackerImportPersistenceError, TrackingLimitReachedError } from '@missa/radar-adapters';
 import { getSessionAccount } from '@/lib/auth';
 import { commitTrackerImportWithReceipt } from '@/lib/engine';
 import { stableMappingHash, verifyTrackerImportPreviewToken } from '@/lib/tracker-import-token';
+import { importTrackingLimitBody } from '@/lib/trackingLimit';
 
 function jsonError(error: string, status: 400 | 401 | 404 | 409 | 413 | 429 | 500, extra?: Record<string, string>) {
   return NextResponse.json({ error }, { status, headers: { 'Cache-Control': 'private, no-store', ...extra } });
@@ -85,6 +86,8 @@ export async function POST(request: Request) {
       : await commitTrackerImportWithReceipt(importInput);
     return NextResponse.json({ ...committed.result, idempotent: committed.idempotent }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
+    if (error instanceof TrackingLimitReachedError)
+      return NextResponse.json(importTrackingLimitBody(error), { status: 409, headers: { 'Cache-Control': 'private, no-store' } });
     if (error instanceof TrackerImportPersistenceError) {
       if (error.code === 'rate-limit') return jsonError('Too many imports. Try again later.', 429, { 'Retry-After': String(error.retryAfter ?? 60) });
       if (error.code === 'conflict' || error.code === 'idempotency-conflict') return jsonError(error.message, 409);

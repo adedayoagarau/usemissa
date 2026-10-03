@@ -120,11 +120,13 @@ export {
   type CreatorSubscriptionUpdate,
 } from "./creatorBilling.js";
 export {
+  assertBulkTrackingWithinAllowance,
   assertTrackingAllowance,
   CREATOR_PLAN_LIMITS,
   creatorEntitlements,
   creatorPlan,
   FREE_ACTIVE_TRACKED_LIMIT,
+  lockTrackingAllowance,
   TrackingLimitReachedError,
   type CreatorEntitlements,
   type CreatorPlan,
