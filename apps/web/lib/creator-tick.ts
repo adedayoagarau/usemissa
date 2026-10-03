@@ -3,6 +3,7 @@ import { tickCreatorReminders } from './creator-reminders';
 import { deliverCreatorReminderEmails } from './creator-reminder-email';
 import { deliverWeeklyDigests } from './weekly-digest-delivery';
 import { tickGoals } from './goal-engine';
+import { deliverGoalCheckInEmails } from './goal-checkin-email';
 import { tickCreatorFollowing } from './creator-following';
 
 /**
@@ -19,6 +20,7 @@ export async function runCreatorTick(accountId?: string) {
   // The digest covers every due account, so a single-account run (--account) skips it.
   const weeklyDigests = accountId ? undefined : await deliverWeeklyDigests();
   const goals = await tickGoals(accountId);
+  const goalEmails = await deliverGoalCheckInEmails();
   const following = await tickCreatorFollowing(accountId);
-  return { deadlines, reminders, reminderEmails, weeklyDigests, goals, following };
+  return { deadlines, reminders, reminderEmails, weeklyDigests, goals, goalEmails, following };
 }

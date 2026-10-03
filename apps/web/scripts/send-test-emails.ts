@@ -26,6 +26,7 @@ import { renderAuthOtpEmail } from '../emails/auth-otp';
 import { renderPasswordResetEmail } from '../emails/password-reset';
 import { renderWaitlistConfirmationEmail, WAITLIST_CONFIRMATION_SUBJECT, waitlistConfirmationText } from '../emails/waitlist-confirmation';
 import { renderDecisionLetter } from '../emails/decision-letter';
+import { renderGoalCheckInEmail } from '../emails/goal-check-in';
 
 type Rendered = { subject: string; html: string; text: string };
 
@@ -185,6 +186,23 @@ const templates: Record<string, () => Rendered> = {
   'call-closed': () => moment('call-closed', { listedDeadline: lead.deadline }),
   'response-overdue': () =>
     moment('response-overdue', { trackedStatus: 'submitted', submittedAt: new Date(now.getTime() - 74 * 86_400_000).toISOString(), responseTimeDays: 60 }),
+  'goal-check-in': () => {
+    const calls = [...samples.yourDeadlines, ...samples.closingSoon, ...samples.newForYou].filter((entry) => entry.deadline && entry.deadline <= inDays(90));
+    return renderGoalCheckInEmail({
+      accountId: 'acct_email_test',
+      email: to,
+      givenName: 'Tola',
+      goal: { id: 'sample-goal', progress: 4, target: 10, endsOn: inDays(90), nextStep: 'Send the chapbook manuscript' },
+      closing: calls.slice(0, 3).map((entry, index) => ({
+        opportunityId: entry.opportunityId,
+        title: entry.title,
+        status: ['preparing', 'interested', 'draft-started'][index]!,
+        deadline: entry.deadline!,
+      })),
+      closingCount: Math.min(calls.length, 3),
+      now,
+    });
+  },
   welcome: () => renderWelcomeEmail({ accountId: 'acct_email_test', email: to, givenName: 'Tola' }),
   'sign-in-code': () => renderAuthOtpEmail({ email: to, code: '482913', type: 'sign-in', expiresInMinutes: 10 }),
   'password-reset': () => renderPasswordResetEmail({ accountId: 'acct_email_test', email: to, resetToken: 'sample-token', displayName: 'Tola' }),
