@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { resolveTokenSecret } from './token-secret';
 
 export interface CreatePasswordResetTokenInput {
   accountId: string;
@@ -24,7 +25,7 @@ export interface InvalidPasswordResetToken {
 export type VerifyPasswordResetTokenResult = VerifiedPasswordResetToken | InvalidPasswordResetToken;
 
 function resolveSecret(explicit?: string): string {
-  return explicit || process.env.MISSA_SESSION_SECRET || 'local-session-secret';
+  return resolveTokenSecret(explicit, 'local-session-secret');
 }
 
 function base64UrlEncode(str: string): string {
