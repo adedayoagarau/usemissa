@@ -18,25 +18,33 @@ if (
 }
 
 /**
- * Browser error reporting. Loaded only when NEXT_PUBLIC_SENTRY_DSN is set, and
- * only after the visitor has accepted analytics, matching the cookie notice.
+ * Browser error tracking. NEXT_PUBLIC_SENTRY_DSN is inlined at build time, so
+ * without it this branch (and the SDK chunk) is dropped from the bundle. No
+ * session replay and no default PII; see lib/sentry-options.ts.
  */
-const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN?.trim();
-if (sentryDsn && typeof window !== "undefined") {
-  let consented = false;
-  try {
-    consented = window.localStorage.getItem("missa.analytics.consent.v1") === "accepted";
-  } catch {
-    consented = false;
-  }
-  if (consented) {
-    void import("@sentry/nextjs").then((Sentry) => {
-      Sentry.init({
-        dsn: sentryDsn,
-        environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
-        tracesSampleRate: Number(process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE ?? 0.05),
-        sendDefaultPii: false,
-      });
+type SentryClient = typeof import("@sentry/nextjs");
+let sentry: SentryClient | undefined;
+const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+if (sentryDsn) {
+  void Promise.all([
+    import("@sentry/nextjs"),
+    import("./lib/sentry-options"),
+  ]).then(([Sentry, { sentryBaseOptions }]) => {
+    Sentry.init({
+      ...sentryBaseOptions(
+        sentryDsn,
+        process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE,
+      ),
+      replaysSessionSampleRate: 0,
+      replaysOnErrorSampleRate: 0,
     });
-  }
+    sentry = Sentry;
+  });
+}
+
+export function onRouterTransitionStart(
+  href: string,
+  navigationType: string,
+) {
+  sentry?.captureRouterTransitionStart(href, navigationType);
 }
