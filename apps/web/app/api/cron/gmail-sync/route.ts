@@ -3,6 +3,10 @@ import { GoogleGmailProvider } from '@missa/radar-adapters';
 import { getEngine, persistRadar } from '@/lib/engine';
 import { processGmailSyncJobs } from '@/lib/gmail-sync-worker';
 
+// Mailbox sync makes many sequential provider calls; 300s is within Vercel's
+// limit for every plan with Fluid compute.
+export const maxDuration = 300;
+
 async function run(request: Request) {
   const expected = process.env.CRON_SECRET;
   const authorization = request.headers.get('authorization');

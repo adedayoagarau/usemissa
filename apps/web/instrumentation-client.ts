@@ -16,3 +16,35 @@ if (
     return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
   };
 }
+
+/**
+ * Browser error tracking. NEXT_PUBLIC_SENTRY_DSN is inlined at build time, so
+ * without it this branch (and the SDK chunk) is dropped from the bundle. No
+ * session replay and no default PII; see lib/sentry-options.ts.
+ */
+type SentryClient = typeof import("@sentry/nextjs");
+let sentry: SentryClient | undefined;
+const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+if (sentryDsn) {
+  void Promise.all([
+    import("@sentry/nextjs"),
+    import("./lib/sentry-options"),
+  ]).then(([Sentry, { sentryBaseOptions }]) => {
+    Sentry.init({
+      ...sentryBaseOptions(
+        sentryDsn,
+        process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE,
+      ),
+      replaysSessionSampleRate: 0,
+      replaysOnErrorSampleRate: 0,
+    });
+    sentry = Sentry;
+  });
+}
+
+export function onRouterTransitionStart(
+  href: string,
+  navigationType: string,
+) {
+  sentry?.captureRouterTransitionStart(href, navigationType);
+}

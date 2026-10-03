@@ -152,6 +152,8 @@ export {
   type CreatorWorkConnections,
 } from "./creatorLibraryRepository.js";
 export {
+  CALENDAR_SYNC_LEASE_SECONDS,
+  CALENDAR_SYNC_MAX_ATTEMPTS,
   CreatorCalendarError,
   PostgresCreatorCalendarRepository,
   type CreatorCalendarItem,
@@ -449,8 +451,13 @@ export {
   finishWorkerRun,
   heartbeatWorkerRun,
   readWorkerRunLifecycle,
+  readWorkerTickHealth,
+  recordWorkerTick,
   startWorkerRun,
+  workerTickRunId,
   type RadarWorkerKind,
+  type WorkerTickHealth,
+  type WorkerTickOutcome,
   type WorkerRunLifecycleStatus,
   type WorkerRunProgress,
 } from "./workerTelemetry.js";
