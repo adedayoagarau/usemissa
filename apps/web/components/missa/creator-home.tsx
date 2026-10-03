@@ -239,19 +239,25 @@ export function CreatorHome({
                       <p className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
                         <span>
                           <span className="font-mono tabular-nums">
-                            {goal.progress} of {goal.target}
+                            {goal.progress}
+                          </span>{" "}
+                          of{" "}
+                          <span className="font-mono tabular-nums">
+                            {goal.target}
                           </span>{" "}
                           submitted
                         </span>
-                        <span className="font-mono tabular-nums">
+                        <span>
                           by{" "}
-                          {new Intl.DateTimeFormat("en", {
-                            day: "numeric",
-                            month: "short",
-                            timeZone: "UTC",
-                          }).format(
-                            new Date(`${goal.endsOn.slice(0, 10)}T12:00:00Z`),
-                          )}
+                          <span className="font-mono tabular-nums">
+                            {new Intl.DateTimeFormat("en", {
+                              day: "numeric",
+                              month: "short",
+                              timeZone: "UTC",
+                            }).format(
+                              new Date(`${goal.endsOn.slice(0, 10)}T12:00:00Z`),
+                            )}
+                          </span>
                         </span>
                       </p>
                       <Progress
