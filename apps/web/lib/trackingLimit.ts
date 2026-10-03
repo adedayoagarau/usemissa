@@ -9,8 +9,8 @@ export function trackingLimitBody(error: TrackingLimitReachedError) {
     code: error.code,
     limit: error.limit,
     active: error.active,
-    error: `You're working on ${error.active} calls, the most Free tracks at once. Mark one as submitted or remove one you've decided against, and this call will save. Plus, coming soon, has no limit.`,
-    actionHref: '/tracker',
-    actionLabel: 'Open Tracker',
+    error: `You're working on ${error.active} calls, the most Free tracks at once. Mark one as submitted or remove one you've decided against, and this call will save. Plus has no limit.`,
+    actionHref: '/plan',
+    actionLabel: 'See Plus',
   };
 }

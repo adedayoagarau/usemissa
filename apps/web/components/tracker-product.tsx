@@ -871,7 +871,10 @@ export function TrackerProduct({
               <span className={`${styles.allowanceCount} font-mono tabular-nums`}>
                 {allowance.active} of {allowance.limit}
               </span>{" "}
-              calls in progress on Free. Submitted and closed calls don&apos;t count.
+              calls in progress on Free. Submitted and closed calls don&apos;t count.{" "}
+              <Link href="/plan" className={styles.allowanceLink}>
+                Plus has no limit
+              </Link>
             </div>
           ) : null}
         </div>

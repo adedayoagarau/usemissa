@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { billingEventType, recordPlatformBillingEvent } from '@missa/radar-adapters';
+import { applyCreatorSubscription, billingEventType, creatorPoolFor, recordPlatformBillingEvent } from '@missa/radar-adapters';
 import { verifyStripeSignature } from '@/lib/billing';
+import { applyCreatorBillingEvent } from '@/lib/creatorBilling';
 import { stripeReceiptReferences } from '@/lib/governedOperationRoutes';
 
 export async function POST(request: Request) {
@@ -13,6 +14,14 @@ export async function POST(request: Request) {
   try { event = JSON.parse(payload) as typeof event; } catch { return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 }); }
   if (!event.id || !event.type || !event.data?.object) return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });
   const object = event.data.object;
+  // A creator's Plus subscription updates their plan before the event is recorded;
+  // a failure returns 503 so Stripe retries it.
+  try {
+    const pool = creatorPoolFor(process.env.DATABASE_URL);
+    await applyCreatorBillingEvent(event.type, object, (update) => applyCreatorSubscription(pool, update));
+  } catch {
+    return NextResponse.json({ error: 'Plan update failed; Stripe should retry this event.' }, { status: 503 });
+  }
   const metadata = object.metadata && typeof object.metadata === 'object' ? object.metadata as Record<string, unknown> : {};
   const organizationId = typeof metadata.organization_id === 'string' ? metadata.organization_id : typeof object.client_reference_id === 'string' ? object.client_reference_id : undefined;
   const amount = [object.amount_total, object.amount_paid, object.amount, object.amount_refunded].find((candidate) => typeof candidate === 'number' && candidate >= 0) as number | undefined;
