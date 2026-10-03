@@ -325,8 +325,10 @@ async function recordDecision(pool: Pool, job: LifecycleJob, sourceUrl: string, 
         last_checked_at=$2,last_error=$3,next_check_at=$2::timestamptz + interval '30 days',updated_at=now()
         where opportunity_id=$1`, [job.opportunityId, fetchedAt, decision.reason.slice(0, 500)]);
     } else {
-      await client.query(`update opportunity_lifecycle_verification_jobs set status='review', locked_at=null,
-        last_checked_at=$2,last_error=$3,updated_at=now() where opportunity_id=$1`, [job.opportunityId, fetchedAt, decision.reason.slice(0, 500)]);
+      // Nobody reviews these by hand: keep the listing's current status and look again in a week.
+      await client.query(`update opportunity_lifecycle_verification_jobs set status='pending', locked_at=null,
+        last_checked_at=$2,last_error=$3,next_check_at=$2::timestamptz + interval '7 days',updated_at=now()
+        where opportunity_id=$1`, [job.opportunityId, fetchedAt, decision.reason.slice(0, 500)]);
     }
     await client.query("commit");
   } catch (error) {
