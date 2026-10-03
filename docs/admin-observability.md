@@ -12,9 +12,9 @@ turn each part on.
 | Sign-ups & users | `/admin/growth` | `radar_accounts`, `platform_analytics_events`, sign-up goals |
 | Funnels | `/admin/funnels` | `site_events` pages and goals; product journey from `platform_analytics_events` |
 | Revenue | `/admin/revenue` | Stripe subscriptions and paid invoices (live, cached 5 minutes) |
-| Health | `/admin/health` | Uptime checks, Core Web Vitals, browser errors, email ledger, worker heartbeat |
+| Health | `/admin/health` | Uptime checks, Core Web Vitals, browser errors, email ledger, `sms_messages` text ledger, worker heartbeat |
 | Share metrics | `/admin/metrics` | Headline numbers, PNG cards, monthly CSV, public `/stats/<token>` links |
-| User profile | `/admin/users/<id>` | Account, plan, organizations, activity timeline |
+| User profile | `/admin/users/<id>` | Account, plan, text reminder phone status, organizations, activity timeline |
 
 Press **⌘K** (Ctrl+K) anywhere in the admin to jump to a page, user, or organization.
 
@@ -66,5 +66,6 @@ starts or clears, and purges expired data. Rules:
 | `RESEND_API_KEY`, `RESEND_FROM` | Sending alert and digest emails |
 | `STRIPE_SECRET_KEY` | Revenue page and MRR on the dashboard and share cards |
 | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | Optional stack traces and server errors |
+| `TELNYX_API_KEY`, `TELNYX_MESSAGING_PROFILE_ID` | The Text messages section and its test and pause controls (see [sms-reminders.md](./sms-reminders.md)) |
 
 Apply migration `0084_site_observability.sql` before deploying.
