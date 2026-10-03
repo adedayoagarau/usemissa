@@ -18,6 +18,8 @@ export const CREATOR_EMAIL_COLORS = {
   ochreTint: '#f5ecd9',
   ochreRule: '#e2cfa9',
   ochreDeep: '#78551e',
+  mineralTint: '#e7eff2',
+  mineralRule: '#cddbe1',
   paper: '#ffffff',
   ink: '#171418',
   inkSecondary: '#45413d',
