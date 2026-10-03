@@ -11,20 +11,12 @@ test("renderWelcomeEmail is personal, concise, and uses complete sentences", () 
 
   assert.equal(rendered.subject, "Welcome to Missa");
   assert.ok(rendered.html.includes("Welcome to Missa, Adedayo."));
-  assert.ok(
-    rendered.html.includes(
-      "Your account is ready, and we’re glad you’re here.",
-    ),
-  );
-  assert.ok(
-    rendered.html.includes("compare open calls from around the world."),
-  );
-  assert.ok(rendered.html.includes("Browse opportunities"));
-  assert.ok(rendered.html.includes("/media/missa-bosphorus-poster.jpg"));
-  assert.doesNotMatch(
-    rendered.html,
-    /Getting started|Here is how|Visit your profile|Unsubscribe|worth your time|endless/iu,
-  );
+  assert.ok(rendered.html.includes("Three things make it yours."));
+  for (const step of ["Choose what you make", "Save a call to your Tracker", "Keep reminder emails on"]) {
+    assert.ok(rendered.html.includes(step), step);
+  }
+  assert.ok(rendered.html.includes("Browse Opportunities"));
+  assert.doesNotMatch(rendered.html, /\.jpg|Unsubscribe|Getting started|endless/iu, "no stock imagery and no unsubscribe on an account letter");
   assert.ok(rendered.text.includes("Welcome to Missa, Adedayo."));
   assert.ok(rendered.text.includes("/opportunities"));
 });

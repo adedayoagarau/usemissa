@@ -1,4 +1,4 @@
-import { renderBaseEmailLayout, escapeHtml, EMAIL_COLORS } from './components/base-layout';
+import { letterText, renderLetter, type LetterProps } from './components/letter';
 import { siteUrl } from '../lib/siteUrl';
 import { sendMail, type SendMailReport } from '../lib/mail-service';
 
@@ -12,76 +12,47 @@ export interface DecisionLetterProps {
   submissionId?: string;
 }
 
+/**
+ * A decision letter the organisation writes and sends through Missa. The
+ * organisation's name leads; Missa appears only as the carrier. A custom note
+ * from the organisation replaces the standard outcome paragraph's follow-up.
+ */
 export function renderDecisionLetter(props: DecisionLetterProps): { subject: string; html: string; text: string } {
   const name = props.submitterName?.trim() || '';
-  const greeting = name ? `Dear ${escapeHtml(name)},` : 'Dear Submitter,';
-  const orgName = escapeHtml(props.organizationName);
-  const workTitle = escapeHtml(props.workTitle);
-  const outcomeKey = props.outcome.toLowerCase();
-
-  const outcomeBadge =
-    outcomeKey === 'accepted'
-      ? `<span style="display:inline-block;padding:4px 10px;background-color:#edf3f0;color:#1d4037;border-radius:6px;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">Accepted</span>`
-      : outcomeKey === 'waitlisted' || outcomeKey === 'shortlisted'
-      ? `<span style="display:inline-block;padding:4px 10px;background-color:#f5ecd9;color:#78551e;border-radius:6px;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">${escapeHtml(props.outcome)}</span>`
-      : `<span style="display:inline-block;padding:4px 10px;background-color:#f7f7f7;color:#45413d;border-radius:6px;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:0.06em;">Decision</span>`;
-
-  const subject = `Update regarding "${props.workTitle}" — ${props.organizationName}`;
-
-  let outcomeStatement = '';
-  if (outcomeKey === 'accepted') {
-    outcomeStatement = `We are delighted to inform you that <strong>"${workTitle}"</strong> has been accepted for publication with <strong>${orgName}</strong>.`;
-  } else if (outcomeKey === 'declined') {
-    outcomeStatement = `Thank you for giving us the opportunity to consider <strong>"${workTitle}"</strong>. While we gave your work careful thought, it is not the right fit for <strong>${orgName}</strong> at this time.`;
-  } else if (outcomeKey === 'waitlisted') {
-    outcomeStatement = `Thank you for submitting <strong>"${workTitle}"</strong> to <strong>${orgName}</strong>. We would like to place your piece on our waitlist as we finalize our selections.`;
-  } else {
-    outcomeStatement = `We have completed our review of <strong>"${workTitle}"</strong> for <strong>${orgName}</strong>.`;
-  }
-
-  const editorialNoteHtml = props.editorialNote
-    ? `<div style="margin:20px 0;padding:16px 18px;background-color:#ffffff;border:1px solid ${EMAIL_COLORS.border};border-left:3px solid ${EMAIL_COLORS.forest600};border-radius:4px;">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:${EMAIL_COLORS.forest600};margin-bottom:6px;">Note from the editors:</div>
-        <div style="font-size:14px;line-height:22px;color:${EMAIL_COLORS.inkSecondary};white-space:pre-wrap;">${escapeHtml(props.editorialNote)}</div>
-      </div>`
-    : '';
-
-  const nextStepsHtml = props.nextSteps
-    ? `<div style="margin:16px 0;font-size:14px;line-height:22px;color:${EMAIL_COLORS.ink};">
-        <strong>Next Steps:</strong> ${escapeHtml(props.nextSteps)}
-      </div>`
-    : '';
-
-  const bodyHtml = `
-    <div style="margin-bottom:18px;">${outcomeBadge}</div>
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">${greeting}</p>
-    <p style="margin:0 0 16px;font-size:15px;line-height:24px;">${outcomeStatement}</p>
-    ${editorialNoteHtml}
-    ${nextStepsHtml}
-    <p style="margin:16px 0 0;font-size:14px;line-height:22px;color:${EMAIL_COLORS.inkMuted};">
-      Thank you for your time, trust, and creative contribution.
-    </p>
-  `;
-
-  const submissionUrl = props.submissionId
-    ? new URL(`/tracker`, `${siteUrl()}/`).toString()
-    : `${siteUrl()}/tracker`;
-
-  const html = renderBaseEmailLayout({
+  const org = props.organizationName;
+  const work = props.workTitle;
+  const outcome = props.outcome.toLowerCase();
+  const statement =
+    outcome === 'accepted'
+      ? `We are delighted to tell you that we have accepted ${work}.`
+      : outcome === 'declined'
+        ? `Thank you for letting us read ${work}. We gave it careful thought, and it is not the right fit for ${org} at this time.`
+        : outcome === 'waitlisted'
+          ? `Thank you for sending ${work}. We would like to keep it on our waitlist while we finish our selections.`
+          : outcome === 'shortlisted'
+            ? `${work} is on our shortlist. We will write again when we have made our final selections.`
+            : `We have finished reviewing ${work}.`;
+  const subject = `About ${work}, from ${org}`;
+  const letter: LetterProps = {
     subject,
-    preheader: `Decision update on your submission to ${props.organizationName}.`,
-    eyebrow: props.organizationName,
-    title: 'Submission Decision',
-    bodyHtml,
-    callToAction: {
-      label: 'View in Tracker',
-      url: submissionUrl,
+    preheader: statement,
+    from: { kind: 'organisation', name: org },
+    headline: 'About your application',
+    blocks: [
+      { kind: 'paragraph', text: name ? `Dear ${name},` : 'Hello,' },
+      { kind: 'paragraph', text: statement },
+      ...(props.editorialNote ? props.editorialNote.split(/\n{2,}/).map((text) => ({ kind: 'paragraph' as const, text: text.trim() })).filter((block) => block.text) : []),
+      ...(props.nextSteps ? [{ kind: 'paragraph' as const, text: props.nextSteps }] : []),
+      { kind: 'signoff', text: org },
+      { kind: 'action', label: 'See it in your Tracker', url: new URL('/tracker', `${siteUrl()}/`).toString() },
+    ],
+    footer: {
+      reason: `${org} wrote this letter and sent it through Missa. Your Tracker shows the decision and keeps your submission record.`,
+      preferencesUrl: new URL('/inbox', `${siteUrl()}/`).toString(),
+      senderLine: `${org} sent this through Missa`,
     },
-  });
-
-  const text = `Decision: ${props.workTitle} — ${props.organizationName}\n\n${name ? `Dear ${name},\n\n` : 'Dear Submitter,\n\n'}${outcomeKey === 'accepted' ? `We are delighted to inform you that "${props.workTitle}" has been accepted with ${props.organizationName}.` : `Thank you for submitting "${props.workTitle}" to ${props.organizationName}.`}\n\n${props.editorialNote ? `Note from editors:\n${props.editorialNote}\n\n` : ''}${props.nextSteps ? `Next steps:\n${props.nextSteps}\n\n` : ''}View your submission record: ${submissionUrl}`;
-
-  return { subject, html, text };
+  };
+  return { subject, html: renderLetter(letter), text: letterText(letter) };
 }
 
 export async function deliverDecisionEmail(

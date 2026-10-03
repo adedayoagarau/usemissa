@@ -14,7 +14,9 @@ test('renderPasswordResetEmail generates valid HTML and plain text with reset li
   assert.match(rendered.html, /Hello Jane Doe,/);
   assert.match(rendered.html, /user@example\.com/);
   assert.match(rendered.html, /reset-password\?token=test-reset-token-xyz/);
-  assert.match(rendered.html, /Reset password/);
+  assert.match(rendered.html, /Choose a new password/);
+  assert.match(rendered.html, /expires in 60 minutes/);
+  assert.doesNotMatch(rendered.html, /Unsubscribe/);
   assert.match(rendered.text, /Hello Jane Doe,/);
   assert.match(rendered.text, /reset-password\?token=test-reset-token-xyz/);
 });
