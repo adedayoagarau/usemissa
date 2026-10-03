@@ -136,9 +136,11 @@ export function buildLifecycle({
   if (hosted?.decisions.length)
     currentIndex = Math.max(currentIndex, lifecycleIndex("outcome"));
 
-  // History arrives newest first; keep the latest event per step.
+  // History arrives newest first. A step is dated by the event that first
+  // reached it: a later acknowledgement inside Submitted, or a correction,
+  // must not replace when and by whom the submission was recorded.
   const latestByStep = new Map<LifecycleStepId, LifecycleHistoryEvent>();
-  for (const event of history) {
+  for (const event of [...history].reverse()) {
     const step = lifecycleStep(event.to);
     if (step !== "archived" && !latestByStep.has(step)) latestByStep.set(step, event);
   }
