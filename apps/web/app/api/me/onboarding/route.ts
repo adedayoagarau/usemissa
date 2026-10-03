@@ -22,9 +22,44 @@ import {
   mapOpportunityTypesToInterestLabels,
   mapPracticesToTaxonomy,
   mapTaxonomyToPracticeLabels,
+  ONBOARDING_INTERESTS,
+  ONBOARDING_PRACTICES,
 } from "../../../../lib/creatorOnboardingTaxonomy";
 
 const FIRST_SAVE_INTENT_COOKIE = "missa_first_save";
+
+// Values onboarding can express. Stored values outside these sets came from
+// another surface (settings, saved searches) and survive onboarding edits.
+const ONBOARDING_TYPES = new Set<string>(
+  ONBOARDING_INTERESTS.flatMap((interest) => interest.opportunityTypes),
+);
+const ONBOARDING_PRACTICE_LABELS = new Set<string>(
+  ONBOARDING_PRACTICES.map((practice) => practice.label),
+);
+const ONBOARDING_REFINEMENT_LABELS = new Set<string>(
+  ONBOARDING_PRACTICES.flatMap((practice) =>
+    practice.refinements.map((refinement) => refinement.label),
+  ),
+);
+
+/** An unknown zone would make every deadline formatter throw downstream. */
+function isValidTimeZone(zone: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Replace the onboarding-owned values in a list and keep everything else. */
+function replaceOwned<T extends string>(
+  existing: readonly T[],
+  next: readonly T[],
+  owned: (value: T) => boolean,
+): T[] {
+  return [...new Set([...next, ...existing.filter((value) => !owned(value))])];
+}
 const noStore = { "Cache-Control": "no-store" };
 
 async function sessionForRequest() {
@@ -247,6 +282,12 @@ export async function POST(request: Request) {
       { status: 400, headers: noStore },
     );
   }
+  if (data.timezone && !isValidTimeZone(data.timezone)) {
+    return NextResponse.json(
+      { error: "Choose a time zone from the list." },
+      { status: 400, headers: noStore },
+    );
+  }
   if (data.action === "complete") {
     if (!data.givenName || (!data.usesSingleName && !data.familyName)) {
       return NextResponse.json(
@@ -305,8 +346,19 @@ export async function POST(request: Request) {
   const opportunityTypes = mapInterestsToOpportunityTypes(data.interests);
 
   const isComplete = data.action === "complete";
-  const newStatus = isComplete ? "completed" : "in_progress";
-  const currentStep = data.step ?? (isComplete ? 4 : 1);
+  // Editing a finished setup saves choices without reopening onboarding.
+  const previousStatus = preferenceRepo
+    ? (await preferenceRepo.productState(session.account.id))?.onboardingStatus
+    : session.account.userId
+      ? engine!.store.users.get(session.account.userId)?.attributes
+          .onboardingStatus
+      : undefined;
+  const alreadyCompleted = previousStatus === "completed";
+  const newStatus =
+    isComplete || alreadyCompleted ? "completed" : "in_progress";
+  const currentStep = alreadyCompleted
+    ? 4
+    : (data.step ?? (isComplete ? 4 : 1));
 
   if (preferenceRepo && profileRepo) {
     // Read current bundle for revision
@@ -325,18 +377,21 @@ export async function POST(request: Request) {
 
     const updatedOpportunity = {
       ...existingOpportunity,
-      types:
-        opportunityTypes.length > 0
-          ? opportunityTypes
-          : existingOpportunity.types,
-      disciplines:
-        data.practices.length > 0
-          ? data.practices
-          : existingOpportunity.disciplines,
-      genres:
-        data.refinements.length > 0
-          ? data.refinements
-          : existingOpportunity.genres,
+      // The onboarding payload always carries the full selection, so an empty
+      // list means the person cleared it.
+      types: replaceOwned(existingOpportunity.types, opportunityTypes, (type) =>
+        ONBOARDING_TYPES.has(type),
+      ),
+      disciplines: replaceOwned(
+        existingOpportunity.disciplines,
+        data.practices,
+        (label) => ONBOARDING_PRACTICE_LABELS.has(label),
+      ),
+      genres: replaceOwned(
+        existingOpportunity.genres,
+        data.refinements,
+        (label) => ONBOARDING_REFINEMENT_LABELS.has(label),
+      ),
       locations: data.countryCode
         ? [data.countryCode]
         : existingOpportunity.locations,
@@ -400,7 +455,7 @@ export async function POST(request: Request) {
     await preferenceRepo.upsertProductState(session.account.id, {
       onboardingStatus: newStatus,
       onboardingStep: currentStep,
-      completedAt: isComplete ? now : null,
+      ...(alreadyCompleted ? {} : { completedAt: isComplete ? now : null }),
       primaryPractice: data.primaryPractice ?? data.practices[0] ?? null,
       secondaryPractices: data.practices.slice(1),
       lastRoute: data.lastRoute ?? "/tracker",
@@ -441,6 +496,17 @@ export async function POST(request: Request) {
         preference: t.preference,
         weight: t.weight,
       }));
+      // Accounts created at signup have no preference record yet; without one
+      // every interest and location choice was silently dropped.
+      user.opportunityPreferences ??= {
+        types: [],
+        disciplines: [],
+        genres: [],
+        locations: [],
+        careerStages: [],
+        noFeeOnly: false,
+        simultaneousRequired: false,
+      };
       if (user.opportunityPreferences) {
         user.opportunityPreferences.types = opportunityTypes;
         user.opportunityPreferences.disciplines = data.practices;
@@ -466,10 +532,10 @@ export async function POST(request: Request) {
       session.account.givenName = data.givenName;
       session.account.familyName = familyName;
       session.account.usesSingleName = data.usesSingleName;
-      user.attributes.countryCode = data.countryCode ?? "";
-      user.attributes.city = data.city ?? "";
-      user.attributes.timezone = data.timezone ?? "";
     }
+    if (data.countryCode) user.attributes.countryCode = data.countryCode;
+    if (data.city !== undefined) user.attributes.city = data.city;
+    if (data.timezone) user.attributes.timezone = data.timezone;
     user.attributes.onboardingStatus = newStatus;
     user.attributes.onboardingStep = String(currentStep);
     await persistRadar();
