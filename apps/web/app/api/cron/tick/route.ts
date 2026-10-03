@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server';
 import { radarWorkerBatchSize, runRadarWorkerTick, runCoverageWorkerTick, runTaxonomyDiscoveryWorkerTick } from '@missa/radar-adapters';
 import { deliverPendingAlertEmails, deliverPendingDeadlineEmails } from '@/lib/alert-delivery';
 
+// A bounded ingestion batch plus alert email, coverage and taxonomy passes.
+// 300s is within Vercel's limit for every plan with Fluid compute.
+export const maxDuration = 300;
+
 /**
  * Vercel Cron target (Story 1.5) -- replaces the manual "Check for updates"
  * button as the production ingestion trigger. The button stays functional

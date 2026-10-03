@@ -3,6 +3,10 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'node:crypto';
 import { getRelationalWorkspace, getWorkspaceEngine, persistWorkspace, workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
+// Blob deletion for up to 100 expired drafts; 300s is within Vercel's limit
+// for every plan with Fluid compute.
+export const maxDuration = 300;
+
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 503 });

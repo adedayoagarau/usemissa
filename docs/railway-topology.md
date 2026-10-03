@@ -25,6 +25,7 @@ Gary's crawler and AI reviewer are specified in [gary-agent-harness.md](./gary-a
 | `enrichment-worker` | Fetches public opportunity pages for media, guideline, past-winner, and call-profile evidence. Writes provenance-tagged evidence and retries failures through a leased queue. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=enrichment`, `RADAR_ENRICHMENT_INTERVAL_MINUTES`, `RADAR_ENRICHMENT_BATCH_SIZE` |
 | `review-agent` | Scores reviewable opportunities, applies the deterministic title editorial pass, records explainable decisions, and publishes records that pass every gate with no person in the loop, suppresses probable non-opportunities, and leaves the rest unpublished until enrichment or repair changes them. `RADAR_REVIEW_PUBLISH_MODE=queue` is an opt-in oversight mode that holds gate-passing records for approval. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=review`, `RADAR_REVIEW_INTERVAL_MINUTES`, `RADAR_REVIEW_BATCH_SIZE`, `RADAR_REVIEW_PUBLISH_MODE` |
 | `content-worker` *(implemented; provision after migration rehearsal)* | Builds source-linked Opportunity Intelligence briefs, persists them, then reviews the exact built content for provenance, bounded claims, and completeness. Approved content is exposed; the worker never mutates canonical opportunity facts. | Every 10 minutes, 20 jobs/tick | `MISSA_WORKER_MODE=content`, `RADAR_CONTENT_INTERVAL_MINUTES`, `RADAR_CONTENT_BATCH_SIZE` |
+| `creator-worker` | Creator scheduling: official-deadline sweep, application reminders and reminder email, weekly digests, goal check-ins and email, followed-program notices, and Google/Microsoft calendar export (drains `calendar_sync_jobs` across all accounts). See [Creator worker](#creator-worker). | Every 60 seconds after the previous pass finishes; calendar export up to 50 jobs or 30 seconds per pass | `MISSA_WORKER_MODE=creator`, `DATABASE_URL`, `MISSA_SESSION_SECRET`, `MISSA_CALENDAR_TOKEN_KEY`, `MISSA_CALENDAR_TOKEN_KEY_VERSION`, `GOOGLE_CALENDAR_CLIENT_ID`/`_SECRET`/`_REDIRECT_URI`, `MICROSOFT_CALENDAR_CLIENT_ID`/`_SECRET`/`_REDIRECT_URI`, `RESEND_API_KEY`, `RESEND_FROM`, optional `MISSA_CALENDAR_SYNC_BATCH_SIZE`, `MISSA_CALENDAR_SYNC_TIME_BUDGET_MS` |
 | `ingestion-v2-worker` *(shadow; provision against staging only)* | Runs the BullMQ-backed Gary/Radar replacement benchmark. It stores source snapshots, extraction candidates, failures, and comparison artifacts in additive v2 tables; it never publishes to Radar. | Operator-triggered during benchmark | `INGESTION_V2_DATABASE_ROLE=staging`, staging `DATABASE_URL`, Upstash `REDIS_URL`, optional `DEEPSEEK_API_KEY` |
 
 The research and radar services receive the same Neon URL. Discovery uses a
@@ -54,6 +55,57 @@ claims remain reviewable. Call profiles are also evidence-gated: inferred
 formats, reading periods, fees, limits, rights, response times, and prize
 metadata are never treated as confirmed until a reviewer or authoritative
 source verifies them.
+
+## Creator worker
+
+The creator worker is the only production scheduler for creator-facing
+background work. Vercel does **not** schedule `/api/cron/creator`
+(`apps/web/vercel.json` lists only `tick`, `gmail-sync` and
+`submission-cleanup`), and no Vercel cron should be added for it: two
+schedulers would double-send reminder email. The route stays available for a
+manual, authenticated run (`Authorization: Bearer $CRON_SECRET`) and runs the
+same `runCreatorTick` pass.
+
+- **Image and start command:** repository-root `Dockerfile` with
+  `MISSA_WORKER_MODE=creator`, which runs
+  `npx tsx scripts/run-creator-worker.mjs`. The script loads
+  `apps/web/.env*` through `@next/env`, runs one pass, sleeps 60 seconds, and
+  repeats until `SIGTERM`. `--once` runs a single pass (exit code 1 on
+  failure); `--account=<id>` scopes a pass to one creator and skips the weekly
+  digest.
+- **Pass order:** official-deadline sweep, reminders, reminder email, weekly
+  digest, goals, goal email, followed programs, then calendar export.
+- **Calendar export:** leases due `calendar_sync_jobs` for every active
+  connection, up to `MISSA_CALENDAR_SYNC_BATCH_SIZE` (default 50) jobs or
+  `MISSA_CALENDAR_SYNC_TIME_BUDGET_MS` (default 30000) per pass, using the
+  same delivery code as the in-app `POST /api/me/calendar/sync`. A job whose
+  worker died is retried once its 5-minute lease expires; failures back off
+  from 1 minute to 1 hour and stop after 8 attempts (about two hours), after which the event
+  shows "Sync failed" with Retry. A provider `invalid_grant` marks the
+  connection `error` (the calendar shows "Connection lost" and Reconnect) and
+  parks its jobs until the creator reconnects. Microsoft refresh-token
+  rotation is persisted, encrypted with `MISSA_CALENDAR_TOKEN_KEY`.
+- **Required variables:** `DATABASE_URL`, `MISSA_SESSION_SECRET`,
+  `MISSA_CALENDAR_TOKEN_KEY` (and `MISSA_CALENDAR_TOKEN_KEY_VERSION` when
+  rotated), the Google and Microsoft calendar OAuth client variables, and
+  `RESEND_API_KEY`/`RESEND_FROM` for email. Use the same values as the Vercel
+  production project; a different token key cannot decrypt stored calendar
+  credentials.
+- **Health:** every pass upserts the `radar_agent_runs` row
+  `worker:creator-worker` (`agent_kind = 'creator-worker'`). It reads
+  `running` while passes succeed and `failed` with the error after a failed
+  pass; `metadata.lastSuccessAt` survives failures. The admin operations
+  worker-lane table shows it as `creator-worker` and marks it stale after 30
+  minutes without a heartbeat. `GET /api/health/readiness` reports
+  `checks.creatorWorker`: `ready` when the last successful pass is within 10
+  minutes (override with `MISSA_CREATOR_TICK_STALE_AFTER_SECONDS`),
+  `degraded` when older, and `missing` when no pass has been recorded. The
+  check is not required, so a stale worker does not fail readiness.
+
+```sh
+railway up --service creator-worker --environment production --detach --ci
+railway service status -s creator-worker -e production --json
+```
 
 ## Agent graph
 
