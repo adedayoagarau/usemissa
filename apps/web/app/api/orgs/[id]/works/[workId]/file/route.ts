@@ -6,6 +6,7 @@ import {
   ORGANIZATION_ROLE_FORBIDDEN,
   requireOrganizationAccess,
 } from '@/lib/organizationAccess';
+import { privateFileHeaders } from '@/lib/privateFileHeaders';
 import { workspaceRelationalAuthorityEnabled } from '@/lib/workspaceEngine';
 
 /** Streams a private submission file only after the organization scope and
@@ -29,13 +30,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (fileUrl.startsWith('data:')) {
     const match = fileUrl.match(/^data:([^;,]+)?;base64,(.+)$/);
     if (!match) return NextResponse.json({ error: 'File is not readable' }, { status: 415 });
-    return new NextResponse(Buffer.from(match[2], 'base64'), { headers: { 'content-type': match[1] ?? 'application/octet-stream', 'content-disposition': 'inline' } });
+    const bytes = Buffer.from(match[2], 'base64');
+    return new NextResponse(bytes, { headers: privateFileHeaders({ contentType: match[1], contentLength: bytes.length }) });
   }
   if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ error: 'File storage is not configured' }, { status: 503 });
   try {
     const blob = await get(fileUrl, { access: 'private', token: process.env.BLOB_READ_WRITE_TOKEN, useCache: true });
     if (!blob || blob.statusCode !== 200) return NextResponse.json({ error: 'File not found' }, { status: 404 });
-    return new NextResponse(blob.stream, { headers: { 'content-type': blob.blob.contentType, 'content-length': String(blob.blob.size), 'content-disposition': blob.blob.contentDisposition || 'inline', 'cache-control': 'private, no-store' } });
+    return new NextResponse(blob.stream, { headers: privateFileHeaders({ contentType: blob.blob.contentType, contentDisposition: blob.blob.contentDisposition, contentLength: blob.blob.size }) });
   } catch {
     return NextResponse.json({ error: 'File unavailable' }, { status: 502 });
   }

@@ -76,6 +76,8 @@ test('private Work files open only for submissions.read holders or the assigned 
   const own = await file(data.accounts.get('reviewer')!, data.assignedWork.id);
   assert.equal(own.status, 200);
   assert.equal(await own.text(), 'assigned manuscript');
+  assert.equal(own.headers.get('x-content-type-options'), 'nosniff');
+  assert.match(own.headers.get('content-disposition') ?? '', /^attachment/, 'text files download instead of rendering');
   assert.equal((await file(data.accounts.get('reviewer')!, data.unassignedWork.id)).status, 403);
   for (const role of ['guest', 'viewer', 'finance', 'legal', 'member', 'team-admin'] as const) {
     assert.equal((await file(data.accounts.get(role)!, data.assignedWork.id)).status, 403, role);
