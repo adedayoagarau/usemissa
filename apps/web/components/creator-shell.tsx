@@ -8,6 +8,7 @@ import {
   Bell,
   Building2,
   CalendarDays,
+  House,
   Inbox,
   ListOrdered,
   Menu,
@@ -31,6 +32,7 @@ import { useState } from "react";
 import styles from "./creator-shell.module.css";
 
 const primary = [
+  { href: "/home", label: "Home", icon: House },
   { href: "/opportunities", label: "Opportunities", icon: Search },
   { href: "/following", label: "Following", icon: Bell },
   { href: "/tracker", label: "Tracker", icon: BookOpen },

@@ -653,6 +653,13 @@
       "appearance": "right-side-sheet-full-width-below-640px-with-same-route-peer-tabs",
       "boundary": "The one canonical record for a tracked application, opened by /tracker?application=<id>&section=<overview|prepare|timing|materials|history> from every surface. Lifecycle Saved, Preparing, Ready, Submitted, In review, Outcome; each reached step shows its recorded date and provenance (recorded by you, Missa-hosted submission, received from the organization, inferred from source information) and never an invented date. External navigation never records a submission. One Forest action per region. No AI wording."
     },
+    "composition.creator-home": {
+      "semantic": "CreatorHome",
+      "implementation": "apps/web/components/missa/creator-home.tsx",
+      "composition": ["Button", "Progress", "Empty", "Link"],
+      "appearance": "newsreader-greeting-three-numbered-move-cards-then-hairline-lists-with-goal-sidebar",
+      "boundary": "Derived entirely from Tracker state by lib/creator-home.ts; never edits. This week's three ranks start-by passed or due, ready but unrecorded, closing this week, response check-ins, and Selected for you, one per application, with one Forest action across the page. Every row opens /tracker?application=<id>&section=<tab>. Replaces the former Your space at /workspace for creators."
+    },
     "composition.library-material": {
       "semantic": "LibraryMaterialSheet",
       "implementation": "apps/web/components/missa/library-material-sheet.tsx",

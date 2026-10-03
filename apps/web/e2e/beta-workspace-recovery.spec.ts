@@ -11,15 +11,15 @@ test("a creator reaches a private workspace after signup", async ({ page }) => {
   });
   expect(signup.status()).toBe(201);
 
-  await page.goto("/home");
-  await expect(page).toHaveURL(/\/workspace$/);
+  await page.goto("/workspace");
+  await expect(page).toHaveURL(/\/home$/);
   await expect(
-    page.getByRole("heading", {
-      level: 1,
-      name: "A little progress changes the whole week.",
-    }),
+    page.getByRole("heading", { level: 1, name: "Hello, Workspace." }),
   ).toBeVisible();
-  await expect(page.getByText("Your work is private here.")).toBeVisible();
+  await expect(page.getByText("Private to you")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Your week starts with one saved call" }),
+  ).toBeVisible();
 });
 
 test("password recovery is generic and invalid links recover safely", async ({
