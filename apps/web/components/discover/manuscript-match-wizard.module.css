@@ -1,0 +1,494 @@
+/*
+ * Manuscript matcher. /discover/* is a Spacious surface (DESIGN.md §6):
+ * row 16, group 32, section 64, read from the density variables.
+ */
+
+.page {
+  width: 100%;
+  max-width: calc(1200px + 2 * var(--space-gutter));
+  margin-inline: auto;
+  padding-inline: var(--space-gutter);
+  padding-block-end: var(--space-section);
+}
+
+/* Page heading */
+
+.header {
+  display: grid;
+  gap: var(--space-row);
+  max-width: 720px;
+  padding-block: var(--space-section) var(--space-group);
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.title {
+  margin: 0;
+  color: var(--foreground);
+  font-size: clamp(36px, 5vw, 48px);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.lede {
+  margin: 0;
+  max-width: 60ch;
+  color: var(--muted-foreground);
+  font-size: 18px;
+  line-height: 1.55;
+}
+
+/* Two-column layout: brief beside results from 1024px */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-section);
+}
+
+@media (min-width: 1024px) {
+  .layout {
+    grid-template-columns: minmax(320px, 368px) minmax(0, 1fr);
+    gap: var(--space-section);
+    align-items: start;
+  }
+}
+
+/* Brief */
+
+.brief {
+  display: grid;
+  gap: var(--space-group);
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+
+@media (min-width: 1024px) {
+  .brief {
+    /* Clears the 72px sticky site header. */
+    position: sticky;
+    top: 96px;
+    max-height: calc(100dvh - 120px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding-block-end: 0;
+  }
+}
+
+.briefTitle {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.012em;
+}
+
+.group {
+  gap: 8px;
+}
+
+.legend {
+  margin-block-end: 0;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.helper {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Form: a single-choice radio group drawn as a segmented control */
+
+.segments {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+}
+
+.segment {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--touch-target-min);
+  padding-inline: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 120ms,
+    border-color 120ms;
+}
+
+.segment:hover {
+  background: var(--muted);
+}
+
+.segment:has([data-checked]) {
+  border-color: var(--primary);
+  background: var(--accent-tint);
+  color: var(--accent-deep);
+  font-weight: 600;
+}
+
+.segment:has(:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.segmentRadio {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Length */
+
+.lengthInput {
+  height: var(--touch-target-min);
+}
+
+.lengthInput input {
+  height: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.slider {
+  padding-block: 12px;
+}
+
+/* Chips */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Preferences */
+
+.switchRow {
+  align-items: flex-start;
+  gap: 16px;
+  padding-block: 4px;
+}
+
+.select {
+  width: 100%;
+}
+
+.select select {
+  height: var(--touch-target-min);
+  font-size: 14px;
+}
+
+.submit {
+  padding-block: 16px 24px;
+  background: var(--card);
+}
+
+@media (min-width: 1024px) {
+  .submit {
+    position: sticky;
+    bottom: 0;
+    margin-block-start: calc(-1 * var(--space-group) + 8px);
+    border-block-start: 1px solid var(--border);
+  }
+}
+
+/* Results */
+
+.results {
+  display: grid;
+  gap: var(--space-row);
+  min-width: 0;
+}
+
+.results > * {
+  min-width: 0;
+}
+
+.resultsHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.resultsTitle {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  scroll-margin-top: 24px;
+}
+
+.resultsTitle:focus {
+  outline: none;
+}
+
+.resultsMeta {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+
+.resultsMeta data,
+.facts data {
+  font-variant-numeric: tabular-nums;
+}
+
+.rank,
+.resultsMeta data {
+  font-variant-numeric: tabular-nums;
+}
+
+.changed {
+  margin: 0;
+  color: var(--warning);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.changed:empty {
+  display: none;
+}
+
+.lanes {
+  max-width: 100%;
+  overflow-x: auto;
+  justify-content: flex-start;
+  gap: 16px;
+  border-block-end: 1px solid var(--border);
+  border-radius: 0;
+  padding-inline: 0;
+  padding-block-end: 6px;
+}
+
+/* Leave room for the active underline inside the scroll container. */
+.lanes[data-slot][data-variant] {
+  height: auto;
+}
+
+.laneCount {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel {
+  display: grid;
+  gap: var(--space-row);
+  padding-block-start: 8px;
+}
+
+.laneDescription {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+
+.notice {
+  padding: 12px 16px;
+  border-color: var(--border);
+  background: var(--information-subtle);
+  color: var(--foreground);
+}
+
+.notice svg {
+  color: var(--information);
+}
+
+.list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-block-start: 1px solid var(--border);
+}
+
+.result {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 16px;
+  padding-block: 24px;
+  border-block-end: 1px solid var(--border);
+}
+
+.result[data-limited] {
+  padding-block: 16px;
+}
+
+.compactRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px 16px;
+}
+
+.rank {
+  padding-block-start: 5px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  text-align: end;
+}
+
+.resultBody {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.resultHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.identity {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 240px;
+}
+
+.resultTitle {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.22;
+  letter-spacing: -0.012em;
+  overflow-wrap: anywhere;
+}
+
+.resultTitle a {
+  color: var(--foreground);
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.resultTitle a:hover {
+  text-decoration: underline;
+}
+
+.resultTitle a:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.motto {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 15px;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.reasons {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.reasons li {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.reasons svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--success);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.footnote {
+  margin: 0;
+  padding-block-start: var(--space-row);
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.footnote a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.skeletonRank {
+  width: 16px;
+  height: 16px;
+}
+
+.skeletonTitle {
+  width: min(280px, 70%);
+  height: 24px;
+}
+
+.skeletonLine {
+  width: min(420px, 90%);
+  height: 16px;
+}
+
+.skeletonActions {
+  width: 200px;
+  height: 36px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment {
+    transition: none;
+  }
+}
