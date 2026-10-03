@@ -198,13 +198,23 @@ export function CreatorShell({
               {applicationsPreview ? "Sample account navigation" : email}
             </small>
           </div>
-          <button
-            type="button"
-            disabled={applicationsPreview}
-            onClick={() => void signOut()}
-          >
-            {applicationsPreview ? "Preview only" : "Log out"}
-          </button>
+          <div className={styles.accountActions}>
+            {applicationsPreview ? null : (
+              <Link
+                href="/plan"
+                aria-current={pathname === "/plan" ? "page" : undefined}
+              >
+                Plan
+              </Link>
+            )}
+            <button
+              type="button"
+              disabled={applicationsPreview}
+              onClick={() => void signOut()}
+            >
+              {applicationsPreview ? "Preview only" : "Log out"}
+            </button>
+          </div>
           {logoutError ? (
             <p role="alert">Could not log out. Try again.</p>
           ) : null}
@@ -232,6 +242,16 @@ export function CreatorShell({
             <SheetDescription>Navigate your creator tools.</SheetDescription>
           </SheetHeader>
           {navigation}
+          {applicationsPreview ? null : (
+            <Link
+              href="/plan"
+              className={styles.mobilePlan}
+              aria-current={pathname === "/plan" ? "page" : undefined}
+              onClick={() => setOpen(false)}
+            >
+              Plan
+            </Link>
+          )}
           <button
             className={styles.mobileLogout}
             disabled={applicationsPreview}

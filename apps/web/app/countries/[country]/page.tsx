@@ -65,7 +65,7 @@ export async function generateMetadata({
     description: isGlobal
       ? `Browse literary magazines, presses, residencies, and open calls accepting submissions from writers worldwide.`
       : `Browse literary magazines and small presses based in ${displayName}, plus country-filtered and explicitly worldwide opportunity listings. Check each official source for eligibility.`,
-    path: `/countries/${country.toLowerCase()}`,
+    path: `/countries/${normalized.countryCode.toLowerCase()}`,
   });
 }
 
@@ -130,7 +130,7 @@ export default async function CountryHubPage({
           "@context": "https://schema.org",
           "@type": "CollectionPage",
           name: `${displayName} — literary publishers & creative opportunities`,
-          url: absoluteUrl(`/countries/${country.toLowerCase()}`),
+          url: absoluteUrl(`/countries/${countryCode.toLowerCase()}`),
           breadcrumb: {
             "@type": "BreadcrumbList",
             itemListElement: [

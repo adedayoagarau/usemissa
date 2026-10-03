@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { CreatorSubscriptionUpdate } from '@missa/radar-adapters';
 
 /**
@@ -52,7 +53,7 @@ function secret(): string | undefined {
   return process.env.STRIPE_SECRET_KEY?.trim() || undefined;
 }
 
-async function stripe<T>(path: string, init: { method?: 'GET' | 'POST'; form?: URLSearchParams; idempotencyKey?: string } = {}): Promise<T> {
+async function stripe<T>(path: string, init: { method?: 'GET' | 'POST' | 'DELETE'; form?: URLSearchParams; idempotencyKey?: string } = {}): Promise<T> {
   const key = secret();
   if (!key) throw new Error('Stripe is not configured');
   const response = await fetch(`${STRIPE}${path}`, {
@@ -64,9 +65,16 @@ async function stripe<T>(path: string, init: { method?: 'GET' | 'POST'; form?: U
     },
     ...(init.form ? { body: init.form } : {}),
   });
-  const data = (await response.json()) as T & { error?: { message?: string } };
-  if (!response.ok) throw new Error(data.error?.message ?? `Stripe request failed (${response.status})`);
+  const data = (await response.json()) as T & { error?: { message?: string; code?: string } };
+  if (!response.ok) throw new StripeRequestError(data.error?.message ?? `Stripe request failed (${response.status})`, response.status, data.error?.code);
   return data;
+}
+
+export class StripeRequestError extends Error {
+  constructor(message: string, readonly status: number, readonly code?: string) {
+    super(message);
+    this.name = 'StripeRequestError';
+  }
 }
 
 export function priceLabel(amount: number, currency: string, interval: PlusInterval): string {
@@ -120,11 +128,16 @@ export async function startPlusCheckout(input: {
   /** Where the visitor is, from the request; picks the regional price. */
   country: string | null;
   origin: string;
-  idempotencyKey?: string;
-}): Promise<string> {
+}, now = Date.now()): Promise<string> {
   const region = pricingRegion(input.country);
   const offer = (await plusOffers(region)).find((candidate) => candidate.interval === input.interval);
   if (!offer) throw new Error('Plus is not available for that billing period yet');
+  // A returning customer who already has a Plus checkout open for this price
+  // goes back to it rather than getting a second one they could also pay.
+  if (input.customerId) {
+    const open = await openPlusCheckout({ customerId: input.customerId, accountId: input.accountId, priceId: offer.priceId }).catch(() => undefined);
+    if (open) return open;
+  }
   const form = new URLSearchParams({
     mode: 'subscription',
     'line_items[0][price]': offer.priceId,
@@ -137,6 +150,7 @@ export async function startPlusCheckout(input: {
     billing_address_collection: 'required',
     'metadata[account_id]': input.accountId,
     'metadata[creator_plan]': 'plus',
+    'metadata[price_id]': offer.priceId,
     'metadata[pricing_region]': region,
     'metadata[request_country]': input.country ?? 'unknown',
     'subscription_data[metadata][account_id]': input.accountId,
@@ -146,9 +160,49 @@ export async function startPlusCheckout(input: {
   });
   if (input.customerId) form.set('customer', input.customerId);
   else if (input.email) form.set('customer_email', input.email);
-  const session = await stripe<{ url?: string }>('/checkout/sessions', { method: 'POST', form, idempotencyKey: input.idempotencyKey });
+  const session = await stripe<{ url?: string }>('/checkout/sessions', { method: 'POST', form, idempotencyKey: plusCheckoutIdempotencyKey(input.accountId, form, now) });
   if (!session.url) throw new Error('Stripe did not return a checkout page');
   return session.url;
+}
+
+/** How long identical checkout requests share one Stripe Checkout session. */
+export const CHECKOUT_IDEMPOTENCY_WINDOW_MS = 15 * 60_000;
+
+/**
+ * A deterministic Stripe idempotency key for a Plus checkout: the account, a
+ * digest of the exact request (price, region, return URLs, customer) and a
+ * 15-minute window. A double click, a retry or a second tab inside the window
+ * gets the same Checkout session back from Stripe instead of a new one. The
+ * request digest keeps the key valid for Stripe, which refuses a reused key with
+ * different parameters.
+ */
+export function plusCheckoutIdempotencyKey(accountId: string, form: URLSearchParams, now = Date.now()): string {
+  const sorted = new URLSearchParams([...form.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
+  const digest = createHash('sha256').update(sorted.toString()).digest('hex').slice(0, 24);
+  return `creator-plus-checkout:${accountId}:${digest}:${Math.floor(now / CHECKOUT_IDEMPOTENCY_WINDOW_MS)}`;
+}
+
+/**
+ * The page of an open Plus Checkout session this account already started for
+ * the same price, for a returning Stripe customer. Stripe only lists sessions by
+ * customer, so a first-time buyer relies on the idempotency key instead.
+ */
+export async function openPlusCheckout(
+  input: { customerId: string; accountId: string; priceId: string },
+  request: StripeRequest = stripe,
+): Promise<string | undefined> {
+  const listed = await request<{ data?: Array<{ url?: string | null; status?: string; metadata?: Record<string, string> }> }>(
+    `/checkout/sessions?customer=${encodeURIComponent(input.customerId)}&status=open&limit=10`,
+  );
+  const match = (listed.data ?? []).find(
+    (session) =>
+      session.status === 'open' &&
+      session.url &&
+      session.metadata?.creator_plan === 'plus' &&
+      session.metadata?.account_id === input.accountId &&
+      session.metadata?.price_id === input.priceId,
+  );
+  return match?.url ?? undefined;
 }
 
 /** Stripe's customer portal, where a creator changes card, switches period or cancels. */
@@ -184,33 +238,113 @@ export function creatorAccountFor(object: StripeObject): string | undefined {
 /**
  * Turns a verified Stripe webhook event into the creator's plan. A completed
  * checkout reads its subscription from Stripe (the subscription event may not
- * have arrived yet); subscription events carry their own state. Returns false
- * for events that are not about a creator's Plus subscription.
+ * have arrived yet); subscription events carry their own state. Every update
+ * carries the event's `created` time so the plan ignores events older than one
+ * it already applied. Returns false for events that are not about a creator's
+ * Plus subscription.
  */
-export async function applyCreatorBillingEvent(
-  type: string,
-  object: StripeObject,
-  apply: (update: CreatorSubscriptionUpdate) => Promise<void>,
+export async function applyCreatorBillingEvent<R>(
+  event: { type: string; created?: number; object: StripeObject },
+  apply: (update: CreatorSubscriptionUpdate) => Promise<R>,
   fetchSubscription: (id: string) => Promise<SubscriptionLike> = retrieveSubscription,
-): Promise<boolean> {
+): Promise<{ handled: false } | { handled: true; result: R }> {
+  const { type, object } = event;
   const accountId = creatorAccountFor(object);
-  if (!accountId) return false;
+  if (!accountId) return { handled: false };
   let subscription: SubscriptionLike | undefined;
   if (type === 'checkout.session.completed') {
-    if (object.mode !== 'subscription' || typeof object.subscription !== 'string') return false;
+    if (object.mode !== 'subscription' || typeof object.subscription !== 'string') return { handled: false };
     subscription = await fetchSubscription(object.subscription);
   } else if (type === 'customer.subscription.created' || type === 'customer.subscription.updated' || type === 'customer.subscription.deleted') {
     subscription = object as unknown as SubscriptionLike;
   } else {
-    return false;
+    return { handled: false };
   }
-  await apply({
+  const result = await apply({
     accountId,
     customerId: typeof subscription.customer === 'string' ? subscription.customer : null,
     subscriptionId: subscription.id,
     status: type === 'customer.subscription.deleted' ? 'canceled' : subscription.status,
     currentPeriodEnd: periodEnd(subscription),
     cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+    eventCreatedAt: typeof event.created === 'number' && Number.isFinite(event.created) ? new Date(event.created * 1000).toISOString() : null,
   });
-  return true;
+  return { handled: true, result };
+}
+
+/** Stripe subscription statuses that can still charge the customer. */
+const BILLABLE = new Set(['active', 'trialing', 'past_due', 'unpaid', 'incomplete', 'paused']);
+
+type StripeRequest = <T>(path: string, init?: { method?: 'GET' | 'POST' | 'DELETE'; form?: URLSearchParams; idempotencyKey?: string }) => Promise<T>;
+
+/**
+ * Cancels every Plus subscription that can still charge a creator, for account
+ * closure. Cancellation is immediate and without a proration refund (Stripe's
+ * default for DELETE /v1/subscriptions): the closed account loses Plus now, the
+ * period already paid is not refunded automatically, and no further invoice is
+ * raised. Covers the subscription on the plan row and any other Plus
+ * subscription on the same Stripe customer (a duplicate checkout). Throws when
+ * any cancellation fails, so closure can stop instead of leaving a live charge.
+ * Returns the ids cancelled.
+ */
+export async function cancelCreatorSubscriptions(
+  input: { accountId: string; customerId: string | null; subscriptionId: string | null },
+  request: StripeRequest = stripe,
+): Promise<string[]> {
+  const candidates = new Set<string>();
+  if (input.subscriptionId) candidates.add(input.subscriptionId);
+  if (input.customerId) {
+    // Without a status filter Stripe lists every subscription that is not canceled.
+    const listed = await request<{ data?: Array<{ id: string; status: string; metadata?: Record<string, string> }> }>(
+      `/subscriptions?customer=${encodeURIComponent(input.customerId)}&limit=100`,
+    );
+    for (const subscription of listed.data ?? []) {
+      const ownsIt = subscription.metadata?.creator_plan === 'plus' && subscription.metadata?.account_id === input.accountId;
+      if (ownsIt && BILLABLE.has(subscription.status)) candidates.add(subscription.id);
+    }
+  }
+  const cancelled: string[] = [];
+  for (const id of candidates) {
+    let current: { id: string; status: string };
+    try {
+      current = await request<{ id: string; status: string }>(`/subscriptions/${encodeURIComponent(id)}`);
+    } catch (error) {
+      // A subscription Stripe no longer has cannot charge anyone.
+      if (error instanceof StripeRequestError && error.code === 'resource_missing') continue;
+      throw error;
+    }
+    if (!BILLABLE.has(current.status)) continue;
+    await request(`/subscriptions/${encodeURIComponent(id)}`, { method: 'DELETE', idempotencyKey: `account-close:${input.accountId}:${id}` });
+    cancelled.push(id);
+  }
+  return cancelled;
+}
+
+export type AccountClosure = { status: 'closed'; cancelledSubscriptions: string[] } | { status: 'not-found' } | { status: 'billing-failed' };
+
+/**
+ * Closes a creator account only after its Plus billing is stopped. Billing is
+ * cancelled first; if that fails the account stays open, so the creator can try
+ * again rather than being charged for an account that no longer exists.
+ */
+export async function closeAccountAfterCancellingPlus(
+  accountId: string,
+  deps: {
+    /** The plan row's Stripe ids, or undefined when plans are unavailable. */
+    billing: () => Promise<{ customerId: string | null; subscriptionId: string | null } | undefined>;
+    close: () => Promise<boolean>;
+    cancel?: (input: { accountId: string; customerId: string | null; subscriptionId: string | null }) => Promise<string[]>;
+  },
+): Promise<AccountClosure> {
+  let cancelledSubscriptions: string[] = [];
+  try {
+    const billing = await deps.billing();
+    if (billing && (billing.customerId || billing.subscriptionId)) {
+      cancelledSubscriptions = await (deps.cancel ?? cancelCreatorSubscriptions)({ accountId, ...billing });
+    }
+  } catch {
+    return { status: 'billing-failed' };
+  }
+  if (!(await deps.close())) return { status: 'not-found' };
+  return { status: 'closed', cancelledSubscriptions };
 }

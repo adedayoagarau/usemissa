@@ -1765,6 +1765,26 @@
     "states": "Loading, empty, error/retry, contextual selection, collapsed/expanded reasons, feedback saving/error/hidden/restored, current calls and programs between rounds.",
     "validation": "Database ownership, goal constraints, work snapshots, edit/retry/correction tests passed. Browser create/edit/reload, real cards, failed feedback retry, hide/restore, plan-ahead, 390px, 200% text and serious/critical axe checks passed; reduced motion enabled."
   },
+  "PlatformAdminPublicationReview": {
+    "status": "approved-adapt",
+    "implementation": "apps/web/components/platform-admin-publication-review.tsx",
+    "route": "/admin/radar",
+    "policy": "composition.admin-publication-review",
+    "composition": [
+      "Button",
+      "Field",
+      "Input",
+      "Textarea",
+      "AlertDialog",
+      "Alert",
+      "Empty",
+      "Sonner"
+    ],
+    "source": "Installed Base UI primitives and the existing platform-admin SectionHeading and NumberGrid; no registry installation required.",
+    "adaptation": "Structured decision list instead of a table so the editable title, note and actions stay readable at 390px. Hold reasons are plain text, not badges.",
+    "states": "Unavailable, empty, default, editable title, busy (aria-busy, disabled actions), confirmation, inline error per record, success toast and record removal.",
+    "validation": "Typecheck, lint, unauthenticated API test, and design-system check passed. Browser, 390px, keyboard, 200% zoom and reduced-motion checks not yet run against a live queue."
+  },
   "calendarPlanning": {
     "implementation": "apps/web/components/calendar-workspace.tsx",
     "policy": "composition.calendar-planning",

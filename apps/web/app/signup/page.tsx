@@ -15,6 +15,7 @@ export const metadata = pageMetadata({
   description:
     "Create a free Missa account to save opportunities, track deadlines, and prepare applications with the official source in view.",
   path: "/signup",
+  noIndex: true,
 });
 
 export default async function SignupPage({

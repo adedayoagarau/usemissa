@@ -114,6 +114,12 @@ export interface ResidencyRankingPage {
 
 export interface SubmitResidencyReviewInput {
   profileId: string;
+  /**
+   * Deterministic id for account-tied reviews. A second insert with the same
+   * id is ignored, which keeps one review per account per residency without a
+   * dedicated account column.
+   */
+  reviewId?: string;
   authorName?: string | null;
   reviewTitle?: string | null;
   reviewBody: string;
@@ -123,6 +129,8 @@ export interface SubmitResidencyReviewInput {
 
 export interface SubmitResidencyReviewResult {
   success: boolean;
+  /** True when a review with the same id already exists; nothing changed. */
+  duplicate?: boolean;
   reviewId: string;
   newRating: number;
   newTotalScore: number;
@@ -551,17 +559,20 @@ export class PostgresResidencyRankingRepository {
   async recordResidencyReview(
     input: SubmitResidencyReviewInput,
   ): Promise<SubmitResidencyReviewResult> {
-    const reviewId = `rev_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const reviewId =
+      input.reviewId || `rev_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const ratingScore = Math.min(5.0, Math.max(1.0, Number(input.ratingScore)));
     const today = new Date().toISOString().slice(0, 10);
     const source = input.source || "Missa Community Contributor";
 
-    // Insert new review
-    await this.pool.query(
+    // Insert new review; an existing id means this account already reviewed it.
+    const insertRes = await this.pool.query(
       `
       INSERT INTO missa_residency_reviews (
         id, profile_id, author_name, review_title, review_body, rating_score, date_published, source, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW());
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+      ON CONFLICT (id) DO NOTHING
+      RETURNING id;
     `,
       [
         reviewId,
@@ -574,6 +585,10 @@ export class PostgresResidencyRankingRepository {
         source,
       ],
     );
+
+    if (insertRes.rows.length === 0) {
+      return { success: false, duplicate: true, reviewId, newRating: 0, newTotalScore: 0 };
+    }
 
     // Compute updated aggregates
     const aggRes = await this.pool.query(

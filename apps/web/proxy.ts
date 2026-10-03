@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { DISCOVERY_BETA, isDiscoveryBetaPath } from "./lib/discoveryBeta";
+import { legacyProfileUserId } from "./lib/profileRedirectPath";
 
 const REQUEST_PATH_HEADER = "x-missa-request-path";
 
@@ -37,7 +38,7 @@ async function resolveHandleRedirect(
 ): Promise<NextResponse | undefined> {
   const { pathname, search } = request.nextUrl;
   const handle = pathname.startsWith("/@") ? pathname.slice(2) : null;
-  const userId = pathname.match(/^\/profile\/([^/]+)$/u)?.[1] ?? null;
+  const userId = legacyProfileUserId(pathname);
 
   if (!handle && !userId) return undefined;
 

@@ -55,9 +55,11 @@ export function TrackerResponseForecaster({
   if (!intel?.telemetry) return null;
 
   const { telemetry } = intel;
-  const medianDays = telemetry.medianResponseDays || 45;
-  const fastestDays = telemetry.fastestResponseDays || 5;
-  const overdueThreshold = Math.round(medianDays * 1.75);
+  // Forecast only from recorded response times; never from assumed defaults.
+  const medianDays = telemetry.medianResponseDays;
+  const fastestDays = telemetry.fastestResponseDays;
+  const overdueThreshold =
+    medianDays !== null ? Math.round(medianDays * 1.75) : null;
 
   let daysElapsed = 0;
   if (submittedAt) {
@@ -79,10 +81,16 @@ export function TrackerResponseForecaster({
     myStatus,
   );
 
-  const progressPercent = Math.min(
-    100,
-    Math.round((daysElapsed / overdueThreshold) * 100),
-  );
+  const progressPercent = overdueThreshold
+    ? Math.min(100, Math.round((daysElapsed / overdueThreshold) * 100))
+    : 0;
+  const freeCapDays = telemetry.submittableFreeCapDepletionDays;
+  const showFreeCapAlert =
+    isSaved && telemetry.freeCapStatus === "at_risk" && freeCapDays !== null;
+  const showForecast =
+    isAwaiting && Boolean(submittedAt) && medianDays !== null && overdueThreshold !== null;
+
+  if (!showFreeCapAlert && !showForecast && !isAccepted) return null;
 
   const copyWithdrawalTemplate = () => {
     const text = `Dear Editors at [Journal Name],\n\nThank you so much for considering my submission titled "[Piece Title]". I am writing to politely withdraw this submission from consideration, as it has been accepted for publication elsewhere.\n\nThank you for your time and editorial care, and I hope to submit to you again in a future reading cycle.\n\nWarm regards,\n[Your Name]`;
@@ -100,7 +108,7 @@ export function TrackerResponseForecaster({
       )}
     >
       {/* 1. Free Cap Early Alert for Saved Opportunities */}
-      {isSaved && telemetry.freeCapStatus === "at_risk" && (
+      {showFreeCapAlert && (
         <div className="flex items-start gap-3 rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface-primary)] p-3.5 text-xs text-[var(--text-primary)]">
           <ShieldAlert className="size-4 shrink-0 text-[var(--text-primary)] mt-0.5" />
           <div>
@@ -109,7 +117,7 @@ export function TrackerResponseForecaster({
             </span>
             <p className="mt-0.5 text-[var(--text-secondary)]">
               {organizationName}&apos;s monthly free cap typically exhausts within{" "}
-              <strong>{telemetry.submittableFreeCapDepletionDays ?? 3} days</strong>{" "}
+              <strong>{freeCapDays} days</strong>{" "}
               of opening. Prepare your manuscript early to avoid paid fees.
             </p>
           </div>
@@ -117,7 +125,7 @@ export function TrackerResponseForecaster({
       )}
 
       {/* 2. Response Telemetry Forecaster for Submitted Works */}
-      {isAwaiting && submittedAt && (
+      {showForecast && medianDays !== null && overdueThreshold !== null && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -141,7 +149,7 @@ export function TrackerResponseForecaster({
             </div>
             <div className="flex justify-between font-mono text-[10px] text-[var(--text-muted)]">
               <span>Day 0</span>
-              <span>Fastest ({fastestDays}d)</span>
+              {fastestDays !== null && <span>Fastest ({fastestDays}d)</span>}
               <span>Median ({medianDays}d)</span>
               <span>Inquiry Threshold ({overdueThreshold}d)</span>
             </div>

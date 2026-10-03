@@ -14,11 +14,18 @@ export async function POST(request: Request) {
   try { event = JSON.parse(payload) as typeof event; } catch { return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 }); }
   if (!event.id || !event.type || !event.data?.object) return NextResponse.json({ error: 'Invalid webhook payload' }, { status: 400 });
   const object = event.data.object;
-  // A creator's Plus subscription updates their plan before the event is recorded;
-  // a failure returns 503 so Stripe retries it.
+  // A creator's Plus subscription updates their plan before the event is
+  // recorded; a failure returns 503 so Stripe retries it. Retries and
+  // redeliveries are safe: the plan keeps the newest event time it applied and
+  // ignores older events, so a late event never undoes a newer one.
   try {
     const pool = creatorPoolFor(process.env.DATABASE_URL);
-    await applyCreatorBillingEvent(event.type, object, (update) => applyCreatorSubscription(pool, update));
+    const outcome = await applyCreatorBillingEvent({ type: event.type, created: event.created, object }, (update) => applyCreatorSubscription(pool, update));
+    if (outcome.handled && !outcome.result.applied && outcome.result.reason === 'other-subscription') {
+      // A second Plus subscription for an account already paying through another
+      // one: the creator may be charged twice. Logged for a manual refund.
+      console.warn(JSON.stringify({ level: 'warn', message: 'creator.billing.duplicate_subscription', eventId: event.id, eventType: event.type, objectId: typeof object.id === 'string' ? object.id : null }));
+    }
   } catch {
     return NextResponse.json({ error: 'Plan update failed; Stripe should retry this event.' }, { status: 503 });
   }

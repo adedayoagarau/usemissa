@@ -48,6 +48,7 @@ export function safeAuthRedirect(value: string | undefined): string {
       "/reviews",
       "/org",
       "/publication-claim",
+      "/plan",
     ].some(
       (prefix) =>
         target.pathname === prefix || target.pathname.startsWith(`${prefix}/`),
