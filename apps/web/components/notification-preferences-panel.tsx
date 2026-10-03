@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { TextRemindersSettings } from "@/components/missa/text-reminders-settings";
 
 function timezoneOptions(selected?: string | null): string[] {
   const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
@@ -21,8 +22,19 @@ export function NotificationPreferencesPanel({ initial }: { initial: CreatorNoti
   const [stale, setStale] = useState(false);
   const dirty = JSON.stringify(value) !== JSON.stringify(saved);
   const quietHoursOn = value.quietHoursStart != null && value.quietHoursEnd != null;
-  const toggle = (field: "inAppEnabled" | "emailEnabled" | "savedSearchEnabled" | "followEnabled" | "reminderEnabled" | "smsEnabled", checked: boolean) =>
+  const toggle = (field: "inAppEnabled" | "emailEnabled" | "savedSearchEnabled" | "followEnabled" | "reminderEnabled", checked: boolean) =>
     setValue((current) => ({ ...current, [field]: checked }));
+  // Text settings save on their own; carry their result and the new revision
+  // into both the draft and the saved copy so other unsaved edits survive.
+  const applyTextSettings = (next: CreatorNotificationPreferences) => {
+    const merge = (current: CreatorNotificationPreferences) => ({
+      ...current,
+      smsEnabled: next.smsEnabled, smsPhone: next.smsPhone, smsPhoneVerifiedAt: next.smsPhoneVerifiedAt,
+      smsOptedOut: next.smsOptedOut, smsPlanEligible: next.smsPlanEligible, smsProviderState: next.smsProviderState,
+      revision: next.revision,
+    });
+    setValue(merge); setSaved(merge);
+  };
 
   async function save() {
     setBusy(true); setMessage(""); setStale(false);
@@ -62,10 +74,6 @@ export function NotificationPreferencesPanel({ initial }: { initial: CreatorNoti
             {label}
           </label>
         ))}
-        <label className="flex min-h-11 items-center gap-3 rounded-lg border border-border px-3 text-sm opacity-60">
-          <Checkbox checked={false} disabled />
-          Text reminders (coming later)
-        </label>
         <label className="grid gap-1 text-sm">
           <span className="font-medium">Weekly digest</span>
           <NativeSelect value={value.digestCadence} onChange={(event) => setValue((current) => ({ ...current, digestCadence: event.target.value as CreatorNotificationPreferences["digestCadence"] }))}>
@@ -109,7 +117,6 @@ export function NotificationPreferencesPanel({ initial }: { initial: CreatorNoti
           </>
         ) : null}
       </fieldset>
-      <p className="mt-3 text-sm text-muted-foreground">Text reminders will appear here after phone verification and an SMS provider are configured. Email and in-app reminders are available now.</p>
       {value.providerState === "unavailable" && value.emailEnabled ? <p className="mt-3 text-sm text-muted-foreground">Email delivery is currently unavailable. Your in-app settings still apply.</p> : null}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Button type="button" disabled={!dirty || busy} onClick={() => void save()}>{busy ? "Saving…" : "Save notification preferences"}</Button>
@@ -117,6 +124,8 @@ export function NotificationPreferencesPanel({ initial }: { initial: CreatorNoti
         <p role="status" aria-live="polite" className="text-sm text-muted-foreground">{message}</p>
         {stale ? <Button type="button" variant="outline" onClick={() => window.location.reload()}>Reload latest preferences</Button> : null}
       </div>
+      {/* Saves on its own, so it sits after the form's save button. */}
+      <TextRemindersSettings preferences={value} onPreferencesChange={applyTextSettings} />
     </section>
   );
 }

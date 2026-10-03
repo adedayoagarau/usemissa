@@ -7,7 +7,8 @@ import { InboxProduct, type InboxProductGroup, type InboxProductItem } from '@/c
 import { getSessionAccountFromToken, SESSION_COOKIE } from '@/lib/auth';
 import { CreatorReminderRepository } from '@/lib/creator-reminders';
 import { getEngine } from '@/lib/engine';
-import { getCreatorInboxRepository, getCreatorNotificationRepository } from '@/lib/creatorRepositories';
+import { getCreatorInboxRepository } from '@/lib/creatorRepositories';
+import { notificationPreferencesView } from '@/lib/sms-preferences';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -121,7 +122,6 @@ export default async function InboxPage({ searchParams }: { searchParams?: Promi
       if (link?.href.startsWith('/opportunities/') && item.kind === 'followed-org-new-call') { item.actionHref = link.href; item.actionLabel = 'View opportunity'; item.reason = link.reason; item.summary = link.body; item.category = 'Following'; }
     }
   }
-  const notificationRepository = getCreatorNotificationRepository();
-  const initialPreferences = notificationRepository ? await notificationRepository.preferences(session.account.id) : undefined;
+  const initialPreferences = await notificationPreferencesView(session.account.id);
   return <InboxProduct initialItems={items} initialPreferences={initialPreferences} initialView={requestedView === 'email' ? 'email' : requestedView === 'reminders' ? 'reminders' : 'briefing'} />;
 }

@@ -61,6 +61,7 @@ export default function PrivacyPage() {
             <li>Vercel and Railway, for hosting and background jobs;</li>
             <li>Neon, for the database and sign-in;</li>
             <li>Resend, for email delivery;</li>
+            <li>Telnyx, for text reminders: if you are a Plus member and turn on text reminders, Telnyx processes your phone number to deliver them;</li>
             <li>Stripe, for Plus payments (Stripe handles card details; Missa never sees them);</li>
             <li>Upstash, for rate limiting that protects sign-in;</li>
             <li>Cloudmersive, for scanning uploaded files for malware;</li>

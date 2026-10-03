@@ -77,7 +77,10 @@ export function PlanProduct(props: PlanProductProps) {
           {onPlus ? "Plus" : "Free"}
         </h2>
         {onPlus ? (
-          <p className={styles.body}>No limit on calls in progress in your Tracker.</p>
+          <ul className={styles.benefits}>
+            <li>No limit on calls in progress in your Tracker.</li>
+            <li>Deadline reminders by text. Add your number in Inbox notification settings.</li>
+          </ul>
         ) : (
           <p className={styles.body}>
             <span className="font-mono tabular-nums">
@@ -101,7 +104,10 @@ export function PlanProduct(props: PlanProductProps) {
           <h2 id="plan-plus" className="font-heading">
             Plus
           </h2>
-          <p className={styles.body}>Track every call you&apos;re working on, with no limit.</p>
+          <ul className={styles.benefits}>
+            <li>Track every call you&apos;re working on, with no limit.</li>
+            <li>Deadline reminders by text, so a closing call reaches you even away from email.</li>
+          </ul>
           <p className={styles.body}>
             Everything in Free stays free: every Opportunity, its official source, your reminders and The Sunday List.
           </p>

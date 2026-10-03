@@ -114,6 +114,7 @@ const migrationFiles = [
   '0084_site_observability.sql',
   '0085_editorial_intelligence_sources.sql',
   '0086_missa_residency_provenance.sql',
+  '0087_sms_reminders.sql',
 ];
 
 
