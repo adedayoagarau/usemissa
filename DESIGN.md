@@ -548,6 +548,8 @@ An AI-generated component that duplicates an approved item fails review.
 | Know when to start             | `StartByDate`                 | `Button` + `Popover` reasoning; estimate wording; Ochre only when today or passed              |
 | See calendar delivery          | `ApplicationCalendarDelivery` | Feed, provider and session rows; `Spinner` only while syncing; Retry and Reconnect actions     |
 | Confirm email evidence         | `ApplicationEmailEvidence`    | Suggestion panel; creator confirms; never changes state on its own                             |
+| Recover after a decline        | `SimilarOpportunities`        | Explained matches with plain reasons, Save to Tracker, Not for me; never labelled AI           |
+| Check before submitting        | `PreSubmitCheck`              | Passed / Needs attention / Check manually, written out; unverifiable checks are never Passed   |
 | Edit a Work                    | `WorkEditor`                  | `Field`, form controls, `Sortable`, media blocks, `Dialog`/`Sheet`, process feedback           |
 | Manage calendar                | `OpportunityCalendar`         | `Calendar`, labelled events, `Popover` or side panel, provider sync status                     |
 | Configure Profile              | `ProfileSettingsForm`         | `Tabs` only for same-route peer sections, `Field`, form controls, inline feedback              |

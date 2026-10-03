@@ -67,6 +67,8 @@ import { deadlineCountdown, closingTimeLabel } from "@/lib/application-timing";
 import { estimateStartBy } from "@/lib/start-by";
 import { ApplicationPreparation } from "./application-preparation";
 import { StartByDate } from "./start-by-date";
+import { SimilarOpportunities } from "./similar-opportunities";
+import { PreSubmitCheck } from "./pre-submit-check";
 import { UrgencyBadge } from "./urgency-badge";
 import { ApplicationEmailEvidence, emailDay } from "./application-email-evidence";
 import { ApplicationReminders } from "./application-reminders";
@@ -181,6 +183,7 @@ export function ApplicationRecord({
   const [when, setWhen] = useState(today());
   const [recordNote, setRecordNote] = useState("");
   const [evidenceId, setEvidenceId] = useState<string>();
+  const [preparationVersion, setPreparationVersion] = useState(0);
   const request = useRef<{ body: string; key: string; revision: number } | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -689,6 +692,12 @@ export function ApplicationRecord({
 
           <LifecycleTimeline steps={lifecycle} />
 
+          {data.myStatus === "declined" ||
+          data.myStatus === "withdrawn" ||
+          (beforeSubmission && countdown && countdown.days < 0) ? (
+            <SimilarOpportunities opportunityId={opportunityId} />
+          ) : null}
+
           {!beforeSubmission ? (
             <TrackerResponseForecaster
               opportunityId={opportunityId}
@@ -752,9 +761,11 @@ export function ApplicationRecord({
         <TabsContent value="prepare" className="space-y-8">
           {beforeSubmission ? (
             <>
+              <PreSubmitCheck opportunityId={opportunityId} refreshKey={preparationVersion} />
               <ApplicationPreparation
                 opportunityId={opportunityId}
                 onChanged={() => {
+                  setPreparationVersion((version) => version + 1);
                   void load().then((refreshed) => {
                     if (refreshed) onChanged?.(refreshed);
                   });
@@ -841,6 +852,15 @@ export function ApplicationRecord({
                 <Library className="size-4" aria-hidden="true" />
                 {data.workTitle ?? "Open linked Work"} in Library
                 <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            ) : null}
+            {data.workId ? (
+              <Link
+                href="/profile/portfolio"
+                className="flex min-h-11 items-center gap-3 text-sm text-primary"
+              >
+                <ArrowUpRight className="size-4" aria-hidden="true" />
+                Show this Work on your portfolio
               </Link>
             ) : !works.length ? (
               <p className="text-sm text-muted-foreground">

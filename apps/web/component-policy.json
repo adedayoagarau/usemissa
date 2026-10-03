@@ -862,6 +862,18 @@
       "motion": "never",
       "boundary": "Email forwarding or Gmail evidence only suggests a status. Nothing changes until the creator confirms; confirming records the event with source=email and closes the suggestion in one transaction. Shown only when an email integration is enabled."
     },
+    "SimilarOpportunities": {
+      "base": "Button",
+      "implementation": "components/missa/similar-opportunities.tsx",
+      "motion": "never",
+      "boundary": "Recovery after a decline, a withdrawal, or a missed deadline. Deterministic matches (lib/similar-opportunities.ts) from shared taxonomy, genres, kind of call, fee, and preparation time; each match lists its plain reasons. Never labelled AI or smart. Excludes tracked calls, the anchor, calls closing within 7 days, and calls hidden for this application; at most two per organization. Save to Tracker or Not for me."
+    },
+    "PreSubmitCheck": {
+      "base": "Button",
+      "implementation": "components/missa/pre-submit-check.tsx",
+      "motion": "never",
+      "boundary": "Before you submit: required materials, word limit against saved text, page limit, anonymous-review name check across titles, file names, and saved text, and file types. Each row is Passed, Needs attention, or Check manually with the status written beside its icon; anything Missa cannot read (file contents, page counts, document properties, unrecorded file types) is Check manually, never Passed."
+    },
     "GoalSubmissionProgress": {
       "base": "Progress",
       "implementation": "components/missa/goal-submission-progress.tsx",
