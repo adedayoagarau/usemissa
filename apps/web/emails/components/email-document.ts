@@ -27,6 +27,21 @@ export const CREATOR_EMAIL_COLORS = {
   onNight: '#b9afbd',
 } as const;
 
+/**
+ * Inline style for a coloured ground. The Gmail app inverts every colour in
+ * dark mode, but leaves gradients alone, so a flat gradient keeps the colour.
+ */
+export const fill = (color: string) => `background-color:${color};background-image:linear-gradient(${color},${color});`;
+
+/**
+ * Keeps light text light on a dark ground in the Gmail app's dark mode. Gmail
+ * renders the email inside <u> + .body, so the blend rules apply only there and
+ * cancel its inversion; other clients ignore them. Only white survives the
+ * blend, so softer tints on Forest read as white in Gmail dark mode.
+ */
+export const keepLight = (html: string) =>
+  `<div class="gmail-blend-screen"><div class="gmail-blend-difference">${html}</div></div>`;
+
 const FONT_STYLESHEET =
   'https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap';
 
@@ -57,6 +72,8 @@ export function renderEmailDocument(props: { subject: string; preheader: string;
       :root { color-scheme: light only; supported-color-schemes: light; }
       body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; }
       table { border-collapse: collapse; }
+      u + .body .gmail-blend-screen { background: #000; mix-blend-mode: screen; }
+      u + .body .gmail-blend-difference { background: #000; mix-blend-mode: difference; }
       a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
       @media only screen and (max-width: 520px) {
         .m-pad { padding-left: 20px !important; padding-right: 20px !important; }
@@ -68,12 +85,12 @@ export function renderEmailDocument(props: { subject: string; preheader: string;
       }
     </style>
   </head>
-  <body bgcolor="${props.background}" style="margin:0;padding:0;width:100%;background-color:${props.background};font-family:${f.interface};-webkit-font-smoothing:antialiased;">
+  <body class="body" bgcolor="${props.background}" style="margin:0;padding:0;width:100%;${fill(props.background)}font-family:${f.interface};-webkit-font-smoothing:antialiased;">
     <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${escapeHtml(props.preheader)}&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
-    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="${props.background}" style="background-color:${props.background};">
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="${props.background}" style="${fill(props.background)}">
       <tr>
         <td align="center" style="padding:0;">
-          <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;text-align:left;">
+          <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="${props.background}" style="max-width:600px;margin:0 auto;text-align:left;${fill(props.background)}">
             ${props.bodyHtml}
           </table>
         </td>
@@ -102,18 +119,16 @@ export function renderEmailFooter(props: {
   const preferences = link(props.preferencesUrl ?? new URL('/inbox', `${siteUrl()}/`).toString(), props.preferencesLabel ?? 'Email settings');
   const unsubscribe = props.unsubscribeUrl ? ` &nbsp;·&nbsp; ${link(props.unsubscribeUrl, 'Unsubscribe')}` : '';
   const address = hasPostalAddress() ? `, ${escapeHtml(LEGAL_POSTAL_ADDRESS).replace(/\n/g, ', ')}` : '';
-  const top =
-    props.tone === 'forest'
-      ? `border-top:1px solid ${c.forestRule};`
-      : `background-color:${c.night};`;
+  const ground = props.tone === 'night' ? c.night : c.forestDeep;
+  const top = props.tone === 'forest' ? `border-top:1px solid ${c.forestRule};` : '';
   const mark = props.tone === 'night' ? `<div style="margin:0 0 14px;">${wordmark('white', 72)}</div>` : '';
   return `
     <tr>
-      <td class="m-pad" bgcolor="${props.tone === 'night' ? c.night : c.forestDeep}" style="${top}padding:28px 40px 40px;font-family:${f.interface};font-size:12px;line-height:19px;color:${color};">
+      <td class="m-pad" bgcolor="${ground}" style="${fill(ground)}${top}padding:28px 40px 40px;font-family:${f.interface};font-size:12px;line-height:19px;color:${color};">
         ${mark}
-        <p style="margin:0 0 10px;">${escapeHtml(props.reason)}</p>
+        ${keepLight(`<p style="margin:0 0 10px;">${escapeHtml(props.reason)}</p>
         <p style="margin:0 0 10px;">${preferences}${unsubscribe}</p>
-        <p style="margin:0;">${escapeHtml(LEGAL_ENTITY_NAME || 'Missa')}${address} &nbsp;·&nbsp; ${link(`mailto:${LEGAL_CONTACT_EMAIL}`, LEGAL_CONTACT_EMAIL)}</p>
+        <p style="margin:0;">${escapeHtml(LEGAL_ENTITY_NAME || 'Missa')}${address} &nbsp;·&nbsp; ${link(`mailto:${LEGAL_CONTACT_EMAIL}`, LEGAL_CONTACT_EMAIL)}</p>`)}
       </td>
     </tr>`;
 }

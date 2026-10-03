@@ -13,7 +13,7 @@ import {
   relativeDay,
   typeLabel,
 } from './components/call-facts';
-import { CREATOR_EMAIL_COLORS as c, renderEmailDocument, renderEmailFooter, wordmark } from './components/email-document';
+import { CREATOR_EMAIL_COLORS as c, keepLight, renderEmailDocument, renderEmailFooter, wordmark } from './components/email-document';
 import { buildUnsubscribeUrl } from '../lib/email-tokens';
 import { siteUrl } from '../lib/siteUrl';
 
@@ -57,8 +57,8 @@ function sectionHeading(title: string, note?: string): string {
   return `
     <tr>
       <td class="m-pad" style="padding:56px 40px 20px;">
-        <div style="font-family:${f.editorial};font-size:26px;line-height:32px;font-weight:400;color:${c.onForest};">${escapeHtml(title)}</div>
-        ${note ? `<div style="font-family:${f.interface};font-size:14px;line-height:20px;color:${c.onForestMuted};margin-top:4px;">${escapeHtml(note)}</div>` : ''}
+        ${keepLight(`<div style="font-family:${f.editorial};font-size:26px;line-height:32px;font-weight:400;color:${c.onForest};">${escapeHtml(title)}</div>
+        ${note ? `<div style="font-family:${f.interface};font-size:14px;line-height:20px;color:${c.onForestMuted};margin-top:4px;">${escapeHtml(note)}</div>` : ''}`)}
       </td>
     </tr>`;
 }
@@ -80,18 +80,16 @@ function placard(item: WeeklyDigestItem, own: boolean, now: Date): string {
       <td class="m-pad" style="padding:0 40px;">
         <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
           <tr>
-            <td bgcolor="${ground}" style="background-color:${ground};padding:24px 26px 22px;color:${c.ink};">
-              <div style="font-family:${f.interface};font-size:15px;line-height:20px;font-weight:600;">${escapeHtml(item.organizationName)}</div>
-              <a href="${escapeHtml(opportunityUrl(item))}" class="m-placard" style="display:block;margin:6px 0 10px;font-family:${f.editorial};font-size:34px;line-height:38px;font-weight:500;letter-spacing:-0.015em;color:${c.ink};text-decoration:none;">${escapeHtml(item.title)}</a>
-              ${facts ? `<div style="font-family:${f.interface};font-size:15px;line-height:23px;color:${c.inkSecondary};">${escapeHtml(facts)}</div>` : ''}
-              <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" style="margin-top:18px;">
-                <tr>
-                  <td style="border-top:1px solid ${own ? c.ochreRule : c.rule};padding-top:12px;font-family:${f.interface};font-size:14px;line-height:20px;font-weight:600;color:${own ? c.ochreDeep : c.inkSecondary};">${escapeHtml(when)}</td>
-                  <td align="right" valign="bottom" style="border-top:1px solid ${own ? c.ochreRule : c.rule};padding:12px 0 0 16px;font-family:${f.interface};font-size:14px;line-height:20px;white-space:nowrap;">
-                    <a href="${escapeHtml(opportunityUrl(item))}" style="color:${c.ink};font-weight:600;text-decoration:underline;text-underline-offset:3px;">View</a>
-                  </td>
-                </tr>
-              </table>
+            <td bgcolor="${ground}" style="background-color:${ground};padding:0;">
+              <a href="${escapeHtml(opportunityUrl(item))}" style="display:block;padding:24px 26px 22px;color:${c.ink};text-decoration:none;">
+                <div style="font-family:${f.interface};font-size:15px;line-height:20px;font-weight:600;color:${c.ink};">${escapeHtml(item.organizationName)}</div>
+                <div class="m-placard" style="margin:6px 0 10px;font-family:${f.editorial};font-size:34px;line-height:38px;font-weight:500;letter-spacing:-0.015em;color:${c.ink};">${escapeHtml(item.title)}</div>
+                ${facts ? `<div style="font-family:${f.interface};font-size:15px;line-height:23px;color:${c.inkSecondary};">${escapeHtml(facts)}</div>` : ''}
+                <div style="margin-top:18px;border-top:1px solid ${own ? c.ochreRule : c.rule};padding-top:12px;font-family:${f.interface};font-size:14px;line-height:20px;">
+                  <span style="float:right;margin-left:16px;font-weight:600;color:${c.ink};text-decoration:underline;text-underline-offset:3px;">View Opportunity</span>
+                  <span style="font-weight:600;color:${own ? c.ochreDeep : c.inkSecondary};">${escapeHtml(when)}</span>
+                </div>
+              </a>
             </td>
           </tr>
         </table>
@@ -114,12 +112,17 @@ function label(item: WeeklyDigestItem, index: number, own: boolean, now: Date): 
         <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
           <tr>
             ${spacer(offset)}
-            <td class="m-full" width="${LABEL_WIDTH}%" valign="top" bgcolor="${ground}" style="width:${LABEL_WIDTH}%;background-color:${ground};padding:20px 22px 22px;color:${c.ink};">
-              <div style="font-family:${f.interface};font-size:14px;line-height:20px;font-weight:600;">${escapeHtml(item.organizationName)}</div>
-              <a href="${escapeHtml(opportunityUrl(item))}" style="display:block;margin:4px 0 8px;font-family:${f.editorial};font-size:24px;line-height:29px;font-weight:500;color:${c.ink};text-decoration:none;">${escapeHtml(item.title)}</a>
-              ${facts ? `<div style="font-family:${f.interface};font-size:14px;line-height:21px;color:${c.inkSecondary};">${escapeHtml(facts)}</div>` : ''}
-              <div style="font-family:${f.interface};font-size:14px;line-height:21px;${when.urgent ? `font-weight:600;color:${c.ochreDeep};` : `color:${c.inkSecondary};`}">${escapeHtml(when.text)}</div>
-              <div style="font-family:${f.interface};font-size:13px;line-height:18px;color:${c.inkMuted};margin-top:10px;">${escapeHtml(item.reason)}</div>
+            <td class="m-full" width="${LABEL_WIDTH}%" valign="top" bgcolor="${ground}" style="width:${LABEL_WIDTH}%;background-color:${ground};padding:0;">
+              <a href="${escapeHtml(opportunityUrl(item))}" style="display:block;padding:20px 22px 22px;color:${c.ink};text-decoration:none;">
+                <div style="font-family:${f.interface};font-size:14px;line-height:20px;font-weight:600;color:${c.ink};">${escapeHtml(item.organizationName)}</div>
+                <div style="margin:4px 0 8px;font-family:${f.editorial};font-size:24px;line-height:29px;font-weight:500;color:${c.ink};">${escapeHtml(item.title)}</div>
+                ${facts ? `<div style="font-family:${f.interface};font-size:14px;line-height:21px;color:${c.inkSecondary};">${escapeHtml(facts)}</div>` : ''}
+                <div style="font-family:${f.interface};font-size:14px;line-height:21px;${when.urgent ? `font-weight:600;color:${c.ochreDeep};` : `color:${c.inkSecondary};`}">${escapeHtml(when.text)}</div>
+                <div style="margin-top:10px;font-family:${f.interface};font-size:13px;line-height:18px;color:${c.inkMuted};">
+                  <span style="float:right;margin-left:12px;font-weight:600;color:${c.ink};text-decoration:underline;text-underline-offset:3px;">View</span>
+                  ${escapeHtml(item.reason)}
+                </div>
+              </a>
             </td>
             ${spacer(rest)}
           </tr>
@@ -210,15 +213,15 @@ export function renderWeeklyDigestEmail(props: WeeklyDigestEmailProps): { subjec
         <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0">
           <tr>
             <td valign="middle"><a href="${escapeHtml(siteUrl())}" style="text-decoration:none;">${wordmark('white', 84)}</a></td>
-            <td align="right" valign="middle" style="font-family:${f.interface};font-size:13px;line-height:18px;color:${c.onForestMuted};">${escapeHtml(today)}</td>
+            <td align="right" valign="middle" style="font-family:${f.interface};font-size:13px;line-height:18px;color:${c.onForestMuted};">${keepLight(escapeHtml(today))}</td>
           </tr>
         </table>
       </td>
     </tr>
     <tr>
       <td class="m-pad" style="padding:64px 40px 0;">
-        <h1 class="m-title" style="margin:0;font-family:${f.editorial};font-size:72px;line-height:68px;font-weight:500;letter-spacing:-0.035em;color:${c.onForest};">The Sunday List</h1>
-        <p style="margin:22px 0 0;max-width:470px;font-family:${f.editorial};font-size:20px;line-height:30px;color:${c.onForestSoft};">${escapeHtml(summary)}</p>
+        ${keepLight(`<h1 class="m-title" style="margin:0;font-family:${f.editorial};font-size:72px;line-height:68px;font-weight:500;letter-spacing:-0.035em;color:${c.onForest};">The Sunday List</h1>
+        <p style="margin:22px 0 0;max-width:470px;font-family:${f.editorial};font-size:20px;line-height:30px;color:${c.onForestSoft};">${escapeHtml(summary)}</p>`)}
       </td>
     </tr>
     ${rows.join('')}
@@ -231,9 +234,9 @@ export function renderWeeklyDigestEmail(props: WeeklyDigestEmailProps): { subjec
             </td>
           </tr>
         </table>
-        <p style="margin:20px 0 0;font-family:${f.interface};font-size:14px;line-height:20px;">
+        ${keepLight(`<p style="margin:20px 0 0;font-family:${f.interface};font-size:14px;line-height:20px;">
           <a href="${escapeHtml(profile)}" style="color:${c.onForest};text-decoration:underline;text-underline-offset:3px;">Change what you follow</a>
-        </p>
+        </p>`)}
       </td>
     </tr>
     ${renderEmailFooter({
