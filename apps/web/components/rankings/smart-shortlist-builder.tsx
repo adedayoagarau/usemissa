@@ -67,10 +67,10 @@ export function SmartShortlistBuilder({
         if (!res.ok) throw new Error("Plan generation failed");
         const data = await res.json();
         setPlan(data.plan);
-        toast.success("Submission portfolio updated!");
+        toast.success("Plan updated.");
       } catch (err) {
         console.error(err);
-        toast.error("Could not generate submission plan. Please try again.");
+        toast.error("We could not build a plan. Try again.");
       }
     });
   }, [fastOnly, freeOnly, genre, payingOnly, preset, simultaneousOnly]);

@@ -22,7 +22,6 @@ const STATIC_PATHS = [
   "/for-organizations",
   "/waitlist",
   "/rankings/plan",
-  "/rankings/claim",
   "/terms",
   "/privacy",
 ];

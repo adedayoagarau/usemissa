@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Manuscript Strategy & Submission Matcher",
   description:
-    "Match your short story, essay, or poetry packet against the Missa magazine index with taste DNA comps, debut friendliness ratings, and payout verification.",
+    "Match your short story, essay, or poetry packet against the Missa magazine index with taste DNA comps, debut friendliness ratings, and payment details.",
 };
 
 export default async function ManuscriptMatchPage() {

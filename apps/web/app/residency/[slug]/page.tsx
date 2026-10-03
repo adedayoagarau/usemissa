@@ -2,7 +2,8 @@ import { getProfileRepository } from "@/lib/profileRepository";
 import { PublicSiteShell } from "@/components/public-site-shell";
 import { InstitutionProfileView } from "@/components/institution-profile-view";
 import { ResidencyIntelligenceDrawer } from "@/components/rankings/residency-intelligence-drawer";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
+import { canonicalProfileRedirect } from "@/lib/profileRouteKind";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,8 @@ export default async function ResidencyDetailPage({ params }: { params: Promise<
   const repo = getProfileRepository();
   const profile = repo ? await repo.getById(slug) : null;
   if (!profile) notFound();
+  const canonicalPath = canonicalProfileRedirect(profile, { kind: "residency_center", slug });
+  if (canonicalPath) permanentRedirect(canonicalPath);
 
   return (
     <PublicSiteShell current="Directory">

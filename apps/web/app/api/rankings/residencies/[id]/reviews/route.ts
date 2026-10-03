@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { getResidencyRankingRepository } from "@/lib/residencyRankingRepository";
+import { getSessionAccount } from "@/lib/auth";
+import { clientAddress } from "@/lib/auth-rate-limit";
+import { submitResidencyReview } from "@/lib/residencyReviewSubmission";
 
 export const dynamic = "force-dynamic";
 
@@ -37,67 +40,23 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    if (!id) {
-      return NextResponse.json(
-        { error: "Residency identifier is required." },
-        { status: 400 },
-      );
-    }
-
-    const body = await request.json().catch(() => null);
-    if (!body) {
-      return NextResponse.json(
-        { error: "Invalid review submission payload." },
-        { status: 400 },
-      );
-    }
-
-    const ratingScore = Number(body.ratingScore);
-    if (isNaN(ratingScore) || ratingScore < 1 || ratingScore > 5) {
-      return NextResponse.json(
-        { error: "Please provide a rating score between 1.0 and 5.0." },
-        { status: 400 },
-      );
-    }
-
-    const reviewBody = typeof body.reviewBody === "string" ? body.reviewBody.trim() : "";
-    if (reviewBody.length < 10) {
-      return NextResponse.json(
-        { error: "Please provide a review with at least 10 characters sharing your residency experience." },
-        { status: 400 },
-      );
-    }
-
-    const authorName =
-      body.isAnonymous || !body.authorName || !body.authorName.trim()
-        ? "Anonymous Resident"
-        : body.authorName.trim();
-
-    const reviewTitle =
-      typeof body.reviewTitle === "string" && body.reviewTitle.trim()
-        ? body.reviewTitle.trim()
-        : null;
-
-    const repo = getResidencyRankingRepository();
-    const result = await repo.recordReview({
-      profileId: id,
-      authorName,
-      reviewTitle,
-      reviewBody,
-      ratingScore,
-      source: "Missa Community Resident Report",
+    const session = await getSessionAccount(request.headers.get("cookie"));
+    const body = session ? await request.json().catch(() => null) : null;
+    const result = await submitResidencyReview({
+      residencyId: id,
+      body,
+      account: session?.account,
+      ip: clientAddress(request),
+      recordReview: (review) => getResidencyRankingRepository().recordReview(review),
     });
-
-    return NextResponse.json({
-      success: true,
-      message: "Your resident review has been submitted and incorporated into the Missa Residency Index!",
-      reviewId: result.reviewId,
-      newRating: result.newRating,
-      newTotalScore: result.newTotalScore,
+    return NextResponse.json(result.body, {
+      status: result.status,
+      headers: result.retryAfter ? { "Retry-After": String(result.retryAfter) } : undefined,
     });
   } catch (error: unknown) {
+    console.error("[POST residency review] Failed to save review:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to submit review" },
+      { error: "We could not save your review. Try again later." },
       { status: 500 },
     );
   }
