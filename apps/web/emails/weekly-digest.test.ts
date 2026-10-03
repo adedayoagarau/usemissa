@@ -2,39 +2,90 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderWeeklyDigestEmail } from './weekly-digest';
 
-const item = (id: string, title: string, reason = 'Because you chose Poetry') => ({
+const now = new Date('2026-10-04T18:00:00Z');
+
+const item = (id: string, title: string, reason = 'Because you chose Poetry', deadline: string | null = '2026-10-20') => ({
   opportunityId: id,
   title,
   organizationName: 'Fixture Review',
-  deadline: '2026-10-20',
+  deadline,
   reason,
+  type: 'residency',
+  feeStatus: 'no-fee',
+  feeCents: null,
+  feeCurrency: null,
+  prize: null,
 });
 
-test('weekly digest renders each non-empty section with its reasons', () => {
+test('The Sunday List leads with the Tracker deadline and uses product section names', () => {
   const rendered = renderWeeklyDigestEmail({
     accountId: 'acc_1',
     email: 'creator@example.com',
+    now,
     digest: {
+      recipientName: 'Tola',
       newForYou: [item('opp_new', 'New Poetry Prize')],
       closingSoon: [],
-      yourDeadlines: [item('opp_saved', 'Saved Fellowship', 'You saved this')],
+      yourDeadlines: [item('opp_saved', 'Saved Fellowship', 'You saved this', '2026-10-07')],
     },
   });
-  assert.equal(rendered.subject, 'Your week in calls');
-  assert.ok(rendered.html.includes('New for you'));
-  assert.ok(rendered.html.includes('Your deadlines'));
+  assert.equal(rendered.subject, 'The Sunday List: Saved Fellowship closes on Wednesday');
+  assert.ok(rendered.html.includes('The Sunday List'));
+  assert.ok(rendered.html.includes('In your Tracker'));
+  assert.ok(rendered.html.includes('Just opened'));
   assert.ok(!rendered.html.includes('Closing soon'), 'empty sections are omitted');
+  assert.ok(!rendered.html.includes('Closing this week'), 'empty sections are omitted');
   assert.ok(rendered.html.includes('Because you chose Poetry'));
+  assert.ok(rendered.html.includes('Residency · Free to enter'));
   assert.ok(rendered.html.includes('/opportunities/opp_new'));
+  assert.ok(rendered.html.includes('Two calls for Tola this week.'));
   assert.ok(rendered.text.includes('Saved Fellowship'));
   assert.ok(rendered.text.includes('You saved this'));
+});
+
+test('without a Tracker deadline the first new call leads and closing calls say this week', () => {
+  const rendered = renderWeeklyDigestEmail({
+    accountId: 'acc_1',
+    email: 'creator@example.com',
+    now,
+    digest: {
+      newForYou: [item('opp_a', 'First New Call'), item('opp_b', 'Second New Call', 'Because you chose Fiction', null)],
+      closingSoon: [item('opp_c', 'Closing Grant', 'Because you chose Fiction', '2026-10-09')],
+      yourDeadlines: [],
+    },
+  });
+  assert.equal(rendered.subject, 'The Sunday List: two calls just opened for you');
+  assert.ok(!rendered.html.includes('In your Tracker'));
+  assert.ok(rendered.html.includes('Closing this week'));
+  assert.ok(rendered.html.includes('No fixed deadline'));
+  assert.ok(rendered.html.includes('Three calls for you this week.'));
 });
 
 test('weekly digest escapes opportunity text', () => {
   const rendered = renderWeeklyDigestEmail({
     accountId: 'acc_1',
     email: 'creator@example.com',
+    now,
     digest: { newForYou: [item('opp_x', '<script>alert(1)</script>')], closingSoon: [], yourDeadlines: [] },
   });
   assert.ok(!rendered.html.includes('<script>alert(1)</script>'));
+});
+
+test('every card is one link to its opportunity and Forest text survives Gmail dark mode', () => {
+  const rendered = renderWeeklyDigestEmail({
+    accountId: 'acc_1',
+    email: 'creator@example.com',
+    now,
+    digest: {
+      newForYou: [item('opp_a', 'First New Call'), item('opp_b', 'Second New Call')],
+      closingSoon: [item('opp_c', 'Closing Grant', 'Because you chose Fiction', '2026-10-09')],
+      yourDeadlines: [item('opp_saved', 'Saved Fellowship', 'You saved this', '2026-10-07')],
+    },
+  });
+  for (const id of ['opp_saved', 'opp_a', 'opp_b', 'opp_c']) {
+    assert.match(rendered.html, new RegExp(`<a href="[^"]*/opportunities/${id}" style="display:block;`));
+  }
+  assert.ok(rendered.html.includes('<body class="body"'));
+  assert.ok(rendered.html.includes('u + .body .gmail-blend-screen'));
+  assert.ok(rendered.html.includes('background-image:linear-gradient(#1d4037,#1d4037)'));
 });
