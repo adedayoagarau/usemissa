@@ -27,6 +27,8 @@ import { renderPasswordResetEmail } from '../emails/password-reset';
 import { renderWaitlistConfirmationEmail, WAITLIST_CONFIRMATION_SUBJECT, waitlistConfirmationText } from '../emails/waitlist-confirmation';
 import { renderDecisionLetter } from '../emails/decision-letter';
 import { renderGoalCheckInEmail } from '../emails/goal-check-in';
+import { renderSubmissionReceiptEmail } from '../emails/submission-receipt';
+import { renderEmailChoiceConfirmationEmail } from '../emails/email-choice-confirmation';
 
 type Rendered = { subject: string; html: string; text: string };
 
@@ -207,6 +209,17 @@ const templates: Record<string, () => Rendered> = {
   'sign-in-code': () => renderAuthOtpEmail({ email: to, code: '482913', type: 'sign-in', expiresInMinutes: 10 }),
   'password-reset': () => renderPasswordResetEmail({ accountId: 'acct_email_test', email: to, resetToken: 'sample-token', displayName: 'Tola' }),
   waitlist: () => ({ subject: WAITLIST_CONFIRMATION_SUBJECT, html: renderWaitlistConfirmationEmail(), text: waitlistConfirmationText() }),
+  'submission-receipt': () =>
+    renderSubmissionReceiptEmail({
+      organizationName: lead.organizationName,
+      callTitle: lead.title,
+      givenName: 'Tola',
+      submittedAt: now,
+      works: ['Ten poems'],
+      fileCount: 3,
+      reference: 'PH-2027-0412',
+    }),
+  'email-on': () => renderEmailChoiceConfirmationEmail(),
   'decision-letter': () =>
     renderDecisionLetter({
       submitterName: 'Tola',

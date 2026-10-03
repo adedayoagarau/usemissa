@@ -4,6 +4,7 @@ import { getRelationalWorkspace, getWorkspaceEngine, persistWorkspace, workspace
 import { getEngine, persistRadar } from '@/lib/engine';
 import { checkOpportunitySubmissionCap, recordSubmissionAgainstCap } from '@/lib/submission-caps';
 import { trackPlatformAnalytics } from '@/lib/platformAnalytics';
+import { deliverSubmissionReceipt } from '@/lib/account-letters';
 
 /**
  * Story 6.5: submitter file upload against a Submission Path.
@@ -61,6 +62,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     const existing = [...workspace!.store.submissions.values()].find((candidate) => candidate.submissionPathId === pathId && candidate.submitterAccountId === session.account.id && candidate.idempotencyKey === idempotencyKey);
     if (existing) return NextResponse.json({ submission: existing, works: workspace!.worksForSubmission(existing.id), trackerLinked: false, idempotent: true }, { status: 200 });
   }
+  const compatibilityProgram = compatibilityPath ? workspace!.store.programs.get(workspace!.store.openCalls.get(compatibilityPath.openCallId)?.programId ?? '') : undefined;
+  const organizationId = relationalPath?.organizationId ?? (compatibilityProgram ? workspace!.store.entities.get(compatibilityProgram.entityId)?.organizationId : undefined);
+  /** The organisation's emailed receipt; a send failure never fails the submission. */
+  const sendReceipt = async (submissionId: string, reference: string, organizationName: string | undefined) => {
+    if (!session.account.email) return;
+    const submitted = body.works as Array<{ title: string; fileUrl?: string; fileUrls?: string[] }>;
+    await deliverSubmissionReceipt({
+      submissionId,
+      accountId: session.account.id,
+      email: session.account.email,
+      ...(organizationId ? { organizationId } : {}),
+      organizationName: organizationName || 'The organisation',
+      callTitle: openCall.title,
+      givenName: session.account.displayName,
+      submittedAt: new Date(),
+      works: submitted.map((work) => work.title.trim()),
+      fileCount: submitted.reduce((count, work) => count + (work.fileUrl ? 1 : 0) + (work.fileUrls?.length ?? 0), 0),
+      reference,
+      ...(payment.feeCents ? { feePaidCents: payment.feeCents, feeCurrency: 'USD' } : {}),
+    }).catch(() => undefined);
+  };
   interface WorkInput {
     title?: string;
     fileUrl?: string;
@@ -155,6 +177,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
       if (!created.replayed && openCall.radarOpportunityId) {
         await recordSubmissionAgainstCap(openCall.radarOpportunityId);
       }
+      if (!created.replayed) await sendReceipt(created.resourceId, created.receiptId ?? created.resourceId, organizationId ? radar.store.organizations.get(organizationId)?.name : undefined);
       await trackPlatformAnalytics({
         eventName: 'application.provider_receipt_recorded',
         source: 'hosted-submission-api',
@@ -202,6 +225,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pat
     if (linkedOpportunityId) {
       await recordSubmissionAgainstCap(linkedOpportunityId);
     }
+    await sendReceipt(submission.id, submission.id, organizationId ? radar.store.organizations.get(organizationId)?.name : undefined);
     await trackPlatformAnalytics({
       eventName: 'application.provider_receipt_recorded',
       source: 'hosted-submission-api',
