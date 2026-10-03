@@ -117,6 +117,7 @@ export {
   applyCreatorSubscription,
   creatorBillingAccount,
   type CreatorBillingAccount,
+  type CreatorSubscriptionResult,
   type CreatorSubscriptionUpdate,
 } from "./creatorBilling.js";
 export {
