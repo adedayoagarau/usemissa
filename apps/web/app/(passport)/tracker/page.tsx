@@ -17,6 +17,9 @@ import {
   type TrackerProductLayout,
 } from "@/components/tracker-product";
 import { parseApplicationId, parseTrackerView } from "@/lib/trackerViews";
+import { ApplicationWorkspaceRepository } from "@/lib/application-workspace";
+import { CreatorReminderRepository } from "@/lib/creator-reminders";
+import { emailIntegrationFlags } from "@/lib/email-integrations";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -73,6 +76,27 @@ export default async function TrackerPage({
             workTitle: item.workTitle,
             importId: item.importId,
           }));
+
+  // Checklist steps and reminders make start-by dates and reminder summaries
+  // visible on each card. Either can fail without hiding the Tracker.
+  if (postgresTracker) {
+    const [applications, reminders] = await Promise.all([
+      new ApplicationWorkspaceRepository().list(session.account.id).catch(() => []),
+      new CreatorReminderRepository().list(session.account.id).catch(() => []),
+    ]);
+    const preparation = new Map(applications.map((application) => [application.opportunityId, application]));
+    const scheduled = reminders.filter((reminder) => ["scheduled", "needs-review"].includes(reminder.state));
+    for (const item of initialItems) {
+      const application = preparation.get(item.opportunityId);
+      if (application) {
+        item.preparationItems = application.preparationItems;
+        item.workTitle ??= application.workTitle ?? undefined;
+      }
+      const own = scheduled.filter((reminder) => reminder.opportunityId === item.opportunityId);
+      const next = own.flatMap((reminder) => (reminder.dueAt ? [new Date(reminder.dueAt).toISOString()] : [])).sort()[0];
+      item.reminders = { count: own.length, ...(next ? { nextDueAt: next } : {}) };
+    }
+  }
 
   const hostedSubmissions: TrackerHostedSubmission[] = workspaceRelationalAuthorityEnabled()
     ? await (await getRelationalWorkspace()).submissionsForOwner(session.account.id)
@@ -156,6 +180,11 @@ export default async function TrackerPage({
       initialLayout={safeLayout(first(raw.layout))}
       initialQuery={first(raw.q).slice(0, 200)}
       initialImportId={first(raw.import).slice(0, 240)}
+      recordsAvailable={postgresTracker}
+      emailEvidence={(() => {
+        const flags = emailIntegrationFlags();
+        return flags.gmailSync || flags.emailForwarding;
+      })()}
     />
   );
 }

@@ -628,23 +628,30 @@
       ],
       "boundary": "Interactive public feature explorer with original fictional campaign photography. The homepage uses a one-work portfolio teaser; real public catalogue deadlines, local notification switches, and clearly labelled resettable sample submissions remain interactive. No private API write, delivery or publication. Existing app destinations retained. User-triggered motion with reduced-motion equivalent. Homepage preview starts with the White theme; five local theme choices remain interactive. Approved marketing-only forest, citron and sky surfaces use the scoped palette token chain."
     },
-    "composition.applications-workspace": {
-      "semantic": "ApplicationsWorkspace",
-      "implementation": "apps/web/components/missa/applications-workspace.tsx",
+    "composition.application-record": {
+      "semantic": "ApplicationRecord",
+      "implementation": "apps/web/components/missa/application-record.tsx",
+      "container": "apps/web/components/missa/application-record-sheet.tsx",
       "composition": [
-        "Button",
+        "Sheet",
         "Tabs",
+        "Button",
         "Dialog",
-        "Collapsible",
         "Field",
         "Input",
         "Textarea",
         "NativeSelect",
-        "ApplicationLabels",
+        "Switch",
+        "Alert",
+        "Empty",
         "Skeleton",
-        "ApplicationPreparation"
+        "ApplicationPreparation",
+        "ApplicationReminders",
+        "ApplicationCalendarDelivery",
+        "StartByDate"
       ],
-      "boundary": "Account-owned canonical applications and preparation; explicit recorded events, no submission on external navigation."
+      "appearance": "right-side-sheet-full-width-below-640px-with-same-route-peer-tabs",
+      "boundary": "The one canonical record for a tracked application, opened by /tracker?application=<id>&section=<overview|prepare|timing|materials|history> from every surface. Lifecycle Saved, Preparing, Ready, Submitted, In review, Outcome; each reached step shows its recorded date and provenance (recorded by you, Missa-hosted submission, received from the organization, inferred from source information) and never an invented date. External navigation never records a submission. One Forest action per region. No AI wording."
     },
     "composition.library-material": {
       "semantic": "LibraryMaterialSheet",
@@ -767,6 +774,8 @@
     },
     "UrgencyBadge": {
       "base": "Badge",
+      "implementation": "components/missa/urgency-badge.tsx",
+      "variant": "warning",
       "studioCandidates": ["badge-05", "badge-10"],
       "motion": "never"
     },
@@ -833,6 +842,25 @@
       "implementation": "components/missa/application-labels.tsx",
       "motion": "never",
       "boundary": "Opportunity type plus at most one personal status or availability label"
+    },
+    "StartByDate": {
+      "base": "Button",
+      "implementation": "components/missa/start-by-date.tsx",
+      "composition": ["Button", "Popover"],
+      "motion": "never",
+      "boundary": "Latest sensible start date worked back from the deadline and the remaining checklist (lib/start-by.ts). Always labelled an estimate; reasoning one click away in a Popover. Ochre only when the start-by day is today or has passed. Only the date is set in Fragment Mono."
+    },
+    "ApplicationCalendarDelivery": {
+      "base": "Button",
+      "implementation": "components/missa/application-calendar-delivery.tsx",
+      "motion": "indicator-while-confirmed-active",
+      "boundary": "Read-only delivery state for one application: private feed on/off, each provider connection (synced or reconnect), and planned sessions with Syncing…, Synced, Sync failed + Retry. Synced only after the provider queue reports success; the spinner shows only while a job is queued or running."
+    },
+    "ApplicationEmailEvidence": {
+      "base": "Button",
+      "implementation": "components/missa/application-email-evidence.tsx",
+      "motion": "never",
+      "boundary": "Email forwarding or Gmail evidence only suggests a status. Nothing changes until the creator confirms; confirming records the event with source=email and closes the suggestion in one transaction. Shown only when an email integration is enabled."
     },
     "GoalSubmissionProgress": {
       "base": "Progress",

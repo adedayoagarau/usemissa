@@ -1667,26 +1667,14 @@
     "adaptation": "Photographic feature stories beside interactive product views. Original fictional campaign artwork, distinct existing palette tokens and large editorial titles. The portfolio view is a compact one-work teaser with theme and format controls; actual public deadlines, local notification switches and resettable sample submission goals remain interactive. No account writes or notification delivery. Approved full-width marketing colour bands; shared operational cards unchanged. White is the initial local portfolio preview theme.",
     "evidence": "docs/homepage-cinematic-2026-09-07/19-homepage-colour-and-painting.md"
   },
-  "ApplicationsWorkspace": {
+  "ApplicationRecord": {
     "status": "approved-adapt",
-    "implementation": "apps/web/components/missa/applications-workspace.tsx",
-    "route": "/tracker",
-    "composition": [
-      "Button",
-      "Tabs",
-      "Dialog",
-      "Collapsible",
-      "Field",
-      "Input",
-      "Textarea",
-      "NativeSelect",
-      "ApplicationLabels",
-      "Skeleton",
-      "ApplicationPreparation"
-    ],
-    "source": "Installed Base UI components and Missa ApplicationLabels",
-    "evidence": "docs/my-applications/creator-build-1-7.md",
-    "boundary": "Real API data; materials captured on explicit submission. Validation in progress."
+    "implementation": "apps/web/components/missa/application-record.tsx",
+    "route": "/tracker?application=<opportunityId>",
+    "composition": ["Sheet", "Tabs", "Button", "Dialog", "Field", "Input", "Textarea", "NativeSelect", "Switch", "Alert", "Empty", "Skeleton", "ApplicationPreparation", "ApplicationReminders", "ApplicationCalendarDelivery", "StartByDate"],
+    "source": "Installed Base UI Sheet, Tabs, Dialog, Field family, Switch, Alert, Empty and Skeleton. Absorbs the former route-less ApplicationsWorkspace panel.",
+    "adaptation": "Missa lifecycle and provenance, Newsreader record title, Fragment Mono dates, hairline-bordered next-step panel with a single Forest action.",
+    "boundary": "Real API data; materials captured on explicit submission; email evidence only suggests a status."
   },
   "ApplicationPreparation": {
     "status": "approved-adapt",
