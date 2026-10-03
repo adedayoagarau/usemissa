@@ -37,10 +37,8 @@ import type {
   FirstSaveResumeResponse,
 } from "@/lib/firstSaveTypes";
 import { rememberFirstSaveReceipt } from "@/lib/firstSaveClient";
-import {
-  isNeonAuthClientConfigured,
-  neonAuthClient,
-} from "@/lib/neon-auth/client";
+import { isNeonAuthClientConfigured } from "@/lib/neon-auth/client-config";
+import { loadNeonAuthClient } from "@/lib/neon-auth/load-client";
 import {
   isEmailVerificationRequired,
   isInvalidEmailVerificationCode,
@@ -211,6 +209,19 @@ export function AuthForm({
   }, [authenticated, firstSaveContext, resumeFirstSave]);
 
   useEffect(() => {
+    if (!isNeonAuthClientConfigured) return;
+    // Fetch the auth client once the page is idle so it is ready by submit
+    // without competing with the first paint.
+    const warm = () => void loadNeonAuthClient().catch(() => undefined);
+    if (typeof window.requestIdleCallback === "function") {
+      const handle = window.requestIdleCallback(warm, { timeout: 3000 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const timer = window.setTimeout(warm, 1500);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (!pendingVerification || isPending || isResending) return;
     const timer = window.setTimeout(
       () => verificationCodeRef.current?.focus(),
@@ -287,11 +298,6 @@ export function AuthForm({
     },
     waitlistEmail?: string,
   ) {
-    if (!neonAuthClient) {
-      setError("Email verification is not available in this environment.");
-      return false;
-    }
-
     setPendingVerification({
       mode,
       email,
@@ -304,6 +310,7 @@ export function AuthForm({
     setVerificationCode("");
     setVerificationError(null);
     try {
+      const neonAuthClient = await loadNeonAuthClient();
       const result = await neonAuthClient.emailOtp.sendVerificationOtp({
         email,
         type: "email-verification",
@@ -335,7 +342,7 @@ export function AuthForm({
   }
 
   async function verifyEmailCode() {
-    if (!neonAuthClient || !pendingVerification) return;
+    if (!pendingVerification) return;
     if (verificationCode.length !== 6) {
       setVerificationError("Enter the six-digit code from your email.");
       return;
@@ -344,6 +351,7 @@ export function AuthForm({
     setIsPending(true);
     setVerificationError(null);
     try {
+      const neonAuthClient = await loadNeonAuthClient();
       const result = await neonAuthClient.emailOtp.verifyEmail({
         email: pendingVerification.email,
         otp: verificationCode,
@@ -396,11 +404,12 @@ export function AuthForm({
   }
 
   async function resendVerificationCode() {
-    if (!neonAuthClient || !pendingVerification || isResending) return;
+    if (!pendingVerification || isResending) return;
     setIsResending(true);
     setVerificationError(null);
     setVerificationCode("");
     try {
+      const neonAuthClient = await loadNeonAuthClient();
       const result = await neonAuthClient.emailOtp.sendVerificationOtp({
         email: pendingVerification.email,
         type: "email-verification",
@@ -428,7 +437,9 @@ export function AuthForm({
     setPendingVerification(null);
     setVerificationCode("");
     setVerificationError(null);
-    void neonAuthClient?.signOut().catch(() => undefined);
+    void loadNeonAuthClient()
+      .then((neonAuthClient) => neonAuthClient.signOut())
+      .catch(() => undefined);
     window.setTimeout(() => document.getElementById("email")?.focus(), 0);
   }
 
@@ -458,8 +469,7 @@ export function AuthForm({
 
     setIsPending(true);
     try {
-      const usingNeonAuth =
-        isNeonAuthClientConfigured && neonAuthClient !== null;
+      const usingNeonAuth = isNeonAuthClientConfigured;
 
       const missaPasswordRequest = () =>
         fetch(`/api/auth/${mode}`, {
@@ -488,11 +498,12 @@ export function AuthForm({
 
       let response: Response;
       let neonRejected = false;
-      if (usingNeonAuth && neonAuthClient) {
+      if (usingNeonAuth) {
         // Neon Auth is the account authority. Google already resolves through
         // /auth/callback; email+password resolves here and then links the Neon
         // identity to a Missa account through the session bridge.
         try {
+          const neonAuthClient = await loadNeonAuthClient();
           const result =
             mode === "login"
               ? await neonAuthClient.signIn.email({ email, password })
@@ -607,11 +618,17 @@ export function AuthForm({
 
   async function continueWithGoogle() {
     setError(null);
-    if (!isNeonAuthClientConfigured || !neonAuthClient) {
+    if (!isNeonAuthClientConfigured) {
       setError("Google sign-in is not available in this environment yet.");
       return;
     }
     const callbackURL = `/auth/callback?next=${encodeURIComponent(destination)}`;
+    const neonAuthClient = await loadNeonAuthClient().catch(
+      (problem: unknown) => {
+        setError("We could not connect to Google. Please try again.");
+        throw problem;
+      },
+    );
     const result = await neonAuthClient.signIn.social({
       provider: "google",
       callbackURL,

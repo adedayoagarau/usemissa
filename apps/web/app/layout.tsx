@@ -9,15 +9,23 @@ import { AnalyticsProvider } from "@/components/analytics-provider";
 import { SiteBeacon } from "@/components/site-beacon";
 import { CookieConsent } from "@/components/missa/cookie-consent";
 import { WebMcpProvider } from "@/components/missa/webmcp-provider";
+import { consentAnsweredScript } from "@/lib/analyticsConsent";
 import { DEFAULT_DESCRIPTION, SITE_NAME } from "@/lib/seo";
 import { siteUrl } from "@/lib/siteUrl";
 
-/** Missa typography: Newsreader / Instrument Sans / Fragment Mono. */
+/**
+ * Missa typography: Newsreader / Instrument Sans / Fragment Mono.
+ * Only the body face is preloaded. Preloads download at high priority before
+ * the stylesheet is even parsed, and the 215 KB variable Newsreader file was
+ * competing with the render-blocking CSS on slow mobile connections. The
+ * heading and mono faces load once the page uses them and swap in.
+ */
 const newsreader = localFont({
   src: "../fonts/newsreader-variable.woff2",
   variable: "--font-heading",
   weight: "200 800",
   display: "swap",
+  preload: false,
 });
 
 const instrumentSans = localFont({
@@ -32,6 +40,7 @@ const fragmentMono = localFont({
   variable: "--font-mono",
   weight: "400",
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -82,6 +91,9 @@ export default function RootLayout({
       )}
       suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: consentAnsweredScript() }} />
+      </head>
       <body>
         <ThemeProvider
           attribute="class"
